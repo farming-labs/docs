@@ -330,6 +330,33 @@ describe("agent route helpers", () => {
     expect(JSON.stringify(diagnostics)).not.toContain("https://search.example.com");
   });
 
+  it("maps diagnostics mcp config without server-only imports", () => {
+    const diagnostics = buildDocsDiagnostics({
+      mcp: {
+        route: "internal/docs/mcp/",
+        tools: {
+          searchDocs: false,
+          getConfigSchema: false,
+        },
+      },
+    });
+
+    expect(diagnostics.routes.mcp).toBe("/internal/docs/mcp");
+    expect(diagnostics.features.mcp).toMatchObject({
+      status: "enabled",
+      route: "/internal/docs/mcp",
+      tools: {
+        listDocs: true,
+        listPages: true,
+        readPage: true,
+        searchDocs: false,
+        getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: false,
+      },
+    });
+  });
+
   it("derives section-level llms.txt routes from URL matchers", () => {
     const config = {
       sections: [

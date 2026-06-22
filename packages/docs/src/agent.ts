@@ -13,7 +13,7 @@ import type {
   ResolvedDocsRelatedLink,
 } from "./types.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
-import { resolveDocsMcpConfig, type DocsMcpPage, type DocsMcpResolvedConfig } from "./mcp.js";
+import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
@@ -93,6 +93,15 @@ export const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   },
   required: ["task", "outcome"],
 };
+const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
+  listDocs: true,
+  listPages: true,
+  readPage: true,
+  searchDocs: true,
+  getNavigation: true,
+  getCodeExamples: true,
+  getConfigSchema: true,
+} satisfies DocsMcpResolvedConfig["tools"];
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 const DOCS_AI_AGENT_USER_AGENT_PATTERNS = [
   "claudebot",
@@ -1122,9 +1131,33 @@ function resolveDocsDiagnosticsLlms(llmsTxt: unknown): {
 }
 
 function resolveDocsDiagnosticsMcp(mcp: unknown): DocsMcpResolvedConfig {
-  return resolveDocsMcpConfig(mcp as any, {
-    defaultName: "Documentation",
-  });
+  const config = isPlainObject(mcp) ? mcp : {};
+  const tools = isPlainObject(config.tools) ? config.tools : {};
+
+  return {
+    enabled: typeof mcp === "boolean" ? mcp : config.enabled !== false,
+    route: normalizeDocsDiagnosticsMcpRoute(config.route),
+    name: stringConfigValue(config.name) ?? "Documentation",
+    version: stringConfigValue(config.version) ?? "0.0.0",
+    tools: {
+      ...DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS,
+      listDocs: tools.listDocs !== false,
+      listPages: tools.listPages !== false,
+      readPage: tools.readPage !== false,
+      searchDocs: tools.searchDocs !== false,
+      getNavigation: tools.getNavigation !== false,
+      getCodeExamples: tools.getCodeExamples !== false,
+      getConfigSchema: tools.getConfigSchema !== false,
+    },
+  };
+}
+
+function normalizeDocsDiagnosticsMcpRoute(route: unknown): string {
+  const value = stringConfigValue(route);
+  if (!value) return DEFAULT_MCP_ROUTE;
+
+  const normalized = `/${value}`.replace(/\/+/g, "/");
+  return normalized !== "/" ? normalized.replace(/\/+$/, "") : DEFAULT_MCP_ROUTE;
 }
 
 function isDocsDiagnosticsHumanFeedbackEnabled(feedback: unknown): boolean {
