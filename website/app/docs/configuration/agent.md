@@ -44,7 +44,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`.
-- When they ask about static hosting, mention `staticExport: true`.
+- When they ask about static hosting, mention `staticExport: true`. Note that setting `staticExport: true` also signals to the diagnostics endpoint (`GET /api/docs?format=diagnostics`) that server-side features such as search and AI are unavailable, so diagnostics tooling can skip those checks.
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
 - When they ask about reading time, note that `readingTime` is opt-in (`enabled: true` required).
@@ -53,6 +53,18 @@ Use this machine-oriented page when the user needs implementation guidance for `
   Recommend `includeCode: true` only for code-heavy guides where examples make up a large part of
   the page and should count toward the estimate. Do not recommend setting it globally when prose
   length is the primary signal the team cares about.
+- When the user asks which routes are available to agents, include `GET /api/docs?format=diagnostics` alongside `GET /api/docs?format=config`. The agent discovery spec (served at `/.well-known/agent.json`) now includes a `diagnostics` key pointing to `/api/docs?format=diagnostics`. That endpoint returns a `DocsDiagnostics` payload (format: `"docs-diagnostics.v1"`) describing enabled features and any configuration issues. All five framework adapters handle this route automatically — no additional setup is required.
+
+## Agent discovery spec routes
+
+The discovery spec exposed at `/.well-known/agent.json` and `/.well-known/agent` includes the following API route keys:
+
+| Key           | Default route                  | Description                                                     |
+| ------------- | ------------------------------ | --------------------------------------------------------------- |
+| `config`      | `/api/docs?format=config`      | Machine-readable config map (`docs-config-map.v1`)              |
+| `diagnostics` | `/api/docs?format=diagnostics` | Feature status and configuration issues (`docs-diagnostics.v1`) |
+
+Agents that previously read only `config` should also check `diagnostics` to detect misconfigured or disabled features before attempting to use them.
 
 ## Framework notes
 
@@ -64,7 +76,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 
 - Use [/docs/installation](/docs/installation) when the user is still wiring the framework into an app or has not created the docs route yet.
 - Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, code block validation, sitemap generation, robots generation, search sync, or MCP commands instead of manual setup.
-- Use [/docs/reference](/docs/reference) when they need the full typed `defineDocs()` surface or nested option details.
+- Use [/docs/reference](/docs/reference) when they need the full typed `defineDocs()` surface or nested option details, including the `DocsDiagnostics` types and constants.
 - Use [/docs/customization](/docs/customization) when the question moves from config into layout, sidebar, colors, or page-level polish.
 - Use [/docs/themes](/docs/themes) when they are choosing a preset theme or building their own.
 - Use [/docs/customization/components](/docs/customization/components) when the question is really about `components` or `theme.ui.components`.
