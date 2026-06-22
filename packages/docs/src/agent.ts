@@ -626,7 +626,8 @@ export function buildDocsDiagnostics(
       severity: "error",
       code: "ai-static-export",
       path: "/ai/enabled",
-      message: "Ask AI requires the runtime /api/docs POST handler and will not run in static export builds.",
+      message:
+        "Ask AI requires the runtime /api/docs POST handler and will not run in static export builds.",
     });
   }
 
@@ -635,7 +636,8 @@ export function buildDocsDiagnostics(
       severity: "warning",
       code: "ai-without-search",
       path: "/ai",
-      message: "Ask AI is enabled while docs search is disabled, so retrieval context may be unavailable.",
+      message:
+        "Ask AI is enabled while docs search is disabled, so retrieval context may be unavailable.",
     });
   }
 
@@ -680,9 +682,12 @@ export function buildDocsDiagnostics(
       mcp: mcp.enabled ? mcp.route : null,
       llmsTxt: llms.enabled ? DEFAULT_LLMS_TXT_ROUTE : null,
       llmsFullTxt: llms.enabled ? DEFAULT_LLMS_FULL_TXT_ROUTE : null,
-      sitemapXml: sitemapConfig.enabled && sitemapConfig.xml.enabled ? sitemapConfig.xml.route : null,
+      sitemapXml:
+        sitemapConfig.enabled && sitemapConfig.xml.enabled ? sitemapConfig.xml.route : null,
       sitemapMarkdown:
-        sitemapConfig.enabled && sitemapConfig.markdown.enabled ? sitemapConfig.markdown.route : null,
+        sitemapConfig.enabled && sitemapConfig.markdown.enabled
+          ? sitemapConfig.markdown.route
+          : null,
       robots: robotsEnabled ? DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE : null,
       openapi: openapiConfig.enabled ? (openapiConfig.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE) : null,
       apiReference: openapiConfig.enabled ? apiReferenceRoute : null,
@@ -764,7 +769,9 @@ export function buildDocsDiagnostics(
         status: openapiConfig.enabled ? "enabled" : "disabled",
         route: openapiConfig.enabled ? apiReferenceRoute : null,
         routes: {
-          openapi: openapiConfig.enabled ? (openapiConfig.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE) : null,
+          openapi: openapiConfig.enabled
+            ? (openapiConfig.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE)
+            : null,
         },
         provider: openapiConfig.source,
       },
@@ -1035,7 +1042,8 @@ function resolveDocsDiagnosticsSearch(
 ): ResolvedDocsDiagnosticsSearch {
   const provider = isPlainObject(search) ? stringConfigValue(search.provider) : "simple";
   const configured =
-    search !== false && !(isPlainObject(search) && (search as { enabled?: unknown }).enabled === false);
+    search !== false &&
+    !(isPlainObject(search) && (search as { enabled?: unknown }).enabled === false);
 
   if (staticExport) {
     return {

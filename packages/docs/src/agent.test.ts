@@ -55,9 +55,9 @@ describe("agent route helpers", () => {
     expect(
       isDocsDiagnosticsRequest(new URL("https://example.com/api/docs?format=diagnostics")),
     ).toBe(true);
-    expect(
-      isDocsDiagnosticsRequest(new URL("https://example.com/api/docs?format=config")),
-    ).toBe(false);
+    expect(isDocsDiagnosticsRequest(new URL("https://example.com/api/docs?format=config"))).toBe(
+      false,
+    );
 
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/llms.txt"))).toBe("llms");
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/api/docs?format=llms"))).toBe(
@@ -294,9 +294,7 @@ describe("agent route helpers", () => {
         },
       },
     });
-    expect(diagnostics.warnings.map((issue) => issue.code)).toContain(
-      "static-export-runtime-api",
-    );
+    expect(diagnostics.warnings.map((issue) => issue.code)).toContain("static-export-runtime-api");
     expect(diagnostics.errors).toEqual([
       {
         severity: "error",
