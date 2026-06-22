@@ -3657,6 +3657,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   setConfigMapFallback("apiReference", apiReferenceConfig);
   const docsDiagnosticsInput: Record<string, unknown> = {
     ...docsConfigMapInput,
+    docsPath: docsConfigMapInput.docsPath ?? docsPath,
     contentDir: docsConfigMapInput.contentDir ?? contentDir,
     feedback: docsConfigMapInput.feedback ?? options?.feedback,
     llmsTxt: docsConfigMapInput.llmsTxt ?? llmsConfig,

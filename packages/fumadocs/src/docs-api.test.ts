@@ -2429,6 +2429,30 @@ description: "Start building quickly"
     expect(JSON.stringify(diagnostics)).not.toContain("search-secret");
   });
 
+  it("uses the resolved public docsPath in docs diagnostics", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-diagnostics-docspath-"));
+    tempDirs.push(rootDir);
+
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      'export default { entry: "docs", docsPath: "guides" };\n',
+    );
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=diagnostics"));
+    expect(response.status).toBe(200);
+
+    const diagnostics = (await response.json()) as {
+      routes: Record<string, string | null>;
+    };
+
+    expect(diagnostics.routes.docs).toBe("/guides");
+  });
+
   it("serves the agent discovery spec through the rewritten query form", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-spec-query-"));
     tempDirs.push(rootDir);
