@@ -48,6 +48,8 @@ export {
   resolveDocsMcpConfig,
   runDocsMcpStdio,
 } from "./mcp.js";
+export { createDocsCloudAskAIResponse, isDocsCloudAskAIProvider } from "./cloud-ask-ai.js";
+export type { DocsCloudAskAIConfig, DocsCloudAskAIResponseOptions } from "./cloud-ask-ai.js";
 export {
   buildDocsSearchDocuments,
   buildDocsAskAIContext,
