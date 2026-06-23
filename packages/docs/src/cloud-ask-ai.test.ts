@@ -125,6 +125,58 @@ describe("Docs Cloud Ask AI server helper", () => {
     });
   });
 
+  it("strips heading-style relevant docs footers and standalone separators", async () => {
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const content of [
+            "## Transport Details\n\n",
+            "| Property | Value |\n|----------|-------|\n",
+            "| Type | Streamable HTTP |\n\n---\n\n",
+            "## Claude Code (CLI)\n\n```bash\nclaude mcp add scholarxiv\n```\n\n",
+            "---\n\n## Relevant Docs\n\n- [MCP overview](/docs/mcp/connect)",
+          ]) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`),
+            );
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    });
+
+    const response = await createDocsCloudAskAIResponse(
+      createAskRequest({
+        messages: [{ role: "user", content: "How do I connect MCP?" }],
+      }),
+      {
+        config: {
+          ai: { enabled: true, provider: "docs-cloud" },
+          cloud: { apiKey: { env: "DOCS_CLOUD_API_KEY" } },
+        },
+        env: {
+          PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_123",
+          DOCS_CLOUD_API_KEY: "fl_key_test",
+        },
+        fetch: fetchMock as typeof fetch,
+      },
+    );
+
+    const text = await readResponseText(response);
+    expect(text).toContain("Transport Details");
+    expect(text).toContain("|----------|-------|");
+    expect(text).toContain("claude mcp add scholarxiv");
+    expect(text).not.toContain("\n---\n");
+    expect(text).not.toContain("Relevant Docs");
+    expect(text).not.toContain("MCP overview");
+  });
+
   it("reports missing Docs Cloud project configuration before calling upstream", async () => {
     const fetchMock = vi.fn();
     const response = await createDocsCloudAskAIResponse(

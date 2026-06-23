@@ -16,7 +16,8 @@ const DOCS_CLOUD_API_BASE_URL_ENVS = [
 ] as const;
 const DOCS_CLOUD_FOOTER_GUARD_CHARS = 256;
 const docsCloudRelevantDocsPattern =
-  /\n{2,}(?:-{3,}|\*{3,}|_{3,})[ \t]*\n{1,3}(?:\*\*)?Relevant docs(?:\*\*)?[ \t]*/i;
+  /\n{2,}(?:-{3,}|\*{3,}|_{3,})[ \t]*\n{1,3}(?:#{1,6}[ \t]+)?(?:\*\*)?Relevant docs(?:\*\*)?[ \t]*/i;
+const docsCloudThematicBreakPattern = /^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$/gm;
 
 export interface DocsCloudAskAIConfig {
   ai?: Pick<AIConfig, "docsUrl" | "enabled" | "provider" | "stream">;
@@ -137,11 +138,24 @@ function stripRelevantDocsFooter(content: string): string {
     .trimEnd();
 }
 
+function stripMarkdownThematicBreaks(content: string): string {
+  return content
+    .replace(docsCloudThematicBreakPattern, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd();
+}
+
+function cleanDocsCloudAnswer(content: string): string {
+  return stripMarkdownThematicBreaks(stripRelevantDocsFooter(content));
+}
+
 function safeDocsCloudContent(content: string, final = false): string {
   const footerStart = content.search(docsCloudRelevantDocsPattern);
-  if (footerStart >= 0) return content.slice(0, footerStart).trimEnd();
-  if (final) return stripRelevantDocsFooter(content);
-  return content.slice(0, Math.max(0, content.length - DOCS_CLOUD_FOOTER_GUARD_CHARS));
+  if (footerStart >= 0) return stripMarkdownThematicBreaks(content.slice(0, footerStart));
+  if (final) return cleanDocsCloudAnswer(content);
+  return stripMarkdownThematicBreaks(
+    content.slice(0, Math.max(0, content.length - DOCS_CLOUD_FOOTER_GUARD_CHARS)),
+  );
 }
 
 function createOpenAICompatibleSseChunk(content: string): string {
@@ -490,7 +504,7 @@ export async function createDocsCloudAskAIResponse(
     // Treat non-JSON Docs Cloud responses as the answer text.
   }
 
-  const cleanAnswer = stripRelevantDocsFooter(answer);
+  const cleanAnswer = cleanDocsCloudAnswer(answer);
   if (stream) return createOpenAICompatibleSseResponse(cleanAnswer);
 
   return Response.json(
