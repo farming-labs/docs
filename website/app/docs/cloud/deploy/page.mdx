@@ -140,6 +140,11 @@ pnpm dlx @farming-labs/docs cloud check --deploy
 ```
 
 `--ask-ai` checks the Docs Cloud provider path end to end. Direct browser mode needs
+`PUBLIC_DOCS_CLOUD_PROJECT_ID` plus `PUBLIC_DOCS_CLOUD_API_KEY` or another browser-safe
+`cloud.apiKey.env` (`NEXT_PUBLIC_*` variants are accepted as fallbacks); the check also sends a browser-style CORS preflight to the hosted knowledge
+endpoint.
+
+`--ask-ai` checks the Docs Cloud provider path end to end. Direct browser mode needs
 `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID` plus `NEXT_PUBLIC_DOCS_CLOUD_API_KEY` or another browser-safe
 `cloud.apiKey.env`; the check also sends a browser-style CORS preflight to the hosted knowledge
 endpoint. If only the server-side project id and API key are available, the report marks the local
@@ -160,6 +165,12 @@ ok docs.siteOrigin Public docs origin is https://docs.example.com.
 ok cloud.enabled Docs Cloud is enabled.
 ok analytics.runtime Runtime analytics is not disabled.
 ok analytics.cloud Docs Cloud analytics is enabled in cloud.analytics.
+```bash title=".env.local"
+DOCS_CLOUD_API_KEY=fl_key_...
+PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+# NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID is also accepted as a fallback.
+```
+ok project.env Docs Cloud project id is present in PUBLIC_DOCS_CLOUD_PROJECT_ID.
 ok project.env Docs Cloud project id is present in NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID.
 ok cors.analytics Analytics CORS allows https://docs.example.com.
 
