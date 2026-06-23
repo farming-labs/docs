@@ -25,7 +25,7 @@ describe("Docs Cloud Ask AI server helper", () => {
   });
 
   it("proxies questions with server env defaults and strips streamed relevant docs footer", async () => {
-    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => {
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => {
       const encoder = new TextEncoder();
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
@@ -62,7 +62,7 @@ describe("Docs Cloud Ask AI server helper", () => {
           PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_123",
           DOCS_CLOUD_API_KEY: "fl_key_test",
         },
-        fetch: fetchMock,
+        fetch: fetchMock as typeof fetch,
         publicBaseUrl: "https://docs.example.com",
       },
     );
@@ -70,12 +70,12 @@ describe("Docs Cloud Ask AI server helper", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe("https://api.farming-labs.dev/v1/projects/project_123/knowledge/ask");
-    expect(init.headers).toMatchObject({
+    expect(init?.headers).toMatchObject({
       Authorization: "Bearer fl_key_test",
       "Content-Type": "application/json",
       "X-Docs-Cloud-Public-Base-Url": "https://docs.example.com",
     });
-    expect(JSON.parse(String(init.body))).toMatchObject({
+    expect(JSON.parse(String(init?.body))).toMatchObject({
       question: "How do I auth?",
       answerStyle: "public",
       publicBaseUrl: "https://docs.example.com",
@@ -114,7 +114,7 @@ describe("Docs Cloud Ask AI server helper", () => {
           DOCS_CLOUD_PROJECT_ID: "project_server",
           DOCS_CLOUD_API_KEY: "fl_key_test",
         },
-        fetch: fetchMock,
+        fetch: fetchMock as typeof fetch,
       },
     );
 
@@ -137,7 +137,7 @@ describe("Docs Cloud Ask AI server helper", () => {
           cloud: { apiKey: { env: "DOCS_CLOUD_API_KEY" } },
         },
         env: { DOCS_CLOUD_API_KEY: "fl_key_test" },
-        fetch: fetchMock,
+        fetch: fetchMock as typeof fetch,
       },
     );
 
