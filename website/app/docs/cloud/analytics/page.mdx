@@ -42,15 +42,37 @@ custom analytics source, copy the project ID from the Docs Cloud Analytics dashb
 the runtime environment:
 
 ```bash title=".env.local"
+PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+# NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID is also accepted as a fallback.
+# Use DOCS_CLOUD_PROJECT_ID when only the server runtime needs the id.
+```
+
+```bash title=".env.local"
 NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
 # Use DOCS_CLOUD_PROJECT_ID instead when only the server runtime needs the id.
 ```
 
+<Callout type="info" title="Canonical env name changed in v0.2.35">
+  The canonical env names are now framework-agnostic `PUBLIC_*` variants. The `NEXT_PUBLIC_*` forms are still accepted as backwards-compatible fallbacks.
+</Callout>
 Keep using the dashboard-provided ID. Do not invent one locally; the ID must match an imported
 repository project or a custom analytics project in Docs Cloud.
 
 The project ID is enough to turn on the built-in Cloud delivery path. To opt out from a manual
 runtime environment, set the analytics flag to `false`:
+
+```bash title=".env.local"
+PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED=false
+# NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED is also accepted as a fallback.
+```
+
+Only set `PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT` when the docs app should send events to a
+custom or self-hosted Docs Cloud API. The hosted Docs Cloud endpoint is the default.
+(`NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT` is accepted as a fallback.)
+
+If your Cloud workspace issues a dedicated analytics key, set
+`PUBLIC_DOCS_CLOUD_ANALYTICS_KEY` for browser delivery or `DOCS_CLOUD_ANALYTICS_KEY` for
+server-only delivery. (`NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY` is accepted as a fallback.)
 
 ```bash title=".env.local"
 NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED=false
