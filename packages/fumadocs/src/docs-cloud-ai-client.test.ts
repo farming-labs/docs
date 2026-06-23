@@ -3,12 +3,16 @@ import type { DocsConfig } from "@farming-labs/docs";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 
 const ENV_KEYS = [
+  "PUBLIC_DOCS_CLOUD_API_KEY",
+  "PUBLIC_DOCS_CLOUD_PROJECT_ID",
+  "PUBLIC_DOCS_CLOUD_URL",
   "NEXT_PUBLIC_DOCS_CLOUD_API_KEY",
   "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
   "NEXT_PUBLIC_DOCS_CLOUD_URL",
   "DOCS_CLOUD_API_URL",
   "DOCS_CLOUD_API_KEY",
   "SERVER_DOCS_CLOUD_KEY",
+  "PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY",
   "NEXT_PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY",
 ] as const;
 
@@ -41,8 +45,8 @@ describe("resolveDocsCloudAIClientRequest", () => {
   });
 
   it("uses the default public Docs Cloud API key env when no config override is set", () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
 
     expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
       api: "https://api.farming-labs.dev/v1/projects/project_public/knowledge/ask",
@@ -55,14 +59,14 @@ describe("resolveDocsCloudAIClientRequest", () => {
   });
 
   it("uses a configured browser-safe Docs Cloud API key env for direct requests", () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
-    process.env.NEXT_PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY = "custom-public-key";
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
+    process.env.PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY = "custom-public-key";
 
     expect(
       resolveDocsCloudAIClientRequest(
         createDocsCloudConfig({
-          apiKey: { env: "NEXT_PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY" },
+          apiKey: { env: "PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY" },
         }),
       ),
     ).toEqual({
@@ -76,7 +80,7 @@ describe("resolveDocsCloudAIClientRequest", () => {
   });
 
   it("falls back to the docs API route when the configured API key env is server-only", () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.SERVER_DOCS_CLOUD_KEY = "server-key";
 
     expect(
@@ -106,7 +110,7 @@ describe("resolveDocsCloudAIClientRequest", () => {
   });
 
   it("falls back to the docs API route when the public API key is missing", () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
 
     expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
       api: "/api/docs",
@@ -115,7 +119,7 @@ describe("resolveDocsCloudAIClientRequest", () => {
   });
 
   it("falls back to the docs API route when the public project id is missing", () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
+    process.env.PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
 
     expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
       api: "/api/docs",
@@ -124,8 +128,8 @@ describe("resolveDocsCloudAIClientRequest", () => {
   });
 
   it("allows Docs Cloud streaming to be disabled from ai.stream", () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
 
     expect(
       resolveDocsCloudAIClientRequest({

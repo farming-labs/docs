@@ -132,7 +132,7 @@ export default defineDocs({
 
     expect(result).toMatchObject({
       apiKeyEnv: "DOCS_CLOUD_API_KEY",
-      analyticsProjectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+      analyticsProjectIdEnv: "PUBLIC_DOCS_CLOUD_PROJECT_ID",
       configCreated: false,
       configUpdated: true,
       docsJsonCreated: true,
@@ -276,8 +276,8 @@ void missing;
     writeFileSync(
       path.join(tmpDir, ".env.local"),
       [
-        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
-        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+        "PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
       ].join("\n"),
       "utf-8",
     );
@@ -291,7 +291,7 @@ void missing;
     provider: "docs-cloud",
   },
   cloud: {
-    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    apiKey: { env: "PUBLIC_DOCS_CLOUD_API_KEY" },
     deploy: { enabled: true },
     analytics: {
       enabled: true,
@@ -323,7 +323,7 @@ void missing;
     });
 
     expect(result.ok).toBe(true);
-    expect(result.analyticsProjectIdEnv).toBe("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID");
+    expect(result.analyticsProjectIdEnv).toBe("PUBLIC_DOCS_CLOUD_PROJECT_ID");
     expect(result.identity).toMatchObject({
       workspace: { id: "workspace_1", name: "Acme" },
       apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
@@ -384,7 +384,7 @@ void missing;
     writePackageJson();
     writeFileSync(
       path.join(tmpDir, ".env.local"),
-      "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud\n",
+      "PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud\n",
       "utf-8",
     );
     writeFileSync(
@@ -422,8 +422,8 @@ void missing;
     writeFileSync(
       path.join(tmpDir, ".env.local"),
       [
-        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
-        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+        "PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
       ].join("\n"),
       "utf-8",
     );
@@ -436,7 +436,7 @@ void missing;
     provider: "docs-cloud",
   },
   cloud: {
-    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    apiKey: { env: "PUBLIC_DOCS_CLOUD_API_KEY" },
     analytics: { enabled: true },
   },
 };
@@ -459,8 +459,8 @@ void missing;
           name: "askAi.direct",
           status: "pass",
           details: {
-            apiKeyEnv: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY",
-            projectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+            apiKeyEnv: "PUBLIC_DOCS_CLOUD_API_KEY",
+            projectIdEnv: "PUBLIC_DOCS_CLOUD_PROJECT_ID",
           },
         }),
       ]),
@@ -472,8 +472,8 @@ void missing;
     writeFileSync(
       path.join(tmpDir, ".env.local"),
       [
-        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
-        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+        "PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
       ].join("\n"),
       "utf-8",
     );
@@ -486,7 +486,7 @@ void missing;
     provider: "docs-cloud",
   },
   cloud: {
-    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    apiKey: { env: "PUBLIC_DOCS_CLOUD_API_KEY" },
     analytics: { enabled: true },
   },
   sitemap: {
@@ -549,10 +549,9 @@ void missing;
     writePackageJson();
     writeFileSync(
       path.join(tmpDir, ".env.local"),
-      [
-        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
-        "DOCS_CLOUD_API_KEY=docs_cloud_test_key",
-      ].join("\n"),
+      ["PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud", "DOCS_CLOUD_API_KEY=docs_cloud_test_key"].join(
+        "\n",
+      ),
       "utf-8",
     );
     writeFileSync(
@@ -606,8 +605,8 @@ void missing;
     writeFileSync(
       path.join(tmpDir, ".env.local"),
       [
-        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
-        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+        "PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
       ].join("\n"),
       "utf-8",
     );
@@ -620,7 +619,7 @@ void missing;
     provider: "docs-cloud",
   },
   cloud: {
-    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    apiKey: { env: "PUBLIC_DOCS_CLOUD_API_KEY" },
   },
   site: {
     url: "https://docs.example.com",

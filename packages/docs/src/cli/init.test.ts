@@ -322,7 +322,7 @@ describe("init", () => {
         configPath: `${process.cwd()}/docs.config.ts`,
         docsJsonPath: `${process.cwd()}/docs.json`,
         apiKeyEnv: "DOCS_CLOUD_API_KEY",
-        analyticsProjectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+        analyticsProjectIdEnv: "PUBLIC_DOCS_CLOUD_PROJECT_ID",
         configCreated: false,
         configUpdated: true,
         docsJsonCreated: true,

@@ -2,8 +2,10 @@ import type { DocsConfig } from "@farming-labs/docs";
 
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
-const DEFAULT_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
-const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "NEXT_PUBLIC_DOCS_CLOUD_API_KEY";
+const DEFAULT_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV = "PUBLIC_DOCS_CLOUD_PROJECT_ID";
+const FALLBACK_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
+const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "PUBLIC_DOCS_CLOUD_API_KEY";
+const FALLBACK_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "NEXT_PUBLIC_DOCS_CLOUD_API_KEY";
 
 export interface DocsCloudAIClientRequest {
   api: string;
@@ -19,6 +21,7 @@ function readRuntimeEnv(name: string): string | undefined {
 
 function resolveDocsCloudApiBaseUrl(): string {
   return (
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_URL") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_URL") ??
     readRuntimeEnv("DOCS_CLOUD_API_URL") ??
     DEFAULT_DOCS_CLOUD_API_BASE_URL
@@ -26,7 +29,10 @@ function resolveDocsCloudApiBaseUrl(): string {
 }
 
 function resolveDocsCloudProjectId(): string | undefined {
-  return readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV);
+  return (
+    readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV) ??
+    readRuntimeEnv(FALLBACK_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV)
+  );
 }
 
 function resolveDocsCloudApiKey(config: DocsConfig): string | undefined {
@@ -36,11 +42,14 @@ function resolveDocsCloudApiKey(config: DocsConfig): string | undefined {
     return readRuntimeEnv(configuredEnv);
   }
 
-  return readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV);
+  return (
+    readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV) ??
+    readRuntimeEnv(FALLBACK_PUBLIC_DOCS_CLOUD_API_KEY_ENV)
+  );
 }
 
 function isPublicRuntimeEnvName(name: string): boolean {
-  return name.startsWith("NEXT_PUBLIC_");
+  return name.startsWith("PUBLIC_") || name.startsWith("NEXT_PUBLIC_");
 }
 
 function resolveDocsCloudAIStream(config: DocsConfig): boolean {

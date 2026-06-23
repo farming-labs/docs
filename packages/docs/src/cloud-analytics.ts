@@ -19,18 +19,26 @@ function readRuntimeEnv(name: string): string | undefined {
   }
 
   switch (name) {
+    case "PUBLIC_DOCS_CLOUD_PROJECT_ID":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID);
     case "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID);
     case "DOCS_CLOUD_PROJECT_ID":
       return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_PROJECT_ID);
+    case "PUBLIC_DOCS_CLOUD_ANALYTICS_KEY":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
     case "DOCS_CLOUD_ANALYTICS_KEY":
       return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_KEY);
+    case "PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
     case "DOCS_CLOUD_ANALYTICS_ENABLED":
       return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENABLED);
+    case "PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT);
     case "DOCS_CLOUD_ANALYTICS_ENDPOINT":
@@ -59,14 +67,19 @@ export function resolveDocsCloudAnalyticsOptions(
   }
 
   const projectId =
-    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_PROJECT_ID") ??
+    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ??
+    readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
   const apiKey =
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_ANALYTICS_KEY") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_KEY");
   const enabled =
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_ENABLED");
   const endpoint =
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_ENDPOINT") ??
     DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT;

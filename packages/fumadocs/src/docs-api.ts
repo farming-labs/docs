@@ -2338,6 +2338,7 @@ function readRuntimeEnv(name: string): string | undefined {
 function resolveDocsCloudApiBaseUrl(): string {
   return (
     readRuntimeEnv("DOCS_CLOUD_API_URL") ??
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_URL") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_URL") ??
     DEFAULT_DOCS_CLOUD_API_BASE_URL
   ).replace(/\/+$/, "");
@@ -2345,7 +2346,9 @@ function resolveDocsCloudApiBaseUrl(): string {
 
 function resolveDocsCloudProjectId(): string | undefined {
   return (
-    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID")
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_PROJECT_ID") ??
+    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ??
+    readRuntimeEnv("DOCS_CLOUD_PROJECT_ID")
   );
 }
 
@@ -2720,7 +2723,7 @@ async function handleAskAI(
       return Response.json(
         {
           error: !projectId
-            ? "AI provider docs-cloud requires NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID or DOCS_CLOUD_PROJECT_ID."
+            ? "AI provider docs-cloud requires PUBLIC_DOCS_CLOUD_PROJECT_ID or DOCS_CLOUD_PROJECT_ID."
             : `AI provider docs-cloud requires ${envName} to be set on the server.`,
         },
         { status: 500 },

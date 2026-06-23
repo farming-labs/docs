@@ -1624,11 +1624,13 @@ Install the framework with pnpm.
     );
 
     const originalFetch = globalThis.fetch;
-    const originalProjectId = process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalProjectId = process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalNextProjectId = process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     const originalServerProjectId = process.env.DOCS_CLOUD_PROJECT_ID;
     const originalApiKey = process.env.CUSTOM_DOCS_CLOUD_KEY;
 
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_cloud";
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_cloud";
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     delete process.env.DOCS_CLOUD_PROJECT_ID;
     process.env.CUSTOM_DOCS_CLOUD_KEY = "cloud-key";
     globalThis.fetch = vi.fn().mockResolvedValue(
@@ -1682,8 +1684,10 @@ Install the framework with pnpm.
       });
     } finally {
       globalThis.fetch = originalFetch;
-      if (originalProjectId === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
-      else process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = originalProjectId;
+      if (originalProjectId === undefined) delete process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = originalProjectId;
+      if (originalNextProjectId === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = originalNextProjectId;
       if (originalServerProjectId === undefined) delete process.env.DOCS_CLOUD_PROJECT_ID;
       else process.env.DOCS_CLOUD_PROJECT_ID = originalServerProjectId;
       if (originalApiKey === undefined) delete process.env.CUSTOM_DOCS_CLOUD_KEY;
@@ -1726,17 +1730,21 @@ export default defineDocs({
     );
 
     const originalFetch = globalThis.fetch;
-    const originalProjectId = process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalProjectId = process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalNextProjectId = process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     const originalServerProjectId = process.env.DOCS_CLOUD_PROJECT_ID;
     const originalDefaultApiKey = process.env.DOCS_CLOUD_API_KEY;
     const originalApiKey = process.env.CONFIG_DOCS_CLOUD_KEY;
     const originalApiUrl = process.env.DOCS_CLOUD_API_URL;
-    const originalPublicApiUrl = process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
+    const originalPublicApiUrl = process.env.PUBLIC_DOCS_CLOUD_URL;
+    const originalNextPublicApiUrl = process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
 
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_config";
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_config";
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     delete process.env.DOCS_CLOUD_PROJECT_ID;
     delete process.env.DOCS_CLOUD_API_KEY;
     delete process.env.DOCS_CLOUD_API_URL;
+    delete process.env.PUBLIC_DOCS_CLOUD_URL;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
     process.env.CONFIG_DOCS_CLOUD_KEY = "config-cloud-key";
     globalThis.fetch = vi.fn().mockResolvedValue(
@@ -1778,8 +1786,10 @@ export default defineDocs({
       });
     } finally {
       globalThis.fetch = originalFetch;
-      if (originalProjectId === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
-      else process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = originalProjectId;
+      if (originalProjectId === undefined) delete process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = originalProjectId;
+      if (originalNextProjectId === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = originalNextProjectId;
       if (originalServerProjectId === undefined) delete process.env.DOCS_CLOUD_PROJECT_ID;
       else process.env.DOCS_CLOUD_PROJECT_ID = originalServerProjectId;
       if (originalDefaultApiKey === undefined) delete process.env.DOCS_CLOUD_API_KEY;
@@ -1788,8 +1798,10 @@ export default defineDocs({
       else process.env.CONFIG_DOCS_CLOUD_KEY = originalApiKey;
       if (originalApiUrl === undefined) delete process.env.DOCS_CLOUD_API_URL;
       else process.env.DOCS_CLOUD_API_URL = originalApiUrl;
-      if (originalPublicApiUrl === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
-      else process.env.NEXT_PUBLIC_DOCS_CLOUD_URL = originalPublicApiUrl;
+      if (originalPublicApiUrl === undefined) delete process.env.PUBLIC_DOCS_CLOUD_URL;
+      else process.env.PUBLIC_DOCS_CLOUD_URL = originalPublicApiUrl;
+      if (originalNextPublicApiUrl === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
+      else process.env.NEXT_PUBLIC_DOCS_CLOUD_URL = originalNextPublicApiUrl;
       vi.restoreAllMocks();
     }
   });
