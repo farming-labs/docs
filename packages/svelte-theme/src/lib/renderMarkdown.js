@@ -3,7 +3,8 @@
  *
  * Uses sugar-high for syntax highlighting in code blocks.
  * Supports fenced and streaming code blocks, loose language labels emitted by
- * models, tables, inline code, emphasis, links, headings, and lists.
+ * models, tables, inline code, emphasis, links, images, headings, blockquotes,
+ * horizontal rules, and lists.
  */
 import { highlight } from "sugar-high";
 
@@ -29,8 +30,8 @@ function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function escapeAttribute(s) {
-  return escapeHtml(s).replace(/"/g, "&quot;");
+function escapeEscapedAttribute(s) {
+  return s.replace(/"/g, "&quot;");
 }
 
 function buildCodeBlock(lang, code) {
@@ -227,10 +228,28 @@ function renderMarkdownBlocks(text, codeBlocks) {
       continue;
     }
 
+    const setextHeading = getSetextHeading(lines, i);
+    if (setextHeading) {
+      output.push(
+        `<h${setextHeading.level}>${renderInlineMarkdown(setextHeading.text)}</h${setextHeading.level}>`,
+      );
+      i += 2;
+      continue;
+    }
+
     const heading = getHeading(trimmed);
     if (heading) {
       output.push(`<h${heading.level}>${renderInlineMarkdown(heading.text)}</h${heading.level}>`);
       i += 1;
+      continue;
+    }
+
+    const blockquote = collectBlockquote(lines, i);
+    if (blockquote) {
+      output.push(
+        `<blockquote>${renderMarkdownBlocks(blockquote.lines.join("\n"), codeBlocks)}</blockquote>`,
+      );
+      i = blockquote.nextIndex;
       continue;
     }
 
@@ -247,18 +266,14 @@ function renderMarkdownBlocks(text, codeBlocks) {
 
     const unorderedItems = collectListItems(lines, i, "unordered");
     if (unorderedItems) {
-      output.push(
-        `<ul>${unorderedItems.items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`,
-      );
+      output.push(`<ul>${unorderedItems.items.map((item) => renderListItem(item)).join("")}</ul>`);
       i = unorderedItems.nextIndex;
       continue;
     }
 
     const orderedItems = collectListItems(lines, i, "ordered");
     if (orderedItems) {
-      output.push(
-        `<ol>${orderedItems.items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ol>`,
-      );
+      output.push(`<ol>${orderedItems.items.map((item) => renderListItem(item)).join("")}</ol>`);
       i = orderedItems.nextIndex;
       continue;
     }
@@ -288,13 +303,51 @@ function getCodeBlockTokenIndex(line) {
 }
 
 function getHeading(line) {
-  const match = /^(#{1,6})\s+(.+)$/.exec(line);
+  const match = /^(#{1,6})[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/.exec(line);
   if (!match) return null;
 
   return {
-    level: Math.min(match[1].length + 1, 4),
+    level: match[1].length,
     text: match[2],
   };
+}
+
+function getSetextHeading(lines, index) {
+  if (index + 1 >= lines.length) return null;
+
+  const text = lines[index].trim();
+  const underline = lines[index + 1].trim();
+  if (!text || !/^(?:=+|-+)$/.test(underline)) return null;
+  if (getHeading(text) || isHorizontalRule(text) || isBlockquoteStart(text)) return null;
+  if (isTableRow(lines[index])) return null;
+  if (collectListItems(lines, index, "unordered") || collectListItems(lines, index, "ordered"))
+    return null;
+
+  return {
+    level: underline.startsWith("=") ? 1 : 2,
+    text,
+  };
+}
+
+function collectBlockquote(lines, startIndex) {
+  if (!isBlockquoteStart(lines[startIndex])) return null;
+
+  const quoteLines = [];
+  let i = startIndex;
+
+  while (i < lines.length) {
+    const match = /^(?: {0,3})>\s?(.*)$/.exec(lines[i]);
+    if (!match) break;
+
+    quoteLines.push(match[1]);
+    i += 1;
+  }
+
+  return quoteLines.length > 0 ? { lines: quoteLines, nextIndex: i } : null;
+}
+
+function isBlockquoteStart(line) {
+  return /^(?: {0,3})>/.test(line);
 }
 
 function collectListItems(lines, startIndex, type) {
@@ -313,6 +366,14 @@ function collectListItems(lines, startIndex, type) {
   return items.length > 0 ? { items, nextIndex: i } : null;
 }
 
+function renderListItem(item) {
+  const task = /^\[([ xX])\]\s+(.+)$/.exec(item);
+  if (!task) return `<li>${renderInlineMarkdown(item)}</li>`;
+
+  const checked = task[1].toLowerCase() === "x" ? " checked" : "";
+  return `<li class="fd-ai-task-list-item"><input class="fd-ai-task-checkbox" type="checkbox" disabled${checked}>${renderInlineMarkdown(task[2])}</li>`;
+}
+
 function isMarkdownBlockStart(lines, index) {
   const line = lines[index];
   const trimmed = line.trim();
@@ -320,7 +381,9 @@ function isMarkdownBlockStart(lines, index) {
   return (
     getCodeBlockTokenIndex(trimmed) !== null ||
     isHorizontalRule(trimmed) ||
+    Boolean(getSetextHeading(lines, index)) ||
     Boolean(getHeading(trimmed)) ||
+    isBlockquoteStart(line) ||
     (isTableRow(line) && index + 1 < lines.length && isTableSeparator(lines[index + 1])) ||
     Boolean(collectListItems(lines, index, "unordered")) ||
     Boolean(collectListItems(lines, index, "ordered"))
@@ -336,9 +399,18 @@ function renderInlineMarkdown(text) {
 
   result = result
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/__(.*?)__/g, "<strong>$1</strong>")
+    .replace(/~~(.*?)~~/g, "<del>$1</del>")
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
+    .replace(/(?<!_)_([^_]+)_(?!_)/g, "<em>$1</em>")
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;[^)]*&quot;)?\)/g, (_match, alt, src) => {
+      return `<img src="${escapeEscapedAttribute(src)}" alt="${escapeEscapedAttribute(alt)}" loading="lazy">`;
+    })
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, href) => {
-      return `<a href="${escapeAttribute(href)}">${label}</a>`;
+      return `<a href="${escapeEscapedAttribute(href)}">${label}</a>`;
+    })
+    .replace(/&lt;(https?:\/\/[^<>\s]+)&gt;/g, (_match, href) => {
+      return `<a href="${escapeEscapedAttribute(href)}">${href}</a>`;
     });
 
   return result.replace(
