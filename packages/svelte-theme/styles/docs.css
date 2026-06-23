@@ -2656,9 +2656,24 @@ html.dark #nd-docs-layout pre.shiki {
 
 /* ─── Markdown prose inside AI bubbles (panel/modal/popover) ─────── */
 
+#nd-docs-layout .fd-ai-bubble-ai h1,
+#nd-docs-layout .fd-ai-bubble-ai h2,
+#nd-docs-layout .fd-ai-bubble-ai h3,
+#nd-docs-layout .fd-ai-bubble-ai h4,
+#nd-docs-layout .fd-ai-bubble-ai h5,
+#nd-docs-layout .fd-ai-bubble-ai h6 {
+  font-weight: 600;
+  color: var(--color-fd-foreground, #e4e4e7);
+}
+
+#nd-docs-layout .fd-ai-bubble-ai h1 {
+  font-size: 1.25rem;
+  margin: 14px 0 7px;
+  line-height: 1.25;
+}
+
 #nd-docs-layout .fd-ai-bubble-ai h2 {
   font-size: 1.125rem;
-  font-weight: 600;
   margin: 12px 0 6px;
   line-height: 1.3;
 }
@@ -2672,9 +2687,15 @@ html.dark #nd-docs-layout pre.shiki {
 
 #nd-docs-layout .fd-ai-bubble-ai h4 {
   font-size: 0.9375rem;
-  font-weight: 600;
   margin: 8px 0 4px;
   line-height: 1.4;
+}
+
+#nd-docs-layout .fd-ai-bubble-ai h5,
+#nd-docs-layout .fd-ai-bubble-ai h6 {
+  font-size: 0.8125rem;
+  margin: 8px 0 4px;
+  line-height: 1.45;
 }
 
 #nd-docs-layout .fd-ai-bubble-ai strong {
@@ -2694,6 +2715,58 @@ html.dark #nd-docs-layout pre.shiki {
   content: "";
   display: block;
   margin-top: 2px;
+}
+
+#nd-docs-layout .fd-ai-bubble-ai ul,
+#nd-docs-layout .fd-ai-bubble-ai ol {
+  margin: 6px 0 8px;
+  padding-left: 1.25rem;
+}
+
+#nd-docs-layout .fd-ai-bubble-ai li {
+  margin: 3px 0;
+}
+
+#nd-docs-layout .fd-ai-bubble-ai blockquote {
+  margin: 8px 0;
+  padding: 6px 0 6px 12px;
+  border-left: 2px solid var(--color-fd-border, rgba(255, 255, 255, 0.16));
+  color: var(--color-fd-muted-foreground, #a1a1aa);
+}
+
+#nd-docs-layout .fd-ai-bubble-ai blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+#nd-docs-layout .fd-ai-bubble-ai .fd-ai-hr {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+}
+
+#nd-docs-layout .fd-ai-bubble-ai del {
+  color: var(--color-fd-muted-foreground, #a1a1aa);
+}
+
+#nd-docs-layout .fd-ai-bubble-ai .fd-ai-task-list-item {
+  list-style: none;
+}
+
+#nd-docs-layout .fd-ai-bubble-ai .fd-ai-task-checkbox {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin: 0 0.45rem 0 -1.25rem;
+  vertical-align: -0.12em;
+  accent-color: var(--color-fd-primary, #6366f1);
+}
+
+#nd-docs-layout .fd-ai-bubble-ai img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 8px 0;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius, 4px);
 }
 
 #nd-docs-layout .fd-ai-bubble-ai pre {
@@ -3122,9 +3195,24 @@ html.dark #nd-docs-layout pre.shiki {
 
 /* ─── Markdown prose inside full-modal messages ──────────────────── */
 
+#nd-docs-layout .fd-ai-fm-msg-content h1,
+#nd-docs-layout .fd-ai-fm-msg-content h2,
+#nd-docs-layout .fd-ai-fm-msg-content h3,
+#nd-docs-layout .fd-ai-fm-msg-content h4,
+#nd-docs-layout .fd-ai-fm-msg-content h5,
+#nd-docs-layout .fd-ai-fm-msg-content h6 {
+  font-weight: 600;
+  color: var(--color-fd-foreground, #e4e4e7);
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content h1 {
+  font-size: 1.375rem;
+  margin: 18px 0 9px;
+  line-height: 1.25;
+}
+
 #nd-docs-layout .fd-ai-fm-msg-content h2 {
   font-size: 1.25rem;
-  font-weight: 600;
   margin: 16px 0 8px;
   line-height: 1.3;
 }
@@ -3138,9 +3226,15 @@ html.dark #nd-docs-layout pre.shiki {
 
 #nd-docs-layout .fd-ai-fm-msg-content h4 {
   font-size: 1rem;
-  font-weight: 600;
   margin: 10px 0 4px;
   line-height: 1.4;
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content h5,
+#nd-docs-layout .fd-ai-fm-msg-content h6 {
+  font-size: 0.875rem;
+  margin: 10px 0 4px;
+  line-height: 1.45;
 }
 
 #nd-docs-layout .fd-ai-fm-msg-content strong {
@@ -3160,6 +3254,58 @@ html.dark #nd-docs-layout pre.shiki {
   content: "";
   display: block;
   margin-top: 2px;
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content ul,
+#nd-docs-layout .fd-ai-fm-msg-content ol {
+  margin: 8px 0 10px;
+  padding-left: 1.35rem;
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content li {
+  margin: 4px 0;
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content blockquote {
+  margin: 10px 0;
+  padding: 7px 0 7px 14px;
+  border-left: 2px solid var(--color-fd-border, rgba(255, 255, 255, 0.16));
+  color: var(--color-fd-muted-foreground, #a1a1aa);
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content .fd-ai-hr {
+  margin: 14px 0;
+  border: none;
+  border-top: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content del {
+  color: var(--color-fd-muted-foreground, #a1a1aa);
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content .fd-ai-task-list-item {
+  list-style: none;
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content .fd-ai-task-checkbox {
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0 0.5rem 0 -1.35rem;
+  vertical-align: -0.12em;
+  accent-color: var(--color-fd-primary, #6366f1);
+}
+
+#nd-docs-layout .fd-ai-fm-msg-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius, 4px);
 }
 
 #nd-docs-layout .fd-ai-fm-msg-content pre {
