@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   emitDocsAgentTraceEvent,
@@ -52,8 +52,11 @@ const ALL_ANALYTICS_EVENTS = [
 ] as const satisfies readonly DocsAnalyticsEventType[];
 
 describe("analytics", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+  function clearDocsCloudAnalyticsEnv() {
+    delete process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
+    delete process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    delete process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_KEY;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
@@ -62,6 +65,12 @@ describe("analytics", () => {
     delete process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT;
     delete process.env.DOCS_CLOUD_PROJECT_ID;
     delete process.env.DOCS_CLOUD_ANALYTICS_KEY;
+  }
+
+  beforeEach(clearDocsCloudAnalyticsEnv);
+  afterEach(() => {
+    vi.restoreAllMocks();
+    clearDocsCloudAnalyticsEnv();
   });
 
   it("emits every built-in analytics event type through the shared hook", async () => {
@@ -520,8 +529,8 @@ describe("analytics", () => {
   });
 
   it("posts Docs Cloud analytics from plain config when public env is present", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
       "https://docs-cloud.example.com/api/analytics/events";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(

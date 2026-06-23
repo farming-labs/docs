@@ -20,7 +20,7 @@ import { detectFramework, type Framework } from "./utils.js";
 const DOCS_JSON_FILE = "docs.json";
 const DOCS_CLOUD_SCHEMA_URL = "https://docs.farming-labs.dev/schema/docs.json";
 const DOCS_CLOUD_DEFAULT_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
-const DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
+const DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV = "PUBLIC_DOCS_CLOUD_PROJECT_ID";
 const DOCS_CLOUD_MISSING_API_KEY_DOCS_URL =
   "https://docs.farming-labs.dev/docs/cloud/deploy#missing-api-key";
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
@@ -28,10 +28,11 @@ const DEFAULT_PREVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PREVIEW_POLL_INTERVAL_MS = 2000;
 const REQUIRED_PREVIEW_API_KEY_SCOPES = ["project:read", "preview:write", "jobs:read"] as const;
 const DOCS_CLOUD_PROJECT_ID_ENVS = [
+  "PUBLIC_DOCS_CLOUD_PROJECT_ID",
   "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
   "DOCS_CLOUD_PROJECT_ID",
 ] as const;
-const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "NEXT_PUBLIC_DOCS_CLOUD_API_KEY";
+const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "PUBLIC_DOCS_CLOUD_API_KEY";
 const CLOUD_CHECK_TARGETS = ["deploy", "analytics", "ask-ai"] as const;
 
 type JsonPrimitive = string | number | boolean | null;
@@ -1106,7 +1107,7 @@ function createCheck(
 }
 
 function isBrowserSafeEnvName(name: string): boolean {
-  return name.startsWith("NEXT_PUBLIC_");
+  return name.startsWith("PUBLIC_") || name.startsWith("NEXT_PUBLIC_");
 }
 
 function summarizeIdentity(identity: unknown): JsonRecord | undefined {
@@ -1168,7 +1169,11 @@ function resolveApiBaseUrl(
   }
 
   const projectEnv = loadProjectEnv(rootDir);
-  for (const envName of ["DOCS_CLOUD_API_URL", "NEXT_PUBLIC_DOCS_CLOUD_URL"] as const) {
+  for (const envName of [
+    "DOCS_CLOUD_API_URL",
+    "PUBLIC_DOCS_CLOUD_URL",
+    "NEXT_PUBLIC_DOCS_CLOUD_URL",
+  ] as const) {
     const value = process.env[envName]?.trim() ?? projectEnv[envName]?.trim();
     if (value) {
       return {
@@ -1224,7 +1229,13 @@ function readDocsSiteOrigin(
   snapshot: DocsConfigSnapshot,
   env: Record<string, string>,
 ): { origin: string; source: string } | undefined {
-  const envSite = readFirstEnv(env, ["NEXT_PUBLIC_BASE_URL", "NEXT_PUBLIC_SITE_URL", "SITE_URL"]);
+  const envSite = readFirstEnv(env, [
+    "PUBLIC_BASE_URL",
+    "PUBLIC_SITE_URL",
+    "NEXT_PUBLIC_BASE_URL",
+    "NEXT_PUBLIC_SITE_URL",
+    "SITE_URL",
+  ]);
   const sitemapBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["sitemap"]);
   const llmsTxtBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["llmsTxt"]);
   const robotsBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["robots"]);
@@ -1718,7 +1729,7 @@ export async function checkCloudConfig(
         siteOrigin ? "pass" : "warn",
         siteOrigin
           ? `Public docs origin is ${siteOrigin.origin}.`
-          : "Could not infer the public docs origin for CORS checks. Set NEXT_PUBLIC_BASE_URL, NEXT_PUBLIC_SITE_URL, SITE_URL, or a docs config baseUrl.",
+          : "Could not infer the public docs origin for CORS checks. Set PUBLIC_BASE_URL, PUBLIC_SITE_URL, NEXT_PUBLIC_BASE_URL, NEXT_PUBLIC_SITE_URL, SITE_URL, or a docs config baseUrl.",
         siteOrigin
           ? {
               origin: siteOrigin.origin,
@@ -1913,7 +1924,7 @@ export async function checkCloudConfig(
         createCheck(
           "cloud.cors",
           "warn",
-          "Could not infer the docs site origin for CORS checks. Set NEXT_PUBLIC_BASE_URL or a docs config baseUrl.",
+          "Could not infer the docs site origin for CORS checks. Set PUBLIC_BASE_URL, NEXT_PUBLIC_BASE_URL, or a docs config baseUrl.",
         ),
       );
     } else {
