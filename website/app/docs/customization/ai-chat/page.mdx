@@ -165,6 +165,12 @@ export default defineDocs({
 Set the Docs Cloud project id and API key in environment variables:
 
 ```bash title=".env"
+PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+PUBLIC_DOCS_CLOUD_API_KEY=fl_key_...
+# NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID and NEXT_PUBLIC_DOCS_CLOUD_API_KEY are also accepted as fallbacks.
+```
+
+```bash title=".env"
 NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
 NEXT_PUBLIC_DOCS_CLOUD_API_KEY=fl_key_...
 ```
@@ -174,6 +180,7 @@ Docs Cloud server. The Ask AI widget resolves one of two request paths:
 
 | Available runtime env | Request path | Use it when |
 | --------------------- | ------------ | ----------- |
+| `PUBLIC_DOCS_CLOUD_PROJECT_ID` plus `PUBLIC_DOCS_CLOUD_API_KEY` or another browser-safe `cloud.apiKey.env` (or `NEXT_PUBLIC_*` fallbacks) | The browser posts directly to `/v1/projects/{projectId}/knowledge/ask` with the project-scoped Docs Cloud API key | You want the lowest-latency Cloud path and the key is safe to expose to the browser |
 | `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID` plus `NEXT_PUBLIC_DOCS_CLOUD_API_KEY` or another browser-safe `cloud.apiKey.env` | The browser posts directly to `/v1/projects/{projectId}/knowledge/ask` with the project-scoped Docs Cloud API key | You want the lowest-latency Cloud path and the key is safe to expose to the browser |
 | `DOCS_CLOUD_PROJECT_ID` plus the server env named by `cloud.apiKey.env` | The browser posts to the local docs API route and the server proxies the Docs Cloud request | You want the API key to stay server-only or you need same-origin browser requests |
 
@@ -181,6 +188,9 @@ The local docs API route is also the fallback when the project id or API key is 
 browser. In both paths, Docs Cloud reads the same project knowledge index and returns either an
 OpenAI-compatible event stream or a JSON answer. Streaming is enabled by default for Docs Cloud; set
 `stream: false` if you need a single JSON answer.
+
+For staging or self-hosted Cloud APIs, direct browser requests read `PUBLIC_DOCS_CLOUD_URL` (or the `NEXT_PUBLIC_DOCS_CLOUD_URL` fallback).
+Server-routed requests read `DOCS_CLOUD_API_URL` first, then `PUBLIC_DOCS_CLOUD_URL`, then `NEXT_PUBLIC_DOCS_CLOUD_URL`.
 
 For staging or self-hosted Cloud APIs, direct browser requests read `NEXT_PUBLIC_DOCS_CLOUD_URL`.
 Server-routed requests read `DOCS_CLOUD_API_URL` first, then `NEXT_PUBLIC_DOCS_CLOUD_URL`.

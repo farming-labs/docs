@@ -1497,6 +1497,9 @@ Used for each heading level and body text.
 
 RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 
+<Callout type="info" title="Docs Cloud provider env names">
+  When `provider: "docs-cloud"` is used, the client reads `PUBLIC_DOCS_CLOUD_PROJECT_ID` and a browser-safe API key env such as `PUBLIC_DOCS_CLOUD_API_KEY`. The `NEXT_PUBLIC_*` variants of these env vars are still accepted as backwards-compatible fallbacks.
+</Callout>
 | Property             | Type                                                 | Default                       | Description                                             |
 | -------------------- | ---------------------------------------------------- | ----------------------------- | ------------------------------------------------------- |
 | `enabled`            | `boolean`                                            | `false`                       | Enable AI chat                                          |
