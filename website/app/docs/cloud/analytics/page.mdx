@@ -42,8 +42,9 @@ custom analytics source, copy the project ID from the Docs Cloud Analytics dashb
 the runtime environment:
 
 ```bash title=".env.local"
-NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
 # Use DOCS_CLOUD_PROJECT_ID instead when only the server runtime needs the id.
+# Next.js projects can use NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID.
 ```
 
 Keep using the dashboard-provided ID. Do not invent one locally; the ID must match an imported

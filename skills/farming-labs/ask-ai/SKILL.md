@@ -242,7 +242,7 @@ ai: {
 
 - **Next.js:** Set `OPENAI_API_KEY` in `.env`; read via `process.env.OPENAI_API_KEY`.
 - **TanStack Start:** Set in `.env`; pass it through `createDocsServer` in `src/lib/docs.server.ts`: `ai: { apiKey: process.env.OPENAI_API_KEY, ...docsConfig.ai }`.
-- **SvelteKit:** Set in `.env`; pass into `createDocsServer` in `src/lib/docs.server.ts`: `ai: { apiKey: env.OPENAI_API_KEY, ...config.ai }` (use `$env/dynamic/private`).
+- **SvelteKit:** For OpenAI-compatible providers, set in `.env` and pass into `createDocsServer` in `src/lib/docs.server.ts`: `ai: { apiKey: env.OPENAI_API_KEY, ...config.ai }` (use `$env/dynamic/private`). For `ai.provider: "docs-cloud"`, `createDocsServer()` handles the local Docs Cloud proxy automatically; use `PUBLIC_DOCS_CLOUD_PROJECT_ID` for public project identity or `DOCS_CLOUD_PROJECT_ID` for server-only proxy mode.
 - **Astro:** Set in `.env`; pass in docs server: `ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai }`.
 - **Nuxt:** Set in `.env`; Nitro/runtime config exposes it; `defineDocsHandler` reads `process.env.OPENAI_API_KEY` on the server.
 

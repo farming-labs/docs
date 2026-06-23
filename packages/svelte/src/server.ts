@@ -91,7 +91,9 @@ import {
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
+  createDocsCloudAskAIResponse,
   createDocsMcpHttpHandler,
+  isDocsCloudAskAIProvider,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
   resolveDocsMcpConfig,
@@ -140,6 +142,7 @@ interface AIModelEntry {
 
 interface AIConfigObj {
   enabled?: boolean;
+  provider?: string;
   model?: string | { models?: AIModelEntry[]; defaultModel?: string };
   providers?: Record<string, AIProviderConfig>;
   systemPrompt?: string;
@@ -147,6 +150,7 @@ interface AIConfigObj {
   apiKey?: string;
   maxResults?: number;
   useMcp?: boolean | DocsAskAIMcpConfig;
+  stream?: boolean;
   suggestedQuestions?: string[];
   aiLabel?: string;
   packageName?: string;
@@ -1388,6 +1392,20 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
       await agentFeedbackConfig.onFeedback(parsed.data);
       return Response.json({ ok: true, handled: true }, { status: 201 });
+    }
+
+    if (isDocsCloudAskAIProvider(aiConfig)) {
+      const ctx = resolveContextFromRequest(event.request);
+      return createDocsCloudAskAIResponse(event.request, {
+        config: {
+          ai: aiConfig,
+          analytics,
+          cloud: config.cloud,
+        },
+        env: config._env as Record<string, string | undefined> | undefined,
+        publicBaseUrl: aiConfig.docsUrl ?? event.url.origin,
+        locale: ctx.locale,
+      });
     }
 
     const requestStartedAt = Date.now();
