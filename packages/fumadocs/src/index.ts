@@ -91,6 +91,19 @@ export { DocsFeedback } from "./docs-feedback.js";
 // ─── Page action buttons (Copy Markdown, Open in LLM) ─────────────────
 export { PageActions } from "./page-actions.js";
 
+// ─── Tweaks dialog (runtime theme tweaker) ────────────────────────────
+export {
+  TweaksAutoPortalTrigger,
+  TweaksControl,
+  TweaksFoucScript,
+  TweaksSidebarTrigger,
+} from "./tweaks-dialog.js";
+export type {
+  TweaksAutoPortalTriggerProps,
+  TweaksKnob,
+  TweaksSidebarTriggerProps,
+} from "./tweaks-dialog.js";
+
 // ─── Built-in Command Palette Search ────────────────────────────────
 export { DocsCommandSearch } from "./docs-command-search.js";
 export { withLangInUrl } from "./i18n.js";
@@ -120,6 +133,7 @@ export type {
   FeedbackConfig,
   DocsFeedbackData,
   DocsFeedbackValue,
+  TweaksConfig,
 } from "@farming-labs/docs";
 
 // ─── MDX components (for use in custom layouts or overrides) ──────────

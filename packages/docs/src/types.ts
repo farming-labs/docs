@@ -2281,6 +2281,96 @@ export interface FeedbackConfig {
   agent?: boolean | AgentFeedbackConfig;
 }
 
+/**
+ * Built-in "Tweaks" dialog configuration.
+ *
+ * The dialog has two modes, each independently opt-in. **Both are off by
+ * default** — site authors must explicitly enable whichever they want.
+ *
+ * - **Reader mode** (`reader: true`) exposes a limited knob set (accent,
+ *   density, radius, preset, font) to anyone visiting the docs. Choices
+ *   persist per-browser via `localStorage` and re-apply pre-paint on the
+ *   next load.
+ * - **Author mode** (`author: true`) exposes the *full* knob set — every
+ *   color token, sidebar/TOC style, layout dimensions — plus a code-export
+ *   panel that emits a ready-to-paste `createTheme({...})` snippet. Use
+ *   while iterating on a theme locally; typically gated to development:
+ *   `author: process.env.NODE_ENV !== "production"`.
+ *
+ * When both are enabled, author mode supersedes reader mode for the docs
+ * author. Public visitors still see only the reader-mode dialog.
+ *
+ * @example Reader-only — let visitors tweak their view in production
+ * ```ts
+ * export default defineDocs({
+ *   entry: "docs",
+ *   theme: fumadocs(),
+ *   tweaks: { reader: true },
+ * });
+ * ```
+ *
+ * @example Author-only — fast theme iteration during local dev
+ * ```ts
+ * export default defineDocs({
+ *   entry: "docs",
+ *   theme: fumadocs(),
+ *   tweaks: { author: process.env.NODE_ENV !== "production" },
+ * });
+ * ```
+ */
+export interface TweaksConfig {
+  /**
+   * Show the limited reader-mode Tweaks dialog to all visitors.
+   * @default false
+   */
+  reader?: boolean;
+  /**
+   * Show the full author-mode Tweaks dialog (extra knobs + code export).
+   * Typically gated to development. Supersedes reader mode when both are
+   * enabled.
+   * @default false
+   */
+  author?: boolean;
+  /**
+   * Which knobs to show in **reader mode**. Author mode always shows the
+   * full set regardless of this value.
+   * @default ["color", "density", "radius", "preset", "font-family"]
+   */
+  knobs?: Array<"color" | "density" | "radius" | "preset" | "font-family">;
+  /**
+   * Where the trigger button is mounted.
+   *
+   * - `"sidebar-footer"` — portaled next to the theme toggle (recommended).
+   * - `"floating"` — fixed bottom-right button only.
+   * - `"both"` — sidebar trigger on wide screens, floating fallback below `md`.
+   * - `"manual"` — neither trigger is auto-mounted; render
+   *   `<TweaksSidebarTrigger>` yourself wherever you want. The dialog still
+   *   mounts and opens when your trigger toggles it (shared state).
+   *
+   * @default "both"
+   */
+  position?: "sidebar-footer" | "floating" | "both" | "manual";
+  /** Label shown on the trigger button. @default "Tweaks" */
+  label?: string;
+  /** localStorage key used to persist selections. @default "fd:tweaks:v1" */
+  storageKey?: string;
+  /** Persist selections across page loads. @default true */
+  persist?: boolean;
+  /**
+   * Curated list of sans-serif fonts the reader can pick from. Each value is
+   * written into `--fd-font-sans`; the font must already be loaded on the
+   * page (the framework does not fetch arbitrary fonts at runtime).
+   *
+   * @default ["Inter", "Geist", "system-ui", "serif"]
+   */
+  fontOptions?: string[];
+  /**
+   * Async callback fired whenever a tweak is applied (color pick, preset
+   * change, slider drag-end, etc.). Useful for analytics.
+   */
+  onApply?: (state: Record<string, string>) => void | Promise<void>;
+}
+
 export interface DocsI18nConfig {
   /** Supported locale identifiers (e.g. ["en", "fr"]). */
   locales: string[];
@@ -2912,6 +3002,29 @@ export interface DocsConfig {
    * ```
    */
   feedback?: boolean | FeedbackConfig;
+  /**
+   * Built-in "Tweaks" dialog for live-tweaking theme tokens at runtime.
+   *
+   * Both modes are **off by default** — pick which audiences you want:
+   *
+   * - `{ reader: true }` → reader-mode dialog visible to all visitors.
+   * - `{ author: true }` → author-mode dialog (extra knobs + code export),
+   *   typically gated to development with
+   *   `author: process.env.NODE_ENV !== "production"`.
+   * - `true` → shorthand for `{ author: true }` (fast local iteration).
+   * - `false` / omitted → no dialog at all.
+   *
+   * @example Reader-facing, persisted per-browser
+   * ```ts
+   * tweaks: { reader: true }
+   * ```
+   *
+   * @example Author-only, dev-time theme iteration
+   * ```ts
+   * tweaks: { author: process.env.NODE_ENV !== "production" }
+   * ```
+   */
+  tweaks?: boolean | TweaksConfig;
   /**
    * Built-in MCP server for agent/assistant access to your docs content.
    *

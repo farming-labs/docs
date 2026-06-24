@@ -23,6 +23,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     onCopyClick: config.onCopyClick,
     codeBlocks: config.codeBlocks,
     feedback: config.feedback,
+    tweaks: config.tweaks,
     search: config.search,
     mcp: config.mcp,
     icons: config.icons,
