@@ -3,8 +3,14 @@
   import SearchDialog from "./SearchDialog.svelte";
   import AskAIDialog from "./AskAIDialog.svelte";
   import FloatingAIChat from "./FloatingAIChat.svelte";
+  import { afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";
+  import { env as publicEnv } from "$env/dynamic/public";
   import { onMount } from "svelte";
+  import {
+    emitSvelteDocsClientAnalyticsEvent,
+    installSvelteDocsAnalytics,
+  } from "../lib/clientAnalytics.js";
 
   let {
     tree,
@@ -79,11 +85,55 @@
     ].join("");
   });
 
+  let lastAnalyticsPageKey = "";
+
+  function emitPageView(url) {
+    if (typeof window === "undefined") return;
+    if (!url) return;
+
+    window.setTimeout(() => {
+      const pathname = url.pathname.replace(/\/$/, "") || "/";
+      const search = url.search;
+      const locale =
+        url.searchParams.get("lang") ?? url.searchParams.get("locale") ?? activeLocale ?? null;
+      const pageKey = `${pathname}${search}|${locale ?? ""}`;
+      if (pageKey === lastAnalyticsPageKey) return;
+
+      lastAnalyticsPageKey = pageKey;
+      emitSvelteDocsClientAnalyticsEvent({
+        type: "page_view",
+        locale,
+        path: pathname,
+        url: url.href,
+        properties: {
+          entry: config?.entry,
+          framework: "sveltekit",
+          pathname,
+          ...(search ? { search } : {}),
+          ...(document.title ? { title: document.title } : {}),
+        },
+      });
+    }, 0);
+  }
+
+  afterNavigate(({ to }) => {
+    emitPageView(to?.url ?? $page.url);
+  });
+
   onMount(() => {
+    const cleanupAnalytics = installSvelteDocsAnalytics({
+      analytics: config?.analytics,
+      env: publicEnv,
+    });
+
     if (forcedTheme) {
       document.documentElement.classList.remove("light", "dark");
       document.documentElement.classList.add(forcedTheme);
     }
+
+    return () => {
+      cleanupAnalytics();
+    };
   });
 
   let sidebarOpen = $state(false);
