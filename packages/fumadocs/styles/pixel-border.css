@@ -965,7 +965,7 @@ hr {
 }
 
 .omni-search-input {
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif);
 }
 
 .omni-group-label {
@@ -975,6 +975,15 @@ hr {
 
 .omni-footer-inner {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
+}
+
+.omni-footer-hint svg {
+  border-radius: 0 !important;
+}
+
+.omni-filter-menu,
+.omni-filter-option {
+  border-radius: 0 !important;
 }
 
 .omni-highlight {

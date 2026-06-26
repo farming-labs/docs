@@ -844,7 +844,7 @@ body:has(#nd-docs-layout),
 }
 
 #nd-docs-layout .omni-search-input {
-  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif) !important;
 }
 
 #nd-docs-layout .omni-group-label {
@@ -854,6 +854,15 @@ body:has(#nd-docs-layout),
 
 #nd-docs-layout .omni-footer-inner {
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+#nd-docs-layout .omni-footer-hint svg {
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout .omni-filter-menu,
+#nd-docs-layout .omni-filter-option {
+  border-radius: 0 !important;
 }
 
 #nd-docs-layout .omni-highlight {

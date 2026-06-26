@@ -3,23 +3,41 @@
  * Omni command palette — same behavior as website/components/ui/omni-command-palette.tsx
  * and Astro SearchDialog: recents when empty, /api/docs search, keyboard nav, click to navigate.
  */
-import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { navigateTo } from "#app";
 import { useRoute } from "vue-router";
 
 const STORAGE_KEY = "fd:omni:recents";
 const MAX_RECENTS = 8;
 const DEBOUNCE_MS = 150;
+const BREADCRUMB_SEPARATOR = "\u00a0\u00a0>\u00a0\u00a0";
+const FILTER_LABELS = {
+  all: "All",
+  pages: "Pages",
+  inside: "Inside pages",
+} as const;
+const FILTER_OPTIONS = ["all", "pages", "inside"] as const;
 
 const emit = defineEmits<{ (e: "close"): void }>();
 const route = useRoute();
 
+type SearchFilter = keyof typeof FILTER_LABELS;
+
 const query = ref("");
-const currentResults = ref<{ content: string; url: string; description?: string }[]>([]);
+const currentResults = ref<
+  { content: string; url: string; description?: string; section?: string; type?: string }[]
+>([]);
 const loading = ref(false);
 const activeIndex = ref(0);
+const filter = ref<SearchFilter>("all");
+const filterOpen = ref(false);
 const inputEl = ref<HTMLInputElement | null>(null);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let abortController: AbortController | null = null;
+const searchCache = new Map<
+  string,
+  { content: string; url: string; description?: string; section?: string; type?: string }[]
+>();
 
 interface RecentEntry {
   id: string;
@@ -60,20 +78,174 @@ function withLang(url: string): string {
   }
 }
 
+function breadcrumbForUrl(url: string): string {
+  try {
+    const parsed = new URL(url, "https://farming-labs.local");
+    const parts = parsed.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((part) =>
+        decodeURIComponent(part)
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase()),
+      );
+    return parts.length ? parts.join(BREADCRUMB_SEPARATOR) : "Docs";
+  } catch {
+    return "Docs";
+  }
+}
+
+function displayLabelForResult(result: { content: string; section?: string; type?: string }): string {
+  if (result.section) return result.section;
+  const parts = result.content.split(/\s+[—–]\s+/).map((part) => part.trim()).filter(Boolean);
+  return result.type === "heading" && parts.length > 1 ? (parts[parts.length - 1] ?? result.content) : result.content;
+}
+
+function normalizeSearchPhrase(value?: string): string {
+  return (value ?? "").toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function literalMatchPriority(searchQuery: string, value?: string): number {
+  const q = normalizeSearchPhrase(searchQuery);
+  const text = normalizeSearchPhrase(value);
+  if (!q || !text) return 0;
+  if (text === q) return 2;
+
+  const boundary = "[^\\p{L}\\p{N}]";
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
+    ? 1
+    : 0;
+}
+
+function tokenizeLiteralQuery(searchQuery: string): string[] {
+  return Array.from(
+    new Set(
+      searchQuery
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+        .split(/\s+/)
+        .map((word) => word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""))
+        .filter((word) => word.length > 1),
+    ),
+  );
+}
+
+function isLiteralLookupQuery(searchQuery: string): boolean {
+  const q = normalizeSearchPhrase(searchQuery);
+  const words = tokenizeLiteralQuery(q);
+  return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+}
+
+function hasDistinctSearchSection(result: {
+  content: string;
+  section?: string;
+  type?: string;
+}): boolean {
+  if (result.type === "page") return false;
+  if (!result.section) return true;
+  const title = (result.content ?? "").split(/\s+[—–]\s+/)[0] ?? "";
+  return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+}
+
+function insideLiteralPriority(
+  result: { content: string; description?: string; section?: string; type?: string },
+  searchQuery: string,
+): number {
+  if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
+  return Math.max(
+    literalMatchPriority(searchQuery, result.section),
+    literalMatchPriority(searchQuery, result.description),
+  );
+}
+
+function sortResultsForFilter(
+  results: { content: string; url: string; description?: string; section?: string; type?: string; score?: number }[],
+) {
+  const q = query.value.trim();
+  if (!q) return results;
+  return results
+    .map((result, index) => ({ result, index }))
+    .sort((a, b) => {
+      const aLiteralPriority = insideLiteralPriority(a.result, q);
+      const bLiteralPriority = insideLiteralPriority(b.result, q);
+      const literalDelta = bLiteralPriority - aLiteralPriority;
+      if (literalDelta) return literalDelta;
+      if (aLiteralPriority > 0 && bLiteralPriority > 0) return a.index - b.index;
+
+      const scoreDelta = (b.result.score ?? 0) - (a.result.score ?? 0);
+      if (scoreDelta) return scoreDelta;
+
+      return a.index - b.index;
+    })
+    .map(({ result }) => result);
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    if (char === "&") return "&amp;";
+    if (char === "<") return "&lt;";
+    if (char === ">") return "&gt;";
+    if (char === '"') return "&quot;";
+    return "&#39;";
+  });
+}
+
+function highlightSnippet(text: string): string {
+  const q = query.value.trim();
+  if (!q) return escapeHtml(text);
+  let html = "";
+  let lastIndex = 0;
+  const regex = new RegExp(escapeRegExp(q), "gi");
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    html += escapeHtml(text.slice(lastIndex, match.index));
+    html += `<mark class="omni-highlight">${escapeHtml(match[0])}</mark>`;
+    lastIndex = match.index + match[0].length;
+  }
+
+  return html + escapeHtml(text.slice(lastIndex));
+}
+
+const visibleResults = computed(() => {
+  if (filter.value === "pages") return currentResults.value.filter((result) => result.type === "page");
+  if (filter.value === "inside") {
+    return sortResultsForFilter(currentResults.value.filter((result) => result.type !== "page"));
+  }
+  return sortResultsForFilter(currentResults.value);
+});
+
 const allItems = computed(() => {
   const q = query.value.trim();
-  if (q && currentResults.value.length) return currentResults.value.map((r) => ({ id: r.url, label: r.content, url: r.url, subtitle: r.description ?? "Page" }));
+  if (q && visibleResults.value.length) {
+    return visibleResults.value.map((r) => ({
+      id: r.url,
+      label: displayLabelForResult(r),
+      url: r.url,
+      subtitle: breadcrumbForUrl(r.url),
+      description: r.description,
+      descriptionHtml: r.description ? highlightSnippet(r.description) : "",
+    }));
+  }
   return recentsList.value.map((r) => ({ id: r.id, label: r.label, url: r.url, subtitle: "Recently viewed" }));
 });
 
 const showRecents = computed(() => !query.value.trim());
-const showDocs = computed(() => !!query.value.trim() && currentResults.value.length > 0);
+const showDocs = computed(() => !!query.value.trim() && visibleResults.value.length > 0);
 const showEmpty = computed(() => {
-  if (query.value.trim()) return currentResults.value.length === 0 && !loading.value;
+  if (query.value.trim()) return visibleResults.value.length === 0 && !loading.value;
   return recentsList.value.length === 0;
 });
 const emptyText = computed(() =>
-  query.value.trim() ? "No results found. Try a different query." : "Type to search the docs, or browse recent items.",
+  query.value.trim()
+    ? currentResults.value.length > 0
+      ? `No ${FILTER_LABELS[filter.value].toLowerCase()} results found.`
+      : "No results found. Try a different query."
+    : "Type to search the docs, or browse recent items.",
 );
 
 function loadRecents() {
@@ -83,6 +255,12 @@ function loadRecents() {
 function close() {
   if (typeof document !== "undefined") document.body.style.overflow = "";
   emit("close");
+}
+
+function updateFilter(nextFilter: SearchFilter) {
+  filter.value = nextFilter;
+  filterOpen.value = false;
+  activeIndex.value = 0;
 }
 
 function executeItem(item: { url: string; label?: string; content?: string }) {
@@ -130,24 +308,51 @@ function onInput() {
   loading.value = false;
   currentResults.value = [];
   activeIndex.value = 0;
+  filterOpen.value = false;
+  abortController?.abort();
   if (!q) return;
   if (debounceTimer) clearTimeout(debounceTimer);
+  const requestUrl = withLang(`/api/docs?query=${encodeURIComponent(q)}`);
+  const cached = searchCache.get(requestUrl);
+  if (cached) {
+    currentResults.value = cached;
+    return;
+  }
   debounceTimer = setTimeout(async () => {
+    const controller = new AbortController();
+    abortController = controller;
     loading.value = true;
     try {
-      const res = await fetch(withLang(`/api/docs?query=${encodeURIComponent(q)}`));
+      const res = await fetch(requestUrl, { signal: controller.signal });
       const data = res.ok ? await res.json() : [];
-      currentResults.value = Array.isArray(data) ? data : [];
+      if (controller.signal.aborted) return;
+      const nextResults = Array.isArray(data) ? data : [];
+      if (searchCache.size >= 20) {
+        const firstKey = searchCache.keys().next().value;
+        if (firstKey) searchCache.delete(firstKey);
+      }
+      searchCache.set(requestUrl, nextResults);
+      currentResults.value = nextResults;
       activeIndex.value = 0;
     } catch {
+      if (controller.signal.aborted) return;
       currentResults.value = [];
     } finally {
-      loading.value = false;
+      if (abortController === controller) {
+        abortController = null;
+        loading.value = false;
+      }
     }
   }, DEBOUNCE_MS);
 }
 
 watch(query, onInput);
+watch(filter, () => {
+  activeIndex.value = 0;
+});
+watch(visibleResults, () => {
+  if (activeIndex.value >= visibleResults.value.length) activeIndex.value = 0;
+});
 
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === "Escape") {
@@ -183,16 +388,6 @@ function onRowClick(item: { url: string; label?: string; content?: string }) {
   executeItem(item);
 }
 
-function onExternalClick(e: Event, url: string) {
-  e.preventDefault();
-  e.stopPropagation();
-  try {
-    window.open(withLang(url), "_blank", "noopener,noreferrer");
-  } catch {
-    window.location.href = withLang(url);
-  }
-}
-
 function onRowMouseEnter(container: "recent" | "docs", index: number) {
   activeIndex.value = index;
 }
@@ -203,6 +398,12 @@ onMounted(() => {
   nextTick(() => {
     inputEl.value?.focus();
   });
+});
+
+onBeforeUnmount(() => {
+  if (typeof document !== "undefined") document.body.style.overflow = "";
+  if (debounceTimer) clearTimeout(debounceTimer);
+  abortController?.abort();
 });
 </script>
 
@@ -230,16 +431,12 @@ onMounted(() => {
             role="combobox"
             aria-expanded="true"
             aria-controls="fd-omni-listbox"
-            placeholder="Search documentation…"
+            placeholder="Search"
             autocomplete="off"
             @keydown="handleKeydown"
           />
-          <kbd class="omni-kbd">⌘ K</kbd>
           <button type="button" aria-label="Close" class="omni-close-btn" @click="close">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
+            ESC
           </button>
         </div>
       </div>
@@ -267,35 +464,10 @@ onMounted(() => {
               @click="onRowClick(r)"
               @mouseenter="onRowMouseEnter('recent', i)"
             >
-              <div class="omni-item-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                </svg>
-              </div>
               <div class="omni-item-text">
-                <div class="omni-item-label">{{ r.label }}</div>
                 <div class="omni-item-subtitle">Recently viewed</div>
+                <div class="omni-item-label">{{ r.label }}</div>
               </div>
-              <a
-                :href="r.url"
-                class="omni-item-ext"
-                title="Open in new tab"
-                target="_blank"
-                rel="noopener noreferrer"
-                @click.prevent="onExternalClick($event, r.url)"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-              <span class="omni-item-chevron" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </span>
             </div>
           </div>
         </div>
@@ -304,8 +476,8 @@ onMounted(() => {
           <div class="omni-group-label">Documentation</div>
           <div id="fd-omni-docs-items" class="omni-group-items">
             <div
-              v-for="(r, i) in currentResults"
-              :key="r.url"
+              v-for="(r, i) in allItems"
+              :key="r.id"
               class="omni-item"
               :class="{ 'omni-item-active': showDocs && i === activeIndex }"
               :data-url="r.url"
@@ -315,35 +487,15 @@ onMounted(() => {
               @click="onRowClick(r)"
               @mouseenter="onRowMouseEnter('docs', i)"
             >
-              <div class="omni-item-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                </svg>
-              </div>
               <div class="omni-item-text">
-                <div class="omni-item-label">{{ r.content }}</div>
-                <div class="omni-item-subtitle">{{ r.description ?? "Page" }}</div>
+                <div class="omni-item-subtitle">{{ r.subtitle }}</div>
+                <div class="omni-item-label">{{ r.label }}</div>
+                <div
+                  v-if="r.description"
+                  class="omni-item-description"
+                  v-html="r.descriptionHtml"
+                />
               </div>
-              <a
-                :href="r.url"
-                class="omni-item-ext"
-                title="Open in new tab"
-                target="_blank"
-                rel="noopener noreferrer"
-                @click.prevent="onExternalClick($event, r.url)"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-              <span class="omni-item-chevron" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </span>
             </div>
           </div>
         </div>
@@ -363,27 +515,52 @@ onMounted(() => {
         <div class="omni-footer-inner">
           <div class="omni-footer-hints">
             <span class="omni-footer-hint">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="9 18 15 12 9 6" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m9 10-5 5 5 5" />
+                <path d="M20 4v7a4 4 0 0 1-4 4H4" />
               </svg>
               to select
             </span>
             <span class="omni-footer-hint">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 15l-6-6-6 6" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m18 15-6-6-6 6" />
               </svg>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 9l6 6 6-6" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
               </svg>
               to navigate
             </span>
             <span class="omni-footer-hint omni-footer-hint-desktop">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
+              <span class="omni-kbd-sm">ESC</span>
               to close
             </span>
+          </div>
+          <div class="omni-footer-filter">
+            <span class="omni-filter-label">Filter</span>
+            <button
+              type="button"
+              class="omni-filter-button"
+              :aria-expanded="filterOpen"
+              @click="filterOpen = !filterOpen"
+            >
+              {{ FILTER_LABELS[filter] }}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            <div v-if="filterOpen" class="omni-filter-menu" role="group" aria-label="Search filter">
+              <button
+                v-for="option in FILTER_OPTIONS"
+                :key="option"
+                type="button"
+                :aria-pressed="filter === option"
+                class="omni-filter-option"
+                :class="{ 'omni-filter-option-active': filter === option }"
+                @click="updateFilter(option)"
+              >
+                {{ FILTER_LABELS[option] }}
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -17,9 +17,18 @@ interface SearchResult {
   type: "page" | "heading" | "text";
   content: string;
   description?: string;
+  section?: string;
 }
 
 type RecentEntry = { id: string; label: string; url: string };
+type SearchFilter = "all" | "pages" | "inside";
+const BREADCRUMB_SEPARATOR = "\u00a0\u00a0>\u00a0\u00a0";
+
+const FILTER_LABELS: Record<SearchFilter, string> = {
+  all: "All",
+  pages: "Pages",
+  inside: "Inside pages",
+};
 
 function stripHtml(html: string): string {
   if (typeof document !== "undefined") {
@@ -45,6 +54,122 @@ function stripSearchPreview(text: string): string {
     .replace(/`+/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function breadcrumbForUrl(url: string): string {
+  try {
+    const parsed = new URL(url, "https://docs.local");
+    const parts = parsed.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((part) =>
+        decodeURIComponent(part)
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase()),
+      );
+    return parts.length > 0 ? parts.join(BREADCRUMB_SEPARATOR) : "Docs";
+  } catch {
+    return "Docs";
+  }
+}
+
+function normalizeSearchPhrase(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[?!.,;:]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function literalMatchPriority(query: string, value?: string): number {
+  const q = normalizeSearchPhrase(query);
+  const text = normalizeSearchPhrase(value ?? "");
+  if (!q || !text) return 0;
+  if (text === q) return 2;
+
+  const boundary = "[^\\p{L}\\p{N}]";
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text) ? 1 : 0;
+}
+
+function tokenizeLiteralQuery(query: string): string[] {
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+        .split(/\s+/)
+        .map((word) => word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""))
+        .filter((word) => word.length > 1),
+    ),
+  );
+}
+
+function isLiteralLookupQuery(query: string): boolean {
+  const q = normalizeSearchPhrase(query);
+  const words = tokenizeLiteralQuery(q);
+  return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+}
+
+function hasDistinctSearchSection(result: SearchResult, label: string): boolean {
+  if (result.type === "page") return false;
+  if (!result.section) return true;
+  const title = label.split(/\s+[—–]\s+/)[0] ?? "";
+  return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+}
+
+function getUrlSearchSegments(url: string): string[] {
+  try {
+    const parsed = new URL(url, "https://docs.local");
+    return Array.from(
+      new Set(
+        parsed.pathname
+          .split("/")
+          .flatMap((segment) => {
+            const decoded = decodeURIComponent(segment);
+            return [decoded, decoded.replace(/[-_]+/g, " ")];
+          })
+          .map(normalizeSearchPhrase)
+          .filter(Boolean),
+      ),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function exactMatchPriority(query: string, label: string, url: string): number {
+  const q = normalizeSearchPhrase(query);
+  if (!q) return 0;
+
+  const normalizedLabel = normalizeSearchPhrase(label);
+  const joinedLabel = normalizeSearchPhrase(label.replace(/\s+[—–-]\s+/g, " "));
+  const labelParts = normalizedLabel
+    .split(/\s+[—–-]\s+/)
+    .map(normalizeSearchPhrase)
+    .filter(Boolean);
+
+  if (normalizedLabel === q || joinedLabel === q) return 4;
+  if (labelParts.includes(q)) return 3;
+  if (getUrlSearchSegments(url).includes(q)) return 2;
+  if (normalizedLabel.startsWith(q) || joinedLabel.startsWith(q)) return 1;
+  return 0;
+}
+
+function resultDisplayLabel(result: SearchResult): string {
+  const section = result.section ? stripSearchPreview(stripHtml(result.section)) : "";
+  if (section) return section;
+
+  const label = stripSearchPreview(stripHtml(result.content));
+  const parts = label
+    .split(/\s+[—–]\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (result.type === "heading" && parts.length > 1) return parts[parts.length - 1] ?? label;
+  return label;
 }
 
 function fuzzyScore(query: string, text: string) {
@@ -79,26 +204,27 @@ function fuzzyScore(query: string, text: string) {
   return { score, indices: Array.from(new Set(indices)).sort((a, b) => a - b) };
 }
 
-function HighlightedLabel({ label, indices }: { label: string; indices: number[] }) {
+function HighlightedLabel({ label, indices = [] }: { label: string; indices?: number[] }) {
   if (!indices.length) return <>{label}</>;
   const out: ReactNode[] = [];
-  for (let pos = 0; pos < label.length; pos++) {
-    if (indices.includes(pos)) {
-      let run = label[pos];
-      let p = pos + 1;
-      while (indices.includes(p) && p < label.length) {
-        run += label[p];
-        p++;
-      }
+  const highlighted = new Set(indices);
+  let pos = 0;
+  while (pos < label.length) {
+    const marked = highlighted.has(pos);
+    let end = pos + 1;
+    while (end < label.length && highlighted.has(end) === marked) end++;
+    const run = label.slice(pos, end);
+
+    if (marked) {
       out.push(
         <mark key={`m-${pos}`} className="omni-highlight">
           {run}
         </mark>,
       );
-      pos = p - 1;
     } else {
-      out.push(<span key={`t-${pos}`}>{label[pos]}</span>);
+      out.push(<span key={`t-${pos}`}>{run}</span>);
     }
+    pos = end;
   }
   return <>{out}</>;
 }
@@ -121,82 +247,7 @@ function SearchIcon() {
   );
 }
 
-function FileIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-    </svg>
-  );
-}
-
-function HashIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="4" x2="20" y1="9" y2="9" />
-      <line x1="4" x2="20" y1="15" y2="15" />
-      <line x1="10" x2="8" y1="3" y2="21" />
-      <line x1="16" x2="14" y1="3" y2="21" />
-    </svg>
-  );
-}
-
-function TypeIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="4 7 4 4 20 4 20 7" />
-      <line x1="9" x2="15" y1="20" y2="20" />
-      <line x1="12" x2="12" y1="4" y2="20" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  );
-}
-
-function EnterIcon() {
+function ArrowDownIcon() {
   return (
     <svg
       width="12"
@@ -208,8 +259,7 @@ function EnterIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <polyline points="9 10 4 15 9 20" />
-      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
@@ -231,7 +281,7 @@ function ArrowUpIcon() {
   );
 }
 
-function ArrowDownIcon() {
+function CornerDownLeftIcon() {
   return (
     <svg
       width="12"
@@ -243,43 +293,8 @@ function ArrowDownIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M15 3h6v6" />
-      <path d="M10 14 21 3" />
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m9 18 6-6-6-6" />
+      <path d="m9 10-5 5 5 5" />
+      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
     </svg>
   );
 }
@@ -321,38 +336,19 @@ function HistoryIcon() {
   );
 }
 
-function iconForType(type: string) {
-  switch (type) {
-    case "heading":
-      return <HashIcon />;
-    case "text":
-      return <TypeIcon />;
-    default:
-      return <FileIcon />;
-  }
-}
-
-function labelForType(type: string) {
-  switch (type) {
-    case "page":
-      return "Page";
-    case "heading":
-      return "Section";
-    case "text":
-      return "Content";
-    default:
-      return "Result";
-  }
-}
-
 interface ResultItem {
   id: string;
   label: string;
   subtitle: string;
+  description?: string;
   url: string;
-  icon: ReactNode;
+  type: SearchResult["type"];
   score: number;
+  exactPriority: number;
+  insideLiteralPriority: number;
+  sourceIndex: number;
   indices: number[];
+  descriptionIndices: number[];
 }
 
 /**
@@ -377,6 +373,8 @@ export function DocsCommandSearch({
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState<RecentEntry[]>([]);
+  const [filter, setFilter] = useState<SearchFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
@@ -384,6 +382,7 @@ export function DocsCommandSearch({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const searchCacheRef = useRef(new Map<string, ResultItem[]>());
 
   const setOpenWithAnalytics = useCallback(
     (nextOpen: boolean, trigger: string) => {
@@ -456,6 +455,15 @@ export function DocsCommandSearch({
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
+    const cacheKey = `${activeLocale ?? ""}:${searchApi}:${debouncedQuery}`;
+    const cached = searchCacheRef.current.get(cacheKey);
+    if (cached) {
+      setResults(cached);
+      setActiveIndex(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     (async () => {
@@ -463,26 +471,61 @@ export function DocsCommandSearch({
       try {
         const requestUrl = new URL(searchApi, window.location.origin);
         requestUrl.searchParams.set("query", debouncedQuery);
-        const res = await fetch(requestUrl.toString());
+        const res = await fetch(requestUrl.toString(), { signal: controller.signal });
         if (!res.ok || cancelled) return;
         const data: SearchResult[] = await res.json();
-        const items: ResultItem[] = data.map((r) => {
-          const label = stripSearchPreview(stripHtml(r.content));
+        const items: ResultItem[] = data.map((r, sourceIndex) => {
+          const sourceLabel = stripSearchPreview(stripHtml(r.content));
+          const label = resultDisplayLabel(r);
+          const description = r.description
+            ? stripSearchPreview(stripHtml(r.description)).slice(0, 220)
+            : undefined;
           const { score, indices } = fuzzyScore(debouncedQuery, label);
+          const descriptionMatch = description
+            ? fuzzyScore(debouncedQuery, description)
+            : { indices: [] };
+          const url = withLangInUrl(r.url, activeLocale);
           return {
             id: r.id,
             label,
-            subtitle: r.description
-              ? stripSearchPreview(stripHtml(r.description))
-              : labelForType(r.type),
-            url: withLangInUrl(r.url, activeLocale),
-            icon: iconForType(r.type),
+            subtitle: breadcrumbForUrl(r.url),
+            description,
+            url,
+            type: r.type,
             score,
+            exactPriority: exactMatchPriority(debouncedQuery, sourceLabel, r.url),
+            insideLiteralPriority:
+              hasDistinctSearchSection(r, sourceLabel) && isLiteralLookupQuery(debouncedQuery)
+                ? Math.max(
+                    literalMatchPriority(debouncedQuery, r.section),
+                    literalMatchPriority(debouncedQuery, description),
+                  )
+                : 0,
+            sourceIndex,
             indices,
+            descriptionIndices: descriptionMatch.indices,
           };
         });
-        items.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
+        items.sort((a, b) => {
+          const literalDelta = b.insideLiteralPriority - a.insideLiteralPriority;
+          if (literalDelta) return literalDelta;
+          if (a.insideLiteralPriority > 0 && b.insideLiteralPriority > 0) {
+            return a.sourceIndex - b.sourceIndex;
+          }
+
+          return (
+            b.exactPriority - a.exactPriority ||
+            b.score - a.score ||
+            a.sourceIndex - b.sourceIndex ||
+            a.label.localeCompare(b.label)
+          );
+        });
         if (!cancelled) {
+          if (searchCacheRef.current.size >= 20) {
+            const firstKey = searchCacheRef.current.keys().next().value;
+            if (firstKey) searchCacheRef.current.delete(firstKey);
+          }
+          searchCacheRef.current.set(cacheKey, items);
           setResults(items);
           setActiveIndex(0);
           if (analytics) {
@@ -499,6 +542,7 @@ export function DocsCommandSearch({
           }
         }
       } catch {
+        if (controller.signal.aborted) return;
         if (!cancelled && analytics) {
           emitClientAnalyticsEvent({
             type: "search_error",
@@ -516,6 +560,7 @@ export function DocsCommandSearch({
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [activeLocale, analytics, debouncedQuery, searchApi]);
 
@@ -525,6 +570,8 @@ export function DocsCommandSearch({
     } else {
       setQuery("");
       setResults([]);
+      setFilter("all");
+      setFilterOpen(false);
       setActiveIndex(0);
     }
   }, [open]);
@@ -600,9 +647,11 @@ export function DocsCommandSearch({
   );
 
   const displayItems = useMemo(() => {
-    if (results.length > 0) return results;
-    return [];
-  }, [results]);
+    if (results.length === 0) return [];
+    if (filter === "pages") return results.filter((item) => item.type === "page");
+    if (filter === "inside") return results.filter((item) => item.type !== "page");
+    return results;
+  }, [filter, results]);
 
   const recentItems = useMemo((): ResultItem[] => {
     if (query.trim() || results.length > 0) return [];
@@ -611,11 +660,25 @@ export function DocsCommandSearch({
       label: r.label,
       subtitle: "Recently viewed",
       url: r.url,
-      icon: <FileIcon />,
+      type: "page",
       score: 0,
+      exactPriority: 0,
+      insideLiteralPriority: 0,
+      sourceIndex: 0,
       indices: [],
+      descriptionIndices: [],
     }));
   }, [query, results, recents]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [filter, debouncedQuery]);
+
+  function updateFilter(nextFilter: SearchFilter) {
+    setFilter(nextFilter);
+    setFilterOpen(false);
+    setActiveIndex(0);
+  }
 
   function moveActive(delta: number) {
     const total = displayItems.length + recentItems.length;
@@ -666,19 +729,18 @@ export function DocsCommandSearch({
               type="text"
               role="combobox"
               aria-expanded="true"
-              placeholder="Search documentation…"
+              placeholder="Search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               className="omni-search-input"
             />
-            <kbd className="omni-kbd">⌘ K</kbd>
             <button
               aria-label="Close"
               className="omni-close-btn"
               onClick={() => setOpenWithAnalytics(false, "button")}
             >
-              <CloseIcon />
+              ESC
             </button>
           </div>
         </div>
@@ -704,24 +766,10 @@ export function DocsCommandSearch({
                     onClick={() => execute(item)}
                     className={cn("omni-item", i === activeIndex && "omni-item-active")}
                   >
-                    <div className="omni-item-icon">{item.icon}</div>
                     <div className="omni-item-text">
-                      <div className="omni-item-label">{item.label}</div>
                       <div className="omni-item-subtitle">{item.subtitle}</div>
+                      <div className="omni-item-label">{item.label}</div>
                     </div>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="omni-item-ext"
-                      title="Open in new tab"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      <ExternalLinkIcon />
-                    </a>
-                    <ChevronRightIcon />
                   </button>
                 ))}
               </div>
@@ -744,26 +792,20 @@ export function DocsCommandSearch({
                       onClick={() => execute(item)}
                       className={cn("omni-item", idx === activeIndex && "omni-item-active")}
                     >
-                      <div className="omni-item-icon">{item.icon}</div>
                       <div className="omni-item-text">
+                        <div className="omni-item-subtitle">{item.subtitle}</div>
                         <div className="omni-item-label">
                           <HighlightedLabel label={item.label} indices={item.indices} />
                         </div>
-                        <div className="omni-item-subtitle">{item.subtitle}</div>
+                        {item.description && (
+                          <div className="omni-item-description">
+                            <HighlightedLabel
+                              label={item.description}
+                              indices={item.descriptionIndices}
+                            />
+                          </div>
+                        )}
                       </div>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="omni-item-ext"
-                        title="Open in new tab"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        <ExternalLinkIcon />
-                      </a>
-                      <ChevronRightIcon />
                     </button>
                   );
                 })}
@@ -776,9 +818,11 @@ export function DocsCommandSearch({
               <div className="omni-empty-icon">
                 <HistoryIcon />
               </div>
-              {debouncedQuery
-                ? "No results found. Try a different query."
-                : "Type to search the docs, or browse recent items."}
+              {debouncedQuery && results.length > 0
+                ? `No ${FILTER_LABELS[filter].toLowerCase()} results found.`
+                : debouncedQuery
+                  ? "No results found. Try a different query."
+                  : "Type to search the docs, or browse recent items."}
             </div>
           )}
         </div>
@@ -787,15 +831,45 @@ export function DocsCommandSearch({
           <div className="omni-footer-inner">
             <div className="omni-footer-hints">
               <span className="omni-footer-hint">
-                <EnterIcon /> to select
+                <CornerDownLeftIcon /> to select
               </span>
               <span className="omni-footer-hint">
                 <ArrowUpIcon />
                 <ArrowDownIcon /> to navigate
               </span>
               <span className="omni-footer-hint omni-footer-hint-desktop">
-                <CloseIcon /> to close
+                <span className="omni-kbd-sm">ESC</span> to close
               </span>
+            </div>
+            <div className="omni-footer-filter">
+              <span className="omni-filter-label">Filter</span>
+              <button
+                type="button"
+                className="omni-filter-button"
+                aria-expanded={filterOpen}
+                onClick={() => setFilterOpen((value) => !value)}
+              >
+                {FILTER_LABELS[filter]}
+                <ArrowDownIcon />
+              </button>
+              {filterOpen && (
+                <div className="omni-filter-menu" role="group" aria-label="Search filter">
+                  {(["all", "pages", "inside"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={filter === mode}
+                      className={cn(
+                        "omni-filter-option",
+                        filter === mode && "omni-filter-option-active",
+                      )}
+                      onClick={() => updateFilter(mode)}
+                    >
+                      {FILTER_LABELS[mode]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

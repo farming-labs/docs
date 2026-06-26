@@ -124,6 +124,30 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function normalizeSearchPhrase(value: string): string {
+  return normalizeWhitespace(value.toLowerCase().replace(/[?!.,;:]+$/g, ""));
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function literalMatchPriority(query: string, value?: string): number {
+  const q = normalizeSearchPhrase(query);
+  const text = normalizeSearchPhrase(value ?? "");
+  if (!q || !text) return 0;
+  if (text === q) return 2;
+
+  const boundary = "[^\\p{L}\\p{N}]";
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text) ? 1 : 0;
+}
+
+function isLiteralLookupQuery(query: string): boolean {
+  const q = normalizeSearchPhrase(query);
+  const words = tokenizeSearchQuery(q);
+  return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+}
+
 function tokenizeSearchQuery(query: string): string[] {
   return Array.from(
     new Set(
@@ -143,6 +167,37 @@ function normalizeUrlPathname(value: string): string {
   } catch {
     return value.split(/[?#]/)[0]?.replace(/\/+$/, "") || "/";
   }
+}
+
+function safeDecodeUrlSegment(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function getUrlSearchSegments(value: string): string[] {
+  let pathname = "";
+
+  try {
+    pathname = new URL(value, "https://docs.local").pathname;
+  } catch {
+    pathname = value.split(/[?#]/)[0] ?? "";
+  }
+
+  return Array.from(
+    new Set(
+      pathname
+        .split("/")
+        .flatMap((segment) => {
+          const decoded = safeDecodeUrlSegment(segment);
+          return [decoded, decoded.replace(/[-_]+/g, " ")];
+        })
+        .map(normalizeSearchPhrase)
+        .filter(Boolean),
+    ),
+  );
 }
 
 function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
@@ -423,6 +478,84 @@ function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[]
   return results;
 }
 
+function pageToSearchDocument(page: DocsSearchSourcePage): DocsSearchDocument {
+  return {
+    id: makeDocumentId(page.url, "page"),
+    url: page.url,
+    title: page.title,
+    content: normalizeWhitespace(page.content),
+    description: page.description,
+    type: "page",
+    locale: page.locale,
+    framework: page.framework,
+    version: page.version,
+    tags: page.tags,
+  };
+}
+
+function buildExactPageSearchResults(
+  query: string,
+  pages: DocsSearchSourcePage[],
+): DocsSearchResult[] {
+  const normalizedQuery = normalizeSearchPhrase(query);
+  if (!normalizedQuery) return [];
+
+  const results: DocsSearchResult[] = [];
+
+  for (const page of pages) {
+    const document = pageToSearchDocument(page);
+    const title = normalizeSearchPhrase(page.title);
+    const urlSegments = getUrlSearchSegments(page.url);
+    const isExactPageMatch = title === normalizedQuery || urlSegments.includes(normalizedQuery);
+
+    if (!isExactPageMatch) continue;
+
+    results.push({
+      id: document.id,
+      url: document.url,
+      content: cleanSearchResultText(document.title) ?? document.title,
+      description: cleanSearchResultText(buildSnippet(document, query) ?? document.description),
+      type: "page",
+      score: scoreDocument(query, document) + 2_000,
+    });
+  }
+
+  return results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.url.localeCompare(b.url));
+}
+
+function hasDistinctResultSection(result: DocsSearchResult): boolean {
+  if (result.type === "page") return false;
+  const section = normalizeSearchPhrase(stripHtml(result.section ?? ""));
+  if (!section) return true;
+
+  const label = normalizeSearchPhrase(stripHtml(result.content));
+  const title = label.split(/\s+[—–]\s+/)[0] ?? "";
+  return section !== normalizeSearchPhrase(title);
+}
+
+function insideLiteralResultPriority(query: string, result: DocsSearchResult): number {
+  if (!hasDistinctResultSection(result) || !isLiteralLookupQuery(query)) return 0;
+
+  return Math.max(
+    literalMatchPriority(query, stripHtml(result.section ?? "")),
+    literalMatchPriority(query, stripHtml(result.description ?? "")),
+  );
+}
+
+function prioritizeLiteralInsideResults(
+  query: string,
+  results: DocsSearchResult[],
+): DocsSearchResult[] {
+  if (!isLiteralLookupQuery(query)) return results;
+
+  return [...results].sort((a, b) => {
+    const literalDelta =
+      insideLiteralResultPriority(query, b) - insideLiteralResultPriority(query, a);
+    if (literalDelta) return literalDelta;
+    return 0;
+  });
+}
+
 function shouldSupplementAskAIWithSimpleSearch(search: ResolvedDocsSearchConfig): boolean {
   return search.enabled && search.provider !== "simple";
 }
@@ -526,18 +659,7 @@ export function buildDocsSearchDocuments(
   const strategy = chunking.strategy ?? "section";
 
   return pages.flatMap((page) => {
-    const base: DocsSearchDocument = {
-      id: makeDocumentId(page.url, "page"),
-      url: page.url,
-      title: page.title,
-      content: normalizeWhitespace(page.content),
-      description: page.description,
-      type: "page",
-      locale: page.locale,
-      framework: page.framework,
-      version: page.version,
-      tags: page.tags,
-    };
+    const base = pageToSearchDocument(page);
 
     if (strategy === "page") return [base];
 
@@ -550,28 +672,52 @@ export function buildDocsSearchDocuments(
 }
 
 function scoreDocument(query: string, document: DocsSearchDocument): number {
-  const q = normalizeWhitespace(query.toLowerCase().replace(/[?!.,;:]+$/g, ""));
+  const q = normalizeSearchPhrase(query);
   if (!q) return 0;
 
   const words = tokenizeSearchQuery(q);
-  const title = document.title.toLowerCase();
-  const section = document.section?.toLowerCase() ?? "";
-  const description = document.description?.toLowerCase() ?? "";
-  const content = document.content.toLowerCase();
-  const url = document.url.toLowerCase();
+  const title = normalizeSearchPhrase(document.title);
+  const section = document.section ? normalizeSearchPhrase(document.section) : "";
+  const hasDistinctSection = Boolean(section && section !== title);
+  const titleSection = section
+    ? normalizeSearchPhrase(`${document.title} ${document.section}`)
+    : "";
+  const description = document.description ? normalizeSearchPhrase(document.description) : "";
+  const content = normalizeSearchPhrase(document.content);
+  const url = normalizeSearchPhrase(document.url);
+  const urlSegments = getUrlSearchSegments(document.url);
   const titleTokens = tokenizeSearchQuery(title);
   const sectionTokens = tokenizeSearchQuery(section);
 
   let score = 0;
+  const insideLiteralPriority =
+    document.type !== "page" && hasDistinctSection && isLiteralLookupQuery(q)
+      ? Math.max(
+          literalMatchPriority(q, section),
+          literalMatchPriority(q, description),
+          literalMatchPriority(q, content),
+        )
+      : 0;
 
-  if (title === q) score += 120;
+  if (insideLiteralPriority > 0) {
+    score += insideLiteralPriority * 2_250;
+  }
+
+  if (title === q) score += 1_120;
   else if (title.startsWith(q)) score += 70;
   else if (title.includes(q)) score += 45;
 
-  if (section === q) score += 80;
-  else if (section.startsWith(q)) score += 55;
-  else if (section.includes(q)) score += 30;
+  if (hasDistinctSection) {
+    if (section === q) score += 1_080;
+    else if (section.startsWith(q)) score += 55;
+    else if (section.includes(q)) score += 30;
 
+    if (titleSection === q) score += 1_000;
+    else if (titleSection.startsWith(q)) score += 50;
+    else if (titleSection.includes(q)) score += 28;
+  }
+
+  if (urlSegments.includes(q)) score += 950;
   if (url.includes(q)) score += 12;
   if (description.includes(q)) score += 18;
   if (content.includes(q)) score += 12;
@@ -592,15 +738,17 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
       matched = true;
     }
 
-    if (section === word) {
-      score += 22;
-      matched = true;
-    } else if (section.startsWith(word)) {
-      score += 16;
-      matched = true;
-    } else if (section.includes(word)) {
-      score += 10;
-      matched = true;
+    if (hasDistinctSection) {
+      if (section === word) {
+        score += 22;
+        matched = true;
+      } else if (section.startsWith(word)) {
+        score += 16;
+        matched = true;
+      } else if (section.includes(word)) {
+        score += 10;
+        matched = true;
+      }
     }
 
     if (description.includes(word)) {
@@ -617,7 +765,11 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
   }
 
   if (words.length > 1) {
-    if (sectionTokens.length > 0 && words.every((word) => sectionTokens.includes(word))) {
+    if (
+      hasDistinctSection &&
+      sectionTokens.length > 0 &&
+      words.every((word) => sectionTokens.includes(word))
+    ) {
       score += 30;
     }
     if (
@@ -630,7 +782,7 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
   }
 
   if (matchedWords === words.length && words.length > 1) score += 20;
-  if (document.type === "heading") score += 6;
+  if (document.type === "heading" && hasDistinctSection) score += 6;
 
   return score;
 }
@@ -1434,7 +1586,13 @@ export async function performDocsSearch(options: {
   try {
     const adapter = await resolveSearchAdapter(search, context);
     await maybeSyncSearchIndex(adapter, search, context);
-    return await adapter.search(query, context);
+    const results = await adapter.search(query, context);
+    if (search.provider === "simple") return results;
+
+    return prioritizeLiteralInsideResults(
+      options.query,
+      mergeSearchResults(buildExactPageSearchResults(options.query, options.pages), results),
+    ).slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
   } catch {
     return createSimpleSearchAdapter().search(query, context);
   }

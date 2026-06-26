@@ -134,6 +134,199 @@ describe("performDocsSearch", () => {
     expect(results[0].description).toContain("Configure the route");
   });
 
+  it("prioritizes exact result labels over broader prefix matches", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "React",
+          url: "/docs/react",
+          content: "Configure React search.",
+          rawContent: `# React
+
+## Search
+
+Configure React search.
+`,
+        },
+        {
+          title: "React Search API",
+          url: "/docs/react-search-api",
+          content: "API reference for React search.",
+          rawContent: `# React Search API
+
+API reference for React search.
+`,
+        },
+      ],
+      query: "React Search",
+    });
+
+    expect(results[0]).toMatchObject({
+      url: "/docs/react#search",
+      content: "React — Search",
+      section: "Search",
+    });
+  });
+
+  it("prioritizes exact URL segment matches", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "AI Search",
+          url: "/docs/ai-search",
+          content: "Configure the AI search experience.",
+          rawContent: "# AI Search\n\nConfigure the AI search experience.",
+        },
+        {
+          title: "Search",
+          url: "/docs/search",
+          content: "Mentions ai-native as a related setup option.",
+          rawContent: "# Search\n\nMentions ai-native as a related setup option.",
+        },
+        {
+          title: "AI Native",
+          url: "/docs/getting-started/ai-native",
+          content: "Configure AI-native docs.",
+          rawContent: "# AI Native\n\nConfigure AI-native docs.",
+        },
+      ],
+      query: "ai-native",
+    });
+
+    expect(results[0]).toMatchObject({
+      url: "/docs/getting-started/ai-native",
+      content: "AI Native",
+    });
+  });
+
+  it("prioritizes literal inside-page matches before page matches", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "MCP",
+          url: "/docs/mcp",
+          content: "Overview page.",
+          rawContent: "Overview page.",
+        },
+        {
+          title: "Customization",
+          url: "/docs/customization/transports",
+          content: "Transport options.",
+          rawContent: `# Customization
+
+## Stdio transport
+
+Use MCP locally from editor and agent clients.
+`,
+        },
+      ],
+      query: "mcp",
+    });
+
+    expect(results[0]).toMatchObject({
+      type: "heading",
+      url: "/docs/customization/transports#stdio-transport",
+      content: "Customization — Stdio transport",
+    });
+    expect(results[1]).toMatchObject({
+      type: "page",
+      url: "/docs/mcp",
+      content: "MCP",
+    });
+  });
+
+  it("keeps exact page matches after literal inside-page matches from an external provider", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "MCP Server",
+          url: "/docs/customization/mcp",
+          content: "Configure MCP routes for multiple frameworks.",
+          rawContent: `# MCP Server
+
+## Stdio transport
+
+Use the local MCP transport.
+
+## Custom route
+
+Configure a custom MCP route.
+`,
+        },
+      ],
+      query: "mcp",
+      search: createCustomSearchAdapter({
+        name: "external",
+        async search() {
+          return [
+            {
+              id: "external-1",
+              url: "/docs/customization/mcp#stdio-transport",
+              content: "MCP Server — Stdio transport",
+              description: "Use the local MCP transport.",
+              type: "heading",
+              section: "Stdio transport",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results[0]).toMatchObject({
+      type: "heading",
+      url: "/docs/customization/mcp#stdio-transport",
+    });
+    expect(results[1]).toMatchObject({
+      type: "page",
+      url: "/docs/customization/mcp",
+      content: "MCP Server",
+    });
+  });
+
+  it("does not treat repeated page labels as literal inside-page matches", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "AI Native",
+          url: "/docs/getting-started/ai-native",
+          content: "Configure AI-native docs.",
+          rawContent: `# AI Native
+
+## Custom Loading States
+
+Customize the loading UI.
+`,
+        },
+      ],
+      query: "ai-native",
+      search: createCustomSearchAdapter({
+        name: "external",
+        async search() {
+          return [
+            {
+              id: "external-1",
+              url: "/docs/getting-started/ai-native#custom-loading-states",
+              content: "AI Native — Custom Loading States",
+              description: "Customize the loading UI.",
+              type: "heading",
+              section: "Custom Loading States",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results[0]).toMatchObject({
+      type: "page",
+      url: "/docs/getting-started/ai-native",
+      content: "AI Native",
+    });
+    expect(results[1]).toMatchObject({
+      type: "heading",
+      url: "/docs/getting-started/ai-native#custom-loading-states",
+    });
+  });
+
   it("uses a custom adapter when configured", async () => {
     const search = await performDocsSearch({
       pages,
