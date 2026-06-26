@@ -101,6 +101,84 @@ function displayLabelForResult(result: { content: string; section?: string; type
   return result.type === "heading" && parts.length > 1 ? (parts[parts.length - 1] ?? result.content) : result.content;
 }
 
+function normalizeSearchPhrase(value?: string): string {
+  return (value ?? "").toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function literalMatchPriority(searchQuery: string, value?: string): number {
+  const q = normalizeSearchPhrase(searchQuery);
+  const text = normalizeSearchPhrase(value);
+  if (!q || !text) return 0;
+  if (text === q) return 2;
+
+  const boundary = "[^\\p{L}\\p{N}]";
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
+    ? 1
+    : 0;
+}
+
+function tokenizeLiteralQuery(searchQuery: string): string[] {
+  return Array.from(
+    new Set(
+      searchQuery
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+        .split(/\s+/)
+        .map((word) => word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""))
+        .filter((word) => word.length > 1),
+    ),
+  );
+}
+
+function isLiteralLookupQuery(searchQuery: string): boolean {
+  const q = normalizeSearchPhrase(searchQuery);
+  const words = tokenizeLiteralQuery(q);
+  return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+}
+
+function hasDistinctSearchSection(result: {
+  content: string;
+  section?: string;
+  type?: string;
+}): boolean {
+  if (result.type === "page") return false;
+  if (!result.section) return true;
+  const title = (result.content ?? "").split(/\s+[—–]\s+/)[0] ?? "";
+  return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+}
+
+function insideLiteralPriority(
+  result: { content: string; description?: string; section?: string; type?: string },
+  searchQuery: string,
+): number {
+  if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
+  return Math.max(
+    literalMatchPriority(searchQuery, result.section),
+    literalMatchPriority(searchQuery, result.content),
+    literalMatchPriority(searchQuery, result.description),
+  );
+}
+
+function sortResultsForFilter(
+  results: { content: string; url: string; description?: string; section?: string; type?: string; score?: number }[],
+) {
+  const q = query.value.trim();
+  if (!q) return results;
+  return [...results].sort((a, b) => {
+    const literalDelta = insideLiteralPriority(b, q) - insideLiteralPriority(a, q);
+    if (literalDelta) return literalDelta;
+
+    const scoreDelta = (b.score ?? 0) - (a.score ?? 0);
+    if (scoreDelta) return scoreDelta;
+
+    return (a.url ?? "").localeCompare(b.url ?? "");
+  });
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => {
     if (char === "&") return "&amp;";
@@ -132,8 +210,10 @@ function highlightSnippet(text: string): string {
 
 const visibleResults = computed(() => {
   if (filter.value === "pages") return currentResults.value.filter((result) => result.type === "page");
-  if (filter.value === "inside") return currentResults.value.filter((result) => result.type !== "page");
-  return currentResults.value;
+  if (filter.value === "inside") {
+    return sortResultsForFilter(currentResults.value.filter((result) => result.type !== "page"));
+  }
+  return sortResultsForFilter(currentResults.value);
 });
 
 const allItems = computed(() => {

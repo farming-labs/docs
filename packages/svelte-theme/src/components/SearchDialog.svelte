@@ -71,6 +71,75 @@
     return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
   }
 
+  function normalizeSearchPhrase(value) {
+    return (value ?? "").toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function literalMatchPriority(searchQuery, value) {
+    const q = normalizeSearchPhrase(searchQuery);
+    const text = normalizeSearchPhrase(value);
+    if (!q || !text) return 0;
+    if (text === q) return 2;
+
+    const boundary = "[^\\p{L}\\p{N}]";
+    return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
+      ? 1
+      : 0;
+  }
+
+  function tokenizeLiteralQuery(searchQuery) {
+    return Array.from(
+      new Set(
+        searchQuery
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+          .split(/\s+/)
+          .map((word) => word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""))
+          .filter((word) => word.length > 1)
+      )
+    );
+  }
+
+  function isLiteralLookupQuery(searchQuery) {
+    const q = normalizeSearchPhrase(searchQuery);
+    const words = tokenizeLiteralQuery(q);
+    return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+  }
+
+  function hasDistinctSearchSection(result) {
+    if (result.type === "page") return false;
+    if (!result.section) return true;
+    const title = (result.content ?? "").split(/\s+[—–]\s+/)[0] ?? "";
+    return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+  }
+
+  function insideLiteralPriority(result, searchQuery) {
+    if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
+    return Math.max(
+      literalMatchPriority(searchQuery, result.section),
+      literalMatchPriority(searchQuery, result.content),
+      literalMatchPriority(searchQuery, result.description)
+    );
+  }
+
+  function sortResultsForFilter(results) {
+    const q = query.trim();
+    if (!q) return results;
+    return [...results].sort((a, b) => {
+      const literalDelta = insideLiteralPriority(b, q) - insideLiteralPriority(a, q);
+      if (literalDelta) return literalDelta;
+
+      const scoreDelta = (b.score ?? 0) - (a.score ?? 0);
+      if (scoreDelta) return scoreDelta;
+
+      return (a.url ?? "").localeCompare(b.url ?? "");
+    });
+  }
+
   function escapeHtml(value) {
     return (value ?? "").replace(/[&<>"']/g, (char) => {
       if (char === "&") return "&amp;";
@@ -102,8 +171,10 @@
 
   let visibleResults = $derived.by(() => {
     if (filter === "pages") return currentResults.filter((result) => result.type === "page");
-    if (filter === "inside") return currentResults.filter((result) => result.type !== "page");
-    return currentResults;
+    if (filter === "inside") {
+      return sortResultsForFilter(currentResults.filter((result) => result.type !== "page"));
+    }
+    return sortResultsForFilter(currentResults);
   });
 
   let flatItems = $derived.by(() => {

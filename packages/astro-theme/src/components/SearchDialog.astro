@@ -222,6 +222,75 @@ const { config = null } = Astro.props;
     return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
   }
 
+  function normalizeSearchPhrase(value) {
+    return (value || "").toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function literalMatchPriority(searchQuery, value) {
+    var q = normalizeSearchPhrase(searchQuery);
+    var text = normalizeSearchPhrase(value);
+    if (!q || !text) return 0;
+    if (text === q) return 2;
+
+    var boundary = "[^\\p{L}\\p{N}]";
+    return new RegExp("(^|" + boundary + ")" + escapeRegExp(q) + "(?=$|" + boundary + ")", "u").test(text)
+      ? 1
+      : 0;
+  }
+
+  function tokenizeLiteralQuery(searchQuery) {
+    return Array.from(new Set(
+      searchQuery
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+        .split(/\s+/)
+        .map(function (word) { return word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""); })
+        .filter(function (word) { return word.length > 1; })
+    ));
+  }
+
+  function isLiteralLookupQuery(searchQuery) {
+    var q = normalizeSearchPhrase(searchQuery);
+    var words = tokenizeLiteralQuery(q);
+    return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+  }
+
+  function hasDistinctSearchSection(result) {
+    if (result.type === "page") return false;
+    if (!result.section) return true;
+    var title = (result.content || "").split(/\s+[—–]\s+/)[0] || "";
+    return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+  }
+
+  function insideLiteralPriority(result, searchQuery) {
+    if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
+    return Math.max(
+      literalMatchPriority(searchQuery, result.section),
+      literalMatchPriority(searchQuery, result.content),
+      literalMatchPriority(searchQuery, result.description)
+    );
+  }
+
+  function sortResultsForFilter(results) {
+    var input = getInput();
+    var q = input ? input.value.trim() : "";
+    if (!q) return results;
+
+    return results.slice().sort(function (a, b) {
+      var literalDelta = insideLiteralPriority(b, q) - insideLiteralPriority(a, q);
+      if (literalDelta) return literalDelta;
+
+      var scoreDelta = (b.score || 0) - (a.score || 0);
+      if (scoreDelta) return scoreDelta;
+
+      return (a.url || "").localeCompare(b.url || "");
+    });
+  }
+
   function openDialog() {
     var dialog = getDialog();
     if (dialog) {
@@ -317,9 +386,9 @@ const { config = null } = Astro.props;
       return currentResults.filter(function (result) { return result.type === "page"; });
     }
     if (currentFilter === "inside") {
-      return currentResults.filter(function (result) { return result.type !== "page"; });
+      return sortResultsForFilter(currentResults.filter(function (result) { return result.type !== "page"; }));
     }
-    return currentResults;
+    return sortResultsForFilter(currentResults);
   }
 
   function allItems() {

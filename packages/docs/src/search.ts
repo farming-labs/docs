@@ -128,6 +128,28 @@ function normalizeSearchPhrase(value: string): string {
   return normalizeWhitespace(value.toLowerCase().replace(/[?!.,;:]+$/g, ""));
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function literalMatchPriority(query: string, value?: string): number {
+  const q = normalizeSearchPhrase(query);
+  const text = normalizeSearchPhrase(value ?? "");
+  if (!q || !text) return 0;
+  if (text === q) return 2;
+
+  const boundary = "[^\\p{L}\\p{N}]";
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
+    ? 1
+    : 0;
+}
+
+function isLiteralLookupQuery(query: string): boolean {
+  const q = normalizeSearchPhrase(query);
+  const words = tokenizeSearchQuery(q);
+  return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+}
+
 function tokenizeSearchQuery(query: string): string[] {
   return Array.from(
     new Set(
@@ -644,6 +666,18 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
   const sectionTokens = tokenizeSearchQuery(section);
 
   let score = 0;
+  const insideLiteralPriority =
+    document.type !== "page" && hasDistinctSection && isLiteralLookupQuery(q)
+      ? Math.max(
+          literalMatchPriority(q, section),
+          literalMatchPriority(q, description),
+          literalMatchPriority(q, content),
+        )
+      : 0;
+
+  if (insideLiteralPriority > 0) {
+    score += insideLiteralPriority * 2_250;
+  }
 
   if (title === q) score += 1_120;
   else if (title.startsWith(q)) score += 70;

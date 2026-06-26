@@ -81,6 +81,48 @@ function normalizeSearchPhrase(value: string): string {
     .trim();
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function literalMatchPriority(query: string, value?: string): number {
+  const q = normalizeSearchPhrase(query);
+  const text = normalizeSearchPhrase(value ?? "");
+  if (!q || !text) return 0;
+  if (text === q) return 2;
+
+  const boundary = "[^\\p{L}\\p{N}]";
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
+    ? 1
+    : 0;
+}
+
+function tokenizeLiteralQuery(query: string): string[] {
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+        .split(/\s+/)
+        .map((word) => word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""))
+        .filter((word) => word.length > 1),
+    ),
+  );
+}
+
+function isLiteralLookupQuery(query: string): boolean {
+  const q = normalizeSearchPhrase(query);
+  const words = tokenizeLiteralQuery(q);
+  return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+}
+
+function hasDistinctSearchSection(result: SearchResult, label: string): boolean {
+  if (result.type === "page") return false;
+  if (!result.section) return true;
+  const title = label.split(/\s+[—–]\s+/)[0] ?? "";
+  return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+}
+
 function getUrlSearchSegments(url: string): string[] {
   try {
     const parsed = new URL(url, "https://docs.local");
@@ -305,6 +347,7 @@ interface ResultItem {
   type: SearchResult["type"];
   score: number;
   exactPriority: number;
+  insideLiteralPriority: number;
   sourceIndex: number;
   indices: number[];
   descriptionIndices: number[];
@@ -453,6 +496,14 @@ export function DocsCommandSearch({
             type: r.type,
             score,
             exactPriority: exactMatchPriority(debouncedQuery, sourceLabel, r.url),
+            insideLiteralPriority:
+              hasDistinctSearchSection(r, sourceLabel) && isLiteralLookupQuery(debouncedQuery)
+                ? Math.max(
+                    literalMatchPriority(debouncedQuery, sourceLabel),
+                    literalMatchPriority(debouncedQuery, label),
+                    literalMatchPriority(debouncedQuery, description),
+                  )
+                : 0,
             sourceIndex,
             indices,
             descriptionIndices: descriptionMatch.indices,
@@ -460,9 +511,10 @@ export function DocsCommandSearch({
         });
         items.sort(
           (a, b) =>
+            b.insideLiteralPriority - a.insideLiteralPriority ||
             b.exactPriority - a.exactPriority ||
-            a.sourceIndex - b.sourceIndex ||
             b.score - a.score ||
+            a.sourceIndex - b.sourceIndex ||
             a.label.localeCompare(b.label),
         );
         if (!cancelled) {
@@ -608,6 +660,7 @@ export function DocsCommandSearch({
       type: "page",
       score: 0,
       exactPriority: 0,
+      insideLiteralPriority: 0,
       sourceIndex: 0,
       indices: [],
       descriptionIndices: [],
