@@ -521,6 +521,38 @@ function buildExactPageSearchResults(
   return results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.url.localeCompare(b.url));
 }
 
+function hasDistinctResultSection(result: DocsSearchResult): boolean {
+  if (result.type === "page") return false;
+  const section = normalizeSearchPhrase(stripHtml(result.section ?? ""));
+  if (!section) return true;
+
+  const label = normalizeSearchPhrase(stripHtml(result.content));
+  const title = label.split(/\s+[—–]\s+/)[0] ?? "";
+  return section !== normalizeSearchPhrase(title);
+}
+
+function insideLiteralResultPriority(query: string, result: DocsSearchResult): number {
+  if (!hasDistinctResultSection(result) || !isLiteralLookupQuery(query)) return 0;
+
+  return Math.max(
+    literalMatchPriority(query, stripHtml(result.section ?? "")),
+    literalMatchPriority(query, stripHtml(result.description ?? "")),
+  );
+}
+
+function prioritizeLiteralInsideResults(
+  query: string,
+  results: DocsSearchResult[],
+): DocsSearchResult[] {
+  if (!isLiteralLookupQuery(query)) return results;
+
+  return [...results].sort((a, b) => {
+    const literalDelta = insideLiteralResultPriority(query, b) - insideLiteralResultPriority(query, a);
+    if (literalDelta) return literalDelta;
+    return 0;
+  });
+}
+
 function shouldSupplementAskAIWithSimpleSearch(search: ResolvedDocsSearchConfig): boolean {
   return search.enabled && search.provider !== "simple";
 }
@@ -1565,8 +1597,10 @@ export async function performDocsSearch(options: {
     const results = await adapter.search(query, context);
     if (search.provider === "simple") return results;
 
-    return mergeSearchResults(buildExactPageSearchResults(options.query, options.pages), results)
-      .slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
+    return prioritizeLiteralInsideResults(
+      options.query,
+      mergeSearchResults(buildExactPageSearchResults(options.query, options.pages), results),
+    ).slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
   } catch {
     return createSimpleSearchAdapter().search(query, context);
   }

@@ -235,7 +235,7 @@ Use MCP locally from editor and agent clients.
     });
   });
 
-  it("promotes exact page matches when an external provider only returns sections", async () => {
+  it("keeps exact page matches after literal inside-page matches from an external provider", async () => {
     const results = await performDocsSearch({
       pages: [
         {
@@ -273,13 +273,57 @@ Configure a custom MCP route.
     });
 
     expect(results[0]).toMatchObject({
+      type: "heading",
+      url: "/docs/customization/mcp#stdio-transport",
+    });
+    expect(results[1]).toMatchObject({
       type: "page",
       url: "/docs/customization/mcp",
       content: "MCP Server",
     });
+  });
+
+  it("does not treat repeated page labels as literal inside-page matches", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "AI Native",
+          url: "/docs/getting-started/ai-native",
+          content: "Configure AI-native docs.",
+          rawContent: `# AI Native
+
+## Custom Loading States
+
+Customize the loading UI.
+`,
+        },
+      ],
+      query: "ai-native",
+      search: createCustomSearchAdapter({
+        name: "external",
+        async search() {
+          return [
+            {
+              id: "external-1",
+              url: "/docs/getting-started/ai-native#custom-loading-states",
+              content: "AI Native — Custom Loading States",
+              description: "Customize the loading UI.",
+              type: "heading",
+              section: "Custom Loading States",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results[0]).toMatchObject({
+      type: "page",
+      url: "/docs/getting-started/ai-native",
+      content: "AI Native",
+    });
     expect(results[1]).toMatchObject({
       type: "heading",
-      url: "/docs/customization/mcp#stdio-transport",
+      url: "/docs/getting-started/ai-native#custom-loading-states",
     });
   });
 

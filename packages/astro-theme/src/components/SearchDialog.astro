@@ -270,7 +270,6 @@ const { config = null } = Astro.props;
     if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
     return Math.max(
       literalMatchPriority(searchQuery, result.section),
-      literalMatchPriority(searchQuery, result.content),
       literalMatchPriority(searchQuery, result.description)
     );
   }
@@ -280,14 +279,21 @@ const { config = null } = Astro.props;
     var q = input ? input.value.trim() : "";
     if (!q) return results;
 
-    return results.slice().sort(function (a, b) {
-      var literalDelta = insideLiteralPriority(b, q) - insideLiteralPriority(a, q);
+    return results.map(function (result, index) {
+      return { result: result, index: index };
+    }).sort(function (a, b) {
+      var aLiteralPriority = insideLiteralPriority(a.result, q);
+      var bLiteralPriority = insideLiteralPriority(b.result, q);
+      var literalDelta = bLiteralPriority - aLiteralPriority;
       if (literalDelta) return literalDelta;
+      if (aLiteralPriority > 0 && bLiteralPriority > 0) return a.index - b.index;
 
-      var scoreDelta = (b.score || 0) - (a.score || 0);
+      var scoreDelta = (b.result.score || 0) - (a.result.score || 0);
       if (scoreDelta) return scoreDelta;
 
-      return (a.url || "").localeCompare(b.url || "");
+      return a.index - b.index;
+    }).map(function (item) {
+      return item.result;
     });
   }
 

@@ -499,8 +499,7 @@ export function DocsCommandSearch({
             insideLiteralPriority:
               hasDistinctSearchSection(r, sourceLabel) && isLiteralLookupQuery(debouncedQuery)
                 ? Math.max(
-                    literalMatchPriority(debouncedQuery, sourceLabel),
-                    literalMatchPriority(debouncedQuery, label),
+                    literalMatchPriority(debouncedQuery, r.section),
                     literalMatchPriority(debouncedQuery, description),
                   )
                 : 0,
@@ -509,14 +508,20 @@ export function DocsCommandSearch({
             descriptionIndices: descriptionMatch.indices,
           };
         });
-        items.sort(
-          (a, b) =>
-            b.insideLiteralPriority - a.insideLiteralPriority ||
+        items.sort((a, b) => {
+          const literalDelta = b.insideLiteralPriority - a.insideLiteralPriority;
+          if (literalDelta) return literalDelta;
+          if (a.insideLiteralPriority > 0 && b.insideLiteralPriority > 0) {
+            return a.sourceIndex - b.sourceIndex;
+          }
+
+          return (
             b.exactPriority - a.exactPriority ||
             b.score - a.score ||
             a.sourceIndex - b.sourceIndex ||
-            a.label.localeCompare(b.label),
-        );
+            a.label.localeCompare(b.label)
+          );
+        });
         if (!cancelled) {
           if (searchCacheRef.current.size >= 20) {
             const firstKey = searchCacheRef.current.keys().next().value;

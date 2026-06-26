@@ -121,7 +121,6 @@
     if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
     return Math.max(
       literalMatchPriority(searchQuery, result.section),
-      literalMatchPriority(searchQuery, result.content),
       literalMatchPriority(searchQuery, result.description)
     );
   }
@@ -129,15 +128,21 @@
   function sortResultsForFilter(results) {
     const q = query.trim();
     if (!q) return results;
-    return [...results].sort((a, b) => {
-      const literalDelta = insideLiteralPriority(b, q) - insideLiteralPriority(a, q);
-      if (literalDelta) return literalDelta;
+    return results
+      .map((result, index) => ({ result, index }))
+      .sort((a, b) => {
+        const aLiteralPriority = insideLiteralPriority(a.result, q);
+        const bLiteralPriority = insideLiteralPriority(b.result, q);
+        const literalDelta = bLiteralPriority - aLiteralPriority;
+        if (literalDelta) return literalDelta;
+        if (aLiteralPriority > 0 && bLiteralPriority > 0) return a.index - b.index;
 
-      const scoreDelta = (b.score ?? 0) - (a.score ?? 0);
-      if (scoreDelta) return scoreDelta;
+        const scoreDelta = (b.result.score ?? 0) - (a.result.score ?? 0);
+        if (scoreDelta) return scoreDelta;
 
-      return (a.url ?? "").localeCompare(b.url ?? "");
-    });
+        return a.index - b.index;
+      })
+      .map(({ result }) => result);
   }
 
   function escapeHtml(value) {
