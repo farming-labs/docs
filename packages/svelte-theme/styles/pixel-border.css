@@ -865,11 +865,6 @@ body:has(#nd-docs-layout),
   border-radius: 0 !important;
 }
 
-#nd-docs-layout .omni-item-description-code,
-#nd-docs-layout .omni-item-description-code .omni-highlight {
-  border-radius: 0 !important;
-}
-
 #nd-docs-layout .omni-highlight {
   background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent) !important;
   border-radius: 0 !important;
