@@ -63,9 +63,10 @@
 }
 
 .omni-content {
+  --omni-content-top: clamp(5rem, 16vh, 7rem);
   position: fixed;
   z-index: 51;
-  top: clamp(1.5rem, 10vh, 6rem);
+  top: var(--omni-content-top);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -86,7 +87,8 @@
 
 @media (max-width: 639px) {
   .omni-content {
-    top: 1rem;
+    --omni-content-top: 1rem;
+    top: var(--omni-content-top);
     width: calc(100% - 1rem);
     max-height: calc(100vh - 2rem);
   }
@@ -167,7 +169,7 @@
 .omni-body {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: min(540px, calc(100vh - 10.5rem));
+  max-height: min(540px, calc(100vh - var(--omni-content-top, 7rem) - 8rem));
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0.5rem;
