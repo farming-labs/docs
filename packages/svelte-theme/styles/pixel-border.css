@@ -844,7 +844,7 @@ body:has(#nd-docs-layout),
 }
 
 #nd-docs-layout .omni-search-input {
-  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif) !important;
 }
 
 #nd-docs-layout .omni-group-label {

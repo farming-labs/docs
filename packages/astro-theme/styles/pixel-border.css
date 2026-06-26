@@ -863,10 +863,13 @@ code:not(pre code) {
   border: 1px solid var(--color-fd-border, hsl(0 0% 15%)) !important;
 }
 
-.omni-search-input,
 .omni-group-label,
 .omni-footer-inner {
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+.omni-search-input {
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif) !important;
 }
 
 .omni-group-label {

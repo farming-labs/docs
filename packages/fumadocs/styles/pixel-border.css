@@ -965,7 +965,7 @@ hr {
 }
 
 .omni-search-input {
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif);
 }
 
 .omni-group-label {

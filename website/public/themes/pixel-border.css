@@ -876,7 +876,7 @@ body .fd-prompt-menu-item:hover {
   border-radius: 0 !important;
 }
 .omni-search-input {
-  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif) !important;
 }
 .omni-group-label {
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
