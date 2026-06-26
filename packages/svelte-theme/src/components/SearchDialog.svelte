@@ -11,6 +11,7 @@
   const STORAGE_KEY = "fd:omni:recents";
   const MAX_RECENTS = 8;
   const DEBOUNCE_MS = 120;
+  const BREADCRUMB_SEPARATOR = "\u00a0\u00a0>\u00a0\u00a0";
   const FILTER_LABELS = {
     all: "All",
     pages: "Pages",
@@ -57,7 +58,7 @@
             .replace(/[-_]+/g, " ")
             .replace(/\b\w/g, (char) => char.toUpperCase())
         );
-      return parts.length ? parts.join(" > ") : "Docs";
+      return parts.length ? parts.join(BREADCRUMB_SEPARATOR) : "Docs";
     } catch {
       return "Docs";
     }

@@ -140,6 +140,7 @@ const { config = null } = Astro.props;
   var STORAGE_KEY = "fd:omni:recents";
   var MAX_RECENTS = 8;
   var DEBOUNCE_MS = 150;
+  var BREADCRUMB_SEPARATOR = "\u00a0\u00a0>\u00a0\u00a0";
   var FILTER_LABELS = {
     all: "All",
     pages: "Pages",
@@ -208,7 +209,7 @@ const { config = null } = Astro.props;
           .replace(/[-_]+/g, " ")
           .replace(/\b\w/g, function (char) { return char.toUpperCase(); });
       });
-      return parts.length ? parts.join(" > ") : "Docs";
+      return parts.length ? parts.join(BREADCRUMB_SEPARATOR) : "Docs";
     } catch (e) {
       return "Docs";
     }

@@ -22,6 +22,7 @@ interface SearchResult {
 
 type RecentEntry = { id: string; label: string; url: string };
 type SearchFilter = "all" | "pages" | "inside";
+const BREADCRUMB_SEPARATOR = "\u00a0\u00a0>\u00a0\u00a0";
 
 const FILTER_LABELS: Record<SearchFilter, string> = {
   all: "All",
@@ -66,7 +67,7 @@ function breadcrumbForUrl(url: string): string {
           .replace(/[-_]+/g, " ")
           .replace(/\b\w/g, (char) => char.toUpperCase()),
       );
-    return parts.length > 0 ? parts.join(" > ") : "Docs";
+    return parts.length > 0 ? parts.join(BREADCRUMB_SEPARATOR) : "Docs";
   } catch {
     return "Docs";
   }

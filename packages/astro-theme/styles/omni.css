@@ -65,7 +65,7 @@
 .omni-content {
   position: fixed;
   z-index: 51;
-  top: clamp(1rem, 8vh, 8rem);
+  top: clamp(1.5rem, 10vh, 6rem);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
