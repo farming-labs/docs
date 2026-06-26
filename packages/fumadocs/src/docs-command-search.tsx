@@ -21,6 +21,13 @@ interface SearchResult {
 }
 
 type RecentEntry = { id: string; label: string; url: string };
+type SearchFilter = "all" | "pages" | "inside";
+
+const FILTER_LABELS: Record<SearchFilter, string> = {
+  all: "All",
+  pages: "Pages",
+  inside: "Inside pages",
+};
 
 function stripHtml(html: string): string {
   if (typeof document !== "undefined") {
@@ -293,6 +300,7 @@ interface ResultItem {
   subtitle: string;
   description?: string;
   url: string;
+  type: SearchResult["type"];
   score: number;
   exactPriority: number;
   sourceIndex: number;
@@ -321,6 +329,8 @@ export function DocsCommandSearch({
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState<RecentEntry[]>([]);
+  const [filter, setFilter] = useState<SearchFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
@@ -328,6 +338,7 @@ export function DocsCommandSearch({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const searchCacheRef = useRef(new Map<string, ResultItem[]>());
 
   const setOpenWithAnalytics = useCallback(
     (nextOpen: boolean, trigger: string) => {
@@ -400,6 +411,15 @@ export function DocsCommandSearch({
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
+    const cacheKey = `${activeLocale ?? ""}:${searchApi}:${debouncedQuery}`;
+    const cached = searchCacheRef.current.get(cacheKey);
+    if (cached) {
+      setResults(cached);
+      setActiveIndex(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     (async () => {
@@ -407,7 +427,7 @@ export function DocsCommandSearch({
       try {
         const requestUrl = new URL(searchApi, window.location.origin);
         requestUrl.searchParams.set("query", debouncedQuery);
-        const res = await fetch(requestUrl.toString());
+        const res = await fetch(requestUrl.toString(), { signal: controller.signal });
         if (!res.ok || cancelled) return;
         const data: SearchResult[] = await res.json();
         const items: ResultItem[] = data.map((r, sourceIndex) => {
@@ -424,6 +444,7 @@ export function DocsCommandSearch({
             subtitle: breadcrumbForUrl(r.url),
             description,
             url,
+            type: r.type,
             score,
             exactPriority: exactMatchPriority(debouncedQuery, sourceLabel, r.url),
             sourceIndex,
@@ -438,6 +459,11 @@ export function DocsCommandSearch({
             a.label.localeCompare(b.label),
         );
         if (!cancelled) {
+          if (searchCacheRef.current.size >= 20) {
+            const firstKey = searchCacheRef.current.keys().next().value;
+            if (firstKey) searchCacheRef.current.delete(firstKey);
+          }
+          searchCacheRef.current.set(cacheKey, items);
           setResults(items);
           setActiveIndex(0);
           if (analytics) {
@@ -454,6 +480,7 @@ export function DocsCommandSearch({
           }
         }
       } catch {
+        if (controller.signal.aborted) return;
         if (!cancelled && analytics) {
           emitClientAnalyticsEvent({
             type: "search_error",
@@ -471,6 +498,7 @@ export function DocsCommandSearch({
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [activeLocale, analytics, debouncedQuery, searchApi]);
 
@@ -480,6 +508,8 @@ export function DocsCommandSearch({
     } else {
       setQuery("");
       setResults([]);
+      setFilter("all");
+      setFilterOpen(false);
       setActiveIndex(0);
     }
   }, [open]);
@@ -555,9 +585,11 @@ export function DocsCommandSearch({
   );
 
   const displayItems = useMemo(() => {
-    if (results.length > 0) return results;
-    return [];
-  }, [results]);
+    if (results.length === 0) return [];
+    if (filter === "pages") return results.filter((item) => item.type === "page");
+    if (filter === "inside") return results.filter((item) => item.type !== "page");
+    return results;
+  }, [filter, results]);
 
   const recentItems = useMemo((): ResultItem[] => {
     if (query.trim() || results.length > 0) return [];
@@ -566,12 +598,23 @@ export function DocsCommandSearch({
       label: r.label,
       subtitle: "Recently viewed",
       url: r.url,
+      type: "page",
       score: 0,
       exactPriority: 0,
       sourceIndex: 0,
       indices: [],
     }));
   }, [query, results, recents]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [filter, debouncedQuery]);
+
+  function updateFilter(nextFilter: SearchFilter) {
+    setFilter(nextFilter);
+    setFilterOpen(false);
+    setActiveIndex(0);
+  }
 
   function moveActive(delta: number) {
     const total = displayItems.length + recentItems.length;
@@ -706,7 +749,9 @@ export function DocsCommandSearch({
               <div className="omni-empty-icon">
                 <HistoryIcon />
               </div>
-              {debouncedQuery
+              {debouncedQuery && results.length > 0
+                ? `No ${FILTER_LABELS[filter].toLowerCase()} results found.`
+                : debouncedQuery
                 ? "No results found. Try a different query."
                 : "Type to search the docs, or browse recent items."}
             </div>
@@ -729,10 +774,35 @@ export function DocsCommandSearch({
             </div>
             <div className="omni-footer-filter">
               <span className="omni-filter-label">Filter</span>
-              <span className="omni-filter-value">
-                All
+              <button
+                type="button"
+                className="omni-filter-button"
+                aria-haspopup="menu"
+                aria-expanded={filterOpen}
+                onClick={() => setFilterOpen((value) => !value)}
+              >
+                {FILTER_LABELS[filter]}
                 <ArrowDownIcon />
-              </span>
+              </button>
+              {filterOpen && (
+                <div className="omni-filter-menu" role="menu" aria-label="Search filter">
+                  {(["all", "pages", "inside"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={filter === mode}
+                      className={cn(
+                        "omni-filter-option",
+                        filter === mode && "omni-filter-option-active",
+                      )}
+                      onClick={() => updateFilter(mode)}
+                    >
+                      {FILTER_LABELS[mode]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

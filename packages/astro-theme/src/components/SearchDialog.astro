@@ -82,12 +82,53 @@ const { config = null } = Astro.props;
         </div>
         <div class="omni-footer-filter">
           <span class="omni-filter-label">Filter</span>
-          <span class="omni-filter-value">
-            All
+          <button
+            type="button"
+            class="omni-filter-button"
+            id="fd-omni-filter-button"
+            aria-haspopup="menu"
+            aria-expanded="false"
+          >
+            <span id="fd-omni-filter-value">All</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M6 9l6 6 6-6" />
             </svg>
-          </span>
+          </button>
+          <div
+            class="omni-filter-menu"
+            id="fd-omni-filter-menu"
+            role="menu"
+            aria-label="Search filter"
+            style="display: none;"
+          >
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked="true"
+              class="omni-filter-option omni-filter-option-active"
+              data-filter="all"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked="false"
+              class="omni-filter-option"
+              data-filter="pages"
+            >
+              Pages
+            </button>
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked="false"
+              class="omni-filter-option"
+              data-filter="inside"
+            >
+              Inside pages
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -99,6 +140,11 @@ const { config = null } = Astro.props;
   var STORAGE_KEY = "fd:omni:recents";
   var MAX_RECENTS = 8;
   var DEBOUNCE_MS = 150;
+  var FILTER_LABELS = {
+    all: "All",
+    pages: "Pages",
+    inside: "Inside pages"
+  };
 
   function getDialog() { return document.getElementById("fd-search-dialog"); }
   function getOverlay() { return document.getElementById("fd-omni-overlay"); }
@@ -112,6 +158,9 @@ const { config = null } = Astro.props;
   function getDocsItems() { return document.getElementById("fd-omni-docs-items"); }
   function getEmpty() { return document.getElementById("fd-omni-empty"); }
   function getEmptyText() { return document.getElementById("fd-omni-empty-text"); }
+  function getFilterButton() { return document.getElementById("fd-omni-filter-button"); }
+  function getFilterValue() { return document.getElementById("fd-omni-filter-value"); }
+  function getFilterMenu() { return document.getElementById("fd-omni-filter-menu"); }
 
   function getRecents() {
     try {
@@ -177,6 +226,9 @@ const { config = null } = Astro.props;
     if (dialog) {
       dialog.style.display = "block";
       document.body.style.overflow = "hidden";
+      currentFilter = "all";
+      setFilterMenuOpen(false);
+      renderFilter();
       bindListboxDelegation();
       ensureListboxClickBound();
       setTimeout(function () {
@@ -192,6 +244,7 @@ const { config = null } = Astro.props;
     if (dialog) {
       dialog.style.display = "none";
       document.body.style.overflow = "";
+      setFilterMenuOpen(false);
     }
   }
 
@@ -224,11 +277,53 @@ const { config = null } = Astro.props;
   var currentResults = [];
   var recentsList = [];
   var activeIndex = 0;
+  var currentFilter = "all";
+  var abortController = null;
+  var searchCache = new Map();
+
+  function visibleResults() {
+    if (currentFilter === "pages") {
+      return currentResults.filter(function (result) { return result.type === "page"; });
+    }
+    if (currentFilter === "inside") {
+      return currentResults.filter(function (result) { return result.type !== "page"; });
+    }
+    return currentResults;
+  }
 
   function allItems() {
     var q = (getInput() && getInput().value || "").trim();
-    if (q && currentResults.length) return currentResults;
+    var results = visibleResults();
+    if (q && results.length) return results;
     return recentsList;
+  }
+
+  function setFilterMenuOpen(open) {
+    var menu = getFilterMenu();
+    var button = getFilterButton();
+    if (menu) menu.style.display = open ? "block" : "none";
+    if (button) button.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function renderFilter() {
+    var value = getFilterValue();
+    var menu = getFilterMenu();
+    if (value) value.textContent = FILTER_LABELS[currentFilter] || "All";
+    if (!menu) return;
+    Array.prototype.forEach.call(menu.querySelectorAll("[data-filter]"), function (option) {
+      var active = option.getAttribute("data-filter") === currentFilter;
+      option.setAttribute("aria-checked", active ? "true" : "false");
+      option.classList.toggle("omni-filter-option-active", active);
+    });
+  }
+
+  function updateFilter(nextFilter) {
+    if (!FILTER_LABELS[nextFilter]) return;
+    currentFilter = nextFilter;
+    activeIndex = 0;
+    setFilterMenuOpen(false);
+    renderFilter();
+    render();
   }
 
   function render() {
@@ -241,9 +336,12 @@ const { config = null } = Astro.props;
     var docsItemsEl = getDocsItems();
     var emptyEl = getEmpty();
     var emptyText = getEmptyText();
+    var isLoading = !!loadingEl && loadingEl.style.display !== "none";
+    var results = visibleResults();
 
     recentsList = !q ? getRecents() : [];
     if (loadingEl && !q) loadingEl.style.display = "none";
+    renderFilter();
 
     if (!q) {
       currentResults = [];
@@ -263,9 +361,9 @@ const { config = null } = Astro.props;
       if (emptyText) emptyText.textContent = "Type to search the docs, or browse recent items.";
     } else {
       if (recentGroup) recentGroup.style.display = "none";
-      if (docsGroup) docsGroup.style.display = currentResults.length ? "block" : "none";
+      if (docsGroup) docsGroup.style.display = results.length ? "block" : "none";
       if (docsItemsEl) {
-        docsItemsEl.innerHTML = currentResults.map(function (r, i) {
+        docsItemsEl.innerHTML = results.map(function (r, i) {
           return renderItem(
             { id: r.url, label: displayLabelForResult(r), url: r.url, subtitle: breadcrumbForUrl(r.url), description: r.description || "" },
             i === activeIndex,
@@ -273,8 +371,12 @@ const { config = null } = Astro.props;
           );
         }).join("");
       }
-      if (emptyEl) emptyEl.style.display = (currentResults.length === 0 && !loadingEl.style.display) ? "none" : (currentResults.length === 0 ? "block" : "none");
-      if (emptyText) emptyText.textContent = "No results found. Try a different query.";
+      if (emptyEl) emptyEl.style.display = (results.length === 0 && !isLoading) ? "block" : "none";
+      if (emptyText) {
+        emptyText.textContent = currentResults.length > 0
+          ? "No " + (FILTER_LABELS[currentFilter] || "all").toLowerCase() + " results found."
+          : "No results found. Try a different query.";
+      }
     }
 
     scrollActiveIntoView();
@@ -403,8 +505,10 @@ const { config = null } = Astro.props;
     var input = getInput();
     var q = (input && input.value || "").trim();
     if (getLoading()) getLoading().style.display = "none";
+    if (abortController) abortController.abort();
     currentResults = [];
     activeIndex = 0;
+    setFilterMenuOpen(false);
     if (getDocsGroup()) getDocsGroup().style.display = "none";
     if (getDocsItems()) getDocsItems().innerHTML = "";
     if (getRecentGroup()) getRecentGroup().style.display = !q && getRecents().length ? "block" : "none";
@@ -414,19 +518,38 @@ const { config = null } = Astro.props;
 
     clearTimeout(debounceTimer);
     if (!q) return;
+    var requestUrl = withLang("/api/docs?query=" + encodeURIComponent(q));
+    if (searchCache.has(requestUrl)) {
+      currentResults = searchCache.get(requestUrl) || [];
+      activeIndex = 0;
+      render();
+      return;
+    }
     debounceTimer = setTimeout(function () {
+      var controller = new AbortController();
+      abortController = controller;
       if (getLoading()) getLoading().style.display = "flex";
-      fetch(withLang("/api/docs?query=" + encodeURIComponent(q)))
+      fetch(requestUrl, { signal: controller.signal })
         .then(function (res) { return res.ok ? res.json() : []; })
         .then(function (data) {
+          if (controller.signal.aborted) return;
           currentResults = Array.isArray(data) ? data : [];
+          if (searchCache.size >= 20) {
+            var firstKey = searchCache.keys().next().value;
+            if (firstKey) searchCache.delete(firstKey);
+          }
+          searchCache.set(requestUrl, currentResults);
           activeIndex = 0;
           if (getLoading()) getLoading().style.display = "none";
           render();
         })
         .catch(function () {
+          if (controller.signal.aborted) return;
           if (getLoading()) getLoading().style.display = "none";
           render();
+        })
+        .finally(function () {
+          if (abortController === controller) abortController = null;
         });
     }, DEBOUNCE_MS);
   }
@@ -437,6 +560,8 @@ const { config = null } = Astro.props;
     var content = getContent();
     var input = getInput();
     var closeBtn = document.getElementById("fd-omni-close");
+    var filterButton = getFilterButton();
+    var filterMenu = getFilterMenu();
 
     if (!dialog || !input) return;
 
@@ -451,9 +576,40 @@ const { config = null } = Astro.props;
       else if (e.key === "Enter") { e.preventDefault(); executeActive(); }
     });
 
+    if (filterButton && !filterButton.hasAttribute("data-fd-bound")) {
+      filterButton.setAttribute("data-fd-bound", "true");
+      filterButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var menu = getFilterMenu();
+        var isOpen = !!menu && menu.style.display !== "none";
+        setFilterMenuOpen(!isOpen);
+      });
+    }
+
+    if (filterMenu && !filterMenu.hasAttribute("data-fd-bound")) {
+      filterMenu.setAttribute("data-fd-bound", "true");
+      filterMenu.addEventListener("click", function (e) {
+        var option = e.target.closest && e.target.closest("[data-filter]");
+        if (!option) return;
+        e.preventDefault();
+        e.stopPropagation();
+        updateFilter(option.getAttribute("data-filter"));
+      });
+    }
+
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeDialog();
     });
+
+    if (!document.body.hasAttribute("data-fd-omni-filter-close")) {
+      document.body.setAttribute("data-fd-omni-filter-close", "true");
+      document.addEventListener("click", function (e) {
+        var target = e.target;
+        if (target && target.closest && target.closest(".omni-footer-filter")) return;
+        setFilterMenuOpen(false);
+      });
+    }
 
     if (!document.body.hasAttribute("data-fd-cmdk-registered")) {
       document.body.setAttribute("data-fd-cmdk-registered", "true");

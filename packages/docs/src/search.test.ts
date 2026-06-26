@@ -199,6 +199,54 @@ API reference for React search.
     });
   });
 
+  it("promotes exact page matches when an external provider only returns sections", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "MCP Server",
+          url: "/docs/customization/mcp",
+          content: "Configure MCP routes for multiple frameworks.",
+          rawContent: `# MCP Server
+
+## Stdio transport
+
+Use the local MCP transport.
+
+## Custom route
+
+Configure a custom MCP route.
+`,
+        },
+      ],
+      query: "mcp",
+      search: createCustomSearchAdapter({
+        name: "external",
+        async search() {
+          return [
+            {
+              id: "external-1",
+              url: "/docs/customization/mcp#stdio-transport",
+              content: "MCP Server — Stdio transport",
+              description: "Use the local MCP transport.",
+              type: "heading",
+              section: "Stdio transport",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results[0]).toMatchObject({
+      type: "page",
+      url: "/docs/customization/mcp",
+      content: "MCP Server",
+    });
+    expect(results[1]).toMatchObject({
+      type: "heading",
+      url: "/docs/customization/mcp#stdio-transport",
+    });
+  });
+
   it("uses a custom adapter when configured", async () => {
     const search = await performDocsSearch({
       pages,

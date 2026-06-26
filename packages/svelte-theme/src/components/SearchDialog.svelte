@@ -11,6 +11,12 @@
   const STORAGE_KEY = "fd:omni:recents";
   const MAX_RECENTS = 8;
   const DEBOUNCE_MS = 120;
+  const FILTER_LABELS = {
+    all: "All",
+    pages: "Pages",
+    inside: "Inside pages",
+  };
+  const FILTER_OPTIONS = ["all", "pages", "inside"];
 
   let { onclose } = $props();
 
@@ -19,9 +25,13 @@
   let loading = $state(false);
   let activeId = $state(null);
   let recentsList = $state([]);
+  let filter = $state("all");
+  let filterOpen = $state(false);
   let inputEl = $state(null);
   let listRef = $state(null);
   let debounceTimer = null;
+  let abortController = null;
+  const searchCache = new Map();
 
   function withLang(url) {
     if (!url || url.startsWith("#")) return url;
@@ -60,10 +70,16 @@
     return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
   }
 
+  let visibleResults = $derived.by(() => {
+    if (filter === "pages") return currentResults.filter((result) => result.type === "page");
+    if (filter === "inside") return currentResults.filter((result) => result.type !== "page");
+    return currentResults;
+  });
+
   let flatItems = $derived.by(() => {
     const q = query.trim();
-    if (q && currentResults.length) {
-      return currentResults.map((r) => ({
+    if (q && visibleResults.length) {
+      return visibleResults.map((r) => ({
         id: r.url,
         label: displayLabelForResult(r),
         url: r.url,
@@ -80,13 +96,15 @@
   });
 
   let showRecents = $derived(!query.trim());
-  let showDocs = $derived(!!query.trim() && currentResults.length > 0);
+  let showDocs = $derived(!!query.trim() && visibleResults.length > 0);
   let showEmpty = $derived(
-    query.trim() ? currentResults.length === 0 && !loading : recentsList.length === 0
+    query.trim() ? visibleResults.length === 0 && !loading : recentsList.length === 0
   );
   let emptyText = $derived(
     query.trim()
-      ? "No results found. Try a different query."
+      ? currentResults.length > 0
+        ? `No ${FILTER_LABELS[filter].toLowerCase()} results found.`
+        : "No results found. Try a different query."
       : "Type to search the docs, or browse recent items."
   );
 
@@ -116,6 +134,12 @@
   function close() {
     if (typeof document !== "undefined") document.body.style.overflow = "";
     onclose?.();
+  }
+
+  function updateFilter(nextFilter) {
+    filter = nextFilter;
+    filterOpen = false;
+    activeId = flatItems[0]?.id ?? null;
   }
 
   function executeItem(item) {
@@ -157,19 +181,41 @@
     currentResults = [];
     activeId = null;
     const q = query.trim();
+    filterOpen = false;
+    if (abortController) abortController.abort();
     if (!q) return;
     if (debounceTimer) clearTimeout(debounceTimer);
+    const requestUrl = withLang(`/api/docs?query=${encodeURIComponent(q)}`);
+    const cached = searchCache.get(requestUrl);
+    if (cached) {
+      currentResults = cached;
+      activeId = cached[0]?.url ?? null;
+      return;
+    }
     debounceTimer = setTimeout(async () => {
+      const controller = new AbortController();
+      abortController = controller;
       loading = true;
       try {
-        const res = await fetch(withLang(`/api/docs?query=${encodeURIComponent(q)}`));
+        const res = await fetch(requestUrl, { signal: controller.signal });
         const data = res.ok ? await res.json() : [];
-        currentResults = Array.isArray(data) ? data : [];
+        if (controller.signal.aborted) return;
+        const nextResults = Array.isArray(data) ? data : [];
+        if (searchCache.size >= 20) {
+          const firstKey = searchCache.keys().next().value;
+          if (firstKey) searchCache.delete(firstKey);
+        }
+        searchCache.set(requestUrl, nextResults);
+        currentResults = nextResults;
         activeId = currentResults[0]?.url ?? null;
-      } catch {
+      } catch (error) {
+        if (controller.signal.aborted) return;
         currentResults = [];
       } finally {
-        loading = false;
+        if (abortController === controller) {
+          abortController = null;
+          loading = false;
+        }
       }
     }, DEBOUNCE_MS);
   }
@@ -177,6 +223,11 @@
   $effect(() => {
     void query;
     onInput();
+  });
+
+  $effect(() => {
+    void filter;
+    activeId = flatItems[0]?.id ?? null;
   });
 
   function handleKeydown(e) {
@@ -220,6 +271,7 @@
   onDestroy(() => {
     if (typeof document !== "undefined") document.body.style.overflow = "";
     if (debounceTimer) clearTimeout(debounceTimer);
+    if (abortController) abortController.abort();
   });
 </script>
 
@@ -375,12 +427,34 @@
         </div>
         <div class="omni-footer-filter">
           <span class="omni-filter-label">Filter</span>
-          <span class="omni-filter-value">
-            All
+          <button
+            type="button"
+            class="omni-filter-button"
+            aria-haspopup="menu"
+            aria-expanded={filterOpen}
+            onclick={() => (filterOpen = !filterOpen)}
+          >
+            {FILTER_LABELS[filter]}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M6 9l6 6 6-6" />
             </svg>
-          </span>
+          </button>
+          {#if filterOpen}
+            <div class="omni-filter-menu" role="menu" aria-label="Search filter">
+              {#each FILTER_OPTIONS as option}
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={filter === option}
+                  class="omni-filter-option"
+                  class:omni-filter-option-active={filter === option}
+                  onclick={() => updateFilter(option)}
+                >
+                  {FILTER_LABELS[option]}
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
     </div>

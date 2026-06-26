@@ -877,6 +877,11 @@ code:not(pre code) {
   border-radius: 0 !important;
 }
 
+.omni-filter-menu,
+.omni-filter-option {
+  border-radius: 0 !important;
+}
+
 .omni-highlight {
   background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent) !important;
   border-radius: 0 !important;

@@ -458,6 +458,47 @@ function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[]
   return results;
 }
 
+function buildExactPageSearchResults(
+  query: string,
+  pages: DocsSearchSourcePage[],
+): DocsSearchResult[] {
+  const normalizedQuery = normalizeSearchPhrase(query);
+  if (!normalizedQuery) return [];
+
+  const results: DocsSearchResult[] = [];
+
+  for (const page of pages) {
+    const document: DocsSearchDocument = {
+      id: makeDocumentId(page.url, "page"),
+      url: page.url,
+      title: page.title,
+      content: normalizeWhitespace(page.content),
+      description: page.description,
+      type: "page",
+      locale: page.locale,
+      framework: page.framework,
+      version: page.version,
+      tags: page.tags,
+    };
+    const title = normalizeSearchPhrase(page.title);
+    const urlSegments = getUrlSearchSegments(page.url);
+    const isExactPageMatch = title === normalizedQuery || urlSegments.includes(normalizedQuery);
+
+    if (!isExactPageMatch) continue;
+
+    results.push({
+      id: document.id,
+      url: document.url,
+      content: cleanSearchResultText(document.title) ?? document.title,
+      description: cleanSearchResultText(buildSnippet(document, query) ?? document.description),
+      type: "page",
+      score: scoreDocument(query, document) + 2_000,
+    });
+  }
+
+  return results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.url.localeCompare(b.url));
+}
+
 function shouldSupplementAskAIWithSimpleSearch(search: ResolvedDocsSearchConfig): boolean {
   return search.enabled && search.provider !== "simple";
 }
@@ -1487,7 +1528,11 @@ export async function performDocsSearch(options: {
   try {
     const adapter = await resolveSearchAdapter(search, context);
     await maybeSyncSearchIndex(adapter, search, context);
-    return await adapter.search(query, context);
+    const results = await adapter.search(query, context);
+    if (search.provider === "simple") return results;
+
+    return mergeSearchResults(buildExactPageSearchResults(options.query, options.pages), results)
+      .slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
   } catch {
     return createSimpleSearchAdapter().search(query, context);
   }
