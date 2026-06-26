@@ -71,6 +71,41 @@
     return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
   }
 
+  function isCodeLikeSnippet(text) {
+    return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(
+      text
+    );
+  }
+
+  function escapeHtml(value) {
+    return (value ?? "").replace(/[&<>"']/g, (char) => {
+      if (char === "&") return "&amp;";
+      if (char === "<") return "&lt;";
+      if (char === ">") return "&gt;";
+      if (char === '"') return "&quot;";
+      return "&#39;";
+    });
+  }
+
+  function highlightSnippet(text) {
+    const q = query.trim();
+    if (!q) return escapeHtml(text);
+    const lower = text.toLowerCase();
+    const needle = q.toLowerCase();
+    let pos = 0;
+    let html = "";
+    let idx = lower.indexOf(needle, pos);
+
+    while (idx !== -1) {
+      html += escapeHtml(text.slice(pos, idx));
+      html += `<mark class="omni-highlight">${escapeHtml(text.slice(idx, idx + q.length))}</mark>`;
+      pos = idx + q.length;
+      idx = lower.indexOf(needle, pos);
+    }
+
+    return html + escapeHtml(text.slice(pos));
+  }
+
   let visibleResults = $derived.by(() => {
     if (filter === "pages") return currentResults.filter((result) => result.type === "page");
     if (filter === "inside") return currentResults.filter((result) => result.type !== "page");
@@ -86,6 +121,8 @@
         url: r.url,
         subtitle: breadcrumbForUrl(r.url),
         description: r.description,
+        descriptionHtml: r.description ? highlightSnippet(r.description) : "",
+        descriptionCodeLike: r.description ? isCodeLikeSnippet(r.description) : false,
       }));
     }
     return recentsList.map((r) => ({
@@ -383,7 +420,12 @@
                   <div class="omni-item-subtitle">{item.subtitle}</div>
                   <div class="omni-item-label">{item.label}</div>
                   {#if item.description}
-                    <div class="omni-item-description">{item.description}</div>
+                    <div
+                      class="omni-item-description"
+                      class:omni-item-description-code={item.descriptionCodeLike}
+                    >
+                      {@html item.descriptionHtml}
+                    </div>
                   {/if}
                 </div>
               </button>

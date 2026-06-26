@@ -101,6 +101,41 @@ function displayLabelForResult(result: { content: string; section?: string; type
   return result.type === "heading" && parts.length > 1 ? (parts[parts.length - 1] ?? result.content) : result.content;
 }
 
+function isCodeLikeSnippet(text: string): boolean {
+  return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(
+    text,
+  );
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    if (char === "&") return "&amp;";
+    if (char === "<") return "&lt;";
+    if (char === ">") return "&gt;";
+    if (char === '"') return "&quot;";
+    return "&#39;";
+  });
+}
+
+function highlightSnippet(text: string): string {
+  const q = query.value.trim();
+  if (!q) return escapeHtml(text);
+  const lower = text.toLowerCase();
+  const needle = q.toLowerCase();
+  let pos = 0;
+  let html = "";
+  let idx = lower.indexOf(needle, pos);
+
+  while (idx !== -1) {
+    html += escapeHtml(text.slice(pos, idx));
+    html += `<mark class="omni-highlight">${escapeHtml(text.slice(idx, idx + q.length))}</mark>`;
+    pos = idx + q.length;
+    idx = lower.indexOf(needle, pos);
+  }
+
+  return html + escapeHtml(text.slice(pos));
+}
+
 const visibleResults = computed(() => {
   if (filter.value === "pages") return currentResults.value.filter((result) => result.type === "page");
   if (filter.value === "inside") return currentResults.value.filter((result) => result.type !== "page");
@@ -116,6 +151,8 @@ const allItems = computed(() => {
       url: r.url,
       subtitle: breadcrumbForUrl(r.url),
       description: r.description,
+      descriptionHtml: r.description ? highlightSnippet(r.description) : "",
+      descriptionCodeLike: r.description ? isCodeLikeSnippet(r.description) : false,
     }));
   }
   return recentsList.value.map((r) => ({ id: r.id, label: r.label, url: r.url, subtitle: "Recently viewed" }));
@@ -363,8 +400,8 @@ onBeforeUnmount(() => {
           <div class="omni-group-label">Documentation</div>
           <div id="fd-omni-docs-items" class="omni-group-items">
             <div
-              v-for="(r, i) in visibleResults"
-              :key="r.url"
+              v-for="(r, i) in allItems"
+              :key="r.id"
               class="omni-item"
               :class="{ 'omni-item-active': showDocs && i === activeIndex }"
               :data-url="r.url"
@@ -375,9 +412,14 @@ onBeforeUnmount(() => {
               @mouseenter="onRowMouseEnter('docs', i)"
             >
               <div class="omni-item-text">
-                <div class="omni-item-subtitle">{{ breadcrumbForUrl(r.url) }}</div>
-                <div class="omni-item-label">{{ displayLabelForResult(r) }}</div>
-                <div v-if="r.description" class="omni-item-description">{{ r.description }}</div>
+                <div class="omni-item-subtitle">{{ r.subtitle }}</div>
+                <div class="omni-item-label">{{ r.label }}</div>
+                <div
+                  v-if="r.description"
+                  class="omni-item-description"
+                  :class="{ 'omni-item-description-code': r.descriptionCodeLike }"
+                  v-html="r.descriptionHtml"
+                />
               </div>
             </div>
           </div>

@@ -164,26 +164,33 @@ function fuzzyScore(query: string, text: string) {
   return { score, indices: Array.from(new Set(indices)).sort((a, b) => a - b) };
 }
 
-function HighlightedLabel({ label, indices }: { label: string; indices: number[] }) {
+function isCodeLikeSnippet(text: string): boolean {
+  return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(
+    text,
+  );
+}
+
+function HighlightedLabel({ label, indices = [] }: { label: string; indices?: number[] }) {
   if (!indices.length) return <>{label}</>;
   const out: ReactNode[] = [];
-  for (let pos = 0; pos < label.length; pos++) {
-    if (indices.includes(pos)) {
-      let run = label[pos];
-      let p = pos + 1;
-      while (indices.includes(p) && p < label.length) {
-        run += label[p];
-        p++;
-      }
+  const highlighted = new Set(indices);
+  let pos = 0;
+  while (pos < label.length) {
+    const marked = highlighted.has(pos);
+    let end = pos + 1;
+    while (end < label.length && highlighted.has(end) === marked) end++;
+    const run = label.slice(pos, end);
+
+    if (marked) {
       out.push(
         <mark key={`m-${pos}`} className="omni-highlight">
           {run}
         </mark>,
       );
-      pos = p - 1;
     } else {
-      out.push(<span key={`t-${pos}`}>{label[pos]}</span>);
+      out.push(<span key={`t-${pos}`}>{run}</span>);
     }
+    pos = end;
   }
   return <>{out}</>;
 }
@@ -306,6 +313,8 @@ interface ResultItem {
   exactPriority: number;
   sourceIndex: number;
   indices: number[];
+  descriptionIndices: number[];
+  descriptionCodeLike: boolean;
 }
 
 /**
@@ -438,6 +447,9 @@ export function DocsCommandSearch({
             ? stripSearchPreview(stripHtml(r.description)).slice(0, 220)
             : undefined;
           const { score, indices } = fuzzyScore(debouncedQuery, label);
+          const descriptionMatch = description
+            ? fuzzyScore(debouncedQuery, description)
+            : { indices: [] };
           const url = withLangInUrl(r.url, activeLocale);
           return {
             id: r.id,
@@ -450,6 +462,8 @@ export function DocsCommandSearch({
             exactPriority: exactMatchPriority(debouncedQuery, sourceLabel, r.url),
             sourceIndex,
             indices,
+            descriptionIndices: descriptionMatch.indices,
+            descriptionCodeLike: description ? isCodeLikeSnippet(description) : false,
           };
         });
         items.sort(
@@ -604,6 +618,8 @@ export function DocsCommandSearch({
       exactPriority: 0,
       sourceIndex: 0,
       indices: [],
+      descriptionIndices: [],
+      descriptionCodeLike: false,
     }));
   }, [query, results, recents]);
 
@@ -735,7 +751,17 @@ export function DocsCommandSearch({
                           <HighlightedLabel label={item.label} indices={item.indices} />
                         </div>
                         {item.description && (
-                          <div className="omni-item-description">{item.description}</div>
+                          <div
+                            className={cn(
+                              "omni-item-description",
+                              item.descriptionCodeLike && "omni-item-description-code",
+                            )}
+                          >
+                            <HighlightedLabel
+                              label={item.description}
+                              indices={item.descriptionIndices}
+                            />
+                          </div>
                         )}
                       </div>
                     </button>

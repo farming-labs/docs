@@ -256,10 +256,45 @@ const { config = null } = Astro.props;
     return el.textContent || el.innerText || "";
   }
 
+  function escapeHtml(value) {
+    return (value || "").replace(/[&<>"']/g, function (char) {
+      if (char === "&") return "&amp;";
+      if (char === "<") return "&lt;";
+      if (char === ">") return "&gt;";
+      if (char === '"') return "&quot;";
+      return "&#39;";
+    });
+  }
+
+  function isCodeLikeSnippet(text) {
+    return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(text);
+  }
+
+  function highlightSnippet(text, query) {
+    var q = (query || "").trim();
+    if (!q) return escapeHtml(text);
+    var lower = text.toLowerCase();
+    var needle = q.toLowerCase();
+    var pos = 0;
+    var html = "";
+    var idx = lower.indexOf(needle, pos);
+
+    while (idx !== -1) {
+      html += escapeHtml(text.slice(pos, idx));
+      html += '<mark class="omni-highlight">' + escapeHtml(text.slice(idx, idx + q.length)) + '</mark>';
+      pos = idx + q.length;
+      idx = lower.indexOf(needle, pos);
+    }
+
+    return html + escapeHtml(text.slice(pos));
+  }
+
   function renderItem(item, active, isRecent) {
-    var label = (item.label || item.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    var subtitle = (item.subtitle || (isRecent ? "Recently viewed" : breadcrumbForUrl(item.url || ""))).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    var description = (item.description || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    var label = escapeHtml(item.label || item.content || "");
+    var subtitle = escapeHtml(item.subtitle || (isRecent ? "Recently viewed" : breadcrumbForUrl(item.url || "")));
+    var rawDescription = item.description || "";
+    var description = highlightSnippet(rawDescription, getInput() && getInput().value || "");
+    var descriptionClass = isCodeLikeSnippet(rawDescription) ? " omni-item-description-code" : "";
     var url = item.url || "#";
     var id = (item.id || url).replace(/[^a-zA-Z0-9-_]/g, "_");
     var activeClass = active ? " omni-item-active" : "";
@@ -268,7 +303,7 @@ const { config = null } = Astro.props;
         '<div class="omni-item-text">' +
           '<div class="omni-item-subtitle">' + subtitle + '</div>' +
           '<div class="omni-item-label">' + label + '</div>' +
-          (description ? '<div class="omni-item-description">' + description + '</div>' : '') +
+          (description ? '<div class="omni-item-description' + descriptionClass + '">' + description + '</div>' : '') +
         '</div>' +
       '</div>'
     );
