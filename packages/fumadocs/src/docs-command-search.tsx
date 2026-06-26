@@ -17,6 +17,7 @@ interface SearchResult {
   type: "page" | "heading" | "text";
   content: string;
   description?: string;
+  section?: string;
 }
 
 type RecentEntry = { id: string; label: string; url: string };
@@ -45,6 +46,75 @@ function stripSearchPreview(text: string): string {
     .replace(/`+/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function breadcrumbForUrl(url: string): string {
+  try {
+    const parsed = new URL(url, "https://docs.local");
+    const parts = parsed.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((part) =>
+        decodeURIComponent(part)
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase()),
+      );
+    return parts.length > 0 ? parts.join(" > ") : "Docs";
+  } catch {
+    return "Docs";
+  }
+}
+
+function normalizeSearchPhrase(value: string): string {
+  return value.toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+}
+
+function getUrlSearchSegments(url: string): string[] {
+  try {
+    const parsed = new URL(url, "https://docs.local");
+    return Array.from(
+      new Set(
+        parsed.pathname
+          .split("/")
+          .flatMap((segment) => {
+            const decoded = decodeURIComponent(segment);
+            return [decoded, decoded.replace(/[-_]+/g, " ")];
+          })
+          .map(normalizeSearchPhrase)
+          .filter(Boolean),
+      ),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function exactMatchPriority(query: string, label: string, url: string): number {
+  const q = normalizeSearchPhrase(query);
+  if (!q) return 0;
+
+  const normalizedLabel = normalizeSearchPhrase(label);
+  const joinedLabel = normalizeSearchPhrase(label.replace(/\s+[—–-]\s+/g, " "));
+  const labelParts = normalizedLabel
+    .split(/\s+[—–-]\s+/)
+    .map(normalizeSearchPhrase)
+    .filter(Boolean);
+
+  if (normalizedLabel === q || joinedLabel === q) return 4;
+  if (labelParts.includes(q)) return 3;
+  if (getUrlSearchSegments(url).includes(q)) return 2;
+  if (normalizedLabel.startsWith(q) || joinedLabel.startsWith(q)) return 1;
+  return 0;
+}
+
+function resultDisplayLabel(result: SearchResult): string {
+  const section = result.section ? stripSearchPreview(stripHtml(result.section)) : "";
+  if (section) return section;
+
+  const label = stripSearchPreview(stripHtml(result.content));
+  const parts = label.split(/\s+[—–]\s+/).map((part) => part.trim()).filter(Boolean);
+  if (result.type === "heading" && parts.length > 1) return parts[parts.length - 1] ?? label;
+  return label;
 }
 
 function fuzzyScore(query: string, text: string) {
@@ -121,82 +191,7 @@ function SearchIcon() {
   );
 }
 
-function FileIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-    </svg>
-  );
-}
-
-function HashIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="4" x2="20" y1="9" y2="9" />
-      <line x1="4" x2="20" y1="15" y2="15" />
-      <line x1="10" x2="8" y1="3" y2="21" />
-      <line x1="16" x2="14" y1="3" y2="21" />
-    </svg>
-  );
-}
-
-function TypeIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="4 7 4 4 20 4 20 7" />
-      <line x1="9" x2="15" y1="20" y2="20" />
-      <line x1="12" x2="12" y1="4" y2="20" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  );
-}
-
-function EnterIcon() {
+function ArrowDownIcon() {
   return (
     <svg
       width="12"
@@ -208,8 +203,7 @@ function EnterIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <polyline points="9 10 4 15 9 20" />
-      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
@@ -231,7 +225,7 @@ function ArrowUpIcon() {
   );
 }
 
-function ArrowDownIcon() {
+function CornerDownLeftIcon() {
   return (
     <svg
       width="12"
@@ -243,43 +237,8 @@ function ArrowDownIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M15 3h6v6" />
-      <path d="M10 14 21 3" />
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m9 18 6-6-6-6" />
+      <path d="m9 10-5 5 5 5" />
+      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
     </svg>
   );
 }
@@ -321,37 +280,15 @@ function HistoryIcon() {
   );
 }
 
-function iconForType(type: string) {
-  switch (type) {
-    case "heading":
-      return <HashIcon />;
-    case "text":
-      return <TypeIcon />;
-    default:
-      return <FileIcon />;
-  }
-}
-
-function labelForType(type: string) {
-  switch (type) {
-    case "page":
-      return "Page";
-    case "heading":
-      return "Section";
-    case "text":
-      return "Content";
-    default:
-      return "Result";
-  }
-}
-
 interface ResultItem {
   id: string;
   label: string;
   subtitle: string;
+  description?: string;
   url: string;
-  icon: ReactNode;
   score: number;
+  exactPriority: number;
+  sourceIndex: number;
   indices: number[];
 }
 
@@ -466,22 +403,33 @@ export function DocsCommandSearch({
         const res = await fetch(requestUrl.toString());
         if (!res.ok || cancelled) return;
         const data: SearchResult[] = await res.json();
-        const items: ResultItem[] = data.map((r) => {
-          const label = stripSearchPreview(stripHtml(r.content));
+        const items: ResultItem[] = data.map((r, sourceIndex) => {
+          const sourceLabel = stripSearchPreview(stripHtml(r.content));
+          const label = resultDisplayLabel(r);
+          const description = r.description
+            ? stripSearchPreview(stripHtml(r.description)).slice(0, 220)
+            : undefined;
           const { score, indices } = fuzzyScore(debouncedQuery, label);
+          const url = withLangInUrl(r.url, activeLocale);
           return {
             id: r.id,
             label,
-            subtitle: r.description
-              ? stripSearchPreview(stripHtml(r.description))
-              : labelForType(r.type),
-            url: withLangInUrl(r.url, activeLocale),
-            icon: iconForType(r.type),
+            subtitle: breadcrumbForUrl(r.url),
+            description,
+            url,
             score,
+            exactPriority: exactMatchPriority(debouncedQuery, sourceLabel, r.url),
+            sourceIndex,
             indices,
           };
         });
-        items.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
+        items.sort(
+          (a, b) =>
+            b.exactPriority - a.exactPriority ||
+            a.sourceIndex - b.sourceIndex ||
+            b.score - a.score ||
+            a.label.localeCompare(b.label),
+        );
         if (!cancelled) {
           setResults(items);
           setActiveIndex(0);
@@ -611,8 +559,9 @@ export function DocsCommandSearch({
       label: r.label,
       subtitle: "Recently viewed",
       url: r.url,
-      icon: <FileIcon />,
       score: 0,
+      exactPriority: 0,
+      sourceIndex: 0,
       indices: [],
     }));
   }, [query, results, recents]);
@@ -666,19 +615,18 @@ export function DocsCommandSearch({
               type="text"
               role="combobox"
               aria-expanded="true"
-              placeholder="Search documentation…"
+              placeholder="Search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               className="omni-search-input"
             />
-            <kbd className="omni-kbd">⌘ K</kbd>
             <button
               aria-label="Close"
               className="omni-close-btn"
               onClick={() => setOpenWithAnalytics(false, "button")}
             >
-              <CloseIcon />
+              ESC
             </button>
           </div>
         </div>
@@ -704,24 +652,10 @@ export function DocsCommandSearch({
                     onClick={() => execute(item)}
                     className={cn("omni-item", i === activeIndex && "omni-item-active")}
                   >
-                    <div className="omni-item-icon">{item.icon}</div>
                     <div className="omni-item-text">
-                      <div className="omni-item-label">{item.label}</div>
                       <div className="omni-item-subtitle">{item.subtitle}</div>
+                      <div className="omni-item-label">{item.label}</div>
                     </div>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="omni-item-ext"
-                      title="Open in new tab"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      <ExternalLinkIcon />
-                    </a>
-                    <ChevronRightIcon />
                   </button>
                 ))}
               </div>
@@ -744,26 +678,15 @@ export function DocsCommandSearch({
                       onClick={() => execute(item)}
                       className={cn("omni-item", idx === activeIndex && "omni-item-active")}
                     >
-                      <div className="omni-item-icon">{item.icon}</div>
                       <div className="omni-item-text">
+                        <div className="omni-item-subtitle">{item.subtitle}</div>
                         <div className="omni-item-label">
                           <HighlightedLabel label={item.label} indices={item.indices} />
                         </div>
-                        <div className="omni-item-subtitle">{item.subtitle}</div>
+                        {item.description && (
+                          <div className="omni-item-description">{item.description}</div>
+                        )}
                       </div>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="omni-item-ext"
-                        title="Open in new tab"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        <ExternalLinkIcon />
-                      </a>
-                      <ChevronRightIcon />
                     </button>
                   );
                 })}
@@ -787,14 +710,21 @@ export function DocsCommandSearch({
           <div className="omni-footer-inner">
             <div className="omni-footer-hints">
               <span className="omni-footer-hint">
-                <EnterIcon /> to select
+                <CornerDownLeftIcon /> to select
               </span>
               <span className="omni-footer-hint">
                 <ArrowUpIcon />
                 <ArrowDownIcon /> to navigate
               </span>
               <span className="omni-footer-hint omni-footer-hint-desktop">
-                <CloseIcon /> to close
+                <span className="omni-kbd-sm">ESC</span> to close
+              </span>
+            </div>
+            <div className="omni-footer-filter">
+              <span className="omni-filter-label">Filter</span>
+              <span className="omni-filter-value">
+                All
+                <ArrowDownIcon />
               </span>
             </div>
           </div>

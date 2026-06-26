@@ -11,7 +11,6 @@
   const STORAGE_KEY = "fd:omni:recents";
   const MAX_RECENTS = 8;
   const DEBOUNCE_MS = 120;
-  const PLACEHOLDER = "Search documentation…";
 
   let { onclose } = $props();
 
@@ -37,14 +36,39 @@
     }
   }
 
+  function breadcrumbForUrl(url) {
+    try {
+      const parsed = new URL(url, "https://farming-labs.local");
+      const parts = parsed.pathname
+        .split("/")
+        .filter(Boolean)
+        .map((part) =>
+          decodeURIComponent(part)
+            .replace(/[-_]+/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase())
+        );
+      return parts.length ? parts.join(" > ") : "Docs";
+    } catch {
+      return "Docs";
+    }
+  }
+
+  function displayLabelForResult(result) {
+    if (result.section) return result.section;
+    const label = result.content ?? "";
+    const parts = label.split(/\s+[—–]\s+/).map((part) => part.trim()).filter(Boolean);
+    return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
+  }
+
   let flatItems = $derived.by(() => {
     const q = query.trim();
     if (q && currentResults.length) {
       return currentResults.map((r) => ({
         id: r.url,
-        label: r.content,
+        label: displayLabelForResult(r),
         url: r.url,
-        subtitle: r.description ?? "Page",
+        subtitle: breadcrumbForUrl(r.url),
+        description: r.description,
       }));
     }
     return recentsList.map((r) => ({
@@ -185,19 +209,6 @@
     e.stopPropagation();
   }
 
-  function onExternalClick(e, url) {
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
-    } catch {
-      if (typeof window !== "undefined") window.location.href = url;
-    }
-  }
-
-  const FileIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>`;
-  const ExternalIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
-  const ChevronIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
   const EmptyIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`;
 
   onMount(() => {
@@ -247,16 +258,12 @@
           aria-expanded="true"
           aria-controls="omni-listbox"
           aria-activedescendant={activeId ? `omni-item-${activeId}` : undefined}
-          placeholder={PLACEHOLDER}
+          placeholder="Search"
           autocomplete="off"
           onkeydown={handleKeydown}
         />
-        <kbd class="omni-kbd">⌘ K</kbd>
         <button type="button" aria-label="Close" class="omni-close-btn" onclick={close}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
+          ESC
         </button>
       </div>
     </div>
@@ -293,27 +300,10 @@
                 onmouseenter={() => (activeId = item.id)}
                 onclick={() => executeItem(item)}
               >
-                <div class="omni-item-icon">
-                  {@html FileIcon}
-                </div>
                 <div class="omni-item-text">
-                  <div class="omni-item-label">{item.label}</div>
                   <div class="omni-item-subtitle">{item.subtitle}</div>
+                  <div class="omni-item-label">{item.label}</div>
                 </div>
-                <a
-                  href={item.url}
-                  class="omni-item-badge"
-                  title="Open in new tab"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-hidden="true"
-                  onclick={(e) => onExternalClick(e, item.url)}
-                >
-                  {@html ExternalIcon}
-                </a>
-                <span class="omni-item-chevron" aria-hidden="true">
-                  {@html ChevronIcon}
-                </span>
               </button>
             {/each}
           </div>
@@ -336,27 +326,13 @@
                 onmouseenter={() => (activeId = item.id)}
                 onclick={() => executeItem(item)}
               >
-                <div class="omni-item-icon">
-                  {@html FileIcon}
-                </div>
                 <div class="omni-item-text">
-                  <div class="omni-item-label">{item.label}</div>
                   <div class="omni-item-subtitle">{item.subtitle}</div>
+                  <div class="omni-item-label">{item.label}</div>
+                  {#if item.description}
+                    <div class="omni-item-description">{item.description}</div>
+                  {/if}
                 </div>
-                <a
-                  href={item.url}
-                  class="omni-item-badge"
-                  title="Open in new tab"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-hidden="true"
-                  onclick={(e) => onExternalClick(e, item.url)}
-                >
-                  {@html ExternalIcon}
-                </a>
-                <span class="omni-item-chevron" aria-hidden="true">
-                  {@html ChevronIcon}
-                </span>
               </button>
             {/each}
           </div>
@@ -377,26 +353,33 @@
       <div class="omni-footer-inner">
         <div class="omni-footer-hints">
           <span class="omni-footer-hint">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="9 18 15 12 9 6" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m9 10-5 5 5 5" />
+              <path d="M20 4v7a4 4 0 0 1-4 4H4" />
             </svg>
             to select
           </span>
           <span class="omni-footer-hint">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 15l-6-6-6 6" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m18 15-6-6-6 6" />
             </svg>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 9l6 6 6-6" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
             </svg>
             to navigate
           </span>
           <span class="omni-footer-hint omni-footer-hint-desktop">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
+            <span class="omni-kbd-sm">ESC</span>
             to close
+          </span>
+        </div>
+        <div class="omni-footer-filter">
+          <span class="omni-filter-label">Filter</span>
+          <span class="omni-filter-value">
+            All
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
           </span>
         </div>
       </div>

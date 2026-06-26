@@ -775,6 +775,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
 }
 
 .omni-group-label {
+  display: block !important;
   color: var(--muted-foreground) !important;
   font-size: 0.6875rem !important;
   font-weight: 500 !important;

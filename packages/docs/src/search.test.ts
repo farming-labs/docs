@@ -134,6 +134,71 @@ describe("performDocsSearch", () => {
     expect(results[0].description).toContain("Configure the route");
   });
 
+  it("prioritizes exact result labels over broader prefix matches", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "React",
+          url: "/docs/react",
+          content: "Configure React search.",
+          rawContent: `# React
+
+## Search
+
+Configure React search.
+`,
+        },
+        {
+          title: "React Search API",
+          url: "/docs/react-search-api",
+          content: "API reference for React search.",
+          rawContent: `# React Search API
+
+API reference for React search.
+`,
+        },
+      ],
+      query: "React Search",
+    });
+
+    expect(results[0]).toMatchObject({
+      url: "/docs/react#search",
+      content: "React — Search",
+      section: "Search",
+    });
+  });
+
+  it("prioritizes exact URL segment matches", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "AI Search",
+          url: "/docs/ai-search",
+          content: "Configure the AI search experience.",
+          rawContent: "# AI Search\n\nConfigure the AI search experience.",
+        },
+        {
+          title: "Search",
+          url: "/docs/search",
+          content: "Mentions ai-native as a related setup option.",
+          rawContent: "# Search\n\nMentions ai-native as a related setup option.",
+        },
+        {
+          title: "AI Native",
+          url: "/docs/getting-started/ai-native",
+          content: "Configure AI-native docs.",
+          rawContent: "# AI Native\n\nConfigure AI-native docs.",
+        },
+      ],
+      query: "ai-native",
+    });
+
+    expect(results[0]).toMatchObject({
+      url: "/docs/getting-started/ai-native",
+      content: "AI Native",
+    });
+  });
+
   it("uses a custom adapter when configured", async () => {
     const search = await performDocsSearch({
       pages,

@@ -124,6 +124,10 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function normalizeSearchPhrase(value: string): string {
+  return normalizeWhitespace(value.toLowerCase().replace(/[?!.,;:]+$/g, ""));
+}
+
 function tokenizeSearchQuery(query: string): string[] {
   return Array.from(
     new Set(
@@ -143,6 +147,37 @@ function normalizeUrlPathname(value: string): string {
   } catch {
     return value.split(/[?#]/)[0]?.replace(/\/+$/, "") || "/";
   }
+}
+
+function safeDecodeUrlSegment(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function getUrlSearchSegments(value: string): string[] {
+  let pathname = "";
+
+  try {
+    pathname = new URL(value, "https://docs.local").pathname;
+  } catch {
+    pathname = value.split(/[?#]/)[0] ?? "";
+  }
+
+  return Array.from(
+    new Set(
+      pathname
+        .split("/")
+        .flatMap((segment) => {
+          const decoded = safeDecodeUrlSegment(segment);
+          return [decoded, decoded.replace(/[-_]+/g, " ")];
+        })
+        .map(normalizeSearchPhrase)
+        .filter(Boolean),
+    ),
+  );
 }
 
 function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
@@ -550,28 +585,40 @@ export function buildDocsSearchDocuments(
 }
 
 function scoreDocument(query: string, document: DocsSearchDocument): number {
-  const q = normalizeWhitespace(query.toLowerCase().replace(/[?!.,;:]+$/g, ""));
+  const q = normalizeSearchPhrase(query);
   if (!q) return 0;
 
   const words = tokenizeSearchQuery(q);
-  const title = document.title.toLowerCase();
-  const section = document.section?.toLowerCase() ?? "";
-  const description = document.description?.toLowerCase() ?? "";
-  const content = document.content.toLowerCase();
-  const url = document.url.toLowerCase();
+  const title = normalizeSearchPhrase(document.title);
+  const section = document.section ? normalizeSearchPhrase(document.section) : "";
+  const hasDistinctSection = Boolean(section && section !== title);
+  const titleSection = section
+    ? normalizeSearchPhrase(`${document.title} ${document.section}`)
+    : "";
+  const description = document.description ? normalizeSearchPhrase(document.description) : "";
+  const content = normalizeSearchPhrase(document.content);
+  const url = normalizeSearchPhrase(document.url);
+  const urlSegments = getUrlSearchSegments(document.url);
   const titleTokens = tokenizeSearchQuery(title);
   const sectionTokens = tokenizeSearchQuery(section);
 
   let score = 0;
 
-  if (title === q) score += 120;
+  if (title === q) score += 1_120;
   else if (title.startsWith(q)) score += 70;
   else if (title.includes(q)) score += 45;
 
-  if (section === q) score += 80;
-  else if (section.startsWith(q)) score += 55;
-  else if (section.includes(q)) score += 30;
+  if (hasDistinctSection) {
+    if (section === q) score += 1_080;
+    else if (section.startsWith(q)) score += 55;
+    else if (section.includes(q)) score += 30;
 
+    if (titleSection === q) score += 1_000;
+    else if (titleSection.startsWith(q)) score += 50;
+    else if (titleSection.includes(q)) score += 28;
+  }
+
+  if (urlSegments.includes(q)) score += 950;
   if (url.includes(q)) score += 12;
   if (description.includes(q)) score += 18;
   if (content.includes(q)) score += 12;
@@ -592,15 +639,17 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
       matched = true;
     }
 
-    if (section === word) {
-      score += 22;
-      matched = true;
-    } else if (section.startsWith(word)) {
-      score += 16;
-      matched = true;
-    } else if (section.includes(word)) {
-      score += 10;
-      matched = true;
+    if (hasDistinctSection) {
+      if (section === word) {
+        score += 22;
+        matched = true;
+      } else if (section.startsWith(word)) {
+        score += 16;
+        matched = true;
+      } else if (section.includes(word)) {
+        score += 10;
+        matched = true;
+      }
     }
 
     if (description.includes(word)) {
@@ -617,7 +666,11 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
   }
 
   if (words.length > 1) {
-    if (sectionTokens.length > 0 && words.every((word) => sectionTokens.includes(word))) {
+    if (
+      hasDistinctSection &&
+      sectionTokens.length > 0 &&
+      words.every((word) => sectionTokens.includes(word))
+    ) {
       score += 30;
     }
     if (
@@ -630,7 +683,7 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
   }
 
   if (matchedWords === words.length && words.length > 1) score += 20;
-  if (document.type === "heading") score += 6;
+  if (document.type === "heading" && hasDistinctSection) score += 6;
 
   return score;
 }

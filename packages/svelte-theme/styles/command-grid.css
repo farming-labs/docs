@@ -622,6 +622,7 @@ body:has(#nd-docs-layout.dark),
 }
 
 #nd-docs-layout .omni-group-label {
+  display: block !important;
   letter-spacing: 0.14em;
   color: color-mix(in srgb, var(--color-fd-foreground) 72%, transparent) !important;
 }

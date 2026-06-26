@@ -969,6 +969,7 @@ hr {
 }
 
 .omni-group-label {
+  display: block !important;
   font-family: var(--fd-font-mono, ui-monospace, monospace);
   letter-spacing: 0.08em;
 }

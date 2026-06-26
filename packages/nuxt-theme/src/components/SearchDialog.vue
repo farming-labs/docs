@@ -15,7 +15,9 @@ const emit = defineEmits<{ (e: "close"): void }>();
 const route = useRoute();
 
 const query = ref("");
-const currentResults = ref<{ content: string; url: string; description?: string }[]>([]);
+const currentResults = ref<
+  { content: string; url: string; description?: string; section?: string; type?: string }[]
+>([]);
 const loading = ref(false);
 const activeIndex = ref(0);
 const inputEl = ref<HTMLInputElement | null>(null);
@@ -60,9 +62,40 @@ function withLang(url: string): string {
   }
 }
 
+function breadcrumbForUrl(url: string): string {
+  try {
+    const parsed = new URL(url, "https://farming-labs.local");
+    const parts = parsed.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((part) =>
+        decodeURIComponent(part)
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase()),
+      );
+    return parts.length ? parts.join(" > ") : "Docs";
+  } catch {
+    return "Docs";
+  }
+}
+
+function displayLabelForResult(result: { content: string; section?: string; type?: string }): string {
+  if (result.section) return result.section;
+  const parts = result.content.split(/\s+[—–]\s+/).map((part) => part.trim()).filter(Boolean);
+  return result.type === "heading" && parts.length > 1 ? (parts[parts.length - 1] ?? result.content) : result.content;
+}
+
 const allItems = computed(() => {
   const q = query.value.trim();
-  if (q && currentResults.value.length) return currentResults.value.map((r) => ({ id: r.url, label: r.content, url: r.url, subtitle: r.description ?? "Page" }));
+  if (q && currentResults.value.length) {
+    return currentResults.value.map((r) => ({
+      id: r.url,
+      label: displayLabelForResult(r),
+      url: r.url,
+      subtitle: breadcrumbForUrl(r.url),
+      description: r.description,
+    }));
+  }
   return recentsList.value.map((r) => ({ id: r.id, label: r.label, url: r.url, subtitle: "Recently viewed" }));
 });
 
@@ -183,16 +216,6 @@ function onRowClick(item: { url: string; label?: string; content?: string }) {
   executeItem(item);
 }
 
-function onExternalClick(e: Event, url: string) {
-  e.preventDefault();
-  e.stopPropagation();
-  try {
-    window.open(withLang(url), "_blank", "noopener,noreferrer");
-  } catch {
-    window.location.href = withLang(url);
-  }
-}
-
 function onRowMouseEnter(container: "recent" | "docs", index: number) {
   activeIndex.value = index;
 }
@@ -230,16 +253,12 @@ onMounted(() => {
             role="combobox"
             aria-expanded="true"
             aria-controls="fd-omni-listbox"
-            placeholder="Search documentation…"
+            placeholder="Search"
             autocomplete="off"
             @keydown="handleKeydown"
           />
-          <kbd class="omni-kbd">⌘ K</kbd>
           <button type="button" aria-label="Close" class="omni-close-btn" @click="close">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
+            ESC
           </button>
         </div>
       </div>
@@ -267,35 +286,10 @@ onMounted(() => {
               @click="onRowClick(r)"
               @mouseenter="onRowMouseEnter('recent', i)"
             >
-              <div class="omni-item-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                </svg>
-              </div>
               <div class="omni-item-text">
-                <div class="omni-item-label">{{ r.label }}</div>
                 <div class="omni-item-subtitle">Recently viewed</div>
+                <div class="omni-item-label">{{ r.label }}</div>
               </div>
-              <a
-                :href="r.url"
-                class="omni-item-ext"
-                title="Open in new tab"
-                target="_blank"
-                rel="noopener noreferrer"
-                @click.prevent="onExternalClick($event, r.url)"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-              <span class="omni-item-chevron" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </span>
             </div>
           </div>
         </div>
@@ -315,35 +309,11 @@ onMounted(() => {
               @click="onRowClick(r)"
               @mouseenter="onRowMouseEnter('docs', i)"
             >
-              <div class="omni-item-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                </svg>
-              </div>
               <div class="omni-item-text">
-                <div class="omni-item-label">{{ r.content }}</div>
-                <div class="omni-item-subtitle">{{ r.description ?? "Page" }}</div>
+                <div class="omni-item-subtitle">{{ breadcrumbForUrl(r.url) }}</div>
+                <div class="omni-item-label">{{ displayLabelForResult(r) }}</div>
+                <div v-if="r.description" class="omni-item-description">{{ r.description }}</div>
               </div>
-              <a
-                :href="r.url"
-                class="omni-item-ext"
-                title="Open in new tab"
-                target="_blank"
-                rel="noopener noreferrer"
-                @click.prevent="onExternalClick($event, r.url)"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-              <span class="omni-item-chevron" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </span>
             </div>
           </div>
         </div>
@@ -363,26 +333,33 @@ onMounted(() => {
         <div class="omni-footer-inner">
           <div class="omni-footer-hints">
             <span class="omni-footer-hint">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="9 18 15 12 9 6" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m9 10-5 5 5 5" />
+                <path d="M20 4v7a4 4 0 0 1-4 4H4" />
               </svg>
               to select
             </span>
             <span class="omni-footer-hint">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 15l-6-6-6 6" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m18 15-6-6-6 6" />
               </svg>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 9l6 6 6-6" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
               </svg>
               to navigate
             </span>
             <span class="omni-footer-hint omni-footer-hint-desktop">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
+              <span class="omni-kbd-sm">ESC</span>
               to close
+            </span>
+          </div>
+          <div class="omni-footer-filter">
+            <span class="omni-filter-label">Filter</span>
+            <span class="omni-filter-value">
+              All
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
             </span>
           </div>
         </div>

@@ -848,6 +848,7 @@ body:has(#nd-docs-layout),
 }
 
 #nd-docs-layout .omni-group-label {
+  display: block !important;
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
   letter-spacing: 0.08em !important;
 }
