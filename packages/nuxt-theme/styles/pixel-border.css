@@ -871,8 +871,11 @@ code:not(pre code) {
 }
 
 .omni-group-label {
-  display: block !important;
   letter-spacing: 0.08em !important;
+}
+
+.omni-footer-hint svg {
+  border-radius: 0 !important;
 }
 
 .omni-highlight {

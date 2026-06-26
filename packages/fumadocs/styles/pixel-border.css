@@ -969,13 +969,16 @@ hr {
 }
 
 .omni-group-label {
-  display: block !important;
   font-family: var(--fd-font-mono, ui-monospace, monospace);
   letter-spacing: 0.08em;
 }
 
 .omni-footer-inner {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
+}
+
+.omni-footer-hint svg {
+  border-radius: 0 !important;
 }
 
 .omni-highlight {

@@ -848,13 +848,16 @@ body:has(#nd-docs-layout),
 }
 
 #nd-docs-layout .omni-group-label {
-  display: block !important;
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
   letter-spacing: 0.08em !important;
 }
 
 #nd-docs-layout .omni-footer-inner {
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+#nd-docs-layout .omni-footer-hint svg {
+  border-radius: 0 !important;
 }
 
 #nd-docs-layout .omni-highlight {
