@@ -101,12 +101,6 @@ function displayLabelForResult(result: { content: string; section?: string; type
   return result.type === "heading" && parts.length > 1 ? (parts[parts.length - 1] ?? result.content) : result.content;
 }
 
-function isCodeLikeSnippet(text: string): boolean {
-  return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(
-    text,
-  );
-}
-
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => {
     if (char === "&") return "&amp;";
@@ -152,7 +146,6 @@ const allItems = computed(() => {
       subtitle: breadcrumbForUrl(r.url),
       description: r.description,
       descriptionHtml: r.description ? highlightSnippet(r.description) : "",
-      descriptionCodeLike: r.description ? isCodeLikeSnippet(r.description) : false,
     }));
   }
   return recentsList.value.map((r) => ({ id: r.id, label: r.label, url: r.url, subtitle: "Recently viewed" }));
@@ -417,7 +410,6 @@ onBeforeUnmount(() => {
                 <div
                   v-if="r.description"
                   class="omni-item-description"
-                  :class="{ 'omni-item-description-code': r.descriptionCodeLike }"
                   v-html="r.descriptionHtml"
                 />
               </div>

@@ -266,10 +266,6 @@ const { config = null } = Astro.props;
     });
   }
 
-  function isCodeLikeSnippet(text) {
-    return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(text);
-  }
-
   function highlightSnippet(text, query) {
     var q = (query || "").trim();
     if (!q) return escapeHtml(text);
@@ -294,7 +290,6 @@ const { config = null } = Astro.props;
     var subtitle = escapeHtml(item.subtitle || (isRecent ? "Recently viewed" : breadcrumbForUrl(item.url || "")));
     var rawDescription = item.description || "";
     var description = highlightSnippet(rawDescription, getInput() && getInput().value || "");
-    var descriptionClass = isCodeLikeSnippet(rawDescription) ? " omni-item-description-code" : "";
     var url = item.url || "#";
     var id = (item.id || url).replace(/[^a-zA-Z0-9-_]/g, "_");
     var activeClass = active ? " omni-item-active" : "";
@@ -303,7 +298,7 @@ const { config = null } = Astro.props;
         '<div class="omni-item-text">' +
           '<div class="omni-item-subtitle">' + subtitle + '</div>' +
           '<div class="omni-item-label">' + label + '</div>' +
-          (description ? '<div class="omni-item-description' + descriptionClass + '">' + description + '</div>' : '') +
+          (description ? '<div class="omni-item-description">' + description + '</div>' : '') +
         '</div>' +
       '</div>'
     );

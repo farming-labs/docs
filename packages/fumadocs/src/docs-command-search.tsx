@@ -164,12 +164,6 @@ function fuzzyScore(query: string, text: string) {
   return { score, indices: Array.from(new Set(indices)).sort((a, b) => a - b) };
 }
 
-function isCodeLikeSnippet(text: string): boolean {
-  return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(
-    text,
-  );
-}
-
 function HighlightedLabel({ label, indices = [] }: { label: string; indices?: number[] }) {
   if (!indices.length) return <>{label}</>;
   const out: ReactNode[] = [];
@@ -314,7 +308,6 @@ interface ResultItem {
   sourceIndex: number;
   indices: number[];
   descriptionIndices: number[];
-  descriptionCodeLike: boolean;
 }
 
 /**
@@ -463,7 +456,6 @@ export function DocsCommandSearch({
             sourceIndex,
             indices,
             descriptionIndices: descriptionMatch.indices,
-            descriptionCodeLike: description ? isCodeLikeSnippet(description) : false,
           };
         });
         items.sort(
@@ -619,7 +611,6 @@ export function DocsCommandSearch({
       sourceIndex: 0,
       indices: [],
       descriptionIndices: [],
-      descriptionCodeLike: false,
     }));
   }, [query, results, recents]);
 
@@ -751,12 +742,7 @@ export function DocsCommandSearch({
                           <HighlightedLabel label={item.label} indices={item.indices} />
                         </div>
                         {item.description && (
-                          <div
-                            className={cn(
-                              "omni-item-description",
-                              item.descriptionCodeLike && "omni-item-description-code",
-                            )}
-                          >
+                          <div className="omni-item-description">
                             <HighlightedLabel
                               label={item.description}
                               indices={item.descriptionIndices}

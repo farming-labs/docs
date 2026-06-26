@@ -283,10 +283,6 @@
   line-height: 1.5rem;
   font-weight: 400;
 }
-.omni-item-description-code {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-      "Liberation Mono", "Courier New", monospace);
-}
 .omni-item-badge {
   display: none;
 }

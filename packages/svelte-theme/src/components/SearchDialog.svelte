@@ -71,12 +71,6 @@
     return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
   }
 
-  function isCodeLikeSnippet(text) {
-    return /[`{}()[\];=<>]|(?:^|\s)(?:async|await|bun|class|const|curl|DELETE|export|function|GET|import|interface|let|npm|npx|PATCH|pnpm|POST|return|type|var|yarn)(?:\s|$)|(?:^|\s)[./][\w./-]+|@\w[\w/-]*/.test(
-      text
-    );
-  }
-
   function escapeHtml(value) {
     return (value ?? "").replace(/[&<>"']/g, (char) => {
       if (char === "&") return "&amp;";
@@ -122,7 +116,6 @@
         subtitle: breadcrumbForUrl(r.url),
         description: r.description,
         descriptionHtml: r.description ? highlightSnippet(r.description) : "",
-        descriptionCodeLike: r.description ? isCodeLikeSnippet(r.description) : false,
       }));
     }
     return recentsList.map((r) => ({
@@ -420,10 +413,7 @@
                   <div class="omni-item-subtitle">{item.subtitle}</div>
                   <div class="omni-item-label">{item.label}</div>
                   {#if item.description}
-                    <div
-                      class="omni-item-description"
-                      class:omni-item-description-code={item.descriptionCodeLike}
-                    >
+                    <div class="omni-item-description">
                       {@html item.descriptionHtml}
                     </div>
                   {/if}
