@@ -693,7 +693,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
     inset-inline-start: var(--fd-threadline-frame-gutter) !important;
     width: var(--fd-sidebar-width, 260px) !important;
     height: calc(100vh - var(--docs-header-height, 48px)) !important;
-    z-index: 102 !important;
+    z-index: 49 !important;
     pointer-events: none !important;
   }
 
@@ -710,24 +710,19 @@ figure.shiki button[aria-label*="Copy"]:hover {
     ) !important;
     width: var(--fd-toc-width, 224px) !important;
     height: calc(100vh - var(--docs-header-height, 48px)) !important;
+    z-index: 49 !important;
     pointer-events: none !important;
   }
 
   body:has(#nd-sidebar) .omni-overlay {
-    left: calc(var(--fd-threadline-frame-gutter) + var(--fd-sidebar-width, 260px)) !important;
+    left: 0 !important;
     right: 0 !important;
     width: auto !important;
   }
 
   body:has(#nd-sidebar) .omni-content {
-    left: calc(
-      var(--fd-threadline-frame-gutter) + var(--fd-sidebar-width, 260px) +
-        (var(--fd-threadline-main-width) + var(--fd-toc-width, 224px)) / 2
-    ) !important;
-    width: min(
-      720px,
-      calc(var(--fd-threadline-main-width) + var(--fd-toc-width, 224px) - 32px)
-    ) !important;
+    left: 50% !important;
+    width: min(720px, calc(100% - 1rem)) !important;
   }
 }
 
