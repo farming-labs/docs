@@ -139,9 +139,7 @@ function literalMatchPriority(query: string, value?: string): number {
   if (text === q) return 2;
 
   const boundary = "[^\\p{L}\\p{N}]";
-  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
-    ? 1
-    : 0;
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text) ? 1 : 0;
 }
 
 function isLiteralLookupQuery(query: string): boolean {
@@ -547,7 +545,8 @@ function prioritizeLiteralInsideResults(
   if (!isLiteralLookupQuery(query)) return results;
 
   return [...results].sort((a, b) => {
-    const literalDelta = insideLiteralResultPriority(query, b) - insideLiteralResultPriority(query, a);
+    const literalDelta =
+      insideLiteralResultPriority(query, b) - insideLiteralResultPriority(query, a);
     if (literalDelta) return literalDelta;
     return 0;
   });

@@ -92,9 +92,7 @@ function literalMatchPriority(query: string, value?: string): number {
   if (text === q) return 2;
 
   const boundary = "[^\\p{L}\\p{N}]";
-  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
-    ? 1
-    : 0;
+  return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text) ? 1 : 0;
 }
 
 function tokenizeLiteralQuery(query: string): string[] {
@@ -823,8 +821,8 @@ export function DocsCommandSearch({
               {debouncedQuery && results.length > 0
                 ? `No ${FILTER_LABELS[filter].toLowerCase()} results found.`
                 : debouncedQuery
-                ? "No results found. Try a different query."
-                : "Type to search the docs, or browse recent items."}
+                  ? "No results found. Try a different query."
+                  : "Type to search the docs, or browse recent items."}
             </div>
           )}
         </div>
