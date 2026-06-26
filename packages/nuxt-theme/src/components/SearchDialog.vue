@@ -197,20 +197,18 @@ function escapeHtml(value: string): string {
 function highlightSnippet(text: string): string {
   const q = query.value.trim();
   if (!q) return escapeHtml(text);
-  const lower = text.toLowerCase();
-  const needle = q.toLowerCase();
-  let pos = 0;
   let html = "";
-  let idx = lower.indexOf(needle, pos);
+  let lastIndex = 0;
+  const regex = new RegExp(escapeRegExp(q), "gi");
+  let match: RegExpExecArray | null;
 
-  while (idx !== -1) {
-    html += escapeHtml(text.slice(pos, idx));
-    html += `<mark class="omni-highlight">${escapeHtml(text.slice(idx, idx + q.length))}</mark>`;
-    pos = idx + q.length;
-    idx = lower.indexOf(needle, pos);
+  while ((match = regex.exec(text)) !== null) {
+    html += escapeHtml(text.slice(lastIndex, match.index));
+    html += `<mark class="omni-highlight">${escapeHtml(match[0])}</mark>`;
+    lastIndex = match.index + match[0].length;
   }
 
-  return html + escapeHtml(text.slice(pos));
+  return html + escapeHtml(text.slice(lastIndex));
 }
 
 const visibleResults = computed(() => {
@@ -542,7 +540,6 @@ onBeforeUnmount(() => {
             <button
               type="button"
               class="omni-filter-button"
-              aria-haspopup="menu"
               :aria-expanded="filterOpen"
               @click="filterOpen = !filterOpen"
             >
@@ -551,13 +548,12 @@ onBeforeUnmount(() => {
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </button>
-            <div v-if="filterOpen" class="omni-filter-menu" role="menu" aria-label="Search filter">
+            <div v-if="filterOpen" class="omni-filter-menu" role="group" aria-label="Search filter">
               <button
                 v-for="option in FILTER_OPTIONS"
                 :key="option"
                 type="button"
-                role="menuitemradio"
-                :aria-checked="filter === option"
+                :aria-pressed="filter === option"
                 class="omni-filter-option"
                 :class="{ 'omni-filter-option-active': filter === option }"
                 @click="updateFilter(option)"

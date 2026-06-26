@@ -846,7 +846,6 @@ export function DocsCommandSearch({
               <button
                 type="button"
                 className="omni-filter-button"
-                aria-haspopup="menu"
                 aria-expanded={filterOpen}
                 onClick={() => setFilterOpen((value) => !value)}
               >
@@ -854,13 +853,12 @@ export function DocsCommandSearch({
                 <ArrowDownIcon />
               </button>
               {filterOpen && (
-                <div className="omni-filter-menu" role="menu" aria-label="Search filter">
+                <div className="omni-filter-menu" role="group" aria-label="Search filter">
                   {(["all", "pages", "inside"] as const).map((mode) => (
                     <button
                       key={mode}
                       type="button"
-                      role="menuitemradio"
-                      aria-checked={filter === mode}
+                      aria-pressed={filter === mode}
                       className={cn(
                         "omni-filter-option",
                         filter === mode && "omni-filter-option-active",

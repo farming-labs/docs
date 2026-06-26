@@ -478,6 +478,21 @@ function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[]
   return results;
 }
 
+function pageToSearchDocument(page: DocsSearchSourcePage): DocsSearchDocument {
+  return {
+    id: makeDocumentId(page.url, "page"),
+    url: page.url,
+    title: page.title,
+    content: normalizeWhitespace(page.content),
+    description: page.description,
+    type: "page",
+    locale: page.locale,
+    framework: page.framework,
+    version: page.version,
+    tags: page.tags,
+  };
+}
+
 function buildExactPageSearchResults(
   query: string,
   pages: DocsSearchSourcePage[],
@@ -488,18 +503,7 @@ function buildExactPageSearchResults(
   const results: DocsSearchResult[] = [];
 
   for (const page of pages) {
-    const document: DocsSearchDocument = {
-      id: makeDocumentId(page.url, "page"),
-      url: page.url,
-      title: page.title,
-      content: normalizeWhitespace(page.content),
-      description: page.description,
-      type: "page",
-      locale: page.locale,
-      framework: page.framework,
-      version: page.version,
-      tags: page.tags,
-    };
+    const document = pageToSearchDocument(page);
     const title = normalizeSearchPhrase(page.title);
     const urlSegments = getUrlSearchSegments(page.url);
     const isExactPageMatch = title === normalizedQuery || urlSegments.includes(normalizedQuery);
@@ -655,18 +659,7 @@ export function buildDocsSearchDocuments(
   const strategy = chunking.strategy ?? "section";
 
   return pages.flatMap((page) => {
-    const base: DocsSearchDocument = {
-      id: makeDocumentId(page.url, "page"),
-      url: page.url,
-      title: page.title,
-      content: normalizeWhitespace(page.content),
-      description: page.description,
-      type: "page",
-      locale: page.locale,
-      framework: page.framework,
-      version: page.version,
-      tags: page.tags,
-    };
+    const base = pageToSearchDocument(page);
 
     if (strategy === "page") return [base];
 

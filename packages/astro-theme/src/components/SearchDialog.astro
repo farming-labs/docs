@@ -86,7 +86,6 @@ const { config = null } = Astro.props;
             type="button"
             class="omni-filter-button"
             id="fd-omni-filter-button"
-            aria-haspopup="menu"
             aria-expanded="false"
           >
             <span id="fd-omni-filter-value">All</span>
@@ -97,14 +96,13 @@ const { config = null } = Astro.props;
           <div
             class="omni-filter-menu"
             id="fd-omni-filter-menu"
-            role="menu"
+            role="group"
             aria-label="Search filter"
             style="display: none;"
           >
             <button
               type="button"
-              role="menuitemradio"
-              aria-checked="true"
+              aria-pressed="true"
               class="omni-filter-option omni-filter-option-active"
               data-filter="all"
             >
@@ -112,8 +110,7 @@ const { config = null } = Astro.props;
             </button>
             <button
               type="button"
-              role="menuitemradio"
-              aria-checked="false"
+              aria-pressed="false"
               class="omni-filter-option"
               data-filter="pages"
             >
@@ -121,8 +118,7 @@ const { config = null } = Astro.props;
             </button>
             <button
               type="button"
-              role="menuitemradio"
-              aria-checked="false"
+              aria-pressed="false"
               class="omni-filter-option"
               data-filter="inside"
             >
@@ -274,9 +270,13 @@ const { config = null } = Astro.props;
     );
   }
 
-  function sortResultsForFilter(results) {
+  function getCurrentSearchQuery() {
     var input = getInput();
-    var q = input ? input.value.trim() : "";
+    return input ? input.value.trim() : "";
+  }
+
+  function sortResultsForFilter(results, searchQuery) {
+    var q = typeof searchQuery === "string" ? searchQuery : getCurrentSearchQuery();
     if (!q) return results;
 
     return results.map(function (result, index) {
@@ -306,7 +306,6 @@ const { config = null } = Astro.props;
       setFilterMenuOpen(false);
       renderFilter();
       bindListboxDelegation();
-      ensureListboxClickBound();
       setTimeout(function () {
         var input = getInput();
         if (input) { input.value = ""; input.focus(); }
@@ -344,20 +343,18 @@ const { config = null } = Astro.props;
   function highlightSnippet(text, query) {
     var q = (query || "").trim();
     if (!q) return escapeHtml(text);
-    var lower = text.toLowerCase();
-    var needle = q.toLowerCase();
-    var pos = 0;
     var html = "";
-    var idx = lower.indexOf(needle, pos);
+    var lastIndex = 0;
+    var regex = new RegExp(escapeRegExp(q), "gi");
+    var match;
 
-    while (idx !== -1) {
-      html += escapeHtml(text.slice(pos, idx));
-      html += '<mark class="omni-highlight">' + escapeHtml(text.slice(idx, idx + q.length)) + '</mark>';
-      pos = idx + q.length;
-      idx = lower.indexOf(needle, pos);
+    while ((match = regex.exec(text)) !== null) {
+      html += escapeHtml(text.slice(lastIndex, match.index));
+      html += '<mark class="omni-highlight">' + escapeHtml(match[0]) + '</mark>';
+      lastIndex = match.index + match[0].length;
     }
 
-    return html + escapeHtml(text.slice(pos));
+    return html + escapeHtml(text.slice(lastIndex));
   }
 
   function renderItem(item, active, isRecent) {
@@ -386,15 +383,37 @@ const { config = null } = Astro.props;
   var currentFilter = "all";
   var abortController = null;
   var searchCache = new Map();
+  var currentResultsVersion = 0;
+  var visibleResultsCacheKey = "";
+  var visibleResultsCacheResults = [];
+
+  function setCurrentResults(results) {
+    currentResults = results;
+    currentResultsVersion += 1;
+    visibleResultsCacheKey = "";
+    visibleResultsCacheResults = [];
+  }
 
   function visibleResults() {
+    var q = getCurrentSearchQuery();
+    var cacheKey = currentFilter + "\n" + q + "\n" + currentResultsVersion;
+    if (visibleResultsCacheKey === cacheKey) return visibleResultsCacheResults;
+
+    var results;
     if (currentFilter === "pages") {
-      return currentResults.filter(function (result) { return result.type === "page"; });
+      results = currentResults.filter(function (result) { return result.type === "page"; });
+    } else if (currentFilter === "inside") {
+      results = sortResultsForFilter(
+        currentResults.filter(function (result) { return result.type !== "page"; }),
+        q
+      );
+    } else {
+      results = sortResultsForFilter(currentResults, q);
     }
-    if (currentFilter === "inside") {
-      return sortResultsForFilter(currentResults.filter(function (result) { return result.type !== "page"; }));
-    }
-    return sortResultsForFilter(currentResults);
+
+    visibleResultsCacheKey = cacheKey;
+    visibleResultsCacheResults = results;
+    return results;
   }
 
   function allItems() {
@@ -418,7 +437,7 @@ const { config = null } = Astro.props;
     if (!menu) return;
     Array.prototype.forEach.call(menu.querySelectorAll("[data-filter]"), function (option) {
       var active = option.getAttribute("data-filter") === currentFilter;
-      option.setAttribute("aria-checked", active ? "true" : "false");
+      option.setAttribute("aria-pressed", active ? "true" : "false");
       option.classList.toggle("omni-filter-option-active", active);
     });
   }
@@ -450,7 +469,7 @@ const { config = null } = Astro.props;
     renderFilter();
 
     if (!q) {
-      currentResults = [];
+      if (currentResults.length) setCurrentResults([]);
       if (recentGroup) recentGroup.style.display = recentsList.length ? "block" : "none";
       if (recentItemsEl) {
         recentItemsEl.innerHTML = recentsList.map(function (r, i) {
@@ -508,14 +527,6 @@ const { config = null } = Astro.props;
     var withinDialog = e.target.closest && e.target.closest("#fd-search-dialog");
     if (!withinDialog) return;
 
-    var ext = e.target.closest && e.target.closest("a.omni-item-ext");
-    if (ext) {
-      e.preventDefault();
-      e.stopPropagation();
-      var url = ext.getAttribute("data-ext-url") || ext.getAttribute("href");
-      navigateToUrl(url, true);
-      return;
-    }
     var row = e.target.closest && e.target.closest(".omni-item[data-url]");
     if (row) {
       e.preventDefault();
@@ -551,35 +562,6 @@ const { config = null } = Astro.props;
     document.addEventListener("mouseover", handleOmniItemMouseOver, true);
   }
 
-  function ensureListboxClickBound() {
-    var listbox = getListbox();
-    if (!listbox || listbox._fdOmniClickBound) return;
-    listbox._fdOmniClickBound = true;
-    function onListboxClick(e) {
-      var ext = e.target.closest && e.target.closest("a.omni-item-ext");
-      if (ext) {
-        e.preventDefault();
-        e.stopPropagation();
-        var url = ext.getAttribute("data-ext-url") || ext.getAttribute("href");
-        navigateToUrl(url, true);
-        return;
-      }
-      var row = e.target.closest && e.target.closest(".omni-item[data-url]");
-      if (row) {
-        e.preventDefault();
-        e.stopPropagation();
-        var url = row.getAttribute("data-url");
-        if (!url) return;
-        var labelEl = row.querySelector(".omni-item-label");
-        var label = labelEl ? labelEl.textContent : url;
-        saveRecent({ id: url, label: label, url: url });
-        closeDialog();
-        navigateToUrl(url, url.startsWith("http"));
-      }
-    }
-    listbox.addEventListener("click", onListboxClick, true);
-  }
-
   function scrollActiveIntoView() {
     var q = getInput() && getInput().value.trim();
     var container = q ? getDocsItems() : getRecentItems();
@@ -612,7 +594,7 @@ const { config = null } = Astro.props;
     var q = (input && input.value || "").trim();
     if (getLoading()) getLoading().style.display = "none";
     if (abortController) abortController.abort();
-    currentResults = [];
+    setCurrentResults([]);
     activeIndex = 0;
     setFilterMenuOpen(false);
     if (getDocsGroup()) getDocsGroup().style.display = "none";
@@ -626,7 +608,7 @@ const { config = null } = Astro.props;
     if (!q) return;
     var requestUrl = withLang("/api/docs?query=" + encodeURIComponent(q));
     if (searchCache.has(requestUrl)) {
-      currentResults = searchCache.get(requestUrl) || [];
+      setCurrentResults(searchCache.get(requestUrl) || []);
       activeIndex = 0;
       render();
       return;
@@ -639,7 +621,7 @@ const { config = null } = Astro.props;
         .then(function (res) { return res.ok ? res.json() : []; })
         .then(function (data) {
           if (controller.signal.aborted) return;
-          currentResults = Array.isArray(data) ? data : [];
+          setCurrentResults(Array.isArray(data) ? data : []);
           if (searchCache.size >= 20) {
             var firstKey = searchCache.keys().next().value;
             if (firstKey) searchCache.delete(firstKey);

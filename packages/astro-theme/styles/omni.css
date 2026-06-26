@@ -80,7 +80,6 @@
       ui-sans-serif, sans-serif);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   outline: none;
-  overflow: hidden;
   overscroll-behavior: contain;
   animation: omni-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -315,10 +314,6 @@
 .omni-item-chevron {
   display: none;
 }
-.omni-item:hover .omni-item-chevron {
-  opacity: 1;
-}
-
 /* Highlight */
 .omni-highlight {
   border-radius: 0;
