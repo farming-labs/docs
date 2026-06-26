@@ -66,7 +66,11 @@ function breadcrumbForUrl(url: string): string {
 }
 
 function normalizeSearchPhrase(value: string): string {
-  return value.toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[?!.,;:]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getUrlSearchSegments(url: string): string[] {
@@ -112,7 +116,10 @@ function resultDisplayLabel(result: SearchResult): string {
   if (section) return section;
 
   const label = stripSearchPreview(stripHtml(result.content));
-  const parts = label.split(/\s+[—–]\s+/).map((part) => part.trim()).filter(Boolean);
+  const parts = label
+    .split(/\s+[—–]\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
   if (result.type === "heading" && parts.length > 1) return parts[parts.length - 1] ?? label;
   return label;
 }
