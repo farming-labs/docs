@@ -722,12 +722,19 @@ function CloudFooterSection() {
           </div>
 
           <div className="flex w-full max-w-full flex-col items-start gap-3 sm:items-end sm:justify-center">
-            <div className="flex w-full max-w-full items-center justify-start gap-6 sm:justify-end">
+            <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-x-6 gap-y-3 sm:justify-end">
               <Link
                 href="/docs"
                 className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
               >
                 Documentation
+              </Link>
+              <Link
+                href="https://status.farming-labs.dev"
+                target="_blank"
+                className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+              >
+                Status
               </Link>
               <Link
                 href="/cloud#enterprise-support"
