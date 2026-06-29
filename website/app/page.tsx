@@ -1130,12 +1130,19 @@ function FooterSection() {
               </Link>
             </p>
           </div>
-          <div className="flex max-w-full w-full justify-end items-center gap-6">
+          <div className="flex max-w-full w-full flex-wrap justify-end items-center gap-x-6 gap-y-3">
             <Link
               href="/docs"
               className="text-xs uppercase font-mono text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-colors hover:no-underline"
             >
               Documentation
+            </Link>
+            <Link
+              href="https://status.farming-labs.dev"
+              target="_blank"
+              className="text-xs uppercase font-mono text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-colors hover:no-underline"
+            >
+              Status
             </Link>
             <Link
               href="https://github.com/farming-labs/docs"
