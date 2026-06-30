@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
+import { createDocsCloudClient, type DocsCloudClientOptions } from "@farming-labs/docs/client";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import type {
   CodeBlockCopyData,
@@ -17,6 +18,7 @@ type FeedbackHandler = (data: DocsFeedbackData) => void | Promise<void>;
 type AIActionHandler = (data: DocsAskAIActionData) => void | Promise<void>;
 type AIFeedbackHandler = (data: DocsAskAIFeedbackData) => void | Promise<void>;
 type AnalyticsHandler = (event: DocsAnalyticsEvent) => void | Promise<void>;
+export type DocsCloudClientConfig = boolean | DocsCloudClientOptions;
 
 interface DocsWindowHooks extends Window {
   __fdOnCopyClick__?: CopyHandler;
@@ -48,18 +50,87 @@ function useWindowHook<K extends keyof DocsWindowHooks>(key: K, handler: DocsWin
   }, [handler, key]);
 }
 
-export function isDocsClientAnalyticsEnabled(analytics?: boolean | DocsAnalyticsConfig) {
-  return resolveDocsAnalyticsConfig(analytics).enabled;
+function isAnalyticsDisabled(analytics?: boolean | DocsAnalyticsConfig) {
+  return (
+    analytics === false ||
+    (analytics && typeof analytics === "object" && analytics.enabled === false)
+  );
 }
 
-function useAnalyticsHook(analytics?: boolean | DocsAnalyticsConfig) {
+function isDocsCloudAnalyticsDisabled(
+  analytics: boolean | DocsAnalyticsConfig | undefined,
+  docsCloud: DocsCloudClientConfig | undefined,
+) {
+  return (
+    docsCloud === false ||
+    analytics === false ||
+    (analytics &&
+      typeof analytics === "object" &&
+      (analytics.enabled === false || analytics.cloud === false))
+  );
+}
+
+function resolveDocsCloudClient(
+  analytics: boolean | DocsAnalyticsConfig | undefined,
+  docsCloud: DocsCloudClientConfig | undefined,
+) {
+  if (isDocsCloudAnalyticsDisabled(analytics, docsCloud)) return undefined;
+  if (docsCloud === undefined) return undefined;
+  if (docsCloud === false) return undefined;
+
+  const client = createDocsCloudClient(docsCloud === true ? undefined : docsCloud);
+  return client.isConfigured() ? client : undefined;
+}
+
+function withoutDocsCloudAnalytics(
+  analytics: boolean | DocsAnalyticsConfig | undefined,
+  hasDocsCloudClient: boolean,
+): boolean | DocsAnalyticsConfig | undefined {
+  if (!hasDocsCloudClient) return analytics;
+  if (analytics === true) return { enabled: true, console: true, cloud: false };
+  if (analytics && typeof analytics === "object") return { ...analytics, cloud: false };
+  return false;
+}
+
+export function isDocsClientAnalyticsEnabled(
+  analytics?: boolean | DocsAnalyticsConfig,
+  docsCloud?: DocsCloudClientConfig,
+) {
+  if (isAnalyticsDisabled(analytics)) return false;
+
+  const docsCloudClient = resolveDocsCloudClient(analytics, docsCloud);
+  const localAnalytics = withoutDocsCloudAnalytics(analytics, Boolean(docsCloudClient));
+
+  return resolveDocsAnalyticsConfig(localAnalytics).enabled || Boolean(docsCloudClient);
+}
+
+function useAnalyticsHook(
+  analytics?: boolean | DocsAnalyticsConfig,
+  docsCloud?: DocsCloudClientConfig,
+) {
+  const docsCloudClient = useMemo(
+    () => resolveDocsCloudClient(analytics, docsCloud),
+    [analytics, docsCloud],
+  );
+  const localAnalytics = useMemo(
+    () => withoutDocsCloudAnalytics(analytics, Boolean(docsCloudClient)),
+    [analytics, docsCloudClient],
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!isDocsClientAnalyticsEnabled(analytics)) return;
+    const localAnalyticsEnabled = resolveDocsAnalyticsConfig(localAnalytics).enabled;
+    if (!localAnalyticsEnabled && !docsCloudClient) return;
 
     const target = window as DocsWindowHooks;
     const handler = (event: DocsAnalyticsEvent) => {
-      void emitDocsAnalyticsEvent(analytics, event);
+      if (localAnalyticsEnabled) {
+        void emitDocsAnalyticsEvent(localAnalytics, event);
+      }
+
+      if (docsCloudClient) {
+        void docsCloudClient.trackEvent(event);
+      }
     };
     const previous = target.__fdAnalytics__;
     target.__fdAnalytics__ = handler;
@@ -77,13 +148,16 @@ function useAnalyticsHook(analytics?: boolean | DocsAnalyticsConfig) {
         }
       }
     };
-  }, [analytics]);
+  }, [docsCloudClient, localAnalytics]);
 }
 
-function useCodeCopyAnalytics(analytics?: boolean | DocsAnalyticsConfig) {
+function useCodeCopyAnalytics(
+  analytics?: boolean | DocsAnalyticsConfig,
+  docsCloud?: DocsCloudClientConfig,
+) {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!isDocsClientAnalyticsEnabled(analytics)) return;
+    if (!isDocsClientAnalyticsEnabled(analytics, docsCloud)) return;
 
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -116,7 +190,7 @@ function useCodeCopyAnalytics(analytics?: boolean | DocsAnalyticsConfig) {
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [analytics]);
+  }, [analytics, docsCloud]);
 }
 
 export function DocsClientHooks({
@@ -125,19 +199,34 @@ export function DocsClientHooks({
   onAIActions,
   onAIFeedback,
   analytics,
+  docsCloud,
 }: {
   onCopyClick?: CopyHandler;
   onFeedback?: FeedbackHandler;
   onAIActions?: AIActionHandler;
   onAIFeedback?: AIFeedbackHandler;
   analytics?: boolean | DocsAnalyticsConfig;
+  docsCloud?: DocsCloudClientConfig;
 }) {
   useWindowHook("__fdOnCopyClick__", onCopyClick);
   useWindowHook("__fdOnFeedback__", onFeedback);
   useWindowHook("__fdOnAIActions__", onAIActions);
   useWindowHook("__fdOnAIFeedback__", onAIFeedback);
-  useAnalyticsHook(analytics);
-  useCodeCopyAnalytics(analytics);
+  useAnalyticsHook(analytics, docsCloud);
+  useCodeCopyAnalytics(analytics, docsCloud);
 
   return null;
+}
+
+export function DocsCloudAnalyticsProvider({
+  analytics,
+  children,
+  ...docsCloudOptions
+}: DocsCloudClientOptions & {
+  analytics?: boolean | DocsAnalyticsConfig;
+  children?: ReactNode;
+}) {
+  useAnalyticsHook(analytics, docsCloudOptions);
+
+  return children;
 }

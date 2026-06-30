@@ -20,6 +20,10 @@ describe("DocsClientHooks analytics resolution", () => {
     expect(isDocsClientAnalyticsEnabled()).toBe(true);
   });
 
+  it("enables the client analytics hook from an explicit Docs Cloud client project id", () => {
+    expect(isDocsClientAnalyticsEnabled(undefined, { projectId: "project_client" })).toBe(true);
+  });
+
   it("keeps the client analytics hook disabled when Cloud analytics is opted out", () => {
     process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_cloud";
     process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "false";
@@ -31,5 +35,8 @@ describe("DocsClientHooks analytics resolution", () => {
     process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_cloud";
 
     expect(isDocsClientAnalyticsEnabled({ enabled: false })).toBe(false);
+    expect(isDocsClientAnalyticsEnabled({ enabled: false }, { projectId: "project_client" })).toBe(
+      false,
+    );
   });
 });

@@ -85,7 +85,8 @@ export { DocsLayout } from "fumadocs-ui/layouts/docs";
 // ─── Client-side TOC component ────────────────────────────────────────
 // Scans DOM headings and feeds them to DocsPage's TOC panel
 export { DocsPageClient } from "./docs-page-client.js";
-export { DocsClientHooks } from "./docs-client-hooks.js";
+export { DocsClientHooks, DocsCloudAnalyticsProvider } from "./docs-client-hooks.js";
+export type { DocsCloudClientConfig } from "./docs-client-hooks.js";
 export { DocsFeedback } from "./docs-feedback.js";
 
 // ─── Page action buttons (Copy Markdown, Open in LLM) ─────────────────

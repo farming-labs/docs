@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import docsConfig from "@farming-labs/next-internal-docs-config";
 import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
+import type { DocsCloudClientOptions } from "@farming-labs/docs/client";
 
 function resolveApiReferenceServerLabel(url?: string): string {
   if (!url) return window.location.origin;
@@ -14,7 +15,10 @@ function resolveApiReferenceServerLabel(url?: string): string {
   }
 }
 
-export default function DocsClientCallbacks(props?: { apiReferencePrimaryServerUrl?: string }) {
+export default function DocsClientCallbacks(props?: {
+  apiReferencePrimaryServerUrl?: string;
+  docsCloud?: DocsCloudClientOptions | false;
+}) {
   useEffect(() => {
     if (!props?.apiReferencePrimaryServerUrl) return;
 
@@ -53,6 +57,7 @@ export default function DocsClientCallbacks(props?: { apiReferencePrimaryServerU
           : undefined
       }
       onAIActions={docsConfig.ai?.onActions}
+      docsCloud={props?.docsCloud}
     />
   );
 }
