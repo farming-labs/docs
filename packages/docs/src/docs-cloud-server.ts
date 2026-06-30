@@ -390,11 +390,21 @@ export function createDocsCloudServer(options: DocsCloudServerOptions = {}): Doc
       cloud: false,
       console: userConfig.console ?? false,
       onEvent: async (event) => {
+        let userError: unknown;
+
         if (userOnEvent) {
-          await userOnEvent(event);
+          try {
+            await userOnEvent(event);
+          } catch (error) {
+            userError = error;
+          }
         }
 
         await trackEvent(event);
+
+        if (typeof userError !== "undefined") {
+          throw userError;
+        }
       },
     };
   }

@@ -47,6 +47,7 @@ export interface DocsCloudClientOptions {
   apiBaseUrl?: DocsCloudClientRuntimeValue;
   analyticsKey?: DocsCloudClientRuntimeValue;
   enabled?: DocsCloudClientRuntimeValue<boolean | string>;
+  includeInputs?: DocsCloudClientRuntimeValue<boolean>;
   env?: DocsCloudClientRuntimeEnv;
   fetch?: typeof fetch;
   metadata?: Record<string, unknown>;
@@ -99,7 +100,21 @@ function resolveRuntimeEnv(
 
 function readProcessEnv(name: string): string | undefined {
   if (typeof process === "undefined") return undefined;
-  return normalizeRuntimeString(process.env?.[name]);
+
+  switch (name) {
+    case "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID":
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID);
+    case "NEXT_PUBLIC_DOCS_CLOUD_URL":
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_URL);
+    case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT":
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT);
+    case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED":
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
+    case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY":
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
+    default:
+      return undefined;
+  }
 }
 
 function readEnv(name: string, env: Record<string, string | undefined>): string | undefined {
@@ -197,6 +212,10 @@ export function createDocsCloudClient(options: DocsCloudClientOptions = {}): Doc
     return !isFalsy(value);
   }
 
+  function includeInputs(): boolean {
+    return resolveRuntimeValue(options.includeInputs) === true;
+  }
+
   function getConfig(): DocsCloudClientResolvedConfig {
     const id = projectId();
 
@@ -227,6 +246,10 @@ export function createDocsCloudClient(options: DocsCloudClientOptions = {}): Doc
       metadata: mergeRecords(options.metadata, trackOptions.metadata, event.metadata),
       properties: mergeRecords(options.properties, trackOptions.properties, event.properties),
     };
+
+    if (!includeInputs()) {
+      delete normalized.input;
+    }
 
     await sendDocsCloudAnalyticsEvent(
       {

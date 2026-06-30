@@ -155,4 +155,42 @@ describe("Docs Cloud server SDK", () => {
     );
     expect(new Headers(knowledgeCall?.[1]?.headers).get("Authorization")).toBe("Bearer fl_key_ai");
   });
+
+  it("still sends SDK analytics when a user analytics callback throws", async () => {
+    const userOnEvent = vi.fn(async () => {
+      throw new Error("user analytics failed");
+    });
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) => {
+      const href = String(url);
+
+      if (href.includes("/knowledge/ask")) {
+        return Response.json({ answer: "Ship it." });
+      }
+
+      return new Response(null, { status: 204 });
+    });
+    const docsCloud = createDocsCloudServer({
+      projectId: "project_throw",
+      apiKey: "fl_key_throw",
+      apiBaseUrl: "https://cloud.example.com",
+      analytics: {
+        console: false,
+        onEvent: userOnEvent,
+      },
+      fetch: fetchMock as typeof fetch,
+    });
+
+    const response = await docsCloud.askAI(
+      jsonRequest("https://docs.example.com/api/cloud?action=ask-ai", {
+        messages: [{ role: "user", content: "Can I deploy?" }],
+        stream: false,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(userOnEvent).toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/analytics/events"))).toBe(
+      true,
+    );
+  });
 });

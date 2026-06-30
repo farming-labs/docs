@@ -1,5 +1,5 @@
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createNextDocsLayout } from "./layout.js";
 
 function clearDocsCloudEnv() {
@@ -29,6 +29,7 @@ function getClientCallbackProps(node: React.ReactNode): Record<string, unknown> 
 }
 
 describe("createNextDocsLayout Docs Cloud analytics", () => {
+  beforeEach(clearDocsCloudEnv);
   afterEach(clearDocsCloudEnv);
 
   it("passes public Docs Cloud analytics config into the client layout callbacks", () => {

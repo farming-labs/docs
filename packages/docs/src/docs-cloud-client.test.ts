@@ -24,6 +24,7 @@ describe("Docs Cloud client SDK", () => {
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
   });
 
   it("tracks client analytics with explicit project configuration", async () => {
@@ -96,6 +97,51 @@ describe("Docs Cloud client SDK", () => {
         body: expect.stringContaining('"projectId":"project_env"'),
       }),
     );
+  });
+
+  it("does not resolve non-Next public env names dynamically in browser defaults", async () => {
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+
+    const fetchMock = vi.fn(
+      async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 202 }),
+    );
+
+    await expect(
+      createDocsCloudClient({ fetch: fetchMock as typeof fetch }).trackEvent({
+        type: "page_view",
+      }),
+    ).resolves.toBe(false);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("strips raw input unless the client explicitly opts in", async () => {
+    const fetchMock = vi.fn(
+      async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 202 }),
+    );
+
+    await createDocsCloudClient({
+      projectId: "project_private",
+      fetch: fetchMock as typeof fetch,
+    }).trackEvent({
+      type: "search",
+      input: { query: "secret search" },
+    });
+
+    await createDocsCloudClient({
+      projectId: "project_private",
+      includeInputs: true,
+      fetch: fetchMock as typeof fetch,
+    }).trackEvent({
+      type: "search",
+      input: { query: "allowed search" },
+    });
+
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+
+    expect(firstBody.event.input).toBeUndefined();
+    expect(secondBody.event.input).toEqual({ query: "allowed search" });
   });
 
   it("no-ops when the client project id is missing or analytics is disabled", async () => {

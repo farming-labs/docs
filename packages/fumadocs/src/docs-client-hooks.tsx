@@ -78,7 +78,12 @@ function resolveDocsCloudClient(
   if (docsCloud === undefined) return undefined;
   if (docsCloud === false) return undefined;
 
-  const client = createDocsCloudClient(docsCloud === true ? undefined : docsCloud);
+  const clientOptions = docsCloud === true ? {} : docsCloud;
+  const includeInputs = typeof analytics === "object" && analytics.includeInputs === true;
+  const client = createDocsCloudClient({
+    ...clientOptions,
+    includeInputs: clientOptions.includeInputs ?? includeInputs,
+  });
   return client.isConfigured() ? client : undefined;
 }
 
