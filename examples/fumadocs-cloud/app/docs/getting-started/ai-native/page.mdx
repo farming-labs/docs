@@ -1,0 +1,56 @@
+---
+title: AI-Native
+description: Configure AI-powered search and chat for your documentation.
+---
+
+# AI-Native Features
+
+Our framework includes built-in AI capabilities that make your docs smarter.
+
+## Enable AI Search
+
+Add the AI configuration to your `docs.config.ts`:
+
+```tsx
+export default defineDocs({
+  ai: {
+    enabled: true,
+    mode: "floating",
+    position: "bottom-right",
+    apiKey: process.env.OPENAI_API_KEY,
+  },
+});
+```
+
+## AI Modes
+
+| Mode       | Description                               |
+| ---------- | ----------------------------------------- |
+| `search`   | Integrated into the Cmd+K search dialog   |
+| `floating` | Floating chat widget with slide-out panel |
+
+## Suggested Questions
+
+Pre-populate your AI chat with common questions:
+
+```tsx
+ai: {
+  suggestedQuestions: [
+    "How do I get started?",
+    "What themes are available?",
+    "How do I deploy my docs?",
+  ],
+}
+```
+
+## Custom Loading States
+
+You can customize the loading indicator variant:
+
+```ts
+ai: {
+  loader: "wave", // or "dots", "typing", "circular", "terminal", etc.
+}
+```
+
+Available variants: `"shimmer-dots"` (default), `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`.

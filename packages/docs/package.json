@@ -30,6 +30,11 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./cloud/server": {
+      "types": "./dist/docs-cloud-server.d.mts",
+      "import": "./dist/docs-cloud-server.mjs",
+      "default": "./dist/docs-cloud-server.mjs"
+    },
     "./client/react": {
       "types": "./dist/client/react.d.mts",
       "import": "./dist/client/react.mjs",

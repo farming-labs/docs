@@ -21,6 +21,7 @@ const DOCS_CLOUD_ANALYTICS_ENABLED_ENVS = [
   "PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED",
   "DOCS_CLOUD_ANALYTICS_ENABLED",
 ] as const;
+const DEFAULT_DOCS_CLOUD_ANALYTICS_ROUTE = "/api/docs?action=analytics";
 
 function normalizeEnvValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -62,7 +63,7 @@ function resolveNextDocsCloudClientOptions(
   return {
     projectId,
     analytics,
-    ...(endpoint ? { endpoint } : {}),
+    endpoint: endpoint ?? DEFAULT_DOCS_CLOUD_ANALYTICS_ROUTE,
     metadata: {
       framework: "next",
     },

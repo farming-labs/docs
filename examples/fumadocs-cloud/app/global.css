@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "@farming-labs/theme/threadline/css";
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+}

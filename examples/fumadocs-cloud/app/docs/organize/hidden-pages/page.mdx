@@ -1,0 +1,38 @@
+---
+title: Hidden Pages
+description: Hide pages from the sidebar while keeping them accessible.
+---
+
+# Hidden Pages
+
+Sometimes you need pages that are accessible via URL but hidden from the
+sidebar navigation.
+
+## Using Frontmatter
+
+Add `hidden: true` to your page's frontmatter:
+
+```mdx
+---
+title: Secret Page
+hidden: true
+---
+
+This page won't appear in the sidebar.
+```
+
+## Use Cases
+
+- **Draft content**: Pages still being written
+- **Internal pages**: Content for specific audiences
+- **Redirect targets**: Pages that only serve as redirect destinations
+- **API callbacks**: Documentation for webhook endpoints
+
+## Accessing Hidden Pages
+
+Hidden pages are still accessible via their URL. You can link to them
+from other pages:
+
+```mdx
+Check out our [internal guide](/docs/internal-guide) for more details.
+```

@@ -69,6 +69,22 @@ describe("createNextDocsLayout Docs Cloud analytics", () => {
     expect(callbackProps?.docsCloudEnabled).toBe(true);
   });
 
+  it("defaults Docs Cloud analytics to the local merged docs API route", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server";
+
+    const Layout = createNextDocsLayout({
+      entry: "docs",
+      analytics: true,
+    });
+    const node = Layout({ children: React.createElement("div", null, "child") });
+    const cloudProps = getDocsCloudAnalyticsProps(node);
+
+    expect(cloudProps).toMatchObject({
+      projectId: "project_server",
+      endpoint: "/api/docs?action=analytics",
+    });
+  });
+
   it("does not pass Docs Cloud client config when analytics is disabled", () => {
     process.env.DOCS_CLOUD_PROJECT_ID = "project_server";
 

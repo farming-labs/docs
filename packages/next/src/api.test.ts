@@ -7,9 +7,9 @@ import {
   resolveNextProjectRoot,
   type DocsAPICloudOptions,
 } from "./api.js";
-import { createDocsCloudServer } from "@farming-labs/docs/server";
+import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";
 import { createDocsAPI as createThemeDocsAPI } from "@farming-labs/theme/api";
-import type { DocsCloudServer } from "@farming-labs/docs/server";
+import type { DocsCloudServer } from "@farming-labs/docs/cloud/server";
 
 function jsonRequest(url: string, body: unknown): Request {
   return new Request(url, {

@@ -4,13 +4,13 @@ import {
   createDocsAPI as createThemeDocsAPI,
   createDocsMCPAPI as createThemeDocsMCPAPI,
 } from "@farming-labs/theme/api";
-import type { DocsCloudRouteHandlerOptions, DocsCloudServer } from "@farming-labs/docs/server";
+import type { DocsCloudRouteHandlerOptions, DocsCloudServer } from "@farming-labs/docs/cloud/server";
 export {
   createDocsCloudRouteHandler,
   type DocsCloudRouteHandlerOptions,
   type DocsCloudRouteHandlers,
   type DocsCloudServer,
-} from "@farming-labs/docs/server";
+} from "@farming-labs/docs/cloud/server";
 
 type DocsAPIOptions = NonNullable<Parameters<typeof createThemeDocsAPI>[0]>;
 type DocsMCPAPIOptions = NonNullable<Parameters<typeof createThemeDocsMCPAPI>[0]>;

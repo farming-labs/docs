@@ -1,0 +1,36 @@
+---
+title: Organize
+icon: folder
+description: Structure and organize your documentation content.
+---
+
+# Organize
+
+Learn how to structure your documentation for the best reader experience.
+
+## File-Based Routing
+
+Our framework uses file-based routing. Each `page.mdx` file in the `app/docs/`
+directory becomes a documentation page.
+
+## Directory Structure
+
+Organize pages into folders to create logical groupings:
+
+```
+app/docs/
+├── page.mdx                    # /docs
+├── getting-started/
+│   ├── page.mdx                # /docs/getting-started
+│   └── quickstart/
+│       └── page.mdx            # /docs/getting-started/quickstart
+└── customize/
+    ├── page.mdx                # /docs/customize
+    └── themes/
+        └── page.mdx            # /docs/customize/themes
+```
+
+## Sidebar Generation
+
+The sidebar is automatically generated from your file structure. Folders
+with child pages become expandable sections.

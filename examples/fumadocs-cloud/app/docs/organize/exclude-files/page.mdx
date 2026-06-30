@@ -1,0 +1,47 @@
+---
+title: Exclude Files
+description: Exclude specific files or directories from documentation.
+---
+
+# Exclude Files
+
+Control which files are included in your documentation build.
+
+## Ignoring Directories
+
+Files and directories starting with `_` or `.` are automatically ignored:
+
+```
+app/docs/
+├── page.mdx          # ✅ Included
+├── _drafts/          # ❌ Ignored
+│   └── page.mdx
+└── .internal/        # ❌ Ignored
+    └── page.mdx
+```
+
+## Excluding from Search
+
+To keep a page visible but exclude it from search results:
+
+```mdx
+---
+title: My Page
+searchable: false
+---
+```
+
+## Excluding from Sitemap
+
+```mdx
+---
+title: My Page
+sitemap: false
+---
+```
+
+## Best Practices
+
+1. Use `_` prefix for work-in-progress content
+2. Use `hidden` frontmatter for pages you want accessible but not in the sidebar
+3. Use `searchable: false` for pages that shouldn't appear in search
