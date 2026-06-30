@@ -115,6 +115,35 @@ describe("Docs Cloud browser analytics transport", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("no-ops when a browser process shim omits process.env", async () => {
+    const originalEnv = process.env;
+    const fetchMock = vi.fn(
+      async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 202 }),
+    );
+
+    Object.defineProperty(process, "env", {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    });
+
+    try {
+      await expect(
+        createDocsCloudClient({ fetch: fetchMock as typeof fetch }).trackEvent({
+          type: "page_view",
+        }),
+      ).resolves.toBe(false);
+    } finally {
+      Object.defineProperty(process, "env", {
+        configurable: true,
+        value: originalEnv,
+        writable: true,
+      });
+    }
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("strips raw input unless the client explicitly opts in", async () => {
     const fetchMock = vi.fn(
       async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 202 }),
