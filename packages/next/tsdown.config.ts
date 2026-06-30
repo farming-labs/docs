@@ -27,6 +27,8 @@ export default defineConfig({
     "react-dom",
     "@/docs.config",
     "@farming-labs/docs",
+    "@farming-labs/docs/client/react",
+    "@farming-labs/docs/cloud/server",
     "@farming-labs/docs/server",
     "@farming-labs/theme/api",
     "@farming-labs/theme/client-hooks",

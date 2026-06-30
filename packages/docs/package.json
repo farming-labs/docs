@@ -30,6 +30,16 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./cloud/server": {
+      "types": "./dist/docs-cloud-server.d.mts",
+      "import": "./dist/docs-cloud-server.mjs",
+      "default": "./dist/docs-cloud-server.mjs"
+    },
+    "./client/react": {
+      "types": "./dist/client/react.d.mts",
+      "import": "./dist/client/react.mjs",
+      "default": "./dist/client/react.mjs"
+    },
     "./mcp": {
       "types": "./dist/mcp.d.mts",
       "import": "./dist/mcp.mjs",
@@ -53,8 +63,18 @@
     "picocolors": "^1.1.1",
     "zod": "^4.3.6"
   },
+  "peerDependencies": {
+    "react": ">=19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/react": "^19.2.2",
+    "react": "^19.2.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"

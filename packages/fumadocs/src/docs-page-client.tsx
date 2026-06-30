@@ -872,14 +872,14 @@ export function DocsPageClient({
     };
   }, [needsTitleDecorationsPortal, pathname]);
 
+  const titleDecorations = needsTitleDecorationsPortal ? (
+    <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
+  ) : null;
   const titleDecorationsPortal =
-    needsTitleDecorationsPortal && titlePortalHost
-      ? createPortal(
-          <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />,
-          titlePortalHost,
-          "title-decorations",
-        )
+    titleDecorations && titlePortalHost
+      ? createPortal(titleDecorations, titlePortalHost, "title-decorations")
       : null;
+  const titleDecorationsFallback = titleDecorations && !titlePortalHost ? titleDecorations : null;
   const titleControlsPortal =
     showActionsInToc && titleControlsPortalHost
       ? createPortal(<ThreadlinePageControls />, titleControlsPortalHost, "title-controls")
@@ -983,6 +983,7 @@ export function DocsPageClient({
           <div key="content" style={{ flex: 1 }}>
             {renderedChildren}
           </div>
+          {titleDecorationsFallback}
           {titleDecorationsPortal}
           {!isChangelogRoute && feedbackEnabled && (
             <DocsFeedback

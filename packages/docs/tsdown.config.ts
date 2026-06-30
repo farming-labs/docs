@@ -1,7 +1,14 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/server.ts", "src/mcp.ts", "src/cli/index.ts"],
+  entry: [
+    "src/index.ts",
+    "src/server.ts",
+    "src/docs-cloud-server.ts",
+    "src/client/react.ts",
+    "src/mcp.ts",
+    "src/cli/index.ts",
+  ],
   format: "esm",
   dts: true,
   clean: true,

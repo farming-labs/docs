@@ -102,8 +102,13 @@ const DOCS_API_ROUTE_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsAPI } from "@farming-labs/next/api";
+import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";
 
-export const { GET, POST } = createDocsAPI(docsConfig);
+const docsCloud = createDocsCloudServer({
+  config: docsConfig,
+});
+
+export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
 
 export const revalidate = false;
 `;
@@ -165,7 +170,6 @@ export default function HiddenChangelogSourceLayout() {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
-const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://api.farming-labs.dev/v1/analytics/events";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -293,8 +297,6 @@ function createPublicDocsCloudAnalyticsEnv() {
     normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT) ??
     normalizeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT) ??
     normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT);
-  const endpoint =
-    configuredEndpoint ?? (projectId ? DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT : undefined);
   const enabled =
     normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED) ??
     normalizeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED) ??
@@ -305,8 +307,8 @@ function createPublicDocsCloudAnalyticsEnv() {
     env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = projectId;
   }
 
-  if (endpoint) {
-    env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT = endpoint;
+  if (configuredEndpoint) {
+    env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT = configuredEndpoint;
   }
 
   if (enabled) {
@@ -336,6 +338,10 @@ function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record
     "@farming-labs/docs/server": workspaceEntrypoint(
       ["packages", "docs", "dist", "server.mjs"],
       ["packages", "docs", "src", "server.ts"],
+    ),
+    "@farming-labs/docs/cloud/server": workspaceEntrypoint(
+      ["packages", "docs", "dist", "docs-cloud-server.mjs"],
+      ["packages", "docs", "src", "docs-cloud-server.ts"],
     ),
     "@farming-labs/next": workspaceEntrypoint(
       ["packages", "next", "dist", "index.mjs"],
@@ -2277,6 +2283,13 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
       Object.assign(resolvedConfig.resolve.alias, {
         "@farming-labs/docs$": join(workspaceRoot, "packages", "docs", "dist", "index.mjs"),
         "@farming-labs/docs/server": join(workspaceRoot, "packages", "docs", "dist", "server.mjs"),
+        "@farming-labs/docs/cloud/server": join(
+          workspaceRoot,
+          "packages",
+          "docs",
+          "dist",
+          "docs-cloud-server.mjs",
+        ),
         "@farming-labs/next$": join(workspaceRoot, "packages", "next", "dist", "index.mjs"),
         "@farming-labs/next/api": join(workspaceRoot, "packages", "next", "dist", "api.mjs"),
         "@farming-labs/next/changelog": join(

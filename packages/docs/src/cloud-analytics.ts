@@ -4,6 +4,7 @@ interface DocsCloudAnalyticsOptions {
   endpoint?: string;
   projectId?: string;
   apiKey?: string;
+  fetch?: typeof fetch;
 }
 
 const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://api.farming-labs.dev/v1/analytics/events";
@@ -61,7 +62,9 @@ export function resolveDocsCloudAnalyticsOptions(
 ): DocsCloudAnalyticsOptions | null {
   if (
     analytics === false ||
-    (analytics && typeof analytics === "object" && analytics.enabled === false)
+    (analytics &&
+      typeof analytics === "object" &&
+      (analytics.enabled === false || analytics.cloud === false))
   ) {
     return null;
   }
@@ -221,7 +224,8 @@ export async function sendDocsCloudAnalyticsEvent(
   options: DocsCloudAnalyticsOptions,
   event: DocsAnalyticsEvent,
 ) {
-  if (typeof fetch !== "function") {
+  const fetcher = options.fetch ?? (typeof fetch === "function" ? fetch : undefined);
+  if (!fetcher) {
     return;
   }
 
@@ -233,7 +237,7 @@ export async function sendDocsCloudAnalyticsEvent(
 
   try {
     const normalizedEvent = withDocsCloudAnalyticsHints(event);
-    await fetch(endpoint, {
+    await fetcher(endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",

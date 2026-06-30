@@ -48,8 +48,27 @@ function useWindowHook<K extends keyof DocsWindowHooks>(key: K, handler: DocsWin
   }, [handler, key]);
 }
 
+function isAnalyticsDisabled(analytics?: boolean | DocsAnalyticsConfig) {
+  return (
+    analytics === false ||
+    (analytics && typeof analytics === "object" && analytics.enabled === false)
+  );
+}
+
 export function isDocsClientAnalyticsEnabled(analytics?: boolean | DocsAnalyticsConfig) {
+  if (isAnalyticsDisabled(analytics)) return false;
+
   return resolveDocsAnalyticsConfig(analytics).enabled;
+}
+
+function callAnalyticsHandler(handler: AnalyticsHandler | undefined, event: DocsAnalyticsEvent) {
+  if (!handler) return;
+
+  try {
+    void Promise.resolve(handler(event)).catch(() => {});
+  } catch {
+    // Analytics handlers must never break page interactions.
+  }
 }
 
 function useAnalyticsHook(analytics?: boolean | DocsAnalyticsConfig) {
@@ -58,10 +77,11 @@ function useAnalyticsHook(analytics?: boolean | DocsAnalyticsConfig) {
     if (!isDocsClientAnalyticsEnabled(analytics)) return;
 
     const target = window as DocsWindowHooks;
-    const handler = (event: DocsAnalyticsEvent) => {
-      void emitDocsAnalyticsEvent(analytics, event);
-    };
     const previous = target.__fdAnalytics__;
+    const handler = (event: DocsAnalyticsEvent) => {
+      callAnalyticsHandler(previous, event);
+      void emitDocsAnalyticsEvent(analytics, event).catch(() => {});
+    };
     target.__fdAnalytics__ = handler;
 
     const queued = target.__fdAnalyticsQueue__ ?? [];

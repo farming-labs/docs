@@ -1,0 +1,68 @@
+---
+order: 2
+title: Quickstart
+description: Run the example locally with Docs Cloud server features enabled.
+icon: rocket
+---
+
+# Quickstart
+
+Install dependencies from the repository root:
+
+```bash
+pnpm install
+```
+
+Copy the example environment file:
+
+```bash
+cp examples/fumadocs-cloud/.env.local.example examples/fumadocs-cloud/.env.local
+```
+
+Fill in the project id and API key from Docs Cloud:
+
+```bash title="examples/fumadocs-cloud/.env.local"
+DOCS_CLOUD_PROJECT_ID=project_...
+DOCS_CLOUD_API_KEY=fl_key_...
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_...
+```
+
+Run the example:
+
+```bash
+pnpm --filter @farming-labs/docs/example-fumadocs-cloud dev
+```
+
+Open `/docs`, then check the merged API route:
+
+```bash
+curl "http://localhost:3000/api/docs?cloud=config"
+```
+
+The response should show both `projectId` and `apiKey` as configured:
+
+```json
+{
+  "ok": true,
+  "configured": {
+    "projectId": true,
+    "apiKey": true
+  }
+}
+```
+
+## Verify Analytics
+
+Send a server-side smoke event through the local route:
+
+```bash
+curl -X POST "http://localhost:3000/api/docs?action=analytics" \
+  -H "content-type: application/json" \
+  -d '{"type":"smoke_test","path":"/docs","source":"server"}'
+```
+
+The expected response is:
+
+```json
+{ "ok": true, "type": "analytics" }
+```

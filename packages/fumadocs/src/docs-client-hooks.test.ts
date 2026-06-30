@@ -20,6 +20,12 @@ describe("DocsClientHooks analytics resolution", () => {
     expect(isDocsClientAnalyticsEnabled()).toBe(true);
   });
 
+  it("enables the client analytics hook when the layout owns cloud delivery", () => {
+    expect(isDocsClientAnalyticsEnabled({ enabled: true, console: false, cloud: false })).toBe(
+      true,
+    );
+  });
+
   it("keeps the client analytics hook disabled when Cloud analytics is opted out", () => {
     process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_cloud";
     process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "false";

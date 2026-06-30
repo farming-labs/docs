@@ -1,0 +1,32 @@
+---
+order: 7
+title: Organize
+description: Keep the example docs small and focused.
+icon: folder
+---
+
+# Organize
+
+This example keeps only the pages needed to prove the Fumadocs Cloud setup:
+
+- an introduction
+- installation steps
+- local API route usage
+- integration concepts
+- customization notes
+- changelog pages
+
+The changelog source lives under `_changelog`, a private App Router folder.
+The public changelog routes are generated under `/docs/changelogs`.
+
+```txt
+app/docs
+  _changelog
+    2026-04-15
+      page.mdx
+  changelogs
+    page.tsx
+    [slug]/page.tsx
+```
+
+This avoids duplicate public URLs for the same changelog content.

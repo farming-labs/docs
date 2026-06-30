@@ -890,6 +890,12 @@ export interface DocsAnalyticsConfig {
   includeInputs?: boolean;
   /** Callback fired for every emitted event. */
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
+  /**
+   * Forward events to Docs Cloud when project env vars are available.
+   *
+   * @default true
+   */
+  cloud?: boolean;
 }
 
 export type DocsTelemetryFramework =
@@ -1030,6 +1036,17 @@ export interface DocsCloudConfig {
   enabled?: boolean;
   /** API key lookup used by `docs deploy` and other cloud CLI commands. */
   apiKey?: DocsCloudApiKeyConfig;
+  /**
+   * Same-origin route for the generated Docs API handler.
+   *
+   * Next.js layouts use this as the default client analytics proxy when no
+   * hosted analytics endpoint env is configured. Set it when the route is
+   * mounted somewhere other than `/api/docs`, or when a deployment uses a
+   * public base path.
+   *
+   * @default "/api/docs"
+   */
+  apiRoute?: string;
   /** Legacy hosted preview deployment settings. Prefer `deploy` in new configs. */
   preview?: DocsCloudPreviewConfig;
   /** Generated docs publishing settings. */

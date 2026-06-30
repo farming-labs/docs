@@ -247,7 +247,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "src/app/docs/layout.tsx"))).toBe(true);
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(true);
     expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
-      "createDocsAPI(docsConfig)",
+      "createDocsAPI(docsConfig, docsCloud)",
     );
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(false);
@@ -1188,9 +1188,24 @@ describe("withDocs (app dir: src/app vs app)", () => {
     });
 
     expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID).toBe("project_user");
-    expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT).toBe(
-      "https://api.farming-labs.dev/v1/analytics/events",
-    );
+    expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT).toBeUndefined();
+  });
+
+  it("only serializes Docs Cloud analytics endpoint when a custom endpoint is configured", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server_only";
+    process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.env).toMatchObject({
+      NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_server_only",
+      NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT:
+        "https://docs-cloud.example.com/api/analytics/events",
+    });
   });
 
   it("generates a docs API route that forwards search and ai config", () => {
@@ -1202,9 +1217,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const route = readFileSync(join(tmpDir, "app/api/docs/route.ts"), "utf-8");
 
     expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
+    expect(route).toContain(
+      'import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";',
+    );
+    expect(route).toContain("const docsCloud = createDocsCloudServer({");
+    expect(route).toContain("config: docsConfig");
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).not.toContain("rootDir,");
-    expect(route).toContain("createDocsAPI(docsConfig)");
+    expect(route).toContain("createDocsAPI(docsConfig, docsCloud)");
     expect(route).not.toContain("changelog: docsConfig.changelog");
     expect(route).not.toContain("llmsTxt: docsConfig.llmsTxt");
     expect(route).not.toContain("sitemap: docsConfig.sitemap");

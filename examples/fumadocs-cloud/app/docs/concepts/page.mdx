@@ -1,0 +1,36 @@
+---
+order: 5
+title: Concepts
+description: How the local docs app and Docs Cloud cooperate.
+icon: lightbulb
+---
+
+# Concepts
+
+The integration has three layers:
+
+1. `docs.config.tsx` describes the local docs app.
+2. `createDocsCloudServer()` creates one server SDK instance.
+3. `createDocsAPI(docsConfig, docsCloud)` merges local docs handlers and Docs
+   Cloud handlers into one route.
+
+## Request Flow
+
+```txt
+Browser
+  -> /api/docs?action=analytics
+  -> createDocsAPI(...)
+  -> docsCloud.handleRequest(...)
+  -> https://api.farming-labs.dev
+```
+
+The same pattern is used for Ask AI, except the hosted endpoint is the
+project-scoped knowledge route.
+
+## Why This Shape
+
+- The browser gets a stable same-origin endpoint.
+- The server keeps API keys private.
+- Fumadocs sites can opt into hosted features without replacing their local docs
+  infrastructure.
+- Advanced users can still call the server SDK directly when needed.

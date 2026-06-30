@@ -1,0 +1,46 @@
+---
+order: 8
+title: Integrations
+description: Connect hosted Docs Cloud features to a Fumadocs site.
+icon: puzzle
+---
+
+# Integrations
+
+The server SDK supports the hosted features that need private credentials:
+
+- analytics ingestion
+- Ask AI over the project knowledge index
+- future dashboard and webhook workflows
+
+The recommended setup is to create one server SDK instance beside the route:
+
+```ts title="app/api/docs/route.ts"
+const docsCloud = createDocsCloudServer({
+  config: docsConfig,
+});
+
+export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
+```
+
+If another server module needs the same SDK, export the instance from a local
+module:
+
+```ts title="lib/docs-cloud.ts"
+import docsConfig from "@/docs.config";
+import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";
+
+export const docsCloud = createDocsCloudServer({
+  config: docsConfig,
+});
+```
+
+Then reuse it in the route:
+
+```ts title="app/api/docs/route.ts"
+import docsConfig from "@/docs.config";
+import { createDocsAPI } from "@farming-labs/next/api";
+import { docsCloud } from "@/lib/docs-cloud";
+
+export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
+```
