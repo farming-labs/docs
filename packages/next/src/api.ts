@@ -4,7 +4,10 @@ import {
   createDocsAPI as createThemeDocsAPI,
   createDocsMCPAPI as createThemeDocsMCPAPI,
 } from "@farming-labs/theme/api";
-import type { DocsCloudRouteHandlerOptions, DocsCloudServer } from "@farming-labs/docs/cloud/server";
+import type {
+  DocsCloudRouteHandlerOptions,
+  DocsCloudServer,
+} from "@farming-labs/docs/cloud/server";
 export {
   createDocsCloudRouteHandler,
   type DocsCloudRouteHandlerOptions,
@@ -104,9 +107,7 @@ function isDocsCloudServer(value: unknown): value is DocsCloudServer {
   return isRecord(value) && typeof value.handleRequest === "function";
 }
 
-function resolveDocsCloudIntegration(
-  integration?: DocsAPICloudIntegration,
-):
+function resolveDocsCloudIntegration(integration?: DocsAPICloudIntegration):
   | {
       docsCloud: DocsCloudServer;
       routeOptions: DocsCloudRouteHandlerOptions;
@@ -148,16 +149,9 @@ function isDocsCloudGetRequest(request: Request): boolean {
 function isDocsCloudAction(action: string | undefined): boolean {
   return Boolean(
     action &&
-      [
-        "analytics",
-        "track",
-        "track-event",
-        "event",
-        "ask-ai",
-        "ai",
-        "chat",
-        "docs-cloud",
-      ].includes(action),
+    ["analytics", "track", "track-event", "event", "ask-ai", "ai", "chat", "docs-cloud"].includes(
+      action,
+    ),
   );
 }
 
