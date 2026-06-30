@@ -16,6 +16,11 @@ const DOCS_CLOUD_ANALYTICS_ENDPOINT_ENVS = [
   "PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT",
   "DOCS_CLOUD_ANALYTICS_ENDPOINT",
 ] as const;
+const DOCS_CLOUD_ANALYTICS_ROUTE_ENVS = [
+  "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ROUTE",
+  "PUBLIC_DOCS_CLOUD_ANALYTICS_ROUTE",
+  "DOCS_CLOUD_ANALYTICS_ROUTE",
+] as const;
 const DOCS_CLOUD_ANALYTICS_ENABLED_ENVS = [
   "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED",
   "PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED",
@@ -39,6 +44,33 @@ function isFalsyEnv(value: string | undefined): boolean {
   return /^(0|false|no|off)$/i.test(value ?? "");
 }
 
+function withAnalyticsAction(route: string): string {
+  try {
+    const url = new URL(route, "https://docs.local");
+    if (!url.searchParams.has("action")) {
+      url.searchParams.set("action", "analytics");
+    }
+
+    return route.startsWith("http://") || route.startsWith("https://")
+      ? url.toString()
+      : `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    const [pathAndQuery, hash = ""] = route.split("#", 2);
+    const separator = pathAndQuery.includes("?") ? "&" : "?";
+    return `${pathAndQuery}${separator}action=analytics${hash ? `#${hash}` : ""}`;
+  }
+}
+
+function normalizeRoute(value: string | undefined): string | undefined {
+  const normalized = normalizeEnvValue(value);
+  if (!normalized) return undefined;
+  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+    return withAnalyticsAction(normalized);
+  }
+
+  return withAnalyticsAction(`/${normalized}`.replace(/\/+/g, "/"));
+}
+
 function resolveNextDocsCloudClientOptions(
   config: DocsConfig,
 ): DocsCloudAnalyticsOptions | false | undefined {
@@ -59,11 +91,15 @@ function resolveNextDocsCloudClientOptions(
   if (!projectId) return undefined;
 
   const endpoint = readFirstEnv(DOCS_CLOUD_ANALYTICS_ENDPOINT_ENVS);
+  const route =
+    normalizeRoute(readFirstEnv(DOCS_CLOUD_ANALYTICS_ROUTE_ENVS)) ??
+    normalizeRoute(config.cloud?.apiRoute);
+  const includeInputs = typeof analytics === "object" && analytics.includeInputs === true;
 
   return {
     projectId,
-    analytics,
-    endpoint: endpoint ?? DEFAULT_DOCS_CLOUD_ANALYTICS_ROUTE,
+    endpoint: endpoint ?? route ?? DEFAULT_DOCS_CLOUD_ANALYTICS_ROUTE,
+    includeInputs,
     metadata: {
       framework: "next",
     },

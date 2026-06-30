@@ -1,53 +1,50 @@
 ---
+order: 6
 title: Customize
+description: Adjust the route, metadata, and client analytics behavior.
 icon: settings
-description: Customize the look and feel of your documentation.
 ---
 
 # Customize
 
-Make your documentation site uniquely yours with themes, fonts, and custom
-components.
+The default local analytics proxy is `/api/docs?action=analytics`. If your app
+mounts the docs API elsewhere, set `cloud.apiRoute`:
 
-## Theming
-
-Choose from built-in themes or create your own:
-
-```tsx
-import { greentree } from "@farming-labs/theme/greentree";
-
+```tsx title="docs.config.tsx"
 export default defineDocs({
-  theme: greentree({
-    /* overrides */
-  }),
+  entry: "docs",
+  cloud: {
+    apiRoute: "/internal/docs-cloud",
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
+  },
 });
 ```
 
-## Available Themes
+For deployments with a public base path, include that base path:
 
-Nine built-in themes:
-
-| Theme          | Description                                    |
-| -------------- | ---------------------------------------------- |
-| `fumadocs`     | Default theme with clean design                |
-| `darksharp`   | All-black, sharp corners                      |
-| `pixel-border` | Refined dark UI inspired by better-auth.com    |
-| `colorful`     | Fumadocs-style neutral with description support|
-| `greentree`    | Green-accented Mintlify-inspired theme        |
-| `darkbold`     | Monochrome Vercel-inspired theme               |
-| `shiny`        | Glossy modern theme                            |
-| `hardline`     | Hard-edge high-contrast interface              |
-| `concrete`     | Brutalist poster-style interface with loud depth |
-
-## Quick Customization
-
-Override any theme value:
-
-```tsx
-theme: greentree({
-  ui: {
-    colors: { primary: "#FF6B35" },
-    sidebar: { style: "bordered" },
+```tsx title="docs.config.tsx"
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiRoute: "/base-path/api/docs",
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
   },
 });
+```
+
+You can also override the analytics route with an environment variable:
+
+```bash
+NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ROUTE=/base-path/api/docs
+```
+
+Use a custom hosted analytics endpoint only when testing a custom or self-hosted
+Docs Cloud API:
+
+```bash
+NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT=https://cloud.example.com/v1/analytics/events
 ```

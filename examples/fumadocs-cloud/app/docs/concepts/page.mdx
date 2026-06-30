@@ -1,56 +1,36 @@
 ---
-title: "Concepts"
-description: "Core concepts and architecture of Better Auth."
-icon: "lightbulb"
+order: 5
+title: Concepts
+description: How the local docs app and Docs Cloud cooperate.
+icon: lightbulb
 ---
 
 # Concepts
 
-Understanding these core concepts will help you get the most out of Better Auth and build robust authentication systems.
+The integration has three layers:
 
-## Architecture Overview
+1. `docs.config.tsx` describes the local docs app.
+2. `createDocsCloudServer()` creates one server SDK instance.
+3. `createDocsAPI(docsConfig, docsCloud)` merges local docs handlers and Docs
+   Cloud handlers into one route.
 
-Better Auth follows a layered architecture:
+## Request Flow
 
+```txt
+Browser
+  -> /api/docs?action=analytics
+  -> createDocsAPI(...)
+  -> docsCloud.handleRequest(...)
+  -> https://api.farming-labs.dev
 ```
-┌──────────────────────────────────────┐
-│          Client SDK (React, etc.)    │
-├──────────────────────────────────────┤
-│            API Handler               │
-├──────────────────────────────────────┤
-│          Auth Core Engine            │
-├──────────────┬───────────────────────┤
-│   Plugins    │   Database Adapter    │
-└──────────────┴───────────────────────┘
-```
 
-1. **Client SDK** — Framework-specific hooks and utilities for the frontend
-2. **API Handler** — HTTP endpoints that handle auth requests (sign in, sign up, etc.)
-3. **Auth Core Engine** — The central logic that orchestrates authentication flows
-4. **Plugins** — Optional modules that extend functionality (2FA, passkeys, etc.)
-5. **Database Adapter** — Abstraction layer for your database of choice
+The same pattern is used for Ask AI, except the hosted endpoint is the
+project-scoped knowledge route.
 
-## Key Concepts
+## Why This Shape
 
-### Auth Instance
-
-The auth instance is the central object that configures your authentication system. It's created with `betterAuth()` and holds all configuration, plugins, and database connections.
-
-### Sessions
-
-Sessions represent an authenticated user's state. Better Auth uses secure, encrypted cookies to manage sessions automatically. Sessions can be configured with custom expiry times, refresh tokens, and more.
-
-### Accounts
-
-An account links a user to an authentication method. A single user can have multiple accounts (e.g., email + Google + GitHub), all linked to the same user profile.
-
-### Verification
-
-Verification tokens are used for email verification, password resets, and other flows that require proving ownership of an email address.
-
----
-
-## Deep Dives
-
-- [Session Management](/docs/concepts/session-management) — How sessions work, token rotation, and security
-- [Database Schema](/docs/concepts/database) — Tables, relationships, and migrations
+- The browser gets a stable same-origin endpoint.
+- The server keeps API keys private.
+- Fumadocs sites can opt into hosted features without replacing their local docs
+  infrastructure.
+- Advanced users can still call the server SDK directly when needed.

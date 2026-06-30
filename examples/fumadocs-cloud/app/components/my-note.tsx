@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 interface MyNoteProps {
   children: ReactNode;
-  type?: "info" | "warning" | "tip";
+  type?: "info" | "warning" | "tip" | (string & {});
 }
 
 const colors = {
@@ -14,7 +14,8 @@ const colors = {
 };
 
 export function MyNote({ children, type = "info" }: MyNoteProps) {
-  const c = colors[type];
+  const variant = type in colors ? (type as keyof typeof colors) : "info";
+  const c = colors[variant];
   return (
     <div
       style={{
@@ -27,7 +28,7 @@ export function MyNote({ children, type = "info" }: MyNoteProps) {
         fontSize: "0.95rem",
       }}
     >
-      <strong style={{ textTransform: "uppercase", fontSize: "0.8rem" }}>{type}</strong>
+      <strong style={{ textTransform: "uppercase", fontSize: "0.8rem" }}>{variant}</strong>
       <div style={{ marginTop: "0.25rem" }}>{children}</div>
     </div>
   );

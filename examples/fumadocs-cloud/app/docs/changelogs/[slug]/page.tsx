@@ -2,9 +2,9 @@
 
 import docsConfig from "@/docs.config";
 import type { GeneratedChangelogEntry } from "@farming-labs/next/changelog";
-import ChangelogEntry1 from "../../changelog/2026-04-15/page.mdx";
-import ChangelogEntry2 from "../../changelog/2026-04-03/page.mdx";
-import ChangelogEntry3 from "../../changelog/2026-03-18/page.mdx";
+import ChangelogEntry1 from "../../_changelog/2026-04-15/page.mdx";
+import ChangelogEntry2 from "../../_changelog/2026-04-03/page.mdx";
+import ChangelogEntry3 from "../../_changelog/2026-03-18/page.mdx";
 import {
   createNextChangelogEntryMetadata,
   createNextChangelogEntryPage,
@@ -16,7 +16,7 @@ export const changelogEntries: GeneratedChangelogEntry[] = [
     slug: "2026-04-15",
     date: "2026-04-15",
     url: "/docs/changelogs/2026-04-15",
-    sourcePath: "app/docs/changelog/2026-04-15/page.mdx",
+    sourcePath: "app/docs/_changelog/2026-04-15/page.mdx",
     Component: ChangelogEntry1,
     metadata: {
       title: "API Reference: OpenAPI mode is now the default",
@@ -33,7 +33,7 @@ export const changelogEntries: GeneratedChangelogEntry[] = [
     slug: "2026-04-03",
     date: "2026-04-03",
     url: "/docs/changelogs/2026-04-03",
-    sourcePath: "app/docs/changelog/2026-04-03/page.mdx",
+    sourcePath: "app/docs/_changelog/2026-04-03/page.mdx",
     Component: ChangelogEntry2,
     metadata: {
       title: "Colorful theme cleanup across docs and API routes",
@@ -49,7 +49,7 @@ export const changelogEntries: GeneratedChangelogEntry[] = [
     slug: "2026-03-18",
     date: "2026-03-18",
     url: "/docs/changelogs/2026-03-18",
-    sourcePath: "app/docs/changelog/2026-03-18/page.mdx",
+    sourcePath: "app/docs/_changelog/2026-03-18/page.mdx",
     Component: ChangelogEntry3,
     metadata: {
       title: "Cloud page motion pass",

@@ -1,36 +1,32 @@
 ---
+order: 7
 title: Organize
+description: Keep the example docs small and focused.
 icon: folder
-description: Structure and organize your documentation content.
 ---
 
 # Organize
 
-Learn how to structure your documentation for the best reader experience.
+This example keeps only the pages needed to prove the Fumadocs Cloud setup:
 
-## File-Based Routing
+- an introduction
+- installation steps
+- local API route usage
+- integration concepts
+- customization notes
+- changelog pages
 
-Our framework uses file-based routing. Each `page.mdx` file in the `app/docs/`
-directory becomes a documentation page.
+The changelog source lives under `_changelog`, a private App Router folder.
+The public changelog routes are generated under `/docs/changelogs`.
 
-## Directory Structure
-
-Organize pages into folders to create logical groupings:
-
-```
-app/docs/
-├── page.mdx                    # /docs
-├── getting-started/
-│   ├── page.mdx                # /docs/getting-started
-│   └── quickstart/
-│       └── page.mdx            # /docs/getting-started/quickstart
-└── customize/
-    ├── page.mdx                # /docs/customize
-    └── themes/
-        └── page.mdx            # /docs/customize/themes
+```txt
+app/docs
+  _changelog
+    2026-04-15
+      page.mdx
+  changelogs
+    page.tsx
+    [slug]/page.tsx
 ```
 
-## Sidebar Generation
-
-The sidebar is automatically generated from your file structure. Folders
-with child pages become expandable sections.
+This avoids duplicate public URLs for the same changelog content.

@@ -1,82 +1,80 @@
 ---
-order: 2
+order: 3
 title: Installation
-description: Install and configure Better Auth in your project.
+description: Add the Docs Cloud route to a Fumadocs-powered app.
 icon: terminal
 ---
 
 # Installation
 
-Getting started with Better Auth takes just a few minutes. This guide walks you through installing the package, setting up your database, and creating your first auth instance.
+Add the packages used by this example:
 
-## Prerequisites
-
-Before you begin, make sure you have:
-
-- **Node.js** 18 or later
-- **A database** — PostgreSQL, MySQL, SQLite, or MongoDB
-- **A package manager** — npm, yarn, pnpm, or bun
-
-## Install the Package
-
-```bash title="terminal"
-pnpm add better-auth
+```bash
+pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme
 ```
 
-## Set Up Environment Variables
+Create a docs config:
 
-Create a `.env` file in your project root:
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
 
-```bash title=".env"
-# Database connection
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-
-# Auth secret (generate with: openssl rand -base64 32)
-BETTER_AUTH_SECRET="your-secret-key-here"
-
-# Base URL of your application
-BETTER_AUTH_URL="http://localhost:3000"
-```
-
-> **Note:** Never commit your `.env` file to version control. Add it to your `.gitignore`.
-
-## Create Auth Instance
-
-Create an `auth.ts` file in your project:
-
-```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-
-export const auth = betterAuth({
-  database: {
-    provider: "postgresql",
-    url: process.env.DATABASE_URL,
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
   },
-  emailAndPassword: {
+  ai: {
     enabled: true,
+    provider: "docs-cloud",
+  },
+  analytics: {
+    cloud: true,
+    includeInputs: false,
   },
 });
 ```
 
-## Verify Installation
+Add the merged API route:
 
-Start your development server and visit `http://localhost:3000/api/auth/ok`.
+```ts title="app/api/docs/route.ts"
+import docsConfig from "@/docs.config";
+import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";
+import { createDocsAPI } from "@farming-labs/next/api";
 
-You should see a JSON response confirming the auth server is running:
+const docsCloud = createDocsCloudServer({
+  config: docsConfig,
+});
 
-```json title="response.json"
-{ "ok": true }
+export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
+export const revalidate = false;
 ```
 
----
+Add the docs layout:
 
-<Agent>
-You are an implementation agent. When editing this installation guide, preserve the package name,
-environment variable names, and verification endpoint, and double-check that the sample auth
-instance still matches the documented database provider setup.
-</Agent>
+```tsx title="app/docs/layout.tsx"
+import docsConfig from "@/docs.config";
+import { createNextDocsLayout, createNextDocsMetadata } from "@farming-labs/next/layout";
 
-## Next Steps
+export const metadata = createNextDocsMetadata(docsConfig);
 
-- Follow the [Get Started](/docs/getting-started) guide
-- Learn about [Session Management](/docs/concepts/session-management)
+const DocsLayout = createNextDocsLayout(docsConfig);
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <DocsLayout>{children}</DocsLayout>;
+}
+```
+
+## Environment Variables
+
+Only these values are needed for the default hosted cloud:
+
+```bash
+DOCS_CLOUD_PROJECT_ID=project_...
+DOCS_CLOUD_API_KEY=fl_key_...
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_...
+```
+
+You do not need to set an analytics endpoint for the hosted cloud. The local
+docs route proxies analytics to Docs Cloud with the server API key.

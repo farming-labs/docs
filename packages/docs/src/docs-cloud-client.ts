@@ -100,20 +100,19 @@ function resolveRuntimeEnv(
 
 function readProcessEnv(name: string): string | undefined {
   if (typeof process === "undefined") return undefined;
-  const processEnv = process.env;
-  if (!processEnv) return undefined;
+  if (!process.env) return undefined;
 
   switch (name) {
     case "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID":
-      return normalizeRuntimeString(processEnv.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID);
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID);
     case "NEXT_PUBLIC_DOCS_CLOUD_URL":
-      return normalizeRuntimeString(processEnv.NEXT_PUBLIC_DOCS_CLOUD_URL);
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_URL);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT":
-      return normalizeRuntimeString(processEnv.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT);
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED":
-      return normalizeRuntimeString(processEnv.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY":
-      return normalizeRuntimeString(processEnv.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
+      return normalizeRuntimeString(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
     default:
       return undefined;
   }

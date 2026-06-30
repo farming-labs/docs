@@ -9,6 +9,9 @@ function clearDocsCloudEnv() {
   delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
   delete process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
   delete process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT;
+  delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ROUTE;
+  delete process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ROUTE;
+  delete process.env.DOCS_CLOUD_ANALYTICS_ROUTE;
   delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
   delete process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
   delete process.env.DOCS_CLOUD_ANALYTICS_ENABLED;
@@ -61,12 +64,33 @@ describe("createNextDocsLayout Docs Cloud analytics", () => {
     expect(cloudProps).toMatchObject({
       projectId: "project_server",
       endpoint: "https://cloud.example.com/events",
-      analytics: true,
+      includeInputs: false,
       metadata: {
         framework: "next",
       },
     });
+    expect(cloudProps).not.toHaveProperty("analytics");
     expect(callbackProps?.docsCloudEnabled).toBe(true);
+  });
+
+  it("passes only serializable analytics options to the client component", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server";
+
+    const Layout = createNextDocsLayout({
+      entry: "docs",
+      analytics: {
+        includeInputs: true,
+        onEvent() {},
+      },
+    });
+    const node = Layout({ children: React.createElement("div", null, "child") });
+    const cloudProps = getDocsCloudAnalyticsProps(node);
+
+    expect(cloudProps).toMatchObject({
+      projectId: "project_server",
+      includeInputs: true,
+    });
+    expect(cloudProps).not.toHaveProperty("analytics");
   });
 
   it("defaults Docs Cloud analytics to the local merged docs API route", () => {
@@ -82,6 +106,42 @@ describe("createNextDocsLayout Docs Cloud analytics", () => {
     expect(cloudProps).toMatchObject({
       projectId: "project_server",
       endpoint: "/api/docs?action=analytics",
+    });
+  });
+
+  it("uses a configured local docs API route for analytics proxying", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server";
+
+    const Layout = createNextDocsLayout({
+      entry: "docs",
+      cloud: {
+        apiRoute: "/base/internal/docs-cloud",
+      },
+      analytics: true,
+    });
+    const node = Layout({ children: React.createElement("div", null, "child") });
+    const cloudProps = getDocsCloudAnalyticsProps(node);
+
+    expect(cloudProps).toMatchObject({
+      projectId: "project_server",
+      endpoint: "/base/internal/docs-cloud?action=analytics",
+    });
+  });
+
+  it("uses a configured analytics route env for analytics proxying", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ROUTE = "/tenant/api/docs";
+
+    const Layout = createNextDocsLayout({
+      entry: "docs",
+      analytics: true,
+    });
+    const node = Layout({ children: React.createElement("div", null, "child") });
+    const cloudProps = getDocsCloudAnalyticsProps(node);
+
+    expect(cloudProps).toMatchObject({
+      projectId: "project_server",
+      endpoint: "/tenant/api/docs?action=analytics",
     });
   });
 

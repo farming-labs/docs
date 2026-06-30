@@ -1,106 +1,68 @@
 ---
-title: "Quickstart"
-description: "Get up and running in minutes"
+order: 2
+title: Quickstart
+description: Run the example locally with Docs Cloud server features enabled.
+icon: rocket
 ---
 
 # Quickstart
 
-This guide walks you through creating your first documentation page.
-
-## Creating a Page
-
-Create a new folder under `app/docs/` with a `page.mdx` file:
+Install dependencies from the repository root:
 
 ```bash
-mkdir -p app/docs/my-page
+pnpm install
 ```
 
-Then create `app/docs/my-page/page.mdx`:
+Copy the example environment file:
 
-```mdx
----
-title: "My Page"
-description: "A custom documentation page"
----
-
-# My Page
-
-Write your content here using **Markdown** and JSX components.
+```bash
+cp examples/fumadocs-cloud/.env.local.example examples/fumadocs-cloud/.env.local
 ```
 
-Your page is now available at `/docs/my-page`.
+Fill in the project id and API key from Docs Cloud:
 
-<Agent>
-You are an implementation agent working from the public Quickstart page.
+```bash title="examples/fumadocs-cloud/.env.local"
+DOCS_CLOUD_PROJECT_ID=project_...
+DOCS_CLOUD_API_KEY=fl_key_...
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_...
+```
 
-Use this page as the lightweight implementation brief when no sibling `agent.md` exists.
+Run the example:
 
-Priorities:
-- preserve the scaffolded file paths under `app/docs/`
-- keep the shell commands runnable as written
-- keep the example `page.mdx` snippet aligned with the actual docs folder convention
-- verify `/docs/quickstart.md` still includes this agent-only block
-- verify the normal browser page at `/docs/quickstart` does not show this block
+```bash
+pnpm --filter @farming-labs/docs/example-fumadocs-cloud dev
+```
 
-Files and paths this page refers to:
-- `app/docs/my-page/page.mdx`
-- `docs.config.ts`
-- `/docs/my-page`
-- `/docs/quickstart.md`
+Open `/docs`, then check the merged API route:
 
-If you update this page:
-- do not replace the human quickstart with agent jargon
-- keep the human explanation concise and beginner-friendly
-- put implementation-only guidance inside `<Agent>...</Agent>` blocks like this one
+```bash
+curl "http://localhost:3000/api/docs?cloud=config"
+```
 
-Expected agent takeaway:
-- humans should read the normal page
-- agents should read the `.md` route
-- a page without `agent.md` can still expose richer machine context through embedded `<Agent>` blocks
-</Agent>
+The response should show both `projectId` and `apiKey` as configured:
 
-## Using Components
-
-### Callouts
-
-<Callout type="info">
-  This is an informational callout. Use it for tips and notes.
-</Callout>
-
-<Callout type="warn">
-  This is a warning callout. Use it for important caveats.
-</Callout>
-
-### Code Blocks
-
-Code blocks are automatically syntax-highlighted:
-
-```typescript
-function greet(name: string): string {
-  return \`Hello, \${name}!\`;
+```json
+{
+  "ok": true,
+  "configured": {
+    "projectId": true,
+    "apiKey": true
+  }
 }
-
-console.log(greet("World"));
 ```
 
-## Customizing the Theme
+## Verify Analytics
 
-Edit `docs.config.ts` to change colors, typography, and component defaults:
-
-```ts
-theme: fumadocs({
-  ui: {
-    colors: { primary: "#22c55e" },
-  },
-}),
-```
-
-## Deploying
-
-Build your docs for production:
+Send a server-side smoke event through the local route:
 
 ```bash
-pnpm build
+curl -X POST "http://localhost:3000/api/docs?action=analytics" \
+  -H "content-type: application/json" \
+  -d '{"type":"smoke_test","path":"/docs","source":"server"}'
 ```
 
-Deploy to Vercel, Netlify, or any Node.js hosting platform.
+The expected response is:
+
+```json
+{ "ok": true, "type": "analytics" }
+```

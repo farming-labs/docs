@@ -32,5 +32,6 @@ DOCS_CLOUD_API_KEY=fl_key_...
 NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_...
 ```
 
-The hosted Docs Cloud analytics endpoint is the default. Only set an analytics endpoint env when
-testing a custom or self-hosted Cloud API.
+Client analytics defaults to the same-origin `/api/docs?action=analytics` route, which keeps the
+server API key private. Only set an analytics endpoint env when testing a custom or self-hosted
+Cloud API.

@@ -44,7 +44,7 @@ export default defineDocs({
   changelog: {
     enabled: true,
     path: "changelogs",
-    contentDir: "changelog",
+    contentDir: "_changelog",
     title: "Changelog",
     description:
       "Track the latest updates, bug fixes, and shipped improvements across @farming-labs/docs.",
