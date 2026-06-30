@@ -29,10 +29,10 @@ function isDocsCloudAnalyticsDisabled(
 ): boolean {
   return Boolean(
     enabled === false ||
-      analytics === false ||
-      (analytics &&
-        typeof analytics === "object" &&
-        (analytics.enabled === false || analytics.cloud === false)),
+    analytics === false ||
+    (analytics &&
+      typeof analytics === "object" &&
+      (analytics.enabled === false || analytics.cloud === false)),
   );
 }
 
