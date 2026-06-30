@@ -28,11 +28,25 @@ function getClientCallbackProps(node: React.ReactNode): Record<string, unknown> 
   return React.isValidElement(callback) ? (callback.props as Record<string, unknown>) : undefined;
 }
 
+function getDocsCloudAnalyticsProps(node: React.ReactNode): Record<string, unknown> | undefined {
+  if (!React.isValidElement(node)) return undefined;
+
+  const children = React.Children.toArray((node.props as { children?: React.ReactNode }).children);
+  const analytics = children.find(
+    (child) =>
+      React.isValidElement(child) &&
+      typeof child.type === "function" &&
+      child.type.name === "DocsCloudAnalytics",
+  );
+
+  return React.isValidElement(analytics) ? (analytics.props as Record<string, unknown>) : undefined;
+}
+
 describe("createNextDocsLayout Docs Cloud analytics", () => {
   beforeEach(clearDocsCloudEnv);
   afterEach(clearDocsCloudEnv);
 
-  it("passes public Docs Cloud analytics config into the client layout callbacks", () => {
+  it("mounts Docs Cloud analytics from public layout config", () => {
     process.env.DOCS_CLOUD_PROJECT_ID = "project_server";
     process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://cloud.example.com/events";
 
@@ -40,17 +54,19 @@ describe("createNextDocsLayout Docs Cloud analytics", () => {
       entry: "docs",
       analytics: true,
     });
-    const props = getClientCallbackProps(
-      Layout({ children: React.createElement("div", null, "child") }),
-    );
+    const node = Layout({ children: React.createElement("div", null, "child") });
+    const cloudProps = getDocsCloudAnalyticsProps(node);
+    const callbackProps = getClientCallbackProps(node);
 
-    expect(props?.docsCloud).toMatchObject({
+    expect(cloudProps).toMatchObject({
       projectId: "project_server",
       endpoint: "https://cloud.example.com/events",
+      analytics: true,
       metadata: {
         framework: "next",
       },
     });
+    expect(callbackProps?.docsCloudEnabled).toBe(true);
   });
 
   it("does not pass Docs Cloud client config when analytics is disabled", () => {
@@ -60,10 +76,11 @@ describe("createNextDocsLayout Docs Cloud analytics", () => {
       entry: "docs",
       analytics: false,
     });
-    const props = getClientCallbackProps(
-      Layout({ children: React.createElement("div", null, "child") }),
-    );
+    const node = Layout({ children: React.createElement("div", null, "child") });
+    const cloudProps = getDocsCloudAnalyticsProps(node);
+    const callbackProps = getClientCallbackProps(node);
 
-    expect(props?.docsCloud).toBe(false);
+    expect(cloudProps).toBeUndefined();
+    expect(callbackProps?.docsCloudEnabled).toBe(false);
   });
 });

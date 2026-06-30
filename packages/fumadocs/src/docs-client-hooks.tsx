@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect } from "react";
 import { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
-import { createDocsCloudClient, type DocsCloudClientOptions } from "@farming-labs/docs/client";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import type {
   CodeBlockCopyData,
@@ -18,7 +17,6 @@ type FeedbackHandler = (data: DocsFeedbackData) => void | Promise<void>;
 type AIActionHandler = (data: DocsAskAIActionData) => void | Promise<void>;
 type AIFeedbackHandler = (data: DocsAskAIFeedbackData) => void | Promise<void>;
 type AnalyticsHandler = (event: DocsAnalyticsEvent) => void | Promise<void>;
-export type DocsCloudClientConfig = boolean | DocsCloudClientOptions;
 
 interface DocsWindowHooks extends Window {
   __fdOnCopyClick__?: CopyHandler;
@@ -57,87 +55,33 @@ function isAnalyticsDisabled(analytics?: boolean | DocsAnalyticsConfig) {
   );
 }
 
-function isDocsCloudAnalyticsDisabled(
-  analytics: boolean | DocsAnalyticsConfig | undefined,
-  docsCloud: DocsCloudClientConfig | undefined,
-) {
-  return (
-    docsCloud === false ||
-    analytics === false ||
-    (analytics &&
-      typeof analytics === "object" &&
-      (analytics.enabled === false || analytics.cloud === false))
-  );
-}
-
-function resolveDocsCloudClient(
-  analytics: boolean | DocsAnalyticsConfig | undefined,
-  docsCloud: DocsCloudClientConfig | undefined,
-) {
-  if (isDocsCloudAnalyticsDisabled(analytics, docsCloud)) return undefined;
-  if (docsCloud === undefined) return undefined;
-  if (docsCloud === false) return undefined;
-
-  const clientOptions = docsCloud === true ? {} : docsCloud;
-  const includeInputs = typeof analytics === "object" && analytics.includeInputs === true;
-  const client = createDocsCloudClient({
-    ...clientOptions,
-    includeInputs: clientOptions.includeInputs ?? includeInputs,
-  });
-  return client.isConfigured() ? client : undefined;
-}
-
-function withoutDocsCloudAnalytics(
-  analytics: boolean | DocsAnalyticsConfig | undefined,
-  hasDocsCloudClient: boolean,
-): boolean | DocsAnalyticsConfig | undefined {
-  if (!hasDocsCloudClient) return analytics;
-  if (analytics === true) return { enabled: true, console: true, cloud: false };
-  if (analytics && typeof analytics === "object") return { ...analytics, cloud: false };
-  return false;
-}
-
-export function isDocsClientAnalyticsEnabled(
-  analytics?: boolean | DocsAnalyticsConfig,
-  docsCloud?: DocsCloudClientConfig,
-) {
+export function isDocsClientAnalyticsEnabled(analytics?: boolean | DocsAnalyticsConfig) {
   if (isAnalyticsDisabled(analytics)) return false;
 
-  const docsCloudClient = resolveDocsCloudClient(analytics, docsCloud);
-  const localAnalytics = withoutDocsCloudAnalytics(analytics, Boolean(docsCloudClient));
-
-  return resolveDocsAnalyticsConfig(localAnalytics).enabled || Boolean(docsCloudClient);
+  return resolveDocsAnalyticsConfig(analytics).enabled;
 }
 
-function useAnalyticsHook(
-  analytics?: boolean | DocsAnalyticsConfig,
-  docsCloud?: DocsCloudClientConfig,
-) {
-  const docsCloudClient = useMemo(
-    () => resolveDocsCloudClient(analytics, docsCloud),
-    [analytics, docsCloud],
-  );
-  const localAnalytics = useMemo(
-    () => withoutDocsCloudAnalytics(analytics, Boolean(docsCloudClient)),
-    [analytics, docsCloudClient],
-  );
+function callAnalyticsHandler(handler: AnalyticsHandler | undefined, event: DocsAnalyticsEvent) {
+  if (!handler) return;
 
+  try {
+    void Promise.resolve(handler(event)).catch(() => {});
+  } catch {
+    // Analytics handlers must never break page interactions.
+  }
+}
+
+function useAnalyticsHook(analytics?: boolean | DocsAnalyticsConfig) {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const localAnalyticsEnabled = resolveDocsAnalyticsConfig(localAnalytics).enabled;
-    if (!localAnalyticsEnabled && !docsCloudClient) return;
+    if (!isDocsClientAnalyticsEnabled(analytics)) return;
 
     const target = window as DocsWindowHooks;
-    const handler = (event: DocsAnalyticsEvent) => {
-      if (localAnalyticsEnabled) {
-        void emitDocsAnalyticsEvent(localAnalytics, event);
-      }
-
-      if (docsCloudClient) {
-        void docsCloudClient.trackEvent(event);
-      }
-    };
     const previous = target.__fdAnalytics__;
+    const handler = (event: DocsAnalyticsEvent) => {
+      callAnalyticsHandler(previous, event);
+      void emitDocsAnalyticsEvent(analytics, event).catch(() => {});
+    };
     target.__fdAnalytics__ = handler;
 
     const queued = target.__fdAnalyticsQueue__ ?? [];
@@ -153,16 +97,13 @@ function useAnalyticsHook(
         }
       }
     };
-  }, [docsCloudClient, localAnalytics]);
+  }, [analytics]);
 }
 
-function useCodeCopyAnalytics(
-  analytics?: boolean | DocsAnalyticsConfig,
-  docsCloud?: DocsCloudClientConfig,
-) {
+function useCodeCopyAnalytics(analytics?: boolean | DocsAnalyticsConfig) {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!isDocsClientAnalyticsEnabled(analytics, docsCloud)) return;
+    if (!isDocsClientAnalyticsEnabled(analytics)) return;
 
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -195,7 +136,7 @@ function useCodeCopyAnalytics(
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [analytics, docsCloud]);
+  }, [analytics]);
 }
 
 export function DocsClientHooks({
@@ -204,34 +145,19 @@ export function DocsClientHooks({
   onAIActions,
   onAIFeedback,
   analytics,
-  docsCloud,
 }: {
   onCopyClick?: CopyHandler;
   onFeedback?: FeedbackHandler;
   onAIActions?: AIActionHandler;
   onAIFeedback?: AIFeedbackHandler;
   analytics?: boolean | DocsAnalyticsConfig;
-  docsCloud?: DocsCloudClientConfig;
 }) {
   useWindowHook("__fdOnCopyClick__", onCopyClick);
   useWindowHook("__fdOnFeedback__", onFeedback);
   useWindowHook("__fdOnAIActions__", onAIActions);
   useWindowHook("__fdOnAIFeedback__", onAIFeedback);
-  useAnalyticsHook(analytics, docsCloud);
-  useCodeCopyAnalytics(analytics, docsCloud);
+  useAnalyticsHook(analytics);
+  useCodeCopyAnalytics(analytics);
 
   return null;
-}
-
-export function DocsCloudAnalyticsProvider({
-  analytics,
-  children,
-  ...docsCloudOptions
-}: DocsCloudClientOptions & {
-  analytics?: boolean | DocsAnalyticsConfig;
-  children?: ReactNode;
-}) {
-  useAnalyticsHook(analytics, docsCloudOptions);
-
-  return children;
 }

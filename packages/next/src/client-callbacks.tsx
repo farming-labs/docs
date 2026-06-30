@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import docsConfig from "@farming-labs/next-internal-docs-config";
 import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
-import type { DocsCloudClientOptions } from "@farming-labs/docs/client";
+import type { DocsAnalyticsConfig } from "@farming-labs/docs";
 
 function resolveApiReferenceServerLabel(url?: string): string {
   if (!url) return window.location.origin;
@@ -17,7 +17,7 @@ function resolveApiReferenceServerLabel(url?: string): string {
 
 export default function DocsClientCallbacks(props?: {
   apiReferencePrimaryServerUrl?: string;
-  docsCloud?: DocsCloudClientOptions | false;
+  docsCloudEnabled?: boolean;
 }) {
   useEffect(() => {
     if (!props?.apiReferencePrimaryServerUrl) return;
@@ -42,10 +42,12 @@ export default function DocsClientCallbacks(props?: {
     };
   }, [props?.apiReferencePrimaryServerUrl]);
 
+  const analytics = resolveDocsClientAnalytics(docsConfig.analytics, props?.docsCloudEnabled);
+
   return (
     <DocsClientHooks
       onCopyClick={docsConfig.onCopyClick}
-      analytics={docsConfig.analytics}
+      analytics={analytics}
       onFeedback={
         docsConfig.feedback && typeof docsConfig.feedback === "object"
           ? docsConfig.feedback.onFeedback
@@ -57,7 +59,16 @@ export default function DocsClientCallbacks(props?: {
           : undefined
       }
       onAIActions={docsConfig.ai?.onActions}
-      docsCloud={props?.docsCloud}
     />
   );
+}
+
+function resolveDocsClientAnalytics(
+  analytics: boolean | DocsAnalyticsConfig | undefined,
+  docsCloudEnabled: boolean | undefined,
+): boolean | DocsAnalyticsConfig | undefined {
+  if (!docsCloudEnabled) return analytics;
+  if (analytics === true) return { enabled: true, console: true, cloud: false };
+  if (analytics && typeof analytics === "object") return { ...analytics, cloud: false };
+  return { enabled: true, console: false, cloud: false };
 }

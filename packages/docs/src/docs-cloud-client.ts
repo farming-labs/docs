@@ -276,15 +276,3 @@ export function createDocsCloudClient(options: DocsCloudClientOptions = {}): Doc
     },
   };
 }
-
-export async function trackDocsCloudEvent(
-  event: DocsAnalyticsEventInput,
-  options: DocsCloudClientOptions & DocsCloudClientTrackOptions = {},
-): Promise<boolean> {
-  const { metadata, properties, locale, ...clientOptions } = options;
-  return createDocsCloudClient(clientOptions).trackEvent(event, {
-    metadata,
-    properties,
-    locale,
-  });
-}

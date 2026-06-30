@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createDocsCloudClient, trackDocsCloudEvent } from "./docs-cloud-client.js";
+import { createDocsCloudClient } from "./docs-cloud-client.js";
 
 interface TestWindow extends Partial<Window> {
   location: Location;
@@ -17,7 +17,7 @@ function installBrowserGlobals() {
   });
 }
 
-describe("Docs Cloud client SDK", () => {
+describe("Docs Cloud browser analytics transport", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -76,7 +76,7 @@ describe("Docs Cloud client SDK", () => {
     });
   });
 
-  it("resolves public env defaults and exposes a convenience tracker", async () => {
+  it("resolves public env defaults", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://cloud.example.com/events";
 
@@ -85,10 +85,10 @@ describe("Docs Cloud client SDK", () => {
     );
 
     await expect(
-      trackDocsCloudEvent(
-        { type: "search", path: "/docs/install" },
-        { fetch: fetchMock as typeof fetch },
-      ),
+      createDocsCloudClient({ fetch: fetchMock as typeof fetch }).trackEvent({
+        type: "search",
+        path: "/docs/install",
+      }),
     ).resolves.toBe(true);
 
     expect(fetchMock).toHaveBeenCalledWith(

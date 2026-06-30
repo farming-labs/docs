@@ -332,6 +332,12 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.11
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.2.14
+      react:
+        specifier: ^19.2.0
+        version: 19.2.4
       tsdown:
         specifier: ^0.20.3
         version: 0.20.3(typescript@5.9.3)

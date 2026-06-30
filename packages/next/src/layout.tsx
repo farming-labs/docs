@@ -1,7 +1,8 @@
 import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
 import { emitDocsTelemetryProjectEvent } from "@farming-labs/docs";
 import type { DocsConfig } from "@farming-labs/docs";
-import type { DocsCloudClientOptions } from "@farming-labs/docs/client";
+import { DocsCloudAnalytics } from "@farming-labs/docs/client/react";
+import type { DocsCloudAnalyticsOptions } from "@farming-labs/docs/client/react";
 import { withNextApiReferenceBanner } from "./api-reference.js";
 import DocsClientCallbacks from "./client-callbacks.js";
 
@@ -39,7 +40,7 @@ function isFalsyEnv(value: string | undefined): boolean {
 
 function resolveNextDocsCloudClientOptions(
   config: DocsConfig,
-): DocsCloudClientOptions | false | undefined {
+): DocsCloudAnalyticsOptions | false | undefined {
   const analytics = config.analytics;
   if (
     analytics === false ||
@@ -60,6 +61,7 @@ function resolveNextDocsCloudClientOptions(
 
   return {
     projectId,
+    analytics,
     ...(endpoint ? { endpoint } : {}),
     metadata: {
       framework: "next",
@@ -83,7 +85,8 @@ export function createNextDocsLayout(config: DocsConfig) {
 
     return (
       <>
-        <DocsClientCallbacks docsCloud={docsCloud} />
+        {docsCloud ? <DocsCloudAnalytics {...docsCloud} /> : null}
+        <DocsClientCallbacks docsCloudEnabled={Boolean(docsCloud)} />
         <DocsLayout>{children}</DocsLayout>
       </>
     );
