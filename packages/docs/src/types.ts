@@ -890,6 +890,12 @@ export interface DocsAnalyticsConfig {
   includeInputs?: boolean;
   /** Callback fired for every emitted event. */
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
+  /**
+   * Forward events to Docs Cloud when project env vars are available.
+   *
+   * @default true
+   */
+  cloud?: boolean;
 }
 
 export type DocsTelemetryFramework =

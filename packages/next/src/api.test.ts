@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { createDocsAPI, resolveNextProjectRoot } from "./api.js";
+import { createDocsAPI, createDocsCloudRouteHandler, resolveNextProjectRoot } from "./api.js";
+import { createDocsCloudServer } from "@farming-labs/docs/server";
 import { createDocsAPI as createThemeDocsAPI } from "@farming-labs/theme/api";
 
 describe("resolveNextProjectRoot", () => {
@@ -75,5 +76,23 @@ describe("createDocsAPI", () => {
     const themeHandlers = createThemeDocsAPI();
 
     expect(Object.keys(nextHandlers).sort()).toEqual(Object.keys(themeHandlers).sort());
+  });
+});
+
+describe("createDocsCloudRouteHandler", () => {
+  it("returns Next-compatible GET and POST route handlers from a server SDK", async () => {
+    const docsCloud = createDocsCloudServer({
+      projectId: "project_next",
+      apiKey: "fl_key_next",
+    });
+    const handlers = createDocsCloudRouteHandler(docsCloud);
+
+    expect(Object.keys(handlers).sort()).toEqual(["GET", "POST"]);
+
+    const response = await handlers.GET(new Request("https://docs.example.com/api/cloud"));
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      projectId: "project_next",
+    });
   });
 });

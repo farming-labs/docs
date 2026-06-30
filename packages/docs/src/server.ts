@@ -48,7 +48,19 @@ export {
   resolveDocsMcpConfig,
   runDocsMcpStdio,
 } from "./mcp.js";
+export { createDocsCloudRouteHandler, createDocsCloudServer } from "./docs-cloud-server.js";
 export { createDocsCloudAskAIResponse, isDocsCloudAskAIProvider } from "./cloud-ask-ai.js";
+export type {
+  DocsCloudAskAIOptions,
+  DocsCloudPublicConfig,
+  DocsCloudRouteHandlerOptions,
+  DocsCloudRouteHandlers,
+  DocsCloudRuntimeEnv,
+  DocsCloudRuntimeValue,
+  DocsCloudServer,
+  DocsCloudServerOptions,
+  DocsCloudTrackEventOptions,
+} from "./docs-cloud-server.js";
 export type { DocsCloudAskAIConfig, DocsCloudAskAIResponseOptions } from "./cloud-ask-ai.js";
 export {
   buildDocsSearchDocuments,
