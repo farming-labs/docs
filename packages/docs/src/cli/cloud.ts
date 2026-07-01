@@ -1077,6 +1077,13 @@ function resolveConnectedDocsProfile(params: {
 }): ConnectedDocsProfile | undefined {
   if (params.explicit) return params.explicit;
 
+  const shouldResolveConnectProfile =
+    params.snapshot.content?.includes(FUMADOCS_CONNECT_MARKER) || !params.snapshot.path;
+  if (!shouldResolveConnectProfile) return undefined;
+
+  const detectedProfile = detectConnectedFumadocsProfile(params.rootDir);
+  if (detectedProfile) return detectedProfile;
+
   const existingProfile = params.existing?.extensions?.docsInfraProfile;
   if (
     isRecord(existingProfile) &&
@@ -1084,14 +1091,6 @@ function resolveConnectedDocsProfile(params: {
     Array.isArray(existingProfile.contentRoots)
   ) {
     return existingProfile as ConnectedDocsProfile;
-  }
-
-  if (params.snapshot.content?.includes(FUMADOCS_CONNECT_MARKER)) {
-    return detectConnectedFumadocsProfile(params.rootDir);
-  }
-
-  if (!params.snapshot.path) {
-    return detectConnectedFumadocsProfile(params.rootDir);
   }
 
   return undefined;
@@ -1169,7 +1168,12 @@ function resolveExtensions(
   docsInfraProfile: ConnectedDocsProfile | undefined,
 ): JsonRecord | undefined {
   const existingExtensions = toJsonRecord(existing?.extensions);
-  if (!docsInfraProfile) return existingExtensions;
+  if (!docsInfraProfile) {
+    if (!existingExtensions?.docsInfraProfile) return existingExtensions;
+
+    const { docsInfraProfile: _staleDocsInfraProfile, ...rest } = existingExtensions;
+    return Object.keys(rest).length > 0 ? rest : undefined;
+  }
 
   return {
     ...existingExtensions,
