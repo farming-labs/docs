@@ -15,7 +15,7 @@ import {
   resolveDocsContentDir,
 } from "./config.js";
 import { markCliErrorReported } from "./errors.js";
-import { detectFramework, type Framework } from "./utils.js";
+import { detectFramework, detectPackageManagerFromProject, type Framework } from "./utils.js";
 
 const DOCS_JSON_FILE = "docs.json";
 const DOCS_CLOUD_SCHEMA_URL = "https://docs.farming-labs.dev/schema/docs.json";
@@ -34,6 +34,7 @@ const DOCS_CLOUD_PROJECT_ID_ENVS = [
 ] as const;
 const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "PUBLIC_DOCS_CLOUD_API_KEY";
 const CLOUD_CHECK_TARGETS = ["deploy", "analytics", "ask-ai"] as const;
+const FUMADOCS_CONNECT_MARKER = "@farming-labs/docs cloud connect: fumadocs";
 
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue | undefined };
@@ -72,6 +73,7 @@ type ManagedDocsJson = {
     description?: string;
   };
   cloud?: DocsCloudConfig;
+  extensions?: JsonRecord;
 };
 
 type GitRepositoryMetadata = {
@@ -80,6 +82,17 @@ type GitRepositoryMetadata = {
   branch?: string;
   rootDirectory: string;
   remoteUrl?: string;
+};
+
+export type ConnectedDocsProfile = {
+  engine: "fumadocs";
+  runtime: Framework;
+  appRoot: string;
+  contentRoots: string[];
+  configFiles: string[];
+  packageManager?: string;
+  confidence: "high" | "medium";
+  reason: string;
 };
 
 export interface CloudCommandOptions {
@@ -93,6 +106,7 @@ export interface CloudCommandOptions {
   rootDir?: string;
   timeoutMs?: number;
   pollIntervalMs?: number;
+  docsInfraProfile?: ConnectedDocsProfile;
 }
 
 export interface CloudInitResult {
@@ -104,6 +118,7 @@ export interface CloudInitResult {
   configUpdated: boolean;
   docsJsonCreated: boolean;
   docsJsonUpdated: boolean;
+  docsInfraProfile?: ConnectedDocsProfile;
 }
 
 export interface MaterializeCloudConfigResult {
@@ -174,6 +189,134 @@ function readPackageName(rootDir: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function readPackageJsonRecord(rootDir: string): Record<string, unknown> | undefined {
+  const packagePath = path.join(rootDir, "package.json");
+  if (!fs.existsSync(packagePath)) return undefined;
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(packagePath, "utf-8")) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function readPackageDependencies(rootDir: string): Set<string> {
+  const packageJson = readPackageJsonRecord(rootDir);
+  const names = new Set<string>();
+
+  for (const key of [
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+  ]) {
+    const dependencies = packageJson?.[key];
+    if (!isRecord(dependencies)) continue;
+
+    for (const name of Object.keys(dependencies)) {
+      names.add(name);
+    }
+  }
+
+  return names;
+}
+
+function hasFumadocsDependency(dependencies: Set<string>): boolean {
+  return [...dependencies].some(
+    (name) =>
+      name === "fumadocs-core" ||
+      name === "fumadocs-ui" ||
+      name === "fumadocs-mdx" ||
+      name === "fumadocs-openapi" ||
+      name === "fumadocs-docgen",
+  );
+}
+
+function firstExistingFile(rootDir: string, candidates: string[]): string | undefined {
+  return candidates.find((candidate) => fs.existsSync(path.join(rootDir, candidate)));
+}
+
+function hasMarkdownDescendant(rootDir: string, relativeDir: string): boolean {
+  const absoluteDir = path.join(rootDir, relativeDir);
+  if (!fs.existsSync(absoluteDir)) return false;
+
+  const queue = [absoluteDir];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    let entries: fs.Dirent[];
+
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(fullPath);
+        continue;
+      }
+
+      if (entry.isFile() && /\.(?:md|mdx)$/i.test(entry.name)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function detectFumadocsContentRoots(rootDir: string): string[] {
+  const candidates = ["content/docs", "src/content/docs", "docs", "content"];
+  const roots = candidates.filter((candidate) => hasMarkdownDescendant(rootDir, candidate));
+  return roots.filter(
+    (root) => !roots.some((other) => other !== root && other.startsWith(`${root}/`)),
+  );
+}
+
+function detectConnectedFumadocsProfile(rootDir: string): ConnectedDocsProfile | undefined {
+  const dependencies = readPackageDependencies(rootDir);
+  const sourceConfig = firstExistingFile(rootDir, [
+    "source.config.ts",
+    "source.config.tsx",
+    "source.config.js",
+    "source.config.mjs",
+    "source.config.cjs",
+  ]);
+  const sourceFile = firstExistingFile(rootDir, [
+    "lib/source.ts",
+    "lib/source.tsx",
+    "src/lib/source.ts",
+    "src/lib/source.tsx",
+  ]);
+  const contentRoots = detectFumadocsContentRoots(rootDir);
+  const hasFumadocsSignal =
+    hasFumadocsDependency(dependencies) || Boolean(sourceConfig) || Boolean(sourceFile);
+
+  if (!hasFumadocsSignal || contentRoots.length === 0) {
+    return undefined;
+  }
+
+  const framework = detectFramework(rootDir) ?? "nextjs";
+  const configFiles = [sourceConfig, sourceFile].filter((file): file is string => Boolean(file));
+  const packageManager = detectPackageManagerFromProject(rootDir)?.packageManager;
+
+  return {
+    engine: "fumadocs",
+    runtime: framework,
+    appRoot: ".",
+    contentRoots,
+    configFiles,
+    ...(packageManager ? { packageManager } : {}),
+    confidence: sourceConfig || sourceFile ? "high" : "medium",
+    reason: sourceConfig
+      ? `Detected Fumadocs source config at ${sourceConfig}.`
+      : "Detected Fumadocs dependencies and markdown content.",
+  };
 }
 
 function runGit(rootDir: string, args: string[]): string | undefined {
@@ -600,6 +743,21 @@ ${renderCloudConfigProperty("  ", apiKeyEnv)}
 `;
 }
 
+function renderFumadocsConnectDocsConfig(apiKeyEnv: string, profile: ConnectedDocsProfile): string {
+  const contentDir = profile.contentRoots[0] ?? "content/docs";
+
+  return `// ${FUMADOCS_CONNECT_MARKER}
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  contentDir: ${JSON.stringify(contentDir)},
+${renderAnalyticsConfigProperty("  ")}
+${renderCloudConfigProperty("  ", apiKeyEnv)}
+});
+`;
+}
+
 function normalizeEnvName(value: string | undefined, fallback: string): string {
   const normalized = value?.trim();
   if (!normalized) return fallback;
@@ -615,12 +773,19 @@ function ensureDocsConfigCloudInit(options: {
   rootDir: string;
   configPath?: string;
   apiKeyEnv: string;
+  docsInfraProfile?: ConnectedDocsProfile;
 }): { configPath: string; created: boolean; updated: boolean } {
   const resolvedConfigPath = tryResolveDocsConfigPath(options.rootDir, options.configPath);
   const configPath = resolvedConfigPath ?? path.join(options.rootDir, "docs.config.ts");
 
   if (!resolvedConfigPath) {
-    fs.writeFileSync(configPath, renderCloudInitDocsConfig(options.apiKeyEnv), "utf-8");
+    fs.writeFileSync(
+      configPath,
+      options.docsInfraProfile
+        ? renderFumadocsConnectDocsConfig(options.apiKeyEnv, options.docsInfraProfile)
+        : renderCloudInitDocsConfig(options.apiKeyEnv),
+      "utf-8",
+    );
     return { configPath, created: true, updated: true };
   }
 
@@ -904,6 +1069,34 @@ function resolveApiReferenceRoot(snapshot: DocsConfigSnapshot): string | undefin
   return readStringProperty(apiReferenceBlock, "path");
 }
 
+function resolveConnectedDocsProfile(params: {
+  rootDir: string;
+  snapshot: DocsConfigSnapshot;
+  existing?: ManagedDocsJson;
+  explicit?: ConnectedDocsProfile;
+}): ConnectedDocsProfile | undefined {
+  if (params.explicit) return params.explicit;
+
+  const existingProfile = params.existing?.extensions?.docsInfraProfile;
+  if (
+    isRecord(existingProfile) &&
+    existingProfile.engine === "fumadocs" &&
+    Array.isArray(existingProfile.contentRoots)
+  ) {
+    return existingProfile as ConnectedDocsProfile;
+  }
+
+  if (params.snapshot.content?.includes(FUMADOCS_CONNECT_MARKER)) {
+    return detectConnectedFumadocsProfile(params.rootDir);
+  }
+
+  if (!params.snapshot.path) {
+    return detectConnectedFumadocsProfile(params.rootDir);
+  }
+
+  return undefined;
+}
+
 function resolveSiteConfig(
   rootDir: string,
   snapshot: DocsConfigSnapshot,
@@ -936,7 +1129,10 @@ function resolveDocsRoot(
   rootDir: string,
   snapshot: DocsConfigSnapshot,
   existing?: ManagedDocsJson,
+  docsInfraProfile?: ConnectedDocsProfile,
 ): string {
+  if (docsInfraProfile?.contentRoots[0]) return docsInfraProfile.contentRoots[0];
+
   const entry =
     snapshot.config?.entry ?? readTopLevelStringProperty(snapshot.content ?? "", "entry") ?? "docs";
   if (snapshot.config?.contentDir) return snapshot.config.contentDir;
@@ -949,10 +1145,12 @@ function resolveDocsBlock(
   rootDir: string,
   snapshot: DocsConfigSnapshot,
   existing?: ManagedDocsJson,
+  docsInfraProfile?: ConnectedDocsProfile,
 ): ManagedDocsJson["docs"] {
   const detectedFramework = detectFramework(rootDir);
   const existingDocs = existing?.docs;
-  const runtime = detectedFramework ?? existingDocs?.runtime ?? "nextjs";
+  const runtime =
+    detectedFramework ?? docsInfraProfile?.runtime ?? existingDocs?.runtime ?? "nextjs";
   const hasFrameworkConfig = Boolean(snapshot.path || detectedFramework);
 
   if (!hasFrameworkConfig && existingDocs) {
@@ -966,16 +1164,42 @@ function resolveDocsBlock(
   };
 }
 
+function resolveExtensions(
+  existing: ManagedDocsJson | undefined,
+  docsInfraProfile: ConnectedDocsProfile | undefined,
+): JsonRecord | undefined {
+  const existingExtensions = toJsonRecord(existing?.extensions);
+  if (!docsInfraProfile) return existingExtensions;
+
+  return {
+    ...existingExtensions,
+    docsInfraProfile: toJsonRecord(docsInfraProfile),
+  };
+}
+
 function materializeDocsJsonObject(params: {
   rootDir: string;
   snapshot: DocsConfigSnapshot;
   existing?: ManagedDocsJson;
+  docsInfraProfile?: ConnectedDocsProfile;
 }): ManagedDocsJson {
   const cloud = resolveCloudConfig(params.snapshot, params.existing);
-  const docsRoot = resolveDocsRoot(params.rootDir, params.snapshot, params.existing);
+  const docsInfraProfile = resolveConnectedDocsProfile({
+    rootDir: params.rootDir,
+    snapshot: params.snapshot,
+    existing: params.existing,
+    explicit: params.docsInfraProfile,
+  });
+  const docsRoot = resolveDocsRoot(
+    params.rootDir,
+    params.snapshot,
+    params.existing,
+    docsInfraProfile,
+  );
   const apiReferenceRoot = resolveApiReferenceRoot(params.snapshot);
   const existingContent = toJsonRecord(params.existing?.content);
   const site = resolveSiteConfig(params.rootDir, params.snapshot, params.existing);
+  const extensions = resolveExtensions(params.existing, docsInfraProfile);
 
   const content: ManagedDocsJson["content"] = {
     ...existingContent,
@@ -987,10 +1211,11 @@ function materializeDocsJsonObject(params: {
     ...params.existing,
     $schema: params.existing?.$schema ?? DOCS_CLOUD_SCHEMA_URL,
     version: 1,
-    docs: resolveDocsBlock(params.rootDir, params.snapshot, params.existing),
+    docs: resolveDocsBlock(params.rootDir, params.snapshot, params.existing, docsInfraProfile),
     content,
     ...(site ? { site } : {}),
     cloud,
+    ...(extensions ? { extensions } : {}),
   };
 }
 
@@ -1005,7 +1230,12 @@ export async function materializeCloudConfig(
   const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
   const existing = readExistingDocsJson(docsJsonPath);
   const snapshot = await loadDocsConfigSnapshot(rootDir, options.configPath);
-  const config = materializeDocsJsonObject({ rootDir, snapshot, existing });
+  const config = materializeDocsJsonObject({
+    rootDir,
+    snapshot,
+    existing,
+    docsInfraProfile: options.docsInfraProfile,
+  });
   const serialized = serializeMaterializedDocsJson(config);
   const previous = existing ? fs.readFileSync(docsJsonPath, "utf-8") : undefined;
   const updated = previous !== serialized;
@@ -2147,15 +2377,21 @@ export async function syncCloudConfig(options: CloudCommandOptions = {}) {
 export async function initCloudConfig(options: CloudCommandOptions = {}): Promise<CloudInitResult> {
   const rootDir = options.rootDir ?? process.cwd();
   const apiKeyEnv = normalizeEnvName(options.apiKeyEnv, DOCS_CLOUD_DEFAULT_API_KEY_ENV);
+  const existingConfigPath = tryResolveDocsConfigPath(rootDir, options.configPath);
+  const docsInfraProfile =
+    options.docsInfraProfile ??
+    (existingConfigPath ? undefined : detectConnectedFumadocsProfile(rootDir));
   const configUpdate = ensureDocsConfigCloudInit({
     rootDir,
     configPath: options.configPath,
     apiKeyEnv,
+    docsInfraProfile,
   });
   const materialized = await materializeCloudConfig({
     ...options,
     rootDir,
     configPath: path.relative(rootDir, configUpdate.configPath),
+    docsInfraProfile,
   });
 
   return {
@@ -2167,6 +2403,7 @@ export async function initCloudConfig(options: CloudCommandOptions = {}): Promis
     configUpdated: configUpdate.updated,
     docsJsonCreated: materialized.created,
     docsJsonUpdated: materialized.updated,
+    ...(docsInfraProfile ? { docsInfraProfile } : {}),
   };
 }
 
@@ -2193,6 +2430,11 @@ export async function runCloudInit(options: CloudCommandOptions = {}) {
 
   console.log(`${pc.green("ok")} ${configAction} ${pc.cyan(relativeConfigPath)}`);
   console.log(`${pc.green("ok")} ${docsJsonAction} ${pc.cyan(relativeDocsJsonPath)}`);
+  if (result.docsInfraProfile?.engine === "fumadocs") {
+    console.log(
+      `${pc.green("ok")} Connected existing ${pc.cyan("Fumadocs")} content at ${pc.cyan(result.docsInfraProfile.contentRoots.join(", "))}`,
+    );
+  }
   console.log();
   console.log(pc.bold("Add these env vars"));
   console.log(`${pc.cyan(result.apiKeyEnv)}=${pc.dim("paste_your_docs_cloud_api_key")}`);
