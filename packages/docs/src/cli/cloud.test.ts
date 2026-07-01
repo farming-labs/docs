@@ -179,6 +179,134 @@ export default defineDocs({
     expect(docsJson.cloud.analytics.enabled).toBe(true);
   });
 
+  it("connects a Fumadocs app without replacing its rendering setup", async () => {
+    writePackageJson({
+      next: "16.0.0",
+      "fumadocs-core": "16.7.16",
+      "fumadocs-ui": "16.7.16",
+    });
+    mkdirSync(path.join(tmpDir, "content", "docs"), { recursive: true });
+    writeFileSync(path.join(tmpDir, "content", "docs", "index.mdx"), "# Hello\n", "utf-8");
+    writeFileSync(path.join(tmpDir, "source.config.ts"), "export default {};\n", "utf-8");
+
+    const result = await initCloudConfig({ rootDir: tmpDir });
+    const config = readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+
+    expect(result.configCreated).toBe(true);
+    expect(result.docsInfraProfile).toMatchObject({
+      engine: "fumadocs",
+      runtime: "nextjs",
+      contentRoots: ["content/docs"],
+      configFiles: ["source.config.ts"],
+    });
+    expect(config).toContain("@farming-labs/docs cloud connect: fumadocs");
+    expect(config).toContain('contentDir: "content/docs"');
+    expect(config).toContain('apiKey: { env: "DOCS_CLOUD_API_KEY" }');
+    expect(docsJson).toMatchObject({
+      docs: {
+        mode: "framework",
+        runtime: "nextjs",
+        root: ".",
+      },
+      content: {
+        docsRoot: "content/docs",
+      },
+      extensions: {
+        docsInfraProfile: {
+          engine: "fumadocs",
+          runtime: "nextjs",
+          appRoot: ".",
+          contentRoots: ["content/docs"],
+          configFiles: ["source.config.ts"],
+        },
+      },
+    });
+  });
+
+  it("does not reinterpret an existing native docs config as Fumadocs connect mode", async () => {
+    writePackageJson({
+      next: "16.0.0",
+      "fumadocs-core": "16.7.16",
+      "fumadocs-ui": "16.7.16",
+    });
+    mkdirSync(path.join(tmpDir, "content", "docs"), { recursive: true });
+    writeFileSync(path.join(tmpDir, "content", "docs", "index.mdx"), "# Hello\n", "utf-8");
+    writeFileSync(path.join(tmpDir, "source.config.ts"), "export default {};\n", "utf-8");
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+});
+`,
+      "utf-8",
+    );
+
+    const result = await initCloudConfig({ rootDir: tmpDir });
+    const config = readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+
+    expect(result.configCreated).toBe(false);
+    expect(result.docsInfraProfile).toBeUndefined();
+    expect(config).not.toContain("@farming-labs/docs cloud connect: fumadocs");
+    expect(docsJson.content.docsRoot).toBe("docs");
+    expect(docsJson.extensions).toBeUndefined();
+  });
+
+  it("drops a stale Fumadocs profile once a native docs config is present", async () => {
+    writePackageJson({
+      next: "16.0.0",
+      "fumadocs-core": "16.7.16",
+      "fumadocs-ui": "16.7.16",
+    });
+    mkdirSync(path.join(tmpDir, "content", "docs"), { recursive: true });
+    writeFileSync(path.join(tmpDir, "content", "docs", "index.mdx"), "# Hello\n", "utf-8");
+    writeFileSync(path.join(tmpDir, "source.config.ts"), "export default {};\n", "utf-8");
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+});
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.json"),
+      JSON.stringify(
+        {
+          version: 1,
+          docs: { mode: "framework", runtime: "nextjs", root: "." },
+          content: { docsRoot: "content/docs" },
+          cloud: { apiKey: { env: "DOCS_CLOUD_API_KEY" } },
+          extensions: {
+            keepMe: true,
+            docsInfraProfile: {
+              engine: "fumadocs",
+              runtime: "nextjs",
+              appRoot: ".",
+              contentRoots: ["content/docs"],
+              configFiles: ["source.config.ts"],
+            },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+
+    const result = await initCloudConfig({ rootDir: tmpDir });
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+
+    expect(result.docsInfraProfile).toBeUndefined();
+    expect(docsJson.content.docsRoot).toBe("docs");
+    expect(docsJson.extensions).toEqual({ keepMe: true });
+  });
+
   it("adds missing cloud init fields without replacing existing cloud settings", async () => {
     writePackageJson();
     writeFileSync(
