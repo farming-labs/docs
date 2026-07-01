@@ -1073,10 +1073,7 @@ function resolveConnectedDocsProfile(params: {
   rootDir: string;
   snapshot: DocsConfigSnapshot;
   existing?: ManagedDocsJson;
-  explicit?: ConnectedDocsProfile;
 }): ConnectedDocsProfile | undefined {
-  if (params.explicit) return params.explicit;
-
   const shouldResolveConnectProfile =
     params.snapshot.content?.includes(FUMADOCS_CONNECT_MARKER) || !params.snapshot.path;
   if (!shouldResolveConnectProfile) return undefined;
@@ -1146,8 +1143,12 @@ function resolveDocsBlock(
   existing?: ManagedDocsJson,
   docsInfraProfile?: ConnectedDocsProfile,
 ): ManagedDocsJson["docs"] {
-  const detectedFramework = detectFramework(rootDir);
   const existingDocs = existing?.docs;
+  if (!snapshot.path && existingDocs) {
+    return existingDocs;
+  }
+
+  const detectedFramework = detectFramework(rootDir);
   const runtime =
     detectedFramework ?? docsInfraProfile?.runtime ?? existingDocs?.runtime ?? "nextjs";
   const hasFrameworkConfig = Boolean(snapshot.path || detectedFramework);
@@ -1166,10 +1167,13 @@ function resolveDocsBlock(
 function resolveExtensions(
   existing: ManagedDocsJson | undefined,
   docsInfraProfile: ConnectedDocsProfile | undefined,
+  options: { dropStaleDocsInfraProfile?: boolean } = {},
 ): JsonRecord | undefined {
   const existingExtensions = toJsonRecord(existing?.extensions);
   if (!docsInfraProfile) {
-    if (!existingExtensions?.docsInfraProfile) return existingExtensions;
+    if (!existingExtensions?.docsInfraProfile || options.dropStaleDocsInfraProfile === false) {
+      return existingExtensions;
+    }
 
     const { docsInfraProfile: _staleDocsInfraProfile, ...rest } = existingExtensions;
     return Object.keys(rest).length > 0 ? rest : undefined;
@@ -1186,14 +1190,19 @@ function materializeDocsJsonObject(params: {
   snapshot: DocsConfigSnapshot;
   existing?: ManagedDocsJson;
   docsInfraProfile?: ConnectedDocsProfile;
+  detectConnectedDocsProfile?: boolean;
+  dropStaleDocsInfraProfile?: boolean;
 }): ManagedDocsJson {
   const cloud = resolveCloudConfig(params.snapshot, params.existing);
-  const docsInfraProfile = resolveConnectedDocsProfile({
-    rootDir: params.rootDir,
-    snapshot: params.snapshot,
-    existing: params.existing,
-    explicit: params.docsInfraProfile,
-  });
+  const docsInfraProfile =
+    params.docsInfraProfile ??
+    (params.detectConnectedDocsProfile === false
+      ? undefined
+      : resolveConnectedDocsProfile({
+          rootDir: params.rootDir,
+          snapshot: params.snapshot,
+          existing: params.existing,
+        }));
   const docsRoot = resolveDocsRoot(
     params.rootDir,
     params.snapshot,
@@ -1203,7 +1212,9 @@ function materializeDocsJsonObject(params: {
   const apiReferenceRoot = resolveApiReferenceRoot(params.snapshot);
   const existingContent = toJsonRecord(params.existing?.content);
   const site = resolveSiteConfig(params.rootDir, params.snapshot, params.existing);
-  const extensions = resolveExtensions(params.existing, docsInfraProfile);
+  const extensions = resolveExtensions(params.existing, docsInfraProfile, {
+    dropStaleDocsInfraProfile: params.dropStaleDocsInfraProfile,
+  });
 
   const content: ManagedDocsJson["content"] = {
     ...existingContent,
@@ -1227,6 +1238,77 @@ export function serializeMaterializedDocsJson(config: ManagedDocsJson): string {
   return `${JSON.stringify(config, null, 2)}\n`;
 }
 
+function withCloudInitDefaults(
+  cloud: DocsCloudConfig | undefined,
+  existingCloud: DocsCloudConfig | undefined,
+  apiKeyEnv: string,
+): DocsCloudConfig {
+  const normalized = normalizeCloudConfig(cloud);
+
+  if (!existingCloud?.apiKey?.env) {
+    normalized.apiKey = { env: apiKeyEnv };
+  }
+
+  if (!normalized.deploy) {
+    normalized.deploy = { enabled: true };
+  }
+
+  if (typeof normalized.analytics === "undefined") {
+    normalized.analytics = {
+      enabled: true,
+      console: false,
+      includeInputs: false,
+    };
+  }
+
+  return normalizeCloudConfig(normalized);
+}
+
+function writeMaterializedCloudConfig(params: {
+  rootDir: string;
+  docsJsonPath: string;
+  existing?: ManagedDocsJson;
+  snapshot: DocsConfigSnapshot;
+  docsInfraProfile?: ConnectedDocsProfile;
+  cloudInitApiKeyEnv?: string;
+  detectConnectedDocsProfile?: boolean;
+  dropStaleDocsInfraProfile?: boolean;
+}): MaterializeCloudConfigResult {
+  const config = materializeDocsJsonObject({
+    rootDir: params.rootDir,
+    snapshot: params.snapshot,
+    existing: params.existing,
+    docsInfraProfile: params.docsInfraProfile,
+    detectConnectedDocsProfile: params.detectConnectedDocsProfile,
+    dropStaleDocsInfraProfile: params.dropStaleDocsInfraProfile,
+  });
+
+  if (params.cloudInitApiKeyEnv) {
+    config.cloud = withCloudInitDefaults(
+      config.cloud,
+      params.existing?.cloud,
+      params.cloudInitApiKeyEnv,
+    );
+  }
+
+  const serialized = serializeMaterializedDocsJson(config);
+  const previous = params.existing ? fs.readFileSync(params.docsJsonPath, "utf-8") : undefined;
+  const updated = previous !== serialized;
+
+  if (updated) {
+    fs.writeFileSync(params.docsJsonPath, serialized, "utf-8");
+  }
+
+  return {
+    configPath: params.snapshot.path ?? params.docsJsonPath,
+    docsJsonPath: params.docsJsonPath,
+    config,
+    apiKeyEnv: config.cloud?.apiKey?.env ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV,
+    created: !params.existing,
+    updated,
+  };
+}
+
 export async function materializeCloudConfig(
   options: CloudCommandOptions = {},
 ): Promise<MaterializeCloudConfigResult> {
@@ -1234,28 +1316,16 @@ export async function materializeCloudConfig(
   const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
   const existing = readExistingDocsJson(docsJsonPath);
   const snapshot = await loadDocsConfigSnapshot(rootDir, options.configPath);
-  const config = materializeDocsJsonObject({
+  const useDocsJsonAsSource = Boolean(existing && !snapshot.path);
+  return writeMaterializedCloudConfig({
     rootDir,
-    snapshot,
-    existing,
-    docsInfraProfile: options.docsInfraProfile,
-  });
-  const serialized = serializeMaterializedDocsJson(config);
-  const previous = existing ? fs.readFileSync(docsJsonPath, "utf-8") : undefined;
-  const updated = previous !== serialized;
-
-  if (updated) {
-    fs.writeFileSync(docsJsonPath, serialized, "utf-8");
-  }
-
-  return {
-    configPath: snapshot.path ?? docsJsonPath,
     docsJsonPath,
-    config,
-    apiKeyEnv: config.cloud?.apiKey?.env ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV,
-    created: !existing,
-    updated,
-  };
+    existing,
+    snapshot,
+    docsInfraProfile: options.docsInfraProfile,
+    detectConnectedDocsProfile: !useDocsJsonAsSource,
+    dropStaleDocsInfraProfile: !useDocsJsonAsSource,
+  });
 }
 
 function readCombinedEnv(rootDir: string): Record<string, string> {
@@ -2380,11 +2450,40 @@ export async function syncCloudConfig(options: CloudCommandOptions = {}) {
 
 export async function initCloudConfig(options: CloudCommandOptions = {}): Promise<CloudInitResult> {
   const rootDir = options.rootDir ?? process.cwd();
+  const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
+  const existingDocsJson = readExistingDocsJson(docsJsonPath);
   const apiKeyEnv = normalizeEnvName(options.apiKeyEnv, DOCS_CLOUD_DEFAULT_API_KEY_ENV);
   const existingConfigPath = tryResolveDocsConfigPath(rootDir, options.configPath);
+  const useDocsJsonAsSource = Boolean(existingDocsJson && !existingConfigPath);
   const docsInfraProfile =
     options.docsInfraProfile ??
-    (existingConfigPath ? undefined : detectConnectedFumadocsProfile(rootDir));
+    (existingConfigPath || existingDocsJson ? undefined : detectConnectedFumadocsProfile(rootDir));
+
+  if (useDocsJsonAsSource) {
+    const materialized = writeMaterializedCloudConfig({
+      rootDir,
+      docsJsonPath,
+      existing: existingDocsJson,
+      snapshot: {},
+      docsInfraProfile,
+      cloudInitApiKeyEnv: apiKeyEnv,
+      detectConnectedDocsProfile: false,
+      dropStaleDocsInfraProfile: false,
+    });
+
+    return {
+      configPath: materialized.configPath,
+      docsJsonPath: materialized.docsJsonPath,
+      apiKeyEnv: materialized.apiKeyEnv,
+      analyticsProjectIdEnv: DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV,
+      configCreated: false,
+      configUpdated: false,
+      docsJsonCreated: false,
+      docsJsonUpdated: materialized.updated,
+      ...(docsInfraProfile ? { docsInfraProfile } : {}),
+    };
+  }
+
   const configUpdate = ensureDocsConfigCloudInit({
     rootDir,
     configPath: options.configPath,
