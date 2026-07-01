@@ -193,6 +193,63 @@ describe("cloud cli", () => {
     expect(existsSync(path.join(tmpDir, "docs.config.ts"))).toBe(false);
   });
 
+  it("does not infer Fumadocs connect mode when docs.json is already the source", async () => {
+    writePackageJson({
+      next: "16.0.0",
+      "fumadocs-core": "16.7.16",
+      "fumadocs-ui": "16.7.16",
+    });
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    mkdirSync(path.join(tmpDir, "content", "docs"), { recursive: true });
+    writeFileSync(path.join(tmpDir, "docs", "index.mdx"), "# Atomic docs.json\n", "utf-8");
+    writeFileSync(
+      path.join(tmpDir, "content", "docs", "index.mdx"),
+      "# Fumadocs signal\n",
+      "utf-8",
+    );
+    writeFileSync(path.join(tmpDir, "source.config.ts"), "export default {};\n", "utf-8");
+    writeFileSync(
+      path.join(tmpDir, "docs.json"),
+      JSON.stringify(
+        {
+          version: 1,
+          docs: {
+            mode: "frameworkless",
+            runtime: "nextjs",
+            root: ".docs/site",
+          },
+          content: {
+            docsRoot: "docs",
+          },
+          cloud: {
+            apiKey: { env: "EXISTING_DOCS_CLOUD_KEY" },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+
+    const result = await initCloudConfig({ rootDir: tmpDir });
+    const materialized = await materializeCloudConfig({ rootDir: tmpDir });
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+
+    expect(result.docsInfraProfile).toBeUndefined();
+    expect(result.configCreated).toBe(false);
+    expect(result.configPath).toBe(path.join(tmpDir, "docs.json"));
+    expect(materialized.updated).toBe(false);
+    expect(existsSync(path.join(tmpDir, "docs.config.ts"))).toBe(false);
+    expect(docsJson.content.docsRoot).toBe("docs");
+    expect(docsJson.extensions?.docsInfraProfile).toBeUndefined();
+    expect(docsJson.docs).toEqual({
+      mode: "frameworkless",
+      runtime: "nextjs",
+      root: ".docs/site",
+    });
+    expect(docsJson.cloud.apiKey.env).toBe("EXISTING_DOCS_CLOUD_KEY");
+  });
+
   it("initializes Docs Cloud config, analytics, and docs.json", async () => {
     writePackageJson();
     mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });

@@ -1073,10 +1073,7 @@ function resolveConnectedDocsProfile(params: {
   rootDir: string;
   snapshot: DocsConfigSnapshot;
   existing?: ManagedDocsJson;
-  explicit?: ConnectedDocsProfile;
 }): ConnectedDocsProfile | undefined {
-  if (params.explicit) return params.explicit;
-
   const shouldResolveConnectProfile =
     params.snapshot.content?.includes(FUMADOCS_CONNECT_MARKER) || !params.snapshot.path;
   if (!shouldResolveConnectProfile) return undefined;
@@ -1170,10 +1167,13 @@ function resolveDocsBlock(
 function resolveExtensions(
   existing: ManagedDocsJson | undefined,
   docsInfraProfile: ConnectedDocsProfile | undefined,
+  options: { dropStaleDocsInfraProfile?: boolean } = {},
 ): JsonRecord | undefined {
   const existingExtensions = toJsonRecord(existing?.extensions);
   if (!docsInfraProfile) {
-    if (!existingExtensions?.docsInfraProfile) return existingExtensions;
+    if (!existingExtensions?.docsInfraProfile || options.dropStaleDocsInfraProfile === false) {
+      return existingExtensions;
+    }
 
     const { docsInfraProfile: _staleDocsInfraProfile, ...rest } = existingExtensions;
     return Object.keys(rest).length > 0 ? rest : undefined;
@@ -1190,14 +1190,19 @@ function materializeDocsJsonObject(params: {
   snapshot: DocsConfigSnapshot;
   existing?: ManagedDocsJson;
   docsInfraProfile?: ConnectedDocsProfile;
+  detectConnectedDocsProfile?: boolean;
+  dropStaleDocsInfraProfile?: boolean;
 }): ManagedDocsJson {
   const cloud = resolveCloudConfig(params.snapshot, params.existing);
-  const docsInfraProfile = resolveConnectedDocsProfile({
-    rootDir: params.rootDir,
-    snapshot: params.snapshot,
-    existing: params.existing,
-    explicit: params.docsInfraProfile,
-  });
+  const docsInfraProfile =
+    params.docsInfraProfile ??
+    (params.detectConnectedDocsProfile === false
+      ? undefined
+      : resolveConnectedDocsProfile({
+          rootDir: params.rootDir,
+          snapshot: params.snapshot,
+          existing: params.existing,
+        }));
   const docsRoot = resolveDocsRoot(
     params.rootDir,
     params.snapshot,
@@ -1207,7 +1212,9 @@ function materializeDocsJsonObject(params: {
   const apiReferenceRoot = resolveApiReferenceRoot(params.snapshot);
   const existingContent = toJsonRecord(params.existing?.content);
   const site = resolveSiteConfig(params.rootDir, params.snapshot, params.existing);
-  const extensions = resolveExtensions(params.existing, docsInfraProfile);
+  const extensions = resolveExtensions(params.existing, docsInfraProfile, {
+    dropStaleDocsInfraProfile: params.dropStaleDocsInfraProfile,
+  });
 
   const content: ManagedDocsJson["content"] = {
     ...existingContent,
@@ -1264,12 +1271,16 @@ function writeMaterializedCloudConfig(params: {
   snapshot: DocsConfigSnapshot;
   docsInfraProfile?: ConnectedDocsProfile;
   cloudInitApiKeyEnv?: string;
+  detectConnectedDocsProfile?: boolean;
+  dropStaleDocsInfraProfile?: boolean;
 }): MaterializeCloudConfigResult {
   const config = materializeDocsJsonObject({
     rootDir: params.rootDir,
     snapshot: params.snapshot,
     existing: params.existing,
     docsInfraProfile: params.docsInfraProfile,
+    detectConnectedDocsProfile: params.detectConnectedDocsProfile,
+    dropStaleDocsInfraProfile: params.dropStaleDocsInfraProfile,
   });
 
   if (params.cloudInitApiKeyEnv) {
@@ -1305,12 +1316,15 @@ export async function materializeCloudConfig(
   const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
   const existing = readExistingDocsJson(docsJsonPath);
   const snapshot = await loadDocsConfigSnapshot(rootDir, options.configPath);
+  const useDocsJsonAsSource = Boolean(existing && !snapshot.path);
   return writeMaterializedCloudConfig({
     rootDir,
     docsJsonPath,
     existing,
     snapshot,
     docsInfraProfile: options.docsInfraProfile,
+    detectConnectedDocsProfile: !useDocsJsonAsSource,
+    dropStaleDocsInfraProfile: !useDocsJsonAsSource,
   });
 }
 
@@ -2453,6 +2467,8 @@ export async function initCloudConfig(options: CloudCommandOptions = {}): Promis
       snapshot: {},
       docsInfraProfile,
       cloudInitApiKeyEnv: apiKeyEnv,
+      detectConnectedDocsProfile: false,
+      dropStaleDocsInfraProfile: false,
     });
 
     return {
