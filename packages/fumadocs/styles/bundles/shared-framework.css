@@ -7059,7 +7059,7 @@ figure.shiki:hover > div:first-child button {
   margin: 0;
 }
 
-#nd-docs-layout[data-fd-framework] {
+:where(#nd-docs-layout[data-fd-framework]) {
   --fd-sidebar-width: 268px;
   --fd-toc-width: 268px;
   --fd-content-width: 768px;
@@ -7182,13 +7182,9 @@ body:has(#nd-docs-layout[data-fd-framework]) {
     min-width: 0;
   }
 
-  #nd-docs-layout[data-fd-framework] .fd-page {
-    grid-template-columns: minmax(0, 1fr) var(--fd-toc-width);
-  }
-
   #nd-docs-layout[data-fd-framework] .fd-page-article,
-#nd-docs-layout[data-fd-framework] .fd-page-body,
-#nd-docs-layout[data-fd-framework] .fd-docs-content {
+  #nd-docs-layout[data-fd-framework] .fd-page-body,
+  #nd-docs-layout[data-fd-framework] .fd-docs-content {
     max-width: none;
     margin-inline: 0;
   }
@@ -7486,16 +7482,32 @@ body:has(#nd-docs-layout[data-fd-framework]) {
 
 #nd-docs-layout[data-fd-framework] .fd-page {
   display: grid;
-  grid-template-columns: 1fr var(--fd-toc-width);
+  --fd-article-width: calc(var(--fd-content-width, 860px) + 96px);
+  grid-template-columns: minmax(0, min(100%, var(--fd-article-width)));
+  justify-content: center;
   width: 100%;
 }
 
 #nd-docs-layout[data-fd-framework] .fd-page-article {
   min-width: 0;
-  padding: 32px 48px 64px;
+  padding: 24px 16px 48px;
   display: flex;
   flex-direction: column;
   min-height: calc(100dvh - var(--fd-nav-height, 56px));
+}
+
+@media (min-width: 768px) {
+  #nd-docs-layout[data-fd-framework] .fd-page-article {
+    padding: 32px 48px 64px;
+  }
+}
+
+@media (min-width: 1280px) {
+  #nd-docs-layout[data-fd-framework] .fd-page:has(.fd-toc) {
+    grid-template-columns:
+      minmax(0, min(var(--fd-article-width), calc(100% - var(--fd-toc-width))))
+      var(--fd-toc-width);
+  }
 }
 
 #nd-docs-layout[data-fd-framework] .fd-toc {
@@ -7596,7 +7608,7 @@ body:has(#nd-docs-layout[data-fd-framework]) {
   }
 
   #nd-docs-layout[data-fd-framework] .fd-page {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, min(100%, var(--fd-article-width)));
   }
 }
 
@@ -7606,7 +7618,7 @@ body:has(#nd-docs-layout[data-fd-framework]) {
   }
 
   #nd-docs-layout[data-fd-framework] .fd-page {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, min(100%, var(--fd-article-width)));
   }
 }
 

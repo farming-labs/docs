@@ -266,7 +266,6 @@ aside button[class*="bg-fd-secondary"] {
 .fd-docs-content h2,
 .fd-docs-content h3,
 .fd-docs-content h4 {
-  text-transform: uppercase;
   letter-spacing: 0.01em;
 }
 
@@ -284,6 +283,37 @@ aside button[class*="bg-fd-secondary"] {
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
   text-decoration-color: var(--color-fd-primary);
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-title,
+#nd-docs-layout[data-fd-framework] .fd-page-body h2,
+#nd-docs-layout[data-fd-framework] .fd-page-body h3,
+#nd-docs-layout[data-fd-framework] .fd-page-body h4 {
+  display: table;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.04em 0.16em;
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+  background: var(--color-fd-card);
+  box-shadow: 4px 4px 0 var(--color-fd-border);
+  color: var(--color-fd-foreground);
+  text-transform: none;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-title {
+  font-weight: var(--fd-h1-weight, 700);
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body h2 {
+  padding-bottom: 0.04em;
+}
+
+.dark #nd-docs-layout[data-fd-framework] .fd-page-title,
+.dark #nd-docs-layout[data-fd-framework] .fd-page-body h2,
+.dark #nd-docs-layout[data-fd-framework] .fd-page-body h3,
+.dark #nd-docs-layout[data-fd-framework] .fd-page-body h4 {
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
 }
 
 /* Cards, callouts, tabs, and generic surfaces */
