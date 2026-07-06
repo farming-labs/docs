@@ -1,7 +1,7 @@
 /* @farming-labs/theme - ledger theme CSS
  * Stripe Docs-inspired product documentation UI without Stripe branding.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 :root {
   --color-fd-primary: #5f6cf6;

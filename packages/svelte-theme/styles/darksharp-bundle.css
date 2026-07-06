@@ -1,6 +1,6 @@
 /* @farming-labs/svelte-theme — darksharp theme (bundled)
  * Single import: includes base docs.css + darksharp overrides.
- * Usage: @import "@farming-labs/svelte-theme/darksharp/css";
+ * Usage: @import "@farming-labs/theme/darksharp/css";
  */
 @import "./docs.css";
 @import "./darksharp.css";

@@ -1,7 +1,7 @@
 /* @farming-labs/theme — darkbold theme CSS
  * Pure monochrome design, clean typography, Geist font, no accent colors.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 /* ─── DarkBold color overrides ──────────────────────────────────── */
 

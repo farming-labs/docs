@@ -1,5 +1,5 @@
 /* @farming-labs/theme - hardline theme CSS */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 :root {
   --color-fd-primary: #ffd335;

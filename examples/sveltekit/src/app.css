@@ -1,12 +1,1 @@
-@import "@farming-labs/svelte-theme/hardline/css";
-
-html,
-body {
-  margin: 0;
-  min-width: 320px;
-}
-
-body {
-  background: #0b0b0c;
-  color: #f4f1e8;
-}
+@import "@farming-labs/theme/hardline/css";

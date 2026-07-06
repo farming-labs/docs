@@ -1,7 +1,7 @@
 /* @farming-labs/theme — shiny theme CSS
  * Clerk docs-inspired clean, polished light/dark theme with purple accents.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 /* ─── Shiny color overrides ───────────────────────────────────────── */
 

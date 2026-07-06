@@ -1,5 +1,5 @@
 /* @farming-labs/theme — default theme CSS (neutral color preset) */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 /* ─── Page Actions (default theme) ───────────────────────────────── */
 

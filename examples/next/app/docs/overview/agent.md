@@ -1419,9 +1419,9 @@ Same pattern as SvelteKit:
 
 | Import                                       | Description              |
 | -------------------------------------------- | ------------------------ |
-| `@farming-labs/astro-theme/css`              | Default (fumadocs) theme |
-| `@farming-labs/astro-theme/pixel-border/css` | Pixel border theme       |
-| `@farming-labs/astro-theme/darksharp/css`    | Darksharp theme          |
+| `@farming-labs/theme/default/css`            | Default (fumadocs) theme |
+| `@farming-labs/theme/pixel-border/css` | Pixel border theme       |
+| `@farming-labs/theme/darksharp/css`    | Darksharp theme          |
 
 ### Theme Factories
 
@@ -1476,7 +1476,7 @@ Imported from `@farming-labs/nuxt-theme`:
 
 | Import                                  | Description              |
 | --------------------------------------- | ------------------------ |
-| `@farming-labs/nuxt-theme/fumadocs/css` | Default (fumadocs) theme |
+| `@farming-labs/theme/default/css` | Default (fumadocs) theme |
 
 ### Theme Factories
 

@@ -1,7 +1,7 @@
 /* @farming-labs/theme - threadline theme CSS
  * Compact chat-docs UI with neutral shadcn-style surfaces.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 :root {
   --radius: 0.625rem;

@@ -428,22 +428,22 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
       <Tab value="npm">
         ```bash title="terminal"
-        npm install @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        npm install @farming-labs/docs @farming-labs/theme @farming-labs/svelte @farming-labs/svelte-theme
         ```
       </Tab>
       <Tab value="pnpm">
         ```bash title="terminal"
-        pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/svelte @farming-labs/svelte-theme
         ```
       </Tab>
       <Tab value="yarn">
         ```bash title="terminal"
-        yarn add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        yarn add @farming-labs/docs @farming-labs/theme @farming-labs/svelte @farming-labs/svelte-theme
         ```
       </Tab>
       <Tab value="bun">
         ```bash title="terminal"
-        bun add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        bun add @farming-labs/docs @farming-labs/theme @farming-labs/svelte @farming-labs/svelte-theme
         ```
       </Tab>
     </Tabs>
@@ -536,10 +536,10 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ### 5. Import theme CSS in `src/app.css`
 
-    Add your theme's CSS to your global stylesheet so docs styling applies. Use the import that matches the theme in your config (e.g. `fumadocs` below; for `greentree` use `@farming-labs/svelte-theme/greentree/css`).
+    Add your theme's CSS to your global stylesheet so docs styling applies. Use the import that matches the theme in your config (e.g. `default` below; for `greentree` use `@farming-labs/theme/greentree/css`).
 
     ```css title="src/app.css"
-    @import "@farming-labs/svelte-theme/fumadocs/css";
+    @import "@farming-labs/theme/default/css";
     ```
 
     ### 6. Write your first doc
@@ -574,22 +574,22 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
       <Tab value="npm">
         ```bash title="terminal"
-        npm install @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        npm install @farming-labs/docs @farming-labs/theme @farming-labs/astro @farming-labs/astro-theme
         ```
       </Tab>
       <Tab value="pnpm">
         ```bash title="terminal"
-        pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/astro @farming-labs/astro-theme
         ```
       </Tab>
       <Tab value="yarn">
         ```bash title="terminal"
-        yarn add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        yarn add @farming-labs/docs @farming-labs/theme @farming-labs/astro @farming-labs/astro-theme
         ```
       </Tab>
       <Tab value="bun">
         ```bash title="terminal"
-        bun add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        bun add @farming-labs/docs @farming-labs/theme @farming-labs/astro @farming-labs/astro-theme
         ```
       </Tab>
     </Tabs>
@@ -632,7 +632,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ### 4. Create page routes
 
-    Import your theme's CSS in each docs page (or in a global CSS file and import that). The example below uses `@farming-labs/astro-theme/css` (default); for other themes use e.g. `@farming-labs/astro-theme/greentree/css`.
+    Import your theme's CSS in each docs page (or in a global CSS file and import that). The example below uses `@farming-labs/theme/default/css`; for other themes use e.g. `@farming-labs/theme/greentree/css`.
 
     **`src/pages/docs/index.astro`** and **`src/pages/docs/[...slug].astro`**:
 
@@ -642,7 +642,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
     import config from "../../lib/docs.config";
     import { load } from "../../lib/docs.server";
-    import "@farming-labs/astro-theme/css";
+    import "@farming-labs/theme/default/css";
 
     const data = await load(Astro.url.pathname);
     ---
@@ -710,22 +710,22 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
       <Tab value="npm">
         ```bash title="terminal"
-        npm install @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        npm install @farming-labs/docs @farming-labs/theme @farming-labs/nuxt @farming-labs/nuxt-theme
         ```
       </Tab>
       <Tab value="pnpm">
         ```bash title="terminal"
-        pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/nuxt @farming-labs/nuxt-theme
         ```
       </Tab>
       <Tab value="yarn">
         ```bash title="terminal"
-        yarn add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        yarn add @farming-labs/docs @farming-labs/theme @farming-labs/nuxt @farming-labs/nuxt-theme
         ```
       </Tab>
       <Tab value="bun">
         ```bash title="terminal"
-        bun add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        bun add @farming-labs/docs @farming-labs/theme @farming-labs/nuxt @farming-labs/nuxt-theme
         ```
       </Tab>
     </Tabs>
@@ -753,11 +753,11 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ### 3. Configure `nuxt.config.ts`
 
-    Add your theme's CSS via the `css` array so docs styling applies. Use the path that matches the theme in your config (e.g. `fumadocs` below; for `greentree` use `@farming-labs/nuxt-theme/greentree/css`).
+    Add your theme's CSS via the `css` array so docs styling applies. Use the path that matches the theme in your config (e.g. `default` below; for `greentree` use `@farming-labs/theme/greentree/css`).
 
     ```ts title="nuxt.config.ts"
     export default defineNuxtConfig({
-      css: ["@farming-labs/nuxt-theme/fumadocs/css"],
+      css: ["@farming-labs/theme/default/css"],
       nitro: {
         serverAssets: [{ baseName: "docs", dir: "../docs" }],
       },

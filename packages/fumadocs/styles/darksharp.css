@@ -2,7 +2,7 @@
  * Inspired by all-black, sharp edges, minimal radius.
  * Uses the "black" color preset as the base.
  */
-@import "./presets/black.css";
+@import "./bundles/shared-framework.css";
 
 :root {
   --color-fd-background: oklch(1 0 0);

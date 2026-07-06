@@ -132,7 +132,8 @@
     "./presets/base": "./styles/presets/base.css"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "node scripts/build-css-bundles.mjs && tsdown",
+    "build:css": "node scripts/build-css-bundles.mjs",
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -160,5 +161,16 @@
     "next": ">=16.0.0",
     "react": ">=19.2.0",
     "react-dom": ">=19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   }
 }

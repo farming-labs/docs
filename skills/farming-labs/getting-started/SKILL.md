@@ -73,9 +73,9 @@ Then point your MCP client or inspector at `http://127.0.0.1:3000/mcp` or `http:
 
 - **Next.js:** `app/global.css` → `@import "@farming-labs/theme/<theme>/css";` (e.g. `default`, `greentree`, `pixel-border`).
 - **TanStack Start:** `src/styles/app.css` (or your main global CSS file) → `@import "@farming-labs/theme/<theme>/css";`
-- **SvelteKit:** `src/app.css` → `@import "@farming-labs/svelte-theme/<theme>/css";`
-- **Astro:** Import in the docs layout or page file: `import "@farming-labs/astro-theme/<theme>/css";`
-- **Nuxt:** `nuxt.config.ts` → `css: ["@farming-labs/nuxt-theme/<theme>/css"]`
+- **SvelteKit:** `src/app.css` → `@import "@farming-labs/theme/<theme>/css";`
+- **Astro:** Import in the docs layout or page file: `import "@farming-labs/theme/<theme>/css";`
+- **Nuxt:** `nuxt.config.ts` → `css: ["@farming-labs/theme/<theme>/css"]`
 
 Use the same theme name in `docs.config` and in the CSS import.
 

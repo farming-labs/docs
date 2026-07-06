@@ -1,7 +1,7 @@
 /* @farming-labs/theme — greentree theme CSS
  * Mintlify-inspired design, emerald green accent, Inter font, clean & modern.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 /* ─── GreenTree color overrides ────────────────────────────────── */
 

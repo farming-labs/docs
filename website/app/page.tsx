@@ -378,7 +378,7 @@ function SvelteKitSteps() {
           title="Terminal"
           filename="shell"
           language="bash"
-          code="pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme"
+          code="pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/svelte @farming-labs/svelte-theme"
         />
 
         <div className="flex items-start gap-4">
@@ -500,7 +500,7 @@ function AstroSteps() {
           title="Terminal"
           filename="shell"
           language="bash"
-          code="pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme"
+          code="pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/astro @farming-labs/astro-theme"
         />
 
         <div className="flex items-start gap-4">
@@ -622,7 +622,7 @@ function NuxtSteps() {
           title="Terminal"
           filename="shell"
           language="bash"
-          code="pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme"
+          code="pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/nuxt @farming-labs/nuxt-theme"
         />
 
         <div className="flex items-start gap-4">
@@ -667,7 +667,7 @@ export default defineDocs({
           title="Nuxt Config"
           filename="nuxt.config.ts"
           code={`export default defineNuxtConfig({
-  css: ["@farming-labs/nuxt-theme/fumadocs/css"],
+  css: ["@farming-labs/theme/default/css"],
   nitro: {
     serverAssets: [
       { baseName: "docs", dir: "../docs" },
