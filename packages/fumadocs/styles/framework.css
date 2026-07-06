@@ -2040,6 +2040,7 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 0;
   padding: 16px;
   border: 1px solid var(--color-fd-border);
   border-radius: 8px;
@@ -2072,9 +2073,18 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
 }
 
 #nd-docs-layout[data-fd-framework] .fd-page-nav-title {
+  display: block;
+  overflow: visible;
+  min-height: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--color-fd-foreground);
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-nav-description {
+  min-height: 0;
 }
 
 /* --------- Sidebar icon --------------------------------------------------------------------------------------------------------------------------------------------------------------- */
