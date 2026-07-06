@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+import AskAITrigger from "~/components/AskAITrigger.vue";
 import config from "~/docs.config";
 
 const route = useRoute();
