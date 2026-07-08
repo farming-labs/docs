@@ -370,7 +370,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .fd-docs-content blockquote,
 .prose p,
 .prose li,
@@ -516,7 +516,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
 }
 
 .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent) !important;
   border-radius: 0.75rem !important;
@@ -525,7 +525,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
   overflow: hidden;
 }
 
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   width: 100% !important;
   border-collapse: separate !important;
@@ -538,13 +538,13 @@ figure.shiki button[aria-label*="Copy"]:hover {
   background: transparent !important;
 }
 
-.fd-docs-content thead,
+:is(.fd-docs-content, .prose) thead,
 .prose thead {
   background: color-mix(in srgb, var(--muted) 48%, transparent) !important;
 }
 
 .fd-table-wrapper th,
-.fd-docs-content th,
+:is(.fd-docs-content, .prose) th,
 .prose th {
   background: transparent !important;
   color: var(--muted-foreground) !important;
@@ -553,21 +553,21 @@ figure.shiki button[aria-label*="Copy"]:hover {
 
 .fd-table-wrapper th,
 .fd-table-wrapper td,
-.fd-docs-content th,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) th,
+:is(.fd-docs-content, .prose) td,
 .prose th,
 .prose td {
   border-color: color-mix(in srgb, var(--border) 86%, transparent) !important;
   padding: 0.75rem 1rem !important;
 }
 
-.fd-docs-content tbody tr:nth-child(even),
+:is(.fd-docs-content, .prose) tbody tr:nth-child(even),
 .prose tbody tr:nth-child(even) {
   background: color-mix(in srgb, var(--muted) 18%, transparent) !important;
 }
 
 .fd-table-wrapper td,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .prose td {
   background: transparent !important;
 }

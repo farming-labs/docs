@@ -266,7 +266,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .fd-docs-content blockquote {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
@@ -293,7 +293,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 [class*="page-nav"] a,
 .fd-hover-link-card,
 .fd-page-body .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .fd-tabs,
 .fd-tabs-list,
 .fd-tabs-trigger,

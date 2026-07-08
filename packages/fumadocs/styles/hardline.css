@@ -456,33 +456,40 @@ aside button[class*="bg-fd-secondary"] {
   background: #121214 !important;
 }
 
-.fd-docs-content table {
-  border-collapse: collapse;
-  border: 2px solid var(--color-fd-border);
+.fd-table-wrapper {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+:is(.fd-docs-content, .prose) table {
+  border-collapse: collapse !important;
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
   width: 100%;
-  background: var(--color-fd-card);
+  background: var(--color-fd-card) !important;
 }
 
-.fd-docs-content th,
-.fd-docs-content td {
-  border: 2px solid var(--color-fd-border);
-  padding: 0.7rem 0.85rem;
+:is(.fd-docs-content, .prose) th,
+:is(.fd-docs-content, .prose) td {
+  border: 2px solid var(--color-fd-border) !important;
+  padding: 0.7rem 0.85rem !important;
 }
 
-.fd-docs-content th {
+:is(.fd-docs-content, .prose) th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.78rem;
-  background: var(--color-fd-primary);
-  color: var(--color-fd-primary-foreground);
+  background: var(--color-fd-primary) !important;
+  color: var(--color-fd-primary-foreground) !important;
 }
 
-.fd-docs-content tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--color-fd-secondary) 85%, transparent);
+:is(.fd-docs-content, .prose) tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--color-fd-secondary) 85%, transparent) !important;
 }
 
-.dark .fd-docs-content tbody tr:nth-child(even) td {
-  background: #1a1a1d;
+.dark :is(.fd-docs-content, .prose) tbody tr:nth-child(even) td {
+  background: #1a1a1d !important;
 }
 
 /* Prev/next cards */

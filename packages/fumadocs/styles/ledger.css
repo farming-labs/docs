@@ -323,7 +323,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .fd-docs-content blockquote {
   color: var(--color-fd-muted-foreground);
   line-height: 1.7;
@@ -537,7 +537,7 @@ figure.shiki:has(figcaption) > div:first-child > div:last-child {
 }
 
 .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   border: 1px solid var(--fd-ledger-soft-border) !important;
   border-radius: 0.5rem !important;

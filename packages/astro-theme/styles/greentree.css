@@ -345,7 +345,7 @@ nav[class*="header"] {
   font-weight: 400;
 }
 
-.fd-docs-content table {
+:is(.fd-docs-content, .prose) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -354,7 +354,7 @@ nav[class*="header"] {
   width: 100%;
 }
 
-.fd-docs-content th {
+:is(.fd-docs-content, .prose) th {
   background: var(--color-fd-muted);
   font-weight: 500;
   font-size: 0.8125rem;
@@ -363,14 +363,14 @@ nav[class*="header"] {
   letter-spacing: normal;
 }
 
-.fd-docs-content th,
-.fd-docs-content td {
+:is(.fd-docs-content, .prose) th,
+:is(.fd-docs-content, .prose) td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-fd-border);
   font-size: 0.875rem;
 }
 
-.fd-docs-content tr:last-child td {
+:is(.fd-docs-content, .prose) tr:last-child td {
   border-bottom: none;
 }
 .fd-last-modified-below-title p {

@@ -202,7 +202,7 @@ body:has(#nd-docs-layout),
 #nd-docs-layout .fd-page-description,
 #nd-docs-layout .fd-docs-content p,
 #nd-docs-layout .fd-docs-content li,
-#nd-docs-layout .fd-docs-content td {
+#nd-docs-layout :is(.fd-docs-content, .prose) td {
   color: var(--color-fd-muted-foreground);
   line-height: 1.7;
 }
@@ -390,7 +390,7 @@ body:has(#nd-docs-layout),
 }
 
 #nd-docs-layout .fd-table-wrapper,
-#nd-docs-layout .fd-docs-content table {
+#nd-docs-layout :is(.fd-docs-content, .prose) table {
   border: 1px solid var(--fd-ledger-soft-border);
   border-radius: 0.5rem;
   background: var(--color-fd-card);

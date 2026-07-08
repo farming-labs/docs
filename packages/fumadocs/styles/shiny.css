@@ -409,7 +409,7 @@
 
 /* ─── Tables (clean, rounded like Clerk) ───────────────────────────── */
 
-.fd-docs-content table {
+:is(.fd-docs-content, .prose) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -419,7 +419,7 @@
   width: 100%;
 }
 
-.fd-docs-content th {
+:is(.fd-docs-content, .prose) th {
   background: var(--color-fd-muted);
   font-weight: 600;
   font-size: 0.8125rem;
@@ -428,14 +428,14 @@
   color: var(--color-fd-muted-foreground);
 }
 
-.fd-docs-content th,
-.fd-docs-content td {
+:is(.fd-docs-content, .prose) th,
+:is(.fd-docs-content, .prose) td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-fd-border);
   font-size: 0.875rem;
 }
 
-.fd-docs-content tr:last-child td {
+:is(.fd-docs-content, .prose) tr:last-child td {
   border-bottom: none;
 }
 
