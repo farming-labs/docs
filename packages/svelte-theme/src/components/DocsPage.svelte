@@ -373,26 +373,26 @@
         <nav class="fd-page-nav" aria-label="Page navigation">
           {#if localizedPreviousPage}
             <a href={localizedPreviousPage.url} class="fd-page-nav-card fd-page-nav-prev">
-              <span class="fd-page-nav-label">
+              <span class="fd-page-nav-title fd-page-nav-title-prev">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
-                Previous
+                {localizedPreviousPage.name}
               </span>
-              <span class="fd-page-nav-title">{localizedPreviousPage.name}</span>
+              <span class="fd-page-nav-description">Previous Page</span>
             </a>
           {:else}
             <div></div>
           {/if}
           {#if localizedNextPage}
             <a href={localizedNextPage.url} class="fd-page-nav-card fd-page-nav-next">
-              <span class="fd-page-nav-label">
-                Next
+              <span class="fd-page-nav-title fd-page-nav-title-next">
+                {localizedNextPage.name}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </span>
-              <span class="fd-page-nav-title">{localizedNextPage.name}</span>
+              <span class="fd-page-nav-description">Next Page</span>
             </a>
           {:else}
             <div></div>

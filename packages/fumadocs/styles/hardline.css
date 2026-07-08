@@ -490,6 +490,20 @@ aside button[class*="bg-fd-secondary"] {
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
 }
 
+#nd-docs-layout[data-fd-framework] .fd-edit-on-github > a,
+#nd-docs-layout[data-fd-framework] .fd-page-nav-card {
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-nav-card {
+  border-width: 1px !important;
+  box-shadow: none !important;
+}
+
+.dark #nd-docs-layout[data-fd-framework] .fd-page-nav-card {
+  box-shadow: none !important;
+}
+
 /* Code blocks: normalize React figure.shiki and framework-neutral .fd-codeblock */
 .fd-docs-content figure.shiki,
 #nd-docs-layout article#nd-page figure.shiki,

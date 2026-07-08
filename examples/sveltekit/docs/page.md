@@ -1,4 +1,5 @@
 ---
+order: 1
 title: Introduction
 description: A comprehensive authentication and authorization framework for TypeScript.
 icon: book
