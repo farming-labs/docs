@@ -345,7 +345,9 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 .fd-hover-link-card,
 .fd-page-nav,
 .fd-page-nav-card,
-[class*="fd-callout"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"],
 .fd-page-action-menu,
 .fd-ai-dialog,
 .fd-ai-fm-input-container,
@@ -551,7 +553,8 @@ figure.shiki:has(figcaption) > div:first-child > div:last-child {
 }
 
 .fd-callout,
-[class*="fd-callout"] {
+[data-callout],
+[style*="--callout-color"] {
   background: color-mix(in srgb, var(--color-fd-primary) 7%, var(--color-fd-card)) !important;
 }
 

@@ -371,7 +371,9 @@ aside button[class*="bg-fd-secondary"] {
 /* Cards, callouts, tabs, and generic surfaces */
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"],
 .fd-page-action-menu,
 .fd-page-action-btn {
   border: 2px solid var(--color-fd-border) !important;
@@ -381,7 +383,9 @@ aside button[class*="bg-fd-secondary"] {
 
 .dark .fd-card,
 .dark [data-card],
-.dark [class*="fd-callout"],
+.dark .fd-callout,
+.dark [data-callout],
+.dark [style*="--callout-color"],
 .dark .fd-page-action-menu,
 .dark .fd-page-action-btn {
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 40%, transparent);

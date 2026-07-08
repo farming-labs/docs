@@ -209,7 +209,9 @@ kbd {
 /* ─── Callouts ────────────────────────────────────────────────────── */
 
 [class*="bg-fd-card"],
-[class*="fd-callout"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"],
 [role="alert"] {
   border-radius: 0.2rem !important;
 }

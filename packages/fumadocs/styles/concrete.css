@@ -113,7 +113,7 @@ aside a[data-active="true"],
 
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
 .fd-page-action-menu,
 .fd-page-action-btn,
 .fd-docs-content pre,
@@ -127,7 +127,7 @@ aside a[data-active="true"],
 
 .dark .fd-card,
 .dark [data-card],
-.dark [class*="fd-callout"],
+.dark .fd-callout,
 .dark .fd-page-action-menu,
 .dark .fd-page-action-btn,
 .dark .fd-docs-content pre,
@@ -299,15 +299,13 @@ aside a[data-active="true"],
   box-shadow: inset -3px 0 0 var(--color-fd-border);
 }
 
-.fd-callout,
-[class*="fd-callout"] {
+.fd-callout {
   border-width: 3px !important;
   box-shadow: 6px 6px 0 var(--color-fd-border);
   background: color-mix(in srgb, var(--color-fd-secondary) 82%, white 18%);
 }
 
-.dark .fd-callout,
-.dark [class*="fd-callout"] {
+.dark .fd-callout {
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
   background: color-mix(in srgb, var(--color-fd-secondary) 92%, black 8%);
 }

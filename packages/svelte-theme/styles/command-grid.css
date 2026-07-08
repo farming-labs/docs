@@ -292,7 +292,7 @@ body:has(#nd-docs-layout.dark),
 
 #nd-docs-layout .fd-card,
 #nd-docs-layout [data-card],
-#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout .fd-callout,
 #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout .fd-page-action-btn,
 #nd-docs-layout .fd-docs-content pre,
@@ -328,7 +328,7 @@ body:has(#nd-docs-layout.dark),
 
 #nd-docs-layout .fd-card,
 #nd-docs-layout [data-card],
-#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout .fd-callout,
 #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout .fd-page-action-btn,
 #nd-docs-layout .fd-page-nav,
@@ -573,8 +573,7 @@ body:has(#nd-docs-layout.dark),
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
 
-#nd-docs-layout .fd-callout,
-#nd-docs-layout [class*="fd-callout"] {
+#nd-docs-layout .fd-callout {
   border: 2px solid var(--color-fd-border) !important;
   background: color-mix(
     in srgb,

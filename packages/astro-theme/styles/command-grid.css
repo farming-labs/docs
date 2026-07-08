@@ -282,7 +282,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
 .fd-page-action-menu,
 .fd-page-action-btn,
 .fd-docs-content pre,
@@ -318,7 +318,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
 .fd-page-action-menu,
 .fd-page-action-btn,
 .fd-page-nav,
@@ -556,8 +556,7 @@ figure.shiki:has(figcaption) > div:first-child,
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
 
-.fd-callout,
-[class*="fd-callout"] {
+.fd-callout {
   border: 2px solid var(--color-fd-border) !important;
   background: color-mix(
     in srgb,

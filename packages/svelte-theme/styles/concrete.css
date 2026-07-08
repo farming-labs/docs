@@ -108,7 +108,7 @@ body:has(#nd-docs-layout.dark),
 
 #nd-docs-layout .fd-card,
 #nd-docs-layout [data-card],
-#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout .fd-callout,
 #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout .fd-page-action-btn,
 #nd-docs-layout .fd-docs-content pre,
@@ -125,8 +125,8 @@ body:has(#nd-docs-layout.dark),
 #nd-docs-layout.dark .fd-card,
 :is(html.dark, body.dark) #nd-docs-layout [data-card],
 #nd-docs-layout.dark [data-card],
-:is(html.dark, body.dark) #nd-docs-layout [class*="fd-callout"],
-#nd-docs-layout.dark [class*="fd-callout"],
+:is(html.dark, body.dark) #nd-docs-layout .fd-callout,
+#nd-docs-layout.dark .fd-callout,
 :is(html.dark, body.dark) #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout.dark .fd-page-action-menu,
 :is(html.dark, body.dark) #nd-docs-layout .fd-page-action-btn,
@@ -288,17 +288,14 @@ body:has(#nd-docs-layout.dark),
   box-shadow: inset -3px 0 0 var(--color-fd-border);
 }
 
-#nd-docs-layout .fd-callout,
-#nd-docs-layout [class*="fd-callout"] {
+#nd-docs-layout .fd-callout {
   border-width: 3px !important;
   box-shadow: 6px 6px 0 var(--color-fd-border);
   background: color-mix(in srgb, var(--color-fd-secondary) 82%, white 18%);
 }
 
 :is(html.dark, body.dark) #nd-docs-layout .fd-callout,
-#nd-docs-layout.dark .fd-callout,
-:is(html.dark, body.dark) #nd-docs-layout [class*="fd-callout"],
-#nd-docs-layout.dark [class*="fd-callout"] {
+#nd-docs-layout.dark .fd-callout {
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
   background: color-mix(in srgb, var(--color-fd-secondary) 92%, black 8%);
 }
