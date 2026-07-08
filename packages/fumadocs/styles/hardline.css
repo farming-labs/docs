@@ -2,11 +2,13 @@
 @import "./bundles/shared-framework.css";
 
 #nd-docs-layout[data-fd-framework] {
-  --fd-sidebar-width: 394px !important;
-  --fd-framework-page-columns-with-toc: minmax(0, 1fr) 956px 376px;
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr)
+    minmax(0, min(956px, calc(100% - var(--fd-toc-width, 268px))))
+    var(--fd-toc-width, 268px) minmax(0, 1fr);
   --fd-framework-article-column: 2;
   --fd-framework-toc-column: 3;
-  --fd-framework-article-width: 956px;
+  --fd-framework-article-width: min(956px, 100%);
+  --fd-framework-article-justify: center;
   --fd-framework-article-padding: 32px 48px 64px;
 }
 
