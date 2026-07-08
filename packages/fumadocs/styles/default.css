@@ -1,6 +1,13 @@
 /* @farming-labs/theme — default theme CSS (neutral color preset) */
 @import "./bundles/shared-framework.css";
 
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-justify: stretch;
+  --fd-framework-page-columns-with-toc: minmax(0, calc(100% - var(--fd-toc-width, 268px)))
+    var(--fd-toc-width, 268px);
+  --fd-framework-article-padding: 56px 32px 24px;
+}
+
 /* ─── Page Actions (default theme) ───────────────────────────────── */
 
 .fd-page-action-btn {

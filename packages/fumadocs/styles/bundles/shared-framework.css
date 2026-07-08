@@ -7483,30 +7483,43 @@ body:has(#nd-docs-layout[data-fd-framework]) {
 #nd-docs-layout[data-fd-framework] .fd-page {
   display: grid;
   --fd-article-width: calc(var(--fd-content-width, 860px) + 96px);
-  grid-template-columns: minmax(0, min(100%, var(--fd-article-width)));
-  justify-content: center;
+  grid-template-columns: var(
+    --fd-framework-page-columns,
+    minmax(0, min(100%, var(--fd-article-width)))
+  );
+  justify-content: var(--fd-framework-page-justify, center);
   width: 100%;
 }
 
 #nd-docs-layout[data-fd-framework] .fd-page-article {
   min-width: 0;
+  width: var(--fd-framework-article-width, auto);
+  max-width: var(--fd-framework-article-max-width, 100%);
   padding: 24px 16px 48px;
   display: flex;
   flex-direction: column;
   min-height: calc(100dvh - var(--fd-nav-height, 56px));
+  grid-column: var(--fd-framework-article-column, auto);
+  justify-self: var(--fd-framework-article-justify, stretch);
 }
 
 @media (min-width: 768px) {
   #nd-docs-layout[data-fd-framework] .fd-page-article {
-    padding: 32px 48px 64px;
+    padding: var(--fd-framework-article-padding, 32px 48px 64px);
   }
 }
 
 @media (min-width: 1280px) {
   #nd-docs-layout[data-fd-framework] .fd-page:has(.fd-toc) {
-    grid-template-columns:
+    grid-template-columns: var(
+      --fd-framework-page-columns-with-toc,
       minmax(0, min(var(--fd-article-width), calc(100% - var(--fd-toc-width))))
-      var(--fd-toc-width);
+        var(--fd-toc-width)
+    );
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-toc {
+    grid-column: var(--fd-framework-toc-column, auto);
   }
 }
 
@@ -7610,6 +7623,11 @@ body:has(#nd-docs-layout[data-fd-framework]) {
   #nd-docs-layout[data-fd-framework] .fd-page {
     grid-template-columns: minmax(0, min(100%, var(--fd-article-width)));
   }
+
+  #nd-docs-layout[data-fd-framework] .fd-page-article,
+  #nd-docs-layout[data-fd-framework] .fd-toc {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 1023px) {
@@ -7619,6 +7637,11 @@ body:has(#nd-docs-layout[data-fd-framework]) {
 
   #nd-docs-layout[data-fd-framework] .fd-page {
     grid-template-columns: minmax(0, min(100%, var(--fd-article-width)));
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-page-article,
+  #nd-docs-layout[data-fd-framework] .fd-toc {
+    grid-column: auto;
   }
 }
 

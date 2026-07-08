@@ -4,6 +4,13 @@
  */
 @import "./bundles/shared-framework.css";
 
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-justify: stretch;
+  --fd-framework-page-columns-with-toc: minmax(0, calc(100% - var(--fd-toc-width, 268px)))
+    var(--fd-toc-width, 268px);
+  --fd-framework-article-padding: 56px 32px 24px;
+}
+
 :root {
   --color-fd-background: oklch(1 0 0);
   --color-fd-foreground: oklch(0.147 0.004 49.25);
@@ -152,8 +159,8 @@ code:not(pre code) {
 
 /* ─── Docs grid: sidebar (sticky left, full height) | content | TOC ─────── */
 @media (min-width: 768px) {
-  #nd-docs-layout,
-  [style*="fd-sidebar-col"] {
+  #nd-docs-layout:not([data-fd-framework]),
+  #nd-docs-layout:not([data-fd-framework]) [style*="fd-sidebar-col"] {
     grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
   }
   /* Sidebar stretches to end and sticks on scroll; no max-height so content isn't clipped */
@@ -167,7 +174,7 @@ code:not(pre code) {
 }
 
 @media (min-width: 1024px) {
-  #nd-docs-layout.grid {
+  #nd-docs-layout.grid:not([data-fd-framework]) {
     grid-template:
       "sidebar header toc"
       "sidebar toc-popover toc"

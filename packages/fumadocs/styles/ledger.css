@@ -3,6 +3,15 @@
  */
 @import "./bundles/shared-framework.css";
 
+#nd-docs-layout[data-fd-framework] {
+  --fd-sidebar-width: 386px !important;
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr) 900px 392px;
+  --fd-framework-article-column: 2;
+  --fd-framework-toc-column: 3;
+  --fd-framework-article-width: 900px;
+  --fd-framework-article-padding: 56px 32px 24px;
+}
+
 :root {
   --color-fd-primary: #5f6cf6;
   --color-fd-primary-foreground: #ffffff;

@@ -1,6 +1,16 @@
 /* @farming-labs/theme - command-grid theme CSS */
 @import "./concrete.css";
 
+#nd-docs-layout[data-fd-framework] {
+  --fd-sidebar-width: 398px !important;
+  --fd-framework-page-justify: stretch;
+  --fd-framework-page-columns-with-toc: 980px minmax(var(--fd-toc-width, 268px), 1fr);
+  --fd-framework-article-column: 1;
+  --fd-framework-toc-column: 2;
+  --fd-framework-article-width: auto;
+  --fd-framework-article-padding: 32px 48px 64px;
+}
+
 :root {
   --color-fd-primary: #141414;
   --color-fd-primary-foreground: #f8f6ed;

@@ -1,6 +1,15 @@
 /* @farming-labs/theme - hardline theme CSS */
 @import "./bundles/shared-framework.css";
 
+#nd-docs-layout[data-fd-framework] {
+  --fd-sidebar-width: 394px !important;
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr) 956px 376px;
+  --fd-framework-article-column: 2;
+  --fd-framework-toc-column: 3;
+  --fd-framework-article-width: 956px;
+  --fd-framework-article-padding: 32px 48px 64px;
+}
+
 :root {
   --color-fd-primary: #ffd335;
   --color-fd-primary-foreground: #121212;
@@ -289,6 +298,10 @@ aside button[class*="bg-fd-secondary"] {
 @media (min-width: 768px) {
   #nd-docs-layout article#nd-page {
     padding: 32px 48px 64px !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] article#nd-page {
+    padding: var(--fd-framework-article-padding, 32px 48px 64px) !important;
   }
 }
 
