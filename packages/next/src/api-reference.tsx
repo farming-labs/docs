@@ -553,7 +553,9 @@ function buildApiReferenceTypographyCSS(typography?: TypographyConfig): string {
   }
 
   if (vars.length === 0) return "";
-  return `:root {\n  ${vars.join("\n  ")}\n}`;
+  return `:root,
+body:has(.fd-api-reference-page),
+.fd-api-reference-page {\n  ${vars.join("\n  ")}\n}`;
 }
 
 function ApiReferenceTypographyStyle({ typography }: { typography?: TypographyConfig }) {

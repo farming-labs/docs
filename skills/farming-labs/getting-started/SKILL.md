@@ -262,7 +262,7 @@ For fully static builds (e.g. Cloudflare Pages, no server), set `staticExport: t
 ## Common gotchas
 
 1. **Theme CSS missing** — Docs look unstyled until the theme CSS is imported in the global stylesheet (or Nuxt `css`).
-2. **Wrong theme package** — Use the theme package for the same framework (e.g. `@farming-labs/svelte-theme` for SvelteKit, not `@farming-labs/theme`).
+2. **Wrong theme helper package** — Use the framework theme helper for `docs.config` (e.g. `@farming-labs/svelte-theme` for SvelteKit), while theme CSS imports come from the shared `@farming-labs/theme/<theme>/css` path.
 3. **From scratch** — Use `init --template <next|tanstack-start|nuxt|sveltekit|astro> --name <project>`; the CLI bootstraps a project with that name and runs install.
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 5. **Static hosting** — Set `staticExport: true`; search and AI are then hidden.

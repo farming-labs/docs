@@ -8572,6 +8572,14 @@ body:has(#nd-docs-layout[data-fd-framework]) {
   padding-left: 24px;
 }
 
+#nd-docs-layout[data-fd-framework] .fd-page-body ul {
+  list-style: disc;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body ol {
+  list-style: decimal;
+}
+
 #nd-docs-layout[data-fd-framework] .fd-page-body li {
   margin: 4px 0;
   font-size: var(--fd-body-size, 1rem);

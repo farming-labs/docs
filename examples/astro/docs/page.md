@@ -25,11 +25,11 @@ Better Auth is a framework-agnostic, universal authentication and authorization 
 
 Get up and running in under 5 minutes:
 
-```bash
+```bash title="terminal"
 npm install better-auth
 ```
 
-```ts
+```ts title="auth.ts"
 import { betterAuth } from "better-auth";
 
 export const auth = betterAuth({

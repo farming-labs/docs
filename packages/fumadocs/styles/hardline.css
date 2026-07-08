@@ -54,6 +54,14 @@
 }
 
 /* Hard-edge layout baseline */
+body:has(#nd-docs-layout),
+#nd-docs-layout {
+  font-family: var(--fd-font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
+}
+
 #nd-docs-layout [class*="rounded-"],
 #nd-docs-layout [style*="border-radius"],
 #nd-docs-layout code:not(pre code) {
@@ -104,6 +112,23 @@ aside a[data-active="true"] {
 }
 
 aside a[data-active="true"]::before {
+  display: none !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link {
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link-active,
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link[data-active="true"] {
+  font-weight: 800 !important;
+  background: var(--color-fd-primary) !important;
+  color: var(--color-fd-primary-foreground) !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link-active::before,
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link[data-active="true"]::before {
   display: none !important;
 }
 
@@ -253,11 +278,23 @@ aside button[class*="bg-fd-secondary"] {
 /* Top-level content width and spacing */
 @media (min-width: 1024px) {
   #nd-docs-layout article#nd-page {
-    max-width: none;
+    max-width: calc(var(--fd-content-width, 860px) + 96px) !important;
   }
 
   #nd-docs-layout article#nd-page > .prose {
-    max-width: none;
+    max-width: var(--fd-content-width, 860px) !important;
+  }
+}
+
+@media (min-width: 768px) {
+  #nd-docs-layout article#nd-page {
+    padding: 32px 48px 64px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #nd-docs-layout article#nd-page {
+    padding: 24px 16px 48px !important;
   }
 }
 
@@ -451,6 +488,67 @@ aside button[class*="bg-fd-secondary"] {
 .dark .fd-page-nav-card,
 .dark [class*="page-nav"] a {
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
+}
+
+/* Code blocks: normalize React figure.shiki and framework-neutral .fd-codeblock */
+.fd-docs-content figure.shiki,
+#nd-docs-layout article#nd-page figure.shiki,
+.fd-docs-content .fd-codeblock {
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.fd-docs-content figure.shiki:has(figcaption) > div:first-child,
+#nd-docs-layout article#nd-page figure.shiki:has(figcaption) > div:first-child,
+.fd-docs-content .fd-codeblock-title {
+  min-height: 40px;
+  padding: 8px 14px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-secondary) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.fd-docs-content figure.shiki:has(figcaption) > div:first-child::before,
+#nd-docs-layout article#nd-page figure.shiki:has(figcaption) > div:first-child::before {
+  display: none;
+}
+
+.fd-docs-content figure.shiki > div[role="region"],
+#nd-docs-layout article#nd-page figure.shiki > div[role="region"],
+.fd-docs-content .fd-codeblock-content {
+  padding: 0 !important;
+  background: var(--color-fd-card) !important;
+}
+
+.fd-docs-content figure.shiki pre,
+#nd-docs-layout article#nd-page figure.shiki pre,
+.fd-docs-content .fd-codeblock pre {
+  margin: 0 !important;
+  padding: 14px 16px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--color-fd-card) !important;
+  line-height: 1.45;
+}
+
+.dark .fd-docs-content figure.shiki,
+.dark #nd-docs-layout article#nd-page figure.shiki,
+.dark .fd-docs-content figure.shiki > div[role="region"],
+.dark #nd-docs-layout article#nd-page figure.shiki > div[role="region"],
+.dark .fd-docs-content figure.shiki pre,
+.dark #nd-docs-layout article#nd-page figure.shiki pre,
+.dark .fd-docs-content .fd-codeblock,
+.dark .fd-docs-content .fd-codeblock-content,
+.dark .fd-docs-content .fd-codeblock pre {
+  background: #121214 !important;
 }
 
 /* Ask AI and feedback - hardline treatment */

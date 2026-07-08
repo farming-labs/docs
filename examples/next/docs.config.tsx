@@ -18,7 +18,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { threadline, threadlinePageActions } from "@farming-labs/theme/threadline";
+import { hardline } from "@farming-labs/theme/hardline";
 
 const typesenseBaseUrl = process.env.TYPESENSE_URL ?? process.env.TYPESENSE_BASE_URL;
 const typesenseCollection = process.env.TYPESENSE_COLLECTION ?? "docs";
@@ -97,7 +97,7 @@ export default defineDocs({
       baseBranch: "main",
     },
   },
-  theme: threadline(),
+  theme: hardline(),
   ai: {
     enabled: true,
     // mode: "sidebar-icon",
@@ -145,12 +145,7 @@ export default defineDocs({
     actionsComponent: ChangelogActions,
   },
   nav: {
-    title: (
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Rocket size={14} />
-        <span className="uppercase font-mono tracking-tighter">Example Docs</span>
-      </div>
-    ),
+    title: "Example Docs",
     url: "/docs",
   },
   components: {
@@ -177,9 +172,18 @@ export default defineDocs({
   sidebar: { flat: true },
   breadcrumb: { enabled: true },
 
-  lastUpdated: false,
+  readingTime: { enabled: true, wordsPerMinute: 220 },
+  lastUpdated: { enabled: true, position: "below-title" },
 
-  pageActions: threadlinePageActions,
+  pageActions: {
+    alignment: "right",
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      target: "markdown",
+      providers: ["chatgpt", "claude", "cursor"],
+    },
+  },
   ordering: "numeric",
   metadata: {
     titleTemplate: "%s – Docs",
@@ -187,7 +191,7 @@ export default defineDocs({
   },
   themeToggle: {
     enabled: true,
-    default: "light",
+    default: "dark",
   },
   og: {
     enabled: true,

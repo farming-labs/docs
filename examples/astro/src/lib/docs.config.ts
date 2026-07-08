@@ -4,28 +4,7 @@ import { defineDocs } from "@farming-labs/docs";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: hardline({
-    ui: {
-      components: { Callout: { variant: "outline" } },
-      layout: {
-        toc: { enabled: true, depth: 3, style: "default" },
-        sidebarWidth: 300,
-      },
-      sidebar: { style: "default" },
-      typography: {
-        font: {
-          style: {
-            sans: "system-ui, -apple-system, sans-serif",
-            mono: "ui-monospace, monospace",
-          },
-          h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
-          h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
-          h3: { size: "1.25rem", weight: 600 },
-          body: { size: "0.975rem", lineHeight: "1.8" },
-        },
-      },
-    },
-  }),
+  theme: hardline(),
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",

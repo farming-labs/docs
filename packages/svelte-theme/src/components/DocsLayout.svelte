@@ -271,7 +271,7 @@
       }
     }
     if (vars.length === 0) return "";
-    return `body:has(#nd-docs-layout),\n#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
+    return `:root,\nbody:has(#nd-docs-layout),\n#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
   }
 
   function buildLayoutCSS(layout) {
