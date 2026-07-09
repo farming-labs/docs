@@ -221,7 +221,7 @@
 
 /* ─── Tables (rounded) ─────────────────────────────────────────────── */
 
-:is(.fd-docs-content, .prose) table {
+:is(.fd-docs-content, #nd-docs-layout .prose) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -230,18 +230,18 @@
   overflow: hidden;
 }
 
-:is(.fd-docs-content, .prose) th {
+:is(.fd-docs-content, #nd-docs-layout .prose) th {
   background: var(--color-fd-muted);
   font-weight: 600;
 }
 
-:is(.fd-docs-content, .prose) th,
-:is(.fd-docs-content, .prose) td {
+:is(.fd-docs-content, #nd-docs-layout .prose) th,
+:is(.fd-docs-content, #nd-docs-layout .prose) td {
   padding: 0.625rem;
   border-bottom: 1px solid var(--color-fd-border);
 }
 
-:is(.fd-docs-content, .prose) tr:last-child td {
+:is(.fd-docs-content, #nd-docs-layout .prose) tr:last-child td {
   border-bottom: none;
 }
 

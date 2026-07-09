@@ -198,7 +198,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ### 5. Import theme CSS in `app/global.css`
 
-    Add your theme's CSS to your global stylesheet so docs styling applies. Use the import that matches the theme in your config (e.g. `default` below; for `greentree` use `@farming-labs/theme/greentree/css`).
+    Add your theme's CSS to your global stylesheet so docs styling applies. The default `fumadocs()` theme helper uses `@farming-labs/theme/default/css`; other built-in themes use their theme name, like `@farming-labs/theme/greentree/css`.
 
     ```css title="app/global.css"
     @import "tailwindcss";
@@ -536,7 +536,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ### 5. Import theme CSS in `src/app.css`
 
-    Add your theme's CSS to your global stylesheet so docs styling applies. Use the import that matches the theme in your config (e.g. `default` below; for `greentree` use `@farming-labs/theme/greentree/css`).
+    Add your theme's CSS to your global stylesheet so docs styling applies. The default `fumadocs()` theme helper uses `@farming-labs/theme/default/css`; other built-in themes use their theme name, like `@farming-labs/theme/greentree/css`.
 
     ```css title="src/app.css"
     @import "@farming-labs/theme/default/css";
@@ -753,7 +753,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ### 3. Configure `nuxt.config.ts`
 
-    Add your theme's CSS via the `css` array so docs styling applies. Use the path that matches the theme in your config (e.g. `default` below; for `greentree` use `@farming-labs/theme/greentree/css`).
+    Add your theme's CSS via the `css` array so docs styling applies. The default `fumadocs()` theme helper uses `@farming-labs/theme/default/css`; other built-in themes use their theme name, like `@farming-labs/theme/greentree/css`.
 
     ```ts title="nuxt.config.ts"
     export default defineNuxtConfig({

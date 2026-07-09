@@ -65,7 +65,13 @@
 }
 
 /* Hard-edge layout baseline */
-body:has(#nd-docs-layout),
+body:has(#nd-docs-layout) {
+  font-family: var(--fd-font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
+}
+
 #nd-docs-layout {
   font-family: var(--fd-font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
   font-size: var(--fd-body-size, 1rem);
@@ -319,6 +325,7 @@ aside button[class*="bg-fd-secondary"] {
 .fd-docs-content h3,
 .fd-docs-content h4 {
   letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .fd-docs-content h1 {
@@ -565,7 +572,7 @@ aside button[class*="bg-fd-secondary"] {
 }
 
 #nd-docs-layout[data-fd-framework] .fd-tab-trigger.fd-tab-active {
-  color: var(--color-fd-primary);
+  color: var(--color-fd-foreground);
   font-weight: 500;
 }
 
@@ -592,6 +599,8 @@ aside button[class*="bg-fd-secondary"] {
 
 .fd-docs-content figure.shiki:has(figcaption) > div:first-child,
 #nd-docs-layout article#nd-page figure.shiki:has(figcaption) > div:first-child,
+.fd-docs-content figure.shiki figcaption,
+#nd-docs-layout article#nd-page figure.shiki figcaption,
 .fd-docs-content .fd-codeblock-title,
 #nd-docs-layout[data-fd-framework] .fd-codeblock-title {
   min-height: 40px;

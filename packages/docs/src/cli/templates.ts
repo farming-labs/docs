@@ -147,12 +147,8 @@ function getThemeCssImport(theme: string): string {
 }
 
 function hasBuiltInThemeCssImport(content: string): boolean {
-  return (
-    (content.includes("@farming-labs/theme/") ||
-      content.includes("@farming-labs/svelte-theme/") ||
-      content.includes("@farming-labs/astro-theme/") ||
-      content.includes("@farming-labs/nuxt-theme/")) &&
-    content.includes("/css")
+  return /["']@farming-labs\/(?:theme|svelte-theme|astro-theme|nuxt-theme)\/[^"'\n]*\/css["']/.test(
+    content,
   );
 }
 

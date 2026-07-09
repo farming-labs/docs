@@ -274,6 +274,16 @@ describe("injectCssImport", () => {
     expect(injectCssImport(content, "fumadocs")).toBeNull();
   });
 
+  it("does not treat theme preset imports plus unrelated css paths as built-in theme css", () => {
+    const content = `@import "tailwindcss";
+@import "@farming-labs/theme/presets/black";
+@import "./css/reset.css";
+`;
+    const result = injectCssImport(content, "fumadocs");
+    expect(result).not.toBeNull();
+    expect(result).toContain('@import "@farming-labs/theme/default/css"');
+  });
+
   it("adds theme import when missing", () => {
     const content = `@import "tailwindcss";
 `;
