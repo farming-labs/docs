@@ -167,11 +167,16 @@ function wireInteractive() {
         trigger.addEventListener("click", () => {
           const val = trigger.getAttribute("data-tab-value");
           tabs.querySelectorAll(".fd-tab-trigger").forEach((t) => {
-            t.classList.toggle("fd-tab-active", t.getAttribute("data-tab-value") === val);
-            t.setAttribute("aria-selected", String(t.getAttribute("data-tab-value") === val));
+            const active = t.getAttribute("data-tab-value") === val;
+            t.classList.toggle("fd-tab-active", active);
+            t.setAttribute("aria-selected", String(active));
+            t.setAttribute("data-state", active ? "active" : "inactive");
+            t.setAttribute("tabindex", active ? "0" : "-1");
           });
           tabs.querySelectorAll(".fd-tab-panel").forEach((p) => {
-            p.classList.toggle("fd-tab-panel-active", p.getAttribute("data-tab-panel") === val);
+            const active = p.getAttribute("data-tab-panel") === val;
+            p.classList.toggle("fd-tab-panel-active", active);
+            p.setAttribute("data-state", active ? "active" : "inactive");
           });
         });
       });
