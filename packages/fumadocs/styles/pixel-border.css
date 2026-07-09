@@ -2,7 +2,14 @@
  * Inspired by better-auth.com — pixel-perfect borders, clean dark UI.
  * Uses the "black" color preset as the base.
  */
-@import "./presets/black.css";
+@import "./bundles/shared-framework.css";
+
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-justify: stretch;
+  --fd-framework-page-columns-with-toc: minmax(0, calc(100% - var(--fd-toc-width, 268px)))
+    var(--fd-toc-width, 268px);
+  --fd-framework-article-padding: 56px 32px 24px;
+}
 
 :root {
   --color-fd-background: oklch(1 0 0);
@@ -152,8 +159,8 @@ code:not(pre code) {
 
 /* ─── Docs grid: sidebar (sticky left, full height) | content | TOC ─────── */
 @media (min-width: 768px) {
-  #nd-docs-layout,
-  [style*="fd-sidebar-col"] {
+  #nd-docs-layout:not([data-fd-framework]),
+  #nd-docs-layout:not([data-fd-framework]) [style*="fd-sidebar-col"] {
     grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
   }
   /* Sidebar stretches to end and sticks on scroll; no max-height so content isn't clipped */
@@ -167,7 +174,7 @@ code:not(pre code) {
 }
 
 @media (min-width: 1024px) {
-  #nd-docs-layout.grid {
+  #nd-docs-layout.grid:not([data-fd-framework]) {
     grid-template:
       "sidebar header toc"
       "sidebar toc-popover toc"
@@ -358,6 +365,10 @@ table {
   overflow: hidden;
 }
 
+.fd-table-wrapper {
+  border-radius: 0 !important;
+}
+
 th {
   background: var(--color-fd-muted);
   color: var(--color-fd-foreground);
@@ -376,7 +387,8 @@ tr:last-child td {
 /* ─── Code blocks: single border, rounded-none (light + dark) ───────── */
 
 /* Target the fumadocs CodeBlock figure (shiki class) */
-figure.shiki {
+figure.shiki,
+.fd-codeblock {
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
   overflow: hidden;
@@ -384,27 +396,33 @@ figure.shiki {
 }
 
 /* Copy button inside code blocks */
-figure.shiki button {
+figure.shiki button,
+.fd-copy-btn {
   border-radius: 0 !important;
 }
 
 /* Code block title bar */
-figure.shiki > div:first-child {
+figure.shiki > div:first-child,
+.fd-codeblock-title {
   border-radius: 0 !important;
 }
 
 /* ─── Tabs (package manager / code tabs) — light + dark ────────────── */
 
-[role="tablist"] {
+[role="tablist"],
+.fd-tabs,
+.fd-tabs-list {
   border-radius: 0 !important;
 }
 
 [role="tablist"] button,
-[role="tab"] {
+[role="tab"],
+.fd-tab-trigger {
   border-radius: 0 !important;
 }
 
-[role="tabpanel"] {
+[role="tabpanel"],
+.fd-tab-panel {
   border-radius: 0 !important;
 }
 
@@ -425,7 +443,10 @@ div:has(> [role="tablist"]) {
 
 /* ─── Callouts: visible border (light + dark) ──────────────────────── */
 
-[class*="bg-fd-card"] {
+[class*="bg-fd-card"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"] {
   border-color: var(--color-fd-border);
 }
 

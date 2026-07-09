@@ -6,27 +6,7 @@ import { hardline } from "@farming-labs/theme/hardline";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: hardline({
-    ui: {
-      components: { Callout: { variant: "outline" } },
-      layout: {
-        toc: { enabled: true, depth: 3, style: "default" },
-        sidebarWidth: 300,
-      },
-      typography: {
-        font: {
-          style: {
-            sans: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-            mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-          },
-          h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
-          h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
-          h3: { size: "1.25rem", weight: 600 },
-          body: { size: "0.975rem", lineHeight: "1.8" },
-        },
-      },
-    },
-  }),
+  theme: hardline(),
   nav: {
     title: (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

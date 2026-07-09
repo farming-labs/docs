@@ -291,7 +291,7 @@ body:has(#nd-docs-layout.dark),
 /* Cards, callouts, tabs, and generic surfaces */
 #nd-docs-layout .fd-card,
 #nd-docs-layout [data-card],
-#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout .fd-callout,
 #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout .fd-page-action-btn {
   border: 2px solid var(--color-fd-border) !important;
@@ -303,8 +303,8 @@ body:has(#nd-docs-layout.dark),
 #nd-docs-layout.dark .fd-card,
 :is(html.dark, body.dark) #nd-docs-layout [data-card],
 #nd-docs-layout.dark [data-card],
-:is(html.dark, body.dark) #nd-docs-layout [class*="fd-callout"],
-#nd-docs-layout.dark [class*="fd-callout"],
+:is(html.dark, body.dark) #nd-docs-layout .fd-callout,
+#nd-docs-layout.dark .fd-callout,
 :is(html.dark, body.dark) #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout.dark .fd-page-action-menu,
 :is(html.dark, body.dark) #nd-docs-layout .fd-page-action-btn,
@@ -380,34 +380,41 @@ body:has(#nd-docs-layout.dark),
   background: #121214 !important;
 }
 
-#nd-docs-layout .fd-docs-content table {
-  border-collapse: collapse;
-  border: 2px solid var(--color-fd-border);
+#nd-docs-layout .fd-table-wrapper {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+#nd-docs-layout :is(.fd-docs-content, .prose) table {
+  border-collapse: collapse !important;
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
   width: 100%;
-  background: var(--color-fd-card);
+  background: var(--color-fd-card) !important;
 }
 
-#nd-docs-layout .fd-docs-content th,
-#nd-docs-layout .fd-docs-content td {
-  border: 2px solid var(--color-fd-border);
-  padding: 0.7rem 0.85rem;
+#nd-docs-layout :is(.fd-docs-content, .prose) th,
+#nd-docs-layout :is(.fd-docs-content, .prose) td {
+  border: 2px solid var(--color-fd-border) !important;
+  padding: 0.7rem 0.85rem !important;
 }
 
-#nd-docs-layout .fd-docs-content th {
+#nd-docs-layout :is(.fd-docs-content, .prose) th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.78rem;
-  background: var(--color-fd-primary);
-  color: var(--color-fd-primary-foreground);
+  background: var(--color-fd-primary) !important;
+  color: var(--color-fd-primary-foreground) !important;
 }
 
-#nd-docs-layout .fd-docs-content tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--color-fd-secondary) 85%, transparent);
+#nd-docs-layout :is(.fd-docs-content, .prose) tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--color-fd-secondary) 85%, transparent) !important;
 }
 
-:is(html.dark, body.dark) #nd-docs-layout .fd-docs-content tbody tr:nth-child(even) td,
-#nd-docs-layout.dark .fd-docs-content tbody tr:nth-child(even) td {
-  background: #1a1a1d;
+:is(html.dark, body.dark) #nd-docs-layout :is(.fd-docs-content, .prose) tbody tr:nth-child(even) td,
+#nd-docs-layout.dark :is(.fd-docs-content, .prose) tbody tr:nth-child(even) td {
+  background: #1a1a1d !important;
 }
 
 /* Prev/next cards */

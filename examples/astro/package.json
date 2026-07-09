@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "pnpm --dir ../.. --filter @farming-labs/docs run build && node ../../packages/docs/dist/cli/index.mjs sitemap generate --config src/lib/docs.config.ts && astro build",
+    "build": "corepack pnpm --dir ../.. --filter @farming-labs/docs run build && node ../../packages/docs/dist/cli/index.mjs sitemap generate --config src/lib/docs.config.ts && astro build",
     "preview": "astro preview"
   },
   "dependencies": {
@@ -13,6 +13,7 @@
     "@farming-labs/astro": "0.2.44",
     "@farming-labs/astro-theme": "0.2.44",
     "@farming-labs/docs": "0.2.44",
+    "@farming-labs/theme": "0.2.44",
     "astro": "^6.4.8",
     "three": "^0.180.0"
   }

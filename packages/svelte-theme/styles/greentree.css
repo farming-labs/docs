@@ -376,7 +376,7 @@ body:has(#nd-docs-layout.dark),
   font-weight: 400;
 }
 
-#nd-docs-layout .fd-docs-content table {
+#nd-docs-layout :is(.fd-docs-content, .prose) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -386,7 +386,7 @@ body:has(#nd-docs-layout.dark),
   width: 100%;
 }
 
-#nd-docs-layout .fd-docs-content th {
+#nd-docs-layout :is(.fd-docs-content, .prose) th {
   background: var(--color-fd-muted);
   font-weight: 500;
   font-size: 0.8125rem;
@@ -395,14 +395,14 @@ body:has(#nd-docs-layout.dark),
   letter-spacing: normal;
 }
 
-#nd-docs-layout .fd-docs-content th,
-#nd-docs-layout .fd-docs-content td {
+#nd-docs-layout :is(.fd-docs-content, .prose) th,
+#nd-docs-layout :is(.fd-docs-content, .prose) td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-fd-border);
   font-size: 0.875rem;
 }
 
-#nd-docs-layout .fd-docs-content tr:last-child td {
+#nd-docs-layout :is(.fd-docs-content, .prose) tr:last-child td {
   border-bottom: none;
 }
 

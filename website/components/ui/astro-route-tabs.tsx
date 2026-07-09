@@ -12,7 +12,7 @@ import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astr
 import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
 import config from "../../lib/docs.config";
 import { load } from "../../lib/docs.server";
-import "@farming-labs/astro-theme/css";
+import "@farming-labs/theme/default/css";
 
 const data = await load(Astro.url.pathname);
 ---
@@ -34,7 +34,7 @@ import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astr
 import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
 import config from "../../lib/docs.config";
 import { load } from "../../lib/docs.server";
-import "@farming-labs/astro-theme/css";
+import "@farming-labs/theme/default/css";
 
 const data = await load(Astro.url.pathname);
 ---

@@ -156,7 +156,9 @@ function buildTypographyCSS(typo: Record<string, any> | undefined): string {
     }
   }
   if (vars.length === 0) return "";
-  return `:root {\n  ${vars.join("\n  ")}\n}`;
+  return `:root,
+body:has(#nd-docs-layout),
+#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
 }
 
 function buildLayoutCSS(layout: Record<string, any> | undefined): string {
@@ -168,10 +170,10 @@ function buildLayoutCSS(layout: Record<string, any> | undefined): string {
   if (layout.tocWidth) desktopVars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
   if (rootVars.length === 0 && desktopVars.length === 0) return "";
   const parts: string[] = [];
-  if (rootVars.length > 0) parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+  if (rootVars.length > 0) parts.push(`#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
   if (desktopVars.length > 0)
     parts.push(
-      `@media (min-width: 1024px) {\n  :root {\n    ${desktopVars.join("\n    ")}\n  }\n}`,
+      `@media (min-width: 1024px) {\n  #nd-docs-layout {\n    ${desktopVars.join("\n    ")}\n  }\n}`,
     );
   return parts.join("\n");
 }
@@ -269,7 +271,7 @@ const showFloatingAI = computed(
 
 <template>
   <div class="fd-layout-root">
-    <div class="fd-layout" @keydown="handleKeydown">
+    <div id="nd-docs-layout" data-fd-framework="nuxt" class="fd-layout" @keydown="handleKeydown">
       <header class="fd-header">
         <button
           class="fd-menu-btn"

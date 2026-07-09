@@ -276,7 +276,7 @@ body:has(#nd-docs-layout.dark),
 #nd-docs-layout .fd-page-description,
 #nd-docs-layout .fd-docs-content p,
 #nd-docs-layout .fd-docs-content li,
-#nd-docs-layout .fd-docs-content td,
+#nd-docs-layout :is(.fd-docs-content, .prose) td,
 #nd-docs-layout .fd-docs-content blockquote {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
@@ -292,7 +292,7 @@ body:has(#nd-docs-layout.dark),
 
 #nd-docs-layout .fd-card,
 #nd-docs-layout [data-card],
-#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout .fd-callout,
 #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout .fd-page-action-btn,
 #nd-docs-layout .fd-docs-content pre,
@@ -303,7 +303,7 @@ body:has(#nd-docs-layout.dark),
 #nd-docs-layout [class*="page-nav"] a,
 #nd-docs-layout .fd-hover-link-card,
 #nd-docs-layout .fd-page-body .fd-table-wrapper,
-#nd-docs-layout .fd-docs-content table,
+#nd-docs-layout :is(.fd-docs-content, .prose) table,
 #nd-docs-layout .fd-tabs,
 #nd-docs-layout .fd-tabs-list,
 #nd-docs-layout .fd-tabs-trigger,
@@ -328,7 +328,7 @@ body:has(#nd-docs-layout.dark),
 
 #nd-docs-layout .fd-card,
 #nd-docs-layout [data-card],
-#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout .fd-callout,
 #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout .fd-page-action-btn,
 #nd-docs-layout .fd-page-nav,
@@ -573,8 +573,7 @@ body:has(#nd-docs-layout.dark),
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
 
-#nd-docs-layout .fd-callout,
-#nd-docs-layout [class*="fd-callout"] {
+#nd-docs-layout .fd-callout {
   border: 2px solid var(--color-fd-border) !important;
   background: color-mix(
     in srgb,

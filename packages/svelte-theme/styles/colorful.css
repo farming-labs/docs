@@ -282,7 +282,7 @@ body:has(#nd-docs-layout.dark),
 
 /* ─── Tables (rounded) ─────────────────────────────────────────────── */
 
-#nd-docs-layout .fd-docs-content table {
+#nd-docs-layout :is(.fd-docs-content, .prose) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -291,18 +291,18 @@ body:has(#nd-docs-layout.dark),
   overflow: hidden;
 }
 
-#nd-docs-layout .fd-docs-content th {
+#nd-docs-layout :is(.fd-docs-content, .prose) th {
   background: var(--color-fd-muted);
   font-weight: 600;
 }
 
-#nd-docs-layout .fd-docs-content th,
-#nd-docs-layout .fd-docs-content td {
+#nd-docs-layout :is(.fd-docs-content, .prose) th,
+#nd-docs-layout :is(.fd-docs-content, .prose) td {
   padding: 0.625rem;
   border-bottom: 1px solid var(--color-fd-border);
 }
 
-#nd-docs-layout .fd-docs-content tr:last-child td {
+#nd-docs-layout :is(.fd-docs-content, .prose) tr:last-child td {
   border-bottom: none;
 }
 

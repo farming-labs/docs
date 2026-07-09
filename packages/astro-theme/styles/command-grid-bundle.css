@@ -266,7 +266,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, #nd-docs-layout .prose) td,
 .fd-docs-content blockquote {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
@@ -282,7 +282,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
 .fd-page-action-menu,
 .fd-page-action-btn,
 .fd-docs-content pre,
@@ -293,7 +293,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 [class*="page-nav"] a,
 .fd-hover-link-card,
 .fd-page-body .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, #nd-docs-layout .prose) table,
 .fd-tabs,
 .fd-tabs-list,
 .fd-tabs-trigger,
@@ -318,7 +318,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
 .fd-page-action-menu,
 .fd-page-action-btn,
 .fd-page-nav,
@@ -477,7 +477,7 @@ figure.shiki:has(figcaption) > div:first-child,
 
 .fd-table-wrapper,
 .fd-table-wrapper table,
-.prose table {
+#nd-docs-layout .prose table {
   border: 2px solid var(--color-fd-border) !important;
   background: var(--color-fd-card) !important;
   border-radius: 0 !important;
@@ -512,19 +512,19 @@ figure.shiki:has(figcaption) > div:first-child,
 }
 
 .fd-table-wrapper table,
-.prose .fd-table-wrapper table {
+#nd-docs-layout .prose .fd-table-wrapper table {
   border: 0 !important;
   background: transparent !important;
   border-radius: 0 !important;
 }
 
-.prose table,
-.prose thead,
-.prose tbody,
-.prose tr,
-.prose th,
-.prose td,
-.prose table *,
+#nd-docs-layout .prose table,
+#nd-docs-layout .prose thead,
+#nd-docs-layout .prose tbody,
+#nd-docs-layout .prose tr,
+#nd-docs-layout .prose th,
+#nd-docs-layout .prose td,
+#nd-docs-layout .prose table *,
 .fd-table-wrapper,
 .fd-table-wrapper *,
 .fd-table-wrapper table,
@@ -536,10 +536,10 @@ figure.shiki:has(figcaption) > div:first-child,
   border-radius: 0 !important;
 }
 
-.prose thead tr:first-child th:first-child,
-.prose thead tr:first-child th:last-child,
-.prose tbody tr:last-child td:first-child,
-.prose tbody tr:last-child td:last-child,
+#nd-docs-layout .prose thead tr:first-child th:first-child,
+#nd-docs-layout .prose thead tr:first-child th:last-child,
+#nd-docs-layout .prose tbody tr:last-child td:first-child,
+#nd-docs-layout .prose tbody tr:last-child td:last-child,
 .fd-table-wrapper thead tr:first-child th:first-child,
 .fd-table-wrapper thead tr:first-child th:last-child,
 .fd-table-wrapper tbody tr:last-child td:first-child,
@@ -547,7 +547,7 @@ figure.shiki:has(figcaption) > div:first-child,
   border-radius: 0 !important;
 }
 
-.prose th,
+#nd-docs-layout .prose th,
 .fd-table-wrapper th {
   background: var(--color-fd-foreground) !important;
   color: var(--color-fd-background) !important;
@@ -556,8 +556,7 @@ figure.shiki:has(figcaption) > div:first-child,
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
 
-.fd-callout,
-[class*="fd-callout"] {
+.fd-callout {
   border: 2px solid var(--color-fd-border) !important;
   background: color-mix(
     in srgb,

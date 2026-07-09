@@ -1,7 +1,7 @@
 /* @farming-labs/theme - threadline theme CSS
  * Compact chat-docs UI with neutral shadcn-style surfaces.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 :root {
   --radius: 0.625rem;
@@ -141,7 +141,7 @@ body:has(#nd-docs-layout) {
 }
 
 @media (min-width: 1280px) {
-  #nd-docs-layout {
+  #nd-docs-layout:not([data-fd-framework]) {
     max-width: var(--fd-threadline-frame-width) !important;
     margin-inline: auto !important;
     grid-template-columns:
@@ -370,7 +370,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .fd-docs-content blockquote,
 .prose p,
 .prose li,
@@ -428,7 +428,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
   background: var(--muted) !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent) !important;
   border-radius: 0.625rem !important;
   background: color-mix(in srgb, var(--muted) 42%, transparent) !important;
@@ -436,21 +436,21 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
   box-shadow: none !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) * {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) * {
   color: inherit;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) a {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) a {
   color: var(--fd-assistant-link) !important;
   text-decoration-color: color-mix(in srgb, var(--fd-assistant-link) 35%, transparent);
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) > svg {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) > svg {
   color: var(--muted-foreground) !important;
   fill: color-mix(in srgb, var(--muted-foreground) 18%, transparent) !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) > [role="none"] {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) > [role="none"] {
   background: color-mix(in srgb, var(--muted-foreground) 28%, transparent) !important;
 }
 
@@ -516,7 +516,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
 }
 
 .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent) !important;
   border-radius: 0.75rem !important;
@@ -525,7 +525,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
   overflow: hidden;
 }
 
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   width: 100% !important;
   border-collapse: separate !important;
@@ -538,13 +538,13 @@ figure.shiki button[aria-label*="Copy"]:hover {
   background: transparent !important;
 }
 
-.fd-docs-content thead,
+:is(.fd-docs-content, .prose) thead,
 .prose thead {
   background: color-mix(in srgb, var(--muted) 48%, transparent) !important;
 }
 
 .fd-table-wrapper th,
-.fd-docs-content th,
+:is(.fd-docs-content, .prose) th,
 .prose th {
   background: transparent !important;
   color: var(--muted-foreground) !important;
@@ -553,21 +553,21 @@ figure.shiki button[aria-label*="Copy"]:hover {
 
 .fd-table-wrapper th,
 .fd-table-wrapper td,
-.fd-docs-content th,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) th,
+:is(.fd-docs-content, .prose) td,
 .prose th,
 .prose td {
   border-color: color-mix(in srgb, var(--border) 86%, transparent) !important;
   padding: 0.75rem 1rem !important;
 }
 
-.fd-docs-content tbody tr:nth-child(even),
+:is(.fd-docs-content, .prose) tbody tr:nth-child(even),
 .prose tbody tr:nth-child(even) {
   background: color-mix(in srgb, var(--muted) 18%, transparent) !important;
 }
 
 .fd-table-wrapper td,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .prose td {
   background: transparent !important;
 }
@@ -1223,6 +1223,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
 
 .fd-tabs-trigger[data-state="active"],
 .fd-tab-trigger[data-state="active"],
+.fd-tab-trigger.fd-tab-active,
 [role="tab"][aria-selected="true"],
 [role="tab"][data-active="true"] {
   background: var(--background) !important;

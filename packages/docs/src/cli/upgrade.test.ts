@@ -35,31 +35,34 @@ describe("upgrade", () => {
       expect(pkgs).toHaveLength(3);
     });
 
-    it("nuxt has docs, nuxt, nuxt-theme", () => {
+    it("nuxt has docs, nuxt, nuxt-theme, and shared theme css", () => {
       const pkgs = getPackagesForFramework("nuxt");
       expect(pkgs).toContain("@farming-labs/docs");
       expect(pkgs).toContain("@farming-labs/nuxt");
       expect(pkgs).toContain("@farming-labs/nuxt-theme");
-      expect(pkgs).toHaveLength(3);
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toHaveLength(4);
     });
 
-    it("sveltekit has docs, svelte, svelte-theme", () => {
+    it("sveltekit has docs, svelte, svelte-theme, and shared theme css", () => {
       const pkgs = getPackagesForFramework("sveltekit");
       expect(pkgs).toContain("@farming-labs/docs");
       expect(pkgs).toContain("@farming-labs/svelte");
       expect(pkgs).toContain("@farming-labs/svelte-theme");
-      expect(pkgs).toHaveLength(3);
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toHaveLength(4);
     });
 
-    it("astro has docs, astro, astro-theme", () => {
+    it("astro has docs, astro, astro-theme, and shared theme css", () => {
       const pkgs = getPackagesForFramework("astro");
       expect(pkgs).toContain("@farming-labs/docs");
       expect(pkgs).toContain("@farming-labs/astro");
       expect(pkgs).toContain("@farming-labs/astro-theme");
-      expect(pkgs).toHaveLength(3);
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toHaveLength(4);
     });
 
-    it("every framework has exactly 3 packages", () => {
+    it("every framework installs the shared theme package", () => {
       const frameworks: UpgradeFramework[] = [
         "nextjs",
         "tanstack-start",
@@ -68,7 +71,7 @@ describe("upgrade", () => {
         "astro",
       ];
       for (const fw of frameworks) {
-        expect(PACKAGES_BY_FRAMEWORK[fw]).toHaveLength(3);
+        expect(PACKAGES_BY_FRAMEWORK[fw]).toContain("@farming-labs/theme");
       }
     });
   });

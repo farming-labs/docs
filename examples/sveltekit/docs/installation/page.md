@@ -1,4 +1,5 @@
 ---
+order: 2
 title: Installation
 description: Install and configure Better Auth in your project.
 icon: terminal

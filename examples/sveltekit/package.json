@@ -12,6 +12,7 @@
     "@farming-labs/docs": "0.2.44",
     "@farming-labs/svelte": "0.2.44",
     "@farming-labs/svelte-theme": "0.2.44",
+    "@farming-labs/theme": "0.2.44",
     "three": "^0.180.0"
   },
   "devDependencies": {

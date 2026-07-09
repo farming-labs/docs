@@ -1,8 +1,8 @@
 ---
 order: 3
-title: Get Started
-description: Build your first authentication flow with Better Auth.
-icon: rocket
+title: "Get Started"
+description: "Build your first authentication flow with Better Auth."
+icon: "rocket"
 ---
 
 # Get Started

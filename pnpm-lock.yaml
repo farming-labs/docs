@@ -89,6 +89,9 @@ importers:
       '@farming-labs/docs':
         specifier: 0.2.44
         version: link:../../packages/docs
+      '@farming-labs/theme':
+        specifier: 0.2.44
+        version: link:../../packages/fumadocs
       astro:
         specifier: 6.4.8
         version: 6.4.8(@types/node@22.19.11)(@vercel/functions@3.7.1(ws@8.21.0))(db0@0.3.4)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.31.1)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
@@ -211,6 +214,9 @@ importers:
       '@farming-labs/nuxt-theme':
         specifier: 0.2.44
         version: link:../../packages/nuxt-theme
+      '@farming-labs/theme':
+        specifier: 0.2.44
+        version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -236,6 +242,9 @@ importers:
       '@farming-labs/svelte-theme':
         specifier: 0.2.44
         version: link:../../packages/svelte-theme
+      '@farming-labs/theme':
+        specifier: 0.2.44
+        version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
         version: 0.180.0

@@ -1,6 +1,17 @@
 /* @farming-labs/theme - command-grid theme CSS */
 @import "./concrete.css";
 
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr)
+    minmax(0, min(980px, calc(100% - var(--fd-toc-width, 268px))))
+    var(--fd-toc-width, 268px) minmax(0, 1fr);
+  --fd-framework-article-column: 2;
+  --fd-framework-toc-column: 3;
+  --fd-framework-article-width: min(980px, 100%);
+  --fd-framework-article-justify: center;
+  --fd-framework-article-padding: 32px 48px 64px;
+}
+
 :root {
   --color-fd-primary: #141414;
   --color-fd-primary-foreground: #f8f6ed;
@@ -266,7 +277,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .fd-docs-content blockquote {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
@@ -282,21 +293,23 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
 .fd-page-action-menu,
 .fd-page-action-btn,
 .fd-docs-content pre,
 .fd-docs-content .shiki,
 .fd-docs-content [data-codeblock],
+.fd-codeblock,
 .fd-page-nav,
 .fd-page-nav-card,
 [class*="page-nav"] a,
 .fd-hover-link-card,
 .fd-page-body .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .fd-tabs,
 .fd-tabs-list,
 .fd-tabs-trigger,
+.fd-tab-trigger,
 .fd-feedback-input,
 .fd-feedback-submit,
 .fd-feedback-choice,
@@ -318,7 +331,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
 .fd-page-action-menu,
 .fd-page-action-btn,
 .fd-page-nav,
@@ -449,6 +462,7 @@ button[data-search-full] kbd,
 .fd-docs-content pre,
 .fd-docs-content .shiki,
 .fd-docs-content [data-codeblock],
+.fd-codeblock,
 .fd-ai-code-block {
   border: 2px solid var(--color-fd-border) !important;
   background: var(--color-fd-card) !important;
@@ -556,8 +570,7 @@ figure.shiki:has(figcaption) > div:first-child,
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
 
-.fd-callout,
-[class*="fd-callout"] {
+.fd-callout {
   border: 2px solid var(--color-fd-border) !important;
   background: color-mix(
     in srgb,

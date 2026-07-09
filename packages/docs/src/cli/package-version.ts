@@ -16,9 +16,24 @@ export type UpgradeFramework = Framework;
 export const PACKAGES_BY_FRAMEWORK: Record<UpgradeFramework, string[]> = {
   nextjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/next"],
   "tanstack-start": ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/tanstack-start"],
-  nuxt: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
-  sveltekit: ["@farming-labs/docs", "@farming-labs/svelte", "@farming-labs/svelte-theme"],
-  astro: ["@farming-labs/docs", "@farming-labs/astro", "@farming-labs/astro-theme"],
+  nuxt: [
+    "@farming-labs/docs",
+    "@farming-labs/nuxt",
+    "@farming-labs/nuxt-theme",
+    "@farming-labs/theme",
+  ],
+  sveltekit: [
+    "@farming-labs/docs",
+    "@farming-labs/svelte",
+    "@farming-labs/svelte-theme",
+    "@farming-labs/theme",
+  ],
+  astro: [
+    "@farming-labs/docs",
+    "@farming-labs/astro",
+    "@farming-labs/astro-theme",
+    "@farming-labs/theme",
+  ],
 };
 
 export function presetFromFramework(fw: UpgradeFramework): PresetName {

@@ -108,7 +108,7 @@ body:has(#nd-docs-layout.dark),
 
 #nd-docs-layout .fd-card,
 #nd-docs-layout [data-card],
-#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout .fd-callout,
 #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout .fd-page-action-btn,
 #nd-docs-layout .fd-docs-content pre,
@@ -125,8 +125,8 @@ body:has(#nd-docs-layout.dark),
 #nd-docs-layout.dark .fd-card,
 :is(html.dark, body.dark) #nd-docs-layout [data-card],
 #nd-docs-layout.dark [data-card],
-:is(html.dark, body.dark) #nd-docs-layout [class*="fd-callout"],
-#nd-docs-layout.dark [class*="fd-callout"],
+:is(html.dark, body.dark) #nd-docs-layout .fd-callout,
+#nd-docs-layout.dark .fd-callout,
 :is(html.dark, body.dark) #nd-docs-layout .fd-page-action-menu,
 #nd-docs-layout.dark .fd-page-action-menu,
 :is(html.dark, body.dark) #nd-docs-layout .fd-page-action-btn,
@@ -148,21 +148,18 @@ body:has(#nd-docs-layout.dark),
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
 }
 
-#nd-docs-layout .fd-page-body .fd-table-wrapper,
-#nd-docs-layout .fd-docs-content table {
+#nd-docs-layout :is(.fd-docs-content, .prose) table {
   border: 3px solid var(--color-fd-border);
   box-shadow: 6px 6px 0 var(--color-fd-border);
   background: var(--color-fd-card);
 }
 
-:is(html.dark, body.dark) #nd-docs-layout .fd-page-body .fd-table-wrapper,
-#nd-docs-layout.dark .fd-page-body .fd-table-wrapper,
-:is(html.dark, body.dark) #nd-docs-layout .fd-docs-content table,
-#nd-docs-layout.dark .fd-docs-content table {
+:is(html.dark, body.dark) #nd-docs-layout :is(.fd-docs-content, .prose) table,
+#nd-docs-layout.dark :is(.fd-docs-content, .prose) table {
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
 }
 
-#nd-docs-layout .fd-docs-content th,
+#nd-docs-layout :is(.fd-docs-content, .prose) th,
 #nd-docs-layout .fd-page-body th {
   background: var(--color-fd-foreground);
   color: var(--color-fd-background);
@@ -172,24 +169,24 @@ body:has(#nd-docs-layout.dark),
   font-size: 0.74rem;
 }
 
-#nd-docs-layout .fd-docs-content td,
+#nd-docs-layout :is(.fd-docs-content, .prose) td,
 #nd-docs-layout .fd-page-body td {
   font-weight: 550;
 }
 
-#nd-docs-layout .fd-docs-content tbody tr:nth-child(odd) td,
+#nd-docs-layout :is(.fd-docs-content, .prose) tbody tr:nth-child(odd) td,
 #nd-docs-layout .fd-page-body tbody tr:nth-child(odd) td {
   background: color-mix(in srgb, var(--color-fd-secondary) 72%, white 28%);
 }
 
-:is(html.dark, body.dark) #nd-docs-layout .fd-docs-content tbody tr:nth-child(odd) td,
-#nd-docs-layout.dark .fd-docs-content tbody tr:nth-child(odd) td,
+:is(html.dark, body.dark) #nd-docs-layout :is(.fd-docs-content, .prose) tbody tr:nth-child(odd) td,
+#nd-docs-layout.dark :is(.fd-docs-content, .prose) tbody tr:nth-child(odd) td,
 :is(html.dark, body.dark) #nd-docs-layout .fd-page-body tbody tr:nth-child(odd) td,
 #nd-docs-layout.dark .fd-page-body tbody tr:nth-child(odd) td {
   background: color-mix(in srgb, var(--color-fd-secondary) 92%, black 8%);
 }
 
-#nd-docs-layout .fd-docs-content tbody tr:hover td,
+#nd-docs-layout :is(.fd-docs-content, .prose) tbody tr:hover td,
 #nd-docs-layout .fd-page-body tbody tr:hover td {
   background: color-mix(in srgb, var(--color-fd-primary) 16%, var(--color-fd-card));
 }
@@ -288,17 +285,14 @@ body:has(#nd-docs-layout.dark),
   box-shadow: inset -3px 0 0 var(--color-fd-border);
 }
 
-#nd-docs-layout .fd-callout,
-#nd-docs-layout [class*="fd-callout"] {
+#nd-docs-layout .fd-callout {
   border-width: 3px !important;
   box-shadow: 6px 6px 0 var(--color-fd-border);
   background: color-mix(in srgb, var(--color-fd-secondary) 82%, white 18%);
 }
 
 :is(html.dark, body.dark) #nd-docs-layout .fd-callout,
-#nd-docs-layout.dark .fd-callout,
-:is(html.dark, body.dark) #nd-docs-layout [class*="fd-callout"],
-#nd-docs-layout.dark [class*="fd-callout"] {
+#nd-docs-layout.dark .fd-callout {
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
   background: color-mix(in srgb, var(--color-fd-secondary) 92%, black 8%);
 }

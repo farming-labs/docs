@@ -1,5 +1,16 @@
 /* @farming-labs/theme - hardline theme CSS */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
+
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr)
+    minmax(0, min(956px, calc(100% - var(--fd-toc-width, 268px))))
+    var(--fd-toc-width, 268px) minmax(0, 1fr);
+  --fd-framework-article-column: 2;
+  --fd-framework-toc-column: 3;
+  --fd-framework-article-width: min(956px, 100%);
+  --fd-framework-article-justify: center;
+  --fd-framework-article-padding: 32px 48px 64px;
+}
 
 :root {
   --color-fd-primary: #ffd335;
@@ -54,6 +65,20 @@
 }
 
 /* Hard-edge layout baseline */
+body:has(#nd-docs-layout) {
+  font-family: var(--fd-font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
+}
+
+#nd-docs-layout {
+  font-family: var(--fd-font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
+}
+
 #nd-docs-layout [class*="rounded-"],
 #nd-docs-layout [style*="border-radius"],
 #nd-docs-layout code:not(pre code) {
@@ -72,7 +97,7 @@
 }
 
 aside#nd-sidebar,
-#nd-docs-layout aside {
+#nd-docs-layout .fd-sidebar {
   background: var(--color-fd-background);
   border-right: 2px solid var(--color-fd-border);
 }
@@ -104,6 +129,23 @@ aside a[data-active="true"] {
 }
 
 aside a[data-active="true"]::before {
+  display: none !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link {
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link-active,
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link[data-active="true"] {
+  font-weight: 800 !important;
+  background: var(--color-fd-primary) !important;
+  color: var(--color-fd-primary-foreground) !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link-active::before,
+#nd-docs-layout[data-fd-framework] .fd-sidebar-link[data-active="true"]::before {
   display: none !important;
 }
 
@@ -253,11 +295,27 @@ aside button[class*="bg-fd-secondary"] {
 /* Top-level content width and spacing */
 @media (min-width: 1024px) {
   #nd-docs-layout article#nd-page {
-    max-width: none;
+    max-width: calc(var(--fd-content-width, 860px) + 96px) !important;
   }
 
   #nd-docs-layout article#nd-page > .prose {
-    max-width: none;
+    max-width: var(--fd-content-width, 860px) !important;
+  }
+}
+
+@media (min-width: 768px) {
+  #nd-docs-layout article#nd-page {
+    padding: 32px 48px 64px !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] article#nd-page {
+    padding: var(--fd-framework-article-padding, 32px 48px 64px) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #nd-docs-layout article#nd-page {
+    padding: 24px 16px 48px !important;
   }
 }
 
@@ -266,8 +324,8 @@ aside button[class*="bg-fd-secondary"] {
 .fd-docs-content h2,
 .fd-docs-content h3,
 .fd-docs-content h4 {
-  text-transform: uppercase;
   letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .fd-docs-content h1 {
@@ -286,20 +344,56 @@ aside button[class*="bg-fd-secondary"] {
   text-decoration-color: var(--color-fd-primary);
 }
 
+#nd-docs-layout[data-fd-framework] .fd-page-title,
+#nd-docs-layout[data-fd-framework] .fd-page-body h2,
+#nd-docs-layout[data-fd-framework] .fd-page-body h3,
+#nd-docs-layout[data-fd-framework] .fd-page-body h4 {
+  display: table;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.04em 0.16em;
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+  background: var(--color-fd-card);
+  box-shadow: 4px 4px 0 var(--color-fd-border);
+  color: var(--color-fd-foreground);
+  text-transform: none;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-title {
+  font-weight: var(--fd-h1-weight, 700);
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body h2 {
+  padding-bottom: 0.04em;
+}
+
+.dark #nd-docs-layout[data-fd-framework] .fd-page-title,
+.dark #nd-docs-layout[data-fd-framework] .fd-page-body h2,
+.dark #nd-docs-layout[data-fd-framework] .fd-page-body h3,
+.dark #nd-docs-layout[data-fd-framework] .fd-page-body h4 {
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
+}
+
 /* Cards, callouts, tabs, and generic surfaces */
 .fd-card,
 [data-card],
-[class*="fd-callout"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"],
 .fd-page-action-menu,
 .fd-page-action-btn {
   border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
   background: var(--color-fd-card);
   box-shadow: 4px 4px 0 var(--color-fd-border);
 }
 
 .dark .fd-card,
 .dark [data-card],
-.dark [class*="fd-callout"],
+.dark .fd-callout,
+.dark [data-callout],
+.dark [style*="--callout-color"],
 .dark .fd-page-action-menu,
 .dark .fd-page-action-btn {
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 40%, transparent);
@@ -370,37 +464,43 @@ aside button[class*="bg-fd-secondary"] {
   background: #121214 !important;
 }
 
-.fd-docs-content table {
-  border-collapse: collapse;
-  border: 2px solid var(--color-fd-border);
+.fd-table-wrapper {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+:is(.fd-docs-content, .prose) table {
+  border-collapse: collapse !important;
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
   width: 100%;
-  background: var(--color-fd-card);
+  background: var(--color-fd-card) !important;
 }
 
-.fd-docs-content th,
-.fd-docs-content td {
-  border: 2px solid var(--color-fd-border);
-  padding: 0.7rem 0.85rem;
+:is(.fd-docs-content, .prose) th,
+:is(.fd-docs-content, .prose) td {
+  border: 2px solid var(--color-fd-border) !important;
+  padding: 0.7rem 0.85rem !important;
 }
 
-.fd-docs-content th {
+:is(.fd-docs-content, .prose) th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.78rem;
-  background: var(--color-fd-primary);
-  color: var(--color-fd-primary-foreground);
+  background: var(--color-fd-primary) !important;
+  color: var(--color-fd-primary-foreground) !important;
 }
 
-.fd-docs-content tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--color-fd-secondary) 85%, transparent);
+:is(.fd-docs-content, .prose) tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--color-fd-secondary) 85%, transparent) !important;
 }
 
-.dark .fd-docs-content tbody tr:nth-child(even) td {
-  background: #1a1a1d;
+.dark :is(.fd-docs-content, .prose) tbody tr:nth-child(even) td {
+  background: #1a1a1d !important;
 }
 
 /* Prev/next cards */
-.fd-page-nav,
 .fd-page-nav-card,
 [class*="page-nav"] a {
   border: 2px solid var(--color-fd-border);
@@ -419,10 +519,205 @@ aside button[class*="bg-fd-secondary"] {
   letter-spacing: 0.03em;
 }
 
-.dark .fd-page-nav,
 .dark .fd-page-nav-card,
 .dark [class*="page-nav"] a {
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
+}
+
+#nd-docs-layout[data-fd-framework] .fd-edit-on-github > a,
+#nd-docs-layout[data-fd-framework] .fd-page-nav-card {
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-nav-card {
+  border-width: 1px !important;
+  box-shadow: none !important;
+}
+
+.dark #nd-docs-layout[data-fd-framework] .fd-page-nav-card {
+  box-shadow: none !important;
+}
+
+/* Framework code tabs: match the hard-edged Next CodeGroup treatment */
+#nd-docs-layout[data-fd-framework] .fd-tabs {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-tabs-list {
+  border-bottom: 0 !important;
+  padding-inline: 8px;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-tab-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px !important;
+  border: 0 !important;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-tab-trigger::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 1px;
+  background: transparent;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-tab-trigger.fd-tab-active {
+  color: var(--color-fd-foreground);
+  font-weight: 500;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-tab-trigger.fd-tab-active::after {
+  background: var(--color-fd-primary);
+}
+
+#nd-docs-layout[data-fd-framework] .fd-tab-panel .fd-codeblock {
+  margin: 0 -1px -1px !important;
+  border-radius: 0 !important;
+}
+
+/* Code blocks: normalize React figure.shiki and framework-neutral .fd-codeblock */
+.fd-docs-content figure.shiki,
+#nd-docs-layout article#nd-page figure.shiki,
+.fd-docs-content .fd-codeblock,
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-codeblock {
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.fd-docs-content figure.shiki:has(figcaption) > div:first-child,
+#nd-docs-layout article#nd-page figure.shiki:has(figcaption) > div:first-child,
+.fd-docs-content figure.shiki figcaption,
+#nd-docs-layout article#nd-page figure.shiki figcaption,
+.fd-docs-content .fd-codeblock-title,
+#nd-docs-layout[data-fd-framework] .fd-codeblock-title {
+  min-height: 40px;
+  padding: 8px 14px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-secondary) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.fd-docs-content figure.shiki:has(figcaption) > div:first-child::before,
+#nd-docs-layout article#nd-page figure.shiki:has(figcaption) > div:first-child::before {
+  display: none;
+}
+
+.fd-docs-content figure.shiki > div[role="region"],
+#nd-docs-layout article#nd-page figure.shiki > div[role="region"],
+.fd-docs-content .fd-codeblock-content,
+#nd-docs-layout[data-fd-framework] .fd-codeblock-content {
+  padding: 0 !important;
+  background: var(--color-fd-card) !important;
+}
+
+.fd-docs-content figure.shiki pre,
+#nd-docs-layout article#nd-page figure.shiki pre,
+.fd-docs-content .fd-codeblock pre,
+#nd-docs-layout[data-fd-framework] .fd-codeblock pre {
+  margin: 0 !important;
+  padding: 14px 16px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--color-fd-card) !important;
+  line-height: 1.45;
+}
+
+.dark .fd-docs-content figure.shiki,
+.dark #nd-docs-layout article#nd-page figure.shiki,
+.dark .fd-docs-content figure.shiki > div[role="region"],
+.dark #nd-docs-layout article#nd-page figure.shiki > div[role="region"],
+.dark .fd-docs-content figure.shiki pre,
+.dark #nd-docs-layout article#nd-page figure.shiki pre,
+.dark .fd-docs-content .fd-codeblock,
+.dark .fd-docs-content .fd-codeblock-content,
+.dark .fd-docs-content .fd-codeblock pre,
+.dark #nd-docs-layout[data-fd-framework] .fd-page-body .fd-codeblock,
+.dark #nd-docs-layout[data-fd-framework] .fd-codeblock-content,
+.dark #nd-docs-layout[data-fd-framework] .fd-codeblock pre {
+  background: #121214 !important;
+}
+
+/* Framework callouts: keep the Next hardline rectangle, not the softer default card */
+#nd-docs-layout[data-fd-framework] .fd-callout {
+  border: 2px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.dark #nd-docs-layout[data-fd-framework] .fd-callout {
+  box-shadow: none !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-callout-indicator {
+  border-radius: 0 !important;
+}
+
+/* Framework TOC: mirror the thin Next track and active marker */
+#nd-docs-layout[data-fd-framework] .fd-toc {
+  padding: 48px 16px 8px 0 !important;
+  border-right: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-toc-title {
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--color-fd-muted-foreground);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-toc-list {
+  position: relative;
+  border-left-color: color-mix(in srgb, var(--color-fd-foreground) 10%, transparent) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-toc-link {
+  position: relative;
+  margin-left: 0 !important;
+  padding-top: 6px;
+  padding-right: 0;
+  padding-bottom: 6px;
+  border-left: 0 !important;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-toc-item:first-child .fd-toc-link {
+  padding-top: 0;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-toc-item:last-child .fd-toc-link {
+  padding-bottom: 0;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-toc-link-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1px;
+  width: 1px;
+  background: var(--color-fd-primary);
 }
 
 /* Ask AI and feedback - hardline treatment */

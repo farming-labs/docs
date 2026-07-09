@@ -271,7 +271,7 @@
       }
     }
     if (vars.length === 0) return "";
-    return `body:has(#nd-docs-layout),\n#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
+    return `:root,\nbody:has(#nd-docs-layout),\n#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
   }
 
   function buildLayoutCSS(layout) {
@@ -295,7 +295,9 @@
     return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography), buildLayoutCSS(layout)].filter(Boolean).join("\n");
   });
 
-  // Build style tag from parts so Vite/Svelte preprocessor doesn't treat it as a real <style> block (PostCSS would then fail on "overrideCSS")
+  // Build tags from parts so Vite/Svelte preprocessors do not scan dynamic tag bodies.
+  const scriptTagOpen = "<scr" + "ipt>";
+  const scriptTagClose = "</scr" + "ipt>";
   const styleTagOpen = "<sty" + "le>";
   const styleTagClose = "</sty" + "le>";
 </script>
@@ -303,13 +305,13 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <svelte:head>
-  {@html `<script>${themeInitScript}</script>`}
+  {@html `${scriptTagOpen}${themeInitScript}${scriptTagClose}`}
   {#if overrideCSS}
     {@html `${styleTagOpen}${overrideCSS}${styleTagClose}`}
   {/if}
 </svelte:head>
 
-<div id="nd-docs-layout" class="fd-layout">
+<div id="nd-docs-layout" data-fd-framework="sveltekit" class="fd-layout">
   <!-- Mobile header -->
   <header class="fd-header">
     <button class="fd-menu-btn" onclick={toggleSidebar} aria-label="Toggle sidebar">

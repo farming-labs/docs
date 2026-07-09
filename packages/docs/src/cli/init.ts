@@ -1145,11 +1145,11 @@ export async function init(options: InitOptions = {}) {
     framework === "tanstack-start"
       ? `${installCommand(pm)} @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start`
       : framework === "sveltekit"
-        ? `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme`
+        ? `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme @farming-labs/theme`
         : framework === "astro"
-          ? `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme ${getAstroAdapterPkg(cfg.astroAdapter ?? "vercel")}`
+          ? `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme @farming-labs/theme ${getAstroAdapterPkg(cfg.astroAdapter ?? "vercel")}`
           : framework === "nuxt"
-            ? `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme`
+            ? `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme @farming-labs/theme`
             : `${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`;
 
   try {

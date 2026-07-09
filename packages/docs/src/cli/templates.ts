@@ -45,9 +45,6 @@ interface ThemeInfo {
   astroImport: string;
   nuxtImport: string;
   nextCssImport: string;
-  svelteCssTheme: string;
-  astroCssTheme: string;
-  nuxtCssTheme: string;
 }
 
 const THEME_INFO: Record<string, ThemeInfo> = {
@@ -58,9 +55,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme",
     nuxtImport: "@farming-labs/nuxt-theme",
     nextCssImport: "default",
-    svelteCssTheme: "fumadocs",
-    astroCssTheme: "fumadocs",
-    nuxtCssTheme: "fumadocs",
   },
   darksharp: {
     factory: "darksharp",
@@ -69,9 +63,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/darksharp",
     nuxtImport: "@farming-labs/nuxt-theme/darksharp",
     nextCssImport: "darksharp",
-    svelteCssTheme: "darksharp",
-    astroCssTheme: "darksharp",
-    nuxtCssTheme: "darksharp",
   },
   "pixel-border": {
     factory: "pixelBorder",
@@ -80,9 +71,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/pixel-border",
     nuxtImport: "@farming-labs/nuxt-theme/pixel-border",
     nextCssImport: "pixel-border",
-    svelteCssTheme: "pixel-border",
-    astroCssTheme: "pixel-border",
-    nuxtCssTheme: "pixel-border",
   },
   colorful: {
     factory: "colorful",
@@ -91,9 +79,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/colorful",
     nuxtImport: "@farming-labs/nuxt-theme/colorful",
     nextCssImport: "colorful",
-    svelteCssTheme: "colorful",
-    astroCssTheme: "colorful",
-    nuxtCssTheme: "colorful",
   },
   darkbold: {
     factory: "darkbold",
@@ -102,9 +87,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/darkbold",
     nuxtImport: "@farming-labs/nuxt-theme/darkbold",
     nextCssImport: "darkbold",
-    svelteCssTheme: "darkbold",
-    astroCssTheme: "darkbold",
-    nuxtCssTheme: "darkbold",
   },
   shiny: {
     factory: "shiny",
@@ -113,9 +95,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/shiny",
     nuxtImport: "@farming-labs/nuxt-theme/shiny",
     nextCssImport: "shiny",
-    svelteCssTheme: "shiny",
-    astroCssTheme: "shiny",
-    nuxtCssTheme: "shiny",
   },
   ledger: {
     factory: "ledger",
@@ -124,9 +103,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/ledger",
     nuxtImport: "@farming-labs/nuxt-theme/ledger",
     nextCssImport: "ledger",
-    svelteCssTheme: "ledger",
-    astroCssTheme: "ledger",
-    nuxtCssTheme: "ledger",
   },
   greentree: {
     factory: "greentree",
@@ -135,9 +111,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/greentree",
     nuxtImport: "@farming-labs/nuxt-theme/greentree",
     nextCssImport: "greentree",
-    svelteCssTheme: "greentree",
-    astroCssTheme: "greentree",
-    nuxtCssTheme: "greentree",
   },
   concrete: {
     factory: "concrete",
@@ -146,9 +119,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/concrete",
     nuxtImport: "@farming-labs/nuxt-theme/concrete",
     nextCssImport: "concrete",
-    svelteCssTheme: "concrete",
-    astroCssTheme: "concrete",
-    nuxtCssTheme: "concrete",
   },
   "command-grid": {
     factory: "commandGrid",
@@ -157,9 +127,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/command-grid",
     nuxtImport: "@farming-labs/nuxt-theme/command-grid",
     nextCssImport: "command-grid",
-    svelteCssTheme: "command-grid",
-    astroCssTheme: "command-grid",
-    nuxtCssTheme: "command-grid",
   },
   hardline: {
     factory: "hardline",
@@ -168,14 +135,21 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroImport: "@farming-labs/astro-theme/hardline",
     nuxtImport: "@farming-labs/nuxt-theme/hardline",
     nextCssImport: "hardline",
-    svelteCssTheme: "hardline",
-    astroCssTheme: "hardline",
-    nuxtCssTheme: "hardline",
   },
 };
 
 function getThemeInfo(theme: string): ThemeInfo {
   return THEME_INFO[theme] ?? THEME_INFO.fumadocs;
+}
+
+function getThemeCssImport(theme: string): string {
+  return `@farming-labs/theme/${getThemeInfo(theme).nextCssImport}/css`;
+}
+
+function hasBuiltInThemeCssImport(content: string): boolean {
+  return /["']@farming-labs\/(?:theme|svelte-theme|astro-theme|nuxt-theme)\/[^"'\n]*\/css["']/.test(
+    content,
+  );
 }
 
 function toPosixPath(value: string): string {
@@ -601,10 +575,9 @@ export function globalCssTemplate(
 @import "${cssPath}";
 `;
   }
-  const t = getThemeInfo(theme);
   return `\
 @import "tailwindcss";
-@import "@farming-labs/theme/${t.nextCssImport}/css";
+@import "${getThemeCssImport(theme)}";
 `;
 }
 
@@ -617,14 +590,9 @@ export function injectCssImport(
   const importLine =
     theme === "custom" && customThemeName && globalCssRelPath
       ? `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`
-      : `@import "@farming-labs/theme/${getThemeInfo(theme).nextCssImport}/css";`;
+      : `@import "${getThemeCssImport(theme)}";`;
   if (existingContent.includes(importLine)) return null;
-  if (
-    theme !== "custom" &&
-    existingContent.includes("@farming-labs/theme/") &&
-    existingContent.includes("/css")
-  )
-    return null;
+  if (theme !== "custom" && hasBuiltInThemeCssImport(existingContent)) return null;
   if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
     return null;
   const lines = existingContent.split("\n");
@@ -1818,7 +1786,7 @@ export function svelteGlobalCssTemplate(
 @import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";
 `;
   return `\
-@import "@farming-labs/svelte-theme/${theme}/css";
+@import "${getThemeCssImport(theme)}";
 `;
 }
 
@@ -1829,7 +1797,7 @@ export function svelteCssImportLine(
 ): string {
   if (theme === "custom" && customThemeName && globalCssRelPath)
     return `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`;
-  return `@import "@farming-labs/svelte-theme/${theme}/css";`;
+  return `@import "${getThemeCssImport(theme)}";`;
 }
 
 export function injectSvelteCssImport(
@@ -1840,12 +1808,7 @@ export function injectSvelteCssImport(
 ): string | null {
   const importLine = svelteCssImportLine(theme, customThemeName, globalCssRelPath);
   if (existingContent.includes(importLine)) return null;
-  if (
-    theme !== "custom" &&
-    existingContent.includes("@farming-labs/svelte-theme/") &&
-    existingContent.includes("/css")
-  )
-    return null;
+  if (theme !== "custom" && hasBuiltInThemeCssImport(existingContent)) return null;
   if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
     return null;
   const lines = existingContent.split("\n");
@@ -1916,7 +1879,7 @@ Follow these steps to install and configure ${cfg.projectName}.
 ## Install Dependencies
 
 \`\`\`bash
-pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme @farming-labs/theme
 \`\`\`
 
 ## Configuration
@@ -2149,8 +2112,7 @@ export default defineConfig({
 export function astroDocsPageTemplate(cfg: TemplateConfig): string {
   const configImport = astroPageConfigImport(cfg.useAlias, 2);
   const serverImport = astroPageServerImport(cfg.useAlias, 2);
-  const t = getThemeInfo(cfg.theme);
-  const cssImport = `@farming-labs/astro-theme/${t.astroCssTheme}/css`;
+  const cssImport = getThemeCssImport(cfg.theme);
   return `\
 ---
 import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
@@ -2182,8 +2144,7 @@ const data = await load(Astro.url.pathname);
 export function astroDocsIndexTemplate(cfg: TemplateConfig): string {
   const configImport = astroPageConfigImport(cfg.useAlias, 2);
   const serverImport = astroPageServerImport(cfg.useAlias, 2);
-  const t = getThemeInfo(cfg.theme);
-  const cssImport = `@farming-labs/astro-theme/${t.astroCssTheme}/css`;
+  const cssImport = getThemeCssImport(cfg.theme);
   return `\
 ---
 import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
@@ -2365,7 +2326,7 @@ export function astroGlobalCssTemplate(
 @import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";
 `;
   return `\
-@import "@farming-labs/astro-theme/${theme}/css";
+@import "${getThemeCssImport(theme)}";
 `;
 }
 
@@ -2376,7 +2337,7 @@ export function astroCssImportLine(
 ): string {
   if (theme === "custom" && customThemeName && globalCssRelPath)
     return `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`;
-  return `@import "@farming-labs/astro-theme/${theme}/css";`;
+  return `@import "${getThemeCssImport(theme)}";`;
 }
 
 export function injectAstroCssImport(
@@ -2387,12 +2348,7 @@ export function injectAstroCssImport(
 ): string | null {
   const importLine = astroCssImportLine(theme, customThemeName, globalCssRelPath);
   if (existingContent.includes(importLine)) return null;
-  if (
-    theme !== "custom" &&
-    existingContent.includes("@farming-labs/astro-theme/") &&
-    existingContent.includes("/css")
-  )
-    return null;
+  if (theme !== "custom" && hasBuiltInThemeCssImport(existingContent)) return null;
   if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
     return null;
   const lines = existingContent.split("\n");
@@ -2463,7 +2419,7 @@ Follow these steps to install and configure ${cfg.projectName}.
 ## Install Dependencies
 
 \\\`\\\`\\\`bash
-pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme @farming-labs/theme
 \\\`\\\`\\\`
 
 ## Configuration
@@ -2703,16 +2659,15 @@ if (error.value) {
 }
 
 export function nuxtConfigTemplate(cfg: TemplateConfig): string {
-  const t = getThemeInfo(cfg.theme);
   return `\
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
 
-  css: ["@farming-labs/nuxt-theme/${t.nuxtCssTheme}/css"],
+  css: ["${getThemeCssImport(cfg.theme)}"],
 
   vite: {
     optimizeDeps: {
-      include: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
+      include: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme", "@farming-labs/theme"],
     },
   },
 
@@ -2779,7 +2734,7 @@ Follow these steps to install and configure ${cfg.projectName}.
 ## Install Dependencies
 
 \`\`\`bash
-pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme @farming-labs/theme
 \`\`\`
 
 ## Configuration
@@ -2892,7 +2847,7 @@ export function nuxtGlobalCssTemplate(
 @import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";
 `;
   return `\
-@import "@farming-labs/nuxt-theme/${theme}/css";
+@import "${getThemeCssImport(theme)}";
 `;
 }
 
@@ -2903,7 +2858,7 @@ export function nuxtCssImportLine(
 ): string {
   if (theme === "custom" && customThemeName && globalCssRelPath)
     return `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`;
-  return `@import "@farming-labs/nuxt-theme/${theme}/css";`;
+  return `@import "${getThemeCssImport(theme)}";`;
 }
 
 export function injectNuxtCssImport(
@@ -2914,12 +2869,7 @@ export function injectNuxtCssImport(
 ): string | null {
   const importLine = nuxtCssImportLine(theme, customThemeName, globalCssRelPath);
   if (existingContent.includes(importLine)) return null;
-  if (
-    theme !== "custom" &&
-    existingContent.includes("@farming-labs/nuxt-theme/") &&
-    existingContent.includes("/css")
-  )
-    return null;
+  if (theme !== "custom" && hasBuiltInThemeCssImport(existingContent)) return null;
   if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
     return null;
   const lines = existingContent.split("\n");

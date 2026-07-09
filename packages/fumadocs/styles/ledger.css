@@ -1,7 +1,18 @@
 /* @farming-labs/theme - ledger theme CSS
  * Stripe Docs-inspired product documentation UI without Stripe branding.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
+
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr)
+    minmax(0, min(900px, calc(100% - var(--fd-toc-width, 236px))))
+    var(--fd-toc-width, 236px) minmax(0, 1fr);
+  --fd-framework-article-column: 2;
+  --fd-framework-toc-column: 3;
+  --fd-framework-article-width: min(900px, 100%);
+  --fd-framework-article-justify: center;
+  --fd-framework-article-padding: 56px 32px 24px;
+}
 
 :root {
   --color-fd-primary: #5f6cf6;
@@ -312,7 +323,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .fd-docs-content blockquote {
   color: var(--color-fd-muted-foreground);
   line-height: 1.7;
@@ -334,7 +345,9 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 .fd-hover-link-card,
 .fd-page-nav,
 .fd-page-nav-card,
-[class*="fd-callout"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"],
 .fd-page-action-menu,
 .fd-ai-dialog,
 .fd-ai-fm-input-container,
@@ -423,6 +436,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 
 .fd-tabs-trigger[data-state="active"],
 .fd-tab-trigger[data-state="active"],
+.fd-tab-trigger.fd-tab-active,
 [role="tab"][aria-selected="true"],
 [role="tab"][data-active="true"] {
   background: var(--color-fd-card) !important;
@@ -524,7 +538,7 @@ figure.shiki:has(figcaption) > div:first-child > div:last-child {
 }
 
 .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   border: 1px solid var(--fd-ledger-soft-border) !important;
   border-radius: 0.5rem !important;
@@ -540,7 +554,8 @@ figure.shiki:has(figcaption) > div:first-child > div:last-child {
 }
 
 .fd-callout,
-[class*="fd-callout"] {
+[data-callout],
+[style*="--callout-color"] {
   background: color-mix(in srgb, var(--color-fd-primary) 7%, var(--color-fd-card)) !important;
 }
 

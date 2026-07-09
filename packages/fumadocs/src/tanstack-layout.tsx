@@ -221,7 +221,9 @@ function buildTypographyCSS(typo?: TypographyConfig): string {
   }
 
   if (vars.length === 0) return "";
-  return `:root {\n  ${vars.join("\n  ")}\n}`;
+  return `:root,
+body:has(#nd-docs-layout),
+#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
 }
 
 function TypographyStyle({ typography }: { typography?: TypographyConfig }) {

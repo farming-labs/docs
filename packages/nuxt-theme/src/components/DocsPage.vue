@@ -402,7 +402,7 @@ watch(
             :to="localizedPreviousPage.url"
             class="fd-page-nav-card fd-page-nav-prev"
           >
-            <span class="fd-page-nav-label">
+            <span class="fd-page-nav-title fd-page-nav-title-prev">
               <svg
                 width="14"
                 height="14"
@@ -415,14 +415,14 @@ watch(
               >
                 <polyline points="15 18 9 12 15 6" />
               </svg>
-              Previous
+              {{ localizedPreviousPage.name }}
             </span>
-            <span class="fd-page-nav-title">{{ localizedPreviousPage.name }}</span>
+            <span class="fd-page-nav-description">Previous Page</span>
           </NuxtLink>
           <div v-else></div>
           <NuxtLink v-if="localizedNextPage" :to="localizedNextPage.url" class="fd-page-nav-card fd-page-nav-next">
-            <span class="fd-page-nav-label">
-              Next
+            <span class="fd-page-nav-title fd-page-nav-title-next">
+              {{ localizedNextPage.name }}
               <svg
                 width="14"
                 height="14"
@@ -436,7 +436,7 @@ watch(
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </span>
-            <span class="fd-page-nav-title">{{ localizedNextPage.name }}</span>
+            <span class="fd-page-nav-description">Next Page</span>
           </NuxtLink>
           <div v-else></div>
         </nav>
