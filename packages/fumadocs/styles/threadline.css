@@ -141,7 +141,7 @@ body:has(#nd-docs-layout) {
 }
 
 @media (min-width: 1280px) {
-  #nd-docs-layout {
+  #nd-docs-layout:not([data-fd-framework]) {
     max-width: var(--fd-threadline-frame-width) !important;
     margin-inline: auto !important;
     grid-template-columns:
