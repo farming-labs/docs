@@ -381,7 +381,8 @@
 
 /* ─── Inline code (Clerk style — subtle, no heavy borders) ─────────── */
 
-.fd-docs-content :not(pre) > code {
+.fd-docs-content :not(pre) > code,
+.fd-page-body :not(pre) > code {
   padding: 2px 6px;
   border: 1px solid var(--color-fd-border);
   font-size: 0.8125rem;
@@ -393,7 +394,8 @@
 
 /* ─── Links in prose (purple underline like Clerk) ─────────────────── */
 
-.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+.fd-docs-content a:not(.fd-page-nav-card):not([class]),
+.fd-page-body a:not(.fd-page-nav-card):not([class]) {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-color: var(--color-fd-primary);
@@ -403,13 +405,19 @@
   transition: opacity 150ms;
 }
 
-.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover {
+.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover,
+.fd-page-body a:not(.fd-page-nav-card):not([class]):hover {
   opacity: 0.8;
 }
 
 /* ─── Tables (clean, rounded like Clerk) ───────────────────────────── */
 
-:is(.fd-docs-content, .prose) table {
+.fd-table-wrapper {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+:is(.fd-docs-content, .prose, .fd-page-body) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -419,7 +427,7 @@
   width: 100%;
 }
 
-:is(.fd-docs-content, .prose) th {
+:is(.fd-docs-content, .prose, .fd-page-body) th {
   background: var(--color-fd-muted);
   font-weight: 600;
   font-size: 0.8125rem;
@@ -428,20 +436,21 @@
   color: var(--color-fd-muted-foreground);
 }
 
-:is(.fd-docs-content, .prose) th,
-:is(.fd-docs-content, .prose) td {
+:is(.fd-docs-content, .prose, .fd-page-body) th,
+:is(.fd-docs-content, .prose, .fd-page-body) td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-fd-border);
   font-size: 0.875rem;
 }
 
-:is(.fd-docs-content, .prose) tr:last-child td {
+:is(.fd-docs-content, .prose, .fd-page-body) tr:last-child td {
   border-bottom: none;
 }
 
 /* ─── Blockquotes (purple left border like Clerk) ──────────────────── */
 
-.fd-docs-content blockquote {
+.fd-docs-content blockquote,
+.fd-page-body blockquote {
   border-left: 3px solid var(--color-fd-primary);
   padding-left: 1rem;
   color: var(--color-fd-muted-foreground);
@@ -451,33 +460,40 @@
 
 /* ─── Horizontal rule ──────────────────────────────────────────────── */
 
-.fd-docs-content hr {
+.fd-docs-content hr,
+.fd-page-body hr {
   border-color: var(--color-fd-border);
 }
 
 /* ─── Code blocks (Clerk-style dark, no radius on inner, rounded wrapper) */
 
-figure.shiki {
+figure.shiki,
+.fd-codeblock {
   border-radius: 0.625rem;
   overflow: hidden;
   border: 1px solid var(--color-fd-border);
 }
 
-:root figure.shiki {
+:root figure.shiki,
+:root .fd-codeblock {
   border-color: hsl(240, 6%, 88%);
 }
 
-.dark figure.shiki {
+.dark figure.shiki,
+.dark .fd-codeblock {
   border-color: hsl(240, 5%, 20%);
 }
 
 /* ─── Tabs (Clerk code tab style) ───────────────────────────────────── */
 
-[role="tablist"] {
+[role="tablist"],
+.fd-tabs,
+.fd-tabs-list {
   border-bottom: 1px solid var(--color-fd-border);
 }
 
-[role="tab"] {
+[role="tab"],
+.fd-tab-trigger {
   font-size: 0.8125rem;
   font-weight: 450;
   padding: 0.5rem 0.875rem;
@@ -490,7 +506,8 @@ figure.shiki {
 }
 
 [role="tab"][aria-selected="true"],
-[role="tab"][data-state="active"] {
+[role="tab"][data-state="active"],
+.fd-tab-trigger.fd-tab-active {
   color: var(--color-fd-foreground);
   border-bottom-color: var(--color-fd-primary);
   font-weight: 500;
@@ -498,7 +515,9 @@ figure.shiki {
 
 /* ─── Callout (clean, subtle) ───────────────────────────────────────── */
 
-[style*="--callout-color"] {
+[style*="--callout-color"],
+.fd-callout,
+[data-callout] {
   border-radius: 0.625rem;
   border-width: 1px;
 }
@@ -595,12 +614,15 @@ details > :not(summary) {
   opacity: 1;
 }
 
-#nd-toc a[data-active="true"] {
+#nd-toc a[data-active="true"],
+.fd-toc-link-active,
+.fd-toc-clerk .fd-toc-link[data-active="true"] {
   box-shadow: inset 2px 0 0 var(--color-fd-primary);
   color: var(--color-fd-primary);
 }
 
-#nd-toc a[data-active="false"] {
+#nd-toc a[data-active="false"],
+.fd-toc-link {
   box-shadow: none;
 }
 

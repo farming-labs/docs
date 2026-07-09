@@ -119,6 +119,7 @@ aside a[data-active="true"],
 .fd-docs-content pre,
 .fd-docs-content .shiki,
 .fd-docs-content [data-codeblock],
+.fd-codeblock,
 .fd-page-nav,
 .fd-page-nav-card,
 [class*="page-nav"] a {
@@ -133,6 +134,7 @@ aside a[data-active="true"],
 .dark .fd-docs-content pre,
 .dark .fd-docs-content .shiki,
 .dark .fd-docs-content [data-codeblock],
+.dark .fd-codeblock,
 .dark .fd-page-nav,
 .dark .fd-page-nav-card,
 .dark [class*="page-nav"] a {
@@ -140,15 +142,19 @@ aside a[data-active="true"],
 }
 
 .fd-docs-content h1,
-.fd-docs-content h2 {
+.fd-docs-content h2,
+.fd-page-body h1,
+.fd-page-body h2 {
   max-width: 14ch;
 }
 
-.fd-docs-content h1 {
+.fd-docs-content h1,
+.fd-page-body h1 {
   letter-spacing: -0.055em;
 }
 
-.fd-docs-content h2 {
+.fd-docs-content h2,
+.fd-page-body h2 {
   letter-spacing: -0.04em;
 }
 
@@ -169,13 +175,17 @@ aside a[data-active="true"],
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
 }
 
-:is(.fd-docs-content, .prose) table {
+:is(.fd-docs-content, .prose) table,
+.fd-page-body .fd-table-wrapper,
+.fd-page-body table {
   border: 3px solid var(--color-fd-border);
   box-shadow: 6px 6px 0 var(--color-fd-border);
   background: var(--color-fd-card);
 }
 
-.dark :is(.fd-docs-content, .prose) table {
+.dark :is(.fd-docs-content, .prose) table,
+.dark .fd-page-body .fd-table-wrapper,
+.dark .fd-page-body table {
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
 }
 
@@ -213,6 +223,7 @@ aside a[data-active="true"],
 .fd-docs-content .shiki,
 .fd-docs-content [data-codeblock],
 .fd-docs-content .fd-codeblock,
+.fd-codeblock,
 .fd-ai-code-block {
   border-width: 3px !important;
   box-shadow: 6px 6px 0 var(--color-fd-border);
@@ -224,6 +235,7 @@ aside a[data-active="true"],
 .dark .fd-docs-content .shiki,
 .dark .fd-docs-content [data-codeblock],
 .dark .fd-docs-content .fd-codeblock,
+.dark .fd-codeblock,
 .dark .fd-ai-code-block {
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
   background:

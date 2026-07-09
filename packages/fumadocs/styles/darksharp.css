@@ -171,11 +171,14 @@ td {
 /* ─── Code blocks ─────────────────────────────────────────────────── */
 
 figure[data-rehype-pretty-code-figure],
-figure[data-rehype-pretty-code-figure] pre {
+figure[data-rehype-pretty-code-figure] pre,
+.fd-codeblock,
+.fd-codeblock pre {
   border-radius: 0.2rem !important;
 }
 
-article figure {
+article figure,
+.fd-codeblock {
   border-radius: 0.2rem !important;
   overflow: hidden;
 }
@@ -184,7 +187,19 @@ article figure {
   border-color: hsl(0 0% 14%);
 }
 
-figure button {
+figure button,
+.fd-copy-btn {
+  border-radius: 0.1rem !important;
+}
+
+.fd-codeblock-title,
+.fd-tabs,
+.fd-tabs-list,
+.fd-tab-panel {
+  border-radius: 0.2rem !important;
+}
+
+.fd-tab-trigger {
   border-radius: 0.1rem !important;
 }
 

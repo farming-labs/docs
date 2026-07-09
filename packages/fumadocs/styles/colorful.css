@@ -331,7 +331,8 @@
 
 /* ─── Inline code ──────────────────────────────────────────────────── */
 
-.fd-docs-content :not(pre) > code {
+.fd-docs-content :not(pre) > code,
+.fd-page-body :not(pre) > code {
   padding: 3px;
   border: 1px solid var(--color-fd-border);
   font-size: 13px;
@@ -341,7 +342,8 @@
 
 /* ─── Links in prose ───────────────────────────────────────────────── */
 
-.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+.fd-docs-content a:not(.fd-page-nav-card):not([class]),
+.fd-page-body a:not(.fd-page-nav-card):not([class]) {
   text-decoration: underline;
   text-underline-offset: 3.5px;
   text-decoration-color: var(--color-fd-primary);
@@ -351,7 +353,12 @@
 
 /* ─── Tables (rounded style) ───────────────────────────────────────── */
 
-:is(.fd-docs-content, .prose) table {
+.fd-table-wrapper {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+:is(.fd-docs-content, .prose, .fd-page-body) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -360,24 +367,25 @@
   overflow: hidden;
 }
 
-:is(.fd-docs-content, .prose) th {
+:is(.fd-docs-content, .prose, .fd-page-body) th {
   background: var(--color-fd-muted);
   font-weight: 600;
 }
 
-:is(.fd-docs-content, .prose) th,
-:is(.fd-docs-content, .prose) td {
+:is(.fd-docs-content, .prose, .fd-page-body) th,
+:is(.fd-docs-content, .prose, .fd-page-body) td {
   padding: 0.625rem;
   border-bottom: 1px solid var(--color-fd-border);
 }
 
-:is(.fd-docs-content, .prose) tr:last-child td {
+:is(.fd-docs-content, .prose, .fd-page-body) tr:last-child td {
   border-bottom: none;
 }
 
 /* ─── Blockquotes ──────────────────────────────────────────────────── */
 
-.fd-docs-content blockquote {
+.fd-docs-content blockquote,
+.fd-page-body blockquote {
   border-left: 2px solid var(--color-fd-primary);
   padding-left: 1rem;
   color: var(--color-fd-foreground);
@@ -386,7 +394,8 @@
 
 /* ─── Horizontal rule ──────────────────────────────────────────────── */
 
-.fd-docs-content hr {
+.fd-docs-content hr,
+.fd-page-body hr {
   border-color: var(--color-fd-border);
 }
 

@@ -365,6 +365,10 @@ table {
   overflow: hidden;
 }
 
+.fd-table-wrapper {
+  border-radius: 0 !important;
+}
+
 th {
   background: var(--color-fd-muted);
   color: var(--color-fd-foreground);
@@ -383,7 +387,8 @@ tr:last-child td {
 /* ─── Code blocks: single border, rounded-none (light + dark) ───────── */
 
 /* Target the fumadocs CodeBlock figure (shiki class) */
-figure.shiki {
+figure.shiki,
+.fd-codeblock {
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
   overflow: hidden;
@@ -391,27 +396,33 @@ figure.shiki {
 }
 
 /* Copy button inside code blocks */
-figure.shiki button {
+figure.shiki button,
+.fd-copy-btn {
   border-radius: 0 !important;
 }
 
 /* Code block title bar */
-figure.shiki > div:first-child {
+figure.shiki > div:first-child,
+.fd-codeblock-title {
   border-radius: 0 !important;
 }
 
 /* ─── Tabs (package manager / code tabs) — light + dark ────────────── */
 
-[role="tablist"] {
+[role="tablist"],
+.fd-tabs,
+.fd-tabs-list {
   border-radius: 0 !important;
 }
 
 [role="tablist"] button,
-[role="tab"] {
+[role="tab"],
+.fd-tab-trigger {
   border-radius: 0 !important;
 }
 
-[role="tabpanel"] {
+[role="tabpanel"],
+.fd-tab-panel {
   border-radius: 0 !important;
 }
 
@@ -432,7 +443,10 @@ div:has(> [role="tablist"]) {
 
 /* ─── Callouts: visible border (light + dark) ──────────────────────── */
 
-[class*="bg-fd-card"] {
+[class*="bg-fd-card"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"] {
   border-color: var(--color-fd-border);
 }
 

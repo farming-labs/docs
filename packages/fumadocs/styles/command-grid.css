@@ -299,6 +299,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 .fd-docs-content pre,
 .fd-docs-content .shiki,
 .fd-docs-content [data-codeblock],
+.fd-codeblock,
 .fd-page-nav,
 .fd-page-nav-card,
 [class*="page-nav"] a,
@@ -308,6 +309,7 @@ aside div.overflow-hidden.relative[data-state] a[data-active="true"]::before {
 .fd-tabs,
 .fd-tabs-list,
 .fd-tabs-trigger,
+.fd-tab-trigger,
 .fd-feedback-input,
 .fd-feedback-submit,
 .fd-feedback-choice,
@@ -460,6 +462,7 @@ button[data-search-full] kbd,
 .fd-docs-content pre,
 .fd-docs-content .shiki,
 .fd-docs-content [data-codeblock],
+.fd-codeblock,
 .fd-ai-code-block {
   border: 2px solid var(--color-fd-border) !important;
   background: var(--color-fd-card) !important;

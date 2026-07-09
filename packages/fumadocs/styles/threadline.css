@@ -428,7 +428,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
   background: var(--muted) !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent) !important;
   border-radius: 0.625rem !important;
   background: color-mix(in srgb, var(--muted) 42%, transparent) !important;
@@ -436,21 +436,21 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
   box-shadow: none !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) * {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) * {
   color: inherit;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) a {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) a {
   color: var(--fd-assistant-link) !important;
   text-decoration-color: color-mix(in srgb, var(--fd-assistant-link) 35%, transparent);
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) > svg {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) > svg {
   color: var(--muted-foreground) !important;
   fill: color-mix(in srgb, var(--muted-foreground) 18%, transparent) !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) > [role="none"] {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) > [role="none"] {
   background: color-mix(in srgb, var(--muted-foreground) 28%, transparent) !important;
 }
 
@@ -1223,6 +1223,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
 
 .fd-tabs-trigger[data-state="active"],
 .fd-tab-trigger[data-state="active"],
+.fd-tab-trigger.fd-tab-active,
 [role="tab"][aria-selected="true"],
 [role="tab"][data-active="true"] {
   background: var(--background) !important;
