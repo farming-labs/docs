@@ -615,7 +615,7 @@ details > :not(summary) {
 }
 
 #nd-toc a[data-active="true"],
-.fd-toc-link-active,
+.fd-toc-link.fd-toc-link-active,
 .fd-toc-clerk .fd-toc-link[data-active="true"] {
   box-shadow: inset 2px 0 0 var(--color-fd-primary);
   color: var(--color-fd-primary);

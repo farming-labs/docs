@@ -123,13 +123,17 @@ aside a[data-active="true"],
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
 }
 
-:is(.fd-docs-content, #nd-docs-layout .prose) table {
+:is(.fd-docs-content, #nd-docs-layout .prose) table,
+.fd-page-body .fd-table-wrapper,
+.fd-page-body table {
   border: 3px solid var(--color-fd-border);
   box-shadow: 6px 6px 0 var(--color-fd-border);
   background: var(--color-fd-card);
 }
 
-.dark :is(.fd-docs-content, #nd-docs-layout .prose) table {
+.dark :is(.fd-docs-content, #nd-docs-layout .prose) table,
+.dark .fd-page-body .fd-table-wrapper,
+.dark .fd-page-body table {
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-fd-primary) 42%, transparent);
 }
 
