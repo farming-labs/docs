@@ -18,7 +18,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { hardline } from "@farming-labs/theme/hardline";
+import { threadline } from "@farming-labs/theme/threadline";
 
 const typesenseBaseUrl = process.env.TYPESENSE_URL ?? process.env.TYPESENSE_BASE_URL;
 const typesenseCollection = process.env.TYPESENSE_COLLECTION ?? "docs";
@@ -97,7 +97,7 @@ export default defineDocs({
       baseBranch: "main",
     },
   },
-  theme: hardline(),
+  theme: threadline(),
   ai: {
     enabled: true,
     // mode: "sidebar-icon",
