@@ -1,10 +1,10 @@
 import { defineDocs } from "@farming-labs/docs";
-import { hardline } from "@farming-labs/svelte-theme/hardline";
+import { threadline } from "@farming-labs/theme/threadline";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: hardline(),
+  theme: threadline(),
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",

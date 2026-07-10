@@ -101,6 +101,8 @@ export interface TanstackDocsLayoutProps {
   description?: string;
   readingTime?: number | null;
   lastModified?: string;
+  previousPage?: { name: string; url: string } | null;
+  nextPage?: { name: string; url: string } | null;
   structuredData?: string;
   editOnGithubUrl?: string;
   children: ReactNode;
@@ -343,6 +345,8 @@ export function TanstackDocsLayout({
   description,
   readingTime,
   lastModified,
+  previousPage,
+  nextPage,
   structuredData,
   editOnGithubUrl,
   children,
@@ -549,6 +553,8 @@ export function TanstackDocsLayout({
           lastUpdatedLabel={lastUpdatedLabel}
           lastUpdatedPosition={lastUpdatedPosition}
           lastModified={lastModified}
+          previousPage={previousPage}
+          nextPage={nextPage}
           readingTimeEnabled={readingTimeEnabled}
           readingTimeFormat={readingTimeOptions.format}
           readingTime={typeof readingTime === "number" ? readingTime : undefined}
