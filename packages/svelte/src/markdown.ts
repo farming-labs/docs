@@ -528,6 +528,30 @@ function createCodeGroupTabValue(label: string, used: Set<string>): string {
   return value;
 }
 
+const terminalCodeLanguages = new Set([
+  "bash",
+  "console",
+  "sh",
+  "shell",
+  "shellscript",
+  "terminal",
+]);
+const fileCodeBlockIcon =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+const terminalCodeBlockIcon =
+  '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="m 4,4 a 1,1 0 0 0 -0.7070312,0.2929687 1,1 0 0 0 0,1.4140625 L 8.5859375,11 3.2929688,16.292969 a 1,1 0 0 0 0,1.414062 1,1 0 0 0 1.4140624,0 l 5.9999998,-6 a 1.0001,1.0001 0 0 0 0,-1.414062 L 4.7070312,4.2929687 A 1,1 0 0 0 4,4 Z m 8,14 a 1,1 0 0 0 -1,1 1,1 0 0 0 1,1 h 8 a 1,1 0 0 0 1,-1 1,1 0 0 0 -1,-1 z" fill="currentColor"/></svg>';
+const copyCodeBlockIcon =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
+
+function renderCodeBlockTitleIcon(title?: string | null, language?: string | null): string {
+  const normalizedTitle = title?.trim().toLowerCase() ?? "";
+  const normalizedLanguage = language?.trim().toLowerCase() ?? "";
+  if (normalizedTitle.includes("terminal") || terminalCodeLanguages.has(normalizedLanguage)) {
+    return terminalCodeBlockIcon;
+  }
+  return fileCodeBlockIcon;
+}
+
 function wrapCodeWithCopy(
   html: string,
   rawCode: string,
@@ -540,9 +564,9 @@ function wrapCodeWithCopy(
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   const dataLang = language ? ` data-language="${escapeHtml(String(language))}"` : "";
-  const copyBtn = `<button type="button" class="fd-copy-btn" data-code="${escapedRaw}" title="Copy code" aria-label="Copy code"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
+  const copyBtn = `<button type="button" class="fd-copy-btn" data-code="${escapedRaw}" title="Copy code" aria-label="Copy code">${copyCodeBlockIcon}</button>`;
   if (title) {
-    return `<figure class="fd-codeblock fd-codeblock--titled shiki not-prose" dir="ltr" tabindex="-1"${dataLang}><div class="fd-codeblock-title" data-title><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg><figcaption class="fd-codeblock-title-text">${escapeHtml(title)}</figcaption><div class="fd-codeblock-actions">${copyBtn}</div></div><div class="fd-codeblock-content fd-scroll-container" role="region" tabindex="0">${html}</div></figure>`;
+    return `<figure class="fd-codeblock fd-codeblock--titled shiki not-prose" dir="ltr" tabindex="-1"${dataLang}><div class="fd-codeblock-title" data-title>${renderCodeBlockTitleIcon(title, language)}<span class="fd-codeblock-title-text">${escapeHtml(title)}</span><div class="fd-codeblock-actions">${copyBtn}</div></div><div class="fd-codeblock-content fd-scroll-container" role="region" tabindex="0">${html}</div></figure>`;
   }
   return `<figure class="fd-codeblock shiki not-prose" dir="ltr" tabindex="-1"${dataLang}><div class="fd-codeblock-actions fd-codeblock-actions-floating">${copyBtn}</div><div class="fd-codeblock-content fd-scroll-container" role="region" tabindex="0">${html}</div></figure>`;
 }
