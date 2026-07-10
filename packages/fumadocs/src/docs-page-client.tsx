@@ -30,6 +30,11 @@ interface TOCItem {
   depth: number;
 }
 
+interface PageNavigationItem {
+  name: string;
+  url: string;
+}
+
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
   name: string;
@@ -83,6 +88,8 @@ interface DocsPageClientProps {
   readingTime?: number | null;
   /** Reading-time label style. */
   readingTimeFormat?: ReadingTimeFormat;
+  previousPage?: PageNavigationItem | null;
+  nextPage?: PageNavigationItem | null;
   /** Map of pathname → serialized Schema.org JSON-LD. */
   structuredDataMap?: Record<string, string>;
   /** Direct serialized Schema.org JSON-LD override for the current page. */
@@ -517,6 +524,8 @@ export function DocsPageClient({
   readingTimeMap,
   readingTime: readingTimeProp,
   readingTimeFormat = "long",
+  previousPage,
+  nextPage,
   structuredDataMap,
   structuredData: structuredDataProp,
   readingTimeEnabled = false,
@@ -785,6 +794,13 @@ export function DocsPageClient({
     lastUpdatedLabelText && lastModified ? `${lastUpdatedLabelText} ${lastModified}` : lastModified;
   const showFooter =
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
+  const localizedPreviousPage = previousPage?.url
+    ? { ...previousPage, url: withLangInUrl(previousPage.url, activeLocale) }
+    : null;
+  const localizedNextPage = nextPage?.url
+    ? { ...nextPage, url: withLangInUrl(nextPage.url, activeLocale) }
+    : null;
+  const showPageNavigation = !isChangelogRoute && (!!localizedPreviousPage || !!localizedNextPage);
   const readingTimeBlock =
     typeof resolvedReadingTime === "number" ? (
       <div key="reading-time" className="fd-page-meta not-prose">
@@ -1032,6 +1048,60 @@ export function DocsPageClient({
                 </span>
               )}
             </div>
+          )}
+          {showPageNavigation && (
+            <nav
+              key="page-navigation"
+              className="not-prose fd-page-nav"
+              aria-label="Page navigation"
+            >
+              {localizedPreviousPage ? (
+                <a href={localizedPreviousPage.url} className="fd-page-nav-card fd-page-nav-prev">
+                  <span className="fd-page-nav-title fd-page-nav-title-prev">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    {localizedPreviousPage.name}
+                  </span>
+                  <span className="fd-page-nav-description">Previous Page</span>
+                </a>
+              ) : (
+                <div aria-hidden="true" />
+              )}
+              {localizedNextPage ? (
+                <a href={localizedNextPage.url} className="fd-page-nav-card fd-page-nav-next">
+                  <span className="fd-page-nav-title fd-page-nav-title-next">
+                    {localizedNextPage.name}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </span>
+                  <span className="fd-page-nav-description">Next Page</span>
+                </a>
+              ) : (
+                <div aria-hidden="true" />
+              )}
+            </nav>
           )}
         </DocsBody>
       </DocsPage>

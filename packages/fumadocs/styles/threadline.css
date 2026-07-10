@@ -1399,6 +1399,12 @@ figure.shiki button[aria-label*="Copy"]:hover {
   display: none !important;
 }
 
+#nd-docs-layout[data-fd-framework] .fd-page-footer {
+  display: block !important;
+  margin-top: auto !important;
+  padding-top: 1.5rem !important;
+}
+
 @media (min-width: 1280px) {
   .fd-actions-toc-host {
     display: block;
