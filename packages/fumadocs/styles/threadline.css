@@ -491,6 +491,111 @@ figure.shiki > div:first-child:has(figcaption),
   font-weight: 500 !important;
 }
 
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled {
+  border: 0 !important;
+  border-radius: 0.75rem !important;
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+  overflow: hidden;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title {
+  position: relative;
+  height: 2.375rem;
+  min-height: 2.375rem !important;
+  padding: 0 1rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    currentColor,
+    currentColor 1px,
+    transparent 1px,
+    transparent 6px
+  );
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock.fd-codeblock--titled
+  .fd-codeblock-title::before {
+  opacity: 0.05;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-content {
+  padding: 0.875rem 0 !important;
+  background: transparent !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.65 !important;
+  overflow: auto;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled pre {
+  margin: 0 !important;
+  padding: 0.15rem 0.5rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.65 !important;
+  overflow: visible;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled.shiki {
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+}
+
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock.fd-codeblock--titled.shiki {
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled pre.shiki,
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock.fd-codeblock--titled
+  pre.shiki {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled pre code {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-actions {
+  margin-inline-end: -0.5rem;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title .fd-copy-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+  opacity: 0;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled:hover .fd-codeblock-title .fd-copy-btn,
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title .fd-copy-btn:focus-visible {
+  opacity: 1;
+}
+
 figure.shiki > div[role="region"] {
   padding-top: 0.875rem !important;
   padding-bottom: 0.875rem !important;
