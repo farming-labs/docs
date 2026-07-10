@@ -1704,6 +1704,15 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
   border-radius: var(--radius, 12px) var(--radius, 12px) 0 0;
 }
 
+#nd-docs-layout[data-fd-framework] .fd-codeblock-title-text,
+#nd-docs-layout[data-fd-framework] .fd-codeblock-title figcaption {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #nd-docs-layout[data-fd-framework] .fd-codeblock-title + .fd-copy-btn ~ pre {
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
@@ -1712,6 +1721,21 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
 #nd-docs-layout[data-fd-framework] .fd-codeblock:has(.fd-codeblock-title) pre {
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock-actions-floating {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
 }
 
 #nd-docs-layout[data-fd-framework] .fd-copy-btn {
@@ -1735,6 +1759,18 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
     opacity 0.15s,
     color 0.15s,
     background 0.15s;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock-actions .fd-copy-btn,
+#nd-docs-layout[data-fd-framework] .fd-codeblock-actions-floating .fd-copy-btn,
+#nd-docs-layout[data-fd-framework] .fd-codeblock-title .fd-copy-btn {
+  position: static;
+  width: 28px;
+  height: 28px;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock-title .fd-copy-btn {
+  opacity: 1;
 }
 
 #nd-docs-layout[data-fd-framework] .fd-codeblock:hover .fd-copy-btn {
@@ -1789,7 +1825,8 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
   color: var(--color-fd-foreground);
 }
 
-#nd-docs-layout[data-fd-framework] .fd-tab-trigger.fd-tab-active {
+#nd-docs-layout[data-fd-framework] .fd-tab-trigger.fd-tab-active,
+#nd-docs-layout[data-fd-framework] .fd-tab-trigger[data-state="active"] {
   color: var(--color-fd-foreground);
   font-weight: 600;
   border-bottom-color: var(--color-fd-primary);
@@ -1799,7 +1836,14 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
   display: none;
 }
 
-#nd-docs-layout[data-fd-framework] .fd-tab-panel-active {
+#nd-docs-layout[data-fd-framework] .fd-tab-panel[data-state="inactive"],
+#nd-docs-layout[data-fd-framework] .fd-code-group-panel[data-state="inactive"] {
+  display: none;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-tab-panel-active,
+#nd-docs-layout[data-fd-framework] .fd-tab-panel[data-state="active"],
+#nd-docs-layout[data-fd-framework] .fd-code-group-panel[data-state="active"] {
   display: block;
 }
 
