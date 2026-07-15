@@ -1,5 +1,8 @@
 @import "@farming-labs/theme/pixel-border/css";
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code",
