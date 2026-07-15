@@ -42,7 +42,7 @@ export default function CodeBlock({
     <div className={`relative group max-w-full ${className}`}>
       <PixelCard variant="code" className="p-0!">
         {(title || filename) && (
-          <div className="code-block-header flex items-center justify-between px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden border-b border-neutral-200 dark:border-white/10 bg-neutral-100/80">
+          <div className="code-block-header flex items-center justify-between px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden border-b border-neutral-200 dark:border-white/10 bg-neutral-50">
             <div className="flex items-center gap-2 min-w-0">
               {filename && (
                 <span className="text-[11px] sm:text-xs font-mono truncate text-neutral-500 dark:text-[color-mix(in_srgb,var(--color-fd-foreground,#fff)_50%,transparent)]">
@@ -61,7 +61,7 @@ export default function CodeBlock({
         )}
         <div className="relative">
           <pre
-            className="px-3 sm:px-4 py-3.5 text-[12px] sm:text-[13px] leading-relaxed overflow-x-auto font-mono text-neutral-800 dark:text-inherit"
+            className="px-3 sm:px-4 py-3.5 text-[12px] sm:text-[13px] leading-relaxed overflow-x-auto font-mono text-neutral-900 dark:text-inherit"
             style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
           >
             <code
