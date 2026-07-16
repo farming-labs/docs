@@ -169,7 +169,7 @@ export function ChangelogTOC({
 
     let frameId = 0;
 
-    const updateActiveHref = () => {
+    const updateActiveHrefFromScroll = () => {
       const threshold = Math.max(140, window.innerHeight * 0.18);
       let nextActiveHref = items[0]?.href ?? "";
 
@@ -185,38 +185,55 @@ export function ChangelogTOC({
         }
       }
 
-      if (window.location.hash) {
-        const hashHref = `#${decodeHashValue(window.location.hash.slice(1))}`;
-        if (items.some((item) => item.href === hashHref)) {
-          nextActiveHref = hashHref;
-        }
-      }
-
       setActiveHref(nextActiveHref);
     };
 
-    const scheduleUpdate = () => {
+    const updateActiveHrefFromHash = () => {
+      if (!window.location.hash) {
+        updateActiveHrefFromScroll();
+        return;
+      }
+
+      const hashHref = `#${decodeHashValue(window.location.hash.slice(1))}`;
+      if (items.some((item) => item.href === hashHref)) {
+        setActiveHref(hashHref);
+      } else {
+        updateActiveHrefFromScroll();
+      }
+    };
+
+    const scheduleScrollUpdate = () => {
       if (frameId !== 0) return;
       frameId = window.requestAnimationFrame(() => {
         frameId = 0;
-        updateActiveHref();
+        updateActiveHrefFromScroll();
       });
     };
 
-    updateActiveHref();
-    window.setTimeout(updateActiveHref, 0);
-    window.setTimeout(updateActiveHref, 250);
-    window.addEventListener("scroll", scheduleUpdate, { passive: true });
-    window.addEventListener("resize", scheduleUpdate);
-    window.addEventListener("hashchange", scheduleUpdate);
+    const bootUpdate = () => {
+      if (window.location.hash) {
+        updateActiveHrefFromHash();
+        return;
+      }
+      updateActiveHrefFromScroll();
+    };
+
+    updateActiveHrefFromHash();
+    const initialUpdateId = window.setTimeout(bootUpdate, 0);
+    const settledUpdateId = window.setTimeout(bootUpdate, 250);
+    window.addEventListener("scroll", scheduleScrollUpdate, { passive: true });
+    window.addEventListener("resize", scheduleScrollUpdate);
+    window.addEventListener("hashchange", updateActiveHrefFromHash);
 
     return () => {
+      window.clearTimeout(initialUpdateId);
+      window.clearTimeout(settledUpdateId);
       if (frameId !== 0) {
         window.cancelAnimationFrame(frameId);
       }
-      window.removeEventListener("scroll", scheduleUpdate);
-      window.removeEventListener("resize", scheduleUpdate);
-      window.removeEventListener("hashchange", scheduleUpdate);
+      window.removeEventListener("scroll", scheduleScrollUpdate);
+      window.removeEventListener("resize", scheduleScrollUpdate);
+      window.removeEventListener("hashchange", updateActiveHrefFromHash);
     };
   }, [items]);
 

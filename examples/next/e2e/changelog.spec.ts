@@ -34,4 +34,41 @@ test.describe("Changelog UI", () => {
       page.getByRole("heading", { name: "What shipped", level: 2 }).first(),
     ).toBeVisible();
   });
+
+  test("release rail follows scrolling after hash navigation", async ({ page }) => {
+    await page.goto("/docs/changelogs");
+
+    const rail = page.locator('[data-fd-changelog-toc][data-variant="releases"]');
+    const middleRelease = rail.locator('a[href="#2026-04-03"]');
+    const oldestRelease = rail.locator('a[href="#2026-03-18"]');
+
+    await middleRelease.click();
+    await expect(page).toHaveURL(/#2026-04-03$/);
+    await expect(middleRelease).toHaveAttribute("data-active", "true");
+
+    await page.locator('[id="2026-03-18"]').evaluate((element) => {
+      element.scrollIntoView({ block: "start" });
+    });
+
+    await expect(oldestRelease).toHaveAttribute("data-active", "true");
+    await expect(page).toHaveURL(/#2026-04-03$/);
+  });
+
+  test("release rail highlights deep-link hash then follows scroll", async ({ page }) => {
+    await page.goto("/docs/changelogs#2026-04-03");
+
+    const rail = page.locator('[data-fd-changelog-toc][data-variant="releases"]');
+    const middleRelease = rail.locator('a[href="#2026-04-03"]');
+    const oldestRelease = rail.locator('a[href="#2026-03-18"]');
+
+    await expect(page).toHaveURL(/#2026-04-03$/);
+    await expect(middleRelease).toHaveAttribute("data-active", "true");
+
+    await page.locator('[id="2026-03-18"]').evaluate((element) => {
+      element.scrollIntoView({ block: "start" });
+    });
+
+    await expect(oldestRelease).toHaveAttribute("data-active", "true");
+    await expect(page).toHaveURL(/#2026-04-03$/);
+  });
 });
