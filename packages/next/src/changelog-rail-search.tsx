@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export interface ChangelogDirectoryEntry {
   slug: string;
@@ -160,13 +160,9 @@ export function ChangelogTOC({
 }) {
   const tocId = `fd-changelog-toc-${variant}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   const [activeHref, setActiveHref] = useState(items[0]?.href ?? "");
+  const activeSourceRef = useRef<"hash" | "scroll">("hash");
 
   useEffect(() => {
-    if (items.length === 0) {
-      setActiveHref("");
-      return;
-    }
-
     let frameId = 0;
 
     const updateActiveHrefFromScroll = () => {
@@ -185,45 +181,73 @@ export function ChangelogTOC({
         }
       }
 
+      const scrollingElement = document.scrollingElement ?? document.documentElement;
+      const isAtDocumentEnd =
+        scrollingElement.scrollTop > 0 &&
+        scrollingElement.scrollHeight -
+          scrollingElement.scrollTop -
+          scrollingElement.clientHeight <=
+          2;
+
+      if (isAtDocumentEnd) {
+        for (let index = items.length - 1; index >= 0; index -= 1) {
+          const item = items[index];
+          if (item && getHashTargetElement(item.href)) {
+            nextActiveHref = item.href;
+            break;
+          }
+        }
+      }
+
       setActiveHref(nextActiveHref);
     };
 
     const updateActiveHrefFromHash = () => {
-      if (!window.location.hash) {
-        updateActiveHrefFromScroll();
-        return;
-      }
+      if (!window.location.hash) return false;
 
       const hashHref = `#${decodeHashValue(window.location.hash.slice(1))}`;
       if (items.some((item) => item.href === hashHref)) {
         setActiveHref(hashHref);
-      } else {
-        updateActiveHrefFromScroll();
+        return true;
       }
+
+      return false;
     };
 
-    const scheduleScrollUpdate = () => {
-      if (frameId !== 0) return;
-      frameId = window.requestAnimationFrame(() => {
-        frameId = 0;
-        updateActiveHrefFromScroll();
-      });
-    };
+    const syncActiveHref = () => {
+      if (activeSourceRef.current === "hash" && updateActiveHrefFromHash()) return;
 
-    const bootUpdate = () => {
-      if (window.location.hash) {
-        updateActiveHrefFromHash();
-        return;
-      }
+      activeSourceRef.current = "scroll";
       updateActiveHrefFromScroll();
     };
 
-    updateActiveHrefFromHash();
-    const initialUpdateId = window.setTimeout(bootUpdate, 0);
-    const settledUpdateId = window.setTimeout(bootUpdate, 250);
-    window.addEventListener("scroll", scheduleScrollUpdate, { passive: true });
-    window.addEventListener("resize", scheduleScrollUpdate);
-    window.addEventListener("hashchange", updateActiveHrefFromHash);
+    const scheduleActiveHrefUpdate = () => {
+      if (frameId !== 0) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        syncActiveHref();
+      });
+    };
+
+    const handleScroll = () => {
+      activeSourceRef.current = "scroll";
+      scheduleActiveHrefUpdate();
+    };
+
+    const handleHashChange = () => {
+      activeSourceRef.current = "hash";
+      if (updateActiveHrefFromHash()) return;
+
+      activeSourceRef.current = "scroll";
+      scheduleActiveHrefUpdate();
+    };
+
+    syncActiveHref();
+    const initialUpdateId = window.setTimeout(syncActiveHref, 0);
+    const settledUpdateId = window.setTimeout(syncActiveHref, 250);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", scheduleActiveHrefUpdate);
+    window.addEventListener("hashchange", handleHashChange);
 
     return () => {
       window.clearTimeout(initialUpdateId);
@@ -231,9 +255,9 @@ export function ChangelogTOC({
       if (frameId !== 0) {
         window.cancelAnimationFrame(frameId);
       }
-      window.removeEventListener("scroll", scheduleScrollUpdate);
-      window.removeEventListener("resize", scheduleScrollUpdate);
-      window.removeEventListener("hashchange", updateActiveHrefFromHash);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", scheduleActiveHrefUpdate);
+      window.removeEventListener("hashchange", handleHashChange);
     };
   }, [items]);
 
@@ -515,7 +539,7 @@ export function ChangelogDirectory({
             <EmptyResults query={query} />
           )}
         </div>
-        {hasResults ? <ChangelogTOC title="Releases" items={tocItems} /> : null}
+        <ChangelogTOC title="Releases" items={tocItems} />
       </div>
     </div>
   );

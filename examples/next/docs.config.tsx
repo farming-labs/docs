@@ -141,7 +141,7 @@ export default defineDocs({
     title: "Changelog",
     description:
       "Track the latest updates, bug fixes, and shipped improvements across @farming-labs/docs.",
-    search: false,
+    search: true,
     actionsComponent: ChangelogActions,
   },
   nav: {
