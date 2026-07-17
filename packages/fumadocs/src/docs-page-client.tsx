@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
 import type { CopyMarkdownFormat, DocsFeedbackData, ReadingTimeFormat } from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
-import { useWindowSearchParams } from "./client-location.js";
+import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
@@ -553,15 +553,15 @@ export function DocsPageClient({
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
   const [titleControlsPortalHost, setTitleControlsPortalHost] = useState<HTMLElement | null>(null);
   const [tocActionsPortalHost, setTocActionsPortalHost] = useState<HTMLElement | null>(null);
-  const [browserPath, setBrowserPath] = useState<string | null>(null);
   const pathname = usePathname();
+  const browserPathname = useWindowPathname();
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
 
   const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
-  const normalizedPath = (browserPath ?? pathname).replace(/\/$/, "") || "/";
+  const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
   const isChangelogRoute = !!(
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
@@ -630,11 +630,7 @@ export function DocsPageClient({
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [activeLocale, browserPath, children, entry, pathname, resolvedPublicPath]);
-
-  useEffect(() => {
-    setBrowserPath(window.location.pathname);
-  }, [pathname]);
+  }, [activeLocale, browserPathname, children, entry, pathname, resolvedPublicPath]);
 
   useEffect(() => {
     const root = document.documentElement;
