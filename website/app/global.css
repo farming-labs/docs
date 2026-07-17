@@ -39,6 +39,16 @@
 }
 
 @layer base {
+  /* Tailwind is imported after the docs theme so website utilities stay authoritative.
+   * Re-apply the theme's border default after Tailwind's preflight reset so bare
+   * border utilities inside the docs shell do not inherit the current text color. */
+  #nd-docs-layout,
+  #nd-docs-layout *,
+  #nd-docs-layout ::before,
+  #nd-docs-layout ::after {
+    border-color: var(--color-fd-border, currentColor);
+  }
+
   @supports (view-transition-name: root) {
     ::view-transition-group(root) {
       animation-timing-function: var(--expo-out);
