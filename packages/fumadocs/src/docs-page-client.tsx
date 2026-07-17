@@ -556,6 +556,7 @@ export function DocsPageClient({
   const pathname = usePathname();
   const browserPathname = useWindowPathname();
   const searchParams = useWindowSearchParams();
+  const browserSearch = searchParams.toString();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
@@ -580,10 +581,11 @@ export function DocsPageClient({
       properties: {
         entry,
         pathname: normalizedPath,
+        search: browserSearch,
         isChangelogRoute,
       },
     });
-  }, [analytics, activeLocale, entry, isChangelogRoute, normalizedPath]);
+  }, [analytics, activeLocale, browserSearch, entry, isChangelogRoute, normalizedPath]);
 
   useEffect(() => {
     return installDocsPathNavigationGuard(entry, resolvedPublicPath);
