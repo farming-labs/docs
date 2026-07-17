@@ -495,7 +495,12 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
           <GroupTable title="Deployment providers" groups={data.deploymentProviders} />
           <GroupTable title="Agent surfaces" groups={data.agentSurfaces} />
           <GroupTable title="Feature flags" groups={data.featureFlags} />
-          <GroupTable title="Top sites" groups={data.topSites} keyLabel="Site origin" />
+          <GroupTable
+            title="Top sites"
+            groups={data.topSites}
+            keyLabel="Site origin"
+            className="xl:col-span-2 2xl:col-span-3"
+          />
           <GroupTable
             title="Top identity hashes"
             groups={data.topIdentities}
