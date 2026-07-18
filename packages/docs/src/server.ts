@@ -41,6 +41,7 @@ export {
 } from "./review.js";
 export type { ResolvedDocsReviewConfig } from "./review.js";
 export {
+  DEFAULT_DOCS_MCP_MAX_BODY_BYTES,
   createDocsMcpHttpHandler,
   createDocsMcpServer,
   createFilesystemDocsMcpSource,
@@ -115,6 +116,7 @@ export type {
   DocsSitemapResolvedConfig,
 } from "./sitemap.js";
 export type {
+  CreateDocsMcpServerOptions,
   DocsMcpCodeExample,
   DocsMcpConfigSchema,
   DocsMcpConfigSchemaOption,
@@ -125,7 +127,9 @@ export type {
   DocsMcpNavigationNode,
   DocsMcpNavigationTree,
   DocsMcpPage,
+  DocsMcpRequestContext,
   DocsMcpResolvedConfig,
+  DocsMcpResolvedSecurityConfig,
   DocsMcpSource,
 } from "./mcp.js";
 export type {

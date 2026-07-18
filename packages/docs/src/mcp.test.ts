@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -49,6 +49,11 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
       },
+      security: {
+        allowedOrigins: "same-origin",
+        authenticate: undefined,
+        maxBodyBytes: 1_048_576,
+      },
     });
   });
 
@@ -66,6 +71,11 @@ describe("resolveDocsMcpConfig", () => {
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
+      },
+      security: {
+        allowedOrigins: "same-origin",
+        authenticate: undefined,
+        maxBodyBytes: 1_048_576,
       },
     });
   });
@@ -89,6 +99,35 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
       },
+      security: {
+        allowedOrigins: "same-origin",
+        authenticate: undefined,
+        maxBodyBytes: 1_048_576,
+      },
+    });
+  });
+
+  it("resolves custom HTTP security without enabling authentication by default", () => {
+    const authenticate = async () => ({ id: "docs-user" });
+
+    expect(
+      resolveDocsMcpConfig({
+        security: {
+          allowedOrigins: ["https://app.example.com"],
+          authenticate,
+          maxBodyBytes: 4096.9,
+        },
+      }).security,
+    ).toEqual({
+      allowedOrigins: ["https://app.example.com"],
+      authenticate,
+      maxBodyBytes: 4096,
+    });
+
+    expect(resolveDocsMcpConfig({ security: { maxBodyBytes: 0 } }).security).toMatchObject({
+      allowedOrigins: "same-origin",
+      authenticate: undefined,
+      maxBodyBytes: 1_048_576,
     });
   });
 
@@ -677,6 +716,250 @@ sidebar:
     });
 
     expect(deleteResponse.status).toBe(200);
+  });
+
+  it("rejects invalid supplied Origins before authentication", async () => {
+    const rootDir = createTempDocsProject();
+    const authenticate = vi.fn(async () => ({ id: "docs-user" }));
+    const handlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({ rootDir }),
+      mcp: {
+        security: { authenticate },
+      },
+    });
+
+    const response = await handlers.POST({
+      request: new Request("https://docs.example.com/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          origin: "https://malicious.example.com",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+      }),
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({ error: "Forbidden Origin" });
+    expect(authenticate).not.toHaveBeenCalled();
+  });
+
+  it("accepts same-origin and explicitly allowed Origins", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({ rootDir });
+    const initializeBody = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: "vitest", version: "1.0.0" },
+      },
+    });
+    const requestHeaders = {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+    };
+
+    const sameOriginHandlers = createDocsMcpHttpHandler({ source });
+    const sameOriginResponse = await sameOriginHandlers.POST({
+      request: new Request("https://docs.example.com/api/docs/mcp", {
+        method: "POST",
+        headers: { ...requestHeaders, origin: "https://docs.example.com" },
+        body: initializeBody,
+      }),
+    });
+    expect(sameOriginResponse.status).toBe(200);
+
+    const allowedOriginHandlers = createDocsMcpHttpHandler({
+      source,
+      mcp: {
+        security: { allowedOrigins: ["https://app.example.com/"] },
+      },
+    });
+    const allowedOriginResponse = await allowedOriginHandlers.POST({
+      request: new Request("https://docs.example.com/api/docs/mcp", {
+        method: "POST",
+        headers: { ...requestHeaders, origin: "https://app.example.com" },
+        body: initializeBody,
+      }),
+    });
+    expect(allowedOriginResponse.status).toBe(200);
+  });
+
+  it("keeps HTTP MCP public until an authentication callback is configured", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({ rootDir });
+    const handlers = createDocsMcpHttpHandler({ source });
+
+    const response = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: LATEST_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: { name: "vitest", version: "1.0.0" },
+          },
+        }),
+      }),
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("requires opt-in authentication and exposes the principal to custom sources", async () => {
+    const rootDir = createTempDocsProject();
+    const filesystemSource = createFilesystemDocsMcpSource({ rootDir });
+    const seenContexts: unknown[] = [];
+    const authenticatedBodies: string[] = [];
+    const authenticate = vi.fn(async ({ request, pathname }) => {
+      authenticatedBodies.push(await request.text());
+      if (request.headers.get("authorization") !== "Bearer valid") return null;
+      return {
+        id: "user-123",
+        scopes: ["docs:read"],
+        claims: { pathname },
+      };
+    });
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        ...filesystemSource,
+        getPages(locale, context) {
+          seenContexts.push(context);
+          return filesystemSource.getPages(locale);
+        },
+        getNavigation(locale, context) {
+          seenContexts.push(context);
+          return filesystemSource.getNavigation(locale);
+        },
+      },
+      mcp: { security: { authenticate } },
+    });
+    const body = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: "vitest", version: "1.0.0" },
+      },
+    });
+    const headers = {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+    };
+
+    const unauthorized = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers,
+        body,
+      }),
+    });
+    expect(unauthorized.status).toBe(401);
+    await expect(unauthorized.json()).resolves.toEqual({ error: "Unauthorized" });
+    expect(seenContexts).toHaveLength(0);
+
+    const authorized = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: { ...headers, authorization: "Bearer valid" },
+        body,
+      }),
+    });
+    expect(authorized.status).toBe(200);
+    expect(authenticatedBodies).toEqual([body, body]);
+    expect(authenticate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pathname: "/api/docs/mcp" }),
+    );
+    expect(seenContexts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          transport: "http",
+          auth: {
+            id: "user-123",
+            scopes: ["docs:read"],
+            claims: { pathname: "/api/docs/mcp" },
+          },
+        }),
+      ]),
+    );
+  });
+
+  it("passes through custom authentication Responses and sanitizes thrown errors", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({ rootDir });
+    const customHandlers = createDocsMcpHttpHandler({
+      source,
+      mcp: {
+        security: {
+          authenticate: async () =>
+            new Response("Use the organization login", {
+              status: 403,
+              headers: { "x-auth-provider": "example" },
+            }),
+        },
+      },
+    });
+    const customResponse = await customHandlers.GET({
+      request: new Request("http://localhost/api/docs/mcp"),
+    });
+    expect(customResponse.status).toBe(403);
+    expect(customResponse.headers.get("x-auth-provider")).toBe("example");
+    await expect(customResponse.text()).resolves.toBe("Use the organization login");
+
+    const failingHandlers = createDocsMcpHttpHandler({
+      source,
+      mcp: {
+        security: {
+          authenticate: async () => {
+            throw new Error("secret provider detail");
+          },
+        },
+      },
+    });
+    const failingResponse = await failingHandlers.GET({
+      request: new Request("http://localhost/api/docs/mcp"),
+    });
+    expect(failingResponse.status).toBe(500);
+    expect(await failingResponse.text()).not.toContain("secret provider detail");
+  });
+
+  it("rejects POST bodies over the configured byte limit", async () => {
+    const rootDir = createTempDocsProject();
+    const handlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({ rootDir }),
+      mcp: { security: { maxBodyBytes: 32 } },
+    });
+
+    const response = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+      }),
+    });
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        data: { reason: "request_too_large", maxBodyBytes: 32 },
+      },
+    });
   });
 
   it("serves stateless MCP requests without requiring sticky sessions", async () => {

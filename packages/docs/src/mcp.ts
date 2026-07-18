@@ -23,6 +23,9 @@ import {
 } from "./telemetry.js";
 import type {
   DocsAnalyticsConfig,
+  DocsMcpAllowedOrigins,
+  DocsMcpAuthPrincipal,
+  DocsMcpAuthenticate,
   DocsMcpConfig,
   DocsObservabilityConfig,
   DocsSearchConfig,
@@ -152,8 +155,27 @@ export interface DocsMcpNavigationTree {
 export interface DocsMcpSource {
   entry?: string;
   siteTitle?: string;
-  getPages(locale?: string): DocsMcpPage[] | Promise<DocsMcpPage[]>;
-  getNavigation(locale?: string): DocsMcpNavigationTree | Promise<DocsMcpNavigationTree>;
+  getPages(
+    locale?: string,
+    context?: DocsMcpRequestContext,
+  ): DocsMcpPage[] | Promise<DocsMcpPage[]>;
+  getNavigation(
+    locale?: string,
+    context?: DocsMcpRequestContext,
+  ): DocsMcpNavigationTree | Promise<DocsMcpNavigationTree>;
+}
+
+/** Request-scoped identity available to custom MCP sources. */
+export interface DocsMcpRequestContext {
+  transport: "http" | "stdio";
+  request?: Request;
+  auth?: DocsMcpAuthPrincipal;
+}
+
+export interface DocsMcpResolvedSecurityConfig {
+  allowedOrigins: DocsMcpAllowedOrigins;
+  authenticate?: DocsMcpAuthenticate;
+  maxBodyBytes: number;
 }
 
 export interface DocsMcpResolvedConfig {
@@ -170,6 +192,8 @@ export interface DocsMcpResolvedConfig {
     getCodeExamples: boolean;
     getConfigSchema: boolean;
   };
+  /** Resolved HTTP-only security policy. Omitted on manually constructed legacy values. */
+  security?: DocsMcpResolvedSecurityConfig;
 }
 
 export interface DocsMcpHttpHandlers {
@@ -178,7 +202,7 @@ export interface DocsMcpHttpHandlers {
   DELETE: (context: { request: Request }) => Promise<Response>;
 }
 
-interface CreateDocsMcpServerOptions {
+export interface CreateDocsMcpServerOptions {
   source: DocsMcpSource;
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
@@ -188,6 +212,8 @@ interface CreateDocsMcpServerOptions {
   observability?: boolean | DocsObservabilityConfig;
   defaultName?: string;
   defaultVersion?: string;
+  /** Internal request context used to expose an authenticated principal to custom sources. */
+  requestContext?: DocsMcpRequestContext;
 }
 
 interface CreateFilesystemDocsMcpSourceOptions {
@@ -205,6 +231,7 @@ interface ScannedDocsMcpPage extends DocsMcpPage {
 const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
+export const DEFAULT_DOCS_MCP_MAX_BODY_BYTES = 1024 * 1024;
 
 const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
   {
@@ -543,6 +570,38 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
         description: "Version string reported to MCP clients.",
       },
       {
+        path: "mcp.security",
+        name: "security",
+        type: "DocsMcpSecurityConfig",
+        description:
+          "Streamable HTTP Origin validation, optional authentication, and request-size controls. The stdio transport is unaffected.",
+        children: [
+          {
+            path: "mcp.security.allowedOrigins",
+            name: "allowedOrigins",
+            type: '"same-origin" | string[] | callback',
+            default: "same-origin",
+            description:
+              "Allow a supplied Origin header when it matches the MCP request origin, an explicit list, or a custom policy callback. Origin-less non-browser clients remain supported.",
+          },
+          {
+            path: "mcp.security.authenticate",
+            name: "authenticate",
+            type: "DocsMcpAuthenticate",
+            default: "public (callback omitted)",
+            description:
+              "Opt-in HTTP authentication callback. Return a principal to continue, null for 401, or a Response to control the rejection.",
+          },
+          {
+            path: "mcp.security.maxBodyBytes",
+            name: "maxBodyBytes",
+            type: "number",
+            default: DEFAULT_DOCS_MCP_MAX_BODY_BYTES,
+            description: "Maximum accepted Streamable HTTP POST body size in bytes.",
+          },
+        ],
+      },
+      {
         path: "mcp.tools",
         name: "tools",
         type: "DocsMcpToolsConfig",
@@ -720,6 +779,19 @@ export default defineDocs({
 });`,
   },
   {
+    title: "Opt-in MCP authentication",
+    code: `export default defineDocs({
+  mcp: {
+    security: {
+      async authenticate({ request }) {
+        const user = await authenticateRequest(request);
+        return user ? { id: user.id, scopes: ["docs:read"] } : null;
+      },
+    },
+  },
+});`,
+  },
+  {
     title: "Code block validation",
     code: `export default defineDocs({
   entry: "docs",
@@ -813,6 +885,7 @@ export function resolveDocsMcpConfig(
         getCodeExamples: true,
         getConfigSchema: true,
       },
+      security: resolveDocsMcpSecurityConfig(),
     };
   }
 
@@ -832,6 +905,25 @@ export function resolveDocsMcpConfig(
       getCodeExamples: config.tools?.getCodeExamples ?? true,
       getConfigSchema: config.tools?.getConfigSchema ?? true,
     },
+    security: resolveDocsMcpSecurityConfig(config.security),
+  };
+}
+
+function resolveDocsMcpSecurityConfig(
+  security?: DocsMcpConfig["security"],
+): DocsMcpResolvedSecurityConfig {
+  const configuredMaxBodyBytes = security?.maxBodyBytes;
+  const maxBodyBytes =
+    typeof configuredMaxBodyBytes === "number" &&
+    Number.isFinite(configuredMaxBodyBytes) &&
+    configuredMaxBodyBytes > 0
+      ? Math.floor(configuredMaxBodyBytes)
+      : DEFAULT_DOCS_MCP_MAX_BODY_BYTES;
+
+  return {
+    allowedOrigins: security?.allowedOrigins ?? "same-origin",
+    authenticate: security?.authenticate,
+    maxBodyBytes,
   };
 }
 
@@ -901,6 +993,14 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   };
   const telemetryFramework = options.telemetryFramework ?? "mcp";
 
+  function getSourcePages(locale?: string) {
+    return options.source.getPages(locale, options.requestContext);
+  }
+
+  function getSourceNavigation(locale?: string) {
+    return options.source.getNavigation(locale, options.requestContext);
+  }
+
   function trackMcpTool(tool: string, values?: { locale?: string; resultCount?: number }) {
     emitDocsTelemetryMcpToolEvent(telemetryConfig, {
       framework: telemetryFramework,
@@ -910,8 +1010,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     });
   }
 
-  const defaultPages = dedupePages(await options.source.getPages());
-  const defaultTree = await options.source.getNavigation();
+  const defaultPages = dedupePages(await getSourcePages());
+  const defaultTree = await getSourceNavigation();
 
   server.registerResource(
     "docs-navigation",
@@ -981,7 +1081,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = toPageSummaries(dedupePages(await options.source.getPages(locale)));
+          const pages = toPageSummaries(dedupePages(await getSourcePages(locale)));
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {
             type: "mcp_tool",
@@ -1066,7 +1166,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const docs = listDocsBySection(dedupePages(await options.source.getPages(locale)), {
+          const docs = listDocsBySection(dedupePages(await getSourcePages(locale)), {
             section,
             entry: options.source.entry,
           });
@@ -1155,7 +1255,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const tree = await options.source.getNavigation(locale);
+          const tree = await getSourceNavigation(locale);
           const text = renderNavigationTree(tree);
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {
@@ -1324,7 +1424,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(await options.source.getPages(locale));
+          const pages = dedupePages(await getSourcePages(locale));
           const results = await performDocsSearch({
             pages: toSearchSourcePages(pages),
             query,
@@ -1438,7 +1538,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(await options.source.getPages(locale));
+          const pages = dedupePages(await getSourcePages(locale));
           const matchedPage = requestedPath
             ? findDocsPage(pages, requestedPath, options.source.entry)
             : null;
@@ -1545,7 +1645,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(await options.source.getPages(locale));
+          const pages = dedupePages(await getSourcePages(locale));
           const page = findDocsPage(pages, requestedPath, options.source.entry);
 
           if (!page) {
@@ -1717,8 +1817,8 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     };
   }
 
-  async function createStatelessTransport() {
-    const server = await createDocsMcpServer(options);
+  async function createStatelessTransport(requestContext: DocsMcpRequestContext) {
+    const server = await createDocsMcpServer({ ...options, requestContext });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
@@ -1730,17 +1830,63 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
   async function handle(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
+    const security = resolved.security ?? resolveDocsMcpSecurityConfig();
+
+    let originAllowed: boolean;
+    try {
+      originAllowed = await isDocsMcpOriginAllowed(request, security.allowedOrigins);
+    } catch {
+      return createMcpHttpSecurityErrorResponse(500, "MCP Origin policy failed");
+    }
+
+    if (!originAllowed) {
+      return createMcpHttpSecurityErrorResponse(403, "Forbidden Origin");
+    }
+
+    if (method === "POST" && isContentLengthOverLimit(request, security.maxBodyBytes)) {
+      return createMcpRequestTooLargeResponse(security.maxBodyBytes);
+    }
+
+    let auth: DocsMcpAuthPrincipal | undefined;
+    if (security.authenticate) {
+      let authentication: Awaited<ReturnType<DocsMcpAuthenticate>>;
+      try {
+        authentication = await security.authenticate({
+          request: request.clone(),
+          pathname: url.pathname,
+        });
+      } catch {
+        return createMcpHttpSecurityErrorResponse(500, "MCP authentication failed");
+      }
+
+      if (authentication instanceof Response) return authentication;
+      if (authentication === null || authentication === undefined) {
+        return createMcpHttpSecurityErrorResponse(401, "Unauthorized");
+      }
+      if (!isDocsMcpAuthPrincipal(authentication)) {
+        return createMcpHttpSecurityErrorResponse(
+          500,
+          "MCP authentication returned an invalid principal",
+        );
+      }
+      auth = authentication;
+    }
+
     const sessionId =
       request.headers.get("mcp-session-id") ?? request.headers.get("Mcp-Session-Id");
 
     let parsedBody: unknown;
     let bodyParseFailed = false;
     if (method === "POST") {
-      try {
-        parsedBody = await request.clone().json();
-      } catch {
+      const parsed = await parseJsonBodyWithLimit(request, security.maxBodyBytes);
+      if (parsed.status === "too-large") {
+        return createMcpRequestTooLargeResponse(security.maxBodyBytes);
+      }
+      if (parsed.status === "invalid") {
         bodyParseFailed = true;
         parsedBody = undefined;
+      } else {
+        parsedBody = parsed.value;
       }
     }
 
@@ -1781,7 +1927,11 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       });
     }
 
-    const created = await createStatelessTransport();
+    const created = await createStatelessTransport({
+      transport: "http",
+      request,
+      auth,
+    });
     return created.transport.handleRequest(
       request,
       parsedBody === undefined ? undefined : { parsedBody },
@@ -1796,9 +1946,132 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
 }
 
 export async function runDocsMcpStdio(options: CreateDocsMcpServerOptions): Promise<void> {
-  const server = await createDocsMcpServer(options);
+  const server = await createDocsMcpServer({
+    ...options,
+    requestContext: { transport: "stdio" },
+  });
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+async function isDocsMcpOriginAllowed(
+  request: Request,
+  allowedOrigins: DocsMcpAllowedOrigins,
+): Promise<boolean> {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+
+  if (typeof allowedOrigins === "function") {
+    return allowedOrigins({ origin, request });
+  }
+
+  const normalizedOrigin = normalizeHttpOrigin(origin);
+  if (allowedOrigins === "same-origin") {
+    return normalizedOrigin === new URL(request.url).origin;
+  }
+
+  return allowedOrigins.some(
+    (allowedOrigin) => normalizeHttpOrigin(allowedOrigin) === normalizedOrigin,
+  );
+}
+
+function normalizeHttpOrigin(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value.trim();
+  }
+}
+
+function isDocsMcpAuthPrincipal(value: unknown): value is DocsMcpAuthPrincipal {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const principal = value as {
+    id?: unknown;
+    scopes?: unknown;
+    claims?: unknown;
+  };
+  if (typeof principal.id !== "string" || principal.id.trim().length === 0) return false;
+  if (
+    principal.scopes !== undefined &&
+    (!Array.isArray(principal.scopes) ||
+      principal.scopes.some((scope) => typeof scope !== "string"))
+  ) {
+    return false;
+  }
+  return (
+    principal.claims === undefined ||
+    (typeof principal.claims === "object" &&
+      principal.claims !== null &&
+      !Array.isArray(principal.claims))
+  );
+}
+
+type ParsedJsonBodyResult =
+  | { status: "ok"; value: unknown }
+  | { status: "invalid" }
+  | { status: "too-large" };
+
+async function parseJsonBodyWithLimit(
+  request: Request,
+  maxBodyBytes: number,
+): Promise<ParsedJsonBodyResult> {
+  if (isContentLengthOverLimit(request, maxBodyBytes)) {
+    return { status: "too-large" };
+  }
+
+  const body = request.clone().body;
+  if (!body) return { status: "invalid" };
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let byteLength = 0;
+  let text = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    byteLength += value.byteLength;
+    if (byteLength > maxBodyBytes) {
+      void reader.cancel();
+      return { status: "too-large" };
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  text += decoder.decode();
+
+  try {
+    return { status: "ok", value: JSON.parse(text) };
+  } catch {
+    return { status: "invalid" };
+  }
+}
+
+function isContentLengthOverLimit(request: Request, maxBodyBytes: number): boolean {
+  const rawContentLength = request.headers.get("content-length");
+  if (rawContentLength === null) return false;
+  const contentLength = Number(rawContentLength);
+  return Number.isFinite(contentLength) && contentLength > maxBodyBytes;
+}
+
+function createMcpRequestTooLargeResponse(maxBodyBytes: number): Response {
+  const response = createJsonRpcErrorResponse({
+    status: 413,
+    code: -32000,
+    message: `Request body exceeds the ${maxBodyBytes} byte limit`,
+    data: { reason: "request_too_large", maxBodyBytes },
+  });
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+function createMcpHttpSecurityErrorResponse(status: number, error: string): Response {
+  return new Response(JSON.stringify({ error }), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 function createJsonErrorResponse(status: number, error: string): Response {
