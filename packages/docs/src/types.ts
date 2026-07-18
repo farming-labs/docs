@@ -273,12 +273,66 @@ export interface ResolvedDocsRelatedLink {
   href: string;
 }
 
+export interface PageAgentAppliesTo {
+  /** Framework name or names this task applies to, for example `"nextjs"`. */
+  framework?: string | string[];
+  /** Version range or ranges this task applies to, for example `">=16"`. */
+  version?: string | string[];
+  /** Package name or names this task applies to, for example `"@farming-labs/next"`. */
+  package?: string | string[];
+}
+
+export interface PageAgentCommand {
+  /** Exact command an agent may run. */
+  run: string;
+  /** Optional working directory, relative to the project root unless documented otherwise. */
+  cwd?: string;
+  /** Short explanation of what the command does. */
+  description?: string;
+}
+
+export interface PageAgentVerification {
+  /** Human-readable verification step. */
+  description?: string;
+  /** Optional command used to verify the result. */
+  run?: string;
+  /** Observable result that indicates success. */
+  expect?: string;
+}
+
+export interface PageAgentFailureMode {
+  /** Symptom an agent may observe. */
+  symptom: string;
+  /** Recovery guidance for the symptom. */
+  resolution?: string;
+}
+
 export interface PageAgentFrontmatter {
   /**
    * Approximate output token target for machine-readable compaction on this page.
    * Used by `docs agent compact` as a per-page override.
    */
   tokenBudget?: number;
+  /** Concrete task the page helps an agent complete. */
+  task?: string;
+  /** Observable end state the agent should reach. */
+  outcome?: string;
+  /** Framework, version, and package applicability constraints. */
+  appliesTo?: PageAgentAppliesTo;
+  /** Conditions or setup that must already be true. */
+  prerequisites?: string[];
+  /** Files the task is expected to read or change. */
+  files?: string[];
+  /** Commands the task may require. Strings are supported as a concise shorthand. */
+  commands?: Array<string | PageAgentCommand>;
+  /** Material state changes or external effects the task can cause. */
+  sideEffects?: string[];
+  /** Checks that prove the task completed successfully. */
+  verification?: Array<string | PageAgentVerification>;
+  /** Steps that restore the previous state when the task must be undone. */
+  rollback?: string[];
+  /** Common symptoms and optional recovery guidance. */
+  failureModes?: Array<string | PageAgentFailureMode>;
 }
 
 export interface PageSidebarFrontmatter {
@@ -1348,6 +1402,7 @@ export interface DocsSearchSourcePage {
   content: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
+  agent?: PageAgentFrontmatter;
   sourcePath?: string;
   lastModified?: string;
   lastmod?: string;
@@ -2508,7 +2563,7 @@ export interface DocsReviewRulesConfig {
   codeFenceMetadata?: DocsReviewSeverity;
   /** Check runnable command/code fences for package manager context. */
   runnableMetadata?: DocsReviewSeverity;
-  /** Suggest machine-facing context for implementation-heavy pages. */
+  /** Validate structured page agent contracts and suggest context for implementation-heavy pages. */
   agentContext?: DocsReviewSeverity;
 }
 

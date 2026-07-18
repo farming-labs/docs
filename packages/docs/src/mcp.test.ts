@@ -134,6 +134,21 @@ title: "Installation"
 description: "Install everything"
 related:
   - /docs/guides/quickstart
+agent:
+  task: Install the framework
+  outcome: Dependencies are installed from the lockfile.
+  appliesTo:
+    framework: nextjs
+    package: "@farming-labs/next"
+  files:
+    - package.json
+    - pnpm-lock.yaml
+  commands:
+    - run: pnpm install --frozen-lockfile
+      description: Install exact dependency versions
+  verification:
+    - run: pnpm test
+      expect: Tests pass
 ---
 
 # Installation
@@ -200,6 +215,22 @@ Validate the generated example paths before editing this guide.
         expect.objectContaining({
           url: "/docs/installation",
           agentRawContent: "Use `pnpm install --frozen-lockfile`.\n",
+          agent: {
+            task: "Install the framework",
+            outcome: "Dependencies are installed from the lockfile.",
+            appliesTo: {
+              framework: ["nextjs"],
+              package: ["@farming-labs/next"],
+            },
+            files: ["package.json", "pnpm-lock.yaml"],
+            commands: [
+              {
+                run: "pnpm install --frozen-lockfile",
+                description: "Install exact dependency versions",
+              },
+            ],
+            verification: [{ run: "pnpm test", expect: "Tests pass" }],
+          },
         }),
         expect.objectContaining({
           url: "/docs/guides/quickstart",
@@ -357,6 +388,41 @@ sidebar:
       ]),
     );
 
+    const listPagesResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "list-pages",
+          method: "tools/call",
+          params: { name: "list_pages", arguments: {} },
+        }),
+      }),
+    });
+    const listPagesPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(listPagesResponse);
+    const listedPages = JSON.parse(listPagesPayload.result?.content?.[0]?.text ?? "{}") as {
+      pages?: Array<{ url?: string; agent?: { task?: string; outcome?: string } }>;
+    };
+    expect(listedPages.pages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "/docs/installation",
+          agent: expect.objectContaining({
+            task: "Install the framework",
+            outcome: "Dependencies are installed from the lockfile.",
+          }),
+        }),
+      ]),
+    );
+
     const listDocsResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
         method: "POST",
@@ -482,6 +548,9 @@ sidebar:
     expect(readPayload.result?.content?.[0]?.text).toContain(
       "Use `pnpm install --frozen-lockfile`.",
     );
+    expect(readPayload.result?.content?.[0]?.text).toContain("## Agent Contract");
+    expect(readPayload.result?.content?.[0]?.text).toContain("Task: Install the framework");
+    expect(readPayload.result?.content?.[0]?.text).toContain("- Package: `@farming-labs/next`");
     expect(readPayload.result?.content?.[0]?.text).not.toContain("# Installation");
     expect(readPayload.result?.content?.[0]?.text).not.toContain("URL: /docs/installation");
 

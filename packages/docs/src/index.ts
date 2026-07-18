@@ -52,6 +52,14 @@ export {
 } from "./reading-time.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
+  getPageAgentFrontmatterIssues,
+  hasStructuredPageAgentContract,
+  normalizePageAgentFrontmatter,
+  renderPageAgentContractMarkdown,
+  renderPageAgentFrontmatterYamlLines,
+} from "./agent-contract.js";
+export type { PageAgentFrontmatterIssue } from "./agent-contract.js";
+export {
   applySidebarFolderIndexBehavior,
   resolvePageSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehavior,
@@ -259,6 +267,11 @@ export type {
   PageTwitter,
   DocsRelatedItem,
   ResolvedDocsRelatedLink,
+  PageAgentAppliesTo,
+  PageAgentCommand,
+  PageAgentFailureMode,
+  PageAgentFrontmatter,
+  PageAgentVerification,
   UIConfig,
   FontStyle,
   TypographyConfig,

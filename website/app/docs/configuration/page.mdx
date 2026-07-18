@@ -1503,6 +1503,20 @@ title: "Installation"
 description: "Install the framework"
 agent:
   tokenBudget: 777
+  task: Install the framework
+  outcome: The docs route renders locally.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+    package: "@farming-labs/next"
+  files:
+    - package.json
+    - next.config.ts
+  commands:
+    - run: pnpm add @farming-labs/docs @farming-labs/next
+  verification:
+    - run: pnpm dev
+      expect: The docs route returns HTTP 200
 ---
 ```
 
@@ -1510,6 +1524,10 @@ Notes:
 
 - `agent.tokenBudget` overrides global `agent.compact.maxOutputTokens` defaults and CLI
   `--max-output-tokens` for that one page
+- optional structured fields include `task`, `outcome`, `appliesTo`, `prerequisites`, `files`,
+  `commands`, `sideEffects`, `verification`, `rollback`, and `failureModes`
+- structured fields are emitted into machine-readable Markdown and MCP page results; invalid fields
+  are ignored at runtime and reported by `docs review`
 - if a sibling `agent.md` already exists, `docs agent compact` compacts that file
 - if no `agent.md` exists, the command compacts the generated machine-readable page output and then
   writes a new sibling `agent.md`

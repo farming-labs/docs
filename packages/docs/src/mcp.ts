@@ -7,6 +7,10 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
+import {
+  normalizePageAgentFrontmatter,
+  renderPageAgentContractMarkdown,
+} from "./agent-contract.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
@@ -31,6 +35,7 @@ import type {
   DocsTelemetryFramework,
   McpDocsSearchConfig,
   OrderingItem,
+  PageAgentFrontmatter,
 } from "./types.js";
 
 export interface DocsMcpPage {
@@ -39,6 +44,7 @@ export interface DocsMcpPage {
   title: string;
   description?: string;
   related?: DocsSearchSourcePage["related"];
+  agent?: PageAgentFrontmatter;
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
@@ -74,6 +80,7 @@ export interface DocsMcpDocsPageSummary {
   url: string;
   title: string;
   description?: string;
+  agent?: PageAgentFrontmatter;
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
@@ -2049,6 +2056,7 @@ function scanFilesystemDocsPages(
         title,
         description: data.description as string | undefined,
         relatedInput: data.related,
+        agent: normalizePageAgentFrontmatter(data.agent),
         icon: data.icon as string | undefined,
         sourcePath: path.relative(rootDir, full).replace(/\\/g, "/"),
         lastModified: stat.mtime.toISOString(),
@@ -2239,6 +2247,7 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
     agentFallbackRawContent: page.agentFallbackRawContent,
     description: page.description,
     related: page.related,
+    agent: page.agent,
   }));
 }
 
@@ -2388,6 +2397,7 @@ function toPageSummaries(pages: DocsMcpPage[]) {
     title: page.title,
     description: page.description,
     icon: page.icon,
+    agent: page.agent,
   }));
 }
 
@@ -2397,6 +2407,7 @@ function toDocsListPageSummary(page: DocsMcpPage): DocsMcpDocsPageSummary {
     url: page.url,
     title: page.title,
     description: page.description,
+    agent: page.agent,
     icon: page.icon,
     sourcePath: page.sourcePath,
     lastModified: page.lastModified,
@@ -2857,13 +2868,17 @@ function normalizeUrlPath(value: string): string {
 }
 
 function renderPageDocument(page: DocsMcpPage): string {
-  if (page.agentRawContent !== undefined) return page.agentRawContent;
+  const agentContract = renderPageAgentContractMarkdown(page.agent);
+  if (page.agentRawContent !== undefined) {
+    return agentContract ? `${agentContract}\n\n${page.agentRawContent}` : page.agentRawContent;
+  }
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
 
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
+  if (agentContract) lines.push("", agentContract);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
   return lines.join("\n");
 }

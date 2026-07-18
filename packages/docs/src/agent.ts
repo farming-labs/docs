@@ -10,10 +10,15 @@ import type {
   LlmsTxtMaxCharsConfig,
   LlmsTxtMaxCharsMode,
   LlmsTxtSectionConfig,
+  PageAgentFrontmatter,
   ResolvedDocsRelatedLink,
 } from "./types.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
+import {
+  renderPageAgentContractMarkdown,
+  renderPageAgentFrontmatterYamlLines,
+} from "./agent-contract.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
@@ -496,6 +501,7 @@ export interface DocsMarkdownPage {
   lastModified?: string;
   lastmod?: string;
   related?: ResolvedDocsRelatedLink[];
+  agent?: PageAgentFrontmatter;
   content: string;
   rawContent?: string;
   agentContent?: string;
@@ -2351,12 +2357,14 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl,
   markdownUrl,
   lastUpdated,
+  agent,
 }: {
   title: string;
   description?: string;
   canonicalUrl: string;
   markdownUrl: string;
   lastUpdated?: string;
+  agent?: PageAgentFrontmatter;
 }): string {
   const lines = [
     "---",
@@ -2365,6 +2373,7 @@ function renderDocsMarkdownFrontmatter({
     `canonical_url: ${toYamlString(canonicalUrl)}`,
     `markdown_url: ${toYamlString(markdownUrl)}`,
     ...(lastUpdated ? [`last_updated: ${toYamlString(lastUpdated)}`] : []),
+    ...renderPageAgentFrontmatterYamlLines(agent),
     "---",
   ];
 
@@ -2393,6 +2402,7 @@ function resolveDocsMarkdownPageMetadata(
     canonicalUrl: resolveDocsMarkdownMetadataUrl(page.url, options?.origin),
     markdownUrl: resolveDocsMarkdownMetadataUrl(toDocsMarkdownUrl(page.url), options?.origin),
     lastUpdated: normalizeDocsMarkdownLastUpdated(page.lastmod ?? page.lastModified),
+    agent: page.agent,
   };
 }
 
@@ -2861,12 +2871,13 @@ export function renderDocsMarkdownDocument(
   page: DocsMarkdownPage,
   options?: DocsMarkdownDocumentOptions,
 ): string {
+  const agentContract = renderPageAgentContractMarkdown(page.agent);
   if (page.agentRawContent !== undefined) {
+    const body = agentContract
+      ? `${agentContract}\n\n${page.agentRawContent.replace(/^\r?\n+/, "")}`
+      : page.agentRawContent;
     return appendDocsMarkdownSitemapFooter(
-      prependDocsMarkdownFrontmatter(
-        page.agentRawContent,
-        resolveDocsMarkdownPageMetadata(page, options),
-      ),
+      prependDocsMarkdownFrontmatter(body, resolveDocsMarkdownPageMetadata(page, options)),
       options?.sitemap,
     );
   }
@@ -2876,6 +2887,7 @@ export function renderDocsMarkdownDocument(
   if (shouldRenderLlmsDirective(options)) lines.push(DOCS_LLMS_TXT_DIRECTIVE_LINE);
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
+  if (agentContract) lines.push("", agentContract);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
   return appendDocsMarkdownSitemapFooter(
     prependDocsMarkdownFrontmatter(
@@ -3100,6 +3112,7 @@ export function buildDocsAgentDiscoverySpec({
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: llmsEnabled,
       skills: true,
@@ -3139,6 +3152,32 @@ export function buildDocsAgentDiscoverySpec({
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
       resolutionOrder: ["agent.md", "Agent blocks", "page markdown"],
+    },
+    agentContract: {
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      source: "page-frontmatter",
+      frontmatterPath: "agent",
+      markdownSection: "Agent Contract",
+      mcpField: "agent",
+      usefulContractFields: ["task", "outcome"],
+      fields: {
+        tokenBudget: "number",
+        task: "string",
+        outcome: "string",
+        appliesTo: {
+          framework: "string|string[]",
+          version: "string|string[]",
+          package: "string|string[]",
+        },
+        prerequisites: "string[]",
+        files: "string[]",
+        commands: "Array<string|{run,cwd?,description?}>",
+        sideEffects: "string[]",
+        verification: "Array<string|{description?,run?,expect?}>",
+        rollback: "string[]",
+        failureModes: "Array<string|{symptom,resolution?}>",
+      },
     },
     llms: {
       enabled: llmsEnabled,

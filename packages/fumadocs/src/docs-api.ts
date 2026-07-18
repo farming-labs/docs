@@ -26,6 +26,7 @@ import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import {
   normalizeDocsRelated,
+  normalizePageAgentFrontmatter,
   buildDocsConfigMap,
   buildDocsDiagnostics,
   resolveChangelogConfig,
@@ -1451,6 +1452,7 @@ function scanDocsDir(
             title,
             description,
             relatedInput: data.related,
+            agent: normalizePageAgentFrontmatter(data.agent),
             content,
             rawContent,
             agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
@@ -1541,6 +1543,7 @@ function scanChangelogDir(
         title,
         description,
         relatedInput: data.related,
+        agent: normalizePageAgentFrontmatter(data.agent),
         content,
         rawContent,
         agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,

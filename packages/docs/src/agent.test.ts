@@ -881,6 +881,15 @@ describe("agent route helpers", () => {
           description: "Install the framework",
           lastModified: "2026-05-27T12:30:00.000Z",
           related: [{ href: "/docs/configuration" }],
+          agent: {
+            tokenBudget: 800,
+            task: "Install the framework",
+            outcome: "The docs app starts successfully.",
+            appliesTo: { framework: "nextjs", version: ">=16" },
+            files: ["package.json"],
+            commands: ["pnpm install"],
+            verification: [{ run: "pnpm test", expect: "Tests pass" }],
+          },
           content: "Visible",
           rawContent: "Visible",
           agentFallbackRawContent: "Visible\n\nHidden",
@@ -896,6 +905,11 @@ describe("agent route helpers", () => {
     expect(document).toContain('canonical_url: "https://docs.example.com/docs/install"');
     expect(document).toContain('markdown_url: "https://docs.example.com/docs/install.md"');
     expect(document).toContain('last_updated: "2026-05-27"');
+    expect(document).toContain("agent:\n  tokenBudget: 800");
+    expect(document).toContain('  task: "Install the framework"');
+    expect(document).toContain("## Agent Contract");
+    expect(document).toContain("- Framework: `nextjs`");
+    expect(document).toContain("- `pnpm install`");
     expect(document).toContain("LLM index: /llms.txt");
     expect(renderDocsMarkdownDocument(page!, { llms: false })).not.toContain(
       "LLM index: /llms.txt",
@@ -1063,6 +1077,7 @@ describe("agent route helpers", () => {
     expect(spec.capabilities.robots).toBe(true);
     expect(spec.capabilities.agents).toBe(true);
     expect(spec.capabilities.structuredData).toBe(true);
+    expect(spec.capabilities.structuredAgentContracts).toBe(true);
     expect(spec.capabilities.apiReference).toBe(true);
     expect(spec.capabilities.openapi).toBe(true);
     expect(spec.openapi).toEqual({
@@ -1085,6 +1100,15 @@ describe("agent route helpers", () => {
       fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+    });
+    expect(spec.agentContract).toMatchObject({
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      source: "page-frontmatter",
+      frontmatterPath: "agent",
+      markdownSection: "Agent Contract",
+      mcpField: "agent",
+      usefulContractFields: ["task", "outcome"],
     });
   });
 

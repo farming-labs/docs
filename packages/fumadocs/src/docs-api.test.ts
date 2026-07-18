@@ -961,6 +961,19 @@ description: "Start fast"
 related:
   - /docs/overview
   - /docs/configuration
+agent:
+  tokenBudget: 700
+  task: Start the docs app
+  outcome: The local docs route responds successfully.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+  files:
+    - docs.config.ts
+  commands:
+    - pnpm dev
+  verification:
+    - expect: The docs route returns HTTP 200
 ---
 
 # Quickstart
@@ -1032,6 +1045,8 @@ Config content.
       'markdown_url: "http://localhost/docs/getting-started/quickstart.md"',
     );
     expect(fallbackDocument).toMatch(/last_updated: "\d{4}-\d{2}-\d{2}"/);
+    expect(fallbackDocument).toContain("agent:\n  tokenBudget: 700");
+    expect(fallbackDocument).toContain('  task: "Start the docs app"');
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
     expect(fallbackDocument).toContain("LLM index: /llms.txt");
     expect(fallbackDocument).toContain(
@@ -1040,6 +1055,9 @@ Config content.
     expect(fallbackDocument).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
+    expect(fallbackDocument).toContain("## Agent Contract");
+    expect(fallbackDocument).toContain("- Framework: `nextjs`");
+    expect(fallbackDocument).toContain("### Verification\n\n- The docs route returns HTTP 200");
     expect(fallbackDocument).not.toContain("<Agent>");
 
     const { GET: getWithSitemapBaseUrl } = createDocsAPI({
