@@ -159,6 +159,8 @@ export default defineDocs({
 - Search (Cmd+K) and AI chat are hidden in the layout.
 - Next.js: with `output: "export"` in `next.config`, the `/api/docs` route is not generated.
 - Do not deploy the docs API route when using static export.
+- `docs agent export --public` always emits a statically truthful discovery document, even if this
+  flag is omitted: server-only search, MCP, feedback, API reference, and OpenAPI are not advertised.
 
 ---
 

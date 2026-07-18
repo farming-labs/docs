@@ -14,6 +14,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
 - Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps, `robots.txt`, `skill.md`, agent discovery, and MCP
+- Complete static Agent Bundles with `docs agent export --public` and deterministic SHA-256 manifests
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 - Agent and reader-facing docs scoring with `docs doctor --agent` and `docs doctor --site`
 
