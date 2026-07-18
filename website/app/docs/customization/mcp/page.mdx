@@ -347,7 +347,9 @@ export const revalidate = false;
 <Callout type="warning" title="@farming-labs/theme/api compatibility">
   `@farming-labs/theme/api` still works if you already rely on it, but prefer
   `@farming-labs/next/api` for Next.js routes going forward. The theme-level path will be
-  deprecated.
+  deprecated. If `mcp.security` is configured, pass the imported live `docsConfig` to
+  `createDocsMCPAPI`; the legacy no-argument form intentionally refuses to reconstruct executable
+  authentication callbacks from source text.
 </Callout>
 
 When `search` is configured, the MCP `search_docs` tool uses that same adapter pipeline too. That

@@ -980,7 +980,22 @@ function readCloudConfig(root: string): DocsConfig["cloud"] | undefined {
   return undefined;
 }
 
-function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
+interface ReadMcpConfigOptions {
+  rejectRuntimeSecurity?: boolean;
+}
+
+const MCP_RUNTIME_SECURITY_CONFIG_ERROR =
+  "MCP security is configured in docs.config, but createDocsMCPAPI cannot load executable " +
+  "security callbacks from source text. Import the live config and call " +
+  "createDocsMCPAPI(docsConfig), or pass an explicit mcp.security.authenticate callback. " +
+  "Refusing to create a public MCP endpoint.";
+
+class McpRuntimeSecurityConfigError extends Error {}
+
+function readMcpConfig(
+  root: string,
+  options: ReadMcpConfigOptions = {},
+): boolean | DocsMcpConfig | undefined {
   for (const ext of FILE_EXTS) {
     const configPath = path.join(root, `docs.config.${ext}`);
     if (!fs.existsSync(configPath)) continue;
@@ -998,6 +1013,16 @@ function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
       const block = extractObjectLiteral(scopedContent, scopedSanitized, "mcp");
       if (!block) continue;
 
+      if (options.rejectRuntimeSecurity) {
+        const blockSanitized = stripCommentsAndStrings(block);
+        const hasSecurity = findTopLevelPropertyIndex(blockSanitized, "security") !== -1;
+        const hasAuthenticate = findTopLevelPropertyIndex(blockSanitized, "authenticate") !== -1;
+
+        if (hasSecurity || hasAuthenticate) {
+          throw new McpRuntimeSecurityConfigError(MCP_RUNTIME_SECURITY_CONFIG_ERROR);
+        }
+      }
+
       return {
         enabled: readBooleanFromBlock(block, "enabled"),
         route: readStringFromBlock(block, "route"),
@@ -1013,7 +1038,8 @@ function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
           getConfigSchema: readBooleanFromBlock(block, "getConfigSchema"),
         },
       };
-    } catch {
+    } catch (error) {
+      if (error instanceof McpRuntimeSecurityConfigError) throw error;
       // fall through
     }
   }
@@ -4490,6 +4516,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const entry = options.entry ?? readEntry(rootDir);
   const appDir = getNextAppDir(rootDir);
   const contentDir = options.contentDir ?? path.join(appDir, entry);
+  const mcpConfig = options.mcp ?? readMcpConfig(rootDir, { rejectRuntimeSecurity: true });
   const navTitle =
     typeof options.nav?.title === "string" && options.nav.title.trim().length > 0
       ? options.nav.title
@@ -4505,7 +4532,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
 
   const handlers = createDocsMcpHttpHandler({
     source,
-    mcp: options.mcp ?? readMcpConfig(rootDir),
+    mcp: mcpConfig,
     search: options.search,
     analytics: options.analytics,
     telemetry: options.telemetry,
