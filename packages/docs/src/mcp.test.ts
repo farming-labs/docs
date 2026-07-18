@@ -872,9 +872,10 @@ sidebar:
           candidateCount?: number;
           budget?: {
             requestedTokens?: number;
-            maxChars?: number;
-            usedChars?: number;
-            estimatedTokens?: number;
+            strategy?: string;
+            maxUtf8Bytes?: number;
+            usedUtf8Bytes?: number;
+            conservativeTokenUpperBound?: number;
           };
           sources?: Array<{
             url?: string;
@@ -892,11 +893,13 @@ sidebar:
     expect(contextPayload.result?.content?.[0]?.text).toBe(context?.context);
     expect(context?.budget).toMatchObject({
       requestedTokens: 256,
-      maxChars: 1_024,
-      usedChars: context?.context?.length,
+      strategy: "utf8-bytes",
+      maxUtf8Bytes: 256,
     });
-    expect(context?.budget?.usedChars).toBeLessThanOrEqual(1_024);
-    expect(context?.budget?.estimatedTokens).toBeLessThanOrEqual(256);
+    const contextUtf8Bytes = new TextEncoder().encode(context?.context ?? "").byteLength;
+    expect(context?.budget?.usedUtf8Bytes).toBe(contextUtf8Bytes);
+    expect(context?.budget?.conservativeTokenUpperBound).toBe(contextUtf8Bytes);
+    expect(contextUtf8Bytes).toBeLessThanOrEqual(256);
     expect(context?.sources).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1026,6 +1029,7 @@ ${"Detailed runtime configuration guidance. ".repeat(60)}`;
       framework: "next",
       version: "v16",
       locale: "en",
+      tokenBudget: 8_000,
     };
     const forwardPayload = await parseMcpPayload<{
       result?: {
@@ -1034,7 +1038,11 @@ ${"Detailed runtime configuration guidance. ".repeat(60)}`;
           context: string;
           candidateCount: number;
           resultCount: number;
-          budget: { requestedTokens: number; maxChars: number };
+          budget: {
+            requestedTokens: number;
+            strategy: string;
+            maxUtf8Bytes: number;
+          };
           sources: Array<{
             pageUrl: string;
             locale?: string;
@@ -1053,7 +1061,7 @@ ${"Detailed runtime configuration guidance. ".repeat(60)}`;
     expect(context).toMatchObject({
       candidateCount: 3,
       resultCount: 3,
-      budget: { requestedTokens: 4_000, maxChars: 16_000 },
+      budget: { requestedTokens: 8_000, strategy: "utf8-bytes", maxUtf8Bytes: 8_000 },
     });
     expect(context?.sources.map((source) => source.pageUrl)).toEqual([
       "/docs/a-general",
@@ -1078,10 +1086,11 @@ ${"Detailed runtime configuration guidance. ".repeat(60)}`;
           context: string;
           budget: {
             requestedTokens: number;
-            maxChars: number;
-            usedChars: number;
-            estimatedTokens: number;
-            remainingChars: number;
+            strategy: string;
+            maxUtf8Bytes: number;
+            usedUtf8Bytes: number;
+            conservativeTokenUpperBound: number;
+            remainingUtf8Bytes: number;
             truncated: boolean;
           };
           sources: Array<{ truncated: boolean }>;
@@ -1099,14 +1108,140 @@ ${"Detailed runtime configuration guidance. ".repeat(60)}`;
     expect(tightPayload.result?.content?.[0]?.text).toBe(tight?.context);
     expect(tight?.budget).toMatchObject({
       requestedTokens: 256,
-      maxChars: 1_024,
-      usedChars: tight?.context.length,
-      remainingChars: 1_024 - (tight?.context.length ?? 0),
+      strategy: "utf8-bytes",
+      maxUtf8Bytes: 256,
       truncated: true,
     });
-    expect(tight?.context.length).toBeLessThanOrEqual(1_024);
-    expect(tight?.budget.estimatedTokens).toBeLessThanOrEqual(256);
+    const tightUtf8Bytes = new TextEncoder().encode(tight?.context ?? "").byteLength;
+    expect(tight?.budget.usedUtf8Bytes).toBe(tightUtf8Bytes);
+    expect(tight?.budget.conservativeTokenUpperBound).toBe(tightUtf8Bytes);
+    expect(tight?.budget.remainingUtf8Bytes).toBe(256 - tightUtf8Bytes);
+    expect(tightUtf8Bytes).toBeLessThanOrEqual(256);
     expect(tight?.sources.at(-1)?.truncated).toBe(true);
+  });
+
+  it("bounds the complete assembled context by UTF-8 bytes for Unicode and code", async () => {
+    const rawContent = `# Unicode budget
+
+## Byte ceiling
+
+你好🙂 ${"多语言内容🙂 ".repeat(80)}
+
+\`\`\`ts
+${'export const value = "你好🙂";\n'.repeat(40)}
+\`\`\`
+`;
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        getPages: () => [
+          {
+            slug: "unicode-budget",
+            url: "/docs/unicode-budget",
+            title: "Unicode budget",
+            content: rawContent,
+            rawContent,
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const payload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          context: string;
+          budget: {
+            requestedTokens: number;
+            strategy: string;
+            maxUtf8Bytes: number;
+            usedUtf8Bytes: number;
+            conservativeTokenUpperBound: number;
+            remainingUtf8Bytes: number;
+          };
+          sources: Array<{ content: string; utf8Bytes: number }>;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "get_context", {
+        query: "byte ceiling",
+        tokenBudget: 256,
+      }),
+    );
+    const result = payload.result?.structuredContent;
+    const contextBytes = new TextEncoder().encode(result?.context ?? "").byteLength;
+
+    expectSuccessfulStructuredTextResult(payload);
+    expect(result?.budget).toMatchObject({
+      requestedTokens: 256,
+      strategy: "utf8-bytes",
+      maxUtf8Bytes: 256,
+      usedUtf8Bytes: contextBytes,
+      conservativeTokenUpperBound: contextBytes,
+      remainingUtf8Bytes: 256 - contextBytes,
+    });
+    expect(contextBytes).toBeLessThanOrEqual(256);
+    expect(result?.context).not.toContain("�");
+    expect(result?.sources[0]?.utf8Bytes).toBe(
+      new TextEncoder().encode(result?.sources[0]?.content ?? "").byteLength,
+    );
+
+    const defaultPayload = await parseMcpPayload<{
+      result?: { structuredContent?: { budget?: Record<string, unknown> } };
+    }>(await callMcpTool(handlers, "get_context", { query: "byte ceiling" }));
+    expect(defaultPayload.result?.structuredContent?.budget).toMatchObject({
+      requestedTokens: 4_000,
+      maxUtf8Bytes: 4_000,
+    });
+  });
+
+  it("caps section-not-found errors and includes only headings that fit", async () => {
+    const rawContent = Array.from(
+      { length: 20 },
+      (_, index) => `## Available heading ${index + 1}\n\nDetails ${index + 1}.`,
+    ).join("\n\n");
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        getPages: () => [
+          {
+            slug: "sections",
+            url: "/docs/sections",
+            title: "Sections",
+            content: rawContent,
+            rawContent,
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const payload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        isError?: boolean;
+      };
+    }>(
+      await callMcpTool(handlers, "read_page", {
+        path: "/docs/sections",
+        section: "missing-heading",
+        maxChars: 256,
+      }),
+    );
+    const text = payload.result?.content?.[0]?.text ?? "";
+    const error = JSON.parse(text) as {
+      error?: string;
+      availableSections?: Array<{ title?: string; anchor?: string }>;
+      truncated?: boolean;
+    };
+
+    expect(payload.result?.isError).toBe(true);
+    expect(text.length).toBeLessThanOrEqual(256);
+    expect(error).toMatchObject({ error: "section_not_found", truncated: true });
+    expect(error.availableSections?.length).toBeGreaterThan(0);
+    expect(error.availableSections?.[0]).toEqual({
+      title: "Available heading 1",
+      anchor: "available-heading-1",
+    });
   });
 
   it("serves stateless MCP requests without requiring sticky sessions", async () => {

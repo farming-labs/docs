@@ -222,10 +222,12 @@ path such as `mcp.tools.getConfigSchema`, or `query` for keyword filtering.
 
 `get_context` accepts `query`, optional `framework`, `version`, and `locale`, plus a `tokenBudget`
 from `256` to `32000` (default `4000`). It returns deterministic section chunks with source anchors
-and token/character accounting. Pages without a framework/version/locale scope remain eligible as
-general docs, while conflicting metadata is excluded. Equal scores use source URL ordering, and
-context is hard-limited to `tokenBudget * 4` characters. Successful built-in tools also return
-validated MCP `structuredContent` while preserving text output for compatibility.
+and conservative UTF-8 byte accounting. Pages without a framework/version/locale scope remain
+eligible as general docs, while conflicting metadata is excluded. Equal scores use source URL
+ordering. The complete assembled context, including source headers and separators, is limited to
+`tokenBudget` UTF-8 bytes; `conservativeTokenUpperBound` reports that dependency-free upper bound.
+Successful built-in tools also return validated MCP `structuredContent` while preserving text
+output for compatibility.
 
 when a snippet has a target file, framework, package manager, or is safe to copy as a complete
 example. This metadata is for markdown/MCP consumers and does not require a UI change.

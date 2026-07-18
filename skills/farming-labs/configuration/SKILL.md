@@ -812,10 +812,12 @@ specific top-level or nested path, or `query` for keyword filtering.
 
 `get_context` returns deterministic section-level context for a query. It accepts optional
 `framework`, `version`, and `locale` scopes plus `tokenBudget` (default `4000`, minimum `256`,
-maximum `32000`) and reports source anchors, characters, and estimated tokens. Pages with conflicting
-framework/version/locale metadata are excluded; pages that omit a scope field remain eligible as
-general docs. Equal-score results use source URL ordering, and returned context never exceeds
-`tokenBudget * 4` characters. `read_page` also accepts optional `section` and `maxChars` arguments.
+maximum `32000`) and reports source anchors plus conservative UTF-8 byte accounting. Pages with
+conflicting framework/version/locale metadata are excluded; pages that omit a scope field remain
+eligible as general docs. Equal-score results use source URL ordering. The complete assembled
+context never exceeds `tokenBudget` UTF-8 bytes, and `conservativeTokenUpperBound` exposes that
+dependency-free upper bound. `read_page` also accepts optional `section` and `maxChars` arguments;
+the limit applies to section-not-found output and its available-heading list too.
 Successful built-in tool calls expose validated `structuredContent` while retaining their text
 response for older MCP clients.
 

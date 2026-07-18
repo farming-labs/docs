@@ -64,6 +64,54 @@ Second section.
     ]);
   });
 
+  it("uses CommonMark headings and never treats fenced shell comments as headings", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Advanced setup",
+        url: "/docs/advanced",
+        content: "Install the CLI and verify setup.",
+        rawContent: `   ## [Install the \`CLI\`](https://example.com/cli)
+
+\`\`\`bash
+# this is a shell comment, not a heading
+echo ready
+\`\`\`
+
+[Verify *setup*](https://example.com/verify)
+-------------------------------------------
+
+## Repeat
+
+First.
+
+## Repeat
+
+Second.
+`,
+      },
+    ]);
+
+    expect(documents.filter((item) => item.type === "heading")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          section: "Install the CLI",
+          url: "/docs/advanced#install-the-cli",
+          content: expect.stringContaining("echo ready"),
+        }),
+        expect.objectContaining({
+          section: "Verify setup",
+          url: "/docs/advanced#verify-setup",
+        }),
+        expect.objectContaining({ section: "Repeat", url: "/docs/advanced#repeat" }),
+        expect.objectContaining({ section: "Repeat", url: "/docs/advanced#repeat-1" }),
+      ]),
+    );
+    expect(
+      documents.some((item) => item.url.endsWith("#this-is-a-shell-comment-not-a-heading")),
+    ).toBe(false);
+    expect(documents.some((item) => item.section?.includes("shell comment"))).toBe(false);
+  });
+
   it("strips image markdown without leaving a leading bang", () => {
     const documents = buildDocsSearchDocuments([
       {
@@ -685,6 +733,46 @@ Client plugin setup.
       "/docs/plugins#configure",
       "/docs/plugins#configure-1",
     ]);
+    expect(context.results[0]?.contextContent).toContain("Server plugin setup.");
+    expect(context.results[0]?.contextContent).not.toContain("Client plugin setup.");
+    expect(context.results[1]?.contextContent).toContain("Client plugin setup.");
+  });
+
+  it("skips anchored search hits that do not resolve instead of hydrating the whole page", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Authentication",
+          url: "/docs/authentication",
+          content: "Sensitive whole-page fallback content.",
+          rawContent: `# Authentication
+
+Sensitive whole-page fallback content.
+`,
+        },
+      ],
+      query: "external-only-needle",
+      search: createCustomSearchAdapter({
+        name: "stale-anchor",
+        async search() {
+          return [
+            {
+              id: "stale-anchor",
+              url: "/docs/authentication#removed-section",
+              content: "Authentication — Removed section",
+              type: "heading",
+              section: "Removed section",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(context.searchResults).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "stale-anchor" })]),
+    );
+    expect(context.results).toEqual([]);
+    expect(context.context).not.toContain("Sensitive whole-page fallback content.");
   });
 
   it("supplements stale external search results with local section ranking", async () => {

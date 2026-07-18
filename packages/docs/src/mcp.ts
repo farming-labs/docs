@@ -9,6 +9,7 @@ import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
+import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import {
   createDocsAgentTraceContext,
@@ -147,8 +148,10 @@ export interface DocsMcpContextSource {
   tags?: string[];
   score?: number;
   content: string;
+  /** JavaScript string length for this source's content only. */
   chars: number;
-  estimatedTokens: number;
+  /** Encoded UTF-8 bytes for this source's content only. */
+  utf8Bytes: number;
   truncated: boolean;
 }
 
@@ -160,12 +163,17 @@ export interface DocsMcpContextResult {
     locale?: string;
   };
   budget: {
+    /** Caller-provided token target; retained as the stable input contract. */
     requestedTokens: number;
-    maxChars: number;
-    usedChars: number;
-    estimatedTokens: number;
-    remainingChars: number;
-    remainingTokens: number;
+    /** Dependency-free conservative accounting strategy. */
+    strategy: "utf8-bytes";
+    /** Hard UTF-8 byte ceiling for the complete assembled `context`. */
+    maxUtf8Bytes: number;
+    /** Exact UTF-8 bytes used by the complete assembled `context`. */
+    usedUtf8Bytes: number;
+    /** Conservative token-count upper bound derived from `usedUtf8Bytes`. */
+    conservativeTokenUpperBound: number;
+    remainingUtf8Bytes: number;
     truncated: boolean;
   };
   resultCount: number;
@@ -257,7 +265,7 @@ const DEFAULT_MCP_NAME = "@farming-labs/docs";
 const DEFAULT_MCP_CONTEXT_TOKEN_BUDGET = 4_000;
 const MIN_MCP_CONTEXT_TOKEN_BUDGET = 256;
 const MAX_MCP_CONTEXT_TOKEN_BUDGET = 32_000;
-const APPROXIMATE_CHARS_PER_TOKEN = 4;
+const UTF8_ENCODER = new TextEncoder();
 
 const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
   {
@@ -656,7 +664,8 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
             name: "getContext",
             type: "boolean",
             default: true,
-            description: "Expose the deterministic, token-budgeted get_context tool.",
+            description:
+              "Expose deterministic get_context retrieval with a conservative UTF-8 byte ceiling.",
           },
         ],
       },
@@ -1008,7 +1017,7 @@ const contextSourceOutputSchema = z.object({
   score: z.number().optional(),
   content: z.string(),
   chars: z.number().int().nonnegative(),
-  estimatedTokens: z.number().int().nonnegative(),
+  utf8Bytes: z.number().int().nonnegative(),
   truncated: z.boolean(),
 });
 const contextOutputSchema = z.object({
@@ -1020,11 +1029,11 @@ const contextOutputSchema = z.object({
   }),
   budget: z.object({
     requestedTokens: z.number().int().positive(),
-    maxChars: z.number().int().positive(),
-    usedChars: z.number().int().nonnegative(),
-    estimatedTokens: z.number().int().nonnegative(),
-    remainingChars: z.number().int().nonnegative(),
-    remainingTokens: z.number().int().nonnegative(),
+    strategy: z.literal("utf8-bytes"),
+    maxUtf8Bytes: z.number().int().positive(),
+    usedUtf8Bytes: z.number().int().nonnegative(),
+    conservativeTokenUpperBound: z.number().int().nonnegative(),
+    remainingUtf8Bytes: z.number().int().nonnegative(),
     truncated: z.boolean(),
   }),
   resultCount: z.number().int().nonnegative(),
@@ -1752,7 +1761,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       {
         title: "Get budgeted docs context",
         description:
-          "Build deterministic, section-level documentation context for a query within a token budget, with source URLs and accounting metadata.",
+          "Build deterministic, section-level documentation context for a query within a conservative UTF-8 byte ceiling derived from the requested token budget, with source URLs and accounting metadata.",
         inputSchema: getContextInputSchema,
         outputSchema: contextOutputSchema,
         annotations: { readOnlyHint: true },
@@ -1804,8 +1813,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               framework,
               version,
               tokenBudget,
-              usedChars: result.budget.usedChars,
-              estimatedTokens: result.budget.estimatedTokens,
+              usedUtf8Bytes: result.budget.usedUtf8Bytes,
+              conservativeTokenUpperBound: result.budget.conservativeTokenUpperBound,
               truncated: result.budget.truncated,
               resultCount: result.resultCount,
               durationMs: elapsed,
@@ -1826,8 +1835,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             outputPreview: {
               resultCount: result.resultCount,
               candidateCount: result.candidateCount,
-              chars: result.budget.usedChars,
-              estimatedTokens: result.budget.estimatedTokens,
+              utf8Bytes: result.budget.usedUtf8Bytes,
+              conservativeTokenUpperBound: result.budget.conservativeTokenUpperBound,
               truncated: result.budget.truncated,
             },
             metadata: { tool: "get_context" },
@@ -1958,13 +1967,19 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             : undefined;
 
           if (section && !selectedSection) {
-            const sourceSections = listDocsMarkdownSections(sectionDocument);
+            const sourceSections = parseDocsMarkdownSections(sectionDocument);
             const availableSections = (
-              sourceSections.length > 0 ? sourceSections : listDocsMarkdownSections(fullDocument)
+              sourceSections.length > 0 ? sourceSections : parseDocsMarkdownSections(fullDocument)
             ).map((item) => ({
               title: item.title,
               anchor: item.anchor,
             }));
+            const errorText = renderBoundedDocsMcpSectionError({
+              requestedSection: section,
+              pageUrl: page.url,
+              availableSections,
+              maxChars,
+            });
             const elapsed = durationMs(startedAt);
             trackMcpTool("read_page", { locale, resultCount: 0 });
             await emitDocsAgentTraceEvent(options.observability, {
@@ -1986,14 +2001,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               content: [
                 {
                   type: "text",
-                  text: JSON.stringify(
-                    {
-                      error: `No section matched "${section}" in "${page.url}".`,
-                      availableSections,
-                    },
-                    null,
-                    2,
-                  ),
+                  text: errorText,
                 },
               ],
               isError: true,
@@ -3230,109 +3238,6 @@ function getCodeExampleSearchText(example: DocsMcpCodeExample): string {
     .join("\n");
 }
 
-interface DocsMarkdownSection {
-  title: string;
-  anchor: string;
-  level: number;
-  content: string;
-}
-
-function listDocsMarkdownSections(markdown: string): DocsMarkdownSection[] {
-  const lines = markdown.split("\n");
-  const headings: Array<{
-    title: string;
-    anchor: string;
-    level: number;
-    start: number;
-  }> = [];
-  const headingCounts = new Map<string, number>();
-  let openFence: string | undefined;
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const trimmed = lines[index].trimStart();
-    const fence = trimmed.match(/^(`{3,}|~{3,})/u)?.[1];
-
-    if (fence) {
-      if (!openFence) {
-        openFence = fence;
-      } else if (fence[0] === openFence[0] && fence.length >= openFence.length) {
-        openFence = undefined;
-      }
-      continue;
-    }
-
-    if (openFence) continue;
-
-    const match = lines[index].match(/^(#{1,6})\s+(.+?)\s*#*\s*$/u);
-    if (!match) continue;
-
-    const title = match[2].replace(/[`*_~]/gu, "").trim();
-    const baseAnchor = slugifyDocsHeading(title) || `section-${headings.length}`;
-    const seen = headingCounts.get(baseAnchor) ?? 0;
-    headingCounts.set(baseAnchor, seen + 1);
-    headings.push({
-      title,
-      anchor: seen === 0 ? baseAnchor : `${baseAnchor}-${seen}`,
-      level: match[1].length,
-      start: index,
-    });
-  }
-
-  return headings.map((heading, index) => {
-    const next = headings.slice(index + 1).find((candidate) => candidate.level <= heading.level);
-    const end = next?.start ?? lines.length;
-    return {
-      title: heading.title,
-      anchor: heading.anchor,
-      level: heading.level,
-      content: lines.slice(heading.start, end).join("\n").trim(),
-    };
-  });
-}
-
-function findDocsMarkdownSection(
-  markdown: string,
-  requestedSection: string,
-): DocsMarkdownSection | undefined {
-  const selector = normalizeDocsSectionSelector(requestedSection);
-  if (!selector) return undefined;
-
-  return listDocsMarkdownSections(markdown).find(
-    (section) =>
-      normalizeDocsSectionSelector(section.title) === selector || section.anchor === selector,
-  );
-}
-
-function normalizeDocsSectionSelector(value: string): string {
-  let selector = value.trim();
-  const hashIndex = selector.lastIndexOf("#");
-  if (hashIndex >= 0) selector = selector.slice(hashIndex + 1);
-
-  try {
-    selector = decodeURIComponent(selector);
-  } catch {
-    // Keep the original selector when it is not valid URL encoding.
-  }
-
-  return selector
-    .replace(/^#+/u, "")
-    .replace(/[`*_~]/gu, "")
-    .trim()
-    .toLowerCase();
-}
-
-function slugifyDocsHeading(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[`'"‘’“”]/gu, "")
-    .replace(/&/gu, " and ")
-    .replace(/[^a-z0-9\s-]/gu, "")
-    .replace(/\s+/gu, "-")
-    .replace(/-+/gu, "-")
-    .replace(/^-|-$/gu, "");
-}
-
 function limitDocsMcpText(value: string, maxChars?: number): { text: string; truncated: boolean } {
   if (maxChars === undefined || value.length <= maxChars) {
     return { text: value, truncated: false };
@@ -3354,8 +3259,86 @@ function limitDocsMcpText(value: string, maxChars?: number): { text: string; tru
   };
 }
 
-function estimateDocsMcpTokens(chars: number): number {
-  return chars === 0 ? 0 : Math.ceil(chars / APPROXIMATE_CHARS_PER_TOKEN);
+function docsMcpUtf8Bytes(value: string): number {
+  return UTF8_ENCODER.encode(value).byteLength;
+}
+
+function limitDocsMcpUtf8Bytes(
+  value: string,
+  maxUtf8Bytes: number,
+): { text: string; truncated: boolean } {
+  if (docsMcpUtf8Bytes(value) <= maxUtf8Bytes) return { text: value, truncated: false };
+  if (maxUtf8Bytes <= 0) return { text: "", truncated: true };
+
+  const suffix = "…";
+  const suffixBytes = docsMcpUtf8Bytes(suffix);
+  const availableBytes = Math.max(0, maxUtf8Bytes - suffixBytes);
+  let selected = "";
+  let selectedBytes = 0;
+
+  for (const character of value) {
+    const characterBytes = docsMcpUtf8Bytes(character);
+    if (selectedBytes + characterBytes > availableBytes) break;
+    selected += character;
+    selectedBytes += characterBytes;
+  }
+
+  const paragraphBreak = selected.lastIndexOf("\n\n");
+  const lineBreak = selected.lastIndexOf("\n");
+  const preferredBreak = paragraphBreak >= selected.length * 0.6 ? paragraphBreak : lineBreak;
+  if (preferredBreak >= selected.length * 0.6) selected = selected.slice(0, preferredBreak);
+
+  if (suffixBytes > maxUtf8Bytes) {
+    return { text: ".".repeat(maxUtf8Bytes), truncated: true };
+  }
+
+  return { text: `${selected.trimEnd()}${suffix}`, truncated: true };
+}
+
+function renderBoundedDocsMcpSectionError(options: {
+  requestedSection: string;
+  pageUrl: string;
+  availableSections: Array<{ title: string; anchor: string }>;
+  maxChars?: number;
+}): string {
+  const maxChars = options.maxChars ?? Number.POSITIVE_INFINITY;
+  const shorten = (value: string, max: number) => limitDocsMcpText(value, max).text;
+  const availableSections: Array<{ title: string; anchor: string }> = [];
+  const base = {
+    error: "section_not_found",
+    message: `No section matched "${shorten(options.requestedSection, 80)}" in "${shorten(
+      options.pageUrl,
+      80,
+    )}".`,
+    availableSections,
+    truncated: false,
+  };
+  const serialize = () => JSON.stringify(base, null, 2);
+
+  for (const section of options.availableSections) {
+    availableSections.push({
+      title: shorten(section.title, 80),
+      anchor: shorten(section.anchor, 80),
+    });
+    if (serialize().length > maxChars) {
+      availableSections.pop();
+      base.truncated = true;
+      break;
+    }
+  }
+
+  if (availableSections.length < options.availableSections.length) base.truncated = true;
+  if (serialize().length <= maxChars) return serialize();
+
+  const minimal = {
+    error: "section_not_found",
+    message: "The requested section was not found.",
+    availableSections: [] as Array<{ title: string; anchor: string }>,
+    truncated: true,
+  };
+  const minimalText = JSON.stringify(minimal);
+  if (minimalText.length <= maxChars) return minimalText;
+  return JSON.stringify({ error: "section_not_found" });
 }
 
 function toStructuredDocsMcpPage(page: DocsMcpPage) {
@@ -3506,52 +3489,62 @@ async function buildDocsMcpContext(options: {
     return true;
   });
 
-  const maxChars = options.tokenBudget * APPROXIMATE_CHARS_PER_TOKEN;
-  const separator = "\n\n---\n\n";
-  const blocks: string[] = [];
-  const sources: DocsMcpContextSource[] = [];
-
-  for (const result of candidates) {
+  const resolvedCandidates = candidates.flatMap((result) => {
     const resultPageUrl = getDocsMcpResultPageUrl(result.url);
     const page = findDocsPage(scopedPages, resultPageUrl, options.entry);
-    if (!page) continue;
+    if (!page) return [];
 
     const document = getDocsMcpSourceMarkdown(page);
     const resultAnchor = getDocsMcpResultAnchor(result.url);
     const selectedSection = resultAnchor
-      ? (findDocsMarkdownSection(document, resultAnchor) ??
-        (result.section ? findDocsMarkdownSection(document, result.section) : undefined))
+      ? findDocsMarkdownSection(document, resultAnchor)
       : result.section
         ? findDocsMarkdownSection(document, result.section)
         : undefined;
-    const rawContent = (selectedSection?.content ?? document).trim();
-    if (!rawContent) continue;
 
-    const anchor = resultAnchor ?? selectedSection?.anchor;
+    // A section result must resolve to the shared parser's real anchor. Never attach a
+    // stale or invented fragment to whole-page content.
+    if ((resultAnchor || result.section) && !selectedSection) return [];
+
+    const rawContent = (selectedSection?.content ?? document).trim();
+    if (!rawContent) return [];
+
+    return [{ result, page, selectedSection, rawContent }];
+  });
+
+  const maxUtf8Bytes = options.tokenBudget;
+  const separator = "\n\n---\n\n";
+  const separatorUtf8Bytes = docsMcpUtf8Bytes(separator);
+  const blocks: string[] = [];
+  const sources: DocsMcpContextSource[] = [];
+  let usedUtf8Bytes = 0;
+
+  for (const { result, page, selectedSection, rawContent } of resolvedCandidates) {
+    const anchor = selectedSection?.anchor;
     const sourceUrl = anchor ? `${page.url}#${anchor}` : page.url;
     const headerLines = [`## ${page.title}`, `Source: ${sourceUrl}`];
-    if (selectedSection?.title ?? result.section) {
-      headerLines.push(`Section: ${selectedSection?.title ?? result.section}`);
-    }
+    if (selectedSection?.title) headerLines.push(`Section: ${selectedSection.title}`);
     if (page.framework) headerLines.push(`Framework: ${page.framework}`);
     if (page.version) headerLines.push(`Version: ${page.version}`);
     if (page.locale) headerLines.push(`Locale: ${page.locale}`);
     const header = headerLines.join("\n");
-    const separatorChars = blocks.length === 0 ? 0 : separator.length;
-    const availableForBlock = maxChars - blocks.join(separator).length - separatorChars;
-    const availableForContent = availableForBlock - header.length - 2;
+    const separatorBytes = blocks.length === 0 ? 0 : separatorUtf8Bytes;
+    const headerBytes = docsMcpUtf8Bytes(`${header}\n\n`);
+    const availableForContent = maxUtf8Bytes - usedUtf8Bytes - separatorBytes - headerBytes;
     if (availableForContent <= 0) break;
 
-    const limited = limitDocsMcpText(rawContent, availableForContent);
+    const limited = limitDocsMcpUtf8Bytes(rawContent, availableForContent);
     if (!limited.text) break;
     const block = `${header}\n\n${limited.text}`;
+    const blockUtf8Bytes = docsMcpUtf8Bytes(block);
     blocks.push(block);
+    usedUtf8Bytes += separatorBytes + blockUtf8Bytes;
     sources.push({
       id: result.id,
       title: page.title,
       pageUrl: page.url,
       url: sourceUrl,
-      section: selectedSection?.title ?? result.section,
+      section: selectedSection?.title,
       anchor,
       sourcePath: page.sourcePath,
       lastModified: page.lastModified,
@@ -3562,7 +3555,7 @@ async function buildDocsMcpContext(options: {
       score: result.score,
       content: limited.text,
       chars: limited.text.length,
-      estimatedTokens: estimateDocsMcpTokens(limited.text.length),
+      utf8Bytes: docsMcpUtf8Bytes(limited.text),
       truncated: limited.truncated,
     });
 
@@ -3570,9 +3563,10 @@ async function buildDocsMcpContext(options: {
   }
 
   const context = blocks.join(separator);
-  const remainingChars = Math.max(0, maxChars - context.length);
+  usedUtf8Bytes = docsMcpUtf8Bytes(context);
+  const remainingUtf8Bytes = Math.max(0, maxUtf8Bytes - usedUtf8Bytes);
   const truncated =
-    sources.some((source) => source.truncated) || sources.length < candidates.length;
+    sources.some((source) => source.truncated) || sources.length < resolvedCandidates.length;
 
   return {
     query: options.query,
@@ -3583,15 +3577,15 @@ async function buildDocsMcpContext(options: {
     },
     budget: {
       requestedTokens: options.tokenBudget,
-      maxChars,
-      usedChars: context.length,
-      estimatedTokens: estimateDocsMcpTokens(context.length),
-      remainingChars,
-      remainingTokens: Math.floor(remainingChars / APPROXIMATE_CHARS_PER_TOKEN),
+      strategy: "utf8-bytes",
+      maxUtf8Bytes,
+      usedUtf8Bytes,
+      conservativeTokenUpperBound: usedUtf8Bytes,
+      remainingUtf8Bytes,
       truncated,
     },
     resultCount: sources.length,
-    candidateCount: candidates.length,
+    candidateCount: resolvedCandidates.length,
     context,
     sources,
   };
