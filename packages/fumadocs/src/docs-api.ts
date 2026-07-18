@@ -4479,7 +4479,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 /**
  * Create MCP route handlers for `/api/docs/mcp`.
  *
- * Returns `{ GET, POST, DELETE }` for use in a Next.js route handler.
+ * Returns `{ GET, POST, DELETE, OPTIONS }` for use in a Next.js route handler.
  */
 /**
  * @deprecated Prefer `createDocsMCPAPI` from `@farming-labs/next/api` in Next.js apps.
@@ -4523,6 +4523,9 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     },
     DELETE(request: Request) {
       return handlers.DELETE({ request });
+    },
+    OPTIONS(request: Request) {
+      return handlers.OPTIONS({ request });
     },
   };
 }

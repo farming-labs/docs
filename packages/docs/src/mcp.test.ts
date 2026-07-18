@@ -33,6 +33,21 @@ async function parseMcpPayload<T>(response: Response): Promise<T> {
   return JSON.parse(payload) as T;
 }
 
+const DEFAULT_RESOLVED_MCP_CORS = {
+  enabled: true,
+  allowedHeaders: [
+    "Accept",
+    "Authorization",
+    "Content-Type",
+    "Last-Event-ID",
+    "MCP-Protocol-Version",
+    "MCP-Session-Id",
+  ],
+  exposedHeaders: ["MCP-Protocol-Version", "MCP-Session-Id", "WWW-Authenticate"],
+  allowCredentials: false,
+  maxAgeSeconds: 600,
+};
+
 describe("resolveDocsMcpConfig", () => {
   it("enables MCP by default when config is omitted", () => {
     expect(resolveDocsMcpConfig()).toEqual({
@@ -53,6 +68,7 @@ describe("resolveDocsMcpConfig", () => {
         allowedOrigins: "same-origin",
         authenticate: undefined,
         maxBodyBytes: 1_048_576,
+        cors: DEFAULT_RESOLVED_MCP_CORS,
       },
     });
   });
@@ -76,6 +92,7 @@ describe("resolveDocsMcpConfig", () => {
         allowedOrigins: "same-origin",
         authenticate: undefined,
         maxBodyBytes: 1_048_576,
+        cors: DEFAULT_RESOLVED_MCP_CORS,
       },
     });
   });
@@ -103,6 +120,7 @@ describe("resolveDocsMcpConfig", () => {
         allowedOrigins: "same-origin",
         authenticate: undefined,
         maxBodyBytes: 1_048_576,
+        cors: DEFAULT_RESOLVED_MCP_CORS,
       },
     });
   });
@@ -122,13 +140,35 @@ describe("resolveDocsMcpConfig", () => {
       allowedOrigins: ["https://app.example.com"],
       authenticate,
       maxBodyBytes: 4096,
+      cors: DEFAULT_RESOLVED_MCP_CORS,
     });
 
     expect(resolveDocsMcpConfig({ security: { maxBodyBytes: 0 } }).security).toMatchObject({
       allowedOrigins: "same-origin",
       authenticate: undefined,
       maxBodyBytes: 1_048_576,
+      cors: DEFAULT_RESOLVED_MCP_CORS,
     });
+
+    expect(
+      resolveDocsMcpConfig({
+        security: {
+          cors: {
+            allowedHeaders: ["X-API-Key", "content-type", "bad\nheader"],
+            exposedHeaders: ["X-Docs-Version"],
+            allowCredentials: true,
+            maxAgeSeconds: 12.9,
+          },
+        },
+      }).security?.cors,
+    ).toMatchObject({
+      enabled: true,
+      allowedHeaders: expect.arrayContaining(["Content-Type", "X-API-Key"]),
+      exposedHeaders: expect.arrayContaining(["MCP-Session-Id", "X-Docs-Version"]),
+      allowCredentials: true,
+      maxAgeSeconds: 12,
+    });
+    expect(resolveDocsMcpConfig({ security: { cors: false } }).security?.cors.enabled).toBe(false);
   });
 
   it("normalizes custom routes", () => {
@@ -773,6 +813,10 @@ sidebar:
       }),
     });
     expect(sameOriginResponse.status).toBe(200);
+    expect(sameOriginResponse.headers.get("access-control-allow-origin")).toBe(
+      "https://docs.example.com",
+    );
+    expect(sameOriginResponse.headers.get("access-control-allow-credentials")).toBeNull();
 
     const allowedOriginHandlers = createDocsMcpHttpHandler({
       source,
@@ -788,6 +832,9 @@ sidebar:
       }),
     });
     expect(allowedOriginResponse.status).toBe(200);
+    expect(allowedOriginResponse.headers.get("access-control-allow-origin")).toBe(
+      "https://app.example.com",
+    );
   });
 
   it("keeps HTTP MCP public until an authentication callback is configured", async () => {
@@ -823,7 +870,12 @@ sidebar:
     const rootDir = createTempDocsProject();
     const filesystemSource = createFilesystemDocsMcpSource({ rootDir });
     const seenContexts: unknown[] = [];
+    const originPolicyBodies: string[] = [];
     const authenticatedBodies: string[] = [];
+    const allowedOrigins = vi.fn(async ({ request }) => {
+      originPolicyBodies.push(await request.text());
+      return true;
+    });
     const authenticate = vi.fn(async ({ request, pathname }) => {
       authenticatedBodies.push(await request.text());
       if (request.headers.get("authorization") !== "Bearer valid") return null;
@@ -845,7 +897,13 @@ sidebar:
           return filesystemSource.getNavigation(locale);
         },
       },
-      mcp: { security: { authenticate } },
+      mcp: {
+        security: {
+          allowedOrigins,
+          authenticate,
+          cors: { allowCredentials: true },
+        },
+      },
     });
     const body = JSON.stringify({
       jsonrpc: "2.0",
@@ -861,6 +919,7 @@ sidebar:
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
       "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+      origin: "https://app.example.com",
     };
 
     const unauthorized = await handlers.POST({
@@ -871,6 +930,8 @@ sidebar:
       }),
     });
     expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get("access-control-allow-origin")).toBe("https://app.example.com");
+    expect(unauthorized.headers.get("access-control-allow-credentials")).toBe("true");
     await expect(unauthorized.json()).resolves.toEqual({ error: "Unauthorized" });
     expect(seenContexts).toHaveLength(0);
 
@@ -882,7 +943,12 @@ sidebar:
       }),
     });
     expect(authorized.status).toBe(200);
+    expect(originPolicyBodies).toEqual([body, body]);
     expect(authenticatedBodies).toEqual([body, body]);
+    expect(authorized.headers.get("access-control-allow-origin")).toBe("https://app.example.com");
+    expect(authorized.headers.get("access-control-allow-credentials")).toBe("true");
+    expect(authorized.headers.get("access-control-expose-headers")).toContain("MCP-Session-Id");
+    expect(authorized.headers.get("vary")).toContain("Origin");
     expect(authenticate).toHaveBeenLastCalledWith(
       expect.objectContaining({ pathname: "/api/docs/mcp" }),
     );
@@ -941,25 +1007,125 @@ sidebar:
 
   it("rejects POST bodies over the configured byte limit", async () => {
     const rootDir = createTempDocsProject();
+    const allowedOrigins = vi.fn(async ({ request }) => {
+      await request.text();
+      return true;
+    });
+    const authenticate = vi.fn(async ({ request }) => {
+      await request.text();
+      return { id: "should-not-run" };
+    });
     const handlers = createDocsMcpHttpHandler({
       source: createFilesystemDocsMcpSource({ rootDir }),
-      mcp: { security: { maxBodyBytes: 32 } },
+      mcp: {
+        security: {
+          maxBodyBytes: 32,
+          allowedOrigins,
+          authenticate,
+        },
+      },
     });
 
+    const request = new Request("http://localhost/api/docs/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://app.example.com",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+    });
+    expect(request.headers.has("content-length")).toBe(false);
+
     const response = await handlers.POST({
-      request: new Request("http://localhost/api/docs/mcp", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
-      }),
+      request,
     });
 
     expect(response.status).toBe(413);
+    expect(allowedOrigins).not.toHaveBeenCalled();
+    expect(authenticate).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toMatchObject({
       error: {
         data: { reason: "request_too_large", maxBodyBytes: 32 },
       },
     });
+  });
+
+  it("handles browser CORS preflight without authenticating", async () => {
+    const rootDir = createTempDocsProject();
+    const authenticate = vi.fn(async () => null);
+    const handlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({ rootDir }),
+      mcp: {
+        security: {
+          allowedOrigins: ["https://app.example.com"],
+          authenticate,
+          cors: {
+            allowedHeaders: ["X-API-Key"],
+            exposedHeaders: ["X-Docs-Version"],
+            allowCredentials: true,
+            maxAgeSeconds: 120,
+          },
+        },
+      },
+    });
+
+    const response = await handlers.OPTIONS({
+      request: new Request("https://docs.example.com/api/docs/mcp", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://app.example.com",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "authorization, content-type, x-api-key",
+        },
+      }),
+    });
+
+    expect(response.status).toBe(204);
+    expect(authenticate).not.toHaveBeenCalled();
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://app.example.com");
+    expect(response.headers.get("access-control-allow-origin")).not.toBe("*");
+    expect(response.headers.get("access-control-allow-credentials")).toBe("true");
+    expect(response.headers.get("access-control-allow-methods")).toBe("GET, POST, DELETE, OPTIONS");
+    expect(response.headers.get("access-control-allow-headers")).toContain("X-API-Key");
+    expect(response.headers.get("access-control-max-age")).toBe("120");
+    expect(response.headers.get("vary")).toContain("Origin");
+    expect(response.headers.get("vary")).toContain("Access-Control-Request-Method");
+    expect(response.headers.get("vary")).toContain("Access-Control-Request-Headers");
+
+    const rejected = await handlers.OPTIONS({
+      request: new Request("https://docs.example.com/api/docs/mcp", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://app.example.com",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "x-not-allowed",
+        },
+      }),
+    });
+    expect(rejected.status).toBe(403);
+    expect(rejected.headers.get("access-control-allow-origin")).toBe("https://app.example.com");
+    expect(authenticate).not.toHaveBeenCalled();
+
+    const corsDisabledHandlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({ rootDir }),
+      mcp: {
+        security: {
+          allowedOrigins: ["https://app.example.com"],
+          cors: false,
+        },
+      },
+    });
+    const corsDisabled = await corsDisabledHandlers.OPTIONS({
+      request: new Request("https://docs.example.com/api/docs/mcp", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://app.example.com",
+          "access-control-request-method": "POST",
+        },
+      }),
+    });
+    expect(corsDisabled.status).toBe(204);
+    expect(corsDisabled.headers.get("access-control-allow-origin")).toBeNull();
   });
 
   it("serves stateless MCP requests without requiring sticky sessions", async () => {

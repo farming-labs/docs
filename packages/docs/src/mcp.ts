@@ -27,6 +27,7 @@ import type {
   DocsMcpAuthPrincipal,
   DocsMcpAuthenticate,
   DocsMcpConfig,
+  DocsMcpCorsConfig,
   DocsObservabilityConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
@@ -176,6 +177,15 @@ export interface DocsMcpResolvedSecurityConfig {
   allowedOrigins: DocsMcpAllowedOrigins;
   authenticate?: DocsMcpAuthenticate;
   maxBodyBytes: number;
+  cors: DocsMcpResolvedCorsConfig;
+}
+
+export interface DocsMcpResolvedCorsConfig {
+  enabled: boolean;
+  allowedHeaders: string[];
+  exposedHeaders: string[];
+  allowCredentials: boolean;
+  maxAgeSeconds: number;
 }
 
 export interface DocsMcpResolvedConfig {
@@ -200,6 +210,7 @@ export interface DocsMcpHttpHandlers {
   GET: (context: { request: Request }) => Promise<Response>;
   POST: (context: { request: Request }) => Promise<Response>;
   DELETE: (context: { request: Request }) => Promise<Response>;
+  OPTIONS: (context: { request: Request }) => Promise<Response>;
 }
 
 export interface CreateDocsMcpServerOptions {
@@ -232,6 +243,20 @@ const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
 export const DEFAULT_DOCS_MCP_MAX_BODY_BYTES = 1024 * 1024;
+export const DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS = 600;
+export const DEFAULT_DOCS_MCP_CORS_ALLOWED_HEADERS: readonly string[] = Object.freeze([
+  "Accept",
+  "Authorization",
+  "Content-Type",
+  "Last-Event-ID",
+  "MCP-Protocol-Version",
+  "MCP-Session-Id",
+]);
+export const DEFAULT_DOCS_MCP_CORS_EXPOSED_HEADERS: readonly string[] = Object.freeze([
+  "MCP-Protocol-Version",
+  "MCP-Session-Id",
+  "WWW-Authenticate",
+]);
 
 const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
   {
@@ -599,6 +624,43 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
             default: DEFAULT_DOCS_MCP_MAX_BODY_BYTES,
             description: "Maximum accepted Streamable HTTP POST body size in bytes.",
           },
+          {
+            path: "mcp.security.cors",
+            name: "cors",
+            type: "boolean | DocsMcpCorsConfig",
+            default: true,
+            description:
+              "Emit exact-Origin CORS responses for Origins accepted by allowedOrigins. Use an object for credentials, additional headers, and preflight cache controls.",
+            children: [
+              {
+                path: "mcp.security.cors.allowedHeaders",
+                name: "allowedHeaders",
+                type: "string[]",
+                description: "Additional request headers accepted during browser preflight.",
+              },
+              {
+                path: "mcp.security.cors.exposedHeaders",
+                name: "exposedHeaders",
+                type: "string[]",
+                description: "Additional MCP response headers exposed to browser JavaScript.",
+              },
+              {
+                path: "mcp.security.cors.allowCredentials",
+                name: "allowCredentials",
+                type: "boolean",
+                default: false,
+                description:
+                  "Allow credentialed browser requests using the validated exact Origin. Wildcard credentials are never emitted.",
+              },
+              {
+                path: "mcp.security.cors.maxAgeSeconds",
+                name: "maxAgeSeconds",
+                type: "number",
+                default: DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS,
+                description: "Browser preflight cache lifetime in seconds.",
+              },
+            ],
+          },
         ],
       },
       {
@@ -924,7 +986,47 @@ function resolveDocsMcpSecurityConfig(
     allowedOrigins: security?.allowedOrigins ?? "same-origin",
     authenticate: security?.authenticate,
     maxBodyBytes,
+    cors: resolveDocsMcpCorsConfig(security?.cors),
   };
+}
+
+function resolveDocsMcpCorsConfig(cors?: boolean | DocsMcpCorsConfig): DocsMcpResolvedCorsConfig {
+  const config = cors && typeof cors === "object" ? cors : {};
+  const configuredMaxAge = config.maxAgeSeconds;
+  const maxAgeSeconds =
+    typeof configuredMaxAge === "number" &&
+    Number.isFinite(configuredMaxAge) &&
+    configuredMaxAge >= 0
+      ? Math.floor(configuredMaxAge)
+      : DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS;
+
+  return {
+    enabled: cors !== false,
+    allowedHeaders: mergeHttpHeaderNames(
+      DEFAULT_DOCS_MCP_CORS_ALLOWED_HEADERS,
+      config.allowedHeaders,
+    ),
+    exposedHeaders: mergeHttpHeaderNames(
+      DEFAULT_DOCS_MCP_CORS_EXPOSED_HEADERS,
+      config.exposedHeaders,
+    ),
+    allowCredentials: config.allowCredentials === true,
+    maxAgeSeconds,
+  };
+}
+
+function mergeHttpHeaderNames(
+  defaults: readonly string[],
+  configured?: readonly string[],
+): string[] {
+  const headers = new Map<string, string>();
+  for (const header of [...defaults, ...(configured ?? [])]) {
+    const normalized = header.trim();
+    if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(normalized)) continue;
+    const key = normalized.toLowerCase();
+    if (!headers.has(key)) headers.set(key, normalized);
+  }
+  return [...headers.values()];
 }
 
 export function createFilesystemDocsMcpSource(
@@ -1814,6 +1916,7 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
           data: { reason: "mcp_disabled" },
         }),
       DELETE: async () => createJsonErrorResponse(404, disabledMessage),
+      OPTIONS: async () => createJsonErrorResponse(404, disabledMessage),
     };
   }
 
@@ -1832,9 +1935,15 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     const method = request.method.toUpperCase();
     const security = resolved.security ?? resolveDocsMcpSecurityConfig();
 
+    const prepared = await prepareDocsMcpHttpRequest(request, security.maxBodyBytes);
+    if (prepared.status === "too-large") {
+      return createMcpRequestTooLargeResponse(security.maxBodyBytes);
+    }
+    request = prepared.request;
+
     let originAllowed: boolean;
     try {
-      originAllowed = await isDocsMcpOriginAllowed(request, security.allowedOrigins);
+      originAllowed = await isDocsMcpOriginAllowed(request.clone(), security.allowedOrigins);
     } catch {
       return createMcpHttpSecurityErrorResponse(500, "MCP Origin policy failed");
     }
@@ -1843,9 +1952,12 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       return createMcpHttpSecurityErrorResponse(403, "Forbidden Origin");
     }
 
-    if (method === "POST" && isContentLengthOverLimit(request, security.maxBodyBytes)) {
-      return createMcpRequestTooLargeResponse(security.maxBodyBytes);
+    if (method === "OPTIONS") {
+      return createDocsMcpOptionsResponse(request, security.cors);
     }
+
+    const withCors = (response: Response) =>
+      applyDocsMcpCorsHeaders(response, request, security.cors);
 
     let auth: DocsMcpAuthPrincipal | undefined;
     if (security.authenticate) {
@@ -1856,17 +1968,19 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
           pathname: url.pathname,
         });
       } catch {
-        return createMcpHttpSecurityErrorResponse(500, "MCP authentication failed");
+        return withCors(createMcpHttpSecurityErrorResponse(500, "MCP authentication failed"));
       }
 
-      if (authentication instanceof Response) return authentication;
+      if (authentication instanceof Response) return withCors(authentication);
       if (authentication === null || authentication === undefined) {
-        return createMcpHttpSecurityErrorResponse(401, "Unauthorized");
+        return withCors(createMcpHttpSecurityErrorResponse(401, "Unauthorized"));
       }
       if (!isDocsMcpAuthPrincipal(authentication)) {
-        return createMcpHttpSecurityErrorResponse(
-          500,
-          "MCP authentication returned an invalid principal",
+        return withCors(
+          createMcpHttpSecurityErrorResponse(
+            500,
+            "MCP authentication returned an invalid principal",
+          ),
         );
       }
       auth = authentication;
@@ -1875,20 +1989,8 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     const sessionId =
       request.headers.get("mcp-session-id") ?? request.headers.get("Mcp-Session-Id");
 
-    let parsedBody: unknown;
-    let bodyParseFailed = false;
-    if (method === "POST") {
-      const parsed = await parseJsonBodyWithLimit(request, security.maxBodyBytes);
-      if (parsed.status === "too-large") {
-        return createMcpRequestTooLargeResponse(security.maxBodyBytes);
-      }
-      if (parsed.status === "invalid") {
-        bodyParseFailed = true;
-        parsedBody = undefined;
-      } else {
-        parsedBody = parsed.value;
-      }
-    }
+    const parsedBody = prepared.parsedBody;
+    const bodyParseFailed = prepared.bodyParseFailed;
 
     const initializeRequest = method === "POST" && parsedBody && isInitializeRequest(parsedBody);
 
@@ -1920,28 +2022,32 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     });
 
     if (method === "POST" && bodyParseFailed) {
-      return createJsonRpcErrorResponse({
-        status: 400,
-        code: -32700,
-        message: "Parse error: Invalid JSON",
-      });
+      return withCors(
+        createJsonRpcErrorResponse({
+          status: 400,
+          code: -32700,
+          message: "Parse error: Invalid JSON",
+        }),
+      );
     }
 
     const created = await createStatelessTransport({
       transport: "http",
-      request,
+      request: request.clone(),
       auth,
     });
-    return created.transport.handleRequest(
+    const response = await created.transport.handleRequest(
       request,
       parsedBody === undefined ? undefined : { parsedBody },
     );
+    return withCors(response);
   }
 
   return {
     GET: async ({ request }) => handle(request),
     POST: async ({ request }) => handle(request),
     DELETE: async ({ request }) => handle(request),
+    OPTIONS: async ({ request }) => handle(request),
   };
 }
 
@@ -2006,26 +2112,35 @@ function isDocsMcpAuthPrincipal(value: unknown): value is DocsMcpAuthPrincipal {
   );
 }
 
-type ParsedJsonBodyResult =
-  | { status: "ok"; value: unknown }
-  | { status: "invalid" }
+type PreparedDocsMcpHttpRequest =
+  | {
+      status: "ok";
+      request: Request;
+      parsedBody?: unknown;
+      bodyParseFailed: boolean;
+    }
   | { status: "too-large" };
 
-async function parseJsonBodyWithLimit(
+async function prepareDocsMcpHttpRequest(
   request: Request,
   maxBodyBytes: number,
-): Promise<ParsedJsonBodyResult> {
+): Promise<PreparedDocsMcpHttpRequest> {
+  if (request.method.toUpperCase() !== "POST") {
+    return { status: "ok", request, bodyParseFailed: false };
+  }
+
   if (isContentLengthOverLimit(request, maxBodyBytes)) {
     return { status: "too-large" };
   }
 
-  const body = request.clone().body;
-  if (!body) return { status: "invalid" };
+  const body = request.body;
+  if (!body) {
+    return { status: "ok", request, bodyParseFailed: true };
+  }
 
   const reader = body.getReader();
-  const decoder = new TextDecoder();
+  const chunks: Uint8Array[] = [];
   let byteLength = 0;
-  let text = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -2035,14 +2150,37 @@ async function parseJsonBodyWithLimit(
       void reader.cancel();
       return { status: "too-large" };
     }
-    text += decoder.decode(value, { stream: true });
+    chunks.push(value);
   }
-  text += decoder.decode();
+
+  const bodyBytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bodyBytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  const boundedRequest = new Request(request.url, {
+    method: request.method,
+    headers: new Headers(request.headers),
+    body: bodyBytes,
+    redirect: request.redirect,
+    signal: request.signal,
+  });
 
   try {
-    return { status: "ok", value: JSON.parse(text) };
+    return {
+      status: "ok",
+      request: boundedRequest,
+      parsedBody: JSON.parse(new TextDecoder().decode(bodyBytes)),
+      bodyParseFailed: false,
+    };
   } catch {
-    return { status: "invalid" };
+    return {
+      status: "ok",
+      request: boundedRequest,
+      bodyParseFailed: true,
+    };
   }
 }
 
@@ -2051,6 +2189,139 @@ function isContentLengthOverLimit(request: Request, maxBodyBytes: number): boole
   if (rawContentLength === null) return false;
   const contentLength = Number(rawContentLength);
   return Number.isFinite(contentLength) && contentLength > maxBodyBytes;
+}
+
+const DOCS_MCP_CORS_METHODS = ["GET", "POST", "DELETE", "OPTIONS"];
+const DOCS_MCP_CORS_REQUEST_METHODS = new Set(["GET", "POST", "DELETE"]);
+
+function createDocsMcpOptionsResponse(request: Request, cors: DocsMcpResolvedCorsConfig): Response {
+  const allow = DOCS_MCP_CORS_METHODS.join(", ");
+  const origin = request.headers.get("origin");
+  if (!origin || !cors.enabled) {
+    return new Response(null, { status: 204, headers: { Allow: allow } });
+  }
+
+  const requestedMethod = request.headers
+    .get("access-control-request-method")
+    ?.trim()
+    .toUpperCase();
+  if (requestedMethod && !DOCS_MCP_CORS_REQUEST_METHODS.has(requestedMethod)) {
+    return applyDocsMcpPreflightCorsHeaders(
+      createMcpHttpSecurityErrorResponse(405, "CORS request method is not allowed"),
+      request,
+      cors,
+    );
+  }
+
+  const allowedHeaders = new Set(cors.allowedHeaders.map((header) => header.toLowerCase()));
+  const requestedHeaders = parseCorsRequestedHeaders(
+    request.headers.get("access-control-request-headers"),
+  );
+  const rejectedHeader = requestedHeaders.find(
+    (header) => !allowedHeaders.has(header.toLowerCase()),
+  );
+  if (rejectedHeader) {
+    return applyDocsMcpPreflightCorsHeaders(
+      createMcpHttpSecurityErrorResponse(
+        403,
+        `CORS request header is not allowed: ${rejectedHeader}`,
+      ),
+      request,
+      cors,
+    );
+  }
+
+  return applyDocsMcpPreflightCorsHeaders(
+    new Response(null, { status: 204, headers: { Allow: allow } }),
+    request,
+    cors,
+  );
+}
+
+function parseCorsRequestedHeaders(value: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((header) => header.trim())
+    .filter(Boolean);
+}
+
+function applyDocsMcpPreflightCorsHeaders(
+  response: Response,
+  request: Request,
+  cors: DocsMcpResolvedCorsConfig,
+): Response {
+  const headers = buildDocsMcpCorsHeaders(response.headers, request, cors);
+  headers.set("Access-Control-Allow-Methods", DOCS_MCP_CORS_METHODS.join(", "));
+  headers.set("Access-Control-Allow-Headers", cors.allowedHeaders.join(", "));
+  headers.set("Access-Control-Max-Age", String(cors.maxAgeSeconds));
+  appendVaryHeader(headers, "Access-Control-Request-Method");
+  appendVaryHeader(headers, "Access-Control-Request-Headers");
+  return cloneResponseWithHeaders(response, headers);
+}
+
+function applyDocsMcpCorsHeaders(
+  response: Response,
+  request: Request,
+  cors: DocsMcpResolvedCorsConfig,
+): Response {
+  if (!request.headers.has("origin") || !cors.enabled) return response;
+  const headers = buildDocsMcpCorsHeaders(response.headers, request, cors);
+  if (!headers.has("Access-Control-Allow-Origin")) return response;
+  if (cors.exposedHeaders.length > 0) {
+    headers.set("Access-Control-Expose-Headers", cors.exposedHeaders.join(", "));
+  }
+  return cloneResponseWithHeaders(response, headers);
+}
+
+function buildDocsMcpCorsHeaders(
+  source: Headers,
+  request: Request,
+  cors: DocsMcpResolvedCorsConfig,
+): Headers {
+  const headers = new Headers(source);
+  headers.delete("Access-Control-Allow-Origin");
+  headers.delete("Access-Control-Allow-Credentials");
+  const origin = serializeCorsOrigin(request.headers.get("origin"));
+  if (!origin) return headers;
+  headers.set("Access-Control-Allow-Origin", origin);
+  if (cors.allowCredentials) {
+    headers.set("Access-Control-Allow-Credentials", "true");
+  } else {
+    headers.delete("Access-Control-Allow-Credentials");
+  }
+  appendVaryHeader(headers, "Origin");
+  return headers;
+}
+
+function serializeCorsOrigin(value: string | null): string | null {
+  if (!value) return null;
+  if (value.trim() === "null") return "null";
+  try {
+    const origin = new URL(value).origin;
+    return origin === "null" ? null : origin;
+  } catch {
+    return null;
+  }
+}
+
+function appendVaryHeader(headers: Headers, value: string): void {
+  const values = (headers.get("Vary") ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (!values.some((entry) => entry.toLowerCase() === value.toLowerCase())) {
+    values.push(value);
+  }
+  headers.set("Vary", values.join(", "));
+}
+
+function cloneResponseWithHeaders(response: Response, headers: Headers): Response {
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 function createMcpRequestTooLargeResponse(maxBodyBytes: number): Response {

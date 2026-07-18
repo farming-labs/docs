@@ -1183,12 +1183,13 @@ async function handlePublicDocsRequest(request: Request) {
   const method = request.method.toUpperCase();
 
   if (isDocsMcpRequest(url)) {
+    if (method === "OPTIONS") return docsServer.MCP.OPTIONS({ request });
     if (method === "POST") return docsServer.MCP.POST({ request });
     if (method === "DELETE") return docsServer.MCP.DELETE({ request });
     if (method === "GET" || method === "HEAD") return docsServer.MCP.GET({ request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 
@@ -1205,6 +1206,7 @@ export const Route = createFileRoute("/$")({
       GET: async ({ request }) => handlePublicDocsRequest(request),
       POST: async ({ request }) => handlePublicDocsRequest(request),
       DELETE: async ({ request }) => handlePublicDocsRequest(request),
+      OPTIONS: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });
@@ -1659,12 +1661,13 @@ export const handle: Handle = async ({ event, resolve }) => {
   const method = event.request.method.toUpperCase();
 
   if (isDocsMcpRequest(event.url)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
     if (method === "GET" || method === "HEAD") return MCP.GET({ request: event.request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 
@@ -1729,12 +1732,13 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
   const method = event.request.method.toUpperCase();
 
   if (isDocsMcpRequest(event.url)) {
+    if (method === "OPTIONS") return docsMCP.OPTIONS({ request: event.request });
     if (method === "POST") return docsMCP.POST({ request: event.request });
     if (method === "DELETE") return docsMCP.DELETE({ request: event.request });
     if (method === "GET" || method === "HEAD") return docsMCP.GET({ request: event.request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 
@@ -2205,12 +2209,13 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   const method = context.request.method.toUpperCase();
 
   if (isDocsMcpRequest(context.url)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
     if (method === "GET" || method === "HEAD") return MCP.GET({ request: context.request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 
@@ -2277,12 +2282,13 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
   const method = context.request.method.toUpperCase();
 
   if (isDocsMcpRequest(context.url)) {
+    if (method === "OPTIONS") return docsMCP.OPTIONS({ request: context.request });
     if (method === "POST") return docsMCP.POST({ request: context.request });
     if (method === "DELETE") return docsMCP.DELETE({ request: context.request });
     if (method === "GET" || method === "HEAD") return docsMCP.GET({ request: context.request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 

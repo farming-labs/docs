@@ -248,6 +248,7 @@ export type {
   DocsMcpAuthenticateContext,
   DocsMcpAuthenticateResult,
   DocsMcpConfig,
+  DocsMcpCorsConfig,
   DocsMcpOriginContext,
   DocsMcpSecurityConfig,
   DocsMcpToolsConfig,

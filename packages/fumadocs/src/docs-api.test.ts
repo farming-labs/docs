@@ -70,7 +70,7 @@ Welcome to the docs.
 `,
     );
 
-    const { POST } = createDocsMCPAPI({
+    const { POST, OPTIONS } = createDocsMCPAPI({
       rootDir,
       entry: "docs",
       nav: { title: "Example Docs" },
@@ -132,6 +132,19 @@ Welcome to the docs.
     }>(listPagesResponse);
 
     expect(payload.result?.content?.[0]?.text).toContain("/docs");
+
+    const preflight = await OPTIONS(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "OPTIONS",
+        headers: {
+          origin: "http://localhost",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "content-type, mcp-protocol-version",
+        },
+      }),
+    );
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe("http://localhost");
   });
 
   it("ignores commented or quoted mcp flags when real config enables MCP", async () => {

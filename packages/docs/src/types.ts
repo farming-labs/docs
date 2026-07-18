@@ -1339,7 +1339,7 @@ export interface DocsMcpAuthenticateContext {
 
 export type DocsMcpAllowedOrigins =
   | "same-origin"
-  | string[]
+  | readonly string[]
   | ((context: DocsMcpOriginContext) => boolean | Promise<boolean>);
 
 export type DocsMcpAuthenticateResult = DocsMcpAuthPrincipal | null | Response;
@@ -1347,6 +1347,18 @@ export type DocsMcpAuthenticateResult = DocsMcpAuthPrincipal | null | Response;
 export type DocsMcpAuthenticate = (
   context: DocsMcpAuthenticateContext,
 ) => DocsMcpAuthenticateResult | Promise<DocsMcpAuthenticateResult>;
+
+/** Browser CORS response controls for an Origin already accepted by `allowedOrigins`. */
+export interface DocsMcpCorsConfig {
+  /** Additional request headers accepted during browser preflight. */
+  allowedHeaders?: readonly string[];
+  /** Additional response headers exposed to browser clients. */
+  exposedHeaders?: readonly string[];
+  /** Emit `Access-Control-Allow-Credentials: true`. Defaults to `false`. */
+  allowCredentials?: boolean;
+  /** Browser preflight cache lifetime in seconds. Defaults to 600. */
+  maxAgeSeconds?: number;
+}
 
 /** Security controls for the Streamable HTTP MCP transport. */
 export interface DocsMcpSecurityConfig {
@@ -1362,6 +1374,11 @@ export interface DocsMcpSecurityConfig {
   authenticate?: DocsMcpAuthenticate;
   /** Maximum POST body size in bytes. Defaults to 1 MiB. */
   maxBodyBytes?: number;
+  /**
+   * CORS responses for accepted browser Origins. Defaults to enabled with exact-Origin responses;
+   * set `false` to suppress CORS headers or use an object for credential/header controls.
+   */
+  cors?: boolean | DocsMcpCorsConfig;
 }
 
 /**

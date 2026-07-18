@@ -41,6 +41,9 @@ export {
 } from "./review.js";
 export type { ResolvedDocsReviewConfig } from "./review.js";
 export {
+  DEFAULT_DOCS_MCP_CORS_ALLOWED_HEADERS,
+  DEFAULT_DOCS_MCP_CORS_EXPOSED_HEADERS,
+  DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS,
   DEFAULT_DOCS_MCP_MAX_BODY_BYTES,
   createDocsMcpHttpHandler,
   createDocsMcpServer,
@@ -128,6 +131,7 @@ export type {
   DocsMcpNavigationTree,
   DocsMcpPage,
   DocsMcpRequestContext,
+  DocsMcpResolvedCorsConfig,
   DocsMcpResolvedConfig,
   DocsMcpResolvedSecurityConfig,
   DocsMcpSource,

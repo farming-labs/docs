@@ -17,7 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { eventHandler, getRequestURL, readRawBody } from "h3";
+import { eventHandler, getRequestURL, toWebRequest } from "h3";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
@@ -1994,38 +1994,23 @@ export function defineDocsMcpHandler(config: Record<string, any>, storage: DocsS
 
   return eventHandler(async (event: any) => {
     const server = await getServer();
-    const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
-    const headers = event.headers ?? event.node?.req?.headers ?? {};
-    const url = new URL(event.node.req.url ?? "/", "http://localhost");
+    const request = toWebRequest(event);
+    const method = request.method.toUpperCase();
 
     if (method === "POST") {
-      let body: string | undefined;
-      try {
-        body = await new Promise<string>((resolve, reject) => {
-          let data = "";
-          event.node.req.on("data", (chunk: any) => (data += chunk));
-          event.node.req.on("end", () => resolve(data));
-          event.node.req.on("error", reject);
-        });
-      } catch {
-        body = undefined;
-      }
-
-      return server.MCP.POST({
-        request: new Request(url.href, { method, headers, body }),
-      });
+      return server.MCP.POST({ request });
     }
 
     if (method === "DELETE") {
-      return server.MCP.DELETE({
-        request: new Request(url.href, { method, headers }),
-      });
+      return server.MCP.DELETE({ request });
+    }
+
+    if (method === "OPTIONS") {
+      return server.MCP.OPTIONS({ request });
     }
 
     if (method === "GET" || method === "HEAD") {
-      return server.MCP.GET({
-        request: new Request(url.href, { method, headers }),
-      });
+      return server.MCP.GET({ request });
     }
 
     return methodNotAllowedResponse();
@@ -2049,27 +2034,22 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
 
     if (isDocsMcpRequest(url)) {
       const server = await getServer();
+      const request = toWebRequest(event);
 
       if (method === "POST") {
-        return server.MCP.POST({
-          request: new Request(url.href, {
-            method,
-            headers,
-            body: (await readEventRawBody(event)) ?? undefined,
-          }),
-        });
+        return server.MCP.POST({ request });
       }
 
       if (method === "DELETE") {
-        return server.MCP.DELETE({
-          request: new Request(url.href, { method, headers }),
-        });
+        return server.MCP.DELETE({ request });
+      }
+
+      if (method === "OPTIONS") {
+        return server.MCP.OPTIONS({ request });
       }
 
       if (method === "GET" || method === "HEAD") {
-        return server.MCP.GET({
-          request: new Request(url.href, { method, headers }),
-        });
+        return server.MCP.GET({ request });
       }
 
       return methodNotAllowedResponse();
@@ -2127,7 +2107,7 @@ function methodNotAllowedResponse() {
   return new Response("Method Not Allowed", {
     status: 405,
     headers: {
-      Allow: "GET, HEAD, POST, DELETE",
+      Allow: "GET, HEAD, POST, DELETE, OPTIONS",
       "Content-Type": "text/plain; charset=utf-8",
     },
   });
@@ -2138,23 +2118,6 @@ function resolveEventUrl(event: any): URL {
     return getRequestURL(event);
   } catch {
     return new URL(event.node?.req?.url ?? "/", "http://localhost");
-  }
-}
-
-async function readEventRawBody(event: any): Promise<string | undefined> {
-  try {
-    return (await readRawBody(event)) ?? undefined;
-  } catch {
-    try {
-      return await new Promise<string>((resolve, reject) => {
-        let data = "";
-        event.node.req.on("data", (chunk: any) => (data += chunk));
-        event.node.req.on("end", () => resolve(data));
-        event.node.req.on("error", reject);
-      });
-    } catch {
-      return undefined;
-    }
   }
 }
 
