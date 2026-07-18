@@ -25,6 +25,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import {
+  acceptsDocsMarkdown,
   normalizeDocsRelated,
   buildDocsConfigMap,
   buildDocsDiagnostics,
@@ -32,19 +33,17 @@ import {
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   createDocsRobotsResponse,
+  createDocsMarkdownResponse,
   detectDocsMarkdownAgentRequest,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   emitDocsTelemetryAgentSurfaceEvent,
   emitDocsTelemetryProjectEvent,
   inferDocsTelemetryAgentSurface,
-  getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   getDocsLlmsTxtMaxCharsIssue,
-  renderDocsMarkdownNotFound,
   renderDocsMarkdownDocument,
   resolveDocsMetadataBaseUrl,
-  resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   resolveDocsI18n,
   resolveDocsLlmsTxtRequest,
@@ -1637,7 +1636,7 @@ function normalizePublicDocsSlug(ctx: DocsContext, value: string): string {
   return normalizePathSegment(pathname);
 }
 
-function getPublicMarkdownCanonicalLinkHeader({
+function getPublicMarkdownCanonicalUrl({
   origin,
   ctx,
   requestedPath,
@@ -1648,7 +1647,7 @@ function getPublicMarkdownCanonicalLinkHeader({
 }): string {
   const canonicalUrl = new URL(normalizePublicRequestedMarkdownPath(ctx, requestedPath), origin);
   if (ctx.locale) canonicalUrl.searchParams.set("lang", ctx.locale);
-  return `<${canonicalUrl.toString()}>; rel="canonical"`;
+  return canonicalUrl.toString();
 }
 
 function findDocsMcpPage(
@@ -1672,28 +1671,9 @@ function findDocsMcpPage(
   return null;
 }
 
-function acceptsMarkdown(request: Request): boolean {
-  const accept = request.headers.get("accept");
-  if (!accept) return false;
-  return accept
-    .split(",")
-    .map((value) => value.trim())
-    .some((value) => {
-      const [mediaType, ...params] = value.split(";").map((part) => part.trim().toLowerCase());
-      if (mediaType !== "text/markdown") return false;
-
-      const qualityParam = params.find((param) => param.split("=", 1)[0]?.trim() === "q");
-      if (!qualityParam) return true;
-
-      const qualityValue = qualityParam.slice(qualityParam.indexOf("=") + 1).trim();
-      const quality = Number.parseFloat(qualityValue);
-      return Number.isFinite(quality) ? quality > 0 : true;
-    });
-}
-
 function resolveMarkdownHeaderDelivery(request: Request): MarkdownRequest["delivery"] | null {
   if (hasDocsMarkdownSignatureAgent(request)) return "signature_agent";
-  if (acceptsMarkdown(request)) return "accept_header";
+  if (acceptsDocsMarkdown(request)) return "accept_header";
 
   const agentDetection = detectDocsMarkdownAgentRequest(request);
   if (!agentDetection.detected) return null;
@@ -4132,8 +4112,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           markdownRequest.requestedPath,
           markdownOrigin,
         );
-        const varyHeader = getDocsMarkdownVaryHeader(request);
-        const canonicalLinkHeader = getPublicMarkdownCanonicalLinkHeader({
+        const canonicalUrl = getPublicMarkdownCanonicalUrl({
           origin: markdownOrigin,
           ctx,
           requestedPath: markdownRequest.requestedPath,
@@ -4141,13 +4120,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
         if (!document) {
           const recoveryPages = getIndexes(ctx).map((page) => withPublicDocsUrl(page, ctx));
-          const recovery = resolveDocsMarkdownRecovery({
-            entry,
-            requestedPath: markdownRequest.requestedPath,
-            pages: recoveryPages,
-            sitemap: sitemapConfig,
-          });
-
           await emitDocsAnalyticsEvent(analytics, {
             type: "agent_read",
             source: "server",
@@ -4174,34 +4146,17 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               found: false,
             },
           });
-          if (recovery.redirect) {
-            return new Response(null, {
-              status: 307,
-              headers: {
-                Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
-                ...(varyHeader ? { Vary: varyHeader } : {}),
-                "X-Robots-Tag": "noindex",
-              },
-            });
-          }
-
-          return new Response(
-            renderDocsMarkdownNotFound({
-              entry,
-              requestedPath: markdownRequest.requestedPath,
-              origin: markdownOrigin,
-              pages: recoveryPages,
-              sitemap: sitemapConfig,
-            }),
-            {
-              status: 200,
-              headers: {
-                "Content-Type": "text/markdown; charset=utf-8",
-                ...(varyHeader ? { Vary: varyHeader } : {}),
-                "X-Robots-Tag": "noindex",
-              },
-            },
-          );
+          return createDocsMarkdownResponse({
+            request,
+            document: null,
+            entry,
+            requestedPath: markdownRequest.requestedPath,
+            origin: markdownOrigin,
+            canonicalUrl,
+            locale: ctx.locale,
+            pages: recoveryPages,
+            sitemap: sitemapConfig,
+          });
         }
 
         await emitDocsAnalyticsEvent(analytics, {
@@ -4232,14 +4187,15 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             contentLength: document.length,
           },
         });
-        return new Response(document, {
-          headers: {
-            "Content-Type": "text/markdown; charset=utf-8",
-            "Cache-Control": "public, max-age=0, s-maxage=3600",
-            Link: canonicalLinkHeader,
-            ...(varyHeader ? { Vary: varyHeader } : {}),
-            "X-Robots-Tag": "noindex",
-          },
+        return createDocsMarkdownResponse({
+          request,
+          document,
+          entry,
+          requestedPath: markdownRequest.requestedPath,
+          origin: markdownOrigin,
+          canonicalUrl,
+          locale: ctx.locale,
+          sitemap: sitemapConfig,
         });
       }
 

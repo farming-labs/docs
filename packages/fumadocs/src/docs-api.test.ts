@@ -411,7 +411,7 @@ Surge overview child.
     const markdownResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
-    expect(markdownResponse.status).toBe(200);
+    expect(markdownResponse.status).toBe(404);
     expect(await markdownResponse.text()).toContain("# Docs Page Not Found");
   });
 
@@ -1091,10 +1091,21 @@ Config content.
     expect(rewrittenFallbackResponse.headers.get("link")).toBe(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
+    expect(rewrittenFallbackResponse.headers.get("content-location")).toBe(
+      "http://localhost/docs/getting-started/quickstart.md",
+    );
+    expect(rewrittenFallbackResponse.headers.get("etag")).toMatch(/^W\/"/);
     expect(rewrittenFallbackResponse.headers.get("vary")).toBeNull();
     expect(await rewrittenFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
+    const conditionalResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart.md", {
+        headers: { "If-None-Match": rewrittenFallbackResponse.headers.get("etag") ?? "" },
+      }),
+    );
+    expect(conditionalResponse.status).toBe(304);
+    expect(await conditionalResponse.text()).toBe("");
 
     const rewrittenAgentResponse = await GET(new Request("http://localhost/docs/overview.md"));
     expect(rewrittenAgentResponse.status).toBe(200);
@@ -1137,6 +1148,14 @@ Config content.
     expect(await weightedAcceptAgentResponse.text()).toContain(
       "Use this page as the implementation map.",
     );
+
+    const htmlPreferredResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "text/html;q=1, text/markdown;q=0.5" },
+      }),
+    );
+    expect(htmlPreferredResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await htmlPreferredResponse.text()).toBe("[]");
 
     const signatureAgentResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview", {
@@ -2005,7 +2024,7 @@ description: "Start building quickly"
     });
 
     const response = await GET(new Request("http://localhost/api/docs?format=markdown&path=quick"));
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toContain("text/markdown");
     const notFoundDocument = await response.text();
     expect(notFoundDocument).toMatch(/^---\ntitle: "Docs Page Not Found"/);

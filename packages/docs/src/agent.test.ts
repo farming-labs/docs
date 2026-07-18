@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  acceptsDocsMarkdown,
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
   buildDocsMcpEndpointCandidates,
+  createDocsMarkdownResponse,
   detectDocsMarkdownAgentRequest,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
@@ -622,6 +624,29 @@ describe("agent route helpers", () => {
     );
     expect(acceptRoute).toEqual({ requestedPath: "install" });
 
+    const htmlPreferredRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/docs/install"),
+      new Request("https://example.com/docs/install", {
+        headers: { accept: "text/html;q=1, text/markdown;q=0.5" },
+      }),
+    );
+    expect(htmlPreferredRoute).toBeNull();
+    expect(
+      acceptsDocsMarkdown(
+        new Request("https://example.com/docs/install", {
+          headers: { accept: "text/html;q=0.5, text/markdown;q=1" },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      acceptsDocsMarkdown(
+        new Request("https://example.com/docs/install", {
+          headers: { accept: "*/*;q=1, text/markdown;q=0.5" },
+        }),
+      ),
+    ).toBe(false);
+
     const signatureAgentRoute = resolveDocsMarkdownRequest(
       "docs",
       new URL("https://example.com/docs/install"),
@@ -743,6 +768,76 @@ describe("agent route helpers", () => {
       }),
     );
     expect(signatureAgentHijackRoute).toBeNull();
+  });
+
+  it("builds cache-aware Markdown responses with representation metadata", async () => {
+    const request = new Request("https://example.com/docs/install.md");
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: "Install the package.",
+        lastmod: "2026-07-18",
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-location")).toBe(
+      "https://example.com/docs/install.md?lang=en",
+    );
+    expect(response.headers.get("content-language")).toBe("en");
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/install?lang=en>; rel="canonical"',
+    );
+    expect(response.headers.get("etag")).toMatch(/^W\/"[a-f0-9]+-[a-f0-9]{8}"$/);
+    expect(response.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 00:00:00 GMT");
+
+    const notModified = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-None-Match": response.headers.get("etag") ?? "" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+    });
+    expect(notModified.status).toBe(304);
+    expect(await notModified.text()).toBe("");
+    expect(notModified.headers.get("etag")).toBe(response.headers.get("etag"));
+
+    const dateNotModified = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-Modified-Since": "Sun, 19 Jul 2026 00:00:00 GMT" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+    });
+    expect(dateNotModified.status).toBe(304);
+
+    const missing = createDocsMarkdownResponse({
+      request: new Request("https://example.com/docs/unknown.md"),
+      document: null,
+      entry: "docs",
+      requestedPath: "unknown",
+      origin: "https://example.com",
+      pages: [],
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("cache-control")).toBe("no-store");
+    expect(await missing.text()).toContain("# Docs Page Not Found");
   });
 
   it("builds per-page markdown alternate URLs", () => {
