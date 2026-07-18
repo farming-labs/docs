@@ -345,20 +345,26 @@ sitemaps, MCP, and the agent discovery spec. It does not generate or require ano
 That detail matters for agent-friendly docs because there is only one page resolver to keep correct:
 
 - `/docs/installation.md` and `/api/docs?format=markdown&path=installation` are explicit markdown entry points
-- `/docs/installation` with `Accept: text/markdown` returns the same markdown and varies by `Accept`
+- `/docs/installation` with an unambiguous `Accept: text/markdown` returns the same markdown and varies by `Accept`
 - `/docs/installation` with `Signature-Agent` returns the same markdown and varies by `Accept, Signature-Agent`
 - `/docs/installation` with `User-Agent: ClaudeBot/1.0` returns the same markdown and varies by `User-Agent`
 - `/docs/installation` without those headers remains the normal HTML page
 
-All successful markdown page responses include a canonical `Link` response header pointing back to
-the normal HTML page. Agents still receive the full markdown body, but the header tells citation and
-deduplication systems that `/docs/installation` is the canonical URL for the content.
+All successful markdown page responses include a canonical `Link` header pointing back to the
+normal HTML page and `Content-Location` for the selected `.md` representation. Agents still receive
+the full markdown body, but the headers give citation and deduplication systems stable identities.
+Responses also include an `ETag`, `Content-Language` when a locale is known, and `Last-Modified`
+when an exact source timestamp is known. Date-only freshness stays in the body and is not converted
+to a midnight HTTP validator. Conditional reads can then return HTTP `304` without retransmitting
+the document. Shared and non-Next handlers honor weighted `Accept` values. The generated Next.js
+canonical rewrite only selects Markdown when no HTML-capable range is present; use the exact `.md`
+or `format=markdown` route for mixed HTML/Markdown accept lists.
 
 Markdown responses also start with YAML frontmatter. The generated metadata includes `title`,
 optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when the framework knows
 a freshness date.
 
-If a markdown request misses, the response is still markdown. Uncertain misses return HTTP `200`
+If a markdown request misses, the response is still markdown. Uncertain misses return HTTP `404`
 with closest-match suggestions, recovery steps, `/.well-known/agent.json`, `/.well-known/agent`,
 `/api/docs/agent/spec`, search, the requested API markdown route, and sitemap routes. Very
 high-confidence typo matches redirect to the corrected `.md` page so the agent can continue without
@@ -373,16 +379,20 @@ If the site is server-rendered, the shared docs handler serves sitemap routes at
 The generator is still useful because it writes `.farming-labs/sitemap-manifest.json`, which gives
 the runtime stable `lastmod` values based on each page source file's last git commit date.
 
-For static export, the generator is required because there is no server handler to answer
-`/sitemap.xml`, `/sitemap.md`, or `/docs/sitemap.md`:
+For static export, use the Agent Bundle exporter because there is no server handler to answer the
+sitemap, Markdown-page, llms.txt, discovery, skill, or agent-instruction routes:
 
 ```json title="package.json"
 {
   "scripts": {
-    "build": "docs sitemap generate && next build"
+    "build": "docs agent export --public && next build"
   }
 }
 ```
+
+The bundle discovery document only advertises capabilities that those static files actually
+provide. Runtime-only search, MCP, feedback, API reference, and OpenAPI endpoints remain disabled
+in the exported discovery contract, regardless of the server-rendered application config.
 
 Use `--manifest-only` only when your deployment keeps the runtime route active:
 
@@ -397,7 +407,7 @@ Use `--manifest-only` only when your deployment keeps the runtime route active:
 Then add a CI check when generated files are committed:
 
 ```bash title="terminal"
-pnpm exec docs sitemap generate --check
+pnpm exec docs agent export --check
 ```
 
 That gives agents a trustworthy page inventory and lets freshness-aware crawlers avoid re-reading
@@ -441,7 +451,9 @@ Example:
 - Fetch `http://localhost:3000/docs` with `User-Agent: ClaudeBot/1.0`
 - Confirm the `Signature-Agent` response is `text/markdown` and includes `Vary: Accept, Signature-Agent`
 - Confirm the AI user-agent response is `text/markdown` and includes `Vary: User-Agent`
-- Confirm successful markdown responses include `Link: <http://localhost:3000/docs>; rel="canonical"`
+- Confirm successful markdown responses include canonical `Link`, `Content-Location`, and `ETag` headers
+- Repeat a request with `If-None-Match` and confirm it returns `304`
+- Fetch a missing `.md` path and confirm the actionable markdown response returns `404`
 - Fetch `http://localhost:3000/.well-known/agent.json`
 - Fetch `http://localhost:3000/sitemap.md`
 - View the page HTML and confirm it includes `application/ld+json`
@@ -523,20 +535,18 @@ Use the web score for demos, public comparisons, and quick regression checks. Us
 `docs doctor --agent --url` when you need CI-friendly JSON, local project context, or a command an
 agent can run while changing the repo.
 
-For static sites or projects that already own their public files, generate the crawl policy as part
-of release prep:
+For static sites, export the complete public machine-readable surface as part of release prep:
 
 ```bash title="terminal"
-pnpm exec docs robots generate
-pnpm exec docs robots generate --append
-pnpm exec docs agents generate
+pnpm exec docs agent export --public
+pnpm exec docs agent export --check
 ```
 
-The first command writes the resolved default path, usually `public/robots.txt`. The `--append`
-variant adds or updates the managed agent policy block when the project already has its own
-`robots.txt`. The `agents generate` command writes root `AGENTS.md` instructions plus public
-aliases for static exports; a hand-written root `AGENTS.md` remains in control unless you pass
-`--force`.
+The exporter writes per-page Markdown, llms.txt files, discovery, skill and agent-instruction
+aliases, sitemaps, robots, and a deterministic SHA-256 manifest. It preserves an existing public
+`AGENTS.md` and user-owned `robots.txt`, and it never copies repository-root agent instructions into
+the public directory. Use the narrower `robots generate --append` or `agents generate` commands
+when you intentionally want their standalone ownership behavior.
 
 What you want to see improve over time:
 

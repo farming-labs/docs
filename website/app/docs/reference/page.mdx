@@ -427,13 +427,14 @@ sections first and keeps matching pages inside those section files.
 
 Built-in MCP server configuration for AI clients, IDE agents, and local MCP tooling.
 
-| Property   | Type                  | Default           | Description |
-| ---------- | --------------------- | ----------------- | ----------- |
-| `enabled`  | `boolean`             | `true`                | Enable the MCP server. MCP is on by default; set `false` to opt out. |
-| `route`    | `string`              | `"/api/docs/mcp"` | Streamable HTTP route used by the MCP endpoint |
-| `name`     | `string`              | `nav.title` or `@farming-labs/docs` | MCP server name reported to clients |
-| `version`  | `string`              | `"0.0.0"`         | Version string reported to clients |
-| `tools`    | `DocsMcpToolsConfig`  | all enabled       | Fine-grained tool toggles |
+| Property   | Type                     | Default           | Description |
+| ---------- | ------------------------ | ----------------- | ----------- |
+| `enabled`  | `boolean`                | `true`            | Enable the MCP server. MCP is on by default; set `false` to opt out. |
+| `route`    | `string`                 | `"/api/docs/mcp"` | Streamable HTTP route used by the MCP endpoint |
+| `name`     | `string`                 | `nav.title` or `@farming-labs/docs` | MCP server name reported to clients |
+| `version`  | `string`                 | `"0.0.0"`        | Version string reported to clients |
+| `tools`    | `DocsMcpToolsConfig`     | all enabled       | Fine-grained tool toggles |
+| `security` | `DocsMcpSecurityConfig`  | see below         | HTTP Origin validation, opt-in authentication, and request limits |
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -455,6 +456,45 @@ export default defineDocs({
   },
 });
 ```
+
+### `DocsMcpSecurityConfig`
+
+Authentication is opt-in. Omitting `authenticate` keeps HTTP MCP public, while Origin validation
+and the request-size limit still apply. The stdio transport is unaffected.
+
+| Property         | Type                                            | Default         | Description |
+| ---------------- | ----------------------------------------------- | --------------- | ----------- |
+| `allowedOrigins` | `"same-origin" \| string[] \| callback`         | `"same-origin"` | Policy for a supplied HTTP Origin header; requests without Origin are accepted |
+| `authenticate`   | `(context) => principal \| null \| Response`     | public          | Optional Web Request callback; adding it makes authentication required |
+| `maxBodyBytes`   | `number`                                        | `1048576`       | Maximum Streamable HTTP POST body size |
+| `cors`           | `boolean \| DocsMcpCorsConfig`                   | `true`          | Exact-Origin browser CORS for accepted Origins; set false to suppress headers |
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      authenticate: async ({ request, pathname }) => {
+        const user = await authenticateRequest(request);
+        return user
+          ? { id: user.id, scopes: ["docs:read"], claims: { pathname } }
+          : null;
+      },
+    },
+  },
+});
+```
+
+POST bodies are capped before `allowedOrigins` or `authenticate` callbacks run. Browser preflight
+uses the `OPTIONS` handler and does not run authentication.
+
+### `DocsMcpCorsConfig`
+
+| Property           | Type       | Default | Description |
+| ------------------ | ---------- | ------- | ----------- |
+| `allowedHeaders`   | `string[]` | MCP standard headers | Additional browser request headers allowed during preflight |
+| `exposedHeaders`   | `string[]` | MCP response headers | Additional response headers exposed to browser JavaScript |
+| `allowCredentials` | `boolean`  | `false` | Emit credentialed CORS for the validated exact Origin; wildcard credentials are never emitted |
+| `maxAgeSeconds`    | `number`   | `600`   | Browser preflight cache lifetime |
 
 ### `DocsMcpToolsConfig`
 

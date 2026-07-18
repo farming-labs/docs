@@ -6,6 +6,7 @@ describe("defineDocs", () => {
     const onCopyClick = vi.fn();
     const onFeedback = vi.fn();
     const onAgentFeedback = vi.fn();
+    const authenticateMcp = vi.fn();
     const actionsComponent = { type: "div" };
 
     const config = defineDocs({
@@ -29,6 +30,9 @@ describe("defineDocs", () => {
       mcp: {
         enabled: true,
         route: "/api/docs/mcp",
+        security: {
+          authenticate: authenticateMcp,
+        },
       },
       changelog: {
         enabled: true,
@@ -57,6 +61,9 @@ describe("defineDocs", () => {
     expect(config.mcp).toEqual({
       enabled: true,
       route: "/api/docs/mcp",
+      security: {
+        authenticate: authenticateMcp,
+      },
     });
     expect(config.changelog).toEqual({
       enabled: true,

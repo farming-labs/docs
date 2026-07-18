@@ -17,13 +17,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { eventHandler, getRequestURL, readRawBody } from "h3";
+import { eventHandler, getRequestURL, toWebRequest } from "h3";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
+  createDocsMarkdownResponse,
   createDocsRobotsResponse,
   createDocsSitemapResponse,
   createDocsAgentTraceContext,
@@ -35,8 +36,6 @@ import {
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
-  getDocsMarkdownCanonicalLinkHeader,
-  getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
   isDocsConfigRequest,
   isDocsLlmsTxtPublicRequest,
@@ -50,8 +49,6 @@ import {
   parseDocsAgentFeedbackData,
   performDocsSearch,
   renderDocsMarkdownDocument,
-  renderDocsMarkdownNotFound,
-  resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   renderDocsAgentsDocument,
   renderDocsSkillDocument,
@@ -935,13 +932,18 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return i18n.defaultLocale;
   }
 
-  function getMarkdownDocument(
+  function getMarkdownRepresentation(
     ctx: ReturnType<typeof resolveContextFromPath>,
     requestedPath: string,
     origin?: string,
   ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
-    return page ? renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }) : null;
+    return page
+      ? {
+          document: renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }),
+          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+        }
+      : null;
   }
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
@@ -1160,61 +1162,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, context.request);
     if (markdownRequest) {
       const markdownOrigin = markdownMetadataBaseUrl || url.origin;
-      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath, markdownOrigin);
-      const varyHeader = getDocsMarkdownVaryHeader(context.request);
-      const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
-        origin: markdownOrigin,
+      const representation = getMarkdownRepresentation(
+        ctx,
+        markdownRequest.requestedPath,
+        markdownOrigin,
+      );
+      return createDocsMarkdownResponse({
+        request: context.request,
+        document: representation?.document ?? null,
         entry,
         requestedPath: markdownRequest.requestedPath,
+        origin: markdownOrigin,
         locale: ctx.locale,
-      });
-
-      if (!document) {
-        const recovery = resolveDocsMarkdownRecovery({
-          entry,
-          requestedPath: markdownRequest.requestedPath,
-          pages: getSearchIndex(ctx),
-          sitemap: config.sitemap,
-        });
-
-        if (recovery.redirect) {
-          return new Response(null, {
-            status: 307,
-            headers: {
-              Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
-              ...(varyHeader ? { Vary: varyHeader } : {}),
-              "X-Robots-Tag": "noindex",
-            },
-          });
-        }
-
-        return new Response(
-          renderDocsMarkdownNotFound({
-            entry,
-            requestedPath: markdownRequest.requestedPath,
-            origin: markdownOrigin,
-            pages: getSearchIndex(ctx),
-            sitemap: config.sitemap,
-          }),
-          {
-            status: 200,
-            headers: {
-              "Content-Type": "text/markdown; charset=utf-8",
-              ...(varyHeader ? { Vary: varyHeader } : {}),
-              "X-Robots-Tag": "noindex",
-            },
-          },
-        );
-      }
-
-      return new Response(document, {
-        headers: {
-          "Content-Type": "text/markdown; charset=utf-8",
-          "Cache-Control": "public, max-age=0, s-maxage=3600",
-          Link: canonicalLinkHeader,
-          ...(varyHeader ? { Vary: varyHeader } : {}),
-          "X-Robots-Tag": "noindex",
-        },
+        lastModified: representation?.lastModified,
+        pages: getSearchIndex(ctx),
+        sitemap: config.sitemap,
       });
     }
 
@@ -1997,38 +1959,23 @@ export function defineDocsMcpHandler(config: Record<string, any>, storage: DocsS
 
   return eventHandler(async (event: any) => {
     const server = await getServer();
-    const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
-    const headers = event.headers ?? event.node?.req?.headers ?? {};
-    const url = new URL(event.node.req.url ?? "/", "http://localhost");
+    const request = toWebRequest(event);
+    const method = request.method.toUpperCase();
 
     if (method === "POST") {
-      let body: string | undefined;
-      try {
-        body = await new Promise<string>((resolve, reject) => {
-          let data = "";
-          event.node.req.on("data", (chunk: any) => (data += chunk));
-          event.node.req.on("end", () => resolve(data));
-          event.node.req.on("error", reject);
-        });
-      } catch {
-        body = undefined;
-      }
-
-      return server.MCP.POST({
-        request: new Request(url.href, { method, headers, body }),
-      });
+      return server.MCP.POST({ request });
     }
 
     if (method === "DELETE") {
-      return server.MCP.DELETE({
-        request: new Request(url.href, { method, headers }),
-      });
+      return server.MCP.DELETE({ request });
+    }
+
+    if (method === "OPTIONS") {
+      return server.MCP.OPTIONS({ request });
     }
 
     if (method === "GET" || method === "HEAD") {
-      return server.MCP.GET({
-        request: new Request(url.href, { method, headers }),
-      });
+      return server.MCP.GET({ request });
     }
 
     return methodNotAllowedResponse();
@@ -2052,27 +1999,22 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
 
     if (isDocsMcpRequest(url)) {
       const server = await getServer();
+      const request = toWebRequest(event);
 
       if (method === "POST") {
-        return server.MCP.POST({
-          request: new Request(url.href, {
-            method,
-            headers,
-            body: (await readEventRawBody(event)) ?? undefined,
-          }),
-        });
+        return server.MCP.POST({ request });
       }
 
       if (method === "DELETE") {
-        return server.MCP.DELETE({
-          request: new Request(url.href, { method, headers }),
-        });
+        return server.MCP.DELETE({ request });
+      }
+
+      if (method === "OPTIONS") {
+        return server.MCP.OPTIONS({ request });
       }
 
       if (method === "GET" || method === "HEAD") {
-        return server.MCP.GET({
-          request: new Request(url.href, { method, headers }),
-        });
+        return server.MCP.GET({ request });
       }
 
       return methodNotAllowedResponse();
@@ -2130,7 +2072,7 @@ function methodNotAllowedResponse() {
   return new Response("Method Not Allowed", {
     status: 405,
     headers: {
-      Allow: "GET, HEAD, POST, DELETE",
+      Allow: "GET, HEAD, POST, DELETE, OPTIONS",
       "Content-Type": "text/plain; charset=utf-8",
     },
   });
@@ -2141,23 +2083,6 @@ function resolveEventUrl(event: any): URL {
     return getRequestURL(event);
   } catch {
     return new URL(event.node?.req?.url ?? "/", "http://localhost");
-  }
-}
-
-async function readEventRawBody(event: any): Promise<string | undefined> {
-  try {
-    return (await readRawBody(event)) ?? undefined;
-  } catch {
-    try {
-      return await new Promise<string>((resolve, reject) => {
-        let data = "";
-        event.node.req.on("data", (chunk: any) => (data += chunk));
-        event.node.req.on("end", () => resolve(data));
-        event.node.req.on("error", reject);
-      });
-    } catch {
-      return undefined;
-    }
   }
 }
 

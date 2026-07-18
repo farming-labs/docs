@@ -118,7 +118,7 @@ ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
+export const { GET, POST, DELETE, OPTIONS } = createDocsMCPAPI(docsConfig);
 
 export const revalidate = false;
 `;
@@ -195,12 +195,16 @@ const DEFAULT_SITEMAP_MD_DOCS_ROUTE = "/docs/sitemap.md";
 const DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE = "/.well-known/sitemap.md";
 const DEFAULT_SITEMAP_MANIFEST_PATH = ".farming-labs/sitemap-manifest.json";
 const MARKDOWN_ACCEPT_HEADER_VALUE = [
-  "(?:^|.*,\\s*)",
-  "text/markdown",
+  "^",
+  // Next rewrites cannot compare arbitrary q-values. Only negotiate on the canonical URL when
+  // Markdown is requested without an HTML-capable range; mixed representation lists stay HTML.
+  "(?!.*(?:^|,)\\s*(?:[Tt][Ee][Xx][Tt]/[Hh][Tt][Mm][Ll]|[Tt][Ee][Xx][Tt]/\\*|\\*/\\*)(?:\\s*;[^,]*)?\\s*(?:,|$))",
+  "(?=.*(?:^|,)\\s*[Tt][Ee][Xx][Tt]/[Mm][Aa][Rr][Kk][Dd][Oo][Ww][Nn]",
   "(?:\\s*;",
-  "(?!\\s*(?:[^,;]*;\\s*)*q\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
+  "(?!\\s*(?:[^,;]*;\\s*)*[Qq]\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
   "[^,]*)?",
-  "(?:\\s*,.*|$)",
+  "\\s*(?:,|$))",
+  ".*$",
 ].join("");
 
 function resolvePackageAlias(packageName: string, fallbacks: string[] = []): string | undefined {
@@ -1478,7 +1482,8 @@ function buildDocsMarkdownRewrites(entry: string, docsPath: string): NextRewrite
   const markdownAcceptHeader = {
     type: "header",
     key: "accept",
-    // Keep this aligned with acceptsMarkdown(); the rewrite forces format=markdown.
+    // The static rewrite only selects unambiguous Markdown requests. The shared handler performs
+    // full q-aware negotiation when it receives the request directly.
     value: MARKDOWN_ACCEPT_HEADER_VALUE,
   };
   const markdownSignatureAgentHeader = {

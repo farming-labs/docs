@@ -414,6 +414,9 @@ describe("api reference route templates", () => {
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain("isDocsMcpRequest");
     expect(out).toContain('from "../lib/docs.server"');
+    expect(out).toContain("docsServer.MCP.OPTIONS");
+    expect(out).toContain("OPTIONS: async");
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
   it("creates a SvelteKit API reference route handler", () => {
@@ -430,7 +433,8 @@ describe("api reference route templates", () => {
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
-    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+    expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
   it("composes a SvelteKit public docs hook with an existing handle", () => {
@@ -449,6 +453,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).not.toBeNull();
     expect(out).toContain("const existingHandle: Handle =");
     expect(out).toContain("const docsPublicHandle: Handle =");
+    expect(out).toContain("docsMCP.OPTIONS");
     expect(out).toContain("isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry)");
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
@@ -469,7 +474,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
-    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+    expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
   it("composes Astro docs middleware with an existing onRequest", () => {
@@ -488,6 +494,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     expect(out).not.toBeNull();
     expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
     expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
+    expect(out).toContain("docsMCP.OPTIONS");
     expect(out).toContain("isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry)");
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");

@@ -10,12 +10,13 @@ async function handlePublicDocsRequest(request: Request) {
   const method = request.method.toUpperCase();
 
   if (isDocsMcpRequest(url)) {
+    if (method === "OPTIONS") return docsServer.MCP.OPTIONS({ request });
     if (method === "POST") return docsServer.MCP.POST({ request });
     if (method === "DELETE") return docsServer.MCP.DELETE({ request });
     if (method === "GET" || method === "HEAD") return docsServer.MCP.GET({ request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/$")({
       GET: async ({ request }) => handlePublicDocsRequest(request),
       POST: async ({ request }) => handlePublicDocsRequest(request),
       DELETE: async ({ request }) => handlePublicDocsRequest(request),
+      OPTIONS: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });

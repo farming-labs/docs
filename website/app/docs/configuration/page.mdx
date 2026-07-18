@@ -340,14 +340,14 @@ No separate config flag is required for machine-readable page markdown.
 
 - The shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
-- Successful markdown responses include a `Link: <canonical-page-url>; rel="canonical"` response header so agents can read the markdown mirror but cite the normal docs page
-- In Next.js, sending `Accept: text/markdown` to `/docs/<slug>` returns the same markdown response
+- Successful markdown responses include canonical `Link` and `Content-Location` response headers, plus cache validators and locale metadata when available
+- In Next.js, sending an unambiguous `Accept: text/markdown` request to `/docs/<slug>` returns the same markdown response; mixed ranges that also advertise `text/html`, `text/*`, or `*/*` remain HTML
 - In Next.js, sending a non-empty `Signature-Agent` header to `/docs/<slug>` also returns the same markdown response
 - In Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
 - These negotiated Next.js reads are handled by the existing `/api/docs` route; `withDocs()` does not create a separate `/api/docs/markdown` wrapper
 - Markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a page freshness date is known
 - Successful markdown page responses append a `## Sitemap` footer that links agents back to the configured markdown sitemap routes
-- Missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
+- Missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
 - Very high-confidence missing slugs redirect to the closest `.md` page
 - Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
 - When a page folder has `agent.md`, that file is returned instead of the normal page markdown
@@ -363,15 +363,21 @@ No separate config flag is required for machine-readable page markdown.
   ```
 
   In Next.js, browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers
-  that send `Accept: text/markdown`, send `Signature-Agent`, identify as a known AI user agent, or
-  match a conservative bot-like agent heuristic receive the same machine-readable output as
-  `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so custom apps
-  should keep one docs API route instead of adding a second markdown-only wrapper. Other adapters
-  should use the `.md` URL or the API format route.
+  that send an unambiguous `Accept: text/markdown`, send `Signature-Agent`, identify as a known AI
+  user agent, or match a conservative bot-like agent heuristic receive the same machine-readable
+  output as `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so
+  custom apps should keep one docs API route instead of adding a second markdown-only wrapper.
+  Other adapters can negotiate by `Accept`, or use the `.md` URL or API format route directly.
 
   Successful markdown responses also include a canonical `Link` response header. The body is still
   the full markdown document; the header simply tells agents that `/docs/installation` is the
   source-of-truth URL for `/docs/installation.md` or a negotiated markdown read.
+
+  `Content-Location` identifies the selected `.md` representation. `Content-Language` is included
+  when the page locale is known. Every successful response has an `ETag`. `Last-Modified` is only
+  included when the adapter knows the exact source timestamp; a date-only `last_updated` value is
+  not promoted to midnight. Matching `If-None-Match` or `If-Modified-Since` requests receive HTTP
+  `304` when the corresponding validator is available.
 
   The markdown body starts with YAML frontmatter. Agents can read `canonical_url`, `markdown_url`,
   `title`, `description`, and `last_updated` before parsing the page body.
@@ -379,6 +385,11 @@ No separate config flag is required for machine-readable page markdown.
   Negotiated markdown responses include cache-safe `Vary` headers: `Accept` for
   `Accept: text/markdown`, `Accept, Signature-Agent` for `Signature-Agent`, `User-Agent` for known
   AI user agents, and `User-Agent, Sec-Fetch-Mode` for heuristic agent detection.
+  The shared handler and non-Next request handlers honor `q` values when an `Accept` header lists
+  both HTML and markdown. Next.js canonical-page negotiation is implemented as a static rewrite, so
+  it intentionally does not attempt arbitrary numeric `q` comparisons: any `text/html`, `text/*`,
+  or `*/*` range keeps the canonical URL on HTML. Use `/docs/installation.md` or
+  `/api/docs?format=markdown&path=installation` when the Markdown representation must be exact.
 
   That means a CDN can cache the HTML and markdown versions separately even though the URL is the
   same:
@@ -390,7 +401,7 @@ No separate config flag is required for machine-readable page markdown.
   /docs/installation + User-Agent: ClaudeBot/1.0   -> cached markdown
   ```
 
-  If a markdown request misses, the recovery response is still markdown and returns HTTP `200`
+  If a markdown request misses, the recovery response is still markdown and returns HTTP `404`
   unless a very high-confidence match redirects to the corrected `.md` page. The body lists closest
   matches, recovery steps, the agent discovery spec, search endpoint, and sitemap routes so agents
   can recover instead of stopping at a plain `Not Found`.

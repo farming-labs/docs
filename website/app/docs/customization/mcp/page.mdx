@@ -67,6 +67,126 @@ export default defineDocs({
 });
 ```
 
+## HTTP security and opt-in authentication
+
+The HTTP MCP endpoint is **public by default**. Authentication only becomes required when you add
+`mcp.security.authenticate`. This lets public documentation stay zero-config while private docs can
+reuse any authentication provider that can inspect a Web `Request`.
+
+Even for public endpoints, the HTTP transport validates a supplied `Origin` header against the
+request origin and limits POST bodies to 1 MiB by default. Origin-less requests remain supported
+for non-browser MCP clients. The body is buffered through that limit before an Origin or
+authentication callback runs, so callbacks never receive an oversized POST. These HTTP controls do
+not affect the local stdio command.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      async authenticate({ request }) {
+        const session = await getSession(request.headers);
+
+        if (!session) return null;
+
+        return {
+          id: session.user.id,
+          scopes: ["docs:read"],
+          claims: {
+            organizationId: session.user.organizationId,
+          },
+        };
+      },
+    },
+  },
+});
+```
+
+The callback result controls the request:
+
+- Return `{ id, scopes?, claims? }` to continue as an authenticated principal.
+- Return `null` to receive `401 Unauthorized`.
+- Return a Web `Response` to control the rejection, redirect, or challenge yourself.
+- Throw to receive a sanitized `500` response; provider error details are not exposed.
+
+Custom low-level `DocsMcpSource` implementations receive that principal in the optional second
+argument to `getPages(locale, context)` and `getNavigation(locale, context)`. They can use scopes or
+claims to filter private content. The framework does not serialize the principal into MCP tool
+results or telemetry.
+
+Configure browser origins and the request limit independently:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      allowedOrigins: [
+        "https://docs.example.com",
+        "https://internal-tools.example.com",
+      ],
+      maxBodyBytes: 512 * 1024,
+    },
+  },
+});
+```
+
+`allowedOrigins` also accepts `"same-origin"` (the default) or an async policy callback:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      allowedOrigins: async ({ origin, request }) => {
+        const hostname = new URL(origin).hostname;
+        return (
+          origin === new URL(request.url).origin ||
+          hostname === "example.com" ||
+          hostname.endsWith(".example.com")
+        );
+      },
+    },
+  },
+});
+```
+
+### Browser CORS
+
+Cross-origin browser access is opt-in through `allowedOrigins`. When an Origin is accepted, the
+framework answers `OPTIONS` preflight without running `authenticate` and emits that exact Origin in
+`Access-Control-Allow-Origin`. It never combines wildcard Origin responses with credentials.
+
+The standard MCP request headers, including `Authorization`, `Content-Type`,
+`MCP-Protocol-Version`, and `MCP-Session-Id`, are allowed by default. Add application-specific auth
+headers explicitly:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      allowedOrigins: ["https://internal-tools.example.com"],
+      cors: {
+        allowedHeaders: ["X-API-Key"],
+        exposedHeaders: ["X-Docs-Version"],
+        allowCredentials: true,
+        maxAgeSeconds: 600,
+      },
+    },
+  },
+});
+```
+
+`allowCredentials` is `false` by default. Enable it only for an explicitly allowed browser Origin
+when the auth provider needs cookies or another browser credential. Set `cors: false` to keep Origin
+validation but suppress browser CORS headers.
+
+Generated routes and public forwarders include `OPTIONS`. On a manually maintained MCP route,
+export or forward `MCP.OPTIONS` alongside `GET`, `POST`, and `DELETE`.
+
+<Callout type="warning" title="Origin is not authentication">
+  Origin validation protects the browser-facing transport; it does not identify a user or agent.
+  Use `authenticate` when the documentation itself needs access control. Headers such as
+  `Signature-Agent` are content-negotiation hints and must not be treated as proof of identity.
+</Callout>
+
 ## Default HTTP Routes
 
 `/mcp` is the short public MCP endpoint in Next.js, and `/.well-known/mcp` is the discovery-friendly
@@ -102,6 +222,10 @@ import { docsServer } from "@/lib/docs.server";
 export const Route = createFileRoute("/$")({
   server: {
     handlers: {
+      OPTIONS: async ({ request }) =>
+        isDocsMcpRequest(new URL(request.url))
+          ? docsServer.MCP.OPTIONS({ request })
+          : new Response("Not Found", { status: 404 }),
       GET: async ({ request }) => {
         const url = new URL(request.url);
         if (isDocsMcpRequest(url)) return docsServer.MCP.GET({ request });
@@ -131,6 +255,7 @@ export async function handle({ event, resolve }) {
   const method = event.request.method.toUpperCase();
 
   if (isDocsMcpRequest(event.url)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
     return MCP.GET({ request: event.request });
@@ -165,6 +290,7 @@ export async function onRequest(context, next) {
   const method = context.request.method.toUpperCase();
 
   if (isDocsMcpRequest(context.url)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
     return MCP.GET({ request: context.request });
@@ -213,7 +339,7 @@ Example custom Next.js route:
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
+export const { GET, POST, DELETE, OPTIONS } = createDocsMCPAPI(docsConfig);
 
 export const revalidate = false;
 ```
@@ -221,7 +347,9 @@ export const revalidate = false;
 <Callout type="warning" title="@farming-labs/theme/api compatibility">
   `@farming-labs/theme/api` still works if you already rely on it, but prefer
   `@farming-labs/next/api` for Next.js routes going forward. The theme-level path will be
-  deprecated.
+  deprecated. If `mcp.security` is configured, pass the imported live `docsConfig` to
+  `createDocsMCPAPI`; the legacy no-argument form intentionally refuses to reconstruct executable
+  authentication callbacks from source text.
 </Callout>
 
 When `search` is configured, the MCP `search_docs` tool uses that same adapter pipeline too. That

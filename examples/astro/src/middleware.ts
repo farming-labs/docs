@@ -13,12 +13,13 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   const method = context.request.method.toUpperCase();
 
   if (isDocsMcpRequest(context.url)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
     if (method === "GET" || method === "HEAD") return MCP.GET({ request: context.request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 

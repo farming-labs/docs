@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
@@ -70,7 +70,7 @@ Welcome to the docs.
 `,
     );
 
-    const { POST } = createDocsMCPAPI({
+    const { POST, OPTIONS } = createDocsMCPAPI({
       rootDir,
       entry: "docs",
       nav: { title: "Example Docs" },
@@ -132,6 +132,98 @@ Welcome to the docs.
     }>(listPagesResponse);
 
     expect(payload.result?.content?.[0]?.text).toContain("/docs");
+
+    const preflight = await OPTIONS(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "OPTIONS",
+        headers: {
+          origin: "http://localhost",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "content-type, mcp-protocol-version",
+        },
+      }),
+    );
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe("http://localhost");
+  });
+
+  it("fails closed when the legacy constructor would drop source-configured MCP security", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-secure-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  mcp: {
+    security: {
+      async authenticate({ request }) {
+        return request.headers.has("authorization") ? { id: "docs-user" } : null;
+      },
+    },
+  },
+};
+`,
+    );
+
+    expect(() => createDocsMCPAPI({ rootDir })).toThrowError(
+      /Import the live config and call createDocsMCPAPI\(docsConfig\)/,
+    );
+
+    process.chdir(rootDir);
+    expect(() => createDocsMCPAPI()).toThrowError(/Refusing to create a public MCP endpoint/);
+  });
+
+  it("uses an explicitly provided live MCP authentication callback", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-live-security-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+
+    const authenticate = vi.fn(async ({ request }: { request: Request }) =>
+      request.headers.get("authorization") === "Bearer secret" ? { id: "docs-user" } : null,
+    );
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      mcp: {
+        security: { authenticate },
+      },
+    });
+    const createRequest = (authorization?: string) =>
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          ...(authorization ? { authorization } : {}),
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: { name: "vitest", version: "1.0.0" },
+          },
+        }),
+      });
+
+    expect((await POST(createRequest())).status).toBe(401);
+    expect((await POST(createRequest("Bearer secret"))).status).toBe(200);
+    expect(authenticate).toHaveBeenCalledTimes(2);
   });
 
   it("ignores commented or quoted mcp flags when real config enables MCP", async () => {
@@ -152,10 +244,17 @@ title: "Introduction"
     writeFileSync(
       join(rootDir, "docs.config.ts"),
       `export default {
-  note: "mcp: false",
+  note: "mcp: false; security: { authenticate() {} }",
   // mcp: false
   mcp: {
     enabled: true,
+    // security: { authenticate() { return null; } },
+    tools: {
+      note: "authenticate: callback",
+      security: {
+        authenticate: false,
+      },
+    },
   },
 };
 `,
@@ -411,7 +510,7 @@ Surge overview child.
     const markdownResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
-    expect(markdownResponse.status).toBe(200);
+    expect(markdownResponse.status).toBe(404);
     expect(await markdownResponse.text()).toContain("# Docs Page Not Found");
   });
 
@@ -953,8 +1052,16 @@ Search should not return this hidden agent-only zebra token.
     mkdirSync(join(rootDir, "app", "docs", "getting-started", "quickstart"), { recursive: true });
     mkdirSync(join(rootDir, "app", "docs", "overview"), { recursive: true });
     mkdirSync(join(rootDir, "app", "docs", "configuration"), { recursive: true });
+    const quickstartPath = join(
+      rootDir,
+      "app",
+      "docs",
+      "getting-started",
+      "quickstart",
+      "page.mdx",
+    );
     writeFileSync(
-      join(rootDir, "app", "docs", "getting-started", "quickstart", "page.mdx"),
+      quickstartPath,
       `---
 title: "Quickstart"
 description: "Start fast"
@@ -985,6 +1092,8 @@ Verify the onboarding command examples before changing this page.
 </Agent>
 `,
     );
+    const quickstartLastModified = new Date("2026-07-18T14:23:45.000Z");
+    utimesSync(quickstartPath, quickstartLastModified, quickstartLastModified);
     writeFileSync(
       join(rootDir, "app", "docs", "overview", "page.mdx"),
       `---
@@ -1035,6 +1144,7 @@ Config content.
     expect(fallbackResponse.headers.get("link")).toBe(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
+    expect(fallbackResponse.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 14:23:45 GMT");
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toMatch(/^---\ntitle: "Quickstart"/);
@@ -1093,6 +1203,7 @@ Config content.
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
     expect(agentResponse.status).toBe(200);
+    expect(agentResponse.headers.get("last-modified")).toBeNull();
     const agentDocument = await agentResponse.text();
     expect(agentDocument).toMatch(/^---\ntitle: "Overview"/);
     expect(agentDocument).toContain('description: "Human overview"');
@@ -1109,10 +1220,32 @@ Config content.
     expect(rewrittenFallbackResponse.headers.get("link")).toBe(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
+    expect(rewrittenFallbackResponse.headers.get("content-location")).toBe(
+      "http://localhost/docs/getting-started/quickstart.md",
+    );
+    expect(rewrittenFallbackResponse.headers.get("etag")).toMatch(/^W\/"/);
+    expect(rewrittenFallbackResponse.headers.get("last-modified")).toBe(
+      "Sat, 18 Jul 2026 14:23:45 GMT",
+    );
     expect(rewrittenFallbackResponse.headers.get("vary")).toBeNull();
     expect(await rewrittenFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
+    const conditionalResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart.md", {
+        headers: { "If-None-Match": rewrittenFallbackResponse.headers.get("etag") ?? "" },
+      }),
+    );
+    expect(conditionalResponse.status).toBe(304);
+    expect(await conditionalResponse.text()).toBe("");
+
+    const dateConditionalResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart.md", {
+        headers: { "If-Modified-Since": "Sat, 18 Jul 2026 14:23:45 GMT" },
+      }),
+    );
+    expect(dateConditionalResponse.status).toBe(304);
+    expect(await dateConditionalResponse.text()).toBe("");
 
     const rewrittenAgentResponse = await GET(new Request("http://localhost/docs/overview.md"));
     expect(rewrittenAgentResponse.status).toBe(200);
@@ -1155,6 +1288,14 @@ Config content.
     expect(await weightedAcceptAgentResponse.text()).toContain(
       "Use this page as the implementation map.",
     );
+
+    const htmlPreferredResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "text/html;q=1, text/markdown;q=0.5" },
+      }),
+    );
+    expect(htmlPreferredResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await htmlPreferredResponse.text()).toBe("[]");
 
     const signatureAgentResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview", {
@@ -2023,7 +2164,7 @@ description: "Start building quickly"
     });
 
     const response = await GET(new Request("http://localhost/api/docs?format=markdown&path=quick"));
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toContain("text/markdown");
     const notFoundDocument = await response.text();
     expect(notFoundDocument).toMatch(/^---\ntitle: "Docs Page Not Found"/);
