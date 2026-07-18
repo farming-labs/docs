@@ -81,7 +81,17 @@ describe("createDocsLayout pageActions", () => {
     mkdirSync(join(tmpDir, "app", "docs"), { recursive: true });
     writeFileSync(
       join(tmpDir, "app", "docs", "page.mdx"),
-      "---\ntitle: Home\n---\n\n# Home\n",
+      `---
+title: Home
+agent:
+  task: Configure the docs home
+  outcome: The home page renders.
+  commands:
+    - pnpm dev
+---
+
+# Home
+`,
       "utf-8",
     );
     process.chdir(tmpDir);
@@ -168,6 +178,8 @@ describe("createDocsLayout pageActions", () => {
     expect(map?.["/docs"]).toContain('"@type":"TechArticle"');
     expect(map?.["/docs"]).toContain('"url":"https://docs.example.com/docs"');
     expect(map?.["/docs"]).toContain('"headline":"Home"');
+    expect(map?.["/docs"]).toContain('"@type":"HowTo"');
+    expect(map?.["/docs"]).toContain('"name":"Configure the docs home"');
   });
 
   it("does not add an extra display: contents wrapper above the docs layout root", () => {

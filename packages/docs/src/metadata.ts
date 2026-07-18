@@ -3,9 +3,11 @@ import type {
   DocsMetadata,
   OGConfig,
   PageFrontmatter,
+  PageAgentFrontmatter,
   PageOpenGraph,
   PageTwitter,
 } from "./types.js";
+import { hasStructuredPageAgentContract, normalizePageAgentFrontmatter } from "./agent-contract.js";
 
 export interface DocsStructuredDataBreadcrumb {
   name: string;
@@ -20,6 +22,8 @@ export interface DocsPageStructuredDataInput {
   entry?: string;
   dateModified?: string;
   breadcrumbs?: DocsStructuredDataBreadcrumb[];
+  /** Optional actionable page contract represented as a Schema.org HowTo. */
+  agent?: PageAgentFrontmatter;
 }
 
 /**
@@ -202,6 +206,73 @@ function normalizeDateModified(value?: string): string | undefined {
   return Number.isNaN(date.getTime()) ? value : date.toISOString();
 }
 
+function buildAgentContractHowTo(
+  value: unknown,
+  fallback: { title: string; description?: string },
+): Record<string, unknown> | undefined {
+  const agent = normalizePageAgentFrontmatter(value);
+  if (!agent || !hasStructuredPageAgentContract(agent)) return undefined;
+
+  const steps: Array<Record<string, unknown>> = [];
+  for (const command of agent.commands ?? []) {
+    const run = typeof command === "string" ? command : command.run;
+    const description = typeof command === "string" ? undefined : command.description;
+    const cwd = typeof command === "string" ? undefined : command.cwd;
+    steps.push({
+      "@type": "HowToStep",
+      position: steps.length + 1,
+      name: description ?? "Run command",
+      text: cwd ? `${run} (from ${cwd})` : run,
+    });
+  }
+  for (const verification of agent.verification ?? []) {
+    const description =
+      typeof verification === "string"
+        ? verification
+        : (verification.description ?? "Verify the result");
+    const details =
+      typeof verification === "string"
+        ? verification
+        : [verification.run, verification.expect ? `Expected: ${verification.expect}` : undefined]
+            .filter(Boolean)
+            .join(". ");
+    steps.push({
+      "@type": "HowToStep",
+      position: steps.length + 1,
+      name: description,
+      text: details || description,
+    });
+  }
+
+  const supplies = [
+    ...(agent.prerequisites ?? []).map((name) => ({
+      "@type": "HowToSupply",
+      name,
+    })),
+    ...(agent.files ?? []).map((name) => ({
+      "@type": "HowToSupply",
+      name,
+    })),
+  ];
+  const about = Object.entries(agent.appliesTo ?? {}).flatMap(([kind, values]) =>
+    (typeof values === "string" ? [values] : (values ?? [])).map((name: string) => ({
+      "@type": "Thing",
+      name: `${kind}: ${name}`,
+    })),
+  );
+
+  return {
+    "@type": "HowTo",
+    name: agent.task ?? fallback.title,
+    ...((agent.outcome ?? fallback.description)
+      ? { description: agent.outcome ?? fallback.description }
+      : {}),
+    ...(about.length > 0 ? { about } : {}),
+    ...(supplies.length > 0 ? { supply: supplies } : {}),
+    ...(steps.length > 0 ? { step: steps } : {}),
+  };
+}
+
 /**
  * Resolve the public docs site URL from existing agent-facing config.
  *
@@ -250,6 +321,9 @@ export function buildDocsPageStructuredData(input: DocsPageStructuredDataInput) 
   };
 
   if (input.description) result.description = input.description;
+
+  const agentContract = buildAgentContractHowTo(input.agent, input);
+  if (agentContract) result.mainEntity = agentContract;
 
   const dateModified = normalizeDateModified(input.dateModified);
   if (dateModified) result.dateModified = dateModified;

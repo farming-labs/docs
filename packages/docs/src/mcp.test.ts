@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "./types.js";
-import type { DocsMcpPage } from "./mcp.js";
+import type { DocsMcpDocsPageSummary, DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
@@ -86,6 +86,34 @@ const DEFAULT_RESOLVED_MCP_CORS = {
 };
 
 describe("resolveDocsMcpConfig", () => {
+  it("keeps the new task metadata fields additive for existing consumers", () => {
+    const legacySummary: DocsMcpDocsPageSummary = {
+      slug: "overview",
+      url: "/docs/overview",
+      title: "Overview",
+    };
+    const legacyResolvedConfig: DocsMcpResolvedConfig = {
+      enabled: true,
+      route: "/api/docs/mcp",
+      name: "docs",
+      version: "1.0.0",
+      tools: {
+        listDocs: true,
+        listPages: true,
+        readPage: true,
+        searchDocs: true,
+        getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: true,
+        getContext: true,
+      },
+    };
+
+    expect(legacySummary.agent).toBeUndefined();
+    expect(legacyResolvedConfig.tools.listTasks).toBeUndefined();
+    expect(resolveDocsMcpConfig().tools).toMatchObject({ listTasks: true, readTask: true });
+  });
+
   it("enables MCP by default when config is omitted", () => {
     expect(resolveDocsMcpConfig()).toEqual({
       enabled: true,
@@ -96,6 +124,8 @@ describe("resolveDocsMcpConfig", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
@@ -121,6 +151,8 @@ describe("resolveDocsMcpConfig", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
@@ -150,6 +182,8 @@ describe("resolveDocsMcpConfig", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
@@ -253,6 +287,21 @@ title: "Installation"
 description: "Install everything"
 related:
   - /docs/guides/quickstart
+agent:
+  task: Install the framework
+  outcome: Dependencies are installed from the lockfile.
+  appliesTo:
+    framework: nextjs
+    package: "@farming-labs/next"
+  files:
+    - package.json
+    - pnpm-lock.yaml
+  commands:
+    - run: pnpm install --frozen-lockfile
+      description: Install exact dependency versions
+  verification:
+    - run: pnpm test
+      expect: Tests pass
 ---
 
 # Installation
@@ -278,6 +327,11 @@ tags:
 related:
   - /docs/installation
   - /docs
+agent:
+  task: Create the first docs page
+  outcome: The quickstart route renders.
+  files:
+    - docs.config.ts
 ---
 
 # Quickstart
@@ -325,6 +379,22 @@ Validate the generated example paths before editing this guide.
         expect.objectContaining({
           url: "/docs/installation",
           agentRawContent: "Use `pnpm install --frozen-lockfile`.\n",
+          agent: {
+            task: "Install the framework",
+            outcome: "Dependencies are installed from the lockfile.",
+            appliesTo: {
+              framework: ["nextjs"],
+              package: ["@farming-labs/next"],
+            },
+            files: ["package.json", "pnpm-lock.yaml"],
+            commands: [
+              {
+                run: "pnpm install --frozen-lockfile",
+                description: "Install exact dependency versions",
+              },
+            ],
+            verification: [{ run: "pnpm test", expect: "Tests pass" }],
+          },
         }),
         expect.objectContaining({
           url: "/docs/guides/quickstart",
@@ -477,6 +547,8 @@ sidebar:
       expect.arrayContaining([
         "list_docs",
         "list_pages",
+        "list_tasks",
+        "read_task",
         "get_navigation",
         "search_docs",
         "read_page",
@@ -490,6 +562,8 @@ sidebar:
         [
           "list_docs",
           "list_pages",
+          "list_tasks",
+          "read_task",
           "get_navigation",
           "search_docs",
           "read_page",
@@ -503,6 +577,163 @@ sidebar:
           }),
         ),
       ),
+    );
+    for (const toolName of ["list_pages", "list_docs"]) {
+      expect(
+        toolsList.result?.tools?.find((tool) => tool.name === toolName)?.outputSchema,
+      ).toMatchObject({
+        properties: {
+          pages: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                agent: {
+                  type: "object",
+                  properties: { hasContract: { type: "boolean" } },
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    const listPagesResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "list-pages",
+          method: "tools/call",
+          params: { name: "list_pages", arguments: {} },
+        }),
+      }),
+    });
+    const listPagesPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(listPagesResponse);
+    const listedPages = JSON.parse(listPagesPayload.result?.content?.[0]?.text ?? "{}") as {
+      pages?: Array<{
+        url?: string;
+        agent?: {
+          hasContract?: boolean;
+          task?: string;
+          outcome?: string;
+          files?: string[];
+          commands?: unknown[];
+        };
+      }>;
+    };
+    expect(listedPages.pages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "/docs/installation",
+          agent: expect.objectContaining({
+            hasContract: true,
+            task: "Install the framework",
+            outcome: "Dependencies are installed from the lockfile.",
+          }),
+        }),
+      ]),
+    );
+    const installationSummary = listedPages.pages?.find(
+      (page) => page.url === "/docs/installation",
+    );
+    expect(installationSummary?.agent).not.toHaveProperty("files");
+    expect(installationSummary?.agent).not.toHaveProperty("commands");
+
+    const listTasksResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "list-tasks",
+          method: "tools/call",
+          params: {
+            name: "list_tasks",
+            arguments: { query: "lockfile", framework: "nextjs" },
+          },
+        }),
+      }),
+    });
+    const listTasksPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          resultCount?: number;
+          tasks?: Array<{ url?: string; task?: string; appliesTo?: unknown }>;
+        };
+        content?: Array<{ text?: string }>;
+      };
+    }>(listTasksResponse);
+    expect(listTasksPayload.result?.structuredContent).toMatchObject({
+      resultCount: 1,
+      tasks: [
+        {
+          url: "/docs/installation",
+          task: "Install the framework",
+          appliesTo: {
+            framework: ["nextjs"],
+            package: ["@farming-labs/next"],
+          },
+        },
+      ],
+    });
+    expect(JSON.parse(listTasksPayload.result?.content?.[0]?.text ?? "{}")).toEqual(
+      listTasksPayload.result?.structuredContent,
+    );
+
+    const readTaskResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "read-task",
+          method: "tools/call",
+          params: { name: "read_task", arguments: { path: "installation" } },
+        }),
+      }),
+    });
+    const readTaskPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          page?: { url?: string };
+          contract?: { files?: string[]; commands?: unknown[]; verification?: unknown[] };
+        };
+        content?: Array<{ text?: string }>;
+      };
+    }>(readTaskResponse);
+    expect(readTaskPayload.result?.structuredContent).toMatchObject({
+      page: { url: "/docs/installation" },
+      contract: {
+        files: ["package.json", "pnpm-lock.yaml"],
+        commands: [
+          {
+            run: "pnpm install --frozen-lockfile",
+            description: "Install exact dependency versions",
+          },
+        ],
+        verification: [{ run: "pnpm test", expect: "Tests pass" }],
+      },
+    });
+    expect(JSON.parse(readTaskPayload.result?.content?.[0]?.text ?? "{}")).toEqual(
+      readTaskPayload.result?.structuredContent,
     );
 
     const listDocsResponse = await handlers.POST({
@@ -540,7 +771,12 @@ sidebar:
       section?: string;
       resultCount?: number;
       sectionCount?: number;
-      pages?: Array<{ slug?: string; url?: string; sourcePath?: string }>;
+      pages?: Array<{
+        slug?: string;
+        url?: string;
+        sourcePath?: string;
+        agent?: { hasContract?: boolean; task?: string; outcome?: string; files?: string[] };
+      }>;
       sections?: Array<{
         slug?: string;
         title?: string;
@@ -558,6 +794,11 @@ sidebar:
           slug: "guides/quickstart",
           url: "/docs/guides/quickstart",
           sourcePath: "docs/guides/quickstart.mdx",
+          agent: {
+            hasContract: true,
+            task: "Create the first docs page",
+            outcome: "The quickstart route renders.",
+          },
         }),
       ],
       sections: [
@@ -574,6 +815,7 @@ sidebar:
         }),
       ],
     });
+    expect(docsList.pages?.[0]?.agent).not.toHaveProperty("files");
     expect(listDocsPayload.result?.structuredContent).toEqual(docsList);
 
     const searchResponse = await handlers.POST({
@@ -651,12 +893,16 @@ sidebar:
     expect(readPayload.result?.content?.[0]?.text).toContain(
       "Use `pnpm install --frozen-lockfile`.",
     );
+    expect(readPayload.result?.content?.[0]?.text).toContain("## Agent Contract");
+    expect(readPayload.result?.content?.[0]?.text).toContain("Task: Install the framework");
+    expect(readPayload.result?.content?.[0]?.text).toContain("- Package: `@farming-labs/next`");
     expect(readPayload.result?.content?.[0]?.text).not.toContain("# Installation");
     expect(readPayload.result?.content?.[0]?.text).not.toContain("URL: /docs/installation");
+    const readDocument = readPayload.result?.content?.[0]?.text ?? "";
     expect(readPayload.result?.structuredContent).toMatchObject({
       page: { url: "/docs/installation" },
-      document: "Use `pnpm install --frozen-lockfile`.\n",
-      chars: "Use `pnpm install --frozen-lockfile`.\n".length,
+      document: readDocument,
+      chars: readDocument.length,
       truncated: false,
     });
 
@@ -858,18 +1104,18 @@ sidebar:
     expect(ambiguousConfigSchema.resultCount).toBe(0);
     expect(ambiguousConfigSchema.options).toEqual([]);
 
-    const listPagesPayload = await parseMcpPayload<{
+    const structuredListPagesPayload = await parseMcpPayload<{
       result?: {
         content?: Array<{ text?: string }>;
         structuredContent?: { pages?: Array<{ url?: string }> };
       };
     }>(await callMcpTool(handlers, "list_pages", {}));
-    expectSuccessfulStructuredTextResult(listPagesPayload);
-    expect(listPagesPayload.result?.structuredContent?.pages).toEqual(
+    expectSuccessfulStructuredTextResult(structuredListPagesPayload);
+    expect(structuredListPagesPayload.result?.structuredContent?.pages).toEqual(
       expect.arrayContaining([expect.objectContaining({ url: "/docs/installation" })]),
     );
-    expect(JSON.parse(listPagesPayload.result?.content?.[0]?.text ?? "{}")).toEqual(
-      listPagesPayload.result?.structuredContent,
+    expect(JSON.parse(structuredListPagesPayload.result?.content?.[0]?.text ?? "{}")).toEqual(
+      structuredListPagesPayload.result?.structuredContent,
     );
 
     const navigationPayload = await parseMcpPayload<{
@@ -1197,6 +1443,62 @@ ${"Detailed runtime configuration guidance. ".repeat(60)}`;
     expect(tight?.budget.remainingUtf8Bytes).toBe(256 - tightUtf8Bytes);
     expect(tightUtf8Bytes).toBeLessThanOrEqual(256);
     expect(tight?.sources.at(-1)?.truncated).toBe(true);
+  });
+
+  it("hydrates contract-only context matches with the structured agent contract", async () => {
+    const rawContent = `# Operations
+
+General operational guidance.
+`;
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        getPages: () => [
+          {
+            slug: "credential-rotation",
+            url: "/docs/credential-rotation",
+            title: "Operations",
+            content: rawContent,
+            rawContent,
+            agent: {
+              task: "Rotate quasar production credentials",
+              outcome: "Production uses the replacement credential without downtime.",
+              commands: [{ run: "pnpm credentials:rotate", description: "Rotate credentials" }],
+            },
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const payload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          context?: string;
+          resultCount?: number;
+          sources?: Array<{ url?: string; section?: string; content?: string }>;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "get_context", {
+        query: "quasar production credentials",
+        tokenBudget: 4_000,
+      }),
+    );
+
+    expectSuccessfulStructuredTextResult(payload);
+    expect(payload.result?.structuredContent).toMatchObject({
+      resultCount: 1,
+      sources: [
+        expect.objectContaining({
+          url: "/docs/credential-rotation",
+          content: expect.stringContaining("Task: Rotate quasar production credentials"),
+        }),
+      ],
+    });
+    expect(payload.result?.structuredContent?.context).toContain(
+      "Task: Rotate quasar production credentials",
+    );
   });
 
   it("bounds the complete assembled context by UTF-8 bytes for Unicode and code", async () => {
@@ -1571,6 +1873,50 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
           claims: { pathname: "/api/docs/mcp" },
         },
       });
+    }
+
+    for (const toolCall of [
+      { name: "list_tasks", arguments: { query: "Install", locale: "en" } },
+      { name: "read_task", arguments: { path: "installation", locale: "en" } },
+    ]) {
+      seenContexts.length = 0;
+      const toolResponse = await handlers.POST({
+        request: new Request("http://localhost/api/docs/mcp", {
+          method: "POST",
+          headers: {
+            ...headers,
+            authorization: "Bearer valid",
+            "mcp-session-id": "stale-session",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: `authenticated-${toolCall.name}`,
+            method: "tools/call",
+            params: toolCall,
+          }),
+        }),
+      });
+      const toolPayload = await parseMcpPayload<{
+        result?: {
+          content?: Array<{ text?: string }>;
+          structuredContent?: unknown;
+          isError?: boolean;
+        };
+      }>(toolResponse);
+
+      expect(toolResponse.status).toBe(200);
+      expectSuccessfulStructuredTextResult(toolPayload);
+      expect(seenContexts.length).toBeGreaterThanOrEqual(3);
+      for (const context of seenContexts) {
+        expect(context).toMatchObject({
+          transport: "http",
+          auth: {
+            id: "user-123",
+            scopes: ["docs:read"],
+            claims: { pathname: "/api/docs/mcp" },
+          },
+        });
+      }
     }
   });
 
@@ -2201,6 +2547,8 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         enabled: true,
         tools: {
           listDocs: false,
+          listTasks: false,
+          readTask: false,
           searchDocs: false,
           readPage: false,
           getConfigSchema: false,
@@ -2264,6 +2612,8 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
       expect.arrayContaining([
         "list_docs",
+        "list_tasks",
+        "read_task",
         "search_docs",
         "read_page",
         "get_config_schema",

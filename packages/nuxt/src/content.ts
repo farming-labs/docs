@@ -11,9 +11,11 @@ import path from "node:path";
 import matter from "gray-matter";
 import {
   normalizeDocsRelated,
+  normalizePageAgentFrontmatter,
   resolveDocsAgentMdxContent,
   resolvePageSidebarFolderIndexBehavior,
   type OrderingItem,
+  type PageAgentFrontmatter,
   type ResolvedDocsRelatedLink,
   type SidebarFolderIndexBehavior,
 } from "@farming-labs/docs";
@@ -48,6 +50,7 @@ export interface ContentPage {
   title: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
+  agent?: PageAgentFrontmatter;
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
@@ -114,6 +117,7 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         title,
         description: data.description as string | undefined,
         ...(related.length > 0 ? { related } : {}),
+        agent: normalizePageAgentFrontmatter(data.agent),
         icon: data.icon as string | undefined,
         sourcePath: full.replace(/\\/g, "/"),
         lastModified: stat.mtime.toISOString(),

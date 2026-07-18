@@ -102,7 +102,7 @@ function printHostedMcpSetup(options: RunMcpOptions) {
   console.log(pc.dim("Set DOCS_CLOUD_API_KEY in the agent environment before connecting."));
 }
 
-function readMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
+export function readMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
   if (content.match(/mcp\s*:\s*false/)) return false;
   if (content.match(/mcp\s*:\s*true/)) return true;
 
@@ -117,6 +117,8 @@ function readMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
     tools: {
       listDocs: readBooleanProperty(block, "listDocs"),
       listPages: readBooleanProperty(block, "listPages"),
+      listTasks: readBooleanProperty(block, "listTasks"),
+      readTask: readBooleanProperty(block, "readTask"),
       readPage: readBooleanProperty(block, "readPage"),
       searchDocs: readBooleanProperty(block, "searchDocs"),
       getNavigation: readBooleanProperty(block, "getNavigation"),

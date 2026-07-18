@@ -8,6 +8,7 @@ import {
   applySidebarFolderIndexBehavior,
   buildPageOpenGraph,
   buildPageTwitter,
+  normalizePageAgentFrontmatter,
   renderDocsPageStructuredDataJson,
   resolveChangelogConfig,
   resolveDocsAgentMdxContent,
@@ -626,6 +627,7 @@ function buildStructuredDataMap(
         baseUrl,
         entry: ctx.entryPath,
         dateModified: stat.mtime.toISOString(),
+        agent: normalizePageAgentFrontmatter(data.agent),
       });
     }
 

@@ -4,6 +4,10 @@ import path from "node:path";
 import matter from "gray-matter";
 import pc from "picocolors";
 import {
+  normalizePageAgentFrontmatter,
+  stripGeneratedPageAgentContractMarkdown,
+} from "../agent-contract.js";
+import {
   GENERATED_AGENT_PROVENANCE_VERSION,
   hashGeneratedAgentContent,
   parseGeneratedAgentDocument,
@@ -27,7 +31,7 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
-import type { DocsConfig, PageFrontmatter } from "../types.js";
+import type { DocsConfig } from "../types.js";
 
 const DEFAULT_COMPRESSION_BASE_URL = "https://api.farming-labs.dev";
 const DEFAULT_COMPRESSION_MODEL = "docs-cloud-compress-v1";
@@ -465,15 +469,10 @@ function mergeAgentCompactOptions(
   };
 }
 
-function normalizeTokenBudget(value: unknown): number | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
-  return Math.max(1, Math.ceil(value));
-}
-
 export function readPageTokenBudget(pagePath: string): number | undefined {
   const source = readFileSync(pagePath, "utf-8");
   const { data } = matter(source);
-  return normalizeTokenBudget((data as PageFrontmatter).agent?.tokenBudget);
+  return normalizePageAgentFrontmatter(data.agent)?.tokenBudget;
 }
 
 function buildCompactionSettingsHash(options: AgentCompactOptions): string {
@@ -512,15 +511,19 @@ function buildPageOptions(
 }
 
 function buildResolvedPageSourceDocument(page: DocsMcpPage): string {
-  return renderDocsMarkdownDocument({
-    ...page,
-    agentRawContent: undefined,
-  });
+  return stripGeneratedPageAgentContractMarkdown(
+    renderDocsMarkdownDocument({
+      ...page,
+      agentRawContent: undefined,
+    }),
+  );
 }
 
 function buildAgentSourceDocument(page: DocsMcpPage): string {
-  if (typeof page.agentRawContent === "string") return page.agentRawContent;
-  return renderDocsMarkdownDocument(page);
+  if (typeof page.agentRawContent === "string") {
+    return stripGeneratedPageAgentContractMarkdown(page.agentRawContent);
+  }
+  return stripGeneratedPageAgentContractMarkdown(renderDocsMarkdownDocument(page));
 }
 
 function readCurrentAgentDocument(target: DocsPageTarget) {

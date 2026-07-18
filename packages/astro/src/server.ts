@@ -55,6 +55,7 @@ import {
   isDocsDiagnosticsRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
+  normalizePageAgentFrontmatter,
   parseDocsAgentFeedbackData,
   performDocsSearch,
   renderDocsMarkdownDocument,
@@ -512,6 +513,7 @@ function searchIndexFromMap(
       title,
       description: data.description as string | undefined,
       ...(related.length > 0 ? { related } : {}),
+      agent: normalizePageAgentFrontmatter(data.agent),
       icon: data.icon as string | undefined,
       locale: typeof data.locale === "string" ? data.locale : undefined,
       framework: typeof data.framework === "string" ? data.framework : undefined,
@@ -812,6 +814,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       baseUrl: resolveDocsMetadataBaseUrl(config as any),
       entry,
       dateModified: lastModifiedIso,
+      agent: normalizePageAgentFrontmatter(data.agent),
     });
 
     return {

@@ -126,6 +126,9 @@ title: "Installation"
 description: "Install the framework"
 related:
   - /docs/configuration
+agent:
+  task: Install the docs framework
+  outcome: The package is available to the project.
 ---
 
 # Installation
@@ -249,6 +252,8 @@ Keep this focused.
     expect(seenInputs[0]).toContain("Description: Install the framework");
     expect(seenInputs[0]).toContain("Related: /docs/configuration");
     expect(seenInputs[0]).toContain("<docs_safe>```bash");
+    expect(seenInputs[0]).not.toContain("## Agent Contract");
+    expect(seenInputs[0]).not.toContain("farming-labs:agent-contract");
 
     expect(seenInputs[1]).toContain("URL: /docs/configuration");
     expect(seenInputs[1]).toContain("Hidden agent notes should appear in the resolved markdown.");

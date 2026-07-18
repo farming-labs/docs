@@ -155,6 +155,9 @@ describe("agent route helpers", () => {
         llmsTxt: {
           sections: [{ title: "Guides", match: "/docs/guides/**" }],
         },
+        mcp: {
+          tools: { listTasks: true, readTask: true },
+        },
         rootDir: "/tmp/site",
         _preloadedContent: {
           "/docs/page.mdx": "# Internal content",
@@ -210,6 +213,13 @@ describe("agent route helpers", () => {
     expect(map.pointers["/llmsTxt/sections/0/title"]).toEqual({
       path: "llmsTxt.sections[0].title",
       kind: "string",
+    });
+    expect(map.values.mcp).toEqual({
+      tools: { listTasks: true, readTask: true },
+    });
+    expect(map.pointers["/mcp/tools/listTasks"]).toEqual({
+      path: "mcp.tools.listTasks",
+      kind: "boolean",
     });
     expect(map.values).not.toHaveProperty("rootDir");
     expect(map.values).not.toHaveProperty("_preloadedContent");
@@ -351,6 +361,8 @@ describe("agent route helpers", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: false,
         getNavigation: true,
         getCodeExamples: true,
@@ -1015,6 +1027,15 @@ describe("agent route helpers", () => {
           description: "Install the framework",
           lastModified: "2026-05-27T12:30:00.000Z",
           related: [{ href: "/docs/configuration" }],
+          agent: {
+            tokenBudget: 800,
+            task: "Install the framework",
+            outcome: "The docs app starts successfully.",
+            appliesTo: { framework: "nextjs", version: ">=16" },
+            files: ["package.json"],
+            commands: ["pnpm install"],
+            verification: [{ run: "pnpm test", expect: "Tests pass" }],
+          },
           content: "Visible",
           rawContent: "Visible",
           agentFallbackRawContent: "Visible\n\nHidden",
@@ -1030,7 +1051,20 @@ describe("agent route helpers", () => {
     expect(document).toContain('canonical_url: "https://docs.example.com/docs/install"');
     expect(document).toContain('markdown_url: "https://docs.example.com/docs/install.md"');
     expect(document).toContain('last_updated: "2026-05-27"');
+    expect(document).toContain("agent:\n  tokenBudget: 800");
+    expect(document).toContain('  task: "Install the framework"');
+    expect(document).toContain("## Agent Contract");
+    expect(document).toContain("- Framework: `nextjs`");
+    expect(document).toContain("- `pnpm install`");
     expect(document).toContain("LLM index: /llms.txt");
+
+    const handwrittenContract = renderDocsMarkdownDocument({
+      ...page!,
+      agentRawContent: "## Agent Contract\n\nUse the handwritten recovery procedure.",
+    });
+    expect(handwrittenContract.match(/## Agent Contract/g)).toHaveLength(1);
+    expect(handwrittenContract).toContain("Use the handwritten recovery procedure.");
+    expect(handwrittenContract).not.toContain("farming-labs:agent-contract:start");
     expect(renderDocsMarkdownDocument(page!, { llms: false })).not.toContain(
       "LLM index: /llms.txt",
     );
@@ -1053,6 +1087,8 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
@@ -1099,6 +1135,8 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
@@ -1149,6 +1187,8 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
@@ -1200,6 +1240,7 @@ describe("agent route helpers", () => {
     expect(spec.capabilities.robots).toBe(true);
     expect(spec.capabilities.agents).toBe(true);
     expect(spec.capabilities.structuredData).toBe(true);
+    expect(spec.capabilities.structuredAgentContracts).toBe(true);
     expect(spec.capabilities.apiReference).toBe(true);
     expect(spec.capabilities.openapi).toBe(true);
     expect(spec.openapi).toEqual({
@@ -1219,10 +1260,78 @@ describe("agent route helpers", () => {
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     });
+    expect(spec.agentContract).toMatchObject({
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      source: "page-frontmatter",
+      frontmatterPath: "agent",
+      markdownSection: "Agent Contract",
+      mcpField: "agent",
+      mcpTools: { list: "list_tasks", read: "read_task" },
+      usefulContractFields: ["task", "outcome"],
+    });
+  });
+
+  it("advertises only task tools exposed by the resolved MCP config", () => {
+    const baseTools = {
+      listDocs: true,
+      listPages: true,
+      readPage: true,
+      searchDocs: true,
+      getNavigation: true,
+      getCodeExamples: true,
+      getConfigSchema: true,
+      getContext: true,
+    };
+    const build = (mcp: Parameters<typeof buildDocsAgentDiscoverySpec>[0]["mcp"]) =>
+      buildDocsAgentDiscoverySpec({ origin: "https://docs.example.com", mcp });
+
+    expect(
+      build({
+        enabled: false,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: baseTools,
+      }).agentContract,
+    ).not.toHaveProperty("mcpTools");
+
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: { ...baseTools, listTasks: false, readTask: true },
+      }).agentContract,
+    ).toMatchObject({ mcpTools: { read: "read_task" } });
+
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: { ...baseTools, listTasks: false, readTask: false },
+      }).agentContract,
+    ).not.toHaveProperty("mcpTools");
+
+    // Resolved configs constructed against older public types omit the new
+    // flags; omission retains the runtime defaults.
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: baseTools,
+      }).agentContract,
+    ).toMatchObject({ mcpTools: { list: "list_tasks", read: "read_task" } });
   });
 
   it("resolves agent feedback endpoints as default-on with explicit opt-out", () => {

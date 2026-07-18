@@ -7,6 +7,11 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
+import {
+  hasStructuredPageAgentContract,
+  normalizePageAgentFrontmatter,
+  upsertPageAgentContractMarkdown,
+} from "./agent-contract.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
@@ -36,6 +41,7 @@ import type {
   DocsTelemetryFramework,
   McpDocsSearchConfig,
   OrderingItem,
+  PageAgentFrontmatter,
 } from "./types.js";
 
 export interface DocsMcpPage {
@@ -44,6 +50,7 @@ export interface DocsMcpPage {
   title: string;
   description?: string;
   related?: DocsSearchSourcePage["related"];
+  agent?: PageAgentFrontmatter;
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
@@ -83,9 +90,27 @@ export interface DocsMcpDocsPageSummary {
   url: string;
   title: string;
   description?: string;
+  agent?: DocsMcpAgentContractSummary;
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
+}
+
+export interface DocsMcpAgentContractSummary {
+  hasContract: boolean;
+  task?: string;
+  outcome?: string;
+  appliesTo?: PageAgentFrontmatter["appliesTo"];
+}
+
+export interface DocsMcpTaskSummary {
+  slug: string;
+  url: string;
+  title: string;
+  description?: string;
+  task?: string;
+  outcome?: string;
+  appliesTo?: PageAgentFrontmatter["appliesTo"];
 }
 
 export interface DocsMcpDocsSection {
@@ -253,6 +278,8 @@ export interface DocsMcpResolvedConfig {
     listDocs: boolean;
     listPages: boolean;
     readPage: boolean;
+    listTasks?: boolean;
+    readTask?: boolean;
     searchDocs: boolean;
     getNavigation: boolean;
     getCodeExamples: boolean;
@@ -746,6 +773,20 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
             description: "Expose the list_pages tool.",
           },
           {
+            path: "mcp.tools.listTasks",
+            name: "listTasks",
+            type: "boolean",
+            default: true,
+            description: "Expose the list_tasks tool.",
+          },
+          {
+            path: "mcp.tools.readTask",
+            name: "readTask",
+            type: "boolean",
+            default: true,
+            description: "Expose the read_task tool.",
+          },
+          {
             path: "mcp.tools.getNavigation",
             name: "getNavigation",
             type: "boolean",
@@ -959,6 +1000,89 @@ const readPageInputSchema = z.object({
   maxChars: z.number().int().min(256).max(1_000_000).optional(),
 });
 
+const listTasksInputSchema = z.object({
+  query: z.string().trim().min(1).optional(),
+  framework: z.string().trim().min(1).optional(),
+  version: z.string().trim().min(1).optional(),
+  package: z.string().trim().min(1).optional(),
+  locale: z.string().min(1).optional(),
+});
+
+const readTaskInputSchema = readPageInputSchema;
+
+const pageAgentAppliesToOutputSchema = z.object({
+  framework: z.array(z.string()).optional(),
+  version: z.array(z.string()).optional(),
+  package: z.array(z.string()).optional(),
+});
+
+const pageAgentCommandOutputSchema = z.union([
+  z.string(),
+  z.object({
+    run: z.string(),
+    cwd: z.string().optional(),
+    description: z.string().optional(),
+  }),
+]);
+
+const pageAgentVerificationOutputSchema = z.union([
+  z.string(),
+  z.object({
+    description: z.string().optional(),
+    run: z.string().optional(),
+    expect: z.string().optional(),
+  }),
+]);
+
+const pageAgentFailureModeOutputSchema = z.union([
+  z.string(),
+  z.object({
+    symptom: z.string(),
+    resolution: z.string().optional(),
+  }),
+]);
+
+const pageAgentContractOutputSchema = z.object({
+  tokenBudget: z.number().optional(),
+  task: z.string().optional(),
+  outcome: z.string().optional(),
+  appliesTo: pageAgentAppliesToOutputSchema.optional(),
+  prerequisites: z.array(z.string()).optional(),
+  files: z.array(z.string()).optional(),
+  commands: z.array(pageAgentCommandOutputSchema).optional(),
+  sideEffects: z.array(z.string()).optional(),
+  verification: z.array(pageAgentVerificationOutputSchema).optional(),
+  rollback: z.array(z.string()).optional(),
+  failureModes: z.array(pageAgentFailureModeOutputSchema).optional(),
+});
+
+const taskSummaryOutputSchema = z.object({
+  slug: z.string(),
+  url: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  task: z.string().optional(),
+  outcome: z.string().optional(),
+  appliesTo: pageAgentAppliesToOutputSchema.optional(),
+});
+
+const listTasksOutputSchema = z.object({
+  resultCount: z.number().int().nonnegative(),
+  tasks: z.array(taskSummaryOutputSchema),
+});
+
+const readTaskOutputSchema = z.object({
+  page: z.object({
+    slug: z.string(),
+    url: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    sourcePath: z.string().optional(),
+    lastModified: z.string().optional(),
+  }),
+  contract: pageAgentContractOutputSchema,
+});
+
 const listPagesInputSchema = z.object({
   locale: z.string().min(1).optional(),
 });
@@ -1002,11 +1126,18 @@ const getContextInputSchema = z.object({
 });
 
 const relatedLinkOutputSchema = z.object({ href: z.string() });
+const pageAgentContractSummaryOutputSchema = z.object({
+  hasContract: z.boolean(),
+  task: z.string().optional(),
+  outcome: z.string().optional(),
+  appliesTo: pageAgentAppliesToOutputSchema.optional(),
+});
 const pageSummaryOutputSchema = z.object({
   slug: z.string(),
   url: z.string(),
   title: z.string(),
   description: z.string().optional(),
+  agent: pageAgentContractSummaryOutputSchema.optional(),
   icon: z.string().optional(),
   sourcePath: z.string().optional(),
   lastModified: z.string().optional(),
@@ -1201,6 +1332,8 @@ export function resolveDocsMcpConfig(
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
@@ -1222,6 +1355,8 @@ export function resolveDocsMcpConfig(
       listDocs: config.tools?.listDocs ?? true,
       listPages: config.tools?.listPages ?? true,
       readPage: config.tools?.readPage ?? true,
+      listTasks: config.tools?.listTasks ?? true,
+      readTask: config.tools?.readTask ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
       getNavigation: config.tools?.getNavigation ?? true,
       getCodeExamples: config.tools?.getCodeExamples ?? true,
@@ -1584,6 +1719,237 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "list_docs" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.listTasks) {
+    server.registerTool(
+      "list_tasks",
+      {
+        title: "List documented tasks",
+        description:
+          "List pages with actionable agent contracts, optionally filtered by text or applicability.",
+        inputSchema: listTasksInputSchema,
+        outputSchema: listTasksOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ query, framework, version, package: packageName, locale }) => {
+        const startedAt = nowMs();
+        const trace = createDocsAgentTraceContext("mcp.tool.list_tasks");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "list_tasks",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: { queryLength: query?.length, framework, version, package: packageName },
+          metadata: { tool: "list_tasks" },
+        });
+
+        try {
+          const tasks = listDocsTasks(dedupePages(await getSourcePages(locale)), {
+            query,
+            framework,
+            version,
+            package: packageName,
+          });
+          const result = { resultCount: tasks.length, tasks };
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            input: query ? { query } : undefined,
+            properties: {
+              tool: "list_tasks",
+              framework,
+              version,
+              package: packageName,
+              resultCount: tasks.length,
+              durationMs: elapsed,
+            },
+          });
+          trackMcpTool("list_tasks", { locale, resultCount: tasks.length });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_tasks",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { resultCount: tasks.length },
+            metadata: { tool: "list_tasks" },
+          });
+          return {
+            structuredContent: result,
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_tasks",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "list_tasks" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.readTask) {
+    server.registerTool(
+      "read_task",
+      {
+        title: "Read a documented task",
+        description: "Read the full structured agent contract for a page by slug or URL path.",
+        inputSchema: readTaskInputSchema,
+        outputSchema: readTaskOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ path: requestedPath, locale }) => {
+        const startedAt = nowMs();
+        const trace = createDocsAgentTraceContext("mcp.tool.read_task");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "read_task",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: { path: requestedPath, locale },
+          metadata: { tool: "read_task" },
+        });
+
+        try {
+          const pages = dedupePages(await getSourcePages(locale));
+          const page = findDocsPage(pages, requestedPath, options.source.entry);
+          const contract = normalizePageAgentFrontmatter(page?.agent);
+          if (!page || !contract || !hasStructuredPageAgentContract(contract)) {
+            const elapsed = durationMs(startedAt);
+            const reason = page ? "contract_not_found" : "page_not_found";
+            const errorResult = {
+              error: page
+                ? `The docs page matched "${requestedPath}", but it has no actionable agent contract.`
+                : `No docs page matched "${requestedPath}".`,
+            };
+            await emitDocsAnalyticsEvent(options.analytics, {
+              type: "mcp_tool",
+              source: "mcp",
+              locale,
+              properties: {
+                tool: "read_task",
+                path: requestedPath,
+                found: false,
+                reason,
+                durationMs: elapsed,
+              },
+            });
+            trackMcpTool("read_task", { locale, resultCount: 0 });
+            await emitDocsAgentTraceEvent(options.observability, {
+              type: "tool.error",
+              source: "mcp",
+              traceId: trace.traceId,
+              parentSpanId: callSpanId,
+              name: "read_task",
+              startedAt: trace.startedAt,
+              endedAt: new Date().toISOString(),
+              durationMs: elapsed,
+              status: "error",
+              locale,
+              outputPreview: { found: false, path: requestedPath },
+              metadata: { tool: "read_task", reason },
+            });
+            return {
+              content: [{ type: "text", text: JSON.stringify(errorResult, null, 2) }],
+              isError: true,
+            };
+          }
+
+          const result = {
+            page: {
+              slug: page.slug,
+              url: page.url,
+              title: page.title,
+              ...(page.description ? { description: page.description } : {}),
+              ...(page.sourcePath ? { sourcePath: page.sourcePath } : {}),
+              ...(page.lastModified ? { lastModified: page.lastModified } : {}),
+            },
+            contract,
+          };
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            path: page.url,
+            properties: {
+              tool: "read_task",
+              requestedPath,
+              slug: page.slug,
+              found: true,
+              durationMs: elapsed,
+            },
+          });
+          trackMcpTool("read_task", { locale, resultCount: 1 });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "read_task",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            path: page.url,
+            outputPreview: { found: true, slug: page.slug },
+            metadata: { tool: "read_task" },
+          });
+          return {
+            structuredContent: result,
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "read_task",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "read_task" },
           });
           throw error;
         }
@@ -3015,6 +3381,7 @@ function scanFilesystemDocsPages(
         title,
         description: data.description as string | undefined,
         relatedInput: data.related,
+        agent: normalizePageAgentFrontmatter(data.agent),
         icon: data.icon as string | undefined,
         sourcePath: path.relative(rootDir, full).replace(/\\/g, "/"),
         lastModified: stat.mtime.toISOString(),
@@ -3215,6 +3582,7 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
     agentFallbackRawContent: page.agentFallbackRawContent,
     description: page.description,
     related: page.related,
+    agent: page.agent,
   }));
 }
 
@@ -3357,6 +3725,17 @@ function resolveMcpToolSearchConfig(
   };
 }
 
+function toAgentContractSummary(value: unknown): DocsMcpAgentContractSummary {
+  const agent = normalizePageAgentFrontmatter(value);
+  const hasContract = hasStructuredPageAgentContract(agent);
+  return {
+    hasContract,
+    ...(hasContract && agent?.task ? { task: agent.task } : {}),
+    ...(hasContract && agent?.outcome ? { outcome: agent.outcome } : {}),
+    ...(hasContract && agent?.appliesTo ? { appliesTo: agent.appliesTo } : {}),
+  };
+}
+
 function toPageSummaries(pages: DocsMcpPage[]) {
   return pages.map((page) => ({
     slug: page.slug,
@@ -3364,6 +3743,7 @@ function toPageSummaries(pages: DocsMcpPage[]) {
     title: page.title,
     description: page.description,
     icon: page.icon,
+    agent: toAgentContractSummary(page.agent),
   }));
 }
 
@@ -3373,10 +3753,55 @@ function toDocsListPageSummary(page: DocsMcpPage): DocsMcpDocsPageSummary {
     url: page.url,
     title: page.title,
     description: page.description,
+    agent: toAgentContractSummary(page.agent),
     icon: page.icon,
     sourcePath: page.sourcePath,
     lastModified: page.lastModified,
   };
+}
+
+function listDocsTasks(
+  pages: DocsMcpPage[],
+  filters: { query?: string; framework?: string; version?: string; package?: string },
+): DocsMcpTaskSummary[] {
+  const query = filters.query?.toLowerCase();
+  const applicabilityFilters = [
+    ["framework", filters.framework],
+    ["version", filters.version],
+    ["package", filters.package],
+  ] as const;
+
+  return pages.flatMap((page) => {
+    const agent = normalizePageAgentFrontmatter(page.agent);
+    if (!agent || !hasStructuredPageAgentContract(agent)) return [];
+
+    for (const [field, expected] of applicabilityFilters) {
+      if (!expected) continue;
+      const actualValue = agent.appliesTo?.[field];
+      const actual = typeof actualValue === "string" ? [actualValue] : (actualValue ?? []);
+      if (!actual.some((value) => value.toLowerCase() === expected.toLowerCase())) return [];
+    }
+
+    if (query) {
+      const searchText = [page.slug, page.url, page.title, page.description, JSON.stringify(agent)]
+        .filter(Boolean)
+        .join("\n")
+        .toLowerCase();
+      if (!searchText.includes(query)) return [];
+    }
+
+    return [
+      {
+        slug: page.slug,
+        url: page.url,
+        title: page.title,
+        ...(page.description ? { description: page.description } : {}),
+        ...(agent.task ? { task: agent.task } : {}),
+        ...(agent.outcome ? { outcome: agent.outcome } : {}),
+        ...(agent.appliesTo ? { appliesTo: agent.appliesTo } : {}),
+      },
+    ];
+  });
 }
 
 function listDocsBySection(
@@ -4038,7 +4463,7 @@ async function buildDocsMcpContext(options: {
     const page = findDocsPage(scopedPages, resultPageUrl, options.entry);
     if (!page) return [];
 
-    const document = getDocsMcpSourceMarkdown(page);
+    const document = upsertPageAgentContractMarkdown(getDocsMcpSourceMarkdown(page), page.agent);
     const resultAnchor = getDocsMcpResultAnchor(result.url);
     const selectedSection = resultAnchor
       ? findDocsMarkdownSection(document, resultAnchor)
@@ -4186,14 +4611,22 @@ function normalizeUrlPath(value: string): string {
 }
 
 function renderPageDocument(page: DocsMcpPage): string {
-  if (page.agentRawContent !== undefined) return page.agentRawContent;
+  if (page.agentRawContent !== undefined) {
+    return upsertPageAgentContractMarkdown(page.agentRawContent, page.agent);
+  }
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
 
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
-  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
+  lines.push(
+    "",
+    upsertPageAgentContractMarkdown(
+      page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+      page.agent,
+    ),
+  );
   return lines.join("\n");
 }
 

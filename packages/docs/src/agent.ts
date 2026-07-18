@@ -10,10 +10,15 @@ import type {
   LlmsTxtMaxCharsConfig,
   LlmsTxtMaxCharsMode,
   LlmsTxtSectionConfig,
+  PageAgentFrontmatter,
   ResolvedDocsRelatedLink,
 } from "./types.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
+import {
+  renderPageAgentFrontmatterYamlLines,
+  upsertPageAgentContractMarkdown,
+} from "./agent-contract.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
@@ -97,6 +102,8 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   listDocs: true,
   listPages: true,
   readPage: true,
+  listTasks: true,
+  readTask: true,
   searchDocs: true,
   getNavigation: true,
   getCodeExamples: true,
@@ -491,6 +498,11 @@ export interface DocsSkillDocumentOptions {
 
 export interface DocsAgentsDocumentOptions extends DocsSkillDocumentOptions {}
 
+export interface DocsAgentContractMcpTools {
+  list?: "list_tasks";
+  read?: "read_task";
+}
+
 export interface DocsMarkdownPage {
   slug?: string;
   url: string;
@@ -501,6 +513,7 @@ export interface DocsMarkdownPage {
   lastModified?: string;
   lastmod?: string;
   related?: ResolvedDocsRelatedLink[];
+  agent?: PageAgentFrontmatter;
   content: string;
   rawContent?: string;
   agentContent?: string;
@@ -1162,6 +1175,8 @@ function resolveDocsDiagnosticsMcp(mcp: unknown): DocsMcpResolvedConfig {
       listDocs: tools.listDocs !== false,
       listPages: tools.listPages !== false,
       readPage: tools.readPage !== false,
+      listTasks: tools.listTasks !== false,
+      readTask: tools.readTask !== false,
       searchDocs: tools.searchDocs !== false,
       getNavigation: tools.getNavigation !== false,
       getCodeExamples: tools.getCodeExamples !== false,
@@ -2370,12 +2385,14 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl,
   markdownUrl,
   lastUpdated,
+  agent,
 }: {
   title: string;
   description?: string;
   canonicalUrl: string;
   markdownUrl: string;
   lastUpdated?: string;
+  agent?: PageAgentFrontmatter;
 }): string {
   const lines = [
     "---",
@@ -2384,6 +2401,7 @@ function renderDocsMarkdownFrontmatter({
     `canonical_url: ${toYamlString(canonicalUrl)}`,
     `markdown_url: ${toYamlString(markdownUrl)}`,
     ...(lastUpdated ? [`last_updated: ${toYamlString(lastUpdated)}`] : []),
+    ...renderPageAgentFrontmatterYamlLines(agent),
     "---",
   ];
 
@@ -2415,6 +2433,7 @@ function resolveDocsMarkdownPageMetadata(
       options?.origin,
     ),
     lastUpdated: normalizeDocsMarkdownLastUpdated(page.lastmod ?? page.lastModified),
+    agent: page.agent,
   };
 }
 
@@ -3024,11 +3043,9 @@ export function renderDocsMarkdownDocument(
   options?: DocsMarkdownDocumentOptions,
 ): string {
   if (page.agentRawContent !== undefined) {
+    const body = upsertPageAgentContractMarkdown(page.agentRawContent, page.agent);
     return appendDocsMarkdownSitemapFooter(
-      prependDocsMarkdownFrontmatter(
-        page.agentRawContent,
-        resolveDocsMarkdownPageMetadata(page, options),
-      ),
+      prependDocsMarkdownFrontmatter(body, resolveDocsMarkdownPageMetadata(page, options)),
       options?.sitemap,
     );
   }
@@ -3038,7 +3055,13 @@ export function renderDocsMarkdownDocument(
   if (shouldRenderLlmsDirective(options)) lines.push(DOCS_LLMS_TXT_DIRECTIVE_LINE);
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
-  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
+  lines.push(
+    "",
+    upsertPageAgentContractMarkdown(
+      page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+      page.agent,
+    ),
+  );
   return appendDocsMarkdownSitemapFooter(
     prependDocsMarkdownFrontmatter(
       lines.join("\n"),
@@ -3217,6 +3240,18 @@ export function resolveDocsAgentMdxContent(content: string, audience: "human" | 
     .trim();
 }
 
+/** Resolve only the task tools that the advertised MCP endpoint actually exposes. */
+export function resolveDocsAgentContractMcpTools(
+  mcp: DocsMcpResolvedConfig,
+): DocsAgentContractMcpTools | undefined {
+  if (!mcp.enabled) return undefined;
+
+  const tools: DocsAgentContractMcpTools = {};
+  if (mcp.tools.listTasks !== false) tools.list = "list_tasks";
+  if (mcp.tools.readTask !== false) tools.read = "read_task";
+  return tools.list || tools.read ? tools : undefined;
+}
+
 export function buildDocsAgentDiscoverySpec({
   origin,
   entry = "docs",
@@ -3240,6 +3275,7 @@ export function buildDocsAgentDiscoverySpec({
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
+  const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
 
   return {
     version: "1",
@@ -3262,6 +3298,7 @@ export function buildDocsAgentDiscoverySpec({
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: llmsEnabled,
       skills: true,
@@ -3301,6 +3338,33 @@ export function buildDocsAgentDiscoverySpec({
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
       resolutionOrder: ["agent.md", "Agent blocks", "page markdown"],
+    },
+    agentContract: {
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      source: "page-frontmatter",
+      frontmatterPath: "agent",
+      markdownSection: "Agent Contract",
+      mcpField: "agent",
+      ...(agentContractMcpTools ? { mcpTools: agentContractMcpTools } : {}),
+      usefulContractFields: ["task", "outcome"],
+      fields: {
+        tokenBudget: "number",
+        task: "string",
+        outcome: "string",
+        appliesTo: {
+          framework: "string|string[]",
+          version: "string|string[]",
+          package: "string|string[]",
+        },
+        prerequisites: "string[]",
+        files: "string[]",
+        commands: "Array<string|{run,cwd?,description?}>",
+        sideEffects: "string[]",
+        verification: "Array<string|{description?,run?,expect?}>",
+        rollback: "string[]",
+        failureModes: "Array<string|{symptom,resolution?}>",
+      },
     },
     llms: {
       enabled: llmsEnabled,
@@ -3352,9 +3416,10 @@ export function buildDocsAgentDiscoverySpec({
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     },
     openapi: {
       enabled: openapiConfig.enabled,

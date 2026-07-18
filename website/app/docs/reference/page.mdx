@@ -445,6 +445,8 @@ export default defineDocs({
     tools: {
       listDocs: true,
       listPages: true,
+      listTasks: true,
+      readTask: true,
       getNavigation: true,
       searchDocs: true,
       readPage: true,
@@ -501,6 +503,8 @@ uses the `OPTIONS` handler and does not run authentication.
 | ------------------- | --------- | ----------- |
 | `listDocs`          | `boolean` | Expose the `list_docs` tool |
 | `listPages`         | `boolean` | Expose the `list_pages` tool |
+| `listTasks`         | `boolean` | Expose the `list_tasks` tool for concise actionable-task discovery |
+| `readTask`          | `boolean` | Expose the `read_task` tool for full structured contracts |
 | `getNavigation`     | `boolean` | Expose the `get_navigation` tool |
 | `searchDocs`        | `boolean` | Expose the `search_docs` tool |
 | `readPage`          | `boolean` | Expose the `read_page` tool |
@@ -514,7 +518,11 @@ Default MCP surface:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, `get_context`
+- **Built-in tools:** `list_docs`, `list_pages`, `list_tasks`, `read_task`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, `get_context`
+
+`list_pages` and `list_docs` keep their `agent` value concise: `hasContract`, `task`, `outcome`, and
+`appliesTo` only. Use `list_tasks` to filter actionable pages by query/framework/version/package,
+then `read_task` for the full normalized contract (also available as Markdown through `read_page`).
 
 Framework notes:
 
@@ -579,7 +587,7 @@ export default defineDocs({
 | `configExamples` | `"warn"` | Check config examples when possible |
 | `codeFenceMetadata` | `"warn"` | Check code fences for metadata such as `title` |
 | `runnableMetadata` | `"warn"` | Check runnable snippets for package manager metadata |
-| `agentContext` | `"suggestion"` | Suggest `<Agent>` blocks or sibling `agent.md` where helpful |
+| `agentContext` | `"suggestion"` | Validate structured agent contracts and suggest `<Agent>` blocks or sibling `agent.md` where helpful |
 
 Rule severities accept `"off"`, `"suggestion"`, `"warn"`, or `"error"`.
 
@@ -1787,7 +1795,7 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 | `title`       | `string`    | **Required.** Page title, shown in sidebar and page heading                        |
 | `description` | `string`    | Page description, used for meta tags and search                                    |
 | `related`     | `string[]`  | Related doc URLs rendered as a comma-separated metadata line in `.md` routes and MCP page output |
-| `agent`       | `PageAgentFrontmatter` | Per-page machine-docs metadata such as compaction token budgets |
+| `agent`       | `PageAgentFrontmatter` | Per-page structured task contract and compaction token budget |
 | `sidebar`     | `PageSidebarFrontmatter` | Per-folder sidebar metadata such as `folderIndexBehavior` overrides |
 | `readingTime` | `boolean \| number` | Disable the estimate for one page (`false`) or force an exact minute count |
 | `icon`        | `string`    | Icon key from the `icons` registry. Shows in sidebar.                              |
@@ -1802,9 +1810,19 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 
 Page-level metadata for machine-readable docs workflows.
 
-| Property      | Type     | Description |
-| ------------- | -------- | ----------- |
-| `tokenBudget` | `number` | Approximate output token target for `docs agent compact` on this page |
+| Property        | Type | Description |
+| --------------- | ---- | ----------- |
+| `tokenBudget`   | `number` | Approximate output token target for `docs agent compact` on this page |
+| `task`          | `string` | Concrete task the page helps an agent complete |
+| `outcome`       | `string` | Observable end state that indicates completion |
+| `appliesTo`     | `{ framework?, version?, package? }` | Applicability values; each accepts a string or string array |
+| `prerequisites` | `string[]` | Setup or conditions that must already be true |
+| `files`         | `string[]` | Files the task is expected to read or change |
+| `commands`      | `(string \| PageAgentCommand)[]` | Command strings or `{ run, cwd?, description? }` objects |
+| `sideEffects`   | `string[]` | Material state changes or external effects |
+| `verification`  | `(string \| PageAgentVerification)[]` | Checks or `{ description?, run?, expect? }` objects |
+| `rollback`      | `string[]` | Steps that restore the prior state |
+| `failureModes`  | `(string \| PageAgentFailureMode)[]` | Symptoms or `{ symptom, resolution? }` objects |
 
 ```md title="page-frontmatter.md"
 ---
@@ -1812,6 +1830,26 @@ title: "Installation"
 description: "Install the framework"
 agent:
   tokenBudget: 777
+  task: Install the framework
+  outcome: The docs route renders locally.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+    package: "@farming-labs/next"
+  prerequisites:
+    - The app uses the App Router
+  files:
+    - package.json
+    - next.config.ts
+  commands:
+    - run: pnpm add @farming-labs/docs @farming-labs/next
+      description: Install the required packages
+  verification:
+    - run: pnpm dev
+      expect: The docs route returns HTTP 200
+  failureModes:
+    - symptom: The route returns 404
+      resolution: Confirm withDocs wraps the Next.js config
 ---
 ```
 
@@ -1819,6 +1857,12 @@ Notes:
 
 - `agent.tokenBudget` overrides global `agent.compact.maxOutputTokens` defaults and CLI
   `--max-output-tokens` for that one page
+- structured fields are normalized into served Markdown frontmatter, a deterministic
+  `## Agent Contract` section, search/Ask AI context, Schema.org `HowTo` JSON-LD, and MCP task tools
+- MCP list-page results contain only `hasContract`, `task`, `outcome`, and `appliesTo`; call
+  `list_tasks` or `read_task` when an agent needs actionable discovery or the full contract
+- `docs review` reports malformed or unknown fields with closest-name suggestions, missing `task` or `outcome`, commands without
+  verification, and side effects without rollback guidance
 - if the page already has a sibling `agent.md`, `docs agent compact` compacts that file
 - if the page does not have `agent.md`, the command compacts the generated machine-readable page
   output and writes a new sibling `agent.md`

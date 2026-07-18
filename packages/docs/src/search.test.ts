@@ -165,6 +165,26 @@ export const auth = betterAuth({});
     expect(sectionContent).toContain("export const auth = betterAuth({});");
     expect(sectionContent).not.toContain("@/components/callout");
   });
+
+  it("indexes task and outcome terms from structured agent contracts", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Dependencies",
+        url: "/docs/dependencies",
+        content: "Manage project packages.",
+        rawContent: "# Dependencies\n\nManage project packages.",
+        agent: {
+          task: "Create a hermetic dependency graph",
+          outcome: "Every package resolves from the committed lockfile.",
+        },
+      },
+    ]);
+
+    const page = documents.find((document) => document.type === "page");
+    expect(page?.content).toContain("Create a hermetic dependency graph");
+    expect(page?.content).toContain("Every package resolves from the committed lockfile");
+    expect(page?.content).not.toContain("farming-labs:agent-contract");
+  });
 });
 
 describe("performDocsSearch", () => {
@@ -598,6 +618,32 @@ Nine built-in themes are available: fumadocs, darksharp, pixel-border, colorful,
 });
 
 describe("buildDocsAskAIContext", () => {
+  it("retrieves and includes a contract when only its task terms match", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Dependencies",
+          url: "/docs/dependencies",
+          content: "Manage project packages.",
+          rawContent: "# Dependencies\n\nManage project packages.",
+          agent: {
+            task: "Create a hermetic dependency graph",
+            outcome: "Every package resolves from the committed lockfile.",
+          },
+        },
+      ],
+      query: "hermetic dependency graph",
+      limit: 1,
+    });
+
+    expect(context.results[0]?.url).toBe("/docs/dependencies");
+    expect(context.context).toContain("Task: Create a hermetic dependency graph");
+    expect(context.context).toContain(
+      "Outcome: Every package resolves from the committed lockfile.",
+    );
+    expect(context.context).not.toContain("farming-labs:agent-contract");
+  });
+
   it("uses section search and preserves code blocks for the model context", async () => {
     const context = await buildDocsAskAIContext({
       pages: [

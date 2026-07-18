@@ -77,6 +77,10 @@ review: {
 }
 ```
 
+The `agentContext` rule also validates structured page-level `agent` contracts. Raise it to
+`"warn"` or `"error"` when malformed contracts, commands without verification, or side effects
+without rollback guidance should carry more weight in CI.
+
 ---
 
 ## Code block validation
@@ -188,7 +192,11 @@ Default behavior:
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
 - page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description` for normal page markdown and embedded `<Agent>` fallback
+- page frontmatter `agent` can define a structured task contract; valid fields are normalized into markdown frontmatter, a deterministic `## Agent Contract` section, search/Ask AI context, and Schema.org `HowTo` JSON-LD
+- structured agent contract fields are `task`, `outcome`, `appliesTo`, `prerequisites`, `files`, `commands`, `sideEffects`, `verification`, `rollback`, and `failureModes`; all are optional and `agent.tokenBudget` remains backward compatible
+- `docs review` reports malformed and unknown structured fields (with closest-name suggestions such as `verfication` → `verification`) and suggests missing outcomes, verification, or rollback guidance without breaking runtime page delivery
 - MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
+- MCP `list_pages` and `list_docs` keep contract summaries concise (`hasContract`, `task`, `outcome`, `appliesTo`); use `list_tasks` to discover actionable pages and `read_task` or `read_page` for the full contract
 - a sibling `agent.md` remains the page-content override; include any `Related:` line manually inside `agent.md` when needed
 - `docs agent compact` can generate those sibling `agent.md` files from the resolved page output
 
@@ -230,6 +238,44 @@ related:
   - /docs/customization/agent-primitive
 ---
 ```
+
+Structured agent-contract example:
+
+```md
+---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 900
+  task: Install the docs framework
+  outcome: The docs route renders locally.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+    package: "@farming-labs/next"
+  prerequisites:
+    - The app uses the App Router
+  files:
+    - package.json
+    - next.config.ts
+  commands:
+    - run: pnpm add @farming-labs/docs @farming-labs/next
+      description: Install the framework packages
+  sideEffects:
+    - Updates package.json and the lockfile
+  verification:
+    - run: pnpm dev
+      expect: The docs route returns HTTP 200
+  rollback:
+    - Remove the packages and restore the previous config
+  failureModes:
+    - symptom: The route returns 404
+      resolution: Confirm withDocs wraps the Next.js config
+---
+```
+
+Authentication, deployment, and other stateful tasks benefit most from `sideEffects`, `rollback`,
+and `failureModes`. Simple reference pages may omit the structured contract entirely.
 
 Useful checks:
 
@@ -782,10 +828,14 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, `get_context`
+- **Built-in tools:** `list_docs`, `list_pages`, `list_tasks`, `read_task`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, `get_context`
 
 `list_docs` returns docs page summaries grouped by section. Call it with no arguments for the whole
 docs tree, or pass `section` to narrow results before calling `read_page`.
+
+`list_tasks` returns only pages with structured task contracts and supports `query`, `framework`,
+`version`, and `package` filters. Its summaries contain task, outcome, and applicability; call
+`read_task` for the full prerequisites/files/commands/effects/verification/rollback/failure contract.
 
 ```json
 {

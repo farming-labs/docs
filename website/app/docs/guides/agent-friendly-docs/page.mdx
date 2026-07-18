@@ -95,6 +95,31 @@ related:
   - /docs/customization/mcp
 agent:
   tokenBudget: 900
+  task: Install the docs framework
+  outcome: The app renders its documentation route locally.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+    package: "@farming-labs/next"
+  prerequisites:
+    - The app uses the Next.js App Router
+  files:
+    - package.json
+    - next.config.ts
+    - docs.config.ts
+  commands:
+    - run: pnpm add @farming-labs/docs @farming-labs/next
+      description: Install the framework packages
+  sideEffects:
+    - Updates package.json and the pnpm lockfile
+  verification:
+    - run: pnpm dev
+      expect: The configured docs route returns HTTP 200
+  rollback:
+    - Remove the packages and restore the previous config files
+  failureModes:
+    - symptom: The docs route returns 404
+      resolution: Confirm withDocs wraps the exported Next.js config
 ---
 ```
 
@@ -103,7 +128,16 @@ That alone gives the machine-readable route a stronger entry point:
 - `Description:` tells the model what problem the page solves
 - `Related:` gives it nearby pages without scraping the sidebar
 - `agent.tokenBudget` gives `docs agent compact` a per-page output target later
+- the structured `agent` contract states applicability, files, commands, effects, verification,
+  rollback, and common recovery paths without requiring the model to infer them from prose
 - the normal body remains the human source of truth
+
+The contract is optional and additive. Valid contracts appear in served Markdown frontmatter, a
+deterministic `## Agent Contract` section, search/Ask AI context, and Schema.org `HowTo` JSON-LD.
+MCP `list_pages` and `list_docs` expose only `hasContract`, task, outcome, and applicability;
+`list_tasks` discovers actionable pages, while `read_task` and `read_page` expose the full contract.
+Malformed or unknown fields are ignored while serving the page and reported by `docs review`, with
+closest-name suggestions for typos, so an authoring mistake does not take the docs endpoint down.
 
 If a page is important enough to unblock implementation, it should also contain:
 

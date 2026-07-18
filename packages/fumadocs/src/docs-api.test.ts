@@ -298,6 +298,56 @@ title: "Introduction"
     expect(payload.result?.serverInfo?.name).toBe("Example Docs");
   });
 
+  it("honors task and context tool opt-outs from the source docs config", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-tool-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Introduction\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  mcp: {
+    enabled: true,
+    tools: {
+      listTasks: false,
+      readTask: false,
+      getContext: false,
+    },
+  },
+};
+`,
+    );
+
+    const { POST } = createDocsMCPAPI({ rootDir });
+    const response = await POST(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+    );
+    const payload = await parseMcpPayload<{
+      result?: { tools?: Array<{ name?: string }> };
+    }>(response);
+    const toolNames = payload.result?.tools?.map((tool) => tool.name) ?? [];
+
+    expect(response.status).toBe(200);
+    expect(toolNames).toContain("list_pages");
+    expect(toolNames).not.toEqual(
+      expect.arrayContaining(["list_tasks", "read_task", "get_context"]),
+    );
+  });
+
   it("ignores nested mcp booleans outside the root config property", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-nested-config-"));
     tempDirs.push(rootDir);
@@ -1068,6 +1118,19 @@ description: "Start fast"
 related:
   - /docs/overview
   - /docs/configuration
+agent:
+  tokenBudget: 700
+  task: Start the docs app
+  outcome: The local docs route responds successfully.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+  files:
+    - docs.config.ts
+  commands:
+    - pnpm dev
+  verification:
+    - expect: The docs route returns HTTP 200
 ---
 
 # Quickstart
@@ -1142,6 +1205,8 @@ Config content.
       'markdown_url: "http://localhost/docs/getting-started/quickstart.md"',
     );
     expect(fallbackDocument).toMatch(/last_updated: "\d{4}-\d{2}-\d{2}"/);
+    expect(fallbackDocument).toContain("agent:\n  tokenBudget: 700");
+    expect(fallbackDocument).toContain('  task: "Start the docs app"');
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
     expect(fallbackDocument).toContain("LLM index: /llms.txt");
     expect(fallbackDocument).toContain(
@@ -1150,6 +1215,9 @@ Config content.
     expect(fallbackDocument).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
+    expect(fallbackDocument).toContain("## Agent Contract");
+    expect(fallbackDocument).toContain("- Framework: `nextjs`");
+    expect(fallbackDocument).toContain("### Verification\n\n- The docs route returns HTTP 200");
     expect(fallbackDocument).not.toContain("<Agent>");
 
     const { GET: getWithSitemapBaseUrl } = createDocsAPI({
@@ -2213,6 +2281,8 @@ description: "Start building quickly"
         tools: {
           listPages: true,
           readPage: true,
+          listTasks: false,
+          readTask: true,
           searchDocs: false,
           getNavigation: true,
         },
@@ -2240,6 +2310,7 @@ description: "Start building quickly"
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
       config: { format: string; endpoint: string };
+      agentContract: Record<string, unknown>;
       openapi: Record<string, unknown>;
       markdown: Record<string, unknown>;
       llms: Record<string, string | boolean>;
@@ -2298,6 +2369,7 @@ description: "Start building quickly"
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: true,
       skills: true,
@@ -2328,6 +2400,12 @@ description: "Start building quickly"
       format: "docs-config-map.v1",
       endpoint: "/api/docs?format=config",
     });
+    expect(spec.agentContract).toMatchObject({
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      mcpTools: { read: "read_task" },
+    });
+    expect(spec.agentContract).not.toHaveProperty("mcpTools.list");
     expect(spec.openapi).toEqual({
       enabled: true,
       url: "/api/docs?format=openapi",
@@ -2379,9 +2457,10 @@ description: "Start building quickly"
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     });
     expect(spec.skills).toEqual({
       enabled: true,
@@ -2414,6 +2493,8 @@ description: "Start building quickly"
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: false,
+        readTask: true,
         searchDocs: false,
         getNavigation: true,
         getCodeExamples: true,
@@ -2638,6 +2719,7 @@ description: "Start building quickly"
         fallbackQueryParam: string;
       };
       capabilities: Record<string, boolean>;
+      agentContract: Record<string, unknown>;
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: Record<string, string | boolean>;
       agents: Record<string, unknown>;
@@ -2683,6 +2765,7 @@ description: "Start building quickly"
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: true,
       skills: true,
@@ -2696,6 +2779,7 @@ description: "Start building quickly"
       agentFeedback: false,
       locales: false,
     });
+    expect(spec.agentContract).not.toHaveProperty("mcpTools");
     expect(spec.openapi).toMatchObject({
       enabled: false,
       url: null,

@@ -27,6 +27,7 @@ import { getNextAppDir } from "./get-app-dir.js";
 import {
   acceptsDocsMarkdown,
   normalizeDocsRelated,
+  normalizePageAgentFrontmatter,
   buildDocsConfigMap,
   buildDocsDiagnostics,
   resolveChangelogConfig,
@@ -49,6 +50,7 @@ import {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsLocale,
+  resolveDocsAgentContractMcpTools,
   resolvePageSidebarFolderIndexBehavior,
   selectDocsLlmsTxtContent,
   createDocsSitemapResponse,
@@ -475,6 +477,7 @@ function buildAgentSpec({
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const llmsSections = resolveDocsLlmsTxtSections(llms);
+  const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
 
   return {
     version: "1",
@@ -497,6 +500,7 @@ function buildAgentSpec({
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: llms.enabled,
       skills: true,
@@ -537,6 +541,33 @@ function buildAgentSpec({
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
       resolutionOrder: ["agent.md", "Agent blocks", "page markdown"],
+    },
+    agentContract: {
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      source: "page-frontmatter",
+      frontmatterPath: "agent",
+      markdownSection: "Agent Contract",
+      mcpField: "agent",
+      ...(agentContractMcpTools ? { mcpTools: agentContractMcpTools } : {}),
+      usefulContractFields: ["task", "outcome"],
+      fields: {
+        tokenBudget: "number",
+        task: "string",
+        outcome: "string",
+        appliesTo: {
+          framework: "string|string[]",
+          version: "string|string[]",
+          package: "string|string[]",
+        },
+        prerequisites: "string[]",
+        files: "string[]",
+        commands: "Array<string|{run,cwd?,description?}>",
+        sideEffects: "string[]",
+        verification: "Array<string|{description?,run?,expect?}>",
+        rollback: "string[]",
+        failureModes: "Array<string|{symptom,resolution?}>",
+      },
     },
     llms: {
       enabled: llms.enabled,
@@ -585,9 +616,10 @@ function buildAgentSpec({
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     },
     openapi: {
       enabled: openapi.enabled,
@@ -1030,6 +1062,8 @@ function readMcpConfig(
         tools: {
           listDocs: readBooleanFromBlock(block, "listDocs"),
           listPages: readBooleanFromBlock(block, "listPages"),
+          listTasks: readBooleanFromBlock(block, "listTasks"),
+          readTask: readBooleanFromBlock(block, "readTask"),
           readPage: readBooleanFromBlock(block, "readPage"),
           searchDocs: readBooleanFromBlock(block, "searchDocs"),
           getNavigation: readBooleanFromBlock(block, "getNavigation"),
@@ -1477,6 +1511,7 @@ function scanDocsDir(
             title,
             description,
             relatedInput: data.related,
+            agent: normalizePageAgentFrontmatter(data.agent),
             content,
             rawContent,
             agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
@@ -1567,6 +1602,7 @@ function scanChangelogDir(
         title,
         description,
         relatedInput: data.related,
+        agent: normalizePageAgentFrontmatter(data.agent),
         content,
         rawContent,
         agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,

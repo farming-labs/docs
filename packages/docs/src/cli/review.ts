@@ -3,6 +3,11 @@ import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import pc from "picocolors";
+import {
+  getPageAgentFrontmatterIssues,
+  hasStructuredPageAgentContract,
+  normalizePageAgentFrontmatter,
+} from "../agent-contract.js";
 import type { DocsConfig, DocsReviewCiMode } from "../types.js";
 import {
   ensureDocsReviewWorkflow,
@@ -334,6 +339,7 @@ function collectReviewFindings(options: {
         file,
         source,
         rootDir: options.rootDir,
+        agent: parsed.data.agent,
       });
     }
 
@@ -453,8 +459,57 @@ function checkCodeFences(
 function checkAgentContext(
   findings: DocsReviewFinding[],
   review: ResolvedDocsReviewConfig,
-  options: { file: string; source: string; rootDir: string },
+  options: { file: string; source: string; rootDir: string; agent: unknown },
 ) {
+  for (const issue of getPageAgentFrontmatterIssues(options.agent)) {
+    pushFinding(findings, review, {
+      rule: "agentContext",
+      severity: "warn",
+      file: options.file,
+      line: 1,
+      message: `Invalid ${issue.path}: ${issue.message}${/[.!?]$/.test(issue.message) ? "" : "."}`,
+    });
+  }
+
+  const agent = normalizePageAgentFrontmatter(options.agent);
+  const hasContract = hasStructuredPageAgentContract(agent);
+  if (hasContract) {
+    const missing = [!agent?.task ? "task" : undefined, !agent?.outcome ? "outcome" : undefined]
+      .filter(Boolean)
+      .join(" and ");
+    if (missing) {
+      pushFinding(findings, review, {
+        rule: "agentContext",
+        severity: "suggestion",
+        file: options.file,
+        line: 1,
+        message: `Structured agent contract is missing ${missing}.`,
+      });
+    }
+
+    if (agent?.commands?.length && !agent.verification?.length) {
+      pushFinding(findings, review, {
+        rule: "agentContext",
+        severity: "suggestion",
+        file: options.file,
+        line: 1,
+        message: "Structured agent contract defines commands without verification steps.",
+      });
+    }
+
+    if (agent?.sideEffects?.length && !agent.rollback?.length) {
+      pushFinding(findings, review, {
+        rule: "agentContext",
+        severity: "suggestion",
+        file: options.file,
+        line: 1,
+        message: "Structured agent contract defines side effects without rollback guidance.",
+      });
+    }
+
+    if (agent?.task && agent.outcome) return;
+  }
+
   if (options.source.includes("<Agent>") || options.source.includes("</Agent>")) return;
   if (existsSync(path.join(path.dirname(path.join(options.rootDir, options.file)), "agent.md")))
     return;

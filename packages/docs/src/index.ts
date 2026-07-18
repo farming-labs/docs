@@ -67,6 +67,18 @@ export {
 } from "./reading-time.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
+  getPageAgentFrontmatterIssues,
+  hasStructuredPageAgentContract,
+  normalizePageAgentFrontmatter,
+  PAGE_AGENT_CONTRACT_END_MARKER,
+  PAGE_AGENT_CONTRACT_START_MARKER,
+  renderPageAgentContractMarkdown,
+  renderPageAgentFrontmatterYamlLines,
+  stripGeneratedPageAgentContractMarkdown,
+  upsertPageAgentContractMarkdown,
+} from "./agent-contract.js";
+export type { PageAgentFrontmatterIssue } from "./agent-contract.js";
+export {
   applySidebarFolderIndexBehavior,
   resolvePageSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehavior,
@@ -147,6 +159,7 @@ export {
   matchesDocsLlmsTxtSection,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
+  resolveDocsAgentContractMcpTools,
   resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   renderDocsAgentsDocument,
@@ -285,6 +298,11 @@ export type {
   PageTwitter,
   DocsRelatedItem,
   ResolvedDocsRelatedLink,
+  PageAgentAppliesTo,
+  PageAgentCommand,
+  PageAgentFailureMode,
+  PageAgentFrontmatter,
+  PageAgentVerification,
   UIConfig,
   FontStyle,
   TypographyConfig,
@@ -392,6 +410,7 @@ export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
 export type { DocsPageStructuredDataInput, DocsStructuredDataBreadcrumb } from "./metadata.js";
 export type {
   DocsAgentDiscoverySpecOptions,
+  DocsAgentContractMcpTools,
   DocsAgentFeedbackDiscoveryConfig,
   DocsLlmsDiscoveryConfig,
   DocsMarkdownPage,
