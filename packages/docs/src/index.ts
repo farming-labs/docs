@@ -55,8 +55,12 @@ export {
   getPageAgentFrontmatterIssues,
   hasStructuredPageAgentContract,
   normalizePageAgentFrontmatter,
+  PAGE_AGENT_CONTRACT_END_MARKER,
+  PAGE_AGENT_CONTRACT_START_MARKER,
   renderPageAgentContractMarkdown,
   renderPageAgentFrontmatterYamlLines,
+  stripGeneratedPageAgentContractMarkdown,
+  upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 export type { PageAgentFrontmatterIssue } from "./agent-contract.js";
 export {

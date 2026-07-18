@@ -651,6 +651,8 @@ Allow: /
               tools: [
                 { name: "list_docs" },
                 { name: "list_pages" },
+                { name: "list_tasks" },
+                { name: "read_task" },
                 { name: "get_navigation" },
                 { name: "search_docs" },
                 { name: "read_page" },

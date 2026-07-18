@@ -1591,6 +1591,8 @@ async function probeMcpRoute(
     const expectedTools = [
       "list_docs",
       "list_pages",
+      "list_tasks",
+      "read_task",
       "get_navigation",
       "search_docs",
       "read_page",

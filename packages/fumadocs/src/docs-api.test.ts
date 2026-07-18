@@ -2117,6 +2117,7 @@ description: "Start building quickly"
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
       config: { format: string; endpoint: string };
+      agentContract: Record<string, unknown>;
       openapi: Record<string, unknown>;
       markdown: Record<string, unknown>;
       llms: Record<string, string | boolean>;
@@ -2175,6 +2176,7 @@ description: "Start building quickly"
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: true,
       skills: true,
@@ -2204,6 +2206,11 @@ description: "Start building quickly"
     expect(spec.config).toMatchObject({
       format: "docs-config-map.v1",
       endpoint: "/api/docs?format=config",
+    });
+    expect(spec.agentContract).toMatchObject({
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      mcpTools: { list: "list_tasks", read: "read_task" },
     });
     expect(spec.openapi).toEqual({
       enabled: true,
@@ -2256,9 +2263,10 @@ description: "Start building quickly"
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     });
     expect(spec.skills).toEqual({
       enabled: true,
@@ -2291,6 +2299,8 @@ description: "Start building quickly"
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: false,
         getNavigation: true,
         getCodeExamples: true,
@@ -2559,6 +2569,7 @@ description: "Start building quickly"
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: true,
       skills: true,

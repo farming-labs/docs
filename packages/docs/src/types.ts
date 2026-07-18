@@ -1355,6 +1355,10 @@ export interface DocsMcpToolsConfig {
   listPages?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */
   readPage?: boolean;
+  /** Expose a `list_tasks` tool for pages with actionable agent contracts. */
+  listTasks?: boolean;
+  /** Expose a `read_task` tool that returns a page's full agent contract. */
+  readTask?: boolean;
   /** Expose a `search_docs` tool for keyword search over page content. */
   searchDocs?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */

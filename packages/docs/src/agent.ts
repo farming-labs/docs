@@ -16,8 +16,8 @@ import type {
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import {
-  renderPageAgentContractMarkdown,
   renderPageAgentFrontmatterYamlLines,
+  upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
 import {
@@ -102,6 +102,8 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   listDocs: true,
   listPages: true,
   readPage: true,
+  listTasks: true,
+  readTask: true,
   searchDocs: true,
   getNavigation: true,
   getCodeExamples: true,
@@ -1150,6 +1152,8 @@ function resolveDocsDiagnosticsMcp(mcp: unknown): DocsMcpResolvedConfig {
       listDocs: tools.listDocs !== false,
       listPages: tools.listPages !== false,
       readPage: tools.readPage !== false,
+      listTasks: tools.listTasks !== false,
+      readTask: tools.readTask !== false,
       searchDocs: tools.searchDocs !== false,
       getNavigation: tools.getNavigation !== false,
       getCodeExamples: tools.getCodeExamples !== false,
@@ -2871,11 +2875,8 @@ export function renderDocsMarkdownDocument(
   page: DocsMarkdownPage,
   options?: DocsMarkdownDocumentOptions,
 ): string {
-  const agentContract = renderPageAgentContractMarkdown(page.agent);
   if (page.agentRawContent !== undefined) {
-    const body = agentContract
-      ? `${agentContract}\n\n${page.agentRawContent.replace(/^\r?\n+/, "")}`
-      : page.agentRawContent;
+    const body = upsertPageAgentContractMarkdown(page.agentRawContent, page.agent);
     return appendDocsMarkdownSitemapFooter(
       prependDocsMarkdownFrontmatter(body, resolveDocsMarkdownPageMetadata(page, options)),
       options?.sitemap,
@@ -2887,8 +2888,13 @@ export function renderDocsMarkdownDocument(
   if (shouldRenderLlmsDirective(options)) lines.push(DOCS_LLMS_TXT_DIRECTIVE_LINE);
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
-  if (agentContract) lines.push("", agentContract);
-  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
+  lines.push(
+    "",
+    upsertPageAgentContractMarkdown(
+      page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+      page.agent,
+    ),
+  );
   return appendDocsMarkdownSitemapFooter(
     prependDocsMarkdownFrontmatter(
       lines.join("\n"),
@@ -3160,6 +3166,10 @@ export function buildDocsAgentDiscoverySpec({
       frontmatterPath: "agent",
       markdownSection: "Agent Contract",
       mcpField: "agent",
+      mcpTools: {
+        list: "list_tasks",
+        read: "read_task",
+      },
       usefulContractFields: ["task", "outcome"],
       fields: {
         tokenBudget: "number",
@@ -3229,9 +3239,10 @@ export function buildDocsAgentDiscoverySpec({
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     },
     openapi: {
       enabled: openapiConfig.enabled,

@@ -44,6 +44,8 @@ describe("resolveDocsMcpConfig", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
@@ -62,6 +64,8 @@ describe("resolveDocsMcpConfig", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
@@ -84,6 +88,8 @@ describe("resolveDocsMcpConfig", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
@@ -170,6 +176,11 @@ title: "Quickstart"
 related:
   - /docs/installation
   - /docs
+agent:
+  task: Create the first docs page
+  outcome: The quickstart route renders.
+  files:
+    - docs.config.ts
 ---
 
 # Quickstart
@@ -373,13 +384,15 @@ sidebar:
     });
 
     const toolsList = await parseMcpPayload<{
-      result?: { tools?: Array<{ name: string }> };
+      result?: { tools?: Array<{ name: string; outputSchema?: { type?: string } }> };
     }>(toolsListResponse);
 
     expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
         "list_docs",
         "list_pages",
+        "list_tasks",
+        "read_task",
         "get_navigation",
         "search_docs",
         "read_page",
@@ -387,6 +400,12 @@ sidebar:
         "get_config_schema",
       ]),
     );
+    expect(
+      toolsList.result?.tools?.find((tool) => tool.name === "list_tasks")?.outputSchema,
+    ).toMatchObject({ type: "object" });
+    expect(
+      toolsList.result?.tools?.find((tool) => tool.name === "read_task")?.outputSchema,
+    ).toMatchObject({ type: "object" });
 
     const listPagesResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -409,18 +428,120 @@ sidebar:
       result?: { content?: Array<{ text?: string }> };
     }>(listPagesResponse);
     const listedPages = JSON.parse(listPagesPayload.result?.content?.[0]?.text ?? "{}") as {
-      pages?: Array<{ url?: string; agent?: { task?: string; outcome?: string } }>;
+      pages?: Array<{
+        url?: string;
+        agent?: {
+          hasContract?: boolean;
+          task?: string;
+          outcome?: string;
+          files?: string[];
+          commands?: unknown[];
+        };
+      }>;
     };
     expect(listedPages.pages).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           url: "/docs/installation",
           agent: expect.objectContaining({
+            hasContract: true,
             task: "Install the framework",
             outcome: "Dependencies are installed from the lockfile.",
           }),
         }),
       ]),
+    );
+    const installationSummary = listedPages.pages?.find(
+      (page) => page.url === "/docs/installation",
+    );
+    expect(installationSummary?.agent).not.toHaveProperty("files");
+    expect(installationSummary?.agent).not.toHaveProperty("commands");
+
+    const listTasksResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "list-tasks",
+          method: "tools/call",
+          params: {
+            name: "list_tasks",
+            arguments: { query: "lockfile", framework: "nextjs" },
+          },
+        }),
+      }),
+    });
+    const listTasksPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          resultCount?: number;
+          tasks?: Array<{ url?: string; task?: string; appliesTo?: unknown }>;
+        };
+        content?: Array<{ text?: string }>;
+      };
+    }>(listTasksResponse);
+    expect(listTasksPayload.result?.structuredContent).toMatchObject({
+      resultCount: 1,
+      tasks: [
+        {
+          url: "/docs/installation",
+          task: "Install the framework",
+          appliesTo: {
+            framework: ["nextjs"],
+            package: ["@farming-labs/next"],
+          },
+        },
+      ],
+    });
+    expect(JSON.parse(listTasksPayload.result?.content?.[0]?.text ?? "{}")).toEqual(
+      listTasksPayload.result?.structuredContent,
+    );
+
+    const readTaskResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "read-task",
+          method: "tools/call",
+          params: { name: "read_task", arguments: { path: "installation" } },
+        }),
+      }),
+    });
+    const readTaskPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          page?: { url?: string };
+          contract?: { files?: string[]; commands?: unknown[]; verification?: unknown[] };
+        };
+        content?: Array<{ text?: string }>;
+      };
+    }>(readTaskResponse);
+    expect(readTaskPayload.result?.structuredContent).toMatchObject({
+      page: { url: "/docs/installation" },
+      contract: {
+        files: ["package.json", "pnpm-lock.yaml"],
+        commands: [
+          {
+            run: "pnpm install --frozen-lockfile",
+            description: "Install exact dependency versions",
+          },
+        ],
+        verification: [{ run: "pnpm test", expect: "Tests pass" }],
+      },
+    });
+    expect(JSON.parse(readTaskPayload.result?.content?.[0]?.text ?? "{}")).toEqual(
+      readTaskPayload.result?.structuredContent,
     );
 
     const listDocsResponse = await handlers.POST({
@@ -454,7 +575,12 @@ sidebar:
       section?: string;
       resultCount?: number;
       sectionCount?: number;
-      pages?: Array<{ slug?: string; url?: string; sourcePath?: string }>;
+      pages?: Array<{
+        slug?: string;
+        url?: string;
+        sourcePath?: string;
+        agent?: { hasContract?: boolean; task?: string; outcome?: string; files?: string[] };
+      }>;
       sections?: Array<{
         slug?: string;
         title?: string;
@@ -472,6 +598,11 @@ sidebar:
           slug: "guides/quickstart",
           url: "/docs/guides/quickstart",
           sourcePath: "docs/guides/quickstart.mdx",
+          agent: {
+            hasContract: true,
+            task: "Create the first docs page",
+            outcome: "The quickstart route renders.",
+          },
         }),
       ],
       sections: [
@@ -488,6 +619,7 @@ sidebar:
         }),
       ],
     });
+    expect(docsList.pages?.[0]?.agent).not.toHaveProperty("files");
 
     const searchResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -1211,6 +1343,8 @@ sidebar:
         enabled: true,
         tools: {
           listDocs: false,
+          listTasks: false,
+          readTask: false,
           searchDocs: false,
           readPage: false,
           getConfigSchema: false,
@@ -1271,7 +1405,14 @@ sidebar:
       expect.arrayContaining(["list_pages", "get_navigation", "get_code_examples"]),
     );
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
-      expect.arrayContaining(["list_docs", "search_docs", "read_page", "get_config_schema"]),
+      expect.arrayContaining([
+        "list_docs",
+        "list_tasks",
+        "read_task",
+        "search_docs",
+        "read_page",
+        "get_config_schema",
+      ]),
     );
   });
 

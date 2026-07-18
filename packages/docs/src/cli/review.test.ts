@@ -128,6 +128,8 @@ agent:
     - pnpm deploy
   sideEffects:
     - Publishes a production deployment
+  verfication:
+    - The deployment is reachable
 ---
 
 Deploy the docs site.
@@ -150,6 +152,7 @@ Deploy the docs site.
     expect(badMessages).toEqual(
       expect.arrayContaining([
         "Invalid agent.files: must be a non-empty string array.",
+        'Invalid agent.verfication: is not recognized; did you mean "agent.verification"?',
         "Structured agent contract is missing outcome.",
         "Structured agent contract defines commands without verification steps.",
         "Structured agent contract defines side effects without rollback guidance.",

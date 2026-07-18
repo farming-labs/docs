@@ -115,6 +115,7 @@ export type {
   DocsSitemapResolvedConfig,
 } from "./sitemap.js";
 export type {
+  DocsMcpAgentContractSummary,
   DocsMcpCodeExample,
   DocsMcpConfigSchema,
   DocsMcpConfigSchemaOption,
@@ -127,6 +128,7 @@ export type {
   DocsMcpPage,
   DocsMcpResolvedConfig,
   DocsMcpSource,
+  DocsMcpTaskSummary,
 } from "./mcp.js";
 export type {
   PromptAction,

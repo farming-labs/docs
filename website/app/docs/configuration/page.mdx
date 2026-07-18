@@ -727,11 +727,13 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+- **Built-in tools:** `list_docs`, `list_pages`, `list_tasks`, `read_task`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
 
 Useful built-in tool calls:
 
 - `list_docs` returns page summaries grouped by docs section, with optional `section` filtering
+- `list_tasks` filters actionable contract summaries by query/framework/version/package; `read_task` returns the full normalized contract as structured output plus a JSON text fallback
+- `list_docs` and `list_pages` expose only `hasContract`, `task`, `outcome`, and `appliesTo` in their contract summaries
 - `get_code_examples` returns fenced code blocks plus parsed metadata such as `title`, `framework`, `packageManager`, and `runnable`
 - `get_config_schema` returns structured `docs.config.ts` option metadata for agents editing config safely
 
@@ -1526,11 +1528,15 @@ Notes:
   `--max-output-tokens` for that one page
 - optional structured fields include `task`, `outcome`, `appliesTo`, `prerequisites`, `files`,
   `commands`, `sideEffects`, `verification`, `rollback`, and `failureModes`
-- structured fields are emitted into machine-readable Markdown and MCP page results; invalid fields
-  are ignored at runtime and reported by `docs review`
+- structured fields are emitted into machine-readable Markdown, search/Ask AI context, Schema.org
+  `HowTo` JSON-LD, and MCP task tools; page-list tools keep only the concise contract summary
+- invalid or unknown fields are ignored at runtime and reported by `docs review`; misspelled keys get
+  closest-name suggestions such as `verfication` → `verification`
 - if a sibling `agent.md` already exists, `docs agent compact` compacts that file
 - if no `agent.md` exists, the command compacts the generated machine-readable page output and then
   writes a new sibling `agent.md`
+- generated contract markers are excluded from compaction input, and rendering preserves a
+  handwritten `## Agent Contract`, so repeated compaction/read cycles do not duplicate the section
 - `docs agent compact --changed` only processes docs pages changed in the current git working
   tree, including staged, unstaged, and untracked docs changes
 - `docs agent compact --stale --include-missing` will also create missing `agent.md` files for

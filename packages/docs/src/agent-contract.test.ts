@@ -5,6 +5,10 @@ import {
   normalizePageAgentFrontmatter,
   renderPageAgentContractMarkdown,
   renderPageAgentFrontmatterYamlLines,
+  PAGE_AGENT_CONTRACT_END_MARKER,
+  PAGE_AGENT_CONTRACT_START_MARKER,
+  stripGeneratedPageAgentContractMarkdown,
+  upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 
 describe("page agent contracts", () => {
@@ -157,5 +161,55 @@ describe("page agent contracts", () => {
     expect(markdown).toContain(
       "- Every request returns 401 — Recovery: Verify the callback returns an identity object",
     );
+    expect(markdown).toContain(PAGE_AGENT_CONTRACT_START_MARKER);
+    expect(markdown).toContain(PAGE_AGENT_CONTRACT_END_MARKER);
+  });
+
+  it("reports unknown top-level and nested keys with typo suggestions", () => {
+    const issues = getPageAgentFrontmatterIssues({
+      task: "Configure MCP",
+      verfication: ["Tests pass"],
+      appliesTo: { framwork: "nextjs" },
+      commands: [{ run: "pnpm test", descrption: "Run tests" }],
+      failureModes: [{ symptom: "Tests fail", resoluton: "Inspect the log" }],
+    });
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        {
+          path: "agent.verfication",
+          message: 'is not recognized; did you mean "agent.verification"?',
+        },
+        {
+          path: "agent.appliesTo.framwork",
+          message: 'is not recognized; did you mean "agent.appliesTo.framework"?',
+        },
+        {
+          path: "agent.commands[0].descrption",
+          message: 'is not recognized; did you mean "agent.commands[0].description"?',
+        },
+        {
+          path: "agent.failureModes[0].resoluton",
+          message: 'is not recognized; did you mean "agent.failureModes[0].resolution"?',
+        },
+      ]),
+    );
+  });
+
+  it("upserts one generated contract and preserves handwritten contract sections", () => {
+    const first = upsertPageAgentContractMarkdown("# Instructions\n\nDo the work.", input);
+    const second = upsertPageAgentContractMarkdown(first, input);
+    expect(second.match(/## Agent Contract/g)).toHaveLength(1);
+    expect(second.match(/farming-labs:agent-contract:start/g)).toHaveLength(1);
+
+    const handwritten = upsertPageAgentContractMarkdown(
+      "# Instructions\n\n## Agent Contract\n\nCustom contract guidance.",
+      input,
+    );
+    expect(handwritten.match(/## Agent Contract/g)).toHaveLength(1);
+    expect(handwritten).toContain("Custom contract guidance.");
+    expect(handwritten).not.toContain(PAGE_AGENT_CONTRACT_START_MARKER);
+
+    expect(stripGeneratedPageAgentContractMarkdown(first)).toBe("# Instructions\n\nDo the work.");
   });
 });

@@ -3,7 +3,10 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import matter from "gray-matter";
 import pc from "picocolors";
-import { normalizePageAgentFrontmatter } from "../agent-contract.js";
+import {
+  normalizePageAgentFrontmatter,
+  stripGeneratedPageAgentContractMarkdown,
+} from "../agent-contract.js";
 import {
   GENERATED_AGENT_PROVENANCE_VERSION,
   hashGeneratedAgentContent,
@@ -508,15 +511,19 @@ function buildPageOptions(
 }
 
 function buildResolvedPageSourceDocument(page: DocsMcpPage): string {
-  return renderDocsMarkdownDocument({
-    ...page,
-    agentRawContent: undefined,
-  });
+  return stripGeneratedPageAgentContractMarkdown(
+    renderDocsMarkdownDocument({
+      ...page,
+      agentRawContent: undefined,
+    }),
+  );
 }
 
 function buildAgentSourceDocument(page: DocsMcpPage): string {
-  if (typeof page.agentRawContent === "string") return page.agentRawContent;
-  return renderDocsMarkdownDocument(page);
+  if (typeof page.agentRawContent === "string") {
+    return stripGeneratedPageAgentContractMarkdown(page.agentRawContent);
+  }
+  return stripGeneratedPageAgentContractMarkdown(renderDocsMarkdownDocument(page));
 }
 
 function readCurrentAgentDocument(target: DocsPageTarget) {

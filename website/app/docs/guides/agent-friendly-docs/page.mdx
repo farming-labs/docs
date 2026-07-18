@@ -132,10 +132,12 @@ That alone gives the machine-readable route a stronger entry point:
   rollback, and common recovery paths without requiring the model to infer them from prose
 - the normal body remains the human source of truth
 
-The contract is optional and additive. Valid contracts appear in the served Markdown frontmatter and
-as a deterministic `## Agent Contract` section, and MCP page summaries/read responses expose the
-same normalized data. Malformed fields are ignored while serving the page and reported by
-`docs review`, so an authoring mistake does not take the docs endpoint down.
+The contract is optional and additive. Valid contracts appear in served Markdown frontmatter, a
+deterministic `## Agent Contract` section, search/Ask AI context, and Schema.org `HowTo` JSON-LD.
+MCP `list_pages` and `list_docs` expose only `hasContract`, task, outcome, and applicability;
+`list_tasks` discovers actionable pages, while `read_task` and `read_page` expose the full contract.
+Malformed or unknown fields are ignored while serving the page and reported by `docs review`, with
+closest-name suggestions for typos, so an authoring mistake does not take the docs endpoint down.
 
 If a page is important enough to unblock implementation, it should also contain:
 

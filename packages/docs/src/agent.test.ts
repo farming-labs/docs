@@ -153,6 +153,9 @@ describe("agent route helpers", () => {
         llmsTxt: {
           sections: [{ title: "Guides", match: "/docs/guides/**" }],
         },
+        mcp: {
+          tools: { listTasks: true, readTask: true },
+        },
         rootDir: "/tmp/site",
         _preloadedContent: {
           "/docs/page.mdx": "# Internal content",
@@ -208,6 +211,13 @@ describe("agent route helpers", () => {
     expect(map.pointers["/llmsTxt/sections/0/title"]).toEqual({
       path: "llmsTxt.sections[0].title",
       kind: "string",
+    });
+    expect(map.values.mcp).toEqual({
+      tools: { listTasks: true, readTask: true },
+    });
+    expect(map.pointers["/mcp/tools/listTasks"]).toEqual({
+      path: "mcp.tools.listTasks",
+      kind: "boolean",
     });
     expect(map.values).not.toHaveProperty("rootDir");
     expect(map.values).not.toHaveProperty("_preloadedContent");
@@ -349,6 +359,8 @@ describe("agent route helpers", () => {
         listDocs: true,
         listPages: true,
         readPage: true,
+        listTasks: true,
+        readTask: true,
         searchDocs: false,
         getNavigation: true,
         getCodeExamples: true,
@@ -911,6 +923,14 @@ describe("agent route helpers", () => {
     expect(document).toContain("- Framework: `nextjs`");
     expect(document).toContain("- `pnpm install`");
     expect(document).toContain("LLM index: /llms.txt");
+
+    const handwrittenContract = renderDocsMarkdownDocument({
+      ...page!,
+      agentRawContent: "## Agent Contract\n\nUse the handwritten recovery procedure.",
+    });
+    expect(handwrittenContract.match(/## Agent Contract/g)).toHaveLength(1);
+    expect(handwrittenContract).toContain("Use the handwritten recovery procedure.");
+    expect(handwrittenContract).not.toContain("farming-labs:agent-contract:start");
     expect(renderDocsMarkdownDocument(page!, { llms: false })).not.toContain(
       "LLM index: /llms.txt",
     );
@@ -933,6 +953,8 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
@@ -978,6 +1000,8 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
@@ -1027,6 +1051,8 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
@@ -1097,9 +1123,10 @@ describe("agent route helpers", () => {
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     });
     expect(spec.agentContract).toMatchObject({
       enabled: true,
@@ -1108,6 +1135,7 @@ describe("agent route helpers", () => {
       frontmatterPath: "agent",
       markdownSection: "Agent Contract",
       mcpField: "agent",
+      mcpTools: { list: "list_tasks", read: "read_task" },
       usefulContractFields: ["task", "outcome"],
     });
   });

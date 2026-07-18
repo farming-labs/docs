@@ -14,6 +14,12 @@ import type {
   McpDocsSearchConfig,
   TypesenseDocsSearchConfig,
 } from "./types.js";
+import {
+  PAGE_AGENT_CONTRACT_END_MARKER,
+  PAGE_AGENT_CONTRACT_START_MARKER,
+  renderPageAgentContractMarkdown,
+  upsertPageAgentContractMarkdown,
+} from "./agent-contract.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
@@ -211,7 +217,21 @@ function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
 }
 
 function getAskAIPageContent(page: DocsSearchSourcePage): string {
-  return page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent ?? page.content;
+  return upsertPageAgentContractMarkdown(
+    page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+    page.agent,
+  )
+    .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
+    .replace(PAGE_AGENT_CONTRACT_END_MARKER, "")
+    .replace(/^\r?\n+/, "");
+}
+
+function getPageAgentContractSearchText(page: DocsSearchSourcePage): string {
+  return stripMarkdownText(
+    renderPageAgentContractMarkdown(page.agent)
+      .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
+      .replace(PAGE_AGENT_CONTRACT_END_MARKER, ""),
+  );
 }
 
 function removeMdxModuleLinesOutsideFences(content: string): string {
@@ -483,7 +503,7 @@ function pageToSearchDocument(page: DocsSearchSourcePage): DocsSearchDocument {
     id: makeDocumentId(page.url, "page"),
     url: page.url,
     title: page.title,
-    content: normalizeWhitespace(page.content),
+    content: normalizeWhitespace([page.content, getPageAgentContractSearchText(page)].join(" ")),
     description: page.description,
     type: "page",
     locale: page.locale,

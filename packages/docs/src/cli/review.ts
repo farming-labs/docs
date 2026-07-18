@@ -467,7 +467,7 @@ function checkAgentContext(
       severity: "warn",
       file: options.file,
       line: 1,
-      message: `Invalid ${issue.path}: ${issue.message}.`,
+      message: `Invalid ${issue.path}: ${issue.message}${/[.!?]$/.test(issue.message) ? "" : "."}`,
     });
   }
 

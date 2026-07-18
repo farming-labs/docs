@@ -802,6 +802,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       baseUrl: resolveDocsMetadataBaseUrl(config as any),
       entry,
       dateModified: lastModifiedIso,
+      agent: normalizePageAgentFrontmatter(data.agent),
     });
 
     return {

@@ -24,6 +24,15 @@ const STRUCTURED_AGENT_FIELDS = [
   "failureModes",
 ] as const;
 
+const AGENT_FIELDS = ["tokenBudget", ...STRUCTURED_AGENT_FIELDS] as const;
+const APPLIES_TO_FIELDS = ["framework", "version", "package"] as const;
+const COMMAND_FIELDS = ["run", "cwd", "description"] as const;
+const VERIFICATION_FIELDS = ["description", "run", "expect"] as const;
+const FAILURE_MODE_FIELDS = ["symptom", "resolution"] as const;
+
+export const PAGE_AGENT_CONTRACT_START_MARKER = "<!-- farming-labs:agent-contract:start -->";
+export const PAGE_AGENT_CONTRACT_END_MARKER = "<!-- farming-labs:agent-contract:end -->";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -221,6 +230,55 @@ function addStringListIssues(
   });
 }
 
+function editDistance(left: string, right: string): number {
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    const current = [leftIndex];
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      current[rightIndex] = Math.min(
+        (current[rightIndex - 1] ?? 0) + 1,
+        (previous[rightIndex] ?? 0) + 1,
+        (previous[rightIndex - 1] ?? 0) + (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+
+  return previous[right.length] ?? 0;
+}
+
+function closestKnownField(field: string, allowed: readonly string[]): string | undefined {
+  const ranked = allowed
+    .map((candidate) => ({ candidate, distance: editDistance(field, candidate) }))
+    .sort(
+      (left, right) =>
+        left.distance - right.distance || left.candidate.localeCompare(right.candidate),
+    );
+  const closest = ranked[0];
+  if (!closest) return undefined;
+  const threshold = Math.max(1, Math.min(3, Math.floor(closest.candidate.length / 3)));
+  return closest.distance <= threshold ? closest.candidate : undefined;
+}
+
+function addUnknownKeyIssues(
+  issues: PageAgentFrontmatterIssue[],
+  object: Record<string, unknown>,
+  allowed: readonly string[],
+  path: string,
+) {
+  for (const field of Object.keys(object)) {
+    if (allowed.includes(field)) continue;
+    const suggestion = closestKnownField(field, allowed);
+    issues.push({
+      path: `${path}.${field}`,
+      message: suggestion
+        ? `is not recognized; did you mean "${path}.${suggestion}"?`
+        : "is not recognized",
+    });
+  }
+}
+
 /** Return author-facing validation issues without throwing. */
 export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmatterIssue[] {
   if (value === undefined) return [];
@@ -229,6 +287,7 @@ export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmat
   }
 
   const issues: PageAgentFrontmatterIssue[] = [];
+  addUnknownKeyIssues(issues, value, AGENT_FIELDS, "agent");
   if (
     "tokenBudget" in value &&
     (typeof value.tokenBudget !== "number" ||
@@ -245,6 +304,7 @@ export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmat
     if (!isRecord(value.appliesTo)) {
       issues.push({ path: "agent.appliesTo", message: "must be an object" });
     } else {
+      addUnknownKeyIssues(issues, value.appliesTo, APPLIES_TO_FIELDS, "agent.appliesTo");
       for (const field of ["framework", "version", "package"] as const) {
         if (!(field in value.appliesTo)) continue;
         const fieldValue = value.appliesTo[field];
@@ -285,7 +345,15 @@ export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmat
     } else {
       value.commands.forEach((command, index) => {
         if (normalizeString(command)) return;
-        if (!isRecord(command) || !normalizeString(command.run)) {
+        if (!isRecord(command)) {
+          issues.push({
+            path: `agent.commands[${index}]`,
+            message: "must be a command string or an object with a non-empty run field",
+          });
+          return;
+        }
+        addUnknownKeyIssues(issues, command, COMMAND_FIELDS, `agent.commands[${index}]`);
+        if (!normalizeString(command.run)) {
           issues.push({
             path: `agent.commands[${index}]`,
             message: "must be a command string or an object with a non-empty run field",
@@ -310,7 +378,15 @@ export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmat
     } else {
       value.verification.forEach((step, index) => {
         if (normalizeString(step)) return;
-        if (!isRecord(step) || !normalizeVerification([step])) {
+        if (!isRecord(step)) {
+          issues.push({
+            path: `agent.verification[${index}]`,
+            message: "must be a string or an object with description, run, or expect",
+          });
+          return;
+        }
+        addUnknownKeyIssues(issues, step, VERIFICATION_FIELDS, `agent.verification[${index}]`);
+        if (!normalizeVerification([step])) {
           issues.push({
             path: `agent.verification[${index}]`,
             message: "must be a string or an object with description, run, or expect",
@@ -335,7 +411,15 @@ export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmat
     } else {
       value.failureModes.forEach((mode, index) => {
         if (normalizeString(mode)) return;
-        if (!isRecord(mode) || !normalizeString(mode.symptom)) {
+        if (!isRecord(mode)) {
+          issues.push({
+            path: `agent.failureModes[${index}]`,
+            message: "must be a string or an object with a non-empty symptom field",
+          });
+          return;
+        }
+        addUnknownKeyIssues(issues, mode, FAILURE_MODE_FIELDS, `agent.failureModes[${index}]`);
+        if (!normalizeString(mode.symptom)) {
           issues.push({
             path: `agent.failureModes[${index}]`,
             message: "must be a string or an object with a non-empty symptom field",
@@ -447,7 +531,7 @@ export function renderPageAgentContractMarkdown(value: unknown): string {
   const agent = normalizePageAgentFrontmatter(value);
   if (!agent || !hasStructuredPageAgentContract(agent)) return "";
 
-  const lines = ["## Agent Contract"];
+  const lines = [PAGE_AGENT_CONTRACT_START_MARKER, "## Agent Contract"];
   if (agent.task) lines.push("", `Task: ${agent.task}`);
   if (agent.outcome) lines.push(`Outcome: ${agent.outcome}`);
 
@@ -512,5 +596,48 @@ export function renderPageAgentContractMarkdown(value: unknown): string {
     }
   }
 
+  lines.push(PAGE_AGENT_CONTRACT_END_MARKER);
   return lines.join("\n");
+}
+
+/** Remove generated contract blocks while preserving handwritten guidance. */
+export function stripGeneratedPageAgentContractMarkdown(markdown: string): string {
+  const start = PAGE_AGENT_CONTRACT_START_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const end = PAGE_AGENT_CONTRACT_END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return markdown
+    .replace(new RegExp(`${start}[\\s\\S]*?${end}\\s*`, "g"), "")
+    .replace(/^\r?\n+/, "");
+}
+
+function hasPageAgentContractHeading(markdown: string): boolean {
+  let fence: { character: string; length: number } | undefined;
+
+  for (const line of markdown.split(/\r?\n/)) {
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      if (!fence) {
+        fence = { character: marker[0], length: marker.length };
+      } else if (
+        marker[0] === fence.character &&
+        marker.length >= fence.length &&
+        trimmed.slice(marker.length).trim() === ""
+      ) {
+        fence = undefined;
+      }
+      continue;
+    }
+    if (!fence && /^#{1,6}\s+agent contract\s*#*\s*$/i.test(trimmed)) return true;
+  }
+
+  return false;
+}
+
+/** Insert one generated contract unless the document already has handwritten contract guidance. */
+export function upsertPageAgentContractMarkdown(markdown: string, value: unknown): string {
+  const cleaned = stripGeneratedPageAgentContractMarkdown(markdown);
+  const contract = renderPageAgentContractMarkdown(value);
+  if (!contract || hasPageAgentContractHeading(cleaned)) return cleaned;
+  return cleaned ? `${contract}\n\n${cleaned.replace(/^\r?\n+/, "")}` : contract;
 }
