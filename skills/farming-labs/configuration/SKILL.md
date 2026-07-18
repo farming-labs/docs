@@ -176,12 +176,13 @@ Default behavior:
 - **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
 - **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
 - **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
-- **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; other adapters should use the `.md` URL or API format route
+- **Next.js:** an unambiguous `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; mixed headers containing `text/html`, `text/*`, or `*/*` stay HTML, so use the exact `.md` URL or API format route for those requests
 - Requests with `Signature-Agent` on normal docs URLs return the same markdown response, so agent fetchers can read canonical URLs without appending `.md`
 - Next.js also auto-serves markdown on normal docs URLs for known AI user agents and conservative bot-like agent heuristics
+- successful responses include canonical `Link`, `Content-Location`, and `ETag` headers; `Last-Modified` is included only when the adapter has an exact source timestamp, never from date-only frontmatter alone
 - markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a page freshness date is known
 - successful markdown page responses append a `## Sitemap` footer that links to the configured markdown sitemap routes
-- missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
+- missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
 - very high-confidence missing markdown slugs redirect to the closest `.md` page instead of returning a recovery body
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
@@ -242,9 +243,11 @@ curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
 ```
 
 Call out content negotiation when relevant: in Next.js, `/docs/<slug>` remains the normal HTML page
-for browsers, but agents/scripts can send `Accept: text/markdown`, send `Signature-Agent`, or use a
-known AI user agent to receive the machine-readable markdown representation without appending `.md`.
-In other adapters, use `/docs/<slug>.md` or the API format route.
+for browsers, but agents/scripts can send an unambiguous `Accept: text/markdown`, send
+`Signature-Agent`, or use a known AI user agent to receive the machine-readable markdown
+representation without appending `.md`. Shared and non-Next handlers honor weighted `Accept`
+values. The generated Next.js rewrite does not compare arbitrary `q` values: if `text/html`,
+`text/*`, or `*/*` is also present, use `/docs/<slug>.md` or the API format route.
 
 ---
 

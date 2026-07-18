@@ -542,6 +542,19 @@ export interface DocsMarkdownCanonicalUrlOptions {
   locale?: string | null;
 }
 
+export interface DocsMarkdownResponseOptions extends DocsMarkdownNotFoundOptions {
+  request: Request;
+  document: string | null;
+  /** Override the human-readable canonical URL, for example when docsPath differs from entry. */
+  canonicalUrl?: string;
+  /** Override the selected Markdown representation URL. */
+  contentLocation?: string;
+  locale?: string | null;
+  /** Exact source modification timestamp. Date-only values are intentionally ignored. */
+  lastModified?: string | Date | null;
+  cacheControl?: string;
+}
+
 export function normalizeDocsPathSegment(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
 }
@@ -2059,7 +2072,7 @@ export function resolveDocsMarkdownRequest(
   }
 
   if (
-    acceptsMarkdown(request) ||
+    acceptsDocsMarkdown(request) ||
     hasDocsMarkdownSignatureAgent(request) ||
     detectDocsMarkdownAgentRequest(request).detected
   ) {
@@ -2109,7 +2122,7 @@ export function detectDocsMarkdownAgentRequest(request: Request): DocsMarkdownAg
 export function getDocsMarkdownVaryHeader(request: Request): string | null {
   const values = new Set<string>();
 
-  if (acceptsMarkdown(request)) values.add("Accept");
+  if (acceptsDocsMarkdown(request)) values.add("Accept");
 
   if (hasDocsMarkdownSignatureAgent(request)) {
     values.add("Accept");
@@ -2498,6 +2511,146 @@ export function renderDocsMarkdownNotFound({
   });
 
   return appendDocsMarkdownSitemapFooter(document, sitemap);
+}
+
+function hashDocsMarkdownRepresentation(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function createDocsMarkdownEtag(document: string): string {
+  return `W/"${document.length.toString(16)}-${hashDocsMarkdownRepresentation(document)}"`;
+}
+
+function normalizeDocsMarkdownEtag(value: string): string {
+  return value.trim().replace(/^W\//i, "");
+}
+
+function requestMatchesDocsMarkdownEtag(request: Request, etag: string): boolean {
+  const header = request.headers.get("if-none-match");
+  if (!header) return false;
+  if (header.trim() === "*") return true;
+  const expected = normalizeDocsMarkdownEtag(etag);
+  return header.split(",").some((candidate) => normalizeDocsMarkdownEtag(candidate) === expected);
+}
+
+function resolveDocsMarkdownHttpDate(value?: string | Date | null): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === "string" && !/(?:T|\s)\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.test(value.trim())) {
+    return undefined;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toUTCString();
+}
+
+function extractDocsMarkdownLastModified(document: string): string | undefined {
+  const frontmatter = document.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
+  if (!frontmatter) return undefined;
+  const raw = frontmatter.match(/^last_updated:\s*(.+?)\s*$/m)?.[1]?.trim();
+  if (!raw) return undefined;
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    return raw.slice(1, -1);
+  }
+  return raw;
+}
+
+function requestHasFreshDocsMarkdownDate(request: Request, lastModified?: string): boolean {
+  if (!lastModified || request.headers.has("if-none-match")) return false;
+  const ifModifiedSince = request.headers.get("if-modified-since");
+  if (!ifModifiedSince) return false;
+  const resourceTime = Date.parse(lastModified);
+  const requestTime = Date.parse(ifModifiedSince);
+  return (
+    Number.isFinite(resourceTime) &&
+    Number.isFinite(requestTime) &&
+    Math.floor(resourceTime / 1000) <= Math.floor(requestTime / 1000)
+  );
+}
+
+function resolveDocsMarkdownContentLocation(canonicalUrl: string): string {
+  const url = new URL(canonicalUrl);
+  url.pathname = toDocsMarkdownUrl(url.pathname);
+  return url.toString();
+}
+
+/** Build one standards-aware Markdown response for every framework adapter. */
+export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions): Response {
+  const {
+    request,
+    document,
+    entry = "docs",
+    requestedPath,
+    origin = new URL(request.url).origin,
+    pages,
+    sitemap,
+    locale,
+  } = options;
+  const canonicalUrl =
+    options.canonicalUrl ??
+    resolveDocsMarkdownCanonicalUrl({ origin, entry, requestedPath, locale });
+  const contentLocation =
+    options.contentLocation ?? resolveDocsMarkdownContentLocation(canonicalUrl);
+  const varyHeader = getDocsMarkdownVaryHeader(request);
+  const sharedHeaders: Record<string, string> = {
+    "Content-Location": contentLocation,
+    Link: `<${canonicalUrl}>; rel="canonical"`,
+    "X-Robots-Tag": "noindex",
+    ...(locale ? { "Content-Language": locale } : {}),
+    ...(varyHeader ? { Vary: varyHeader } : {}),
+  };
+
+  if (!document) {
+    const recovery = resolveDocsMarkdownRecovery({ entry, requestedPath, pages, sitemap });
+    if (recovery.redirect) {
+      return new Response(null, {
+        status: 307,
+        headers: {
+          ...sharedHeaders,
+          "Cache-Control": "no-store",
+          Location: new URL(recovery.redirect.markdownUrl, request.url).toString(),
+        },
+      });
+    }
+
+    return new Response(
+      renderDocsMarkdownNotFound({ entry, requestedPath, origin, pages, sitemap }),
+      {
+        status: 404,
+        headers: {
+          ...sharedHeaders,
+          "Cache-Control": "no-store",
+          "Content-Type": "text/markdown; charset=utf-8",
+        },
+      },
+    );
+  }
+
+  const etag = createDocsMarkdownEtag(document);
+  const lastModified = resolveDocsMarkdownHttpDate(
+    options.lastModified ?? extractDocsMarkdownLastModified(document),
+  );
+  const responseHeaders: Record<string, string> = {
+    ...sharedHeaders,
+    "Cache-Control": options.cacheControl ?? "public, max-age=0, s-maxage=3600",
+    "Content-Type": "text/markdown; charset=utf-8",
+    ETag: etag,
+    ...(lastModified ? { "Last-Modified": lastModified } : {}),
+  };
+
+  if (
+    requestMatchesDocsMarkdownEtag(request, etag) ||
+    requestHasFreshDocsMarkdownDate(request, lastModified)
+  ) {
+    const { "Content-Type": _contentType, ...notModifiedHeaders } = responseHeaders;
+    return new Response(null, { status: 304, headers: notModifiedHeaders });
+  }
+
+  return new Response(document, { headers: responseHeaders });
 }
 
 export function findDocsMarkdownPage<T extends DocsMarkdownPage>(
@@ -3271,23 +3424,31 @@ export function buildDocsAgentDiscoverySpec({
   };
 }
 
-function acceptsMarkdown(request: Request): boolean {
+export function acceptsDocsMarkdown(request: Request): boolean {
   const accept = request.headers.get("accept");
   if (!accept) return false;
-  return accept
-    .split(",")
-    .map((value) => value.trim())
-    .some((value) => {
-      const [mediaType, ...params] = value.split(";").map((part) => part.trim().toLowerCase());
-      if (mediaType !== "text/markdown") return false;
+  const ranges = accept.split(",").map((value) => {
+    const [rawMediaType = "", ...params] = value
+      .split(";")
+      .map((part) => part.trim().toLowerCase());
+    const qualityParam = params.find((param) => param.split("=", 1)[0]?.trim() === "q");
+    const parsedQuality = qualityParam
+      ? Number.parseFloat(qualityParam.slice(qualityParam.indexOf("=") + 1).trim())
+      : 1;
+    return {
+      mediaType: rawMediaType,
+      quality: Number.isFinite(parsedQuality) ? Math.min(1, Math.max(0, parsedQuality)) : 0,
+    };
+  });
+  const qualityFor = (mediaType: string): number | undefined => {
+    const matches = ranges.filter((range) => range.mediaType === mediaType);
+    return matches.length > 0 ? Math.max(...matches.map((range) => range.quality)) : undefined;
+  };
+  const markdownQuality = qualityFor("text/markdown");
+  if (!markdownQuality || markdownQuality <= 0) return false;
 
-      const qualityParam = params.find((param) => param.split("=", 1)[0]?.trim() === "q");
-      if (!qualityParam) return true;
-
-      const qualityValue = qualityParam.slice(qualityParam.indexOf("=") + 1).trim();
-      const quality = Number.parseFloat(qualityValue);
-      return Number.isFinite(quality) ? quality > 0 : true;
-    });
+  const htmlQuality = qualityFor("text/html") ?? qualityFor("text/*") ?? qualityFor("*/*");
+  return htmlQuality === undefined || htmlQuality <= markdownQuality;
 }
 
 function buildDocsUserAgentHeaderPattern(patterns: readonly string[]): string {

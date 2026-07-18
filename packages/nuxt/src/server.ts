@@ -24,6 +24,7 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
+  createDocsMarkdownResponse,
   createDocsRobotsResponse,
   createDocsSitemapResponse,
   createDocsAgentTraceContext,
@@ -35,8 +36,6 @@ import {
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
-  getDocsMarkdownCanonicalLinkHeader,
-  getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
   isDocsConfigRequest,
   isDocsLlmsTxtPublicRequest,
@@ -49,8 +48,6 @@ import {
   parseDocsAgentFeedbackData,
   performDocsSearch,
   renderDocsMarkdownDocument,
-  renderDocsMarkdownNotFound,
-  resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   renderDocsAgentsDocument,
   renderDocsSkillDocument,
@@ -932,13 +929,18 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return i18n.defaultLocale;
   }
 
-  function getMarkdownDocument(
+  function getMarkdownRepresentation(
     ctx: ReturnType<typeof resolveContextFromPath>,
     requestedPath: string,
     origin?: string,
   ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
-    return page ? renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }) : null;
+    return page
+      ? {
+          document: renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }),
+          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+        }
+      : null;
   }
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
@@ -1157,61 +1159,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, context.request);
     if (markdownRequest) {
       const markdownOrigin = markdownMetadataBaseUrl || url.origin;
-      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath, markdownOrigin);
-      const varyHeader = getDocsMarkdownVaryHeader(context.request);
-      const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
-        origin: markdownOrigin,
+      const representation = getMarkdownRepresentation(
+        ctx,
+        markdownRequest.requestedPath,
+        markdownOrigin,
+      );
+      return createDocsMarkdownResponse({
+        request: context.request,
+        document: representation?.document ?? null,
         entry,
         requestedPath: markdownRequest.requestedPath,
+        origin: markdownOrigin,
         locale: ctx.locale,
-      });
-
-      if (!document) {
-        const recovery = resolveDocsMarkdownRecovery({
-          entry,
-          requestedPath: markdownRequest.requestedPath,
-          pages: getSearchIndex(ctx),
-          sitemap: config.sitemap,
-        });
-
-        if (recovery.redirect) {
-          return new Response(null, {
-            status: 307,
-            headers: {
-              Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
-              ...(varyHeader ? { Vary: varyHeader } : {}),
-              "X-Robots-Tag": "noindex",
-            },
-          });
-        }
-
-        return new Response(
-          renderDocsMarkdownNotFound({
-            entry,
-            requestedPath: markdownRequest.requestedPath,
-            origin: markdownOrigin,
-            pages: getSearchIndex(ctx),
-            sitemap: config.sitemap,
-          }),
-          {
-            status: 200,
-            headers: {
-              "Content-Type": "text/markdown; charset=utf-8",
-              ...(varyHeader ? { Vary: varyHeader } : {}),
-              "X-Robots-Tag": "noindex",
-            },
-          },
-        );
-      }
-
-      return new Response(document, {
-        headers: {
-          "Content-Type": "text/markdown; charset=utf-8",
-          "Cache-Control": "public, max-age=0, s-maxage=3600",
-          Link: canonicalLinkHeader,
-          ...(varyHeader ? { Vary: varyHeader } : {}),
-          "X-Robots-Tag": "noindex",
-        },
+        lastModified: representation?.lastModified,
+        pages: getSearchIndex(ctx),
+        sitemap: config.sitemap,
       });
     }
 

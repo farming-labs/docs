@@ -16,7 +16,7 @@ The same page model also powers the built-in machine-readable routes:
 
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
-- in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
+- in Next.js, an unambiguous `Accept: text/markdown` on `/docs/<slug>` returns the same markdown; a mixed header containing `text/html`, `text/*`, or `*/*` stays HTML
 - in Next.js, `Signature-Agent` on `/docs/<slug>` returns the same markdown for agents that fetch canonical URLs
 - in Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
 - coding agents can fetch site-level instructions with `GET /AGENTS.md`, fall back to
@@ -30,10 +30,10 @@ The same page model also powers the built-in machine-readable routes:
   `GET /api/docs?format=config` (returns `docs-config-map.v1` JSON, `X-Robots-Tag: noindex`,
   CDN-cached at `s-maxage=3600`)
 <Callout type="info" title="Same URL, different representation">
-  `/docs/installation` stays the human HTML page by default. In Next.js, send
+  `/docs/installation` stays the human HTML page by default. In Next.js, send an unambiguous
   `Accept: text/markdown`, send `Signature-Agent`, or identify with a known AI user agent on that
-  same URL when an agent or script wants the machine-readable version without appending `.md`. In the
-  other adapters, use `/docs/installation.md` or the `format=markdown` API route.
+  same URL when an agent or script wants the machine-readable version without appending `.md`. In
+  the other adapters, use `/docs/installation.md` or the `format=markdown` API route.
 
   These reads go through the existing shared `/api/docs` handler. You do not need another
   markdown-specific API wrapper, and adding one usually makes discovery, caching, and 404 recovery
@@ -43,15 +43,22 @@ The same page model also powers the built-in machine-readable routes:
   markdown representations for the same URL. A browser can keep receiving cached HTML while an
   agent receives cached markdown for `/docs/installation`.
 
-  Successful markdown responses include a canonical `Link` response header pointing to the normal
-  docs page, so agents can read `/docs/installation.md` while still citing `/docs/installation`.
+  Successful markdown responses include canonical `Link` and `Content-Location` headers, so agents
+  can read `/docs/installation.md` while still citing `/docs/installation`. They also include an
+  `ETag`, `Content-Language` when a locale is known, and `Last-Modified` when the adapter has an exact
+  source timestamp. Date-only frontmatter is not treated as a midnight timestamp. Conditional
+  requests can reuse the available validators and receive HTTP `304` without another body.
   The body starts with YAML frontmatter for `title`, `description`, `canonical_url`, `markdown_url`,
   and `last_updated` when known, then ends with a `## Sitemap` footer that links back to the
   configured markdown sitemap.
 
-  Missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions,
+  Missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions,
   recovery instructions, links to the agent discovery spec, search endpoint, and sitemap routes.
   Very high-confidence typo matches redirect to the corrected `.md` page.
+
+  Shared and non-Next handlers can honor weighted `Accept` values. The generated Next.js canonical
+  rewrite stays conservative because it cannot compare arbitrary `q` values: use the exact `.md`
+  URL or `GET /api/docs?format=markdown&path=<slug>` for mixed HTML/Markdown accept lists.
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation

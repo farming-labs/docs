@@ -25,6 +25,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import {
+  acceptsDocsMarkdown,
   normalizeDocsRelated,
   buildDocsConfigMap,
   buildDocsDiagnostics,
@@ -32,19 +33,17 @@ import {
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   createDocsRobotsResponse,
+  createDocsMarkdownResponse,
   detectDocsMarkdownAgentRequest,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   emitDocsTelemetryAgentSurfaceEvent,
   emitDocsTelemetryProjectEvent,
   inferDocsTelemetryAgentSurface,
-  getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   getDocsLlmsTxtMaxCharsIssue,
-  renderDocsMarkdownNotFound,
   renderDocsMarkdownDocument,
   resolveDocsMetadataBaseUrl,
-  resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   resolveDocsI18n,
   resolveDocsLlmsTxtRequest,
@@ -1663,7 +1662,7 @@ function normalizePublicDocsSlug(ctx: DocsContext, value: string): string {
   return normalizePathSegment(pathname);
 }
 
-function getPublicMarkdownCanonicalLinkHeader({
+function getPublicMarkdownCanonicalUrl({
   origin,
   ctx,
   requestedPath,
@@ -1674,7 +1673,7 @@ function getPublicMarkdownCanonicalLinkHeader({
 }): string {
   const canonicalUrl = new URL(normalizePublicRequestedMarkdownPath(ctx, requestedPath), origin);
   if (ctx.locale) canonicalUrl.searchParams.set("lang", ctx.locale);
-  return `<${canonicalUrl.toString()}>; rel="canonical"`;
+  return canonicalUrl.toString();
 }
 
 function findDocsMcpPage(
@@ -1698,28 +1697,9 @@ function findDocsMcpPage(
   return null;
 }
 
-function acceptsMarkdown(request: Request): boolean {
-  const accept = request.headers.get("accept");
-  if (!accept) return false;
-  return accept
-    .split(",")
-    .map((value) => value.trim())
-    .some((value) => {
-      const [mediaType, ...params] = value.split(";").map((part) => part.trim().toLowerCase());
-      if (mediaType !== "text/markdown") return false;
-
-      const qualityParam = params.find((param) => param.split("=", 1)[0]?.trim() === "q");
-      if (!qualityParam) return true;
-
-      const qualityValue = qualityParam.slice(qualityParam.indexOf("=") + 1).trim();
-      const quality = Number.parseFloat(qualityValue);
-      return Number.isFinite(quality) ? quality > 0 : true;
-    });
-}
-
 function resolveMarkdownHeaderDelivery(request: Request): MarkdownRequest["delivery"] | null {
   if (hasDocsMarkdownSignatureAgent(request)) return "signature_agent";
-  if (acceptsMarkdown(request)) return "accept_header";
+  if (acceptsDocsMarkdown(request)) return "accept_header";
 
   const agentDetection = detectDocsMarkdownAgentRequest(request);
   if (!agentDetection.detected) return null;
@@ -3859,7 +3839,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return sources;
   }
 
-  async function getMarkdownDocument(ctx: DocsContext, requestedPath: string, origin?: string) {
+  async function getMarkdownRepresentation(
+    ctx: DocsContext,
+    requestedPath: string,
+    origin?: string,
+  ) {
     const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
     const normalizedPublicRequest = normalizePublicRequestedMarkdownPath(ctx, requestedPath);
     const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
@@ -3875,34 +3859,47 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     for (const source of getMarkdownSources(ctx)) {
       const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
-      if (page)
-        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
-          llmsEnabled: llmsConfig.enabled,
-          origin,
-          sitemap: sitemapConfig,
-        });
+      if (page) {
+        return {
+          document: renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+            llmsEnabled: llmsConfig.enabled,
+            origin,
+            sitemap: sitemapConfig,
+          }),
+          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+        };
+      }
     }
 
     const fallbackPage = getIndexes(ctx).find((page) => {
       const pageUrl = normalizeUrlPath(page.url);
       return pageUrl === normalizedRequest || pageUrl === normalizedPublicRequest;
     });
-    if (fallbackPage)
-      return renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
-        llmsEnabled: llmsConfig.enabled,
-        origin,
-        sitemap: sitemapConfig,
-      });
+    if (fallbackPage) {
+      return {
+        document: renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
+          llmsEnabled: llmsConfig.enabled,
+          origin,
+          sitemap: sitemapConfig,
+        }),
+        lastModified:
+          fallbackPage.agentRawContent === undefined ? fallbackPage.lastModified : undefined,
+      };
+    }
 
     const requestedSlug = normalizePublicDocsSlug(ctx, normalizedPublicRequest);
     for (const page of getIndexes(ctx)) {
       const slug = normalizePublicDocsSlug(ctx, page.url);
-      if (slug === requestedSlug)
-        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
-          llmsEnabled: llmsConfig.enabled,
-          origin,
-          sitemap: sitemapConfig,
-        });
+      if (slug === requestedSlug) {
+        return {
+          document: renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+            llmsEnabled: llmsConfig.enabled,
+            origin,
+            sitemap: sitemapConfig,
+          }),
+          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+        };
+      }
     }
 
     return null;
@@ -4153,13 +4150,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       if (markdownRequest) {
         const markdownOrigin = markdownMetadataBaseUrl || url.origin;
-        const document = await getMarkdownDocument(
+        const representation = await getMarkdownRepresentation(
           ctx,
           markdownRequest.requestedPath,
           markdownOrigin,
         );
-        const varyHeader = getDocsMarkdownVaryHeader(request);
-        const canonicalLinkHeader = getPublicMarkdownCanonicalLinkHeader({
+        const document = representation?.document ?? null;
+        const canonicalUrl = getPublicMarkdownCanonicalUrl({
           origin: markdownOrigin,
           ctx,
           requestedPath: markdownRequest.requestedPath,
@@ -4167,13 +4164,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
         if (!document) {
           const recoveryPages = getIndexes(ctx).map((page) => withPublicDocsUrl(page, ctx));
-          const recovery = resolveDocsMarkdownRecovery({
-            entry,
-            requestedPath: markdownRequest.requestedPath,
-            pages: recoveryPages,
-            sitemap: sitemapConfig,
-          });
-
           await emitDocsAnalyticsEvent(analytics, {
             type: "agent_read",
             source: "server",
@@ -4200,34 +4190,17 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               found: false,
             },
           });
-          if (recovery.redirect) {
-            return new Response(null, {
-              status: 307,
-              headers: {
-                Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
-                ...(varyHeader ? { Vary: varyHeader } : {}),
-                "X-Robots-Tag": "noindex",
-              },
-            });
-          }
-
-          return new Response(
-            renderDocsMarkdownNotFound({
-              entry,
-              requestedPath: markdownRequest.requestedPath,
-              origin: markdownOrigin,
-              pages: recoveryPages,
-              sitemap: sitemapConfig,
-            }),
-            {
-              status: 200,
-              headers: {
-                "Content-Type": "text/markdown; charset=utf-8",
-                ...(varyHeader ? { Vary: varyHeader } : {}),
-                "X-Robots-Tag": "noindex",
-              },
-            },
-          );
+          return createDocsMarkdownResponse({
+            request,
+            document: null,
+            entry,
+            requestedPath: markdownRequest.requestedPath,
+            origin: markdownOrigin,
+            canonicalUrl,
+            locale: ctx.locale,
+            pages: recoveryPages,
+            sitemap: sitemapConfig,
+          });
         }
 
         await emitDocsAnalyticsEvent(analytics, {
@@ -4258,14 +4231,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             contentLength: document.length,
           },
         });
-        return new Response(document, {
-          headers: {
-            "Content-Type": "text/markdown; charset=utf-8",
-            "Cache-Control": "public, max-age=0, s-maxage=3600",
-            Link: canonicalLinkHeader,
-            ...(varyHeader ? { Vary: varyHeader } : {}),
-            "X-Robots-Tag": "noindex",
-          },
+        return createDocsMarkdownResponse({
+          request,
+          document,
+          entry,
+          requestedPath: markdownRequest.requestedPath,
+          origin: markdownOrigin,
+          canonicalUrl,
+          locale: ctx.locale,
+          lastModified: representation?.lastModified,
+          sitemap: sitemapConfig,
         });
       }
 
