@@ -696,6 +696,7 @@ the server returns one, sends `tools/list`, and expects the built-in docs tools:
 - `read_page`
 - `get_code_examples`
 - `get_config_schema`
+- `get_context`
 
 Hosted checks add extra weighted checks, but the top-level score stays normalized to `100%`. The
 JSON report also includes the normalized `url` field and hosted check IDs such as
@@ -1072,10 +1073,12 @@ The current built-in MCP surface includes:
 - `read_page`
 - `get_code_examples`
 - `get_config_schema`
+- `get_context`
 
 `list_docs` returns page summaries grouped by docs section, optionally narrowed by `section`.
 `get_code_examples` extracts fenced code block metadata for agents, and `get_config_schema`
-returns structured `docs.config.ts` option metadata.
+returns structured `docs.config.ts` option metadata. `get_context` returns deterministic,
+token-budgeted section context with source anchors.
 
 For the HTTP endpoint version, see [MCP Server](/docs/customization/mcp).
 
