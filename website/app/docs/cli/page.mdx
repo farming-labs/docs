@@ -319,6 +319,11 @@ SvelteKit's `static/` directory:
 - `/.well-known/agent-bundle.json` and `.farming-labs/agent-bundle-manifest.json`, containing
   deterministic SHA-256 hashes for the exported files
 
+The exported artifact is static by definition. Its discovery document disables server-only search,
+MCP, feedback, API reference, and OpenAPI capabilities even when the application config is otherwise
+server-rendered. Page freshness uses tracked git commit dates; untracked pages omit `last_updated`
+instead of hashing checkout-specific filesystem mtimes.
+
 Add the read-only check to CI when generated files are committed:
 
 ```bash title="terminal"
@@ -331,7 +336,10 @@ files. Existing native page, llms.txt, discovery, skill, public `AGENTS.md`, and
 The exporter never copies the repository-root `AGENTS.md` into the public directory; use
 `agents generate` when publishing those repository instructions is intentional. Generated writes
 use same-directory temporary files and atomic renames, and the manifest lets later exports safely
-remove artifacts that the previous bundle owned but no longer generates.
+remove artifacts that the previous bundle owned but no longer generates. Output roots are checked
+through existing symlinks before any write or stale deletion. If an obsolete managed file was
+edited, the exporter preserves it as an orphan and `--check` continues to fail until you remove the
+file manually and rerun the export.
 
 For a full static build, run the export before the framework build:
 

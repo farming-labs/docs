@@ -1,4 +1,15 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -43,7 +54,10 @@ describe("agent export cli", () => {
   },
   sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
   robots: { enabled: true },
+  search: true,
   mcp: true,
+  feedback: { agent: true },
+  apiReference: true,
 };
 `,
       "utf-8",
@@ -123,6 +137,7 @@ pnpm add example
     expect(page).toContain("# Install for agents");
     expect(page).toContain("pnpm add example");
     expect(page).not.toContain("Human instructions");
+    expect(page).not.toContain("last_updated:");
 
     expect(readFileSync(path.join(tmpDir, "public", "llms.txt"), "utf-8")).toContain(
       "/docs/guides/llms.txt",
@@ -209,6 +224,17 @@ pnpm add example
     expect(manifest.publicDirectory).toBe("static");
     expect(manifest.files.find((file) => file.path === "AGENTS.md")?.managed).toBe(false);
     expect(manifest.files.find((file) => file.path === "robots.txt")?.managed).toBe(false);
+
+    const discovery = JSON.parse(
+      readFileSync(path.join(tmpDir, "static", ".well-known", "agent.json"), "utf-8"),
+    );
+    expect(discovery.capabilities).toMatchObject({
+      mcp: false,
+      search: false,
+      apiReference: false,
+      openapi: false,
+      agentFeedback: false,
+    });
   });
 
   it("preserves native public page and llms overrides", async () => {
@@ -292,5 +318,172 @@ pnpm add example
 
     expect(existsSync(path.join(tmpDir, "public", "llms.txt"))).toBe(false);
     expect(existsSync(path.join(tmpDir, "public", "llms-full.txt"))).toBe(false);
+  });
+
+  it("uses git dates and ignores checkout-specific filesystem mtimes", async () => {
+    writeProject();
+    execFileSync("git", ["init", "-q"], { cwd: tmpDir });
+    execFileSync("git", ["config", "user.name", "Agent Export Test"], { cwd: tmpDir });
+    execFileSync("git", ["config", "user.email", "agent-export@example.com"], { cwd: tmpDir });
+    execFileSync("git", ["add", "docs.config.ts", "docs"], { cwd: tmpDir });
+    execFileSync("git", ["commit", "-q", "-m", "initial docs"], {
+      cwd: tmpDir,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_DATE: "2020-01-02T03:04:05Z",
+        GIT_COMMITTER_DATE: "2020-01-02T03:04:05Z",
+      },
+    });
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+    const pagePath = path.join(tmpDir, "public", "docs", "guides", "install.md");
+    const manifestPath = path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json");
+    const firstPage = readFileSync(pagePath, "utf-8");
+    const firstManifest = readFileSync(manifestPath, "utf-8");
+    expect(firstPage).toContain('last_updated: "2020-01-02"');
+
+    const future = new Date("2040-12-31T23:59:59Z");
+    utimesSync(path.join(tmpDir, "docs", "guides", "install", "page.mdx"), future, future);
+
+    await expect(exportAgentBundle({ check: true })).resolves.toBeUndefined();
+    await exportAgentBundle({ public: true });
+    expect(readFileSync(pagePath, "utf-8")).toBe(firstPage);
+    expect(readFileSync(manifestPath, "utf-8")).toBe(firstManifest);
+  });
+
+  it("keeps modified obsolete outputs tracked until they are removed manually", async () => {
+    writeProject();
+    process.chdir(tmpDir);
+    await exportAgentBundle({ public: true });
+    const stalePath = path.join(tmpDir, "public", "llms.txt");
+    writeFileSync(stalePath, "# User-modified obsolete index\n", "utf-8");
+
+    writeProject({ llms: false });
+    await exportAgentBundle({ public: true });
+
+    expect(readFileSync(stalePath, "utf-8")).toBe("# User-modified obsolete index\n");
+    const manifest = JSON.parse(
+      readFileSync(path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json"), "utf-8"),
+    ) as AgentBundleManifest;
+    expect(manifest.files.find((file) => file.path === "llms.txt")).toMatchObject({
+      managed: false,
+      orphaned: true,
+    });
+    await expect(exportAgentBundle({ check: true })).rejects.toThrow(
+      "Static Agent Bundle is stale",
+    );
+
+    rmSync(stalePath);
+    await expect(exportAgentBundle({ check: true })).rejects.toThrow(
+      "Static Agent Bundle is stale",
+    );
+    await exportAgentBundle({ public: true });
+    await expect(exportAgentBundle({ check: true })).resolves.toBeUndefined();
+  });
+
+  it("rejects public and internal output paths that escape through symlinks", async () => {
+    writeProject();
+    mkdirSync(path.join(tmpDir, "public"), { recursive: true });
+    const escapedPublic = path.join(tmpDir, "escaped-public");
+    mkdirSync(escapedPublic);
+    symlinkSync(escapedPublic, path.join(tmpDir, "public", "docs"), "dir");
+    process.chdir(tmpDir);
+
+    await expect(exportAgentBundle({ public: true })).rejects.toThrow(
+      "must stay inside the public directory",
+    );
+    expect(existsSync(path.join(escapedPublic, "guides", "install.md"))).toBe(false);
+
+    unlinkSync(path.join(tmpDir, "public", "docs"));
+    const escapedInternal = mkdtempSync(path.join(os.tmpdir(), "docs-agent-export-escape-"));
+    try {
+      symlinkSync(escapedInternal, path.join(tmpDir, ".farming-labs"), "dir");
+      await expect(exportAgentBundle({ public: true })).rejects.toThrow(
+        "must resolve inside the project root",
+      );
+      expect(existsSync(path.join(escapedInternal, "agent-bundle-manifest.json"))).toBe(false);
+    } finally {
+      unlinkSync(path.join(tmpDir, ".farming-labs"));
+      rmSync(escapedInternal, { recursive: true, force: true });
+    }
+  });
+
+  it("never follows symlinked stale paths during public or internal deletion", async () => {
+    writeProject();
+    process.chdir(tmpDir);
+    await exportAgentBundle({ public: true });
+
+    const internalManifestPath = path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json");
+    const manifest = JSON.parse(readFileSync(internalManifestPath, "utf-8")) as AgentBundleManifest;
+    const publicTemplate = manifest.files.find((file) => file.path === "llms.txt");
+    const internalTemplate = manifest.internalFiles[0];
+    expect(publicTemplate).toBeDefined();
+    expect(internalTemplate).toBeDefined();
+
+    const escapedPublic = mkdtempSync(path.join(os.tmpdir(), "docs-agent-export-stale-public-"));
+    const escapedInternal = mkdtempSync(
+      path.join(os.tmpdir(), "docs-agent-export-stale-internal-"),
+    );
+    try {
+      writeFileSync(path.join(escapedPublic, "stale.txt"), "outside public\n", "utf-8");
+      symlinkSync(escapedPublic, path.join(tmpDir, "public", "escaped"), "dir");
+      manifest.files.push({
+        ...publicTemplate!,
+        path: "escaped/stale.txt",
+        route: "/escaped/stale.txt",
+      });
+      writeFileSync(internalManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+
+      await expect(exportAgentBundle({ public: true })).rejects.toThrow(
+        "unsafe public output path",
+      );
+      expect(readFileSync(path.join(escapedPublic, "stale.txt"), "utf-8")).toBe("outside public\n");
+
+      unlinkSync(path.join(tmpDir, "public", "escaped"));
+      manifest.files = manifest.files.filter((file) => file.path !== "escaped/stale.txt");
+      writeFileSync(path.join(escapedInternal, "stale.json"), "outside internal\n", "utf-8");
+      symlinkSync(escapedInternal, path.join(tmpDir, "escaped-internal"), "dir");
+      manifest.internalFiles.push({
+        ...internalTemplate!,
+        path: "escaped-internal/stale.json",
+      });
+      writeFileSync(internalManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+
+      await expect(exportAgentBundle({ public: true })).rejects.toThrow(
+        "unsafe internal output path",
+      );
+      expect(readFileSync(path.join(escapedInternal, "stale.json"), "utf-8")).toBe(
+        "outside internal\n",
+      );
+    } finally {
+      if (existsSync(path.join(tmpDir, "public", "escaped"))) {
+        unlinkSync(path.join(tmpDir, "public", "escaped"));
+      }
+      if (existsSync(path.join(tmpDir, "escaped-internal"))) {
+        unlinkSync(path.join(tmpDir, "escaped-internal"));
+      }
+      rmSync(escapedPublic, { recursive: true, force: true });
+      rmSync(escapedInternal, { recursive: true, force: true });
+    }
+  });
+
+  it("reserves the public bundle manifest before planning configured outputs", async () => {
+    writeProject();
+    const configPath = path.join(tmpDir, "docs.config.ts");
+    writeFileSync(
+      configPath,
+      readFileSync(configPath, "utf-8").replace(
+        'sitemap: { enabled: true, baseUrl: "https://docs.example.com" },',
+        'sitemap: { enabled: true, baseUrl: "https://docs.example.com", manifestPath: "public/.well-known/agent-bundle.json" },',
+      ),
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await expect(exportAgentBundle({ public: true })).rejects.toThrow(
+      "Agent Bundle output collision",
+    );
+    expect(existsSync(path.join(tmpDir, "public", ".well-known", "agent-bundle.json"))).toBe(false);
   });
 });

@@ -2,11 +2,12 @@ import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -33,7 +34,6 @@ import {
   toDocsMarkdownUrl,
   type DocsLlmsDiscoveryConfig,
 } from "../agent.js";
-import { resolveApiReferenceOpenApiDiscovery } from "../api-reference.js";
 import { resolveDocsI18n } from "../i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "../mcp.js";
 import {
@@ -54,7 +54,6 @@ import { createFilesystemDocsMcpSource, resolveDocsMcpConfig } from "../server.j
 import type {
   DocsConfig,
   DocsI18nConfig,
-  DocsMcpConfig,
   DocsRobotsConfig,
   DocsSitemapConfig,
   LlmsTxtConfig,
@@ -100,6 +99,8 @@ export interface AgentBundleManifestFile {
   bytes: number;
   sha256: string;
   managed: boolean;
+  /** A previously managed output that was preserved because its contents were edited. */
+  orphaned?: boolean;
 }
 
 export interface AgentBundleManifestPage {
@@ -114,6 +115,8 @@ export interface AgentBundleManifestInternalFile {
   kind: "sitemap";
   bytes: number;
   sha256: string;
+  /** A previously managed output that was preserved because its contents were edited. */
+  orphaned?: boolean;
 }
 
 export interface AgentBundleManifest {
@@ -225,7 +228,54 @@ function publicRelativePath(publicDir: string, filePath: string): string {
 function resolveContainedPath(baseDir: string, relativePath: string): string | undefined {
   const base = path.resolve(baseDir);
   const resolved = path.resolve(base, relativePath);
-  return resolved.startsWith(`${base}${path.sep}`) ? resolved : undefined;
+  if (!isPathWithin(base, resolved)) return undefined;
+
+  const realBase = resolveThroughNearestExistingAncestor(base);
+  const realResolved = resolveThroughNearestExistingAncestor(resolved);
+  if (!realBase || !realResolved || !isPathWithin(realBase, realResolved)) return undefined;
+  return resolved;
+}
+
+function isPathWithin(baseDir: string, candidatePath: string): boolean {
+  const relative = path.relative(baseDir, candidatePath);
+  return (
+    relative === "" ||
+    (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
+}
+
+/**
+ * Resolve the existing portion of a path so a symlinked ancestor cannot move a future write or
+ * delete outside its declared root. Missing suffixes are appended to the nearest real ancestor.
+ */
+function resolveThroughNearestExistingAncestor(absolutePath: string): string | undefined {
+  let cursor = path.resolve(absolutePath);
+  const missingSegments: string[] = [];
+
+  while (true) {
+    let exists = false;
+    try {
+      lstatSync(cursor);
+      exists = true;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT" && code !== "ENOTDIR") return undefined;
+    }
+
+    if (exists) {
+      try {
+        return path.resolve(realpathSync(cursor), ...missingSegments.reverse());
+      } catch {
+        // Broken or otherwise unresolvable symlinks are not safe output ancestors.
+        return undefined;
+      }
+    }
+
+    const parent = path.dirname(cursor);
+    if (parent === cursor) return undefined;
+    missingSegments.push(path.basename(cursor));
+    cursor = parent;
+  }
 }
 
 function sha256(content: string): string {
@@ -409,20 +459,6 @@ function readStaticRobotsConfig(content: string): boolean | DocsRobotsConfig | u
   };
 }
 
-function readStaticMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
-  const enabled = readTopLevelBooleanProperty(content, "mcp");
-  if (enabled !== undefined) return enabled;
-
-  const block = extractNestedObjectLiteral(content, ["mcp"]);
-  if (!block) return undefined;
-  return {
-    enabled: readBooleanProperty(block, "enabled") ?? true,
-    route: readStringProperty(block, "route"),
-    name: readStringProperty(block, "name"),
-    version: readStringProperty(block, "version"),
-  };
-}
-
 function readStringArrayProperty(content: string, key: string): string[] {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = content.match(new RegExp(`\\b${escaped}\\b\\s*:\\s*\\[([\\s\\S]*?)\\]`));
@@ -451,13 +487,6 @@ function readStaticDocsPath(content: string): string | undefined {
   if (configured !== undefined) return configured;
   const root = extractTopLevelConfigObject(content) ?? content;
   return /\bdocsPath\b\s*:\s*(["'])\1/.test(root) ? "" : undefined;
-}
-
-function readStaticApiReferenceEnabled(content: string): boolean | undefined {
-  const value = readTopLevelBooleanProperty(content, "apiReference");
-  if (value !== undefined) return value;
-  const block = extractNestedObjectLiteral(content, ["apiReference"]);
-  return block ? (readBooleanProperty(block, "enabled") ?? true) : undefined;
 }
 
 function buildPageUrl(routeEntry: string, slug: string, locale?: string): string {
@@ -519,7 +548,7 @@ function formatDateOnly(value: string): string | undefined {
   return parsed.toISOString().slice(0, 10);
 }
 
-function pageLastmod(rootDir: string, page: DocsMcpPage) {
+function pageGitLastmod(rootDir: string, page: DocsMcpPage) {
   if (page.sourcePath) {
     try {
       const output = execFileSync("git", ["log", "-1", "--format=%cI", "--", page.sourcePath], {
@@ -528,21 +557,9 @@ function pageLastmod(rootDir: string, page: DocsMcpPage) {
         stdio: ["ignore", "pipe", "ignore"],
       }).trim();
       const lastmod = formatDateOnly(output);
-      if (lastmod) return { lastmod, lastmodSource: "git" as const };
+      if (lastmod) return lastmod;
     } catch {
-      // Fall back to the file timestamp below.
-    }
-
-    const fullPath = path.resolve(rootDir, page.sourcePath);
-    if (existsSync(fullPath)) {
-      try {
-        return {
-          lastmod: statSync(fullPath).mtime.toISOString().slice(0, 10),
-          lastmodSource: "filesystem" as const,
-        };
-      } catch {
-        // Leave lastmod unset when neither git nor the filesystem can resolve it.
-      }
+      // Static Agent Bundles intentionally omit filesystem mtimes: they vary across checkouts.
     }
   }
 
@@ -550,7 +567,6 @@ function pageLastmod(rootDir: string, page: DocsMcpPage) {
 }
 
 function deterministicSitemapManifest(options: {
-  rootDir: string;
   pages: Array<DocsMcpPage & { markdownUrl?: string }>;
   entry: string;
   siteTitle: string;
@@ -563,7 +579,8 @@ function deterministicSitemapManifest(options: {
     baseUrl: options.baseUrl,
     generatedAt: "1970-01-01T00:00:00.000Z",
     resolveLastmod(page) {
-      return pageLastmod(options.rootDir, page as DocsMcpPage);
+      const lastmod = formatDateOnly((page as DocsMcpPage).lastModified ?? "");
+      return lastmod ? { lastmod, lastmodSource: "git" as const } : undefined;
     },
   });
   const newest = manifest.pages.reduce<string | undefined>((current, page) => {
@@ -601,6 +618,12 @@ function addOutput(
   managed = true,
 ): void {
   const absolutePath = publicFilePath(publicDir, route);
+  const publicManifestPath = publicFilePath(publicDir, AGENT_BUNDLE_MANIFEST_ROUTE);
+  if (absolutePath === publicManifestPath) {
+    throw new Error(
+      `Agent Bundle output collision at ${route} (reserved bundle manifest). Change the conflicting docs slug or configured route.`,
+    );
+  }
   const collision = outputs.find((output) => output.absolutePath === absolutePath);
   if (collision) {
     throw new Error(
@@ -616,6 +639,38 @@ function addOutput(
     content: normalizeContent(content),
     managed,
   });
+}
+
+function assertOutputPathsDoNotCollide(options: {
+  outputs: PlannedOutput[];
+  internalOutputs: PlannedInternalOutput[];
+  publicManifestPath: string;
+  internalManifestPath: string;
+}): void {
+  const claimed = new Map<string, string>([
+    [options.publicManifestPath, "public Agent Bundle manifest"],
+    [options.internalManifestPath, "internal Agent Bundle manifest"],
+  ]);
+
+  for (const output of options.outputs) {
+    const owner = claimed.get(output.absolutePath);
+    if (owner) {
+      throw new Error(
+        `Agent Bundle output collision at ${output.route} (${owner} and ${output.kind}). Change the conflicting docs slug or configured route.`,
+      );
+    }
+    claimed.set(output.absolutePath, `${output.kind} output`);
+  }
+
+  for (const output of options.internalOutputs) {
+    const owner = claimed.get(output.absolutePath);
+    if (owner) {
+      throw new Error(
+        `Agent Bundle output collision at ${output.path} (${owner} and internal ${output.kind}). Change the conflicting manifest path.`,
+      );
+    }
+    claimed.set(output.absolutePath, `internal ${output.kind} output`);
+  }
 }
 
 function resolveUserOwnedAgentsOutputs(outputs: PlannedOutput[]): PlannedOutput[] {
@@ -709,19 +764,22 @@ function buildAgentBundleManifest(options: {
   baseUrl?: string;
   outputs: PlannedOutput[];
   internalOutputs: PlannedInternalOutput[];
+  orphanedFiles: AgentBundleManifestFile[];
+  orphanedInternalFiles: AgentBundleManifestInternalFile[];
   pages: LocalizedPage[];
 }): AgentBundleManifest {
-  const files = options.outputs
-    .map(toManifestFile)
-    .sort((left, right) => left.path.localeCompare(right.path));
-  const internalFiles = options.internalOutputs
-    .map((output) => ({
+  const files = [...options.outputs.map(toManifestFile), ...options.orphanedFiles].sort(
+    (left, right) => left.path.localeCompare(right.path),
+  );
+  const internalFiles = [
+    ...options.internalOutputs.map((output) => ({
       path: output.path,
       kind: output.kind,
       bytes: byteLength(output.content),
       sha256: sha256(output.content),
-    }))
-    .sort((left, right) => left.path.localeCompare(right.path));
+    })),
+    ...options.orphanedInternalFiles,
+  ].sort((left, right) => left.path.localeCompare(right.path));
   const contentHash = sha256(
     [
       ...files.map((file) => `public:${file.path}\0${file.sha256}`),
@@ -748,8 +806,7 @@ function buildAgentBundleManifest(options: {
   };
 }
 
-function readPreviousManifest(rootDir: string): AgentBundleManifest | undefined {
-  const manifestPath = path.join(rootDir, AGENT_BUNDLE_INTERNAL_MANIFEST);
+function readPreviousManifest(manifestPath: string): AgentBundleManifest | undefined {
   if (!existsSync(manifestPath)) return undefined;
   try {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as AgentBundleManifest;
@@ -788,11 +845,8 @@ function staleManagedPaths(
   if (!previous) return [];
   const expected = new Set(outputs.map((output) => output.publicPath));
   return previous.files
-    .filter((file) => file.managed && !expected.has(file.path))
-    .flatMap((file) => {
-      const resolved = resolveContainedPath(publicDir, file.path);
-      return resolved ? [resolved] : [];
-    })
+    .filter((file) => (file.managed || file.orphaned === true) && !expected.has(file.path))
+    .map((file) => resolvePreviousOutputPath(publicDir, file.path, "public"))
     .filter((filePath) => existsSync(filePath));
 }
 
@@ -805,11 +859,71 @@ function staleInternalPaths(
   const expected = new Set(outputs.map((output) => output.path));
   return previous.internalFiles
     .filter((file) => !expected.has(file.path))
-    .flatMap((file) => {
-      const resolved = resolveContainedPath(rootDir, file.path);
-      return resolved ? [resolved] : [];
-    })
+    .map((file) => resolvePreviousOutputPath(rootDir, file.path, "internal"))
     .filter((filePath) => existsSync(filePath));
+}
+
+function resolvePreviousOutputPath(
+  baseDir: string,
+  relativePath: string,
+  kind: "public" | "internal",
+): string {
+  const resolved = resolveContainedPath(baseDir, relativePath);
+  if (!resolved) {
+    throw new Error(
+      `Previous Agent Bundle manifest contains an unsafe ${kind} output path: ${relativePath}`,
+    );
+  }
+  return resolved;
+}
+
+function preservedStaleManifestFiles(
+  publicDir: string,
+  previous: AgentBundleManifest | undefined,
+  outputs: PlannedOutput[],
+): AgentBundleManifestFile[] {
+  if (!previous) return [];
+  const expected = new Set(outputs.map((output) => output.publicPath));
+  return previous.files.flatMap((file) => {
+    if ((!file.managed && file.orphaned !== true) || expected.has(file.path)) return [];
+    const filePath = resolvePreviousOutputPath(publicDir, file.path, "public");
+    const current = readExisting(filePath);
+    if (current === undefined) return [];
+    if (file.orphaned !== true && sha256(current) === file.sha256) return [];
+    return [
+      {
+        ...file,
+        bytes: byteLength(current),
+        sha256: sha256(current),
+        managed: false,
+        orphaned: true,
+      },
+    ];
+  });
+}
+
+function preservedStaleInternalManifestFiles(
+  rootDir: string,
+  previous: AgentBundleManifest | undefined,
+  outputs: PlannedInternalOutput[],
+): AgentBundleManifestInternalFile[] {
+  if (!previous?.internalFiles) return [];
+  const expected = new Set(outputs.map((output) => output.path));
+  return previous.internalFiles.flatMap((file) => {
+    if (expected.has(file.path)) return [];
+    const filePath = resolvePreviousOutputPath(rootDir, file.path, "internal");
+    const current = readExisting(filePath);
+    if (current === undefined) return [];
+    if (file.orphaned !== true && sha256(current) === file.sha256) return [];
+    return [
+      {
+        ...file,
+        bytes: byteLength(current),
+        sha256: sha256(current),
+        orphaned: true,
+      },
+    ];
+  });
 }
 
 function removeStaleManagedFiles(
@@ -820,15 +934,20 @@ function removeStaleManagedFiles(
   if (!previous) return [];
   const removed: string[] = [];
   const previousByPath = new Map(
-    previous.files.flatMap((file) => {
-      const resolved = resolveContainedPath(publicDir, file.path);
-      return resolved ? ([[resolved, file]] as const) : [];
-    }),
+    previous.files.map(
+      (file) => [resolvePreviousOutputPath(publicDir, file.path, "public"), file] as const,
+    ),
   );
   for (const filePath of stalePaths) {
     const previousFile = previousByPath.get(filePath);
     const current = readExisting(filePath);
-    if (!previousFile || current === undefined || sha256(current) !== previousFile.sha256) continue;
+    if (
+      !previousFile?.managed ||
+      previousFile.orphaned === true ||
+      current === undefined ||
+      sha256(current) !== previousFile.sha256
+    )
+      continue;
     rmSync(filePath);
     removed.push(filePath);
   }
@@ -842,16 +961,21 @@ function removeStaleInternalFiles(
 ): string[] {
   if (!previous?.internalFiles) return [];
   const previousByPath = new Map(
-    previous.internalFiles.flatMap((file) => {
-      const resolved = resolveContainedPath(rootDir, file.path);
-      return resolved ? ([[resolved, file]] as const) : [];
-    }),
+    previous.internalFiles.map(
+      (file) => [resolvePreviousOutputPath(rootDir, file.path, "internal"), file] as const,
+    ),
   );
   const removed: string[] = [];
   for (const filePath of stalePaths) {
     const previousFile = previousByPath.get(filePath);
     const current = readExisting(filePath);
-    if (!previousFile || current === undefined || sha256(current) !== previousFile.sha256) continue;
+    if (
+      !previousFile ||
+      previousFile.orphaned === true ||
+      current === undefined ||
+      sha256(current) !== previousFile.sha256
+    )
+      continue;
     rmSync(filePath);
     removed.push(filePath);
   }
@@ -898,21 +1022,42 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const baseUrl =
     llmsConfig?.baseUrl ?? (typeof sitemapInput === "object" ? sitemapInput.baseUrl : undefined);
   const robotsInput = config?.robots ?? readStaticRobotsConfig(configContent) ?? true;
-  const mcpInput = config?.mcp ?? readStaticMcpConfig(configContent);
-  const staticExport =
-    config?.staticExport ?? readTopLevelBooleanProperty(configContent, "staticExport") ?? false;
   const i18n = resolveDocsI18n(config?.i18n ?? readStaticI18nConfig(configContent));
   const framework = detectFramework(rootDir);
   const publicDirectory = framework === "sveltekit" ? "static" : "public";
-  const publicDir = path.join(rootDir, publicDirectory);
-  const previous = readPreviousManifest(rootDir);
-  const localizedPages = await loadPages({
+  const publicDir = resolveContainedPath(rootDir, publicDirectory);
+  if (!publicDir) {
+    throw new Error(
+      `Agent Bundle public directory must resolve inside the project root: ${publicDirectory}`,
+    );
+  }
+  const internalManifestPath = resolveContainedPath(rootDir, AGENT_BUNDLE_INTERNAL_MANIFEST);
+  if (!internalManifestPath) {
+    throw new Error(
+      `Agent Bundle internal manifest must resolve inside the project root: ${AGENT_BUNDLE_INTERNAL_MANIFEST}`,
+    );
+  }
+  const publicManifestPath = publicFilePath(publicDir, AGENT_BUNDLE_MANIFEST_ROUTE);
+  const previous = readPreviousManifest(internalManifestPath);
+  const scannedPages = await loadPages({
     rootDir,
     contentDir,
     routeEntry,
     siteTitle: resolvedSiteTitle,
     ordering: config?.ordering,
     i18n,
+  });
+  const localizedPages = scannedPages.map(({ page, locale }) => {
+    const gitLastmod = pageGitLastmod(rootDir, page);
+    return {
+      locale,
+      page: {
+        ...page,
+        // Filesystem mtimes differ across fresh checkouts and cannot participate in a checkable
+        // bundle. A tracked git date is stable; untracked pages intentionally omit freshness.
+        lastModified: gitLastmod,
+      },
+    };
   });
   if (localizedPages.length === 0) {
     throw new Error(`No docs content was found under ${contentDir}.`);
@@ -923,22 +1068,16 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     baseUrl:
       typeof robotsInput === "object" ? (robotsInput.baseUrl ?? sitemap.baseUrl) : sitemap.baseUrl,
   });
-  const configuredMcp = resolveDocsMcpConfig(mcpInput, { defaultName: resolvedSiteTitle });
-  const disabledMcp: DocsMcpResolvedConfig = resolveDocsMcpConfig(false, {
+  const mcp: DocsMcpResolvedConfig = resolveDocsMcpConfig(false, {
     defaultName: resolvedSiteTitle,
   });
-  const mcp = staticExport ? disabledMcp : configuredMcp;
-  const feedbackConfig = resolveDocsAgentFeedbackConfig(staticExport ? false : config?.feedback);
+  const feedbackConfig = resolveDocsAgentFeedbackConfig(false);
   const feedback = {
     enabled: feedbackConfig.enabled,
     route: feedbackConfig.route,
     schemaRoute: feedbackConfig.schemaRoute,
   };
-  const apiReferenceInput =
-    config?.apiReference ?? readStaticApiReferenceEnabled(configContent) ?? false;
-  const openapi = staticExport
-    ? { enabled: false as const }
-    : resolveApiReferenceOpenApiDiscovery(apiReferenceInput);
+  const openapi = { enabled: false as const };
   const llms: DocsLlmsDiscoveryConfig = {
     enabled: llmsEnabled,
     baseUrl,
@@ -951,7 +1090,9 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const documentOptions = {
     origin: baseUrl ?? "/",
     entry: routeEntry || "docs",
-    search: staticExport ? false : config?.search,
+    // `agent export` publishes files only. Never advertise runtime endpoints that the bundle does
+    // not contain, even when the application's server-rendered config enables them.
+    search: false,
     mcp,
     feedback,
     llms,
@@ -1081,7 +1222,6 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
 
   if (sitemap.enabled) {
     const sitemapManifest = deterministicSitemapManifest({
-      rootDir,
       pages: pages.map((page) => ({
         ...page,
         markdownUrl: staticMarkdownRoute(page, sourceEntry, routeEntry),
@@ -1094,7 +1234,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     if (!sitemapManifestPath) {
       throw new Error("sitemap.manifestPath must stay inside the project root for agent export.");
     }
-    if (sitemapManifestPath === path.join(rootDir, AGENT_BUNDLE_INTERNAL_MANIFEST)) {
+    if (sitemapManifestPath === internalManifestPath) {
       throw new Error(
         `sitemap.manifestPath conflicts with ${AGENT_BUNDLE_INTERNAL_MANIFEST}. Choose a different sitemap manifest path.`,
       );
@@ -1141,8 +1281,22 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     outputs.push(resolveRobotsOutput(publicDir, routeEntry || "docs", sitemapInput, robots));
   }
 
+  assertOutputPathsDoNotCollide({
+    outputs,
+    internalOutputs,
+    publicManifestPath,
+    internalManifestPath,
+  });
   outputs = resolveUserOwnedOverrides(outputs, previous);
   outputs.sort((left, right) => left.publicPath.localeCompare(right.publicPath));
+  const stalePaths = staleManagedPaths(publicDir, previous, outputs);
+  const staleInternal = staleInternalPaths(rootDir, previous, internalOutputs);
+  const orphanedFiles = preservedStaleManifestFiles(publicDir, previous, outputs);
+  const orphanedInternalFiles = preservedStaleInternalManifestFiles(
+    rootDir,
+    previous,
+    internalOutputs,
+  );
   const manifest = buildAgentBundleManifest({
     sourceEntry,
     entry: routeEntry,
@@ -1150,11 +1304,11 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     baseUrl,
     outputs,
     internalOutputs,
+    orphanedFiles,
+    orphanedInternalFiles,
     pages: localizedPages,
   });
   const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
-  const publicManifestPath = publicFilePath(publicDir, AGENT_BUNDLE_MANIFEST_ROUTE);
-  const internalManifestPath = path.join(rootDir, AGENT_BUNDLE_INTERNAL_MANIFEST);
   const changed = changedOutputs(outputs);
   const changedInternalOutputs = internalOutputs.filter(
     (output) => readExisting(output.absolutePath) !== output.content,
@@ -1171,8 +1325,6 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     });
   }
   const internalChanged = readExisting(internalManifestPath) !== manifestJson;
-  const stalePaths = staleManagedPaths(publicDir, previous, outputs);
-  const staleInternal = staleInternalPaths(rootDir, previous, internalOutputs);
 
   if (
     options.check &&
@@ -1209,6 +1361,9 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
 
   const managedCount = manifest.files.filter((file) => file.managed).length;
   const customCount = manifest.files.length - managedCount;
+  const orphanedCount =
+    manifest.files.filter((file) => file.orphaned === true).length +
+    manifest.internalFiles.filter((file) => file.orphaned === true).length;
   console.log(
     pc.green(
       options.check
@@ -1220,6 +1375,13 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   console.log(pc.dim(AGENT_BUNDLE_INTERNAL_MANIFEST));
   if (customCount > 0) {
     console.log(pc.yellow(`Preserved ${customCount} user-owned public file(s).`));
+  }
+  if (orphanedCount > 0) {
+    console.log(
+      pc.yellow(
+        `Preserved ${orphanedCount} modified obsolete output(s); remove them manually, then rerun the export.`,
+      ),
+    );
   }
 }
 

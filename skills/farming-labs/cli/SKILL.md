@@ -463,11 +463,17 @@ Behavior:
   aliases, sitemaps, and robots.txt
 - writes `/.well-known/agent-bundle.json` and
   `.farming-labs/agent-bundle-manifest.json` with deterministic SHA-256 hashes
+- treats the exported artifact as static even when `staticExport` is omitted: discovery disables
+  server-only search, MCP, feedback, API reference, and OpenAPI capabilities
+- uses tracked git commit dates for exported page freshness and omits checkout-specific filesystem
+  mtimes, so `--check` is reproducible across clean clones
 - preserves native page, llms.txt, discovery, skill, public `AGENTS.md`, and `robots.txt` overrides
 - never copies repository-root `AGENTS.md`; use `docs agents generate` when publishing those
   instructions is intentional
 - writes files through same-directory temporary files and atomic renames
-- removes obsolete outputs only when their contents still match the prior managed manifest hash
+- removes obsolete outputs only when their contents still match the prior managed manifest hash;
+  edited obsolete files remain marked as orphaned and keep `--check` failing until removed manually
+- rejects public and internal output paths that escape their declared roots through symlinks
 
 Use it before a static framework build:
 

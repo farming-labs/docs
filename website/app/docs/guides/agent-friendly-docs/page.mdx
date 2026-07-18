@@ -350,6 +350,10 @@ sitemap, Markdown-page, llms.txt, discovery, skill, or agent-instruction routes:
 }
 ```
 
+The bundle discovery document only advertises capabilities that those static files actually
+provide. Runtime-only search, MCP, feedback, API reference, and OpenAPI endpoints remain disabled
+in the exported discovery contract, regardless of the server-rendered application config.
+
 Use `--manifest-only` only when your deployment keeps the runtime route active:
 
 ```json title="package.json"
