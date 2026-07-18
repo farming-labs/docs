@@ -3813,7 +3813,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return sources;
   }
 
-  async function getMarkdownDocument(ctx: DocsContext, requestedPath: string, origin?: string) {
+  async function getMarkdownRepresentation(
+    ctx: DocsContext,
+    requestedPath: string,
+    origin?: string,
+  ) {
     const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
     const normalizedPublicRequest = normalizePublicRequestedMarkdownPath(ctx, requestedPath);
     const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
@@ -3829,34 +3833,47 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     for (const source of getMarkdownSources(ctx)) {
       const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
-      if (page)
-        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
-          llmsEnabled: llmsConfig.enabled,
-          origin,
-          sitemap: sitemapConfig,
-        });
+      if (page) {
+        return {
+          document: renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+            llmsEnabled: llmsConfig.enabled,
+            origin,
+            sitemap: sitemapConfig,
+          }),
+          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+        };
+      }
     }
 
     const fallbackPage = getIndexes(ctx).find((page) => {
       const pageUrl = normalizeUrlPath(page.url);
       return pageUrl === normalizedRequest || pageUrl === normalizedPublicRequest;
     });
-    if (fallbackPage)
-      return renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
-        llmsEnabled: llmsConfig.enabled,
-        origin,
-        sitemap: sitemapConfig,
-      });
+    if (fallbackPage) {
+      return {
+        document: renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
+          llmsEnabled: llmsConfig.enabled,
+          origin,
+          sitemap: sitemapConfig,
+        }),
+        lastModified:
+          fallbackPage.agentRawContent === undefined ? fallbackPage.lastModified : undefined,
+      };
+    }
 
     const requestedSlug = normalizePublicDocsSlug(ctx, normalizedPublicRequest);
     for (const page of getIndexes(ctx)) {
       const slug = normalizePublicDocsSlug(ctx, page.url);
-      if (slug === requestedSlug)
-        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
-          llmsEnabled: llmsConfig.enabled,
-          origin,
-          sitemap: sitemapConfig,
-        });
+      if (slug === requestedSlug) {
+        return {
+          document: renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+            llmsEnabled: llmsConfig.enabled,
+            origin,
+            sitemap: sitemapConfig,
+          }),
+          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+        };
+      }
     }
 
     return null;
@@ -4107,11 +4124,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       if (markdownRequest) {
         const markdownOrigin = markdownMetadataBaseUrl || url.origin;
-        const document = await getMarkdownDocument(
+        const representation = await getMarkdownRepresentation(
           ctx,
           markdownRequest.requestedPath,
           markdownOrigin,
         );
+        const document = representation?.document ?? null;
         const canonicalUrl = getPublicMarkdownCanonicalUrl({
           origin: markdownOrigin,
           ctx,
@@ -4195,6 +4213,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           origin: markdownOrigin,
           canonicalUrl,
           locale: ctx.locale,
+          lastModified: representation?.lastModified,
           sitemap: sitemapConfig,
         });
       }

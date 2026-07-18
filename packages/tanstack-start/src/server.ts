@@ -900,13 +900,18 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     return i18n.defaultLocale;
   }
 
-  function getMarkdownDocument(
+  function getMarkdownRepresentation(
     ctx: ReturnType<typeof resolveContextFromPath>,
     requestedPath: string,
     origin?: string,
   ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
-    return page ? renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }) : null;
+    return page
+      ? {
+          document: renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }),
+          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+        }
+      : null;
   }
 
   async function GET(event: { request: Request }): Promise<Response> {
@@ -1124,14 +1129,19 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, event.request);
     if (markdownRequest) {
       const markdownOrigin = markdownMetadataBaseUrl || url.origin;
-      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath, markdownOrigin);
+      const representation = getMarkdownRepresentation(
+        ctx,
+        markdownRequest.requestedPath,
+        markdownOrigin,
+      );
       return createDocsMarkdownResponse({
         request: event.request,
-        document,
+        document: representation?.document ?? null,
         entry,
         requestedPath: markdownRequest.requestedPath,
         origin: markdownOrigin,
         locale: ctx.locale,
+        lastModified: representation?.lastModified,
         pages: getSearchIndex(ctx),
         sitemap: config.sitemap,
       });

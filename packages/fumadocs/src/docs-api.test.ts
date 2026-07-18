@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
@@ -953,8 +953,16 @@ Search should not return this hidden agent-only zebra token.
     mkdirSync(join(rootDir, "app", "docs", "getting-started", "quickstart"), { recursive: true });
     mkdirSync(join(rootDir, "app", "docs", "overview"), { recursive: true });
     mkdirSync(join(rootDir, "app", "docs", "configuration"), { recursive: true });
+    const quickstartPath = join(
+      rootDir,
+      "app",
+      "docs",
+      "getting-started",
+      "quickstart",
+      "page.mdx",
+    );
     writeFileSync(
-      join(rootDir, "app", "docs", "getting-started", "quickstart", "page.mdx"),
+      quickstartPath,
       `---
 title: "Quickstart"
 description: "Start fast"
@@ -972,6 +980,8 @@ Verify the onboarding command examples before changing this page.
 </Agent>
 `,
     );
+    const quickstartLastModified = new Date("2026-07-18T14:23:45.000Z");
+    utimesSync(quickstartPath, quickstartLastModified, quickstartLastModified);
     writeFileSync(
       join(rootDir, "app", "docs", "overview", "page.mdx"),
       `---
@@ -1022,6 +1032,7 @@ Config content.
     expect(fallbackResponse.headers.get("link")).toBe(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
+    expect(fallbackResponse.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 14:23:45 GMT");
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toMatch(/^---\ntitle: "Quickstart"/);
@@ -1075,6 +1086,7 @@ Config content.
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
     expect(agentResponse.status).toBe(200);
+    expect(agentResponse.headers.get("last-modified")).toBeNull();
     const agentDocument = await agentResponse.text();
     expect(agentDocument).toMatch(/^---\ntitle: "Overview"/);
     expect(agentDocument).toContain('description: "Human overview"');
@@ -1095,6 +1107,9 @@ Config content.
       "http://localhost/docs/getting-started/quickstart.md",
     );
     expect(rewrittenFallbackResponse.headers.get("etag")).toMatch(/^W\/"/);
+    expect(rewrittenFallbackResponse.headers.get("last-modified")).toBe(
+      "Sat, 18 Jul 2026 14:23:45 GMT",
+    );
     expect(rewrittenFallbackResponse.headers.get("vary")).toBeNull();
     expect(await rewrittenFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
@@ -1106,6 +1121,14 @@ Config content.
     );
     expect(conditionalResponse.status).toBe(304);
     expect(await conditionalResponse.text()).toBe("");
+
+    const dateConditionalResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart.md", {
+        headers: { "If-Modified-Since": "Sat, 18 Jul 2026 14:23:45 GMT" },
+      }),
+    );
+    expect(dateConditionalResponse.status).toBe(304);
+    expect(await dateConditionalResponse.text()).toBe("");
 
     const rewrittenAgentResponse = await GET(new Request("http://localhost/docs/overview.md"));
     expect(rewrittenAgentResponse.status).toBe(200);

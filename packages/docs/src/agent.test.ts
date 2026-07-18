@@ -788,6 +788,7 @@ describe("agent route helpers", () => {
       requestedPath: "install",
       origin: "https://example.com",
       locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
     });
 
     expect(response.status).toBe(200);
@@ -799,7 +800,29 @@ describe("agent route helpers", () => {
       '<https://example.com/docs/install?lang=en>; rel="canonical"',
     );
     expect(response.headers.get("etag")).toMatch(/^W\/"[a-f0-9]+-[a-f0-9]{8}"$/);
-    expect(response.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 00:00:00 GMT");
+    expect(response.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 14:23:45 GMT");
+
+    const dateOnlyResponse = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+    });
+    expect(dateOnlyResponse.headers.get("last-modified")).toBeNull();
+
+    const dateOnlyConditionalResponse = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-Modified-Since": "Sun, 19 Jul 2026 00:00:00 GMT" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+    });
+    expect(dateOnlyConditionalResponse.status).toBe(200);
 
     const notModified = createDocsMarkdownResponse({
       request: new Request(request, {
@@ -810,6 +833,7 @@ describe("agent route helpers", () => {
       requestedPath: "install",
       origin: "https://example.com",
       locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
     });
     expect(notModified.status).toBe(304);
     expect(await notModified.text()).toBe("");
@@ -824,8 +848,22 @@ describe("agent route helpers", () => {
       requestedPath: "install",
       origin: "https://example.com",
       locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
     });
     expect(dateNotModified.status).toBe(304);
+
+    const sameDayBeforeModification = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-Modified-Since": "Sat, 18 Jul 2026 12:00:00 GMT" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
+    });
+    expect(sameDayBeforeModification.status).toBe(200);
 
     const missing = createDocsMarkdownResponse({
       request: new Request("https://example.com/docs/unknown.md"),

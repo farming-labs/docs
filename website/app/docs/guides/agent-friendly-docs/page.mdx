@@ -311,7 +311,7 @@ sitemaps, MCP, and the agent discovery spec. It does not generate or require ano
 That detail matters for agent-friendly docs because there is only one page resolver to keep correct:
 
 - `/docs/installation.md` and `/api/docs?format=markdown&path=installation` are explicit markdown entry points
-- `/docs/installation` with `Accept: text/markdown` returns the same markdown and varies by `Accept`
+- `/docs/installation` with an unambiguous `Accept: text/markdown` returns the same markdown and varies by `Accept`
 - `/docs/installation` with `Signature-Agent` returns the same markdown and varies by `Accept, Signature-Agent`
 - `/docs/installation` with `User-Agent: ClaudeBot/1.0` returns the same markdown and varies by `User-Agent`
 - `/docs/installation` without those headers remains the normal HTML page
@@ -320,8 +320,11 @@ All successful markdown page responses include a canonical `Link` header pointin
 normal HTML page and `Content-Location` for the selected `.md` representation. Agents still receive
 the full markdown body, but the headers give citation and deduplication systems stable identities.
 Responses also include an `ETag`, `Content-Language` when a locale is known, and `Last-Modified`
-when freshness is known. Conditional reads can then return HTTP `304` without retransmitting the
-document. When `Accept` lists both HTML and markdown, the shared handler honors their `q` values.
+when an exact source timestamp is known. Date-only freshness stays in the body and is not converted
+to a midnight HTTP validator. Conditional reads can then return HTTP `304` without retransmitting
+the document. Shared and non-Next handlers honor weighted `Accept` values. The generated Next.js
+canonical rewrite only selects Markdown when no HTML-capable range is present; use the exact `.md`
+or `format=markdown` route for mixed HTML/Markdown accept lists.
 
 Markdown responses also start with YAML frontmatter. The generated metadata includes `title`,
 optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when the framework knows

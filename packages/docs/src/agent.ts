@@ -546,6 +546,7 @@ export interface DocsMarkdownResponseOptions extends DocsMarkdownNotFoundOptions
   /** Override the selected Markdown representation URL. */
   contentLocation?: string;
   locale?: string | null;
+  /** Exact source modification timestamp. Date-only values are intentionally ignored. */
   lastModified?: string | Date | null;
   cacheControl?: string;
 }
@@ -2532,6 +2533,9 @@ function requestMatchesDocsMarkdownEtag(request: Request, etag: string): boolean
 
 function resolveDocsMarkdownHttpDate(value?: string | Date | null): string | undefined {
   if (!value) return undefined;
+  if (typeof value === "string" && !/(?:T|\s)\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.test(value.trim())) {
+    return undefined;
+  }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return undefined;
   return date.toUTCString();
