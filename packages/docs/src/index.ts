@@ -35,6 +35,21 @@ export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
 export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export {
+  DOCS_AGENT_CONTRACT_VERSION,
+  createDocsAgentContractCases,
+  runDocsAgentConformance,
+} from "./agent-conformance.js";
+export type {
+  DocsAgentAdapter,
+  DocsAgentConformanceCaseResult,
+  DocsAgentConformanceReport,
+  DocsAgentContractCase,
+  DocsAgentContractExpectation,
+  DocsAgentContractRequest,
+  DocsAgentContractSurface,
+  RunDocsAgentConformanceOptions,
+} from "./agent-conformance.js";
+export {
   buildDocsPageStructuredData,
   buildPageOpenGraph,
   buildPageTwitter,
@@ -111,6 +126,8 @@ export {
   buildDocsConfigMap,
   buildDocsDiagnostics,
   buildDocsMcpEndpointCandidates,
+  acceptsDocsMarkdown,
+  createDocsMarkdownResponse,
   detectDocsMarkdownAgentRequest,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
@@ -164,6 +181,7 @@ export type {
   DocsLlmsTxtSelectedContent,
   DocsMarkdownRecoveryMatch,
   DocsMarkdownRecoveryResult,
+  DocsMarkdownResponseOptions,
   DocsMcpEndpointCandidate,
   DocsMcpEndpointCandidateOptions,
   DocsOpenApiDiscoveryConfig,
@@ -242,7 +260,15 @@ export type {
   ApiReferenceConfig,
   ApiReferenceRenderer,
   DocsI18nConfig,
+  DocsMcpAllowedOrigins,
+  DocsMcpAuthPrincipal,
+  DocsMcpAuthenticate,
+  DocsMcpAuthenticateContext,
+  DocsMcpAuthenticateResult,
   DocsMcpConfig,
+  DocsMcpCorsConfig,
+  DocsMcpOriginContext,
+  DocsMcpSecurityConfig,
   DocsMcpToolsConfig,
   DocsReviewCiConfig,
   DocsReviewCiMode,

@@ -182,11 +182,22 @@ async function main() {
       return;
     }
     await compactAgentDocs(agentCompactOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "export") {
+    const { exportAgentBundle, parseAgentExportArgs, printAgentExportHelp } =
+      await import("./agent-export.js");
+    const agentExportOptions = parseAgentExportArgs(args.slice(2));
+    if (agentExportOptions.help) {
+      printAgentExportHelp();
+      return;
+    }
+    await exportAgentBundle(agentExportOptions);
   } else if (parsedCommand.command === "agent") {
     console.error(pc.red(`Unknown agent subcommand: ${subcommand ?? "(missing)"}`));
     console.error();
     const { printAgentCompactHelp } = await import("./agent.js");
+    const { printAgentExportHelp } = await import("./agent-export.js");
     printAgentCompactHelp();
+    printAgentExportHelp();
     process.exit(1);
   } else if (parsedCommand.command === "agents" && subcommand === "generate") {
     const { generateAgents, parseAgentsGenerateArgs, printAgentsGenerateHelp } =
@@ -330,7 +341,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("deploy")}   Sync cloud config and deploy hosted preview docs
   ${pc.cyan("preview")}  Alias for ${pc.cyan("deploy")}
   ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("check")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
-  ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
+  ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} page context, ${pc.dim("export")} static bundles)
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
@@ -399,6 +410,11 @@ ${pc.dim("Options for agent compact:")}
   ${pc.cyan("--base-url <url>")}                    Override the compression API base URL
   ${pc.cyan("--aggressiveness <0-1>")}              Compression intensity for compacted output
   ${pc.cyan("--dry-run")}                           Resolve and compress pages without writing files
+
+${pc.dim("Options for agent export:")}
+  ${pc.cyan("agent export --public")}               Export page Markdown, llms.txt, discovery, skills, AGENTS, sitemaps, robots, and a SHA-256 manifest
+  ${pc.cyan("agent export --check")}                Fail when the static Agent Bundle is stale
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor")}                              Score the current docs app for agent-readiness

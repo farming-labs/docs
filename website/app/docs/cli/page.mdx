@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "Scaffold, upgrade, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP"
+description: "Scaffold, upgrade, export static Agent Bundles, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP"
 icon: "terminal"
 order: 2
 related:
@@ -13,7 +13,7 @@ related:
 # CLI
 
 <Agent>
-Use this page when the user asks about this topic: Scaffold, upgrade, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP.
+Use this page when the user asks about this topic: Scaffold, upgrade, export static Agent Bundles, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP.
 Keep answers grounded in the exact options, routes, commands, and examples documented here.
 If the request moves beyond this page, point to the closest related docs instead of inventing config.
 </Agent>
@@ -22,6 +22,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 
 - **`init`** — create a new docs app or add docs to an existing app
 - **`upgrade`** — bump the docs packages in an existing project
+- **`agent export`** — materialize the complete machine-readable surface for static hosting
 - **`agent compact`** — generate sibling `agent.md` files from resolved docs pages
 - **`agents generate`** — write root and static `AGENTS.md` instructions for coding agents
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
@@ -295,6 +296,61 @@ Useful flags:
 
 Configure defaults with `robots` in `docs.config.ts`, then run the command during release prep or
 static export builds when you want the policy committed.
+
+### Export a static Agent Bundle
+
+Use `agent export` when a static deployment needs the same machine-readable files that a runtime
+adapter normally serves:
+
+```bash title="terminal"
+pnpm exec docs agent export --public
+```
+
+The command scans the configured content once and writes the complete bundle to `public/`, or to
+SvelteKit's `static/` directory:
+
+- a `.md` file for every resolved docs page, using `agent.md`, then `Agent` blocks, then page MDX
+- root, entry-scoped, well-known, and configured section `llms.txt` and `llms-full.txt` files
+- `/.well-known/agent.json` plus the extensionless discovery alias
+- `/skill.md`, its well-known alias, and `/skills/docs/SKILL.md`
+- public `AGENTS.md` and `AGENT.md` aliases
+- configured XML/Markdown sitemaps and `robots.txt`
+- `.farming-labs/sitemap-manifest.json` for stable page freshness during the framework build
+- `/.well-known/agent-bundle.json` and `.farming-labs/agent-bundle-manifest.json`, containing
+  deterministic SHA-256 hashes for the exported files
+
+The exported artifact is static by definition. Its discovery document disables server-only search,
+MCP, feedback, API reference, and OpenAPI capabilities even when the application config is otherwise
+server-rendered. Page freshness uses tracked git commit dates; untracked pages omit `last_updated`
+instead of hashing checkout-specific filesystem mtimes.
+
+Add the read-only check to CI when generated files are committed:
+
+```bash title="terminal"
+pnpm exec docs agent export --check
+```
+
+`--public` is required for a write. `--check` implies the public/static target but never modifies
+files. Existing native page, llms.txt, discovery, skill, public `AGENTS.md`, and user-owned
+`robots.txt` overrides remain in control.
+The exporter never copies the repository-root `AGENTS.md` into the public directory; use
+`agents generate` when publishing those repository instructions is intentional. Generated writes
+use same-directory temporary files and atomic renames, and the manifest lets later exports safely
+remove artifacts that the previous bundle owned but no longer generates. Output roots are checked
+through existing symlinks before any write or stale deletion. If an obsolete managed file was
+edited, the exporter preserves it as an orphan and `--check` continues to fail until you remove the
+file manually and rerun the export.
+
+For a full static build, run the export before the framework build:
+
+```json title="package.json"
+{
+  "scripts": {
+    "build": "docs agent export --public && next build",
+    "check:agents": "docs agent export --check"
+  }
+}
+```
 
 ### Compact page-level agent docs
 

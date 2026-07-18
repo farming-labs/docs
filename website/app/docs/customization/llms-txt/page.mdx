@@ -61,6 +61,11 @@ The same convention applies to `/.well-known/llms.txt` and `/.well-known/llms-fu
 publish those files in the framework's static directory. Keep `llmsTxt` configured only when you
 want generated fallback metadata such as `baseUrl`, `siteTitle`, sections, or a size budget.
 
+For a complete static deployment, `docs agent export --public` materializes these aliases,
+entry-scoped routes, configured section files, page Markdown, and the other agent discovery files
+in one pass. Existing native llms.txt files remain user-owned. Use `docs agent export --check` in
+CI when the generated bundle is committed.
+
 ---
 
 ## Configuration Reference

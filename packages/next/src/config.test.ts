@@ -73,12 +73,14 @@ const MARKDOWN_ACCEPT_HEADER = {
   type: "header",
   key: "accept",
   value: [
-    "(?:^|.*,\\s*)",
-    "text/markdown",
+    "^",
+    "(?!.*(?:^|,)\\s*(?:[Tt][Ee][Xx][Tt]/[Hh][Tt][Mm][Ll]|[Tt][Ee][Xx][Tt]/\\*|\\*/\\*)(?:\\s*;[^,]*)?\\s*(?:,|$))",
+    "(?=.*(?:^|,)\\s*[Tt][Ee][Xx][Tt]/[Mm][Aa][Rr][Kk][Dd][Oo][Ww][Nn]",
     "(?:\\s*;",
-    "(?!\\s*(?:[^,;]*;\\s*)*q\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
+    "(?!\\s*(?:[^,;]*;\\s*)*[Qq]\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
     "[^,]*)?",
-    "(?:\\s*,.*|$)",
+    "\\s*(?:,|$))",
+    ".*$",
   ].join(""),
 };
 
@@ -316,6 +318,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain('import { createDocsMCPAPI } from "@farming-labs/next/api";');
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).toContain("createDocsMCPAPI(docsConfig)");
+    expect(route).toContain("GET, POST, DELETE, OPTIONS");
     expect(route).not.toContain("search: docsConfig.search");
   });
 
@@ -514,8 +517,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     const acceptPattern = new RegExp(MARKDOWN_ACCEPT_HEADER.value);
     expect(acceptPattern.test("text/markdown")).toBe(true);
+    expect(acceptPattern.test("TEXT/MARKDOWN")).toBe(true);
     expect(acceptPattern.test("application/json, text/markdown;q=0.5")).toBe(true);
+    expect(acceptPattern.test("text/html;q=1, text/markdown;q=0.5")).toBe(false);
+    expect(acceptPattern.test("Text/HTML;q=1, text/markdown;q=0.5")).toBe(false);
+    expect(acceptPattern.test("*/*;q=1, text/markdown;q=0.5")).toBe(false);
+    expect(acceptPattern.test("text/*;q=0, text/markdown")).toBe(false);
     expect(acceptPattern.test("application/json, text/markdown;q=0")).toBe(false);
+    expect(acceptPattern.test("application/json, text/markdown;Q=0")).toBe(false);
     expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
     expect(acceptPattern.test("text/markdown-v2")).toBe(false);
     expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);

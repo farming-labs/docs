@@ -1,0 +1,93 @@
+---
+title: "Adapter Agent Conformance"
+description: "Validate that a framework adapter exposes the same agent-readable documentation contract as the first-party adapters"
+related:
+  - /docs/guides/agent-friendly-docs
+  - /docs/customization/mcp
+  - /docs/customization/llms-txt
+  - /docs/customization/sitemaps
+  - /docs/cli
+---
+
+# Adapter Agent Conformance
+
+Every `@farming-labs/docs` adapter should expose the same machine-readable surface. The shared
+conformance runner turns that expectation into an executable contract instead of relying on each
+adapter to maintain a separate checklist.
+
+<Agent>
+Use `runDocsAgentConformance` when building or changing a framework adapter. Provide one callback
+that dispatches ordinary requests to the adapter's public GET handler and the `mcp`
+case to its MCP POST handler. Use the standard fixture titles `Introduction` and `Bonjour` so the
+contract can verify default and localized Markdown. A passing report must contain no failed cases.
+</Agent>
+
+## Covered surfaces
+
+The versioned contract verifies:
+
+- agent discovery, config, diagnostics, and feedback schema
+- explicit `.md` aliases and `Accept: text/markdown` negotiation
+- default and localized page content
+- actionable missing-page recovery
+- `llms.txt` and `llms-full.txt`
+- `AGENTS.md` and `skill.md`
+- XML and Markdown sitemaps plus `robots.txt`
+- a Streamable HTTP MCP initialize request
+
+The first-party Next.js, TanStack Start, SvelteKit, Astro, and Nuxt adapters run this same contract
+in their package tests.
+
+## Use it in an adapter test
+
+```ts title="src/agent-conformance.test.ts" framework="custom" runnable
+import { expect, it } from "vitest";
+import { runDocsAgentConformance } from "@farming-labs/docs";
+import { createDocsServer } from "./server";
+
+it("implements the agent surface contract", async () => {
+  const server = createDocsServer({
+    entry: "docs",
+    i18n: { locales: ["en", "fr"], defaultLocale: "en" },
+    mcp: true,
+    sitemap: true,
+    robots: true,
+    _preloadedContent: {
+      "/docs/en/page.md": "---\ntitle: Introduction\n---\n# Introduction",
+      "/docs/fr/page.md": "---\ntitle: Introduction\n---\n# Introduction\n\nBonjour",
+    },
+  });
+
+  const report = await runDocsAgentConformance({
+    adapter: "sveltekit",
+    async handle(request, surface) {
+      if (surface === "mcp") {
+        return server.MCP.POST({ request });
+      }
+
+      return server.GET({ request, url: new URL(request.url) });
+    },
+  });
+
+  expect(report.cases.filter((result) => !result.passed)).toEqual([]);
+});
+```
+
+The report includes the contract version and an individual result for every surface. Failure
+messages include the unexpected status, content type, or missing response text so adapter drift is
+visible in CI.
+
+## Extending the contract
+
+Add a new invariant to `createDocsAgentContractCases` once, then update every first-party adapter
+in the same change. Keep backwards-compatible transitions explicit; for example, the missing-page
+case temporarily accepts both the legacy recovery status and a standards-correct `404`, while
+requiring the useful recovery document in either response.
+
+Run the relevant adapter test and core typecheck before publishing:
+
+```bash title="terminal"
+pnpm --filter @farming-labs/docs build
+pnpm --filter @farming-labs/svelte test
+pnpm --filter @farming-labs/svelte typecheck
+```

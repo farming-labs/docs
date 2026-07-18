@@ -159,6 +159,8 @@ export default defineDocs({
 - Search (Cmd+K) and AI chat are hidden in the layout.
 - Next.js: with `output: "export"` in `next.config`, the `/api/docs` route is not generated.
 - Do not deploy the docs API route when using static export.
+- `docs agent export --public` always emits a statically truthful discovery document, even if this
+  flag is omitted: server-only search, MCP, feedback, API reference, and OpenAPI are not advertised.
 
 ---
 
@@ -174,12 +176,13 @@ Default behavior:
 - **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
 - **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
 - **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
-- **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; other adapters should use the `.md` URL or API format route
+- **Next.js:** an unambiguous `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; mixed headers containing `text/html`, `text/*`, or `*/*` stay HTML, so use the exact `.md` URL or API format route for those requests
 - Requests with `Signature-Agent` on normal docs URLs return the same markdown response, so agent fetchers can read canonical URLs without appending `.md`
 - Next.js also auto-serves markdown on normal docs URLs for known AI user agents and conservative bot-like agent heuristics
+- successful responses include canonical `Link`, `Content-Location`, and `ETag` headers; `Last-Modified` is included only when the adapter has an exact source timestamp, never from date-only frontmatter alone
 - markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a page freshness date is known
 - successful markdown page responses append a `## Sitemap` footer that links to the configured markdown sitemap routes
-- missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
+- missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
 - very high-confidence missing markdown slugs redirect to the closest `.md` page instead of returning a recovery body
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
@@ -240,9 +243,11 @@ curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
 ```
 
 Call out content negotiation when relevant: in Next.js, `/docs/<slug>` remains the normal HTML page
-for browsers, but agents/scripts can send `Accept: text/markdown`, send `Signature-Agent`, or use a
-known AI user agent to receive the machine-readable markdown representation without appending `.md`.
-In other adapters, use `/docs/<slug>.md` or the API format route.
+for browsers, but agents/scripts can send an unambiguous `Accept: text/markdown`, send
+`Signature-Agent`, or use a known AI user agent to receive the machine-readable markdown
+representation without appending `.md`. Shared and non-Next handlers honor weighted `Accept`
+values. The generated Next.js rewrite does not compare arbitrary `q` values: if `text/html`,
+`text/*`, or `*/*` is also present, use `/docs/<slug>.md` or the API format route.
 
 ---
 
@@ -738,6 +743,30 @@ mcp: {
   route: "/api/docs/mcp",
 }
 ```
+
+HTTP MCP is public by default. Add `security.authenticate` only when the docs need access control;
+return a principal to continue, `null` for a framework-generated 401, or a Web `Response` to control
+the rejection yourself.
+
+```ts
+mcp: {
+  security: {
+    async authenticate({ request }) {
+      const user = await authenticateRequest(request);
+      return user ? { id: user.id, scopes: ["docs:read"] } : null;
+    },
+  },
+}
+```
+
+The HTTP transport validates supplied Origin headers as same-origin and limits POST bodies to 1 MiB
+by default, including when authentication is omitted. Use `security.allowedOrigins` for explicit
+browser origins and `security.maxBodyBytes` for a different limit. Origin-less non-browser clients
+remain supported. Bodies are capped before either callback runs. Accepted browser Origins receive
+exact-Origin CORS and an unauthenticated `OPTIONS` preflight path; custom request headers go in
+`security.cors.allowedHeaders`, and cookie credentials require
+`security.cors.allowCredentials: true`. Generated forwarders include `OPTIONS`. These settings do
+not affect `docs mcp` over stdio.
 
 Opt out explicitly:
 

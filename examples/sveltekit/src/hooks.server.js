@@ -12,12 +12,13 @@ export async function handle({ event, resolve }) {
   const method = event.request.method.toUpperCase();
 
   if (isDocsMcpRequest(event.url)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
     if (method === "GET" || method === "HEAD") return MCP.GET({ request: event.request });
     return new Response("Method Not Allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD, POST, DELETE" },
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
     });
   }
 
