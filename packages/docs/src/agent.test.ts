@@ -1140,6 +1140,62 @@ describe("agent route helpers", () => {
     });
   });
 
+  it("advertises only task tools exposed by the resolved MCP config", () => {
+    const baseTools = {
+      listDocs: true,
+      listPages: true,
+      readPage: true,
+      searchDocs: true,
+      getNavigation: true,
+      getCodeExamples: true,
+      getConfigSchema: true,
+    };
+    const build = (mcp: Parameters<typeof buildDocsAgentDiscoverySpec>[0]["mcp"]) =>
+      buildDocsAgentDiscoverySpec({ origin: "https://docs.example.com", mcp });
+
+    expect(
+      build({
+        enabled: false,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: baseTools,
+      }).agentContract,
+    ).not.toHaveProperty("mcpTools");
+
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: { ...baseTools, listTasks: false, readTask: true },
+      }).agentContract,
+    ).toMatchObject({ mcpTools: { read: "read_task" } });
+
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: { ...baseTools, listTasks: false, readTask: false },
+      }).agentContract,
+    ).not.toHaveProperty("mcpTools");
+
+    // Resolved configs constructed against older public types omit the new
+    // flags; omission retains the runtime defaults.
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: baseTools,
+      }).agentContract,
+    ).toMatchObject({ mcpTools: { list: "list_tasks", read: "read_task" } });
+  });
+
   it("resolves agent feedback endpoints as default-on with explicit opt-out", () => {
     const enabled = resolveDocsAgentFeedbackConfig();
 

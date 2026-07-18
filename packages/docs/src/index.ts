@@ -142,6 +142,7 @@ export {
   matchesDocsLlmsTxtSection,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
+  resolveDocsAgentContractMcpTools,
   resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   renderDocsAgentsDocument,
@@ -383,6 +384,7 @@ export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
 export type { DocsPageStructuredDataInput, DocsStructuredDataBreadcrumb } from "./metadata.js";
 export type {
   DocsAgentDiscoverySpecOptions,
+  DocsAgentContractMcpTools,
   DocsAgentFeedbackDiscoveryConfig,
   DocsLlmsDiscoveryConfig,
   DocsMarkdownPage,

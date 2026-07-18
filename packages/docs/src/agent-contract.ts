@@ -518,7 +518,8 @@ export function renderPageAgentFrontmatterYamlLines(value: unknown, indentation 
 function inlineCode(value: string): string {
   const longestRun = Math.max(0, ...[...value.matchAll(/`+/g)].map((match) => match[0].length));
   const fence = "`".repeat(longestRun + 1);
-  return `${fence}${value}${fence}`;
+  const padding = value.startsWith("`") || value.endsWith("`") ? " " : "";
+  return `${fence}${padding}${value}${padding}${fence}`;
 }
 
 function renderTextList(lines: string[], title: string, values: string[], code = false) {
@@ -602,33 +603,103 @@ export function renderPageAgentContractMarkdown(value: unknown): string {
 
 /** Remove generated contract blocks while preserving handwritten guidance. */
 export function stripGeneratedPageAgentContractMarkdown(markdown: string): string {
-  const start = PAGE_AGENT_CONTRACT_START_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const end = PAGE_AGENT_CONTRACT_END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return markdown
-    .replace(new RegExp(`${start}[\\s\\S]*?${end}\\s*`, "g"), "")
-    .replace(/^\r?\n+/, "");
-}
-
-function hasPageAgentContractHeading(markdown: string): boolean {
-  let fence: { character: string; length: number } | undefined;
+  const newline = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const output: string[] = [];
+  let fence: MarkdownFence | undefined;
+  let pendingBlock: string[] | undefined;
+  let skipEmptySeparator = false;
 
   for (const line of markdown.split(/\r?\n/)) {
-    const trimmed = line.trimStart();
-    const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
-    if (fenceMatch) {
-      const marker = fenceMatch[1];
-      if (!fence) {
-        fence = { character: marker[0], length: marker.length };
-      } else if (
-        marker[0] === fence.character &&
-        marker.length >= fence.length &&
-        trimmed.slice(marker.length).trim() === ""
-      ) {
-        fence = undefined;
+    if (pendingBlock) {
+      pendingBlock.push(line);
+      if (isGeneratedAgentContractMarker(line, PAGE_AGENT_CONTRACT_END_MARKER)) {
+        pendingBlock = undefined;
+        skipEmptySeparator = true;
       }
       continue;
     }
-    if (!fence && /^#{1,6}\s+agent contract\s*#*\s*$/i.test(trimmed)) return true;
+
+    if (!fence && isGeneratedAgentContractMarker(line, PAGE_AGENT_CONTRACT_START_MARKER)) {
+      pendingBlock = [line];
+      continue;
+    }
+
+    if (skipEmptySeparator && line.length === 0) continue;
+    skipEmptySeparator = false;
+    output.push(line);
+    fence = advanceMarkdownFence(line, fence);
+  }
+
+  // A lone start marker may be handwritten content or an example. Only remove
+  // complete generated blocks so malformed input is never truncated.
+  if (pendingBlock) output.push(...pendingBlock);
+
+  while (output[0] === "") output.shift();
+  return output.join(newline);
+}
+
+interface MarkdownFence {
+  character: "`" | "~";
+  length: number;
+}
+
+function isGeneratedAgentContractMarker(line: string, marker: string): boolean {
+  if (line.trim() !== marker) return false;
+  const markerIndex = line.indexOf(marker);
+  return markerIndex <= 3 && /^ *$/.test(line.slice(0, markerIndex));
+}
+
+function advanceMarkdownFence(
+  line: string,
+  fence: MarkdownFence | undefined,
+): MarkdownFence | undefined {
+  if (fence) {
+    const closing = /^ {0,3}(`+|~+)[\t ]*$/.exec(line)?.[1];
+    if (closing?.[0] === fence.character && closing.length >= fence.length) {
+      return undefined;
+    }
+    return fence;
+  }
+
+  const opening = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+  if (!opening?.[1]) return undefined;
+  if (opening[1][0] === "`" && opening[2]?.includes("`")) return undefined;
+  return {
+    character: opening[1][0] as MarkdownFence["character"],
+    length: opening[1].length,
+  };
+}
+
+function isAgentContractHeadingText(value: string): boolean {
+  return value.trim().toLowerCase() === "agent contract";
+}
+
+function hasPageAgentContractHeading(markdown: string): boolean {
+  let fence: MarkdownFence | undefined;
+  let previousLine: string | undefined;
+
+  for (const line of markdown.split(/\r?\n/)) {
+    const nextFence = advanceMarkdownFence(line, fence);
+    if (fence || nextFence) {
+      fence = nextFence;
+      previousLine = undefined;
+      continue;
+    }
+
+    const atx = /^ {0,3}#{1,6}(?:[\t ]+|$)(.*)$/.exec(line);
+    const atxText = atx?.[1]?.replace(/[\t ]+#+[\t ]*$/, "").trim();
+    if (atxText && isAgentContractHeadingText(atxText)) return true;
+
+    if (
+      previousLine &&
+      /^ {0,3}(?:=+|-+)[\t ]*$/.test(line) &&
+      isAgentContractHeadingText(previousLine)
+    ) {
+      return true;
+    }
+
+    previousLine =
+      line.trim().length > 0 && !/^ {4}/.test(line) && !/^ {0,3}\t/.test(line) ? line : undefined;
   }
 
   return false;

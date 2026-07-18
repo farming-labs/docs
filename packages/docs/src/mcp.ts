@@ -81,7 +81,7 @@ export interface DocsMcpDocsPageSummary {
   url: string;
   title: string;
   description?: string;
-  agent: DocsMcpAgentContractSummary;
+  agent?: DocsMcpAgentContractSummary;
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
@@ -190,8 +190,8 @@ export interface DocsMcpResolvedConfig {
     listDocs: boolean;
     listPages: boolean;
     readPage: boolean;
-    listTasks: boolean;
-    readTask: boolean;
+    listTasks?: boolean;
+    readTask?: boolean;
     searchDocs: boolean;
     getNavigation: boolean;
     getCodeExamples: boolean;

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "./types.js";
+import type { DocsMcpDocsPageSummary, DocsMcpResolvedConfig } from "./mcp.js";
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
@@ -34,6 +35,33 @@ async function parseMcpPayload<T>(response: Response): Promise<T> {
 }
 
 describe("resolveDocsMcpConfig", () => {
+  it("keeps the new task metadata fields additive for existing consumers", () => {
+    const legacySummary: DocsMcpDocsPageSummary = {
+      slug: "overview",
+      url: "/docs/overview",
+      title: "Overview",
+    };
+    const legacyResolvedConfig: DocsMcpResolvedConfig = {
+      enabled: true,
+      route: "/api/docs/mcp",
+      name: "docs",
+      version: "1.0.0",
+      tools: {
+        listDocs: true,
+        listPages: true,
+        readPage: true,
+        searchDocs: true,
+        getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: true,
+      },
+    };
+
+    expect(legacySummary.agent).toBeUndefined();
+    expect(legacyResolvedConfig.tools.listTasks).toBeUndefined();
+    expect(resolveDocsMcpConfig().tools).toMatchObject({ listTasks: true, readTask: true });
+  });
+
   it("enables MCP by default when config is omitted", () => {
     expect(resolveDocsMcpConfig()).toEqual({
       enabled: true,

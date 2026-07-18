@@ -1515,6 +1515,7 @@ async function postMcpJson(
 async function probeMcpRoute(
   baseUrl: string,
   route: string,
+  expectedTools: string[],
 ): Promise<{ ok: boolean; detail: string }> {
   try {
     const initializeResponse = await postMcpJson(baseUrl, route, {
@@ -1588,17 +1589,6 @@ async function probeMcpRoute(
     const toolNames = Array.isArray(tools)
       ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
       : [];
-    const expectedTools = [
-      "list_docs",
-      "list_pages",
-      "list_tasks",
-      "read_task",
-      "get_navigation",
-      "search_docs",
-      "read_page",
-      "get_code_examples",
-      "get_config_schema",
-    ];
     const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
 
     if (missingTools.length > 0) {
@@ -1623,11 +1613,12 @@ async function probeMcpRoute(
 async function probeMcpRouteCandidates(
   baseUrl: string,
   routes: string[],
+  expectedTools: string[],
 ): Promise<{ labels: string[]; probes: Array<{ ok: boolean; detail: string }> }> {
   const candidates = buildDocsMcpEndpointCandidates(baseUrl, routes);
   const probes = await Promise.all(
     candidates.map(async (candidate) => {
-      const probe = await probeMcpRoute(candidate.baseUrl, candidate.route);
+      const probe = await probeMcpRoute(candidate.baseUrl, candidate.route, expectedTools);
       return {
         ...probe,
         detail: `${candidate.label}: ${probe.detail}`,
@@ -1701,6 +1692,26 @@ function hostedMcpRoutes(discoveryBody: unknown): string[] {
       readDiscoveryRoute(mcp?.publicEndpoint) ?? DEFAULT_MCP_PUBLIC_ROUTE,
       readDiscoveryRoute(mcp?.wellKnownEndpoint) ?? DEFAULT_MCP_WELL_KNOWN_ROUTE,
     ]),
+  );
+}
+
+const MCP_DISCOVERY_TOOL_NAMES = [
+  ["listDocs", "list_docs"],
+  ["listPages", "list_pages"],
+  ["listTasks", "list_tasks"],
+  ["readTask", "read_task"],
+  ["getNavigation", "get_navigation"],
+  ["searchDocs", "search_docs"],
+  ["readPage", "read_page"],
+  ["getCodeExamples", "get_code_examples"],
+  ["getConfigSchema", "get_config_schema"],
+] as const;
+
+function hostedMcpExpectedTools(discoveryBody: unknown): string[] {
+  const mcp = asRecord(asRecord(discoveryBody)?.mcp);
+  const tools = asRecord(mcp?.tools);
+  return MCP_DISCOVERY_TOOL_NAMES.filter(([flag]) => tools?.[flag] !== false).map(
+    ([, name]) => name,
   );
 }
 
@@ -2115,22 +2126,41 @@ async function buildHostedAgentChecks(
     ),
   );
 
-  const mcp = await probeMcpRouteCandidates(baseUrl, hostedMcpRoutes(discovery.body));
-  const mcpPassed = mcp.probes.filter((result) => result.ok).length;
-  const mcpDetailProbes = mcpPassed > 0 ? mcp.probes.filter((result) => result.ok) : mcp.probes;
-  checks.push(
-    makeCheck(
-      "hosted-mcp",
-      "Hosted MCP handshake",
-      mcpPassed > 0 ? "pass" : "fail",
-      mcpPassed > 0 ? 10 : 0,
-      10,
-      mcpDetailProbes.map((result) => result.detail).join(" "),
-      mcpPassed > 0
-        ? undefined
-        : `Verify one of ${mcp.labels.join(" or ")} supports Streamable HTTP initialize and tools/list.`,
-    ),
-  );
+  const hostedMcpEnabled = hostedCapability(discovery.body, "mcp");
+  if (hostedMcpEnabled === false) {
+    checks.push(
+      makeCheck(
+        "hosted-mcp",
+        "Hosted MCP handshake",
+        "warn",
+        0,
+        10,
+        "The hosted discovery spec reports MCP as disabled.",
+        "Enable MCP when agents should use structured list/search/read tools.",
+      ),
+    );
+  } else {
+    const mcp = await probeMcpRouteCandidates(
+      baseUrl,
+      hostedMcpRoutes(discovery.body),
+      hostedMcpExpectedTools(discovery.body),
+    );
+    const mcpPassed = mcp.probes.filter((result) => result.ok).length;
+    const mcpDetailProbes = mcpPassed > 0 ? mcp.probes.filter((result) => result.ok) : mcp.probes;
+    checks.push(
+      makeCheck(
+        "hosted-mcp",
+        "Hosted MCP handshake",
+        mcpPassed > 0 ? "pass" : "fail",
+        mcpPassed > 0 ? 10 : 0,
+        10,
+        mcpDetailProbes.map((result) => result.detail).join(" "),
+        mcpPassed > 0
+          ? undefined
+          : `Verify one of ${mcp.labels.join(" or ")} supports Streamable HTTP initialize and tools/list.`,
+      ),
+    );
+  }
 
   return { baseUrl, checks };
 }

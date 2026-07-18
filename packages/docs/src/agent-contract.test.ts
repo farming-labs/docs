@@ -165,6 +165,35 @@ describe("page agent contracts", () => {
     expect(markdown).toContain(PAGE_AGENT_CONTRACT_END_MARKER);
   });
 
+  it("pads CommonMark code spans so edge backticks round-trip", () => {
+    const values = ["`docs.config.ts`", "`leading", "trailing`", "``"];
+    const markdown = renderPageAgentContractMarkdown({
+      task: "Render exact file names",
+      files: values,
+    });
+    const renderedSpans = markdown
+      .split("\n")
+      .filter((line) => line.startsWith("- "))
+      .map((line) => line.slice(2));
+
+    expect(renderedSpans).toEqual([
+      "`` `docs.config.ts` ``",
+      "`` `leading ``",
+      "`` trailing` ``",
+      "``` `` ```",
+    ]);
+
+    const decoded = renderedSpans.map((span) => {
+      const opening = /^(`+)/.exec(span)?.[1];
+      expect(opening).toBeDefined();
+      const content = span.slice(opening!.length, -opening!.length).replace(/\r?\n/g, " ");
+      return content.startsWith(" ") && content.endsWith(" ") && content.trim().length > 0
+        ? content.slice(1, -1)
+        : content;
+    });
+    expect(decoded).toEqual(values);
+  });
+
   it("reports unknown top-level and nested keys with typo suggestions", () => {
     const issues = getPageAgentFrontmatterIssues({
       task: "Configure MCP",
@@ -211,5 +240,56 @@ describe("page agent contracts", () => {
     expect(handwritten).not.toContain(PAGE_AGENT_CONTRACT_START_MARKER);
 
     expect(stripGeneratedPageAgentContractMarkdown(first)).toBe("# Instructions\n\nDo the work.");
+  });
+
+  it("strips complete marker blocks without altering fenced examples or following indentation", () => {
+    const generated = renderPageAgentContractMarkdown(input);
+    const markdown = [
+      "# Instructions",
+      "",
+      generated,
+      "",
+      "    keep this indented content",
+      "",
+      "```md",
+      PAGE_AGENT_CONTRACT_START_MARKER,
+      "## Agent Contract",
+      PAGE_AGENT_CONTRACT_END_MARKER,
+      "```",
+      "",
+      generated,
+      "",
+      "Done.",
+    ].join("\n");
+
+    expect(stripGeneratedPageAgentContractMarkdown(markdown)).toBe(
+      [
+        "# Instructions",
+        "",
+        "    keep this indented content",
+        "",
+        "```md",
+        PAGE_AGENT_CONTRACT_START_MARKER,
+        "## Agent Contract",
+        PAGE_AGENT_CONTRACT_END_MARKER,
+        "```",
+        "",
+        "Done.",
+      ].join("\n"),
+    );
+  });
+
+  it("recognizes handwritten Setext headings but ignores headings inside fences", () => {
+    const setext = upsertPageAgentContractMarkdown(
+      "Agent Contract\n--------------\n\nCustom contract guidance.",
+      input,
+    );
+    expect(setext).not.toContain(PAGE_AGENT_CONTRACT_START_MARKER);
+
+    const fencedExamples = upsertPageAgentContractMarkdown(
+      "```md\n## Agent Contract\n\nAgent Contract\n--------------\n```\n\nExample only.",
+      input,
+    );
+    expect(fencedExamples).toContain(PAGE_AGENT_CONTRACT_START_MARKER);
   });
 });

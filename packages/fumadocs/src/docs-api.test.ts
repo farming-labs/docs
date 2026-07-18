@@ -2090,6 +2090,8 @@ description: "Start building quickly"
         tools: {
           listPages: true,
           readPage: true,
+          listTasks: false,
+          readTask: true,
           searchDocs: false,
           getNavigation: true,
         },
@@ -2210,8 +2212,9 @@ description: "Start building quickly"
     expect(spec.agentContract).toMatchObject({
       enabled: true,
       schemaVersion: "page-agent-contract.v1",
-      mcpTools: { list: "list_tasks", read: "read_task" },
+      mcpTools: { read: "read_task" },
     });
+    expect(spec.agentContract).not.toHaveProperty("mcpTools.list");
     expect(spec.openapi).toEqual({
       enabled: true,
       url: "/api/docs?format=openapi",
@@ -2299,7 +2302,7 @@ description: "Start building quickly"
         listDocs: true,
         listPages: true,
         readPage: true,
-        listTasks: true,
+        listTasks: false,
         readTask: true,
         searchDocs: false,
         getNavigation: true,
@@ -2524,6 +2527,7 @@ description: "Start building quickly"
         fallbackQueryParam: string;
       };
       capabilities: Record<string, boolean>;
+      agentContract: Record<string, unknown>;
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: Record<string, string | boolean>;
       agents: Record<string, unknown>;
@@ -2583,6 +2587,7 @@ description: "Start building quickly"
       agentFeedback: false,
       locales: false,
     });
+    expect(spec.agentContract).not.toHaveProperty("mcpTools");
     expect(spec.openapi).toMatchObject({
       enabled: false,
       url: null,

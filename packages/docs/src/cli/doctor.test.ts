@@ -485,7 +485,10 @@ export const { GET, POST } = createDocsAPI({});
                 markdownRoutes: true,
                 structuredData: true,
               },
-              mcp: { enabled: true },
+              mcp: {
+                enabled: true,
+                tools: { listTasks: false, readTask: false },
+              },
               llms: { enabled: true },
               sitemap: {
                 enabled: true,
@@ -651,8 +654,6 @@ Allow: /
               tools: [
                 { name: "list_docs" },
                 { name: "list_pages" },
-                { name: "list_tasks" },
-                { name: "read_task" },
                 { name: "get_navigation" },
                 { name: "search_docs" },
                 { name: "read_page" },

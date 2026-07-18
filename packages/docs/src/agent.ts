@@ -495,6 +495,11 @@ export interface DocsSkillDocumentOptions {
 
 export interface DocsAgentsDocumentOptions extends DocsSkillDocumentOptions {}
 
+export interface DocsAgentContractMcpTools {
+  list?: "list_tasks";
+  read?: "read_task";
+}
+
 export interface DocsMarkdownPage {
   slug?: string;
   url: string;
@@ -3073,6 +3078,18 @@ export function resolveDocsAgentMdxContent(content: string, audience: "human" | 
     .trim();
 }
 
+/** Resolve only the task tools that the advertised MCP endpoint actually exposes. */
+export function resolveDocsAgentContractMcpTools(
+  mcp: DocsMcpResolvedConfig,
+): DocsAgentContractMcpTools | undefined {
+  if (!mcp.enabled) return undefined;
+
+  const tools: DocsAgentContractMcpTools = {};
+  if (mcp.tools.listTasks !== false) tools.list = "list_tasks";
+  if (mcp.tools.readTask !== false) tools.read = "read_task";
+  return tools.list || tools.read ? tools : undefined;
+}
+
 export function buildDocsAgentDiscoverySpec({
   origin,
   entry = "docs",
@@ -3096,6 +3113,7 @@ export function buildDocsAgentDiscoverySpec({
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
+  const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
 
   return {
     version: "1",
@@ -3166,10 +3184,7 @@ export function buildDocsAgentDiscoverySpec({
       frontmatterPath: "agent",
       markdownSection: "Agent Contract",
       mcpField: "agent",
-      mcpTools: {
-        list: "list_tasks",
-        read: "read_task",
-      },
+      ...(agentContractMcpTools ? { mcpTools: agentContractMcpTools } : {}),
       usefulContractFields: ["task", "outcome"],
       fields: {
         tokenBudget: "number",

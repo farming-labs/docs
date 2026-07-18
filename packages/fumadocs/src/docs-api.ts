@@ -51,6 +51,7 @@ import {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsLocale,
+  resolveDocsAgentContractMcpTools,
   resolvePageSidebarFolderIndexBehavior,
   selectDocsLlmsTxtContent,
   createDocsSitemapResponse,
@@ -477,6 +478,7 @@ function buildAgentSpec({
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const llmsSections = resolveDocsLlmsTxtSections(llms);
+  const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
 
   return {
     version: "1",
@@ -548,7 +550,7 @@ function buildAgentSpec({
       frontmatterPath: "agent",
       markdownSection: "Agent Contract",
       mcpField: "agent",
-      mcpTools: { list: "list_tasks", read: "read_task" },
+      ...(agentContractMcpTools ? { mcpTools: agentContractMcpTools } : {}),
       usefulContractFields: ["task", "outcome"],
       fields: {
         tokenBudget: "number",
