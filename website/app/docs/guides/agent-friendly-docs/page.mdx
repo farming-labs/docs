@@ -339,13 +339,13 @@ If the site is server-rendered, the shared docs handler serves sitemap routes at
 The generator is still useful because it writes `.farming-labs/sitemap-manifest.json`, which gives
 the runtime stable `lastmod` values based on each page source file's last git commit date.
 
-For static export, the generator is required because there is no server handler to answer
-`/sitemap.xml`, `/sitemap.md`, or `/docs/sitemap.md`:
+For static export, use the Agent Bundle exporter because there is no server handler to answer the
+sitemap, Markdown-page, llms.txt, discovery, skill, or agent-instruction routes:
 
 ```json title="package.json"
 {
   "scripts": {
-    "build": "docs sitemap generate && next build"
+    "build": "docs agent export --public && next build"
   }
 }
 ```
@@ -363,7 +363,7 @@ Use `--manifest-only` only when your deployment keeps the runtime route active:
 Then add a CI check when generated files are committed:
 
 ```bash title="terminal"
-pnpm exec docs sitemap generate --check
+pnpm exec docs agent export --check
 ```
 
 That gives agents a trustworthy page inventory and lets freshness-aware crawlers avoid re-reading
@@ -489,20 +489,18 @@ Use the web score for demos, public comparisons, and quick regression checks. Us
 `docs doctor --agent --url` when you need CI-friendly JSON, local project context, or a command an
 agent can run while changing the repo.
 
-For static sites or projects that already own their public files, generate the crawl policy as part
-of release prep:
+For static sites, export the complete public machine-readable surface as part of release prep:
 
 ```bash title="terminal"
-pnpm exec docs robots generate
-pnpm exec docs robots generate --append
-pnpm exec docs agents generate
+pnpm exec docs agent export --public
+pnpm exec docs agent export --check
 ```
 
-The first command writes the resolved default path, usually `public/robots.txt`. The `--append`
-variant adds or updates the managed agent policy block when the project already has its own
-`robots.txt`. The `agents generate` command writes root `AGENTS.md` instructions plus public
-aliases for static exports; a hand-written root `AGENTS.md` remains in control unless you pass
-`--force`.
+The exporter writes per-page Markdown, llms.txt files, discovery, skill and agent-instruction
+aliases, sitemaps, robots, and a deterministic SHA-256 manifest. It preserves an existing public
+`AGENTS.md` and user-owned `robots.txt`, and it never copies repository-root agent instructions into
+the public directory. Use the narrower `robots generate --append` or `agents generate` commands
+when you intentionally want their standalone ownership behavior.
 
 What you want to see improve over time:
 

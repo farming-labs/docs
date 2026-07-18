@@ -38,6 +38,7 @@ Useful command:
 pnpm --dir examples/next exec docs sitemap generate --config docs.config.tsx
 pnpm --dir examples/next exec docs robots generate --config docs.config.tsx
 pnpm --dir examples/next exec docs agents generate --config docs.config.tsx
+pnpm --dir examples/next exec docs agent export --public --config docs.config.tsx
 pnpm --dir examples/next exec docs agent compact installation --config docs.config.tsx
 ```
 
@@ -53,7 +54,7 @@ first-run setup.
 | Skill | Path | When to use |
 | ----- | ---- | ----------- |
 | **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework, generated changelog pages in Next.js, machine-readable markdown routes with `Agent` blocks or `agent.md` overrides, and API reference wiring from local routes or a hosted OpenAPI JSON. |
-| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `doctor` / `agent compact` / `codeblocks validate` / `sitemap generate` / `robots generate` / `mcp`, hosted `doctor --agent --url`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
+| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `doctor` / `agent export` / `agent compact` / `codeblocks validate` / `sitemap generate` / `robots generate` / `mcp`, hosted `doctor --agent --url`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, `ui.components` defaults like `HoverLink`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, `{url}.md` markdown route patterns, position, alignment, and provider defaults. |

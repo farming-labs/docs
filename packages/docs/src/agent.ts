@@ -422,6 +422,8 @@ export interface DocsLlmsTxtRequest {
 
 export interface DocsLlmsTxtPageInput {
   url: string;
+  /** Override the Markdown link emitted in llms.txt. */
+  markdownUrl?: string;
   title: string;
   description?: string;
   content: string;
@@ -493,6 +495,8 @@ export interface DocsMarkdownPage {
   url: string;
   title: string;
   description?: string;
+  /** Override the public Markdown representation URL when it differs from `${url}.md`. */
+  markdownUrl?: string;
   lastModified?: string;
   lastmod?: string;
   related?: ResolvedDocsRelatedLink[];
@@ -1652,7 +1656,7 @@ export function resolveDocsLlmsTxtRequest(
 function renderLlmsTxtPageList(pages: DocsLlmsTxtPageInput[], baseUrl: string): string {
   let content = "";
   for (const page of pages) {
-    content += `- [${page.title}](${baseUrl}${toDocsMarkdownUrl(page.url)})`;
+    content += `- [${page.title}](${baseUrl}${page.markdownUrl ?? toDocsMarkdownUrl(page.url)})`;
     if (page.description) content += `: ${page.description}`;
     content += "\n";
   }
@@ -2391,7 +2395,10 @@ function resolveDocsMarkdownPageMetadata(
     title: page.title,
     description: page.description,
     canonicalUrl: resolveDocsMarkdownMetadataUrl(page.url, options?.origin),
-    markdownUrl: resolveDocsMarkdownMetadataUrl(toDocsMarkdownUrl(page.url), options?.origin),
+    markdownUrl: resolveDocsMarkdownMetadataUrl(
+      page.markdownUrl ?? toDocsMarkdownUrl(page.url),
+      options?.origin,
+    ),
     lastUpdated: normalizeDocsMarkdownLastUpdated(page.lastmod ?? page.lastModified),
   };
 }

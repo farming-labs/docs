@@ -11,6 +11,8 @@ export type DocsSitemapFormat = "xml" | "markdown";
 export interface DocsSitemapPageInput {
   slug?: string;
   url: string;
+  /** Override the public Markdown representation URL when it differs from `${url}.md`. */
+  markdownUrl?: string;
   title: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
@@ -270,7 +272,7 @@ export function buildDocsSitemapManifest(options: {
     pages.push({
       url,
       absoluteUrl: absolutizeUrl(baseUrl, url),
-      markdownUrl: toDocsSitemapMarkdownUrl(url),
+      markdownUrl: page.markdownUrl ?? toDocsSitemapMarkdownUrl(url),
       title: page.title,
       description: page.description,
       sourcePath: page.sourcePath,

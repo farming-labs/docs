@@ -1,14 +1,14 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits, compact agent docs, validate code blocks, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, preview, deploy, cloud preview, cloud deploy, cloud sync, upgrade, downgrade, doctor, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --cloud, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits, export static Agent Bundles, compact agent docs, validate code blocks, generate AGENTS.md, sitemaps, and robots.txt, sync search indexes, and run MCP. Use for init, deploy, upgrade, doctor, agent export, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags. Covers framework detection and package managers.
 ---
 
 # @farming-labs/docs — CLI
 
 The `@farming-labs/docs` CLI scaffolds, upgrades, downgrades, audits agent and reader readiness, compacts
-page-level agent docs, validates fenced code blocks, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, deploys hosted Docs Cloud previews, and can
+page-level agent docs, exports static Agent Bundles, validates fenced code blocks, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, deploys hosted Docs Cloud previews, and can
 run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
-commands, init, upgrade, downgrade, `doctor`, `agent compact`, `codeblocks validate`, `agents generate`, `sitemap generate`, `robots generate`, search
+commands, init, upgrade, downgrade, `doctor`, `agent export`, `agent compact`, `codeblocks validate`, `agents generate`, `sitemap generate`, `robots generate`, search
 sync, mcp, review, preview, deploy, cloud preview, cloud deploy, cloud sync, or scaffolding.
 
 ---
@@ -440,6 +440,45 @@ directly after `@farming-labs/docs` has been built if the package bin is not ava
 
 Use the `configuration` skill or `/docs/customization/sitemaps` for `sitemap` config options and
 output examples.
+
+---
+
+## Agent export
+
+Use `agent export` when static hosting needs the full agent-facing route surface without a server
+handler.
+
+```bash
+pnpm exec docs agent export --public
+pnpm exec docs agent export --check
+pnpm exec docs agent export --public --config src/lib/docs.config.ts
+```
+
+Behavior:
+
+- `--public` is required for writes and targets `public/`, or `static/` for SvelteKit
+- `--check` performs the same resolution without writing and fails when any output is stale
+- exports every resolved page as `.md`, honoring `agent.md`, then `Agent` blocks, then page content
+- exports root/entry/well-known/configured-section llms.txt files, discovery JSON, skill and AGENTS
+  aliases, sitemaps, and robots.txt
+- writes `/.well-known/agent-bundle.json` and
+  `.farming-labs/agent-bundle-manifest.json` with deterministic SHA-256 hashes
+- preserves native page, llms.txt, discovery, skill, public `AGENTS.md`, and `robots.txt` overrides
+- never copies repository-root `AGENTS.md`; use `docs agents generate` when publishing those
+  instructions is intentional
+- writes files through same-directory temporary files and atomic renames
+- removes obsolete outputs only when their contents still match the prior managed manifest hash
+
+Use it before a static framework build:
+
+```json
+{
+  "scripts": {
+    "build": "docs agent export --public && next build",
+    "check:agents": "docs agent export --check"
+  }
+}
+```
 
 ---
 
