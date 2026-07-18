@@ -42,7 +42,7 @@ describe("Next.js agent surface contract", () => {
     const report = await runDocsAgentConformance({
       adapter: "next",
       async handle(request, surface) {
-        if (surface === "mcp-initialize") return mcp.POST(request);
+        if (surface === "mcp") return mcp.POST(request);
         return docs.GET(request);
       },
     });

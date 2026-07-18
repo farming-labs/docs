@@ -21,8 +21,8 @@ export type DocsAgentContractSurface =
   | "config"
   | "diagnostics"
   | "feedback-schema"
-  | "markdown-alias"
-  | "markdown-negotiation"
+  | "markdown"
+  | "markdown-accept"
   | "markdown-locale"
   | "markdown-missing"
   | "llms"
@@ -32,7 +32,7 @@ export type DocsAgentContractSurface =
   | "sitemap-xml"
   | "sitemap-markdown"
   | "robots"
-  | "mcp-initialize";
+  | "mcp";
 
 export interface DocsAgentContractRequest {
   url: string;
@@ -125,12 +125,12 @@ export function createDocsAgentContractCases(
       expect: { statuses: [200], contentTypes: ["application/schema+json"] },
     },
     {
-      surface: "markdown-alias",
+      surface: "markdown",
       request: { url: url(`/${entry}.md`) },
       expect: { statuses: [200], contentTypes: markdown, bodyIncludes: ["Introduction"] },
     },
     {
-      surface: "markdown-negotiation",
+      surface: "markdown-accept",
       request: {
         url: url(`/${entry}`),
         init: { headers: { Accept: "text/markdown" } },
@@ -184,7 +184,7 @@ export function createDocsAgentContractCases(
       expect: { statuses: [200], contentTypes: ["text/plain"], bodyIncludes: ["User-agent:"] },
     },
     {
-      surface: "mcp-initialize",
+      surface: "mcp",
       request: {
         url: url(DEFAULT_MCP_WELL_KNOWN_ROUTE),
         init: {
@@ -226,8 +226,12 @@ export function createDocsAgentContractCases(
 }
 
 function matchesContentType(actual: string, expected: readonly string[]): boolean {
-  const normalized = actual.toLowerCase();
-  return expected.some((value) => normalized.startsWith(value.toLowerCase()));
+  const [mediaType] = actual.split(";", 1);
+  const normalized = mediaType?.trim().toLowerCase();
+
+  if (!normalized) return false;
+
+  return expected.some((value) => normalized === value.trim().toLowerCase());
 }
 
 export async function runDocsAgentConformance(

@@ -36,7 +36,7 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     const report = await runDocsAgentConformance({
       adapter,
       async handle(request, surface) {
-        if (surface === "mcp-initialize") return server.MCP.POST({ request });
+        if (surface === "mcp") return server.MCP.POST({ request });
         return server.GET({ request, url: new URL(request.url) });
       },
     });

@@ -17,7 +17,7 @@ adapter to maintain a separate checklist.
 
 <Agent>
 Use `runDocsAgentConformance` when building or changing a framework adapter. Provide one callback
-that dispatches ordinary requests to the adapter's public GET handler and the `mcp-initialize`
+that dispatches ordinary requests to the adapter's public GET handler and the `mcp`
 case to its MCP POST handler. Use the standard fixture titles `Introduction` and `Bonjour` so the
 contract can verify default and localized Markdown. A passing report must contain no failed cases.
 </Agent>
@@ -61,7 +61,7 @@ it("implements the agent surface contract", async () => {
   const report = await runDocsAgentConformance({
     adapter: "sveltekit",
     async handle(request, surface) {
-      if (surface === "mcp-initialize") {
+      if (surface === "mcp") {
         return server.MCP.POST({ request });
       }
 
