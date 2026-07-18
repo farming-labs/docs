@@ -70,7 +70,7 @@ Welcome to the docs.
 `,
     );
 
-    const { POST } = createDocsMCPAPI({
+    const { POST, OPTIONS } = createDocsMCPAPI({
       rootDir,
       entry: "docs",
       nav: { title: "Example Docs" },
@@ -132,6 +132,98 @@ Welcome to the docs.
     }>(listPagesResponse);
 
     expect(payload.result?.content?.[0]?.text).toContain("/docs");
+
+    const preflight = await OPTIONS(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "OPTIONS",
+        headers: {
+          origin: "http://localhost",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "content-type, mcp-protocol-version",
+        },
+      }),
+    );
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe("http://localhost");
+  });
+
+  it("fails closed when the legacy constructor would drop source-configured MCP security", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-secure-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  mcp: {
+    security: {
+      async authenticate({ request }) {
+        return request.headers.has("authorization") ? { id: "docs-user" } : null;
+      },
+    },
+  },
+};
+`,
+    );
+
+    expect(() => createDocsMCPAPI({ rootDir })).toThrowError(
+      /Import the live config and call createDocsMCPAPI\(docsConfig\)/,
+    );
+
+    process.chdir(rootDir);
+    expect(() => createDocsMCPAPI()).toThrowError(/Refusing to create a public MCP endpoint/);
+  });
+
+  it("uses an explicitly provided live MCP authentication callback", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-live-security-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+
+    const authenticate = vi.fn(async ({ request }: { request: Request }) =>
+      request.headers.get("authorization") === "Bearer secret" ? { id: "docs-user" } : null,
+    );
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      mcp: {
+        security: { authenticate },
+      },
+    });
+    const createRequest = (authorization?: string) =>
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          ...(authorization ? { authorization } : {}),
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: { name: "vitest", version: "1.0.0" },
+          },
+        }),
+      });
+
+    expect((await POST(createRequest())).status).toBe(401);
+    expect((await POST(createRequest("Bearer secret"))).status).toBe(200);
+    expect(authenticate).toHaveBeenCalledTimes(2);
   });
 
   it("ignores commented or quoted mcp flags when real config enables MCP", async () => {
@@ -152,10 +244,17 @@ title: "Introduction"
     writeFileSync(
       join(rootDir, "docs.config.ts"),
       `export default {
-  note: "mcp: false",
+  note: "mcp: false; security: { authenticate() {} }",
   // mcp: false
   mcp: {
     enabled: true,
+    // security: { authenticate() { return null; } },
+    tools: {
+      note: "authenticate: callback",
+      security: {
+        authenticate: false,
+      },
+    },
   },
 };
 `,

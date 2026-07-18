@@ -1311,6 +1311,76 @@ export interface DocsMcpToolsConfig {
   getConfigSchema?: boolean;
 }
 
+/** Authenticated identity returned by an MCP authentication callback. */
+export interface DocsMcpAuthPrincipal {
+  /** Stable identifier for the authenticated user, service, or agent. */
+  id: string;
+  /** Optional authorization scopes that source adapters can inspect. */
+  scopes?: string[];
+  /** Additional application-specific identity claims. */
+  claims?: Record<string, unknown>;
+}
+
+/** Context passed to an MCP Origin policy callback. */
+export interface DocsMcpOriginContext {
+  /** Origin header supplied by the HTTP client. */
+  origin: string;
+  /** Portable Web Request for the incoming MCP request. */
+  request: Request;
+}
+
+/** Context passed to an opt-in MCP authentication callback. */
+export interface DocsMcpAuthenticateContext {
+  /** Portable Web Request for the incoming MCP request. */
+  request: Request;
+  /** Normalized pathname of the MCP endpoint being requested. */
+  pathname: string;
+}
+
+export type DocsMcpAllowedOrigins =
+  | "same-origin"
+  | readonly string[]
+  | ((context: DocsMcpOriginContext) => boolean | Promise<boolean>);
+
+export type DocsMcpAuthenticateResult = DocsMcpAuthPrincipal | null | Response;
+
+export type DocsMcpAuthenticate = (
+  context: DocsMcpAuthenticateContext,
+) => DocsMcpAuthenticateResult | Promise<DocsMcpAuthenticateResult>;
+
+/** Browser CORS response controls for an Origin already accepted by `allowedOrigins`. */
+export interface DocsMcpCorsConfig {
+  /** Additional request headers accepted during browser preflight. */
+  allowedHeaders?: readonly string[];
+  /** Additional response headers exposed to browser clients. */
+  exposedHeaders?: readonly string[];
+  /** Emit `Access-Control-Allow-Credentials: true`. Defaults to `false`. */
+  allowCredentials?: boolean;
+  /** Browser preflight cache lifetime in seconds. Defaults to 600. */
+  maxAgeSeconds?: number;
+}
+
+/** Security controls for the Streamable HTTP MCP transport. */
+export interface DocsMcpSecurityConfig {
+  /**
+   * Allowed values for a supplied HTTP Origin header.
+   * Defaults to `"same-origin"`. Requests without Origin remain supported for non-browser clients.
+   */
+  allowedOrigins?: DocsMcpAllowedOrigins;
+  /**
+   * Optional authentication callback. HTTP MCP stays public when omitted. When present,
+   * returning `null` rejects the request with 401 and returning a Response passes it through.
+   */
+  authenticate?: DocsMcpAuthenticate;
+  /** Maximum POST body size in bytes. Defaults to 1 MiB. */
+  maxBodyBytes?: number;
+  /**
+   * CORS responses for accepted browser Origins. Defaults to enabled with exact-Origin responses;
+   * set `false` to suppress CORS headers or use an object for credential/header controls.
+   */
+  cors?: boolean | DocsMcpCorsConfig;
+}
+
 /**
  * Built-in MCP server configuration.
  *
@@ -1338,6 +1408,8 @@ export interface DocsMcpConfig {
   version?: string;
   /** Fine-grained tool toggles. Omitted tools stay enabled. */
   tools?: DocsMcpToolsConfig;
+  /** Streamable HTTP security controls. Authentication is opt-in; stdio is unaffected. */
+  security?: DocsMcpSecurityConfig;
 }
 
 export type DocsSearchResultType = "page" | "heading" | "text";

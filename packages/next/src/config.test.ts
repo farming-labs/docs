@@ -316,6 +316,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain('import { createDocsMCPAPI } from "@farming-labs/next/api";');
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).toContain("createDocsMCPAPI(docsConfig)");
+    expect(route).toContain("GET, POST, DELETE, OPTIONS");
     expect(route).not.toContain("search: docsConfig.search");
   });
 

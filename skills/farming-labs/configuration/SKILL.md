@@ -739,6 +739,30 @@ mcp: {
 }
 ```
 
+HTTP MCP is public by default. Add `security.authenticate` only when the docs need access control;
+return a principal to continue, `null` for a framework-generated 401, or a Web `Response` to control
+the rejection yourself.
+
+```ts
+mcp: {
+  security: {
+    async authenticate({ request }) {
+      const user = await authenticateRequest(request);
+      return user ? { id: user.id, scopes: ["docs:read"] } : null;
+    },
+  },
+}
+```
+
+The HTTP transport validates supplied Origin headers as same-origin and limits POST bodies to 1 MiB
+by default, including when authentication is omitted. Use `security.allowedOrigins` for explicit
+browser origins and `security.maxBodyBytes` for a different limit. Origin-less non-browser clients
+remain supported. Bodies are capped before either callback runs. Accepted browser Origins receive
+exact-Origin CORS and an unauthenticated `OPTIONS` preflight path; custom request headers go in
+`security.cors.allowedHeaders`, and cookie credentials require
+`security.cors.allowCredentials: true`. Generated forwarders include `OPTIONS`. These settings do
+not affect `docs mcp` over stdio.
+
 Opt out explicitly:
 
 ```ts
