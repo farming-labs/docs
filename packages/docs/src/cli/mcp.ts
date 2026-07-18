@@ -122,6 +122,7 @@ function readMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
       getNavigation: readBooleanProperty(block, "getNavigation"),
       getCodeExamples: readBooleanProperty(block, "getCodeExamples"),
       getConfigSchema: readBooleanProperty(block, "getConfigSchema"),
+      getContext: readBooleanProperty(block, "getContext"),
     },
   };
 }

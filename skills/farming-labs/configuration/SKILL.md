@@ -753,7 +753,7 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, `get_context`
 
 `list_docs` returns docs page summaries grouped by section. Call it with no arguments for the whole
 docs tree, or pass `section` to narrow results before calling `read_page`.
@@ -809,6 +809,18 @@ specific top-level or nested path, or `query` for keyword filtering.
   }
 }
 ```
+
+`get_context` returns deterministic section-level context for a query. It accepts optional
+`framework`, `version`, and `locale` scopes plus `tokenBudget` (default `4000`, minimum `256`,
+maximum `32000`) and reports source anchors, characters, and estimated tokens. Pages with conflicting
+framework/version/locale metadata are excluded; pages that omit a scope field remain eligible as
+general docs. Equal-score results use source URL ordering, and returned context never exceeds
+`tokenBudget * 4` characters. `read_page` also accepts optional `section` and `maxChars` arguments.
+Successful built-in tool calls expose validated `structuredContent` while retaining their text
+response for older MCP clients.
+
+Set optional page scopes with top-level frontmatter such as `framework: "nextjs"`, `version: "16"`,
+and `locale: "en"`. Quote numeric versions so the metadata remains a string.
 
 Framework notes:
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites

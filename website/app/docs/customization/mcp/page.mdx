@@ -24,6 +24,7 @@ The current built-in surface includes:
 - `read_page`
 - `get_code_examples`
 - `get_config_schema`
+- `get_context`
 
 It also exposes resources for:
 
@@ -409,6 +410,7 @@ The built-in HTTP route exposes the full MCP surface:
 - `read_page`
 - `get_code_examples`
 - `get_config_schema`
+- `get_context`
 
 ## What to ask it
 
@@ -421,6 +423,7 @@ Once your MCP client is connected, these are good first checks:
 - `list_pages` to confirm the server is loading the expected docs set
 - `get_code_examples` for runnable Next.js or pnpm snippets
 - `get_config_schema` for `mcp.tools` before editing `docs.config.ts`
+- `get_context` when you want section-level context constrained to a token budget
 
 In Cursor or VS Code, natural prompts like these work well too:
 
@@ -434,9 +437,30 @@ In Cursor or VS Code, natural prompts like these work well too:
 - `list_pages` returns page titles, slugs, and URLs
 - `get_navigation` returns the docs tree in a readable text outline
 - `search_docs` ranks pages by title, description, and content matches
-- `read_page` accepts either a slug like `installation` or a full docs path like `/docs/installation`
+- `read_page` accepts either a slug like `installation` or a full docs path like `/docs/installation`; pass `section` for one heading and `maxChars` to cap the response
 - `get_code_examples` returns fenced code blocks with parsed metadata like `title`, `framework`, `packageManager`, and `runnable`
 - `get_config_schema` returns `docs.config.ts` option metadata with paths, types, defaults, descriptions, and examples
+- `get_context` deterministically selects matching sections, applies optional `framework`, `version`, and `locale` scopes, and reports source anchors plus character/token accounting
+
+For `framework`, `version`, and `locale`, a page that declares a different value is excluded. A page
+that omits a scope field is treated as general documentation and remains eligible for that scope.
+Results are ranked deterministically, with source URLs resolving equal-score ties.
+
+Declare scopes with optional top-level page frontmatter. Quote numeric versions so they remain
+strings:
+
+```md title="docs/guides/next-setup.mdx"
+---
+title: "Next.js setup"
+framework: "nextjs"
+version: "16"
+locale: "en"
+---
+```
+
+Every successful built-in tool result includes both MCP `structuredContent` validated against its
+advertised `outputSchema` and the existing text content for clients that have not adopted structured
+results yet.
 
 Example tool calls:
 
@@ -453,11 +477,30 @@ Example tool calls:
 {
   "name": "get_code_examples",
   "arguments": {
-    "topic": "docs.config.ts",
+    "query": "docs.config.ts",
     "framework": "nextjs"
   }
 }
 ```
+
+```json title="get_context"
+{
+  "name": "get_context",
+  "arguments": {
+    "query": "configure MCP search",
+    "framework": "nextjs",
+    "version": "16",
+    "locale": "en",
+    "tokenBudget": 4000
+  }
+}
+```
+
+`tokenBudget` defaults to `4000`, accepts values from `256` through `32000`, and uses a
+deterministic four-characters-per-token estimate. The response reports both the requested budget
+and the exact characters used. Returned context never exceeds `tokenBudget * 4` characters, and its
+reported token estimate never exceeds the requested budget, so clients can make their own
+tokenizer-specific decisions.
 
 ```json title="get_config_schema"
 {

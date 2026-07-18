@@ -2277,6 +2277,7 @@ description: "Start building quickly"
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
+        getContext: true,
       },
     });
     expect(spec.feedback).toMatchObject({

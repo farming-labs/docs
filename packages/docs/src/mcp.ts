@@ -42,6 +42,10 @@ export interface DocsMcpPage {
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
+  locale?: string;
+  framework?: string;
+  version?: string;
+  tags?: string[];
   content: string;
   rawContent?: string;
   agentContent?: string;
@@ -126,6 +130,50 @@ export interface DocsMcpConfigSchema {
   }>;
 }
 
+export interface DocsMcpContextSource {
+  id: string;
+  title: string;
+  /** Page URL without a fragment. */
+  pageUrl: string;
+  /** Source URL for this exact context chunk, including its heading anchor when available. */
+  url: string;
+  section?: string;
+  anchor?: string;
+  sourcePath?: string;
+  lastModified?: string;
+  locale?: string;
+  framework?: string;
+  version?: string;
+  tags?: string[];
+  score?: number;
+  content: string;
+  chars: number;
+  estimatedTokens: number;
+  truncated: boolean;
+}
+
+export interface DocsMcpContextResult {
+  query: string;
+  filters: {
+    framework?: string;
+    version?: string;
+    locale?: string;
+  };
+  budget: {
+    requestedTokens: number;
+    maxChars: number;
+    usedChars: number;
+    estimatedTokens: number;
+    remainingChars: number;
+    remainingTokens: number;
+    truncated: boolean;
+  };
+  resultCount: number;
+  candidateCount: number;
+  context: string;
+  sources: DocsMcpContextSource[];
+}
+
 export interface DocsMcpPageNode {
   type: "page";
   name: string;
@@ -169,6 +217,7 @@ export interface DocsMcpResolvedConfig {
     getNavigation: boolean;
     getCodeExamples: boolean;
     getConfigSchema: boolean;
+    getContext: boolean;
   };
 }
 
@@ -205,6 +254,10 @@ interface ScannedDocsMcpPage extends DocsMcpPage {
 const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
+const DEFAULT_MCP_CONTEXT_TOKEN_BUDGET = 4_000;
+const MIN_MCP_CONTEXT_TOKEN_BUDGET = 256;
+const MAX_MCP_CONTEXT_TOKEN_BUDGET = 32_000;
+const APPROXIMATE_CHARS_PER_TOKEN = 4;
 
 const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
   {
@@ -598,6 +651,13 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
             default: true,
             description: "Expose the get_config_schema tool.",
           },
+          {
+            path: "mcp.tools.getContext",
+            name: "getContext",
+            type: "boolean",
+            default: true,
+            description: "Expose the deterministic, token-budgeted get_context tool.",
+          },
         ],
       },
     ],
@@ -752,6 +812,8 @@ const searchDocsInputSchema = z.object({
 const readPageInputSchema = z.object({
   path: z.string().min(1),
   locale: z.string().min(1).optional(),
+  section: z.string().trim().min(1).optional(),
+  maxChars: z.number().int().min(256).max(1_000_000).optional(),
 });
 
 const listPagesInputSchema = z.object({
@@ -783,6 +845,194 @@ const getCodeExamplesInputSchema = z.object({
   locale: z.string().min(1).optional(),
 });
 
+const getContextInputSchema = z.object({
+  query: z.string().trim().min(1),
+  framework: z.string().trim().min(1).optional(),
+  version: z.string().trim().min(1).optional(),
+  locale: z.string().trim().min(1).optional(),
+  tokenBudget: z
+    .number()
+    .int()
+    .min(MIN_MCP_CONTEXT_TOKEN_BUDGET)
+    .max(MAX_MCP_CONTEXT_TOKEN_BUDGET)
+    .default(DEFAULT_MCP_CONTEXT_TOKEN_BUDGET),
+});
+
+const relatedLinkOutputSchema = z.object({ href: z.string() });
+const pageSummaryOutputSchema = z.object({
+  slug: z.string(),
+  url: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  sourcePath: z.string().optional(),
+  lastModified: z.string().optional(),
+});
+const docsSectionOutputSchema: z.ZodType<DocsMcpDocsSection> = z.lazy(() =>
+  z.object({
+    slug: z.string(),
+    title: z.string(),
+    url: z.string().optional(),
+    description: z.string().optional(),
+    icon: z.string().optional(),
+    pageCount: z.number().int().nonnegative(),
+    pages: z.array(pageSummaryOutputSchema),
+    sections: z.array(docsSectionOutputSchema),
+  }),
+);
+const listPagesOutputSchema = z.object({ pages: z.array(pageSummaryOutputSchema) });
+const listDocsOutputSchema = z.object({
+  section: z.string().optional(),
+  resultCount: z.number().int().nonnegative(),
+  sectionCount: z.number().int().nonnegative(),
+  pages: z.array(pageSummaryOutputSchema),
+  rootPages: z.array(pageSummaryOutputSchema),
+  sections: z.array(docsSectionOutputSchema),
+});
+const navigationPageOutputSchema = z.object({
+  type: z.literal("page"),
+  name: z.string(),
+  url: z.string(),
+  icon: z.string().optional(),
+  description: z.string().optional(),
+});
+const navigationNodeOutputSchema: z.ZodType<DocsMcpNavigationNode> = z.lazy(() =>
+  z.discriminatedUnion("type", [
+    navigationPageOutputSchema,
+    z.object({
+      type: z.literal("folder"),
+      name: z.string(),
+      icon: z.string().optional(),
+      index: navigationPageOutputSchema.optional(),
+      children: z.array(navigationNodeOutputSchema),
+    }),
+  ]),
+);
+const navigationOutputSchema = z.object({
+  navigation: z.object({
+    name: z.string(),
+    children: z.array(navigationNodeOutputSchema),
+  }),
+  markdown: z.string(),
+});
+const searchResultOutputSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  content: z.string(),
+  description: z.string().optional(),
+  type: z.enum(["page", "heading", "text"]),
+  score: z.number().optional(),
+  section: z.string().optional(),
+});
+const searchDocsOutputSchema = z.object({ results: z.array(searchResultOutputSchema) });
+const codeExampleOutputSchema = z.object({
+  id: z.string(),
+  page: z.object({
+    slug: z.string(),
+    url: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    sourcePath: z.string().optional(),
+    lastModified: z.string().optional(),
+  }),
+  language: z.string().optional(),
+  title: z.string().optional(),
+  framework: z.string().optional(),
+  packageManager: z.string().optional(),
+  runnable: z.boolean(),
+  meta: z.record(z.string(), z.union([z.string(), z.boolean()])),
+  code: z.string(),
+});
+const codeExamplesOutputSchema = z.object({ examples: z.array(codeExampleOutputSchema) });
+const configSchemaOptionOutputSchema: z.ZodType<DocsMcpConfigSchemaOption> = z.lazy(() =>
+  z.object({
+    path: z.string(),
+    name: z.string(),
+    type: z.string(),
+    default: z.union([z.string(), z.boolean(), z.number(), z.null()]).optional(),
+    description: z.string(),
+    docs: z.string().optional(),
+    values: z.array(z.string()).optional(),
+    children: z.array(configSchemaOptionOutputSchema).optional(),
+  }),
+);
+const configSchemaOutputSchema = z.object({
+  schemaVersion: z.literal(1),
+  configFile: z.literal("docs.config.ts"),
+  description: z.string(),
+  filters: z
+    .object({
+      option: z.string().optional(),
+      query: z.string().optional(),
+    })
+    .optional(),
+  resultCount: z.number().int().nonnegative(),
+  options: z.array(configSchemaOptionOutputSchema),
+  examples: z.array(z.object({ title: z.string(), code: z.string() })),
+});
+const readPageOutputSchema = z.object({
+  page: z.object({
+    slug: z.string(),
+    url: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    related: z.array(relatedLinkOutputSchema).optional(),
+    icon: z.string().optional(),
+    sourcePath: z.string().optional(),
+    lastModified: z.string().optional(),
+    locale: z.string().optional(),
+    framework: z.string().optional(),
+    version: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  }),
+  document: z.string(),
+  section: z.string().optional(),
+  anchor: z.string().optional(),
+  chars: z.number().int().nonnegative(),
+  totalChars: z.number().int().nonnegative(),
+  truncated: z.boolean(),
+});
+const contextSourceOutputSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  pageUrl: z.string(),
+  url: z.string(),
+  section: z.string().optional(),
+  anchor: z.string().optional(),
+  sourcePath: z.string().optional(),
+  lastModified: z.string().optional(),
+  locale: z.string().optional(),
+  framework: z.string().optional(),
+  version: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  score: z.number().optional(),
+  content: z.string(),
+  chars: z.number().int().nonnegative(),
+  estimatedTokens: z.number().int().nonnegative(),
+  truncated: z.boolean(),
+});
+const contextOutputSchema = z.object({
+  query: z.string(),
+  filters: z.object({
+    framework: z.string().optional(),
+    version: z.string().optional(),
+    locale: z.string().optional(),
+  }),
+  budget: z.object({
+    requestedTokens: z.number().int().positive(),
+    maxChars: z.number().int().positive(),
+    usedChars: z.number().int().nonnegative(),
+    estimatedTokens: z.number().int().nonnegative(),
+    remainingChars: z.number().int().nonnegative(),
+    remainingTokens: z.number().int().nonnegative(),
+    truncated: z.boolean(),
+  }),
+  resultCount: z.number().int().nonnegative(),
+  candidateCount: z.number().int().nonnegative(),
+  context: z.string(),
+  sources: z.array(contextSourceOutputSchema),
+});
+
 export function normalizeDocsMcpRoute(route?: string): string {
   if (!route || route.trim().length === 0) return DEFAULT_MCP_ROUTE;
 
@@ -812,6 +1062,7 @@ export function resolveDocsMcpConfig(
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
+        getContext: true,
       },
     };
   }
@@ -831,6 +1082,7 @@ export function resolveDocsMcpConfig(
       getNavigation: config.tools?.getNavigation ?? true,
       getCodeExamples: config.tools?.getCodeExamples ?? true,
       getConfigSchema: config.tools?.getConfigSchema ?? true,
+      getContext: config.tools?.getContext ?? true,
     },
   };
 }
@@ -881,6 +1133,18 @@ function nowMs() {
 
 function durationMs(startedAt: number) {
   return Math.max(0, Date.now() - startedAt);
+}
+
+function createStructuredTextResult<T extends object>(structuredContent: T, text?: string) {
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: text ?? JSON.stringify(structuredContent, null, 2),
+      },
+    ],
+    structuredContent: structuredContent as Record<string, unknown>,
+  };
 }
 
 export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): Promise<McpServer> {
@@ -961,6 +1225,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         title: "List docs pages",
         description: "List the known documentation pages with titles, slugs, and URLs.",
         inputSchema: listPagesInputSchema,
+        outputSchema: listPagesOutputSchema,
         annotations: { readOnlyHint: true },
       },
       async ({ locale }) => {
@@ -1008,14 +1273,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             outputPreview: { resultCount: pages.length },
             metadata: { tool: "list_pages" },
           });
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({ pages }, null, 2),
-              },
-            ],
-          };
+          return createStructuredTextResult({ pages });
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -1046,6 +1304,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         description:
           "List documentation pages grouped by section, optionally narrowed to one section.",
         inputSchema: listDocsInputSchema,
+        outputSchema: listDocsOutputSchema,
         annotations: { readOnlyHint: true },
       },
       async ({ section, locale }) => {
@@ -1098,14 +1357,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             outputPreview: { resultCount: docs.resultCount, sectionCount: docs.sectionCount },
             metadata: { tool: "list_docs" },
           });
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(docs, null, 2),
-              },
-            ],
-          };
+          return createStructuredTextResult(docs);
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -1135,6 +1387,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         title: "Get docs navigation",
         description: "Return the documentation navigation tree for the current docs site.",
         inputSchema: getNavigationInputSchema,
+        outputSchema: navigationOutputSchema,
         annotations: { readOnlyHint: true },
       },
       async ({ locale }) => {
@@ -1182,14 +1435,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             outputPreview: { chars: text.length },
             metadata: { tool: "get_navigation" },
           });
-          return {
-            content: [
-              {
-                type: "text",
-                text,
-              },
-            ],
-          };
+          return createStructuredTextResult({ navigation: tree, markdown: text }, text);
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -1220,6 +1466,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         description:
           "Return structured docs.config.ts option metadata, optionally filtered by option path or query.",
         inputSchema: getConfigSchemaInputSchema,
+        outputSchema: configSchemaOutputSchema,
         annotations: { readOnlyHint: true },
       },
       async ({ option, query }) => {
@@ -1267,14 +1514,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             outputPreview: { resultCount: schema.resultCount },
             metadata: { tool: "get_config_schema" },
           });
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(schema, null, 2),
-              },
-            ],
-          };
+          return createStructuredTextResult(schema);
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -1303,6 +1543,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         title: "Search documentation",
         description: "Search the docs by keyword across titles, descriptions, and page content.",
         inputSchema: searchDocsInputSchema,
+        outputSchema: searchDocsOutputSchema,
         annotations: { readOnlyHint: true },
       },
       async ({ query, limit, locale }) => {
@@ -1362,14 +1603,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             outputPreview: { resultCount: results.length },
             metadata: { tool: "search_docs" },
           });
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({ results }, null, 2),
-              },
-            ],
-          };
+          return createStructuredTextResult({ results });
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -1400,6 +1634,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         description:
           "Return fenced code examples from the docs with parsed metadata such as title, framework, packageManager, and runnable.",
         inputSchema: getCodeExamplesInputSchema,
+        outputSchema: codeExamplesOutputSchema,
         annotations: { readOnlyHint: true },
       },
       async ({
@@ -1488,14 +1723,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             outputPreview: { resultCount: examples.length },
             metadata: { tool: "get_code_examples" },
           });
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({ examples }, null, 2),
-              },
-            ],
-          };
+          return createStructuredTextResult({ examples });
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -1518,16 +1746,131 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     );
   }
 
+  if (resolved.tools.getContext) {
+    server.registerTool(
+      "get_context",
+      {
+        title: "Get budgeted docs context",
+        description:
+          "Build deterministic, section-level documentation context for a query within a token budget, with source URLs and accounting metadata.",
+        inputSchema: getContextInputSchema,
+        outputSchema: contextOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ query, framework, version, locale, tokenBudget }) => {
+        const startedAt = nowMs();
+        const trace = createDocsAgentTraceContext("mcp.tool.get_context");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "get_context",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: {
+            queryLength: query.length,
+            framework,
+            version,
+            locale,
+            tokenBudget,
+          },
+          metadata: { tool: "get_context" },
+        });
+
+        try {
+          const pages = dedupePages(await options.source.getPages(locale));
+          const result = await buildDocsMcpContext({
+            pages,
+            query,
+            framework,
+            version,
+            locale,
+            tokenBudget,
+            entry: options.source.entry,
+            siteTitle: options.source.siteTitle,
+          });
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            input: { query },
+            properties: {
+              tool: "get_context",
+              queryLength: query.length,
+              framework,
+              version,
+              tokenBudget,
+              usedChars: result.budget.usedChars,
+              estimatedTokens: result.budget.estimatedTokens,
+              truncated: result.budget.truncated,
+              resultCount: result.resultCount,
+              durationMs: elapsed,
+            },
+          });
+          trackMcpTool("get_context", { locale, resultCount: result.resultCount });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_context",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: {
+              resultCount: result.resultCount,
+              candidateCount: result.candidateCount,
+              chars: result.budget.usedChars,
+              estimatedTokens: result.budget.estimatedTokens,
+              truncated: result.budget.truncated,
+            },
+            metadata: { tool: "get_context" },
+          });
+
+          return createStructuredTextResult(
+            result,
+            result.context || JSON.stringify(result, null, 2),
+          );
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_context",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "get_context" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
   if (resolved.tools.readPage) {
     server.registerTool(
       "read_page",
       {
         title: "Read a docs page",
-        description: "Read a documentation page by slug or URL path.",
+        description:
+          "Read a documentation page by slug or URL path, optionally selecting one heading and limiting returned characters.",
         inputSchema: readPageInputSchema,
+        outputSchema: readPageOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ path: requestedPath, locale }) => {
+      async ({ path: requestedPath, locale, section, maxChars }) => {
         const startedAt = nowMs();
         const trace = createDocsAgentTraceContext("mcp.tool.read_page");
         const callSpanId = createDocsAgentTraceId("span");
@@ -1540,7 +1883,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           startedAt: trace.startedAt,
           status: "started",
           locale,
-          inputPreview: { path: requestedPath, locale },
+          inputPreview: { path: requestedPath, locale, section, maxChars },
           metadata: { tool: "read_page" },
         });
 
@@ -1605,7 +1948,61 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             };
           }
 
-          const document = renderPageDocument(page);
+          const fullDocument = renderPageDocument(page);
+          const sectionDocument = getDocsMcpSourceMarkdown(page);
+          const selectedSection = section
+            ? (findDocsMarkdownSection(sectionDocument, section) ??
+              (sectionDocument !== fullDocument
+                ? findDocsMarkdownSection(fullDocument, section)
+                : undefined))
+            : undefined;
+
+          if (section && !selectedSection) {
+            const sourceSections = listDocsMarkdownSections(sectionDocument);
+            const availableSections = (
+              sourceSections.length > 0 ? sourceSections : listDocsMarkdownSections(fullDocument)
+            ).map((item) => ({
+              title: item.title,
+              anchor: item.anchor,
+            }));
+            const elapsed = durationMs(startedAt);
+            trackMcpTool("read_page", { locale, resultCount: 0 });
+            await emitDocsAgentTraceEvent(options.observability, {
+              type: "tool.error",
+              source: "mcp",
+              traceId: trace.traceId,
+              parentSpanId: callSpanId,
+              name: "read_page",
+              startedAt: trace.startedAt,
+              endedAt: new Date().toISOString(),
+              durationMs: elapsed,
+              status: "error",
+              locale,
+              path: page.url,
+              outputPreview: { found: true, sectionFound: false, section },
+              metadata: { tool: "read_page", reason: "section_not_found" },
+            });
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    {
+                      error: `No section matched "${section}" in "${page.url}".`,
+                      availableSections,
+                    },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const selectedDocument = selectedSection?.content ?? fullDocument;
+          const limitedDocument = limitDocsMcpText(selectedDocument, maxChars);
+          const document = limitedDocument.text;
           const elapsed = durationMs(startedAt);
 
           await emitDocsAnalyticsEvent(options.analytics, {
@@ -1619,7 +2016,10 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               requestedPath,
               slug: page.slug,
               found: true,
+              section: selectedSection?.title,
               contentLength: document.length,
+              totalContentLength: selectedDocument.length,
+              truncated: limitedDocument.truncated,
               durationMs: elapsed,
             },
           });
@@ -1633,7 +2033,10 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               requestedPath,
               slug: page.slug,
               found: true,
+              section: selectedSection?.title,
               contentLength: document.length,
+              totalContentLength: selectedDocument.length,
+              truncated: limitedDocument.truncated,
               durationMs: elapsed,
             },
           });
@@ -1650,18 +2053,29 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             status: "success",
             locale,
             path: page.url,
-            outputPreview: { found: true, chars: document.length, slug: page.slug },
+            outputPreview: {
+              found: true,
+              chars: document.length,
+              totalChars: selectedDocument.length,
+              truncated: limitedDocument.truncated,
+              section: selectedSection?.title,
+              slug: page.slug,
+            },
             metadata: { tool: "read_page" },
           });
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: document,
-              },
-            ],
-          };
+          return createStructuredTextResult(
+            {
+              page: toStructuredDocsMcpPage(page),
+              document,
+              section: selectedSection?.title,
+              anchor: selectedSection?.anchor,
+              chars: document.length,
+              totalChars: selectedDocument.length,
+              truncated: limitedDocument.truncated,
+            },
+            document,
+          );
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -2052,6 +2466,12 @@ function scanFilesystemDocsPages(
         icon: data.icon as string | undefined,
         sourcePath: path.relative(rootDir, full).replace(/\\/g, "/"),
         lastModified: stat.mtime.toISOString(),
+        locale: typeof data.locale === "string" ? data.locale : undefined,
+        framework: typeof data.framework === "string" ? data.framework : undefined,
+        version: typeof data.version === "string" ? data.version : undefined,
+        tags: Array.isArray(data.tags)
+          ? data.tags.filter((tag): tag is string => typeof tag === "string")
+          : undefined,
         content: stripMarkdownForMcp(humanRawContent),
         rawContent: humanRawContent,
         agentFallbackContent: pageAgentContent,
@@ -2233,6 +2653,10 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
     rawContent: page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent,
     sourcePath: page.sourcePath,
     lastModified: page.lastModified,
+    locale: page.locale,
+    framework: page.framework,
+    version: page.version,
+    tags: page.tags,
     agentContent: page.agentContent,
     agentRawContent: page.agentRawContent,
     agentFallbackContent: page.agentFallbackContent,
@@ -2804,6 +3228,373 @@ function getCodeExampleSearchText(example: DocsMcpCodeExample): string {
   ]
     .filter((value): value is string => typeof value === "string")
     .join("\n");
+}
+
+interface DocsMarkdownSection {
+  title: string;
+  anchor: string;
+  level: number;
+  content: string;
+}
+
+function listDocsMarkdownSections(markdown: string): DocsMarkdownSection[] {
+  const lines = markdown.split("\n");
+  const headings: Array<{
+    title: string;
+    anchor: string;
+    level: number;
+    start: number;
+  }> = [];
+  const headingCounts = new Map<string, number>();
+  let openFence: string | undefined;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const trimmed = lines[index].trimStart();
+    const fence = trimmed.match(/^(`{3,}|~{3,})/u)?.[1];
+
+    if (fence) {
+      if (!openFence) {
+        openFence = fence;
+      } else if (fence[0] === openFence[0] && fence.length >= openFence.length) {
+        openFence = undefined;
+      }
+      continue;
+    }
+
+    if (openFence) continue;
+
+    const match = lines[index].match(/^(#{1,6})\s+(.+?)\s*#*\s*$/u);
+    if (!match) continue;
+
+    const title = match[2].replace(/[`*_~]/gu, "").trim();
+    const baseAnchor = slugifyDocsHeading(title) || `section-${headings.length}`;
+    const seen = headingCounts.get(baseAnchor) ?? 0;
+    headingCounts.set(baseAnchor, seen + 1);
+    headings.push({
+      title,
+      anchor: seen === 0 ? baseAnchor : `${baseAnchor}-${seen}`,
+      level: match[1].length,
+      start: index,
+    });
+  }
+
+  return headings.map((heading, index) => {
+    const next = headings.slice(index + 1).find((candidate) => candidate.level <= heading.level);
+    const end = next?.start ?? lines.length;
+    return {
+      title: heading.title,
+      anchor: heading.anchor,
+      level: heading.level,
+      content: lines.slice(heading.start, end).join("\n").trim(),
+    };
+  });
+}
+
+function findDocsMarkdownSection(
+  markdown: string,
+  requestedSection: string,
+): DocsMarkdownSection | undefined {
+  const selector = normalizeDocsSectionSelector(requestedSection);
+  if (!selector) return undefined;
+
+  return listDocsMarkdownSections(markdown).find(
+    (section) =>
+      normalizeDocsSectionSelector(section.title) === selector || section.anchor === selector,
+  );
+}
+
+function normalizeDocsSectionSelector(value: string): string {
+  let selector = value.trim();
+  const hashIndex = selector.lastIndexOf("#");
+  if (hashIndex >= 0) selector = selector.slice(hashIndex + 1);
+
+  try {
+    selector = decodeURIComponent(selector);
+  } catch {
+    // Keep the original selector when it is not valid URL encoding.
+  }
+
+  return selector
+    .replace(/^#+/u, "")
+    .replace(/[`*_~]/gu, "")
+    .trim()
+    .toLowerCase();
+}
+
+function slugifyDocsHeading(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[`'"‘’“”]/gu, "")
+    .replace(/&/gu, " and ")
+    .replace(/[^a-z0-9\s-]/gu, "")
+    .replace(/\s+/gu, "-")
+    .replace(/-+/gu, "-")
+    .replace(/^-|-$/gu, "");
+}
+
+function limitDocsMcpText(value: string, maxChars?: number): { text: string; truncated: boolean } {
+  if (maxChars === undefined || value.length <= maxChars) {
+    return { text: value, truncated: false };
+  }
+
+  if (maxChars <= 1) return { text: value.slice(0, maxChars), truncated: true };
+
+  const suffix = "…";
+  const available = Math.max(0, maxChars - suffix.length);
+  let selected = value.slice(0, available);
+  const paragraphBreak = selected.lastIndexOf("\n\n");
+  const lineBreak = selected.lastIndexOf("\n");
+  const preferredBreak = paragraphBreak >= available * 0.6 ? paragraphBreak : lineBreak;
+  if (preferredBreak >= available * 0.6) selected = selected.slice(0, preferredBreak);
+
+  return {
+    text: `${selected.trimEnd()}${suffix}`.slice(0, maxChars),
+    truncated: true,
+  };
+}
+
+function estimateDocsMcpTokens(chars: number): number {
+  return chars === 0 ? 0 : Math.ceil(chars / APPROXIMATE_CHARS_PER_TOKEN);
+}
+
+function toStructuredDocsMcpPage(page: DocsMcpPage) {
+  return {
+    slug: page.slug,
+    url: page.url,
+    title: page.title,
+    description: page.description,
+    related: page.related,
+    icon: page.icon,
+    sourcePath: page.sourcePath,
+    lastModified: page.lastModified,
+    locale: page.locale,
+    framework: page.framework,
+    version: page.version,
+    tags: page.tags,
+  };
+}
+
+function getDocsMcpSourceMarkdown(page: DocsMcpPage): string {
+  return (
+    page.agentRawContent ??
+    page.agentFallbackRawContent ??
+    page.rawContent ??
+    page.agentContent ??
+    page.agentFallbackContent ??
+    page.content
+  );
+}
+
+function normalizeDocsMcpFramework(value: string): string {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]/gu, "");
+  if (["next", "nextjs"].includes(normalized)) return "nextjs";
+  if (["tanstack", "tanstackstart"].includes(normalized)) return "tanstackstart";
+  if (["svelte", "sveltekit"].includes(normalized)) return "sveltekit";
+  return normalized;
+}
+
+function normalizeDocsMcpVersion(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^v(?=\d)/u, "");
+}
+
+function normalizeDocsMcpLocale(value: string): string {
+  return value.trim().toLowerCase().replace(/_/gu, "-");
+}
+
+function pageMatchesDocsMcpContextScope(
+  page: DocsMcpPage,
+  filters: { framework?: string; version?: string; locale?: string },
+): boolean {
+  if (
+    filters.framework &&
+    page.framework &&
+    normalizeDocsMcpFramework(page.framework) !== normalizeDocsMcpFramework(filters.framework)
+  ) {
+    return false;
+  }
+
+  if (
+    filters.version &&
+    page.version &&
+    normalizeDocsMcpVersion(page.version) !== normalizeDocsMcpVersion(filters.version)
+  ) {
+    return false;
+  }
+
+  if (
+    filters.locale &&
+    page.locale &&
+    normalizeDocsMcpLocale(page.locale) !== normalizeDocsMcpLocale(filters.locale)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function getDocsMcpResultPageUrl(value: string): string {
+  return value.split("#", 1)[0] ?? value;
+}
+
+function getDocsMcpResultAnchor(value: string): string | undefined {
+  const anchor = value.split("#", 2)[1];
+  if (!anchor) return undefined;
+
+  try {
+    return decodeURIComponent(anchor);
+  } catch {
+    return anchor;
+  }
+}
+
+async function buildDocsMcpContext(options: {
+  pages: DocsMcpPage[];
+  query: string;
+  framework?: string;
+  version?: string;
+  locale?: string;
+  tokenBudget: number;
+  entry?: string;
+  siteTitle?: string;
+}): Promise<DocsMcpContextResult> {
+  const scopedPages = options.pages.filter((page) =>
+    pageMatchesDocsMcpContextScope(page, {
+      framework: options.framework,
+      version: options.version,
+      locale: options.locale,
+    }),
+  );
+  const searchResults = await performDocsSearch({
+    pages: toSearchSourcePages(scopedPages),
+    query: options.query,
+    search: {
+      enabled: true,
+      provider: "simple",
+      maxResults: 50,
+      chunking: { strategy: "section" },
+    },
+    locale: options.locale,
+    siteTitle: options.siteTitle,
+    limit: 50,
+  });
+  const orderedResults = [...searchResults].sort((left, right) => {
+    const scoreDelta = (right.score ?? 0) - (left.score ?? 0);
+    if (scoreDelta !== 0) return scoreDelta;
+    if (left.url !== right.url) return left.url < right.url ? -1 : 1;
+    if ((left.section ?? "") !== (right.section ?? "")) {
+      return (left.section ?? "") < (right.section ?? "") ? -1 : 1;
+    }
+    if (left.id === right.id) return 0;
+    return left.id < right.id ? -1 : 1;
+  });
+  const sectionPageUrls = new Set(
+    orderedResults
+      .filter((result) => result.section)
+      .map((result) => normalizeUrlPath(getDocsMcpResultPageUrl(result.url))),
+  );
+  const seen = new Set<string>();
+  const candidates = orderedResults.filter((result) => {
+    const pageUrl = normalizeUrlPath(getDocsMcpResultPageUrl(result.url));
+    if (!result.section && sectionPageUrls.has(pageUrl)) return false;
+    const key = `${pageUrl}#${getDocsMcpResultAnchor(result.url) ?? result.section ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const maxChars = options.tokenBudget * APPROXIMATE_CHARS_PER_TOKEN;
+  const separator = "\n\n---\n\n";
+  const blocks: string[] = [];
+  const sources: DocsMcpContextSource[] = [];
+
+  for (const result of candidates) {
+    const resultPageUrl = getDocsMcpResultPageUrl(result.url);
+    const page = findDocsPage(scopedPages, resultPageUrl, options.entry);
+    if (!page) continue;
+
+    const document = getDocsMcpSourceMarkdown(page);
+    const resultAnchor = getDocsMcpResultAnchor(result.url);
+    const selectedSection = resultAnchor
+      ? (findDocsMarkdownSection(document, resultAnchor) ??
+        (result.section ? findDocsMarkdownSection(document, result.section) : undefined))
+      : result.section
+        ? findDocsMarkdownSection(document, result.section)
+        : undefined;
+    const rawContent = (selectedSection?.content ?? document).trim();
+    if (!rawContent) continue;
+
+    const anchor = resultAnchor ?? selectedSection?.anchor;
+    const sourceUrl = anchor ? `${page.url}#${anchor}` : page.url;
+    const headerLines = [`## ${page.title}`, `Source: ${sourceUrl}`];
+    if (selectedSection?.title ?? result.section) {
+      headerLines.push(`Section: ${selectedSection?.title ?? result.section}`);
+    }
+    if (page.framework) headerLines.push(`Framework: ${page.framework}`);
+    if (page.version) headerLines.push(`Version: ${page.version}`);
+    if (page.locale) headerLines.push(`Locale: ${page.locale}`);
+    const header = headerLines.join("\n");
+    const separatorChars = blocks.length === 0 ? 0 : separator.length;
+    const availableForBlock = maxChars - blocks.join(separator).length - separatorChars;
+    const availableForContent = availableForBlock - header.length - 2;
+    if (availableForContent <= 0) break;
+
+    const limited = limitDocsMcpText(rawContent, availableForContent);
+    if (!limited.text) break;
+    const block = `${header}\n\n${limited.text}`;
+    blocks.push(block);
+    sources.push({
+      id: result.id,
+      title: page.title,
+      pageUrl: page.url,
+      url: sourceUrl,
+      section: selectedSection?.title ?? result.section,
+      anchor,
+      sourcePath: page.sourcePath,
+      lastModified: page.lastModified,
+      locale: page.locale,
+      framework: page.framework,
+      version: page.version,
+      tags: page.tags,
+      score: result.score,
+      content: limited.text,
+      chars: limited.text.length,
+      estimatedTokens: estimateDocsMcpTokens(limited.text.length),
+      truncated: limited.truncated,
+    });
+
+    if (limited.truncated) break;
+  }
+
+  const context = blocks.join(separator);
+  const remainingChars = Math.max(0, maxChars - context.length);
+  const truncated =
+    sources.some((source) => source.truncated) || sources.length < candidates.length;
+
+  return {
+    query: options.query,
+    filters: {
+      framework: options.framework,
+      version: options.version,
+      locale: options.locale,
+    },
+    budget: {
+      requestedTokens: options.tokenBudget,
+      maxChars,
+      usedChars: context.length,
+      estimatedTokens: estimateDocsMcpTokens(context.length),
+      remainingChars,
+      remainingTokens: Math.floor(remainingChars / APPROXIMATE_CHARS_PER_TOKEN),
+      truncated,
+    },
+    resultCount: sources.length,
+    candidateCount: candidates.length,
+    context,
+    sources,
+  };
 }
 
 function findDocsPage(

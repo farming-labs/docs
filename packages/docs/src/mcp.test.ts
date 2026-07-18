@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "./types.js";
+import type { DocsMcpPage } from "./mcp.js";
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
@@ -33,6 +34,42 @@ async function parseMcpPayload<T>(response: Response): Promise<T> {
   return JSON.parse(payload) as T;
 }
 
+async function callMcpTool(
+  handlers: ReturnType<typeof createDocsMcpHttpHandler>,
+  name: string,
+  args: Record<string, unknown>,
+) {
+  return handlers.POST({
+    request: new Request("http://localhost/api/docs/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        "mcp-session-id": "stale-session",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: `call-${name}`,
+        method: "tools/call",
+        params: { name, arguments: args },
+      }),
+    }),
+  });
+}
+
+function expectSuccessfulStructuredTextResult(payload: {
+  result?: {
+    content?: Array<{ text?: string }>;
+    structuredContent?: unknown;
+    isError?: boolean;
+  };
+}) {
+  expect(payload.result?.isError).not.toBe(true);
+  expect(payload.result?.structuredContent).toEqual(expect.any(Object));
+  expect(payload.result?.content?.[0]?.text?.trim().length).toBeGreaterThan(0);
+}
+
 describe("resolveDocsMcpConfig", () => {
   it("enables MCP by default when config is omitted", () => {
     expect(resolveDocsMcpConfig()).toEqual({
@@ -48,6 +85,7 @@ describe("resolveDocsMcpConfig", () => {
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
+        getContext: true,
       },
     });
   });
@@ -66,6 +104,7 @@ describe("resolveDocsMcpConfig", () => {
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
+        getContext: true,
       },
     });
   });
@@ -88,6 +127,7 @@ describe("resolveDocsMcpConfig", () => {
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
+        getContext: true,
       },
     });
   });
@@ -152,6 +192,10 @@ Run pnpm install.
       join(rootDir, "docs", "guides", "quickstart.mdx"),
       `---
 title: "Quickstart"
+framework: "nextjs"
+version: "16"
+tags:
+  - setup
 related:
   - /docs/installation
   - /docs
@@ -168,6 +212,8 @@ export default defineDocs({
   entry: "docs",
 });
 \`\`\`
+
+## Verify generated paths
 
 <Agent>
 Validate the generated example paths before editing this guide.
@@ -203,6 +249,9 @@ Validate the generated example paths before editing this guide.
         }),
         expect.objectContaining({
           url: "/docs/guides/quickstart",
+          framework: "nextjs",
+          version: "16",
+          tags: ["setup"],
           agentFallbackRawContent: expect.stringContaining(
             "Validate the generated example paths before editing this guide.",
           ),
@@ -342,7 +391,7 @@ sidebar:
     });
 
     const toolsList = await parseMcpPayload<{
-      result?: { tools?: Array<{ name: string }> };
+      result?: { tools?: Array<{ name: string; outputSchema?: { type?: string } }> };
     }>(toolsListResponse);
 
     expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
@@ -354,7 +403,27 @@ sidebar:
         "read_page",
         "get_code_examples",
         "get_config_schema",
+        "get_context",
       ]),
+    );
+    expect(toolsList.result?.tools).toEqual(
+      expect.arrayContaining(
+        [
+          "list_docs",
+          "list_pages",
+          "get_navigation",
+          "search_docs",
+          "read_page",
+          "get_code_examples",
+          "get_config_schema",
+          "get_context",
+        ].map((name) =>
+          expect.objectContaining({
+            name,
+            outputSchema: expect.objectContaining({ type: "object" }),
+          }),
+        ),
+      ),
     );
 
     const listDocsResponse = await handlers.POST({
@@ -381,8 +450,12 @@ sidebar:
     });
 
     const listDocsPayload = await parseMcpPayload<{
-      result?: { content?: Array<{ text?: string }> };
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: Record<string, unknown>;
+      };
     }>(listDocsResponse);
+    expectSuccessfulStructuredTextResult(listDocsPayload);
     const listDocsText = listDocsPayload.result?.content?.[0]?.text ?? "{}";
     const docsList = JSON.parse(listDocsText) as {
       section?: string;
@@ -422,6 +495,7 @@ sidebar:
         }),
       ],
     });
+    expect(listDocsPayload.result?.structuredContent).toEqual(docsList);
 
     const searchResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -447,10 +521,17 @@ sidebar:
     });
 
     const searchPayload = await parseMcpPayload<{
-      result?: { content?: Array<{ text?: string }> };
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: { results?: Array<{ url?: string }> };
+      };
     }>(searchResponse);
+    expectSuccessfulStructuredTextResult(searchPayload);
 
     expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/guides/quickstart");
+    expect(searchPayload.result?.structuredContent?.results).toEqual(
+      expect.arrayContaining([expect.objectContaining({ url: "/docs/guides/quickstart" })]),
+    );
 
     const readPageResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -476,14 +557,29 @@ sidebar:
     });
 
     const readPayload = await parseMcpPayload<{
-      result?: { content?: Array<{ text?: string }> };
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          page?: { url?: string };
+          document?: string;
+          chars?: number;
+          truncated?: boolean;
+        };
+      };
     }>(readPageResponse);
+    expectSuccessfulStructuredTextResult(readPayload);
 
     expect(readPayload.result?.content?.[0]?.text).toContain(
       "Use `pnpm install --frozen-lockfile`.",
     );
     expect(readPayload.result?.content?.[0]?.text).not.toContain("# Installation");
     expect(readPayload.result?.content?.[0]?.text).not.toContain("URL: /docs/installation");
+    expect(readPayload.result?.structuredContent).toMatchObject({
+      page: { url: "/docs/installation" },
+      document: "Use `pnpm install --frozen-lockfile`.\n",
+      chars: "Use `pnpm install --frozen-lockfile`.\n".length,
+      truncated: false,
+    });
 
     const quickstartReadResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -509,7 +605,10 @@ sidebar:
     });
 
     const quickstartPayload = await parseMcpPayload<{
-      result?: { content?: Array<{ text?: string }> };
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: { page?: { framework?: string; version?: string } };
+      };
     }>(quickstartReadResponse);
 
     expect(quickstartPayload.result?.content?.[0]?.text).toContain(
@@ -519,6 +618,10 @@ sidebar:
       "Related: /docs/installation, /docs",
     );
     expect(quickstartPayload.result?.content?.[0]?.text).not.toContain("<Agent>");
+    expect(quickstartPayload.result?.structuredContent?.page).toMatchObject({
+      framework: "nextjs",
+      version: "16",
+    });
 
     const codeExamplesResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -547,8 +650,12 @@ sidebar:
     });
 
     const codeExamplesPayload = await parseMcpPayload<{
-      result?: { content?: Array<{ text?: string }> };
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: { examples?: unknown[] };
+      };
     }>(codeExamplesResponse);
+    expectSuccessfulStructuredTextResult(codeExamplesPayload);
     const codeExamplesText = codeExamplesPayload.result?.content?.[0]?.text ?? "{}";
     const codeExamples = JSON.parse(codeExamplesText) as {
       examples?: Array<{
@@ -580,6 +687,7 @@ sidebar:
         code: expect.stringContaining("defineDocs"),
       }),
     ]);
+    expect(codeExamplesPayload.result?.structuredContent).toEqual(codeExamples);
 
     const configSchemaResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -605,8 +713,12 @@ sidebar:
     });
 
     const configSchemaPayload = await parseMcpPayload<{
-      result?: { content?: Array<{ text?: string }> };
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: Record<string, unknown>;
+      };
     }>(configSchemaResponse);
+    expectSuccessfulStructuredTextResult(configSchemaPayload);
     const configSchemaText = configSchemaPayload.result?.content?.[0]?.text ?? "{}";
     const configSchema = JSON.parse(configSchemaText) as {
       resultCount?: number;
@@ -629,6 +741,7 @@ sidebar:
         description: expect.stringContaining("get_config_schema"),
       }),
     ]);
+    expect(configSchemaPayload.result?.structuredContent).toEqual(configSchema);
 
     const ambiguousConfigSchemaResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -666,6 +779,163 @@ sidebar:
     expect(ambiguousConfigSchema.resultCount).toBe(0);
     expect(ambiguousConfigSchema.options).toEqual([]);
 
+    const listPagesPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: { pages?: Array<{ url?: string }> };
+      };
+    }>(await callMcpTool(handlers, "list_pages", {}));
+    expectSuccessfulStructuredTextResult(listPagesPayload);
+    expect(listPagesPayload.result?.structuredContent?.pages).toEqual(
+      expect.arrayContaining([expect.objectContaining({ url: "/docs/installation" })]),
+    );
+    expect(JSON.parse(listPagesPayload.result?.content?.[0]?.text ?? "{}")).toEqual(
+      listPagesPayload.result?.structuredContent,
+    );
+
+    const navigationPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          navigation?: { name?: string; children?: unknown[] };
+          markdown?: string;
+        };
+      };
+    }>(await callMcpTool(handlers, "get_navigation", {}));
+    expectSuccessfulStructuredTextResult(navigationPayload);
+    expect(navigationPayload.result?.structuredContent?.navigation).toMatchObject({
+      name: "Example Docs",
+      children: expect.any(Array),
+    });
+    expect(navigationPayload.result?.content?.[0]?.text).toBe(
+      navigationPayload.result?.structuredContent?.markdown,
+    );
+
+    const sectionPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          document?: string;
+          section?: string;
+          anchor?: string;
+          chars?: number;
+          truncated?: boolean;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "read_page", {
+        path: "guides/quickstart",
+        section: "verify-generated-paths",
+        maxChars: 256,
+      }),
+    );
+    expect(sectionPayload.result?.content?.[0]?.text).toContain("## Verify generated paths");
+    expect(sectionPayload.result?.content?.[0]?.text).not.toContain("# Quickstart");
+    expect(sectionPayload.result?.structuredContent).toMatchObject({
+      section: "Verify generated paths",
+      anchor: "verify-generated-paths",
+      truncated: false,
+    });
+    expect(sectionPayload.result?.structuredContent?.document).toBe(
+      sectionPayload.result?.content?.[0]?.text,
+    );
+
+    const pageHeadingPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: { document?: string; section?: string; anchor?: string };
+      };
+    }>(
+      await callMcpTool(handlers, "read_page", {
+        path: "guides/quickstart",
+        section: "quickstart",
+      }),
+    );
+    expect(pageHeadingPayload.result?.structuredContent).toMatchObject({
+      section: "Quickstart",
+      anchor: "quickstart",
+      document: expect.stringContaining("Build your first app."),
+    });
+
+    const contextArguments = {
+      query: "generated example paths",
+      framework: "next",
+      version: "v16",
+      tokenBudget: 256,
+    };
+    const contextPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          context?: string;
+          resultCount?: number;
+          candidateCount?: number;
+          budget?: {
+            requestedTokens?: number;
+            maxChars?: number;
+            usedChars?: number;
+            estimatedTokens?: number;
+          };
+          sources?: Array<{
+            url?: string;
+            pageUrl?: string;
+            section?: string;
+            anchor?: string;
+            framework?: string;
+            version?: string;
+          }>;
+        };
+      };
+    }>(await callMcpTool(handlers, "get_context", contextArguments));
+    expectSuccessfulStructuredTextResult(contextPayload);
+    const context = contextPayload.result?.structuredContent;
+    expect(contextPayload.result?.content?.[0]?.text).toBe(context?.context);
+    expect(context?.budget).toMatchObject({
+      requestedTokens: 256,
+      maxChars: 1_024,
+      usedChars: context?.context?.length,
+    });
+    expect(context?.budget?.usedChars).toBeLessThanOrEqual(1_024);
+    expect(context?.budget?.estimatedTokens).toBeLessThanOrEqual(256);
+    expect(context?.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "/docs/guides/quickstart#verify-generated-paths",
+          pageUrl: "/docs/guides/quickstart",
+          section: "Verify generated paths",
+          anchor: "verify-generated-paths",
+          framework: "nextjs",
+          version: "16",
+        }),
+      ]),
+    );
+
+    const repeatedContextPayload = await parseMcpPayload<{
+      result?: { structuredContent?: Record<string, unknown> };
+    }>(await callMcpTool(handlers, "get_context", contextArguments));
+    expect(repeatedContextPayload.result?.structuredContent).toEqual(context);
+
+    const pageHeadingContextPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          sources?: Array<{ url?: string; content?: string }>;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "get_context", {
+        query: "Build your first app",
+        tokenBudget: 256,
+      }),
+    );
+    expect(pageHeadingContextPayload.result?.structuredContent?.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "/docs/guides/quickstart#quickstart",
+          content: expect.stringContaining("Build your first app."),
+        }),
+      ]),
+    );
+
     const deleteResponse = await handlers.DELETE({
       request: new Request("http://localhost/api/docs/mcp", {
         method: "DELETE",
@@ -677,6 +947,166 @@ sidebar:
     });
 
     expect(deleteResponse.status).toBe(200);
+  });
+
+  it("keeps general docs in scoped context, excludes mismatches, and orders sources deterministically within hard budgets", async () => {
+    const sharedContent = `# Runtime configuration
+
+Shared runtime configuration guidance.
+
+${"Detailed runtime configuration guidance. ".repeat(60)}`;
+    const pages: DocsMcpPage[] = [
+      {
+        slug: "a-general",
+        url: "/docs/a-general",
+        title: "Alpha",
+        content: sharedContent,
+        rawContent: sharedContent,
+      },
+      {
+        slug: "b-general",
+        url: "/docs/b-general",
+        title: "Beta",
+        content: sharedContent,
+        rawContent: sharedContent,
+      },
+      {
+        slug: "c-next",
+        url: "/docs/c-next",
+        title: "Gamma",
+        locale: "en",
+        framework: "nextjs",
+        version: "16",
+        content: sharedContent,
+        rawContent: sharedContent,
+      },
+      {
+        slug: "c-next-fr",
+        url: "/docs/c-next-fr",
+        title: "Gamma French",
+        locale: "fr",
+        framework: "nextjs",
+        version: "16",
+        content: sharedContent,
+        rawContent: sharedContent,
+      },
+      {
+        slug: "c-next-old",
+        url: "/docs/c-next-old",
+        title: "Gamma old",
+        framework: "nextjs",
+        version: "15",
+        content: sharedContent,
+        rawContent: sharedContent,
+      },
+      {
+        slug: "d-astro",
+        url: "/docs/d-astro",
+        title: "Delta",
+        framework: "astro",
+        version: "5",
+        content: sharedContent,
+        rawContent: sharedContent,
+      },
+    ];
+
+    function createHandlers(sourcePages: DocsMcpPage[]) {
+      return createDocsMcpHttpHandler({
+        source: {
+          entry: "docs",
+          siteTitle: "Scoped docs",
+          getPages: () => sourcePages,
+          getNavigation: () => ({ name: "Scoped docs", children: [] }),
+        },
+      });
+    }
+
+    const contextArguments = {
+      query: "runtime configuration",
+      framework: "next",
+      version: "v16",
+      locale: "en",
+    };
+    const forwardPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          context: string;
+          candidateCount: number;
+          resultCount: number;
+          budget: { requestedTokens: number; maxChars: number };
+          sources: Array<{
+            pageUrl: string;
+            locale?: string;
+            framework?: string;
+            version?: string;
+          }>;
+        };
+      };
+    }>(await callMcpTool(createHandlers(pages), "get_context", contextArguments));
+    const reversePayload = await parseMcpPayload<{
+      result?: { structuredContent?: Record<string, unknown> };
+    }>(await callMcpTool(createHandlers([...pages].reverse()), "get_context", contextArguments));
+    const context = forwardPayload.result?.structuredContent;
+
+    expectSuccessfulStructuredTextResult(forwardPayload);
+    expect(context).toMatchObject({
+      candidateCount: 3,
+      resultCount: 3,
+      budget: { requestedTokens: 4_000, maxChars: 16_000 },
+    });
+    expect(context?.sources.map((source) => source.pageUrl)).toEqual([
+      "/docs/a-general",
+      "/docs/b-general",
+      "/docs/c-next",
+    ]);
+    expect(context?.sources.slice(0, 2)).toEqual([
+      expect.not.objectContaining({ framework: expect.any(String) }),
+      expect.not.objectContaining({ framework: expect.any(String) }),
+    ]);
+    expect(context?.sources[2]).toMatchObject({
+      locale: "en",
+      framework: "nextjs",
+      version: "16",
+    });
+    expect(reversePayload.result?.structuredContent).toEqual(context);
+
+    const tightPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          context: string;
+          budget: {
+            requestedTokens: number;
+            maxChars: number;
+            usedChars: number;
+            estimatedTokens: number;
+            remainingChars: number;
+            truncated: boolean;
+          };
+          sources: Array<{ truncated: boolean }>;
+        };
+      };
+    }>(
+      await callMcpTool(createHandlers(pages), "get_context", {
+        ...contextArguments,
+        tokenBudget: 256,
+      }),
+    );
+    const tight = tightPayload.result?.structuredContent;
+
+    expectSuccessfulStructuredTextResult(tightPayload);
+    expect(tightPayload.result?.content?.[0]?.text).toBe(tight?.context);
+    expect(tight?.budget).toMatchObject({
+      requestedTokens: 256,
+      maxChars: 1_024,
+      usedChars: tight?.context.length,
+      remainingChars: 1_024 - (tight?.context.length ?? 0),
+      truncated: true,
+    });
+    expect(tight?.context.length).toBeLessThanOrEqual(1_024);
+    expect(tight?.budget.estimatedTokens).toBeLessThanOrEqual(256);
+    expect(tight?.sources.at(-1)?.truncated).toBe(true);
   });
 
   it("serves stateless MCP requests without requiring sticky sessions", async () => {
@@ -723,6 +1153,7 @@ sidebar:
         "read_page",
         "get_code_examples",
         "get_config_schema",
+        "get_context",
       ]),
     );
 
@@ -757,6 +1188,7 @@ sidebar:
         "read_page",
         "get_code_examples",
         "get_config_schema",
+        "get_context",
       ]),
     );
   });
@@ -1145,6 +1577,7 @@ sidebar:
           searchDocs: false,
           readPage: false,
           getConfigSchema: false,
+          getContext: false,
         },
       },
     });
@@ -1202,7 +1635,13 @@ sidebar:
       expect.arrayContaining(["list_pages", "get_navigation", "get_code_examples"]),
     );
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
-      expect.arrayContaining(["list_docs", "search_docs", "read_page", "get_config_schema"]),
+      expect.arrayContaining([
+        "list_docs",
+        "search_docs",
+        "read_page",
+        "get_config_schema",
+        "get_context",
+      ]),
     );
   });
 

@@ -204,6 +204,7 @@ The built-in MCP surface currently includes:
 - `read_page`
 - `get_code_examples`
 - `get_config_schema`
+- `get_context`
 
 `list_docs` returns page summaries grouped by docs section. Call it with no arguments for the full
 section tree, or with `section` such as `getting-started` to narrow the result before `read_page`.
@@ -218,6 +219,13 @@ examples for agents. Use metadata like
 
 `get_config_schema` returns structured `docs.config.ts` option metadata. Use `option` for an exact
 path such as `mcp.tools.getConfigSchema`, or `query` for keyword filtering.
+
+`get_context` accepts `query`, optional `framework`, `version`, and `locale`, plus a `tokenBudget`
+from `256` to `32000` (default `4000`). It returns deterministic section chunks with source anchors
+and token/character accounting. Pages without a framework/version/locale scope remain eligible as
+general docs, while conflicting metadata is excluded. Equal scores use source URL ordering, and
+context is hard-limited to `tokenBudget * 4` characters. Successful built-in tools also return
+validated MCP `structuredContent` while preserving text output for compatibility.
 
 when a snippet has a target file, framework, package manager, or is safe to copy as a complete
 example. This metadata is for markdown/MCP consumers and does not require a UI change.
@@ -632,8 +640,8 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
 `mcp-session-id`, calls `tools/list`, and expects `list_docs`, `list_pages`, `get_navigation`,
-`search_docs`, `read_page`, `get_code_examples`, and `get_config_schema`. Hosted checks raise the
-agent max score from `105` to `145`.
+`search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, and `get_context`. Hosted checks
+raise the agent max score from `105` to `145`.
 
 Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
 `hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.

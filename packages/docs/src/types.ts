@@ -1309,6 +1309,8 @@ export interface DocsMcpToolsConfig {
   getCodeExamples?: boolean;
   /** Expose a `get_config_schema` tool for docs.config option metadata. */
   getConfigSchema?: boolean;
+  /** Expose a deterministic, token-budgeted `get_context` retrieval tool. */
+  getContext?: boolean;
 }
 
 /**

@@ -656,6 +656,7 @@ Allow: /
                 { name: "read_page" },
                 { name: "get_code_examples" },
                 { name: "get_config_schema" },
+                { name: "get_context" },
               ],
             },
           });
