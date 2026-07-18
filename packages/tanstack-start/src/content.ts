@@ -54,6 +54,10 @@ export interface ContentPage {
   icon?: string;
   sourcePath?: string;
   lastModified?: string;
+  locale?: string;
+  framework?: string;
+  version?: string;
+  tags?: string[];
   content: string;
   rawContent: string;
   agentContent?: string;
@@ -109,6 +113,12 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         icon: data.icon as string | undefined,
         sourcePath: full.replace(/\\/g, "/"),
         lastModified: stat.mtime.toISOString(),
+        locale: typeof data.locale === "string" ? data.locale : undefined,
+        framework: typeof data.framework === "string" ? data.framework : undefined,
+        version: typeof data.version === "string" ? data.version : undefined,
+        tags: Array.isArray(data.tags)
+          ? data.tags.filter((tag): tag is string => typeof tag === "string")
+          : undefined,
         content: stripMarkdown(humanRawContent),
         rawContent: humanRawContent,
         ...(pageAgentRawContent !== humanRawContent

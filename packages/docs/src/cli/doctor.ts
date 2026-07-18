@@ -1705,6 +1705,7 @@ const MCP_DISCOVERY_TOOL_NAMES = [
   ["readPage", "read_page"],
   ["getCodeExamples", "get_code_examples"],
   ["getConfigSchema", "get_config_schema"],
+  ["getContext", "get_context"],
 ] as const;
 
 function hostedMcpExpectedTools(discoveryBody: unknown): string[] {

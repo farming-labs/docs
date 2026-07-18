@@ -108,6 +108,7 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   getNavigation: true,
   getCodeExamples: true,
   getConfigSchema: true,
+  getContext: true,
 } satisfies DocsMcpResolvedConfig["tools"];
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 const DOCS_AI_AGENT_USER_AGENT_PATTERNS = [
@@ -1180,6 +1181,7 @@ function resolveDocsDiagnosticsMcp(mcp: unknown): DocsMcpResolvedConfig {
       getNavigation: tools.getNavigation !== false,
       getCodeExamples: tools.getCodeExamples !== false,
       getConfigSchema: tools.getConfigSchema !== false,
+      getContext: tools.getContext !== false,
     },
   };
 }

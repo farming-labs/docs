@@ -124,6 +124,8 @@ export type {
   DocsMcpCodeExample,
   DocsMcpConfigSchema,
   DocsMcpConfigSchemaOption,
+  DocsMcpContextResult,
+  DocsMcpContextSource,
   DocsMcpDocsList,
   DocsMcpDocsPageSummary,
   DocsMcpDocsSection,

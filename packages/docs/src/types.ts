@@ -1367,6 +1367,8 @@ export interface DocsMcpToolsConfig {
   getCodeExamples?: boolean;
   /** Expose a `get_config_schema` tool for docs.config option metadata. */
   getConfigSchema?: boolean;
+  /** Expose deterministic `get_context` retrieval with a conservative UTF-8 byte ceiling. */
+  getContext?: boolean;
 }
 
 /** Authenticated identity returned by an MCP authentication callback. */

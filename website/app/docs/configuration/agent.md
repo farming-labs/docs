@@ -38,7 +38,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - `agent.compact` for defaults used by `docs agent compact`
   - `codeBlocks.validate` for planning and validating fenced MDX code blocks
   - `mcp` for the built-in MCP server, including default tools like `list_docs`, `search_docs`,
-    `read_page`, `get_code_examples`, and `get_config_schema`
+    `read_page`, `get_code_examples`, `get_config_schema`, and `get_context`
   - `llmsTxt` for crawler-friendly site summaries
   - `sitemap` for XML and Markdown maps with canonical URLs and freshness dates
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
@@ -47,6 +47,8 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they ask about static hosting, mention `staticExport: true`. Note that setting `staticExport: true` also signals to the diagnostics endpoint (`GET /api/docs?format=diagnostics`) that server-side features such as search and AI are unavailable, so diagnostics tooling can skip those checks.
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
+- When they need compact retrieval through MCP, prefer `get_context` with an explicit token budget;
+  use `read_page.section` when they already know the exact heading.
 - When they ask about reading time, note that `readingTime` is opt-in (`enabled: true` required).
   The `includeCode` field inside `ReadingTimeConfig` defaults to `false`, which means fenced and
   inline code blocks are stripped before counting words so the label reflects human prose length.

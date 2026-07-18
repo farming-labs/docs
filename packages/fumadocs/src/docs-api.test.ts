@@ -298,6 +298,56 @@ title: "Introduction"
     expect(payload.result?.serverInfo?.name).toBe("Example Docs");
   });
 
+  it("honors task and context tool opt-outs from the source docs config", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-tool-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Introduction\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  mcp: {
+    enabled: true,
+    tools: {
+      listTasks: false,
+      readTask: false,
+      getContext: false,
+    },
+  },
+};
+`,
+    );
+
+    const { POST } = createDocsMCPAPI({ rootDir });
+    const response = await POST(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+    );
+    const payload = await parseMcpPayload<{
+      result?: { tools?: Array<{ name?: string }> };
+    }>(response);
+    const toolNames = payload.result?.tools?.map((tool) => tool.name) ?? [];
+
+    expect(response.status).toBe(200);
+    expect(toolNames).toContain("list_pages");
+    expect(toolNames).not.toEqual(
+      expect.arrayContaining(["list_tasks", "read_task", "get_context"]),
+    );
+  });
+
   it("ignores nested mcp booleans outside the root config property", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-nested-config-"));
     tempDirs.push(rootDir);
@@ -2449,6 +2499,7 @@ description: "Start building quickly"
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
+        getContext: true,
       },
     });
     expect(spec.feedback).toMatchObject({

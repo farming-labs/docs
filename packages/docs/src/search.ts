@@ -20,6 +20,7 @@ import {
   renderPageAgentContractMarkdown,
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
+import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
@@ -388,48 +389,6 @@ function clampText(value: string, maxChars: number): string {
   return `${value.slice(0, maxChars).trimEnd()}...`;
 }
 
-function extractHeadingText(line: string): { level: number; text: string } | null {
-  const match = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
-  if (!match) return null;
-  return {
-    level: match[1].length,
-    text: normalizeWhitespace(match[2].replace(/[`*_~]/g, "")),
-  };
-}
-
-function extractSectionMarkdown(content: string, section?: string): string {
-  if (!section) return content;
-
-  const target = normalizeWhitespace(section).toLowerCase();
-  const lines = content.split("\n");
-  let start = -1;
-  let level = 0;
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const heading = extractHeadingText(lines[i]);
-    if (!heading) continue;
-
-    if (heading.text.toLowerCase() === target) {
-      start = i;
-      level = heading.level;
-      break;
-    }
-  }
-
-  if (start === -1) return content;
-
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i += 1) {
-    const heading = extractHeadingText(lines[i]);
-    if (heading && heading.level <= level) {
-      end = i;
-      break;
-    }
-  }
-
-  return lines.slice(start, end).join("\n");
-}
-
 function findPageForSearchResult(
   pages: DocsSearchSourcePage[],
   result: DocsSearchResult,
@@ -455,8 +414,12 @@ function formatAskAIContextResult(options: {
   const { result, page, maxChars, baseUrl } = options;
   const title = inferResultTitle(result, page);
   const section = result.section;
+  const anchor = getSearchResultAnchor(result.url);
+  const sectionSelector = anchor ?? section;
   const rawContent = page
-    ? extractSectionMarkdown(getAskAIPageContent(page), section)
+    ? sectionSelector
+      ? (findDocsMarkdownSection(getAskAIPageContent(page), sectionSelector)?.content ?? "")
+      : getAskAIPageContent(page)
     : [result.content, result.description].filter(Boolean).join("\n\n");
   const contextContent = clampText(cleanAskAIContextMarkdown(rawContent), maxChars);
 
@@ -480,6 +443,23 @@ function getSearchResultKey(result: DocsSearchResult): string {
   return `${normalizeUrlPathname(result.url)}#${normalizeWhitespace(
     hash || result.section || "",
   ).toLowerCase()}`;
+}
+
+function getSearchResultAnchor(value: string): string | undefined {
+  let hash = "";
+
+  try {
+    hash = new URL(value, "https://docs.local").hash.replace(/^#/, "");
+  } catch {
+    hash = value.split("#")[1]?.split(/[?&]/)[0] ?? "";
+  }
+
+  if (!hash) return undefined;
+  try {
+    return decodeURIComponent(hash);
+  } catch {
+    return hash;
+  }
 }
 
 function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[] {
@@ -604,72 +584,28 @@ function makeDocumentId(url: string, suffix: string): string {
   return `${url}#${suffix}`;
 }
 
-function slugifyHeading(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[`'"‘’“”]/g, "")
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 function splitPageIntoSections(page: DocsSearchSourcePage): DocsSearchDocument[] {
   const raw = page.rawContent ?? page.content;
-  const lines = raw.split("\n");
-  const sections: DocsSearchDocument[] = [];
-  const headingCounts = new Map<string, number>();
+  return parseDocsMarkdownSections(raw).flatMap((section, index) => {
+    const content = normalizeWhitespace(stripMarkdownText(section.content));
+    if (!content) return [];
 
-  let currentHeading = "";
-  let currentLines: string[] = [];
-  let index = 0;
-
-  function flush() {
-    const rawSection = currentLines.join("\n").trim();
-    const content = normalizeWhitespace(stripMarkdownText(rawSection));
-    if (!content) return;
-
-    let url = page.url;
-    if (currentHeading) {
-      const baseSlug = slugifyHeading(currentHeading) || `section-${index}`;
-      const seen = headingCounts.get(baseSlug) ?? 0;
-      headingCounts.set(baseSlug, seen + 1);
-      const slug = seen === 0 ? baseSlug : `${baseSlug}-${seen}`;
-      url = `${page.url}#${slug}`;
-    }
-
-    sections.push({
-      id: makeDocumentId(page.url, currentHeading ? `section-${index}` : "page"),
-      url,
-      title: page.title,
-      section: currentHeading || undefined,
-      content,
-      description: page.description,
-      type: currentHeading ? "heading" : "page",
-      locale: page.locale,
-      framework: page.framework,
-      version: page.version,
-      tags: page.tags,
-    });
-    index += 1;
-  }
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
-    if (headingMatch) {
-      flush();
-      currentHeading = normalizeWhitespace(headingMatch[1].replace(/#+$/g, ""));
-      currentLines = [];
-      continue;
-    }
-
-    currentLines.push(line);
-  }
-
-  flush();
-  return sections;
+    return [
+      {
+        id: makeDocumentId(page.url, `section-${index}`),
+        url: `${page.url}#${section.anchor}`,
+        title: page.title,
+        section: section.title,
+        content,
+        description: page.description,
+        type: "heading" as const,
+        locale: page.locale,
+        framework: page.framework,
+        version: page.version,
+        tags: page.tags,
+      },
+    ];
+  });
 }
 
 export function buildDocsSearchDocuments(

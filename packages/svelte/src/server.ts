@@ -528,6 +528,12 @@ function searchIndexFromMap(
       ...(related.length > 0 ? { related } : {}),
       agent: normalizePageAgentFrontmatter(data.agent),
       icon: data.icon as string | undefined,
+      locale: typeof data.locale === "string" ? data.locale : undefined,
+      framework: typeof data.framework === "string" ? data.framework : undefined,
+      version: typeof data.version === "string" ? data.version : undefined,
+      tags: Array.isArray(data.tags)
+        ? data.tags.filter((tag): tag is string => typeof tag === "string")
+        : undefined,
       content: stripMarkdownText(humanRawContent),
       rawContent: humanRawContent,
       ...(pageAgentRawContent !== humanRawContent

@@ -1062,11 +1062,14 @@ function readMcpConfig(
         tools: {
           listDocs: readBooleanFromBlock(block, "listDocs"),
           listPages: readBooleanFromBlock(block, "listPages"),
+          listTasks: readBooleanFromBlock(block, "listTasks"),
+          readTask: readBooleanFromBlock(block, "readTask"),
           readPage: readBooleanFromBlock(block, "readPage"),
           searchDocs: readBooleanFromBlock(block, "searchDocs"),
           getNavigation: readBooleanFromBlock(block, "getNavigation"),
           getCodeExamples: readBooleanFromBlock(block, "getCodeExamples"),
           getConfigSchema: readBooleanFromBlock(block, "getConfigSchema"),
+          getContext: readBooleanFromBlock(block, "getContext"),
         },
       };
     } catch (error) {
