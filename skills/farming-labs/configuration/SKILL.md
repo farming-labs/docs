@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, agent.evaluations, review, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -45,7 +45,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `feedback` | `boolean \| FeedbackConfig` | `false` for UI | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `telemetry` | `boolean \| DocsTelemetryConfig` | production-only enabled | Farming Labs maintainer telemetry for package adoption and coarse agent-surface usage |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
-| `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
+| `agent` | `DocsAgentConfig` | — | Compaction defaults and deterministic golden-task evaluations |
 | `review` | `boolean \| DocsReviewConfig` | `true` | Docs Review scoring, GitHub Actions workflow generation, and rule severities |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
@@ -74,12 +74,23 @@ review: {
     name: "agent-docs-review",
     mode: "warn",
   },
+  rules: {
+    agentContext: "warn",
+    commandHealth: "warn",
+    relatedCoverage: "suggestion",
+    configConfidence: "warn",
+    agentSurfaceDrift: "error",
+    goldenTasks: "warn",
+  },
 }
 ```
 
-The `agentContext` rule also validates structured page-level `agent` contracts. Raise it to
-`"warn"` or `"error"` when malformed contracts, commands without verification, or side effects
-without rollback guidance should carry more weight in CI.
+The `agentContext` rule validates structured page-level `agent` contracts and performs corpus-wide
+duplicate, boilerplate, generic-context, task-completeness, and applicability checks.
+`commandHealth` statically checks package managers, scripts, working directories, and known docs
+CLI commands without executing documentation snippets. `relatedCoverage`, `configConfidence`,
+`agentSurfaceDrift`, and `goldenTasks` cover related routes, evaluated-vs-static config loading,
+public-surface/schema parity, and deterministic task evaluation respectively.
 
 ---
 
@@ -443,6 +454,43 @@ The agent discovery JSON advertises this as `capabilities.structuredData`.
 Use the `cli` skill when the user asks about `docs robots generate` flags.
 
 ---
+
+## Golden agent evaluations
+
+Use `agent.evaluations.tasks` when doctor and review should measure actual retrieval usefulness.
+Evaluation is deterministic and offline: it checks ranked source retrieval, canonical citations,
+framework/version selection, executable code-fence metadata, and exact UTF-8 context budgets.
+
+```ts
+agent: {
+  evaluations: {
+    tokenBudget: 4_000,
+    topK: 3,
+    tasks: [{
+      id: "next-16-install",
+      query: "Install the docs framework in Next.js 16",
+      filters: { framework: "nextjs", version: "16" },
+      expect: {
+        relevantSources: ["/docs/installation"],
+        forbiddenSources: ["/docs/legacy-installation"],
+        maxFirstRelevantRank: 1,
+        examples: [{
+          source: "/docs/installation",
+          language: "bash",
+          packageManager: "pnpm",
+          runnable: true,
+          includes: ["pnpm add @farming-labs/docs"],
+        }],
+        minUsefulByteRatio: 0.7,
+      },
+    }],
+  },
+},
+```
+
+`tokenBudget` and `topK` can be set globally or per task. `requiredCitations` defaults to
+`relevantSources`; `allowedSources`, `minRecallAtK`, and `maxFirstRelevantRank` tighten retrieval
+expectations. No configured tasks means `unmeasured`, never a passing score.
 
 ## Agent compaction
 

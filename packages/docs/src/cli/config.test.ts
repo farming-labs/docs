@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   extractNestedObjectLiteral,
+  loadDocsConfigModuleResult,
   readBooleanProperty,
   readTopLevelBooleanProperty,
   readEnvReferenceProperty,
@@ -198,5 +199,45 @@ describe("property readers", () => {
       'apiKeyEnv: "DOCS_CLOUD_API_KEY"',
     );
     expect(extractNestedObjectLiteral(content, ["sitemap"])).toContain("enabled: true");
+  });
+});
+
+describe("loadDocsConfigModuleResult", () => {
+  it("evaluates a plain config export", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    writeFileSync(
+      join(rootDir, "docs.config.js"),
+      'export default { entry: "guide", search: true };\n',
+      "utf-8",
+    );
+
+    await expect(loadDocsConfigModuleResult(rootDir, undefined, { silent: true })).resolves.toEqual(
+      {
+        status: "evaluated",
+        path: join(rootDir, "docs.config.js"),
+        config: { entry: "guide", search: true },
+      },
+    );
+  });
+
+  it.each([
+    ["an array", "export default [];\n"],
+    ["an array beside named exports", "export const helper = true;\nexport default [];\n"],
+    ["a Date instance", "export default new Date(0);\n"],
+    ["a class instance", "class Config {}\nexport default new Config();\n"],
+    ["null", "export default null;\n"],
+  ])("falls back when the config exports %s", async (_label, source) => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    writeFileSync(join(rootDir, "docs.config.js"), source, "utf-8");
+
+    await expect(
+      loadDocsConfigModuleResult(rootDir, undefined, { silent: true }),
+    ).resolves.toMatchObject({
+      status: "static-fallback",
+      path: join(rootDir, "docs.config.js"),
+      error: "The config module did not export a plain object.",
+    });
   });
 });

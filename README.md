@@ -147,14 +147,22 @@ Expected output looks like:
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 92/105 (Agent-ready)
+Score: 82% (Agent-ready)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 10/41 pages (24%)
+Useful Agent blocks: 8/14 • 6/12 actionable pages task-complete
+Golden tasks: 3/4 passed (88/100)
 ```
 
 The command checks docs config resolution, content discovery, API route wiring, public agent routes,
 `llms.txt`, sitemap routes, `robots.txt`, `skill.md`, MCP, search, feedback, page metadata, and
-generated `agent.md` freshness.
+generated `agent.md` freshness. Its usefulness checks also detect repeated or generic `<Agent>`
+blocks, incomplete task guidance, framework/version ambiguity, stale commands, missing related
+pages, low-confidence config loading, and drift between discovery, config, and the public schema.
+
+Configure `agent.evaluations.tasks` to run deterministic golden tasks for retrieval recall,
+citations, framework/version selection, executable examples, and context-budget usage. An empty
+task list is reported as unmeasured instead of receiving credit.
 
 Hosted checks request the public agent routes and verify the MCP initialize handshake. Use `--json`
 when the result needs to feed CI, dashboards, GitHub Actions summaries, or another system.

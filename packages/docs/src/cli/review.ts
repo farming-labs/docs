@@ -4,11 +4,31 @@ import path from "node:path";
 import matter from "gray-matter";
 import pc from "picocolors";
 import {
+  DEFAULT_DOCS_API_ROUTE,
+  DEFAULT_DOCS_CONFIG_ROUTE,
+  DOCS_CONFIG_MAP_TOP_LEVEL_KEYS,
+  buildDocsAgentDiscoverySpec,
+  buildDocsConfigMap,
+} from "../agent.js";
+import {
+  PAGE_AGENT_CONTRACT_FIELDS,
   getPageAgentFrontmatterIssues,
   hasStructuredPageAgentContract,
   normalizePageAgentFrontmatter,
 } from "../agent-contract.js";
-import type { DocsConfig, DocsReviewCiMode } from "../types.js";
+import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
+import {
+  analyzeAgentUsefulness,
+  createAgentUsefulnessPagesFromMcp,
+  type AgentUsefulnessMetrics,
+} from "../agent-usefulness.js";
+import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
+import {
+  createFilesystemDocsMcpSource,
+  getDocsConfigSchema,
+  resolveDocsMcpConfig,
+} from "../mcp.js";
+import type { DocsReviewCiMode } from "../types.js";
 import {
   ensureDocsReviewWorkflow,
   readDocsReviewConfigFromSource,
@@ -16,11 +36,12 @@ import {
   type ResolvedDocsReviewConfig,
 } from "../review.js";
 import {
-  loadDocsConfigModule,
+  loadDocsConfigModuleResultWithProjectEnv,
   readTopLevelStringProperty,
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
+import { detectFramework } from "./utils.js";
 
 type ReviewFindingSeverity = "error" | "warn" | "suggestion";
 
@@ -41,20 +62,34 @@ export interface ParsedReviewArgs extends ReviewOptions {
 
 export interface DocsReviewFinding {
   rule: string;
+  code?: string;
   severity: ReviewFindingSeverity;
   file: string;
   line?: number;
   message: string;
 }
 
-export interface DocsReviewReport {
-  score: number;
+interface DocsReviewReportBase {
   threshold: number;
   mode: DocsReviewCiMode | "local";
   reviewedFiles: string[];
   changedFiles: string[];
   findings: DocsReviewFinding[];
 }
+
+export interface DocsReviewMeasuredReport extends DocsReviewReportBase {
+  status: "measured";
+  score: number;
+  usefulness?: AgentUsefulnessMetrics;
+  evaluations?: DocsGoldenTasksReport;
+}
+
+export interface DocsReviewDisabledReport extends DocsReviewReportBase {
+  status: "disabled";
+  score: null;
+}
+
+export type DocsReviewReport = DocsReviewMeasuredReport | DocsReviewDisabledReport;
 
 interface DocsPageFile {
   relativePath: string;
@@ -63,7 +98,7 @@ interface DocsPageFile {
   markdownRoute: string;
 }
 
-const DOCS_FILE_PATTERN = /\.(?:md|mdx)$/;
+const DOCS_FILE_PATTERN = /\.(?:md|mdx|svx)$/;
 const IGNORED_DIRS = new Set([
   ".git",
   ".next",
@@ -75,6 +110,40 @@ const IGNORED_DIRS = new Set([
   "node_modules",
   "out",
 ]);
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function resolveGoldenEvaluationTasks(
+  evaluationInput: unknown,
+): Parameters<typeof runDocsGoldenTasks>[1] {
+  if (evaluationInput === undefined || typeof evaluationInput === "boolean") return undefined;
+  if (!isPlainRecord(evaluationInput)) {
+    return { evaluationConfig: evaluationInput } as unknown as Parameters<
+      typeof runDocsGoldenTasks
+    >[1];
+  }
+  if (evaluationInput.enabled === false) return undefined;
+  if ("enabled" in evaluationInput && typeof evaluationInput.enabled !== "boolean") {
+    return evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1];
+  }
+  if (!("tasks" in evaluationInput)) return undefined;
+
+  const runtimeTasks = evaluationInput.tasks;
+  if (!Array.isArray(runtimeTasks)) {
+    return runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1];
+  }
+
+  return runtimeTasks.map((task) => {
+    if (!isPlainRecord(task)) return task;
+    return {
+      ...task,
+      tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
+      topK: task.topK ?? evaluationInput.topK,
+    };
+  }) as Parameters<typeof runDocsGoldenTasks>[1];
+}
 
 export function parseReviewArgs(argv: string[]): ParsedReviewArgs {
   const parsed: ParsedReviewArgs = {};
@@ -160,8 +229,8 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
   const rootDir = process.cwd();
   const configPath = resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = readFileSync(configPath, "utf-8");
-  const loadedConfig = await loadDocsConfigModule(rootDir, options.configPath);
-  const config = loadedConfig?.config;
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
   const reviewInput = config?.review ?? readDocsReviewConfigFromSource(configContent);
   const review = withReviewOptionOverrides(
     resolveDocsReviewConfig(reviewInput),
@@ -185,8 +254,9 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
   }
 
   if (!review.enabled) {
-    const report: DocsReviewReport = {
-      score: 100,
+    const report: DocsReviewDisabledReport = {
+      status: "disabled",
+      score: null,
       threshold: review.score.threshold,
       mode: options.ci ? review.ci.mode : "local",
       reviewedFiles: [],
@@ -214,6 +284,18 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
     rootDir,
     contentDir,
   });
+  const mcpSource = createFilesystemDocsMcpSource({
+    rootDir,
+    entry,
+    contentDir,
+    siteTitle: typeof config?.nav?.title === "string" ? config.nav.title : "Documentation",
+  });
+  const corpusPages = await Promise.resolve(mcpSource.getPages());
+  const usefulness = analyzeAgentUsefulness({
+    rootDir,
+    pages: createAgentUsefulnessPagesFromMcp(rootDir, corpusPages),
+    projectFramework: detectFramework(rootDir) ?? undefined,
+  });
   const findings = collectReviewFindings({
     rootDir,
     entry,
@@ -221,15 +303,125 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
     files: relevantFiles,
     review,
   });
+  const relevantSet = new Set(relevantFiles);
+  for (const issue of usefulness.findings) {
+    if (!relevantSet.has(issue.file)) continue;
+    pushFinding(findings, review, {
+      rule:
+        issue.category === "command"
+          ? "commandHealth"
+          : issue.category === "related"
+            ? "relatedCoverage"
+            : "agentContext",
+      code: issue.code,
+      severity:
+        issue.severity === "warning" ? "warn" : issue.severity === "error" ? "error" : "suggestion",
+      file: issue.file,
+      line: issue.line,
+      message: issue.message,
+    });
+  }
+
+  const evaluationInput = config?.agent?.evaluations;
+  const evaluationTasks = resolveGoldenEvaluationTasks(evaluationInput);
+  const evaluations = await runDocsGoldenTasks(corpusPages, evaluationTasks);
+  if (relevantFiles.length > 0 && evaluations.status === "unmeasured") {
+    pushFinding(findings, review, {
+      rule: "goldenTasks",
+      code: "golden-tasks-unmeasured",
+      severity: "warn",
+      file: toPosixPath(path.relative(rootDir, configPath)),
+      message:
+        evaluationInput === false ||
+        (typeof evaluationInput === "object" && evaluationInput.enabled === false)
+          ? "Golden agent tasks are disabled, so retrieval usefulness is unmeasured."
+          : "No golden agent tasks are configured; retrieval, citations, version selection, executable examples, and token usage are unmeasured.",
+    });
+  }
+  for (const task of evaluations.tasks.filter((task) => !task.passed)) {
+    pushFinding(findings, review, {
+      rule: "goldenTasks",
+      code: "golden-task-failed",
+      severity: "warn",
+      file: toPosixPath(path.relative(rootDir, configPath)),
+      message: `Golden task ${JSON.stringify(task.id)} scored ${task.score}/100: ${task.issues.join(" ")}`,
+    });
+  }
+  if (configLoad.status === "static-fallback") {
+    pushFinding(findings, review, {
+      rule: "configConfidence",
+      code: "config-static-fallback",
+      severity: "warn",
+      file: toPosixPath(path.relative(rootDir, configPath)),
+      message: `docs.config could not be evaluated; review used partial static parsing. ${configLoad.error}`,
+    });
+  } else {
+    const evaluatedConfig = configLoad.config;
+    const searchEnabled =
+      evaluatedConfig.search !== false &&
+      !(typeof evaluatedConfig.search === "object" && evaluatedConfig.search?.enabled === false);
+    const mcp = resolveDocsMcpConfig(evaluatedConfig.mcp, {
+      defaultName:
+        typeof evaluatedConfig.nav?.title === "string" ? evaluatedConfig.nav.title : undefined,
+    });
+    const discovery = buildDocsAgentDiscoverySpec({
+      origin: "http://localhost",
+      entry,
+      search: evaluatedConfig.search,
+      mcp,
+    });
+    const configuredAgentReviewPaths = Object.values(buildDocsConfigMap(evaluatedConfig).pointers)
+      .map((pointer) => pointer.path)
+      .filter(
+        (optionPath) =>
+          optionPath === "agent" ||
+          optionPath.startsWith("agent.") ||
+          optionPath === "review" ||
+          optionPath.startsWith("review."),
+      );
+    const drift = analyzeAgentSurfaceDrift({
+      configOptionPaths: [
+        ...new Set([...DOCS_CONFIG_MAP_TOP_LEVEL_KEYS, ...configuredAgentReviewPaths]),
+      ],
+      schemaOptions: getDocsConfigSchema().options,
+      agentContractFields: PAGE_AGENT_CONTRACT_FIELDS,
+      discovery,
+      expected: {
+        entry,
+        search: {
+          enabled: searchEnabled,
+          endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+        },
+        mcp: { enabled: mcp.enabled, endpoint: mcp.route, tools: mcp.tools },
+        routes: {
+          "api.docs": DEFAULT_DOCS_API_ROUTE,
+          "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
+          "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+        },
+      },
+    });
+    for (const issue of drift) {
+      pushFinding(findings, review, {
+        rule: "agentSurfaceDrift",
+        code: issue.code,
+        severity: "error",
+        file: toPosixPath(path.relative(rootDir, configPath)),
+        message: issue.message,
+      });
+    }
+  }
   const score = calculateReviewScore(findings, review);
   const mode = options.ci ? review.ci.mode : "local";
-  const report: DocsReviewReport = {
+  const report: DocsReviewMeasuredReport = {
+    status: "measured",
     score,
     threshold: review.score.threshold,
     mode,
     reviewedFiles: relevantFiles,
     changedFiles,
     findings,
+    usefulness: usefulness.metrics,
+    evaluations,
   };
 
   if (options.json) {
@@ -557,7 +749,7 @@ function calculateReviewScore(
   return Math.max(0, 100 - penalty);
 }
 
-function printReviewReport(report: DocsReviewReport) {
+function printReviewReport(report: DocsReviewMeasuredReport) {
   const counts = countFindings(report.findings);
   const modeLabel = report.mode === "local" ? "local" : report.mode;
 
@@ -571,11 +763,26 @@ function printReviewReport(report: DocsReviewReport) {
   console.log(
     `Findings: ${counts.error} error${counts.error === 1 ? "" : "s"}, ${counts.warn} warning${counts.warn === 1 ? "" : "s"}, ${counts.suggestion} suggestion${counts.suggestion === 1 ? "" : "s"}`,
   );
+  if (report.usefulness) {
+    console.log(
+      `Useful Agent blocks: ${report.usefulness.agentBlocks.useful}/${report.usefulness.agentBlocks.total}; task-complete pages: ${report.usefulness.taskCompleteness.completePages}/${report.usefulness.actionablePages}`,
+    );
+  }
+  if (report.evaluations) {
+    console.log(
+      `Golden tasks: ${report.evaluations.status === "unmeasured" ? "unmeasured" : `${report.evaluations.passedTaskCount}/${report.evaluations.taskCount} passed (${report.evaluations.score}/100)`}`,
+    );
+  }
 
-  if (report.reviewedFiles.length === 0) {
+  if (report.reviewedFiles.length === 0 && report.findings.length === 0) {
     console.log("");
     console.log(pc.green("No docs changes detected. Skipping review."));
     return;
+  }
+
+  if (report.reviewedFiles.length === 0) {
+    console.log("");
+    console.log(pc.yellow("No docs files changed; reporting project-wide findings."));
   }
 
   if (report.findings.length === 0) {
@@ -643,10 +850,19 @@ function selectReviewFiles(options: {
     return Array.from(pageFiles).sort();
   }
 
-  return options.changedFiles
-    .map(toPosixPath)
-    .filter((file) => pageFiles.has(file))
-    .sort();
+  const selected = new Set<string>();
+  for (const changedFile of options.changedFiles.map(toPosixPath)) {
+    if (pageFiles.has(changedFile)) {
+      selected.add(changedFile);
+      continue;
+    }
+    if (!changedFile.endsWith("/agent.md") && changedFile !== "agent.md") continue;
+    const sibling = options.pages.find(
+      (page) => path.posix.dirname(page.relativePath) === path.posix.dirname(changedFile),
+    );
+    if (sibling) selected.add(sibling.relativePath);
+  }
+  return Array.from(selected).sort();
 }
 
 function getChangedFiles(rootDir: string, options: ReviewOptions): string[] {
@@ -683,7 +899,9 @@ function scanDocsPages(rootDir: string, contentDir: string, entry: string): Docs
   const contentRoot = path.isAbsolute(contentDir) ? contentDir : path.join(rootDir, contentDir);
   if (!existsSync(contentRoot)) return [];
 
-  const files = listFiles(contentRoot).filter((file) => DOCS_FILE_PATTERN.test(file));
+  const files = listFiles(contentRoot).filter(
+    (file) => DOCS_FILE_PATTERN.test(file) && path.basename(file) !== "agent.md",
+  );
   return files.map((absolutePath) => {
     const relativeToContent = toPosixPath(path.relative(contentRoot, absolutePath));
     const relativePath = toPosixPath(path.relative(rootDir, absolutePath));
@@ -724,10 +942,14 @@ function listFiles(dir: string): string[] {
 }
 
 function docsSlugFromFile(relativePath: string): string {
-  const withoutExt = relativePath.replace(/\.(?:md|mdx)$/, "");
-  if (withoutExt === "page" || withoutExt === "index") return "";
-  if (withoutExt.endsWith("/page") || withoutExt.endsWith("/index")) {
-    return withoutExt.replace(/\/(?:page|index)$/, "");
+  const withoutExt = relativePath.replace(/\.(?:md|mdx|svx)$/, "");
+  if (withoutExt === "page" || withoutExt === "+page" || withoutExt === "index") return "";
+  if (
+    withoutExt.endsWith("/page") ||
+    withoutExt.endsWith("/+page") ||
+    withoutExt.endsWith("/index")
+  ) {
+    return withoutExt.replace(/\/(?:\+?page|index)$/, "");
   }
   return withoutExt;
 }

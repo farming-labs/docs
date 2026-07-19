@@ -2615,11 +2615,82 @@ export interface DocsAgentCompactConfig {
   protectJson?: boolean;
 }
 
+export interface DocsAgentGoldenTaskFilters {
+  /** Limit retrieval to a framework such as `nextjs`, `astro`, or `nuxt`. */
+  framework?: string;
+  /** Limit retrieval to an exact documented version. */
+  version?: string;
+  /** Limit retrieval to a locale. */
+  locale?: string;
+}
+
+export interface DocsAgentGoldenTaskExpectation {
+  /** Canonical page or section URLs that should answer this task. */
+  relevantSources: string[];
+  /** Additional sources that may be cited without reducing precision. */
+  allowedSources?: string[];
+  /** Sources that must not be selected, for example an obsolete version. */
+  forbiddenSources?: string[];
+  /** Citations that must appear. Defaults to `relevantSources`. */
+  requiredCitations?: string[];
+  /** Minimum relevant-source recall in the top K results. Defaults to `1`. */
+  minRecallAtK?: number;
+  /** Maximum acceptable rank for the first relevant source. Defaults to `topK`. */
+  maxFirstRelevantRank?: number;
+  /** Runnable examples that must be found in retrieved context. */
+  examples?: DocsAgentGoldenExpectedExample[];
+  /** Minimum share of context bytes that must come from relevant sources. */
+  minUsefulByteRatio?: number;
+}
+
+export interface DocsAgentGoldenExpectedExample {
+  /** Canonical page or section URL containing the example. */
+  source?: string;
+  language?: string;
+  framework?: string;
+  packageManager?: string;
+  title?: string;
+  /** Defaults to true. Set false for an intentionally non-runnable example. */
+  runnable?: boolean;
+  /** Literal fragments that must occur in the example. */
+  includes?: string[];
+}
+
+export interface DocsAgentGoldenTask {
+  /** Stable identifier shown in doctor/review reports. */
+  id: string;
+  /** User-shaped retrieval query. */
+  query: string;
+  /** Optional retrieval scope. */
+  filters?: DocsAgentGoldenTaskFilters;
+  /** Conservative context budget. Uses the MCP context UTF-8 accounting strategy. */
+  tokenBudget?: number;
+  /** Number of ranked search results to evaluate. */
+  topK?: number;
+  /** Deterministic expectations used to score the task. */
+  expect: DocsAgentGoldenTaskExpectation;
+}
+
+export interface DocsAgentEvaluationsConfig {
+  /** Enable deterministic golden-task evaluation. */
+  enabled?: boolean;
+  /** Default conservative context budget for tasks that omit `tokenBudget`. */
+  tokenBudget?: number;
+  /** Default retrieval depth for tasks that omit `topK`. */
+  topK?: number;
+  /** Golden tasks evaluated offline by `docs doctor` and `docs review`. */
+  tasks?: DocsAgentGoldenTask[];
+}
+
 export interface DocsAgentConfig {
   /**
    * Defaults for `docs agent compact`.
    */
   compact?: DocsAgentCompactConfig;
+  /**
+   * Deterministic retrieval, citation, version, example, and token-budget evaluations.
+   */
+  evaluations?: boolean | DocsAgentEvaluationsConfig;
 }
 
 export type DocsReviewSeverity = "off" | "suggestion" | "warn" | "error";
@@ -2643,6 +2714,16 @@ export interface DocsReviewRulesConfig {
   runnableMetadata?: DocsReviewSeverity;
   /** Validate structured page agent contracts and suggest context for implementation-heavy pages. */
   agentContext?: DocsReviewSeverity;
+  /** Statically validate commands referenced by agent contracts and runnable examples. */
+  commandHealth?: DocsReviewSeverity;
+  /** Require useful related-page coverage on actionable docs pages. */
+  relatedCoverage?: DocsReviewSeverity;
+  /** Report when docs.config could not be evaluated and only partial static parsing is available. */
+  configConfidence?: DocsReviewSeverity;
+  /** Detect disagreement between discovery, resolved config, and the public config schema. */
+  agentSurfaceDrift?: DocsReviewSeverity;
+  /** Run deterministic agent golden tasks and report failed or unmeasured behavior. */
+  goldenTasks?: DocsReviewSeverity;
 }
 
 export interface DocsReviewScoreConfig {

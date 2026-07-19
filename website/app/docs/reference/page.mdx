@@ -55,7 +55,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `observability` | `boolean \| DocsObservabilityConfig`          | `false`          | Trace event stream for Ask AI and MCP runs, including spans, timing, status, and errors |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false` for UI   | Human page feedback UI; agent feedback endpoints are default-on unless opted out     |
-| `agent`       | `DocsAgentConfig`                               | —                | Defaults for `docs agent compact` and related machine-docs workflows                 |
+| `agent`       | `DocsAgentConfig`                               | —                | Compaction defaults and deterministic agent usefulness evaluations                   |
 | `review`      | `boolean \| DocsReviewConfig`                   | `true`           | Docs Review scoring, rule severity, and GitHub Actions workflow generation           |
 | `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
@@ -534,6 +534,34 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 
 ---
 
+## `DocsAgentConfig`
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `compact` | `DocsAgentCompactConfig` | Defaults for `docs agent compact` |
+| `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Deterministic golden tasks used by `docs doctor` and `docs review` |
+
+### `DocsAgentEvaluationsConfig`
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `enabled` | `boolean` | `true` | Enable configured golden-task evaluation |
+| `tokenBudget` | `number` | `4000` | Default hard UTF-8 context-byte ceiling |
+| `topK` | `number` | `5` | Default ranked retrieval depth |
+| `tasks` | `DocsAgentGoldenTask[]` | `[]` | Representative tasks; an empty list is reported as unmeasured |
+
+Each task requires `id`, `query`, and `expect.relevantSources`. It can set `filters.framework`,
+`filters.version`, `filters.locale`, and per-task `tokenBudget` or `topK`. Expectations can include
+`allowedSources`, `forbiddenSources`, `requiredCitations`, `minRecallAtK`,
+`maxFirstRelevantRank`, `minUsefulByteRatio`, and runnable code-fence matches through `examples`.
+
+The evaluator is offline and deterministic. It does not execute commands; it measures retrieval,
+canonical citation integrity, framework/version selection, executable example metadata, and exact
+UTF-8 context usage. See [Golden agent evaluations](/docs/configuration#golden-agent-evaluations)
+for a complete configuration example.
+
+---
+
 ## `DocsReviewConfig`
 
 Docs Review configuration for changed docs files, score thresholds, and GitHub Actions behavior.
@@ -587,7 +615,12 @@ export default defineDocs({
 | `configExamples` | `"warn"` | Check config examples when possible |
 | `codeFenceMetadata` | `"warn"` | Check code fences for metadata such as `title` |
 | `runnableMetadata` | `"warn"` | Check runnable snippets for package manager metadata |
-| `agentContext` | `"suggestion"` | Validate structured agent contracts and suggest `<Agent>` blocks or sibling `agent.md` where helpful |
+| `agentContext` | `"warn"` | Validate structured contracts and detect duplicate, generic, incomplete, or ambiguous agent context |
+| `commandHealth` | `"warn"` | Statically validate package managers, scripts, working directories, and docs CLI commands |
+| `relatedCoverage` | `"suggestion"` | Check valid related-page coverage for actionable docs |
+| `configConfidence` | `"warn"` | Report partial static fallback when the config module cannot be evaluated |
+| `agentSurfaceDrift` | `"error"` | Detect discovery, resolved config, contract, route, MCP tool, and schema drift |
+| `goldenTasks` | `"warn"` | Report failed or unmeasured deterministic golden tasks |
 
 Rule severities accept `"off"`, `"suggestion"`, `"warn"`, or `"error"`.
 

@@ -1,6 +1,6 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits, export static Agent Bundles, compact agent docs, validate code blocks, generate AGENTS.md, sitemaps, and robots.txt, sync search indexes, and run MCP. Use for init, deploy, upgrade, doctor, agent export, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags. Covers framework detection and package managers.
+description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits and docs review checks, export static Agent Bundles, compact agent docs, validate code blocks, generate AGENTS.md, sitemaps, and robots.txt, sync search indexes, and run MCP. Use for init, deploy, upgrade, doctor, review, agent export, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags. Covers framework detection and package managers.
 ---
 
 # @farming-labs/docs — CLI
@@ -313,7 +313,10 @@ The `env` map injects runtime env names from local test env vars. Do not put act
 ## Docs Review
 
 Use `docs review` to score changed docs files, check broken internal links, required frontmatter,
-code fence metadata, runnable snippet metadata, and agent-context suggestions.
+code fence metadata, runnable snippet metadata, and corpus-aware agent usefulness. It detects copied
+or generic Agent blocks, incomplete task contracts, framework/version ambiguity, stale commands,
+missing related routes, low-confidence config loading, public-surface drift, and failed or
+unmeasured golden tasks.
 
 ```bash
 pnpm exec docs review
@@ -666,7 +669,16 @@ What it checks:
 - agent feedback, which is enabled by default and can be explicitly opted out
 - page metadata
 - explicit agent-friendly pages
+- duplicate, boilerplate, or generic `<Agent>` blocks across the docs corpus
+- task prerequisites, expected results, recovery steps, and applicability ambiguity
+- static command health and related-page task coverage
+- config loading confidence and discovery/config/schema drift
+- configured golden tasks for retrieval, citations, version selection, examples, and budgets
 - generated `agent.md` freshness and `agent.compact` defaults
+
+Command checks never execute arbitrary commands from docs. Golden evaluations are also offline and
+deterministic. Configure them under `agent.evaluations.tasks`; when no tasks exist, doctor reports
+the suite as `unmeasured` and awards no usefulness credit.
 
 With `--url`, `docs doctor --agent` also probes the deployed public agent surface:
 
@@ -688,7 +700,7 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
 `mcp-session-id`, calls `tools/list`, and expects `list_docs`, `list_pages`, `get_navigation`,
 `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, and `get_context`. Hosted checks
-raise the agent max score from `105` to `145`.
+add weighted evidence while the reported agent score remains normalized to `100%`.
 
 Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
 `hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.
@@ -698,9 +710,11 @@ Expected shape of the output:
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 92/105 (Agent-ready)
+Score: 82% (Agent-ready)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 10/41 pages (24%)
+Useful Agent blocks: 8/14 • 6/12 actionable pages task-complete
+Golden tasks: 3/4 passed (88/100)
 
 PASS Docs API route (10/10)
 WARN Skill document (3/5)

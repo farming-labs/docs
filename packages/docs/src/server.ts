@@ -45,9 +45,11 @@ export {
   DEFAULT_DOCS_MCP_CORS_EXPOSED_HEADERS,
   DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS,
   DEFAULT_DOCS_MCP_MAX_BODY_BYTES,
+  DOCS_CONFIG_SCHEMA_OPTIONS,
   createDocsMcpHttpHandler,
   createDocsMcpServer,
   createFilesystemDocsMcpSource,
+  getDocsConfigSchema,
   normalizeDocsMcpRoute,
   resolveDocsMcpConfig,
   runDocsMcpStdio,
@@ -80,6 +82,23 @@ export {
   resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
+export { runDocsGoldenTasks } from "./agent-evals.js";
+export type {
+  DocsGoldenCitationMetrics,
+  DocsGoldenEvaluationStatus,
+  DocsGoldenExampleMetrics,
+  DocsGoldenExampleResult,
+  DocsGoldenExpectedExample,
+  DocsGoldenRetrievedSource,
+  DocsGoldenRetrievalMetrics,
+  DocsGoldenSelectionMetrics,
+  DocsGoldenTask,
+  DocsGoldenTaskExpectation,
+  DocsGoldenTaskFilters,
+  DocsGoldenTaskReport,
+  DocsGoldenTasksReport,
+  DocsGoldenUsageMetrics,
+} from "./agent-evals.js";
 export {
   DEFAULT_OPEN_DOCS_PROMPT,
   DEFAULT_OPEN_DOCS_PROVIDER_IDS,

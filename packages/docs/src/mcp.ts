@@ -12,6 +12,13 @@ import {
   normalizePageAgentFrontmatter,
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
+import {
+  agentVersionConstraintMatches,
+  agentVersionConstraintsOverlap,
+  normalizeAgentFramework,
+  normalizeAgentLocale,
+  normalizeAgentScopeValues,
+} from "./agent-scope.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
@@ -140,8 +147,8 @@ export interface DocsMcpConfigSchemaOption {
   default?: string | boolean | number | null;
   description: string;
   docs?: string;
-  values?: string[];
-  children?: DocsMcpConfigSchemaOption[];
+  values?: readonly string[];
+  children?: readonly DocsMcpConfigSchemaOption[];
 }
 
 export interface DocsMcpConfigSchema {
@@ -209,6 +216,19 @@ export interface DocsMcpContextResult {
   candidateCount: number;
   context: string;
   sources: DocsMcpContextSource[];
+}
+
+export interface DocsMcpContextOptions {
+  pages: readonly DocsMcpPage[];
+  query: string;
+  framework?: string;
+  version?: string;
+  locale?: string;
+  tokenBudget: number;
+  entry?: string;
+  siteTitle?: string;
+  /** Maximum number of ranked, deduplicated candidates to render. Defaults to 50. */
+  maxResults?: number;
 }
 
 export interface DocsMcpPageNode {
@@ -346,13 +366,43 @@ export const DEFAULT_DOCS_MCP_CORS_EXPOSED_HEADERS: readonly string[] = Object.f
   "WWW-Authenticate",
 ]);
 
-const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
+function freezeDocsConfigSchemaOptions(
+  options: DocsMcpConfigSchemaOption[],
+): readonly DocsMcpConfigSchemaOption[] {
+  for (const option of options) {
+    if (option.values) Object.freeze(option.values);
+    if (option.children) {
+      freezeDocsConfigSchemaOptions([...option.children]);
+      Object.freeze(option.children);
+    }
+    Object.freeze(option);
+  }
+  return Object.freeze(options);
+}
+
+function freezeDocsConfigSchemaExamples(
+  examples: DocsMcpConfigSchema["examples"],
+): ReadonlyArray<Readonly<DocsMcpConfigSchema["examples"][number]>> {
+  for (const example of examples) Object.freeze(example);
+  return Object.freeze(examples);
+}
+
+const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
   {
     path: "entry",
     name: "entry",
     type: "string",
     default: "docs",
     description: 'URL path prefix for documentation routes, for example "docs" creates /docs.',
+    docs: "/docs/overview",
+  },
+  {
+    path: "docsPath",
+    name: "docsPath",
+    type: "string",
+    default: "same as entry",
+    description:
+      "Public route prefix for docs pages when it differs from the source entry directory.",
     docs: "/docs/overview",
   },
   {
@@ -363,6 +413,13 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     description:
       "Path to markdown content files. Adapters outside Next.js usually need this when content does not live under the route prefix.",
     docs: "/docs/overview",
+  },
+  {
+    path: "i18n",
+    name: "i18n",
+    type: "DocsI18nConfig",
+    description: "Locale discovery, default locale, and localized docs content configuration.",
+    docs: "/docs/reference",
   },
   {
     path: "staticExport",
@@ -378,6 +435,25 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     type: "DocsTheme",
     description: "Theme instance from a theme factory such as fumadocs() or pixelBorder().",
     docs: "/docs/customization/themes",
+  },
+  {
+    path: "analytics",
+    name: "analytics",
+    type: "boolean | DocsAnalyticsConfig",
+    default: false,
+    description: "Built-in privacy-aware product and agent surface analytics.",
+  },
+  {
+    path: "telemetry",
+    name: "telemetry",
+    type: "boolean | DocsTelemetryConfig",
+    description: "Project telemetry controls for framework and agent-surface events.",
+  },
+  {
+    path: "observability",
+    name: "observability",
+    type: "boolean | DocsObservabilityConfig",
+    description: "Tracing and observability callbacks for search, AI, and agent operations.",
   },
   {
     path: "nav",
@@ -479,11 +555,417 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     description: "Opt-in estimated reading time label with per-page overrides and label format.",
   },
   {
+    path: "lastUpdated",
+    name: "lastUpdated",
+    type: "boolean | LastUpdatedConfig",
+    description: "Last-updated metadata and labels derived from source history or page data.",
+  },
+  {
+    path: "ordering",
+    name: "ordering",
+    type: '"alphabetical" | "numeric" | OrderingItem[]',
+    description: "Navigation ordering strategy or explicit ordered navigation entries.",
+  },
+  {
     path: "agent",
     name: "agent",
     type: "DocsAgentConfig",
-    description: "Defaults for docs agent compact and generated agent-facing files.",
+    description: "Agent compaction defaults and deterministic usefulness evaluations.",
     docs: "/docs/getting-started/agent-ready-docs",
+    children: [
+      {
+        path: "agent.compact",
+        name: "compact",
+        type: "DocsAgentCompactConfig",
+        description: "Defaults for generated agent.md compaction.",
+        children: [
+          {
+            path: "agent.compact.apiKey",
+            name: "apiKey",
+            type: "string",
+            description: "Direct compaction provider API key; prefer apiKeyEnv.",
+          },
+          {
+            path: "agent.compact.apiKeyEnv",
+            name: "apiKeyEnv",
+            type: "string",
+            description: "Environment variable containing the compaction provider API key.",
+          },
+          {
+            path: "agent.compact.baseUrl",
+            name: "baseUrl",
+            type: "string",
+            description: "Compaction provider base URL.",
+          },
+          {
+            path: "agent.compact.model",
+            name: "model",
+            type: "string",
+            description: "Compaction model identifier.",
+          },
+          {
+            path: "agent.compact.aggressiveness",
+            name: "aggressiveness",
+            type: "number",
+            default: 0.3,
+            description: "Compression aggressiveness from 0 to 1.",
+          },
+          {
+            path: "agent.compact.maxOutputTokens",
+            name: "maxOutputTokens",
+            type: "number",
+            description: "Upper output token target.",
+          },
+          {
+            path: "agent.compact.minOutputTokens",
+            name: "minOutputTokens",
+            type: "number",
+            description: "Lower output token target.",
+          },
+          {
+            path: "agent.compact.protectJson",
+            name: "protectJson",
+            type: "boolean",
+            description: "Preserve JSON objects during compaction when supported.",
+          },
+        ],
+      },
+      {
+        path: "agent.evaluations",
+        name: "evaluations",
+        type: "boolean | DocsAgentEvaluationsConfig",
+        description:
+          "Deterministic golden tasks for retrieval, citation, version, example, and budget evaluation.",
+        children: [
+          {
+            path: "agent.evaluations.enabled",
+            name: "enabled",
+            type: "boolean",
+            default: true,
+            description: "Enable configured golden-task evaluation.",
+          },
+          {
+            path: "agent.evaluations.tokenBudget",
+            name: "tokenBudget",
+            type: "number",
+            default: 4000,
+            description: "Default hard UTF-8 context-byte ceiling for golden tasks.",
+          },
+          {
+            path: "agent.evaluations.topK",
+            name: "topK",
+            type: "number",
+            default: 5,
+            description: "Default number of ranked search results evaluated per task.",
+          },
+          {
+            path: "agent.evaluations.tasks",
+            name: "tasks",
+            type: "DocsAgentGoldenTask[]",
+            description: "Offline golden task fixtures evaluated by docs doctor and docs review.",
+            children: [
+              {
+                path: "agent.evaluations.tasks[]",
+                name: "task",
+                type: "DocsAgentGoldenTask",
+                description: "One golden task entry.",
+              },
+              {
+                path: "agent.evaluations.tasks[].id",
+                name: "id",
+                type: "string",
+                description: "Stable task identifier shown in diagnostics.",
+              },
+              {
+                path: "agent.evaluations.tasks[].query",
+                name: "query",
+                type: "string",
+                description: "User-shaped retrieval query.",
+              },
+              {
+                path: "agent.evaluations.tasks[].tokenBudget",
+                name: "tokenBudget",
+                type: "number",
+                description: "Per-task UTF-8 context-byte ceiling override.",
+              },
+              {
+                path: "agent.evaluations.tasks[].topK",
+                name: "topK",
+                type: "number",
+                description: "Per-task ranked retrieval depth override.",
+              },
+              {
+                path: "agent.evaluations.tasks[].filters",
+                name: "filters",
+                type: "DocsAgentGoldenTaskFilters",
+                description: "Framework, version, and locale retrieval scope.",
+                children: [
+                  {
+                    path: "agent.evaluations.tasks[].filters.framework",
+                    name: "framework",
+                    type: "string",
+                    description: "Required framework, such as nextjs or astro.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].filters.version",
+                    name: "version",
+                    type: "string",
+                    description: "Exact version requested by the task.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].filters.locale",
+                    name: "locale",
+                    type: "string",
+                    description: "Required locale.",
+                  },
+                ],
+              },
+              {
+                path: "agent.evaluations.tasks[].expect",
+                name: "expect",
+                type: "DocsAgentGoldenTaskExpectation",
+                description:
+                  "Deterministic sources, rank, citation, example, and budget expectations.",
+                children: [
+                  {
+                    path: "agent.evaluations.tasks[].expect.relevantSources",
+                    name: "relevantSources",
+                    type: "string[]",
+                    description: "Canonical page or section URLs that should answer the task.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.allowedSources",
+                    name: "allowedSources",
+                    type: "string[]",
+                    description: "Additional legitimate citations that do not reduce precision.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.forbiddenSources",
+                    name: "forbiddenSources",
+                    type: "string[]",
+                    description: "Sources that must not be retrieved or cited.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.requiredCitations",
+                    name: "requiredCitations",
+                    type: "string[]",
+                    description: "Citations that must appear; defaults to relevantSources.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.minRecallAtK",
+                    name: "minRecallAtK",
+                    type: "number",
+                    default: 1,
+                    description: "Minimum relevant-source recall in the top K results.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.maxFirstRelevantRank",
+                    name: "maxFirstRelevantRank",
+                    type: "number",
+                    description: "Maximum acceptable rank of the first relevant source.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.minUsefulByteRatio",
+                    name: "minUsefulByteRatio",
+                    type: "number",
+                    description: "Minimum share of context bytes supplied by relevant sources.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.examples",
+                    name: "examples",
+                    type: "DocsAgentGoldenExpectedExample[]",
+                    description: "Runnable examples that must be present in returned context.",
+                    children: [
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[]",
+                        name: "example",
+                        type: "DocsAgentGoldenExpectedExample",
+                        description: "One expected code example.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].source",
+                        name: "source",
+                        type: "string",
+                        description: "Canonical source URL containing the example.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].language",
+                        name: "language",
+                        type: "string",
+                        description: "Expected code-fence language.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].framework",
+                        name: "framework",
+                        type: "string",
+                        description: "Expected framework metadata.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].packageManager",
+                        name: "packageManager",
+                        type: "string",
+                        description: "Expected package-manager metadata.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].title",
+                        name: "title",
+                        type: "string",
+                        description: "Expected code-fence title metadata.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].runnable",
+                        name: "runnable",
+                        type: "boolean",
+                        default: true,
+                        description: "Whether the example must be marked runnable.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].includes",
+                        name: "includes",
+                        type: "string[]",
+                        description: "Literal code fragments that must appear.",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: "review",
+    name: "review",
+    type: "boolean | DocsReviewConfig",
+    description: "Docs review scoring, CI behavior, and diagnostic rule severities.",
+    docs: "/docs/reference",
+    children: [
+      {
+        path: "review.enabled",
+        name: "enabled",
+        type: "boolean",
+        default: true,
+        description: "Enable Docs Review.",
+      },
+      {
+        path: "review.score",
+        name: "score",
+        type: "DocsReviewScoreConfig",
+        description: "Healthy threshold and finding severity weights.",
+        children: [
+          {
+            path: "review.score.threshold",
+            name: "threshold",
+            type: "number",
+            default: 80,
+            description: "Minimum healthy review score.",
+          },
+          {
+            path: "review.score.weights",
+            name: "weights",
+            type: "{ error?: number; warn?: number; suggestion?: number }",
+            description: "Point deductions for each finding severity.",
+            children: [
+              {
+                path: "review.score.weights.error",
+                name: "error",
+                type: "number",
+                default: 20,
+                description: "Point deduction for an error finding.",
+              },
+              {
+                path: "review.score.weights.warn",
+                name: "warn",
+                type: "number",
+                default: 8,
+                description: "Point deduction for a warning finding.",
+              },
+              {
+                path: "review.score.weights.suggestion",
+                name: "suggestion",
+                type: "number",
+                default: 2,
+                description: "Point deduction for a suggestion finding.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        path: "review.ci",
+        name: "ci",
+        type: "boolean | DocsReviewCiConfig",
+        description: "GitHub Actions reporting and blocking behavior.",
+        children: [
+          {
+            path: "review.ci.enabled",
+            name: "enabled",
+            type: "boolean",
+            default: true,
+            description: "Enable review workflow generation.",
+          },
+          {
+            path: "review.ci.name",
+            name: "name",
+            type: "string",
+            default: "docs-review",
+            description: "GitHub Actions job and check name.",
+          },
+          {
+            path: "review.ci.mode",
+            name: "mode",
+            type: '"off" | "warn" | "block"',
+            default: "warn",
+            description: "Whether CI is disabled, advisory, or blocking.",
+            values: ["off", "warn", "block"],
+          },
+          {
+            path: "review.ci.annotations",
+            name: "annotations",
+            type: "boolean",
+            default: true,
+            description: "Emit GitHub workflow annotations.",
+          },
+          {
+            path: "review.ci.comment",
+            name: "comment",
+            type: "boolean",
+            default: true,
+            description: "Allow the official action or bot to post PR comments.",
+          },
+        ],
+      },
+      {
+        path: "review.rules",
+        name: "rules",
+        type: "DocsReviewRulesConfig",
+        description: "Per-rule severity overrides.",
+        children: [
+          ["brokenLinks", "error"],
+          ["frontmatter", "error"],
+          ["duplicateSlugs", "error"],
+          ["invalidMdx", "error"],
+          ["configExamples", "warn"],
+          ["codeFenceMetadata", "warn"],
+          ["runnableMetadata", "warn"],
+          ["agentContext", "warn"],
+          ["commandHealth", "warn"],
+          ["relatedCoverage", "suggestion"],
+          ["configConfidence", "warn"],
+          ["agentSurfaceDrift", "error"],
+          ["goldenTasks", "warn"],
+        ].map(([name, defaultValue]) => ({
+          path: `review.rules.${name}`,
+          name,
+          type: "DocsReviewSeverity",
+          default: defaultValue,
+          description: `Severity override for the ${name} review rule.`,
+          values: ["off", "suggestion", "warn", "error"],
+        })),
+      },
+    ],
   },
   {
     path: "pageActions",
@@ -926,7 +1408,10 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
   },
 ];
 
-const DOCS_CONFIG_SCHEMA_EXAMPLES: DocsMcpConfigSchema["examples"] = [
+export const DOCS_CONFIG_SCHEMA_OPTIONS: readonly DocsMcpConfigSchemaOption[] =
+  freezeDocsConfigSchemaOptions(DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE);
+
+const DOCS_CONFIG_SCHEMA_EXAMPLES_TEMPLATE: DocsMcpConfigSchema["examples"] = [
   {
     title: "Minimal config",
     code: `import { defineDocs } from "@farming-labs/docs";
@@ -986,6 +1471,10 @@ export default defineDocs({
 });`,
   },
 ];
+
+const DOCS_CONFIG_SCHEMA_EXAMPLES = freezeDocsConfigSchemaExamples(
+  DOCS_CONFIG_SCHEMA_EXAMPLES_TEMPLATE,
+);
 
 const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
@@ -3586,7 +4075,12 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
   }));
 }
 
-function getDocsConfigSchema(filters: { option?: string; query?: string }): DocsMcpConfigSchema {
+export function getDocsConfigSchema(
+  filters: {
+    option?: string;
+    query?: string;
+  } = {},
+): DocsMcpConfigSchema {
   const option = filters.option?.trim();
   const query = filters.query?.trim();
   let options = DOCS_CONFIG_SCHEMA_OPTIONS.map(cloneConfigSchemaOption);
@@ -3613,13 +4107,14 @@ function getDocsConfigSchema(filters: { option?: string; query?: string }): Docs
         : undefined,
     resultCount: countConfigSchemaOptions(options),
     options,
-    examples: DOCS_CONFIG_SCHEMA_EXAMPLES,
+    examples: DOCS_CONFIG_SCHEMA_EXAMPLES.map((example) => ({ ...example })),
   };
 }
 
 function cloneConfigSchemaOption(option: DocsMcpConfigSchemaOption): DocsMcpConfigSchemaOption {
   return {
     ...option,
+    values: option.values ? [...option.values] : undefined,
     children: option.children?.map(cloneConfigSchemaOption),
   };
 }
@@ -3635,7 +4130,7 @@ function selectConfigSchemaOptions(optionPath: string): DocsMcpConfigSchemaOptio
 }
 
 function filterConfigSchemaOptionsByQuery(
-  options: DocsMcpConfigSchemaOption[],
+  options: readonly DocsMcpConfigSchemaOption[],
   query: string,
 ): DocsMcpConfigSchemaOption[] {
   return options.flatMap((option) => {
@@ -3678,7 +4173,7 @@ function configSchemaOptionMatchesQuery(option: DocsMcpConfigSchemaOption, query
 }
 
 function flattenConfigSchemaOptions(
-  options: DocsMcpConfigSchemaOption[],
+  options: readonly DocsMcpConfigSchemaOption[],
 ): DocsMcpConfigSchemaOption[] {
   return options.flatMap((option) => [
     option,
@@ -3686,7 +4181,7 @@ function flattenConfigSchemaOptions(
   ]);
 }
 
-function countConfigSchemaOptions(options: DocsMcpConfigSchemaOption[]): number {
+function countConfigSchemaOptions(options: readonly DocsMcpConfigSchemaOption[]): number {
   return flattenConfigSchemaOptions(options).length;
 }
 
@@ -4338,54 +4833,86 @@ function getDocsMcpSourceMarkdown(page: DocsMcpPage): string {
   );
 }
 
-function normalizeDocsMcpFramework(value: string): string {
-  const normalized = value.toLowerCase().replace(/[^a-z0-9]/gu, "");
-  if (["next", "nextjs"].includes(normalized)) return "nextjs";
-  if (["tanstack", "tanstackstart"].includes(normalized)) return "tanstackstart";
-  if (["svelte", "sveltekit"].includes(normalized)) return "sveltekit";
-  return normalized;
+interface DocsMcpScopeField {
+  value?: string;
+  conflict: boolean;
+  matches: boolean;
 }
 
-function normalizeDocsMcpVersion(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/^v(?=\d)/u, "");
+interface DocsMcpEffectiveScope {
+  framework?: string;
+  version?: string;
+  locale?: string;
+  conflict: boolean;
+  matches: boolean;
 }
 
-function normalizeDocsMcpLocale(value: string): string {
-  return value.trim().toLowerCase().replace(/_/gu, "-");
+function resolveDocsMcpScopeField(
+  pageValue: string | undefined,
+  contractValue: string | string[] | undefined,
+  filter: string | undefined,
+  overlaps: (left: string, right: string) => boolean,
+  matchesFilter: (filterValue: string, candidate: string) => boolean,
+): DocsMcpScopeField {
+  const pageValues = normalizeAgentScopeValues(pageValue);
+  const contractValues = normalizeAgentScopeValues(contractValue);
+  const conflict =
+    pageValues.length > 0 &&
+    contractValues.length > 0 &&
+    !pageValues.some((topLevel) => contractValues.some((contract) => overlaps(topLevel, contract)));
+  const pageMatches =
+    !filter ||
+    pageValues.length === 0 ||
+    pageValues.some((candidate) => matchesFilter(filter, candidate));
+  const contractMatches =
+    !filter ||
+    contractValues.length === 0 ||
+    contractValues.some((candidate) => matchesFilter(filter, candidate));
+  const matchedContract = filter
+    ? contractValues.find((candidate) => matchesFilter(filter, candidate))
+    : undefined;
+
+  return {
+    conflict,
+    matches: !conflict && pageMatches && contractMatches,
+    value:
+      pageValues[0] ??
+      matchedContract ??
+      (contractValues.length === 1 ? contractValues[0] : undefined),
+  };
 }
 
-function pageMatchesDocsMcpContextScope(
+function resolveDocsMcpEffectiveScope(
   page: DocsMcpPage,
   filters: { framework?: string; version?: string; locale?: string },
-): boolean {
-  if (
-    filters.framework &&
-    page.framework &&
-    normalizeDocsMcpFramework(page.framework) !== normalizeDocsMcpFramework(filters.framework)
-  ) {
-    return false;
-  }
+): DocsMcpEffectiveScope {
+  const framework = resolveDocsMcpScopeField(
+    page.framework,
+    page.agent?.appliesTo?.framework,
+    filters.framework,
+    (left, right) => normalizeAgentFramework(left) === normalizeAgentFramework(right),
+    (filter, candidate) => normalizeAgentFramework(filter) === normalizeAgentFramework(candidate),
+  );
+  const version = resolveDocsMcpScopeField(
+    page.version,
+    page.agent?.appliesTo?.version,
+    filters.version,
+    agentVersionConstraintsOverlap,
+    agentVersionConstraintMatches,
+  );
+  const locale = page.locale?.trim() || undefined;
+  const localeMatches =
+    !filters.locale ||
+    !locale ||
+    normalizeAgentLocale(locale) === normalizeAgentLocale(filters.locale);
 
-  if (
-    filters.version &&
-    page.version &&
-    normalizeDocsMcpVersion(page.version) !== normalizeDocsMcpVersion(filters.version)
-  ) {
-    return false;
-  }
-
-  if (
-    filters.locale &&
-    page.locale &&
-    normalizeDocsMcpLocale(page.locale) !== normalizeDocsMcpLocale(filters.locale)
-  ) {
-    return false;
-  }
-
-  return true;
+  return {
+    framework: framework.value,
+    version: version.value,
+    locale,
+    conflict: framework.conflict || version.conflict,
+    matches: framework.matches && version.matches && localeMatches,
+  };
 }
 
 function getDocsMcpResultPageUrl(value: string): string {
@@ -4403,23 +4930,23 @@ function getDocsMcpResultAnchor(value: string): string | undefined {
   }
 }
 
-async function buildDocsMcpContext(options: {
-  pages: DocsMcpPage[];
-  query: string;
-  framework?: string;
-  version?: string;
-  locale?: string;
-  tokenBudget: number;
-  entry?: string;
-  siteTitle?: string;
-}): Promise<DocsMcpContextResult> {
-  const scopedPages = options.pages.filter((page) =>
-    pageMatchesDocsMcpContextScope(page, {
+export async function buildDocsMcpContext(
+  options: DocsMcpContextOptions,
+): Promise<DocsMcpContextResult> {
+  const scopedPageEntries = options.pages.flatMap((page) => {
+    const scope = resolveDocsMcpEffectiveScope(page, {
       framework: options.framework,
       version: options.version,
       locale: options.locale,
-    }),
-  );
+    });
+    return scope.matches && !scope.conflict ? [{ page, scope }] : [];
+  });
+  const scopedPages = scopedPageEntries.map(({ page }) => page);
+  const scopeByPage = new Map(scopedPageEntries.map(({ page, scope }) => [page, scope]));
+  const maxResults =
+    typeof options.maxResults === "number" && Number.isFinite(options.maxResults)
+      ? Math.max(1, Math.min(50, Math.floor(options.maxResults)))
+      : 50;
   const searchResults = await performDocsSearch({
     pages: toSearchSourcePages(scopedPages),
     query: options.query,
@@ -4458,28 +4985,32 @@ async function buildDocsMcpContext(options: {
     return true;
   });
 
-  const resolvedCandidates = candidates.flatMap((result) => {
-    const resultPageUrl = getDocsMcpResultPageUrl(result.url);
-    const page = findDocsPage(scopedPages, resultPageUrl, options.entry);
-    if (!page) return [];
+  const resolvedCandidates = candidates
+    .flatMap((result) => {
+      const resultPageUrl = getDocsMcpResultPageUrl(result.url);
+      const page = findDocsPage(scopedPages, resultPageUrl, options.entry);
+      if (!page) return [];
+      const scope = scopeByPage.get(page);
+      if (!scope) return [];
 
-    const document = upsertPageAgentContractMarkdown(getDocsMcpSourceMarkdown(page), page.agent);
-    const resultAnchor = getDocsMcpResultAnchor(result.url);
-    const selectedSection = resultAnchor
-      ? findDocsMarkdownSection(document, resultAnchor)
-      : result.section
-        ? findDocsMarkdownSection(document, result.section)
-        : undefined;
+      const document = upsertPageAgentContractMarkdown(getDocsMcpSourceMarkdown(page), page.agent);
+      const resultAnchor = getDocsMcpResultAnchor(result.url);
+      const selectedSection = resultAnchor
+        ? findDocsMarkdownSection(document, resultAnchor)
+        : result.section
+          ? findDocsMarkdownSection(document, result.section)
+          : undefined;
 
-    // A section result must resolve to the shared parser's real anchor. Never attach a
-    // stale or invented fragment to whole-page content.
-    if ((resultAnchor || result.section) && !selectedSection) return [];
+      // A section result must resolve to the shared parser's real anchor. Never attach a
+      // stale or invented fragment to whole-page content.
+      if ((resultAnchor || result.section) && !selectedSection) return [];
 
-    const rawContent = (selectedSection?.content ?? document).trim();
-    if (!rawContent) return [];
+      const rawContent = (selectedSection?.content ?? document).trim();
+      if (!rawContent) return [];
 
-    return [{ result, page, selectedSection, rawContent }];
-  });
+      return [{ result, page, scope, selectedSection, rawContent }];
+    })
+    .slice(0, maxResults);
 
   const maxUtf8Bytes = options.tokenBudget;
   const separator = "\n\n---\n\n";
@@ -4488,14 +5019,14 @@ async function buildDocsMcpContext(options: {
   const sources: DocsMcpContextSource[] = [];
   let usedUtf8Bytes = 0;
 
-  for (const { result, page, selectedSection, rawContent } of resolvedCandidates) {
+  for (const { result, page, scope, selectedSection, rawContent } of resolvedCandidates) {
     const anchor = selectedSection?.anchor;
     const sourceUrl = anchor ? `${page.url}#${anchor}` : page.url;
     const headerLines = [`## ${page.title}`, `Source: ${sourceUrl}`];
     if (selectedSection?.title) headerLines.push(`Section: ${selectedSection.title}`);
-    if (page.framework) headerLines.push(`Framework: ${page.framework}`);
-    if (page.version) headerLines.push(`Version: ${page.version}`);
-    if (page.locale) headerLines.push(`Locale: ${page.locale}`);
+    if (scope.framework) headerLines.push(`Framework: ${scope.framework}`);
+    if (scope.version) headerLines.push(`Version: ${scope.version}`);
+    if (scope.locale) headerLines.push(`Locale: ${scope.locale}`);
     const header = headerLines.join("\n");
     const separatorBytes = blocks.length === 0 ? 0 : separatorUtf8Bytes;
     const headerBytes = docsMcpUtf8Bytes(`${header}\n\n`);
@@ -4517,10 +5048,10 @@ async function buildDocsMcpContext(options: {
       anchor,
       sourcePath: page.sourcePath,
       lastModified: page.lastModified,
-      locale: page.locale,
-      framework: page.framework,
-      version: page.version,
-      tags: page.tags,
+      locale: scope.locale,
+      framework: scope.framework,
+      version: scope.version,
+      tags: page.tags ? [...page.tags] : undefined,
       score: result.score,
       content: limited.text,
       chars: limited.text.length,

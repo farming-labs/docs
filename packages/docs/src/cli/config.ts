@@ -382,6 +382,37 @@ export async function loadDocsConfigModule(
   explicitPath?: string,
   options: { silent?: boolean } = {},
 ): Promise<{ path: string; config: DocsConfig } | null> {
+  const result = await loadDocsConfigModuleResult(rootDir, explicitPath, options);
+  return result.status === "evaluated" ? { path: result.path, config: result.config } : null;
+}
+
+export type DocsConfigModuleLoadResult =
+  | { status: "evaluated"; path: string; config: DocsConfig }
+  | { status: "static-fallback"; path: string; error: string };
+
+function resolveDocsConfigModuleExport(loaded: unknown): unknown {
+  if (!loaded || typeof loaded !== "object" || Array.isArray(loaded)) return loaded;
+
+  const record = loaded as Record<string, unknown>;
+  return Object.prototype.hasOwnProperty.call(record, "default") ? record.default : loaded;
+}
+
+function isPlainDocsConfig(value: unknown): value is DocsConfig {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Load docs.config with an explicit confidence signal for diagnostics.
+ * Existing callers can keep using `loadDocsConfigModule`, which preserves the
+ * previous evaluated-config-or-null contract.
+ */
+export async function loadDocsConfigModuleResult(
+  rootDir: string,
+  explicitPath?: string,
+  options: { silent?: boolean } = {},
+): Promise<DocsConfigModuleLoadResult> {
   const configPath = resolveDocsConfigPath(rootDir, explicitPath);
 
   try {
@@ -389,21 +420,48 @@ export async function loadDocsConfigModule(
     const jiti = createJiti(import.meta.url, {
       moduleCache: false,
       fsCache: false,
-      interopDefault: true,
+      interopDefault: false,
     });
 
     const loaded = await jiti.import(configPath);
-    const config = ((loaded as { default?: unknown }).default ?? loaded) as DocsConfig | undefined;
-    if (!config || typeof config !== "object") return null;
+    const config = resolveDocsConfigModuleExport(loaded);
+    if (!isPlainDocsConfig(config)) {
+      return {
+        status: "static-fallback",
+        path: configPath,
+        error: "The config module did not export a plain object.",
+      };
+    }
 
-    return { path: configPath, config };
+    return { status: "evaluated", path: configPath, config };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     if (!options.silent && process.env.NODE_ENV !== "test") {
-      const message = error instanceof Error ? error.message : String(error);
       console.warn(
         `[docs] Could not evaluate ${configPath} as a module; falling back to static parsing. ${message}`,
       );
     }
-    return null;
+    return { status: "static-fallback", path: configPath, error: message };
+  }
+}
+
+/** Evaluate docs.config after loading project-local env files, then restore process.env. */
+export async function loadDocsConfigModuleResultWithProjectEnv(
+  rootDir: string,
+  explicitPath?: string,
+  options: { silent?: boolean } = {},
+): Promise<DocsConfigModuleLoadResult> {
+  const env = loadProjectEnv(rootDir);
+  const injectedKeys = Object.entries(env)
+    .filter(([key]) => process.env[key] === undefined)
+    .map(([key, value]) => {
+      process.env[key] = value;
+      return key;
+    });
+
+  try {
+    return await loadDocsConfigModuleResult(rootDir, explicitPath, options);
+  } finally {
+    for (const key of injectedKeys) delete process.env[key];
   }
 }

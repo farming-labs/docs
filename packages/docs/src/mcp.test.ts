@@ -4,10 +4,18 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "./types.js";
-import type { DocsMcpDocsPageSummary, DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
+import type {
+  DocsMcpConfigSchemaOption,
+  DocsMcpDocsPageSummary,
+  DocsMcpPage,
+  DocsMcpResolvedConfig,
+} from "./mcp.js";
 import {
+  DOCS_CONFIG_SCHEMA_OPTIONS,
+  buildDocsMcpContext,
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
+  getDocsConfigSchema,
   normalizeDocsMcpRoute,
   resolveDocsMcpConfig,
 } from "./mcp.js";
@@ -247,6 +255,138 @@ describe("resolveDocsMcpConfig", () => {
 
   it("normalizes custom routes", () => {
     expect(normalizeDocsMcpRoute("api/internal/docs/mcp/")).toBe("/api/internal/docs/mcp");
+  });
+});
+
+describe("MCP context and schema APIs", () => {
+  function page(slug: string, input: Partial<DocsMcpPage> = {}): DocsMcpPage {
+    const content = `# Scope guide\n\nUse the shared scope selection guide safely.\n`;
+    return {
+      slug,
+      url: `/docs/${slug}`,
+      title: `Scope guide ${slug}`,
+      content,
+      rawContent: content,
+      ...input,
+    };
+  }
+
+  function findSchemaOption(
+    options: readonly DocsMcpConfigSchemaOption[],
+    optionPath: string,
+  ): DocsMcpConfigSchemaOption | undefined {
+    for (const option of options) {
+      if (option.path === optionPath) return option;
+      const nested = option.children ? findSchemaOption(option.children, optionPath) : undefined;
+      if (nested) return nested;
+    }
+    return undefined;
+  }
+
+  it("rejects conflicting scopes and uses the same effective scope for filtering and output", async () => {
+    const pages = [
+      page("framework-conflict", {
+        framework: "nextjs",
+        version: "16",
+        agent: { appliesTo: { framework: "astro", version: "16" } },
+      }),
+      page("version-conflict", {
+        framework: "astro",
+        version: "16",
+        agent: { appliesTo: { framework: "astro", version: ">=17" } },
+      }),
+      page("top-level-intersection", {
+        framework: "nextjs",
+        version: ">=16 <17",
+        agent: {
+          appliesTo: { framework: ["nextjs", "astro"], version: ["16", "17"] },
+        },
+      }),
+      page("contract-multi", {
+        agent: {
+          appliesTo: { framework: ["nextjs", "astro"], version: ["15", "16"] },
+        },
+      }),
+    ];
+
+    const astro = await buildDocsMcpContext({
+      pages,
+      query: "shared scope selection guide",
+      framework: "astro",
+      version: "16",
+      tokenBudget: 8_000,
+    });
+    expect(astro.sources).toEqual([
+      expect.objectContaining({
+        pageUrl: "/docs/contract-multi",
+        framework: "astro",
+        version: "16",
+      }),
+    ]);
+
+    const next = await buildDocsMcpContext({
+      pages,
+      query: "shared scope selection guide",
+      framework: "next",
+      version: "v16",
+      tokenBudget: 8_000,
+    });
+    expect(
+      next.sources.map(({ pageUrl, framework, version }) => ({
+        pageUrl,
+        framework,
+        version,
+      })),
+    ).toEqual([
+      {
+        pageUrl: "/docs/contract-multi",
+        framework: "nextjs",
+        version: "16",
+      },
+      {
+        pageUrl: "/docs/top-level-intersection",
+        framework: "nextjs",
+        version: ">=16 <17",
+      },
+    ]);
+  });
+
+  it("caps ranked resolved context candidates with maxResults", async () => {
+    const result = await buildDocsMcpContext({
+      pages: [page("c"), page("a"), page("b")],
+      query: "shared scope selection guide",
+      tokenBudget: 8_000,
+      maxResults: 2,
+    });
+
+    expect(result).toMatchObject({ candidateCount: 2, resultCount: 2 });
+    expect(result.sources.map((source) => source.pageUrl)).toEqual(["/docs/a", "/docs/b"]);
+  });
+
+  it("returns deep-cloned schema options and examples while freezing the public template", () => {
+    const first = getDocsConfigSchema();
+    const mode = findSchemaOption(first.options, "review.ci.mode");
+    expect(mode?.values).toEqual(["off", "warn", "block"]);
+
+    expect(mode).toBeDefined();
+    (mode!.values as string[]).push("mutated");
+    first.examples[0].title = "Mutated example";
+    first.examples.push({ title: "Injected", code: "export default {}" });
+    first.options.splice(0, 1);
+
+    const second = getDocsConfigSchema();
+    expect(findSchemaOption(second.options, "review.ci.mode")?.values).toEqual([
+      "off",
+      "warn",
+      "block",
+    ]);
+    expect(second.examples[0]?.title).toBe("Minimal config");
+    expect(second.examples.some((example) => example.title === "Injected")).toBe(false);
+
+    const publicMode = findSchemaOption(DOCS_CONFIG_SCHEMA_OPTIONS, "review.ci.mode");
+    expect(Object.isFrozen(DOCS_CONFIG_SCHEMA_OPTIONS)).toBe(true);
+    expect(Object.isFrozen(publicMode)).toBe(true);
+    expect(Object.isFrozen(publicMode?.values)).toBe(true);
   });
 });
 
@@ -1443,6 +1583,72 @@ ${"Detailed runtime configuration guidance. ".repeat(60)}`;
     expect(tight?.budget.remainingUtf8Bytes).toBe(256 - tightUtf8Bytes);
     expect(tightUtf8Bytes).toBeLessThanOrEqual(256);
     expect(tight?.sources.at(-1)?.truncated).toBe(true);
+  });
+
+  it("uses structured agent applicability when filtering context by framework and version", async () => {
+    const content = `# Installation
+
+Install the docs package for this framework release.
+`;
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        getPages: () => [
+          {
+            slug: "next-16",
+            url: "/docs/next-16",
+            title: "Next.js 16 installation",
+            content,
+            rawContent: content,
+            agent: {
+              task: "Install the docs package on Next.js 16",
+              outcome: "The package runs on Next.js 16.",
+              appliesTo: { framework: ["nextjs"], version: [">=16"] },
+            },
+          },
+          {
+            slug: "next-15",
+            url: "/docs/next-15",
+            title: "Next.js 15 installation",
+            content,
+            rawContent: content,
+            agent: {
+              task: "Install the docs package on Next.js 15",
+              outcome: "The package runs on Next.js 15.",
+              appliesTo: { framework: ["nextjs"], version: ["15"] },
+            },
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+
+    const payload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          candidateCount: number;
+          sources: Array<{ pageUrl: string; framework?: string; version?: string }>;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "get_context", {
+        query: "install docs package",
+        framework: "next",
+        version: "v16",
+        tokenBudget: 2_000,
+      }),
+    );
+
+    expect(payload.result?.structuredContent).toMatchObject({
+      candidateCount: 1,
+      sources: [
+        {
+          pageUrl: "/docs/next-16",
+          framework: "nextjs",
+          version: ">=16",
+        },
+      ],
+    });
   });
 
   it("hydrates contract-only context matches with the structured agent contract", async () => {
