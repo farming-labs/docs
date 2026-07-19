@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { isLocalDocsTelemetryOrigin, normalizeDocsTelemetryOrigin } from "@farming-labs/docs";
 import { Prisma } from "@prisma/client";
 import { Activity, AlertTriangle, Database, Fingerprint, Globe2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -147,21 +148,43 @@ async function loadTelemetryData(limit: number): Promise<TelemetryData> {
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   try {
-    const totalEvents = await prisma.docsTelemetryEvent.count();
-    const eventsLast24h = await prisma.docsTelemetryEvent.count({
-      where: { createdAt: { gte: last24h } },
-    });
-    const distinctIdentities = await prisma.docsTelemetryEvent.findMany({
-      where: { identityHash: { not: null } },
-      distinct: ["identityHash"],
-      select: { identityHash: true },
-    });
     const distinctSites = await prisma.docsTelemetryEvent.findMany({
       where: { siteOrigin: { not: null } },
       distinct: ["siteOrigin"],
       select: { siteOrigin: true },
     });
+    const excludedSiteOrigins = distinctSites
+      .map((site) => site.siteOrigin)
+      .filter(
+        (origin): origin is string =>
+          typeof origin === "string" &&
+          (!normalizeDocsTelemetryOrigin(origin) || isLocalDocsTelemetryOrigin(origin)),
+      );
+    const visibleTelemetryWhere: Prisma.DocsTelemetryEventWhereInput =
+      excludedSiteOrigins.length > 0
+        ? {
+            OR: [{ siteOrigin: null }, { siteOrigin: { notIn: excludedSiteOrigins } }],
+          }
+        : {};
+    const visibleTelemetrySql =
+      excludedSiteOrigins.length > 0
+        ? Prisma.sql`AND (
+            "DocsTelemetryEvent"."siteOrigin" IS NULL
+            OR "DocsTelemetryEvent"."siteOrigin" NOT IN (${Prisma.join(excludedSiteOrigins)})
+          )`
+        : Prisma.empty;
+
+    const totalEvents = await prisma.docsTelemetryEvent.count({ where: visibleTelemetryWhere });
+    const eventsLast24h = await prisma.docsTelemetryEvent.count({
+      where: { ...visibleTelemetryWhere, createdAt: { gte: last24h } },
+    });
+    const distinctIdentities = await prisma.docsTelemetryEvent.findMany({
+      where: { ...visibleTelemetryWhere, identityHash: { not: null } },
+      distinct: ["identityHash"],
+      select: { identityHash: true },
+    });
     const recentEvents = await prisma.docsTelemetryEvent.findMany({
+      where: visibleTelemetryWhere,
       orderBy: { createdAt: "desc" },
       take: limit,
       select: {
@@ -182,36 +205,37 @@ async function loadTelemetryData(limit: number): Promise<TelemetryData> {
     });
     const eventTypeGroups = await prisma.docsTelemetryEvent.groupBy({
       by: ["eventType"],
+      where: visibleTelemetryWhere,
       _count: { _all: true },
       _max: { createdAt: true },
     });
     const frameworkGroups = await prisma.docsTelemetryEvent.groupBy({
       by: ["framework"],
-      where: { framework: { not: null } },
+      where: { ...visibleTelemetryWhere, framework: { not: null } },
       _count: { _all: true },
       _max: { createdAt: true },
     });
     const packageVersionGroups = await prisma.docsTelemetryEvent.groupBy({
       by: ["packageVersion"],
-      where: { packageVersion: { not: null } },
+      where: { ...visibleTelemetryWhere, packageVersion: { not: null } },
       _count: { _all: true },
       _max: { createdAt: true },
     });
     const deploymentProviderGroups = await prisma.docsTelemetryEvent.groupBy({
       by: ["deploymentProvider"],
-      where: { deploymentProvider: { not: null } },
+      where: { ...visibleTelemetryWhere, deploymentProvider: { not: null } },
       _count: { _all: true },
       _max: { createdAt: true },
     });
     const topSiteGroups = await prisma.docsTelemetryEvent.groupBy({
       by: ["siteOrigin"],
-      where: { siteOrigin: { not: null } },
+      where: { ...visibleTelemetryWhere, siteOrigin: { not: null } },
       _count: { _all: true },
       _max: { createdAt: true },
     });
     const topIdentityGroups = await prisma.docsTelemetryEvent.groupBy({
       by: ["identityHash"],
-      where: { identityHash: { not: null } },
+      where: { ...visibleTelemetryWhere, identityHash: { not: null } },
       _count: { _all: true },
       _max: { createdAt: true },
     });
@@ -229,6 +253,7 @@ async function loadTelemetryData(limit: number): Promise<TelemetryData> {
         END
       ) AS feature(key, value)
       WHERE feature.value = 'true'::jsonb
+      ${visibleTelemetrySql}
       GROUP BY feature.key
       ORDER BY count DESC, feature.key ASC
       LIMIT 24
@@ -247,6 +272,8 @@ async function loadTelemetryData(limit: number): Promise<TelemetryData> {
           END AS key,
           "createdAt"
         FROM "DocsTelemetryEvent"
+        WHERE TRUE
+        ${visibleTelemetrySql}
       )
       SELECT
         key,
@@ -264,7 +291,7 @@ async function loadTelemetryData(limit: number): Promise<TelemetryData> {
       totalEvents,
       eventsLast24h,
       uniqueIdentities: distinctIdentities.length,
-      uniqueSites: distinctSites.length,
+      uniqueSites: distinctSites.length - excludedSiteOrigins.length,
       recentEvents,
       eventTypes: toGroupCounts(eventTypeGroups, "eventType", "unknown"),
       frameworks: toGroupCounts(frameworkGroups, "framework", "unknown"),

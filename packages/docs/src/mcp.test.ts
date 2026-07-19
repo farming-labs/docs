@@ -619,6 +619,35 @@ sidebar:
     expect(pages.some((page) => page.url === "/docs/overview/what-is-surge")).toBe(true);
   });
 
+  it("does not emit telemetry for tools called through a local MCP request", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+    });
+    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const handlers = createDocsMcpHttpHandler({
+        source,
+        mcp: { enabled: true },
+        telemetry: { enabled: true, siteOrigin: "https://docs.example.com" },
+      });
+      const response = await callMcpTool(handlers, "list_pages", {});
+
+      expect(response.status).toBe(200);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("serves a working MCP transport with the built-in tools", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({

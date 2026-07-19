@@ -985,7 +985,8 @@ export interface DocsTelemetryConfig {
   /**
    * Public site origin to include in telemetry events.
    *
-   * When omitted, the runtime request origin or deployment URL is used when available.
+   * When omitted, the runtime request origin or deployment URL is used when available. Localhost
+   * and loopback origins are ignored.
    */
   siteOrigin?: string;
   /**

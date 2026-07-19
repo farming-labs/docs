@@ -2003,6 +2003,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   function trackMcpTool(tool: string, values?: { locale?: string; resultCount?: number }) {
     emitDocsTelemetryMcpToolEvent(telemetryConfig, {
       framework: telemetryFramework,
+      request: options.requestContext?.request,
       tool,
       locale: values?.locale,
       resultCount: values?.resultCount,

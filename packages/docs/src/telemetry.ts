@@ -131,15 +131,69 @@ function readRequestOrigin(request: Request | undefined): string | undefined {
   }
 }
 
-function normalizeTelemetryOrigin(candidate: string | undefined): string | undefined {
-  if (!candidate) return undefined;
+/** Normalize an HTTP(S) telemetry site value to its origin. */
+export function normalizeDocsTelemetryOrigin(candidate: string | undefined): string | undefined {
+  if (typeof candidate !== "string") return undefined;
+
+  const trimmed = candidate.trim();
+  if (!trimmed) return undefined;
 
   try {
-    const withProtocol = /^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
-    return new URL(withProtocol).origin;
+    // Treat values with a URI scheme as URLs so malformed HTTP separators and non-HTTP schemes
+    // cannot be reinterpreted as a public hostname (for example, `ftp://localhost` -> `ftp`).
+    // A numeric suffix remains a bare host plus port, as in `localhost:3200`.
+    const hasScheme = /^[a-z][a-z\d+.-]*:(?!\d)/i.test(trimmed);
+    const url = new URL(hasScheme ? trimmed : `https://${trimmed}`);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+
+    return url.origin;
   } catch {
     return undefined;
   }
+}
+
+/** Return whether a telemetry origin points at a local development server. */
+export function isLocalDocsTelemetryOrigin(candidate: string | undefined): boolean {
+  const origin = normalizeDocsTelemetryOrigin(candidate);
+  if (!origin) return false;
+
+  const hostname = new URL(origin).hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.+$/, "");
+
+  if (
+    [
+      "localhost",
+      "localhost.localdomain",
+      "localhost6",
+      "localhost6.localdomain6",
+      "ip6-localhost",
+      "ip6-loopback",
+    ].includes(hostname) ||
+    hostname.endsWith(".localhost")
+  ) {
+    return true;
+  }
+  if (hostname === "::" || hostname === "::1") return true;
+
+  // URL normalizes IPv4 shorthand such as 127.1 before this check.
+  const ipv4 = hostname.split(".").map((part) => Number(part));
+  if (
+    ipv4.length === 4 &&
+    ipv4.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)
+  ) {
+    return ipv4[0] === 127 || ipv4.every((part) => part === 0);
+  }
+
+  // URL serializes IPv4-mapped IPv6 addresses in hexadecimal form.
+  return /^::ffff:7f[0-9a-f]{2}:/.test(hostname) || hostname === "::ffff:0:0";
+}
+
+function isBlockedDocsTelemetryOrigin(candidate: string | undefined): boolean {
+  if (candidate === undefined) return false;
+
+  return !normalizeDocsTelemetryOrigin(candidate) || isLocalDocsTelemetryOrigin(candidate);
 }
 
 function readDeploymentOrigin(): string | undefined {
@@ -156,7 +210,7 @@ function readDeploymentOrigin(): string | undefined {
   ];
 
   for (const candidate of candidates) {
-    const origin = normalizeTelemetryOrigin(candidate);
+    const origin = normalizeDocsTelemetryOrigin(candidate);
     if (origin) return origin;
   }
 
@@ -288,15 +342,23 @@ function createDocsTelemetryEvent(
   config: Partial<DocsConfig>,
   input: DocsTelemetryEventInput,
   context: DocsTelemetryContext = {},
-): DocsTelemetryEvent {
+): DocsTelemetryEvent | undefined {
   const telemetryConfig =
     config.telemetry && typeof config.telemetry === "object" ? config.telemetry : undefined;
-  const siteOrigin =
-    context.siteOrigin ??
-    input.site?.origin ??
-    normalizeTelemetryOrigin(telemetryConfig?.siteOrigin) ??
-    readRequestOrigin(context.request) ??
-    readDeploymentOrigin();
+  const siteOriginCandidates = [
+    context.siteOrigin,
+    input.site?.origin,
+    telemetryConfig?.siteOrigin,
+    readRequestOrigin(context.request),
+    readDeploymentOrigin(),
+  ];
+
+  // A public grouping override must never mask that the request itself came from a local runtime.
+  if (siteOriginCandidates.some(isBlockedDocsTelemetryOrigin)) return undefined;
+
+  const siteOrigin = siteOriginCandidates
+    .map(normalizeDocsTelemetryOrigin)
+    .find((origin): origin is string => Boolean(origin));
   const deployment = input.deployment ?? detectDeployment();
   const properties =
     context.properties || input.properties
@@ -363,7 +425,21 @@ export async function emitDocsTelemetryEvent(
   event: DocsTelemetryEvent,
 ): Promise<void> {
   const resolved = resolveDocsTelemetryConfig(telemetry);
-  if (!resolved.enabled || !resolved.endpoint || typeof fetch !== "function") return;
+  const eventSiteOrigin = event.site?.origin;
+  const normalizedSiteOrigin = normalizeDocsTelemetryOrigin(eventSiteOrigin);
+  if (
+    !resolved.enabled ||
+    !resolved.endpoint ||
+    typeof fetch !== "function" ||
+    (eventSiteOrigin !== undefined &&
+      (!normalizedSiteOrigin || isLocalDocsTelemetryOrigin(eventSiteOrigin)))
+  ) {
+    return;
+  }
+
+  const eventToSend = normalizedSiteOrigin
+    ? { ...event, site: { origin: normalizedSiteOrigin } }
+    : event;
 
   try {
     const ingestKey = readRuntimeEnv("DOCS_TELEMETRY_INGEST_KEY");
@@ -378,7 +454,7 @@ export async function emitDocsTelemetryEvent(
     await fetch(resolved.endpoint, {
       method: "POST",
       headers,
-      body: JSON.stringify({ event }),
+      body: JSON.stringify({ event: eventToSend }),
       keepalive: true,
     });
   } catch {
@@ -397,6 +473,8 @@ export function emitDocsTelemetryProjectEvent(
     },
     context,
   );
+  if (!event) return;
+
   const key = projectEventKey(event);
   const sent = getSentProjectKeys();
   const now = Date.now();
@@ -427,6 +505,7 @@ export function emitDocsTelemetryAgentSurfaceEvent(
     },
     context,
   );
+  if (!event) return;
 
   void emitDocsTelemetryEvent(config.telemetry, event);
 }
@@ -447,6 +526,7 @@ export function emitDocsTelemetryMcpToolEvent(
     },
     context,
   );
+  if (!event) return;
 
   void emitDocsTelemetryEvent(config.telemetry, event);
 }

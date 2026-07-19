@@ -28,6 +28,8 @@ export {
   emitDocsTelemetryProjectEvent,
   getDocsTelemetryFeatures,
   inferDocsTelemetryAgentSurface,
+  isLocalDocsTelemetryOrigin,
+  normalizeDocsTelemetryOrigin,
   resolveDocsTelemetryConfig,
 } from "./telemetry.js";
 export { resolveChangelogConfig } from "./changelog.js";

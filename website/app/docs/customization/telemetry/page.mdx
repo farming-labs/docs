@@ -73,6 +73,11 @@ Telemetry does not collect:
 - cookies or cross-site tracking identifiers
 - per-user sessions
 
+Local development origins are ignored even when telemetry is explicitly enabled. This includes
+`localhost`, `*.localhost`, the `127.0.0.0/8` loopback range, and IPv6 loopback or wildcard binding
+addresses. Events from those origins are not sent or stored, and historical local origins are not
+shown in the telemetry dashboard.
+
 ## Options
 
 ```ts title="docs.config.ts"
