@@ -73,7 +73,12 @@ const DEFAULT_REVIEW_RULES: Required<DocsReviewRulesConfig> = {
   configExamples: "warn",
   codeFenceMetadata: "warn",
   runnableMetadata: "warn",
-  agentContext: "suggestion",
+  agentContext: "warn",
+  commandHealth: "warn",
+  relatedCoverage: "suggestion",
+  configConfidence: "warn",
+  agentSurfaceDrift: "error",
+  goldenTasks: "warn",
 };
 
 const DEFAULT_REVIEW_WEIGHTS = {
@@ -319,10 +324,12 @@ export function buildDocsReviewWorkflowPathFilters(options: {
 function normalizeRules(rules?: DocsReviewRulesConfig): Partial<DocsReviewRulesConfig> {
   if (!rules) return {};
 
+  const knownRules = new Set(Object.keys(DEFAULT_REVIEW_RULES));
+
   return Object.fromEntries(
     Object.entries(rules).filter(
       (entry): entry is [keyof DocsReviewRulesConfig, DocsReviewSeverity] =>
-        REVIEW_SEVERITIES.has(entry[1] as DocsReviewSeverity),
+        knownRules.has(entry[0]) && REVIEW_SEVERITIES.has(entry[1] as DocsReviewSeverity),
     ),
   ) as Partial<DocsReviewRulesConfig>;
 }

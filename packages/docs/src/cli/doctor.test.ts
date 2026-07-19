@@ -191,6 +191,90 @@ describe("inspectAgentReadiness", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  function writeNearlyPerfectAgentFixture(
+    options: { failExampleExpectation?: boolean; addUnknownAgentOption?: boolean } = {},
+  ) {
+    writePackageJson(tmpDir, "doctor-near-perfect", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    compact: { model: "docs-cloud-compress-v1" },
+    ${options.addUnknownAgentOption ? "unsupportedDiagnosticOption: true," : ""}
+    evaluations: {
+      tasks: [{
+        id: "configure-docs",
+        query: "configure the docs route safely",
+        topK: 1,
+        expect: {
+          relevantSources: ["/docs"],
+          ${
+            options.failExampleExpectation
+              ? 'examples: [{ source: "/docs", language: "bash", includes: ["pnpm docs:verify"] }],'
+              : ""
+          }
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Configure docs
+description: Configure the docs route safely.
+related:
+  - /docs
+agent:
+  task: Configure the docs route safely.
+  outcome: The docs route returns the configured page.
+  appliesTo:
+    framework: nextjs
+    version: "16"
+  prerequisites:
+    - The Next.js 16 application is installed.
+  commands:
+    - run: node --version
+      description: Verify Node.js is available.
+  verification:
+    - run: node --version
+      expect: The command exits successfully.
+  rollback:
+    - Restore the previous docs.config.ts file.
+---
+
+# Configure docs
+
+<Agent>
+For Next.js 16, update \`docs.config.ts\` and preserve \`entry: "docs"\`.
+Run \`node --version\`; the expected result is a successful exit before editing.
+If module evaluation fails, restore \`docs.config.ts\` and retry the doctor command.
+</Agent>
+`,
+      "utf-8",
+    );
+  }
+
   it("scores a healthy Next.js docs app as agent-optimized", async () => {
     writePackageJson(tmpDir, "doctor-next", { next: "16.0.0" });
 
@@ -211,6 +295,18 @@ describe("inspectAgentReadiness", () => {
     compact: {
       apiKeyEnv: "DOCS_CLOUD_API_KEY",
       model: "docs-cloud-compress-v1",
+    },
+    evaluations: {
+      tasks: [
+        {
+          id: "configure-docs",
+          query: "configure the docs app",
+          topK: 1,
+          expect: {
+            relevantSources: ["/docs/configuration"],
+          },
+        },
+      ],
     },
   },
 };`,
@@ -282,6 +378,21 @@ Human instructions.
       `---
 title: "Configuration"
 description: "Configure the docs app"
+agent:
+  task: Configure the docs app.
+  outcome: The docs route serves the configured content.
+  appliesTo:
+    framework: nextjs
+  prerequisites:
+    - The Next.js docs app is installed.
+  commands:
+    - node --version
+  verification:
+    - The command exits successfully before the config is changed.
+  rollback:
+    - Restore the previous docs.config.ts file.
+related:
+  - /docs/installation
 ---
 
 # Configuration
@@ -289,7 +400,9 @@ description: "Configure the docs app"
 Visible content.
 
 <Agent>
-Machine-only configuration hints.
+Before updating \`docs.config.ts\`, confirm the docs route is mounted.
+Preserve the \`entry\` value and verify the expected \`/docs/configuration.md\` result.
+If config loading fails, restore the previous \`docs.config.ts\` and retry the doctor command.
 </Agent>
 `,
       "utf-8",
@@ -325,6 +438,212 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.score).toBe(5);
+    expect(report.checks.find((check) => check.id === "agent-context-quality")?.status).toBe(
+      "pass",
+    );
+    expect(report.checks.find((check) => check.id === "golden-tasks")?.status).toBe("pass");
+    expect(report.evaluations).toMatchObject({ status: "passed", passedTaskCount: 1 });
+  });
+
+  it("does not award usefulness points when there is no evidence to measure", async () => {
+    writePackageJson(tmpDir, "doctor-no-evidence", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: { evaluations: false },
+};`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    for (const id of [
+      "agent-context-quality",
+      "agent-task-completeness",
+      "agent-applicability",
+      "command-health",
+      "related-coverage",
+    ]) {
+      expect(report.checks.find((check) => check.id === id)).toMatchObject({
+        status: "warn",
+        score: 0,
+      });
+    }
+  });
+
+  it("uses the detected project framework when scoring page applicability", async () => {
+    writePackageJson(tmpDir, "doctor-framework-mismatch", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", agent: { evaluations: false } };`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Configure Astro
+description: Configure the Astro adapter.
+agent:
+  task: Configure the Astro adapter.
+  outcome: The Astro docs route is available.
+  appliesTo:
+    framework: astro
+  prerequisites:
+    - Install the adapter.
+  commands:
+    - node --version
+  verification:
+    - Confirm the command exits successfully.
+  rollback:
+    - Restore the previous configuration.
+related:
+  - /docs
+---
+
+# Configure Astro
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.framework).toBe("nextjs");
+    expect(report.checks.find((check) => check.id === "agent-applicability")).toMatchObject({
+      status: "fail",
+      score: 0,
+    });
+    expect(report.usefulness?.applicability.mismatchedPages).toBe(1);
+  });
+
+  it("reports malformed golden task arrays instead of crashing", async () => {
+    writePackageJson(tmpDir, "doctor-malformed-evaluations", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    evaluations: {
+      tasks: { id: "not-an-array", query: "Read the docs" },
+    },
+  },
+};`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations?.status).toBe("failed");
+    expect(report.evaluations?.tasks[0]?.issues).toEqual(
+      expect.arrayContaining([expect.stringContaining("agent.evaluations.tasks must be an array")]),
+    );
+    expect(report.checks.find((check) => check.id === "golden-tasks")?.status).toBe("fail");
+  });
+
+  it("caps near-perfect failed golden tasks and blocks the optimized grade", async () => {
+    writeNearlyPerfectAgentFixture({ failExampleExpectation: true });
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const goldenTasks = report.checks.find((check) => check.id === "golden-tasks");
+
+    expect(report.evaluations).toMatchObject({ status: "failed" });
+    expect(report.evaluations?.score).toBeLessThan(100);
+    expect(goldenTasks).toMatchObject({ status: "fail", maxScore: 15 });
+    expect(goldenTasks?.score).toBeLessThan(15);
+    expect(report.score).toBeGreaterThanOrEqual(90);
+    expect(report.grade).toBe("Agent-ready");
+  });
+
+  it("blocks the optimized grade when an otherwise near-perfect config drifts from the schema", async () => {
+    writeNearlyPerfectAgentFixture({ addUnknownAgentOption: true });
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.checks.find((check) => check.id === "surface-drift")).toMatchObject({
+      status: "fail",
+      score: 8,
+      maxScore: 10,
+    });
+    expect(report.score).toBeGreaterThanOrEqual(90);
+    expect(report.grade).toBe("Agent-ready");
+  });
+
+  it("does not award a perfect score to repeated generic Agent blocks", async () => {
+    writePackageJson(tmpDir, "doctor-boilerplate", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: true,
+  search: true,
+  mcp: true,
+};
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+
+    for (const [slug, topic] of [
+      ["install", "Install the package"],
+      ["configure", "Configure the package"],
+      ["deploy", "Deploy the package"],
+    ]) {
+      mkdirSync(path.join(tmpDir, "app", "docs", slug), { recursive: true });
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", slug, "page.mdx"),
+        `---
+title: ${topic}
+description: ${topic}
+---
+
+# ${topic}
+
+<Agent>
+Use this page when the user asks about this topic: ${topic}.
+Keep answers grounded in the examples documented here.
+Point to the closest related docs instead of inventing config.
+</Agent>
+`,
+        "utf-8",
+      );
+    }
+
+    process.chdir(tmpDir);
+    const report = await inspectAgentReadiness();
+    const quality = report.checks.find((check) => check.id === "agent-context-quality");
+
+    expect(report.score).toBeLessThan(90);
+    expect(report.grade).not.toBe("Agent-optimized");
+    expect(quality).toMatchObject({ status: "fail", score: 0 });
+    expect(report.usefulness?.agentBlocks).toMatchObject({
+      total: 3,
+      boilerplate: 3,
+      generic: 3,
+      useful: 0,
+    });
+    expect(report.evaluations?.status).toBe("unmeasured");
   });
 
   it("checks the local robots.txt agent policy", async () => {
@@ -435,6 +754,19 @@ Allow: /
     expect(compactCheck?.status).toBe("pass");
     expect(compactCheck?.score).toBe(5);
     expect(compactCheck?.detail).toContain("agent.compact defaults are configured");
+    const confidence = report.checks.find((check) => check.id === "config-confidence");
+    expect(confidence?.status).toBe("warn");
+    expect(confidence?.score).toBeLessThan(5);
+    expect(report.checks.find((check) => check.id === "config")).toMatchObject({
+      status: "warn",
+      score: 2,
+      maxScore: 10,
+    });
+    expect(report.checks.find((check) => check.id === "surface-drift")).toMatchObject({
+      status: "warn",
+      score: 0,
+      maxScore: 10,
+    });
   });
 
   it("probes hosted agent surfaces when --url is provided", async () => {
@@ -481,13 +813,45 @@ export const { GET, POST } = createDocsAPI({});
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
+              version: "1",
+              name: "@farming-labs/docs",
+              baseUrl: "http://docs.example.test",
+              site: { entry: "docs" },
               capabilities: {
                 markdownRoutes: true,
                 structuredData: true,
+                search: true,
+                mcp: true,
+              },
+              api: {
+                docs: "/api/docs",
+                config: "/api/docs?format=config",
+              },
+              config: {
+                endpoint: "/api/docs?format=config",
+              },
+              search: {
+                enabled: true,
+                endpoint: "/api/docs?query={query}",
               },
               mcp: {
                 enabled: true,
-                tools: { listTasks: false, readTask: false },
+                endpoint: "/mcp",
+                tools: {
+                  listDocs: true,
+                  listPages: true,
+                  listTasks: false,
+                  readTask: false,
+                  getNavigation: true,
+                  searchDocs: true,
+                  readPage: true,
+                  getCodeExamples: true,
+                  getConfigSchema: true,
+                  getContext: true,
+                },
+              },
+              agentContract: {
+                fields: { task: "string", outcome: "string" },
               },
               llms: { enabled: true },
               sitemap: {
@@ -681,7 +1045,7 @@ Allow: /
       expect(report.url).toBe(`http://127.0.0.1:${port}`);
       expect(report.maxScore).toBe(100);
       expect(report.score).toBeLessThanOrEqual(100);
-      expect(report.score).toBeGreaterThan(75);
+      expect(report.score).toBeGreaterThan(50);
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
@@ -787,7 +1151,13 @@ Use this docs site through markdown routes and MCP.
       "utf-8",
     );
 
-    const server = createServer((_req, res) => {
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      if (url.pathname === "/.well-known/agent.json") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("{}");
+        return;
+      }
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("Not found");
     });
@@ -805,6 +1175,9 @@ Use this docs site through markdown routes and MCP.
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "fail",
       );
+      expect(
+        report.checks.find((check) => check.id === "hosted-agent-discovery")?.detail,
+      ).toContain("not a complete agent discovery manifest");
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
@@ -1767,6 +2140,31 @@ Choose the entry, content directory, and theme defaults.
     expect(report.checks.find((check) => check.id === "structure")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "trust")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+  });
+
+  it("warns and awards partial credit when the site doctor uses static config parsing", async () => {
+    writePackageJson(tmpDir, "doctor-human-static-config", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.tsx"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  nav: { title: <span>Docs</span> },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectHumanReadiness();
+
+    expect(report.checks.find((check) => check.id === "config")).toMatchObject({
+      status: "warn",
+      score: 2,
+      maxScore: 10,
+      recommendation: expect.stringContaining("Fix docs.config module evaluation"),
+    });
   });
 
   it("treats lastUpdated as enabled by default for the reader-facing score", async () => {

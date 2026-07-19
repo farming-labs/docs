@@ -135,7 +135,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `codeBlocks`  | `DocsCodeBlocksConfig`         | —               | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false` for UI  | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
-| `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
+| `agent`       | `DocsAgentConfig`              | —               | Compaction defaults and deterministic golden-task evaluations |
 | `review`      | `boolean \| DocsReviewConfig`  | `true`          | Docs Review CI workflow generation, scoring, and rule severity |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
@@ -798,12 +798,24 @@ export default defineDocs({
       brokenLinks: "error",
       frontmatter: "error",
       codeFenceMetadata: "warn",
-      agentContext: "suggestion",
+      agentContext: "warn",
+      commandHealth: "warn",
+      relatedCoverage: "suggestion",
+      configConfidence: "warn",
+      agentSurfaceDrift: "error",
+      goldenTasks: "warn",
     },
   },
   theme: fumadocs(),
 });
 ```
+
+`agentContext` is corpus-aware: it detects exact duplicates, repeated boilerplate, generic Agent
+blocks, missing prerequisites/results/recovery, and ambiguous framework or version guidance.
+`commandHealth` inspects commands without running them. `configConfidence` reports when
+`docs.config` could only be read through partial static parsing, while `agentSurfaceDrift` compares
+resolved configuration, discovery metadata, structured contracts, MCP tools, routes, and the
+public config schema. `goldenTasks` reports both failed evaluations and an unmeasured task suite.
 
 Set `review: false` to opt out of review and workflow generation.
 
@@ -1443,6 +1455,63 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true }, { status: 201 });
 }
 ```
+
+## Golden agent evaluations
+
+Use `agent.evaluations` to define user-shaped tasks that `docs doctor` and `docs review` can measure
+without a model, network request, or arbitrary command execution. Each task runs through the docs
+search and context pipeline, then checks retrieval recall and rank, canonical citations,
+framework/version selection, executable example metadata, and exact UTF-8 context usage.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  agent: {
+    evaluations: {
+      tokenBudget: 4_000,
+      topK: 3,
+      tasks: [
+        {
+          id: "next-16-install",
+          query: "Install the docs framework in a Next.js 16 app",
+          filters: {
+            framework: "nextjs",
+            version: "16",
+          },
+          expect: {
+            relevantSources: ["/docs/installation"],
+            requiredCitations: ["/docs/installation"],
+            forbiddenSources: ["/docs/legacy-installation"],
+            minRecallAtK: 1,
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.7,
+            examples: [
+              {
+                source: "/docs/installation",
+                language: "bash",
+                packageManager: "pnpm",
+                runnable: true,
+                includes: ["pnpm add @farming-labs/docs"],
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+```
+
+Top-level `tokenBudget` and `topK` are defaults; either can be overridden on an individual task.
+`requiredCitations` defaults to `relevantSources`, and `allowedSources` can name legitimate
+supporting pages that should not reduce citation precision. Source values may be canonical page or
+section URLs. The context budget uses a hard UTF-8 byte ceiling and also reports estimated tokens
+plus a conservative one-token-per-byte upper bound.
+
+An absent, disabled, or empty task suite is deliberately `unmeasured`, not passing. This keeps a
+site from receiving usefulness credit merely because no representative tasks were defined. Put
+`runnable`, `framework`, `packageManager`, and `title` metadata on expected code fences so example
+checks can select the intended snippet deterministically.
 
 ## Agent Compaction
 

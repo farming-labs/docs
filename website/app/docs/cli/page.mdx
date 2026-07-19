@@ -532,7 +532,22 @@ What it checks:
 - agent feedback, which is enabled by default and can be explicitly opted out
 - page metadata that feeds markdown output and JSON-LD structured data
 - explicit agent-friendly pages
+- duplicate, boilerplate, or generic `<Agent>` blocks across the full docs corpus
+- prerequisites, observable results, recovery guidance, and framework/version applicability
+- documented command health and related-page coverage
+- config loading confidence and drift between discovery, resolved config, contracts, and schema
+- deterministic golden tasks for retrieval, citations, version selection, examples, and budgets
 - generated `agent.md` freshness and `agent.compact` defaults
+
+Command health is a static check: the doctor validates package-manager usage, package scripts,
+working directories, and known docs CLI commands without executing arbitrary snippets from the
+documentation. Workspace selectors that cannot be resolved safely are reported as unverified and
+do not receive healthy-command credit. Corpus checks compare every docs page, so copying the same
+plausible-looking Agent template onto many pages no longer increases the score.
+
+Golden tasks are configured under `agent.evaluations.tasks`. When none are configured, the doctor
+reports retrieval usefulness as `unmeasured` and awards no golden-task points. See
+[Golden agent evaluations](/docs/configuration#golden-agent-evaluations) for the task format.
 
 Common forms:
 
@@ -582,6 +597,8 @@ Expected output:
 Score: 100% (Agent-optimized)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 37/37 pages (100%)
+Useful Agent blocks: 35/35 • 18/18 actionable pages task-complete
+Golden tasks: 4/4 passed (100/100)
 
 PASS Docs API route (10/10)
   Found docs API route at app/api/docs/route.ts.
@@ -593,6 +610,10 @@ PASS Page metadata (5/5)
   37/37 pages include descriptions and 8/37 pages include related links (100% described, 22% related).
 PASS Explicit page optimization (10/10)
   37/37 pages define explicit machine-only context (2 agent.md, 35 Agent blocks, 100% of pages).
+PASS Agent context usefulness (15/15)
+  35/35 Agent blocks are specific and non-repetitive (0 duplicate, 0 boilerplate, 0 generic).
+PASS Golden agent tasks (15/15)
+  4/4 golden tasks passed with 100/100 average score.
 PASS Agent compaction freshness (5/5)
   0 fresh, 0 stale, 0 modified, 2 unknown, 0 token-budget missing, and 35 other missing pages across compactable docs pages. agent.compact defaults are configured.
 ```
@@ -634,6 +655,22 @@ Sample shape:
     "explicitPages": 10,
     "totalPages": 41,
     "explicitCoverage": 24
+  },
+  "usefulness": {
+    "agentBlocks": {
+      "total": 14,
+      "useful": 8,
+      "duplicate": 3,
+      "boilerplate": 4,
+      "generic": 2
+    }
+  },
+  "evaluations": {
+    "status": "failed",
+    "score": 88,
+    "taskCount": 4,
+    "passedTaskCount": 3,
+    "failedTaskCount": 1
   },
   "checks": [
     {
@@ -1159,13 +1196,18 @@ See [Configuration](/docs/configuration#code-block-validation) for the config fi
 
 Use `docs review` to check changed docs files before a PR is merged. It scores the changed docs,
 checks default rules such as broken links and frontmatter, and prints GitHub annotations when run
-with `--ci`.
+with `--ci`. The review also uses the full docs corpus to catch copied Agent boilerplate on a
+changed page, statically validates commands and related routes, reports low-confidence config
+loading or public-surface drift, and runs the same configured golden tasks as `docs doctor`.
 
 ```bash title="terminal"
 pnpm exec docs review
 pnpm exec docs review --ci
 pnpm exec docs review --ci --mode block --score-threshold 90
 ```
+
+JSON reports use `status: "measured"` with a numeric score. When review is disabled, they use
+`status: "disabled"` and `score: null` instead of presenting an unrun review as 100/100.
 
 `withDocs()` creates `.github/workflows/docs-review.yml` automatically during `next dev` or
 `next build` when review CI is enabled and the workflow does not already exist. The generated file

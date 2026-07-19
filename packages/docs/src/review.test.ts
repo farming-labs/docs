@@ -36,6 +36,7 @@ describe("docs review helpers", () => {
     });
     expect(review.score.threshold).toBe(80);
     expect(review.rules.brokenLinks).toBe("error");
+    expect(review.rules.agentContext).toBe("warn");
   });
 
   it("reads review config from TSX source without evaluating the module", () => {

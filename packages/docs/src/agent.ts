@@ -16,6 +16,7 @@ import type {
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import {
+  PAGE_AGENT_CONTRACT_FIELD_SCHEMA,
   renderPageAgentFrontmatterYamlLines,
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
@@ -370,7 +371,7 @@ export interface DocsDiagnosticsOptions {
   openapi?: boolean | DocsOpenApiDiscoveryConfig;
 }
 
-const DOCS_CONFIG_MAP_TOP_LEVEL_KEYS = [
+export const DOCS_CONFIG_MAP_TOP_LEVEL_KEYS = [
   "entry",
   "docsPath",
   "contentDir",
@@ -3348,23 +3349,7 @@ export function buildDocsAgentDiscoverySpec({
       mcpField: "agent",
       ...(agentContractMcpTools ? { mcpTools: agentContractMcpTools } : {}),
       usefulContractFields: ["task", "outcome"],
-      fields: {
-        tokenBudget: "number",
-        task: "string",
-        outcome: "string",
-        appliesTo: {
-          framework: "string|string[]",
-          version: "string|string[]",
-          package: "string|string[]",
-        },
-        prerequisites: "string[]",
-        files: "string[]",
-        commands: "Array<string|{run,cwd?,description?}>",
-        sideEffects: "string[]",
-        verification: "Array<string|{description?,run?,expect?}>",
-        rollback: "string[]",
-        failureModes: "Array<string|{symptom,resolution?}>",
-      },
+      fields: PAGE_AGENT_CONTRACT_FIELD_SCHEMA,
     },
     llms: {
       enabled: llmsEnabled,

@@ -11,7 +11,7 @@ export interface PageAgentFrontmatterIssue {
   message: string;
 }
 
-const STRUCTURED_AGENT_FIELDS = [
+export const PAGE_AGENT_STRUCTURED_CONTRACT_FIELDS = [
   "task",
   "outcome",
   "appliesTo",
@@ -24,7 +24,27 @@ const STRUCTURED_AGENT_FIELDS = [
   "failureModes",
 ] as const;
 
-const AGENT_FIELDS = ["tokenBudget", ...STRUCTURED_AGENT_FIELDS] as const;
+export const PAGE_AGENT_CONTRACT_FIELDS = [
+  "tokenBudget",
+  ...PAGE_AGENT_STRUCTURED_CONTRACT_FIELDS,
+] as const;
+export const PAGE_AGENT_CONTRACT_FIELD_SCHEMA = {
+  tokenBudget: "number",
+  task: "string",
+  outcome: "string",
+  appliesTo: {
+    framework: "string|string[]",
+    version: "string|string[]",
+    package: "string|string[]",
+  },
+  prerequisites: "string[]",
+  files: "string[]",
+  commands: "Array<string|{run,cwd?,description?}>",
+  sideEffects: "string[]",
+  verification: "Array<string|{description?,run?,expect?}>",
+  rollback: "string[]",
+  failureModes: "Array<string|{symptom,resolution?}>",
+} as const;
 const APPLIES_TO_FIELDS = ["framework", "version", "package"] as const;
 const COMMAND_FIELDS = ["run", "cwd", "description"] as const;
 const VERIFICATION_FIELDS = ["description", "run", "expect"] as const;
@@ -195,7 +215,7 @@ export function normalizePageAgentFrontmatter(value: unknown): PageAgentFrontmat
 export function hasStructuredPageAgentContract(value: unknown): boolean {
   const normalized = normalizePageAgentFrontmatter(value);
   if (!normalized) return false;
-  return STRUCTURED_AGENT_FIELDS.some((field) => normalized[field] !== undefined);
+  return PAGE_AGENT_STRUCTURED_CONTRACT_FIELDS.some((field) => normalized[field] !== undefined);
 }
 
 function addStringIssue(
@@ -287,7 +307,7 @@ export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmat
   }
 
   const issues: PageAgentFrontmatterIssue[] = [];
-  addUnknownKeyIssues(issues, value, AGENT_FIELDS, "agent");
+  addUnknownKeyIssues(issues, value, PAGE_AGENT_CONTRACT_FIELDS, "agent");
   if (
     "tokenBudget" in value &&
     (typeof value.tokenBudget !== "number" ||

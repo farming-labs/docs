@@ -3,6 +3,8 @@ import path from "node:path";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import pc from "picocolors";
 import {
+  DEFAULT_DOCS_API_ROUTE,
+  DEFAULT_DOCS_CONFIG_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
   DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
@@ -14,9 +16,24 @@ import {
   DEFAULT_MCP_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+  DOCS_CONFIG_MAP_TOP_LEVEL_KEYS,
+  buildDocsAgentDiscoverySpec,
+  buildDocsConfigMap,
   buildDocsMcpEndpointCandidates,
 } from "../agent.js";
-import { createFilesystemDocsMcpSource, resolveDocsMcpConfig } from "../server.js";
+import { PAGE_AGENT_CONTRACT_FIELDS } from "../agent-contract.js";
+import {
+  analyzeAgentUsefulness,
+  createAgentUsefulnessPagesFromMcp,
+  type AgentUsefulnessMetrics,
+} from "../agent-usefulness.js";
+import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
+import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
+import {
+  createFilesystemDocsMcpSource,
+  getDocsConfigSchema,
+  resolveDocsMcpConfig,
+} from "../server.js";
 import {
   DEFAULT_SITEMAP_MD_ROUTE,
   DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
@@ -32,8 +49,7 @@ import type { DocsConfig, DocsMcpConfig, DocsRobotsConfig, DocsSitemapConfig } f
 import {
   extractNestedObjectLiteral,
   extractTopLevelConfigObject,
-  loadDocsConfigModule,
-  loadProjectEnv,
+  loadDocsConfigModuleResultWithProjectEnv,
   readBooleanProperty,
   readNavTitle,
   readTopLevelStringProperty,
@@ -105,6 +121,8 @@ export interface AgentDoctorReport {
   grade: AgentDoctorGrade;
   checks: AgentDoctorCheck[];
   coverage: AgentDoctorCoverage;
+  usefulness?: AgentUsefulnessMetrics;
+  evaluations?: DocsGoldenTasksReport;
   recommendations: string[];
   fixes?: AgentDoctorFix[];
 }
@@ -899,8 +917,24 @@ function navigationScore(navigationCoverage: number): { status: DoctorStatus; sc
   return { status: "fail", score: 0 };
 }
 
-function gradeForAgentScore(score: number): AgentDoctorGrade {
-  if (score >= 90) return "Agent-optimized";
+const AGENT_OPTIMIZATION_BLOCKING_CHECKS = new Set([
+  "surface-drift",
+  "agent-context-quality",
+  "agent-task-completeness",
+  "agent-applicability",
+  "command-health",
+  "related-coverage",
+  "golden-tasks",
+]);
+
+function gradeForAgentScore(
+  score: number,
+  checks: readonly AgentDoctorCheck[] = [],
+): AgentDoctorGrade {
+  const hasBlockingFailure = checks.some(
+    (check) => check.status === "fail" && AGENT_OPTIMIZATION_BLOCKING_CHECKS.has(check.id),
+  );
+  if (score >= 90 && !hasBlockingFailure) return "Agent-optimized";
   if (score >= 75) return "Agent-ready";
   if (score >= 60) return "Promising";
   return "Needs work";
@@ -964,6 +998,21 @@ function buildCoverage(
       tokenBudgetMissingPages: 0,
       otherMissingPages: 0,
     },
+  };
+}
+
+function scoreUsefulnessCoverage(
+  completed: number,
+  total: number,
+  maxScore: number,
+): { status: DoctorStatus; score: number; coverage: number } {
+  if (total === 0) return { status: "warn", score: 0, coverage: 0 };
+  const coverage = Math.round((completed / total) * 100);
+  const score = Math.round((coverage / 100) * maxScore);
+  return {
+    status: coverage >= 80 ? "pass" : coverage > 0 ? "warn" : "fail",
+    score,
+    coverage,
   };
 }
 
@@ -1636,6 +1685,85 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(asRecord(value)) && !Array.isArray(value);
+}
+
+function resolveGoldenEvaluationTasks(
+  evaluationInput: unknown,
+): Parameters<typeof runDocsGoldenTasks>[1] {
+  if (evaluationInput === undefined || typeof evaluationInput === "boolean") return undefined;
+  if (!isPlainRecord(evaluationInput)) {
+    return { evaluationConfig: evaluationInput } as unknown as Parameters<
+      typeof runDocsGoldenTasks
+    >[1];
+  }
+  if (evaluationInput.enabled === false) return undefined;
+  if ("enabled" in evaluationInput && typeof evaluationInput.enabled !== "boolean") {
+    return evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1];
+  }
+  if (!("tasks" in evaluationInput)) return undefined;
+
+  const runtimeTasks = evaluationInput.tasks;
+  if (!Array.isArray(runtimeTasks)) {
+    return runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1];
+  }
+
+  return runtimeTasks.map((task) => {
+    if (!isPlainRecord(task)) return task;
+    return {
+      ...task,
+      tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
+      topK: task.topK ?? evaluationInput.topK,
+    };
+  }) as Parameters<typeof runDocsGoldenTasks>[1];
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isBooleanRecord(value: unknown): value is Record<string, boolean> {
+  const record = asRecord(value);
+  return Boolean(
+    record &&
+    Object.keys(record).length > 0 &&
+    Object.values(record).every((item) => typeof item === "boolean"),
+  );
+}
+
+function isHostedAgentDiscoveryManifest(value: unknown): boolean {
+  const root = asRecord(value);
+  const site = asRecord(root?.site);
+  const capabilities = asRecord(root?.capabilities);
+  const api = asRecord(root?.api);
+  const config = asRecord(root?.config);
+  const search = asRecord(root?.search);
+  const mcp = asRecord(root?.mcp);
+  const agentContract = asRecord(root?.agentContract);
+  const agentContractFields = asRecord(agentContract?.fields);
+
+  return Boolean(
+    root &&
+    isNonEmptyString(root.version) &&
+    isNonEmptyString(root.name) &&
+    isNonEmptyString(root.baseUrl) &&
+    isNonEmptyString(site?.entry) &&
+    typeof capabilities?.search === "boolean" &&
+    typeof capabilities?.mcp === "boolean" &&
+    isNonEmptyString(api?.docs) &&
+    isNonEmptyString(api?.config) &&
+    isNonEmptyString(config?.endpoint) &&
+    typeof search?.enabled === "boolean" &&
+    isNonEmptyString(search?.endpoint) &&
+    typeof mcp?.enabled === "boolean" &&
+    isNonEmptyString(mcp?.endpoint) &&
+    isBooleanRecord(mcp?.tools) &&
+    agentContractFields &&
+    Object.keys(agentContractFields).length > 0,
+  );
+}
+
 function readDiscoveryRoute(value: unknown): string | undefined {
   return typeof value === "string" && value.startsWith("/") ? value : undefined;
 }
@@ -1856,17 +1984,22 @@ async function buildHostedAgentChecks(
 
   const checks: AgentDoctorCheck[] = [];
   const discovery = await probeJsonRoute(baseUrl, DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE);
+  const discoveryManifestValid = discovery.ok && isHostedAgentDiscoveryManifest(discovery.body);
   checks.push(
     makeCheck(
       "hosted-agent-discovery",
       "Hosted agent discovery",
-      discovery.ok ? "pass" : "fail",
-      discovery.ok ? 5 : 0,
+      discoveryManifestValid ? "pass" : "fail",
+      discoveryManifestValid ? 5 : 0,
       5,
-      `${baseUrl}: ${discovery.detail}`,
-      discovery.ok
+      `${baseUrl}: ${
+        discovery.ok && !discoveryManifestValid
+          ? `${discovery.detail} The payload is not a complete agent discovery manifest.`
+          : discovery.detail
+      }`,
+      discoveryManifestValid
         ? undefined
-        : `Make sure ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} is routed to the shared docs API on the deployed site.`,
+        : `Make sure ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} returns the complete agent discovery manifest from the shared docs API.`,
     ),
   );
 
@@ -2166,27 +2299,6 @@ async function buildHostedAgentChecks(
   return { baseUrl, checks };
 }
 
-async function loadDocsConfigModuleWithProjectEnv(
-  rootDir: string,
-  explicitPath?: string,
-): Promise<{ path: string; config: DocsConfig } | null> {
-  const env = loadProjectEnv(rootDir);
-  const injectedKeys = Object.entries(env)
-    .filter(([key]) => process.env[key] === undefined)
-    .map(([key, value]) => {
-      process.env[key] = value;
-      return key;
-    });
-
-  try {
-    return await loadDocsConfigModule(rootDir, explicitPath);
-  } finally {
-    for (const key of injectedKeys) {
-      delete process.env[key];
-    }
-  }
-}
-
 function makeCheck(
   id: string,
   title: string,
@@ -2251,8 +2363,8 @@ export async function inspectAgentReadiness(
   }
 
   const configContent = readFileSync(configPath, "utf-8");
-  const loadedConfig = await loadDocsConfigModuleWithProjectEnv(rootDir, options.configPath);
-  const config = loadedConfig?.config;
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = config?.contentDir ?? resolveDocsContentDir(rootDir, configContent, entry);
   const ordering =
@@ -2284,6 +2396,14 @@ export async function inspectAgentReadiness(
   });
   const pages = await Promise.resolve(source.getPages());
   const coverage = buildCoverage(pages);
+  const usefulness = analyzeAgentUsefulness({
+    rootDir,
+    pages: createAgentUsefulnessPagesFromMcp(rootDir, pages),
+    projectFramework: framework === "unknown" ? undefined : framework,
+  });
+  const evaluationInput = config?.agent?.evaluations;
+  const evaluationTasks = resolveGoldenEvaluationTasks(evaluationInput);
+  const evaluations = await runDocsGoldenTasks(pages, evaluationTasks);
   const compactionCoverage = buildCompactionCoverage(
     rootDir,
     contentDir,
@@ -2298,6 +2418,35 @@ export async function inspectAgentReadiness(
     metadataCoverage.relatedCoverage,
   );
   const compactionResult = compactionFreshnessScore(compactionCoverage, compactConfigured);
+  const contextQualityResult = scoreUsefulnessCoverage(
+    usefulness.metrics.agentBlocks.useful,
+    usefulness.metrics.agentBlocks.total,
+    15,
+  );
+  const taskCompletenessResult = scoreUsefulnessCoverage(
+    usefulness.metrics.taskCompleteness.completePages,
+    usefulness.metrics.actionablePages,
+    15,
+  );
+  const applicabilityIssueCount =
+    usefulness.metrics.applicability.conflictingPages +
+    usefulness.metrics.applicability.ambiguousPages +
+    usefulness.metrics.applicability.mismatchedPages;
+  const applicabilityResult = scoreUsefulnessCoverage(
+    Math.max(0, usefulness.metrics.actionablePages - applicabilityIssueCount),
+    usefulness.metrics.actionablePages,
+    10,
+  );
+  const commandHealthResult = scoreUsefulnessCoverage(
+    usefulness.metrics.commands.healthy,
+    usefulness.metrics.commands.total,
+    10,
+  );
+  const relatedCoverageResult = scoreUsefulnessCoverage(
+    usefulness.metrics.related.coveredActionablePages,
+    usefulness.metrics.actionablePages,
+    5,
+  );
   const routeSurface = detectRouteSurface(rootDir, framework, staticExport, files);
   const mcpConfig = resolveDocsMcpConfig(
     (config?.mcp as boolean | DocsMcpConfig | undefined) ?? undefined,
@@ -2324,6 +2473,54 @@ export async function inspectAgentReadiness(
   );
   const feedbackRoute = DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = `${feedbackRoute}/schema`;
+  const discovery = buildDocsAgentDiscoverySpec({
+    origin: "http://localhost",
+    entry,
+    search: searchEnabled,
+    mcp: mcpConfig,
+    feedback: {
+      enabled: agentFeedbackEnabled,
+      route: feedbackRoute,
+      schemaRoute: feedbackSchemaRoute,
+    },
+  });
+  const configuredAgentReviewPaths =
+    configLoad.status === "evaluated"
+      ? Object.values(buildDocsConfigMap(configLoad.config).pointers)
+          .map((pointer) => pointer.path)
+          .filter(
+            (optionPath) =>
+              optionPath === "agent" ||
+              optionPath.startsWith("agent.") ||
+              optionPath === "review" ||
+              optionPath.startsWith("review."),
+          )
+      : [];
+  const surfaceDrift = analyzeAgentSurfaceDrift({
+    configOptionPaths: [
+      ...new Set([...DOCS_CONFIG_MAP_TOP_LEVEL_KEYS, ...configuredAgentReviewPaths]),
+    ],
+    schemaOptions: getDocsConfigSchema().options,
+    agentContractFields: PAGE_AGENT_CONTRACT_FIELDS,
+    discovery,
+    expected: {
+      entry,
+      search: {
+        enabled: searchEnabled,
+        endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+      },
+      mcp: {
+        enabled: mcpConfig.enabled,
+        endpoint: mcpConfig.route,
+        tools: mcpConfig.tools,
+      },
+      routes: {
+        "api.docs": DEFAULT_DOCS_API_ROUTE,
+        "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
+        "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+      },
+    },
+  });
 
   const checks: AgentDoctorCheck[] = [];
 
@@ -2331,13 +2528,70 @@ export async function inspectAgentReadiness(
     makeCheck(
       "config",
       "Docs config",
-      "pass",
-      10,
+      configLoad.status === "evaluated" ? "pass" : "warn",
+      configLoad.status === "evaluated" ? 10 : 2,
       configCheckMax,
-      loadedConfig
-        ? `Resolved ${path.relative(rootDir, loadedConfig.path).replace(/\\/g, "/")} and evaluated the config module.`
+      configLoad.status === "evaluated"
+        ? `Resolved ${path.relative(rootDir, configLoad.path).replace(/\\/g, "/")} and evaluated the config module.`
         : `Resolved ${path.relative(rootDir, configPath).replace(/\\/g, "/")} using static parsing fallback.`,
+      configLoad.status === "evaluated"
+        ? undefined
+        : "Fix docs.config module evaluation before relying on resolved diagnostic scores.",
     ),
+  );
+
+  const canScoreSurfaceDrift = configLoad.status === "evaluated";
+  checks.push(
+    makeCheck(
+      "surface-drift",
+      "Discovery/config/schema consistency",
+      !canScoreSurfaceDrift ? "warn" : surfaceDrift.length === 0 ? "pass" : "fail",
+      !canScoreSurfaceDrift
+        ? 0
+        : surfaceDrift.length === 0
+          ? 10
+          : Math.max(0, 10 - surfaceDrift.length * 2),
+      10,
+      !canScoreSurfaceDrift
+        ? "Not scored because docs.config could not be evaluated; static parsing cannot prove discovery/config/schema consistency."
+        : surfaceDrift.length === 0
+          ? "Resolved config, discovery metadata, MCP tool flags, config schema, and agent contract fields agree."
+          : surfaceDrift
+              .slice(0, 3)
+              .map((issue) => issue.message)
+              .join(" "),
+      canScoreSurfaceDrift && surfaceDrift.length === 0
+        ? undefined
+        : canScoreSurfaceDrift
+          ? "Align docs config, agent discovery, MCP tools, config schema, and the canonical page agent contract before publishing."
+          : "Fix docs.config module evaluation so doctor can compare resolved config with discovery and schema surfaces.",
+    ),
+  );
+
+  const dynamicStaticFallback =
+    configLoad.status === "static-fallback" &&
+    /(?:\.\.\.|process\.env|import\.meta\.env|\[[^\]]+\]\s*:|:\s*[A-Za-z_$][\w$]*\s*[,}])/u.test(
+      configContent,
+    );
+  checks.push(
+    configLoad.status === "evaluated"
+      ? makeCheck(
+          "config-confidence",
+          "Config loading confidence",
+          "pass",
+          5,
+          5,
+          "High confidence: docs.config was evaluated with project-local environment values.",
+        )
+      : makeCheck(
+          "config-confidence",
+          "Config loading confidence",
+          "warn",
+          dynamicStaticFallback ? 1 : 2,
+          5,
+          `${dynamicStaticFallback ? "Low" : "Partial"} confidence: only static config parsing succeeded. ${configLoad.error}`,
+          "Fix docs.config module evaluation so doctor and review can inspect dynamic values, golden tasks, and resolved feature settings.",
+        ),
   );
 
   const contentDirAbs = path.resolve(rootDir, contentDir);
@@ -2661,6 +2915,83 @@ export async function inspectAgentReadiness(
 
   checks.push(
     makeCheck(
+      "agent-context-quality",
+      "Agent context usefulness",
+      contextQualityResult.status,
+      contextQualityResult.score,
+      15,
+      usefulness.metrics.agentBlocks.total > 0
+        ? `${usefulness.metrics.agentBlocks.useful}/${usefulness.metrics.agentBlocks.total} Agent blocks are specific and non-repetitive (${usefulness.metrics.agentBlocks.duplicate} duplicate, ${usefulness.metrics.agentBlocks.boilerplate} boilerplate, ${usefulness.metrics.agentBlocks.generic} generic).`
+        : "No embedded Agent blocks were present; page contracts and sibling agent.md files remain available as alternatives.",
+      usefulness.metrics.agentBlocks.total > 0 &&
+        usefulness.metrics.agentBlocks.useful === usefulness.metrics.agentBlocks.total
+        ? undefined
+        : "Replace repeated Agent boilerplate with page-specific constraints, commands, files, expected results, and recovery guidance.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
+      "agent-task-completeness",
+      "Agent task completeness",
+      taskCompletenessResult.status,
+      taskCompletenessResult.score,
+      15,
+      `${usefulness.metrics.taskCompleteness.completePages}/${usefulness.metrics.actionablePages} actionable pages include prerequisites, an expected result, and recovery guidance (${usefulness.metrics.taskCompleteness.coverage}% complete).`,
+      usefulness.metrics.actionablePages > 0 && usefulness.metrics.taskCompleteness.coverage >= 80
+        ? undefined
+        : "Add prerequisites, observable outcomes or verification expectations, and rollback or resolved failure modes to actionable pages.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
+      "agent-applicability",
+      "Framework and version applicability",
+      applicabilityResult.status,
+      applicabilityResult.score,
+      10,
+      `${usefulness.metrics.applicability.conflictingPages} conflicting, ${usefulness.metrics.applicability.ambiguousPages} ambiguous, and ${usefulness.metrics.applicability.mismatchedPages} project-mismatched actionable pages.`,
+      usefulness.metrics.actionablePages > 0 && applicabilityIssueCount === 0
+        ? undefined
+        : "Declare consistent framework/version metadata in page frontmatter and agent.appliesTo so retrieval can select the right variant.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
+      "command-health",
+      "Documented command health",
+      commandHealthResult.status,
+      commandHealthResult.score,
+      10,
+      `${usefulness.metrics.commands.healthy}/${usefulness.metrics.commands.total} statically inspected commands are healthy; ${usefulness.metrics.commands.unhealthy} are unhealthy and ${usefulness.metrics.commands.unverified} could not be verified safely.`,
+      usefulness.metrics.commands.total > 0 &&
+        usefulness.metrics.commands.unhealthy === 0 &&
+        usefulness.metrics.commands.unverified === 0
+        ? undefined
+        : "Update broken or stale commands and make workspace selectors resolvable so scripts, working directories, package managers, and docs CLI subcommands can be verified.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
+      "related-coverage",
+      "Related-page task coverage",
+      relatedCoverageResult.status,
+      relatedCoverageResult.score,
+      5,
+      `${usefulness.metrics.related.coveredActionablePages}/${usefulness.metrics.actionablePages} actionable pages link to a valid related docs route; ${usefulness.metrics.related.brokenLinks} related links are broken.`,
+      usefulness.metrics.actionablePages > 0 &&
+        usefulness.metrics.related.coverage >= 80 &&
+        usefulness.metrics.related.brokenLinks === 0
+        ? undefined
+        : "Add and validate related routes on actionable pages so agents can expand context without guessing.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
       "compact",
       "Agent compaction freshness",
       compactionResult.status,
@@ -2671,6 +3002,34 @@ export async function inspectAgentReadiness(
           ? " agent.compact defaults are configured."
           : " No agent.compact defaults were found in docs config."),
       compactionResult.recommendation,
+    ),
+  );
+
+  const averageMetric = (values: number[]) =>
+    values.length === 0
+      ? 0
+      : Math.round((values.reduce((total, value) => total + value, 0) / values.length) * 100) / 100;
+  const proportionalEvaluationScore =
+    evaluations.score === null ? 0 : Math.round((evaluations.score / 100) * 15);
+  const evaluationScore =
+    evaluations.status === "failed"
+      ? Math.min(14, proportionalEvaluationScore)
+      : proportionalEvaluationScore;
+  checks.push(
+    makeCheck(
+      "golden-tasks",
+      "Golden agent tasks",
+      evaluations.status === "passed" ? "pass" : evaluations.status === "failed" ? "fail" : "warn",
+      evaluationScore,
+      15,
+      evaluations.status === "unmeasured"
+        ? "No golden agent tasks are configured; retrieval usefulness is unmeasured."
+        : `${evaluations.passedTaskCount}/${evaluations.taskCount} golden tasks passed with ${evaluations.score}/100 average score, ${averageMetric(evaluations.tasks.map((task) => task.retrieval.recallAtK))} retrieval recall, ${averageMetric(evaluations.tasks.map((task) => task.citations.recall))} citation recall, and ${evaluations.tasks.reduce((total, task) => total + task.usage.usedUtf8Bytes, 0)} UTF-8 context bytes used.`,
+      evaluations.status === "passed"
+        ? undefined
+        : evaluations.status === "unmeasured"
+          ? "Configure agent.evaluations.tasks so doctor and review can measure retrieval, citations, framework/version selection, executable examples, and token usage."
+          : "Inspect the failed golden task metrics and fix retrieval ranking, citations, applicability metadata, examples, or context budgets.",
     ),
   );
 
@@ -2692,9 +3051,11 @@ export async function inspectAgentReadiness(
     url: hosted?.baseUrl,
     score,
     maxScore,
-    grade: gradeForAgentScore(score),
+    grade: gradeForAgentScore(score, checks),
     checks,
     coverage,
+    usefulness: usefulness.metrics,
+    evaluations,
     recommendations: checks
       .map((check) => check.recommendation)
       .filter((recommendation): recommendation is string => Boolean(recommendation))
@@ -2748,8 +3109,8 @@ export async function inspectHumanReadiness(
   }
 
   const configContent = readFileSync(configPath, "utf-8");
-  const loadedConfig = await loadDocsConfigModuleWithProjectEnv(rootDir, options.configPath);
-  const config = loadedConfig?.config;
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = config?.contentDir ?? resolveDocsContentDir(rootDir, configContent, entry);
   const ordering =
@@ -2793,12 +3154,15 @@ export async function inspectHumanReadiness(
     makeCheck(
       "config",
       "Docs config",
-      "pass",
+      configLoad.status === "evaluated" ? "pass" : "warn",
+      configLoad.status === "evaluated" ? 10 : 2,
       10,
-      10,
-      loadedConfig
-        ? `Resolved ${path.relative(rootDir, loadedConfig.path).replace(/\\/g, "/")} and evaluated the config module.`
-        : `Resolved ${path.relative(rootDir, configPath).replace(/\\/g, "/")} using static parsing fallback.`,
+      configLoad.status === "evaluated"
+        ? `Resolved ${path.relative(rootDir, configLoad.path).replace(/\\/g, "/")} and evaluated the config module.`
+        : `Resolved ${path.relative(rootDir, configPath).replace(/\\/g, "/")} using static parsing fallback. ${configLoad.error}`,
+      configLoad.status === "evaluated"
+        ? undefined
+        : "Fix docs.config module evaluation so the site score uses resolved dynamic configuration.",
     ),
   );
 
@@ -2991,6 +3355,16 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
   console.log(
     `${pc.bold("Explicit agent-friendly pages:")} ${report.coverage.explicitPages}/${report.coverage.totalPages} pages ${pc.dim(`(${report.coverage.explicitCoverage}%)`)}`,
   );
+  if (report.usefulness) {
+    console.log(
+      `${pc.bold("Useful Agent blocks:")} ${report.usefulness.agentBlocks.useful}/${report.usefulness.agentBlocks.total} ${pc.dim(`• ${report.usefulness.taskCompleteness.completePages}/${report.usefulness.actionablePages} actionable pages task-complete`)}`,
+    );
+  }
+  if (report.evaluations) {
+    console.log(
+      `${pc.bold("Golden tasks:")} ${report.evaluations.status === "unmeasured" ? "unmeasured" : `${report.evaluations.passedTaskCount}/${report.evaluations.taskCount} passed (${report.evaluations.score}/100)`}`,
+    );
+  }
   console.log(
     `${pc.bold("Generated agent.md freshness:")} ${report.coverage.compaction.freshGeneratedPages} fresh ${pc.dim("•")} ${report.coverage.compaction.staleGeneratedPages} stale ${pc.dim("•")} ${report.coverage.compaction.modifiedGeneratedPages} modified ${pc.dim("•")} ${report.coverage.compaction.tokenBudgetMissingPages} token-budget missing`,
   );
