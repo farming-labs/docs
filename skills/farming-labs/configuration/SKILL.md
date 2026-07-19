@@ -60,6 +60,9 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `metadata` | `DocsMetadata` | — | SEO and JSON-LD inputs: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
+Telemetry ignores local development origins such as `localhost`, `*.localhost`, IPv4 loopback, and
+IPv6 loopback or wildcard binding addresses even when `telemetry: true` is configured.
+
 ---
 
 ## Docs Review CI

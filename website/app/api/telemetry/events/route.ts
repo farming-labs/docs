@@ -1,4 +1,8 @@
-import type { DocsTelemetryEvent } from "@farming-labs/docs";
+import {
+  isLocalDocsTelemetryOrigin,
+  normalizeDocsTelemetryOrigin,
+  type DocsTelemetryEvent,
+} from "@farming-labs/docs";
 import { Prisma } from "@prisma/client";
 import { createHash, createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -35,17 +39,6 @@ function readNestedRecord(value: unknown, key: string) {
   if (!isRecord(value)) return undefined;
   const next = value[key];
   return isRecord(next) ? next : undefined;
-}
-
-function normalizeOrigin(value: string | undefined) {
-  if (!value) return undefined;
-
-  try {
-    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-    return new URL(withProtocol).origin.toLowerCase();
-  } catch {
-    return undefined;
-  }
 }
 
 function isPrismaSchemaMissing(error: unknown) {
@@ -189,7 +182,7 @@ function createTelemetryIdentityHash({
 }) {
   if (!packageName) return undefined;
 
-  const normalizedSiteOrigin = normalizeOrigin(siteOrigin);
+  const normalizedSiteOrigin = normalizeDocsTelemetryOrigin(siteOrigin);
   const stableProjectIdentity = normalizedSiteOrigin
     ? `site:${normalizedSiteOrigin}`
     : deploymentId
@@ -261,6 +254,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Telemetry event type is required" }, { status: 400 });
     }
 
+    const hasSite = Object.prototype.hasOwnProperty.call(eventBody, "site");
+    const site = readNestedRecord(eventBody, "site");
+    const hasSiteOrigin = Boolean(site && Object.prototype.hasOwnProperty.call(site, "origin"));
+    const rawSiteOrigin = readString(site?.origin, { max: 512 });
+    const siteOrigin = normalizeDocsTelemetryOrigin(rawSiteOrigin);
+    if (
+      (hasSite && !site) ||
+      (hasSiteOrigin && (!siteOrigin || isLocalDocsTelemetryOrigin(siteOrigin)))
+    ) {
+      return NextResponse.json(
+        { ok: true, stored: false, reason: "non-public-site-origin" },
+        { status: 202 },
+      );
+    }
+
     const identityRateLimitKey = createTelemetryIdentityRateLimitKey(eventBody, eventType);
     if (
       identityRateLimitKey &&
@@ -271,7 +279,6 @@ export async function POST(request: Request) {
 
     const packageInfo = readNestedRecord(eventBody, "package");
     const runtime = readNestedRecord(eventBody, "runtime");
-    const site = readNestedRecord(eventBody, "site");
     const deployment = readNestedRecord(eventBody, "deployment");
     const features = readNestedRecord(eventBody, "features");
     const properties = readNestedRecord(eventBody, "properties");
@@ -279,7 +286,6 @@ export async function POST(request: Request) {
     const packageVersion = readString(packageInfo?.version, { max: 80 });
     const framework = readString(eventBody.framework, { max: 80 });
     const runtimeName = readString(runtime?.name, { max: 80 });
-    const siteOrigin = readString(site?.origin, { max: 512 });
     const deploymentProvider = readString(deployment?.provider, { max: 80 });
     const deploymentEnvironment = readString(deployment?.environment, { max: 120 });
     const deploymentId = readString(deployment?.id, { max: 160 });

@@ -204,6 +204,10 @@ provider signals, site origin, enabled docs features, and coarse agent-surface e
 fingerprints, search queries, Ask AI questions, feedback comments, copied content, docs source
 content, cookies, or per-user sessions.
 
+Local development origins are ignored even when telemetry is explicitly enabled. Requests from
+`localhost`, `*.localhost`, IPv4 loopback, and IPv6 loopback or wildcard binding addresses are not
+sent or stored.
+
 ---
 
 ## `analytics` and `DocsAnalyticsConfig`
