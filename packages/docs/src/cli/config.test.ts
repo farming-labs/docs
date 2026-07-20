@@ -221,6 +221,109 @@ describe("loadDocsConfigModuleResult", () => {
     );
   });
 
+  it("evaluates a TSX config with JSX-valued options", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    writeFileSync(
+      join(rootDir, "docs.config.tsx"),
+      `export default {
+  entry: "guide",
+  nav: {
+    title: <span data-kind="docs-title">Agent-ready docs</span>,
+  },
+  pageActions: {
+    custom: <button type="button">Copy context</button>,
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const result = await loadDocsConfigModuleResult(rootDir, undefined, { silent: true });
+
+    expect(result).toMatchObject({
+      status: "evaluated",
+      path: join(rootDir, "docs.config.tsx"),
+      config: {
+        entry: "guide",
+        nav: {
+          title: {
+            type: "span",
+            props: {
+              "data-kind": "docs-title",
+              children: "Agent-ready docs",
+            },
+          },
+        },
+        pageActions: {
+          custom: {
+            type: "button",
+            props: {
+              type: "button",
+              children: "Copy context",
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("resolves project tsconfig paths for a nested TSX config", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "config"), { recursive: true });
+    mkdirSync(join(rootDir, "src", "components"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: { "@/*": ["src/*"] },
+        },
+      }),
+      "utf-8",
+    );
+    writeFileSync(
+      join(rootDir, "src", "components", "agent-icon.tsx"),
+      `export function AgentIcon() {
+  return <svg data-agent-icon="true" />;
+}
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      join(rootDir, "config", "docs.config.tsx"),
+      `import { AgentIcon } from "@/components/agent-icon";
+
+export default {
+  entry: "guide",
+  pageActions: {
+    custom: <AgentIcon />,
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const result = await loadDocsConfigModuleResult(rootDir, "config/docs.config.tsx", {
+      silent: true,
+    });
+
+    expect(result).toMatchObject({
+      status: "evaluated",
+      path: join(rootDir, "config", "docs.config.tsx"),
+      config: {
+        entry: "guide",
+        pageActions: {
+          custom: {
+            type: expect.any(Function),
+            props: {},
+          },
+        },
+      },
+    });
+  });
+
   it.each([
     ["an array", "export default [];\n"],
     ["an array beside named exports", "export const helper = true;\nexport default [];\n"],
