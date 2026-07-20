@@ -1,16 +1,23 @@
 ---
 title: "Agent Primitive"
-description: "Author page-level agent context, generated AGENTS.md instructions, and machine-readable route discovery."
+description: "Author human- and agent-specific page context, generated AGENTS.md instructions, and machine-readable route discovery."
 icon: "bot"
 order: 5.65
 ---
 
 # Agent Primitive
 
-`@farming-labs/docs` gives you two page-level primitives for agent-facing documentation:
+`@farming-labs/docs` gives you optional page-level audience controls for agent-friendly
+documentation:
 
-- `<Agent>...</Agent>` inside `page.mdx` for additive machine-only context
+- `<Agent>...</Agent>` inside `page.mdx` for additive agent-only context
+- `<Human>...</Human>` for presentation or explanation that only belongs in human-facing output
+- `<Audience only="agent">...</Audience>` or `<Audience only="human">...</Audience>` when you
+  prefer one explicit component
 - `agent.md` beside `page.mdx` for a full machine-readable override
+
+Content outside these wrappers remains shared by both audiences. Existing `<Agent>` blocks keep
+working unchanged, and you never need to add one when the same content serves both audiences well.
 
 The same page model also powers the built-in machine-readable routes:
 
@@ -62,14 +69,75 @@ The same page model also powers the built-in machine-readable routes:
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
-context. Use `agent.md` when the entire machine-readable page should be more operational, more
-structured, or fully different from the visible UI page.
+context. Use `Human` to remove UI-only explanation from agent context, or use `Audience` for either
+direction with one explicit API. Use `agent.md` when the entire machine-readable page should be
+more operational, more structured, or fully different from the visible UI page.
 
 <Callout type="info" title="Built in by default">
-  `Agent` is already part of the default MDX component map. You can write `<Agent>` directly in any
-  docs page without adding it to `docs.config.ts`, `mdx-components.tsx`, or a custom components map.
-  If you intentionally build your own MDX map from scratch, import it from `@farming-labs/theme` or
-  `@farming-labs/theme/mdx`.
+  `Agent`, `Human`, and `Audience` are already part of the default MDX component map. You can use
+  them directly in any docs page without adding them to `docs.config.ts`, `mdx-components.tsx`, or
+  a custom components map. If you intentionally build your own MDX map from scratch, import them
+  from `@farming-labs/theme` or `@farming-labs/theme/mdx`.
+</Callout>
+
+## Choose An Audience
+
+The short components and the explicit component are equivalent:
+
+```mdx title="page.mdx"
+# Deploy the app
+
+This setup applies to every reader.
+
+<Human>
+Use the dashboard screenshot below to find the deployment button.
+</Human>
+
+<Agent>
+Run `pnpm deploy`, then verify that the command exits with code 0.
+</Agent>
+
+<Audience only="human">
+This is the explicit form of `Human`.
+</Audience>
+
+<Audience only="agent">
+This is the explicit form of `Agent`.
+</Audience>
+```
+
+Use whichever authoring style reads best on the page. `<Agent>` remains the concise, optional
+shorthand for agent-only context, while `<Human>` is the human-only shorthand. Both shorthands have
+a fixed audience, so an `only` prop is ignored and `docs review` reports it. Use `<Audience>` when
+you want the explicit `only="human"` or `only="agent"` form. `Audience.only` accepts exactly
+`"human"` or `"agent"`. Use a static literal (a quoted prop or static quoted MDX expression).
+Runtime expressions such as `only={currentAudience}` and spread props such as
+`{...audienceProps}` are unsupported; `docs review` reports them because exports cannot resolve
+them consistently. An invalid or missing value is preserved as shared content instead of being
+silently dropped.
+
+The framework resolves the same audience policy before each content surface consumes the page:
+
+| Surface | Projection |
+| ------- | ---------- |
+| Rendered docs HTML | Human |
+| Public docs search | Human |
+| Markdown routes and the markdown API format | Agent |
+| Ask AI retrieval and context | Agent |
+| MCP search, context, and page reads | Agent |
+| `llms.txt` | Discovery metadata and links; linked Markdown uses the agent projection |
+| `llms-full.txt` page bodies | Agent |
+| Static agent exports | Agent |
+| XML and Markdown sitemaps | Route metadata only; page-body audience blocks are not included |
+
+This keeps visual instructions out of agent context and implementation-only instructions out of
+the rendered page and public search without maintaining separate copies of the entire page.
+
+<Callout type="warning" title="Audience filtering is not access control">
+  Audience wrappers shape a representation; they do not authenticate a reader or protect a secret.
+  Source files and machine-readable routes can still be public. Never put credentials, private
+  customer data, internal-only URLs, or other sensitive values inside `Agent`, `Human`, `Audience`,
+  or `agent.md`. Put protected documentation behind real authorization.
 </Callout>
 
 ## Use `Agent` For Additive Context
@@ -170,8 +238,8 @@ machine-readable page for one or more routes and write a sibling `agent.md` auto
 It uses the same resolution order as the runtime:
 
 - existing `agent.md`
-- hidden `Agent` blocks
-- normal page markdown
+- the agent projection of audience-aware page markdown
+- shared page markdown
 
 That makes it a good fit when you want to start with additive `<Agent>` context and later freeze a
 shorter, more operational machine page.
@@ -191,11 +259,11 @@ The visible UI page still renders `page.mdx`. Only the machine-readable surface 
 
 ## Audit The Agent Surface
 
-After you add `<Agent>` blocks, `agent.md`, `AGENTS.md`, `skill.md`, or discovery endpoints, use the
+After you add audience blocks, `agent.md`, `AGENTS.md`, `skill.md`, or discovery endpoints, use the
 [Doctor section of the CLI docs](/docs/cli#doctor) to audit whether the machine-facing layer is
 actually wired and visible the way you expect.
 
-That is the quickest follow-up after authoring page-level primitives. If you add an `Agent` block
+That is the quickest follow-up after authoring page-level controls. If you add an agent-only block
 or sibling `agent.md`, the doctor output should reflect stronger explicit agent-friendly page
 coverage instead of only looking correct in the UI.
 
@@ -290,13 +358,15 @@ also accepted as a compatibility alias.
 ## Choosing Between Them
 
 - Use `Agent` when the normal page should stay the source of truth and you only need extra machine context
+- Use `Human` when prose or visuals only help the rendered page and would add noise to agent context
+- Use `Audience` when you prefer an explicit `only="human"` or `only="agent"` prop
 - Use `agent.md` when the machine-readable page should become its own focused document
-- Use both patterns page-by-page; you do not need a global config flag to turn them on
+- Mix these patterns page-by-page; shared content needs no wrapper or global config flag
 
 ## Page Primitives Vs Skills
 
-`Agent` and `agent.md` are page-scoped primitives. They are the right fit when the machine context
-belongs to a single docs route.
+`Agent`, `Human`, `Audience`, and `agent.md` are page-scoped authoring controls. They are the right
+fit when audience-specific context belongs to a single docs route.
 
 Use `/AGENTS.md` when a coding agent needs site-level operating instructions for this repo or docs
 deployment. Use `/skill.md` when an agent needs a concise installable-skill style guide for this
@@ -305,7 +375,7 @@ workflows, such as setup, CLI usage, theme creation, page actions, or deeper con
 
 In practice, the two features work well together:
 
-- use `Agent` or `agent.md` to make one page more useful to agents
+- use audience wrappers or `agent.md` to tailor one page without duplicating its shared content
 - use skills when the knowledge should be bundled as a reusable workflow outside a single page
 
 This repo already publishes skills under `skills/farming-labs/`. Install them with:

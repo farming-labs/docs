@@ -579,6 +579,10 @@ description: "Start here"
 # Introduction
 
 Welcome to the docs.
+
+<Human>Use the visual coral walkthrough.</Human>
+
+<Audience only="agent">Use the scripted indigo workflow.</Audience>
 `,
     );
     mkdirSync(join(rootDir, "app", "docs", "installation"), { recursive: true });
@@ -634,12 +638,23 @@ Install the package.
     const llmsFullApiText = await llmsFullApi.text();
     expect(llmsFullApi.status).toBe(200);
     expect(llmsFullApiText).toContain("Welcome to the docs.");
+    expect(llmsFullApiText).toContain("scripted indigo workflow");
+    expect(llmsFullApiText).not.toContain("visual coral walkthrough");
 
     for (const path of ["/llms-full.txt", "/.well-known/llms-full.txt", "/docs/llms-full.txt"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/plain");
       expect(await response.text()).toBe(llmsFullApiText);
+    }
+
+    for (const path of ["/sitemap.xml", "/docs/sitemap.md"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      const sitemap = await response.text();
+      expect(response.status).toBe(200);
+      expect(sitemap).toContain("/docs");
+      expect(sitemap).not.toContain("visual coral walkthrough");
+      expect(sitemap).not.toContain("scripted indigo workflow");
     }
 
     const skillApi = await GET(new Request("http://localhost/api/docs?format=skill"));
@@ -1057,7 +1072,7 @@ Use the product-specific coding workflow first.
     }
   });
 
-  it("keeps Agent blocks out of the normal search index", async () => {
+  it("uses the human audience projection for normal search", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-search-route-"));
     tempDirs.push(rootDir);
 
@@ -1072,9 +1087,11 @@ title: "Introduction"
 
 Visible content.
 
-<Agent>
+<Human>Search should return this human-only coral token.</Human>
+
+<Audience only="agent">
 Search should not return this hidden agent-only zebra token.
-</Agent>
+</Audience>
 `,
     );
 
@@ -1093,6 +1110,15 @@ Search should not return this hidden agent-only zebra token.
       .join("\n");
 
     expect(renderedSearchText).not.toContain("agent-only zebra token");
+
+    const humanResponse = await GET(
+      new Request("http://localhost/api/docs?query=human-only%20coral%20token"),
+    );
+    const humanPayload = (await humanResponse.json()) as Array<{
+      content: string;
+      description?: string;
+    }>;
+    expect(humanPayload.some((result) => result.content.includes("Introduction"))).toBe(true);
   });
 
   it("serves markdown through the default docs api route, including Agent blocks and preferring agent.md when present", async () => {
@@ -1140,6 +1166,12 @@ Run \`pnpm dev\`.
 <Agent>
 Verify the onboarding command examples before changing this page.
 </Agent>
+
+<Human>Follow the visual dashboard walkthrough.</Human>
+
+<Audience only="agent">
+Run the deterministic onboarding verifier.
+</Audience>
 `,
     );
     const quickstartLastModified = new Date("2026-07-18T14:23:45.000Z");
@@ -1164,7 +1196,10 @@ This embedded agent block should be ignored because agent.md overrides the page.
     );
     writeFileSync(
       join(rootDir, "app", "docs", "overview", "agent.md"),
-      "Use this page as the implementation map.\n",
+      `<Human>Open the overview dashboard.</Human>
+
+<Audience only="agent">Use this page as the implementation map.</Audience>
+`,
     );
     writeFileSync(
       join(rootDir, "app", "docs", "configuration", "page.mdx"),
@@ -1215,6 +1250,8 @@ Config content.
     expect(fallbackDocument).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
+    expect(fallbackDocument).toContain("Run the deterministic onboarding verifier.");
+    expect(fallbackDocument).not.toContain("Follow the visual dashboard walkthrough.");
     expect(fallbackDocument).toContain("## Agent Contract");
     expect(fallbackDocument).toContain("- Framework: `nextjs`");
     expect(fallbackDocument).toContain("### Verification\n\n- The docs route returns HTTP 200");
@@ -1260,6 +1297,7 @@ Config content.
     expect(agentDocument).toContain('canonical_url: "http://localhost/docs/overview"');
     expect(agentDocument).toContain('markdown_url: "http://localhost/docs/overview.md"');
     expect(agentDocument).toContain("Use this page as the implementation map.");
+    expect(agentDocument).not.toContain("Open the overview dashboard.");
     expect(agentDocument).toContain("## Sitemap");
 
     const rewrittenFallbackResponse = await GET(
@@ -2420,6 +2458,7 @@ description: "Start building quickly"
       pagePattern: "/docs/{slug}.md",
       rootPage: "/docs.md",
       apiPattern: "/api/docs?format=markdown&path={slug}",
+      resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     });
     expect(spec.llms).toEqual({
       enabled: true,

@@ -64,7 +64,7 @@ import {
   renderDocsSkillDocument,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
-  resolveDocsAgentMdxContent,
+  resolveDocsAudienceMdxContent,
   resolveDocsAgentFeedbackConfig,
   resolveDocsAgentFeedbackRequest,
   resolvePageSidebarFolderIndexBehavior,
@@ -500,8 +500,8 @@ function searchIndexFromMap(
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
 
     const { data, content } = matter(raw);
-    const humanRawContent = resolveDocsAgentMdxContent(content, "human");
-    const pageAgentRawContent = resolveDocsAgentMdxContent(content, "agent");
+    const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
+    const pageAgentRawContent = resolveDocsAudienceMdxContent(content, "agent");
     const related = normalizeDocsRelated(data.related);
     const agentDoc = isIdx ? readAgentDocFromMap(contentMap, dirPrefix, slug) : undefined;
     const title =
@@ -542,9 +542,10 @@ function readAgentDocFromMap(contentMap: ContentFileMap, dirPrefix: string, slug
   if (!raw) return undefined;
 
   const { content } = matter(stripGeneratedAgentProvenance(raw));
+  const agentRawContent = resolveDocsAudienceMdxContent(content, "agent");
   return {
-    agentContent: stripMarkdownText(content),
-    agentRawContent: content,
+    agentContent: stripMarkdownText(agentRawContent),
+    agentRawContent,
   };
 }
 
@@ -769,7 +770,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     }
 
     const { data, content } = matter(raw);
-    const humanRawContent = resolveDocsAgentMdxContent(content, "human");
+    const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
     const readingTime = resolvePageReadingTime(data, humanRawContent, {
       enabledByDefault: readingTimeOptions.enabled,
       wordsPerMinute: readingTimeOptions.wordsPerMinute,

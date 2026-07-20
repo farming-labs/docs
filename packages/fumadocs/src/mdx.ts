@@ -37,7 +37,12 @@ import {
   type PromptProps,
 } from "./prompt.js";
 import { extractPromptText } from "./prompt-text.js";
-import { type CodeBlockCopyData, type DocsTheme } from "@farming-labs/docs";
+import {
+  type CodeBlockCopyData,
+  type DocsContentAudience,
+  type DocsTheme,
+  resolveDocsAudienceExposure,
+} from "@farming-labs/docs";
 
 function Table(props: React.ComponentPropsWithoutRef<"table">) {
   return React.createElement(
@@ -49,8 +54,34 @@ function Table(props: React.ComponentPropsWithoutRef<"table">) {
   );
 }
 
-function Agent(_props: { children?: React.ReactNode }) {
-  return null;
+export interface AgentProps {
+  children?: React.ReactNode;
+}
+
+export interface HumanProps {
+  children?: React.ReactNode;
+}
+
+export interface AudienceProps {
+  only: DocsContentAudience;
+  children?: React.ReactNode;
+}
+
+function renderAudience(only: unknown, audience: DocsContentAudience, children: React.ReactNode) {
+  if (!resolveDocsAudienceExposure(only, audience)) return null;
+  return React.createElement(React.Fragment, null, children);
+}
+
+function Agent({ children }: AgentProps) {
+  return renderAudience("agent", "human", children);
+}
+
+function Human({ children }: HumanProps) {
+  return renderAudience("human", "human", children);
+}
+
+function Audience({ only, children }: AudienceProps) {
+  return renderAudience(only, "human", children);
 }
 
 type ReactElementProps = Record<string, unknown> & {
@@ -271,8 +302,10 @@ const extendedMdxComponents = {
   img: MDXImg,
   table: Table,
   Agent,
+  Audience,
   CodeGroup,
   HoverLink,
+  Human,
   Prompt,
   Tab,
   Tabs,
@@ -399,10 +432,12 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
 
 export {
   Agent,
+  Audience,
   CodeGroup,
   defaultMdxComponents,
   extendedMdxComponents,
   HoverLink,
+  Human,
   Prompt,
   Tab,
   Tabs,

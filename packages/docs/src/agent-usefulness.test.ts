@@ -48,6 +48,188 @@ Run pnpm test.
       },
     ]);
   });
+
+  it("recognizes static agent audiences without counting human or example markup", () => {
+    const source = [
+      "<Human>Human guidance.</Human>",
+      '<Audience only="human">Human audience.</Audience>',
+      "<Audience only={audience}>Dynamic audience.</Audience>",
+      '<Audience only="agent">Run `pnpm test`.</Audience>',
+      "<Audience only='agent'>Read `src/server.ts`.</Audience>",
+      '<Audience only={"agent"}>Verify `/docs.md`.</Audience>',
+      "<Audience only={'agent'}><Human>Hidden from agents.</Human>Keep `docs.config.ts`.</Audience>",
+      '`<Audience only="agent">Inline example.</Audience>`',
+      "```mdx",
+      '<Audience only="agent">Fenced example.</Audience>',
+      "```",
+      '<Agent audience="implementation">Use `src/index.ts`.</Agent>',
+      "<Human><Agent>Unreachable agent context.</Agent></Human>",
+      '<Audience only="agent" />',
+      '<Audience data-only="agent">Shared metadata, not an audience declaration.</Audience>',
+      '{/* <Audience only="agent">MDX comment.</Audience> */}',
+      "<!-- <Agent>HTML comment.</Agent> -->",
+      'export const example = "<Agent>Module string.</Agent>";',
+      "<Audience",
+      '  only="agent"',
+      ">",
+      "Run `pnpm exec docs doctor` after multiline authoring.",
+      "</Audience>",
+    ].join("\n");
+
+    expect(extractAgentBlocks(source, { sourcePath: "docs/audience.mdx" })).toEqual([
+      {
+        sourcePath: "docs/audience.mdx",
+        line: 4,
+        content: "Run `pnpm test`.",
+      },
+      {
+        sourcePath: "docs/audience.mdx",
+        line: 5,
+        content: "Read `src/server.ts`.",
+      },
+      {
+        sourcePath: "docs/audience.mdx",
+        line: 6,
+        content: "Verify `/docs.md`.",
+      },
+      {
+        sourcePath: "docs/audience.mdx",
+        line: 7,
+        content: "Keep `docs.config.ts`.",
+      },
+      {
+        sourcePath: "docs/audience.mdx",
+        line: 12,
+        content: "Use `src/index.ts`.",
+      },
+      {
+        sourcePath: "docs/audience.mdx",
+        line: 19,
+        content: "Run `pnpm exec docs doctor` after multiline authoring.",
+      },
+    ]);
+  });
+
+  it.each([
+    [
+      "multiline import",
+      `import {
+  thing,
+}
+from "<Agent>module path literal</Agent>";`,
+    ],
+    ["multiline code span", "Shared `starts\n<Agent>literal code</Agent>` end."],
+    ["escaped markup", String.raw`\<Agent>literal escaped\</Agent>`],
+    ["JSX prop string", '<Example code="<Agent>literal prop</Agent>" />'],
+    ["MDX expression string", '{"<Agent>literal expression</Agent>"}'],
+    ["Markdown link title", '[link](https://example.com "See <Agent>literal</Agent>")'],
+    [
+      "raw script block",
+      `<script>
+const sample = "<Agent>literal script</Agent>";
+</script>`,
+    ],
+  ])("ignores audience-looking literals in a %s", (_name, literal) => {
+    const source = `${literal}\n\n<Agent>real agent content</Agent>`;
+
+    expect(extractAgentBlocks(source, { sourcePath: "docs/literals.mdx" })).toEqual([
+      {
+        sourcePath: "docs/literals.mdx",
+        line: literal.split("\n").length + 2,
+        content: "real agent content",
+      },
+    ]);
+  });
+
+  it.each([
+    ["fenced raw element", "```md\n<script>\n```", "```md\n</script>\n```"],
+    ["inline raw element", "`<script>`", "`</script>`"],
+    ["expression raw element", '{"<script>"}', '{"</script>"}'],
+    ["escaped HTML comment", "\\<!--", "\\-->"],
+  ])("extracts live context between separated %s delimiters", (_name, opening, closing) => {
+    const source = `${opening}\n\n<Agent>real agent content</Agent>\n\n${closing}`;
+
+    expect(extractAgentBlocks(source, { sourcePath: "docs/delimiters.mdx" })).toEqual([
+      {
+        sourcePath: "docs/delimiters.mdx",
+        line: opening.split("\n").length + 2,
+        content: "real agent content",
+      },
+    ]);
+  });
+
+  it("ignores audience-looking frontmatter without shifting Unicode offsets", () => {
+    const source = `---
+description: "😀 <Agent>frontmatter literal</Agent>"
+---
+
+<Agent>real agent content</Agent>`;
+
+    expect(extractAgentBlocks(source, { sourcePath: "docs/frontmatter.mdx" })).toEqual([
+      {
+        sourcePath: "docs/frontmatter.mdx",
+        line: 5,
+        content: "real agent content",
+      },
+    ]);
+
+    const blockScalar = `---
+description: |
+  ---
+  <Agent>literal YAML</Agent>
+---
+
+<Agent>real block scalar content</Agent>`;
+    expect(extractAgentBlocks(blockScalar, { sourcePath: "docs/frontmatter.mdx" })).toEqual([
+      {
+        sourcePath: "docs/frontmatter.mdx",
+        line: 7,
+        content: "real block scalar content",
+      },
+    ]);
+  });
+
+  it("extracts agent context nested in a generic component expression", () => {
+    const source =
+      "<Card title={<Agent>Use `src/agent.ts`.</Agent>} subtitle={<Human>Visual hint.</Human>} />";
+
+    expect(extractAgentBlocks(source, { sourcePath: "docs/card.mdx" })).toEqual([
+      {
+        sourcePath: "docs/card.mdx",
+        line: 1,
+        content: "Use `src/agent.ts`.",
+      },
+    ]);
+
+    const spreadSource =
+      "<Card {...{ title: <Agent>Use `src/spread.ts`.</Agent>, subtitle: <Human>Hint.</Human> }} />";
+    expect(extractAgentBlocks(spreadSource, { sourcePath: "docs/card.mdx" })).toEqual([
+      {
+        sourcePath: "docs/card.mdx",
+        line: 1,
+        content: "Use `src/spread.ts`.",
+      },
+    ]);
+  });
+
+  it("extracts live Svelte MDX context without counting code or link-title literals", () => {
+    const source = `{#if enabled}
+{() => /<Agent>literal<\\/Agent>/.test(value)}
+- ~~~mdx
+  <Agent>literal fenced content</Agent>
+  ~~~
+[link](https://example.com "<Agent>literal title</Agent>")
+<Agent>live Svelte content</Agent>
+{/if}`;
+
+    expect(extractAgentBlocks(source, { sourcePath: "docs/page.svx" })).toEqual([
+      {
+        sourcePath: "docs/page.svx",
+        line: 7,
+        content: "live Svelte content",
+      },
+    ]);
+  });
 });
 
 describe("analyzeAgentUsefulness", () => {
@@ -117,6 +299,25 @@ ${shared}
       generic: 4,
       useful: 1,
     });
+  });
+
+  it("scores Audience agent blocks but not human-only audience content", () => {
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page(
+            "audiences",
+            `<Human>Run the human walkthrough.</Human>
+<Audience only="human">Use the interactive form.</Audience>
+<Audience only="agent">Run \`pnpm exec docs doctor\` after editing \`docs.config.ts\`.</Audience>`,
+          ),
+          actionable: false,
+        },
+      ],
+    });
+
+    expect(report.metrics.agentBlocks).toMatchObject({ total: 1, useful: 1 });
   });
 
   it("keeps fenced commands in exact duplicate signatures", () => {

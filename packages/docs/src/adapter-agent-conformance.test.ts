@@ -10,16 +10,20 @@ const adapters = [
 ] as const satisfies readonly (readonly [DocsAgentAdapter, string])[];
 
 describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
-  it("conforms to the shared public agent contract", async () => {
+  async function loadCreateDocsServer() {
     // Keep the module path dynamic so the core typecheck does not pull adapter source files into
     // its declaration root. Vitest still executes the real adapter implementation.
     const moduleUrl = new URL(modulePath, import.meta.url).href;
-    const { createDocsServer } = (await import(moduleUrl)) as {
+    return (await import(moduleUrl)) as {
       createDocsServer(config: Record<string, unknown>): {
         GET(context: { request: Request; url?: URL }): Promise<Response>;
         MCP: { POST(context: { request: Request }): Promise<Response> };
       };
     };
+  }
+
+  it("conforms to the shared public agent contract", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
     const server = createDocsServer({
       entry: "docs",
       nav: { title: "Conformance Docs" },
@@ -43,5 +47,52 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
 
     expect(report.cases.filter((result) => !result.passed)).toEqual([]);
     expect(report.passed).toBe(true);
+  });
+
+  it("applies the same audience policy to search and agent outputs", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const server = createDocsServer({
+      entry: "docs",
+      nav: { title: "Audience Docs" },
+      mcp: true,
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+      _preloadedContent: {
+        "/docs/page.md": `---
+title: Audience
+description: Audience policy
+---
+
+# Audience
+
+Shared context.
+
+<Human>Human coral walkthrough.</Human>
+
+<Audience only="agent">Agent indigo procedure.</Audience>`,
+      },
+    });
+
+    async function get(path: string) {
+      const url = new URL(path, "https://docs.example.com");
+      return server.GET({ request: new Request(url), url });
+    }
+
+    const humanSearch = await get("/api/docs?query=human%20coral%20walkthrough");
+    const agentSearch = await get("/api/docs?query=agent%20indigo%20procedure");
+    expect(await humanSearch.text()).toContain("Audience");
+    expect(await agentSearch.json()).toEqual([]);
+
+    const markdown = await (await get("/docs.md")).text();
+    expect(markdown).toContain("Agent indigo procedure.");
+    expect(markdown).not.toContain("Human coral walkthrough.");
+
+    const llmsFull = await (await get("/llms-full.txt")).text();
+    expect(llmsFull).toContain("Agent indigo procedure.");
+    expect(llmsFull).not.toContain("Human coral walkthrough.");
+
+    const sitemap = await (await get("/sitemap.xml")).text();
+    expect(sitemap).toContain("https://docs.example.com/docs");
+    expect(sitemap).not.toContain("Human coral walkthrough.");
+    expect(sitemap).not.toContain("Agent indigo procedure.");
   });
 });

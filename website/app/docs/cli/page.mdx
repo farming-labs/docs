@@ -309,7 +309,8 @@ pnpm exec docs agent export --public
 The command scans the configured content once and writes the complete bundle to `public/`, or to
 SvelteKit's `static/` directory:
 
-- a `.md` file for every resolved docs page, using `agent.md`, then `Agent` blocks, then page MDX
+- a `.md` file for every resolved docs page, using `agent.md`, then the page's agent audience
+  projection, then shared page MDX
 - root, entry-scoped, well-known, and configured section `llms.txt` and `llms-full.txt` files
 - `/.well-known/agent.json` plus the extensionless discovery alias
 - `/skill.md`, its well-known alias, and `/skills/docs/SKILL.md`
@@ -364,8 +365,8 @@ Use `agent compact` when you want shorter page-level machine docs without hand-w
 
 What it does:
 
-- resolves the same machine-readable page the runtime already uses: `agent.md`, then `Agent`
-  blocks, then normal page markdown
+- resolves the same machine-readable page the runtime already uses: `agent.md`, then the agent
+  audience projection (`Agent`, `Human`, and `Audience` blocks), then shared page content
 - compresses that document with the Docs Cloud compression API
 - creates missing sibling `agent.md` files and overwrites existing ones
 - makes the written `agent.md` the new source for `.md` routes, docs API markdown output, and MCP

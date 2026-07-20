@@ -154,14 +154,14 @@ A declarative config file is hard to break. An AI can add `ai: { enabled: true }
 ## Compact Page-Level Agent Docs
 
 The framework already gives agents clean page-level markdown through `.md` routes, canonical URLs
-with `Signature-Agent` in Next.js, hidden `<Agent>...</Agent>` blocks, and sibling `agent.md` files.
+with `Signature-Agent` in Next.js, audience-aware page blocks, and sibling `agent.md` files.
 When you want that machine-readable layer to be even tighter, use `docs agent compact`.
 
 The command resolves the same page contract the runtime already uses:
 
 - existing `agent.md`
-- embedded `Agent` blocks
-- normal page markdown
+- the agent audience projection of `Agent`, `Human`, and `Audience` blocks
+- shared page content
 
 Then it sends that resolved document to the Docs Cloud compression API and writes a sibling
 `agent.md` file for the page.

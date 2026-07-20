@@ -170,9 +170,12 @@ export {
   renderDocsAgentsDocument,
   renderDocsSkillDocument,
   parseDocsAgentFeedbackData,
+  findDocsAudienceMdxIssues,
   resolveDocsAgentFeedbackConfig,
   resolveDocsAgentFeedbackRequest,
   resolveDocsAgentsFormat,
+  resolveDocsAudienceExposure,
+  resolveDocsAudienceMdxContent,
   resolveDocsMarkdownCanonicalUrl,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtRequest,
@@ -185,6 +188,7 @@ export {
   toDocsMarkdownUrl,
   validateDocsAgentFeedbackPayload,
 } from "./agent.js";
+export type { DocsAudienceMdxIssue, DocsContentAudience } from "./audience.js";
 export type {
   DocsAgentsDocumentOptions,
   DocsAgentFeedbackRequest,

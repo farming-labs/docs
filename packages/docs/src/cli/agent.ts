@@ -514,6 +514,7 @@ function buildResolvedPageSourceDocument(page: DocsMcpPage): string {
   return stripGeneratedPageAgentContractMarkdown(
     renderDocsMarkdownDocument({
       ...page,
+      agentContent: undefined,
       agentRawContent: undefined,
     }),
   );

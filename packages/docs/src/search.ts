@@ -20,6 +20,7 @@ import {
   renderPageAgentContractMarkdown,
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
+import type { DocsContentAudience } from "./audience.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
@@ -219,7 +220,12 @@ function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
 
 function getAskAIPageContent(page: DocsSearchSourcePage): string {
   return upsertPageAgentContractMarkdown(
-    page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+    page.agentRawContent ??
+      page.agentFallbackRawContent ??
+      page.agentContent ??
+      page.agentFallbackContent ??
+      page.rawContent ??
+      page.content,
     page.agent,
   )
     .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
@@ -478,12 +484,81 @@ function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[]
   return results;
 }
 
-function pageToSearchDocument(page: DocsSearchSourcePage): DocsSearchDocument {
+function sanitizeExternalAgentSearchResults(
+  results: DocsSearchResult[],
+  localAgentResults: DocsSearchResult[],
+): DocsSearchResult[] {
+  const localByKey = new Map(
+    localAgentResults.map((result) => [getSearchResultKey(result), result] as const),
+  );
+  const localPageResults = new Map<string, DocsSearchResult>();
+
+  for (const result of localAgentResults) {
+    const pageUrl = normalizeUrlPathname(result.url);
+    const existing = localPageResults.get(pageUrl);
+    if (!existing || result.type === "page") localPageResults.set(pageUrl, result);
+  }
+
+  return results.flatMap((result) => {
+    const local =
+      localByKey.get(getSearchResultKey(result)) ??
+      localPageResults.get(normalizeUrlPathname(result.url));
+    if (!local) return [];
+
+    return [
+      {
+        ...local,
+        id: result.id,
+        score: result.score ?? local.score,
+      },
+    ];
+  });
+}
+
+function getPageAudienceRawContent(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+): string {
+  if (audience === "agent") {
+    return (
+      page.agentRawContent ??
+      page.agentFallbackRawContent ??
+      page.agentContent ??
+      page.agentFallbackContent ??
+      page.rawContent ??
+      page.content
+    );
+  }
+
+  return page.rawContent ?? page.content;
+}
+
+function getPageAudienceSearchText(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+): string {
+  if (audience === "agent") {
+    return (
+      page.agentContent ??
+      page.agentFallbackContent ??
+      stripMarkdownText(getPageAudienceRawContent(page, audience))
+    );
+  }
+
+  return page.content || stripMarkdownText(getPageAudienceRawContent(page, audience));
+}
+
+function pageToSearchDocument(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience = "human",
+): DocsSearchDocument {
   return {
     id: makeDocumentId(page.url, "page"),
     url: page.url,
     title: page.title,
-    content: normalizeWhitespace([page.content, getPageAgentContractSearchText(page)].join(" ")),
+    content: normalizeWhitespace(
+      [getPageAudienceSearchText(page, audience), getPageAgentContractSearchText(page)].join(" "),
+    ),
     description: page.description,
     type: "page",
     locale: page.locale,
@@ -496,6 +571,7 @@ function pageToSearchDocument(page: DocsSearchSourcePage): DocsSearchDocument {
 function buildExactPageSearchResults(
   query: string,
   pages: DocsSearchSourcePage[],
+  audience: DocsContentAudience = "human",
 ): DocsSearchResult[] {
   const normalizedQuery = normalizeSearchPhrase(query);
   if (!normalizedQuery) return [];
@@ -503,7 +579,7 @@ function buildExactPageSearchResults(
   const results: DocsSearchResult[] = [];
 
   for (const page of pages) {
-    const document = pageToSearchDocument(page);
+    const document = pageToSearchDocument(page, audience);
     const title = normalizeSearchPhrase(page.title);
     const urlSegments = getUrlSearchSegments(page.url);
     const isExactPageMatch = title === normalizedQuery || urlSegments.includes(normalizedQuery);
@@ -556,10 +632,6 @@ function prioritizeLiteralInsideResults(
   });
 }
 
-function shouldSupplementAskAIWithSimpleSearch(search: ResolvedDocsSearchConfig): boolean {
-  return search.enabled && search.provider !== "simple";
-}
-
 function rankAskAIContextResult(query: string, result: DocsAskAIContextResult): number {
   return scoreDocument(query, {
     id: result.id,
@@ -584,8 +656,11 @@ function makeDocumentId(url: string, suffix: string): string {
   return `${url}#${suffix}`;
 }
 
-function splitPageIntoSections(page: DocsSearchSourcePage): DocsSearchDocument[] {
-  const raw = page.rawContent ?? page.content;
+function splitPageIntoSections(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience = "human",
+): DocsSearchDocument[] {
+  const raw = getPageAudienceRawContent(page, audience);
   return parseDocsMarkdownSections(raw).flatMap((section, index) => {
     const content = normalizeWhitespace(stripMarkdownText(section.content));
     if (!content) return [];
@@ -611,15 +686,16 @@ function splitPageIntoSections(page: DocsSearchSourcePage): DocsSearchDocument[]
 export function buildDocsSearchDocuments(
   pages: DocsSearchSourcePage[],
   chunking: DocsSearchChunkingConfig = {},
+  audience: DocsContentAudience = "human",
 ): DocsSearchDocument[] {
   const strategy = chunking.strategy ?? "section";
 
   return pages.flatMap((page) => {
-    const base = pageToSearchDocument(page);
+    const base = pageToSearchDocument(page, audience);
 
     if (strategy === "page") return [base];
 
-    const sections = splitPageIntoSections(page);
+    const sections = splitPageIntoSections(page, audience);
     if (sections.length === 0) return [base];
 
     const pageSummary = base.content ? [base] : [];
@@ -1515,6 +1591,8 @@ export async function performDocsSearch(options: {
   pages: DocsSearchSourcePage[];
   query: string;
   search?: boolean | DocsSearchConfig;
+  /** Selects which audience projection is searchable. Public site search defaults to human. */
+  audience?: DocsContentAudience;
   locale?: string;
   pathname?: string;
   siteTitle?: string;
@@ -1523,7 +1601,8 @@ export async function performDocsSearch(options: {
   const search = normalizeDocsSearchConfig(options.search);
   if (!search.enabled) return [];
 
-  const documents = buildDocsSearchDocuments(options.pages, search.chunking);
+  const audience = options.audience ?? "human";
+  const documents = buildDocsSearchDocuments(options.pages, search.chunking, audience);
   const context: DocsSearchAdapterContext = {
     pages: options.pages,
     documents,
@@ -1541,13 +1620,34 @@ export async function performDocsSearch(options: {
 
   try {
     const adapter = await resolveSearchAdapter(search, context);
-    await maybeSyncSearchIndex(adapter, search, context);
+    const syncContext =
+      audience === "agent"
+        ? {
+            ...context,
+            documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
+          }
+        : context;
+    await maybeSyncSearchIndex(adapter, search, syncContext);
     const results = await adapter.search(query, context);
     if (search.provider === "simple") return results;
 
+    const localAudienceResults =
+      audience === "agent" ? await createSimpleSearchAdapter().search(query, context) : [];
+    // MCP `search_docs` is an agent surface and is expected to return its own
+    // audience-safe projection. Hosted and custom providers may still expose a
+    // human index, so their snippets must be replaced with local agent content.
+    const safeAdapterResults =
+      audience === "agent" && search.provider !== "mcp"
+        ? sanitizeExternalAgentSearchResults(results, localAudienceResults)
+        : results;
+
     return prioritizeLiteralInsideResults(
       options.query,
-      mergeSearchResults(buildExactPageSearchResults(options.query, options.pages), results),
+      mergeSearchResults(
+        buildExactPageSearchResults(options.query, options.pages, audience),
+        safeAdapterResults,
+        localAudienceResults,
+      ),
     ).slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
   } catch {
     return createSimpleSearchAdapter().search(query, context);
@@ -1571,33 +1671,16 @@ export async function buildDocsAskAIContext(options: {
   const initialSearch = options.search === false ? true : options.search;
   const initialSearchConfig = normalizeDocsSearchConfig(initialSearch);
   const primarySearch = initialSearchConfig.enabled ? initialSearch : true;
-  const primarySearchConfig = normalizeDocsSearchConfig(primarySearch);
-  const primarySearchResults = await performDocsSearch({
+  const searchResults = await performDocsSearch({
     pages: options.pages,
     query: options.query,
     search: primarySearch,
+    audience: "agent",
     locale: options.locale,
     pathname: options.pathname,
     siteTitle: options.siteTitle,
     limit: searchLimit,
   });
-  const localSearchResults = shouldSupplementAskAIWithSimpleSearch(primarySearchConfig)
-    ? await performDocsSearch({
-        pages: options.pages,
-        query: options.query,
-        search: {
-          provider: "simple",
-          enabled: true,
-          chunking: primarySearchConfig.chunking,
-          maxResults: searchLimit,
-        },
-        locale: options.locale,
-        pathname: options.pathname,
-        siteTitle: options.siteTitle,
-        limit: searchLimit,
-      })
-    : [];
-  const searchResults = mergeSearchResults(primarySearchResults, localSearchResults);
 
   const seen = new Set<string>();
   const maxResultChars = options.maxResultChars ?? DEFAULT_ASK_AI_RESULT_CHARS;

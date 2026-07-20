@@ -99,11 +99,41 @@ MDX without imports or `docs.config.ts` registration:
 - `img` — images
 - `blockquote` — blockquotes
 - `hr` — horizontal rules
+- `Agent` — optional shorthand for content that only appears in agent-projected output
+- `Human` — shorthand for content that only appears in human-projected output
+- `Audience` — explicit audience wrapper with `only="human"` or `only="agent"`
 - `HoverLink` — hover-triggered popover link card with title, description, and CTA
 - `Prompt` — reusable AI prompt card with copy/open actions
 - `Tab`, `Tabs` — tabbed content
 - `CodeGroup` — Mintlify-compatible tabbed code groups powered by the built-in code block UI
 - `Callout` — callout/admonition boxes
+
+### Example: Tailor content by audience
+
+Audience wrappers are built in, so they do not need to be registered in `docs.config.ts`:
+
+```mdx title="page.mdx"
+Shared setup instructions.
+
+<Human>Use the highlighted control in the screenshot.</Human>
+
+<Agent>Run `pnpm verify` and require exit code 0.</Agent>
+
+<Audience only="human">This is the explicit form of `Human`.</Audience>
+
+<Audience only="agent">This is the explicit form of `Agent`.</Audience>
+```
+
+Rendered HTML and public search use the human projection. Markdown, Ask AI, MCP, `llms-full.txt`,
+and static agent exports use the agent projection; compact `llms.txt` links point to that Markdown.
+Sitemaps contain route metadata rather than page bodies. Content outside a wrapper is shared, and
+`<Agent>` remains entirely optional. Keep `Audience.only` as a static literal and do not pass
+audience props through a spread; `docs review` reports declarations that static outputs cannot
+resolve consistently.
+
+These wrappers are not authentication or authorization. Never place secrets in them. See
+[Agent Primitive](/docs/customization/agent-primitive) for the complete surface matrix and
+`agent.md` override behavior.
 
 ### Example: Use `CodeGroup`
 

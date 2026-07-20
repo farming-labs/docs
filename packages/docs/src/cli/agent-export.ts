@@ -1132,8 +1132,12 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
         markdownUrl: staticMarkdownRoute(page, sourceEntry, routeEntry),
         title: page.title,
         description: page.description,
-        content:
-          page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+        content: page.content,
+        rawContent: page.rawContent,
+        agentContent: page.agentContent,
+        agentRawContent: page.agentRawContent,
+        agentFallbackContent: page.agentFallbackContent,
+        agentFallbackRawContent: page.agentFallbackRawContent,
       })),
       llms,
     );

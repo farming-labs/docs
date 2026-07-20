@@ -349,9 +349,15 @@ No separate config flag is required for machine-readable page markdown.
 - Successful markdown page responses append a `## Sitemap` footer that links agents back to the configured markdown sitemap routes
 - Missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
 - Very high-confidence missing slugs redirect to the closest `.md` page
-- Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
-- When a page folder has `agent.md`, that file is returned instead of the normal page markdown
-- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or embedded `<Agent>` fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains the page-content override; include any `Related:` line manually inside `agent.md` when needed.
+- Content is shared by default. `<Agent>` and `<Audience only="agent">` add agent-only content;
+  `<Human>` and `<Audience only="human">` add human-only content. Rendered HTML and public search
+  use the human projection, while Markdown, Ask AI, MCP, `llms-full.txt`, and static agent exports
+  use the agent projection. Compact `llms.txt` and sitemaps contain discovery/route metadata rather
+  than page bodies.
+- `Audience.only` must be a static `"human"` or `"agent"` literal. `docs review` reports dynamic
+  expressions and spread props because build-time exports cannot resolve them consistently.
+- When a page folder has `agent.md`, that file is returned instead of the audience-projected page source
+- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or an audience-projected fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains the page-content override; include any `Related:` line manually inside `agent.md` when needed.
 
 <Callout type="info" title="Markdown via content negotiation">
   You can keep the canonical docs URL and ask for markdown with an HTTP header:

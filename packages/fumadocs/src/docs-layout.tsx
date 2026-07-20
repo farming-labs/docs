@@ -11,7 +11,7 @@ import {
   normalizePageAgentFrontmatter,
   renderDocsPageStructuredDataJson,
   resolveChangelogConfig,
-  resolveDocsAgentMdxContent,
+  resolveDocsAudienceMdxContent,
   resolveDocsAnalyticsConfig,
   resolveDocsMetadataBaseUrl,
   resolvePageSidebarFolderIndexBehavior,
@@ -570,7 +570,7 @@ function buildReadingTimeMap(
     if (fs.existsSync(pagePath)) {
       const source = fs.readFileSync(pagePath, "utf-8");
       const { data, content } = matter(source);
-      const humanContent = resolveDocsAgentMdxContent(content, "human");
+      const humanContent = resolveDocsAudienceMdxContent(content, "human");
       const minutes = resolvePageReadingTime(data as PageFrontmatter, humanContent, options);
 
       if (typeof minutes === "number") {
