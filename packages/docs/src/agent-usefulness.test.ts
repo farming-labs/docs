@@ -451,6 +451,84 @@ fi
     });
   });
 
+  it("excludes human-only content from agent task completeness", () => {
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page(
+            "human-only-guidance",
+            `# Deploy
+
+<Human>
+## Prerequisites
+
+Install Node.js before starting.
+
+## Expected result
+
+You should see a successful deployment.
+
+## Recovery
+
+If deployment fails, roll back.
+</Human>
+
+<Agent>Deploy the docs.</Agent>`,
+          ),
+          actionable: true,
+        },
+      ],
+    });
+    const taskCodes = report.findings
+      .filter((finding) => finding.category === "task")
+      .map((finding) => finding.code);
+
+    expect(taskCodes).toEqual(
+      expect.arrayContaining([
+        "task-missing-prerequisites",
+        "task-missing-expected-result",
+        "task-missing-recovery",
+      ]),
+    );
+    expect(report.metrics.taskCompleteness).toMatchObject({
+      completePages: 0,
+      missingPrerequisites: 1,
+      missingExpectedResults: 1,
+      missingRecovery: 1,
+      coverage: 0,
+    });
+  });
+
+  it("ignores human-only fenced commands for agent actionability and command health", () => {
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        page(
+          "human-only-command",
+          [
+            "# Human walkthrough",
+            "",
+            "<Human>",
+            "~~~bash",
+            "pnpm run missing-human-script",
+            "~~~",
+            "</Human>",
+          ].join("\n"),
+        ),
+      ],
+    });
+
+    expect(report.metrics.actionablePages).toBe(0);
+    expect(report.metrics.commands).toEqual({
+      total: 0,
+      healthy: 0,
+      unhealthy: 0,
+      unverified: 0,
+    });
+    expect(report.findings.filter((finding) => finding.category === "command")).toEqual([]);
+  });
+
   it("uses sibling agent.md guidance for actionability and command source paths", () => {
     const report = analyzeAgentUsefulness({
       rootDir,

@@ -7,7 +7,11 @@ import {
   normalizeAgentVersion,
 } from "./agent-scope.js";
 import { extractCodeBlocksFromMarkdown } from "./code-blocks.js";
-import { findDocsAudienceMdxTags, type DocsAudienceMdxTag } from "./audience.js";
+import {
+  findDocsAudienceMdxTags,
+  resolveDocsAudienceMdxContent,
+  type DocsAudienceMdxTag,
+} from "./audience.js";
 import type { DocsMcpPage } from "./mcp.js";
 import type { PageAgentCommand, PageAgentFrontmatter } from "./types.js";
 
@@ -186,6 +190,7 @@ interface PageAnalysis {
   page: AgentUsefulnessPage;
   agent?: PageAgentFrontmatter;
   blocks: AgentBlockOccurrence[];
+  projectedSource: string;
   shellCommands: AnalyzedCommand[];
   actionable: boolean;
 }
@@ -540,11 +545,11 @@ export function analyzeAgentUsefulness(
   const knownRoutes = new Set(options.pages.map((page) => normalizeRoute(page.route)));
 
   for (const analysis of pages) {
-    const { page, agent, actionable } = analysis;
+    const { page, agent, actionable, projectedSource } = analysis;
 
     if (actionable) {
       const guidance = [
-        stripFencedContent(page.source),
+        stripFencedContent(projectedSource),
         page.agentSource ? stripFencedContent(page.agentSource) : undefined,
         ...analysis.blocks.map((block) => stripFencedContent(block.content)),
       ]
@@ -702,11 +707,12 @@ export function analyzeAgentUsefulness(
 
 function analyzePage(page: AgentUsefulnessPage): PageAnalysis {
   const agent = normalizePageAgentFrontmatter(page.agent);
+  const projectedSource = resolveDocsAudienceMdxContent(page.source, "agent");
   const blocks = extractAgentBlocks(page.source, {
     sourcePath: page.sourcePath,
     route: page.route,
   });
-  const shellCommands = collectPageCommands(page, agent);
+  const shellCommands = collectPageCommands(page, agent, projectedSource);
   const actionable =
     page.actionable ??
     (hasStructuredPageAgentContract(agent) ||
@@ -714,7 +720,7 @@ function analyzePage(page: AgentUsefulnessPage): PageAnalysis {
       blocks.some((block) => ACTIONABLE_PATTERN.test(block.content)) ||
       ACTIONABLE_PATTERN.test(page.agentSource ?? ""));
 
-  return { page, agent, blocks, shellCommands, actionable };
+  return { page, agent, blocks, projectedSource, shellCommands, actionable };
 }
 
 function analyzeBlockQuality(
@@ -1097,6 +1103,7 @@ function commandAnalysis(findings: AgentUsefulnessFinding[]): CommandAnalysis {
 function collectPageCommands(
   page: AgentUsefulnessPage,
   agent: PageAgentFrontmatter | undefined,
+  projectedSource: string,
 ): AnalyzedCommand[] {
   const commands: AnalyzedCommand[] = [];
 
@@ -1114,7 +1121,7 @@ function collectPageCommands(
     }
   }
 
-  collectMarkdownCommands(commands, page.source, page.sourcePath);
+  collectMarkdownCommands(commands, projectedSource, page.sourcePath);
   if (page.agentSource) {
     collectMarkdownCommands(commands, page.agentSource, page.agentSourcePath ?? page.sourcePath);
   }

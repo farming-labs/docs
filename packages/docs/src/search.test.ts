@@ -896,6 +896,89 @@ pnpm add @farming-labs/docs
     expect(context.context).not.toContain("Human coral walkthrough");
   });
 
+  it("sanitizes MCP snippets for local pages against the agent projection", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "remote-docs", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        id: "mcp-audience-safe",
+                        url: "/docs/audience-safe",
+                        content: "Audience-safe retrieval",
+                        description: "Human coral walkthrough.",
+                        type: "page",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
+
+    try {
+      const context = await buildDocsAskAIContext({
+        pages: [
+          {
+            title: "Audience-safe retrieval",
+            url: "/docs/audience-safe",
+            content: "Shared setup. Human coral walkthrough.",
+            rawContent: "# Audience-safe retrieval\n\nShared setup. Human coral walkthrough.",
+            agentFallbackContent: "Shared setup. Agent indigo procedure.",
+            agentFallbackRawContent:
+              "# Audience-safe retrieval\n\nShared setup. Agent indigo procedure.",
+          },
+        ],
+        query: "shared setup",
+        search: {
+          provider: "mcp",
+          endpoint: "https://remote.example/mcp",
+        },
+        limit: 1,
+      });
+
+      expect(context.searchResults.some((result) => result.id === "mcp-audience-safe")).toBe(true);
+      expect(JSON.stringify(context.searchResults)).not.toContain("Human coral walkthrough");
+      expect(context.context).toContain("Agent indigo procedure");
+      expect(context.context).not.toContain("Human coral walkthrough");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("keeps duplicate heading titles on the same page when URL hashes differ", async () => {
     const context = await buildDocsAskAIContext({
       pages: [

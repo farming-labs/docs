@@ -160,7 +160,7 @@ When you want that machine-readable layer to be even tighter, use `docs agent co
 The command resolves the same page contract the runtime already uses:
 
 - existing `agent.md`
-- the agent audience projection of `Agent`, `Human`, and `Audience` blocks
+- the agent audience projection, which excludes `<Human>` and `<Audience only="human">` content
 - shared page content
 
 Then it sends that resolved document to the Docs Cloud compression API and writes a sibling

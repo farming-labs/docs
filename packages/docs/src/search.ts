@@ -487,6 +487,7 @@ function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[]
 function sanitizeExternalAgentSearchResults(
   results: DocsSearchResult[],
   localAgentResults: DocsSearchResult[],
+  preserveUnmatched?: (result: DocsSearchResult) => boolean,
 ): DocsSearchResult[] {
   const localByKey = new Map(
     localAgentResults.map((result) => [getSearchResultKey(result), result] as const),
@@ -503,7 +504,7 @@ function sanitizeExternalAgentSearchResults(
     const local =
       localByKey.get(getSearchResultKey(result)) ??
       localPageResults.get(normalizeUrlPathname(result.url));
-    if (!local) return [];
+    if (!local) return preserveUnmatched?.(result) ? [result] : [];
 
     return [
       {
@@ -1633,13 +1634,20 @@ export async function performDocsSearch(options: {
 
     const localAudienceResults =
       audience === "agent" ? await createSimpleSearchAdapter().search(query, context) : [];
-    // MCP `search_docs` is an agent surface and is expected to return its own
-    // audience-safe projection. Hosted and custom providers may still expose a
-    // human index, so their snippets must be replaced with local agent content.
+    const localPagePaths = new Set(options.pages.map((page) => normalizeUrlPathname(page.url)));
+    // External providers may expose a human index, so local-page snippets must
+    // be replaced with the local agent projection. MCP can also return pages
+    // outside this docs corpus; preserve those agent-native remote results.
     const safeAdapterResults =
-      audience === "agent" && search.provider !== "mcp"
-        ? sanitizeExternalAgentSearchResults(results, localAudienceResults)
-        : results;
+      audience !== "agent"
+        ? results
+        : sanitizeExternalAgentSearchResults(
+            results,
+            localAudienceResults,
+            search.provider === "mcp"
+              ? (result) => !localPagePaths.has(normalizeUrlPathname(result.url))
+              : undefined,
+          );
 
     return prioritizeLiteralInsideResults(
       options.query,
