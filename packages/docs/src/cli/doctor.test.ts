@@ -971,12 +971,14 @@ Allow: /
     expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
   });
 
-  it("detects agent.compact in static config parsing when feedback.agent appears first", async () => {
+  it("detects agent.compact in static config parsing after module evaluation fails", async () => {
     writePackageJson(tmpDir, "doctor-static-agent", { next: "16.0.0" });
 
     writeFileSync(
       path.join(tmpDir, "docs.config.tsx"),
-      `export default {
+      `throw new Error("force static fallback");
+
+export default {
   entry: "docs",
   nav: {
     title: <span>Docs</span>,
@@ -2394,8 +2396,8 @@ Choose the entry, content directory, and theme defaults.
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
   });
 
-  it("warns and awards partial credit when the site doctor uses static config parsing", async () => {
-    writePackageJson(tmpDir, "doctor-human-static-config", { next: "16.0.0" });
+  it("fully evaluates a TSX config with a JSX-valued navigation title", async () => {
+    writePackageJson(tmpDir, "doctor-human-tsx-config", { next: "16.0.0" });
     writeFileSync(
       path.join(tmpDir, "docs.config.tsx"),
       `export default {
@@ -2412,10 +2414,11 @@ Choose the entry, content directory, and theme defaults.
     const report = await inspectHumanReadiness();
 
     expect(report.checks.find((check) => check.id === "config")).toMatchObject({
-      status: "warn",
-      score: 2,
+      status: "pass",
+      score: 10,
       maxScore: 10,
-      recommendation: expect.stringContaining("Fix docs.config module evaluation"),
+      detail: expect.stringContaining("evaluated the config module"),
+      recommendation: undefined,
     });
   });
 

@@ -107,11 +107,45 @@ description: Docs page
     });
   });
 
+  it("evaluates a TSX config before resolving review settings", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.tsx"),
+      `const reviewBadge = <span data-review="disabled">Review disabled</span>;
+
+export default {
+  entry: "docs",
+  nav: { title: reviewBadge },
+  pageActions: {
+    custom: <button type="button">Copy context</button>,
+  },
+  review: reviewBadge.props["data-review"] === "disabled" ? false : true,
+};
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    const report = await runReview({ json: true });
+
+    expect(report).toMatchObject({
+      status: "disabled",
+      score: null,
+      findings: [],
+    });
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toMatchObject({
+      status: "disabled",
+      score: null,
+    });
+  });
+
   it("prints project-wide findings when no docs file changed", async () => {
     mkdirSync(join(tmpDir, "app", "docs"), { recursive: true });
     writeFileSync(
       join(tmpDir, "docs.config.tsx"),
-      `export default {
+      `throw new Error("force static fallback");
+
+export default {
   entry: "docs",
   nav: { title: <span>Docs</span> },
 };

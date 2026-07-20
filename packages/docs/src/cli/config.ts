@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import type { DocsConfig } from "../types.js";
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
@@ -403,6 +403,24 @@ function isPlainDocsConfig(value: unknown): value is DocsConfig {
   return prototype === Object.prototype || prototype === null;
 }
 
+function resolveDocsConfigTsconfigPath(rootDir: string, configPath: string): string | false {
+  const projectRoot = resolve(rootDir);
+  let currentDir = dirname(configPath);
+
+  while (true) {
+    const tsconfigPath = join(currentDir, "tsconfig.json");
+    if (existsSync(tsconfigPath)) return tsconfigPath;
+    if (currentDir === projectRoot) return false;
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) return false;
+
+    const relativeParent = relative(projectRoot, parentDir);
+    if (relativeParent === ".." || relativeParent.startsWith(`..${sep}`)) return false;
+    currentDir = parentDir;
+  }
+}
+
 /**
  * Load docs.config with an explicit confidence signal for diagnostics.
  * Existing callers can keep using `loadDocsConfigModule`, which preserves the
@@ -421,6 +439,10 @@ export async function loadDocsConfigModuleResult(
       moduleCache: false,
       fsCache: false,
       interopDefault: false,
+      jsx: {
+        runtime: "automatic",
+      },
+      tsconfigPaths: resolveDocsConfigTsconfigPath(rootDir, configPath),
     });
 
     const loaded = await jiti.import(configPath);
