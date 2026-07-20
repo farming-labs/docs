@@ -160,9 +160,14 @@ generated `agent.md` freshness. Its usefulness checks also detect repeated or ge
 blocks, incomplete task guidance, framework/version ambiguity, stale commands, missing related
 pages, low-confidence config loading, and drift between discovery, config, and the public schema.
 
-Configure `agent.evaluations.tasks` to run deterministic golden tasks for retrieval recall,
-citations, framework/version selection, executable examples, and context-budget usage. An empty
-task list is reported as unmeasured instead of receiving credit.
+Configure `agent.evaluations.tasks` to run golden tasks for retrieval recall, citations,
+framework/version selection, verified examples, generated answers, and context-budget usage.
+Evaluations use the local `mcp-context` surface by default and make no implicit model or network
+request. Projects can opt into their configured search or Ask AI context pipeline, an answer
+callback or HTTP endpoint, and explicit runtime example verification. Managed external search,
+HTTP answer requests, and runtime example execution require `allowNetwork: true`; an empty task
+list is reported as unmeasured instead of receiving credit. Configured retrieval is bounded by
+`searchTimeoutMs`, which defaults to 30 seconds per task.
 
 Hosted checks request the public agent routes and verify the MCP initialize handshake. Use `--json`
 when the result needs to feed CI, dashboards, GitHub Actions summaries, or another system.

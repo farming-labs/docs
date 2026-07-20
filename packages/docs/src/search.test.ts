@@ -880,7 +880,7 @@ pnpm add @farming-labs/docs
           return [
             {
               id: "hosted-audience-safe",
-              url: "/docs/audience-safe",
+              url: "https://docs.example.com/docs/audience-safe",
               content: "Audience-safe retrieval",
               description: "Human coral walkthrough.",
               type: "page",
@@ -888,6 +888,7 @@ pnpm add @farming-labs/docs
           ];
         },
       }),
+      baseUrl: "https://docs.example.com",
     });
 
     expect(context.searchResults.some((result) => result.id === "hosted-audience-safe")).toBe(true);
@@ -930,7 +931,7 @@ pnpm add @farming-labs/docs
                     results: [
                       {
                         id: "mcp-audience-safe",
-                        url: "/docs/audience-safe",
+                        url: "https://docs.example.com/docs/audience-safe",
                         content: "Audience-safe retrieval",
                         description: "Human coral walkthrough.",
                         type: "page",
@@ -966,6 +967,7 @@ pnpm add @farming-labs/docs
           provider: "mcp",
           endpoint: "https://remote.example/mcp",
         },
+        baseUrl: "https://docs.example.com",
         limit: 1,
       });
 
@@ -973,6 +975,79 @@ pnpm add @farming-labs/docs
       expect(JSON.stringify(context.searchResults)).not.toContain("Human coral walkthrough");
       expect(context.context).toContain("Agent indigo procedure");
       expect(context.context).not.toContain("Human coral walkthrough");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("preserves truly foreign MCP results instead of hydrating same-path local pages", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "remote-docs", version: "1.0.0" },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        id: "foreign-audience-safe",
+                        url: "https://remote.example/docs/audience-safe",
+                        content: "Remote audience-safe retrieval",
+                        description: "Remote agent orchid procedure.",
+                        type: "page",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ) as typeof fetch;
+
+    try {
+      const context = await buildDocsAskAIContext({
+        pages: [
+          {
+            title: "Local audience-safe retrieval",
+            url: "/docs/audience-safe",
+            content: "Local human content.",
+            rawContent: "# Local\n\nLocal human content.",
+            agentFallbackContent: "Local agent indigo procedure.",
+            agentFallbackRawContent: "# Local\n\nLocal agent indigo procedure.",
+          },
+        ],
+        query: "remote orchid",
+        search: { provider: "mcp", endpoint: "https://remote.example/mcp" },
+        baseUrl: "https://docs.example.com",
+        limit: 1,
+      });
+
+      expect(context.results[0]?.url).toBe("https://remote.example/docs/audience-safe");
+      expect(context.context).toContain("Remote agent orchid procedure.");
+      expect(context.context).not.toContain("Local agent indigo procedure.");
     } finally {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();

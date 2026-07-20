@@ -1534,6 +1534,8 @@ export interface DocsSearchAdapterContext {
   locale?: string;
   pathname?: string;
   siteTitle?: string;
+  /** Optional cancellation signal, including diagnostic timeouts. */
+  signal?: AbortSignal;
 }
 
 export interface DocsSearchAdapter {
@@ -2642,7 +2644,30 @@ export interface DocsAgentGoldenTaskExpectation {
   examples?: DocsAgentGoldenExpectedExample[];
   /** Minimum share of context bytes that must come from relevant sources. */
   minUsefulByteRatio?: number;
+  /**
+   * Scope that the returned sources must actually select. Unlike `filters`, this is an
+   * assertion and does not constrain retrieval, so it can detect a wrong framework,
+   * version, or locale result.
+   */
+  scope?: DocsAgentGoldenTaskFilters;
+  /** Assertions evaluated against an explicitly configured answer runner. */
+  answer?: DocsAgentGoldenAnswerExpectation;
 }
+
+export interface DocsAgentGoldenAnswerExpectation {
+  /** Literal fragments that must occur in the generated answer. */
+  includes?: string[];
+  /** Literal fragments that must not occur in the generated answer. */
+  excludes?: string[];
+  /** Citations that the generated answer must contain. */
+  requiredCitations?: string[];
+  /** Additional answer citations that are valid but not required. */
+  allowedCitations?: string[];
+  /** Citations that the generated answer must not contain. */
+  forbiddenCitations?: string[];
+}
+
+export type DocsAgentGoldenExampleVerification = "present" | "syntax" | "execute";
 
 export interface DocsAgentGoldenExpectedExample {
   /** Canonical page or section URL containing the example. */
@@ -2655,7 +2680,14 @@ export interface DocsAgentGoldenExpectedExample {
   runnable?: boolean;
   /** Literal fragments that must occur in the example. */
   includes?: string[];
+  /**
+   * Verification strength. Runnable examples default to `syntax`; explicitly
+   * non-runnable examples default to `present`. Runtime execution is always opt-in.
+   */
+  verification?: DocsAgentGoldenExampleVerification;
 }
+
+export type DocsAgentEvaluationSurface = "mcp-context" | "configured-search" | "ask-ai-context";
 
 export interface DocsAgentGoldenTask {
   /** Stable identifier shown in doctor/review reports. */
@@ -2668,18 +2700,87 @@ export interface DocsAgentGoldenTask {
   tokenBudget?: number;
   /** Number of ranked search results to evaluate. */
   topK?: number;
-  /** Deterministic expectations used to score the task. */
+  /** Override the evaluation surface configured for the task suite. */
+  surface?: DocsAgentEvaluationSurface;
+  /** Evaluator-only expectations used to score the task. */
   expect: DocsAgentGoldenTaskExpectation;
 }
 
+export interface DocsAgentEvaluationSourceReference {
+  url: string;
+  title?: string;
+  framework?: string;
+  version?: string;
+  locale?: string;
+}
+
+/** Blind task input sent to answer providers. Golden expectations stay evaluator-only. */
+export interface DocsAgentEvaluationTaskInput {
+  id: string;
+  query: string;
+  filters?: DocsAgentGoldenTaskFilters;
+}
+
+/** Serializable, expectation-blind request sent to every configured answer provider. */
+export interface DocsAgentEvaluationAnswerRequest {
+  task: DocsAgentEvaluationTaskInput;
+  surface: DocsAgentEvaluationSurface;
+  context: string;
+  sources: readonly DocsAgentEvaluationSourceReference[];
+}
+
+/** Callback answer input. The abort signal is not serialized for HTTP providers. */
+export interface DocsAgentEvaluationAnswerInput extends DocsAgentEvaluationAnswerRequest {
+  /** Aborted when the configured answer timeout elapses. */
+  signal: AbortSignal;
+}
+
+export interface DocsAgentEvaluationAnswerResult {
+  text: string;
+  /** Canonical URLs cited by the answer. Markdown links are also extracted from `text`. */
+  citations?: string[];
+}
+
+export type DocsAgentEvaluationAnswerRunner = (
+  input: DocsAgentEvaluationAnswerInput,
+) => DocsAgentEvaluationAnswerResult | Promise<DocsAgentEvaluationAnswerResult>;
+
+export type DocsAgentEvaluationAnswerProvider =
+  | {
+      provider: "callback";
+      run: DocsAgentEvaluationAnswerRunner;
+      /** Abort the callback after this many milliseconds. @default 30000 */
+      timeoutMs?: number;
+    }
+  | {
+      provider: "http";
+      /** Endpoint that accepts `DocsAgentEvaluationAnswerRequest` JSON and returns an answer result. */
+      endpoint: string;
+      /** Optional request headers. Values are never included in evaluation reports. */
+      headers?: Record<string, string>;
+      /** Abort the request after this many milliseconds. @default 30000 */
+      timeoutMs?: number;
+    };
+
 export interface DocsAgentEvaluationsConfig {
-  /** Enable deterministic golden-task evaluation. */
+  /** Enable golden-task evaluation. */
   enabled?: boolean;
   /** Default conservative context budget for tasks that omit `tokenBudget`. */
   tokenBudget?: number;
   /** Default retrieval depth for tasks that omit `topK`. */
   topK?: number;
-  /** Golden tasks evaluated offline by `docs doctor` and `docs review`. */
+  /** Retrieval/context surface measured by the task suite. @default "mcp-context" */
+  surface?: DocsAgentEvaluationSurface;
+  /**
+   * Permit configured external search, HTTP answers, and explicit executable-example
+   * verification. Disabled by default so doctor/review remain offline unless explicitly opted in.
+   */
+  allowNetwork?: boolean;
+  /** Timeout for configured retrieval during each task. @default 30000 */
+  searchTimeoutMs?: number;
+  /** Optional callback or HTTP runner used to measure actual generated answers. */
+  answer?: DocsAgentEvaluationAnswerProvider;
+  /** Golden tasks evaluated by `docs doctor` and `docs review`. */
   tasks?: DocsAgentGoldenTask[];
 }
 
@@ -2689,7 +2790,8 @@ export interface DocsAgentConfig {
    */
   compact?: DocsAgentCompactConfig;
   /**
-   * Deterministic retrieval, citation, version, example, and token-budget evaluations.
+   * Offline-by-default retrieval, citation, version, example, and token-budget evaluations.
+   * External providers and runtime execution require explicit opt-in.
    */
   evaluations?: boolean | DocsAgentEvaluationsConfig;
 }
@@ -2723,7 +2825,7 @@ export interface DocsReviewRulesConfig {
   configConfidence?: DocsReviewSeverity;
   /** Detect disagreement between discovery, resolved config, and the public config schema. */
   agentSurfaceDrift?: DocsReviewSeverity;
-  /** Run deterministic agent golden tasks and report failed or unmeasured behavior. */
+  /** Run configured agent golden tasks and report failed or unmeasured behavior. */
   goldenTasks?: DocsReviewSeverity;
 }
 

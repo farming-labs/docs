@@ -76,6 +76,8 @@ export interface DocsAskAIContextResult extends DocsSearchResult {
 
 export interface DocsAskAIContext {
   context: string;
+  /** Structured production context blocks; avoids reparsing markdown horizontal rules. */
+  blocks: Array<{ text: string; result: DocsAskAIContextResult }>;
   results: DocsAskAIContextResult[];
   searchResults: DocsSearchResult[];
   packageHints: DocsAskAIPackageHints;
@@ -398,7 +400,21 @@ function clampText(value: string, maxChars: number): string {
 function findPageForSearchResult(
   pages: DocsSearchSourcePage[],
   result: DocsSearchResult,
+  baseUrl?: string,
+  strictExternalOrigins = false,
 ): DocsSearchSourcePage | undefined {
+  const rawUrl = result.url.trim();
+  const explicitlySchemed = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl);
+  const explicitlyHosted = explicitlySchemed || /^[\\/]{2}/u.test(rawUrl);
+  if (explicitlySchemed && !/^https?:/iu.test(rawUrl)) return undefined;
+  if (explicitlyHosted && !baseUrl && strictExternalOrigins) return undefined;
+  if (explicitlyHosted && baseUrl) {
+    try {
+      if (new URL(result.url, baseUrl).origin !== new URL(baseUrl).origin) return undefined;
+    } catch {
+      return undefined;
+    }
+  }
   const resultPath = normalizeUrlPathname(result.url);
   return pages.find((page) => normalizeUrlPathname(page.url) === resultPath);
 }
@@ -468,6 +484,36 @@ function getSearchResultAnchor(value: string): string | undefined {
   }
 }
 
+function getAskAIResultPageKey(
+  value: string,
+  baseUrl?: string,
+  strictExternalOrigins = false,
+): string {
+  const path = normalizeUrlPathname(value);
+  const rawValue = value.trim();
+  const explicitlyHosted = /^[a-z][a-z\d+.-]*:/iu.test(rawValue) || /^[\\/]{2}/u.test(rawValue);
+  if (!explicitlyHosted || (!baseUrl && !strictExternalOrigins)) return path;
+  try {
+    const fallbackBase = baseUrl ?? "https://docs.local";
+    const parsed = new URL(value, fallbackBase);
+    const configuredBase = baseUrl ? new URL(baseUrl) : undefined;
+    if (configuredBase && parsed.origin === configuredBase.origin) return path;
+    return `${parsed.protocol}//${parsed.host}${path}`;
+  } catch {
+    return `${value.split("#", 1)[0]}::${path}`;
+  }
+}
+
+function getAskAIResultKey(
+  result: DocsSearchResult,
+  baseUrl?: string,
+  strictExternalOrigins = false,
+): string {
+  return `${getAskAIResultPageKey(result.url, baseUrl, strictExternalOrigins)}#${normalizeWhitespace(
+    getSearchResultAnchor(result.url) || result.section || "",
+  ).toLowerCase()}`;
+}
+
 function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[] {
   const seen = new Set<string>();
   const results: DocsSearchResult[] = [];
@@ -484,9 +530,24 @@ function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[]
   return results;
 }
 
+function buildAgentProjectionSearchResults(
+  documents: readonly DocsSearchDocument[],
+): DocsSearchResult[] {
+  return documents.map((document) => ({
+    id: document.id,
+    url: document.url,
+    content: document.section ? `${document.title} — ${document.section}` : document.title,
+    description: document.content || document.description,
+    type: document.type,
+    section: document.section,
+  }));
+}
+
 function sanitizeExternalAgentSearchResults(
   results: DocsSearchResult[],
   localAgentResults: DocsSearchResult[],
+  baseUrl?: string,
+  strictExternalOrigins = false,
   preserveUnmatched?: (result: DocsSearchResult) => boolean,
 ): DocsSearchResult[] {
   const localByKey = new Map(
@@ -501,9 +562,25 @@ function sanitizeExternalAgentSearchResults(
   }
 
   return results.flatMap((result) => {
-    const local =
-      localByKey.get(getSearchResultKey(result)) ??
-      localPageResults.get(normalizeUrlPathname(result.url));
+    const rawUrl = result.url.trim();
+    const explicitlySchemed = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl);
+    const externallyHosted =
+      (explicitlySchemed && /^https?:/iu.test(rawUrl)) || /^[\\/]{2}/u.test(rawUrl);
+    const unsupportedScheme = explicitlySchemed && !/^https?:/iu.test(rawUrl);
+    let sameOriginOrUnknown = !externallyHosted || (!baseUrl && !strictExternalOrigins);
+    if (unsupportedScheme) sameOriginOrUnknown = false;
+    if (externallyHosted && baseUrl) {
+      try {
+        sameOriginOrUnknown = new URL(result.url, baseUrl).origin === new URL(baseUrl).origin;
+      } catch {
+        sameOriginOrUnknown = false;
+      }
+    }
+    const hasSection = Boolean(getSearchResultAnchor(result.url) || result.section);
+    const local = sameOriginOrUnknown
+      ? (localByKey.get(getSearchResultKey(result)) ??
+        (hasSection ? undefined : localPageResults.get(normalizeUrlPathname(result.url))))
+      : undefined;
     if (!local) return preserveUnmatched?.(result) ? [result] : [];
 
     return [
@@ -514,6 +591,29 @@ function sanitizeExternalAgentSearchResults(
       },
     ];
   });
+}
+
+function shouldPreserveUnmatchedMcpResult(options: {
+  result: DocsSearchResult;
+  localPagePaths: ReadonlySet<string>;
+  baseUrl?: string;
+  strictExternalOrigins: boolean;
+}): boolean {
+  const { result, localPagePaths, baseUrl, strictExternalOrigins } = options;
+  const path = normalizeUrlPathname(result.url);
+  const rawUrl = result.url.trim();
+  const explicitScheme = rawUrl.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
+  if (explicitScheme && explicitScheme !== "http" && explicitScheme !== "https") return false;
+  const explicitlyHosted = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl) || /^[\\/]{2}/u.test(rawUrl);
+  if (!strictExternalOrigins) return explicitlyHosted || !localPagePaths.has(path);
+  if (!explicitlyHosted) return !localPagePaths.has(path);
+  if (!baseUrl) return true;
+  try {
+    if (new URL(result.url, baseUrl).origin !== new URL(baseUrl).origin) return true;
+  } catch {
+    return false;
+  }
+  return !localPagePaths.has(path);
 }
 
 function getPageAudienceRawContent(
@@ -1054,6 +1154,7 @@ function mapMcpSearchResult(value: unknown): DocsSearchResult | null {
 async function createOllamaEmbedding(
   text: string,
   config: NonNullable<TypesenseDocsSearchConfig["embeddings"]>,
+  signal?: AbortSignal,
 ): Promise<number[]> {
   const response = await fetch(
     `${(config.baseUrl ?? "http://127.0.0.1:11434").replace(/\/$/, "")}/api/embed`,
@@ -1064,6 +1165,7 @@ async function createOllamaEmbedding(
         model: config.model,
         input: text,
       }),
+      signal,
     },
   );
   ensureOk(response, "Failed to create Ollama embedding");
@@ -1087,7 +1189,11 @@ function getTypesenseSearchBase(config: TypesenseDocsSearchConfig): string {
   return config.baseUrl.replace(/\/$/, "");
 }
 
-async function ensureTypesenseCollection(config: TypesenseDocsSearchConfig, dimensions?: number) {
+async function ensureTypesenseCollection(
+  config: TypesenseDocsSearchConfig,
+  dimensions?: number,
+  signal?: AbortSignal,
+) {
   const baseUrl = getTypesenseSearchBase(config);
   const headers = {
     "X-TYPESENSE-API-KEY": config.adminApiKey ?? config.apiKey,
@@ -1096,6 +1202,7 @@ async function ensureTypesenseCollection(config: TypesenseDocsSearchConfig, dime
 
   const existing = await fetch(`${baseUrl}/collections/${encodeURIComponent(config.collection)}`, {
     headers,
+    signal,
   });
 
   if (existing.ok) return;
@@ -1133,6 +1240,7 @@ async function ensureTypesenseCollection(config: TypesenseDocsSearchConfig, dime
       name: config.collection,
       fields,
     }),
+    signal,
   });
 
   ensureOk(response, "Failed to create Typesense collection");
@@ -1163,6 +1271,7 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
             next.embedding = await createOllamaEmbedding(
               `${document.title}\n${document.section ?? ""}\n${document.content}`.trim(),
               config.embeddings,
+              context.signal,
             );
           }
 
@@ -1176,7 +1285,7 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
         ? (docsForImport[0].embedding as number[]).length
         : undefined;
 
-      await ensureTypesenseCollection(config, embeddingDimensions);
+      await ensureTypesenseCollection(config, embeddingDimensions, context.signal);
 
       const response = await fetch(
         `${getTypesenseSearchBase(config)}/collections/${encodeURIComponent(config.collection)}/documents/import?action=upsert`,
@@ -1187,12 +1296,13 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
             "Content-Type": "text/plain",
           },
           body: docsForImport.map((document) => JSON.stringify(document)).join("\n"),
+          signal: context.signal,
         },
       );
 
       ensureOk(response, "Failed to sync documents to Typesense");
     },
-    async search(query, _context) {
+    async search(query, context) {
       const params = new URLSearchParams({
         q: query.query,
         query_by: (config.queryBy ?? ["title", "section", "content", "description"]).join(","),
@@ -1203,7 +1313,7 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
       });
 
       if (config.mode === "hybrid" && config.embeddings) {
-        const vector = await createOllamaEmbedding(query.query, config.embeddings);
+        const vector = await createOllamaEmbedding(query.query, config.embeddings, context.signal);
         params.set(
           "vector_query",
           `embedding:([${vector.join(",")}],k:${Math.max((query.limit ?? 10) * 4, 20)})`,
@@ -1216,6 +1326,7 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
           headers: {
             "X-TYPESENSE-API-KEY": config.apiKey,
           },
+          signal: context.signal,
         },
       );
 
@@ -1317,7 +1428,7 @@ export function resolveAskAISearchRequestConfig(options: {
 export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchAdapter {
   return {
     name: "mcp",
-    async search(query) {
+    async search(query, context) {
       const endpoint = resolveMcpEndpoint(config.endpoint);
       const protocolVersion = config.protocolVersion ?? DEFAULT_MCP_PROTOCOL_VERSION;
       const toolName = config.toolName ?? "search_docs";
@@ -1344,6 +1455,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
             },
           },
         }),
+        signal: context.signal,
       });
 
       const initializePayload = await readMcpResponsePayload(initializeResponse);
@@ -1375,6 +1487,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
               },
             },
           }),
+          signal: context.signal,
         });
 
         const payload = await readMcpResponsePayload(searchResponse);
@@ -1419,6 +1532,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
               "mcp-protocol-version": protocolVersion,
               "mcp-session-id": sessionId,
             },
+            signal: context.signal,
           }).catch(() => undefined);
         }
       }
@@ -1451,12 +1565,13 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
               body: buildAlgoliaRecord(document),
             })),
           }),
+          signal: context.signal,
         },
       );
 
       ensureOk(response, "Failed to sync documents to Algolia");
     },
-    async search(query) {
+    async search(query, context) {
       const response = await fetch(
         `${getAlgoliaBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/query`,
         {
@@ -1471,6 +1586,7 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
             hitsPerPage: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
             attributesToSnippet: ["content:20"],
           }),
+          signal: context.signal,
         },
       );
 
@@ -1597,7 +1713,24 @@ export async function performDocsSearch(options: {
   locale?: string;
   pathname?: string;
   siteTitle?: string;
+  /** Canonical docs URL used to distinguish same-site absolute hits from foreign MCP results. */
+  baseUrl?: string;
   limit?: number;
+  /**
+   * Controls provider failures. Runtime search keeps the resilient `fallback` default;
+   * diagnostics can request `throw` so a broken configured provider cannot be scored as
+   * successful simple search.
+   */
+  failureMode?: "fallback" | "throw";
+  /**
+   * Whether non-simple provider hits are supplemented with exact/local simple results.
+   * Runtime search defaults to true; provider diagnostics can disable supplementation.
+   */
+  supplementExternalResults?: boolean;
+  /** Fail closed on absolute provider hits when no canonical docs origin is available. */
+  strictExternalOrigins?: boolean;
+  /** Optional cancellation signal forwarded to adapters and their managed requests. */
+  signal?: AbortSignal;
 }): Promise<DocsSearchResult[]> {
   const search = normalizeDocsSearchConfig(options.search);
   if (!search.enabled) return [];
@@ -1610,6 +1743,7 @@ export async function performDocsSearch(options: {
     locale: options.locale,
     pathname: options.pathname,
     siteTitle: options.siteTitle,
+    signal: options.signal,
   };
 
   const query: DocsSearchQuery = {
@@ -1634,6 +1768,8 @@ export async function performDocsSearch(options: {
 
     const localAudienceResults =
       audience === "agent" ? await createSimpleSearchAdapter().search(query, context) : [];
+    const localAgentProjectionResults =
+      audience === "agent" ? buildAgentProjectionSearchResults(documents) : [];
     const localPagePaths = new Set(options.pages.map((page) => normalizeUrlPathname(page.url)));
     // External providers may expose a human index, so local-page snippets must
     // be replaced with the local agent projection. MCP can also return pages
@@ -1643,21 +1779,34 @@ export async function performDocsSearch(options: {
         ? results
         : sanitizeExternalAgentSearchResults(
             results,
-            localAudienceResults,
+            localAgentProjectionResults,
+            options.baseUrl,
+            options.strictExternalOrigins,
             search.provider === "mcp"
-              ? (result) => !localPagePaths.has(normalizeUrlPathname(result.url))
+              ? (result) =>
+                  shouldPreserveUnmatchedMcpResult({
+                    result,
+                    localPagePaths,
+                    baseUrl: options.baseUrl,
+                    strictExternalOrigins: options.strictExternalOrigins === true,
+                  })
               : undefined,
           );
 
-    return prioritizeLiteralInsideResults(
-      options.query,
-      mergeSearchResults(
-        buildExactPageSearchResults(options.query, options.pages, audience),
-        safeAdapterResults,
-        localAudienceResults,
-      ),
-    ).slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
-  } catch {
+    if (options.supplementExternalResults === false) {
+      return safeAdapterResults.slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
+    }
+    const combinedResults = mergeSearchResults(
+      buildExactPageSearchResults(options.query, options.pages, audience),
+      safeAdapterResults,
+      localAudienceResults,
+    );
+    return prioritizeLiteralInsideResults(options.query, combinedResults).slice(
+      0,
+      query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
+    );
+  } catch (error) {
+    if (options.failureMode === "throw") throw error;
     return createSimpleSearchAdapter().search(query, context);
   }
 }
@@ -1673,6 +1822,12 @@ export async function buildDocsAskAIContext(options: {
   limit?: number;
   maxContextChars?: number;
   maxResultChars?: number;
+  /** See `performDocsSearch.failureMode`. Defaults to resilient runtime fallback. */
+  searchFailureMode?: "fallback" | "throw";
+  /** See `performDocsSearch.strictExternalOrigins`. */
+  strictExternalOrigins?: boolean;
+  /** Optional cancellation signal forwarded to the configured search provider. */
+  signal?: AbortSignal;
 }): Promise<DocsAskAIContext> {
   const limit = options.limit ?? 5;
   const searchLimit = Math.max(limit * 2, limit);
@@ -1687,14 +1842,23 @@ export async function buildDocsAskAIContext(options: {
     locale: options.locale,
     pathname: options.pathname,
     siteTitle: options.siteTitle,
+    baseUrl: options.baseUrl,
     limit: searchLimit,
+    failureMode: options.searchFailureMode,
+    strictExternalOrigins: options.strictExternalOrigins,
+    signal: options.signal,
   });
 
   const seen = new Set<string>();
   const maxResultChars = options.maxResultChars ?? DEFAULT_ASK_AI_RESULT_CHARS;
   const rankedResults = searchResults
     .map((result, index) => {
-      const page = findPageForSearchResult(options.pages, result);
+      const page = findPageForSearchResult(
+        options.pages,
+        result,
+        options.baseUrl,
+        options.strictExternalOrigins,
+      );
       const formatted = formatAskAIContextResult({
         result,
         page,
@@ -1714,12 +1878,20 @@ export async function buildDocsAskAIContext(options: {
   const sectionResultPaths = new Set(
     formattedResults
       .filter((result) => result.section)
-      .map((result) => normalizeUrlPathname(result.url)),
+      .map((result) =>
+        getAskAIResultPageKey(result.url, options.baseUrl, options.strictExternalOrigins),
+      ),
   );
   const results = formattedResults
-    .filter((result) => result.section || !sectionResultPaths.has(normalizeUrlPathname(result.url)))
+    .filter(
+      (result) =>
+        result.section ||
+        !sectionResultPaths.has(
+          getAskAIResultPageKey(result.url, options.baseUrl, options.strictExternalOrigins),
+        ),
+    )
     .filter((result) => {
-      const key = getSearchResultKey(result);
+      const key = getAskAIResultKey(result, options.baseUrl, options.strictExternalOrigins);
       if (seen.has(key)) return false;
       seen.add(key);
       return result.contextContent.length > 0;
@@ -1749,6 +1921,7 @@ export async function buildDocsAskAIContext(options: {
 
   return {
     context,
+    blocks: blocks.map((text, index) => ({ text, result: results[index] })),
     results: results.slice(0, blocks.length),
     searchResults: rankedResults.map((item) => item.result),
     packageHints: inferDocsAskAIPackageHints(context),

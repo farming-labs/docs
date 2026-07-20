@@ -111,6 +111,11 @@ function collectSchemaPaths(options: readonly AgentSurfaceSchemaOption[]): Set<s
 function schemaCoversConfigPath(schemaPaths: ReadonlySet<string>, configPath: string): boolean {
   if (schemaPaths.has(configPath)) return true;
   if (configPath.endsWith("[]") && schemaPaths.has(configPath.slice(0, -2))) return true;
+  for (const schemaPath of schemaPaths) {
+    if (!schemaPath.endsWith(".*")) continue;
+    const prefix = schemaPath.slice(0, -1);
+    if (configPath.startsWith(prefix) && configPath.length > prefix.length) return true;
+  }
   return false;
 }
 

@@ -27,11 +27,17 @@ import {
   createAgentUsefulnessPagesFromMcp,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
-import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
+import {
+  runDocsGoldenTasks,
+  type DocsGoldenTasksReport,
+  type RunDocsGoldenTasksOptions,
+} from "../agent-evals.js";
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
+import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import {
   createFilesystemDocsMcpSource,
   getDocsConfigSchema,
+  resolveAskAISearchRequestConfig,
   resolveDocsMcpConfig,
 } from "../server.js";
 import {
@@ -1690,34 +1696,55 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(asRecord(value)) && !Array.isArray(value);
 }
 
-function resolveGoldenEvaluationTasks(
-  evaluationInput: unknown,
-): Parameters<typeof runDocsGoldenTasks>[1] {
-  if (evaluationInput === undefined || typeof evaluationInput === "boolean") return undefined;
+function resolveGoldenEvaluationInput(evaluationInput: unknown): {
+  tasks: Parameters<typeof runDocsGoldenTasks>[1];
+  options: Pick<
+    RunDocsGoldenTasksOptions,
+    "surface" | "allowNetwork" | "searchTimeoutMs" | "answer"
+  >;
+} {
+  if (evaluationInput === undefined || typeof evaluationInput === "boolean") {
+    return { tasks: undefined, options: {} };
+  }
   if (!isPlainRecord(evaluationInput)) {
-    return { evaluationConfig: evaluationInput } as unknown as Parameters<
-      typeof runDocsGoldenTasks
-    >[1];
+    return {
+      tasks: { evaluationConfig: evaluationInput } as unknown as Parameters<
+        typeof runDocsGoldenTasks
+      >[1],
+      options: {},
+    };
   }
-  if (evaluationInput.enabled === false) return undefined;
+  const options = {
+    surface: evaluationInput.surface,
+    allowNetwork: evaluationInput.allowNetwork,
+    searchTimeoutMs: evaluationInput.searchTimeoutMs,
+    answer: evaluationInput.answer,
+  } as Pick<RunDocsGoldenTasksOptions, "surface" | "allowNetwork" | "searchTimeoutMs" | "answer">;
+  if (evaluationInput.enabled === false) return { tasks: undefined, options };
   if ("enabled" in evaluationInput && typeof evaluationInput.enabled !== "boolean") {
-    return evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1];
+    return {
+      tasks: evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1],
+      options,
+    };
   }
-  if (!("tasks" in evaluationInput)) return undefined;
+  if (!("tasks" in evaluationInput)) return { tasks: undefined, options };
 
   const runtimeTasks = evaluationInput.tasks;
   if (!Array.isArray(runtimeTasks)) {
-    return runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1];
+    return { tasks: runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1], options };
   }
 
-  return runtimeTasks.map((task) => {
-    if (!isPlainRecord(task)) return task;
-    return {
-      ...task,
-      tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
-      topK: task.topK ?? evaluationInput.topK,
-    };
-  }) as Parameters<typeof runDocsGoldenTasks>[1];
+  return {
+    tasks: runtimeTasks.map((task) => {
+      if (!isPlainRecord(task)) return task;
+      return {
+        ...task,
+        tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
+        topK: task.topK ?? evaluationInput.topK,
+      };
+    }) as Parameters<typeof runDocsGoldenTasks>[1],
+    options,
+  };
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -2403,8 +2430,26 @@ export async function inspectAgentReadiness(
     projectFramework: framework === "unknown" ? undefined : framework,
   });
   const evaluationInput = config?.agent?.evaluations;
-  const evaluationTasks = resolveGoldenEvaluationTasks(evaluationInput);
-  const evaluations = await runDocsGoldenTasks(pages, evaluationTasks);
+  const evaluation = resolveGoldenEvaluationInput(evaluationInput);
+  const evaluationBaseUrl = config ? resolveDocsMetadataBaseUrl(config) : undefined;
+  const evaluationMcp = resolveDocsMcpConfig(config?.mcp, { defaultName: siteTitle });
+  const askAISearch = resolveAskAISearchRequestConfig({
+    search: config?.search,
+    useMcp: config?.ai?.useMcp,
+    mcpEndpoint: evaluationMcp.route,
+    mcpEnabled: evaluationMcp.enabled,
+    mcpSearchEnabled: evaluationMcp.tools.searchDocs,
+    requestUrl: evaluationBaseUrl,
+  });
+  const evaluations = await runDocsGoldenTasks(pages, evaluation.tasks, {
+    ...evaluation.options,
+    search: config?.search,
+    askAISearch,
+    siteTitle,
+    baseUrl: evaluationBaseUrl,
+    rootDir,
+    codeBlocksValidate: config?.codeBlocks?.validate,
+  });
   const compactionCoverage = buildCompactionCoverage(
     rootDir,
     contentDir,
@@ -3564,10 +3609,9 @@ export async function runDoctor(options: DoctorOptions = {}) {
 
   if (options.fix) {
     fixes = await runAgentDoctorFixes(report, options);
-    report = {
-      ...(await inspectAgentReadiness(options)),
-      fixes,
-    };
+    report = fixes.some((fix) => fix.status === "applied")
+      ? { ...(await inspectAgentReadiness(options)), fixes }
+      : { ...report, fixes };
   }
 
   applyDoctorExitCode(report, options);
