@@ -1231,6 +1231,8 @@ Notes:
 - in Next.js, `withDocs()` adds the public route rewrites automatically
 - Astro, SvelteKit, TanStack Start, and Nuxt expose the same feedback contract through the shared `/api/docs?feedback=agent` query route
 - the shared `/api/docs` handler is still the source of truth, so `?feedback=agent` also works
+- agents can discover APIs through `GET` or `HEAD /.well-known/api-catalog` (RFC 9727), and can
+  discover integrity-checked skills through `GET` or `HEAD /.well-known/agent-skills/index.json`
 - agents should discover site identity, locale config, capability flags, search, active markdown routes, `Accept: text/markdown`, `Signature-Agent` support, JSON-LD structured data, `llms.txt`, OpenAPI schema routes, sitemap routes, `robots.txt`, `AGENTS.md`, `skill.md`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
 
 ### `DocsAgentFeedbackContext`
@@ -1286,6 +1288,10 @@ Quick checks:
 
 ```bash
 curl "http://127.0.0.1:3000/.well-known/agent.json"
+
+curl -I "http://127.0.0.1:3000/.well-known/api-catalog"
+
+curl "http://127.0.0.1:3000/.well-known/agent-skills/index.json"
 
 curl "http://127.0.0.1:3000/AGENTS.md"
 
@@ -2068,7 +2074,7 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | Property | Type                                                       | Description |
 | -------- | ---------------------------------------------------------- | ----------- |
 | `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
-| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` / OpenAPI / sitemap / `AGENTS.md` / `skill.md` endpoint handler |
+| `GET`    | `({ request }) => Response`                                | Search, Markdown, discovery standards (including routed `HEAD` requests), `llms.txt`, OpenAPI, sitemap, `AGENTS.md`, and `skill.md` handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
 
 ```ts title="src/lib/docs.server.ts"

@@ -285,6 +285,9 @@ export default defineDocs({
 
 That gives agents a much better workflow:
 
+- `/.well-known/api-catalog` exposes an RFC 9727 JSON Linkset for API and metadata discovery
+- `/.well-known/agent-skills/index.json` publishes the site skill with a SHA-256 digest, and
+  `/.well-known/agent-skills/<name>/SKILL.md` returns the exact hashed bytes
 - `/.well-known/agent.json` tells them which routes exist
 - `/llms.txt` links directly to page markdown routes, while `/llms-full.txt` exposes full machine-readable context
 - section-level files like [`/docs/guides/llms.txt`](/docs/guides/llms.txt) give larger docs progressive disclosure without adding UI
@@ -303,7 +306,8 @@ That gives agents a much better workflow:
 - `/api/docs/agent/feedback/schema` and `/api/docs/agent/feedback` let agents report missing context without enabling the human feedback UI
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
-system you have to keep in sync by hand.
+system you have to keep in sync by hand. The existing Farming Labs manifest stays available; the
+standards routes and HTTP `Link` headers are additive and cross-link back to it.
 
 ## Expose API Schemas Before API Pages
 

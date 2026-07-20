@@ -201,6 +201,15 @@ export function createDocsAPI(
 
       return handlers.GET(request);
     },
+    async HEAD(request: Request) {
+      if (!isDocsCloudGetRequest(request)) return handlers.HEAD(request);
+      const response = await integration.docsCloud.handleRequest(request, integration.routeOptions);
+      return new Response(null, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    },
     async POST(request: Request) {
       if (await isDocsCloudPostRequest(request)) {
         return integration.docsCloud.handleRequest(request, integration.routeOptions);

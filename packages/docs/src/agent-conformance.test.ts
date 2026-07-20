@@ -16,10 +16,18 @@ function createPassingResponse(surface: DocsAgentContractSurface, contentType?: 
   const expectedContentType = contractCase.expect.contentTypes[0];
   if (!expectedContentType) throw new Error(`Missing content type for ${surface}`);
 
-  return new Response(contractCase.expect.bodyIncludes?.join("\n") ?? "ok", {
-    status: contractCase.expect.statuses[0],
-    headers: { "Content-Type": contentType ?? expectedContentType },
-  });
+  const headers = new Headers({ "Content-Type": contentType ?? expectedContentType });
+  for (const [header, values] of Object.entries(contractCase.expect.headerIncludes ?? {})) {
+    headers.set(header, values.join(", "));
+  }
+
+  return new Response(
+    contractCase.expect.bodyEmpty ? null : (contractCase.expect.bodyIncludes?.join("\n") ?? "ok"),
+    {
+      status: contractCase.expect.statuses[0],
+      headers,
+    },
+  );
 }
 
 describe("agent conformance contract", () => {
@@ -28,6 +36,12 @@ describe("agent conformance contract", () => {
     const surfaces = cases.map((contractCase) => contractCase.surface);
     const expectedSurfaces = new Set([
       "discovery",
+      "api-catalog",
+      "api-catalog-head",
+      "agent-skills-index",
+      "agent-skills-index-head",
+      "agent-skill",
+      "agent-skill-head",
       "config",
       "diagnostics",
       "feedback-schema",
@@ -45,7 +59,7 @@ describe("agent conformance contract", () => {
       "mcp",
     ]);
 
-    expect(cases).toHaveLength(16);
+    expect(cases).toHaveLength(22);
     expect(new Set(surfaces).size).toBe(surfaces.length);
     expect(new Set(surfaces)).toEqual(expectedSurfaces);
   });

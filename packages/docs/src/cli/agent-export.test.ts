@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdtempSync,
@@ -160,6 +161,38 @@ pnpm add example
     expect(discovery.staticBundle.manifest).toBe("/.well-known/agent-bundle.json");
     expect(discovery.capabilities.mcp).toBe(false);
     expect(discovery.capabilities.search).toBe(false);
+    expect(discovery.capabilities.apiCatalog).toBe(true);
+    expect(discovery.apiCatalog.route).toBe("/.well-known/api-catalog");
+
+    const skillsIndex = JSON.parse(
+      readFileSync(
+        path.join(tmpDir, "public", ".well-known", "agent-skills", "index.json"),
+        "utf-8",
+      ),
+    );
+    expect(skillsIndex.$schema).toBe("https://schemas.agentskills.io/discovery/0.2.0/schema.json");
+    expect(skillsIndex.skills).toHaveLength(1);
+    const publishedSkillPath = path.join(
+      tmpDir,
+      "public",
+      ".well-known",
+      "agent-skills",
+      skillsIndex.skills[0].name,
+      "SKILL.md",
+    );
+    const publishedSkill = readFileSync(publishedSkillPath, "utf-8");
+    expect(skillsIndex.skills[0].digest).toBe(
+      `sha256:${createHash("sha256").update(publishedSkill, "utf8").digest("hex")}`,
+    );
+    const apiCatalog = JSON.parse(
+      readFileSync(path.join(tmpDir, "public", ".well-known", "api-catalog"), "utf-8"),
+    );
+    expect(apiCatalog.linkset[0].anchor).toBe("https://docs.example.com/.well-known/api-catalog");
+    expect(apiCatalog.linkset[0].item).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/.well-known/agent-skills/index.json",
+      }),
+    ]);
 
     expect(existsSync(path.join(tmpDir, "public", "skills", "docs", "SKILL.md"))).toBe(true);
     expect(existsSync(path.join(tmpDir, "public", "sitemap.xml"))).toBe(true);
@@ -241,6 +274,34 @@ pnpm add example
       openapi: false,
       agentFeedback: false,
     });
+  });
+
+  it("publishes hashed skills but does not invent an RFC catalog origin", async () => {
+    writeProject();
+    const configPath = path.join(tmpDir, "docs.config.ts");
+    writeFileSync(
+      configPath,
+      readFileSync(configPath, "utf-8")
+        .replace('    baseUrl: "https://docs.example.com",\n', "")
+        .replace(
+          'sitemap: { enabled: true, baseUrl: "https://docs.example.com" },',
+          "sitemap: true,",
+        ),
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+
+    expect(
+      existsSync(path.join(tmpDir, "public", ".well-known", "agent-skills", "index.json")),
+    ).toBe(true);
+    expect(existsSync(path.join(tmpDir, "public", ".well-known", "api-catalog"))).toBe(false);
+    const discovery = JSON.parse(
+      readFileSync(path.join(tmpDir, "public", ".well-known", "agent.json"), "utf-8"),
+    );
+    expect(discovery.capabilities.apiCatalog).toBe(false);
+    expect(discovery.apiCatalog.enabled).toBe(false);
   });
 
   it("preserves native public page and llms overrides", async () => {

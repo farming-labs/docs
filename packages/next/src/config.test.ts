@@ -14,6 +14,9 @@ import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_API_CATALOG_ROUTE,
 } from "@farming-labs/docs";
 import { withDocs } from "./config.js";
 
@@ -251,6 +254,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
       "createDocsAPI(docsConfig, docsCloud)",
     );
+    expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
+      "export const { GET, HEAD, POST }",
+    );
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(false);
   });
@@ -357,6 +363,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/agent.json",
           destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_API_CATALOG_ROUTE,
+          destination: "/api/docs?format=api-catalog",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=agent-skills",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+          destination: "/api/docs?format=agent-skill&name=:name",
         }),
         expect.objectContaining({
           source: "/mcp",
@@ -1309,6 +1327,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/agent.json",
           destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_API_CATALOG_ROUTE,
+          destination: "/api/docs?format=api-catalog",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=agent-skills",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+          destination: "/api/docs?format=agent-skill&name=:name",
         }),
         expect.objectContaining({
           source: "/mcp",

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { findDocsAudienceMdxTags } from "./audience.js";
 import {
   acceptsDocsMarkdown,
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
@@ -20,6 +23,7 @@ import {
   isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
   isDocsSkillRequest,
   getDocsLlmsTxtMaxCharsIssue,
   matchesDocsLlmsTxtSection,
@@ -53,6 +57,24 @@ describe("agent route helpers", () => {
       true,
     );
     expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/blog?agent=spec"))).toBe(false);
+    expect(
+      isDocsStandardsDiscoveryRequest(new URL("https://example.com/.well-known/api-catalog")),
+    ).toBe(true);
+    expect(
+      isDocsStandardsDiscoveryRequest(
+        new URL("https://example.com/.well-known/agent-skills/index.json"),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsStandardsDiscoveryRequest(
+        new URL("https://example.com/.well-known/agent-skills/docs/SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsStandardsDiscoveryRequest(
+        new URL("https://example.com/api/docs?format=agent-skill&name=docs"),
+      ),
+    ).toBe(true);
     expect(isDocsConfigRequest(new URL("https://example.com/api/docs?format=config"))).toBe(true);
     expect(isDocsConfigRequest(new URL("https://example.com/api/docs?format=markdown"))).toBe(
       false,
@@ -269,6 +291,9 @@ describe("agent route helpers", () => {
         api: "/api/docs",
         config: "/api/docs?format=config",
         diagnostics: "/api/docs?format=diagnostics",
+        apiCatalog: "/.well-known/api-catalog",
+        agentSkillsIndex: "/.well-known/agent-skills/index.json",
+        agentSkillsArtifact: "/.well-known/agent-skills/{name}/SKILL.md",
         search: null,
         askAi: null,
         llmsTxt: null,
@@ -278,6 +303,11 @@ describe("agent route helpers", () => {
       },
       features: {
         staticExport: { status: "enabled" },
+        apiCatalog: {
+          status: "enabled",
+          route: "/.well-known/api-catalog",
+          transport: "GET/HEAD",
+        },
         search: {
           status: "disabled",
           reason: "static-export",
@@ -542,6 +572,19 @@ describe("agent route helpers", () => {
         new Request("https://example.com/.well-known/skill.md"),
       ),
     ).toBe(true);
+    for (const route of [
+      "/.well-known/api-catalog",
+      "/.well-known/agent-skills/index.json",
+      "/.well-known/agent-skills/docs/SKILL.md",
+    ]) {
+      expect(
+        isDocsPublicGetRequest(
+          "docs",
+          new URL(`https://example.com${route}`),
+          new Request(`https://example.com${route}`),
+        ),
+      ).toBe(true);
+    }
     expect(
       isDocsPublicGetRequest(
         "docs",
@@ -1544,6 +1587,9 @@ After`;
     expect(document).toContain("Base URL: https://docs.example.com");
     expect(document).toContain("/guides.md");
     expect(document).toContain("/.well-known/agent.json");
+    expect(document).toContain("/.well-known/api-catalog");
+    expect(document).toContain("/.well-known/agent-skills/index.json");
+    expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/robots.txt");
     expect(document).toContain("/api/docs?format=skill");
     expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
@@ -1598,6 +1644,9 @@ After`;
     expect(document).toContain("/guides.md");
     expect(document).toContain("/AGENTS.md");
     expect(document).toContain("/.well-known/AGENTS.md");
+    expect(document).toContain("/.well-known/api-catalog");
+    expect(document).toContain("/.well-known/agent-skills/index.json");
+    expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/api/docs?format=agents");
     expect(document).toContain("/api/docs?format=openapi");
     expect(document).toContain("npx @farming-labs/docs@latest upgrade --latest");
@@ -1641,6 +1690,9 @@ After`;
     expect(spec.api.config).toBe("/api/docs?format=config");
     expect(spec.api.diagnostics).toBe("/api/docs?format=diagnostics");
     expect(spec.api.agents).toBe("/api/docs?format=agents");
+    expect(spec.api.apiCatalog).toBe("/.well-known/api-catalog");
+    expect(spec.api.apiCatalogQuery).toBe("/api/docs?format=api-catalog");
+    expect(spec.api.agentSkillsIndex).toBe("/.well-known/agent-skills/index.json");
     expect(spec.api.openapi).toBe("/api/docs?format=openapi");
     expect(spec.config).toMatchObject({
       format: "docs-config-map.v1",
@@ -1668,12 +1720,29 @@ After`;
     expect(spec.skills.wellKnown).toBe("/.well-known/skill.md");
     expect(spec.skills.api).toBe("/api/docs?format=skill");
     expect(spec.skills.generatedFallback).toBe(true);
+    expect(spec.skills.discovery).toEqual({
+      schema: AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+      index: "/.well-known/agent-skills/index.json",
+      artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+      apiIndex: "/api/docs?format=agent-skills",
+      apiArtifact: "/api/docs?format=agent-skill&name={name}",
+      digest: "sha256",
+    });
+    expect(spec.apiCatalog).toEqual({
+      enabled: true,
+      route: "/.well-known/api-catalog",
+      api: "/api/docs?format=api-catalog",
+      mediaType: API_CATALOG_MEDIA_TYPE,
+      profile: API_CATALOG_PROFILE_URI,
+    });
     expect(spec.mcp.publicEndpoints).toEqual(["/mcp", "/.well-known/mcp"]);
     expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
     expect(spec.sitemap.markdown.docsRoute).toBe("/docs/sitemap.md");
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
     expect(spec.capabilities.robots).toBe(true);
     expect(spec.capabilities.agents).toBe(true);
+    expect(spec.capabilities.apiCatalog).toBe(true);
+    expect(spec.capabilities.agentSkillsDiscovery).toBe(true);
     expect(spec.capabilities.structuredData).toBe(true);
     expect(spec.capabilities.structuredAgentContracts).toBe(true);
     expect(spec.capabilities.apiReference).toBe(true);

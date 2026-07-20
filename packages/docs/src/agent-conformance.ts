@@ -1,7 +1,10 @@
 import {
   DEFAULT_AGENT_FEEDBACK_ROUTE,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
+  DEFAULT_API_CATALOG_ROUTE,
   DEFAULT_DOCS_CONFIG_ROUTE,
   DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
@@ -12,12 +15,18 @@ import {
 import { DEFAULT_SITEMAP_MD_ROUTE, DEFAULT_SITEMAP_XML_ROUTE } from "./sitemap.js";
 import { DEFAULT_ROBOTS_TXT_ROUTE } from "./robots.js";
 
-export const DOCS_AGENT_CONTRACT_VERSION = "1.0";
+export const DOCS_AGENT_CONTRACT_VERSION = "1.1";
 
 export type DocsAgentAdapter = "next" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
 
 export type DocsAgentContractSurface =
   | "discovery"
+  | "api-catalog"
+  | "api-catalog-head"
+  | "agent-skills-index"
+  | "agent-skills-index-head"
+  | "agent-skill"
+  | "agent-skill-head"
   | "config"
   | "diagnostics"
   | "feedback-schema"
@@ -43,6 +52,8 @@ export interface DocsAgentContractExpectation {
   statuses: readonly number[];
   contentTypes: readonly string[];
   bodyIncludes?: readonly string[];
+  bodyEmpty?: boolean;
+  headerIncludes?: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface DocsAgentContractCase {
@@ -107,7 +118,84 @@ export function createDocsAgentContractCases(
     {
       surface: "discovery",
       request: { url: url(DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE) },
-      expect: { statuses: [200], contentTypes: json },
+      expect: {
+        statuses: [200],
+        contentTypes: json,
+        headerIncludes: {
+          link: [DEFAULT_API_CATALOG_ROUTE, DEFAULT_AGENT_SKILLS_INDEX_ROUTE],
+        },
+      },
+    },
+    {
+      surface: "api-catalog",
+      request: { url: url(DEFAULT_API_CATALOG_ROUTE) },
+      expect: {
+        statuses: [200],
+        contentTypes: ["application/linkset+json"],
+        bodyIncludes: [
+          "linkset",
+          DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+          DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+        ],
+        headerIncludes: { link: ['rel="api-catalog"'] },
+      },
+    },
+    {
+      surface: "api-catalog-head",
+      request: { url: url(DEFAULT_API_CATALOG_ROUTE), init: { method: "HEAD" } },
+      expect: {
+        statuses: [200],
+        contentTypes: ["application/linkset+json"],
+        bodyEmpty: true,
+        headerIncludes: { link: ['rel="api-catalog"'] },
+      },
+    },
+    {
+      surface: "agent-skills-index",
+      request: { url: url(DEFAULT_AGENT_SKILLS_INDEX_ROUTE) },
+      expect: {
+        statuses: [200],
+        contentTypes: json,
+        bodyIncludes: [
+          "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+          `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/docs/SKILL.md`,
+          "sha256:",
+        ],
+        headerIncludes: { link: ['rel="item"', DEFAULT_API_CATALOG_ROUTE] },
+      },
+    },
+    {
+      surface: "agent-skills-index-head",
+      request: { url: url(DEFAULT_AGENT_SKILLS_INDEX_ROUTE), init: { method: "HEAD" } },
+      expect: {
+        statuses: [200],
+        contentTypes: json,
+        bodyEmpty: true,
+        headerIncludes: { link: [DEFAULT_API_CATALOG_ROUTE] },
+      },
+    },
+    {
+      surface: "agent-skill",
+      request: { url: url(`${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/docs/SKILL.md`) },
+      expect: {
+        statuses: [200],
+        contentTypes: markdown,
+        bodyIncludes: ["name: docs"],
+        headerIncludes: { link: ['rel="collection"', DEFAULT_AGENT_SKILLS_INDEX_ROUTE] },
+      },
+    },
+    {
+      surface: "agent-skill-head",
+      request: {
+        url: url(`${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/docs/SKILL.md`),
+        init: { method: "HEAD" },
+      },
+      expect: {
+        statuses: [200],
+        contentTypes: markdown,
+        bodyEmpty: true,
+        headerIncludes: { link: [DEFAULT_AGENT_SKILLS_INDEX_ROUTE] },
+      },
     },
     {
       surface: "config",
@@ -215,7 +303,10 @@ export function createDocsAgentContractCases(
   ];
 
   if (locale) {
-    cases.splice(6, 0, {
+    const markdownMissingIndex = cases.findIndex(
+      (contractCase) => contractCase.surface === "markdown-missing",
+    );
+    cases.splice(markdownMissingIndex, 0, {
       surface: "markdown-locale",
       request: { url: url(`/${entry}.md?lang=${encodeURIComponent(locale)}`) },
       expect: { statuses: [200], contentTypes: markdown, bodyIncludes: ["Bonjour"] },
@@ -266,6 +357,23 @@ export async function runDocsAgentConformance(
       for (const requiredText of contractCase.expect.bodyIncludes ?? []) {
         if (!body.toLowerCase().includes(requiredText.toLowerCase())) {
           issues.push(`response body did not include ${JSON.stringify(requiredText)}`);
+        }
+      }
+
+      if (contractCase.expect.bodyEmpty && body !== "") {
+        issues.push(`expected an empty response body, received ${body.length} characters`);
+      }
+
+      for (const [header, requiredValues] of Object.entries(
+        contractCase.expect.headerIncludes ?? {},
+      )) {
+        const actual = response.headers.get(header) ?? "";
+        for (const requiredValue of requiredValues) {
+          if (!actual.toLowerCase().includes(requiredValue.toLowerCase())) {
+            issues.push(
+              `response header ${JSON.stringify(header)} did not include ${JSON.stringify(requiredValue)}`,
+            );
+          }
         }
       }
 

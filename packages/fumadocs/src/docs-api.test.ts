@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -1000,7 +1001,7 @@ Use the product-specific workflow first.
 
     process.chdir(rootDir);
 
-    const { GET } = createDocsAPI({
+    const { GET, HEAD } = createDocsAPI({
       rootDir,
       entry: "docs",
     });
@@ -1018,6 +1019,112 @@ Use the product-specific workflow first.
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(skillApiText);
+    }
+
+    const catalogResponse = await GET(new Request("http://localhost/.well-known/api-catalog"));
+    expect(catalogResponse.status).toBe(200);
+    expect(catalogResponse.headers.get("content-type")).toBe(
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+    );
+    expect(catalogResponse.headers.get("link")).toContain('rel="api-catalog"');
+    expect(catalogResponse.headers.get("link")).toContain("</.well-known/agent.json>");
+    expect(catalogResponse.headers.get("link")).toContain("</.well-known/agent-skills/index.json>");
+    const catalog = (await catalogResponse.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-doc"?: Array<{ href: string }>;
+        "service-meta"?: Array<{ href: string }>;
+      }>;
+    };
+    expect(catalog.linkset[0]).toMatchObject({
+      anchor: "http://localhost/.well-known/api-catalog",
+    });
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/docs",
+    );
+    expect(catalog.linkset[0]?.["service-doc"]?.map(({ href }) => href)).toEqual(
+      expect.arrayContaining([
+        "http://localhost/AGENTS.md",
+        "http://localhost/skill.md",
+        "http://localhost/docs.md",
+      ]),
+    );
+    expect(catalog.linkset[0]?.["service-meta"]?.map(({ href }) => href)).toEqual(
+      expect.arrayContaining([
+        "http://localhost/.well-known/agent.json",
+        "http://localhost/.well-known/agent-skills/index.json",
+      ]),
+    );
+
+    const catalogQueryResponse = await GET(
+      new Request("http://localhost/api/docs?format=api-catalog"),
+    );
+    expect(await catalogQueryResponse.json()).toEqual(catalog);
+
+    const catalogHead = await HEAD(
+      new Request("http://localhost/.well-known/api-catalog", { method: "HEAD" }),
+    );
+    expect(catalogHead.status).toBe(200);
+    expect(catalogHead.headers.get("content-type")).toContain("application/linkset+json");
+    expect(await catalogHead.text()).toBe("");
+
+    const indexResponse = await GET(
+      new Request("http://localhost/.well-known/agent-skills/index.json"),
+    );
+    expect(indexResponse.status).toBe(200);
+    expect(indexResponse.headers.get("content-type")).toContain("application/json");
+    expect(indexResponse.headers.get("access-control-allow-origin")).toBe("*");
+    expect(indexResponse.headers.get("link")).toContain('rel="item"');
+    const index = (await indexResponse.json()) as {
+      $schema: string;
+      skills: Array<{
+        name: string;
+        type: string;
+        description: string;
+        url: string;
+        digest: string;
+      }>;
+    };
+    const skillDigest = createHash("sha256").update(skillApiText, "utf8").digest("hex");
+    expect(index).toEqual({
+      $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+      skills: [
+        {
+          name: "docs",
+          type: "skill-md",
+          description: "Custom docs skill.",
+          url: "/.well-known/agent-skills/docs/SKILL.md",
+          digest: `sha256:${skillDigest}`,
+        },
+      ],
+    });
+
+    const indexQueryResponse = await GET(
+      new Request("http://localhost/api/docs?format=agent-skills"),
+    );
+    expect(await indexQueryResponse.json()).toEqual(index);
+
+    for (const path of [
+      "/.well-known/agent-skills/docs/SKILL.md",
+      "/api/docs?format=agent-skill&name=docs",
+    ]) {
+      const artifactResponse = await GET(new Request(`http://localhost${path}`));
+      expect(artifactResponse.status).toBe(200);
+      expect(artifactResponse.headers.get("content-type")).toContain("text/markdown");
+      expect(artifactResponse.headers.get("etag")).toBe(`"${skillDigest}"`);
+      expect(artifactResponse.headers.get("link")).toContain('rel="collection"');
+      expect(await artifactResponse.text()).toBe(skillApiText);
+    }
+
+    for (const path of [
+      "/.well-known/agent-skills/index.json",
+      "/.well-known/agent-skills/docs/SKILL.md",
+    ]) {
+      const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
+      expect(await response.text()).toBe("");
     }
   });
 
@@ -2334,6 +2441,8 @@ description: "Start building quickly"
     const response = await GET(new Request("http://localhost/api/docs/agent/spec"));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("link")).toContain("</.well-known/api-catalog>");
+    expect(response.headers.get("link")).toContain("</.well-known/agent-skills/index.json>");
 
     const spec = (await response.json()) as {
       version: string;
@@ -2347,6 +2456,7 @@ description: "Start building quickly"
       };
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
+      apiCatalog: Record<string, string | boolean>;
       config: { format: string; endpoint: string };
       agentContract: Record<string, unknown>;
       openapi: Record<string, unknown>;
@@ -2369,6 +2479,7 @@ description: "Start building quickly"
         wellKnown: string;
         api: string;
         generatedFallback: boolean;
+        discovery: Record<string, string>;
         registry: string;
         install: string;
         recommended: Array<{ name: string; description: string }>;
@@ -2411,6 +2522,8 @@ description: "Start building quickly"
       agents: true,
       llms: true,
       skills: true,
+      apiCatalog: true,
+      agentSkillsDiscovery: true,
       mcp: true,
       search: true,
       sitemap: true,
@@ -2432,7 +2545,17 @@ description: "Start building quickly"
       config: "/api/docs?format=config",
       diagnostics: "/api/docs?format=diagnostics",
       agents: "/api/docs?format=agents",
+      apiCatalog: "/.well-known/api-catalog",
+      apiCatalogQuery: "/api/docs?format=api-catalog",
+      agentSkillsIndex: "/.well-known/agent-skills/index.json",
       openapi: "/api/docs?format=openapi",
+    });
+    expect(spec.apiCatalog).toEqual({
+      enabled: true,
+      route: "/.well-known/api-catalog",
+      api: "/api/docs?format=api-catalog",
+      mediaType: "application/linkset+json",
+      profile: "https://www.rfc-editor.org/info/rfc9727",
     });
     expect(spec.config).toMatchObject({
       format: "docs-config-map.v1",
@@ -2508,6 +2631,14 @@ description: "Start building quickly"
       wellKnown: "/.well-known/skill.md",
       api: "/api/docs?format=skill",
       generatedFallback: true,
+      discovery: {
+        schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+        index: "/.well-known/agent-skills/index.json",
+        artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        apiIndex: "/api/docs?format=agent-skills",
+        apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        digest: "sha256",
+      },
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [
@@ -2557,6 +2688,7 @@ description: "Start building quickly"
       const wellKnownResponse = await GET(new Request(`http://localhost${path}`));
       expect(wellKnownResponse.status).toBe(200);
       expect(wellKnownResponse.headers.get("content-type")).toContain("application/json");
+      expect(wellKnownResponse.headers.get("link")).toContain('rel="api-catalog"');
       expect(await wellKnownResponse.json()).toEqual(spec);
     }
   });
@@ -2773,6 +2905,7 @@ description: "Start building quickly"
         wellKnown: string;
         api: string;
         generatedFallback: boolean;
+        discovery: Record<string, string>;
         registry: string;
         install: string;
       };
@@ -2808,6 +2941,8 @@ description: "Start building quickly"
       agents: true,
       llms: true,
       skills: true,
+      apiCatalog: true,
+      agentSkillsDiscovery: true,
       mcp: false,
       search: false,
       sitemap: true,
@@ -2870,6 +3005,14 @@ description: "Start building quickly"
       wellKnown: "/.well-known/skill.md",
       api: "/api/docs?format=skill",
       generatedFallback: true,
+      discovery: {
+        schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+        index: "/.well-known/agent-skills/index.json",
+        artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        apiIndex: "/api/docs?format=agent-skills",
+        apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        digest: "sha256",
+      },
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
     });

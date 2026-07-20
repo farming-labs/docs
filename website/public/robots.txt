@@ -20,6 +20,9 @@ Allow: /skill.md
 Allow: /.well-known/skill.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
+Allow: /.well-known/api-catalog
+Allow: /.well-known/agent-skills/index.json
+Allow: /.well-known/agent-skills/*/SKILL.md
 Allow: /mcp
 Allow: /.well-known/mcp
 Allow: /sitemap.xml

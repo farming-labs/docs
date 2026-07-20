@@ -24,6 +24,7 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
+  createDocsStandardsDiscoveryResponse,
   createDocsMarkdownResponse,
   createDocsRobotsResponse,
   createDocsSitemapResponse,
@@ -36,6 +37,7 @@ import {
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
+  getDocsDiscoveryLinkHeader,
   isDocsAgentDiscoveryRequest,
   isDocsConfigRequest,
   isDocsLlmsTxtPublicRequest,
@@ -44,6 +46,7 @@ import {
   isDocsAgentsRequest,
   isDocsDiagnosticsRequest,
   isDocsSkillRequest,
+  isDocsStandardsDiscoveryRequest,
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
   parseDocsAgentFeedbackData,
@@ -993,42 +996,48 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       );
     }
 
+    const discoveryOptions = {
+      origin: url.origin,
+      entry,
+      docsPath: config.docsPath,
+      i18n,
+      search: config.search,
+      mcp: mcpConfig,
+      feedback: agentFeedbackDiscovery,
+      llms: {
+        enabled: llmsEnabled,
+        baseUrl: llmsBaseUrl || undefined,
+        siteTitle: llmsTitle,
+        siteDescription: llmsDesc,
+        maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+        sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+      },
+      sitemap: config.sitemap,
+      robots: config.robots,
+      openapi: openapiDiscovery,
+      markdown: {
+        acceptHeader: false,
+      },
+    } as any;
+    if (isDocsStandardsDiscoveryRequest(url)) {
+      const standardsDiscoveryResponse = await createDocsStandardsDiscoveryResponse({
+        request: context.request,
+        ...discoveryOptions,
+        preferredSkillDocument: readRootSkillDocument(preloaded, rootDir),
+        fallbackSkillDocument: renderDocsSkillDocument(discoveryOptions),
+      });
+      if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
+    }
+
     if (isDocsAgentDiscoveryRequest(url)) {
-      return new Response(
-        JSON.stringify(
-          buildDocsAgentDiscoverySpec({
-            origin: url.origin,
-            entry,
-            i18n,
-            search: config.search,
-            mcp: mcpConfig,
-            feedback: agentFeedbackDiscovery,
-            llms: {
-              enabled: llmsEnabled,
-              baseUrl: llmsBaseUrl || undefined,
-              siteTitle: llmsTitle,
-              siteDescription: llmsDesc,
-              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
-              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-            },
-            sitemap: config.sitemap,
-            robots: config.robots,
-            openapi: openapiDiscovery,
-            markdown: {
-              acceptHeader: false,
-            },
-          } as any),
-          null,
-          2,
-        ),
-        {
-          headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "public, max-age=0, s-maxage=3600",
-            "X-Robots-Tag": "noindex",
-          },
+      return new Response(JSON.stringify(buildDocsAgentDiscoverySpec(discoveryOptions), null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+          Link: getDocsDiscoveryLinkHeader(),
         },
-      );
+      });
     }
 
     if (isApiReferenceOpenApiRequest(url)) {
@@ -1080,33 +1089,13 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     if (isDocsAgentsRequest(url) || resolveDocsAgentsFormat(url) === "agents") {
       return new Response(
-        readRootAgentsDocument(preloaded, rootDir) ??
-          renderDocsAgentsDocument({
-            origin: url.origin,
-            entry,
-            search: config.search,
-            mcp: mcpConfig,
-            feedback: agentFeedbackDiscovery,
-            llms: {
-              enabled: llmsEnabled,
-              baseUrl: llmsBaseUrl || undefined,
-              siteTitle: llmsTitle,
-              siteDescription: llmsDesc,
-              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
-              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-            },
-            sitemap: config.sitemap,
-            robots: config.robots,
-            openapi: openapiDiscovery,
-            markdown: {
-              acceptHeader: false,
-            },
-          } as any),
+        readRootAgentsDocument(preloaded, rootDir) ?? renderDocsAgentsDocument(discoveryOptions),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
+            Link: getDocsDiscoveryLinkHeader(),
           },
         },
       );
@@ -1114,33 +1103,13 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     if (isDocsSkillRequest(url) || resolveDocsSkillFormat(url) === "skill") {
       return new Response(
-        readRootSkillDocument(preloaded, rootDir) ??
-          renderDocsSkillDocument({
-            origin: url.origin,
-            entry,
-            search: config.search,
-            mcp: mcpConfig,
-            feedback: agentFeedbackDiscovery,
-            llms: {
-              enabled: llmsEnabled,
-              baseUrl: llmsBaseUrl || undefined,
-              siteTitle: llmsTitle,
-              siteDescription: llmsDesc,
-              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
-              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-            },
-            sitemap: config.sitemap,
-            robots: config.robots,
-            openapi: openapiDiscovery,
-            markdown: {
-              acceptHeader: false,
-            },
-          } as any),
+        readRootSkillDocument(preloaded, rootDir) ?? renderDocsSkillDocument(discoveryOptions),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
+            Link: getDocsDiscoveryLinkHeader(),
           },
         },
       );

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import {
   existsSync,
@@ -1059,8 +1060,60 @@ export const { GET, POST } = createDocsAPI({});
 
     writeDocsPage(tmpDir);
 
+    const hostedSkill = `---
+name: docs
+description: Use the hosted documentation through its agent-readable resources.
+---
+
+# Docs skill
+
+Use MCP and markdown routes.
+`;
+    const hostedSkillDigest = createHash("sha256").update(hostedSkill).digest("hex");
+
     const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
+
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/api-catalog"
+      ) {
+        res.writeHead(200, {
+          "Content-Type":
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+          Link: '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
+        });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                linkset: [
+                  {
+                    anchor: "http://docs.example.test/.well-known/api-catalog",
+                    item: [
+                      {
+                        href: "http://docs.example.test/api/docs",
+                        type: "application/json",
+                      },
+                    ],
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/index.json") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end();
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
+        res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+        res.end();
+        return;
+      }
 
       if (req.method === "GET") {
         if (url.pathname === "/.well-known/agent.json") {
@@ -1076,10 +1129,22 @@ export const { GET, POST } = createDocsAPI({});
                 structuredData: true,
                 search: true,
                 mcp: true,
+                apiCatalog: true,
+                agentSkillsDiscovery: true,
               },
               api: {
                 docs: "/api/docs",
                 config: "/api/docs?format=config",
+                apiCatalog: "/.well-known/api-catalog",
+                apiCatalogQuery: "/api/docs?format=api-catalog",
+                agentSkillsIndex: "/.well-known/agent-skills/index.json",
+              },
+              apiCatalog: {
+                enabled: true,
+                route: "/.well-known/api-catalog",
+                api: "/api/docs?format=api-catalog",
+                mediaType: "application/linkset+json",
+                profile: "https://www.rfc-editor.org/info/rfc9727",
               },
               config: {
                 endpoint: "/api/docs?format=config",
@@ -1107,6 +1172,16 @@ export const { GET, POST } = createDocsAPI({});
               agentContract: {
                 fields: { task: "string", outcome: "string" },
               },
+              skills: {
+                discovery: {
+                  schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+                  index: "/.well-known/agent-skills/index.json",
+                  artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+                  apiIndex: "/api/docs?format=agent-skills",
+                  apiArtifact: "/api/docs?format=agent-skill&name={name}",
+                  digest: "sha256",
+                },
+              },
               llms: { enabled: true },
               sitemap: {
                 enabled: true,
@@ -1121,6 +1196,31 @@ export const { GET, POST } = createDocsAPI({});
               robots: { enabled: true, route: "/robots.txt" },
             }),
           );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/index.json") {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(
+            JSON.stringify({
+              $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+              skills: [
+                {
+                  name: "docs",
+                  type: "skill-md",
+                  description: "Use the hosted documentation through its agent-readable resources.",
+                  url: "/.well-known/agent-skills/docs/SKILL.md",
+                  digest: `sha256:${hostedSkillDigest}`,
+                },
+              ],
+            }),
+          );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
+          res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+          res.end(hostedSkill);
           return;
         }
 
@@ -1153,6 +1253,9 @@ Allow: /docs/sitemap.md
 Allow: /.well-known/sitemap.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
+Allow: /.well-known/api-catalog
+Allow: /.well-known/agent-skills/index.json
+Allow: /.well-known/agent-skills/*/SKILL.md
 Allow: /AGENTS.md
 Allow: /skill.md
 Allow: /mcp
@@ -1303,6 +1406,13 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
+      expect(report.checks.find((check) => check.id === "hosted-api-catalog")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-agent-skills")?.status).toBe(
+        "pass",
+      );
+      expect(report.checks.find((check) => check.id === "hosted-agent-skills")?.detail).toContain(
+        "docs digest verified",
+      );
       expect(report.checks.find((check) => check.id === "hosted-llms")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-sitemap")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
@@ -1324,6 +1434,90 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
         "/.well-known/mcp initialized statelessly",
       );
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
+  it("rejects a hosted Agent Skills artifact whose bytes do not match its digest", async () => {
+    writePackageJson(tmpDir, "doctor-hosted-skill-digest", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", search: true, mcp: true };`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/agent-skills/index.json"
+      ) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+                skills: [
+                  {
+                    name: "docs",
+                    type: "skill-md",
+                    description: "Use the documentation.",
+                    url: "/.well-known/agent-skills/docs/SKILL.md",
+                    digest: `sha256:${"0".repeat(64)}`,
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/agent-skills/docs/SKILL.md"
+      ) {
+        res.writeHead(200, { "Content-Type": "text/markdown" });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : "---\nname: docs\ndescription: Use the documentation.\n---\n\n# Docs\n",
+        );
+        return;
+      }
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not found");
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+      const check = report.checks.find((candidate) => candidate.id === "hosted-agent-skills");
+
+      expect(check?.status).toBe("fail");
+      expect(check?.detail).toContain("docs artifact digest does not match the index");
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),

@@ -306,6 +306,12 @@ That works especially well when:
 
 ## Agent Discovery
 
+For standards-based discovery, `GET` or `HEAD /.well-known/api-catalog` returns an
+`application/linkset+json` [RFC 9727](https://datatracker.ietf.org/doc/html/rfc9727) catalog.
+`GET` or `HEAD /.well-known/agent-skills/index.json` returns the
+[Agent Skills v0.2 index](https://www.mintlify.com/docs/ai/skillmd), whose entries point to
+`/.well-known/agent-skills/<name>/SKILL.md` and hash the exact UTF-8 response bytes.
+
 `GET /.well-known/agent.json` is the preferred public discovery URL. `GET /.well-known/agent` is the
 public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. Next.js wires
 these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt scaffold one public forwarder
@@ -317,6 +323,7 @@ Agents should fetch it before choosing a transport. It tells them:
 - which locales are configured and which query parameter selects one
 - which agent-facing capabilities are enabled
 - where the shared docs API lives
+- where the RFC 9727 API catalog and hashed Agent Skills index live
 - which agent discovery URL is the default and which public route to use as fallback
 - where to search the docs with a query
 - which markdown URL pattern to use for page reads
@@ -337,6 +344,10 @@ The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 `agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
 preference themselves. It also includes `robots.route` so agents can find the static crawl policy
 without guessing.
+
+The custom manifest remains supported and advertises the standards routes through
+`apiCatalog` and `skills.discovery`. Discovery responses also include an `api-catalog` HTTP
+`Link` relation so clients can start from either model.
 
 The spec also includes `api.config: "/api/docs?format=config"` and a top-level `config` object
 with `format: "docs-config-map.v1"` and `endpoint: "/api/docs?format=config"` so agents can

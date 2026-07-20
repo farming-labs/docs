@@ -30,6 +30,53 @@ import {
   resolveDocsSitemapRequest,
 } from "./sitemap.js";
 import type { DocsSitemapConfig } from "./types.js";
+import {
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_API_CATALOG_FORMAT,
+  DEFAULT_API_CATALOG_ROUTE,
+  buildDocsApiCatalog,
+  createDocsStandardsResponse,
+  isDocsStandardsDiscoveryRequest,
+} from "./standards-discovery.js";
+
+export {
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
+  DEFAULT_AGENT_SKILL_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_API_CATALOG_FORMAT,
+  DEFAULT_API_CATALOG_ROUTE,
+  appendDocsDiscoveryLinkHeader,
+  buildDocsAgentSkillsIndex,
+  buildDocsApiCatalog,
+  createDocsStandardsResponse,
+  getDocsDiscoveryLinkHeader,
+  isDocsStandardsDiscoveryRequest,
+  resolveDocsPublishedAgentSkill,
+  resolveDocsStandardsDiscoveryRequest,
+  sha256DocsDiscoveryContent,
+} from "./standards-discovery.js";
+export type {
+  CreateDocsStandardsResponseOptions,
+  DocsAgentSkillIndexEntry,
+  DocsAgentSkillsIndex,
+  DocsApiCatalog,
+  DocsApiCatalogLinkContext,
+  DocsApiCatalogLinkTarget,
+  DocsApiCatalogOptions,
+  DocsPublishedAgentSkill,
+  DocsPublishedAgentSkillOptions,
+  DocsStandardsDiscoveryRequest,
+} from "./standards-discovery.js";
 
 export {
   findDocsAudienceMdxIssues,
@@ -319,7 +366,7 @@ export interface DocsDiagnosticsFeature {
   routes?: Record<string, string | null>;
   provider?: string;
   mode?: string;
-  transport?: "GET" | "POST" | "GET/POST";
+  transport?: "GET" | "POST" | "GET/HEAD" | "GET/POST";
   tools?: Record<string, boolean>;
   human?: boolean;
   agent?: boolean;
@@ -336,6 +383,9 @@ export interface DocsDiagnostics {
     config: string;
     diagnostics: string;
     agentSpec: string;
+    apiCatalog: string;
+    agentSkillsIndex: string;
+    agentSkillsArtifact: string;
     agents: string;
     skill: string;
     search: string | null;
@@ -353,6 +403,7 @@ export interface DocsDiagnostics {
     staticExport: DocsDiagnosticsFeature;
     config: DocsDiagnosticsFeature;
     diagnostics: DocsDiagnosticsFeature;
+    apiCatalog: DocsDiagnosticsFeature;
     search: DocsDiagnosticsFeature;
     ai: DocsDiagnosticsFeature;
     mcp: DocsDiagnosticsFeature;
@@ -479,6 +530,8 @@ export interface DocsLlmsTxtMaxCharsIssue {
 export interface DocsAgentDiscoverySpecOptions {
   origin: string;
   entry?: string;
+  /** Public rendered docs path when it differs from `entry`. */
+  docsPath?: string;
   i18n?: ResolvedDocsI18n | null;
   search?: boolean | DocsSearchConfig;
   mcp: DocsMcpResolvedConfig;
@@ -496,6 +549,8 @@ export interface DocsAgentDiscoverySpecOptions {
 export interface DocsSkillDocumentOptions {
   origin: string;
   entry?: string;
+  /** Public rendered docs path when it differs from `entry`. */
+  docsPath?: string;
   search?: boolean | DocsSearchConfig;
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
@@ -510,6 +565,12 @@ export interface DocsSkillDocumentOptions {
 }
 
 export interface DocsAgentsDocumentOptions extends DocsSkillDocumentOptions {}
+
+export interface DocsStandardsDiscoveryResponseOptions extends DocsAgentDiscoverySpecOptions {
+  request: Request;
+  preferredSkillDocument?: string | null;
+  fallbackSkillDocument: string;
+}
 
 export interface DocsAgentContractMcpTools {
   list?: "list_tasks";
@@ -728,6 +789,9 @@ export function buildDocsDiagnostics(
       config: DEFAULT_DOCS_CONFIG_ROUTE,
       diagnostics: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
+      apiCatalog: DEFAULT_API_CATALOG_ROUTE,
+      agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      agentSkillsArtifact: DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
       agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
       skill: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
       search: search.enabled ? `${DEFAULT_DOCS_API_ROUTE}?query={query}` : null,
@@ -756,6 +820,11 @@ export function buildDocsDiagnostics(
       diagnostics: {
         status: "enabled",
         route: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
+      },
+      apiCatalog: {
+        status: "enabled",
+        route: DEFAULT_API_CATALOG_ROUTE,
+        transport: "GET/HEAD",
       },
       search: {
         status: search.enabled ? "enabled" : "disabled",
@@ -838,10 +907,13 @@ export function buildDocsDiagnostics(
       },
       skills: {
         status: "enabled",
+        transport: "GET/HEAD",
         routes: {
           default: DEFAULT_SKILL_MD_ROUTE,
           wellKnown: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
           api: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+          index: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          artifact: DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
         },
       },
       locales: {
@@ -1771,6 +1843,10 @@ export function renderDocsLlmsTxt(
 
   let llmsTxt = `# ${siteTitle}\n\n`;
   if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
+  llmsTxt += "## Agent Discovery\n\n";
+  llmsTxt += `- [Agent manifest](${resolveDocsResourceUrl(baseUrl, DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE)}): Farming Labs discovery manifest\n`;
+  llmsTxt += `- [API catalog](${resolveDocsResourceUrl(baseUrl, DEFAULT_API_CATALOG_ROUTE)}): RFC 9727 API catalog\n`;
+  llmsTxt += `- [Agent Skills index](${resolveDocsResourceUrl(baseUrl, DEFAULT_AGENT_SKILLS_INDEX_ROUTE)}): Hashed Agent Skills discovery\n\n`;
   if (generatedSections.length > 0) {
     llmsTxt += "## Sections\n\n";
     for (const section of generatedSections) {
@@ -1849,6 +1925,101 @@ export function getDocsLlmsTxtMaxCharsIssue(
     label,
     message: `${label} is ${content.length.toLocaleString()} chars, above the configured ${maxChars.chars.toLocaleString()} char llms.txt budget.`,
   };
+}
+
+function resolveDocsStandardsOrigin(preferred: string | undefined, fallback: string): string {
+  for (const candidate of [preferred, fallback]) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      if (url.protocol === "http:" || url.protocol === "https:") return url.origin;
+    } catch {
+      // Fall through to the request origin.
+    }
+  }
+  return new URL(fallback).origin;
+}
+
+/** Build and serve standards-based discovery without replacing the custom agent manifest. */
+export async function createDocsStandardsDiscoveryResponse({
+  request,
+  preferredSkillDocument,
+  fallbackSkillDocument,
+  origin,
+  entry = "docs",
+  docsPath,
+  i18n: _i18n,
+  search: _search,
+  mcp,
+  feedback,
+  llms,
+  sitemap,
+  robots,
+  openapi,
+  markdown: _markdown,
+}: DocsStandardsDiscoveryResponseOptions): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (!isDocsStandardsDiscoveryRequest(url)) return null;
+
+  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const normalizedDocsPath = normalizeDocsPathSegment(docsPath ?? normalizedEntry);
+  const catalogOrigin = resolveDocsStandardsOrigin(llms?.baseUrl, origin || url.origin);
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
+  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
+  const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
+  const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
+  const llmsEnabled = llms?.enabled ?? true;
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
+  const llmsRoutes = llmsEnabled
+    ? [
+        DEFAULT_LLMS_TXT_ROUTE,
+        DEFAULT_LLMS_FULL_TXT_ROUTE,
+        DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
+        DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+        ...llmsSections.flatMap((section) => [section.route, section.fullRoute]),
+      ]
+    : [];
+  const sitemapRoutes = sitemapConfig.enabled
+    ? [
+        ...(sitemapConfig.xml.enabled ? [sitemapConfig.xml.route] : []),
+        ...(sitemapConfig.markdown.enabled
+          ? [
+              sitemapConfig.markdown.route,
+              sitemapConfig.markdown.docsRoute,
+              sitemapConfig.markdown.wellKnownRoute,
+            ].filter((route): route is string => Boolean(route))
+          : []),
+      ]
+    : [];
+
+  return createDocsStandardsResponse({
+    request,
+    preferredSkillDocument,
+    fallbackSkillDocument,
+    apiCatalog: buildDocsApiCatalog({
+      origin: catalogOrigin,
+      docsRoute: normalizedDocsPath ? `/${normalizedDocsPath}` : "/",
+      apiRoute: DEFAULT_DOCS_API_ROUTE,
+      configRoute: DEFAULT_DOCS_CONFIG_ROUTE,
+      diagnosticsRoute: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
+      agentManifestRoute: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+      agentSkillsIndexRoute: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      agentsRoute: DEFAULT_AGENTS_MD_ROUTE,
+      skillRoute: DEFAULT_SKILL_MD_ROUTE,
+      markdownRootRoute: `/${normalizedEntry}.md`,
+      llmsRoutes,
+      sitemapRoutes,
+      robotsRoute: robotsEnabled ? DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE : null,
+      mcpRoute: mcp.enabled ? mcp.route : null,
+      feedbackRoutes: feedback?.enabled ? [feedbackRoute, feedbackSchemaRoute] : [],
+      openapiRoute: openapiConfig.enabled ? (openapiConfig.url ?? null) : null,
+      apiReferenceRoute:
+        openapiConfig.enabled && openapiConfig.apiReferencePath
+          ? openapiConfig.apiReferencePath
+          : null,
+    }),
+  });
 }
 
 export function isDocsAgentDiscoveryRequest(url: URL): boolean {
@@ -2056,6 +2227,7 @@ export function isDocsPublicGetRequest(
   if (pathname === DEFAULT_DOCS_API_ROUTE || pathname === DEFAULT_MCP_ROUTE) return false;
 
   return (
+    isDocsStandardsDiscoveryRequest(url) ||
     isDocsAgentDiscoveryRequest(url) ||
     isDocsAgentsRequest(url) ||
     isDocsSkillRequest(url) ||
@@ -2513,6 +2685,8 @@ export function renderDocsMarkdownNotFound({
     `- Agent discovery spec: \`${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}\``,
     `- Agent discovery fallback: \`${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}\``,
     `- Agent discovery API: \`${DEFAULT_AGENT_SPEC_ROUTE}\``,
+    `- API catalog: \`${DEFAULT_API_CATALOG_ROUTE}\``,
+    `- Agent Skills index: \`${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}\``,
     `- Agent instructions: \`${DEFAULT_AGENTS_MD_ROUTE}\``,
     `- Search endpoint: \`${DEFAULT_DOCS_API_ROUTE}?query={query}\``,
     `- Docs index markdown: \`/${normalizedEntry}.md\``,
@@ -2928,6 +3102,9 @@ function appendDocsAgentStartHereLines(
       ? `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`
       : `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
     variant === "skill"
+      ? `- Use ${DEFAULT_API_CATALOG_ROUTE} for standards-based API discovery and ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for hashed skill discovery.`
+      : `- Use ${DEFAULT_API_CATALOG_ROUTE} for RFC 9727 API discovery and ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for integrity-checked skills.`,
+    variant === "skill"
       ? `- Fetch /${context.normalizedEntry}.md for the root docs page.`
       : `- Read /${context.normalizedEntry}.md for the root docs page.`,
     variant === "skill"
@@ -3013,6 +3190,9 @@ function appendDocsAgentPublicRouteLines(
       `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
       `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
       `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+      `- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`,
+      `- Agent Skills index: ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`,
+      `- Agent Skills artifacts: ${DEFAULT_AGENT_SKILLS_ROUTE_PATTERN}`,
       `- Markdown root: /${context.normalizedEntry}.md`,
       `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
     );
@@ -3039,6 +3219,9 @@ function appendDocsAgentPublicRouteLines(
     `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
     `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
     `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+    `- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`,
+    `- Agent Skills index: ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`,
+    `- Agent Skills artifacts: ${DEFAULT_AGENT_SKILLS_ROUTE_PATTERN}`,
   );
 
   appendDocsLlmsRouteLines(lines, context);
@@ -3244,6 +3427,8 @@ export function buildDocsAgentDiscoverySpec({
       agents: true,
       llms: llmsEnabled,
       skills: true,
+      apiCatalog: true,
+      agentSkillsDiscovery: true,
       mcp: mcp.enabled,
       search: searchEnabled,
       sitemap: sitemapConfig.enabled,
@@ -3265,7 +3450,17 @@ export function buildDocsAgentDiscoverySpec({
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
       agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      apiCatalog: DEFAULT_API_CATALOG_ROUTE,
+      apiCatalogQuery: `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+      agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
       openapi: DEFAULT_OPENAPI_SCHEMA_ROUTE,
+    },
+    apiCatalog: {
+      enabled: true,
+      route: DEFAULT_API_CATALOG_ROUTE,
+      api: `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+      mediaType: API_CATALOG_MEDIA_TYPE,
+      profile: API_CATALOG_PROFILE_URI,
     },
     config: {
       format: DEFAULT_DOCS_CONFIG_FORMAT,
@@ -3380,6 +3575,14 @@ export function buildDocsAgentDiscoverySpec({
       generatedFallback: true,
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
+      discovery: {
+        schema: AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+        index: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+        artifact: DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+        apiIndex: `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
+        apiArtifact: `${DEFAULT_DOCS_API_ROUTE}?format=agent-skill&name={name}`,
+        digest: "sha256",
+      },
       recommended: [
         {
           name: "getting-started",

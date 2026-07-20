@@ -472,15 +472,22 @@ Behavior:
 - `--public` is required for writes and targets `public/`, or `static/` for SvelteKit
 - `--check` performs the same resolution without writing and fails when any output is stale
 - exports every resolved page as `.md`, honoring `agent.md`, then `Agent` blocks, then page content
-- exports root/entry/well-known/configured-section llms.txt files, discovery JSON, skill and AGENTS
-  aliases, sitemaps, and robots.txt
+- exports root/entry/well-known/configured-section llms.txt files, the existing discovery JSON, a
+  hashed Agent Skills index and its exact `SKILL.md` artifact, skill and AGENTS aliases, sitemaps,
+  and robots.txt; when an HTTP(S) `baseUrl` is configured it also exports an RFC 9727 API catalog
 - writes `/.well-known/agent-bundle.json` and
   `.farming-labs/agent-bundle-manifest.json` with deterministic SHA-256 hashes
+- static hosts must serve `/.well-known/api-catalog` as `application/linkset+json` with the RFC 9727
+  profile and configure the same discovery `Link` headers when host-level header configuration is
+  available; the exported catalog only lists resources present in the bundle and is omitted when
+  no absolute HTTP(S) base URL is available
 - treats the exported artifact as static even when `staticExport` is omitted: discovery disables
   server-only search, MCP, feedback, API reference, and OpenAPI capabilities
 - uses tracked git commit dates for exported page freshness and omits checkout-specific filesystem
   mtimes, so `--check` is reproducible across clean clones
 - preserves native page, llms.txt, discovery, skill, public `AGENTS.md`, and `robots.txt` overrides
+- manages the standard Agent Skills index and its referenced artifact as one integrity pair so the
+  advertised digest cannot drift from the published bytes
 - never copies repository-root `AGENTS.md`; use `docs agents generate` when publishing those
   instructions is intentional
 - writes files through same-directory temporary files and atomic renames

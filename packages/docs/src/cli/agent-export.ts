@@ -15,21 +15,26 @@ import pc from "picocolors";
 import {
   DEFAULT_AGENT_MD_ROUTE,
   DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
   DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+  DEFAULT_API_CATALOG_ROUTE,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
   DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
   DEFAULT_LLMS_TXT_ROUTE,
   DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+  buildDocsAgentSkillsIndex,
   buildDocsAgentDiscoverySpec,
+  buildDocsApiCatalog,
   renderDocsAgentsDocument,
   renderDocsLlmsTxt,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
+  resolveDocsPublishedAgentSkill,
   resolveDocsAgentFeedbackConfig,
   toDocsMarkdownUrl,
   type DocsLlmsDiscoveryConfig,
@@ -212,6 +217,16 @@ function normalizePathSegment(value: string): string {
 
 function normalizeContent(content: string): string {
   return `${content.trimEnd()}\n`;
+}
+
+function hasHttpOrigin(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function publicFilePath(publicDir: string, route: string): string {
@@ -1019,9 +1034,11 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const siteDescription = llmsConfig?.siteDescription ?? metadataDescription;
   const resolvedSiteTitle = llmsConfig?.siteTitle ?? siteTitle;
   const sitemapInput = config?.sitemap ?? readStaticSitemapConfig(configContent) ?? true;
-  const baseUrl =
-    llmsConfig?.baseUrl ?? (typeof sitemapInput === "object" ? sitemapInput.baseUrl : undefined);
   const robotsInput = config?.robots ?? readStaticRobotsConfig(configContent) ?? true;
+  const baseUrl =
+    llmsConfig?.baseUrl ??
+    (typeof sitemapInput === "object" ? sitemapInput.baseUrl : undefined) ??
+    (typeof robotsInput === "object" ? robotsInput.baseUrl : undefined);
   const i18n = resolveDocsI18n(config?.i18n ?? readStaticI18nConfig(configContent));
   const framework = detectFramework(rootDir);
   const publicDirectory = framework === "sveltekit" ? "static" : "public";
@@ -1180,6 +1197,14 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   });
   const discoveryWithBundle = {
     ...discovery,
+    capabilities: {
+      ...discovery.capabilities,
+      apiCatalog: hasHttpOrigin(baseUrl),
+    },
+    apiCatalog: {
+      ...discovery.apiCatalog,
+      enabled: hasHttpOrigin(baseUrl),
+    },
     staticBundle: {
       format: "farming-labs-agent-bundle.v1",
       manifest: AGENT_BUNDLE_MANIFEST_ROUTE,
@@ -1285,13 +1310,76 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     outputs.push(resolveRobotsOutput(publicDir, routeEntry || "docs", sitemapInput, robots));
   }
 
+  // Resolve user-owned aliases before deriving the standards discovery artifact so the digest in
+  // the index always covers the exact SKILL.md bytes published by this bundle.
+  outputs = resolveUserOwnedOverrides(outputs, previous);
+  const effectiveSkillDocument =
+    outputs.find((output) => output.route === DEFAULT_SKILL_MD_ROUTE)?.content ??
+    normalizeContent(publicSkill);
+  const publishedAgentSkill = await resolveDocsPublishedAgentSkill({
+    preferredDocument: effectiveSkillDocument,
+    fallbackDocument: normalizeContent(generatedSkill),
+  });
+  addOutput(
+    outputs,
+    publicDir,
+    publishedAgentSkill.url,
+    "skill",
+    "text/markdown",
+    publishedAgentSkill.content,
+  );
+  addOutput(
+    outputs,
+    publicDir,
+    DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+    "discovery",
+    "application/json",
+    JSON.stringify(buildDocsAgentSkillsIndex(publishedAgentSkill), null, 2),
+  );
+
+  if (hasHttpOrigin(baseUrl)) {
+    const markdownRootCandidate = `/${routeEntry || sourceEntry || "docs"}.md`;
+    const apiCatalog = buildDocsApiCatalog({
+      origin: baseUrl,
+      docsRoute: routeEntry ? `/${routeEntry}` : "/",
+      // A static Agent Bundle does not publish the runtime /api/docs handler.
+      apiRoute: null,
+      apiRoutes: [
+        {
+          route: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          type: "application/json",
+          title: "Agent Skills discovery API",
+        },
+      ],
+      agentManifestRoute: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+      agentSkillsIndexRoute: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      agentsRoute: DEFAULT_AGENTS_MD_ROUTE,
+      skillRoute: DEFAULT_SKILL_MD_ROUTE,
+      markdownRootRoute: outputs.some((output) => output.route === markdownRootCandidate)
+        ? markdownRootCandidate
+        : undefined,
+      llmsRoutes: outputs.filter((output) => output.kind === "llms").map((output) => output.route),
+      sitemapRoutes: outputs
+        .filter((output) => output.kind === "sitemap")
+        .map((output) => output.route),
+      robotsRoute: outputs.find((output) => output.kind === "robots")?.route,
+    });
+    addOutput(
+      outputs,
+      publicDir,
+      DEFAULT_API_CATALOG_ROUTE,
+      "discovery",
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+      JSON.stringify(apiCatalog, null, 2),
+    );
+  }
+
   assertOutputPathsDoNotCollide({
     outputs,
     internalOutputs,
     publicManifestPath,
     internalManifestPath,
   });
-  outputs = resolveUserOwnedOverrides(outputs, previous);
   outputs.sort((left, right) => left.publicPath.localeCompare(right.publicPath));
   const stalePaths = staleManagedPaths(publicDir, previous, outputs);
   const staleInternal = staleInternalPaths(rootDir, previous, internalOutputs);
