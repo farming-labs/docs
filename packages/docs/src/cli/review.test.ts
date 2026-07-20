@@ -408,6 +408,102 @@ Point to the closest related docs instead of inventing config.
     expect(report.score).toBeLessThan(100);
   });
 
+  it("accepts Agent and agent-only Audience blocks but not human-only audience content", async () => {
+    mkdirSync(join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  review: {
+    rules: {
+      agentContext: "warn",
+      goldenTasks: "off",
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Docs
+description: Docs home
+---
+
+Overview.
+`,
+      "utf-8",
+    );
+
+    git(["init"]);
+    git(["config", "user.email", "docs@example.com"]);
+    git(["config", "user.name", "Docs Test"]);
+    git(["add", "."]);
+    git(["commit", "-m", "initial docs"]);
+
+    const pages = [
+      [
+        "agent",
+        '<Agent audience="implementation">The contract targets `docs.config.ts` v2.0.0.</Agent>',
+      ],
+      [
+        "audience-agent",
+        "<Audience only={'agent'}>The contract targets `src/docs.ts` v2.0.0.</Audience>",
+      ],
+      [
+        "audience-dynamic",
+        "<Audience only={runtimeAudience}>The runtime audience is unsupported.</Audience>",
+      ],
+      ["human", "<Human>Use the interactive setup form.</Human>"],
+      ["audience-human", '<Audience only="human">Use the interactive setup form.</Audience>'],
+    ] as const;
+
+    for (const [slug, audienceBlock] of pages) {
+      mkdirSync(join(tmpDir, "app", "docs", slug), { recursive: true });
+      writeFileSync(
+        join(tmpDir, "app", "docs", slug, "page.mdx"),
+        `---
+title: ${slug}
+description: ${slug} page
+---
+
+Configure the docs implementation.
+
+${audienceBlock}
+`,
+        "utf-8",
+      );
+    }
+
+    git(["add", "."]);
+    git(["commit", "-m", "add audience pages"]);
+    process.chdir(tmpDir);
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    const report = await runReview({ ci: true });
+
+    expect(report?.status).toBe("measured");
+    if (!report || report.status !== "measured") throw new Error("Expected a measured review");
+    const missingAgentContext = report.findings
+      .filter((finding) => finding.message.startsWith("Implementation-heavy docs page"))
+      .map((finding) => finding.file);
+    expect(missingAgentContext).toEqual([
+      "app/docs/audience-dynamic/page.mdx",
+      "app/docs/audience-human/page.mdx",
+      "app/docs/human/page.mdx",
+    ]);
+    expect(report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "app/docs/audience-dynamic/page.mdx",
+          code: "audience-dynamic-only",
+          severity: "warn",
+        }),
+      ]),
+    );
+  });
+
   function git(args: string[]) {
     execFileSync("git", args, { cwd: tmpDir, stdio: "ignore" });
   }

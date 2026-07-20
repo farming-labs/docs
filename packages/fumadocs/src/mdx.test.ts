@@ -4,13 +4,53 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { getMDXComponents } from "./mdx.js";
 
 describe("getMDXComponents", () => {
-  it("includes the Agent primitive by default without user registration", () => {
+  it("includes audience primitives by default without user registration", () => {
     const components = getMDXComponents();
 
     expect(typeof components.Agent).toBe("function");
+    expect(typeof components.Human).toBe("function");
+    expect(typeof components.Audience).toBe("function");
 
     const AgentComponent = components.Agent as (props: { children?: unknown }) => unknown;
+    const HumanComponent = components.Human as React.ComponentType<{
+      children?: React.ReactNode;
+    }>;
+    const AudienceComponent = components.Audience as React.ComponentType<{
+      only: "human" | "agent";
+      children?: React.ReactNode;
+    }>;
+
     expect(AgentComponent({ children: "hidden agent-only context" })).toBeNull();
+    expect(
+      renderToStaticMarkup(React.createElement(HumanComponent, null, "visible human-only context")),
+    ).toContain("visible human-only context");
+    expect(
+      renderToStaticMarkup(
+        React.createElement(AudienceComponent, { only: "human" }, "visible human context"),
+      ),
+    ).toContain("visible human context");
+    expect(
+      renderToStaticMarkup(
+        React.createElement(AudienceComponent, { only: "agent" }, "hidden agent context"),
+      ),
+    ).toBe("");
+  });
+
+  it("renders Audience children as shared content when only is invalid", () => {
+    const components = getMDXComponents();
+    const AudienceComponent = components.Audience as React.ComponentType<{
+      only?: string;
+      children?: React.ReactNode;
+    }>;
+
+    const html = renderToStaticMarkup(
+      React.createElement(AudienceComponent, { only: "unknown" }, "shared fallback"),
+    );
+
+    expect(html).toContain("shared fallback");
+    expect(
+      renderToStaticMarkup(React.createElement(AudienceComponent, null, "missing-value fallback")),
+    ).toContain("missing-value fallback");
   });
 
   it("includes a Mintlify-compatible CodeGroup primitive by default without user registration", () => {

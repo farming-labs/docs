@@ -98,6 +98,7 @@ export { withLangInUrl } from "./i18n.js";
 // ─── Core types (re-exported for convenience) ─────────────────────────
 export type {
   DocsConfig,
+  DocsContentAudience,
   ChangelogConfig,
   ChangelogFrontmatter,
   DocsTheme,
@@ -137,7 +138,8 @@ export {
   CodeBlockTabsTrigger,
   Pre,
 } from "fumadocs-ui/components/codeblock";
-export { Agent, CodeGroup } from "./mdx.js";
+export { Agent, Audience, CodeGroup, Human } from "./mdx.js";
+export type { AgentProps, AudienceProps, CodeGroupProps, HumanProps } from "./mdx.js";
 export { HoverLink } from "./hover-link.js";
 export type { HoverLinkProps } from "./hover-link.js";
 export { Prompt } from "./prompt.js";

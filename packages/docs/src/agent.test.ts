@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { findDocsAudienceMdxTags } from "./audience.js";
 import {
   acceptsDocsMarkdown,
   buildDocsAgentDiscoverySpec,
@@ -7,6 +8,7 @@ import {
   buildDocsMcpEndpointCandidates,
   createDocsMarkdownResponse,
   detectDocsMarkdownAgentRequest,
+  findDocsAudienceMdxIssues,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
@@ -29,6 +31,7 @@ import {
   resolveDocsMarkdownRecovery,
   resolveDocsAgentFeedbackConfig,
   resolveDocsAgentFeedbackRequest,
+  resolveDocsAudienceMdxContent,
   resolveDocsAgentMdxContent,
   resolveDocsAgentsFormat,
   resolveDocsLlmsTxtFormat,
@@ -502,6 +505,23 @@ describe("agent route helpers", () => {
 
     const issue = getDocsLlmsTxtMaxCharsIssue("/llms.txt", content.llmsTxt, content.maxChars);
     expect(issue?.mode).toBe("warn");
+  });
+
+  it("uses the agent projection for runtime llms-full.txt content", () => {
+    const content = renderDocsLlmsTxt([
+      {
+        url: "/docs/audience",
+        title: "Audience",
+        content: "Human search text.",
+        rawContent: "Shared.\n\nHuman-only.",
+        agentFallbackRawContent: "Shared.\n\nAgent-only.",
+      },
+    ]);
+
+    expect(content.llmsFullTxt).toContain("Shared.");
+    expect(content.llmsFullTxt).toContain("Agent-only.");
+    expect(content.llmsFullTxt).not.toContain("Human-only.");
+    expect(content.llmsTxt).not.toContain("Agent-only.");
   });
 
   it("detects public docs forwarder requests without taking over api/docs", () => {
@@ -1068,9 +1088,419 @@ describe("agent route helpers", () => {
     expect(renderDocsMarkdownDocument(page!, { llms: false })).not.toContain(
       "LLM index: /llms.txt",
     );
+
+    const contentOnlyDocument = renderDocsMarkdownDocument({
+      ...page!,
+      content: "Human-only fallback.",
+      rawContent: "Human-only fallback.",
+      agentFallbackRawContent: undefined,
+      agentContent: "Agent content-only override.",
+    });
+    expect(contentOnlyDocument).toContain("Agent content-only override.");
+    expect(contentOnlyDocument).not.toContain("Human-only fallback.");
+
+    const fallbackContentOnlyDocument = renderDocsMarkdownDocument({
+      ...page!,
+      content: "Human-only fallback.",
+      rawContent: "Human-only fallback.",
+      agentFallbackRawContent: undefined,
+      agentFallbackContent: "Agent content-only projection.",
+    });
+    expect(fallbackContentOnlyDocument).toContain("Agent content-only projection.");
+    expect(fallbackContentOnlyDocument).not.toContain("Human-only fallback.");
     expect(document).toContain("Related: /docs/configuration");
     expect(document).toContain("Hidden");
     expect(document).toContain("## Sitemap");
+  });
+
+  it("resolves Agent, Human, and Audience blocks without changing literal examples", () => {
+    const source = `Shared.
+
+<Agent audience="implementation">Agent shorthand.</Agent>
+<Agent version=">=2">Quoted greater-than attribute.</Agent>
+<Agent when={version >= 2}>Expression greater-than attribute.</Agent>
+<Human>Human shorthand.</Human>
+<Audience only="agent">Agent explicit.</Audience>
+<Audience only={'human'}>Human explicit.</Audience>
+<Audience
+  only={"agent"}
+>
+Multiline agent.
+</Audience>
+<Audience only={runtimeAudience}>Dynamic stays shared.</Audience>
+<Human><Agent>Conflicting nested content.</Agent></Human>
+<Agent />
+
+\`<Agent>inline example</Agent>\`
+
+\`\`\`mdx
+<Agent>fenced example</Agent>
+\`\`\`
+
+~~~~mdx
+<Human>tilde-fenced example</Human>
+~~~~
+
+{/* <Human>MDX comment example</Human> */}
+<!-- <Audience only="agent">HTML comment example</Audience> -->
+export const audienceExample = "<Agent>module string example</Agent>";
+export const multilineAudienceExample = {
+  value: "<Agent>multiline module string example</Agent>",
+};
+
+\`\`\`md
+\`\`\`js
+<Agent>nested fence example</Agent>
+\`\`\`
+\`\`\``;
+
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+
+    expect(human).toContain("Shared.");
+    expect(human).toContain("Human shorthand.");
+    expect(human).toContain("Human explicit.");
+    expect(human).toContain("Dynamic stays shared.");
+    expect(human).not.toContain("Agent shorthand.");
+    expect(human).not.toContain("Quoted greater-than attribute.");
+    expect(human).not.toContain("Expression greater-than attribute.");
+    expect(human).not.toContain("Agent explicit.");
+    expect(human).not.toContain("Multiline agent.");
+    expect(agent).toContain("Shared.");
+    expect(agent).toContain("Agent shorthand.");
+    expect(agent).toContain("Quoted greater-than attribute.");
+    expect(agent).toContain("Expression greater-than attribute.");
+    expect(agent).toContain("Agent explicit.");
+    expect(agent).toContain("Multiline agent.");
+    expect(agent).toContain("Dynamic stays shared.");
+    expect(agent).not.toContain("Human shorthand.");
+    expect(agent).not.toContain("Human explicit.");
+    expect(human).not.toContain("Conflicting nested content.");
+    expect(agent).not.toContain("Conflicting nested content.");
+
+    for (const projection of [human, agent]) {
+      expect(projection).toContain("`<Agent>inline example</Agent>`");
+      expect(projection).toContain("<Agent>fenced example</Agent>");
+      expect(projection).toContain("<Human>tilde-fenced example</Human>");
+      expect(projection).toContain("{/* <Human>MDX comment example</Human> */}");
+      expect(projection).toContain(
+        '<!-- <Audience only="agent">HTML comment example</Audience> -->',
+      );
+      expect(projection).toContain(
+        'export const audienceExample = "<Agent>module string example</Agent>";',
+      );
+      expect(projection).toContain('value: "<Agent>multiline module string example</Agent>",');
+      expect(projection).toContain("<Agent>nested fence example</Agent>");
+    }
+
+    expect(resolveDocsAgentMdxContent(source, "agent")).toBe(agent);
+    expect(findDocsAudienceMdxIssues(source).map((issue) => issue.code)).toEqual(["dynamic-only"]);
+  });
+
+  it.each([
+    [
+      "multiline imports",
+      `import {
+  thing,
+}
+from "<Agent>module path literal</Agent>";`,
+    ],
+    [
+      "multiline code spans",
+      "Shared `inline code starts\n<Agent>literal code example</Agent>` end.",
+    ],
+    ["escaped JSX", String.raw`\<Agent>literal escaped example\</Agent>`],
+    ["quoted JSX props", '<Example code="<Agent>literal prop example</Agent>" />'],
+    ["MDX expression strings", '{"<Agent>literal expression example</Agent>"}'],
+    [
+      "semicolonless JSX exports",
+      'export const Demo = <Example label="<Agent>literal export example</Agent>" />',
+    ],
+    ["comparison exports", "export const compare = left<right;"],
+    ["generic class exports", "export class Store extends Base<Model> {}"],
+    ["generic arrow exports", "export const identity = <T>(value: T) => value;"],
+    ["expression regex literals", String.raw`{() => /<Agent>literal regex<\/Agent>/.test(value)}`],
+    ["module regex literals", 'export const pattern = /[{"]/;'],
+    [
+      "JSX fragment exports",
+      `export const Demo = <>
+  <Agent>literal exported component</Agent>
+</>`,
+    ],
+    ["Markdown link titles", '[link](https://example.com "See <Agent>literal</Agent>")'],
+    [
+      "blockquote fences",
+      `> ~~~mdx
+> <Agent>literal blockquote fence</Agent>
+> ~~~~~`,
+    ],
+    [
+      "nested list fences",
+      `- outer
+  - ~~~mdx
+    <Agent>literal nested list fence</Agent>
+    ~~~`,
+    ],
+    ["HTML comments", "<!-- <Agent>literal HTML comment</Agent> -->"],
+    [
+      "raw script blocks",
+      `<script>
+const sample = "<Agent>literal script</Agent>";
+</script>`,
+    ],
+  ])("preserves audience-looking literals in %s", (_name, literal) => {
+    const source = `${literal}\n\n<Agent>real agent content</Agent>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe(literal);
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toBe(`${literal}\n\nreal agent content`);
+  });
+
+  it.each([
+    [
+      "fenced raw-element delimiters",
+      "```md\n<script>\n```\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    ["inline raw-element delimiters", "`<script>`\n\n<Agent>SECRET</Agent>\n\n`</script>`"],
+    ["expression raw-element delimiters", '{"<script>"}\n\n<Agent>SECRET</Agent>\n\n{"</script>"}'],
+    [
+      "module raw-element delimiters",
+      'export const open = "<script>";\n\n<Agent>SECRET</Agent>\n\nexport const close = "</script>";',
+    ],
+    [
+      "JSX prop raw-element delimiters",
+      '<Card open="<script>" />\n\n<Agent>SECRET</Agent>\n\n<Card close="</script>" />',
+    ],
+    ["escaped raw-element delimiters", "\\<script>\n\n<Agent>SECRET</Agent>\n\n\\</script>"],
+    [
+      "fenced HTML comment delimiters",
+      "```md\n<!--\n```\n\n<Agent>SECRET</Agent>\n\n```md\n-->\n```",
+    ],
+    ["escaped HTML comment delimiters", "\\<!--\n\n<Agent>SECRET</Agent>\n\n\\-->"],
+  ])("does not pair %s across live audience content", (_name, source) => {
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+
+    expect(human).not.toContain("SECRET");
+    expect(agent).toContain("SECRET");
+    expect(findDocsAudienceMdxTags(source)).toHaveLength(2);
+  });
+
+  it.each([
+    [
+      "script delimiters inside comments",
+      "<!-- <script> -->\n\n<Agent>SECRET</Agent>\n\n<!-- </script> -->",
+    ],
+    [
+      "style delimiters inside comments",
+      "<!-- <style> -->\n\n<Agent>SECRET</Agent>\n\n<!-- </style> -->",
+    ],
+    [
+      "comment delimiters inside raw script",
+      '<script>\nconst value = "<!--";\n</script>\n\n<Agent>SECRET</Agent>\n\n<div>--></div>',
+    ],
+    [
+      "arrow regex and fenced closing delimiter",
+      "{() => /<script>/.test(value)}\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "JSX prop regex and fenced closing delimiter",
+      "<Card test={() => /<script>/.test(value)} />\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "keyword-prefixed regex and fenced closing delimiter",
+      "{(() => { return /<script>/.test(value) })()}\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "Svelte directive regex and fenced closing delimiter",
+      "{#if /<script>/.test(value)}\n<Agent>SECRET</Agent>\n```md\n</script>\n```\n{/if}",
+    ],
+    [
+      "angle-bracket link destination and fenced closing delimiter",
+      "[link](<script>)\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "angle-bracket image destination and fenced comment closing delimiter",
+      "![image](<!--)\n\n<Agent>SECRET</Agent>\n\n```md\n-->\n```",
+    ],
+    [
+      "self-closing raw element and fenced closing delimiter",
+      '<script src="example.js" />\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```',
+    ],
+  ])("keeps %s from swallowing live audience content", (_name, source) => {
+    expect(resolveDocsAudienceMdxContent(source, "human")).not.toContain("SECRET");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("SECRET");
+    expect(findDocsAudienceMdxTags(source)).toHaveLength(2);
+  });
+
+  it.each(["script-loader", "style-guide", "script.foo"])(
+    "does not treat the custom %s element as raw code",
+    (name) => {
+      const source = `<${name}>\n<Agent>SECRET</Agent>\n</${name}>\n<script>ok</script>`;
+      expect(resolveDocsAudienceMdxContent(source, "human")).not.toContain("SECRET");
+      expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("SECRET");
+    },
+  );
+
+  it("treats an unclosed lowercase raw element as literal content through EOF", () => {
+    const source = '<script>\nconst sample = "<Agent>literal script</Agent>";';
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe(source);
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toBe(source);
+    expect(findDocsAudienceMdxTags(source)).toEqual([]);
+  });
+
+  it("uses JSX-safe replacements for audience elements inside MDX expressions", () => {
+    const source = `<Card title={<Agent>Agent title</Agent>} subtitle={<Human>Human subtitle</Human>} />`;
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+
+    expect(human).toBe("<Card title={null} subtitle={<>Human subtitle</>} />");
+    expect(agent).toBe("<Card title={<>Agent title</>} subtitle={null} />");
+
+    const audienceWithExpressionProp =
+      "<Agent child={<Human>Ignored prop.</Human>}>Agent body.</Agent>";
+    expect(resolveDocsAudienceMdxContent(audienceWithExpressionProp, "human")).toBe("");
+    expect(resolveDocsAudienceMdxContent(audienceWithExpressionProp, "agent")).toBe("Agent body.");
+
+    const expressionAudienceWithProp =
+      "{<Agent child={<Human>Ignored prop.</Human>}>Agent body.</Agent>}";
+    expect(resolveDocsAudienceMdxContent(expressionAudienceWithProp, "human")).toBe("{null}");
+    expect(resolveDocsAudienceMdxContent(expressionAudienceWithProp, "agent")).toBe(
+      "{<>Agent body.</>}",
+    );
+
+    const nestedChildren = "{<Box><Agent>A</Agent>B<Human>H</Human></Box>}";
+    expect(resolveDocsAudienceMdxContent(nestedChildren, "human")).toBe(
+      "{<Box>{null}B<>H</></Box>}",
+    );
+    expect(resolveDocsAudienceMdxContent(nestedChildren, "agent")).toBe(
+      "{<Box><>A</>B{null}</Box>}",
+    );
+
+    const spreadAttribute = "<Card {...{ title: <Agent>A</Agent>, subtitle: <Human>H</Human> }} />";
+    expect(resolveDocsAudienceMdxContent(spreadAttribute, "human")).toBe(
+      "<Card {...{ title: null, subtitle: <>H</> }} />",
+    );
+    expect(resolveDocsAudienceMdxContent(spreadAttribute, "agent")).toBe(
+      "<Card {...{ title: <>A</>, subtitle: null }} />",
+    );
+  });
+
+  it("keeps frontmatter literals out of the audience tree without shifting Unicode offsets", () => {
+    const source = `---
+description: "😀 <Agent>frontmatter literal</Agent>"
+---
+
+<Agent>real agent content</Agent>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe(
+      '---\ndescription: "😀 <Agent>frontmatter literal</Agent>"\n---',
+    );
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("real agent content");
+
+    const blockScalar = `---
+description: |
+  ---
+  <Agent>literal YAML</Agent>
+---
+
+<Agent>real block scalar content</Agent>`;
+    expect(resolveDocsAudienceMdxContent(blockScalar, "human")).toBe(
+      "---\ndescription: |\n  ---\n  <Agent>literal YAML</Agent>\n---",
+    );
+    expect(resolveDocsAudienceMdxContent(blockScalar, "agent")).toContain(
+      "real block scalar content",
+    );
+  });
+
+  it("projects audience blocks in Svelte MDX without falling back to literal scanners", () => {
+    const source = `{#if enabled}
+{() => /<Agent>literal<\\/Agent>/.test(value)}
+<Agent when={/[}]/.test(value) && score > 1}>Svelte agent content.</Agent>
+- outer
+  - ~~~mdx
+    <Agent>literal fenced content</Agent>
+    ~~~
+[link](https://example.com "<Agent>literal title</Agent>")
+{/if}
+
+<Agent>real trailing content</Agent>`;
+
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+    expect(human).not.toContain("Svelte agent content.");
+    expect(human).not.toContain("real trailing content");
+    expect(agent).toContain("Svelte agent content.");
+    expect(agent).toContain("real trailing content");
+    for (const projection of [human, agent]) {
+      expect(projection).toContain("/<Agent>literal<\\/Agent>/");
+      expect(projection).toContain("<Agent>literal fenced content</Agent>");
+      expect(projection).toContain('"<Agent>literal title</Agent>"');
+    }
+  });
+
+  it("preserves whitespace inside protected literals while projecting audience content", () => {
+    const source = `Before
+
+
+
+\`\`\`txt
+a
+
+
+b
+\`\`\`
+
+<Agent>secret</Agent>
+
+After`;
+
+    for (const audience of ["human", "agent"] as const) {
+      expect(resolveDocsAudienceMdxContent(source, audience)).toContain("```txt\na\n\n\nb\n```");
+    }
+  });
+
+  it("treats Audience spread props as dynamic shared content", () => {
+    const source = `<Audience only="agent" {...props}>Shared fallback.</Audience>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe("Shared fallback.");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toBe("Shared fallback.");
+    expect(findDocsAudienceMdxIssues(source).map((issue) => issue.code)).toEqual(["dynamic-only"]);
+
+    expect(
+      findDocsAudienceMdxIssues(
+        '<Agent only="human">Agent shorthand.</Agent><Human only="agent">Human shorthand.</Human>',
+      ).map((issue) => issue.code),
+    ).toEqual(["ignored-agent-only", "ignored-human-only"]);
+  });
+
+  it("resolves indented audience elements as live MDX components", () => {
+    const source = `- Item
+    <Agent>Agent-only nested detail.</Agent>
+
+    <Human>Human-only nested detail.</Human>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).not.toContain(
+      "Agent-only nested detail.",
+    );
+    expect(resolveDocsAudienceMdxContent(source, "human")).toContain("Human-only nested detail.");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("Agent-only nested detail.");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).not.toContain(
+      "Human-only nested detail.",
+    );
+  });
+
+  it("does not confuse capitalized Script and Style components with raw code elements", () => {
+    const source = `<Script>
+<Agent>Agent-only script child.</Agent>
+</Script>
+<Style><Human>Human-only style child.</Human></Style>`;
+
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+    expect(human).not.toContain("Agent-only script child.");
+    expect(human).toContain("Human-only style child.");
+    expect(agent).toContain("Agent-only script child.");
+    expect(agent).not.toContain("Human-only style child.");
   });
 
   it("renders the generated skill.md document", () => {
@@ -1218,6 +1648,11 @@ describe("agent route helpers", () => {
     });
     expect(spec.markdown.rootPage).toBe("/docs.md");
     expect(spec.markdown.signatureAgentHeader).toBe("Signature-Agent");
+    expect(spec.markdown.resolutionOrder).toEqual([
+      "agent.md",
+      "agent audience projection",
+      "shared page markdown",
+    ]);
     expect(spec.llms.publicTxt).toBe("/llms.txt");
     expect(spec.agents).toEqual({
       enabled: true,

@@ -474,6 +474,50 @@ Use this docs site through markdown routes and MCP.
     }
   });
 
+  it("counts human-only primitives as audience-tailored coverage without usefulness credit", async () => {
+    writePackageJson(tmpDir, "doctor-human-audience", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: { evaluations: false },
+};`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Overview
+description: Docs home
+---
+
+# Overview
+
+<Human>Use the interactive setup wizard.</Human>
+<Audience only="human">This screenshot is for readers.</Audience>
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const coverage = report.checks.find((check) => check.id === "coverage");
+    const quality = report.checks.find((check) => check.id === "agent-context-quality");
+
+    expect(report.coverage).toMatchObject({
+      totalPages: 1,
+      pagesWithAgentFiles: 0,
+      pagesWithAgentBlocks: 1,
+      explicitPages: 1,
+      explicitCoverage: 100,
+    });
+    expect(coverage).toMatchObject({ title: "Audience-tailored page optimization" });
+    expect(coverage?.detail).toContain("1 page with embedded audience projections");
+    expect(report.usefulness?.agentBlocks.total).toBe(0);
+    expect(quality?.detail).toContain("No embedded agent-only blocks");
+  });
+
   it("uses the detected project framework when scoring page applicability", async () => {
     writePackageJson(tmpDir, "doctor-framework-mismatch", { next: "16.0.0" });
     writeFileSync(

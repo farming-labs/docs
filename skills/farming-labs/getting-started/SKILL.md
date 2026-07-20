@@ -43,7 +43,11 @@ Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-bor
 
 ### Built-in UI features
 
-- **MDX components** — built-ins like `Callout`, `Tabs`, and `HoverLink` are available without imports.
+- **MDX components** — built-ins like `Callout`, `Tabs`, `HoverLink`, `Agent`, `Human`, and
+  `Audience` are available without imports. Content is shared by default. Use `<Agent>` or
+  `<Audience only="agent">` for agent-only context, and `<Human>` or
+  `<Audience only="human">` for human-only context. Keep `Audience.only` static and avoid spread
+  props; `docs review` reports declarations that static agent outputs cannot resolve consistently.
 - **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
 - **Agent discovery spec** — agents should call `/.well-known/agent.json`, fall back to `/.well-known/agent`, and use `/api/docs/agent/spec` as the canonical framework route. The spec discovers site identity, locale config, capability flags, search, markdown routes, JSON-LD structured data support, `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, generated/root `AGENTS.md`, root `skill.md` route, Skills CLI install metadata, MCP config, and feedback endpoints generated from `docs.config`.
 - **Generated AGENTS.md** — `GET /AGENTS.md`, `GET /.well-known/AGENTS.md`, and `GET /api/docs?format=agents` return coding-agent instructions by default. A root `AGENTS.md` or `AGENT.md` overrides the generated fallback; use `docs agents generate` for static exports.
@@ -53,7 +57,12 @@ Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-bor
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
 - **Built-in changelog pages (Next.js)** — enable `changelog` to publish a release feed from dated MDX entries.
 - **Built-in MCP server** — enabled by default at `/mcp` and `/.well-known/mcp`, backed by `/api/docs/mcp`, and for local stdio tools. Next.js wires rewrites with `withDocs()`; TanStack Start/SvelteKit/Astro/Nuxt scaffold one public forwarder each. Opt out with `mcp: false` or `mcp: { enabled: false }`.
-- **Machine-readable markdown routes** — `/docs.md` and `/docs/<slug>.md` return agent-ready markdown in Next.js and in the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer. Next.js also returns the same markdown from `/docs/<slug>` when the request sends an unambiguous `Accept: text/markdown`; mixed headers containing an HTML-capable range should use the exact `.md` URL or API format route. Markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a freshness date is known. Use embedded `<Agent>...</Agent>` blocks inside `page.mdx` when the normal page only needs extra machine context; add a sibling `agent.md` when the whole machine-readable page should be overridden. The shared docs API also supports `GET /api/docs?format=markdown&path=<slug>`. Page frontmatter `related` appears as a comma-separated machine-readable markdown metadata line beside `Description` unless a sibling `agent.md` fully overrides the page.
+- **Machine-readable markdown routes** — `/docs.md` and `/docs/<slug>.md` return agent-ready markdown in Next.js and in the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer. Next.js also returns the same markdown from `/docs/<slug>` when the request sends an unambiguous `Accept: text/markdown`; mixed headers containing an HTML-capable range should use the exact `.md` URL or API format route. Markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a freshness date is known. Use embedded `<Agent>...</Agent>` or `<Audience only="agent">...</Audience>` blocks inside `page.mdx` when the normal page only needs extra machine context. Use `<Human>` or `<Audience only="human">` to keep presentation-only content out of agent context, and add a sibling `agent.md` when the whole machine-readable page should be overridden. The shared docs API also supports `GET /api/docs?format=markdown&path=<slug>`. Page frontmatter `related` appears as a comma-separated machine-readable markdown metadata line beside `Description` unless a sibling `agent.md` fully overrides the page.
+- **Audience projection** — rendered HTML and public search use the human projection; Markdown,
+  Ask AI, MCP, `llms-full.txt`, and static agent exports use the agent projection. Compact
+  `llms.txt` contains discovery links to agent-projected Markdown, and sitemaps contain route
+  metadata only. Audience filtering is not authentication, so never place secrets in an audience
+  block or `agent.md`.
 
 ### MCP quick test
 

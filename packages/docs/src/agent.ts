@@ -31,6 +31,13 @@ import {
 } from "./sitemap.js";
 import type { DocsSitemapConfig } from "./types.js";
 
+export {
+  findDocsAudienceMdxIssues,
+  resolveDocsAudienceExposure,
+  resolveDocsAudienceMdxContent,
+  resolveDocsAgentMdxContent,
+} from "./audience.js";
+
 export const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 export const DEFAULT_DOCS_CONFIG_FORMAT = "docs-config-map.v1";
 export const DEFAULT_DOCS_CONFIG_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=config`;
@@ -436,6 +443,11 @@ export interface DocsLlmsTxtPageInput {
   title: string;
   description?: string;
   content: string;
+  rawContent?: string;
+  agentContent?: string;
+  agentRawContent?: string;
+  agentFallbackContent?: string;
+  agentFallbackRawContent?: string;
 }
 
 export interface DocsLlmsTxtGeneratedSection extends DocsLlmsTxtResolvedSection {
@@ -1706,7 +1718,14 @@ function renderLlmsFullTxtPages(pages: DocsLlmsTxtPageInput[], baseUrl: string):
     content += `## ${page.title}\n\n`;
     content += `URL: ${baseUrl}${page.url}\n\n`;
     if (page.description) content += `${page.description}\n\n`;
-    content += `${page.content}\n\n---\n\n`;
+    const agentContent =
+      page.agentRawContent ??
+      page.agentFallbackRawContent ??
+      page.agentContent ??
+      page.agentFallbackContent ??
+      page.rawContent ??
+      page.content;
+    content += `${agentContent}\n\n---\n\n`;
   }
   return content;
 }
@@ -3043,8 +3062,9 @@ export function renderDocsMarkdownDocument(
   page: DocsMarkdownPage,
   options?: DocsMarkdownDocumentOptions,
 ): string {
-  if (page.agentRawContent !== undefined) {
-    const body = upsertPageAgentContractMarkdown(page.agentRawContent, page.agent);
+  const explicitAgentContent = page.agentRawContent ?? page.agentContent;
+  if (explicitAgentContent !== undefined) {
+    const body = upsertPageAgentContractMarkdown(explicitAgentContent, page.agent);
     return appendDocsMarkdownSitemapFooter(
       prependDocsMarkdownFrontmatter(body, resolveDocsMarkdownPageMetadata(page, options)),
       options?.sitemap,
@@ -3059,7 +3079,7 @@ export function renderDocsMarkdownDocument(
   lines.push(
     "",
     upsertPageAgentContractMarkdown(
-      page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+      page.agentFallbackRawContent ?? page.agentFallbackContent ?? page.rawContent ?? page.content,
       page.agent,
     ),
   );
@@ -3162,85 +3182,6 @@ export function renderDocsAgentsDocument(options: DocsAgentsDocumentOptions): st
   return lines.join("\n");
 }
 
-export function resolveDocsAgentMdxContent(content: string, audience: "human" | "agent"): string {
-  const lines = content.split("\n");
-  const output: string[] = [];
-  let fenceMarker: string | null = null;
-  let agentDepth = 0;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
-
-    if (fenceMatch) {
-      if (!fenceMarker) {
-        fenceMarker = fenceMatch[1];
-      } else if (trimmed.startsWith(fenceMarker)) {
-        fenceMarker = null;
-      }
-
-      if (audience === "agent" || agentDepth === 0) {
-        output.push(line);
-      }
-      continue;
-    }
-
-    if (!fenceMarker) {
-      if (/^<Agent(?:\s[^>]*)?\/>$/.test(trimmed)) {
-        continue;
-      }
-
-      const singleLineMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>([\s\S]*?)<\/Agent>\s*$/);
-      if (singleLineMatch) {
-        if (audience === "agent" && singleLineMatch[2]) {
-          output.push(`${singleLineMatch[1]}${singleLineMatch[2]}`);
-        }
-        continue;
-      }
-
-      const openMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>\s*$/);
-      if (openMatch) {
-        agentDepth += 1;
-        continue;
-      }
-
-      const openWithContentMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>(.*)$/);
-      if (openWithContentMatch) {
-        agentDepth += 1;
-        if (audience === "agent" && openWithContentMatch[2]) {
-          output.push(`${openWithContentMatch[1]}${openWithContentMatch[2]}`);
-        }
-        continue;
-      }
-
-      const closeWithContentMatch = line.match(/^(.*)<\/Agent>\s*$/);
-      if (closeWithContentMatch && agentDepth > 0) {
-        if (audience === "agent" && closeWithContentMatch[1].trim()) {
-          output.push(closeWithContentMatch[1]);
-        }
-        agentDepth = Math.max(0, agentDepth - 1);
-        continue;
-      }
-
-      if (/^<\/Agent>\s*$/.test(trimmed) && agentDepth > 0) {
-        agentDepth = Math.max(0, agentDepth - 1);
-        continue;
-      }
-    }
-
-    if (agentDepth > 0 && audience === "human") {
-      continue;
-    }
-
-    output.push(line);
-  }
-
-  return output
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 /** Resolve only the task tools that the advertised MCP endpoint actually exposes. */
 export function resolveDocsAgentContractMcpTools(
   mcp: DocsMcpResolvedConfig,
@@ -3338,7 +3279,7 @@ export function buildDocsAgentDiscoverySpec({
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
-      resolutionOrder: ["agent.md", "Agent blocks", "page markdown"],
+      resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     },
     agentContract: {
       enabled: true,

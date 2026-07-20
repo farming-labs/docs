@@ -7,6 +7,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
+import { resolveDocsAudienceMdxContent } from "./audience.js";
 import {
   hasStructuredPageAgentContract,
   normalizePageAgentFrontmatter,
@@ -2637,6 +2638,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             pages: toSearchSourcePages(pages),
             query,
             search: toolSearchConfig ?? true,
+            audience: "agent",
             locale,
             siteTitle: options.source.siteTitle,
             limit: resolvedLimit,
@@ -3678,85 +3680,6 @@ function titleize(value: string): string {
   return value.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function resolveAgentMdxContent(content: string, audience: "human" | "agent"): string {
-  const lines = content.split("\n");
-  const output: string[] = [];
-  let fenceMarker: string | null = null;
-  let agentDepth = 0;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
-
-    if (fenceMatch) {
-      if (!fenceMarker) {
-        fenceMarker = fenceMatch[1];
-      } else if (trimmed.startsWith(fenceMarker)) {
-        fenceMarker = null;
-      }
-
-      if (audience === "agent" || agentDepth === 0) {
-        output.push(line);
-      }
-      continue;
-    }
-
-    if (!fenceMarker) {
-      if (/^<Agent(?:\s[^>]*)?\/>$/.test(trimmed)) {
-        continue;
-      }
-
-      const singleLineMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>([\s\S]*?)<\/Agent>\s*$/);
-      if (singleLineMatch) {
-        if (audience === "agent" && singleLineMatch[2]) {
-          output.push(`${singleLineMatch[1]}${singleLineMatch[2]}`);
-        }
-        continue;
-      }
-
-      const openMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>\s*$/);
-      if (openMatch) {
-        agentDepth += 1;
-        continue;
-      }
-
-      const openWithContentMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>(.*)$/);
-      if (openWithContentMatch) {
-        agentDepth += 1;
-        if (audience === "agent" && openWithContentMatch[2]) {
-          output.push(`${openWithContentMatch[1]}${openWithContentMatch[2]}`);
-        }
-        continue;
-      }
-
-      const closeWithContentMatch = line.match(/^(.*)<\/Agent>\s*$/);
-      if (closeWithContentMatch && agentDepth > 0) {
-        if (audience === "agent" && closeWithContentMatch[1]) {
-          output.push(closeWithContentMatch[1]);
-        }
-        agentDepth = Math.max(0, agentDepth - 1);
-        continue;
-      }
-
-      if (/^<\/Agent>\s*$/.test(trimmed) && agentDepth > 0) {
-        agentDepth = Math.max(0, agentDepth - 1);
-        continue;
-      }
-    }
-
-    if (agentDepth > 0 && audience === "human") {
-      continue;
-    }
-
-    output.push(line);
-  }
-
-  return output
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 function stripMarkdownForMcp(content: string): string {
   return content
     .replace(/^(import|export)\s.*$/gm, "")
@@ -3847,8 +3770,8 @@ function scanFilesystemDocsPages(
         hasVisibleDescendantFilesystemDocsPage(dir);
       if (hiddenFolderIndex) continue;
 
-      const humanRawContent = resolveAgentMdxContent(content, "human");
-      const pageAgentRawContent = resolveAgentMdxContent(content, "agent");
+      const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
+      const pageAgentRawContent = resolveDocsAudienceMdxContent(content, "agent");
       const pageAgentContent =
         pageAgentRawContent !== humanRawContent
           ? stripMarkdownForMcp(pageAgentRawContent)
@@ -3902,9 +3825,10 @@ function readFilesystemAgentDoc(dir: string) {
 
   const raw = stripGeneratedAgentProvenance(fs.readFileSync(agentPath, "utf-8"));
   const { content } = matter(raw);
+  const agentContent = resolveDocsAudienceMdxContent(content, "agent");
   return {
-    agentContent: stripMarkdownForMcp(content),
-    agentRawContent: content,
+    agentContent: stripMarkdownForMcp(agentContent),
+    agentRawContent: agentContent,
   };
 }
 
@@ -4058,8 +3982,8 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
   return pages.map((page) => ({
     title: page.title,
     url: page.url,
-    content: page.agentContent ?? page.agentFallbackContent ?? page.content,
-    rawContent: page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent,
+    content: page.content,
+    rawContent: page.rawContent,
     sourcePath: page.sourcePath,
     lastModified: page.lastModified,
     locale: page.locale,
@@ -4549,7 +4473,13 @@ function countDocsSections(sections: DocsMcpDocsSection[]): number {
 }
 
 function extractDocsMcpCodeExamples(page: DocsMcpPage): DocsMcpCodeExample[] {
-  const source = page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent;
+  const source =
+    page.agentRawContent ??
+    page.agentFallbackRawContent ??
+    page.agentContent ??
+    page.agentFallbackContent ??
+    page.rawContent ??
+    page.content;
   if (!source) return [];
 
   const examples: DocsMcpCodeExample[] = [];
@@ -4827,9 +4757,9 @@ function getDocsMcpSourceMarkdown(page: DocsMcpPage): string {
   return (
     page.agentRawContent ??
     page.agentFallbackRawContent ??
-    page.rawContent ??
     page.agentContent ??
     page.agentFallbackContent ??
+    page.rawContent ??
     page.content
   );
 }
@@ -4957,6 +4887,7 @@ export async function buildDocsMcpContext(
       maxResults: 50,
       chunking: { strategy: "section" },
     },
+    audience: "agent",
     locale: options.locale,
     siteTitle: options.siteTitle,
     limit: 50,
@@ -5143,8 +5074,9 @@ function normalizeUrlPath(value: string): string {
 }
 
 function renderPageDocument(page: DocsMcpPage): string {
-  if (page.agentRawContent !== undefined) {
-    return upsertPageAgentContractMarkdown(page.agentRawContent, page.agent);
+  const explicitAgentContent = page.agentRawContent ?? page.agentContent;
+  if (explicitAgentContent !== undefined) {
+    return upsertPageAgentContractMarkdown(explicitAgentContent, page.agent);
   }
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
@@ -5155,7 +5087,7 @@ function renderPageDocument(page: DocsMcpPage): string {
   lines.push(
     "",
     upsertPageAgentContractMarkdown(
-      page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+      page.agentFallbackRawContent ?? page.agentFallbackContent ?? page.rawContent ?? page.content,
       page.agent,
     ),
   );

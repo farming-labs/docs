@@ -46,6 +46,7 @@ import {
   renderDocsMarkdownDocument,
   resolveDocsMetadataBaseUrl,
   renderDocsLlmsTxt,
+  resolveDocsAudienceMdxContent,
   resolveDocsI18n,
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
@@ -58,6 +59,7 @@ import {
   resolveDocsSitemapConfig,
   isDocsConfigRequest,
   isDocsDiagnosticsRequest,
+  stripGeneratedAgentProvenance,
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
@@ -540,7 +542,7 @@ function buildAgentSpec({
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
-      resolutionOrder: ["agent.md", "Agent blocks", "page markdown"],
+      resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     },
     agentContract: {
       enabled: true,
@@ -1311,85 +1313,6 @@ function stripCommentsAndStrings(content: string): string {
   return result;
 }
 
-function resolveAgentMdxContent(content: string, audience: "human" | "agent"): string {
-  const lines = content.split("\n");
-  const output: string[] = [];
-  let fenceMarker: string | null = null;
-  let agentDepth = 0;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
-
-    if (fenceMatch) {
-      if (!fenceMarker) {
-        fenceMarker = fenceMatch[1];
-      } else if (trimmed.startsWith(fenceMarker)) {
-        fenceMarker = null;
-      }
-
-      if (audience === "agent" || agentDepth === 0) {
-        output.push(line);
-      }
-      continue;
-    }
-
-    if (!fenceMarker) {
-      if (/^<Agent(?:\s[^>]*)?\/>$/.test(trimmed)) {
-        continue;
-      }
-
-      const singleLineMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>([\s\S]*?)<\/Agent>\s*$/);
-      if (singleLineMatch) {
-        if (audience === "agent" && singleLineMatch[2]) {
-          output.push(`${singleLineMatch[1]}${singleLineMatch[2]}`);
-        }
-        continue;
-      }
-
-      const openMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>\s*$/);
-      if (openMatch) {
-        agentDepth += 1;
-        continue;
-      }
-
-      const openWithContentMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>(.*)$/);
-      if (openWithContentMatch) {
-        agentDepth += 1;
-        if (audience === "agent" && openWithContentMatch[2]) {
-          output.push(`${openWithContentMatch[1]}${openWithContentMatch[2]}`);
-        }
-        continue;
-      }
-
-      const closeWithContentMatch = line.match(/^(.*)<\/Agent>\s*$/);
-      if (closeWithContentMatch && agentDepth > 0) {
-        if (audience === "agent" && closeWithContentMatch[1]) {
-          output.push(closeWithContentMatch[1]);
-        }
-        agentDepth = Math.max(0, agentDepth - 1);
-        continue;
-      }
-
-      if (/^<\/Agent>\s*$/.test(trimmed) && agentDepth > 0) {
-        agentDepth = Math.max(0, agentDepth - 1);
-        continue;
-      }
-    }
-
-    if (agentDepth > 0 && audience === "human") {
-      continue;
-    }
-
-    output.push(line);
-  }
-
-  return output
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 function stripMdx(content: string): string {
   return content
     .replace(/^(import|export)\s.*$/gm, "")
@@ -1462,6 +1385,23 @@ function isHiddenFolderIndexPageDir(dir: string): boolean {
   }
 }
 
+function readAudienceAgentDoc(dir: string) {
+  const agentPath = path.join(dir, "agent.md");
+  if (!fs.existsSync(agentPath)) return undefined;
+
+  try {
+    const raw = stripGeneratedAgentProvenance(fs.readFileSync(agentPath, "utf-8"));
+    const { content } = matter(raw);
+    const agentRawContent = resolveDocsAudienceMdxContent(content, "agent");
+    return {
+      agentContent: stripMdx(agentRawContent),
+      agentRawContent,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function scanDocsDir(
   docsDir: string,
   entry: string,
@@ -1501,8 +1441,9 @@ function scanDocsDir(
             "Documentation";
           const description = data.description as string | undefined;
           const { content: fileContent } = matter(raw);
-          const rawContent = resolveAgentMdxContent(fileContent, "human");
-          const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
+          const rawContent = resolveDocsAudienceMdxContent(fileContent, "human");
+          const agentRawContent = resolveDocsAudienceMdxContent(fileContent, "agent");
+          const agentDoc = readAudienceAgentDoc(dir);
           const content = stripMdx(rawContent);
           const baseUrl = publicDocsRoute(publicPath, slugParts);
           const url = withLangInUrl(baseUrl, locale);
@@ -1519,6 +1460,7 @@ function scanDocsDir(
             sourcePath: pageSource.replace(/\\/g, "/"),
             lastModified: fs.statSync(pageSource).mtime.toISOString(),
             locale,
+            ...agentDoc,
           });
         }
       } catch {
@@ -1590,8 +1532,9 @@ function scanChangelogDir(
 
       const title = (data.title as string) || name.replace(/-/g, " ");
       const description = data.description as string | undefined;
-      const rawContent = resolveAgentMdxContent(fileContent, "human");
-      const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
+      const rawContent = resolveDocsAudienceMdxContent(fileContent, "human");
+      const agentRawContent = resolveDocsAudienceMdxContent(fileContent, "agent");
+      const agentDoc = readAudienceAgentDoc(entryDir);
       const content = stripMdx(rawContent);
       const url = withLangInUrl(publicDocsRoute(publicPath, [changelogPath, name]), locale);
       const tags = Array.isArray(data.tags)
@@ -1611,6 +1554,7 @@ function scanChangelogDir(
         type: "changelog",
         version: typeof data.version === "string" ? data.version : undefined,
         tags,
+        ...agentDoc,
       });
     } catch {
       // skip unreadable files

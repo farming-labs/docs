@@ -20,9 +20,11 @@ import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
 import {
   analyzeAgentUsefulness,
   createAgentUsefulnessPagesFromMcp,
+  extractAgentBlocks,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
+import { findDocsAudienceMdxIssues } from "../audience.js";
 import {
   createFilesystemDocsMcpSource,
   getDocsConfigSchema,
@@ -653,6 +655,17 @@ function checkAgentContext(
   review: ResolvedDocsReviewConfig,
   options: { file: string; source: string; rootDir: string; agent: unknown },
 ) {
+  for (const issue of findDocsAudienceMdxIssues(options.source)) {
+    pushFinding(findings, review, {
+      rule: "agentContext",
+      code: `audience-${issue.code}`,
+      severity: issue.code === "dynamic-only" ? "error" : "warn",
+      file: options.file,
+      line: lineForIndex(options.source, issue.index),
+      message: issue.message,
+    });
+  }
+
   for (const issue of getPageAgentFrontmatterIssues(options.agent)) {
     pushFinding(findings, review, {
       rule: "agentContext",
@@ -702,7 +715,7 @@ function checkAgentContext(
     if (agent?.task && agent.outcome) return;
   }
 
-  if (options.source.includes("<Agent>") || options.source.includes("</Agent>")) return;
+  if (extractAgentBlocks(options.source, { sourcePath: options.file }).length > 0) return;
   if (existsSync(path.join(path.dirname(path.join(options.rootDir, options.file)), "agent.md")))
     return;
   if (
@@ -718,7 +731,8 @@ function checkAgentContext(
     severity: "suggestion",
     file: options.file,
     line: 1,
-    message: "Implementation-heavy docs page could use an <Agent> block or sibling agent.md.",
+    message:
+      'Implementation-heavy docs page could use an <Agent> block, <Audience only="agent"> block, or sibling agent.md.',
   });
 }
 
@@ -765,7 +779,7 @@ function printReviewReport(report: DocsReviewMeasuredReport) {
   );
   if (report.usefulness) {
     console.log(
-      `Useful Agent blocks: ${report.usefulness.agentBlocks.useful}/${report.usefulness.agentBlocks.total}; task-complete pages: ${report.usefulness.taskCompleteness.completePages}/${report.usefulness.actionablePages}`,
+      `Useful agent-only blocks: ${report.usefulness.agentBlocks.useful}/${report.usefulness.agentBlocks.total}; task-complete pages: ${report.usefulness.taskCompleteness.completePages}/${report.usefulness.actionablePages}`,
     );
   }
   if (report.evaluations) {

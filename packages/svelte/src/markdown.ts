@@ -9,7 +9,7 @@
  *   - Tables, lists, inline formatting, headings with anchor IDs
  */
 
-import { resolveDocsAgentMdxContent, type DocsTheme } from "@farming-labs/docs";
+import { resolveDocsAudienceMdxContent, type DocsTheme } from "@farming-labs/docs";
 import {
   parsePromptStringArray,
   resolvePromptProviderChoices,
@@ -597,7 +597,7 @@ export async function renderMarkdown(
   if (!content) return "";
 
   const hl = await getHighlighter();
-  let result = resolveDocsAgentMdxContent(content, "human");
+  let result = resolveDocsAudienceMdxContent(content, "human");
 
   // ── Mintlify-style code groups: <CodeGroup> fenced code blocks </CodeGroup> ──
   const tabsBlocks: string[] = [];

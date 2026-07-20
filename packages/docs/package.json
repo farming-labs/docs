@@ -55,6 +55,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.9.1",
+    "@mdx-js/mdx": "^3.1.1",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@scalar/core": "^0.4.3",
     "@vercel/sandbox": "^2.0.0",

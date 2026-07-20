@@ -494,7 +494,7 @@ agent:
     });
   });
 
-  it("ignores Agent-only content when computing reading time", () => {
+  it("uses the human audience projection when computing reading time", () => {
     mkdirSync(join(tmpDir, "app", "docs", "agent-safe"), { recursive: true });
     writeFileSync(
       join(tmpDir, "app", "docs", "agent-safe", "page.mdx"),
@@ -507,9 +507,15 @@ agent:
         "",
         "Short human summary.",
         "",
+        "<Human>",
+        "Visible guidance adds exactly ten useful words for human readers here.",
+        "</Human>",
+        "",
         "<Agent>",
         "These extra machine-only instructions should not count toward visible reading time even if they are verbose and packed with many additional words for testing purposes.",
         "</Agent>",
+        "",
+        '<Audience only="agent">More agent-only words must remain excluded from the visible estimate.</Audience>',
       ].join("\n"),
       "utf-8",
     );
@@ -526,7 +532,7 @@ agent:
 
     expect(props).toBeTruthy();
     expect(props?.readingTimeMap).toMatchObject({
-      "/docs/agent-safe": 1,
+      "/docs/agent-safe": 2,
     });
   });
 

@@ -12,7 +12,7 @@ import matter from "gray-matter";
 import {
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
-  resolveDocsAgentMdxContent,
+  resolveDocsAudienceMdxContent,
   resolvePageSidebarFolderIndexBehavior,
   type OrderingItem,
   type PageAgentFrontmatter,
@@ -88,8 +88,8 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
 
       const raw = fs.readFileSync(full, "utf-8");
       const { data, content } = matter(raw);
-      const humanRawContent = resolveDocsAgentMdxContent(content, "human");
-      const pageAgentRawContent = resolveDocsAgentMdxContent(content, "agent");
+      const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
+      const pageAgentRawContent = resolveDocsAudienceMdxContent(content, "agent");
       const related = normalizeDocsRelated(data.related);
 
       const baseName = name.replace(/\.(md|mdx)$/, "");
@@ -142,9 +142,10 @@ function readAgentDoc(dir: string) {
 
   const raw = fs.readFileSync(agentPath, "utf-8");
   const { content } = matter(raw);
+  const agentRawContent = resolveDocsAudienceMdxContent(content, "agent");
   return {
-    agentContent: stripMarkdown(content),
-    agentRawContent: content,
+    agentContent: stripMarkdown(agentRawContent),
+    agentRawContent,
   };
 }
 

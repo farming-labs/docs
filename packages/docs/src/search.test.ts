@@ -64,6 +64,35 @@ Second section.
     ]);
   });
 
+  it("builds distinct human and agent audience indexes", () => {
+    const audiencePages = [
+      {
+        title: "Audience policy",
+        url: "/docs/audience",
+        content: "Shared text. Human troubleshooting token.",
+        rawContent: "# Audience policy\n\nShared text. Human troubleshooting token.",
+        agentFallbackContent: "Shared text. Agent execution token.",
+        agentFallbackRawContent: "# Audience policy\n\nShared text. Agent execution token.",
+      },
+    ];
+
+    const humanDocuments = buildDocsSearchDocuments(audiencePages);
+    const agentDocuments = buildDocsSearchDocuments(audiencePages, {}, "agent");
+
+    expect(humanDocuments.map((document) => document.content).join(" ")).toContain(
+      "Human troubleshooting token",
+    );
+    expect(humanDocuments.map((document) => document.content).join(" ")).not.toContain(
+      "Agent execution token",
+    );
+    expect(agentDocuments.map((document) => document.content).join(" ")).toContain(
+      "Agent execution token",
+    );
+    expect(agentDocuments.map((document) => document.content).join(" ")).not.toContain(
+      "Human troubleshooting token",
+    );
+  });
+
   it("uses CommonMark headings and never treats fenced shell comments as headings", () => {
     const documents = buildDocsSearchDocuments([
       {
@@ -188,6 +217,82 @@ export const auth = betterAuth({});
 });
 
 describe("performDocsSearch", () => {
+  it("keeps public search human-only while allowing explicit agent retrieval", async () => {
+    const audiencePages = [
+      {
+        title: "Audience policy",
+        url: "/docs/audience",
+        content: "Human walkthrough.",
+        rawContent: "# Audience policy\n\nHuman walkthrough.",
+        agentFallbackContent: "Use the cobalt automation token.",
+        agentFallbackRawContent: "# Audience policy\n\nUse the cobalt automation token.",
+      },
+    ];
+
+    const humanResults = await performDocsSearch({
+      pages: audiencePages,
+      query: "cobalt automation token",
+    });
+    const agentResults = await performDocsSearch({
+      pages: audiencePages,
+      query: "cobalt automation token",
+      audience: "agent",
+    });
+
+    expect(humanResults).toHaveLength(0);
+    expect(agentResults[0]?.url).toBe("/docs/audience");
+  });
+
+  it("never syncs the agent projection into a public hosted index", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ hits: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ) as typeof fetch;
+
+    try {
+      await performDocsSearch({
+        pages: [
+          {
+            title: "Audience sync",
+            url: "/docs/audience-sync",
+            content: "Human coral walkthrough.",
+            rawContent: "# Audience sync\n\nHuman coral walkthrough.",
+            agentFallbackContent: "Agent indigo procedure.",
+            agentFallbackRawContent: "# Audience sync\n\nAgent indigo procedure.",
+          },
+        ],
+        query: "indigo procedure",
+        audience: "agent",
+        search: {
+          provider: "algolia",
+          appId: "audience-sync-app",
+          indexName: "audience-sync-index",
+          searchApiKey: "search-key",
+          adminApiKey: "admin-key",
+          syncOnSearch: true,
+        },
+      });
+
+      const syncPayload = JSON.parse(
+        String(vi.mocked(globalThis.fetch).mock.calls[0]?.[1]?.body),
+      ) as { requests: Array<{ body: { content?: string } }> };
+      const indexedContent = syncPayload.requests
+        .map((request) => request.body.content ?? "")
+        .join(" ");
+      expect(indexedContent).toContain("Human coral walkthrough");
+      expect(indexedContent).not.toContain("Agent indigo procedure");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("returns simple search results with snippets", async () => {
     const results = await performDocsSearch({
       pages,
@@ -443,7 +548,7 @@ Customize the loading UI.
     expect(results[0]?.url?.startsWith("/docs/installation")).toBe(true);
   });
 
-  it("uses an MCP adapter when configured", async () => {
+  it("trusts agent-native MCP results without matching them to the local human index", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi
       .fn()
@@ -479,11 +584,11 @@ Customize the loading UI.
                     results: [
                       {
                         id: "mcp-1",
-                        url: "/docs/installation",
-                        content: "Installation — Quickstart",
-                        description: "Pulled from MCP search_docs.",
+                        url: "/docs/remote-agent-runbook",
+                        content: "Remote agent runbook",
+                        description: "Agent-only procedure from MCP search_docs.",
                         type: "heading",
-                        section: "Quickstart",
+                        section: "Procedure",
                       },
                     ],
                   }),
@@ -503,7 +608,9 @@ Customize the loading UI.
     try {
       const results = await performDocsSearch({
         pages,
-        query: "quickstart",
+        query: "remote agent runbook",
+        audience: "agent",
+        limit: 1,
         search: resolveSearchRequestConfig(
           {
             provider: "mcp",
@@ -516,12 +623,12 @@ Customize the loading UI.
       expect(results).toEqual([
         {
           id: "mcp-1",
-          url: "/docs/installation",
-          content: "Installation — Quickstart",
-          description: "Pulled from MCP search_docs.",
+          url: "/docs/remote-agent-runbook",
+          content: "Remote agent runbook",
+          description: "Agent-only procedure from MCP search_docs.",
           type: "heading",
           score: undefined,
-          section: "Quickstart",
+          section: "Procedure",
         },
       ]);
       expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(2);
@@ -618,6 +725,28 @@ Nine built-in themes are available: fumadocs, darksharp, pixel-border, colorful,
 });
 
 describe("buildDocsAskAIContext", () => {
+  it("retrieves agent-only terms and excludes human-only text", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Audience-aware setup",
+          url: "/docs/audience-aware",
+          content: "Shared introduction. Human screenshot walkthrough.",
+          rawContent: "# Setup\n\nShared introduction. Human screenshot walkthrough.",
+          agentFallbackContent: "Shared introduction. Use the zircon handshake nonce.",
+          agentFallbackRawContent:
+            "# Setup\n\nShared introduction.\n\n## Automation\n\nUse the zircon handshake nonce.",
+        },
+      ],
+      query: "zircon handshake nonce",
+      limit: 1,
+    });
+
+    expect(context.results[0]?.url).toBe("/docs/audience-aware#automation");
+    expect(context.context).toContain("zircon handshake nonce");
+    expect(context.context).not.toContain("Human screenshot walkthrough");
+  });
+
   it("retrieves and includes a contract when only its task terms match", async () => {
     const context = await buildDocsAskAIContext({
       pages: [
@@ -731,6 +860,125 @@ pnpm add @farming-labs/docs
     expect(context.context).toContain("pnpm add @farming-labs/docs");
   });
 
+  it("sanitizes hosted search snippets against the agent projection", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Audience-safe retrieval",
+          url: "/docs/audience-safe",
+          content: "Shared setup. Human coral walkthrough.",
+          rawContent: "# Audience-safe retrieval\n\nShared setup. Human coral walkthrough.",
+          agentFallbackContent: "Shared setup. Agent indigo procedure.",
+          agentFallbackRawContent:
+            "# Audience-safe retrieval\n\nShared setup. Agent indigo procedure.",
+        },
+      ],
+      query: "shared setup",
+      search: createCustomSearchAdapter({
+        name: "human-index",
+        async search() {
+          return [
+            {
+              id: "hosted-audience-safe",
+              url: "/docs/audience-safe",
+              content: "Audience-safe retrieval",
+              description: "Human coral walkthrough.",
+              type: "page",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(context.searchResults.some((result) => result.id === "hosted-audience-safe")).toBe(true);
+    expect(JSON.stringify(context.searchResults)).not.toContain("Human coral walkthrough");
+    expect(context.context).toContain("Agent indigo procedure");
+    expect(context.context).not.toContain("Human coral walkthrough");
+  });
+
+  it("sanitizes MCP snippets for local pages against the agent projection", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "remote-docs", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        id: "mcp-audience-safe",
+                        url: "/docs/audience-safe",
+                        content: "Audience-safe retrieval",
+                        description: "Human coral walkthrough.",
+                        type: "page",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
+
+    try {
+      const context = await buildDocsAskAIContext({
+        pages: [
+          {
+            title: "Audience-safe retrieval",
+            url: "/docs/audience-safe",
+            content: "Shared setup. Human coral walkthrough.",
+            rawContent: "# Audience-safe retrieval\n\nShared setup. Human coral walkthrough.",
+            agentFallbackContent: "Shared setup. Agent indigo procedure.",
+            agentFallbackRawContent:
+              "# Audience-safe retrieval\n\nShared setup. Agent indigo procedure.",
+          },
+        ],
+        query: "shared setup",
+        search: {
+          provider: "mcp",
+          endpoint: "https://remote.example/mcp",
+        },
+        limit: 1,
+      });
+
+      expect(context.searchResults.some((result) => result.id === "mcp-audience-safe")).toBe(true);
+      expect(JSON.stringify(context.searchResults)).not.toContain("Human coral walkthrough");
+      expect(context.context).toContain("Agent indigo procedure");
+      expect(context.context).not.toContain("Human coral walkthrough");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("keeps duplicate heading titles on the same page when URL hashes differ", async () => {
     const context = await buildDocsAskAIContext({
       pages: [
@@ -814,9 +1062,7 @@ Sensitive whole-page fallback content.
       }),
     });
 
-    expect(context.searchResults).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: "stale-anchor" })]),
-    );
+    expect(context.searchResults).toEqual([]);
     expect(context.results).toEqual([]);
     expect(context.context).not.toContain("Sensitive whole-page fallback content.");
   });

@@ -94,6 +94,7 @@ export interface AgentDoctorCheck {
 export interface AgentDoctorCoverage {
   totalPages: number;
   pagesWithAgentFiles: number;
+  /** Pages whose embedded audience primitives produce distinct human and agent projections. */
   pagesWithAgentBlocks: number;
   explicitPages: number;
   explicitCoverage: number;
@@ -2900,16 +2901,16 @@ export async function inspectAgentReadiness(
   checks.push(
     makeCheck(
       "coverage",
-      "Explicit page optimization",
+      "Audience-tailored page optimization",
       coverageResult.status,
       coverageResult.score,
       10,
       coverage.totalPages > 0
-        ? `${coverage.explicitPages}/${coverage.totalPages} pages define explicit machine-only context (${coverage.pagesWithAgentFiles} agent.md, ${coverage.pagesWithAgentBlocks} Agent blocks, ${coverage.explicitCoverage}% of pages).`
-        : "No docs pages were available to score explicit page optimization.",
+        ? `${coverage.explicitPages}/${coverage.totalPages} pages define audience-tailored context (${coverage.pagesWithAgentFiles} page${coverage.pagesWithAgentFiles === 1 ? "" : "s"} with agent.md, ${coverage.pagesWithAgentBlocks} page${coverage.pagesWithAgentBlocks === 1 ? "" : "s"} with embedded audience projections, ${coverage.explicitCoverage}% of pages).`
+        : "No docs pages were available to score audience-tailored page optimization.",
       coverage.explicitCoverage >= 50
         ? undefined
-        : "Add agent.md files or <Agent> blocks to more pages, or run docs agent compact to create page-level machine docs.",
+        : 'Add agent.md files or audience primitives such as <Agent>, <Human>, or <Audience only="agent"> to more pages, or run docs agent compact to create page-level machine docs.',
     ),
   );
 
@@ -2921,12 +2922,12 @@ export async function inspectAgentReadiness(
       contextQualityResult.score,
       15,
       usefulness.metrics.agentBlocks.total > 0
-        ? `${usefulness.metrics.agentBlocks.useful}/${usefulness.metrics.agentBlocks.total} Agent blocks are specific and non-repetitive (${usefulness.metrics.agentBlocks.duplicate} duplicate, ${usefulness.metrics.agentBlocks.boilerplate} boilerplate, ${usefulness.metrics.agentBlocks.generic} generic).`
-        : "No embedded Agent blocks were present; page contracts and sibling agent.md files remain available as alternatives.",
+        ? `${usefulness.metrics.agentBlocks.useful}/${usefulness.metrics.agentBlocks.total} agent-only blocks are specific and non-repetitive (${usefulness.metrics.agentBlocks.duplicate} duplicate, ${usefulness.metrics.agentBlocks.boilerplate} boilerplate, ${usefulness.metrics.agentBlocks.generic} generic).`
+        : "No embedded agent-only blocks were present; page contracts and sibling agent.md files remain available as alternatives.",
       usefulness.metrics.agentBlocks.total > 0 &&
         usefulness.metrics.agentBlocks.useful === usefulness.metrics.agentBlocks.total
         ? undefined
-        : "Replace repeated Agent boilerplate with page-specific constraints, commands, files, expected results, and recovery guidance.",
+        : "Replace repeated agent-only boilerplate with page-specific constraints, commands, files, expected results, and recovery guidance.",
     ),
   );
 
@@ -3353,11 +3354,11 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
     console.log(`${pc.bold("Hosted URL:")} ${report.url}`);
   }
   console.log(
-    `${pc.bold("Explicit agent-friendly pages:")} ${report.coverage.explicitPages}/${report.coverage.totalPages} pages ${pc.dim(`(${report.coverage.explicitCoverage}%)`)}`,
+    `${pc.bold("Audience-tailored pages:")} ${report.coverage.explicitPages}/${report.coverage.totalPages} pages ${pc.dim(`(${report.coverage.explicitCoverage}%)`)}`,
   );
   if (report.usefulness) {
     console.log(
-      `${pc.bold("Useful Agent blocks:")} ${report.usefulness.agentBlocks.useful}/${report.usefulness.agentBlocks.total} ${pc.dim(`• ${report.usefulness.taskCompleteness.completePages}/${report.usefulness.actionablePages} actionable pages task-complete`)}`,
+      `${pc.bold("Useful agent-only blocks:")} ${report.usefulness.agentBlocks.useful}/${report.usefulness.agentBlocks.total} ${pc.dim(`• ${report.usefulness.taskCompleteness.completePages}/${report.usefulness.actionablePages} actionable pages task-complete`)}`,
     );
   }
   if (report.evaluations) {

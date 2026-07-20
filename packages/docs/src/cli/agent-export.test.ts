@@ -97,7 +97,9 @@ pnpm add example
       path.join(tmpDir, "docs", "guides", "install", "agent.md"),
       `# Install for agents
 
-Run the exact package command.
+<Human>Follow the visual installation wizard.</Human>
+
+<Audience only="agent">Run the exact package command.</Audience>
 
 \`\`\`sh
 pnpm add example
@@ -137,6 +139,7 @@ pnpm add example
     expect(page).toContain("# Install for agents");
     expect(page).toContain("pnpm add example");
     expect(page).not.toContain("Human instructions");
+    expect(page).not.toContain("visual installation wizard");
     expect(page).not.toContain("last_updated:");
 
     expect(readFileSync(path.join(tmpDir, "public", "llms.txt"), "utf-8")).toContain(
@@ -144,9 +147,12 @@ pnpm add example
     );
     expect(existsSync(path.join(tmpDir, "public", "docs", "llms.txt"))).toBe(true);
     expect(existsSync(path.join(tmpDir, "public", "docs", "llms-full.txt"))).toBe(true);
-    expect(
-      readFileSync(path.join(tmpDir, "public", "docs", "guides", "llms-full.txt"), "utf-8"),
-    ).toContain("pnpm add example");
+    const guidesLlmsFull = readFileSync(
+      path.join(tmpDir, "public", "docs", "guides", "llms-full.txt"),
+      "utf-8",
+    );
+    expect(guidesLlmsFull).toContain("pnpm add example");
+    expect(guidesLlmsFull).not.toContain("visual installation wizard");
 
     const discovery = JSON.parse(
       readFileSync(path.join(tmpDir, "public", ".well-known", "agent.json"), "utf-8"),

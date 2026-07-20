@@ -7,6 +7,11 @@ import {
   normalizeAgentVersion,
 } from "./agent-scope.js";
 import { extractCodeBlocksFromMarkdown } from "./code-blocks.js";
+import {
+  findDocsAudienceMdxTags,
+  resolveDocsAudienceMdxContent,
+  type DocsAudienceMdxTag,
+} from "./audience.js";
 import type { DocsMcpPage } from "./mcp.js";
 import type { PageAgentCommand, PageAgentFrontmatter } from "./types.js";
 
@@ -185,6 +190,7 @@ interface PageAnalysis {
   page: AgentUsefulnessPage;
   agent?: PageAgentFrontmatter;
   blocks: AgentBlockOccurrence[];
+  projectedSource: string;
   shellCommands: AnalyzedCommand[];
   actionable: boolean;
 }
@@ -418,88 +424,90 @@ const PACKAGE_MANAGER_OPTIONS_WITH_VALUES = new Set([
   "-w",
 ]);
 
-/** Extract actual `<Agent>` blocks while ignoring examples inside fenced code blocks. */
+interface AgentContextScope {
+  id: number;
+  name: DocsAudienceMdxTag["name"];
+  only?: "human" | "agent";
+}
+
+function isAgentContextVisible(scopes: readonly AgentContextScope[]): boolean {
+  return scopes.every((scope) => scope.only === undefined || scope.only === "agent");
+}
+
+/**
+ * Extract actual agent-only context while ignoring examples in fenced and inline code.
+ *
+ * `<Agent>` is agent-only shorthand. `<Audience>` counts only when `only` is the
+ * static value `"agent"`; human-only and dynamic/invalid audience declarations do
+ * not contribute to agent-context usefulness metrics.
+ */
 export function extractAgentBlocks(
   source: string,
   options: { sourcePath?: string; route?: string } = {},
 ): AgentBlockOccurrence[] {
   const sourcePath = options.sourcePath ?? "unknown";
-  const lines = source.split(/\r?\n/);
+  const tags = findDocsAudienceMdxTags(source);
   const blocks: AgentBlockOccurrence[] = [];
-  let fence: { character: "`" | "~"; length: number } | undefined;
+  const scopes: AgentContextScope[] = [];
+  let nextScopeId = 1;
+  let cursor = 0;
   let active:
     | {
         line: number;
-        depth: number;
+        scopeId: number;
         content: string[];
       }
     | undefined;
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    const trimmed = line.trim();
-    const nextFence = advanceFence(trimmed, fence);
+  const appendVisibleContent = (content: string) => {
+    if (active && isAgentContextVisible(scopes)) active.content.push(content);
+  };
 
-    if (active) {
-      if (fence || nextFence) {
-        active.content.push(line);
-        fence = nextFence;
-        continue;
-      }
+  const finishActiveBlock = () => {
+    if (!active) return;
+    blocks.push({
+      sourcePath,
+      route: options.route,
+      line: active.line,
+      content: active.content.join("").trim(),
+    });
+    active = undefined;
+  };
 
-      const nested = /^<Agent(?:\s[^>]*)?>\s*$/.test(trimmed);
-      if (nested) {
-        active.depth += 1;
-        continue;
-      }
+  for (const tag of tags) {
+    const activeScope = scopes.at(-1);
+    if (tag.closing && activeScope?.name !== tag.name) continue;
 
-      const closeWithContent = /^(.*?)<\/Agent>\s*$/.exec(line);
-      if (closeWithContent) {
-        if (closeWithContent[1]) active.content.push(closeWithContent[1]);
-        active.depth -= 1;
-        if (active.depth === 0) {
-          blocks.push({
-            sourcePath,
-            route: options.route,
-            line: active.line,
-            content: active.content.join("\n").trim(),
-          });
-          active = undefined;
-        }
-        continue;
-      }
+    appendVisibleContent(source.slice(cursor, tag.index));
+    cursor = tag.end;
 
-      active.content.push(line);
+    if (tag.closing) {
+      const closedScope = scopes.pop();
+      if (active && closedScope?.id === active.scopeId) finishActiveBlock();
       continue;
     }
 
-    if (fence || nextFence) {
-      fence = nextFence;
-      continue;
-    }
+    if (tag.selfClosing) continue;
 
-    if (/^<Agent(?:\s[^>]*)?\s*\/>$/.test(trimmed)) continue;
+    const scope: AgentContextScope = {
+      id: nextScopeId,
+      name: tag.name,
+      only: tag.only,
+    };
+    nextScopeId += 1;
+    scopes.push(scope);
 
-    const singleLine = /^<Agent(?:\s[^>]*)?>(.*?)<\/Agent>\s*$/.exec(trimmed);
-    if (singleLine) {
-      blocks.push({
-        sourcePath,
-        route: options.route,
-        line: index + 1,
-        content: (singleLine[1] ?? "").trim(),
-      });
-      continue;
-    }
-
-    const opening = /^<Agent(?:\s[^>]*)?>(.*)$/.exec(trimmed);
-    if (opening) {
+    const isAgentOnly = tag.name === "Agent" || (tag.name === "Audience" && tag.only === "agent");
+    if (!active && isAgentOnly && isAgentContextVisible(scopes)) {
       active = {
-        line: index + 1,
-        depth: 1,
-        content: opening[1] ? [opening[1]] : [],
+        line: source.slice(0, tag.index).split(/\r?\n/).length,
+        scopeId: scope.id,
+        content: [],
       };
     }
   }
+
+  appendVisibleContent(source.slice(cursor));
 
   return blocks;
 }
@@ -537,11 +545,11 @@ export function analyzeAgentUsefulness(
   const knownRoutes = new Set(options.pages.map((page) => normalizeRoute(page.route)));
 
   for (const analysis of pages) {
-    const { page, agent, actionable } = analysis;
+    const { page, agent, actionable, projectedSource } = analysis;
 
     if (actionable) {
       const guidance = [
-        stripFencedContent(page.source),
+        stripFencedContent(projectedSource),
         page.agentSource ? stripFencedContent(page.agentSource) : undefined,
         ...analysis.blocks.map((block) => stripFencedContent(block.content)),
       ]
@@ -699,11 +707,12 @@ export function analyzeAgentUsefulness(
 
 function analyzePage(page: AgentUsefulnessPage): PageAnalysis {
   const agent = normalizePageAgentFrontmatter(page.agent);
+  const projectedSource = resolveDocsAudienceMdxContent(page.source, "agent");
   const blocks = extractAgentBlocks(page.source, {
     sourcePath: page.sourcePath,
     route: page.route,
   });
-  const shellCommands = collectPageCommands(page, agent);
+  const shellCommands = collectPageCommands(page, agent, projectedSource);
   const actionable =
     page.actionable ??
     (hasStructuredPageAgentContract(agent) ||
@@ -711,7 +720,7 @@ function analyzePage(page: AgentUsefulnessPage): PageAnalysis {
       blocks.some((block) => ACTIONABLE_PATTERN.test(block.content)) ||
       ACTIONABLE_PATTERN.test(page.agentSource ?? ""));
 
-  return { page, agent, blocks, shellCommands, actionable };
+  return { page, agent, blocks, projectedSource, shellCommands, actionable };
 }
 
 function analyzeBlockQuality(
@@ -775,7 +784,7 @@ function analyzeBlockQuality(
           category: "context",
           line: item.block.line,
           relatedFiles: relatedFiles.filter((file) => file !== item.block.sourcePath),
-          message: `Agent block duplicates context used on ${group.length - 1} other page${group.length === 2 ? "" : "s"}.`,
+          message: `Agent-only block duplicates context used on ${group.length - 1} other page${group.length === 2 ? "" : "s"}.`,
         }),
       );
     }
@@ -800,7 +809,7 @@ function analyzeBlockQuality(
             severity: "warning",
             category: "context",
             line: item.block.line,
-            message: `${Math.round(ratio * 100)}% of this Agent block repeats sentences used across the docs corpus.`,
+            message: `${Math.round(ratio * 100)}% of this agent-only block repeats sentences used across the docs corpus.`,
           }),
         );
       }
@@ -816,7 +825,7 @@ function analyzeBlockQuality(
           category: "context",
           line: item.block.line,
           message:
-            "Agent block is generic and lacks a concrete command, path, identifier, version, or task-specific constraint.",
+            "Agent-only block is generic and lacks a concrete command, path, identifier, version, or task-specific constraint.",
         }),
       );
     }
@@ -1094,6 +1103,7 @@ function commandAnalysis(findings: AgentUsefulnessFinding[]): CommandAnalysis {
 function collectPageCommands(
   page: AgentUsefulnessPage,
   agent: PageAgentFrontmatter | undefined,
+  projectedSource: string,
 ): AnalyzedCommand[] {
   const commands: AnalyzedCommand[] = [];
 
@@ -1111,7 +1121,7 @@ function collectPageCommands(
     }
   }
 
-  collectMarkdownCommands(commands, page.source, page.sourcePath);
+  collectMarkdownCommands(commands, projectedSource, page.sourcePath);
   if (page.agentSource) {
     collectMarkdownCommands(commands, page.agentSource, page.agentSourcePath ?? page.sourcePath);
   }

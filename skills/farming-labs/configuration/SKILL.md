@@ -202,10 +202,25 @@ Default behavior:
 - successful markdown page responses append a `## Sitemap` footer that links to the configured markdown sitemap routes
 - missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
 - very high-confidence missing markdown slugs redirect to the closest `.md` page instead of returning a recovery body
-- embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
+- content outside audience wrappers is shared; no `docs.config` flag is required
+- embedded `<Agent>...</Agent>` and `<Audience only="agent">...</Audience>` blocks stay hidden in
+  rendered HTML and public search, and are included in the agent projection
+- embedded `<Human>...</Human>` and `<Audience only="human">...</Audience>` blocks stay in rendered
+  HTML and public search, and are removed from the agent projection
+- Markdown routes, Ask AI, MCP, `llms-full.txt`, and static agent exports use the agent projection;
+  compact `llms.txt` links point to agent-projected Markdown, while sitemaps contain route metadata
+  rather than page bodies
+- `<Agent>` remains an optional agent-only shorthand and `<Human>` is the human-only shorthand;
+  both have a fixed audience, so `docs review` reports and ignores an `only` prop
+- use `<Audience only="human">` or `<Audience only="agent">` when you prefer the explicit form
+- invalid or missing `Audience.only` values remain shared rather than being silently discarded
+- dynamic `Audience.only` expressions and spread props are unsupported because static exports
+  cannot resolve them; use a static literal and rely on `docs review` to report dynamic declarations
+- audience filtering is representation shaping, not authentication or authorization; never place
+  secrets or private data in an audience block or `agent.md`
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
-- if `agent.md` is missing, the markdown response falls back to the normal page markdown
-- page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description` for normal page markdown and embedded `<Agent>` fallback
+- if `agent.md` is missing, the markdown response uses the agent audience projection of shared page content
+- page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description` for normal page markdown and audience-projected fallback
 - page frontmatter `agent` can define a structured task contract; valid fields are normalized into markdown frontmatter, a deterministic `## Agent Contract` section, search/Ask AI context, and Schema.org `HowTo` JSON-LD
 - structured agent contract fields are `task`, `outcome`, `appliesTo`, `prerequisites`, `files`, `commands`, `sideEffects`, `verification`, `rollback`, and `failureModes`; all are optional and `agent.tokenBudget` remains backward compatible
 - `docs review` reports malformed and unknown structured fields (with closest-name suggestions such as `verfication` → `verification`) and suggests missing outcomes, verification, or rollback guidance without breaking runtime page delivery
@@ -228,17 +243,25 @@ app/docs/getting-started/agent-ready-docs/
   agent.md
 ```
 
-Embedded agent-context example:
+Embedded audience-context example:
 
 ```mdx
 # Quickstart
 
 Human-facing instructions.
 
+<Human>
+Use the highlighted dashboard control shown below.
+</Human>
+
 <Agent>
 You are an implementation agent.
 Keep the scaffolded paths and commands aligned with the actual project structure.
 </Agent>
+
+<Audience only="agent">
+Run the verification command and require exit code 0.
+</Audience>
 ```
 
 Related-page frontmatter example:

@@ -363,6 +363,26 @@ describe("MCP context and schema APIs", () => {
     expect(result.sources.map((source) => source.pageUrl)).toEqual(["/docs/a", "/docs/b"]);
   });
 
+  it("retrieves MCP context from the agent projection", async () => {
+    const result = await buildDocsMcpContext({
+      pages: [
+        page("audience", {
+          content: "Human screenshot walkthrough.",
+          rawContent: "# Audience\n\nHuman screenshot walkthrough.",
+          agentFallbackContent: "Use the amber orchestration key.",
+        }),
+      ],
+      query: "amber orchestration key",
+      tokenBudget: 8_000,
+    });
+
+    expect(result.sources[0]).toMatchObject({
+      pageUrl: "/docs/audience",
+    });
+    expect(result.context).toContain("amber orchestration key");
+    expect(result.context).not.toContain("Human screenshot walkthrough");
+  });
+
   it("returns deep-cloned schema options and examples while freezing the public template", () => {
     const first = getDocsConfigSchema();
     const mode = findSchemaOption(first.options, "review.ci.mode");
@@ -452,7 +472,11 @@ Run pnpm install.
 
     writeFileSync(
       join(rootDir, "docs", "installation", "agent.md"),
-      `Use \`pnpm install --frozen-lockfile\`.
+      `<Human>Open the package manager UI.</Human>
+
+<Audience only="agent">
+Use \`pnpm install --frozen-lockfile\`.
+</Audience>
 `,
     );
 
@@ -518,7 +542,8 @@ Validate the generated example paths before editing this guide.
       expect.arrayContaining([
         expect.objectContaining({
           url: "/docs/installation",
-          agentRawContent: "Use `pnpm install --frozen-lockfile`.\n",
+          agentContent: "Use pnpm install --frozen-lockfile.",
+          agentRawContent: "Use `pnpm install --frozen-lockfile`.",
           agent: {
             task: "Install the framework",
             outcome: "Dependencies are installed from the lockfile.",
@@ -2572,11 +2597,19 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         provider: "custom",
         adapter: {
           name: "custom-search",
-          async search() {
+          async search(_query, context) {
+            const installationPage = context.pages.find(
+              (page) => page.url === "/docs/installation",
+            );
+            expect(installationPage?.content).toContain("Run pnpm install.");
+            expect(installationPage?.content).not.toContain("--frozen-lockfile");
+            expect(context.documents.map((document) => document.content).join(" ")).toContain(
+              "--frozen-lockfile",
+            );
             return [
               {
                 id: "custom-hit",
-                url: "/docs/custom-hit",
+                url: "/docs/installation",
                 content: "Custom search result",
                 description: "Resolved through the shared adapter pipeline.",
                 type: "page",
@@ -2641,8 +2674,9 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
       result?: { content?: Array<{ text?: string }> };
     }>(searchResponse);
 
-    expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/custom-hit");
-    expect(searchPayload.result?.content?.[0]?.text).toContain("Custom search result");
+    expect(searchPayload.result?.content?.[0]?.text).toContain('"id": "custom-hit"');
+    expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
+    expect(searchPayload.result?.content?.[0]?.text).not.toContain("Custom search result");
   });
 
   it("falls back to simple search for self-referential MCP search configs", async () => {
