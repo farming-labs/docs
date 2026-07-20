@@ -1054,6 +1054,87 @@ pnpm add @farming-labs/docs
     }
   });
 
+  it("keeps foreign MCP context when a local exact match has the same path", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "remote-docs", version: "1.0.0" },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        id: "foreign-shared-runbook",
+                        url: "https://remote.example/docs/shared-runbook",
+                        content: "Shared runbook",
+                        description: "Remote agent orchid procedure.",
+                        type: "page",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ) as typeof fetch;
+
+    try {
+      const context = await buildDocsAskAIContext({
+        pages: [
+          {
+            title: "Shared runbook",
+            url: "/docs/shared-runbook",
+            content: "Local human walkthrough.",
+            rawContent: "# Shared runbook\n\nLocal human walkthrough.",
+            agentFallbackContent: "Local agent indigo procedure.",
+            agentFallbackRawContent: "# Shared runbook\n\nLocal agent indigo procedure.",
+          },
+        ],
+        query: "shared runbook",
+        search: { provider: "mcp", endpoint: "https://remote.example/mcp" },
+        baseUrl: "https://docs.example.com",
+        limit: 2,
+      });
+
+      expect(context.searchResults.map((result) => result.url)).toEqual(
+        expect.arrayContaining([
+          "/docs/shared-runbook",
+          "https://remote.example/docs/shared-runbook",
+        ]),
+      );
+      expect(context.results.map((result) => result.url)).toContain(
+        "https://remote.example/docs/shared-runbook",
+      );
+      expect(context.context).toContain("Local agent indigo procedure.");
+      expect(context.context).toContain("Remote agent orchid procedure.");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("keeps duplicate heading titles on the same page when URL hashes differ", async () => {
     const context = await buildDocsAskAIContext({
       pages: [
@@ -1492,5 +1573,76 @@ describe("remote search adapters", () => {
         section: undefined,
       },
     ]);
+  });
+
+  it("attempts independently bounded MCP session cleanup after caller abort", async () => {
+    vi.useFakeTimers();
+    try {
+      const callerController = new AbortController();
+      let cleanupSignal: AbortSignal | undefined;
+      let resolveCleanupStarted!: () => void;
+      const cleanupStarted = new Promise<void>((resolve) => {
+        resolveCleanupStarted = resolve;
+      });
+
+      vi.mocked(globalThis.fetch)
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              result: {
+                protocolVersion: "2025-11-25",
+                capabilities: {},
+                serverInfo: { name: "docs-mcp", version: "1.0.0" },
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "mcp-session-id": "session-timeout",
+              },
+            },
+          ),
+        )
+        .mockImplementationOnce(async (_input, init) => {
+          expect(init?.signal).toBe(callerController.signal);
+          callerController.abort(new Error("search timed out"));
+          throw callerController.signal.reason;
+        })
+        .mockImplementationOnce((_input, init) => {
+          cleanupSignal = init?.signal as AbortSignal;
+          resolveCleanupStarted();
+          return new Promise<Response>((_resolve, reject) => {
+            cleanupSignal?.addEventListener("abort", () => reject(cleanupSignal?.reason), {
+              once: true,
+            });
+          });
+        });
+
+      const adapter = createMcpSearchAdapter({
+        provider: "mcp",
+        endpoint: "https://docs.example.com/api/docs/mcp",
+      });
+      const request = adapter.search({ query: "install", limit: 5 }, {
+        pages: [],
+        documents: [],
+        signal: callerController.signal,
+      } as DocsSearchAdapterContext);
+      const rejection = expect(request).rejects.toThrow("search timed out");
+
+      await cleanupStarted;
+      const cleanupCall = vi.mocked(globalThis.fetch).mock.calls[2];
+      expect(cleanupCall?.[1]?.method).toBe("DELETE");
+      expect(cleanupSignal).not.toBe(callerController.signal);
+      expect(cleanupSignal?.aborted).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      await rejection;
+      expect(cleanupSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -25,6 +25,7 @@ import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-s
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
+const MCP_SESSION_CLEANUP_TIMEOUT_MS = 1_000;
 const syncedIndexes = new Set<string>();
 const ALGOLIA_MAX_RECORD_BYTES = 9_500;
 const DEFAULT_ASK_AI_CONTEXT_CHARS = 24_000;
@@ -514,13 +515,16 @@ function getAskAIResultKey(
   ).toLowerCase()}`;
 }
 
-function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[] {
+function mergeSearchResults(
+  groups: DocsSearchResult[][],
+  getResultKey: (result: DocsSearchResult) => string = getSearchResultKey,
+): DocsSearchResult[] {
   const seen = new Set<string>();
   const results: DocsSearchResult[] = [];
 
   for (const group of groups) {
     for (const result of group) {
-      const key = getSearchResultKey(result);
+      const key = getResultKey(result);
       if (seen.has(key)) continue;
       seen.add(key);
       results.push(result);
@@ -1525,15 +1529,26 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
           .filter((result): result is DocsSearchResult => Boolean(result));
       } finally {
         if (sessionId) {
-          await fetch(endpoint, {
-            method: "DELETE",
-            headers: {
-              ...baseHeaders,
-              "mcp-protocol-version": protocolVersion,
-              "mcp-session-id": sessionId,
-            },
-            signal: context.signal,
-          }).catch(() => undefined);
+          const cleanupController = new AbortController();
+          const cleanupTimeout = setTimeout(
+            () => cleanupController.abort(),
+            MCP_SESSION_CLEANUP_TIMEOUT_MS,
+          );
+          try {
+            await fetch(endpoint, {
+              method: "DELETE",
+              headers: {
+                ...baseHeaders,
+                "mcp-protocol-version": protocolVersion,
+                "mcp-session-id": sessionId,
+              },
+              signal: cleanupController.signal,
+            });
+          } catch {
+            // Session cleanup is best-effort and must not replace the search result or error.
+          } finally {
+            clearTimeout(cleanupTimeout);
+          }
         }
       }
     },
@@ -1797,9 +1812,14 @@ export async function performDocsSearch(options: {
       return safeAdapterResults.slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
     }
     const combinedResults = mergeSearchResults(
-      buildExactPageSearchResults(options.query, options.pages, audience),
-      safeAdapterResults,
-      localAudienceResults,
+      [
+        buildExactPageSearchResults(options.query, options.pages, audience),
+        safeAdapterResults,
+        localAudienceResults,
+      ],
+      audience === "agent"
+        ? (result) => getAskAIResultKey(result, options.baseUrl, options.strictExternalOrigins)
+        : undefined,
     );
     return prioritizeLiteralInsideResults(options.query, combinedResults).slice(
       0,

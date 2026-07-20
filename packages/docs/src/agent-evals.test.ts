@@ -1788,11 +1788,20 @@ Use the scoped integration.
         answer: {
           provider: "http",
           endpoint: "https://answers.example/evaluate",
-          headers: { Authorization: "Bearer super-secret" },
+          headers: {
+            Authorization: "Bearer super-secret",
+            "Content-Type": "text/plain",
+            "X-Evaluation-Client": "docs-doctor",
+          },
         },
       });
       expect(measured.status).toBe("passed");
-      const requestBody = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+      const requestInit = fetchMock.mock.calls.at(-1)?.[1];
+      const requestHeaders = new Headers(requestInit?.headers);
+      expect(requestHeaders.get("content-type")).toBe("application/json");
+      expect(requestHeaders.get("authorization")).toBe("Bearer super-secret");
+      expect(requestHeaders.get("x-evaluation-client")).toBe("docs-doctor");
+      const requestBody = JSON.parse(String(requestInit?.body));
       expect(requestBody.task).toEqual({
         id: "next-16-auth",
         query: "verifyBearerToken authenticate security",

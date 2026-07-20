@@ -23,11 +23,7 @@ import {
   extractAgentBlocks,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
-import {
-  runDocsGoldenTasks,
-  type DocsGoldenTasksReport,
-  type RunDocsGoldenTasksOptions,
-} from "../agent-evals.js";
+import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { findDocsAudienceMdxIssues } from "../audience.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import {
@@ -49,6 +45,7 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
+import { resolveGoldenEvaluationInput } from "./golden-evaluations.js";
 import { detectFramework } from "./utils.js";
 
 type ReviewFindingSeverity = "error" | "warn" | "suggestion";
@@ -118,61 +115,6 @@ const IGNORED_DIRS = new Set([
   "node_modules",
   "out",
 ]);
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function resolveGoldenEvaluationInput(evaluationInput: unknown): {
-  tasks: Parameters<typeof runDocsGoldenTasks>[1];
-  options: Pick<
-    RunDocsGoldenTasksOptions,
-    "surface" | "allowNetwork" | "searchTimeoutMs" | "answer"
-  >;
-} {
-  if (evaluationInput === undefined || typeof evaluationInput === "boolean") {
-    return { tasks: undefined, options: {} };
-  }
-  if (!isPlainRecord(evaluationInput)) {
-    return {
-      tasks: { evaluationConfig: evaluationInput } as unknown as Parameters<
-        typeof runDocsGoldenTasks
-      >[1],
-      options: {},
-    };
-  }
-  const options = {
-    surface: evaluationInput.surface,
-    allowNetwork: evaluationInput.allowNetwork,
-    searchTimeoutMs: evaluationInput.searchTimeoutMs,
-    answer: evaluationInput.answer,
-  } as Pick<RunDocsGoldenTasksOptions, "surface" | "allowNetwork" | "searchTimeoutMs" | "answer">;
-  if (evaluationInput.enabled === false) return { tasks: undefined, options };
-  if ("enabled" in evaluationInput && typeof evaluationInput.enabled !== "boolean") {
-    return {
-      tasks: evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1],
-      options,
-    };
-  }
-  if (!("tasks" in evaluationInput)) return { tasks: undefined, options };
-
-  const runtimeTasks = evaluationInput.tasks;
-  if (!Array.isArray(runtimeTasks)) {
-    return { tasks: runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1], options };
-  }
-
-  return {
-    tasks: runtimeTasks.map((task) => {
-      if (!isPlainRecord(task)) return task;
-      return {
-        ...task,
-        tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
-        topK: task.topK ?? evaluationInput.topK,
-      };
-    }) as Parameters<typeof runDocsGoldenTasks>[1],
-    options,
-  };
-}
 
 export function parseReviewArgs(argv: string[]): ParsedReviewArgs {
   const parsed: ParsedReviewArgs = {};

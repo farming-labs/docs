@@ -27,11 +27,7 @@ import {
   createAgentUsefulnessPagesFromMcp,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
-import {
-  runDocsGoldenTasks,
-  type DocsGoldenTasksReport,
-  type RunDocsGoldenTasksOptions,
-} from "../agent-evals.js";
+import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import {
@@ -64,6 +60,7 @@ import {
 } from "./config.js";
 import { compactAgentDocs, inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
 import type { AgentCompactOptions } from "./agent.js";
+import { resolveGoldenEvaluationInput } from "./golden-evaluations.js";
 import { detectFramework, type Framework } from "./utils.js";
 
 type DoctorStatus = "pass" | "warn" | "fail";
@@ -1690,61 +1687,6 @@ async function probeMcpRouteCandidates(
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(asRecord(value)) && !Array.isArray(value);
-}
-
-function resolveGoldenEvaluationInput(evaluationInput: unknown): {
-  tasks: Parameters<typeof runDocsGoldenTasks>[1];
-  options: Pick<
-    RunDocsGoldenTasksOptions,
-    "surface" | "allowNetwork" | "searchTimeoutMs" | "answer"
-  >;
-} {
-  if (evaluationInput === undefined || typeof evaluationInput === "boolean") {
-    return { tasks: undefined, options: {} };
-  }
-  if (!isPlainRecord(evaluationInput)) {
-    return {
-      tasks: { evaluationConfig: evaluationInput } as unknown as Parameters<
-        typeof runDocsGoldenTasks
-      >[1],
-      options: {},
-    };
-  }
-  const options = {
-    surface: evaluationInput.surface,
-    allowNetwork: evaluationInput.allowNetwork,
-    searchTimeoutMs: evaluationInput.searchTimeoutMs,
-    answer: evaluationInput.answer,
-  } as Pick<RunDocsGoldenTasksOptions, "surface" | "allowNetwork" | "searchTimeoutMs" | "answer">;
-  if (evaluationInput.enabled === false) return { tasks: undefined, options };
-  if ("enabled" in evaluationInput && typeof evaluationInput.enabled !== "boolean") {
-    return {
-      tasks: evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1],
-      options,
-    };
-  }
-  if (!("tasks" in evaluationInput)) return { tasks: undefined, options };
-
-  const runtimeTasks = evaluationInput.tasks;
-  if (!Array.isArray(runtimeTasks)) {
-    return { tasks: runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1], options };
-  }
-
-  return {
-    tasks: runtimeTasks.map((task) => {
-      if (!isPlainRecord(task)) return task;
-      return {
-        ...task,
-        tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
-        topK: task.topK ?? evaluationInput.topK,
-      };
-    }) as Parameters<typeof runDocsGoldenTasks>[1],
-    options,
-  };
 }
 
 function isNonEmptyString(value: unknown): value is string {

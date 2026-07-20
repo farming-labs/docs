@@ -2132,11 +2132,13 @@ async function runAnswerProvider(options: {
     throw new Error("The HTTP answer provider headers must contain only string values.");
   }
   try {
+    const headers = new Headers(rawHeaders as Record<string, string> | undefined);
+    headers.set("content-type", "application/json");
     return await Promise.race([
       (async () => {
         const response = await fetch(endpoint, {
           method: "POST",
-          headers: { "content-type": "application/json", ...rawHeaders },
+          headers,
           body: JSON.stringify(options.input),
           signal: controller.signal,
         });
