@@ -29,9 +29,11 @@ import {
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
+import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import {
   createFilesystemDocsMcpSource,
   getDocsConfigSchema,
+  resolveAskAISearchRequestConfig,
   resolveDocsMcpConfig,
 } from "../server.js";
 import {
@@ -58,6 +60,7 @@ import {
 } from "./config.js";
 import { compactAgentDocs, inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
 import type { AgentCompactOptions } from "./agent.js";
+import { resolveGoldenEvaluationInput } from "./golden-evaluations.js";
 import { detectFramework, type Framework } from "./utils.js";
 
 type DoctorStatus = "pass" | "warn" | "fail";
@@ -1686,40 +1689,6 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(asRecord(value)) && !Array.isArray(value);
-}
-
-function resolveGoldenEvaluationTasks(
-  evaluationInput: unknown,
-): Parameters<typeof runDocsGoldenTasks>[1] {
-  if (evaluationInput === undefined || typeof evaluationInput === "boolean") return undefined;
-  if (!isPlainRecord(evaluationInput)) {
-    return { evaluationConfig: evaluationInput } as unknown as Parameters<
-      typeof runDocsGoldenTasks
-    >[1];
-  }
-  if (evaluationInput.enabled === false) return undefined;
-  if ("enabled" in evaluationInput && typeof evaluationInput.enabled !== "boolean") {
-    return evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1];
-  }
-  if (!("tasks" in evaluationInput)) return undefined;
-
-  const runtimeTasks = evaluationInput.tasks;
-  if (!Array.isArray(runtimeTasks)) {
-    return runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1];
-  }
-
-  return runtimeTasks.map((task) => {
-    if (!isPlainRecord(task)) return task;
-    return {
-      ...task,
-      tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
-      topK: task.topK ?? evaluationInput.topK,
-    };
-  }) as Parameters<typeof runDocsGoldenTasks>[1];
-}
-
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -2403,8 +2372,26 @@ export async function inspectAgentReadiness(
     projectFramework: framework === "unknown" ? undefined : framework,
   });
   const evaluationInput = config?.agent?.evaluations;
-  const evaluationTasks = resolveGoldenEvaluationTasks(evaluationInput);
-  const evaluations = await runDocsGoldenTasks(pages, evaluationTasks);
+  const evaluation = resolveGoldenEvaluationInput(evaluationInput);
+  const evaluationBaseUrl = config ? resolveDocsMetadataBaseUrl(config) : undefined;
+  const evaluationMcp = resolveDocsMcpConfig(config?.mcp, { defaultName: siteTitle });
+  const askAISearch = resolveAskAISearchRequestConfig({
+    search: config?.search,
+    useMcp: config?.ai?.useMcp,
+    mcpEndpoint: evaluationMcp.route,
+    mcpEnabled: evaluationMcp.enabled,
+    mcpSearchEnabled: evaluationMcp.tools.searchDocs,
+    requestUrl: evaluationBaseUrl,
+  });
+  const evaluations = await runDocsGoldenTasks(pages, evaluation.tasks, {
+    ...evaluation.options,
+    search: config?.search,
+    askAISearch,
+    siteTitle,
+    baseUrl: evaluationBaseUrl,
+    rootDir,
+    codeBlocksValidate: config?.codeBlocks?.validate,
+  });
   const compactionCoverage = buildCompactionCoverage(
     rootDir,
     contentDir,
@@ -3564,10 +3551,9 @@ export async function runDoctor(options: DoctorOptions = {}) {
 
   if (options.fix) {
     fixes = await runAgentDoctorFixes(report, options);
-    report = {
-      ...(await inspectAgentReadiness(options)),
-      fixes,
-    };
+    report = fixes.some((fix) => fix.status === "applied")
+      ? { ...(await inspectAgentReadiness(options)), fixes }
+      : { ...report, fixes };
   }
 
   applyDoctorExitCode(report, options);

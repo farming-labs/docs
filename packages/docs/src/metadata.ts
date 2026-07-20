@@ -136,6 +136,7 @@ function normalizeBaseUrl(value?: string): string | undefined {
 
   try {
     const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
     return url.toString().replace(/\/+$/, "");
   } catch {
     return undefined;

@@ -673,12 +673,21 @@ What it checks:
 - task prerequisites, expected results, recovery steps, and applicability ambiguity
 - static command health and related-page task coverage
 - config loading confidence and discovery/config/schema drift
-- configured golden tasks for retrieval, citations, version selection, examples, and budgets
+- configured golden tasks for retrieval, citations, version selection, answers, examples, and budgets
 - generated `agent.md` freshness and `agent.compact` defaults
 
-Command checks never execute arbitrary commands from docs. Golden evaluations are also offline and
-deterministic. Configure them under `agent.evaluations.tasks`; when no tasks exist, doctor reports
-the suite as `unmeasured` and awards no usefulness credit.
+Command checks never execute arbitrary commands from docs. Golden evaluations default to the local
+`mcp-context` surface and make no implicit model, network, or runtime-execution request. Configure
+them under `agent.evaluations.tasks`; when no tasks exist, doctor reports the suite as `unmeasured`
+and awards no usefulness credit.
+
+Use `surface: "configured-search"` to measure the actual search provider or
+`surface: "ask-ai-context"` to measure the production Ask AI context path. Non-simple search, the
+managed HTTP answer provider, and runtime example execution require `allowNetwork: true`; failures
+fail the task instead of falling back. `searchTimeoutMs` defaults to 30 seconds per configured
+retrieval task. Callback answers are explicit user code. Example execution
+also requires `expect.examples[].verification: "execute"` and enabled `codeBlocks.validate` report
+mode.
 
 With `--url`, `docs doctor --agent` also probes the deployed public agent surface:
 

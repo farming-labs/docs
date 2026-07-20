@@ -538,7 +538,7 @@ What it checks:
 - prerequisites, observable results, recovery guidance, and framework/version applicability
 - documented command health and related-page coverage
 - config loading confidence and drift between discovery, resolved config, contracts, and schema
-- deterministic golden tasks for retrieval, citations, version selection, examples, and budgets
+- configured golden tasks for retrieval, citations, version selection, answers, examples, and budgets
 - generated `agent.md` freshness and `agent.compact` defaults
 
 Command health is a static check: the doctor validates package-manager usage, package scripts,
@@ -550,6 +550,12 @@ plausible-looking Agent template onto many pages no longer increases the score.
 Golden tasks are configured under `agent.evaluations.tasks`. When none are configured, the doctor
 reports retrieval usefulness as `unmeasured` and awards no golden-task points. See
 [Golden agent evaluations](/docs/configuration#golden-agent-evaluations) for the task format.
+They use the local `mcp-context` surface with no implicit model, network, or runtime execution by
+default. Opt-in `configured-search` and `ask-ai-context` surfaces fail closed when their configured
+provider fails. Framework-managed external search, HTTP answer requests, and runtime example
+execution require `allowNetwork: true`; callbacks are explicit user code, and runtime examples
+execute only when both the task and `codeBlocks.validate` request it. Configured retrieval uses the
+per-task `searchTimeoutMs` limit, which defaults to 30 seconds.
 
 Common forms:
 
@@ -1201,6 +1207,7 @@ checks default rules such as broken links and frontmatter, and prints GitHub ann
 with `--ci`. The review also uses the full docs corpus to catch copied Agent boilerplate on a
 changed page, statically validates commands and related routes, reports low-confidence config
 loading or public-surface drift, and runs the same configured golden tasks as `docs doctor`.
+The same offline defaults and explicit network, answer-provider, and example-execution opt-ins apply.
 
 ```bash title="terminal"
 pnpm exec docs review

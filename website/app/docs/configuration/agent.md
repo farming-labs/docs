@@ -36,6 +36,8 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat
   - `agent.compact` for defaults used by `docs agent compact`
+  - `agent.evaluations` for golden tasks that measure retrieval, context, answers, examples, and
+    budgets in `docs doctor` and `docs review`
   - `codeBlocks.validate` for planning and validating fenced MDX code blocks
   - `mcp` for the built-in MCP server, including default tools like `list_docs`, `search_docs`,
     `read_page`, `get_code_examples`, `get_config_schema`, and `get_context`
@@ -49,6 +51,24 @@ Use this machine-oriented page when the user needs implementation guidance for `
   config changes.
 - When they need compact retrieval through MCP, prefer `get_context` with an explicit token budget;
   use `read_page.section` when they already know the exact heading.
+- Golden evaluations default to the local `mcp-context` surface. There is no implicit model,
+  network request, or command execution. `configured-search` measures the actual `search` provider,
+  and `ask-ai-context` measures the production Ask AI retrieval/context assembly path.
+- Non-simple search providers and the built-in HTTP answer provider require
+  `agent.evaluations.allowNetwork: true`. Provider failures fail the task instead of falling back to
+  local search. Configured retrieval also fails at `searchTimeoutMs`, which defaults to 30 seconds
+  per task. Optional HTTP authentication belongs in `answer.headers`; header values are never
+  included in reports.
+- An answer provider is opt-in. Use `{ provider: "callback", run }` for explicit user code or
+  `{ provider: "http", endpoint, headers?, timeoutMs? }` for the managed HTTP contract. Add
+  `expect.answer` only when answer text and answer citations should be scored; context citations are
+  reported as context evidence, not mislabeled as model-answer citations.
+- `filters` constrain retrieval. Use `expect.scope` to assert returned framework, version, or locale
+  without pre-filtering away a wrong result.
+- Expected examples support `verification: "present" | "syntax" | "execute"`. Runnable examples
+  default to syntax, non-runnable examples default to presence, and execution requires an explicit
+  execute expectation, `allowNetwork: true`, and enabled `codeBlocks.validate` report mode. Skips
+  never count as passes.
 - When they ask about reading time, note that `readingTime` is opt-in (`enabled: true` required).
   The `includeCode` field inside `ReadingTimeConfig` defaults to `false`, which means fenced and
   inline code blocks are stripped before counting words so the label reflects human prose length.

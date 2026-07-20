@@ -135,7 +135,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `codeBlocks`  | `DocsCodeBlocksConfig`         | —               | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false` for UI  | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
-| `agent`       | `DocsAgentConfig`              | —               | Compaction defaults and deterministic golden-task evaluations |
+| `agent`       | `DocsAgentConfig`              | —               | Compaction defaults and golden-task usefulness evaluations |
 | `review`      | `boolean \| DocsReviewConfig`  | `true`          | Docs Review CI workflow generation, scoring, and rule severity |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
@@ -1464,10 +1464,10 @@ export async function POST(request: Request) {
 
 ## Golden agent evaluations
 
-Use `agent.evaluations` to define user-shaped tasks that `docs doctor` and `docs review` can measure
-without a model, network request, or arbitrary command execution. Each task runs through the docs
-search and context pipeline, then checks retrieval recall and rank, canonical citations,
-framework/version selection, executable example metadata, and exact UTF-8 context usage.
+Use `agent.evaluations` to define user-shaped tasks that `docs doctor` and `docs review` can measure.
+The default `mcp-context` surface is local and makes no implicit model, network, or command-execution
+request. You can explicitly measure the configured search pipeline, the production Ask AI context,
+an actual answer provider, or runtime-verified examples when those checks are useful.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -1476,6 +1476,8 @@ export default defineDocs({
     evaluations: {
       tokenBudget: 4_000,
       topK: 3,
+      searchTimeoutMs: 30_000,
+      surface: "mcp-context",
       tasks: [
         {
           id: "next-16-install",
@@ -1485,6 +1487,10 @@ export default defineDocs({
             version: "16",
           },
           expect: {
+            scope: {
+              framework: "nextjs",
+              version: "16",
+            },
             relevantSources: ["/docs/installation"],
             requiredCitations: ["/docs/installation"],
             forbiddenSources: ["/docs/legacy-installation"],
@@ -1497,6 +1503,7 @@ export default defineDocs({
                 language: "bash",
                 packageManager: "pnpm",
                 runnable: true,
+                verification: "present",
                 includes: ["pnpm add @farming-labs/docs"],
               },
             ],
@@ -1511,8 +1518,86 @@ export default defineDocs({
 Top-level `tokenBudget` and `topK` are defaults; either can be overridden on an individual task.
 `requiredCitations` defaults to `relevantSources`, and `allowedSources` can name legitimate
 supporting pages that should not reduce citation precision. Source values may be canonical page or
-section URLs. The context budget uses a hard UTF-8 byte ceiling and also reports estimated tokens
-plus a conservative one-token-per-byte upper bound.
+section URLs. `filters` constrain retrieval, while `expect.scope` independently asserts that the
+returned sources selected the right framework, version, or locale. This distinction catches a
+provider that returns a plausible result for the wrong target instead of hiding that result before
+evaluation.
+
+Choose the surface globally with `agent.evaluations.surface` or override it on one task:
+
+- `"mcp-context"` is the default built-in context builder and stays local.
+- `"configured-search"` queries the project's actual `search` provider and evaluates only its
+  returned order and citations, without local-result supplementation or diagnostic reranking.
+- `"ask-ai-context"` runs the production Ask AI retrieval and context-assembly path, including its
+  source headers and truncation behavior.
+
+Non-simple configured search providers require `allowNetwork: true`. Provider errors fail the task
+instead of silently substituting local search, so the report always identifies the surface and
+provider it actually measured. `searchTimeoutMs` bounds each configured-search or Ask AI retrieval
+and defaults to 30 seconds; the timeout aborts framework-managed requests and is also exposed to
+custom adapters as `context.signal`. The evaluator records actual UTF-8 usage for every surface. MCP and
+configured-search contexts enforce the byte ceiling directly; Ask AI uses its production character
+limit and fails the budget check if the resulting UTF-8 payload exceeds the configured ceiling.
+
+### Evaluate actual answers
+
+Answer scoring is opt-in. Add `expect.answer` to a task and configure either a callback or an HTTP
+provider. The framework does not choose or call a model when `answer` is omitted.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    evaluations: {
+      allowNetwork: true,
+      answer: {
+        provider: "http",
+        endpoint: process.env.AGENT_EVAL_ENDPOINT!,
+        headers: process.env.AGENT_EVAL_TOKEN
+          ? { authorization: `Bearer ${process.env.AGENT_EVAL_TOKEN}` }
+          : undefined,
+        timeoutMs: 10_000,
+      },
+      tasks: [
+        {
+          id: "install-answer",
+          query: "How do I install the framework?",
+          expect: {
+            relevantSources: ["/docs/installation"],
+            answer: {
+              includes: ["pnpm add"],
+              excludes: ["legacy-package"],
+              requiredCitations: ["/docs/installation"],
+            },
+          },
+        },
+      ],
+    },
+  },
+});
+```
+
+The HTTP endpoint receives the task id, query, filters, surface, context, and retrieved sources as
+JSON, but never receives the expected answer, citations, or callback-only abort signal. It returns
+`{ text, citations? }`. HTTP
+authentication is optional and explicit through `headers`; header values are never copied into
+evaluation reports. The built-in HTTP provider and managed external search requests require
+`allowNetwork: true` and use fail-closed provider errors. A
+`provider: "callback"` answer instead calls your explicit `run(input)` function and expects the same
+answer result shape. That callback is user code, so it may perform only the work you put inside it;
+`allowNetwork` does not sandbox or reinterpret it.
+
+### Choose example verification strength
+
+Set `expect.examples[].verification` to the evidence the task must produce:
+
+- `"present"` requires a matching retrieved fence.
+- `"syntax"` requires supported static syntax validation. It is the default for runnable examples.
+- `"execute"` requires the configured validator to execute the snippet and return `PASS`. It only
+  runs when `allowNetwork: true` and `codeBlocks.validate` are explicitly enabled in `"report"`
+  mode with a suitable runner.
+
+Examples marked `runnable: false` default to `"present"`. Unsupported syntax, a skipped runner, or a
+missing execution opt-in is reported as skipped or failed and never receives passing credit.
 
 An absent, disabled, or empty task suite is deliberately `unmeasured`, not passing. This keeps a
 site from receiving usefulness credit merely because no representative tasks were defined. Put

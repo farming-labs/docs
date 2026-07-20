@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DocsMcpPage } from "./mcp.js";
 import { runDocsGoldenTasks, type DocsGoldenTask } from "./agent-evals.js";
 
@@ -151,7 +151,22 @@ describe("runDocsGoldenTasks", () => {
       ambiguousSources: [],
       passed: true,
     });
-    expect(result.examples).toMatchObject({ expected: 1, matched: 1, executable: 1, passed: true });
+    expect(result.examples).toMatchObject({
+      expected: 1,
+      matched: 1,
+      syntaxValid: 1,
+      executed: 0,
+      executable: 1,
+      passed: true,
+    });
+    expect(result.examples.results[0]).toMatchObject({
+      verification: "syntax",
+      status: "passed",
+      syntaxValid: true,
+      executed: false,
+    });
+    expect(result).toMatchObject({ surface: "mcp-context", provider: "simple" });
+    expect(result.citations.evidence).toBe("context");
     expect(result.usage.usedUtf8Bytes).toBe(Buffer.byteLength(result.context, "utf8"));
     expect(result.usage.conservativeTokenUpperBound).toBe(result.usage.usedUtf8Bytes);
     expect(result.usage.usedUtf8Bytes).toBeLessThanOrEqual(result.usage.tokenBudget);
@@ -191,7 +206,7 @@ Run pnpm add docs.
       passed: false,
     });
     expect(report.tasks[0].issues).toContain(
-      "Retrieved context is ambiguous or does not explicitly match the requested framework/version.",
+      "Retrieved sources are ambiguous or do not explicitly match the expected framework/version/locale.",
     );
   });
 
@@ -694,5 +709,1350 @@ Use the scoped integration.
 
     expect(report.status).toBe("passed");
     expect(report.tasks[0].selection).toMatchObject({ ambiguousSources: [], passed: true });
+  });
+
+  it("uses configured search results instead of silently evaluating local MCP retrieval", async () => {
+    let calls = 0;
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "configured-search",
+          query: "legacy middleware authentication",
+          surface: "configured-search",
+          topK: 1,
+          expect: { relevantSources: ["/docs/auth-v15"] },
+        },
+      ],
+      {
+        allowNetwork: true,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "fixture-search",
+            async search() {
+              calls += 1;
+              return [
+                {
+                  id: "remote-v15",
+                  url: "/docs/auth-v15",
+                  content: "Remote legacy authentication result",
+                  type: "page" as const,
+                },
+              ];
+            },
+          },
+        },
+      },
+    );
+
+    expect(calls).toBe(1);
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0]).toMatchObject({
+      surface: "configured-search",
+      provider: "custom",
+      sources: [{ url: "/docs/auth-v15" }],
+      citations: {
+        evidence: "results",
+        actual: ["/docs/auth-v15"],
+        passed: true,
+      },
+    });
+  });
+
+  it("does not supplement an empty configured provider with local results", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "empty-provider",
+          query: "verifyBearerToken authenticate security",
+          surface: "configured-search",
+          expect: { relevantSources: ["/docs/auth-v16"] },
+        },
+      ],
+      {
+        allowNetwork: true,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "empty",
+            async search() {
+              return [];
+            },
+          },
+        },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0]).toMatchObject({ provider: "custom", sources: [] });
+    expect(report.tasks[0].retrieval.recallAtK).toBe(0);
+  });
+
+  it("sanitizes semantic provider hits from the full agent projection without lexical overlap", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "semantic-provider",
+          query: "opaque-semantic-intent-without-page-terms",
+          surface: "configured-search",
+          topK: 1,
+          expect: { relevantSources: ["/docs/auth-v16#configure-authentication"] },
+        },
+      ],
+      {
+        allowNetwork: true,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "semantic",
+            async search() {
+              return [
+                {
+                  id: "semantic-auth",
+                  url: "/docs/auth-v16#configure-authentication",
+                  content: "Human-only provider snippet",
+                  type: "heading" as const,
+                  section: "Configure authentication",
+                },
+              ];
+            },
+          },
+        },
+      },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].sources[0]).toMatchObject({
+      url: "/docs/auth-v16#configure-authentication",
+    });
+    expect(report.tasks[0].context).not.toContain("Human-only provider snippet");
+  });
+
+  it("preserves configured provider ranking without local literal reranking", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "provider-order",
+          query: "verifyBearerToken",
+          surface: "configured-search",
+          topK: 2,
+          expect: {
+            relevantSources: ["/docs/auth-v15"],
+            maxFirstRelevantRank: 1,
+          },
+        },
+      ],
+      {
+        allowNetwork: true,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "ranked",
+            async search() {
+              return [
+                { id: "first", url: "/docs/auth-v15", content: "Legacy", type: "page" as const },
+                {
+                  id: "literal-second",
+                  url: "/docs/auth-v16",
+                  content: "verifyBearerToken",
+                  type: "page" as const,
+                },
+              ];
+            },
+          },
+        },
+      },
+    );
+
+    expect(report.tasks[0].sources.map((source) => source.url)).toEqual([
+      "/docs/auth-v15",
+      "/docs/auth-v16",
+    ]);
+    expect(report.tasks[0].retrieval.firstRelevantRank).toBe(1);
+  });
+
+  it("fails configured provider errors instead of falling back to simple search", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "strict-provider",
+          query: "verifyBearerToken authenticate security",
+          surface: "configured-search",
+          expect: { relevantSources: ["/docs/auth-v16"] },
+        },
+      ],
+      {
+        allowNetwork: true,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "broken-search",
+            async search() {
+              throw new Error("fixture provider unavailable");
+            },
+          },
+        },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0]).toMatchObject({ provider: "unavailable", sources: [] });
+    expect(report.tasks[0].issues.join(" ")).toContain("fixture provider unavailable");
+  });
+
+  it("fails closed on malformed runtime search provider values", async () => {
+    const unknown = await runDocsGoldenTasks(
+      pages,
+      [{ ...passingTask, surface: "configured-search" }],
+      {
+        allowNetwork: true,
+        search: { provider: "mystery" } as never,
+      },
+    );
+    const primitive = await runDocsGoldenTasks(
+      pages,
+      [{ ...passingTask, surface: "configured-search" }],
+      {
+        allowNetwork: true,
+        search: 42 as never,
+      },
+    );
+
+    expect(unknown.status).toBe("failed");
+    expect(unknown.tasks[0].sources).toEqual([]);
+    expect(unknown.tasks[0].issues.join(" ")).toContain("Unsupported configured search provider");
+    expect(primitive.status).toBe("failed");
+    expect(primitive.tasks[0].issues.join(" ")).toContain("boolean or provider object");
+  });
+
+  it("does not map non-HTTP provider URLs onto local docs paths", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [{ ...passingTask, surface: "configured-search" }],
+      {
+        allowNetwork: true,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "unsafe-scheme",
+            async search() {
+              return [
+                {
+                  id: "unsafe",
+                  url: "javascript:/docs/auth-v16#configure-authentication",
+                  content: "Spoofed local path",
+                  type: "heading" as const,
+                },
+              ];
+            },
+          },
+        },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].sources).toEqual([]);
+    expect(report.tasks[0].retrieval.recallAtK).toBe(0);
+  });
+
+  it("times out configured providers and aborts their adapter context", async () => {
+    let observedSignal: AbortSignal | undefined;
+    const report = await runDocsGoldenTasks(
+      pages,
+      [{ ...passingTask, surface: "configured-search" }],
+      {
+        allowNetwork: true,
+        searchTimeoutMs: 10,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "stalled",
+            search(_query, context) {
+              observedSignal = context.signal;
+              return new Promise(() => undefined);
+            },
+          },
+        },
+      },
+    );
+
+    expect(observedSignal?.aborted).toBe(true);
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].issues.join(" ")).toContain("timed out after 10ms");
+  });
+
+  it("blocks external evaluation surfaces offline instead of substituting local results", async () => {
+    let called = false;
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "offline-provider",
+          query: "authentication",
+          surface: "configured-search",
+          expect: { relevantSources: ["/docs/auth-v16"] },
+        },
+      ],
+      {
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "should-not-run",
+            async search() {
+              called = true;
+              return [];
+            },
+          },
+        },
+      },
+    );
+
+    expect(called).toBe(false);
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].issues.join(" ")).toContain("allowNetwork: true");
+  });
+
+  it("asserts expected scope against unfiltered returned sources", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "scope-selection",
+          query: "legacy middleware authentication",
+          surface: "configured-search",
+          topK: 1,
+          expect: {
+            relevantSources: ["/docs/auth-v15"],
+            scope: { framework: "nextjs", version: "16" },
+          },
+        },
+      ],
+      {
+        allowNetwork: true,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "version-order",
+            async search() {
+              return [
+                {
+                  id: "v15",
+                  url: "/docs/auth-v15",
+                  content: "Next.js 15 authentication",
+                  type: "page" as const,
+                },
+                {
+                  id: "v16",
+                  url: "/docs/auth-v16",
+                  content: "Next.js 16 authentication",
+                  type: "page" as const,
+                },
+              ];
+            },
+          },
+        },
+      },
+    );
+
+    expect(report.tasks[0].retrieval.passed).toBe(true);
+    expect(report.tasks[0].selection).toMatchObject({
+      requestedVersion: undefined,
+      expectedVersion: "16",
+      firstVersionMatchRank: null,
+      conflictingSources: ["/docs/auth-v15"],
+      passed: false,
+    });
+    expect(report.status).toBe("failed");
+  });
+
+  it("keeps context citations distinct from actual answer citation evidence", async () => {
+    const task: DocsGoldenTask = {
+      ...passingTask,
+      expect: {
+        ...passingTask.expect,
+        answer: {
+          includes: ["Use the callback"],
+          requiredCitations: ["/docs/auth-v16#configure-authentication"],
+          forbiddenCitations: ["/docs/auth-v15"],
+        },
+      },
+    };
+    const report = await runDocsGoldenTasks(pages, [task], {
+      answer: {
+        provider: "callback",
+        async run() {
+          return {
+            text: "Use the callback described in [legacy setup](/docs/auth-v15).",
+            citations: ["/docs/auth-v15"],
+          };
+        },
+      },
+    });
+
+    expect(report.tasks[0].citations).toMatchObject({ evidence: "context", passed: true });
+    expect(report.tasks[0].answer).toMatchObject({
+      evidence: "answer",
+      provided: true,
+      missingCitations: ["/docs/auth-v16#configure-authentication"],
+      forbiddenCitations: ["/docs/auth-v15"],
+      passed: false,
+    });
+    expect(report.status).toBe("failed");
+  });
+
+  it("validates successful actual answer citations from an explicit callback", async () => {
+    let receivedTask: unknown;
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: {
+            ...passingTask.expect,
+            answer: { includes: ["Use the callback"] },
+          },
+        },
+      ],
+      {
+        answer: {
+          provider: "callback",
+          run: (input) => {
+            receivedTask = input.task;
+            return {
+              text: "Use the callback in [the Next.js 16 guide](/docs/auth-v16#configure-authentication).",
+            };
+          },
+        },
+      },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(receivedTask).toEqual({
+      id: "next-16-auth",
+      query: "verifyBearerToken authenticate security",
+      filters: { framework: "nextjs", version: "16" },
+    });
+    expect(receivedTask).not.toHaveProperty("expect");
+    expect(report.tasks[0].answer).toMatchObject({
+      evidence: "answer",
+      citations: ["/docs/auth-v16#configure-authentication"],
+      passed: true,
+    });
+  });
+
+  it("evaluates the production Ask AI context headers and labels the surface honestly", async () => {
+    const report = await runDocsGoldenTasks(pages, [
+      { ...passingTask, surface: "ask-ai-context", tokenBudget: 1_300 },
+    ]);
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0]).toMatchObject({
+      surface: "ask-ai-context",
+      provider: "simple",
+      citations: {
+        evidence: "context",
+        actual: ["/docs/auth-v16#configure-authentication"],
+        integrity: true,
+      },
+    });
+    expect(report.tasks[0].context).toContain("URL: /docs/auth-v16#configure-authentication");
+    expect(report.tasks[0].usage.usefulUtf8Bytes).toBeGreaterThan(0);
+  });
+
+  it("does not mislabel an Ask AI character ceiling as a UTF-8 byte budget", async () => {
+    const unicodePage = page({
+      slug: "ask-unicode",
+      url: "/docs/ask-unicode",
+      title: "Unicode answer",
+      rawContent: `# Unicode answer\n\n## Configure\n\n${"🚜 café guidance. ".repeat(80)}`,
+    });
+    const report = await runDocsGoldenTasks(
+      [unicodePage],
+      [
+        {
+          id: "ask-unicode-budget",
+          query: "configure café guidance",
+          surface: "ask-ai-context",
+          tokenBudget: 500,
+          topK: 1,
+          expect: { relevantSources: ["/docs/ask-unicode#configure"] },
+        },
+      ],
+    );
+
+    expect(report.tasks[0].usage.usedUtf8Bytes).toBe(
+      Buffer.byteLength(report.tasks[0].context, "utf8"),
+    );
+    expect(report.tasks[0].usage.withinBudget).toBe(false);
+    expect(report.tasks[0].usage.usedUtf8Bytes).toBeGreaterThan(500);
+    expect(report.status).toBe("failed");
+  });
+
+  it("never auto-passes unsupported syntax verification", async () => {
+    const pythonPage = page({
+      slug: "python-example",
+      url: "/docs/python-example",
+      title: "Python example",
+      rawContent: `# Python example\n\n## Run\n\n\`\`\`python runnable\nprint("ready")\n\`\`\``,
+    });
+    const report = await runDocsGoldenTasks(
+      [pythonPage],
+      [
+        {
+          id: "python-syntax",
+          query: "run python ready",
+          topK: 1,
+          expect: {
+            relevantSources: ["/docs/python-example#run"],
+            examples: [{ language: "python", includes: ["ready"] }],
+          },
+        },
+      ],
+    );
+
+    expect(report.tasks[0].examples.results[0]).toMatchObject({
+      verification: "syntax",
+      status: "skipped",
+      syntaxValid: false,
+      executed: false,
+      passed: false,
+    });
+    expect(report.tasks[0].examples.matched).toBe(0);
+    expect(report.tasks[0].score).toBeLessThan(90);
+    expect(report.status).toBe("failed");
+  });
+
+  it("executes examples only after an explicit execute expectation and validator opt-in", async () => {
+    const executablePage = page({
+      slug: "execute-example",
+      url: "/docs/execute-example",
+      title: "Execute example",
+      rawContent: `# Execute example\n\n## Verify\n\n\`\`\`js runnable\nconsole.log("verified");\n\`\`\``,
+    });
+    const task: DocsGoldenTask = {
+      id: "execute-js",
+      query: "verify console verified",
+      topK: 1,
+      expect: {
+        relevantSources: ["/docs/execute-example#verify"],
+        examples: [{ language: "js", verification: "execute", includes: ["verified"] }],
+      },
+    };
+    const withoutOptIn = await runDocsGoldenTasks([executablePage], [task]);
+    const executed = await runDocsGoldenTasks([executablePage], [task], {
+      rootDir: process.cwd(),
+      codeBlocksValidate: true,
+      allowNetwork: true,
+    });
+
+    expect(withoutOptIn.tasks[0].examples.results[0]).toMatchObject({
+      status: "skipped",
+      executed: false,
+      passed: false,
+    });
+    expect(withoutOptIn.tasks[0].examples.results[0].reason).toContain("allowNetwork: true");
+    expect(executed.tasks[0].examples).toMatchObject({
+      matched: 1,
+      executed: 1,
+      executable: 1,
+      passed: true,
+    });
+    expect(executed.tasks[0].examples.results[0]).toMatchObject({
+      verification: "execute",
+      executionStatus: "PASS",
+      executed: true,
+      passed: true,
+    });
+    expect(executed.status).toBe("passed");
+  });
+
+  it("does not invoke a global answer provider for tasks without answer expectations", async () => {
+    let calls = 0;
+    const report = await runDocsGoldenTasks(pages, [passingTask], {
+      answer: {
+        provider: "callback",
+        run() {
+          calls += 1;
+          throw new Error("must not run");
+        },
+      },
+    });
+
+    expect(calls).toBe(0);
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].answer).toMatchObject({
+      expected: false,
+      provided: false,
+      passed: true,
+    });
+  });
+
+  it("does not run search, answer, or example execution for invalid duplicate tasks", async () => {
+    let searchCalls = 0;
+    let answerCalls = 0;
+    const duplicate: DocsGoldenTask = {
+      ...passingTask,
+      id: "duplicate-side-effects",
+      surface: "configured-search",
+      expect: {
+        ...passingTask.expect,
+        answer: { includes: ["answer"] },
+        examples: [{ language: "js", verification: "execute" }],
+      },
+    };
+    const report = await runDocsGoldenTasks(pages, [duplicate, duplicate], {
+      allowNetwork: true,
+      rootDir: process.cwd(),
+      codeBlocksValidate: true,
+      search: {
+        provider: "custom",
+        adapter: {
+          name: "must-not-run",
+          async search() {
+            searchCalls += 1;
+            return [];
+          },
+        },
+      },
+      answer: {
+        provider: "callback",
+        run() {
+          answerCalls += 1;
+          return { text: "answer" };
+        },
+      },
+    });
+
+    expect(searchCalls).toBe(0);
+    expect(answerCalls).toBe(0);
+    expect(report.status).toBe("failed");
+    expect(report.tasks.every((task) => task.provider === "unavailable")).toBe(true);
+    expect(report.tasks.every((task) => task.examples.executed === 0)).toBe(true);
+    expect(report.tasks[0].issues.join(" ")).toContain("duplicated");
+  });
+
+  it("fails closed on malformed answer providers without calling unknown values", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: { ...passingTask.expect, answer: { includes: ["callback"] } },
+        },
+      ],
+      {
+        answer: { provider: "calback", run: "not-a-function" } as never,
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].issues.join(" ")).toContain('provider to "callback" or "http"');
+    expect(JSON.stringify(report)).not.toContain("not-a-function");
+  });
+
+  it("aborts callback answer evaluation at the configured timeout", async () => {
+    let observedSignal: AbortSignal | undefined;
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: { ...passingTask.expect, answer: { includes: ["never"] } },
+        },
+      ],
+      {
+        answer: {
+          provider: "callback",
+          timeoutMs: 10,
+          run(input) {
+            observedSignal = input.signal;
+            return new Promise(() => undefined);
+          },
+        },
+      },
+    );
+
+    expect(observedSignal?.aborted).toBe(true);
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].issues.join(" ")).toContain("timed out after 10ms");
+  });
+
+  it("preserves answer citation origins and rejects a same-path citation from another site", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: {
+            ...passingTask.expect,
+            answer: { requiredCitations: ["/docs/auth-v16#configure-authentication"] },
+          },
+        },
+      ],
+      {
+        baseUrl: "https://docs.example.com",
+        answer: {
+          provider: "callback",
+          run: () => ({
+            text: "See [the guide](//evil.example/docs/auth-v16#configure-authentication).",
+          }),
+        },
+      },
+    );
+
+    expect(report.tasks[0].answer).toMatchObject({
+      citations: ["https://evil.example/docs/auth-v16#configure-authentication"],
+      missingCitations: ["/docs/auth-v16#configure-authentication"],
+      unexpectedCitations: ["https://evil.example/docs/auth-v16#configure-authentication"],
+      passed: false,
+    });
+  });
+
+  it("preserves explicit citation origins when the configured base URL is invalid", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: {
+            ...passingTask.expect,
+            answer: { requiredCitations: ["/docs/auth-v16#configure-authentication"] },
+          },
+        },
+      ],
+      {
+        baseUrl: "not a valid base URL",
+        answer: {
+          provider: "callback",
+          run: () => ({
+            text: "See [the guide](https://evil.example/docs/auth-v16#configure-authentication).",
+          }),
+        },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].answer).toMatchObject({
+      citations: ["https://evil.example/docs/auth-v16#configure-authentication"],
+      missingCitations: ["/docs/auth-v16#configure-authentication"],
+    });
+  });
+
+  it("preserves foreign origins in whitespace and backslash URL spellings", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: {
+            ...passingTask.expect,
+            answer: { requiredCitations: ["/docs/auth-v16#configure-authentication"] },
+          },
+        },
+      ],
+      {
+        baseUrl: "https://trusted.example",
+        answer: {
+          provider: "callback",
+          run: () => ({
+            text: "Foreign references",
+            citations: [
+              String.raw`https:\\evil.example\docs\auth-v16#configure-authentication`,
+              String.raw`\\evil.example\docs\auth-v16#configure-authentication`,
+              "  https://evil.example/docs/auth-v16#configure-authentication",
+            ],
+          }),
+        },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].answer.citations).toEqual([
+      "https://evil.example/docs/auth-v16#configure-authentication",
+    ]);
+    expect(report.tasks[0].answer.missingCitations).toEqual([
+      "/docs/auth-v16#configure-authentication",
+    ]);
+  });
+
+  it("normalizes same-origin absolute answer citations with the configured base URL", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: { ...passingTask.expect, answer: {} },
+        },
+      ],
+      {
+        baseUrl: "https://docs.example.com",
+        answer: {
+          provider: "callback",
+          run: () => ({
+            text: "See [the guide](https://docs.example.com/docs/auth-v16#configure-authentication).",
+          }),
+        },
+      },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].answer.citations).toEqual(["/docs/auth-v16#configure-authentication"]);
+  });
+
+  it("uses structured Ask AI blocks when page markdown contains a horizontal rule", async () => {
+    const horizontalRulePage = page({
+      slug: "horizontal-rule",
+      url: "/docs/horizontal-rule",
+      title: "Horizontal rule context",
+      rawContent: `# Horizontal rule context\n\n## Configure\n\nFirst orchard step.\n\n---\n\nSecond orchard step.`,
+    });
+    const report = await runDocsGoldenTasks(
+      [horizontalRulePage],
+      [
+        {
+          id: "horizontal-rule",
+          query: "first second orchard step",
+          surface: "ask-ai-context",
+          topK: 1,
+          expect: { relevantSources: ["/docs/horizontal-rule#configure"] },
+        },
+      ],
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].sources).toHaveLength(1);
+    expect(report.tasks[0].citations).toMatchObject({ integrity: true, passed: true });
+    expect(report.tasks[0].context).toContain("\n\n---\n\n");
+  });
+
+  it("keeps internal execution targets unique while preserving public fence IDs", async () => {
+    const multiSectionPage = page({
+      slug: "multi-section",
+      url: "/docs/multi-section",
+      title: "Multi section execution",
+      rawContent: `# Multi section execution\n\n## Alpha orchard verify\n\n\`\`\`js runnable title="Alpha"\nconsole.log("alpha orchard verify");\n\`\`\`\n\n## Beta orchard verify\n\n\`\`\`js runnable title="Beta"\nconsole.log("beta orchard verify");\n\`\`\``,
+    });
+    const report = await runDocsGoldenTasks(
+      [multiSectionPage],
+      [
+        {
+          id: "multi-section-execute",
+          query: "orchard verify",
+          topK: 2,
+          expect: {
+            relevantSources: [
+              "/docs/multi-section#alpha-orchard-verify",
+              "/docs/multi-section#beta-orchard-verify",
+            ],
+            examples: [
+              { title: "Alpha", verification: "execute" },
+              { title: "Beta", verification: "execute" },
+            ],
+          },
+        },
+      ],
+      {
+        rootDir: process.cwd(),
+        codeBlocksValidate: true,
+        allowNetwork: true,
+      },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].examples).toMatchObject({ executed: 2, passed: true });
+    expect(report.tasks[0].examples.results.map((result) => result.matchedId)).toEqual([
+      "multi-section#code-1",
+      "multi-section#code-1",
+    ]);
+  });
+
+  it("resolves relative MCP evaluation endpoints from baseUrl before network gating", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "relative-mcp",
+          query: "authentication",
+          surface: "configured-search",
+          expect: { relevantSources: ["/docs/auth-v16"] },
+        },
+      ],
+      {
+        baseUrl: "https://docs.example.com",
+        search: { provider: "mcp", endpoint: "/mcp" },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].issues.join(" ")).toContain("allowNetwork: true");
+    expect(report.tasks[0].issues.join(" ")).not.toContain("relative MCP");
+  });
+
+  it("fails Ask AI MCP evaluation clearly when the configured endpoint cannot be resolved", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "unresolved-ask-mcp",
+          query: "authentication",
+          surface: "ask-ai-context",
+          expect: { relevantSources: ["/docs/auth-v16"] },
+        },
+      ],
+      {
+        allowNetwork: true,
+        askAISearch: { provider: "mcp", endpoint: "/api/docs/mcp" },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].issues.join(" ")).toContain("canonical docs baseUrl");
+  });
+
+  it("fails configured-search clearly when the configured provider is disabled", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "disabled-search",
+          query: "authentication",
+          surface: "configured-search",
+          expect: { relevantSources: ["/docs/auth-v16"] },
+        },
+      ],
+      { search: { enabled: false } },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].provider).toBe("unavailable");
+    expect(report.tasks[0].issues.join(" ")).toContain("Configured search is disabled");
+  });
+
+  it("mirrors Ask AI's built-in simple fallback when top-level search is disabled", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [{ ...passingTask, surface: "ask-ai-context" }],
+      { search: { enabled: false } },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0]).toMatchObject({ surface: "ask-ai-context", provider: "simple" });
+  });
+
+  it("extracts angle-bracket and balanced-parenthesis Markdown answer citations", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: {
+            ...passingTask.expect,
+            answer: { requiredCitations: ["/api/foo_(bar)"] },
+          },
+        },
+      ],
+      {
+        answer: {
+          provider: "callback",
+          run: () => ({ text: "Use [the operation](</api/foo_(bar)>)." }),
+        },
+      },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].answer.citations).toEqual(["/api/foo_(bar)"]);
+  });
+
+  it("does not treat images or malformed Markdown as answer citations", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: {
+            ...passingTask.expect,
+            answer: { requiredCitations: [] },
+          },
+        },
+      ],
+      {
+        answer: {
+          provider: "callback",
+          run: () => ({
+            text: [
+              "![Architecture](/docs/auth-v16)",
+              "not-a-link](/docs/auth-v16)",
+              "[unclosed](</docs/auth-v16>",
+              "`[inline code](/docs/auth-v16)`",
+              "<!-- [comment](/docs/auth-v16) -->",
+              "```md\n[fenced code](/docs/auth-v16)\n```",
+            ].join("\n"),
+          }),
+        },
+      },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].answer.citations).toEqual([]);
+  });
+
+  it("keeps unsupported citation schemes distinct from local docs paths", async () => {
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          ...passingTask,
+          expect: {
+            ...passingTask.expect,
+            answer: { requiredCitations: ["/docs/auth-v16"] },
+          },
+        },
+      ],
+      {
+        baseUrl: "https://trusted.example",
+        answer: {
+          provider: "callback",
+          run: () => ({
+            text: "Unsafe references",
+            citations: [
+              "javascript:/docs/auth-v16",
+              "ftp://evil.example/docs/auth-v16",
+              "file:///docs/auth-v16",
+            ],
+          }),
+        },
+      },
+    );
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].answer.missingCitations).toEqual(["/docs/auth-v16"]);
+    expect(report.tasks[0].answer.citations).toEqual([
+      "javascript:///docs/auth-v16",
+      "ftp://evil.example/docs/auth-v16",
+      "file:///docs/auth-v16",
+    ]);
+  });
+
+  it("gates HTTP answers, validates config, keeps inputs blind, and never reports headers", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const answerTask: DocsGoldenTask = {
+      ...passingTask,
+      expect: { ...passingTask.expect, answer: { includes: ["Use the callback"] } },
+    };
+    try {
+      const offline = await runDocsGoldenTasks(pages, [answerTask], {
+        answer: {
+          provider: "http",
+          endpoint: "https://answers.example/evaluate",
+          headers: { Authorization: "Bearer super-secret" },
+        },
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(offline.tasks[0].issues.join(" ")).toContain("allowNetwork: true");
+      expect(JSON.stringify(offline)).not.toContain("super-secret");
+
+      const invalidEndpoint = await runDocsGoldenTasks(pages, [answerTask], {
+        allowNetwork: true,
+        answer: { provider: "http", endpoint: "file:///tmp/answer" },
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(invalidEndpoint.tasks[0].issues.join(" ")).toContain("HTTP or HTTPS");
+
+      const invalidHeaders = await runDocsGoldenTasks(pages, [answerTask], {
+        allowNetwork: true,
+        answer: {
+          provider: "http",
+          endpoint: "https://answers.example/evaluate",
+          headers: { Authorization: 42 } as never,
+        },
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(invalidHeaders.tasks[0].issues.join(" ")).toContain("string values");
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            text: "Use the callback in the guide.",
+            citations: ["/docs/auth-v16#configure-authentication"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+      const measured = await runDocsGoldenTasks(pages, [answerTask], {
+        allowNetwork: true,
+        answer: {
+          provider: "http",
+          endpoint: "https://answers.example/evaluate",
+          headers: {
+            Authorization: "Bearer super-secret",
+            "Content-Type": "text/plain",
+            "X-Evaluation-Client": "docs-doctor",
+          },
+        },
+      });
+      expect(measured.status).toBe("passed");
+      const requestInit = fetchMock.mock.calls.at(-1)?.[1];
+      const requestHeaders = new Headers(requestInit?.headers);
+      expect(requestHeaders.get("content-type")).toBe("application/json");
+      expect(requestHeaders.get("authorization")).toBe("Bearer super-secret");
+      expect(requestHeaders.get("x-evaluation-client")).toBe("docs-doctor");
+      const requestBody = JSON.parse(String(requestInit?.body));
+      expect(requestBody.task).toEqual({
+        id: "next-16-auth",
+        query: "verifyBearerToken authenticate security",
+        filters: { framework: "nextjs", version: "16" },
+      });
+      expect(requestBody.task).not.toHaveProperty("expect");
+      expect(JSON.stringify(measured)).not.toContain("super-secret");
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it("aborts oversized and timed-out HTTP answer responses", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const answerTask: DocsGoldenTask = {
+      ...passingTask,
+      expect: { ...passingTask.expect, answer: { includes: ["answer"] } },
+    };
+    try {
+      fetchMock.mockResolvedValueOnce(
+        new Response("x".repeat(1_000_001), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+      const oversized = await runDocsGoldenTasks(pages, [answerTask], {
+        allowNetwork: true,
+        answer: { provider: "http", endpoint: "https://answers.example/evaluate" },
+      });
+      expect(oversized.status).toBe("failed");
+      expect(oversized.tasks[0].issues.join(" ")).toContain("exceeds the 1 MB limit");
+
+      let aborted = false;
+      fetchMock.mockImplementationOnce((_input, init) => {
+        init?.signal?.addEventListener("abort", () => {
+          aborted = true;
+        });
+        return new Promise(() => undefined);
+      });
+      const timedOut = await runDocsGoldenTasks(pages, [answerTask], {
+        allowNetwork: true,
+        answer: {
+          provider: "http",
+          endpoint: "https://answers.example/evaluate",
+          timeoutMs: 10,
+        },
+      });
+      expect(aborted).toBe(true);
+      expect(timedOut.tasks[0].issues.join(" ")).toContain("timed out after 10ms");
+
+      fetchMock.mockImplementationOnce((_input, init) => {
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"text":"partial'));
+            init?.signal?.addEventListener("abort", () => {
+              controller.error(new DOMException("Aborted", "AbortError"));
+            });
+          },
+        });
+        return Promise.resolve(
+          new Response(body, { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      });
+      const stalledBody = await runDocsGoldenTasks(pages, [answerTask], {
+        allowNetwork: true,
+        answer: {
+          provider: "http",
+          endpoint: "https://answers.example/evaluate",
+          timeoutMs: 10,
+        },
+      });
+      expect(stalledBody.status).toBe("failed");
+      expect(stalledBody.tasks[0].issues.join(" ")).toContain("timed out after 10ms");
+      expect(stalledBody.tasks[0].issues.join(" ")).not.toContain("AbortError");
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it("preserves external MCP result origins and collapses only configured same-origin URLs", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const initialize = () =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            serverInfo: { name: "fixture", version: "1.0.0" },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    const searchResponse = (url: string) =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  results: [{ slug: "remote", url, title: "Remote", excerpt: "orchard remote" }],
+                }),
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    try {
+      fetchMock
+        .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(searchResponse("https://evil.example/docs/remote"));
+      const noBaseCollision = await runDocsGoldenTasks(
+        pages,
+        [
+          {
+            id: "origin-collision-without-base",
+            query: "orchard remote",
+            surface: "configured-search",
+            topK: 1,
+            expect: { relevantSources: ["/docs/remote"] },
+          },
+        ],
+        {
+          allowNetwork: true,
+          search: { provider: "mcp", endpoint: "https://search.example/mcp" },
+        },
+      );
+      expect(noBaseCollision.status).toBe("failed");
+      expect(noBaseCollision.tasks[0].sources[0]?.url).toBe("https://evil.example/docs/remote");
+
+      fetchMock
+        .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(searchResponse("https://evil.example/docs/remote"));
+      const noBaseAskAI = await runDocsGoldenTasks(
+        pages,
+        [
+          {
+            id: "ask-origin-collision-without-base",
+            query: "orchard remote",
+            surface: "ask-ai-context",
+            topK: 1,
+            expect: { relevantSources: ["/docs/remote"] },
+          },
+        ],
+        {
+          allowNetwork: true,
+          askAISearch: { provider: "mcp", endpoint: "https://search.example/mcp" },
+        },
+      );
+      expect(noBaseAskAI.status).toBe("failed");
+      expect(noBaseAskAI.tasks[0].sources[0]?.url).toBe("https://evil.example/docs/remote");
+
+      fetchMock
+        .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(searchResponse(String.raw`https:\\evil.example\docs\remote`));
+      const backslashCollision = await runDocsGoldenTasks(
+        pages,
+        [
+          {
+            id: "backslash-origin-collision",
+            query: "orchard remote",
+            surface: "configured-search",
+            topK: 1,
+            expect: { relevantSources: ["/docs/remote"] },
+          },
+        ],
+        {
+          allowNetwork: true,
+          baseUrl: "https://trusted.example",
+          search: { provider: "mcp", endpoint: "https://search.example/mcp" },
+        },
+      );
+      expect(backslashCollision.status).toBe("failed");
+      expect(backslashCollision.tasks[0].sources[0]?.url).toBe("https://evil.example/docs/remote");
+
+      fetchMock
+        .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(searchResponse("javascript:/docs/remote"));
+      const unsupportedProtocol = await runDocsGoldenTasks(
+        pages,
+        [
+          {
+            id: "unsupported-protocol",
+            query: "orchard remote",
+            surface: "configured-search",
+            topK: 1,
+            expect: { relevantSources: ["/docs/remote"] },
+          },
+        ],
+        {
+          allowNetwork: true,
+          baseUrl: "https://trusted.example",
+          search: { provider: "mcp", endpoint: "https://search.example/mcp" },
+        },
+      );
+      expect(unsupportedProtocol.status).toBe("failed");
+      expect(unsupportedProtocol.tasks[0].sources).toEqual([]);
+
+      fetchMock
+        .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(searchResponse("https://evil.example/docs/remote"));
+      const collision = await runDocsGoldenTasks(
+        pages,
+        [
+          {
+            id: "origin-collision",
+            query: "orchard remote",
+            surface: "configured-search",
+            topK: 1,
+            expect: { relevantSources: ["https://trusted.example/docs/remote"] },
+          },
+        ],
+        {
+          allowNetwork: true,
+          baseUrl: "https://trusted.example",
+          search: { provider: "mcp", endpoint: "https://search.example/mcp" },
+        },
+      );
+      expect(collision.status).toBe("failed");
+      expect(collision.tasks[0].sources[0]?.url).toBe("https://evil.example/docs/remote");
+      expect(collision.tasks[0].retrieval.recallAtK).toBe(0);
+
+      fetchMock
+        .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(searchResponse("https://trusted.example/docs/remote"));
+      const sameOrigin = await runDocsGoldenTasks(
+        pages,
+        [
+          {
+            id: "same-origin",
+            query: "orchard remote",
+            surface: "configured-search",
+            topK: 1,
+            expect: { relevantSources: ["https://trusted.example/docs/remote"] },
+          },
+        ],
+        {
+          allowNetwork: true,
+          baseUrl: "https://trusted.example",
+          search: { provider: "mcp", endpoint: "https://search.example/mcp" },
+        },
+      );
+      expect(sameOrigin.status).toBe("passed");
+      expect(sameOrigin.tasks[0].sources[0]?.url).toBe("/docs/remote");
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 });

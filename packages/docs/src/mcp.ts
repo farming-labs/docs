@@ -571,7 +571,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
     path: "agent",
     name: "agent",
     type: "DocsAgentConfig",
-    description: "Agent compaction defaults and deterministic usefulness evaluations.",
+    description: "Agent compaction defaults and offline-by-default usefulness evaluations.",
     docs: "/docs/getting-started/agent-ready-docs",
     children: [
       {
@@ -636,7 +636,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         name: "evaluations",
         type: "boolean | DocsAgentEvaluationsConfig",
         description:
-          "Deterministic golden tasks for retrieval, citation, version, example, and budget evaluation.",
+          "Offline-by-default golden tasks for retrieval, citation, version, example, answer, and budget evaluation, with explicit external-provider and execution opt-ins.",
         children: [
           {
             path: "agent.evaluations.enabled",
@@ -660,10 +660,81 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Default number of ranked search results evaluated per task.",
           },
           {
+            path: "agent.evaluations.surface",
+            name: "surface",
+            type: '"mcp-context" | "configured-search" | "ask-ai-context"',
+            default: "mcp-context",
+            description: "Retrieval/context surface measured by the golden task suite.",
+          },
+          {
+            path: "agent.evaluations.allowNetwork",
+            name: "allowNetwork",
+            type: "boolean",
+            default: false,
+            description:
+              "Allow external search, HTTP answers, and explicit executable-example verification during evaluation.",
+          },
+          {
+            path: "agent.evaluations.searchTimeoutMs",
+            name: "searchTimeoutMs",
+            type: "number",
+            default: 30000,
+            description: "Per-task configured search and Ask AI retrieval timeout in milliseconds.",
+          },
+          {
+            path: "agent.evaluations.answer",
+            name: "answer",
+            type: "DocsAgentEvaluationAnswerProvider",
+            description:
+              "Opt-in callback or HTTP provider used to evaluate actual generated answers and citations.",
+            children: [
+              {
+                path: "agent.evaluations.answer.provider",
+                name: "provider",
+                type: '"callback" | "http"',
+                description: "Answer evaluation provider kind.",
+              },
+              {
+                path: "agent.evaluations.answer.run",
+                name: "run",
+                type: "DocsAgentEvaluationAnswerRunner",
+                description: "Callback invoked with retrieved context and source references.",
+              },
+              {
+                path: "agent.evaluations.answer.endpoint",
+                name: "endpoint",
+                type: "string",
+                description: "HTTP endpoint used by the opt-in HTTP answer provider.",
+              },
+              {
+                path: "agent.evaluations.answer.headers",
+                name: "headers",
+                type: "Record<string, string>",
+                description: "Optional HTTP request headers; values are never reported.",
+                children: [
+                  {
+                    path: "agent.evaluations.answer.headers.*",
+                    name: "header",
+                    type: "string",
+                    description: "One custom HTTP header value.",
+                  },
+                ],
+              },
+              {
+                path: "agent.evaluations.answer.timeoutMs",
+                name: "timeoutMs",
+                type: "number",
+                default: 30000,
+                description: "Callback or HTTP answer provider timeout in milliseconds.",
+              },
+            ],
+          },
+          {
             path: "agent.evaluations.tasks",
             name: "tasks",
             type: "DocsAgentGoldenTask[]",
-            description: "Offline golden task fixtures evaluated by docs doctor and docs review.",
+            description:
+              "Golden task fixtures evaluated by docs doctor and docs review; the default MCP context surface runs offline.",
             children: [
               {
                 path: "agent.evaluations.tasks[]",
@@ -696,6 +767,12 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                 description: "Per-task ranked retrieval depth override.",
               },
               {
+                path: "agent.evaluations.tasks[].surface",
+                name: "surface",
+                type: '"mcp-context" | "configured-search" | "ask-ai-context"',
+                description: "Per-task evaluation surface override.",
+              },
+              {
                 path: "agent.evaluations.tasks[].filters",
                 name: "filters",
                 type: "DocsAgentGoldenTaskFilters",
@@ -726,7 +803,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                 name: "expect",
                 type: "DocsAgentGoldenTaskExpectation",
                 description:
-                  "Deterministic sources, rank, citation, example, and budget expectations.",
+                  "Evaluator-only source, rank, citation, scope, answer, example, and budget expectations.",
                 children: [
                   {
                     path: "agent.evaluations.tasks[].expect.relevantSources",
@@ -770,6 +847,72 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                     name: "minUsefulByteRatio",
                     type: "number",
                     description: "Minimum share of context bytes supplied by relevant sources.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.scope",
+                    name: "scope",
+                    type: "DocsAgentGoldenTaskFilters",
+                    description:
+                      "Framework, version, and locale assertions checked against returned sources without pre-filtering retrieval.",
+                    children: [
+                      {
+                        path: "agent.evaluations.tasks[].expect.scope.framework",
+                        name: "framework",
+                        type: "string",
+                        description: "Framework the returned sources must select.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.scope.version",
+                        name: "version",
+                        type: "string",
+                        description: "Version the returned sources must select.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.scope.locale",
+                        name: "locale",
+                        type: "string",
+                        description: "Locale the returned sources must select.",
+                      },
+                    ],
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.answer",
+                    name: "answer",
+                    type: "DocsAgentGoldenAnswerExpectation",
+                    description:
+                      "Required answer text and citation assertions for an explicitly configured answer provider.",
+                    children: [
+                      {
+                        path: "agent.evaluations.tasks[].expect.answer.includes",
+                        name: "includes",
+                        type: "string[]",
+                        description: "Literal fragments required in the actual answer.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.answer.excludes",
+                        name: "excludes",
+                        type: "string[]",
+                        description: "Literal fragments forbidden in the actual answer.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.answer.requiredCitations",
+                        name: "requiredCitations",
+                        type: "string[]",
+                        description: "Citations required in the actual answer.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.answer.allowedCitations",
+                        name: "allowedCitations",
+                        type: "string[]",
+                        description: "Additional valid actual-answer citations.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.answer.forbiddenCitations",
+                        name: "forbiddenCitations",
+                        type: "string[]",
+                        description: "Citations forbidden in the actual answer.",
+                      },
+                    ],
                   },
                   {
                     path: "agent.evaluations.tasks[].expect.examples",
@@ -825,6 +968,13 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                         name: "includes",
                         type: "string[]",
                         description: "Literal code fragments that must appear.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.examples[].verification",
+                        name: "verification",
+                        type: '"present" | "syntax" | "execute"',
+                        description:
+                          "Required verification strength; defaults to present when runnable is false and syntax otherwise. Runtime execution is always explicit.",
                       },
                     ],
                   },

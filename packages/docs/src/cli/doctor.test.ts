@@ -445,6 +445,214 @@ Use this docs site through markdown routes and MCP.
     expect(report.evaluations).toMatchObject({ status: "passed", passedTaskCount: 1 });
   });
 
+  it("evaluates the configured Ask AI surface, answer callback, base URL, and runtime examples", async () => {
+    writePackageJson(tmpDir, "doctor-real-evaluations", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  search: false,
+  sitemap: { baseUrl: "https://canonical.example.com" },
+  ai: { docsUrl: "https://different-ai-origin.example.com" },
+  codeBlocks: { validate: true },
+  agent: {
+    evaluations: {
+      surface: "ask-ai-context",
+      allowNetwork: true,
+      answer: {
+        provider: "callback",
+        run(input) {
+          if ("expect" in input.task) throw new Error("Golden expectations leaked");
+          return {
+            text: "Use the [overview](https://canonical.example.com/docs).",
+          };
+        },
+      },
+      tasks: [{
+        id: "overview",
+        query: "overview verified example",
+        topK: 1,
+        expect: {
+          relevantSources: ["/docs"],
+          answer: { requiredCitations: ["/docs"] },
+          examples: [{
+            source: "/docs",
+            language: "js",
+            includes: ["verified"],
+            verification: "execute",
+          }],
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Overview
+description: Verified overview example
+---
+
+# Overview
+
+Use this verified example.
+
+\`\`\`js runnable title="Health check"
+console.log("verified")
+\`\`\`
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations).toMatchObject({ status: "passed", passedTaskCount: 1 });
+    expect(report.evaluations?.tasks[0]).toMatchObject({
+      surface: "ask-ai-context",
+      provider: "simple",
+      answer: {
+        passed: true,
+        citations: ["/docs"],
+      },
+      examples: {
+        expected: 1,
+        matched: 1,
+        results: [
+          expect.objectContaining({
+            verification: "execute",
+            status: "passed",
+            executed: true,
+          }),
+        ],
+      },
+    });
+  });
+
+  it("reports malformed configured answer providers without leaking their headers", async () => {
+    writePackageJson(tmpDir, "doctor-invalid-answer-provider", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    evaluations: {
+      answer: {
+        provider: "unknown",
+        headers: { Authorization: "Bearer doctor-secret" },
+      },
+      tasks: [{
+        id: "overview-answer",
+        query: "overview",
+        expect: {
+          relevantSources: ["/docs"],
+          answer: { includes: ["overview"] },
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations?.status).toBe("failed");
+    expect(report.evaluations?.tasks[0]?.issues.join(" ")).toContain(
+      'provider to "callback" or "http"',
+    );
+    expect(JSON.stringify(report.evaluations)).not.toContain("doctor-secret");
+  });
+
+  it("reports a relative Ask AI MCP endpoint when configured public URLs are invalid", async () => {
+    writePackageJson(tmpDir, "doctor-invalid-public-url", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    docsUrl: "not a valid public URL",
+    useMcp: { endpoint: "/private/mcp" },
+  },
+  agent: {
+    evaluations: {
+      surface: "ask-ai-context",
+      allowNetwork: true,
+      tasks: [{
+        id: "invalid-public-url",
+        query: "overview",
+        expect: { relevantSources: ["/docs"] },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations?.status).toBe("failed");
+    expect(report.evaluations?.tasks[0]?.issues.join(" ")).toContain(
+      "relative MCP evaluation endpoint requires",
+    );
+  });
+
+  it("does not rerun answer evaluations for a dry-run doctor fix", async () => {
+    writePackageJson(tmpDir, "doctor-dry-run-single-evaluation", { next: "16.0.0" });
+    process.env.DOCTOR_EVALUATION_CALLS = "0";
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    evaluations: {
+      answer: {
+        provider: "callback",
+        run() {
+          process.env.DOCTOR_EVALUATION_CALLS = String(
+            Number(process.env.DOCTOR_EVALUATION_CALLS ?? "0") + 1,
+          );
+          return { text: "overview", citations: ["/docs"] };
+        },
+      },
+      tasks: [{
+        id: "single-run",
+        query: "overview",
+        expect: {
+          relevantSources: ["/docs"],
+          answer: { includes: ["overview"] },
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "agent", fix: true, dryRun: true, json: true });
+      if (report.mode !== "agent") throw new Error("Expected an agent doctor report.");
+      expect(report.evaluations?.status).toBe("passed");
+      expect(process.env.DOCTOR_EVALUATION_CALLS).toBe("1");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("does not award usefulness points when there is no evidence to measure", async () => {
     writePackageJson(tmpDir, "doctor-no-evidence", { next: "16.0.0" });
     writeFileSync(

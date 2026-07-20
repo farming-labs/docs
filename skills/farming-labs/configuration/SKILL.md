@@ -45,7 +45,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `feedback` | `boolean \| FeedbackConfig` | `false` for UI | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `telemetry` | `boolean \| DocsTelemetryConfig` | production-only enabled | Farming Labs maintainer telemetry for package adoption and coarse agent-surface usage |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
-| `agent` | `DocsAgentConfig` | — | Compaction defaults and deterministic golden-task evaluations |
+| `agent` | `DocsAgentConfig` | — | Compaction defaults and golden-task usefulness evaluations |
 | `review` | `boolean \| DocsReviewConfig` | `true` | Docs Review scoring, GitHub Actions workflow generation, and rule severities |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
@@ -93,7 +93,7 @@ duplicate, boilerplate, generic-context, task-completeness, and applicability ch
 `commandHealth` statically checks package managers, scripts, working directories, and known docs
 CLI commands without executing documentation snippets. `relatedCoverage`, `configConfidence`,
 `agentSurfaceDrift`, and `goldenTasks` cover related routes, evaluated-vs-static config loading,
-public-surface/schema parity, and deterministic task evaluation respectively.
+public-surface/schema parity, and configured task evaluation respectively.
 
 ---
 
@@ -484,19 +484,23 @@ Use the `cli` skill when the user asks about `docs robots generate` flags.
 ## Golden agent evaluations
 
 Use `agent.evaluations.tasks` when doctor and review should measure actual retrieval usefulness.
-Evaluation is deterministic and offline: it checks ranked source retrieval, canonical citations,
-framework/version selection, executable code-fence metadata, and exact UTF-8 context budgets.
+Evaluation defaults to the local `mcp-context` surface, with no implicit model, network request, or
+command execution. It checks ranked retrieval, canonical citations, framework/version/locale
+selection, answer evidence, verified examples, and exact UTF-8 context usage.
 
 ```ts
 agent: {
   evaluations: {
     tokenBudget: 4_000,
     topK: 3,
+    searchTimeoutMs: 30_000,
+    surface: "mcp-context",
     tasks: [{
       id: "next-16-install",
       query: "Install the docs framework in Next.js 16",
       filters: { framework: "nextjs", version: "16" },
       expect: {
+        scope: { framework: "nextjs", version: "16" },
         relevantSources: ["/docs/installation"],
         forbiddenSources: ["/docs/legacy-installation"],
         maxFirstRelevantRank: 1,
@@ -505,6 +509,7 @@ agent: {
           language: "bash",
           packageManager: "pnpm",
           runnable: true,
+          verification: "present",
           includes: ["pnpm add @farming-labs/docs"],
         }],
         minUsefulByteRatio: 0.7,
@@ -516,7 +521,29 @@ agent: {
 
 `tokenBudget` and `topK` can be set globally or per task. `requiredCitations` defaults to
 `relevantSources`; `allowedSources`, `minRecallAtK`, and `maxFirstRelevantRank` tighten retrieval
-expectations. No configured tasks means `unmeasured`, never a passing score.
+expectations. `filters` narrow retrieval; `expect.scope` asserts the returned framework, version,
+or locale without narrowing first.
+
+Surfaces:
+
+- `mcp-context` — default, local MCP context construction
+- `configured-search` — the actual configured search provider and ranked results
+- `ask-ai-context` — the production Ask AI retrieval and context assembly path
+
+Non-simple search providers require `allowNetwork: true`, and provider errors or the per-task
+`searchTimeoutMs` timeout fail rather than silently falling back. Configured-search preserves the
+provider's returned order and does not supplement it with local hits. Actual-answer scoring additionally requires `expect.answer` and an explicit
+`answer` provider. A callback provider invokes user-owned `run(input)` code. An HTTP provider POSTs
+the task id, query, filters, surface, context, and retrieved sources—never the expected answer—and
+expects `{ text, citations? }`; it requires
+`allowNetwork: true`. HTTP auth is optional through `headers`, whose values never appear in reports.
+No model is selected automatically.
+
+Expected examples accept `verification: "present" | "syntax" | "execute"`. Runnable examples
+default to syntax and non-runnable examples default to presence. Execution requires
+`allowNetwork: true`, an explicit execute expectation, and enabled `codeBlocks.validate` in
+`report` mode; skipped validation never passes. No configured tasks means `unmeasured`, never a
+passing score.
 
 ## Agent compaction
 

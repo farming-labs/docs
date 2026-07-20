@@ -365,6 +365,114 @@ Updated content.
     expect(report.score).toBeLessThan(100);
   });
 
+  it("resolves the Ask AI MCP surface against the canonical public docs URL", async () => {
+    mkdirSync(join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  sitemap: { baseUrl: "https://canonical.example.com" },
+  ai: {
+    docsUrl: "https://different-ai-origin.example.com",
+    useMcp: { endpoint: "/private/mcp" },
+  },
+  agent: {
+    evaluations: {
+      surface: "ask-ai-context",
+      allowNetwork: true,
+      tasks: [{
+        id: "ask-ai-mcp",
+        query: "updated overview",
+        expect: { relevantSources: ["/docs"] },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Docs
+description: Docs page
+---
+
+Initial overview.
+`,
+      "utf-8",
+    );
+    git(["init"]);
+    git(["config", "user.email", "docs@example.com"]);
+    git(["config", "user.name", "Docs Test"]);
+    git(["add", "."]);
+    git(["commit", "-m", "initial docs"]);
+    writeFileSync(
+      join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Docs
+description: Updated docs page
+---
+
+Updated overview.
+`,
+      "utf-8",
+    );
+    git(["add", "."]);
+    git(["commit", "-m", "update docs"]);
+    process.chdir(tmpDir);
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "review-test", version: "1.0.0" },
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        slug: "docs",
+                        url: "https://canonical.example.com/docs",
+                        title: "Docs",
+                        excerpt: "Updated overview.",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+
+    const report = await runReview({ ci: true });
+
+    expect(report?.status).toBe("measured");
+    if (!report || report.status !== "measured") throw new Error("Expected a measured review");
+    expect(report.evaluations?.status).toBe("passed");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://canonical.example.com/private/mcp");
+  });
+
   it("flags a changed boilerplate Agent block using the full docs corpus", async () => {
     mkdirSync(join(tmpDir, "app", "docs", "first"), { recursive: true });
     writeFileSync(

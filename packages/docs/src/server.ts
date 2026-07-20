@@ -84,6 +84,7 @@ export {
 } from "./search.js";
 export { runDocsGoldenTasks } from "./agent-evals.js";
 export type {
+  DocsGoldenAnswerMetrics,
   DocsGoldenCitationMetrics,
   DocsGoldenEvaluationStatus,
   DocsGoldenExampleMetrics,
@@ -98,6 +99,7 @@ export type {
   DocsGoldenTaskReport,
   DocsGoldenTasksReport,
   DocsGoldenUsageMetrics,
+  RunDocsGoldenTasksOptions,
 } from "./agent-evals.js";
 export {
   DEFAULT_OPEN_DOCS_PROMPT,
@@ -166,6 +168,16 @@ export type {
   SerializedOpenDocsProvider,
 } from "./prompt-utils.js";
 export type {
+  DocsAgentEvaluationAnswerInput,
+  DocsAgentEvaluationAnswerProvider,
+  DocsAgentEvaluationAnswerRequest,
+  DocsAgentEvaluationAnswerResult,
+  DocsAgentEvaluationAnswerRunner,
+  DocsAgentEvaluationSourceReference,
+  DocsAgentEvaluationSurface,
+  DocsAgentEvaluationTaskInput,
+  DocsAgentGoldenAnswerExpectation,
+  DocsAgentGoldenExampleVerification,
   DocsSearchAdapter,
   DocsSearchAdapterContext,
   DocsSearchAdapterFactory,

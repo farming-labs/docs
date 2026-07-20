@@ -25,11 +25,13 @@ import {
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { findDocsAudienceMdxIssues } from "../audience.js";
+import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import {
   createFilesystemDocsMcpSource,
   getDocsConfigSchema,
   resolveDocsMcpConfig,
 } from "../mcp.js";
+import { resolveAskAISearchRequestConfig } from "../search.js";
 import type { DocsReviewCiMode } from "../types.js";
 import {
   ensureDocsReviewWorkflow,
@@ -43,6 +45,7 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
+import { resolveGoldenEvaluationInput } from "./golden-evaluations.js";
 import { detectFramework } from "./utils.js";
 
 type ReviewFindingSeverity = "error" | "warn" | "suggestion";
@@ -112,40 +115,6 @@ const IGNORED_DIRS = new Set([
   "node_modules",
   "out",
 ]);
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function resolveGoldenEvaluationTasks(
-  evaluationInput: unknown,
-): Parameters<typeof runDocsGoldenTasks>[1] {
-  if (evaluationInput === undefined || typeof evaluationInput === "boolean") return undefined;
-  if (!isPlainRecord(evaluationInput)) {
-    return { evaluationConfig: evaluationInput } as unknown as Parameters<
-      typeof runDocsGoldenTasks
-    >[1];
-  }
-  if (evaluationInput.enabled === false) return undefined;
-  if ("enabled" in evaluationInput && typeof evaluationInput.enabled !== "boolean") {
-    return evaluationInput as unknown as Parameters<typeof runDocsGoldenTasks>[1];
-  }
-  if (!("tasks" in evaluationInput)) return undefined;
-
-  const runtimeTasks = evaluationInput.tasks;
-  if (!Array.isArray(runtimeTasks)) {
-    return runtimeTasks as Parameters<typeof runDocsGoldenTasks>[1];
-  }
-
-  return runtimeTasks.map((task) => {
-    if (!isPlainRecord(task)) return task;
-    return {
-      ...task,
-      tokenBudget: task.tokenBudget ?? evaluationInput.tokenBudget,
-      topK: task.topK ?? evaluationInput.topK,
-    };
-  }) as Parameters<typeof runDocsGoldenTasks>[1];
-}
 
 export function parseReviewArgs(argv: string[]): ParsedReviewArgs {
   const parsed: ParsedReviewArgs = {};
@@ -325,8 +294,29 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
   }
 
   const evaluationInput = config?.agent?.evaluations;
-  const evaluationTasks = resolveGoldenEvaluationTasks(evaluationInput);
-  const evaluations = await runDocsGoldenTasks(corpusPages, evaluationTasks);
+  const evaluation = resolveGoldenEvaluationInput(evaluationInput);
+  const evaluationBaseUrl = config ? resolveDocsMetadataBaseUrl(config) : undefined;
+  const evaluationSiteTitle = typeof config?.nav?.title === "string" ? config.nav.title : undefined;
+  const evaluationMcp = resolveDocsMcpConfig(config?.mcp, {
+    defaultName: evaluationSiteTitle,
+  });
+  const askAISearch = resolveAskAISearchRequestConfig({
+    search: config?.search,
+    useMcp: config?.ai?.useMcp,
+    mcpEndpoint: evaluationMcp.route,
+    mcpEnabled: evaluationMcp.enabled,
+    mcpSearchEnabled: evaluationMcp.tools.searchDocs,
+    requestUrl: evaluationBaseUrl,
+  });
+  const evaluations = await runDocsGoldenTasks(corpusPages, evaluation.tasks, {
+    ...evaluation.options,
+    search: config?.search,
+    askAISearch,
+    siteTitle: evaluationSiteTitle,
+    baseUrl: evaluationBaseUrl,
+    rootDir,
+    codeBlocksValidate: config?.codeBlocks?.validate,
+  });
   if (relevantFiles.length > 0 && evaluations.status === "unmeasured") {
     pushFinding(findings, review, {
       rule: "goldenTasks",

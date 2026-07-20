@@ -55,7 +55,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `observability` | `boolean \| DocsObservabilityConfig`          | `false`          | Trace event stream for Ask AI and MCP runs, including spans, timing, status, and errors |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false` for UI   | Human page feedback UI; agent feedback endpoints are default-on unless opted out     |
-| `agent`       | `DocsAgentConfig`                               | —                | Compaction defaults and deterministic agent usefulness evaluations                   |
+| `agent`       | `DocsAgentConfig`                               | —                | Compaction defaults and golden-task agent usefulness evaluations                     |
 | `review`      | `boolean \| DocsReviewConfig`                   | `true`           | Docs Review scoring, rule severity, and GitHub Actions workflow generation           |
 | `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
@@ -543,7 +543,7 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `compact` | `DocsAgentCompactConfig` | Defaults for `docs agent compact` |
-| `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Deterministic golden tasks used by `docs doctor` and `docs review` |
+| `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Offline-by-default golden tasks used by `docs doctor` and `docs review` |
 
 ### `DocsAgentEvaluationsConfig`
 
@@ -552,17 +552,38 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 | `enabled` | `boolean` | `true` | Enable configured golden-task evaluation |
 | `tokenBudget` | `number` | `4000` | Default hard UTF-8 context-byte ceiling |
 | `topK` | `number` | `5` | Default ranked retrieval depth |
+| `surface` | `"mcp-context" \| "configured-search" \| "ask-ai-context"` | `"mcp-context"` | Retrieval/context surface measured by the suite |
+| `allowNetwork` | `boolean` | `false` | Allow framework-managed external search, HTTP answers, and runtime example execution |
+| `searchTimeoutMs` | `number` | `30000` | Per-task timeout for configured-search and Ask AI retrieval |
+| `answer` | `DocsAgentEvaluationAnswerProvider` | — | Opt-in callback or HTTP provider for actual-answer evaluation |
 | `tasks` | `DocsAgentGoldenTask[]` | `[]` | Representative tasks; an empty list is reported as unmeasured |
 
 Each task requires `id`, `query`, and `expect.relevantSources`. It can set `filters.framework`,
-`filters.version`, `filters.locale`, and per-task `tokenBudget` or `topK`. Expectations can include
-`allowedSources`, `forbiddenSources`, `requiredCitations`, `minRecallAtK`,
-`maxFirstRelevantRank`, `minUsefulByteRatio`, and runnable code-fence matches through `examples`.
+`filters.version`, `filters.locale`, per-task `surface`, and per-task `tokenBudget` or `topK`.
+Expectations can include `allowedSources`, `forbiddenSources`, `requiredCitations`, `minRecallAtK`,
+`maxFirstRelevantRank`, `minUsefulByteRatio`, `scope`, `answer`, and code-fence matches through
+`examples`. `filters` narrow retrieval; `expect.scope` asserts the framework, version, or locale of
+the returned sources without narrowing them first.
 
-The evaluator is offline and deterministic. It does not execute commands; it measures retrieval,
-canonical citation integrity, framework/version selection, executable example metadata, and exact
-UTF-8 context usage. See [Golden agent evaluations](/docs/configuration#golden-agent-evaluations)
-for a complete configuration example.
+`DocsAgentEvaluationAnswerProvider` is either `{ provider: "callback", run }` or
+`{ provider: "http", endpoint, headers?, timeoutMs? }`. The callback receives the task id, query,
+filters, surface, context, retrieved sources, and an abort signal, but never receives the task
+expectations. The serializable HTTP request omits that callback-only signal. Both
+providers return `{ text, citations? }`. HTTP auth is opt-in through `headers`, and header values
+never appear in reports. Managed external search and HTTP requests require `allowNetwork: true`,
+while callbacks remain explicit user code.
+
+`DocsAgentGoldenExpectedExample.verification` accepts `"present"`, `"syntax"`, or `"execute"`.
+Runnable examples default to syntax verification and explicitly non-runnable examples default to
+presence. Execution is never inferred: it requires `allowNetwork: true`,
+`verification: "execute"`, and an enabled `codeBlocks.validate` configuration in `"report"` mode;
+only an actual `PASS` receives credit.
+
+Evaluation is offline by default on `mcp-context`, with no implicit model or network call. The
+`configured-search` and `ask-ai-context` surfaces exercise the real configured retrieval/context
+paths, and provider failures or timeouts fail instead of falling back to a different surface.
+Configured-search preserves provider ranking and does not supplement it with local hits. See
+[Golden agent evaluations](/docs/configuration#golden-agent-evaluations) for a complete example.
 
 ---
 
@@ -624,7 +645,7 @@ export default defineDocs({
 | `relatedCoverage` | `"suggestion"` | Check valid related-page coverage for actionable docs |
 | `configConfidence` | `"warn"` | Report partial static fallback when the config module cannot be evaluated |
 | `agentSurfaceDrift` | `"error"` | Detect discovery, resolved config, contract, route, MCP tool, and schema drift |
-| `goldenTasks` | `"warn"` | Report failed or unmeasured deterministic golden tasks |
+| `goldenTasks` | `"warn"` | Report failed or unmeasured configured golden tasks |
 
 Rule severities accept `"off"`, `"suggestion"`, `"warn"`, or `"error"`.
 

@@ -274,5 +274,45 @@ describe("agent surface drift", () => {
         },
       ],
     });
+
+    for (const option of [
+      "agent.evaluations.answer.provider",
+      "agent.evaluations.answer.endpoint",
+      "agent.evaluations.searchTimeoutMs",
+      "agent.evaluations.tasks[].surface",
+      "agent.evaluations.tasks[].expect.scope.version",
+      "agent.evaluations.tasks[].expect.answer.includes",
+      "agent.evaluations.tasks[].expect.examples[].verification",
+    ]) {
+      expect(getDocsConfigSchema({ option }).resultCount, option).toBe(1);
+    }
+    const verificationOption = getDocsConfigSchema({
+      option: "agent.evaluations.tasks[].expect.examples[].verification",
+    }).options[0];
+    expect(verificationOption).not.toHaveProperty("default");
+    expect(verificationOption?.description).toContain("runnable is false");
+  });
+
+  it("covers nested evaluation leaves and arbitrary answer headers without exposing names", () => {
+    const options = healthyOptions();
+    options.configOptionPaths = [
+      "agent.evaluations.surface",
+      "agent.evaluations.allowNetwork",
+      "agent.evaluations.searchTimeoutMs",
+      "agent.evaluations.answer.provider",
+      "agent.evaluations.answer.endpoint",
+      "agent.evaluations.answer.headers.Authorization",
+      "agent.evaluations.tasks[0].surface",
+      "agent.evaluations.tasks[0].expect.scope.version",
+      "agent.evaluations.tasks[0].expect.answer.includes[0]",
+      "agent.evaluations.tasks[0].expect.examples[0].verification",
+    ];
+    options.schemaOptions = getDocsConfigSchema().options;
+
+    expect(analyzeAgentSurfaceDrift(options)).toEqual([]);
+    expect(getDocsConfigSchema({ option: "agent.evaluations.answer.headers.*" })).toMatchObject({
+      resultCount: 1,
+      options: [{ path: "agent.evaluations.answer.headers.*", type: "string" }],
+    });
   });
 });
