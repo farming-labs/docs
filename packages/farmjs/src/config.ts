@@ -52,7 +52,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
       ...(options.config
         ? {
             config: {
-              ...(existing.config ?? {}),
+              ...existing.config,
               ...options.config,
             },
           }
