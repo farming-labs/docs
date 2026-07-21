@@ -408,12 +408,19 @@ describe("api reference route templates", () => {
     expect(out).toContain("GET: handler");
   });
 
-  it("creates a single TanStack public docs forwarder", () => {
-    const out = tanstackDocsPublicRouteTemplate(false, "src/routes/$.ts", "docs");
+  it.each([
+    ["path aliases", true, 'import { docsServer } from "@/lib/docs.server";'],
+    ["relative paths", false, 'import { docsServer } from "../lib/docs.server";'],
+  ])("creates a single TanStack public docs forwarder with %s", (_, useAlias, serverImport) => {
+    const out = tanstackDocsPublicRouteTemplate(useAlias, "src/routes/$.ts", "docs");
     expect(out).toContain('createFileRoute("/$")');
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain("isDocsMcpRequest");
-    expect(out).toContain('from "../lib/docs.server"');
+    expect(out).toContain(serverImport);
+    expect(out).toContain('import docsConfig from "../../docs.config";');
+    expect(out).toContain("sitemap: docsConfig.sitemap");
+    expect(out).toContain("llms: docsConfig.llmsTxt");
+    expect(out).toContain("robots: docsConfig.robots");
     expect(out).toContain("docsServer.MCP.OPTIONS");
     expect(out).toContain("OPTIONS: async");
     expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');

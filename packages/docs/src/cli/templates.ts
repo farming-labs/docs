@@ -1175,6 +1175,7 @@ export function tanstackDocsPublicRouteTemplate(
 import { createFileRoute } from "@tanstack/react-router";
 import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import { docsServer } from "${serverImport}";
+import docsConfig from "${tanstackDocsConfigImport(filePath)}";
 
 const docsEntry = ${JSON.stringify(entry)};
 
