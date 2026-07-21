@@ -483,6 +483,21 @@ function standardsNotFoundResponse(request: Request): Response {
   });
 }
 
+function standardsMethodNotAllowedResponse(): Response {
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Expose-Headers": "Link",
+      Allow: "GET, HEAD",
+      "Cache-Control": "no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+      Link: getDocsDiscoveryLinkHeader(),
+      "X-Robots-Tag": "noindex",
+    },
+  });
+}
+
 /** Return one RFC 9727 or Agent Skills discovery response, or null for unrelated requests. */
 export async function createDocsStandardsResponse({
   request,
@@ -492,6 +507,11 @@ export async function createDocsStandardsResponse({
 }: CreateDocsStandardsResponseOptions): Promise<Response | null> {
   const resolved = resolveDocsStandardsDiscoveryRequest(new URL(request.url));
   if (!resolved) return null;
+
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") {
+    return standardsMethodNotAllowedResponse();
+  }
 
   if (resolved.kind === "api-catalog") {
     const content = `${JSON.stringify(apiCatalog, null, 2)}\n`;

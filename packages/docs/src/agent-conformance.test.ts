@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   createDocsAgentContractCases,
@@ -5,6 +6,15 @@ import {
   runDocsAgentConformance,
 } from "./agent-conformance.js";
 import type { DocsAgentContractSurface } from "./agent-conformance.js";
+
+const AGENT_SKILL_CONTENT = `---
+name: docs
+description: Use the documentation through its agent-readable resources.
+---
+
+# Documentation
+`;
+const AGENT_SKILL_DIGEST = createHash("sha256").update(AGENT_SKILL_CONTENT, "utf8").digest("hex");
 
 function createPassingResponse(surface: DocsAgentContractSurface, contentType?: string): Response {
   const contractCase = createDocsAgentContractCases().find(
@@ -20,14 +30,37 @@ function createPassingResponse(surface: DocsAgentContractSurface, contentType?: 
   for (const [header, values] of Object.entries(contractCase.expect.headerIncludes ?? {})) {
     headers.set(header, values.join(", "));
   }
+  if (contractCase.expect.linkRelations) {
+    headers.set(
+      "Link",
+      contractCase.expect.linkRelations
+        .map(({ href, rel }) => `<${href}>; title="Docs, API"; rel="${rel}"`)
+        .join(", "),
+    );
+  }
 
-  return new Response(
-    contractCase.expect.bodyEmpty ? null : (contractCase.expect.bodyIncludes?.join("\n") ?? "ok"),
-    {
-      status: contractCase.expect.statuses[0],
-      headers,
-    },
-  );
+  let body = contractCase.expect.bodyIncludes?.join("\n") ?? "ok";
+  if (surface === "agent-skills-index") {
+    body = JSON.stringify({
+      $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+      skills: [
+        {
+          name: "docs",
+          type: "skill-md",
+          description: "Use the documentation through its agent-readable resources.",
+          url: "/.well-known/agent-skills/docs/SKILL.md",
+          digest: `sha256:${AGENT_SKILL_DIGEST}`,
+        },
+      ],
+    });
+  } else if (surface === "agent-skill") {
+    body = AGENT_SKILL_CONTENT;
+  }
+
+  return new Response(contractCase.expect.bodyEmpty ? null : body, {
+    status: contractCase.expect.statuses[0],
+    headers,
+  });
 }
 
 describe("agent conformance contract", () => {
@@ -73,12 +106,80 @@ describe("agent conformance contract", () => {
 
         if (!contentType) throw new Error(`Missing content type for ${surface}`);
 
-        response.headers.set("Content-Type", `  ${contentType.toUpperCase()} ; Charset=UTF-8  `);
+        const [mediaType, ...parameters] = contentType.split(";");
+        response.headers.set(
+          "Content-Type",
+          `  ${mediaType!.toUpperCase()} ${parameters.length > 0 ? `;${parameters.join(";")}` : ""} ; Charset=UTF-8  `,
+        );
         return response;
       },
     });
 
     expect(report.passed).toBe(true);
+  });
+
+  it("requires the RFC 9727 profile on API catalog GET and HEAD responses", async () => {
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(_request, surface) {
+        return createPassingResponse(
+          surface,
+          surface === "api-catalog" || surface === "api-catalog-head"
+            ? "application/linkset+json"
+            : undefined,
+        );
+      },
+    });
+
+    for (const surface of ["api-catalog", "api-catalog-head"] as const) {
+      expect(report.cases.find((result) => result.surface === surface)).toMatchObject({
+        passed: false,
+        issues: [expect.stringContaining("profile")],
+      });
+    }
+  });
+
+  it("verifies every Agent Skills artifact against its exact UTF-8 SHA-256 digest", async () => {
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(_request, surface) {
+        const response = createPassingResponse(surface);
+        if (surface !== "agent-skills-index") return response;
+
+        const index = (await response.json()) as { skills: Array<{ digest: string }> };
+        index.skills[0]!.digest = `sha256:${"0".repeat(64)}`;
+        return new Response(JSON.stringify(index), {
+          status: response.status,
+          headers: response.headers,
+        });
+      },
+    });
+
+    expect(report.cases.find((result) => result.surface === "agent-skills-index")).toMatchObject({
+      passed: false,
+      issues: [expect.stringContaining("digest")],
+    });
+  });
+
+  it("correlates each Link target and relation while allowing quoted commas", async () => {
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(_request, surface) {
+        const response = createPassingResponse(surface);
+        if (surface === "agent-skills-index") {
+          response.headers.set(
+            "Link",
+            '</.well-known/agent-skills/docs/SKILL.md>; title="Docs, API"; rel="service-meta", </unrelated>; rel="item", </.well-known/api-catalog>; rel="api-catalog"',
+          );
+        }
+        return response;
+      },
+    });
+
+    expect(report.cases.find((result) => result.surface === "agent-skills-index")).toMatchObject({
+      passed: false,
+      issues: [expect.stringContaining("same link-value")],
+    });
   });
 
   it("rejects content types that only prefix-match an expected media type", async () => {

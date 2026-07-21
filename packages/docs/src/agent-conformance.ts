@@ -1,4 +1,7 @@
 import {
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
@@ -54,6 +57,7 @@ export interface DocsAgentContractExpectation {
   bodyIncludes?: readonly string[];
   bodyEmpty?: boolean;
   headerIncludes?: Readonly<Record<string, readonly string[]>>;
+  linkRelations?: readonly { href: string; rel: string }[];
 }
 
 export interface DocsAgentContractCase {
@@ -121,9 +125,10 @@ export function createDocsAgentContractCases(
       expect: {
         statuses: [200],
         contentTypes: json,
-        headerIncludes: {
-          link: [DEFAULT_API_CATALOG_ROUTE, DEFAULT_AGENT_SKILLS_INDEX_ROUTE],
-        },
+        linkRelations: [
+          { href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" },
+          { href: DEFAULT_AGENT_SKILLS_INDEX_ROUTE, rel: "service-meta" },
+        ],
       },
     },
     {
@@ -131,13 +136,13 @@ export function createDocsAgentContractCases(
       request: { url: url(DEFAULT_API_CATALOG_ROUTE) },
       expect: {
         statuses: [200],
-        contentTypes: ["application/linkset+json"],
+        contentTypes: [`${API_CATALOG_MEDIA_TYPE}; profile="${API_CATALOG_PROFILE_URI}"`],
         bodyIncludes: [
           "linkset",
           DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
           DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
         ],
-        headerIncludes: { link: ['rel="api-catalog"'] },
+        linkRelations: [{ href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" }],
       },
     },
     {
@@ -145,9 +150,9 @@ export function createDocsAgentContractCases(
       request: { url: url(DEFAULT_API_CATALOG_ROUTE), init: { method: "HEAD" } },
       expect: {
         statuses: [200],
-        contentTypes: ["application/linkset+json"],
+        contentTypes: [`${API_CATALOG_MEDIA_TYPE}; profile="${API_CATALOG_PROFILE_URI}"`],
         bodyEmpty: true,
-        headerIncludes: { link: ['rel="api-catalog"'] },
+        linkRelations: [{ href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" }],
       },
     },
     {
@@ -161,7 +166,13 @@ export function createDocsAgentContractCases(
           `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/docs/SKILL.md`,
           "sha256:",
         ],
-        headerIncludes: { link: ['rel="item"', DEFAULT_API_CATALOG_ROUTE] },
+        linkRelations: [
+          {
+            href: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/docs/SKILL.md`,
+            rel: "item",
+          },
+          { href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" },
+        ],
       },
     },
     {
@@ -171,7 +182,7 @@ export function createDocsAgentContractCases(
         statuses: [200],
         contentTypes: json,
         bodyEmpty: true,
-        headerIncludes: { link: [DEFAULT_API_CATALOG_ROUTE] },
+        linkRelations: [{ href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" }],
       },
     },
     {
@@ -181,7 +192,10 @@ export function createDocsAgentContractCases(
         statuses: [200],
         contentTypes: markdown,
         bodyIncludes: ["name: docs"],
-        headerIncludes: { link: ['rel="collection"', DEFAULT_AGENT_SKILLS_INDEX_ROUTE] },
+        linkRelations: [
+          { href: DEFAULT_AGENT_SKILLS_INDEX_ROUTE, rel: "collection" },
+          { href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" },
+        ],
       },
     },
     {
@@ -194,7 +208,10 @@ export function createDocsAgentContractCases(
         statuses: [200],
         contentTypes: markdown,
         bodyEmpty: true,
-        headerIncludes: { link: [DEFAULT_AGENT_SKILLS_INDEX_ROUTE] },
+        linkRelations: [
+          { href: DEFAULT_AGENT_SKILLS_INDEX_ROUTE, rel: "collection" },
+          { href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" },
+        ],
       },
     },
     {
@@ -316,13 +333,239 @@ export function createDocsAgentContractCases(
   return cases;
 }
 
+function splitHttpList(value: string, delimiter: "," | ";"): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  let quoted = false;
+  let escaped = false;
+  let angleDepth = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quoted && character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (!quoted && character === "<") angleDepth += 1;
+    if (!quoted && character === ">" && angleDepth > 0) angleDepth -= 1;
+    if (!quoted && angleDepth === 0 && character === delimiter) {
+      parts.push(value.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+
+  parts.push(value.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+function unquoteHttpValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('"') || !trimmed.endsWith('"')) return trimmed;
+  return trimmed.slice(1, -1).replace(/\\(.)/g, "$1");
+}
+
+function parseParameterizedValue(value: string): {
+  value: string;
+  parameters: ReadonlyMap<string, string>;
+} | null {
+  const [rawValue, ...rawParameters] = splitHttpList(value, ";");
+  const normalizedValue = rawValue?.trim().toLowerCase();
+  if (!normalizedValue) return null;
+
+  const parameters = new Map<string, string>();
+  for (const rawParameter of rawParameters) {
+    const separator = rawParameter.indexOf("=");
+    if (separator < 0) continue;
+    const name = rawParameter.slice(0, separator).trim().toLowerCase();
+    if (!name) continue;
+    parameters.set(name, unquoteHttpValue(rawParameter.slice(separator + 1)));
+  }
+  return { value: normalizedValue, parameters };
+}
+
 function matchesContentType(actual: string, expected: readonly string[]): boolean {
-  const [mediaType] = actual.split(";", 1);
-  const normalized = mediaType?.trim().toLowerCase();
+  const parsedActual = parseParameterizedValue(actual);
+  if (!parsedActual) return false;
 
-  if (!normalized) return false;
+  return expected.some((value) => {
+    const parsedExpected = parseParameterizedValue(value);
+    if (!parsedExpected || parsedExpected.value !== parsedActual.value) return false;
+    return [...parsedExpected.parameters].every(
+      ([name, expectedValue]) => parsedActual.parameters.get(name) === expectedValue,
+    );
+  });
+}
 
-  return expected.some((value) => normalized === value.trim().toLowerCase());
+interface ParsedLinkValue {
+  href: string;
+  relations: string[];
+}
+
+function parseLinkHeader(header: string): ParsedLinkValue[] {
+  const links: ParsedLinkValue[] = [];
+  for (const value of splitHttpList(header, ",")) {
+    const target = value.match(/^\s*<([^>]*)>/);
+    if (!target) continue;
+
+    const relations: string[] = [];
+    for (const rawParameter of splitHttpList(value.slice(target[0].length), ";")) {
+      const separator = rawParameter.indexOf("=");
+      if (separator < 0 || rawParameter.slice(0, separator).trim().toLowerCase() !== "rel") {
+        continue;
+      }
+      relations.push(
+        ...unquoteHttpValue(rawParameter.slice(separator + 1))
+          .toLowerCase()
+          .split(/\s+/),
+      );
+    }
+    links.push({ href: target[1], relations: relations.filter(Boolean) });
+  }
+  return links;
+}
+
+function linkMatchesExpectation(
+  links: readonly ParsedLinkValue[],
+  expectation: { href: string; rel: string },
+  responseUrl: string,
+): boolean {
+  let expectedUrl: string;
+  try {
+    expectedUrl = new URL(expectation.href, responseUrl).toString();
+  } catch {
+    return false;
+  }
+
+  return links.some((link) => {
+    try {
+      return (
+        new URL(link.href, responseUrl).toString() === expectedUrl &&
+        link.relations.includes(expectation.rel.toLowerCase())
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+async function sha256Utf8(content: string): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(content),
+  );
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function validateAgentSkillsIndex(
+  content: string,
+  indexUrl: string,
+  handle: RunDocsAgentConformanceOptions["handle"],
+): Promise<string[]> {
+  const issues: string[] = [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return ["Agent Skills index did not contain valid JSON"];
+  }
+
+  const root = asRecord(parsed);
+  if (root?.$schema !== AGENT_SKILLS_DISCOVERY_SCHEMA_URI) {
+    issues.push(`Agent Skills index did not declare ${AGENT_SKILLS_DISCOVERY_SCHEMA_URI}`);
+  }
+  if (!Array.isArray(root?.skills) || root.skills.length === 0) {
+    issues.push("Agent Skills index did not declare any skills");
+    return issues;
+  }
+  const seenNames = new Set<string>();
+  const origin = new URL(indexUrl).origin;
+  for (const rawSkill of root.skills) {
+    const skill = asRecord(rawSkill);
+    const name = skill?.name;
+    const description = skill?.description;
+    const artifactRoute = skill?.url;
+    const digest = skill?.digest;
+    if (
+      !isNonEmptyString(name) ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name) ||
+      name.length > 64 ||
+      skill?.type !== "skill-md" ||
+      !isNonEmptyString(description) ||
+      description.length > 1024 ||
+      !isNonEmptyString(artifactRoute) ||
+      typeof digest !== "string" ||
+      !/^sha256:[0-9a-f]{64}$/u.test(digest)
+    ) {
+      issues.push("Agent Skills index contained an invalid skill entry");
+      continue;
+    }
+    if (seenNames.has(name)) {
+      issues.push(`Agent Skills index declared duplicate skill ${JSON.stringify(name)}`);
+      continue;
+    }
+    seenNames.add(name);
+
+    let artifactUrl: URL;
+    try {
+      artifactUrl = new URL(artifactRoute, indexUrl);
+    } catch {
+      issues.push(`Agent Skills artifact URL for ${JSON.stringify(name)} was invalid`);
+      continue;
+    }
+    const expectedPath = `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${name}/SKILL.md`;
+    if (artifactUrl.origin !== origin || !artifactUrl.pathname.endsWith(expectedPath)) {
+      issues.push(
+        `Agent Skills artifact URL for ${JSON.stringify(name)} did not resolve to same-origin ${expectedPath}`,
+      );
+      continue;
+    }
+
+    try {
+      const response = await handle(new Request(artifactUrl), "agent-skill");
+      const artifact = await response.text();
+      if (response.status !== 200) {
+        issues.push(
+          `Agent Skills artifact ${JSON.stringify(artifactRoute)} returned status ${response.status}`,
+        );
+      }
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!matchesContentType(contentType, ["text/markdown"])) {
+        issues.push(
+          `Agent Skills artifact ${JSON.stringify(artifactRoute)} returned content-type ${contentType || "<missing>"}`,
+        );
+      }
+      const actualDigest = `sha256:${await sha256Utf8(artifact)}`;
+      if (actualDigest !== digest) {
+        issues.push(
+          `Agent Skills artifact ${JSON.stringify(artifactRoute)} digest ${actualDigest} did not match ${digest}`,
+        );
+      }
+    } catch (error) {
+      issues.push(
+        `Agent Skills artifact ${JSON.stringify(artifactRoute)} failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  return issues;
 }
 
 export async function runDocsAgentConformance(
@@ -364,6 +607,12 @@ export async function runDocsAgentConformance(
         issues.push(`expected an empty response body, received ${body.length} characters`);
       }
 
+      if (contractCase.surface === "agent-skills-index") {
+        issues.push(
+          ...(await validateAgentSkillsIndex(body, contractCase.request.url, options.handle)),
+        );
+      }
+
       for (const [header, requiredValues] of Object.entries(
         contractCase.expect.headerIncludes ?? {},
       )) {
@@ -374,6 +623,15 @@ export async function runDocsAgentConformance(
               `response header ${JSON.stringify(header)} did not include ${JSON.stringify(requiredValue)}`,
             );
           }
+        }
+      }
+
+      const parsedLinks = parseLinkHeader(response.headers.get("link") ?? "");
+      for (const expectation of contractCase.expect.linkRelations ?? []) {
+        if (!linkMatchesExpectation(parsedLinks, expectation, contractCase.request.url)) {
+          issues.push(
+            `response Link header did not include ${JSON.stringify(expectation.href)} with rel=${JSON.stringify(expectation.rel)} in the same link-value`,
+          );
         }
       }
 

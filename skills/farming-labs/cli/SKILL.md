@@ -474,13 +474,13 @@ Behavior:
 - exports every resolved page as `.md`, honoring `agent.md`, then `Agent` blocks, then page content
 - exports root/entry/well-known/configured-section llms.txt files, the existing discovery JSON, a
   hashed Agent Skills index and its exact `SKILL.md` artifact, skill and AGENTS aliases, sitemaps,
-  and robots.txt; when an HTTP(S) `baseUrl` is configured it also exports an RFC 9727 API catalog
+  and robots.txt
 - writes `/.well-known/agent-bundle.json` and
   `.farming-labs/agent-bundle-manifest.json` with deterministic SHA-256 hashes
-- static hosts must serve `/.well-known/api-catalog` as `application/linkset+json` with the RFC 9727
-  profile and configure the same discovery `Link` headers when host-level header configuration is
-  available; the exported catalog only lists resources present in the bundle and is omitted when
-  no absolute HTTP(S) base URL is available
+- intentionally omits `/.well-known/api-catalog` and marks it disabled in static discovery because
+  a generic public directory cannot guarantee RFC 9727's required profiled
+  `application/linkset+json` response type; use a dynamic adapter or host-specific routing and
+  headers when the catalog is required
 - treats the exported artifact as static even when `staticExport` is omitted: discovery disables
   server-only search, MCP, feedback, API reference, and OpenAPI capabilities
 - uses tracked git commit dates for exported page freshness and omits checkout-specific filesystem

@@ -273,6 +273,39 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(false);
   });
 
+  it("upgrades an existing managed docs API route to export HEAD", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+    const routePath = join(tmpDir, "app/api/docs/route.ts");
+    const previousManagedRoute = readFileSync(routePath, "utf-8").replace(
+      "export const { GET, HEAD, POST }",
+      "export const { GET, POST }",
+    );
+    writeFileSync(routePath, previousManagedRoute, "utf-8");
+
+    withDocs({});
+
+    expect(readFileSync(routePath, "utf-8")).toContain("export const { GET, HEAD, POST }");
+  });
+
+  it("preserves a user-customized docs API route while upgrading generated files", () => {
+    const routeDir = join(tmpDir, "app/api/docs");
+    const routePath = join(routeDir, "route.ts");
+    const customRoute = `export function GET() {
+  return new Response("custom");
+}
+`;
+    mkdirSync(routeDir, { recursive: true });
+    writeFileSync(routePath, customRoute, "utf-8");
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(readFileSync(routePath, "utf-8")).toBe(customRoute);
+  });
+
   it("prefers src/app when both app and src/app exist", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     mkdirSync(join(tmpDir, "src", "app"), { recursive: true });

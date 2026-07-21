@@ -292,6 +292,8 @@ export interface DocsAgentFeedbackDiscoveryConfig {
 
 export interface DocsLlmsDiscoveryConfig {
   enabled?: boolean;
+  /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
+  apiCatalog?: boolean;
   baseUrl?: string;
   siteTitle?: string;
   siteDescription?: string;
@@ -532,6 +534,8 @@ export interface DocsAgentDiscoverySpecOptions {
   entry?: string;
   /** Public rendered docs path when it differs from `entry`. */
   docsPath?: string;
+  /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
+  apiCatalog?: boolean;
   i18n?: ResolvedDocsI18n | null;
   search?: boolean | DocsSearchConfig;
   mcp: DocsMcpResolvedConfig;
@@ -551,6 +555,8 @@ export interface DocsSkillDocumentOptions {
   entry?: string;
   /** Public rendered docs path when it differs from `entry`. */
   docsPath?: string;
+  /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
+  apiCatalog?: boolean;
   search?: boolean | DocsSearchConfig;
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
@@ -1810,6 +1816,7 @@ export function renderDocsLlmsTxt(
   const siteDescription = options.siteDescription;
   const baseUrl = options.baseUrl ?? "";
   const maxChars = normalizeLlmsTxtMaxChars(options.maxChars);
+  const apiCatalogEnabled = options.apiCatalog ?? true;
   const sections = resolveDocsLlmsTxtSections(options);
   const openapi = resolveDocsOpenApiDiscoveryConfig(options.openapi);
   const matchedPageUrls = new Set<string>();
@@ -1845,7 +1852,9 @@ export function renderDocsLlmsTxt(
   if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
   llmsTxt += "## Agent Discovery\n\n";
   llmsTxt += `- [Agent manifest](${resolveDocsResourceUrl(baseUrl, DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE)}): Farming Labs discovery manifest\n`;
-  llmsTxt += `- [API catalog](${resolveDocsResourceUrl(baseUrl, DEFAULT_API_CATALOG_ROUTE)}): RFC 9727 API catalog\n`;
+  if (apiCatalogEnabled) {
+    llmsTxt += `- [API catalog](${resolveDocsResourceUrl(baseUrl, DEFAULT_API_CATALOG_ROUTE)}): RFC 9727 API catalog\n`;
+  }
   llmsTxt += `- [Agent Skills index](${resolveDocsResourceUrl(baseUrl, DEFAULT_AGENT_SKILLS_INDEX_ROUTE)}): Hashed Agent Skills discovery\n\n`;
   if (generatedSections.length > 0) {
     llmsTxt += "## Sections\n\n";
@@ -2915,12 +2924,14 @@ interface DocsAgentDocumentContext {
   llmsSections: DocsLlmsTxtResolvedSection[];
   markdownAcceptHeader: string | null;
   markdownSignatureAgentHeader: string | null;
+  apiCatalogEnabled: boolean;
 }
 
 type DocsAgentDocumentVariant = "skill" | "agents";
 
 function resolveDocsAgentDocumentContext({
   entry = "docs",
+  apiCatalog = true,
   search,
   mcp,
   feedback,
@@ -2949,6 +2960,7 @@ function resolveDocsAgentDocumentContext({
     markdownAcceptHeader: markdown?.acceptHeader === false ? null : "text/markdown",
     markdownSignatureAgentHeader:
       markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
+    apiCatalogEnabled: apiCatalog,
   };
 }
 
@@ -3101,9 +3113,18 @@ function appendDocsAgentStartHereLines(
     variant === "skill"
       ? `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`
       : `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+  );
+  if (context.apiCatalogEnabled) {
+    lines.push(
+      variant === "skill"
+        ? `- Use ${DEFAULT_API_CATALOG_ROUTE} for standards-based API discovery.`
+        : `- Use ${DEFAULT_API_CATALOG_ROUTE} for RFC 9727 API discovery.`,
+    );
+  }
+  lines.push(
     variant === "skill"
-      ? `- Use ${DEFAULT_API_CATALOG_ROUTE} for standards-based API discovery and ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for hashed skill discovery.`
-      : `- Use ${DEFAULT_API_CATALOG_ROUTE} for RFC 9727 API discovery and ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for integrity-checked skills.`,
+      ? `- Use ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for hashed skill discovery.`
+      : `- Use ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for integrity-checked skills.`,
     variant === "skill"
       ? `- Fetch /${context.normalizedEntry}.md for the root docs page.`
       : `- Read /${context.normalizedEntry}.md for the root docs page.`,
@@ -3190,7 +3211,11 @@ function appendDocsAgentPublicRouteLines(
       `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
       `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
       `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
-      `- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`,
+    );
+    if (context.apiCatalogEnabled) {
+      lines.push(`- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`);
+    }
+    lines.push(
       `- Agent Skills index: ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`,
       `- Agent Skills artifacts: ${DEFAULT_AGENT_SKILLS_ROUTE_PATTERN}`,
       `- Markdown root: /${context.normalizedEntry}.md`,
@@ -3219,7 +3244,11 @@ function appendDocsAgentPublicRouteLines(
     `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
     `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
     `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
-    `- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`,
+  );
+  if (context.apiCatalogEnabled) {
+    lines.push(`- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`);
+  }
+  lines.push(
     `- Agent Skills index: ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`,
     `- Agent Skills artifacts: ${DEFAULT_AGENT_SKILLS_ROUTE_PATTERN}`,
   );
@@ -3380,6 +3409,7 @@ export function resolveDocsAgentContractMcpTools(
 export function buildDocsAgentDiscoverySpec({
   origin,
   entry = "docs",
+  apiCatalog = true,
   i18n = null,
   search,
   mcp,
@@ -3427,7 +3457,7 @@ export function buildDocsAgentDiscoverySpec({
       agents: true,
       llms: llmsEnabled,
       skills: true,
-      apiCatalog: true,
+      apiCatalog,
       agentSkillsDiscovery: true,
       mcp: mcp.enabled,
       search: searchEnabled,
@@ -3450,15 +3480,19 @@ export function buildDocsAgentDiscoverySpec({
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
       agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
-      apiCatalog: DEFAULT_API_CATALOG_ROUTE,
-      apiCatalogQuery: `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+      ...(apiCatalog
+        ? {
+            apiCatalog: DEFAULT_API_CATALOG_ROUTE,
+            apiCatalogQuery: `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+          }
+        : {}),
       agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
       openapi: DEFAULT_OPENAPI_SCHEMA_ROUTE,
     },
     apiCatalog: {
-      enabled: true,
-      route: DEFAULT_API_CATALOG_ROUTE,
-      api: `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+      enabled: apiCatalog,
+      route: apiCatalog ? DEFAULT_API_CATALOG_ROUTE : null,
+      api: apiCatalog ? `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}` : null,
       mediaType: API_CATALOG_MEDIA_TYPE,
       profile: API_CATALOG_PROFILE_URI,
     },

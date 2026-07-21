@@ -1081,7 +1081,7 @@ Use MCP and markdown routes.
         res.writeHead(200, {
           "Content-Type":
             'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
-          Link: '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
+          Link: '</.well-known/api-catalog>; title="Docs, API"; rel="api-catalog"; type="application/linkset+json"',
         });
         res.end(
           req.method === "HEAD"
@@ -1471,6 +1471,29 @@ export const { GET, POST } = createDocsAPI({});
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
       if (
         (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/api-catalog"
+      ) {
+        res.writeHead(200, {
+          "Content-Type":
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+          Link: '</.well-known/api-catalog>; title="Docs, API"; rel="service-meta", </unrelated>; rel="api-catalog"',
+        });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                linkset: [
+                  {
+                    anchor: "http://docs.example.test/.well-known/api-catalog",
+                    item: [{ href: "http://docs.example.test/api/docs" }],
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
         url.pathname === "/.well-known/agent-skills/index.json"
       ) {
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -1518,6 +1541,11 @@ export const { GET, POST } = createDocsAPI({});
 
       expect(check?.status).toBe("fail");
       expect(check?.detail).toContain("docs artifact digest does not match the index");
+      const catalogCheck = report.checks.find((candidate) => candidate.id === "hosted-api-catalog");
+      expect(catalogCheck?.status).toBe("fail");
+      expect(catalogCheck?.detail).toContain(
+        '/.well-known/api-catalog rel="api-catalog" Link value',
+      );
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),

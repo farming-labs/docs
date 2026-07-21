@@ -180,13 +180,13 @@ export default defineDocs({
 - `docs agent export --public` always emits a statically truthful discovery document, even if this
   flag is omitted: server-only search, MCP, feedback, API reference, and OpenAPI are not advertised.
 - Static Agent Bundles always include the hashed Agent Skills index and its exact artifact. They
-  include the RFC 9727 API catalog only when `llmsTxt.baseUrl`, `sitemap.baseUrl`, or
-  `robots.baseUrl` supplies an absolute HTTP(S) origin; otherwise the static discovery manifest
-  marks the catalog disabled.
+  intentionally omit the RFC 9727 API catalog and remove it from generated `llms.txt`, `skill.md`,
+  `AGENTS.md`, and `robots.txt` discovery lists because a generic public directory cannot guarantee
+  the required profiled response type.
 - Dynamic adapters set the RFC media type and discovery `Link` headers automatically. For a purely
-  static deployment, configure the host to serve `/.well-known/api-catalog` as
-  `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`; the Agent Bundle
-  manifest records this media type for deployment tooling.
+  static deployment that needs an API catalog, publish it separately through host-specific routing
+  configured to serve
+  `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`.
 
 ---
 

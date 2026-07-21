@@ -22,8 +22,16 @@ describe("docs robots helpers", () => {
     expect(content).toContain("Allow: /sitemap.xml");
     expect(content).toContain("Allow: /docs/sitemap.md");
     expect(content).toContain("Allow: /.well-known/agent.json");
+    expect(content).toContain("Allow: /.well-known/api-catalog");
     expect(content).toContain("User-agent: GPTBot");
     expect(content).toContain("Sitemap: https://docs.example.com/sitemap.xml");
+  });
+
+  it("omits the API catalog route when a deployment cannot serve its RFC media type", () => {
+    const content = renderDocsRobotsTxt({ entry: "docs", apiCatalog: false });
+
+    expect(content).not.toContain("Allow: /.well-known/api-catalog");
+    expect(content).toContain("Allow: /.well-known/agent-skills/index.json");
   });
 
   it("honors robots opt-out for public and API robots requests", () => {

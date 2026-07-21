@@ -135,6 +135,10 @@ policy without guessing. The existing `/.well-known/agent.json` manifest remains
 cross-links the [RFC 9727 API catalog](https://datatracker.ietf.org/doc/html/rfc9727) and
 [Agent Skills index](https://www.mintlify.com/docs/ai/skillmd). Dynamic responses also advertise
 these discovery resources with HTTP `Link` headers.
+Static Agent Bundles always publish the hashed Agent Skills index, but intentionally omit the API
+catalog: a generic `public/` or `static/` directory cannot guarantee RFC 9727's required profiled
+`application/linkset+json` response type. Use a dynamic adapter or configure and publish that route
+through host-specific routing when the catalog is required.
 
 ## Agent Health Check
 

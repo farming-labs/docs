@@ -161,8 +161,14 @@ pnpm add example
     expect(discovery.staticBundle.manifest).toBe("/.well-known/agent-bundle.json");
     expect(discovery.capabilities.mcp).toBe(false);
     expect(discovery.capabilities.search).toBe(false);
-    expect(discovery.capabilities.apiCatalog).toBe(true);
-    expect(discovery.apiCatalog.route).toBe("/.well-known/api-catalog");
+    expect(discovery.capabilities.apiCatalog).toBe(false);
+    expect(discovery.apiCatalog).toMatchObject({
+      enabled: false,
+      route: null,
+      api: null,
+    });
+    expect(discovery.api).not.toHaveProperty("apiCatalog");
+    expect(discovery.api).not.toHaveProperty("apiCatalogQuery");
 
     const skillsIndex = JSON.parse(
       readFileSync(
@@ -184,15 +190,19 @@ pnpm add example
     expect(skillsIndex.skills[0].digest).toBe(
       `sha256:${createHash("sha256").update(publishedSkill, "utf8").digest("hex")}`,
     );
-    const apiCatalog = JSON.parse(
-      readFileSync(path.join(tmpDir, "public", ".well-known", "api-catalog"), "utf-8"),
+    expect(existsSync(path.join(tmpDir, "public", ".well-known", "api-catalog"))).toBe(false);
+    expect(readFileSync(path.join(tmpDir, "public", "llms.txt"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
     );
-    expect(apiCatalog.linkset[0].anchor).toBe("https://docs.example.com/.well-known/api-catalog");
-    expect(apiCatalog.linkset[0].item).toEqual([
-      expect.objectContaining({
-        href: "https://docs.example.com/.well-known/agent-skills/index.json",
-      }),
-    ]);
+    expect(readFileSync(path.join(tmpDir, "public", "skill.md"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
+    );
+    expect(readFileSync(path.join(tmpDir, "public", "AGENTS.md"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
+    );
+    expect(readFileSync(path.join(tmpDir, "public", "robots.txt"), "utf-8")).not.toContain(
+      "Allow: /.well-known/api-catalog",
+    );
 
     expect(existsSync(path.join(tmpDir, "public", "skills", "docs", "SKILL.md"))).toBe(true);
     expect(existsSync(path.join(tmpDir, "public", "sitemap.xml"))).toBe(true);
@@ -276,7 +286,7 @@ pnpm add example
     });
   });
 
-  it("publishes hashed skills but does not invent an RFC catalog origin", async () => {
+  it("publishes hashed skills without inventing an RFC catalog or relative llms link", async () => {
     writeProject();
     const configPath = path.join(tmpDir, "docs.config.ts");
     writeFileSync(
@@ -302,6 +312,9 @@ pnpm add example
     );
     expect(discovery.capabilities.apiCatalog).toBe(false);
     expect(discovery.apiCatalog.enabled).toBe(false);
+    expect(readFileSync(path.join(tmpDir, "public", "llms.txt"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
+    );
   });
 
   it("preserves native public page and llms overrides", async () => {

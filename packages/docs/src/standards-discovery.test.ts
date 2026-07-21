@@ -106,6 +106,32 @@ describe("RFC 9727 API catalog", () => {
     expect(head?.headers.get("content-type")).toContain(API_CATALOG_MEDIA_TYPE);
     expect(await head?.text()).toBe("");
   });
+
+  it("rejects unsupported methods before resolving a discovery resource", async () => {
+    for (const path of [
+      DEFAULT_API_CATALOG_ROUTE,
+      DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      "/.well-known/agent-skills/docs/SKILL.md",
+      "/api/docs?format=agent-skills",
+    ]) {
+      const response = await createDocsStandardsResponse({
+        request: new Request(`https://docs.example.com${path}`, { method: "POST" }),
+        apiCatalog: catalog(),
+        fallbackSkillDocument: "invalid fallback that must not be resolved",
+      });
+      expect(response?.status).toBe(405);
+      expect(response?.headers.get("allow")).toBe("GET, HEAD");
+      expect(response?.headers.get("link")).toContain('rel="api-catalog"');
+      expect(await response?.text()).toBe("Method Not Allowed");
+    }
+
+    const unrelated = await createDocsStandardsResponse({
+      request: new Request("https://docs.example.com/docs", { method: "POST" }),
+      apiCatalog: catalog(),
+      fallbackSkillDocument: generatedSkill,
+    });
+    expect(unrelated).toBeNull();
+  });
 });
 
 describe("Agent Skills discovery", () => {

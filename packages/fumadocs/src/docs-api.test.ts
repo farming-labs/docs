@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import fs, { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
@@ -1125,6 +1125,66 @@ Use the product-specific workflow first.
       expect(response.status).toBe(200);
       expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
       expect(await response.text()).toBe("");
+    }
+  });
+
+  it("serves legacy discovery HEAD without loading documents and records HEAD analytics", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-discovery-head-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(join(rootDir, "AGENTS.md"), "# Custom agent instructions\n");
+    writeFileSync(
+      join(rootDir, "skill.md"),
+      `---
+name: docs
+description: Custom docs skill.
+---
+
+# Custom skill
+`,
+    );
+
+    const events: DocsAnalyticsEvent[] = [];
+    const { HEAD, POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      analytics: {
+        console: false,
+        onEvent(event) {
+          events.push(event);
+        },
+      },
+    });
+    const readFileSpy = vi.spyOn(fs, "readFileSync");
+
+    try {
+      for (const path of ["/.well-known/agent.json", "/AGENTS.md", "/skill.md"]) {
+        const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe("");
+      }
+
+      const legacyFiles = new Set([join(rootDir, "AGENTS.md"), join(rootDir, "skill.md")]);
+      expect(
+        readFileSpy.mock.calls.some(([file]) => typeof file === "string" && legacyFiles.has(file)),
+      ).toBe(false);
+      expect(
+        events
+          .filter((event) =>
+            ["agent_spec_request", "agents_request", "skill_request"].includes(event.type),
+          )
+          .map((event) => event.properties?.method),
+      ).toEqual(["HEAD", "HEAD", "HEAD"]);
+
+      const unsupported = await POST(
+        new Request("http://localhost/api/docs?format=agent-skills", { method: "POST" }),
+      );
+      expect(unsupported.status).toBe(405);
+      expect(unsupported.headers.get("allow")).toBe("GET, HEAD");
+    } finally {
+      readFileSpy.mockRestore();
     }
   });
 

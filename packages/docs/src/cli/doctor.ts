@@ -1786,17 +1786,93 @@ function contentTypeParameter(contentType: string | null, name: string): string 
   return match?.[1] ?? match?.[2];
 }
 
-function linkHeaderHasRelation(header: string | null, relation: string): boolean {
-  if (!header) return false;
+function splitHttpList(value: string, delimiter: "," | ";"): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  let quoted = false;
+  let escaped = false;
+  let angleDepth = 0;
 
-  for (const match of header.matchAll(/<([^>]+)>\s*((?:;\s*[^,]+)*)/g)) {
-    const parameters = match[2] ?? "";
-    const rel = parameters.match(/(?:^|;)\s*rel\s*=\s*(?:"([^"]*)"|([^;\s,]+))/i);
-    const value = rel?.[1] ?? rel?.[2] ?? "";
-    if (value.toLowerCase().split(/\s+/).includes(relation.toLowerCase())) return true;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quoted && character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (!quoted && character === "<") angleDepth += 1;
+    if (!quoted && character === ">" && angleDepth > 0) angleDepth -= 1;
+    if (!quoted && angleDepth === 0 && character === delimiter) {
+      parts.push(value.slice(start, index).trim());
+      start = index + 1;
+    }
   }
 
-  return false;
+  parts.push(value.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+function unquoteHttpValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('"') || !trimmed.endsWith('"')) return trimmed;
+  return trimmed.slice(1, -1).replace(/\\(.)/g, "$1");
+}
+
+function parseLinkHeader(header: string | null): Array<{ href: string; relations: string[] }> {
+  if (!header) return [];
+
+  const links: Array<{ href: string; relations: string[] }> = [];
+  for (const value of splitHttpList(header, ",")) {
+    const target = value.match(/^\s*<([^>]*)>/);
+    if (!target) continue;
+
+    const relations: string[] = [];
+    const parameters = value.slice(target[0].length);
+    for (const parameter of splitHttpList(parameters, ";")) {
+      const separator = parameter.indexOf("=");
+      if (separator < 0 || parameter.slice(0, separator).trim().toLowerCase() !== "rel") continue;
+      relations.push(
+        ...unquoteHttpValue(parameter.slice(separator + 1))
+          .toLowerCase()
+          .split(/\s+/),
+      );
+    }
+    links.push({ href: target[1], relations: relations.filter(Boolean) });
+  }
+
+  return links;
+}
+
+function linkHeaderHasTargetRelation(
+  header: string | null,
+  target: string,
+  relation: string,
+  responseUrl: string,
+): boolean {
+  let expectedUrl: string;
+  try {
+    expectedUrl = new URL(target, responseUrl).toString();
+  } catch {
+    return false;
+  }
+
+  return parseLinkHeader(header).some((link) => {
+    try {
+      return (
+        new URL(link.href, responseUrl).toString() === expectedUrl &&
+        link.relations.includes(relation.toLowerCase())
+      );
+    } catch {
+      return false;
+    }
+  });
 }
 
 function isApiCatalogLinkset(value: unknown): boolean {
@@ -1854,8 +1930,17 @@ async function probeApiCatalogRoute(baseUrl: string): Promise<HostedStandardsPro
       } else if (contentTypeParameter(contentType, "profile") !== API_CATALOG_PROFILE_URI) {
         failures.push(`${method} Content-Type is missing the RFC 9727 profile`);
       }
-      if (!linkHeaderHasRelation(response.headers.get("link"), "api-catalog")) {
-        failures.push(`${method} is missing a rel="api-catalog" Link header`);
+      if (
+        !linkHeaderHasTargetRelation(
+          response.headers.get("link"),
+          DEFAULT_API_CATALOG_ROUTE,
+          "api-catalog",
+          url,
+        )
+      ) {
+        failures.push(
+          `${method} is missing an ${DEFAULT_API_CATALOG_ROUTE} rel="api-catalog" Link value`,
+        );
       }
     }
 

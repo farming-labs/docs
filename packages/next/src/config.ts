@@ -2072,9 +2072,16 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   // and use client-side search or leave search disabled.
   const isStaticExport = nextConfig.output === "export";
   const docsApiRouteDir = join(root, appDir, "api", "docs");
-  if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
+  const existingDocsApiRoutePath = FILE_EXTS.map((ext) =>
+    join(docsApiRouteDir, `route.${ext}`),
+  ).find((filePath) => existsSync(filePath));
+  const docsApiRoutePath = existingDocsApiRoutePath ?? join(docsApiRouteDir, "route.ts");
+  if (
+    !isStaticExport &&
+    (!existingDocsApiRoutePath || isManagedGeneratedFile(existingDocsApiRoutePath))
+  ) {
     mkdirSync(docsApiRouteDir, { recursive: true });
-    writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
+    writeFileSync(docsApiRoutePath, DOCS_API_ROUTE_TEMPLATE);
   }
 
   const mcp = readMcpConfig(root);

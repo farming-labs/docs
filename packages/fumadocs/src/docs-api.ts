@@ -56,6 +56,7 @@ import {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsLocale,
+  resolveDocsStandardsDiscoveryRequest,
   resolveDocsAgentContractMcpTools,
   resolvePageSidebarFolderIndexBehavior,
   selectDocsLlmsTxtContent,
@@ -405,21 +406,6 @@ function resolveAgentSpecRequest(url: URL): boolean {
     pathname === DEFAULT_AGENT_SPEC_ROUTE ||
     pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE ||
     pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE
-  );
-}
-
-function isStandardsDiscoveryRequest(url: URL): boolean {
-  const pathname = normalizeUrlPath(url.pathname);
-  const format = url.searchParams.get("format")?.trim();
-
-  return (
-    pathname === DEFAULT_API_CATALOG_ROUTE ||
-    pathname === DEFAULT_AGENT_SKILLS_INDEX_ROUTE ||
-    (pathname.startsWith(`${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/`) &&
-      pathname.endsWith("/SKILL.md")) ||
-    format === "api-catalog" ||
-    format === "agent-skills" ||
-    format === "agent-skill"
   );
 }
 
@@ -3953,6 +3939,49 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return next;
   }
 
+  async function resolveStandardsResponse(request: Request, url: URL): Promise<Response | null> {
+    const resolved = resolveDocsStandardsDiscoveryRequest(url);
+    if (!resolved) return null;
+
+    const method = request.method.toUpperCase();
+    const needsSkill = (method === "GET" || method === "HEAD") && resolved.kind !== "api-catalog";
+    const fallbackSkillDocument = needsSkill
+      ? renderSkillDocument({
+          origin: url.origin,
+          entry,
+          i18n,
+          search: searchConfig,
+          mcp: mcpConfig,
+          feedback: agentFeedbackConfig,
+          llms: llmsConfig,
+          sitemap: sitemapConfig,
+          robots: robotsConfig,
+          openapi: openapiDiscovery,
+        })
+      : "";
+
+    return createDocsStandardsDiscoveryResponse({
+      request,
+      preferredSkillDocument: needsSkill ? readRootSkillDocument(root) : null,
+      fallbackSkillDocument,
+      origin: url.origin,
+      entry,
+      docsPath,
+      i18n,
+      search: searchConfig,
+      mcp: mcpConfig,
+      feedback: agentFeedbackConfig,
+      llms: llmsConfig,
+      sitemap: sitemapConfig,
+      robots: robotsConfig,
+      openapi: openapiDiscovery,
+      markdown: {
+        acceptHeader: true,
+        signatureAgentHeader: true,
+      },
+    });
+  }
+
   const handlers = {
     /**
      * GET handler — search, markdown, llms.txt, llms-full.txt, or skill.md.
@@ -3961,6 +3990,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       trackTelemetryRequest(request);
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
+      const requestMethod = request.method.toUpperCase();
+      const isHeadRequest = requestMethod === "HEAD";
       const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       if (isDocsConfigRequest(url)) {
         return Response.json(buildDocsConfigMap(docsConfigMapInput), {
@@ -3990,41 +4021,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         );
       }
 
-      if (isStandardsDiscoveryRequest(url)) {
-        const fallbackSkillDocument = renderSkillDocument({
-          origin: url.origin,
-          entry,
-          i18n,
-          search: searchConfig,
-          mcp: mcpConfig,
-          feedback: agentFeedbackConfig,
-          llms: llmsConfig,
-          sitemap: sitemapConfig,
-          robots: robotsConfig,
-          openapi: openapiDiscovery,
-        });
-        const response = await createDocsStandardsDiscoveryResponse({
-          request,
-          preferredSkillDocument: readRootSkillDocument(root),
-          fallbackSkillDocument,
-          origin: url.origin,
-          entry,
-          docsPath,
-          i18n,
-          search: searchConfig,
-          mcp: mcpConfig,
-          feedback: agentFeedbackConfig,
-          llms: llmsConfig,
-          sitemap: sitemapConfig,
-          robots: robotsConfig,
-          openapi: openapiDiscovery,
-          markdown: {
-            acceptHeader: true,
-            signatureAgentHeader: true,
-          },
-        });
-        if (response) return response;
-      }
+      const standardsResponse = await resolveStandardsResponse(request, url);
+      if (standardsResponse) return standardsResponse;
 
       if (resolveAgentSpecRequest(url)) {
         await emitDocsAnalyticsEvent(analytics, {
@@ -4035,9 +4033,19 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           locale: ctx.locale,
           properties: {
             ...requestAnalyticsProperties,
-            method: "GET",
+            method: requestMethod,
           },
         });
+        if (isHeadRequest) {
+          return new Response(null, {
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
+              Link: discoveryLinkHeader,
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
         return Response.json(
           buildAgentSpec({
             origin: url.origin,
@@ -4067,6 +4075,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             status: 404,
             headers: {
               "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
+        if (isHeadRequest) {
+          return new Response(null, {
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
               "X-Robots-Tag": "noindex",
             },
           });
@@ -4110,16 +4128,19 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           locale: ctx.locale,
           properties: {
             ...requestAnalyticsProperties,
-            method: "GET",
+            method: requestMethod,
           },
         });
-        return new Response(JSON.stringify(agentFeedbackConfig.schema, null, 2), {
-          headers: {
-            "Content-Type": "application/schema+json; charset=utf-8",
-            "Cache-Control": "public, max-age=0, s-maxage=3600",
-            "X-Robots-Tag": "noindex",
+        return new Response(
+          isHeadRequest ? null : JSON.stringify(agentFeedbackConfig.schema, null, 2),
+          {
+            headers: {
+              "Content-Type": "application/schema+json; charset=utf-8",
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
+              "X-Robots-Tag": "noindex",
+            },
           },
-        });
+        );
       }
 
       if (resolveAgentsRequest(url)) {
@@ -4131,22 +4152,24 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           locale: ctx.locale,
           properties: {
             ...requestAnalyticsProperties,
-            method: "GET",
+            method: requestMethod,
           },
         });
         return new Response(
-          readRootAgentsDocument(root) ??
-            renderAgentsDocument({
-              origin: url.origin,
-              entry,
-              search: searchConfig,
-              mcp: mcpConfig,
-              feedback: agentFeedbackConfig,
-              llms: llmsConfig,
-              sitemap: sitemapConfig,
-              robots: robotsConfig,
-              openapi: openapiDiscovery,
-            }),
+          isHeadRequest
+            ? null
+            : (readRootAgentsDocument(root) ??
+                renderAgentsDocument({
+                  origin: url.origin,
+                  entry,
+                  search: searchConfig,
+                  mcp: mcpConfig,
+                  feedback: agentFeedbackConfig,
+                  llms: llmsConfig,
+                  sitemap: sitemapConfig,
+                  robots: robotsConfig,
+                  openapi: openapiDiscovery,
+                })),
           {
             headers: {
               "Content-Type": "text/markdown; charset=utf-8",
@@ -4167,23 +4190,25 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           locale: ctx.locale,
           properties: {
             ...requestAnalyticsProperties,
-            method: "GET",
+            method: requestMethod,
           },
         });
         return new Response(
-          readRootSkillDocument(root) ??
-            renderSkillDocument({
-              origin: url.origin,
-              entry,
-              i18n,
-              search: searchConfig,
-              mcp: mcpConfig,
-              feedback: agentFeedbackConfig,
-              llms: llmsConfig,
-              sitemap: sitemapConfig,
-              robots: robotsConfig,
-              openapi: openapiDiscovery,
-            }),
+          isHeadRequest
+            ? null
+            : (readRootSkillDocument(root) ??
+                renderSkillDocument({
+                  origin: url.origin,
+                  entry,
+                  i18n,
+                  search: searchConfig,
+                  mcp: mcpConfig,
+                  feedback: agentFeedbackConfig,
+                  llms: llmsConfig,
+                  sitemap: sitemapConfig,
+                  robots: robotsConfig,
+                  openapi: openapiDiscovery,
+                })),
           {
             headers: {
               "Content-Type": "text/markdown; charset=utf-8",
@@ -4423,6 +4448,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       trackTelemetryRequest(request);
       const url = new URL(request.url);
       const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
+      const standardsResponse = await resolveStandardsResponse(request, url);
+      if (standardsResponse) return standardsResponse;
+
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
 
       if (agentFeedbackRequest) {

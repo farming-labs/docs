@@ -20,7 +20,6 @@ import {
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
   DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
-  DEFAULT_API_CATALOG_ROUTE,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
   DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
   DEFAULT_LLMS_TXT_ROUTE,
@@ -29,7 +28,6 @@ import {
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
   buildDocsAgentSkillsIndex,
   buildDocsAgentDiscoverySpec,
-  buildDocsApiCatalog,
   renderDocsAgentsDocument,
   renderDocsLlmsTxt,
   renderDocsMarkdownDocument,
@@ -217,16 +215,6 @@ function normalizePathSegment(value: string): string {
 
 function normalizeContent(content: string): string {
   return `${content.trimEnd()}\n`;
-}
-
-function hasHttpOrigin(value: string | undefined): value is string {
-  if (!value) return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 function publicFilePath(publicDir: string, route: string): string {
@@ -725,6 +713,7 @@ function resolveRobotsOutput(
   const existing = readExisting(absolutePath);
   const generatedBlock = renderDocsRobotsGeneratedBlock({
     entry,
+    apiCatalog: false,
     sitemap,
     baseUrl: robots.baseUrl,
     robots,
@@ -1097,6 +1086,8 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const openapi = { enabled: false as const };
   const llms: DocsLlmsDiscoveryConfig = {
     enabled: llmsEnabled,
+    // Static public directories cannot guarantee RFC 9727's required profiled media type.
+    apiCatalog: false,
     baseUrl,
     siteTitle: resolvedSiteTitle,
     siteDescription,
@@ -1107,6 +1098,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const documentOptions = {
     origin: baseUrl ?? "/",
     entry: routeEntry || "docs",
+    apiCatalog: false,
     // `agent export` publishes files only. Never advertise runtime endpoints that the bundle does
     // not contain, even when the application's server-rendered config enables them.
     search: false,
@@ -1197,14 +1189,6 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   });
   const discoveryWithBundle = {
     ...discovery,
-    capabilities: {
-      ...discovery.capabilities,
-      apiCatalog: hasHttpOrigin(baseUrl),
-    },
-    apiCatalog: {
-      ...discovery.apiCatalog,
-      enabled: hasHttpOrigin(baseUrl),
-    },
     staticBundle: {
       format: "farming-labs-agent-bundle.v1",
       manifest: AGENT_BUNDLE_MANIFEST_ROUTE,
@@ -1336,43 +1320,6 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     "application/json",
     JSON.stringify(buildDocsAgentSkillsIndex(publishedAgentSkill), null, 2),
   );
-
-  if (hasHttpOrigin(baseUrl)) {
-    const markdownRootCandidate = `/${routeEntry || sourceEntry || "docs"}.md`;
-    const apiCatalog = buildDocsApiCatalog({
-      origin: baseUrl,
-      docsRoute: routeEntry ? `/${routeEntry}` : "/",
-      // A static Agent Bundle does not publish the runtime /api/docs handler.
-      apiRoute: null,
-      apiRoutes: [
-        {
-          route: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
-          type: "application/json",
-          title: "Agent Skills discovery API",
-        },
-      ],
-      agentManifestRoute: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
-      agentSkillsIndexRoute: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
-      agentsRoute: DEFAULT_AGENTS_MD_ROUTE,
-      skillRoute: DEFAULT_SKILL_MD_ROUTE,
-      markdownRootRoute: outputs.some((output) => output.route === markdownRootCandidate)
-        ? markdownRootCandidate
-        : undefined,
-      llmsRoutes: outputs.filter((output) => output.kind === "llms").map((output) => output.route),
-      sitemapRoutes: outputs
-        .filter((output) => output.kind === "sitemap")
-        .map((output) => output.route),
-      robotsRoute: outputs.find((output) => output.kind === "robots")?.route,
-    });
-    addOutput(
-      outputs,
-      publicDir,
-      DEFAULT_API_CATALOG_ROUTE,
-      "discovery",
-      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
-      JSON.stringify(apiCatalog, null, 2),
-    );
-  }
 
   assertOutputPathsDoNotCollide({
     outputs,

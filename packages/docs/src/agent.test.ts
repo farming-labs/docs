@@ -510,6 +510,9 @@ describe("agent route helpers", () => {
 
     expect(content.llmsTxt).toContain("## Sections");
     expect(content.llmsTxt).toContain(
+      "[API catalog](https://docs.example.com/.well-known/api-catalog)",
+    );
+    expect(content.llmsTxt).toContain(
       "- [API](https://docs.example.com/docs/api/llms.txt): Endpoint reference",
     );
     expect(content.llmsTxt).toContain("- [Overview](https://docs.example.com/docs.md): Start here");
@@ -535,6 +538,13 @@ describe("agent route helpers", () => {
 
     const issue = getDocsLlmsTxtMaxCharsIssue("/llms.txt", content.llmsTxt, content.maxChars);
     expect(issue?.mode).toBe("warn");
+
+    const withoutApiCatalog = renderDocsLlmsTxt(
+      [{ url: "/docs", title: "Overview", content: "Welcome." }],
+      { baseUrl: "https://docs.example.com", apiCatalog: false },
+    ).llmsTxt;
+    expect(withoutApiCatalog).not.toContain("/.well-known/api-catalog");
+    expect(withoutApiCatalog).toContain("/.well-known/agent-skills/index.json");
   });
 
   it("uses the agent projection for runtime llms-full.txt content", () => {

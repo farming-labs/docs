@@ -47,6 +47,8 @@ export interface DocsRobotsResolvedConfig {
 
 export interface DocsRobotsRenderOptions {
   entry?: string;
+  /** Include the RFC 9727 catalog route only when the deployment actually serves it. */
+  apiCatalog?: boolean;
   sitemap?: boolean | DocsSitemapConfig;
   baseUrl?: string;
   robots?: boolean | DocsRobotsConfig;
@@ -145,7 +147,7 @@ export function getDocsRobotsAllowRoutes(options: DocsRobotsRenderOptions = {}):
     DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
     DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
     DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
-    DEFAULT_API_CATALOG_ROUTE,
+    ...(options.apiCatalog === false ? [] : [DEFAULT_API_CATALOG_ROUTE]),
     DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
     `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/*/SKILL.md`,
     DEFAULT_MCP_PUBLIC_ROUTE,
