@@ -107,6 +107,27 @@ describe("RFC 9727 API catalog", () => {
     expect(await head?.text()).toBe("");
   });
 
+  it("keeps the catalog unavailable without disabling Agent Skills discovery", async () => {
+    for (const path of [DEFAULT_API_CATALOG_ROUTE, "/api/docs?format=api-catalog"]) {
+      const response = await createDocsStandardsResponse({
+        request: new Request(`https://docs.example.com${path}`),
+        apiCatalogEnabled: false,
+        fallbackSkillDocument: generatedSkill,
+      });
+      expect(response?.status).toBe(404);
+      expect(response?.headers.get("link")).not.toContain('rel="api-catalog"');
+    }
+
+    const skills = await createDocsStandardsResponse({
+      request: new Request(`https://docs.example.com${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`),
+      apiCatalogEnabled: false,
+      fallbackSkillDocument: generatedSkill,
+    });
+    expect(skills?.status).toBe(200);
+    expect(skills?.headers.get("link")).not.toContain('rel="api-catalog"');
+    expect((await skills!.json()).skills).toHaveLength(1);
+  });
+
   it("rejects unsupported methods before resolving a discovery resource", async () => {
     for (const path of [
       DEFAULT_API_CATALOG_ROUTE,
@@ -247,5 +268,22 @@ description: 'Use the café documentation.'
         new URL("https://docs.example.com/api/docs?format=agent-skill&name=docs"),
       ),
     ).toEqual({ kind: "agent-skill", name: "docs" });
+
+    const customRoute = new URL("https://docs.example.com/api/internal/docs?format=agent-skills");
+    expect(resolveDocsStandardsDiscoveryRequest(customRoute)).toBeNull();
+    expect(
+      resolveDocsStandardsDiscoveryRequest(customRoute, { apiRoute: "/api/internal/docs" }),
+    ).toEqual({ kind: "agent-skills-index" });
+  });
+
+  it("serves query-form discovery from a custom mounted API route", async () => {
+    const response = await createDocsStandardsResponse({
+      request: new Request("https://docs.example.com/api/internal/docs?format=agent-skills"),
+      apiRoute: "/api/internal/docs",
+      apiCatalog: catalog(),
+      fallbackSkillDocument: generatedSkill,
+    });
+    expect(response?.status).toBe(200);
+    expect((await response!.json()).skills).toHaveLength(1);
   });
 });

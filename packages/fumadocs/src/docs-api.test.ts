@@ -972,6 +972,72 @@ export async function GET() {
     expect(await response.text()).toBe("Not Found");
   });
 
+  it("keeps Agent Skills available when the API catalog is opted out", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-catalog-disabled-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  llmsTxt: { apiCatalog: false },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+    for (const path of ["/.well-known/api-catalog", "/api/internal/docs?format=api-catalog"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(404);
+      expect(response.headers.get("link")).not.toContain('rel="api-catalog"');
+    }
+
+    for (const path of [
+      "/.well-known/agent-skills/index.json",
+      "/api/internal/docs?format=agent-skills",
+    ]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("link")).not.toContain('rel="api-catalog"');
+      expect((await response.json()).skills).toHaveLength(1);
+    }
+
+    const manifestResponse = await GET(new Request("http://localhost/.well-known/agent.json"));
+    const manifest = (await manifestResponse.json()) as {
+      capabilities: { apiCatalog: boolean };
+      api: Record<string, unknown>;
+      apiCatalog: { enabled: boolean; route: string | null };
+    };
+    expect(manifest.capabilities.apiCatalog).toBe(false);
+    expect(manifest.api).not.toHaveProperty("apiCatalog");
+    expect(manifest.apiCatalog).toMatchObject({ enabled: false, route: null });
+    expect(manifestResponse.headers.get("link")).not.toContain('rel="api-catalog"');
+
+    for (const path of ["/skill.md", "/AGENTS.md", "/llms.txt"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      const content = await response.text();
+      expect(content).not.toContain("/.well-known/api-catalog");
+      expect(content).toContain("/.well-known/agent-skills/index.json");
+    }
+
+    const robotsResponse = await GET(new Request("http://localhost/robots.txt"));
+    const robots = await robotsResponse.text();
+    expect(robots).not.toContain("/.well-known/api-catalog");
+    expect(robots).toContain("/.well-known/agent-skills/index.json");
+
+    const explicitlyEnabled = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiCatalog: true,
+    });
+    const enabledCatalog = await explicitlyEnabled.GET(
+      new Request("http://localhost/.well-known/api-catalog"),
+    );
+    expect(enabledCatalog.status).toBe(200);
+  });
+
   it("serves a root skill.md file before falling back to generated skill content", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-root-skill-route-"));
     tempDirs.push(rootDir);
@@ -1001,7 +1067,7 @@ Use the product-specific workflow first.
 
     process.chdir(rootDir);
 
-    const { GET, HEAD } = createDocsAPI({
+    const { GET, HEAD, POST } = createDocsAPI({
       rootDir,
       entry: "docs",
     });
@@ -1105,9 +1171,27 @@ Use the product-specific workflow first.
     );
     expect(await indexQueryResponse.json()).toEqual(index);
 
+    const customIndexQueryResponse = await GET(
+      new Request("http://localhost/api/internal/docs?format=agent-skills"),
+    );
+    expect(customIndexQueryResponse.status).toBe(200);
+    expect(await customIndexQueryResponse.json()).toEqual(index);
+
+    const customCatalogQueryResponse = await GET(
+      new Request("http://localhost/api/internal/docs?format=api-catalog"),
+    );
+    expect(customCatalogQueryResponse.status).toBe(200);
+    const customCatalog = (await customCatalogQueryResponse.json()) as {
+      linkset: Array<{ item?: Array<{ href: string }> }>;
+    };
+    expect(customCatalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/internal/docs",
+    );
+
     for (const path of [
       "/.well-known/agent-skills/docs/SKILL.md",
       "/api/docs?format=agent-skill&name=docs",
+      "/api/internal/docs?format=agent-skill&name=docs",
     ]) {
       const artifactResponse = await GET(new Request(`http://localhost${path}`));
       expect(artifactResponse.status).toBe(200);
@@ -1126,6 +1210,22 @@ Use the product-specific workflow first.
       expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
       expect(await response.text()).toBe("");
     }
+
+    const customIndexHead = await HEAD(
+      new Request("http://localhost/api/internal/docs?format=agent-skills", {
+        method: "HEAD",
+      }),
+    );
+    expect(customIndexHead.status).toBe(200);
+    expect(await customIndexHead.text()).toBe("");
+
+    const customIndexPost = await POST(
+      new Request("http://localhost/api/internal/docs?format=agent-skills", {
+        method: "POST",
+      }),
+    );
+    expect(customIndexPost.status).toBe(405);
+    expect(customIndexPost.headers.get("allow")).toBe("GET, HEAD");
   });
 
   it("serves legacy discovery HEAD without loading documents and records HEAD analytics", async () => {

@@ -1754,6 +1754,8 @@ export default defineDocs({
 Default behavior:
 
 - `GET` and `HEAD /.well-known/api-catalog` return the RFC 9727 API catalog
+- set `llmsTxt.apiCatalog: false` to remove that catalog route and its discovery links without
+  disabling the hashed Agent Skills routes
 - `GET` and `HEAD /.well-known/agent-skills/index.json` return the hashed Agent Skills index
 - `GET` and `HEAD /.well-known/agent-skills/<name>/SKILL.md` return the exact indexed skill bytes
 - dynamic adapters set the catalog media type and discovery `Link` headers; static hosts should

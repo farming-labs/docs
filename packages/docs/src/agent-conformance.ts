@@ -15,6 +15,12 @@ import {
   DEFAULT_MCP_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
 } from "./agent.js";
+import {
+  httpLinkMatchesExpectation,
+  parseHttpLinkHeader,
+  splitHttpList,
+  unquoteHttpValue,
+} from "./http-link.js";
 import { DEFAULT_SITEMAP_MD_ROUTE, DEFAULT_SITEMAP_XML_ROUTE } from "./sitemap.js";
 import { DEFAULT_ROBOTS_TXT_ROUTE } from "./robots.js";
 
@@ -333,45 +339,6 @@ export function createDocsAgentContractCases(
   return cases;
 }
 
-function splitHttpList(value: string, delimiter: "," | ";"): string[] {
-  const parts: string[] = [];
-  let start = 0;
-  let quoted = false;
-  let escaped = false;
-  let angleDepth = 0;
-
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (quoted && character === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (character === '"') {
-      quoted = !quoted;
-      continue;
-    }
-    if (!quoted && character === "<") angleDepth += 1;
-    if (!quoted && character === ">" && angleDepth > 0) angleDepth -= 1;
-    if (!quoted && angleDepth === 0 && character === delimiter) {
-      parts.push(value.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-
-  parts.push(value.slice(start).trim());
-  return parts.filter(Boolean);
-}
-
-function unquoteHttpValue(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed.startsWith('"') || !trimmed.endsWith('"')) return trimmed;
-  return trimmed.slice(1, -1).replace(/\\(.)/g, "$1");
-}
-
 function parseParameterizedValue(value: string): {
   value: string;
   parameters: ReadonlyMap<string, string>;
@@ -401,58 +368,6 @@ function matchesContentType(actual: string, expected: readonly string[]): boolea
     return [...parsedExpected.parameters].every(
       ([name, expectedValue]) => parsedActual.parameters.get(name) === expectedValue,
     );
-  });
-}
-
-interface ParsedLinkValue {
-  href: string;
-  relations: string[];
-}
-
-function parseLinkHeader(header: string): ParsedLinkValue[] {
-  const links: ParsedLinkValue[] = [];
-  for (const value of splitHttpList(header, ",")) {
-    const target = value.match(/^\s*<([^>]*)>/);
-    if (!target) continue;
-
-    const relations: string[] = [];
-    for (const rawParameter of splitHttpList(value.slice(target[0].length), ";")) {
-      const separator = rawParameter.indexOf("=");
-      if (separator < 0 || rawParameter.slice(0, separator).trim().toLowerCase() !== "rel") {
-        continue;
-      }
-      relations.push(
-        ...unquoteHttpValue(rawParameter.slice(separator + 1))
-          .toLowerCase()
-          .split(/\s+/),
-      );
-    }
-    links.push({ href: target[1], relations: relations.filter(Boolean) });
-  }
-  return links;
-}
-
-function linkMatchesExpectation(
-  links: readonly ParsedLinkValue[],
-  expectation: { href: string; rel: string },
-  responseUrl: string,
-): boolean {
-  let expectedUrl: string;
-  try {
-    expectedUrl = new URL(expectation.href, responseUrl).toString();
-  } catch {
-    return false;
-  }
-
-  return links.some((link) => {
-    try {
-      return (
-        new URL(link.href, responseUrl).toString() === expectedUrl &&
-        link.relations.includes(expectation.rel.toLowerCase())
-      );
-    } catch {
-      return false;
-    }
   });
 }
 
@@ -626,9 +541,9 @@ export async function runDocsAgentConformance(
         }
       }
 
-      const parsedLinks = parseLinkHeader(response.headers.get("link") ?? "");
+      const parsedLinks = parseHttpLinkHeader(response.headers.get("link"));
       for (const expectation of contractCase.expect.linkRelations ?? []) {
-        if (!linkMatchesExpectation(parsedLinks, expectation, contractCase.request.url)) {
+        if (!httpLinkMatchesExpectation(parsedLinks, expectation, contractCase.request.url)) {
           issues.push(
             `response Link header did not include ${JSON.stringify(expectation.href)} with rel=${JSON.stringify(expectation.rel)} in the same link-value`,
           );

@@ -1157,6 +1157,12 @@ export interface LlmsTxtConfig {
    */
   enabled?: boolean;
   /**
+   * Whether to expose and advertise the RFC 9727 API catalog.
+   * Agent Skills discovery remains available when this is disabled.
+   * @default true
+   */
+  apiCatalog?: boolean;
+  /**
    * Base URL for your docs site (used to build absolute links in llms.txt).
    * @example "https://docs.example.com"
    */

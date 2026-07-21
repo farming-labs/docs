@@ -88,6 +88,22 @@ Enable or disable llms.txt generation.
 | --------- | ------- |
 | `boolean` | `true`  |
 
+### `llmsTxt.apiCatalog`
+
+Controls whether the dynamic site exposes and advertises the RFC 9727
+`/.well-known/api-catalog` route. Disable it when your deployment cannot serve the required
+profiled Linkset response. Agent Skills discovery remains available.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `true`  |
+
+```ts title="docs.config.ts"
+llmsTxt: {
+  apiCatalog: false,
+}
+```
+
 ### `llmsTxt.baseUrl`
 
 Base URL prepended to all page links in the generated files.

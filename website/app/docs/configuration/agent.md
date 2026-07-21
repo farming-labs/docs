@@ -92,6 +92,8 @@ The discovery spec exposed at `/.well-known/agent.json` and `/.well-known/agent`
 | `agentSkillsIndex` | `/.well-known/agent-skills/index.json` | Hashed Agent Skills discovery index                             |
 
 Agents that previously read only `config` should also check `diagnostics` to detect misconfigured or disabled features before attempting to use them.
+The API catalog is intentionally absent when `staticExport: true` or `llmsTxt.apiCatalog: false`;
+Agent Skills discovery remains available in both cases.
 
 ## Framework notes
 

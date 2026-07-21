@@ -835,6 +835,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     | boolean
     | {
         enabled?: boolean;
+        apiCatalog?: boolean;
         baseUrl?: string;
         siteTitle?: string;
         siteDescription?: string;
@@ -856,6 +857,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const llmsEnabled =
     llmsTxtConfig !== false &&
     !(llmsTxtConfig && typeof llmsTxtConfig === "object" && llmsTxtConfig.enabled === false);
+  const apiCatalogEnabled = typeof llmsTxtConfig !== "object" || llmsTxtConfig.apiCatalog !== false;
+  const discoveryLinkHeader = getDocsDiscoveryLinkHeader({
+    includeApiCatalog: apiCatalogEnabled,
+  });
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(config.apiReference);
   const mcpConfig = resolveDocsMcpConfig(config.mcp, {
     defaultName: llmsTitle,
@@ -902,6 +907,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
       sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
       openapi: openapiDiscovery,
+      apiCatalog: apiCatalogEnabled,
     } as any);
     llmsCache.set(key, next);
     return next;
@@ -970,12 +976,14 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       origin: url.origin,
       entry,
       docsPath: config.docsPath,
+      apiCatalog: apiCatalogEnabled,
       i18n,
       search: config.search,
       mcp: mcpConfig,
       feedback: agentFeedbackDiscovery,
       llms: {
         enabled: llmsEnabled,
+        apiCatalog: apiCatalogEnabled,
         baseUrl: llmsBaseUrl || undefined,
         siteTitle: llmsTitle,
         siteDescription: llmsDesc,
@@ -989,10 +997,12 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         acceptHeader: false,
       },
     } as any;
-    if (isDocsStandardsDiscoveryRequest(url)) {
+    const standardsApiRoute = url.pathname.startsWith("/.well-known/") ? undefined : url.pathname;
+    if (isDocsStandardsDiscoveryRequest(url, { apiRoute: standardsApiRoute })) {
       const standardsDiscoveryResponse = await createDocsStandardsDiscoveryResponse({
         request: event.request,
         ...discoveryOptions,
+        apiRoute: standardsApiRoute,
         preferredSkillDocument: readRootSkillDocument(preloaded, rootDir),
         fallbackSkillDocument: renderDocsSkillDocument(discoveryOptions),
       });
@@ -1005,7 +1015,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "public, max-age=0, s-maxage=3600",
           "X-Robots-Tag": "noindex",
-          Link: getDocsDiscoveryLinkHeader(),
+          Link: discoveryLinkHeader,
         },
       });
     }
@@ -1065,7 +1075,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
-            Link: getDocsDiscoveryLinkHeader(),
+            Link: discoveryLinkHeader,
           },
         },
       );
@@ -1079,7 +1089,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
-            Link: getDocsDiscoveryLinkHeader(),
+            Link: discoveryLinkHeader,
           },
         },
       );
@@ -1099,6 +1109,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const robotsResponse = createDocsRobotsResponse({
       request: event.request,
       entry,
+      apiCatalog: apiCatalogEnabled,
       sitemap: config.sitemap,
       baseUrl: llmsBaseUrl || url.origin,
       robots: config.robots,

@@ -10,6 +10,7 @@ import {
   buildDocsDiagnostics,
   buildDocsMcpEndpointCandidates,
   createDocsMarkdownResponse,
+  createDocsStandardsDiscoveryResponse,
   detectDocsMarkdownAgentRequest,
   findDocsAudienceMdxIssues,
   findDocsMarkdownPage,
@@ -291,7 +292,7 @@ describe("agent route helpers", () => {
         api: "/api/docs",
         config: "/api/docs?format=config",
         diagnostics: "/api/docs?format=diagnostics",
-        apiCatalog: "/.well-known/api-catalog",
+        apiCatalog: null,
         agentSkillsIndex: "/.well-known/agent-skills/index.json",
         agentSkillsArtifact: "/.well-known/agent-skills/{name}/SKILL.md",
         search: null,
@@ -304,8 +305,9 @@ describe("agent route helpers", () => {
       features: {
         staticExport: { status: "enabled" },
         apiCatalog: {
-          status: "enabled",
-          route: "/.well-known/api-catalog",
+          status: "disabled",
+          reason: "static-export",
+          route: null,
           transport: "GET/HEAD",
         },
         search: {
@@ -349,6 +351,29 @@ describe("agent route helpers", () => {
           "Ask AI requires the runtime /api/docs POST handler and will not run in static export builds.",
       },
     ]);
+  });
+
+  it("reports the llmsTxt API catalog opt-out without disabling Agent Skills", () => {
+    const diagnostics = buildDocsDiagnostics({
+      llmsTxt: {
+        enabled: true,
+        apiCatalog: false,
+      },
+    });
+
+    expect(diagnostics.routes).toMatchObject({
+      apiCatalog: null,
+      agentSkillsIndex: "/.well-known/agent-skills/index.json",
+      llmsTxt: "/llms.txt",
+    });
+    expect(diagnostics.features.apiCatalog).toEqual({
+      status: "disabled",
+      reason: "llms-txt-api-catalog-disabled",
+      route: null,
+      transport: "GET/HEAD",
+    });
+    expect(diagnostics.features.llmsTxt.status).toBe("enabled");
+    expect(diagnostics.features.skills.status).toBe("enabled");
   });
 
   it("reports invalid search provider diagnostics without leaking configured values", () => {
@@ -1869,5 +1894,75 @@ After`;
 
     expect(resolveDocsAgentFeedbackConfig(false).enabled).toBe(false);
     expect(resolveDocsAgentFeedbackConfig({ agent: false }).enabled).toBe(false);
+  });
+});
+
+describe("standards discovery configuration", () => {
+  const mcp = {
+    enabled: false,
+    route: "/api/docs/mcp",
+    name: "docs",
+    version: "1.0.0",
+    tools: {
+      listDocs: true,
+      listPages: true,
+      readPage: true,
+      listTasks: true,
+      readTask: true,
+      searchDocs: true,
+      getNavigation: true,
+      getCodeExamples: true,
+      getConfigSchema: true,
+      getContext: true,
+    },
+  } as const;
+  const fallbackSkillDocument = `---
+name: docs
+description: Use the example documentation.
+---
+
+# Docs
+`;
+
+  it("uses top-level catalog configuration before llms configuration", async () => {
+    const fromLlms = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/api-catalog"),
+      origin: "https://docs.example.com",
+      mcp,
+      llms: { apiCatalog: false },
+      fallbackSkillDocument,
+    });
+    expect(fromLlms?.status).toBe(404);
+    expect(fromLlms?.headers.get("link")).not.toContain('rel="api-catalog"');
+
+    const skills = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/agent-skills/index.json"),
+      origin: "https://docs.example.com",
+      mcp,
+      llms: { apiCatalog: false },
+      fallbackSkillDocument,
+    });
+    expect(skills?.status).toBe(200);
+    expect(skills?.headers.get("link")).not.toContain('rel="api-catalog"');
+
+    const explicitEnable = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/api-catalog"),
+      origin: "https://docs.example.com",
+      apiCatalog: true,
+      mcp,
+      llms: { apiCatalog: false },
+      fallbackSkillDocument,
+    });
+    expect(explicitEnable?.status).toBe(200);
+
+    const explicitDisable = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/api-catalog"),
+      origin: "https://docs.example.com",
+      apiCatalog: false,
+      mcp,
+      llms: { apiCatalog: true },
+      fallbackSkillDocument,
+    });
+    expect(explicitDisable?.status).toBe(404);
   });
 });

@@ -91,9 +91,18 @@ export type DocsStandardsDiscoveryRequest =
   | { kind: "agent-skills-index" }
   | { kind: "agent-skill"; name: string };
 
+export interface DocsStandardsDiscoveryRouteOptions {
+  /** Internal docs API route used for query-form forwarding. */
+  apiRoute?: string;
+}
+
 export interface CreateDocsStandardsResponseOptions {
   request: Request;
-  apiCatalog: DocsApiCatalog;
+  apiCatalog?: DocsApiCatalog;
+  /** Whether the RFC 9727 catalog is exposed. Defaults to true. */
+  apiCatalogEnabled?: boolean;
+  /** Internal docs API route used for query-form forwarding. */
+  apiRoute?: string;
   preferredSkillDocument?: string | null;
   fallbackSkillDocument: string;
 }
@@ -357,6 +366,7 @@ export function buildDocsAgentSkillsIndex(
 
 export function resolveDocsStandardsDiscoveryRequest(
   url: URL,
+  options: DocsStandardsDiscoveryRouteOptions = {},
 ): DocsStandardsDiscoveryRequest | null {
   const pathname = normalizeDocsRoute(url.pathname);
   if (pathname === DEFAULT_API_CATALOG_ROUTE) return { kind: "api-catalog" };
@@ -371,7 +381,8 @@ export function resolveDocsStandardsDiscoveryRequest(
     }
   }
 
-  if (pathname !== DEFAULT_DOCS_API_ROUTE) return null;
+  const apiRoute = normalizeDocsRoute(options.apiRoute ?? DEFAULT_DOCS_API_ROUTE);
+  if (pathname !== apiRoute) return null;
   const format = url.searchParams.get("format")?.trim();
   if (format === DEFAULT_API_CATALOG_FORMAT) return { kind: "api-catalog" };
   if (format === DEFAULT_AGENT_SKILLS_INDEX_FORMAT) return { kind: "agent-skills-index" };
@@ -381,8 +392,11 @@ export function resolveDocsStandardsDiscoveryRequest(
   return null;
 }
 
-export function isDocsStandardsDiscoveryRequest(url: URL): boolean {
-  return resolveDocsStandardsDiscoveryRequest(url) !== null;
+export function isDocsStandardsDiscoveryRequest(
+  url: URL,
+  options: DocsStandardsDiscoveryRouteOptions = {},
+): boolean {
+  return resolveDocsStandardsDiscoveryRequest(url, options) !== null;
 }
 
 function formatLinkTarget(
@@ -400,13 +414,21 @@ function formatLinkTarget(
 
 /** Cross-link the standards endpoints without replacing an existing canonical Link value. */
 export function getDocsDiscoveryLinkHeader(
-  options: { includeManifest?: boolean; includeSkills?: boolean } = {},
+  options: {
+    includeApiCatalog?: boolean;
+    includeManifest?: boolean;
+    includeSkills?: boolean;
+  } = {},
 ): string {
   return [
-    formatLinkTarget(DEFAULT_API_CATALOG_ROUTE, "api-catalog", {
-      type: API_CATALOG_MEDIA_TYPE,
-      profile: API_CATALOG_PROFILE_URI,
-    }),
+    ...(options.includeApiCatalog === false
+      ? []
+      : [
+          formatLinkTarget(DEFAULT_API_CATALOG_ROUTE, "api-catalog", {
+            type: API_CATALOG_MEDIA_TYPE,
+            profile: API_CATALOG_PROFILE_URI,
+          }),
+        ]),
     ...(options.includeManifest === false
       ? []
       : [
@@ -469,7 +491,7 @@ async function createHashedDiscoveryResponse(options: {
   });
 }
 
-function standardsNotFoundResponse(request: Request): Response {
+function standardsNotFoundResponse(request: Request, linkHeader: string): Response {
   return new Response(request.method.toUpperCase() === "HEAD" ? null : "Not Found", {
     status: 404,
     headers: {
@@ -477,13 +499,13 @@ function standardsNotFoundResponse(request: Request): Response {
       "Access-Control-Expose-Headers": "Link",
       "Cache-Control": "no-store",
       "Content-Type": "text/plain; charset=utf-8",
-      Link: getDocsDiscoveryLinkHeader(),
+      Link: linkHeader,
       "X-Robots-Tag": "noindex",
     },
   });
 }
 
-function standardsMethodNotAllowedResponse(): Response {
+function standardsMethodNotAllowedResponse(linkHeader: string): Response {
   return new Response("Method Not Allowed", {
     status: 405,
     headers: {
@@ -492,7 +514,7 @@ function standardsMethodNotAllowedResponse(): Response {
       Allow: "GET, HEAD",
       "Cache-Control": "no-store",
       "Content-Type": "text/plain; charset=utf-8",
-      Link: getDocsDiscoveryLinkHeader(),
+      Link: linkHeader,
       "X-Robots-Tag": "noindex",
     },
   });
@@ -502,15 +524,22 @@ function standardsMethodNotAllowedResponse(): Response {
 export async function createDocsStandardsResponse({
   request,
   apiCatalog,
+  apiCatalogEnabled = true,
+  apiRoute,
   preferredSkillDocument,
   fallbackSkillDocument,
 }: CreateDocsStandardsResponseOptions): Promise<Response | null> {
-  const resolved = resolveDocsStandardsDiscoveryRequest(new URL(request.url));
+  const resolved = resolveDocsStandardsDiscoveryRequest(new URL(request.url), { apiRoute });
   if (!resolved) return null;
+
+  const linkHeader = getDocsDiscoveryLinkHeader({ includeApiCatalog: apiCatalogEnabled });
+  if (resolved.kind === "api-catalog" && (!apiCatalogEnabled || !apiCatalog)) {
+    return standardsNotFoundResponse(request, linkHeader);
+  }
 
   const method = request.method.toUpperCase();
   if (method !== "GET" && method !== "HEAD") {
-    return standardsMethodNotAllowedResponse();
+    return standardsMethodNotAllowedResponse(linkHeader);
   }
 
   if (resolved.kind === "api-catalog") {
@@ -519,7 +548,7 @@ export async function createDocsStandardsResponse({
       request,
       content,
       contentType: `${API_CATALOG_MEDIA_TYPE}; profile="${API_CATALOG_PROFILE_URI}"; charset=utf-8`,
-      linkHeader: getDocsDiscoveryLinkHeader(),
+      linkHeader,
     });
   }
 
@@ -529,14 +558,14 @@ export async function createDocsStandardsResponse({
   });
 
   if (resolved.kind === "agent-skill") {
-    if (resolved.name !== skill.name) return standardsNotFoundResponse(request);
+    if (resolved.name !== skill.name) return standardsNotFoundResponse(request, linkHeader);
     return createHashedDiscoveryResponse({
       request,
       content: skill.content,
       contentType: "text/markdown; charset=utf-8",
       sha256: skill.sha256,
       linkHeader: [
-        getDocsDiscoveryLinkHeader(),
+        linkHeader,
         formatLinkTarget(DEFAULT_AGENT_SKILLS_INDEX_ROUTE, "collection", {
           type: "application/json",
         }),
@@ -549,9 +578,8 @@ export async function createDocsStandardsResponse({
     request,
     content,
     contentType: "application/json; charset=utf-8",
-    linkHeader: [
-      getDocsDiscoveryLinkHeader(),
-      formatLinkTarget(skill.url, "item", { type: "text/markdown" }),
-    ].join(", "),
+    linkHeader: [linkHeader, formatLinkTarget(skill.url, "item", { type: "text/markdown" })].join(
+      ", ",
+    ),
   });
 }

@@ -184,8 +184,8 @@ export default defineDocs({
   `AGENTS.md`, and `robots.txt` discovery lists because a generic public directory cannot guarantee
   the required profiled response type.
 - Dynamic adapters set the RFC media type and discovery `Link` headers automatically. For a purely
-  static deployment that needs an API catalog, publish it separately through host-specific routing
-  configured to serve
+  static deployment that needs an API catalog, publish `/.well-known/api-catalog` separately
+  through host-specific routing configured to serve
   `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`.
 
 ---
@@ -382,6 +382,8 @@ Behavior:
   `/docs/api/llms.txt` and `/docs/api/llms-full.txt`
 - root `/llms.txt` lists configured sections first and leaves matched pages to their section files
 - section `maxChars` inherits the root `llmsTxt.maxChars` when omitted
+- set `llmsTxt.apiCatalog: false` when the deployment must not expose or advertise
+  `/.well-known/api-catalog`; hashed Agent Skills discovery remains enabled
 
 Use `/docs/customization/llms-txt` for output examples.
 

@@ -471,5 +471,6 @@ export type {
   DocsApiCatalogOptions,
   DocsPublishedAgentSkill,
   DocsPublishedAgentSkillOptions,
+  DocsStandardsDiscoveryRouteOptions,
   DocsStandardsDiscoveryRequest,
 } from "./agent.js";
