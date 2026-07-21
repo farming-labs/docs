@@ -1006,11 +1006,13 @@ export default defineDocs({
 export function tanstackDocsServerTemplate(): string {
   return `\
 import { createDocsServer } from "@farming-labs/tanstack-start/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import docsConfig from "../../docs.config";
 
 export const docsServer = createDocsServer({
   ...docsConfig,
   rootDir: process.cwd(),
+  _preloadedAgentSkills: bundledAgentSkills,
 });
 `;
 }
@@ -1294,12 +1296,54 @@ export function tanstackViteConfigTemplate(useAlias: boolean): string {
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 ${useAlias ? 'import tsconfigPaths from "vite-tsconfig-paths";\n' : ""}import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { docsAgentSkills } from "@farming-labs/docs/vite";
 import { docsMdx } from "@farming-labs/tanstack-start/vite";
+import docsConfig from "./docs.config";
 
 export default defineConfig({
-  plugins: [tailwindcss(), docsMdx(), ${useAlias ? "tsconfigPaths({ ignoreConfigErrors: true }), " : ""}tanstackStart()],
+  plugins: [tailwindcss(), docsMdx(), docsAgentSkills(docsConfig), ${useAlias ? "tsconfigPaths({ ignoreConfigErrors: true }), " : ""}tanstackStart()],
 });
 `;
+}
+
+export function svelteViteConfigTemplate(): string {
+  return `\
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vite";
+import { docsAgentSkills } from "@farming-labs/docs/vite";
+import docsConfig from "./src/lib/docs.config";
+
+export default defineConfig({
+  plugins: [sveltekit(), docsAgentSkills(docsConfig)],
+});
+`;
+}
+
+/** Add the Agent Skills snapshot plugin to an existing Vite config. */
+export function injectDocsAgentSkillsVitePlugin(
+  content: string,
+  configImportPath: string,
+): string | null {
+  if (!content) return null;
+
+  let out = addImportLine(content, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, `import docsConfig from ${JSON.stringify(configImportPath)};`);
+
+  if (out.includes("docsAgentSkills(docsConfig)")) return out === content ? null : out;
+
+  const pluginsMatch = out.match(/plugins\s*:\s*\[([\s\S]*?)\]/m);
+  if (pluginsMatch) {
+    const current = pluginsMatch[1].trim();
+    const existing = current ? `${current}${current.endsWith(",") ? "" : ","}` : "";
+    return out.replace(
+      pluginsMatch[0],
+      `plugins: [${existing}${existing ? " " : ""}docsAgentSkills(docsConfig)]`,
+    );
+  }
+
+  const configMatch = out.match(/defineConfig\(\s*\{/);
+  if (!configMatch) return null;
+  return out.replace(configMatch[0], "defineConfig({\n  plugins: [docsAgentSkills(docsConfig)],");
 }
 
 export function injectTanstackVitePlugins(content: string, useAlias: boolean): string | null {
@@ -1311,10 +1355,13 @@ export function injectTanstackVitePlugins(content: string, useAlias: boolean): s
     out = addImportLine(out, 'import tsconfigPaths from "vite-tsconfig-paths";');
   }
   out = addImportLine(out, 'import { docsMdx } from "@farming-labs/tanstack-start/vite";');
+  out = addImportLine(out, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, 'import docsConfig from "./docs.config";');
 
   const additions: string[] = [];
   if (!out.includes("tailwindcss()")) additions.push("tailwindcss()");
   if (!out.includes("docsMdx()")) additions.push("docsMdx()");
+  if (!out.includes("docsAgentSkills(")) additions.push("docsAgentSkills(docsConfig)");
   if (useAlias && !out.includes("tsconfigPaths("))
     additions.push("tsconfigPaths({ ignoreConfigErrors: true })");
 
@@ -1572,6 +1619,7 @@ export function svelteDocsServerTemplate(cfg: TemplateConfig): string {
   const contentDirName = cfg.entry ?? "docs";
   return `\
 import { createDocsServer } from "@farming-labs/svelte/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
 // preload for production
@@ -1584,6 +1632,7 @@ const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "
 export const { load, GET, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
+  _preloadedAgentSkills: bundledAgentSkills,
 });
 `;
 }
@@ -2073,6 +2122,7 @@ export function astroDocsServerTemplate(cfg: TemplateConfig): string {
   const contentDirName = cfg.entry ?? "docs";
   return `\
 import { createDocsServer } from "@farming-labs/astro/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
 const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
@@ -2084,6 +2134,7 @@ const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/AGE
 export const { load, GET, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
+  _preloadedAgentSkills: bundledAgentSkills,
 });
 `;
 }
@@ -2106,12 +2157,46 @@ export function astroConfigTemplate(adapter: string = "vercel"): string {
   return `\
 import { defineConfig } from "astro/config";
 import ${adapter} from "${info.import}";
+import { docsAgentSkills } from "@farming-labs/docs/vite";
+import docsConfig from "./src/lib/docs.config";
 
 export default defineConfig({
   output: "server",
   adapter: ${adapterCall},
+  vite: { plugins: [docsAgentSkills(docsConfig)] },
 });
 `;
+}
+
+/** Add the Agent Skills snapshot plugin to an existing Astro config. */
+export function injectAstroAgentSkillsPlugin(content: string): string | null {
+  if (!content) return null;
+
+  let out = addImportLine(content, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, 'import docsConfig from "./src/lib/docs.config";');
+  if (out.includes("docsAgentSkills(docsConfig)")) return out === content ? null : out;
+
+  const vitePlugins = out.match(/(vite\s*:\s*\{[\s\S]*?plugins\s*:\s*\[)([\s\S]*?)(\])/m);
+  if (vitePlugins) {
+    const current = vitePlugins[2].trim();
+    const next = `${current}${current && !current.endsWith(",") ? "," : ""}${current ? " " : ""}docsAgentSkills(docsConfig)`;
+    return out.replace(vitePlugins[0], `${vitePlugins[1]}${next}${vitePlugins[3]}`);
+  }
+
+  const viteBlock = out.match(/vite\s*:\s*\{/);
+  if (viteBlock) {
+    return out.replace(
+      viteBlock[0],
+      `${viteBlock[0]}\n    plugins: [docsAgentSkills(docsConfig)],`,
+    );
+  }
+
+  const configMatch = out.match(/defineConfig\(\s*\{/);
+  if (!configMatch) return null;
+  return out.replace(
+    configMatch[0],
+    "defineConfig({\n  vite: { plugins: [docsAgentSkills(docsConfig)] },",
+  );
 }
 
 export function astroDocsPageTemplate(cfg: TemplateConfig): string {
@@ -2603,9 +2688,13 @@ export function nuxtServerApiDocsRouteTemplate(cfg: TemplateConfig): string {
   const configImport = cfg.useAlias ? "~/docs.config" : "../../docs.config";
   return `\
 import { defineDocsHandler } from "@farming-labs/nuxt/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
-export default defineDocsHandler(config, useStorage);
+export default defineDocsHandler(
+  { ...config, _preloadedAgentSkills: bundledAgentSkills },
+  useStorage,
+);
 `;
 }
 
@@ -2614,9 +2703,13 @@ export function nuxtServerDocsPublicMiddlewareTemplate(cfg: TemplateConfig): str
 
   return `\
 import { defineDocsPublicHandler } from "@farming-labs/nuxt/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
-export default defineDocsPublicHandler(config, useStorage);
+export default defineDocsPublicHandler(
+  { ...config, _preloadedAgentSkills: bundledAgentSkills },
+  useStorage,
+);
 `;
 }
 
@@ -2667,6 +2760,9 @@ if (error.value) {
 
 export function nuxtConfigTemplate(cfg: TemplateConfig): string {
   return `\
+import { docsAgentSkills } from "@farming-labs/docs/vite";
+import docsConfig from "./docs.config";
+
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
 
@@ -2681,9 +2777,49 @@ export default defineNuxtConfig({
   nitro: {
     moduleSideEffects: ["@farming-labs/nuxt/server"],
     serverAssets: [{ baseName: "${cfg.entry}", dir: "${cfg.entry}" }],
+    rollupConfig: { plugins: [docsAgentSkills(docsConfig)] },
   },
 });
 `;
+}
+
+/** Add the Agent Skills snapshot plugin to Nitro's server Rollup build. */
+export function injectNuxtAgentSkillsPlugin(content: string): string | null {
+  if (!content) return null;
+
+  let out = addImportLine(content, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, 'import docsConfig from "./docs.config";');
+  if (out.includes("docsAgentSkills(docsConfig)")) return out === content ? null : out;
+
+  const rollupPlugins = out.match(/(rollupConfig\s*:\s*\{[\s\S]*?plugins\s*:\s*\[)([\s\S]*?)(\])/m);
+  if (rollupPlugins) {
+    const current = rollupPlugins[2].trim();
+    const next = `${current}${current && !current.endsWith(",") ? "," : ""}${current ? " " : ""}docsAgentSkills(docsConfig)`;
+    return out.replace(rollupPlugins[0], `${rollupPlugins[1]}${next}${rollupPlugins[3]}`);
+  }
+
+  const rollupBlock = out.match(/rollupConfig\s*:\s*\{/);
+  if (rollupBlock) {
+    return out.replace(
+      rollupBlock[0],
+      `${rollupBlock[0]}\n      plugins: [docsAgentSkills(docsConfig)],`,
+    );
+  }
+
+  const nitroBlock = out.match(/nitro\s*:\s*\{/);
+  if (nitroBlock) {
+    return out.replace(
+      nitroBlock[0],
+      `${nitroBlock[0]}\n    rollupConfig: { plugins: [docsAgentSkills(docsConfig)] },`,
+    );
+  }
+
+  const configMatch = out.match(/defineNuxtConfig\(\s*\{/);
+  if (!configMatch) return null;
+  return out.replace(
+    configMatch[0],
+    "defineNuxtConfig({\n  nitro: { rollupConfig: { plugins: [docsAgentSkills(docsConfig)] } },",
+  );
 }
 
 export function nuxtWelcomePageTemplate(cfg: TemplateConfig): string {

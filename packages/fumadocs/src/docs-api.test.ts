@@ -1331,6 +1331,78 @@ Use the product-specific workflow first.
     expect(customIndexPost.headers.get("allow")).toBe("GET, HEAD");
   });
 
+  it("publishes configured companion skills, legacy routes, and an opt-in A2A card", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-multi-skill-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    mkdirSync(join(rootDir, "skills", "portable", "references"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "skills", "portable", "SKILL.md"),
+      "---\nname: portable\ndescription: Reuse the portable workflow.\n---\n\n# Portable\n",
+    );
+    writeFileSync(join(rootDir, "skills", "portable", "references", "guide.md"), "# Guide\n");
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      agent: {
+        skills: "skills",
+        a2a: {
+          interfaceUrl: "https://agent.example.com/a2a",
+          name: "Docs agent",
+          description: "A real A2A documentation agent.",
+          documentationUrl: "https://docs.example.com/agent",
+          provider: { organization: "Example", url: "https://example.com" },
+        },
+      },
+    });
+
+    const indexResponse = await GET(
+      new Request("https://docs.example.com/.well-known/agent-skills/index.json"),
+    );
+    const index = (await indexResponse.json()) as {
+      skills: Array<{ digest: string; name: string; type: string; url: string }>;
+    };
+    const portable = index.skills.find((skill) => skill.name === "portable");
+    expect(portable).toMatchObject({
+      type: "archive",
+      url: "/.well-known/agent-skills/portable.tar.gz",
+    });
+
+    const archive = await GET(new Request(`https://docs.example.com${portable!.url}`));
+    expect(archive.headers.get("content-type")).toBe("application/gzip");
+    const archiveBytes = new Uint8Array(await archive.arrayBuffer());
+    expect(portable!.digest).toBe(
+      `sha256:${createHash("sha256").update(archiveBytes).digest("hex")}`,
+    );
+
+    const companion = await GET(
+      new Request("https://docs.example.com/.well-known/agent-skills/portable/references/guide.md"),
+    );
+    expect(await companion.text()).toBe("# Guide\n");
+
+    const legacy = await GET(new Request("https://docs.example.com/.well-known/skills/index.json"));
+    await expect(legacy.json()).resolves.toMatchObject({
+      skills: expect.arrayContaining([
+        {
+          name: "portable",
+          description: "Reuse the portable workflow.",
+          files: ["SKILL.md", "references/guide.md"],
+        },
+      ]),
+    });
+
+    const card = await GET(new Request("https://docs.example.com/.well-known/agent-card.json"));
+    await expect(card.json()).resolves.toMatchObject({
+      name: "Docs agent",
+      url: "https://agent.example.com/a2a",
+      skills: expect.arrayContaining([
+        expect.objectContaining({ id: "portable", url: portable!.url }),
+      ]),
+    });
+  });
+
   it("serves legacy discovery HEAD without loading documents and records HEAD analytics", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-discovery-head-route-"));
     tempDirs.push(rootDir);
@@ -2898,10 +2970,31 @@ description: "Start building quickly"
         schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
         index: "/.well-known/agent-skills/index.json",
         artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        archive: "/.well-known/agent-skills/{name}.tar.gz",
+        file: "/.well-known/agent-skills/{name}/{path}",
+        legacyIndex: "/.well-known/skills/index.json",
         apiIndex: "/api/docs?format=agent-skills",
         apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        apiFile: "/api/docs?format=agent-skill-file&name={name}&path={path}",
         digest: "sha256",
       },
+      published: [
+        {
+          name: "docs",
+          type: "skill-md",
+          description:
+            "Use Agent Docs through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.",
+          url: "/.well-known/agent-skills/docs/SKILL.md",
+          digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+          files: [
+            {
+              path: "SKILL.md",
+              url: "/.well-known/agent-skills/docs/SKILL.md",
+              digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+            },
+          ],
+        },
+      ],
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [

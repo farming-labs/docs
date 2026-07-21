@@ -49,6 +49,7 @@ import {
   resolveDocsMarkdownRequest,
   resolveDocsMetadataBaseUrl,
   resolveDocsRequestApiRoute,
+  resolveDocsPublishedAgentSkill,
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
@@ -67,6 +68,7 @@ import {
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
   resolveDocsMcpConfig,
+  resolveConfiguredAgentSkills,
 } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
@@ -586,6 +588,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const ordering = config.ordering;
   const contentDirBase = config.contentDir ?? entry;
   const rootDir = path.resolve((config.rootDir as string | undefined) ?? process.cwd());
+  const publishedAgentSkills = Array.isArray(config._preloadedAgentSkills)
+    ? Promise.resolve(config._preloadedAgentSkills)
+    : resolveConfiguredAgentSkills(config.agent?.skills, { rootDir });
   const preloaded = resolvePreloadedContent(config._preloadedContent);
   const preloadedSitemapManifest = readDocsSitemapManifestFromContentMap(preloaded);
   const i18n = resolveDocsI18n(config.i18n);
@@ -866,6 +871,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       : undefined;
   const discoveryLinkHeader = getDocsDiscoveryLinkHeader({
     includeApiCatalog: apiCatalogEnabled,
+    includeAgentCard: Boolean(config.agent?.a2a),
   });
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(config.apiReference);
   const mcpConfig = resolveDocsMcpConfig(config.mcp, {
@@ -1016,19 +1022,38 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         ...discoveryOptions,
         preferredSkillDocument: readRootSkillDocument(preloaded, rootDir),
         fallbackSkillDocument: renderDocsSkillDocument(discoveryOptions),
+        publishedSkills: await publishedAgentSkills,
+        agentCard: config.agent?.a2a,
       });
       if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
     }
 
     if (isDocsAgentDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
-      return new Response(JSON.stringify(buildDocsAgentDiscoverySpec(discoveryOptions), null, 2), {
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          "Cache-Control": "public, max-age=0, s-maxage=3600",
-          "X-Robots-Tag": "noindex",
-          Link: discoveryLinkHeader,
+      return new Response(
+        JSON.stringify(
+          buildDocsAgentDiscoverySpec({
+            ...discoveryOptions,
+            publishedSkills: [
+              await resolveDocsPublishedAgentSkill({
+                preferredDocument: readRootSkillDocument(preloaded, rootDir),
+                fallbackDocument: renderDocsSkillDocument(discoveryOptions),
+              }),
+              ...(await publishedAgentSkills),
+            ],
+            agentCard: config.agent?.a2a,
+          }),
+          null,
+          2,
+        ),
+        {
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+            Link: discoveryLinkHeader,
+          },
         },
-      });
+      );
     }
 
     if (isApiReferenceOpenApiRequest(url)) {
@@ -1125,6 +1150,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     if (sitemapResponse) return sitemapResponse;
 
     const robotsResponse = createDocsRobotsResponse({
+      agentCard: Boolean(config.agent?.a2a),
       request: event.request,
       entry,
       apiCatalog: apiCatalogEnabled,
@@ -1837,6 +1863,37 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
             defaultBehavior: "link",
           },
         );
+      },
+      async getSkills(context) {
+        const origin = context?.request
+          ? new URL(context.request.url).origin
+          : llmsBaseUrl || "http://localhost";
+        const skillOptions = {
+          origin,
+          entry,
+          apiRoute: configuredApiRoute,
+          docsPath: config.docsPath,
+          apiCatalog: apiCatalogEnabled,
+          i18n,
+          search: config.search,
+          mcp: mcpConfig,
+          feedback: agentFeedbackDiscovery,
+          llms: {
+            enabled: llmsEnabled,
+            apiCatalog: apiCatalogEnabled,
+            baseUrl: llmsBaseUrl || undefined,
+            siteTitle: llmsTitle,
+            siteDescription: llmsDesc,
+          },
+          sitemap: config.sitemap,
+          robots: config.robots,
+          openapi: openapiDiscovery,
+        } as any;
+        const rootSkill = await resolveDocsPublishedAgentSkill({
+          preferredDocument: readRootSkillDocument(preloaded, rootDir),
+          fallbackDocument: renderDocsSkillDocument(skillOptions),
+        });
+        return [rootSkill, ...(await publishedAgentSkills)];
       },
     },
     mcp: config.mcp,

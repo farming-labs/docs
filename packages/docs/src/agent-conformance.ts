@@ -381,11 +381,8 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-async function sha256Utf8(content: string): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(content),
-  );
+async function sha256Content(content: Uint8Array<ArrayBuffer>): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", content);
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
@@ -422,7 +419,7 @@ async function validateAgentSkillsIndex(
       !isNonEmptyString(name) ||
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name) ||
       name.length > 64 ||
-      skill?.type !== "skill-md" ||
+      (skill?.type !== "skill-md" && skill?.type !== "archive") ||
       !isNonEmptyString(description) ||
       description.length > 1024 ||
       !isNonEmptyString(artifactRoute) ||
@@ -445,7 +442,10 @@ async function validateAgentSkillsIndex(
       issues.push(`Agent Skills artifact URL for ${JSON.stringify(name)} was invalid`);
       continue;
     }
-    const expectedPath = `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${name}/SKILL.md`;
+    const expectedPath =
+      skill.type === "archive"
+        ? `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${name}.tar.gz`
+        : `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${name}/SKILL.md`;
     if (artifactUrl.origin !== origin || !artifactUrl.pathname.endsWith(expectedPath)) {
       issues.push(
         `Agent Skills artifact URL for ${JSON.stringify(name)} did not resolve to same-origin ${expectedPath}`,
@@ -455,19 +455,20 @@ async function validateAgentSkillsIndex(
 
     try {
       const response = await handle(new Request(artifactUrl), "agent-skill");
-      const artifact = await response.text();
+      const artifact = new Uint8Array(await response.arrayBuffer());
       if (response.status !== 200) {
         issues.push(
           `Agent Skills artifact ${JSON.stringify(artifactRoute)} returned status ${response.status}`,
         );
       }
       const contentType = response.headers.get("content-type") ?? "";
-      if (!matchesContentType(contentType, ["text/markdown"])) {
+      const expectedContentType = skill.type === "archive" ? "application/gzip" : "text/markdown";
+      if (!matchesContentType(contentType, [expectedContentType])) {
         issues.push(
           `Agent Skills artifact ${JSON.stringify(artifactRoute)} returned content-type ${contentType || "<missing>"}`,
         );
       }
-      const actualDigest = `sha256:${await sha256Utf8(artifact)}`;
+      const actualDigest = `sha256:${await sha256Content(artifact)}`;
       if (actualDigest !== digest) {
         issues.push(
           `Agent Skills artifact ${JSON.stringify(artifactRoute)} digest ${actualDigest} did not match ${digest}`,

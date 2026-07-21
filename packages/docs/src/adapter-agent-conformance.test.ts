@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE } from "./agent.js";
 import type { DocsAgentAdapter } from "./agent-conformance.js";
 import { runDocsAgentConformance } from "./agent-conformance.js";
+import { resolveDocsPublishedAgentSkill } from "./standards-discovery.js";
 
 const adapters = [
   ["tanstack-start", "../../tanstack-start/src/server.ts"],
@@ -132,5 +133,39 @@ Shared context.
     expect(sitemap).toContain("https://docs.example.com/docs");
     expect(sitemap).not.toContain("Human coral walkthrough.");
     expect(sitemap).not.toContain("Agent indigo procedure.");
+  });
+
+  it("uses a build-time skill snapshot without touching unavailable source paths", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const bundledSkill = await resolveDocsPublishedAgentSkill({
+      preferredDocument: `---
+name: bundled-demo
+description: Available only from the production build snapshot.
+---
+
+# Bundled demo
+`,
+      fallbackDocument: "",
+    });
+    const server = createDocsServer({
+      entry: "docs",
+      agent: { skills: "path-that-does-not-exist-at-runtime" },
+      _preloadedAgentSkills: [bundledSkill],
+      _preloadedContent: { "/docs/page.md": "# Home\n" },
+    });
+    const indexUrl = new URL("/.well-known/agent-skills/index.json", "https://docs.example.com");
+    const indexResponse = await server.GET({
+      request: new Request(indexUrl),
+      url: indexUrl,
+    });
+    const index = (await indexResponse.json()) as { skills: Array<{ name: string; url: string }> };
+    expect(index.skills.map((skill) => skill.name)).toContain("bundled-demo");
+
+    const skillUrl = new URL(
+      index.skills.find((skill) => skill.name === "bundled-demo")!.url,
+      indexUrl,
+    );
+    const skillResponse = await server.GET({ request: new Request(skillUrl), url: skillUrl });
+    expect(await skillResponse.text()).toContain("# Bundled demo");
   });
 });

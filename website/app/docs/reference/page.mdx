@@ -90,7 +90,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `observability` | `boolean \| DocsObservabilityConfig`          | `false`          | Trace event stream for Ask AI and MCP runs, including spans, timing, status, and errors |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false` for UI   | Human page feedback UI; agent feedback endpoints are default-on unless opted out     |
-| `agent`       | `DocsAgentConfig`                               | —                | Compaction defaults and golden-task agent usefulness evaluations                     |
+| `agent`       | `DocsAgentConfig`                               | —                | Compaction, golden evaluations, reusable skill publication, and optional A2A metadata |
 | `review`      | `boolean \| DocsReviewConfig`                   | `true`           | Docs Review scoring, rule severity, and GitHub Actions workflow generation           |
 | `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
@@ -579,6 +579,59 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 | -------- | ---- | ----------- |
 | `compact` | `DocsAgentCompactConfig` | Defaults for `docs agent compact` |
 | `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Offline-by-default golden tasks used by `docs doctor` and `docs review` |
+| `skills` | `DocsAgentSkillsInput` | Project or workspace skills published by the runtime, Static Agent Bundle, and MCP |
+| `a2a` | `DocsAgentA2AConfig` | Opt-in Agent Card metadata for a real A2A interface |
+
+### `DocsAgentSkillsInput` and `DocsAgentSkillsConfig`
+
+```ts
+type DocsAgentSkillsInput =
+  | string
+  | readonly string[]
+  | { paths: string | readonly string[] };
+```
+
+Each path is relative to the project root. It may name a `SKILL.md`, its containing skill
+directory, or a collection directory whose descendants contain `SKILL.md` files. A path may reach
+another project inside the same workspace, but it cannot escape the workspace. Only non-symlink
+regular files and directories are accepted. Published content is limited to `SKILL.md` and regular
+files below `references/`, `scripts/`, and `assets/`.
+
+The project-root `skill.md` remains the site-level compatibility skill. It is always published
+alongside `agent.skills`, using a generated fallback when that root file is absent. Duplicate skill
+names are rejected.
+
+Discovery preserves both client generations:
+
+- `/.well-known/agent-skills/index.json` is the Agent Skills v0.2 index
+- a skill containing only `SKILL.md` uses
+  `/.well-known/agent-skills/<name>/SKILL.md` as its indexed `skill-md` artifact
+- a skill with companions uses `/.well-known/agent-skills/<name>.tar.gz` as a deterministic indexed
+  archive; the SHA-256 digest covers the exact archive bytes
+- each safe file is also served at `/.well-known/agent-skills/<name>/<path>` with its own hash
+- `/.well-known/skills/index.json`, `/.well-known/skills/<name>/skill.md`, and legacy companion
+  paths support older clients
+- Static Agent Bundles emit the same indexes, artifacts, direct files, and hashes
+- MCP registers every file at `docs://skills/<name>/<path>`; text-compatible files use `text`, and
+  binary files use a base64 `blob`
+
+### `DocsAgentA2AConfig`
+
+| Property | Type | Required | Description |
+| -------- | ---- | -------- | ----------- |
+| `interfaceUrl` | `string` | yes | HTTP(S) URL of an implemented A2A interface |
+| `name` | `string` | yes | Agent display name |
+| `description` | `string` | yes | Agent purpose |
+| `documentationUrl` | `string` | yes | HTTP(S) documentation URL for the A2A service |
+| `provider` | `{ organization: string; url: string }` | yes | Provider identity and HTTP(S) URL |
+| `version` | `string` | no | Agent version; defaults to `"1.0.0"` |
+| `protocolVersion` | `string` | no | Implemented A2A protocol version; defaults to `"0.3"` |
+| `protocolBinding` | `string` | no | Implemented A2A transport binding; defaults to `"HTTP+JSON"` |
+
+When `a2a` is set, `/.well-known/agent-card.json` advertises the configured interface and published
+skills, using A2A protocol `0.3` over `HTTP+JSON` by default. When it is omitted, the route is not
+published. Do not point `interfaceUrl` at a docs, Ask AI, or MCP route; those transports do not
+implement A2A.
 
 ### `DocsAgentEvaluationsConfig`
 

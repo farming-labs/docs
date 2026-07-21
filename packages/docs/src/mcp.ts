@@ -24,6 +24,7 @@ import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.
 import { performDocsSearch } from "./search.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
+import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
@@ -266,6 +267,10 @@ export interface DocsMcpSource {
     locale?: string,
     context?: DocsMcpRequestContext,
   ): DocsMcpNavigationTree | Promise<DocsMcpNavigationTree>;
+  /** Reusable Agent Skills exposed as progressive-disclosure MCP resources. */
+  getSkills?(
+    context?: DocsMcpRequestContext,
+  ): readonly DocsPublishedAgentSkill[] | Promise<readonly DocsPublishedAgentSkill[]>;
 }
 
 /** Request-scoped identity available to custom MCP sources. */
@@ -574,6 +579,93 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
     description: "Agent compaction defaults and offline-by-default usefulness evaluations.",
     docs: "/docs/getting-started/agent-ready-docs",
     children: [
+      {
+        path: "agent.skills",
+        name: "skills",
+        type: "string | readonly string[] | DocsAgentSkillsConfig",
+        description:
+          "Project skill files or collection directories published through discovery, static export, and MCP.",
+        children: [
+          {
+            path: "agent.skills.paths",
+            name: "paths",
+            type: "string | readonly string[]",
+            description:
+              "Workspace-contained SKILL.md file, skill directory, or collection directory paths.",
+          },
+          {
+            path: "agent.skills.paths[]",
+            name: "path",
+            type: "string",
+            description: "One workspace-contained Agent Skill path.",
+          },
+        ],
+      },
+      {
+        path: "agent.a2a",
+        name: "a2a",
+        type: "DocsAgentA2AConfig",
+        description: "Opt-in Agent Card metadata for a separately implemented real A2A service.",
+        children: [
+          {
+            path: "agent.a2a.interfaceUrl",
+            name: "interfaceUrl",
+            type: "string",
+            description: "HTTP(S) URL of the real A2A interface.",
+          },
+          {
+            path: "agent.a2a.name",
+            name: "name",
+            type: "string",
+            description: "Public A2A agent name.",
+          },
+          {
+            path: "agent.a2a.description",
+            name: "description",
+            type: "string",
+            description: "Public A2A agent description.",
+          },
+          {
+            path: "agent.a2a.documentationUrl",
+            name: "documentationUrl",
+            type: "string",
+            description: "HTTP(S) documentation URL for the A2A service.",
+          },
+          {
+            path: "agent.a2a.provider.organization",
+            name: "organization",
+            type: "string",
+            description: "A2A service provider organization.",
+          },
+          {
+            path: "agent.a2a.provider.url",
+            name: "url",
+            type: "string",
+            description: "HTTP(S) provider URL.",
+          },
+          {
+            path: "agent.a2a.version",
+            name: "version",
+            type: "string",
+            default: "1.0.0",
+            description: "A2A service version advertised by the card.",
+          },
+          {
+            path: "agent.a2a.protocolVersion",
+            name: "protocolVersion",
+            type: "string",
+            default: "0.3",
+            description: "A2A protocol version implemented by the configured interface.",
+          },
+          {
+            path: "agent.a2a.protocolBinding",
+            name: "protocolBinding",
+            type: "string",
+            default: "HTTP+JSON",
+            description: "A2A transport binding implemented by the configured interface.",
+          },
+        ],
+      },
       {
         path: "agent.compact",
         name: "compact",
@@ -2151,6 +2243,10 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     return options.source.getNavigation(locale, options.requestContext);
   }
 
+  function getSourceSkills() {
+    return options.source.getSkills?.(options.requestContext) ?? [];
+  }
+
   function trackMcpTool(tool: string, values?: { locale?: string; resultCount?: number }) {
     emitDocsTelemetryMcpToolEvent(telemetryConfig, {
       framework: telemetryFramework,
@@ -2163,6 +2259,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
 
   const defaultPages = dedupePages(await getSourcePages());
   const defaultTree = await getSourceNavigation();
+  const defaultSkills = await getSourceSkills();
 
   server.registerResource(
     "docs-navigation",
@@ -2203,6 +2300,40 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         ],
       }),
     );
+  }
+
+  for (const skill of defaultSkills) {
+    for (const file of skill.files) {
+      const encodedPath = file.path
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+      const resourceUri = `docs://skills/${encodeURIComponent(skill.name)}/${encodedPath}`;
+      server.registerResource(
+        `skill-${encodeURIComponent(skill.name)}-${Buffer.from(file.path).toString("base64url")}`,
+        resourceUri,
+        {
+          title: `${skill.name}: ${file.path}`,
+          description: `${skill.description} (${file.digest})`,
+          mimeType: file.mediaType,
+        },
+        async () => ({
+          contents: [
+            typeof file.content === "string"
+              ? {
+                  uri: resourceUri,
+                  mimeType: file.mediaType,
+                  text: file.content,
+                }
+              : {
+                  uri: resourceUri,
+                  mimeType: file.mediaType,
+                  blob: Buffer.from(file.content).toString("base64"),
+                },
+          ],
+        }),
+      );
+    }
   }
 
   if (resolved.tools.listPages) {

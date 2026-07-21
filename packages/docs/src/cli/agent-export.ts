@@ -16,6 +16,10 @@ import {
   DEFAULT_AGENT_MD_ROUTE,
   DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
@@ -27,6 +31,8 @@ import {
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
   buildDocsAgentSkillsIndex,
+  buildDocsLegacySkillsIndex,
+  buildDocsA2AAgentCard,
   buildDocsAgentDiscoverySpec,
   renderDocsAgentsDocument,
   renderDocsLlmsTxt,
@@ -37,6 +43,7 @@ import {
   toDocsMarkdownUrl,
   type DocsLlmsDiscoveryConfig,
 } from "../agent.js";
+import { resolveConfiguredAgentSkills } from "../agent-skills-server.js";
 import { resolveDocsI18n } from "../i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "../mcp.js";
 import {
@@ -145,7 +152,7 @@ interface PlannedOutput {
   route: string;
   kind: AgentBundleFileKind;
   mediaType: string;
-  content: string;
+  content: string | Uint8Array;
   managed: boolean;
 }
 
@@ -217,8 +224,25 @@ function normalizeContent(content: string): string {
   return `${content.trimEnd()}\n`;
 }
 
+function encodeRoutePath(relativePath: string): string {
+  return relativePath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
 function publicFilePath(publicDir: string, route: string): string {
-  const resolved = resolveContainedPath(publicDir, route.replace(/^\/+/, ""));
+  let relativeRoute: string;
+  try {
+    relativeRoute = route
+      .replace(/^\/+/, "")
+      .split("/")
+      .map((segment) => decodeURIComponent(segment))
+      .join("/");
+  } catch {
+    throw new Error(`Agent Bundle route contains invalid URL encoding: ${route}`);
+  }
+  const resolved = resolveContainedPath(publicDir, relativeRoute);
   if (!resolved)
     throw new Error(`Agent Bundle route must stay inside the public directory: ${route}`);
   return resolved;
@@ -281,23 +305,24 @@ function resolveThroughNearestExistingAncestor(absolutePath: string): string | u
   }
 }
 
-function sha256(content: string): string {
+function sha256(content: string | Uint8Array): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
-function byteLength(content: string): number {
-  return Buffer.byteLength(content, "utf-8");
+function byteLength(content: string | Uint8Array): number {
+  return typeof content === "string" ? Buffer.byteLength(content, "utf-8") : content.byteLength;
 }
 
 function readExisting(filePath: string): string | undefined {
   return existsSync(filePath) ? readFileSync(filePath, "utf-8") : undefined;
 }
 
-function atomicWriteFile(filePath: string, content: string): void {
+function atomicWriteFile(filePath: string, content: string | Uint8Array): void {
   mkdirSync(path.dirname(filePath), { recursive: true });
   const temporaryPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    writeFileSync(temporaryPath, content, "utf-8");
+    if (typeof content === "string") writeFileSync(temporaryPath, content, "utf-8");
+    else writeFileSync(temporaryPath, content);
     renameSync(temporaryPath, filePath);
   } finally {
     if (existsSync(temporaryPath)) rmSync(temporaryPath, { force: true });
@@ -617,8 +642,9 @@ function addOutput(
   route: string,
   kind: AgentBundleFileKind,
   mediaType: string,
-  content: string,
+  content: string | Uint8Array,
   managed = true,
+  normalizeText = true,
 ): void {
   const absolutePath = publicFilePath(publicDir, route);
   const publicManifestPath = publicFilePath(publicDir, AGENT_BUNDLE_MANIFEST_ROUTE);
@@ -639,7 +665,7 @@ function addOutput(
     route,
     kind,
     mediaType,
-    content: normalizeContent(content),
+    content: typeof content === "string" && normalizeText ? normalizeContent(content) : content,
     managed,
   });
 }
@@ -694,6 +720,14 @@ function resolveUserOwnedOverrides(
 
   return outputs.map((output) => {
     if (!preserveKinds.has(output.kind)) return output;
+    if (
+      output.route.startsWith("/.well-known/agent-skills/") ||
+      output.route.startsWith("/.well-known/skills/") ||
+      output.route === DEFAULT_A2A_AGENT_CARD_ROUTE
+    ) {
+      return output;
+    }
+    if (typeof output.content !== "string") return output;
     const current = readExisting(output.absolutePath);
     if (current === undefined || current === output.content) return output;
     const previousFile = previousByPath.get(output.publicPath);
@@ -707,6 +741,7 @@ function resolveRobotsOutput(
   entry: string,
   sitemap: boolean | DocsSitemapConfig,
   robots: DocsRobotsConfig,
+  agentCard = false,
 ): PlannedOutput {
   const route = "/robots.txt";
   const absolutePath = publicFilePath(publicDir, route);
@@ -717,6 +752,7 @@ function resolveRobotsOutput(
     sitemap,
     baseUrl: robots.baseUrl,
     robots,
+    agentCard,
   });
   const hasManagedBlock =
     existing?.includes(DOCS_ROBOTS_GENERATED_BLOCK_START) === true &&
@@ -891,8 +927,8 @@ function preservedStaleManifestFiles(
   return previous.files.flatMap((file) => {
     if ((!file.managed && file.orphaned !== true) || expected.has(file.path)) return [];
     const filePath = resolvePreviousOutputPath(publicDir, file.path, "public");
-    const current = readExisting(filePath);
-    if (current === undefined) return [];
+    if (!existsSync(filePath)) return [];
+    const current = readFileSync(filePath);
     if (file.orphaned !== true && sha256(current) === file.sha256) return [];
     return [
       {
@@ -916,7 +952,7 @@ function preservedStaleInternalManifestFiles(
   return previous.internalFiles.flatMap((file) => {
     if (expected.has(file.path)) return [];
     const filePath = resolvePreviousOutputPath(rootDir, file.path, "internal");
-    const current = readExisting(filePath);
+    const current = existsSync(filePath) ? readFileSync(filePath) : undefined;
     if (current === undefined) return [];
     if (file.orphaned !== true && sha256(current) === file.sha256) return [];
     return [
@@ -944,7 +980,7 @@ function removeStaleManagedFiles(
   );
   for (const filePath of stalePaths) {
     const previousFile = previousByPath.get(filePath);
-    const current = readExisting(filePath);
+    const current = existsSync(filePath) ? readFileSync(filePath) : undefined;
     if (
       !previousFile?.managed ||
       previousFile.orphaned === true ||
@@ -987,7 +1023,18 @@ function removeStaleInternalFiles(
 }
 
 function changedOutputs(outputs: PlannedOutput[]): PlannedOutput[] {
-  return outputs.filter((output) => readExisting(output.absolutePath) !== output.content);
+  return outputs.filter((output) => !outputMatchesExisting(output));
+}
+
+function outputMatchesExisting(output: PlannedOutput): boolean {
+  if (!existsSync(output.absolutePath)) return false;
+  if (typeof output.content === "string") {
+    return readExisting(output.absolutePath) === output.content;
+  }
+  const current = readFileSync(output.absolutePath);
+  return (
+    current.byteLength === output.content.byteLength && current.equals(Buffer.from(output.content))
+  );
 }
 
 export async function exportAgentBundle(options: AgentExportOptions = {}): Promise<void> {
@@ -1111,6 +1158,9 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     openapi,
     markdown: { acceptHeader: false },
   };
+  const configuredAgentSkills = await resolveConfiguredAgentSkills(config?.agent?.skills, {
+    rootDir,
+  });
   let outputs: PlannedOutput[] = [];
   const internalOutputs: PlannedInternalOutput[] = [];
 
@@ -1182,32 +1232,6 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
       addOutput(outputs, publicDir, section.route, "llms", "text/plain", section.llmsTxt);
       addOutput(outputs, publicDir, section.fullRoute, "llms", "text/plain", section.llmsFullTxt);
     }
-  }
-
-  const discovery = buildDocsAgentDiscoverySpec({
-    ...documentOptions,
-    i18n,
-  });
-  const discoveryWithBundle = {
-    ...discovery,
-    staticBundle: {
-      format: "farming-labs-agent-bundle.v1",
-      manifest: AGENT_BUNDLE_MANIFEST_ROUTE,
-      check: "docs agent export --check",
-      locales: i18n
-        ? {
-            default: i18n.defaultLocale,
-            pathPattern: `${routeEntry ? `/${routeEntry}` : ""}/{locale}/{slug}.md`,
-          }
-        : undefined,
-    },
-  };
-  const discoveryJson = JSON.stringify(discoveryWithBundle, null, 2);
-  for (const route of [
-    DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
-    DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
-  ]) {
-    addOutput(outputs, publicDir, route, "discovery", "application/json", discoveryJson);
   }
 
   const generatedSkill = renderDocsSkillDocument(documentOptions);
@@ -1292,35 +1316,131 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   }
 
   if (robots.enabled) {
-    outputs.push(resolveRobotsOutput(publicDir, routeEntry || "docs", sitemapInput, robots));
+    outputs.push(
+      resolveRobotsOutput(
+        publicDir,
+        routeEntry || "docs",
+        sitemapInput,
+        robots,
+        Boolean(config?.agent?.a2a),
+      ),
+    );
   }
 
   // Resolve user-owned aliases before deriving the standards discovery artifact so the digest in
   // the index always covers the exact SKILL.md bytes published by this bundle.
   outputs = resolveUserOwnedOverrides(outputs, previous);
+  const effectiveSkillOutput = outputs.find(
+    (output) => output.route === DEFAULT_SKILL_MD_ROUTE,
+  )?.content;
   const effectiveSkillDocument =
-    outputs.find((output) => output.route === DEFAULT_SKILL_MD_ROUTE)?.content ??
-    normalizeContent(publicSkill);
+    typeof effectiveSkillOutput === "string" ? effectiveSkillOutput : normalizeContent(publicSkill);
   const publishedAgentSkill = await resolveDocsPublishedAgentSkill({
     preferredDocument: effectiveSkillDocument,
     fallbackDocument: normalizeContent(generatedSkill),
   });
-  addOutput(
-    outputs,
-    publicDir,
-    publishedAgentSkill.url,
-    "skill",
-    "text/markdown",
-    publishedAgentSkill.content,
-  );
+  const allPublishedSkills = [publishedAgentSkill, ...configuredAgentSkills];
+  const publishedNames = new Set<string>();
+  for (const skill of allPublishedSkills) {
+    if (publishedNames.has(skill.name)) {
+      throw new Error(`Duplicate published Agent Skill name: ${skill.name}`);
+    }
+    publishedNames.add(skill.name);
+
+    addOutput(
+      outputs,
+      publicDir,
+      skill.url,
+      "skill",
+      skill.type === "archive" ? "application/gzip" : "text/markdown",
+      skill.content,
+      true,
+      false,
+    );
+    for (const file of skill.files) {
+      if (file.url !== skill.url) {
+        addOutput(outputs, publicDir, file.url, "skill", file.mediaType, file.content, true, false);
+      }
+      if (file.path === "SKILL.md") {
+        addOutput(
+          outputs,
+          publicDir,
+          `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(skill.name)}/skill.md`,
+          "skill",
+          file.mediaType,
+          file.content,
+          true,
+          false,
+        );
+      }
+      const legacyPath = file.path === "SKILL.md" ? "skill.md" : encodeRoutePath(file.path);
+      addOutput(
+        outputs,
+        publicDir,
+        `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(skill.name)}/${legacyPath}`,
+        "skill",
+        file.mediaType,
+        file.content,
+        true,
+        false,
+      );
+    }
+  }
   addOutput(
     outputs,
     publicDir,
     DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
     "discovery",
     "application/json",
-    JSON.stringify(buildDocsAgentSkillsIndex(publishedAgentSkill), null, 2),
+    JSON.stringify(buildDocsAgentSkillsIndex(allPublishedSkills), null, 2),
   );
+  addOutput(
+    outputs,
+    publicDir,
+    DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+    "discovery",
+    "application/json",
+    JSON.stringify(buildDocsLegacySkillsIndex(allPublishedSkills), null, 2),
+  );
+  if (config?.agent?.a2a) {
+    addOutput(
+      outputs,
+      publicDir,
+      DEFAULT_A2A_AGENT_CARD_ROUTE,
+      "discovery",
+      "application/json",
+      JSON.stringify(buildDocsA2AAgentCard(config.agent.a2a, allPublishedSkills), null, 2),
+    );
+  }
+
+  const discovery = buildDocsAgentDiscoverySpec({
+    ...documentOptions,
+    i18n,
+    publishedSkills: allPublishedSkills,
+    agentCard: config?.agent?.a2a,
+  });
+  const discoveryWithBundle = {
+    ...discovery,
+    staticBundle: {
+      format: "farming-labs-agent-bundle.v1",
+      manifest: AGENT_BUNDLE_MANIFEST_ROUTE,
+      check: "docs agent export --check",
+      locales: i18n
+        ? {
+            default: i18n.defaultLocale,
+            pathPattern: `${routeEntry ? `/${routeEntry}` : ""}/{locale}/{slug}.md`,
+          }
+        : undefined,
+    },
+  };
+  const discoveryJson = JSON.stringify(discoveryWithBundle, null, 2);
+  for (const route of [
+    DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+    DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+  ]) {
+    addOutput(outputs, publicDir, route, "discovery", "application/json", discoveryJson);
+  }
+  outputs = resolveUserOwnedOverrides(outputs, previous);
 
   assertOutputPathsDoNotCollide({
     outputs,
@@ -1381,7 +1501,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
 
   if (!options.check) {
     for (const output of outputs) {
-      if (readExisting(output.absolutePath) !== output.content) {
+      if (!outputMatchesExisting(output)) {
         atomicWriteFile(output.absolutePath, output.content);
       }
     }

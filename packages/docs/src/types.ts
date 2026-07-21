@@ -2790,6 +2790,36 @@ export interface DocsAgentEvaluationsConfig {
   tasks?: DocsAgentGoldenTask[];
 }
 
+/**
+ * Project-local Agent Skills published by the runtime, static Agent Bundle, and MCP server.
+ *
+ * Each path may point at a `SKILL.md`, a skill directory containing `SKILL.md`, or a
+ * collection directory whose descendants contain `SKILL.md` files. Paths are resolved
+ * inside the current project/workspace boundary. Only `SKILL.md` and files below the
+ * standard `references/`, `scripts/`, and `assets/` directories are published.
+ */
+export interface DocsAgentSkillsConfig {
+  /** Project-relative skill file, skill directory, or collection directory paths. */
+  paths: string | readonly string[];
+}
+
+/** Concise array shorthand for `agent.skills.paths`. */
+export type DocsAgentSkillsInput = string | readonly string[] | DocsAgentSkillsConfig;
+
+/** Explicit A2A service metadata. Configure this only when the URL implements A2A. */
+export interface DocsAgentA2AConfig {
+  interfaceUrl: string;
+  name: string;
+  description: string;
+  documentationUrl: string;
+  provider: { organization: string; url: string };
+  version?: string;
+  /** A2A protocol version exposed by the interface. @default "0.3" */
+  protocolVersion?: string;
+  /** Transport binding exposed by the interface. @default "HTTP+JSON" */
+  protocolBinding?: string;
+}
+
 export interface DocsAgentConfig {
   /**
    * Defaults for `docs agent compact`.
@@ -2800,6 +2830,10 @@ export interface DocsAgentConfig {
    * External providers and runtime execution require explicit opt-in.
    */
   evaluations?: boolean | DocsAgentEvaluationsConfig;
+  /** Publish reusable Agent Skills through standards discovery, static exports, and MCP. */
+  skills?: DocsAgentSkillsInput;
+  /** Opt in to an A2A Agent Card for a separately implemented A2A service. */
+  a2a?: DocsAgentA2AConfig;
 }
 
 export type DocsReviewSeverity = "off" | "suggestion" | "warn" | "error";

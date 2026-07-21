@@ -113,6 +113,9 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 - `/.well-known/skill.md`
 - `/.well-known/agent-skills/index.json`
 - `/.well-known/agent-skills/<name>/SKILL.md`
+- `/.well-known/agent-skills/<name>.tar.gz` for skills with companion files
+- `/.well-known/skills/index.json` for legacy clients
+- `/.well-known/agent-card.json` when an A2A service is explicitly configured
 - `/.well-known/api-catalog`
 - `/.well-known/agent.json`
 - `/.well-known/agent`
@@ -135,8 +138,28 @@ policy without guessing. The existing `/.well-known/agent.json` manifest remains
 cross-links the [RFC 9727 API catalog](https://datatracker.ietf.org/doc/html/rfc9727) and
 [Agent Skills index](https://www.mintlify.com/docs/ai/skillmd). Dynamic responses also advertise
 these discovery resources with HTTP `Link` headers.
-Static Agent Bundles always publish the hashed Agent Skills index, but intentionally omit the API
-catalog: a generic `public/` or `static/` directory cannot guarantee RFC 9727's required profiled
+
+Publish one skill, a skill directory, or every skill below a collection directory with
+`agent.skills`. Paths are resolved from the project root and must stay inside the workspace:
+
+```ts
+export default defineDocs({
+  agent: {
+    skills: ["./skills/getting-started/SKILL.md", "./skills/product"],
+  },
+});
+```
+
+Each published skill includes `SKILL.md` plus safe regular files below `references/`, `scripts/`,
+and `assets/`. Skills with companion files use a deterministic archive so the discovery digest is
+stable; every file is also available directly and as a `docs://skills/<name>/<path>` MCP resource.
+The existing project-root `skill.md` remains the site skill and is published alongside configured
+skills. Configure `agent.a2a` only when the site fronts a real A2A interface (HTTP+JSON by default);
+docs and MCP routes alone do not make an A2A endpoint.
+
+Static Agent Bundles publish the same modern and legacy skill indexes, artifacts, companion files,
+and optional Agent Card as the runtime. They intentionally omit the API catalog: a generic
+`public/` or `static/` directory cannot guarantee RFC 9727's required profiled
 `application/linkset+json` response type. Use a dynamic adapter or configure and publish that route
 through host-specific routing when the catalog is required.
 

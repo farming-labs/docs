@@ -324,8 +324,12 @@ export default defineDocs({
 That gives agents a much better workflow:
 
 - `/.well-known/api-catalog` exposes an RFC 9727 JSON Linkset for API and metadata discovery
-- `/.well-known/agent-skills/index.json` publishes the site skill with a SHA-256 digest, and
-  `/.well-known/agent-skills/<name>/SKILL.md` returns the exact hashed bytes
+- `/.well-known/agent-skills/index.json` publishes the root site skill plus every reusable skill
+  configured with `agent.skills`; entries hash either the exact `SKILL.md` or a deterministic
+  archive containing safe `references/`, `scripts/`, and `assets/`
+- direct skill files remain available below `/.well-known/agent-skills/<name>/`, while
+  `/.well-known/skills/index.json` supports legacy clients and MCP mirrors files as
+  `docs://skills/<name>/<path>` resources
 - `/.well-known/agent.json` tells them which routes exist
 - `/llms.txt` links directly to page markdown routes, while `/llms-full.txt` exposes full machine-readable context
 - section-level files like [`/docs/guides/llms.txt`](/docs/guides/llms.txt) give larger docs progressive disclosure without adding UI
@@ -345,7 +349,10 @@ That gives agents a much better workflow:
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
 system you have to keep in sync by hand. The existing Farming Labs manifest stays available; the
-standards routes and HTTP `Link` headers are additive and cross-link back to it.
+standards routes and HTTP `Link` headers are additive and cross-link back to it. Static Agent
+Bundles emit the same skill indexes, artifacts, companion files, and hashes. An A2A Agent Card is
+separate and opt-in: configure `agent.a2a` only when there is a real A2A interface behind the
+advertised URL. The default protocol is A2A `0.3` over `HTTP+JSON`.
 
 ## Expose API Schemas Before API Pages
 

@@ -1886,8 +1886,12 @@ After`;
       schema: AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
       index: "/.well-known/agent-skills/index.json",
       artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+      archive: "/.well-known/agent-skills/{name}.tar.gz",
+      file: "/.well-known/agent-skills/{name}/{path}",
+      legacyIndex: "/.well-known/skills/index.json",
       apiIndex: "/api/docs?format=agent-skills",
       apiArtifact: "/api/docs?format=agent-skill&name={name}",
+      apiFile: "/api/docs?format=agent-skill-file&name={name}&path={path}",
       digest: "sha256",
     });
     expect(spec.apiCatalog).toEqual({

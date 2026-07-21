@@ -1,12 +1,22 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import pc from "picocolors";
-import { createFilesystemDocsMcpSource, resolveDocsMcpConfig, runDocsMcpStdio } from "../server.js";
+import {
+  createFilesystemDocsMcpSource,
+  resolveConfiguredAgentSkills,
+  resolveDocsMcpConfig,
+  runDocsMcpStdio,
+} from "../server.js";
+import { resolveDocsPublishedAgentSkill } from "../agent.js";
 import type { DocsMcpConfig } from "../types.js";
 import {
   extractObjectLiteral,
+  extractNestedObjectLiteral,
+  hasTopLevelProperty,
   readBooleanProperty,
   readNavTitle,
   readStringProperty,
+  loadDocsConfigModuleResult,
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
@@ -38,13 +48,25 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
   const rootDir = process.cwd();
   const configPath = resolveDocsConfigPath(rootDir, options.configPath);
   const content = readFileSync(configPath, "utf-8");
+  const configLoad = await loadDocsConfigModuleResult(rootDir, options.configPath);
+  const loadedConfig = configLoad.status === "evaluated" ? configLoad.config : undefined;
+  const staticAgent = extractNestedObjectLiteral(content, ["agent"]);
+  if (
+    configLoad.status === "static-fallback" &&
+    staticAgent &&
+    hasTopLevelProperty(staticAgent, "skills")
+  ) {
+    throw new Error(
+      `Could not evaluate ${configLoad.path}, so configured agent.skills cannot be published through MCP. ${configLoad.error}`,
+    );
+  }
 
   const entry = readStringProperty(content, "entry") ?? "docs";
   const contentDir = resolveDocsContentDir(rootDir, content, entry);
   const navTitle = readNavTitle(content);
   const mcp = readMcpConfig(content);
 
-  const source = createFilesystemDocsMcpSource({
+  const filesystemSource = createFilesystemDocsMcpSource({
     rootDir,
     entry,
     contentDir,
@@ -54,6 +76,24 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
   const resolvedMcp = resolveDocsMcpConfig(mcp ?? true, {
     defaultName: navTitle ?? "@farming-labs/docs",
   });
+  const source = {
+    ...filesystemSource,
+    async getSkills() {
+      const configured = await resolveConfiguredAgentSkills(loadedConfig?.agent?.skills, {
+        rootDir,
+      });
+      const rootSkillPath = path.join(rootDir, "skill.md");
+      const preferredDocument = existsSync(rootSkillPath)
+        ? readFileSync(rootSkillPath, "utf8")
+        : null;
+      const fallbackDocument = `---\nname: docs\ndescription: Use the project documentation through MCP resources and tools.\n---\n\n# Documentation\n`;
+      const rootSkill = await resolveDocsPublishedAgentSkill({
+        preferredDocument,
+        fallbackDocument,
+      });
+      return [rootSkill, ...configured];
+    },
+  };
 
   await runDocsMcpStdio({
     source,

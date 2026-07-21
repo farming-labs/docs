@@ -16,6 +16,9 @@ import {
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_API_CATALOG_ROUTE,
 } from "@farming-labs/docs";
 import { withDocs } from "./config.js";
@@ -407,7 +410,23 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
-          destination: "/api/docs?format=agent-skill&name=:name",
+          destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name.tar.gz`,
+          destination: "/api/docs?format=agent-skill-archive&name=:name",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/:name/skill.md`,
+          destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=legacy-skills",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_A2A_AGENT_CARD_ROUTE,
+          destination: "/api/docs?format=agent-card",
         }),
         expect.objectContaining({
           source: "/mcp",
@@ -1307,8 +1326,41 @@ describe("withDocs (app dir: src/app vs app)", () => {
         "AGENT.md",
         ".farming-labs/sitemap-manifest.json",
       ],
-      "/api/docs/mcp": ["app/docs/**/*"],
+      "/api/docs/mcp": ["app/docs/**/*", "skill.md"],
     });
+  });
+
+  it("traces configured Agent Skill collections for both docs and MCP routes", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", agent: { skills: { paths: ["skills/one", "../shared-skills"] } } };\n`,
+      "utf8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    expect(nextConfig.outputFileTracingRoot).toBe(realpathSync(dirname(tmpDir)));
+    expect(nextConfig.outputFileTracingIncludes?.["/api/docs"]).toEqual(
+      expect.arrayContaining(["skills/one/**/*", "../shared-skills/**/*"]),
+    );
+    expect(nextConfig.outputFileTracingIncludes?.["/api/docs/mcp"]).toEqual(
+      expect.arrayContaining(["skills/one/**/*", "../shared-skills/**/*"]),
+    );
+  });
+
+  it("fails loudly when configured Agent Skill paths cannot be traced", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `const skillPaths = ["skills/one"];
+export default { entry: "docs", agent: { skills: skillPaths } };
+`,
+      "utf8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({})).toThrow("could not statically trace agent.skills");
   });
 
   it("reads a top-level contentDir even when nested config uses deeper indentation", () => {
@@ -1326,7 +1378,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
         "AGENT.md",
         ".farming-labs/sitemap-manifest.json",
       ],
-      "/api/docs/mcp": ["website/app/docs/**/*"],
+      "/api/docs/mcp": ["website/app/docs/**/*", "skill.md"],
     });
   });
 
@@ -1371,7 +1423,15 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
-          destination: "/api/docs?format=agent-skill&name=:name",
+          destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name.tar.gz`,
+          destination: "/api/docs?format=agent-skill-archive&name=:name",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=legacy-skills",
         }),
         expect.objectContaining({
           source: "/mcp",
