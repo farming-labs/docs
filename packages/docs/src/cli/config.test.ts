@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   extractNestedObjectLiteral,
+  hasTopLevelProperty,
   loadDocsConfigModuleResult,
   readBooleanProperty,
   readTopLevelBooleanProperty,
@@ -68,6 +69,17 @@ describe("resolveDocsContentDir", () => {
 });
 
 describe("property readers", () => {
+  it("detects direct properties without matching comments or nested objects", () => {
+    const block = `
+      // skills: "ignored"
+      nested: { skills: "also-ignored" },
+      "skills": ["skills/one"],
+    `;
+
+    expect(hasTopLevelProperty(block, "skills")).toBe(true);
+    expect(hasTopLevelProperty("// skills: 'ignored'\nother: true", "skills")).toBe(false);
+  });
+
   it("matches exact string property names", () => {
     const content = `
       export default defineDocs({

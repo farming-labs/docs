@@ -251,6 +251,7 @@ export default defineDocs({
     },
   },
   agent: {
+    skills: "../skills/farming-labs",
     compact: {
       apiKeyEnv: "DOCS_CLOUD_API_KEY",
       model: "docs-cloud-compress-v1",

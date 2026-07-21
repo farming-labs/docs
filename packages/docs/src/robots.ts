@@ -3,6 +3,9 @@ import {
   DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
@@ -49,6 +52,8 @@ export interface DocsRobotsRenderOptions {
   entry?: string;
   /** Include the RFC 9727 catalog route only when the deployment actually serves it. */
   apiCatalog?: boolean;
+  /** Include an A2A Agent Card only when a real A2A service is configured. */
+  agentCard?: boolean;
   sitemap?: boolean | DocsSitemapConfig;
   baseUrl?: string;
   robots?: boolean | DocsRobotsConfig;
@@ -149,7 +154,10 @@ export function getDocsRobotsAllowRoutes(options: DocsRobotsRenderOptions = {}):
     DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
     ...(options.apiCatalog === false ? [] : [DEFAULT_API_CATALOG_ROUTE]),
     DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
-    `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/*/SKILL.md`,
+    `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/*`,
+    DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+    `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/*`,
+    ...(options.agentCard ? [DEFAULT_A2A_AGENT_CARD_ROUTE] : []),
     DEFAULT_MCP_PUBLIC_ROUTE,
     DEFAULT_MCP_WELL_KNOWN_ROUTE,
   ];

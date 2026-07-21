@@ -30,6 +30,16 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./agent-skills-bundle": {
+      "types": "./dist/agent-skills-bundle.d.mts",
+      "import": "./dist/agent-skills-bundle.mjs",
+      "default": "./dist/agent-skills-bundle.mjs"
+    },
+    "./vite": {
+      "types": "./dist/agent-skills-vite.d.mts",
+      "import": "./dist/agent-skills-vite.mjs",
+      "default": "./dist/agent-skills-vite.mjs"
+    },
     "./cloud/server": {
       "types": "./dist/docs-cloud-server.d.mts",
       "import": "./dist/docs-cloud-server.mjs",

@@ -26,7 +26,10 @@ import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import {
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ARCHIVE_ROUTE_PATTERN,
   DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
   acceptsDocsMarkdown,
   normalizeDocsRelated,
@@ -58,6 +61,7 @@ import {
   resolveDocsLocale,
   resolveDocsRequestApiRoute,
   resolveDocsStandardsDiscoveryRequest,
+  resolveDocsPublishedAgentSkill,
   resolveDocsAgentContractMcpTools,
   resolvePageSidebarFolderIndexBehavior,
   selectDocsLlmsTxtContent,
@@ -80,6 +84,8 @@ import type {
   DocsObservabilityConfig,
   DocsTelemetryConfig,
   FeedbackConfig,
+  DocsPublishedAgentSkill,
+  DocsAgentA2AConfig,
 } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
@@ -88,6 +94,7 @@ import {
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
   resolveDocsMcpConfig,
+  resolveConfiguredAgentSkills,
   type DocsMcpPage,
 } from "@farming-labs/docs/server";
 import {
@@ -192,6 +199,8 @@ interface DocsAPIOptions {
   apiReference?: DocsConfig["apiReference"];
   /** Metadata used in generated OpenAPI documents. */
   metadata?: DocsConfig["metadata"];
+  /** Reusable skill publication and optional real A2A service metadata. */
+  agent?: DocsConfig["agent"];
 }
 
 interface DocsMCPAPIOptions {
@@ -205,6 +214,7 @@ interface DocsMCPAPIOptions {
   analytics?: boolean | DocsAnalyticsConfig;
   telemetry?: boolean | DocsTelemetryConfig;
   observability?: boolean | DocsObservabilityConfig;
+  agent?: DocsConfig["agent"];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -302,6 +312,8 @@ interface AgentSpecOptions {
   sitemap?: boolean | DocsSitemapConfig;
   robots?: boolean | DocsRobotsConfig;
   openapi: ReturnType<typeof resolveApiReferenceOpenApiDiscovery>;
+  publishedSkills?: readonly DocsPublishedAgentSkill[];
+  agentCard?: DocsAgentA2AConfig;
 }
 
 interface SkillDocumentOptions extends AgentSpecOptions {}
@@ -491,6 +503,8 @@ function buildAgentSpec({
   sitemap,
   robots,
   openapi,
+  publishedSkills = [],
+  agentCard,
 }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const localesEnabled = i18n !== null;
@@ -558,6 +572,8 @@ function buildAgentSpec({
           }
         : {}),
       agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      legacySkillsIndex: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+      ...(agentCard ? { agentCard: DEFAULT_A2A_AGENT_CARD_ROUTE } : {}),
     },
     apiCatalog: {
       enabled: apiCatalog,
@@ -697,10 +713,26 @@ function buildAgentSpec({
         schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
         index: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
         artifact: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/{name}/SKILL.md`,
+        archive: DEFAULT_AGENT_SKILLS_ARCHIVE_ROUTE_PATTERN,
+        file: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/{name}/{path}`,
+        legacyIndex: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
         apiIndex: `${apiRoute}?format=agent-skills`,
         apiArtifact: `${apiRoute}?format=agent-skill&name={name}`,
+        apiFile: `${apiRoute}?format=agent-skill-file&name={name}&path={path}`,
         digest: "sha256",
       },
+      published: publishedSkills.map((skill) => ({
+        name: skill.name,
+        description: skill.description,
+        type: skill.type,
+        url: skill.url,
+        digest: skill.digest,
+        files: skill.files.map((file) => ({
+          path: file.path,
+          url: file.url,
+          digest: file.digest,
+        })),
+      })),
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [
@@ -3690,6 +3722,9 @@ function generateLlmsTxt(
  */
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
+  const publishedAgentSkills = resolveConfiguredAgentSkills(options?.agent?.skills, {
+    rootDir: root,
+  });
   const entry = options?.entry ?? readEntry(root);
   const docsPath = normalizeDocsPublicPath(options?.docsPath ?? readDocsPath(root), entry);
   const analytics = options?.analytics;
@@ -3739,6 +3774,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   });
   const discoveryLinkHeader = getDocsDiscoveryLinkHeader({
     includeApiCatalog: apiCatalogEnabled,
+    includeAgentCard: Boolean(options?.agent?.a2a),
   });
   const telemetryConfig: Partial<DocsConfig> = {
     entry,
@@ -4069,6 +4105,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       request,
       preferredSkillDocument: needsSkill ? readRootSkillDocument(root) : null,
       fallbackSkillDocument,
+      publishedSkills: await publishedAgentSkills,
+      agentCard: options?.agent?.a2a,
       origin: url.origin,
       entry,
       docsPath,
@@ -4170,6 +4208,27 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             sitemap: sitemapConfig,
             robots: robotsConfig,
             openapi: openapiDiscovery,
+            publishedSkills: [
+              await resolveDocsPublishedAgentSkill({
+                preferredDocument: readRootSkillDocument(root),
+                fallbackDocument: renderSkillDocument({
+                  origin: url.origin,
+                  entry,
+                  apiRoute: requestApiRoute,
+                  apiCatalog: apiCatalogEnabled,
+                  i18n,
+                  search: searchConfig,
+                  mcp: mcpConfig,
+                  feedback: agentFeedbackConfig,
+                  llms: llmsConfig,
+                  sitemap: sitemapConfig,
+                  robots: robotsConfig,
+                  openapi: openapiDiscovery,
+                }),
+              }),
+              ...(await publishedAgentSkills),
+            ],
+            agentCard: options?.agent?.a2a,
           }),
           {
             headers: {
@@ -4337,6 +4396,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const robotsResponse = createDocsRobotsResponse({
+        agentCard: Boolean(options?.agent?.a2a),
         request,
         entry,
         apiCatalog: apiCatalogEnabled,
@@ -4733,13 +4793,26 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
       ? options.nav.title
       : "Documentation";
 
-  const source = createFilesystemDocsMcpSource({
+  const filesystemSource = createFilesystemDocsMcpSource({
     rootDir,
     entry,
     contentDir,
     siteTitle: navTitle,
     ordering: options.ordering,
   });
+  const source = {
+    ...filesystemSource,
+    async getSkills() {
+      const configured = await resolveConfiguredAgentSkills(options.agent?.skills, { rootDir });
+      const preferredDocument = readRootSkillDocument(rootDir);
+      const fallbackDocument = `---\nname: docs\ndescription: Use the project documentation through MCP resources and tools.\n---\n\n# Documentation\n`;
+      const rootSkill = await resolveDocsPublishedAgentSkill({
+        preferredDocument,
+        fallbackDocument,
+      });
+      return [rootSkill, ...configured];
+    },
+  };
 
   const handlers = createDocsMcpHttpHandler({
     source,

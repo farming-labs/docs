@@ -11,6 +11,7 @@ import {
   DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
@@ -1879,7 +1880,7 @@ async function probeApiCatalogRoute(baseUrl: string): Promise<HostedStandardsPro
 
 function isValidAgentSkillEntry(value: unknown): value is {
   name: string;
-  type: "skill-md";
+  type: "skill-md" | "archive";
   description: string;
   url: string;
   digest: string;
@@ -1890,7 +1891,7 @@ function isValidAgentSkillEntry(value: unknown): value is {
     typeof entry.name === "string" &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(entry.name) &&
     entry.name.length <= 64 &&
-    entry.type === "skill-md" &&
+    (entry.type === "skill-md" || entry.type === "archive") &&
     isNonEmptyString(entry.description) &&
     entry.description.length <= 1024 &&
     isNonEmptyString(entry.url) &&
@@ -1963,7 +1964,11 @@ async function probeAgentSkillsDiscovery(baseUrl: string): Promise<HostedStandar
           continue;
         }
 
-        const expectedPath = DEFAULT_AGENT_SKILLS_ROUTE_PATTERN.replace("{name}", skill.name);
+        const expectedPath =
+          skill.type === "archive"
+            ? `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${skill.name}.tar.gz`
+            : DEFAULT_AGENT_SKILLS_ROUTE_PATTERN.replace("{name}", skill.name);
+        const expectedMediaType = skill.type === "archive" ? "application/gzip" : "text/markdown";
         if (artifactUrl.origin !== baseOrigin) {
           failures.push(`${skill.name} artifact is not same-origin`);
           continue;
@@ -1976,11 +1981,11 @@ async function probeAgentSkillsDiscovery(baseUrl: string): Promise<HostedStandar
         try {
           const [artifactResponse, artifactHeadResponse] = await Promise.all([
             fetchWithTimeout(artifactUrl.toString(), {
-              headers: { Accept: "text/markdown" },
+              headers: { Accept: expectedMediaType },
             }),
             fetchWithTimeout(artifactUrl.toString(), {
               method: "HEAD",
-              headers: { Accept: "text/markdown" },
+              headers: { Accept: expectedMediaType },
             }),
           ]);
           const content = Buffer.from(await artifactResponse.arrayBuffer());
@@ -1993,13 +1998,14 @@ async function probeAgentSkillsDiscovery(baseUrl: string): Promise<HostedStandar
               `${skill.name} artifact HEAD returned HTTP ${artifactHeadResponse.status}`,
             );
           } else if (
-            responseMediaType(artifactResponse.headers.get("content-type")) !== "text/markdown"
+            responseMediaType(artifactResponse.headers.get("content-type")) !== expectedMediaType
           ) {
-            failures.push(`${skill.name} artifact Content-Type is not text/markdown`);
+            failures.push(`${skill.name} artifact Content-Type is not ${expectedMediaType}`);
           } else if (
-            responseMediaType(artifactHeadResponse.headers.get("content-type")) !== "text/markdown"
+            responseMediaType(artifactHeadResponse.headers.get("content-type")) !==
+            expectedMediaType
           ) {
-            failures.push(`${skill.name} artifact HEAD Content-Type is not text/markdown`);
+            failures.push(`${skill.name} artifact HEAD Content-Type is not ${expectedMediaType}`);
           } else if (content.length === 0) {
             failures.push(`${skill.name} artifact is empty`);
           } else if (computedDigest !== skill.digest) {

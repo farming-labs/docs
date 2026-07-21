@@ -115,6 +115,7 @@ describe("agent conformance contract", () => {
       },
     });
 
+    expect(report.cases.filter((result) => !result.passed)).toEqual([]);
     expect(report.passed).toBe(true);
   });
 
@@ -159,6 +160,40 @@ describe("agent conformance contract", () => {
       passed: false,
       issues: [expect.stringContaining("digest")],
     });
+  });
+
+  it("validates archive artifacts as exact binary bytes", async () => {
+    const archive = Uint8Array.from([31, 139, 8, 0, 255, 0, 128, 1]);
+    const digest = createHash("sha256").update(archive).digest("hex");
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(request, surface) {
+        if (surface === "agent-skills-index") {
+          const response = createPassingResponse(surface);
+          const index = (await response.json()) as {
+            skills: Array<Record<string, unknown>>;
+          };
+          index.skills.push({
+            name: "bundle",
+            description: "Use the bundled binary workflow.",
+            type: "archive",
+            url: "/.well-known/agent-skills/bundle.tar.gz",
+            digest: `sha256:${digest}`,
+          });
+          return new Response(JSON.stringify(index), {
+            status: response.status,
+            headers: response.headers,
+          });
+        }
+        if (surface === "agent-skill" && request.url.endsWith("/bundle.tar.gz")) {
+          return new Response(archive, { headers: { "Content-Type": "application/gzip" } });
+        }
+        return createPassingResponse(surface);
+      },
+    });
+
+    expect(report.cases.filter((result) => !result.passed)).toEqual([]);
+    expect(report.passed).toBe(true);
   });
 
   it("correlates each Link target and relation while allowing quoted commas", async () => {

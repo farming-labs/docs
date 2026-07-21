@@ -187,6 +187,15 @@ function extractTopLevelObjectLiteral(content: string, key: string): string | un
   return undefined;
 }
 
+/** Return whether an object-literal body declares a direct property with this name. */
+export function hasTopLevelProperty(content: string, key: string): boolean {
+  const escaped = escapeRegExp(key);
+  const propertyPattern = new RegExp(`^(?:${escaped}|["']${escaped}["'])\\s*:`);
+  return splitTopLevelProperties(content).some((property) =>
+    propertyPattern.test(stripLeadingPropertyTrivia(property)),
+  );
+}
+
 export function extractTopLevelConfigObject(content: string): string | undefined {
   for (const marker of ["defineDocs(", "export default"]) {
     const markerIndex = content.indexOf(marker);

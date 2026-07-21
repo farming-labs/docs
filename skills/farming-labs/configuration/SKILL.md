@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, agent.evaluations, review, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, agent.evaluations, agent.skills, agent.a2a, review, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -45,7 +45,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `feedback` | `boolean \| FeedbackConfig` | `false` for UI | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `telemetry` | `boolean \| DocsTelemetryConfig` | production-only enabled | Farming Labs maintainer telemetry for package adoption and coarse agent-surface usage |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
-| `agent` | `DocsAgentConfig` | — | Compaction defaults and golden-task usefulness evaluations |
+| `agent` | `DocsAgentConfig` | — | Compaction, golden evaluations, reusable skill publication, and optional A2A metadata |
 | `review` | `boolean \| DocsReviewConfig` | `true` | Docs Review scoring, GitHub Actions workflow generation, and rule severities |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
@@ -492,6 +492,76 @@ Use the `cli` skill when the user asks about `docs robots generate` flags.
 
 ---
 
+## Reusable Agent Skills
+
+Use `agent.skills` to publish reusable skills through the runtime, a Static Agent Bundle, and MCP.
+The concise value can be a project-relative path or array; `{ paths }` is the equivalent explicit
+form:
+
+```ts
+agent: {
+  skills: {
+    paths: [
+      "./skills/getting-started/SKILL.md",
+      "./skills/product",
+      "./skills/team-skills",
+    ],
+  },
+},
+```
+
+Each path may identify a `SKILL.md`, its containing skill directory, or a collection directory.
+Collection discovery walks descendants for skill directories. Paths are resolved from the project
+root and may refer to another project directory inside the same workspace, but may not escape that
+workspace. Configured paths, skill documents, directories, and companion files must be regular,
+non-symlink filesystem entries.
+
+For each discovered skill, the runtime publishes `SKILL.md` and safe regular files below only
+`references/`, `scripts/`, and `assets/`. A standalone `SKILL.md` is indexed directly as
+`skill-md`. A skill with companion files is indexed as a deterministic `.tar.gz` archive; its
+SHA-256 digest covers the exact archive bytes. Direct file responses also carry their own hashes,
+so progressive-disclosure clients do not need to unpack the archive.
+
+Discovery and access routes are:
+
+- `/.well-known/agent-skills/index.json` — Agent Skills v0.2 index
+- `/.well-known/agent-skills/<name>/SKILL.md` and
+  `/.well-known/agent-skills/<name>/{references|scripts|assets}/...` — direct files
+- `/.well-known/agent-skills/<name>.tar.gz` — indexed artifact when companions exist
+- `/.well-known/skills/index.json`, `/.well-known/skills/<name>/skill.md`, and companion paths —
+  legacy compatibility
+- `docs://skills/<name>/<path>` — MCP resources; text formats use `text`, while binary assets use a
+  base64 `blob`
+
+The project-root `skill.md` remains the backwards-compatible site skill and is published alongside
+configured skills. `docs agent export --public` writes the same modern and legacy indexes,
+artifacts, direct files, and digests as the runtime.
+
+`agent.a2a` is a separate opt-in. Configure it only when `interfaceUrl` is a real A2A interface—not
+a docs route or MCP endpoint. The protocol defaults to `0.3` with the `HTTP+JSON` binding; use
+`protocolVersion` and `protocolBinding` only when the implemented interface differs. When
+configured, the runtime and static export publish `/.well-known/agent-card.json`; when omitted,
+that route is not advertised or generated.
+
+```ts
+agent: {
+  skills: "./skills",
+  a2a: {
+    interfaceUrl: "https://agent.example.com/a2a",
+    name: "Product docs agent",
+    description: "Answers implementation questions from the product documentation.",
+    documentationUrl: "https://docs.example.com/docs",
+    provider: {
+      organization: "Example, Inc.",
+      url: "https://example.com",
+    },
+    version: "1.0.0",
+  },
+},
+```
+
+---
+
 ## Golden agent evaluations
 
 Use `agent.evaluations.tasks` when doctor and review should measure actual retrieval usefulness.
@@ -834,9 +904,9 @@ Default behavior:
 
 - `GET` and `HEAD` on `/.well-known/api-catalog` serve an RFC 9727 JSON linkset; the catalog only
   advertises enabled API and metadata resources
-- `GET` and `HEAD` on `/.well-known/agent-skills/index.json` serve an Agent Skills discovery index;
-  each entry links to `/.well-known/agent-skills/<name>/SKILL.md` and includes the SHA-256 digest of
-  those exact bytes
+- `GET` and `HEAD` on `/.well-known/agent-skills/index.json` serve the modern Agent Skills index;
+  indexed artifacts and safe direct files are hashed, and `/.well-known/skills/index.json` remains
+  available for legacy clients
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
 - the existing discovery document remains available and now cross-lists the API catalog and Agent
   Skills index alongside site identity, locale config, capability flags, search, markdown routes,

@@ -66,6 +66,24 @@ async function callMcpTool(
   });
 }
 
+async function callMcpMethod(
+  handlers: ReturnType<typeof createDocsMcpHttpHandler>,
+  method: string,
+  params: Record<string, unknown> = {},
+) {
+  return handlers.POST({
+    request: new Request("http://localhost/api/docs/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: `call-${method}`, method, params }),
+    }),
+  });
+}
+
 function expectSuccessfulStructuredTextResult(payload: {
   result?: {
     content?: Array<{ text?: string }>;
@@ -259,6 +277,75 @@ describe("resolveDocsMcpConfig", () => {
 });
 
 describe("MCP context and schema APIs", () => {
+  it("exposes every skill file as a collision-free text or binary MCP resource", async () => {
+    const markdown = "---\nname: portable\ndescription: Portable workflow.\n---\n";
+    const source = {
+      getPages: () => [],
+      getNavigation: () => ({ name: "Docs", children: [] }),
+      getSkills: () => [
+        {
+          name: "portable",
+          type: "archive" as const,
+          description: "Portable workflow.",
+          url: "/.well-known/agent-skills/portable.tar.gz",
+          digest: `sha256:${"a".repeat(64)}` as const,
+          content: new Uint8Array([1]),
+          sha256: "a".repeat(64),
+          skillDocument: markdown,
+          files: [
+            {
+              path: "SKILL.md",
+              url: "/.well-known/agent-skills/portable/SKILL.md",
+              mediaType: "text/markdown",
+              content: markdown,
+              sha256: "b".repeat(64),
+              digest: `sha256:${"b".repeat(64)}` as const,
+            },
+            {
+              path: "assets/a-b.bin",
+              url: "/.well-known/agent-skills/portable/assets/a-b.bin",
+              mediaType: "application/octet-stream",
+              content: new Uint8Array([0, 255]),
+              sha256: "c".repeat(64),
+              digest: `sha256:${"c".repeat(64)}` as const,
+            },
+            {
+              path: "assets/a/b.bin",
+              url: "/.well-known/agent-skills/portable/assets/a/b.bin",
+              mediaType: "application/octet-stream",
+              content: new Uint8Array([1, 254]),
+              sha256: "d".repeat(64),
+              digest: `sha256:${"d".repeat(64)}` as const,
+            },
+          ],
+        },
+      ],
+    };
+    const handlers = createDocsMcpHttpHandler({ source });
+    const listed = await parseMcpPayload<{
+      result?: { resources?: Array<{ uri: string }> };
+    }>(await callMcpMethod(handlers, "resources/list"));
+    const uris = listed.result?.resources?.map((resource) => resource.uri) ?? [];
+    expect(uris).toEqual(
+      expect.arrayContaining([
+        "docs://skills/portable/SKILL.md",
+        "docs://skills/portable/assets/a-b.bin",
+        "docs://skills/portable/assets/a/b.bin",
+      ]),
+    );
+
+    const read = await parseMcpPayload<{
+      result?: { contents?: Array<{ blob?: string; mimeType?: string }> };
+    }>(
+      await callMcpMethod(handlers, "resources/read", {
+        uri: "docs://skills/portable/assets/a-b.bin",
+      }),
+    );
+    expect(read.result?.contents?.[0]).toMatchObject({
+      mimeType: "application/octet-stream",
+      blob: Buffer.from([0, 255]).toString("base64"),
+    });
+  });
   function page(slug: string, input: Partial<DocsMcpPage> = {}): DocsMcpPage {
     const content = `# Scope guide\n\nUse the shared scope selection guide safely.\n`;
     return {

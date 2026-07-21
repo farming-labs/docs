@@ -135,7 +135,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `codeBlocks`  | `DocsCodeBlocksConfig`         | —               | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false` for UI  | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
-| `agent`       | `DocsAgentConfig`              | —               | Compaction defaults and golden-task usefulness evaluations |
+| `agent`       | `DocsAgentConfig`              | —               | Compaction, golden evaluations, reusable skills, and optional A2A metadata |
 | `review`      | `boolean \| DocsReviewConfig`  | `true`          | Docs Review CI workflow generation, scoring, and rule severity |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
@@ -1719,6 +1719,77 @@ Notes:
 See [CLI](/docs/cli) for the command surface and [Token Efficiency](/docs/token-efficiency) for
 when to use compaction instead of writing `agent.md` by hand.
 
+## Reusable Agent Skills
+
+Set `agent.skills` to publish every configured skill through standards discovery, Static Agent
+Bundles, and MCP. The value can be a string, an array, or `{ paths }`:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    skills: {
+      paths: [
+        "./skills/getting-started/SKILL.md",
+        "./skills/product",
+        "./skills/team-skills",
+      ],
+    },
+  },
+});
+```
+
+A path can point to one `SKILL.md`, a skill directory containing `SKILL.md`, or a collection
+directory whose descendants contain skill directories. Paths are relative to the project root and
+must remain inside its workspace. Publication accepts only non-symlink regular files and
+directories. It includes the skill document and safe files below `references/`, `scripts/`, and
+`assets/`; other sibling content is not exposed.
+
+Skills with only `SKILL.md` are indexed as `skill-md`. Skills with companion files are packaged as
+deterministic `.tar.gz` archives, and the index digest covers the exact indexed artifact bytes.
+The original files stay directly available for progressive disclosure. The project-root
+`skill.md` remains the backwards-compatible site skill and is published alongside configured
+skills.
+
+| Surface | Route or URI |
+| ------- | ------------ |
+| Agent Skills v0.2 index | `/.well-known/agent-skills/index.json` |
+| Indexed skill archive | `/.well-known/agent-skills/<name>.tar.gz` |
+| Direct skill files | `/.well-known/agent-skills/<name>/SKILL.md` and `/<companion-path>` below it |
+| Legacy index and files | `/.well-known/skills/index.json` and direct files below `/.well-known/skills/<name>/` |
+| MCP resources | `docs://skills/<name>/<path>` |
+
+MCP returns text-compatible resources as `text` and binary assets as base64 `blob` values. Running
+`docs agent export --public` emits the same indexes, artifacts, direct companion files, and hashes
+for static hosts.
+
+### Optional A2A Agent Card
+
+Configure `agent.a2a` only when `interfaceUrl` implements a real A2A interface. A docs API, Ask AI
+route, or MCP endpoint does not satisfy that contract. The protocol defaults to `0.3` over
+`HTTP+JSON`; set `protocolVersion` and `protocolBinding` only when the implemented interface
+differs. When configured, the framework publishes `/.well-known/agent-card.json`; otherwise it
+leaves the route absent.
+
+```ts title="docs.config.ts"
+agent: {
+  skills: "./skills",
+  a2a: {
+    interfaceUrl: "https://agent.example.com/a2a",
+    name: "Product docs agent",
+    description: "Answers implementation questions from the product docs.",
+    documentationUrl: "https://docs.example.com/docs",
+    provider: {
+      organization: "Example, Inc.",
+      url: "https://example.com",
+    },
+    version: "1.0.0",
+  },
+},
+```
+
+See [Agent Primitive](/docs/customization/agent-primitive#agent-discovery) for the discovery flow and
+[API Reference](/docs/reference#docsagentconfig) for the exact types.
+
 ## Agent Feedback Endpoints
 
 Machine-readable feedback routes are enabled by default for coding agents and docs-aware automation.
@@ -1756,8 +1827,9 @@ Default behavior:
 - `GET` and `HEAD /.well-known/api-catalog` return the RFC 9727 API catalog
 - set `llmsTxt.apiCatalog: false` to remove that catalog route and its discovery links without
   disabling the hashed Agent Skills routes
-- `GET` and `HEAD /.well-known/agent-skills/index.json` return the hashed Agent Skills index
-- `GET` and `HEAD /.well-known/agent-skills/<name>/SKILL.md` return the exact indexed skill bytes
+- `GET` and `HEAD /.well-known/agent-skills/index.json` return the modern hashed Agent Skills index
+- `GET` and `HEAD /.well-known/skills/index.json` return the legacy compatibility index; indexed
+  artifacts and safe direct files remain available at the routes described above
 - dynamic adapters set the catalog media type and discovery `Link` headers; static hosts should
   serve `/.well-known/api-catalog` as `application/linkset+json` with the RFC 9727 profile
 - `GET /.well-known/agent.json` is the preferred public agent discovery URL

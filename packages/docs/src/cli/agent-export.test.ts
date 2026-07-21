@@ -292,6 +292,85 @@ pnpm add example
     });
   });
 
+  it("exports configured skill archives, exact direct files, and MCP-compatible metadata", async () => {
+    writeProject();
+    const configPath = path.join(tmpDir, "docs.config.ts");
+    writeFileSync(
+      configPath,
+      readFileSync(configPath, "utf8").replace(
+        '  entry: "docs",',
+        '  entry: "docs",\n  agent: { skills: "skills" },',
+      ),
+      "utf8",
+    );
+    const skillDir = path.join(tmpDir, "skills", "portable");
+    mkdirSync(path.join(skillDir, "references"), { recursive: true });
+    mkdirSync(path.join(skillDir, "assets"), { recursive: true });
+    const skillDocument =
+      "---\r\nname: portable\r\ndescription: Use the portable workflow.\r\n---\r\n\r\n# Portable";
+    writeFileSync(path.join(skillDir, "SKILL.md"), skillDocument, "utf8");
+    writeFileSync(path.join(skillDir, "references", "guide.md"), "guide\r\n", "utf8");
+    const encodedReferenceName = "setup # café%.md";
+    writeFileSync(path.join(skillDir, "references", encodedReferenceName), "encoded\n", "utf8");
+    const binary = Buffer.from([0, 255, 17, 128]);
+    writeFileSync(path.join(skillDir, "assets", "data.bin"), binary);
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+
+    const index = JSON.parse(
+      readFileSync(path.join(tmpDir, "public/.well-known/agent-skills/index.json"), "utf8"),
+    );
+    const portable = index.skills.find((skill: { name: string }) => skill.name === "portable");
+    expect(portable).toMatchObject({ type: "archive" });
+    expect(Object.keys(portable).sort()).toEqual(["description", "digest", "name", "type", "url"]);
+    const archive = readFileSync(path.join(tmpDir, "public", portable.url));
+    expect(portable.digest).toBe(`sha256:${createHash("sha256").update(archive).digest("hex")}`);
+    expect(
+      readFileSync(path.join(tmpDir, "public/.well-known/agent-skills/portable/SKILL.md"), "utf8"),
+    ).toBe(skillDocument);
+    expect(
+      readFileSync(path.join(tmpDir, "public/.well-known/agent-skills/portable/assets/data.bin")),
+    ).toEqual(binary);
+    expect(
+      readFileSync(
+        path.join(
+          tmpDir,
+          "public/.well-known/agent-skills/portable/references",
+          encodedReferenceName,
+        ),
+        "utf8",
+      ),
+    ).toBe("encoded\n");
+    expect(
+      existsSync(
+        path.join(
+          tmpDir,
+          "public/.well-known/agent-skills/portable/references/setup%20%23%20caf%C3%A9%25.md",
+        ),
+      ),
+    ).toBe(false);
+
+    const legacy = JSON.parse(
+      readFileSync(path.join(tmpDir, "public/.well-known/skills/index.json"), "utf8"),
+    );
+    expect(
+      legacy.skills.find((skill: { name: string }) => skill.name === "portable").files,
+    ).toEqual([
+      "SKILL.md",
+      "assets/data.bin",
+      "references/guide.md",
+      `references/${encodedReferenceName}`,
+    ]);
+    const discovery = JSON.parse(
+      readFileSync(path.join(tmpDir, "public/.well-known/agent.json"), "utf8"),
+    );
+    expect(discovery.skills.published.map((skill: { name: string }) => skill.name)).toContain(
+      "portable",
+    );
+    await expect(exportAgentBundle({ check: true })).resolves.toBeUndefined();
+  });
+
   it("publishes hashed skills without inventing an RFC catalog or relative llms link", async () => {
     writeProject();
     const configPath = path.join(tmpDir, "docs.config.ts");

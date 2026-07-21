@@ -5,12 +5,15 @@ import {
   API_CATALOG_MEDIA_TYPE,
   API_CATALOG_PROFILE_URI,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
   buildDocsAgentSkillsIndex,
   buildDocsApiCatalog,
   createDocsStandardsResponse,
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
+  type DocsPublishedAgentSkill,
 } from "./standards-discovery.js";
 
 const generatedSkill = `---
@@ -297,5 +300,109 @@ description: 'Use the café documentation.'
     });
     expect(response?.status).toBe(200);
     expect((await response!.json()).skills).toHaveLength(1);
+  });
+
+  it("serves configured archives, direct files, and the relative-path compatibility index", async () => {
+    const archive = new Uint8Array([31, 139, 8, 0, 1, 2, 3]);
+    const archiveHash = createHash("sha256").update(archive).digest("hex");
+    const skillDocument = "---\nname: packaged\ndescription: Use packaged docs.\n---\n";
+    const fileHash = createHash("sha256").update(skillDocument).digest("hex");
+    const published: DocsPublishedAgentSkill = {
+      name: "packaged",
+      type: "archive",
+      description: "Use packaged docs.",
+      url: "/.well-known/agent-skills/packaged.tar.gz",
+      digest: `sha256:${archiveHash}`,
+      content: archive,
+      sha256: archiveHash,
+      skillDocument,
+      files: [
+        {
+          path: "SKILL.md",
+          url: "/.well-known/agent-skills/packaged/SKILL.md",
+          mediaType: "text/markdown",
+          content: skillDocument,
+          sha256: fileHash,
+          digest: `sha256:${fileHash}`,
+        },
+      ],
+    };
+    const options = { fallbackSkillDocument: generatedSkill, publishedSkills: [published] };
+
+    const indexResponse = await createDocsStandardsResponse({
+      ...options,
+      request: new Request(`https://docs.example.com${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`),
+    });
+    const index = await indexResponse!.json();
+    expect(index.skills.find((skill: { name: string }) => skill.name === "packaged")).toEqual({
+      name: "packaged",
+      type: "archive",
+      description: "Use packaged docs.",
+      url: "/.well-known/agent-skills/packaged.tar.gz",
+      digest: `sha256:${archiveHash}`,
+    });
+
+    const archiveResponse = await createDocsStandardsResponse({
+      ...options,
+      request: new Request("https://docs.example.com/api/docs?format=agent-skill&name=packaged"),
+    });
+    expect(archiveResponse?.headers.get("content-type")).toBe("application/gzip");
+    expect(new Uint8Array(await archiveResponse!.arrayBuffer())).toEqual(archive);
+
+    const archiveOnlyResponse = await createDocsStandardsResponse({
+      ...options,
+      request: new Request(
+        "https://docs.example.com/api/docs?format=agent-skill-archive&name=packaged",
+      ),
+    });
+    expect(new Uint8Array(await archiveOnlyResponse!.arrayBuffer())).toEqual(archive);
+    const simpleArchiveResponse = await createDocsStandardsResponse({
+      ...options,
+      request: new Request(
+        "https://docs.example.com/api/docs?format=agent-skill-archive&name=docs",
+      ),
+    });
+    expect(simpleArchiveResponse?.status).toBe(404);
+
+    const fileResponse = await createDocsStandardsResponse({
+      ...options,
+      request: new Request("https://docs.example.com/.well-known/agent-skills/packaged/SKILL.md"),
+    });
+    expect(await fileResponse?.text()).toBe(skillDocument);
+
+    const legacyResponse = await createDocsStandardsResponse({
+      ...options,
+      request: new Request(`https://docs.example.com${DEFAULT_LEGACY_SKILLS_INDEX_ROUTE}`),
+    });
+    expect((await legacyResponse!.json()).skills).toContainEqual({
+      name: "packaged",
+      description: "Use packaged docs.",
+      files: ["SKILL.md"],
+    });
+  });
+
+  it("publishes an Agent Card only for explicit real interface metadata", async () => {
+    const absent = await createDocsStandardsResponse({
+      request: new Request(`https://docs.example.com${DEFAULT_A2A_AGENT_CARD_ROUTE}`),
+      fallbackSkillDocument: generatedSkill,
+    });
+    expect(absent?.status).toBe(404);
+
+    const present = await createDocsStandardsResponse({
+      request: new Request(`https://docs.example.com${DEFAULT_A2A_AGENT_CARD_ROUTE}`),
+      fallbackSkillDocument: generatedSkill,
+      agentCard: {
+        interfaceUrl: "https://agent.example.com/a2a",
+        name: "Example agent",
+        description: "Answers documentation questions.",
+        documentationUrl: "https://docs.example.com",
+        provider: { organization: "Example", url: "https://example.com" },
+      },
+    });
+    expect(await present?.json()).toMatchObject({
+      protocolVersion: "0.3",
+      url: "https://agent.example.com/a2a",
+      skills: [{ id: "docs", url: "/.well-known/agent-skills/docs/SKILL.md" }],
+    });
   });
 });

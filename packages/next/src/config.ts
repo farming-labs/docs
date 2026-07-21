@@ -30,14 +30,18 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep as pathSeparator } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  DEFAULT_AGENT_SKILL_ARCHIVE_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_API_CATALOG_ROUTE,
 } from "@farming-labs/docs";
 import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
@@ -500,6 +504,60 @@ function readDocsConfigPath(root: string): string {
   }
 
   return "docs.config.ts";
+}
+
+function readLiteralStringList(block: string, key: string): string[] | null {
+  const cursor = findTopLevelPropertyValueIndex(block, key);
+  if (cursor === undefined) return null;
+  const value = block.slice(cursor);
+  const quoted = value.match(/^(["'])(.*?)\1/s);
+  if (quoted) return [quoted[2]];
+  if (!value.startsWith("[")) return null;
+  const end = value.indexOf("]");
+  if (end === -1) return null;
+  return [...value.slice(1, end).matchAll(/(["'])(.*?)\1/g)].map((match) => match[2]);
+}
+
+function readAgentSkillTraceGlobs(root: string, configPath: string): string[] {
+  const absoluteConfigPath = join(root, configPath);
+  if (!existsSync(absoluteConfigPath)) return [];
+  const content = readFileSync(absoluteConfigPath, "utf8");
+  const agent = extractTopLevelObjectLiteral(content, "agent");
+  if (!agent) return [];
+  const skillsCursor = findTopLevelPropertyValueIndex(agent, "skills");
+  if (skillsCursor === undefined) return [];
+  const skillsObject =
+    agent[skillsCursor] === "{" ? extractObjectLiteral(agent, "skills") : undefined;
+  const configured = skillsObject
+    ? readLiteralStringList(skillsObject, "paths")
+    : readLiteralStringList(agent, "skills");
+  if (!configured) {
+    throw new Error(
+      "withDocs could not statically trace agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
+    );
+  }
+  return configured.map((configuredPath) => {
+    const normalized = configuredPath.replace(/\\/g, "/").replace(/\/$/, "");
+    return normalized.endsWith("/SKILL.md") || normalized === "SKILL.md"
+      ? normalized
+      : `${normalized}/**/*`;
+  });
+}
+
+function commonTracingRoot(root: string, globs: readonly string[]): string {
+  let common = resolve(root);
+  for (const glob of globs) {
+    const candidate = resolve(root, glob.replace(/\/\*\*\/\*$/, ""));
+    while (
+      relative(common, candidate) === ".." ||
+      relative(common, candidate).startsWith(`..${pathSeparator}`)
+    ) {
+      const parent = dirname(common);
+      if (parent === common) break;
+      common = parent;
+    }
+  }
+  return common;
 }
 
 /** Read the OG endpoint from docs.config.ts[x] (returns undefined if not set). */
@@ -1654,7 +1712,35 @@ function buildStandardsDiscoveryRewrites(): NextRewrite[] {
     },
     {
       source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
-      destination: "/api/docs?format=agent-skill&name=:name",
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/skill.md`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name.tar.gz`,
+      destination: `/api/docs?format=${DEFAULT_AGENT_SKILL_ARCHIVE_FORMAT}&name=:name`,
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/:path*`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=:path*",
+    },
+    {
+      source: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+      destination: "/api/docs?format=legacy-skills",
+    },
+    {
+      source: `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/:name/skill.md`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+    },
+    {
+      source: `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/:name/:path*`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=:path*",
+    },
+    {
+      source: DEFAULT_A2A_AGENT_CARD_ROUTE,
+      destination: "/api/docs?format=agent-card",
     },
   ];
 }
@@ -2031,6 +2117,11 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
   const docsConfigAbsolutePath = join(root, docsConfigPath);
+  const agentSkillTraceGlobs = readAgentSkillTraceGlobs(root, docsConfigPath);
+  if (agentSkillTraceGlobs.some((glob) => glob.startsWith("../"))) {
+    nextConfig.outputFileTracingRoot ??=
+      workspaceRoot ?? commonTracingRoot(root, agentSkillTraceGlobs);
+  }
   const agentFeedback = readAgentFeedbackConfig(root);
   const docsConfigRelativeAlias =
     docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
@@ -2428,10 +2519,16 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
         agentsTraceFile,
         agentTraceFile,
         sitemapManifestTraceFile,
+        ...agentSkillTraceGlobs,
       ]),
     ],
     [DEFAULT_MCP_ROUTE]: [
-      ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),
+      ...new Set([
+        ...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []),
+        docsTraceGlob,
+        skillTraceFile,
+        ...agentSkillTraceGlobs,
+      ]),
     ],
   };
 

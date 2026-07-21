@@ -36,7 +36,11 @@ import {
   API_CATALOG_PROFILE_URI,
   DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ARCHIVE_ROUTE_PATTERN,
   DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_FORMAT,
   DEFAULT_API_CATALOG_FORMAT,
   DEFAULT_API_CATALOG_ROUTE,
   buildDocsApiCatalog,
@@ -44,6 +48,8 @@ import {
   isDocsStandardsDiscoveryRequest,
   resolveDocsDiscoveryApiRoute,
   type DocsDiscoveryApiRouteOptions,
+  type DocsA2AAgentCardOptions,
+  type DocsPublishedAgentSkill,
 } from "./standards-discovery.js";
 
 export {
@@ -51,14 +57,25 @@ export {
   API_CATALOG_MEDIA_TYPE,
   API_CATALOG_PROFILE_URI,
   DEFAULT_AGENT_SKILL_FORMAT,
+  DEFAULT_AGENT_SKILL_ARCHIVE_FORMAT,
+  DEFAULT_AGENT_SKILL_FILE_FORMAT,
+  DEFAULT_AGENT_SKILL_RESOURCE_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ARCHIVE_ROUTE_PATTERN,
   DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
   DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_FORMAT,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_FORMAT,
+  DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_API_CATALOG_FORMAT,
   DEFAULT_API_CATALOG_ROUTE,
   appendDocsDiscoveryLinkHeader,
   buildDocsAgentSkillsIndex,
+  buildDocsLegacySkillsIndex,
+  buildDocsA2AAgentCard,
   buildDocsApiCatalog,
   createDocsStandardsResponse,
   getDocsDiscoveryLinkHeader,
@@ -72,12 +89,16 @@ export type {
   CreateDocsStandardsResponseOptions,
   DocsAgentSkillIndexEntry,
   DocsAgentSkillsIndex,
+  DocsA2AAgentCard,
+  DocsA2AAgentCardOptions,
+  DocsLegacySkillsIndex,
   DocsApiCatalog,
   DocsApiCatalogLinkContext,
   DocsApiCatalogLinkTarget,
   DocsApiCatalogOptions,
   DocsDiscoveryApiRouteOptions,
   DocsPublishedAgentSkill,
+  DocsPublishedAgentSkillFile,
   DocsPublishedAgentSkillOptions,
   DocsStandardsDiscoveryRouteOptions,
   DocsStandardsDiscoveryRequest,
@@ -559,6 +580,10 @@ export interface DocsAgentDiscoverySpecOptions extends DocsDiscoveryApiRouteOpti
     acceptHeader?: boolean;
     signatureAgentHeader?: boolean;
   };
+  /** Additional validated project skills to cross-list in custom discovery. */
+  publishedSkills?: readonly DocsPublishedAgentSkill[];
+  /** Explicit metadata for a real A2A service; omitted sites do not publish an Agent Card. */
+  agentCard?: DocsA2AAgentCardOptions;
 }
 
 export interface DocsSkillDocumentOptions extends DocsDiscoveryApiRouteOptions {
@@ -2033,6 +2058,8 @@ export async function createDocsStandardsDiscoveryResponse({
   robots,
   openapi,
   markdown: _markdown,
+  publishedSkills,
+  agentCard,
 }: DocsStandardsDiscoveryResponseOptions): Promise<Response | null> {
   const url = new URL(request.url);
   const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
@@ -2078,6 +2105,8 @@ export async function createDocsStandardsDiscoveryResponse({
     apiRoute: resolvedApiRoute,
     preferredSkillDocument,
     fallbackSkillDocument,
+    publishedSkills,
+    agentCard,
     apiCatalog: apiCatalogEnabled
       ? buildDocsApiCatalog({
           origin: catalogOrigin,
@@ -2087,6 +2116,8 @@ export async function createDocsStandardsDiscoveryResponse({
           diagnosticsRoute: `${resolvedApiRoute}?format=diagnostics`,
           agentManifestRoute: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
           agentSkillsIndexRoute: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          legacySkillsIndexRoute: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+          agentCardRoute: agentCard ? DEFAULT_A2A_AGENT_CARD_ROUTE : null,
           agentsRoute: DEFAULT_AGENTS_MD_ROUTE,
           skillRoute: DEFAULT_SKILL_MD_ROUTE,
           markdownRootRoute: `/${normalizedEntry}.md`,
@@ -3539,6 +3570,8 @@ export function buildDocsAgentDiscoverySpec({
   robots,
   openapi,
   markdown,
+  publishedSkills = [],
+  agentCard,
 }: DocsAgentDiscoverySpecOptions) {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
   const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
@@ -3615,6 +3648,8 @@ export function buildDocsAgentDiscoverySpec({
           }
         : {}),
       agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      legacySkillsIndex: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+      ...(agentCard ? { agentCard: DEFAULT_A2A_AGENT_CARD_ROUTE } : {}),
       openapi: defaultOpenapiRoute,
     },
     apiCatalog: {
@@ -3741,10 +3776,26 @@ export function buildDocsAgentDiscoverySpec({
         schema: AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
         index: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
         artifact: DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+        archive: DEFAULT_AGENT_SKILLS_ARCHIVE_ROUTE_PATTERN,
+        file: `${DEFAULT_AGENT_SKILLS_ROUTE_PATTERN.replace("/SKILL.md", "/{path}")}`,
+        legacyIndex: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
         apiIndex: apiQueryRoute(`format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`),
         apiArtifact: apiQueryRoute("format=agent-skill&name={name}"),
+        apiFile: apiQueryRoute("format=agent-skill-file&name={name}&path={path}"),
         digest: "sha256",
       },
+      published: publishedSkills.map((skill) => ({
+        name: skill.name,
+        description: skill.description,
+        type: skill.type,
+        url: skill.url,
+        digest: skill.digest,
+        files: skill.files.map((file) => ({
+          path: file.path,
+          url: file.url,
+          digest: file.digest,
+        })),
+      })),
       recommended: [
         {
           name: "getting-started",
