@@ -22,11 +22,56 @@ describe("createHostedMcpClientConfig", () => {
       " https://cloud.example.com/api/// ",
     );
 
-    expect(config.mcpServers["docs-cloud"].url).toBe(
-      "https://cloud.example.com/api/v1/mcp/deployment-456",
+    expect(config).toMatchObject({
+      mcpServers: {
+        "docs-cloud": {
+          url: "https://cloud.example.com/api/v1/mcp/deployment-456",
+        },
+      },
+    });
+    expect(JSON.stringify(config)).not.toContain('"command"');
+    expect(JSON.stringify(config)).not.toContain('"args"');
+  });
+
+  it("uses Cursor's environment variable syntax", () => {
+    expect(createHostedMcpClientConfig("deployment-123", undefined, "cursor")).toEqual({
+      mcpServers: {
+        "docs-cloud": {
+          url: "https://api.farming-labs.dev/v1/mcp/deployment-123",
+          headers: {
+            Authorization: "Bearer ${env:DOCS_CLOUD_API_KEY}",
+          },
+        },
+      },
+    });
+  });
+
+  it("uses VS Code's servers schema and secure input syntax", () => {
+    expect(createHostedMcpClientConfig("deployment-123", undefined, "vscode")).toEqual({
+      inputs: [
+        {
+          type: "promptString",
+          id: "docs-cloud-api-key",
+          description: "Docs Cloud API key",
+          password: true,
+        },
+      ],
+      servers: {
+        "docs-cloud": {
+          type: "http",
+          url: "https://api.farming-labs.dev/v1/mcp/deployment-123",
+          headers: {
+            Authorization: "Bearer ${input:docs-cloud-api-key}",
+          },
+        },
+      },
+    });
+  });
+
+  it("rejects unknown clients instead of emitting incompatible JSON", () => {
+    expect(() => createHostedMcpClientConfig("deployment-123", undefined, "other")).toThrow(
+      'Unsupported MCP client "other"',
     );
-    expect(config.mcpServers["docs-cloud"]).not.toHaveProperty("command");
-    expect(config.mcpServers["docs-cloud"]).not.toHaveProperty("args");
   });
 });
 

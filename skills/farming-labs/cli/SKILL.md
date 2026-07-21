@@ -202,9 +202,17 @@ running the local stdio server:
 pnpm exec docs mcp setup --deployment <deployment-id> --json
 ```
 
-The generated `mcpServers` entry uses the hosted `/v1/mcp/<deployment-id>` URL and references
-`DOCS_CLOUD_API_KEY` in its authorization header. The raw key is never written to the JSON output;
-set the environment variable in the MCP client process before connecting.
+The default output targets Claude Code and references `${DOCS_CLOUD_API_KEY}` in its authorization
+header. Generate a native config for another client when needed:
+
+```bash
+pnpm exec docs mcp setup --deployment <deployment-id> --client cursor --json
+pnpm exec docs mcp setup --deployment <deployment-id> --client vscode --json
+```
+
+Cursor output uses `${env:DOCS_CLOUD_API_KEY}`. VS Code output uses its top-level `servers` schema
+and a secure `${input:docs-cloud-api-key}` prompt. The raw key is never written to any generated
+JSON output.
 
 The built-in MCP surface currently includes:
 
