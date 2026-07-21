@@ -1059,7 +1059,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       robots: config.robots,
       openapi: openapiDiscovery,
       markdown: {
-        acceptHeader: false,
+        acceptHeader: true,
       },
     } as any;
     if (isDocsStandardsDiscoveryRequest(event.url, { apiRoute: discoveryApiRoute })) {

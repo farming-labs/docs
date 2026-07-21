@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE } from "./agent.js";
 import type { DocsAgentAdapter } from "./agent-conformance.js";
 import { runDocsAgentConformance } from "./agent-conformance.js";
 
@@ -48,6 +49,21 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
 
     expect(report.cases.filter((result) => !result.passed)).toEqual([]);
     expect(report.passed).toBe(true);
+
+    const discoveryUrl = new URL(
+      DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+      "https://docs.example.com",
+    );
+    const discoveryResponse = await server.GET({
+      request: new Request(discoveryUrl),
+      url: discoveryUrl,
+    });
+    await expect(discoveryResponse.json()).resolves.toMatchObject({
+      markdown: {
+        enabled: true,
+        acceptHeader: "text/markdown",
+      },
+    });
 
     const indexUrl = new URL("/.well-known/agent-skills/index.json", "https://docs.example.com");
     const indexResponse = await server.GET({
