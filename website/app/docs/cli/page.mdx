@@ -1135,11 +1135,46 @@ Use `mcp setup` when you want to print the MCP client configuration for a Docs C
 pnpm exec docs mcp setup --deployment <id>
 ```
 
-By default the command prints human-readable setup instructions. Use `--json` to print only the JSON block:
+By default the command prints human-readable setup instructions and a Claude Code-compatible JSON
+block. Use `--json` to print only that JSON:
 
 ```bash title="terminal"
 pnpm exec docs mcp setup --deployment <id> --json
 ```
+
+The default `claude-code` format connects directly to the deployment over Streamable HTTP. Its
+`${DOCS_CLOUD_API_KEY}` placeholder is Claude Code's environment-variable syntax, so set that
+variable before starting Claude Code:
+
+```json title="Claude Code .mcp.json (default)"
+{
+  "mcpServers": {
+    "docs-cloud": {
+      "type": "http",
+      "url": "https://api.farming-labs.dev/v1/mcp/<id>",
+      "headers": {
+        "Authorization": "Bearer ${DOCS_CLOUD_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+MCP clients use different config schemas and secret placeholders. Select the target client instead
+of copying the default block into an incompatible config file:
+
+```bash title="terminal"
+pnpm exec docs mcp setup --deployment <id> --client cursor --json
+pnpm exec docs mcp setup --deployment <id> --client vscode --json
+```
+
+| Client | `--client` value | Generated secret handling |
+| ------ | ---------------- | ------------------------- |
+| Claude Code | `claude-code` (default) | Reads `${DOCS_CLOUD_API_KEY}` from the Claude Code process environment. |
+| Cursor | `cursor` | Reads `${env:DOCS_CLOUD_API_KEY}` using Cursor's environment-variable syntax. |
+| VS Code | `vscode` | Uses the native `servers` schema and a secure `${input:docs-cloud-api-key}` prompt. |
+
+None of the formats embeds the raw API key in generated JSON.
 
 Use `--api-base-url` to override the Docs Cloud API base URL (defaults to `https://api.farming-labs.dev`):
 
@@ -1153,7 +1188,8 @@ Flags for `mcp setup`:
 | ---- | ----------- |
 | `--deployment <id>` | **(Required)** Docs Cloud deployment ID. |
 | `--api-base-url <url>` | Override the Docs Cloud API base URL. Defaults to `https://api.farming-labs.dev`. |
-| `--json` | Print only the MCP client JSON without human-readable instructions. |
+| `--client <name>` | Emit native config for `claude-code` (default), `cursor`, or `vscode`. |
+| `--json` | Print only the selected MCP client JSON without human-readable instructions. |
 ## Code Blocks
 
 Use `docs codeblocks validate` to plan and validate fenced code blocks from your docs content.

@@ -195,6 +195,25 @@ Use a custom config path when the file lives elsewhere:
 pnpm exec docs mcp --config src/lib/docs.config.ts
 ```
 
+For a hosted Docs Cloud deployment, generate a direct Streamable HTTP client entry instead of
+running the local stdio server:
+
+```bash
+pnpm exec docs mcp setup --deployment <deployment-id> --json
+```
+
+The default output targets Claude Code and references `${DOCS_CLOUD_API_KEY}` in its authorization
+header. Generate a native config for another client when needed:
+
+```bash
+pnpm exec docs mcp setup --deployment <deployment-id> --client cursor --json
+pnpm exec docs mcp setup --deployment <deployment-id> --client vscode --json
+```
+
+Cursor output uses `${env:DOCS_CLOUD_API_KEY}`. VS Code output uses its top-level `servers` schema
+and a secure `${input:docs-cloud-api-key}` prompt. The raw key is never written to any generated
+JSON output.
+
 The built-in MCP surface currently includes:
 
 - `list_docs`
