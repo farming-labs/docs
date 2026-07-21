@@ -464,7 +464,11 @@ To print the MCP client setup instructions for your own Docs Cloud deployment, u
 pnpm exec docs mcp setup --deployment <your-deployment-id>
 ```
 
-Add `--json` to print only the JSON config block, or `--api-base-url <url>` to target a self-hosted Docs Cloud API. See [CLI](/docs/cli#print-hosted-mcp-client-config-with-mcp-setup) for the full flag reference.
+The generated config connects directly to the hosted Streamable HTTP endpoint and reads the bearer
+token from `DOCS_CLOUD_API_KEY`; it does not run another setup command or embed the secret. Add
+`--json` to print only the JSON config block, or `--api-base-url <url>` to target a self-hosted Docs
+Cloud API. See [CLI](/docs/cli#print-hosted-mcp-client-config-with-mcp-setup) for the full flag
+reference.
 <DocsMcpAccess />
 
 ### More setup docs

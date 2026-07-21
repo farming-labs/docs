@@ -1141,6 +1141,24 @@ By default the command prints human-readable setup instructions. Use `--json` to
 pnpm exec docs mcp setup --deployment <id> --json
 ```
 
+The generated `mcpServers` entry connects directly to the deployment over Streamable HTTP. It
+references `DOCS_CLOUD_API_KEY` in the authorization header instead of embedding the secret, so set
+that environment variable before starting the MCP client:
+
+```json title="MCP client config"
+{
+  "mcpServers": {
+    "docs-cloud": {
+      "type": "http",
+      "url": "https://api.farming-labs.dev/v1/mcp/<id>",
+      "headers": {
+        "Authorization": "Bearer ${DOCS_CLOUD_API_KEY}"
+      }
+    }
+  }
+}
+```
+
 Use `--api-base-url` to override the Docs Cloud API base URL (defaults to `https://api.farming-labs.dev`):
 
 ```bash title="terminal"

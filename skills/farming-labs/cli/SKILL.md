@@ -195,6 +195,17 @@ Use a custom config path when the file lives elsewhere:
 pnpm exec docs mcp --config src/lib/docs.config.ts
 ```
 
+For a hosted Docs Cloud deployment, generate a direct Streamable HTTP client entry instead of
+running the local stdio server:
+
+```bash
+pnpm exec docs mcp setup --deployment <deployment-id> --json
+```
+
+The generated `mcpServers` entry uses the hosted `/v1/mcp/<deployment-id>` URL and references
+`DOCS_CLOUD_API_KEY` in its authorization header. The raw key is never written to the JSON output;
+set the environment variable in the MCP client process before connecting.
+
 The built-in MCP surface currently includes:
 
 - `list_docs`

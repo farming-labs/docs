@@ -56,6 +56,22 @@ function normalizeApiBaseUrl(value?: string) {
   return (value?.trim() || "https://api.farming-labs.dev").replace(/\/+$/g, "");
 }
 
+export function createHostedMcpClientConfig(deploymentId: string, apiBaseUrl?: string) {
+  const endpoint = `${normalizeApiBaseUrl(apiBaseUrl)}/v1/mcp/${deploymentId.trim()}`;
+
+  return {
+    mcpServers: {
+      "docs-cloud": {
+        type: "http",
+        url: endpoint,
+        headers: {
+          Authorization: "Bearer ${DOCS_CLOUD_API_KEY}",
+        },
+      },
+    },
+  };
+}
+
 function printHostedMcpSetup(options: RunMcpOptions) {
   const deploymentId = options.deploymentId?.trim();
 
@@ -68,16 +84,8 @@ function printHostedMcpSetup(options: RunMcpOptions) {
     process.exit(1);
   }
 
-  const apiBaseUrl = normalizeApiBaseUrl(options.apiBaseUrl);
-  const endpoint = `${apiBaseUrl}/v1/mcp/${deploymentId}`;
-  const jsonConfig = {
-    mcpServers: {
-      "docs-cloud": {
-        command: "npx",
-        args: ["@farming-labs/docs", "mcp", "setup", "--deployment", deploymentId],
-      },
-    },
-  };
+  const jsonConfig = createHostedMcpClientConfig(deploymentId, options.apiBaseUrl);
+  const endpoint = jsonConfig.mcpServers["docs-cloud"].url;
 
   if (options.json) {
     console.log(JSON.stringify(jsonConfig, null, 2));
@@ -87,10 +95,7 @@ function printHostedMcpSetup(options: RunMcpOptions) {
   console.log(pc.bold("Docs Cloud MCP deployment"));
   console.log(pc.dim(`Deployment: ${deploymentId}`));
   console.log();
-  console.log(pc.cyan("CLI stdio"));
-  console.log(`  npx @farming-labs/docs mcp setup --deployment ${deploymentId}`);
-  console.log();
-  console.log(pc.cyan("Streamable HTTP"));
+  console.log(pc.cyan("Streamable HTTP (recommended)"));
   console.log(`  ${endpoint}`);
   console.log();
   console.log(pc.cyan("SSE"));
@@ -99,7 +104,11 @@ function printHostedMcpSetup(options: RunMcpOptions) {
   console.log(pc.cyan("MCP client JSON"));
   console.log(JSON.stringify(jsonConfig, null, 2));
   console.log();
-  console.log(pc.dim("Set DOCS_CLOUD_API_KEY in the agent environment before connecting."));
+  console.log(
+    pc.dim(
+      "The config reads DOCS_CLOUD_API_KEY from the MCP client environment; no secret is embedded.",
+    ),
+  );
 }
 
 export function readMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
