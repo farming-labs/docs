@@ -434,6 +434,20 @@ describe("agent route helpers", () => {
     });
   });
 
+  it("honors an effective API catalog diagnostics override", () => {
+    const diagnostics = buildDocsDiagnostics(
+      { llmsTxt: { apiCatalog: true } },
+      { apiCatalog: false },
+    );
+
+    expect(diagnostics.routes.apiCatalog).toBeNull();
+    expect(diagnostics.features.apiCatalog).toMatchObject({
+      status: "disabled",
+      reason: "configured-disabled",
+      route: null,
+    });
+  });
+
   it("reports invalid search provider diagnostics without leaking configured values", () => {
     const diagnostics = buildDocsDiagnostics(
       {

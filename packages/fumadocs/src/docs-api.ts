@@ -4107,6 +4107,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         return Response.json(
           buildDocsDiagnostics(docsDiagnosticsInput, {
             adapter: "next",
+            apiCatalog: apiCatalogEnabled,
             entry,
             apiRoute: requestApiRoute,
             i18n,

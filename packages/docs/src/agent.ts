@@ -429,6 +429,8 @@ export interface DocsDiagnostics {
 
 export interface DocsDiagnosticsOptions extends DocsDiscoveryApiRouteOptions {
   adapter?: string;
+  /** Effective RFC 9727 catalog availability after runtime overrides are applied. */
+  apiCatalog?: boolean;
   entry?: string;
   i18n?: ResolvedDocsI18n | null;
   mcp?: DocsMcpResolvedConfig;
@@ -751,7 +753,11 @@ export function buildDocsDiagnostics(
   const search = resolveDocsDiagnosticsSearch(input.search, staticExport);
   const ai = resolveDocsDiagnosticsAi(input.ai, staticExport);
   const llms = resolveDocsDiagnosticsLlms(input.llmsTxt);
-  const apiCatalog = resolveDocsDiagnosticsApiCatalog(input.llmsTxt, staticExport);
+  const apiCatalog = resolveDocsDiagnosticsApiCatalog(
+    input.llmsTxt,
+    staticExport,
+    options.apiCatalog,
+  );
   const sitemapConfig = resolveDocsSitemapConfig(input.sitemap as boolean | DocsSitemapConfig);
   const robotsEnabled = isRobotsDiscoveryEnabled(input.robots as boolean | DocsRobotsConfig);
   const openapiConfig = resolveDocsOpenApiDiscoveryConfig(
@@ -1292,9 +1298,13 @@ function resolveDocsDiagnosticsLlms(llmsTxt: unknown): {
 function resolveDocsDiagnosticsApiCatalog(
   llmsTxt: unknown,
   staticExport: boolean,
+  explicit?: boolean,
 ): { enabled: boolean; reason?: string } {
   if (staticExport) {
     return { enabled: false, reason: "static-export" };
+  }
+  if (explicit !== undefined) {
+    return explicit ? { enabled: true } : { enabled: false, reason: "configured-disabled" };
   }
   if (isPlainObject(llmsTxt) && llmsTxt.apiCatalog === false) {
     return { enabled: false, reason: "llms-txt-api-catalog-disabled" };
