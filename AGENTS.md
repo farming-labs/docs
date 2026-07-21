@@ -1,6 +1,6 @@
 # Guidance for AI agents
 
-This repo is **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
+This repo is **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt.
 
 ## Skills (skills.sh / Agent Skills specification)
 

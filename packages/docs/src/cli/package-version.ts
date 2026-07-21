@@ -9,13 +9,14 @@ import {
   installCommand,
 } from "./utils.js";
 
-export const PRESETS = ["next", "tanstack-start", "nuxt", "sveltekit", "astro"] as const;
+export const PRESETS = ["next", "tanstack-start", "farmjs", "nuxt", "sveltekit", "astro"] as const;
 export type PresetName = (typeof PRESETS)[number];
 export type UpgradeFramework = Framework;
 
 export const PACKAGES_BY_FRAMEWORK: Record<UpgradeFramework, string[]> = {
   nextjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/next"],
   "tanstack-start": ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/tanstack-start"],
+  farmjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/farmjs"],
   nuxt: [
     "@farming-labs/docs",
     "@farming-labs/nuxt",
@@ -96,8 +97,8 @@ export function resolveDocsPackageFramework(
   const detected = detectFramework(cwd);
   if (!detected) {
     p.log.error(
-      "Could not detect a supported framework (Next.js, TanStack Start, Nuxt, SvelteKit, Astro). Use " +
-        pc.cyan("--framework <next|tanstack-start|nuxt|sveltekit|astro>") +
+      "Could not detect a supported framework (Next.js, TanStack Start, Farm.js, Nuxt, SvelteKit, Astro). Use " +
+        pc.cyan("--framework <next|tanstack-start|farmjs|nuxt|sveltekit|astro>") +
         " to specify.",
     );
     process.exit(1);

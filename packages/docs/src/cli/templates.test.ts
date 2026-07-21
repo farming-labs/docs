@@ -15,6 +15,8 @@ import {
   tanstackRootRouteTemplate,
   injectTanstackRootProviderIntoRoute,
   injectTanstackVitePlugins,
+  farmjsDocsConfigTemplate,
+  injectFarmjsConfig,
   globalCssTemplate,
   injectCssImport,
   getThemeExportName,
@@ -391,6 +393,34 @@ describe("tanstackDocsConfigTemplate", () => {
     expect(out).toContain("nav:");
     expect(out).toContain('url: "/docs"');
     expect(out).toContain("themeToggle:");
+  });
+});
+
+describe("Farm.js templates", () => {
+  it("includes localized content settings", () => {
+    const out = farmjsDocsConfigTemplate({
+      ...baseConfig,
+      framework: "farmjs",
+      i18n: { ...i18nConfig },
+    });
+
+    expect(out).toContain("i18n:");
+    expect(out).toContain('locales: ["en", "fr"]');
+    expect(out).toContain('defaultLocale: "en"');
+  });
+
+  it("wraps an existing Farm config without changing its options", () => {
+    const out = injectFarmjsConfig(`import { defineConfig } from "@farmjs/core";
+
+export default defineConfig({
+  preset: "vercel",
+});
+`);
+
+    expect(out).toContain('import { withDocs } from "@farming-labs/farmjs/config";');
+    expect(out).toContain("const farmConfig = defineConfig({");
+    expect(out).toContain('preset: "vercel"');
+    expect(out).toContain("export default withDocs(farmConfig);");
   });
 });
 

@@ -137,6 +137,22 @@ describe("upgrade package manager selection", () => {
     );
   });
 
+  it("upgrades Farm.js when the framework is detected", async () => {
+    const utils = await import("./utils.js");
+
+    vi.mocked(utils.detectFramework).mockReturnValue("farmjs");
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
+
+    await upgrade({ tag: "latest" });
+
+    expect(utils.exec).toHaveBeenCalledWith(
+      "pnpm add @farming-labs/docs@latest @farming-labs/theme@latest @farming-labs/farmjs@latest",
+      process.cwd(),
+    );
+  });
+
   it("upgrades to an exact version when requested", async () => {
     const utils = await import("./utils.js");
 

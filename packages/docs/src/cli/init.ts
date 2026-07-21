@@ -67,6 +67,12 @@ import {
   tanstackWelcomePageTemplate,
   tanstackInstallationPageTemplate,
   tanstackQuickstartPageTemplate,
+  farmjsDocsConfigTemplate,
+  farmjsConfigTemplate,
+  injectFarmjsConfig,
+  farmjsWelcomePageTemplate,
+  farmjsInstallationPageTemplate,
+  farmjsQuickstartPageTemplate,
   svelteDocsConfigTemplate,
   svelteDocsServerTemplate,
   svelteDocsLayoutTemplate,
@@ -214,6 +220,18 @@ function detectApiRouteRoot(
       /(?:^|\/)[^/]+\.(?:[cm]?[jt]sx?)$/i.test(relativePath),
     );
     return topLevel ?? defaultRoot;
+  }
+
+  if (framework === "farmjs") {
+    const appRoot = fs.existsSync(path.join(cwd, "src", "app"))
+      ? path.join(cwd, "src", "app")
+      : path.join(cwd, "app");
+    if (fs.existsSync(path.join(appRoot, defaultRoot))) return defaultRoot;
+    return (
+      detectFromRecursiveRouteFiles(appRoot, (_entry, relativePath) =>
+        /\/?route\.(?:[cm]?[jt]sx?)$/i.test(relativePath),
+      ) ?? defaultRoot
+    );
   }
 
   if (framework === "sveltekit") {
@@ -549,11 +567,13 @@ export async function init(options: InitOptions = {}) {
         ? "Next.js"
         : framework === "tanstack-start"
           ? "TanStack Start"
-          : framework === "sveltekit"
-            ? "SvelteKit"
-            : framework === "astro"
-              ? "Astro"
-              : "Nuxt";
+          : framework === "farmjs"
+            ? "Farm.js"
+            : framework === "sveltekit"
+              ? "SvelteKit"
+              : framework === "astro"
+                ? "Astro"
+                : "Nuxt";
     p.log.success(`Detected framework: ${pc.cyan(frameworkName)}`);
   } else {
     p.log.warn("Could not auto-detect a framework from " + pc.cyan("package.json") + ".");
@@ -570,6 +590,11 @@ export async function init(options: InitOptions = {}) {
           value: "tanstack-start",
           label: "TanStack Start",
           hint: "React with TanStack Router and server functions",
+        },
+        {
+          value: "farmjs",
+          label: "Farm.js",
+          hint: "React framework for product applications",
         },
         {
           value: "sveltekit",
@@ -744,11 +769,13 @@ export async function init(options: InitOptions = {}) {
       ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
       : framework === "tanstack-start"
         ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
-        : framework === "sveltekit"
-          ? `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`
-          : framework === "nuxt"
-            ? `Uses ${pc.cyan("~/")} prefix (Nuxt built-in)`
-            : `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`;
+        : framework === "farmjs"
+          ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
+          : framework === "sveltekit"
+            ? `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`
+            : framework === "nuxt"
+              ? `Uses ${pc.cyan("~/")} prefix (Nuxt built-in)`
+              : `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`;
 
   const useAlias = await p.confirm({
     message: `Use path aliases for imports? ${pc.dim(aliasHint)}`,
@@ -998,15 +1025,17 @@ export async function init(options: InitOptions = {}) {
   const defaultCssPath =
     framework === "tanstack-start"
       ? "src/styles/app.css"
-      : framework === "sveltekit"
-        ? "src/app.css"
-        : framework === "astro"
-          ? "src/styles/global.css"
-          : framework === "nuxt"
-            ? "assets/css/main.css"
-            : framework === "nextjs"
-              ? `${nextAppDir}/globals.css`
-              : "app/globals.css";
+      : framework === "farmjs"
+        ? "src/app/globals.css"
+        : framework === "sveltekit"
+          ? "src/app.css"
+          : framework === "astro"
+            ? "src/styles/global.css"
+            : framework === "nuxt"
+              ? "assets/css/main.css"
+              : framework === "nextjs"
+                ? `${nextAppDir}/globals.css`
+                : "app/globals.css";
 
   if (detectedCssFiles.length === 1) {
     globalCssRelPath = detectedCssFiles[0];
@@ -1081,6 +1110,8 @@ export async function init(options: InitOptions = {}) {
 
   if (framework === "tanstack-start") {
     scaffoldTanstackStart(cwd, cfg, globalCssRelPath, write, skipped, written);
+  } else if (framework === "farmjs") {
+    scaffoldFarmjs(cwd, cfg, globalCssRelPath, write, skipped, written);
   } else if (framework === "sveltekit") {
     scaffoldSvelteKit(cwd, cfg, globalCssRelPath, write, skipped, written);
   } else if (framework === "astro") {
@@ -1144,13 +1175,15 @@ export async function init(options: InitOptions = {}) {
   const docsRuntimeInstallCommand =
     framework === "tanstack-start"
       ? `${installCommand(pm)} @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start`
-      : framework === "sveltekit"
-        ? `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme @farming-labs/theme`
-        : framework === "astro"
-          ? `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme @farming-labs/theme ${getAstroAdapterPkg(cfg.astroAdapter ?? "vercel")}`
-          : framework === "nuxt"
-            ? `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme @farming-labs/theme`
-            : `${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`;
+      : framework === "farmjs"
+        ? `${installCommand(pm)} @farming-labs/docs @farming-labs/farmjs @farming-labs/theme`
+        : framework === "sveltekit"
+          ? `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme @farming-labs/theme`
+          : framework === "astro"
+            ? `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme @farming-labs/theme ${getAstroAdapterPkg(cfg.astroAdapter ?? "vercel")}`
+            : framework === "nuxt"
+              ? `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme @farming-labs/theme`
+              : `${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`;
 
   try {
     exec(docsRuntimeInstallCommand, cwd);
@@ -1225,24 +1258,28 @@ export async function init(options: InitOptions = {}) {
   const devCommand =
     framework === "tanstack-start"
       ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
-      : framework === "sveltekit"
-        ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
-        : framework === "astro"
-          ? { cmd: "npx", args: ["astro", "dev"], waitFor: "ready" }
-          : framework === "nuxt"
-            ? { cmd: "npx", args: ["nuxt", "dev"], waitFor: "Local" }
-            : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
+      : framework === "farmjs"
+        ? { cmd: "npx", args: ["farm", "dev"], waitFor: "Local:" }
+        : framework === "sveltekit"
+          ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
+          : framework === "astro"
+            ? { cmd: "npx", args: ["astro", "dev"], waitFor: "ready" }
+            : framework === "nuxt"
+              ? { cmd: "npx", args: ["nuxt", "dev"], waitFor: "Local" }
+              : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
 
   const defaultPort =
     framework === "tanstack-start"
       ? "5173"
-      : framework === "sveltekit"
-        ? "5173"
-        : framework === "astro"
-          ? "4321"
-          : framework === "nuxt"
-            ? "3000"
-            : "3000";
+      : framework === "farmjs"
+        ? "3000"
+        : framework === "sveltekit"
+          ? "5173"
+          : framework === "astro"
+            ? "4321"
+            : framework === "nuxt"
+              ? "3000"
+              : "3000";
 
   try {
     const child = await spawnAndWaitFor(
@@ -1279,13 +1316,15 @@ export async function init(options: InitOptions = {}) {
     const manualCmd =
       framework === "tanstack-start"
         ? "npx vite dev"
-        : framework === "sveltekit"
-          ? "npx vite dev"
-          : framework === "astro"
-            ? "npx astro dev"
-            : framework === "nuxt"
-              ? "npx nuxt dev"
-              : "pnpm dev";
+        : framework === "farmjs"
+          ? "npx farm dev"
+          : framework === "sveltekit"
+            ? "npx vite dev"
+            : framework === "astro"
+              ? "npx astro dev"
+              : framework === "nuxt"
+                ? "npx nuxt dev"
+                : "pnpm dev";
     p.log.error("Could not start dev server. Try running manually:\n" + `  ${pc.cyan(manualCmd)}`);
     p.outro(pc.yellow("Setup complete. Start the server manually."));
     process.exit(1);
@@ -1296,6 +1335,70 @@ function getScaffoldContentRoots(cfg: TemplateConfig): string[] {
   return cfg.i18n?.locales?.length
     ? cfg.i18n.locales.map((locale) => `${cfg.entry}/${locale}`)
     : [cfg.entry];
+}
+
+// ---------------------------------------------------------------------------
+// Farm.js scaffolding
+// ---------------------------------------------------------------------------
+
+function scaffoldFarmjs(
+  cwd: string,
+  cfg: TemplateConfig,
+  globalCssRelPath: string,
+  write: (rel: string, content: string, overwrite?: boolean) => void,
+  skipped: string[],
+  written: string[],
+) {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
+    write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
+  }
+
+  write("docs.config.ts", farmjsDocsConfigTemplate(cfg));
+
+  const farmConfigPath = ["farm.config.ts", "farm.config.mts", "farm.config.js", "farm.config.mjs"]
+    .map((candidate) => path.join(cwd, candidate))
+    .find((candidate) => fileExists(candidate));
+
+  if (farmConfigPath) {
+    const existing = readFileSafe(farmConfigPath);
+    const injected = existing ? injectFarmjsConfig(existing) : null;
+    const relativePath = path.relative(cwd, farmConfigPath);
+    if (injected) {
+      writeFileSafe(farmConfigPath, injected, true);
+      written.push(`${relativePath} (wrapped with withDocs)`);
+    } else {
+      skipped.push(`${relativePath} (already configured or unsupported default export)`);
+    }
+  } else {
+    write("farm.config.ts", farmjsConfigTemplate());
+  }
+
+  const globalCssAbsPath = path.join(cwd, globalCssRelPath);
+  const existingGlobalCss = readFileSafe(globalCssAbsPath);
+  if (existingGlobalCss) {
+    const injected = injectCssImport(
+      existingGlobalCss,
+      cfg.theme,
+      cfg.customThemeName,
+      globalCssRelPath,
+    );
+    if (injected) {
+      writeFileSafe(globalCssAbsPath, injected, true);
+      written.push(`${globalCssRelPath} (updated)`);
+    } else {
+      skipped.push(`${globalCssRelPath} (already configured)`);
+    }
+  } else {
+    write(globalCssRelPath, globalCssTemplate(cfg.theme, cfg.customThemeName, globalCssRelPath));
+  }
+
+  for (const base of getScaffoldContentRoots(cfg)) {
+    write(`${base}/page.md`, farmjsWelcomePageTemplate(cfg));
+    write(`${base}/installation/page.md`, farmjsInstallationPageTemplate(cfg));
+    write(`${base}/quickstart/page.md`, farmjsQuickstartPageTemplate(cfg));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1873,5 +1976,12 @@ function scaffoldNuxt(
   }
 }
 
-/** Exported for testing: ensures Next.js scaffold writes under app or src/app consistently. */
-export { scaffoldNextJs, scaffoldTanstackStart, scaffoldSvelteKit, scaffoldAstro, scaffoldNuxt };
+/** Exported for focused scaffold tests. */
+export {
+  scaffoldNextJs,
+  scaffoldTanstackStart,
+  scaffoldFarmjs,
+  scaffoldSvelteKit,
+  scaffoldAstro,
+  scaffoldNuxt,
+};

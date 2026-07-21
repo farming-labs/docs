@@ -69,6 +69,14 @@ describe("utils", () => {
       expect(detectFramework(tmpDir)).toBe("tanstack-start");
     });
 
+    it("returns farmjs when @farmjs/core is present", () => {
+      fs.writeFileSync(
+        path.join(tmpDir, "package.json"),
+        JSON.stringify({ dependencies: { "@farmjs/core": "0.0.3-beta.3" } }),
+      );
+      expect(detectFramework(tmpDir)).toBe("farmjs");
+    });
+
     it("returns astro when astro is present", () => {
       fs.writeFileSync(
         path.join(tmpDir, "package.json"),
