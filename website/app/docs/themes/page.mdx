@@ -3,6 +3,43 @@ title: "Themes"
 description: "Built-in themes and how to create your own"
 icon: "palette"
 order: 4
+related:
+  - /docs/themes/creating-themes
+  - /docs/configuration
+  - /docs/customization/colors
+  - /docs/customization/typography
+agent:
+  tokenBudget: 750
+  task: Select and apply a built-in or custom theme to a Farming Labs docs site.
+  outcome: docs.config and the global stylesheet reference the same theme and docs pages render its visual defaults.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package:
+      - "@farming-labs/docs"
+      - "@farming-labs/theme"
+  prerequisites:
+    - The docs app and its framework-specific global stylesheet already work.
+    - Choose a built-in preset before creating a custom theme unless requirements demand custom tokens.
+  files:
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/global.css
+    - src/styles/app.css
+    - src/app.css
+    - nuxt.config.ts
+  sideEffects:
+    - Switching themes changes the default colors, typography, spacing, layout, and components for every docs page.
+  verification:
+    - description: Build and open a docs page containing navigation, code, callouts, and tables.
+      expect: The production build succeeds and all elements use the selected theme without an unstyled flash.
+  rollback:
+    - Restore the previous theme factory and matching CSS import.
+  failureModes:
+    - symptom: The selected theme has no visual effect.
+      resolution: Import the matching theme CSS in the global stylesheet and restart the framework dev server.
+    - symptom: TypeScript cannot resolve the theme factory.
+      resolution: Install the correct framework theme package and import the documented exported preset name.
 ---
 
 # Themes

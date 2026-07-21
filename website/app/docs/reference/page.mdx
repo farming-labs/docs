@@ -3,6 +3,41 @@ title: "API Reference"
 description: "Complete reference for all configuration options"
 icon: "code"
 order: 6
+related:
+  - /docs/configuration
+  - /docs/cli
+  - /docs/installation
+  - /docs/customization/mcp
+agent:
+  tokenBudget: 1800
+  task: Select and configure the exact typed Farming Labs docs option required by a project.
+  outcome: The chosen defineDocs option has the documented type and default and the resolved runtime exposes matching behavior.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Identify the project framework and the exact capability being configured.
+    - Read the existing docs.config before changing nested options or callbacks.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Resolve config and compare discovery metadata with the public schema.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: Config loading confidence and discovery/config/schema consistency pass after the option change.
+    - description: Query MCP get_config_schema for the changed option.
+      expect: The returned type, default, and description match the option used in docs.config.
+  rollback:
+    - Restore the previous option value and any route wiring or environment variables added with it.
+  failureModes:
+    - symptom: TypeScript rejects a documented option.
+      resolution: Confirm all Farming Labs packages use the same version and use docs.config.tsx when JSX is present.
+    - symptom: The config accepts an option but discovery advertises a different capability state.
+      resolution: Run the agent doctor and update stale adapter or static-export artifacts from the resolved config.
 ---
 
 # API Reference

@@ -8,6 +8,44 @@ related:
   - /docs/customization/agent-primitive
   - /docs/customization/llms-txt
   - /docs/customization/mcp
+agent:
+  tokenBudget: 900
+  task: Reduce agent context usage while preserving the evidence needed to implement and verify a docs task.
+  outcome: Retrieval returns the relevant page and executable evidence within the configured UTF-8 context budget.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The docs corpus already has accurate page descriptions, related routes, and task-specific agent contracts.
+    - Measure a representative retrieval task before compacting content.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/docs/example/page.mdx
+    - app/docs/example/agent.md
+    - docs/example/page.mdx
+    - docs/example/agent.md
+  commands:
+    - run: pnpm exec docs agent compact --changed --dry-run
+      description: Preview page-level compaction without writing agent.md files.
+    - run: pnpm exec docs doctor --agent
+      description: Measure retrieval, usefulness, and configured context budgets.
+  sideEffects:
+    - Running compaction without --dry-run creates or replaces sibling agent.md files used by machine-readable surfaces.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: Golden tasks pass their relevant-source, citation, example, scope, and UTF-8 budget requirements.
+    - description: Compare the compacted page with its human source and structured contract.
+      expect: Required commands, constraints, verification, and recovery guidance remain intact.
+  rollback:
+    - Restore the previous agent.md files and raise or remove page token budgets that discard required evidence.
+  failureModes:
+    - symptom: Context is under budget but omits the command or expected result.
+      resolution: Improve retrieval and structured contracts before increasing compaction aggressiveness.
+    - symptom: The relevant page ranks below generic overview pages.
+      resolution: Strengthen its task, description, applicability, and related links, then rerun the golden task.
 ---
 
 # Token Efficiency

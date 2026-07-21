@@ -3,6 +3,39 @@ title: "Page Actions"
 description: 'Add "Open in LLM" and "Copy Markdown" buttons to your doc pages'
 icon: "mousePointerClick"
 order: 5.6
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
+  - /docs/customization/ai-chat
+  - /docs/customization/mcp
+agent:
+  tokenBudget: 900
+  task: Configure Copy Markdown and Open in LLM actions for docs pages.
+  outcome: The selected actions appear in the intended position and produce canonical Markdown or provider URLs for the current page.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Machine-readable Markdown routes work for the docs entry.
+    - Configure github.url before using provider templates that require a GitHub source URL.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  sideEffects:
+    - Open in LLM can navigate users to an external provider with the configured prompt and page URL.
+    - Custom copy callbacks can emit analytics for copied documentation content.
+  verification:
+    - description: Open a docs page, copy Markdown, and exercise each configured external provider action.
+      expect: Copied text matches the configured format and every provider URL contains the canonical current-page target.
+  rollback:
+    - Disable pageActions or restore the previous provider, alignment, and copy settings.
+  failureModes:
+    - symptom: Copy Markdown returns HTML or an empty response.
+      resolution: Verify the page .md route and shared docs API Markdown format before changing the button.
+    - symptom: A provider opens with an unresolved template token.
+      resolution: Use only documented URL template variables and configure github.url when githubUrl is required.
 ---
 
 # Page Actions

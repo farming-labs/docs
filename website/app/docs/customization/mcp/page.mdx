@@ -3,6 +3,53 @@ title: "MCP Server"
 description: "Expose your docs as MCP tools and resources over stdio, /mcp, or /.well-known/mcp"
 icon: "bot"
 order: 8
+related:
+  - /docs/configuration
+  - /docs/cli
+  - /docs/customization/agent-primitive
+  - /docs/guides/agent-friendly-docs
+  - /docs/guides/adapter-agent-conformance
+agent:
+  tokenBudget: 1300
+  task: Expose the docs MCP server over stdio or Streamable HTTP with optional explicit authentication.
+  outcome: An MCP client initializes successfully and can discover, search, and read the configured documentation resources.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The docs API and framework public forwarder are already wired.
+    - Choose stdio for local use or Streamable HTTP for a shared endpoint.
+    - Keep HTTP public by default and add security.authenticate only when the deployment requires access control.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/api/docs/route.ts
+    - src/routes/$.ts
+    - src/hooks.server.ts
+    - src/middleware.ts
+    - server/middleware/docs-public.ts
+    - .cursor/mcp.json
+    - .vscode/mcp.json
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Confirm MCP routes and discovery metadata agree with docs.config.
+  sideEffects:
+    - A public HTTP MCP endpoint exposes the same documentation content as other public agent surfaces.
+    - An authentication callback can reject clients and may depend on an external identity system.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: MCP access and discovery/config/schema consistency pass.
+    - description: Initialize an MCP client and call list_docs followed by read_page for a known route.
+      expect: The initialize request succeeds and both tools return structured content for the configured docs corpus.
+  rollback:
+    - Set mcp.enabled to false, remove client configuration, and restore custom route or authentication wiring.
+  failureModes:
+    - symptom: The client receives 404 from /mcp or /.well-known/mcp.
+      resolution: Align mcp.route with the framework public forwarder and keep the documented aliases pointing at the canonical handler.
+    - symptom: Every HTTP request receives 401 after authentication is enabled.
+      resolution: Return a principal from security.authenticate for valid credentials and test the callback independently of MCP tools.
 ---
 
 # MCP Server

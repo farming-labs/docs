@@ -8,6 +8,35 @@ related:
   - /docs/cli
   - /docs/customization
   - /docs/guides/agent-friendly-docs
+agent:
+  tokenBudget: 1800
+  task: Change docs.config safely for the selected framework and verify the resolved public behavior.
+  outcome: The configuration module loads successfully and the requested docs capability is reflected in diagnostics and discovery.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Identify the project framework and its documented docs.config location.
+    - Start from an existing defineDocs configuration and preserve framework-specific entry, contentDir, and nav requirements.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Evaluate the config and compare it with the generated agent surface.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: Config loading confidence and discovery/config/schema consistency pass.
+    - description: Read /api/docs?format=diagnostics and confirm the requested capability is enabled without configuration issues.
+  rollback:
+    - Restore the previous defineDocs option and any framework route wiring changed with it.
+  failureModes:
+    - symptom: The config cannot be evaluated.
+      resolution: Use docs.config.tsx when the file contains JSX and fix unresolved imports or environment-dependent top-level code.
+    - symptom: Config and public discovery disagree.
+      resolution: Run the agent doctor and align the adapter route wiring with the resolved docs.config values.
 ---
 
 # Configuration

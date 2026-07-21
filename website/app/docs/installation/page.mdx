@@ -3,6 +3,56 @@ title: "Installation"
 description: "Get up and running in minutes"
 icon: "rocket"
 order: 1
+related:
+  - /docs/configuration
+  - /docs/cli
+  - /docs/reference
+  - /docs/customization/agent-primitive
+agent:
+  tokenBudget: 1200
+  task: Install Farming Labs docs in an existing supported application.
+  outcome: The application renders its docs route locally with the selected theme and machine-readable agent routes.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package:
+      - "@farming-labs/docs"
+      - "@farming-labs/theme"
+      - "@farming-labs/next"
+      - "@farming-labs/tanstack-start"
+      - "@farming-labs/svelte"
+      - "@farming-labs/astro"
+      - "@farming-labs/nuxt"
+  prerequisites:
+    - Start in an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project.
+    - Install dependencies with the package manager already used by the project.
+    - Preserve the project's framework, path aliases, and global stylesheet location.
+  files:
+    - package.json
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/docs/page.mdx
+    - docs/page.mdx
+  commands:
+    - run: pnpm dlx @farming-labs/docs init
+      description: Detect the current project and scaffold its docs configuration and routes.
+    - run: pnpm exec docs doctor --agent
+      description: Validate the installed machine-readable docs surface.
+  sideEffects:
+    - The initializer installs packages and creates or updates config, routes, styles, and sample docs pages.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: Config, public routes, discovery, Markdown, sitemap, robots, and MCP checks have no hard failures.
+    - description: Start the app and fetch the configured docs route and its .md representation.
+      expect: Both return HTTP 200 and the rendered page uses the selected theme styles.
+  rollback:
+    - Restore package.json and the lockfile, then remove only the config, route, style, and sample files created by init.
+  failureModes:
+    - symptom: The docs route returns 404.
+      resolution: Confirm the framework adapter route or config wrapper is installed and the configured entry matches the content path.
+    - symptom: The page renders without theme styles.
+      resolution: Import the CSS file for the exact selected theme from the framework's global stylesheet.
 ---
 
 # Installation

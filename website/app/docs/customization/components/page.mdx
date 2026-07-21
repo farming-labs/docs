@@ -3,6 +3,41 @@ title: "Components"
 description: "Override built-in or add custom MDX components"
 icon: "code"
 order: 5.4
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
+  - /docs/customization/page-actions
+  - /docs/themes/creating-themes
+agent:
+  tokenBudget: 1000
+  task: Register a custom MDX component or override a built-in component without breaking page rendering.
+  outcome: The component is available in MDX, receives the intended props, and renders in the configured docs theme.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The project has a working docs.config file and an existing docs page for verification.
+    - Use docs.config.tsx when registration includes JSX.
+    - Confirm whether the requirement needs a config component override or a theme default-prop override.
+  files:
+    - components/info-card.tsx
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/docs/getting-started/page.mdx
+    - docs/getting-started/page.mdx
+  sideEffects:
+    - Overriding a built-in component changes every docs page that renders that MDX element.
+  verification:
+    - description: Build the docs app and render an MDX page that uses the component.
+      expect: The build succeeds, the component renders once with the documented props, and existing built-ins still work.
+  rollback:
+    - Remove the component registration and restore the previous built-in or theme defaults.
+  failureModes:
+    - symptom: MDX reports that the custom component is undefined.
+      resolution: Export the component, register the exact case-sensitive name in docs.config.tsx, and restart the dev server.
+    - symptom: The config fails to parse after adding a component.
+      resolution: Rename docs.config.ts to docs.config.tsx when the config contains JSX.
 ---
 
 # Components

@@ -3,6 +3,39 @@ title: "OG Images"
 description: "Dynamic and static Open Graph images for docs — how they work, what context is passed, and how the docs website generates them"
 icon: "image"
 order: 4
+related:
+  - /docs/configuration
+  - /docs/reference
+  - /docs/themes
+agent:
+  tokenBudget: 850
+  task: Configure and verify static or dynamic Open Graph images for docs pages.
+  outcome: Every tested docs page resolves an absolute OG image URL whose response is a valid social preview image.
+  appliesTo:
+    framework: nextjs
+    version: ">=0.2.60"
+    package:
+      - "@farming-labs/docs"
+      - "@farming-labs/next"
+  prerequisites:
+    - The docs site has an absolute public base URL available to metadata generation.
+    - Choose dynamic generation for page-aware images or commit a static image for a fixed preview.
+  files:
+    - docs.config.ts
+    - app/api/og/route.ts
+    - public/og.png
+  sideEffects:
+    - Dynamic generation adds an image endpoint that runs when crawlers request a preview.
+  verification:
+    - description: Fetch the generated metadata and its og:image URL for a representative docs page.
+      expect: The URL is absolute and the image request returns HTTP 200 with an image content type.
+  rollback:
+    - Restore the previous og configuration and remove the dynamic route or static image introduced by the change.
+  failureModes:
+    - symptom: Social previews use a relative or unreachable image URL.
+      resolution: Configure an absolute sitemap, llms.txt, robots, AI docs, or site base URL and retest generated metadata.
+    - symptom: The dynamic image route throws while rendering.
+      resolution: Limit the image component to fonts, layout, and CSS supported by the selected image renderer.
 ---
 
 # OG Images
