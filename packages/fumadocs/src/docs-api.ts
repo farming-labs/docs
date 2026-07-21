@@ -107,6 +107,7 @@ import type {
   OrderingItem,
 } from "@farming-labs/docs";
 import { withLangInUrl } from "./i18n.js";
+import { BoundedRouteCache } from "./bounded-route-cache.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -210,6 +211,7 @@ interface DocsMCPAPIOptions {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
+const MAX_LLMS_CACHE_ROUTES_PER_LOCALE = 8;
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
 const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
@@ -3900,10 +3902,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   const indexesByLocale = new Map<string, DocsSearchSourcePage[]>();
-  const llmsCacheByLocale = new Map<
-    string,
-    { apiRoute: string; content: ReturnType<typeof renderDocsLlmsTxt> }
-  >();
+  const llmsCache = new BoundedRouteCache<ReturnType<typeof renderDocsLlmsTxt>>(
+    MAX_LLMS_CACHE_ROUTES_PER_LOCALE,
+  );
   const markdownSourcesByLocale = new Map<
     string,
     ReturnType<typeof createFilesystemDocsMcpSource>[]
@@ -4024,9 +4025,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   function getLlmsContent(ctx: DocsContext, apiRoute: string) {
-    const key = ctx.locale ?? "__default__";
-    const cached = llmsCacheByLocale.get(key);
-    if (cached?.apiRoute === apiRoute) return cached.content;
+    const cached = llmsCache.get(ctx.locale, apiRoute);
+    if (cached) return cached;
     const next = generateLlmsTxt(getIndexes(ctx), {
       siteTitle: llmsConfig.siteTitle ?? "Documentation",
       siteDescription: llmsConfig.siteDescription,
@@ -4037,7 +4037,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       apiCatalog: apiCatalogEnabled,
       openapi: openapiDiscovery,
     } as any);
-    llmsCacheByLocale.set(key, { apiRoute, content: next });
+    llmsCache.set(ctx.locale, apiRoute, next);
     return next;
   }
 

@@ -691,17 +691,7 @@ export function resolveDocsRequestApiRoute(url: URL, configuredApiRoute?: string
   const pathname = normalizeDocsUrlPath(url.pathname);
   const hasPublicRepresentationSuffix = /\.(?:md|txt|xml)$/i.test(pathname);
   const isPublicDiscoveryPath =
-    pathname.startsWith("/.well-known/") ||
-    hasPublicRepresentationSuffix ||
-    pathname === DEFAULT_SKILL_MD_ROUTE ||
-    pathname === DEFAULT_AGENTS_MD_ROUTE ||
-    pathname === DEFAULT_AGENT_MD_ROUTE ||
-    pathname === DEFAULT_LLMS_TXT_ROUTE ||
-    pathname === DEFAULT_LLMS_FULL_TXT_ROUTE ||
-    pathname === DEFAULT_SITEMAP_XML_ROUTE ||
-    pathname === DEFAULT_SITEMAP_MD_ROUTE ||
-    pathname === DEFAULT_SITEMAP_MD_DOCS_ROUTE ||
-    pathname === DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE;
+    pathname.startsWith("/.well-known/") || hasPublicRepresentationSuffix;
   if (isPublicDiscoveryPath) return fallback;
 
   const hasApiQueryMode =
