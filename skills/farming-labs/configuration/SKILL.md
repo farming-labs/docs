@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, agent.evaluations, review, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, agent.evaluations, review, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, Farm.js, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -17,11 +17,12 @@ All configuration lives in a single **docs.config.ts** (or **docs.config.tsx**) 
 | --------- | ----------- |
 | Next.js | Project root: `docs.config.ts` |
 | TanStack Start | Project root: `docs.config.ts` or `docs.config.tsx` |
+| Farm.js | Project root: `docs.config.ts` |
 | SvelteKit | `src/lib/docs.config.ts` |
 | Astro | `src/lib/docs.config.ts` |
 | Nuxt | Project root: `docs.config.ts` |
 
-TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL) in addition to `entry` and `theme`.
+Farm.js, TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL) in addition to `entry` and `theme`.
 
 ---
 
@@ -30,10 +31,10 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
 | `entry` | `string` | `"docs"` | URL path prefix for docs (e.g. `"docs"` → `/docs`) |
-| `contentDir` | `string` | same as `entry` | Path to content files (TanStack Start, SvelteKit, Astro, Nuxt) |
+| `contentDir` | `string` | same as `entry` | Path to content files (Farm.js, TanStack Start, SvelteKit, Astro, Nuxt) |
 | `staticExport` | `boolean` | `false` | Set `true` for full static builds; hides search and AI |
 | `theme` | `DocsTheme` | — | Theme from a theme factory (e.g. `fumadocs()`, `pixelBorder()`) |
-| `nav` | `{ title, url }` | — | Sidebar title and base URL (required for TanStack Start, SvelteKit, Astro, Nuxt) |
+| `nav` | `{ title, url }` | — | Sidebar title and base URL (required for Farm.js, TanStack Start, SvelteKit, Astro, Nuxt) |
 | `github` | `string \| GithubConfig` | — | GitHub repo for "Edit on GitHub" and `{githubUrl}` in page actions |
 | `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
 | `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
@@ -1042,6 +1043,7 @@ backend is hosted elsewhere and already exposes an `openapi.json`.
 
 Current support:
 - **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
+- **Farm.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
 - **TanStack Start:** `src/routes/api.*.ts` and nested route files inside the configured route root
 - **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
 - **Astro:** `src/pages/api/**/*.ts` or `.js`
@@ -1068,6 +1070,7 @@ apiReference: {
 
 Notes:
 - **Next.js:** `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled
+- **Farm.js:** `createDocsServer(config).handle(request)` serves the `/{path}` route when the Farm request pipeline delegates to it
 - **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning, remote spec rendering, and styling, but the app must still add the framework route handler for `/{path}`
 - **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
 - **Packages:** install the Farming Labs docs packages for the framework only. Do not ask users to install `fumadocs-openapi`, `fumadocs-ui`, `fumadocs-core`, `@scalar/core`, or `@scalar/nextjs-api-reference` directly; those renderer dependencies are bundled by `@farming-labs/docs` and the adapters
@@ -1136,11 +1139,12 @@ Use `ordering: "numeric"` (default) so sidebar order follows frontmatter `order`
 ## Edge cases
 
 1. **Next.js:** Must wrap config with `withDocs()` from `@farming-labs/next/config` in `next.config.ts`.
-2. **TanStack Start:** `docs.config.ts` stays at project root; wire it into `createDocsServer()` and keep the theme CSS import in your global stylesheet aligned with the theme name in config.
-3. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
-4. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
-5. **Feedback callbacks:** Astro cannot serialize config functions into client scripts; use the built-in custom event hooks if you need analytics there.
-6. **MCP custom routes:** The defaults are `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp`. If the user sets `mcp.route`, keep that path in config and update the framework public forwarder so aliases still reach the same handler when MCP is enabled.
+2. **Farm.js:** Wrap `farm.config.ts` with `withDocs()` from `@farming-labs/farmjs/config`; custom request pipelines can call `createDocsServer(config).handle(request)` and continue when it returns `null`.
+3. **TanStack Start:** `docs.config.ts` stays at project root; wire it into `createDocsServer()` and keep the theme CSS import in your global stylesheet aligned with the theme name in config.
+4. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
+5. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
+6. **Feedback callbacks:** Astro cannot serialize config functions into client scripts; use the built-in custom event hooks if you need analytics there.
+7. **MCP custom routes:** The defaults are `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp`. If the user sets `mcp.route`, keep that path in config and update the framework public forwarder so aliases still reach the same handler when MCP is enabled.
 
 ---
 

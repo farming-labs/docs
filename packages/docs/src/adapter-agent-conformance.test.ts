@@ -4,6 +4,7 @@ import { runDocsAgentConformance } from "./agent-conformance.js";
 
 const adapters = [
   ["tanstack-start", "../../tanstack-start/src/server.ts"],
+  ["farmjs", "../../farmjs/src/server.ts"],
   ["sveltekit", "../../svelte/src/server.ts"],
   ["astro", "../../astro/src/server.ts"],
   ["nuxt", "../../nuxt/src/server.ts"],

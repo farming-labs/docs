@@ -1,6 +1,6 @@
 /**
  * Upgrade @farming-labs/* packages to a dist-tag or exact version.
- * Detects framework from package.json by default, or use --framework (next, tanstack-start, nuxt, sveltekit, astro).
+ * Detects framework from package.json by default, or use --framework (next, tanstack-start, farmjs, nuxt, sveltekit, astro).
  */
 import path from "node:path";
 import * as p from "@clack/prompts";
@@ -47,7 +47,7 @@ export function buildUpgradeCommand(
 }
 
 export interface UpgradeOptions {
-  /** Explicit framework: next, tanstack-start, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
+  /** Explicit framework: next, tanstack-start, farmjs, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
   framework?: string;
   /** npm dist-tag to install: "latest" (default) or "beta". */
   tag?: UpgradeTag;

@@ -31,7 +31,7 @@ yarn dlx @farming-labs/docs@latest init
 bunx @farming-labs/docs@latest init
 ```
 
-- **Existing project** — Add docs to the current directory. CLI then detects framework (or prompts), asks for theme (including **Create your own theme**, which prompts for theme name and scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`), optional i18n scaffolding, path aliases, global CSS, and optional Docs Cloud infrastructure support. TanStack Start follows the same flow, but the CLI currently skips the built-in i18n scaffold there so the generated routes stay minimal and working. **Prompts that show a placeholder use it as the default** — press **Enter** to accept (e.g. entry path `docs`, theme name `my-theme`, project name `my-docs`).
+- **Existing project** — Add docs to the current directory. CLI then detects framework (or prompts), asks for theme (including **Create your own theme**, which prompts for theme name and scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`), optional i18n scaffolding, path aliases, global CSS, and optional Docs Cloud infrastructure support. Farm.js is detected from `@farmjs/core` and its `farm.config` is wrapped with `@farming-labs/farmjs/config`. TanStack Start follows the same flow, but the CLI currently skips the built-in i18n scaffold there so the generated routes stay minimal and working. **Prompts that show a placeholder use it as the default** — press **Enter** to accept (e.g. entry path `docs`, theme name `my-theme`, project name `my-docs`).
 - **Fresh project** — Bootstrap a new app. CLI asks for framework (Next.js, Nuxt, SvelteKit, Astro, TanStack Start), then project name (default `my-docs`; press Enter to accept), creates the folder, clones the template with degit, runs install using the package manager you chose, and can optionally add Docs Cloud infrastructure support. You then `cd <name>` and run the matching dev command for that package manager.
 
 If you use **`--template`** with **`--name`**, the CLI skips the existing-vs-fresh prompt and goes straight to bootstrap (same as choosing Fresh and then framework + name).
@@ -47,6 +47,7 @@ npx @farming-labs/docs@latest init --template astro --name my-docs
 ```
 
 Replace `my-docs` with the desired folder name. Same pattern with `pnpm dlx`, `yarn dlx`, or `bunx`.
+Farm.js is supported for existing-project `init`; fresh `--template farmjs` bootstrapping is not yet available.
 
 ---
 
@@ -113,6 +114,7 @@ bunx @farming-labs/docs@latest upgrade
 | --------- | ----------------- |
 | Next.js | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next` |
 | TanStack Start | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start` |
+| Farm.js | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/farmjs` |
 | Nuxt | `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme` |
 | SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme` |
 | Astro | `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme` |
@@ -129,7 +131,7 @@ npx @farming-labs/docs@latest upgrade --framework tanstack-start
 npx @farming-labs/docs@latest upgrade tanstack-start
 ```
 
-Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
+Valid values: `next`, `tanstack-start`, `farmjs`, `nuxt`, `sveltekit`, `astro`.
 
 **Version target:**
 
@@ -762,6 +764,7 @@ When the user chooses **Existing project**, the CLI detects (or prompts for) fra
 
 - **Next.js:** `docs.config.ts`, `next.config.ts`, `app/global.css`, `app/layout.tsx`, `app/docs/layout.tsx`, sample MDX pages; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`; can start dev server. If API reference is enabled, the CLI writes the default Fumadocs page at `app/api-reference/[[...slug]]/page.tsx` (or `src/app/...`); `renderer: "scalar"` uses the generated Scalar route handler.
 - **TanStack Start:** `docs.config.ts`, `src/lib/docs.server.ts`, `src/lib/docs.functions.ts`, `src/routes/<entry>/index.tsx`, `src/routes/<entry>/$.tsx`, `src/routes/api/docs.ts`, one `src/routes/$.ts` public docs forwarder for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP, optional `src/routes/api-reference.index.ts` + `src/routes/api-reference.$.ts`, updates `src/routes/__root.tsx`, updates `vite.config.ts`, and wires theme CSS into the selected global stylesheet; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start`.
+- **Farm.js:** `docs.config.ts`, starter pages under `<entry>/`, the selected global theme CSS import, and a `withDocs()` wrapper in the existing `farm.config.ts` (or a new config when none exists); installs `@farming-labs/docs`, `@farming-labs/theme`, and `@farming-labs/farmjs`. Farm owns the application routes, so the CLI does not generate parallel route files.
 - **SvelteKit:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/routes/docs/*`, `src/routes/api/docs/+server.ts`, one `src/hooks.server.ts` public docs forwarder for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP, optional `src/routes/api-reference/+server.ts` + `src/routes/api-reference/[...slug]/+server.ts`, `src/app.css`, `docs/*.md`; installs svelte + svelte-theme packages.
 - **Astro:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/pages/**`, `src/pages/api/docs.ts`, one `src/middleware.ts` public docs forwarder for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP, optional `src/pages/api-reference/index.ts` + `src/pages/api-reference/[...slug].ts`, `docs/*.md`; installs astro + astro-theme packages.
 - **Nuxt:** `docs.config.ts`, `nuxt.config.ts`, `server/api/docs.ts`, `server/middleware/docs-public.ts` for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP forwarding, optional `server/routes/api-reference/index.ts` + `server/routes/api-reference/[...slug].ts`, `pages/docs/[...slug].vue`, `docs/*.md`; installs nuxt + nuxt-theme packages.

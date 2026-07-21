@@ -354,7 +354,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("downgrade")} Downgrade @farming-labs/* packages (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
-  Next.js, TanStack Start, SvelteKit, Astro, Nuxt
+  Next.js, TanStack Start, Farm.js, SvelteKit, Astro, Nuxt
 
 ${pc.dim("Options for init:")}
   ${pc.cyan("--template <name>")}  Bootstrap a project (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}, ${pc.dim("tanstack-start")}); use with ${pc.cyan("--name")}
@@ -474,7 +474,7 @@ ${pc.dim("Options for robots generate:")}
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for upgrade:")}
-  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("farmjs")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
   ${pc.cyan("--version <version>")} Install an exact version (e.g. ${pc.dim("0.1.104")})
   ${pc.cyan("--latest")}            Install latest stable (default)
   ${pc.cyan("--beta")}             Install beta versions
@@ -484,7 +484,7 @@ ${pc.dim("Options for upgrade:")}
 
 ${pc.dim("Options for downgrade:")}
   ${pc.cyan("downgrade")}           Install the published version immediately below the current installed version
-  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("farmjs")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
   ${pc.cyan("--version <version>")} Install an exact lower version (e.g. ${pc.dim("0.1.103")})
   ${pc.cyan("--dry-run")}          Print the install command without changing dependencies
 

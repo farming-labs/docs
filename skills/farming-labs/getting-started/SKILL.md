@@ -1,13 +1,13 @@
 ---
 name: getting-started
-description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, changelog, API reference, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, changelog, apiReference, entry, contentDir, and common gotchas.
+description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, changelog, API reference, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, changelog, apiReference, entry, contentDir, and common gotchas.
 ---
 
 # @farming-labs/docs — Getting Started
 
 **Always consult the project docs (and `/docs` routes when available) for the latest API and examples.**
 
-@farming-labs/docs is a modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site. Supported frameworks: **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, **Nuxt**.
+@farming-labs/docs is a modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site. Supported frameworks: **Next.js**, **TanStack Start**, **Farm.js**, **SvelteKit**, **Astro**, **Nuxt**.
 
 ---
 
@@ -21,7 +21,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | Add docs to existing app | Run `init` in project root; choose **Existing project** when prompted. |
 | Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| tanstack-start \| nuxt \| sveltekit \| astro> --name <project-name>` |
 | Add generated API reference during init | `npx @farming-labs/docs@latest init --api-reference` (optional `--api-route-root <path>`) |
-| Upgrade docs packages | `npx @farming-labs/docs@latest upgrade` — auto-detects `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`; use `--framework` if detection is ambiguous. |
+| Upgrade docs packages | `npx @farming-labs/docs@latest upgrade` — auto-detects `next`, `tanstack-start`, `farmjs`, `nuxt`, `sveltekit`, or `astro`; use `--framework` if detection is ambiguous. |
 
 ### Packages by framework
 
@@ -29,6 +29,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | --------- | -------------- | -------------- |
 | Next.js | `@farming-labs/docs`, `@farming-labs/next` | `@farming-labs/theme` |
 | TanStack Start | `@farming-labs/docs`, `@farming-labs/tanstack-start` | `@farming-labs/theme` |
+| Farm.js | `@farming-labs/docs`, `@farming-labs/farmjs` | `@farming-labs/theme` |
 | SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte` | `@farming-labs/svelte-theme` |
 | Astro | `@farming-labs/docs`, `@farming-labs/astro` | `@farming-labs/astro-theme` |
 | Nuxt | `@farming-labs/docs`, `@farming-labs/nuxt` | `@farming-labs/nuxt-theme` |
@@ -82,6 +83,7 @@ Then point your MCP client or inspector at `http://127.0.0.1:3000/mcp` or `http:
 
 - **Next.js:** `app/global.css` → `@import "@farming-labs/theme/<theme>/css";` (e.g. `default`, `greentree`, `pixel-border`).
 - **TanStack Start:** `src/styles/app.css` (or your main global CSS file) → `@import "@farming-labs/theme/<theme>/css";`
+- **Farm.js:** `src/app/globals.css` (or your main global CSS file) → `@import "@farming-labs/theme/<theme>/css";`
 - **SvelteKit:** `src/app.css` → `@import "@farming-labs/theme/<theme>/css";`
 - **Astro:** Import in the docs layout or page file: `import "@farming-labs/theme/<theme>/css";`
 - **Nuxt:** `nuxt.config.ts` → `css: ["@farming-labs/theme/<theme>/css"]`
@@ -100,7 +102,7 @@ import { fumadocs } from "@farming-labs/theme"; // or svelte-theme, astro-theme,
 
 export default defineDocs({
   entry: "docs",
-  contentDir: "docs", // SvelteKit, Astro, Nuxt
+  contentDir: "docs", // Farm.js, TanStack Start, SvelteKit, Astro, Nuxt
   theme: fumadocs(),
   metadata: {
     titleTemplate: "%s – Docs",
@@ -111,11 +113,12 @@ export default defineDocs({
 
 - **Next.js:** `docs.config.ts` at project root; wrap Next config with `withDocs()` from `@farming-labs/next/config`. Content lives under `app/docs/` (path derived from `entry`).
 - **TanStack Start:** `docs.config.ts` or `docs.config.tsx` at project root; set `contentDir` and `nav`, create `/api/docs`, and load content from your `docs/` directory via `@farming-labs/tanstack-start/server`.
+- **Farm.js:** `docs.config.ts` at project root; set `contentDir` and `nav`, then wrap `farm.config.ts` with `withDocs()` from `@farming-labs/farmjs/config`. For custom request pipelines, delegate to `createDocsServer(config).handle(request)`.
 - **SvelteKit:** `src/lib/docs.config.ts`; routes under `src/routes/docs/`; set `contentDir` to the folder containing your markdown (e.g. `docs`).
 - **Astro:** `src/lib/docs.config.ts`; pages under `src/pages/<entry>/`; set `contentDir`.
 - **Nuxt:** `docs.config.ts` at project root; `server/api/docs.ts` and `pages/docs/[...slug].vue`; set `contentDir` and `nav`.
 
-TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL).
+Farm.js, TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL).
 
 ---
 
@@ -139,6 +142,7 @@ export default defineDocs({
 Important framework behavior:
 
 - **Next.js**: `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled.
+- **Farm.js**: `createDocsServer(config).handle(request)` serves the configured API reference path when Farm delegates the request to the docs runtime.
 - **TanStack Start, SvelteKit, Astro, Nuxt**: `docs.config` controls scanning and theming, but the app still needs the `/{path}` route handler.
 - **CLI**: `init --api-reference` writes the config and scaffolds those handler files for you.
 - **Agents**: `GET /api/docs?format=openapi` serves the machine-readable schema and is advertised through agent discovery, generated `llms.txt`, generated `AGENTS.md`, and generated `skill.md`.
@@ -171,6 +175,7 @@ Minimal handler files for non-Next frameworks:
 Route scan conventions:
 
 - **Next.js**: `app/api/**/route.ts` or `src/app/api/**/route.ts`
+- **Farm.js**: `app/api/**/route.ts` or `src/app/api/**/route.ts`
 - **TanStack Start**: `src/routes/api.*.ts` and nested route files under the configured route root
 - **SvelteKit**: `src/routes/api/**/+server.ts` or `+server.js`
 - **Astro**: `src/pages/api/**/*.ts` or `.js`

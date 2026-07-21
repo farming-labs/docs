@@ -269,6 +269,7 @@ const FRAMEWORK_PATTERNS: ReadonlyArray<[string, RegExp]> = [
     "tanstackstart",
     /\bTanStack Start\b|@farming-labs\/(?:tanstack|tanstack-start)\b|\bcreateFileRoute\b/i,
   ],
+  ["farmjs", /\bFarm\.js\b|@farming-labs\/farmjs\b|@farmjs\/core\b|\bfarm\.config\b/i],
   [
     "sveltekit",
     /\bSvelteKit\b|@farming-labs\/svelte(?:kit)?\b|\bhooks\.server\b|\+server\.[cm]?[jt]s\b/i,

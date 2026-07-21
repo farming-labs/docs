@@ -5,6 +5,7 @@ import os from "node:os";
 import {
   scaffoldNextJs,
   scaffoldTanstackStart,
+  scaffoldFarmjs,
   scaffoldSvelteKit,
   scaffoldAstro,
   scaffoldNuxt,
@@ -165,6 +166,75 @@ describe("scaffoldNextJs (app dir consistency)", () => {
       "utf-8",
     );
     expect(route).toContain("createNextApiReferencePage");
+  });
+});
+
+describe("scaffoldFarmjs", () => {
+  let tmpDir: string;
+  let written: string[];
+  let skipped: string[];
+
+  function makeWrite(cwd: string) {
+    return (rel: string, content: string, overwrite = false) => {
+      const abs = path.join(cwd, rel);
+      if (!fs.existsSync(abs) || overwrite) {
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, content, "utf-8");
+        written.push(rel);
+      } else {
+        skipped.push(rel);
+      }
+    };
+  }
+
+  const config: TemplateConfig = {
+    entry: "docs",
+    theme: "pixel-border",
+    projectName: "farm-product",
+    framework: "farmjs",
+    useAlias: false,
+    apiReference: { path: "api-reference", routeRoot: "api" },
+  };
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docs-farmjs-scaffold-test-"));
+    written = [];
+    skipped = [];
+    fs.mkdirSync(path.join(tmpDir, "src", "app"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, "farm.config.ts"),
+      `import { defineConfig } from "@farmjs/core";
+
+export default defineConfig({
+  preset: "vercel",
+});
+`,
+    );
+    fs.writeFileSync(path.join(tmpDir, "src", "app", "globals.css"), '@import "tailwindcss";\n');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("adds docs without generating framework route files", () => {
+    scaffoldFarmjs(tmpDir, config, "src/app/globals.css", makeWrite(tmpDir), skipped, written);
+
+    expect(written).toContain("docs.config.ts");
+    expect(written).toContain("farm.config.ts (wrapped with withDocs)");
+    expect(written).toContain("docs/page.md");
+    expect(written).toContain("docs/installation/page.md");
+    expect(written).toContain("docs/quickstart/page.md");
+
+    const farmConfig = fs.readFileSync(path.join(tmpDir, "farm.config.ts"), "utf-8");
+    expect(farmConfig).toContain('import { withDocs } from "@farming-labs/farmjs/config";');
+    expect(farmConfig).toContain("const farmConfig = defineConfig({");
+    expect(farmConfig).toContain("export default withDocs(farmConfig);");
+
+    const docsConfig = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    expect(docsConfig).toContain('contentDir: "docs"');
+    expect(docsConfig).toContain("apiReference:");
+    expect(fs.existsSync(path.join(tmpDir, "src", "app", "docs"))).toBe(false);
   });
 });
 

@@ -15,7 +15,7 @@ export interface TemplateConfig {
   /** Project name from package.json */
   projectName: string;
   /** Framework being used */
-  framework: "nextjs" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
+  framework: "nextjs" | "tanstack-start" | "farmjs" | "sveltekit" | "astro" | "nuxt";
   /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit, ~/ for Nuxt) */
   useAlias: boolean;
   /** Astro deployment adapter (only used when framework is "astro") */
@@ -940,6 +940,124 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Farm.js templates
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function farmjsDocsConfigTemplate(cfg: TemplateConfig): string {
+  return tanstackDocsConfigTemplate(cfg);
+}
+
+export function farmjsConfigTemplate(): string {
+  return `\
+import { defineConfig } from "@farmjs/core";
+import { withDocs } from "@farming-labs/farmjs/config";
+
+export default withDocs(defineConfig({}));
+`;
+}
+
+export function injectFarmjsConfig(content: string): string | null {
+  if (!content || content.includes("@farming-labs/farmjs/config")) return null;
+  if (/export\s+default\s+(?:async\s+)?(?:function|class)\b/.test(content)) return null;
+
+  const exportMatch = content.match(/export\s+default\s+/);
+  if (!exportMatch || exportMatch.index === undefined) return null;
+
+  const importLine = 'import { withDocs } from "@farming-labs/farmjs/config";';
+  const withImport = addImportLine(content, importLine);
+  const defaultExport = withImport.match(/export\s+default\s+/);
+  if (!defaultExport || defaultExport.index === undefined) return null;
+
+  const start = defaultExport.index;
+  const end = start + defaultExport[0].length;
+  const wrapped =
+    `${withImport.slice(0, start)}const farmConfig = ${withImport.slice(end)}`.trimEnd();
+
+  return `${wrapped}\n\nexport default withDocs(farmConfig);\n`;
+}
+
+export function farmjsWelcomePageTemplate(cfg: TemplateConfig): string {
+  return `\
+---
+title: "Documentation"
+description: "Welcome to ${cfg.projectName} documentation"
+---
+
+# Welcome to ${cfg.projectName}
+
+This documentation is powered by \`@farming-labs/docs\` and Farm.js.
+
+## Overview
+
+- Content lives in \`${cfg.entry}/\`
+- Farm serves it at \`/${cfg.entry}\`
+- Search and agent endpoints are wired automatically
+
+## Next Steps
+
+Read the [Installation](/${cfg.entry}/installation) guide, then continue to [Quickstart](/${cfg.entry}/quickstart).
+`;
+}
+
+export function farmjsInstallationPageTemplate(cfg: TemplateConfig): string {
+  return `\
+---
+title: "Installation"
+description: "Add Farming Labs docs to ${cfg.projectName}"
+---
+
+# Installation
+
+Install the docs runtime and Farm adapter:
+
+\`\`\`bash
+pnpm add @farming-labs/docs @farming-labs/farmjs @farming-labs/theme
+\`\`\`
+
+Wrap the existing Farm config:
+
+\`\`\`ts title="farm.config.ts"
+import { defineConfig } from "@farmjs/core";
+import { withDocs } from "@farming-labs/farmjs/config";
+
+export default withDocs(
+  defineConfig({
+    preset: "vercel",
+  }),
+);
+\`\`\`
+
+Documentation settings stay in \`docs.config.ts\`, while content lives in \`${cfg.entry}/\`.
+`;
+}
+
+export function farmjsQuickstartPageTemplate(cfg: TemplateConfig): string {
+  return `\
+---
+title: "Quickstart"
+description: "Publish your first ${cfg.projectName} documentation page"
+---
+
+# Quickstart
+
+Create a page under \`${cfg.entry}/guides/page.md\`:
+
+\`\`\`md title="${cfg.entry}/guides/page.md"
+---
+title: "Guides"
+description: "Product guides"
+---
+
+# Guides
+
+Write your documentation here.
+\`\`\`
+
+Run the Farm development server and open [/${cfg.entry}](/${cfg.entry}). New pages are discovered from the content tree.
+`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TanStack Start templates
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -953,7 +1071,7 @@ import { ${exportName} } from "./themes/${cfg.customThemeName.replace(/\.ts$/i, 
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderApiReferenceConfig(cfg)}  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -982,7 +1100,7 @@ import { ${t.factory} } from "${t.nextImport}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderApiReferenceConfig(cfg)}  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },

@@ -7,7 +7,13 @@ export type { ApiReferenceRenderer };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
-export type ApiReferenceFramework = "next" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
+export type ApiReferenceFramework =
+  | "next"
+  | "tanstack-start"
+  | "farmjs"
+  | "sveltekit"
+  | "astro"
+  | "nuxt";
 
 export interface ApiReferenceRoute {
   title: string;
@@ -891,6 +897,15 @@ function buildApiReferenceRoutes(
         toRouteSegments: (relativeFile) => relativeFile.split("/").slice(0, -1).filter(Boolean),
         exclude: apiReference.exclude,
       });
+    case "farmjs":
+      return buildFileConventionRoutes({
+        rootDir,
+        sourceDir: resolveRootedDir(rootDir, apiReference.routeRoot, getFarmAppDir(rootDir)),
+        routePathBase: toRouteBase(apiReference.routeRoot, getFarmAppDir(rootDir)),
+        isRouteFile: (name) => NEXT_ROUTE_FILE_RE.test(name),
+        toRouteSegments: (relativeFile) => relativeFile.split("/").slice(0, -1).filter(Boolean),
+        exclude: apiReference.exclude,
+      });
     case "sveltekit":
       return buildFileConventionRoutes({
         rootDir,
@@ -923,6 +938,10 @@ function buildApiReferenceRoutes(
     case "tanstack-start":
       return buildTanstackRoutes(rootDir, apiReference);
   }
+}
+
+function getFarmAppDir(rootDir: string): string {
+  return existsSync(join(rootDir, "src", "app")) ? "src/app" : "app";
 }
 
 function buildFileConventionRoutes({
