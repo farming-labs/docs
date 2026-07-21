@@ -1098,6 +1098,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const documentOptions = {
     origin: baseUrl ?? "/",
     entry: routeEntry || "docs",
+    apiRoute: config?.cloud?.apiRoute,
     apiCatalog: false,
     // `agent export` publishes files only. Never advertise runtime endpoints that the bundle does
     // not contain, even when the application's server-rendered config enables them.

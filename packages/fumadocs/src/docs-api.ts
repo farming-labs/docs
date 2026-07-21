@@ -56,6 +56,7 @@ import {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsLocale,
+  resolveDocsRequestApiRoute,
   resolveDocsStandardsDiscoveryRequest,
   resolveDocsAgentContractMcpTools,
   resolvePageSidebarFolderIndexBehavior,
@@ -146,6 +147,8 @@ interface AIOptions {
 
 interface DocsAPIOptions {
   rootDir?: string;
+  /** Internal docs API route used by query-form discovery endpoints. */
+  apiRoute?: string;
   /** Docs entry folder (default: read from docs.config) */
   entry?: string;
   /** Public docs route prefix. Defaults to the docs entry path. */
@@ -287,6 +290,7 @@ interface AgentFeedbackRequest {
 interface AgentSpecOptions {
   origin: string;
   entry: string;
+  apiRoute: string;
   apiCatalog: boolean;
   i18n: ReturnType<typeof resolveDocsI18n>;
   search?: boolean | DocsSearchConfig;
@@ -473,6 +477,7 @@ function resolveApiReferenceOpenApiDiscovery(value: DocsConfig["apiReference"]):
 function buildAgentSpec({
   origin,
   entry,
+  apiRoute,
   apiCatalog,
   i18n,
   search,
@@ -490,6 +495,8 @@ function buildAgentSpec({
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const llmsSections = resolveDocsLlmsTxtSections(llms);
   const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
+  const agentSpecRoute =
+    apiRoute === DEFAULT_DOCS_API_ROUTE ? DEFAULT_AGENT_SPEC_ROUTE : `${apiRoute}?agent=spec`;
 
   return {
     version: "1",
@@ -529,21 +536,21 @@ function buildAgentSpec({
       locales: localesEnabled,
     },
     api: {
-      docs: DEFAULT_DOCS_API_ROUTE,
-      config: `${DEFAULT_DOCS_API_ROUTE}?format=config`,
-      diagnostics: `${DEFAULT_DOCS_API_ROUTE}?format=diagnostics`,
-      agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
+      docs: apiRoute,
+      config: `${apiRoute}?format=config`,
+      diagnostics: `${apiRoute}?format=diagnostics`,
+      agentSpec: agentSpecRoute,
       agentSpecDefault: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecFallback: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
-      agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
-      agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
-      openapi: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
+      agentSpecQuery: `${apiRoute}?agent=spec`,
+      agents: `${apiRoute}?format=agents`,
+      openapi: `${apiRoute}?format=openapi`,
       ...(apiCatalog
         ? {
             apiCatalog: DEFAULT_API_CATALOG_ROUTE,
-            apiCatalogQuery: `${DEFAULT_DOCS_API_ROUTE}?format=api-catalog`,
+            apiCatalogQuery: `${apiRoute}?format=api-catalog`,
           }
         : {}),
       agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
@@ -551,13 +558,13 @@ function buildAgentSpec({
     apiCatalog: {
       enabled: apiCatalog,
       route: apiCatalog ? DEFAULT_API_CATALOG_ROUTE : null,
-      api: apiCatalog ? `${DEFAULT_DOCS_API_ROUTE}?format=api-catalog` : null,
+      api: apiCatalog ? `${apiRoute}?format=api-catalog` : null,
       mediaType: "application/linkset+json",
       profile: "https://www.rfc-editor.org/info/rfc9727",
     },
     config: {
       format: "docs-config-map.v1",
-      endpoint: `${DEFAULT_DOCS_API_ROUTE}?format=config`,
+      endpoint: `${apiRoute}?format=config`,
     },
     // Always-on agent content surfaces. If these ever become configurable,
     // this spec must be wired to the same docs.config toggles instead of
@@ -567,7 +574,7 @@ function buildAgentSpec({
       acceptHeader: "text/markdown",
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
-      apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
+      apiPattern: `${apiRoute}?format=markdown&path={slug}`,
       resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     },
     agentContract: {
@@ -601,8 +608,8 @@ function buildAgentSpec({
       enabled: llms.enabled,
       defaultTxt: DEFAULT_LLMS_TXT_ROUTE,
       defaultFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
-      txt: `${DEFAULT_DOCS_API_ROUTE}?format=llms`,
-      full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
+      txt: `${apiRoute}?format=llms`,
+      full: `${apiRoute}?format=llms-full`,
       publicTxt: DEFAULT_LLMS_TXT_ROUTE,
       publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
@@ -624,14 +631,14 @@ function buildAgentSpec({
       xml: {
         enabled: sitemapConfig.xml.enabled,
         route: sitemapConfig.xml.route,
-        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-xml`,
+        api: `${apiRoute}?format=sitemap-xml`,
       },
       markdown: {
         enabled: sitemapConfig.markdown.enabled,
         route: sitemapConfig.markdown.route,
         docsRoute: sitemapConfig.markdown.docsRoute,
         wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
-        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
+        api: `${apiRoute}?format=sitemap-md`,
         defaultDocsRoute: DEFAULT_SITEMAP_MD_DOCS_ROUTE,
       },
     },
@@ -651,7 +658,7 @@ function buildAgentSpec({
     },
     openapi: {
       enabled: openapi.enabled,
-      url: openapi.url ?? null,
+      url: openapi.enabled ? `${apiRoute}?format=openapi` : null,
       source: openapi.source ?? null,
       specUrl: openapi.specUrl ?? null,
       apiReferencePath: openapi.apiReferencePath ?? null,
@@ -659,7 +666,7 @@ function buildAgentSpec({
     },
     search: {
       enabled: searchEnabled,
-      endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+      endpoint: `${apiRoute}?query={query}`,
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
@@ -669,7 +676,7 @@ function buildAgentSpec({
       file: "AGENTS.md",
       route: DEFAULT_AGENTS_MD_ROUTE,
       wellKnown: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
-      api: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      api: `${apiRoute}?format=agents`,
       generatedFallback: true,
       aliases: [DEFAULT_AGENT_MD_ROUTE, DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE],
     },
@@ -680,14 +687,14 @@ function buildAgentSpec({
       file: "skill.md",
       route: DEFAULT_SKILL_MD_ROUTE,
       wellKnown: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
-      api: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+      api: `${apiRoute}?format=skill`,
       generatedFallback: true,
       discovery: {
         schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
         index: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
         artifact: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/{name}/SKILL.md`,
-        apiIndex: `${DEFAULT_DOCS_API_ROUTE}?format=agent-skills`,
-        apiArtifact: `${DEFAULT_DOCS_API_ROUTE}?format=agent-skill&name={name}`,
+        apiIndex: `${apiRoute}?format=agent-skills`,
+        apiArtifact: `${apiRoute}?format=agent-skill&name={name}`,
         digest: "sha256",
       },
       registry: "skills.sh",
@@ -716,8 +723,8 @@ function buildAgentSpec({
       enabled: feedback.enabled,
       schema: feedback.schemaRoute,
       submit: feedback.route,
-      schemaQuery: `${DEFAULT_DOCS_API_ROUTE}?feedback=agent&schema=1`,
-      submitQuery: `${DEFAULT_DOCS_API_ROUTE}?feedback=agent`,
+      schemaQuery: `${apiRoute}?feedback=agent&schema=1`,
+      submitQuery: `${apiRoute}?feedback=agent`,
     },
     instructions: {
       preferMarkdownRoutes: true,
@@ -1037,8 +1044,12 @@ function readCloudConfig(root: string): DocsConfig["cloud"] | undefined {
       const cloudBlockSanitized = stripCommentsAndStrings(cloudBlock);
       const apiKeyBlock = extractObjectLiteral(cloudBlock, cloudBlockSanitized, "apiKey");
       const apiKeyEnv = apiKeyBlock ? readStringFromBlock(apiKeyBlock, "env") : undefined;
+      const apiRoute = readTopLevelString(cloudBlock, cloudBlockSanitized, "apiRoute");
 
-      return apiKeyEnv ? { apiKey: { env: apiKeyEnv } } : {};
+      return {
+        ...(apiKeyEnv ? { apiKey: { env: apiKeyEnv } } : {}),
+        ...(apiRoute ? { apiRoute } : {}),
+      };
     } catch {
       // fall through
     }
@@ -1167,6 +1178,17 @@ function readTopLevelBoolean(content: string, key: string): boolean | undefined 
   return match[1] === "true";
 }
 
+function readTopLevelString(content: string, sanitized: string, key: string): string | undefined {
+  const keyIndex = findTopLevelPropertyIndex(sanitized, key);
+  if (keyIndex === -1) return undefined;
+
+  const colonIndex = sanitized.indexOf(":", keyIndex + key.length);
+  if (colonIndex === -1) return undefined;
+
+  const match = content.slice(colonIndex + 1).match(/^\s*(?:"([^"]*)"|'([^']*)')/s);
+  return match?.[1] ?? match?.[2];
+}
+
 function findTopLevelPropertyIndex(content: string, key: string): number {
   let depth = 0;
 
@@ -1205,13 +1227,13 @@ function extractRootConfigObject(
   content: string,
   sanitized: string,
 ): { content: string; sanitized: string } | undefined {
-  const defineDocsIndex = sanitized.indexOf("defineDocs");
+  const defineDocsIndex = sanitized.match(/\bdefineDocs\s*\(/)?.index ?? -1;
   const exportDefaultIndex = sanitized.indexOf("export default");
 
   let braceStart = -1;
 
   if (defineDocsIndex !== -1) {
-    const parenIndex = sanitized.indexOf("(", defineDocsIndex);
+    const parenIndex = sanitized.indexOf("(", defineDocsIndex + "defineDocs".length);
     if (parenIndex !== -1) {
       braceStart = sanitized.indexOf("{", parenIndex);
     }
@@ -1617,6 +1639,11 @@ function normalizeUrlPath(value: string): string {
   return normalized.replace(/\/+$/, "");
 }
 
+function normalizeDocsApiRoute(value?: string): string {
+  const route = value?.trim().split(/[?#]/, 1)[0] || DEFAULT_DOCS_API_ROUTE;
+  return normalizeUrlPath(route.startsWith("/") ? route : `/${route}`);
+}
+
 function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): string {
   const trimmed = requestedPath.trim().replace(/\.md$/i, "");
   if (!trimmed) return `/${entry}`;
@@ -1925,6 +1952,7 @@ function renderMarkdownDocument(
 function renderSkillDocument({
   origin,
   entry,
+  apiRoute,
   apiCatalog,
   search,
   mcp,
@@ -1940,6 +1968,12 @@ function renderSkillDocument({
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const agentSpecRoute =
+    apiRoute === DEFAULT_DOCS_API_ROUTE ? DEFAULT_AGENT_SPEC_ROUTE : `${apiRoute}?agent=spec`;
+  const openapiUrl =
+    openapi.url === `${DEFAULT_DOCS_API_ROUTE}?format=openapi`
+      ? `${apiRoute}?format=openapi`
+      : openapi.url;
   const llmsSections = resolveDocsLlmsTxtSections(llms);
   const description = truncateSkillDescription(
     `Use ${siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
@@ -1965,7 +1999,7 @@ function renderSkillDocument({
     "Use this skill when you need to read or implement against this documentation site.",
     "",
     "## Start Here",
-    `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+    `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${agentSpecRoute}.`,
   );
 
   if (apiCatalog) {
@@ -1980,14 +2014,12 @@ function renderSkillDocument({
   );
 
   if (searchEnabled) {
-    lines.push(
-      `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`,
-    );
+    lines.push(`- Search with ${apiRoute}?query={query} when you do not know the page.`);
   }
 
-  if (openapi.enabled && openapi.url) {
+  if (openapi.enabled && openapiUrl) {
     lines.push(
-      `- Fetch ${openapi.url} for the machine-readable OpenAPI schema before scraping API reference pages.`,
+      `- Fetch ${openapiUrl} for the machine-readable OpenAPI schema before scraping API reference pages.`,
     );
   }
 
@@ -2031,10 +2063,10 @@ function renderSkillDocument({
     "## Routes",
     `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
     `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
-    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+    `- Agent instructions API format: ${apiRoute}?format=agents`,
     `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
     `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
-    `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Skill API format: ${apiRoute}?format=skill`,
     `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
     `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
   );
@@ -2106,6 +2138,7 @@ function renderSkillDocument({
 function renderAgentsDocument({
   origin,
   entry,
+  apiRoute,
   apiCatalog,
   search,
   mcp,
@@ -2121,6 +2154,12 @@ function renderAgentsDocument({
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const agentSpecRoute =
+    apiRoute === DEFAULT_DOCS_API_ROUTE ? DEFAULT_AGENT_SPEC_ROUTE : `${apiRoute}?agent=spec`;
+  const openapiUrl =
+    openapi.url === `${DEFAULT_DOCS_API_ROUTE}?format=openapi`
+      ? `${apiRoute}?format=openapi`
+      : openapi.url;
   const llmsSections = resolveDocsLlmsTxtSections(llms);
   const lines = ["# Agent Instructions", "", `Site: ${siteTitle}`, `Base URL: ${origin}`];
 
@@ -2131,7 +2170,7 @@ function renderAgentsDocument({
   lines.push(
     "",
     "## Start Here",
-    `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+    `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${agentSpecRoute}.`,
   );
 
   if (apiCatalog) {
@@ -2168,12 +2207,12 @@ function renderAgentsDocument({
   }
 
   if (searchEnabled) {
-    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when the route is unknown.`);
+    lines.push(`- Search with ${apiRoute}?query={query} when the route is unknown.`);
   }
 
-  if (openapi.enabled && openapi.url) {
+  if (openapi.enabled && openapiUrl) {
     lines.push(
-      `- Fetch ${openapi.url} before scraping API reference pages; prefer schemas over prose.`,
+      `- Fetch ${openapiUrl} before scraping API reference pages; prefer schemas over prose.`,
     );
   }
 
@@ -2198,11 +2237,11 @@ function renderAgentsDocument({
     "## Public Routes",
     `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
     `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
-    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+    `- Agent instructions API format: ${apiRoute}?format=agents`,
     `- Agent instructions aliases: ${DEFAULT_AGENT_MD_ROUTE}, ${DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE}`,
     `- Site skill: ${DEFAULT_SKILL_MD_ROUTE}`,
     `- Site skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
-    `- Site skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Site skill API format: ${apiRoute}?format=skill`,
     `- Markdown root: /${normalizedEntry}.md`,
     `- Markdown pages: /${normalizedEntry}/{slug}.md`,
     `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
@@ -3435,46 +3474,51 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
     if (fs.existsSync(configPath)) {
       try {
         const content = fs.readFileSync(configPath, "utf-8");
-        const navTitleMatch = content.match(/nav\s*:\s*\{[^}]*title\s*:\s*["']([^"']+)["']/s);
+        const sanitized = stripCommentsAndStrings(content);
+        const configObject = extractRootConfigObject(content, sanitized);
+        const scopedContent = configObject?.content ?? content;
+        const scopedSanitized = configObject?.sanitized ?? sanitized;
+        const navBlock = extractObjectLiteral(scopedContent, scopedSanitized, "nav");
+        const navTitle = navBlock
+          ? readTopLevelString(navBlock, stripCommentsAndStrings(navBlock), "title")
+          : undefined;
+        const llmsTxtBoolean = readTopLevelBoolean(scopedSanitized, "llmsTxt");
 
-        if (!content.includes("llmsTxt")) {
+        if (llmsTxtBoolean === true) {
           return {
             enabled: true,
-            siteTitle: navTitleMatch?.[1],
+            siteTitle: navTitle,
+          };
+        }
+        if (llmsTxtBoolean === false) return { enabled: false };
+
+        const llmsTxtBlock = extractObjectLiteral(scopedContent, scopedSanitized, "llmsTxt");
+        if (!llmsTxtBlock) {
+          return {
+            enabled: true,
+            siteTitle: navTitle,
           };
         }
 
-        const isBoolTrue = /llmsTxt\s*:\s*true/.test(content);
-        if (isBoolTrue) {
-          return {
-            enabled: true,
-            siteTitle: navTitleMatch?.[1],
-          };
-        }
+        const llmsTxtSanitized = stripCommentsAndStrings(llmsTxtBlock);
+        const enabled = readTopLevelBoolean(llmsTxtSanitized, "enabled");
+        if (enabled === false) return { enabled: false };
 
-        const isBoolFalse = /llmsTxt\s*:\s*false/.test(content);
-        if (isBoolFalse) return { enabled: false };
-
-        const enabledMatch = content.match(/llmsTxt\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s);
-        if (enabledMatch && enabledMatch[1] === "false") return { enabled: false };
-
-        const baseUrlMatch = content.match(/llmsTxt\s*:\s*\{[^}]*baseUrl\s*:\s*["']([^"']+)["']/s);
-        const siteTitleMatch = content.match(
-          /llmsTxt\s*:\s*\{[^}]*siteTitle\s*:\s*["']([^"']+)["']/s,
-        );
-        const siteDescMatch = content.match(
-          /llmsTxt\s*:\s*\{[^}]*siteDescription\s*:\s*["']([^"']+)["']/s,
-        );
-        const apiCatalogMatch = content.match(
-          /llmsTxt\s*:\s*\{[^}]*apiCatalog\s*:\s*(true|false)/s,
+        const apiCatalog = readTopLevelBoolean(llmsTxtSanitized, "apiCatalog");
+        const baseUrl = readTopLevelString(llmsTxtBlock, llmsTxtSanitized, "baseUrl");
+        const siteTitle = readTopLevelString(llmsTxtBlock, llmsTxtSanitized, "siteTitle");
+        const siteDescription = readTopLevelString(
+          llmsTxtBlock,
+          llmsTxtSanitized,
+          "siteDescription",
         );
 
         return {
           enabled: true,
-          apiCatalog: apiCatalogMatch ? apiCatalogMatch[1] === "true" : undefined,
-          baseUrl: baseUrlMatch?.[1],
-          siteTitle: siteTitleMatch?.[1] ?? navTitleMatch?.[1],
-          siteDescription: siteDescMatch?.[1],
+          apiCatalog,
+          baseUrl,
+          siteTitle: siteTitle ?? navTitle,
+          siteDescription,
         };
       } catch {
         // fall through
@@ -3657,6 +3701,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   // Read AI config from docs.config if not explicitly provided
   const aiConfig: AIOptions = options?.ai ?? readAIConfig(root);
   const cloudConfig = options?.cloud ?? readCloudConfig(root);
+  const configuredApiRoute = normalizeDocsApiRoute(options?.apiRoute ?? cloudConfig?.apiRoute);
+  const effectiveCloudConfig =
+    options?.apiRoute !== undefined || cloudConfig?.apiRoute !== undefined
+      ? { ...cloudConfig, apiRoute: configuredApiRoute }
+      : cloudConfig;
   const searchConfig = options?.search;
 
   // Read llms.txt config
@@ -3693,7 +3742,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     telemetry: options?.telemetry,
     search: searchConfig,
     ai: aiConfig as DocsConfig["ai"],
-    cloud: cloudConfig,
+    cloud: effectiveCloudConfig,
     i18n: i18nConfig ?? undefined,
     feedback: options?.feedback,
     mcp: rawMcpConfig,
@@ -3706,9 +3755,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const {
     rootDir: _rootDir,
     language: _language,
+    apiRoute: _apiRoute,
     ...docsConfigMapOptions
   } = (options ?? {}) as Record<string, unknown>;
   const docsConfigMapInput: Record<string, unknown> = { ...docsConfigMapOptions };
+  if (effectiveCloudConfig !== undefined) {
+    docsConfigMapInput.cloud = effectiveCloudConfig;
+  }
   const setConfigMapFallback = (key: keyof DocsConfig, value: unknown) => {
     if (Object.prototype.hasOwnProperty.call(docsConfigMapInput, key) || value === undefined) {
       return;
@@ -3718,7 +3771,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   };
   setConfigMapFallback("entry", entry);
   setConfigMapFallback("ai", Object.keys(aiConfig).length > 0 ? aiConfig : undefined);
-  setConfigMapFallback("cloud", cloudConfig);
   setConfigMapFallback("search", searchConfig);
   setConfigMapFallback("i18n", i18nConfig ?? undefined);
   setConfigMapFallback("mcp", rawMcpConfig);
@@ -3727,8 +3779,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     ...docsConfigMapInput,
     docsPath: docsConfigMapInput.docsPath ?? docsPath,
     contentDir: docsConfigMapInput.contentDir ?? contentDir,
+    cloud: effectiveCloudConfig,
     feedback: docsConfigMapInput.feedback ?? options?.feedback,
-    llmsTxt: docsConfigMapInput.llmsTxt ?? llmsConfig,
+    llmsTxt: { ...llmsConfig, apiCatalog: apiCatalogEnabled },
     sitemap: docsConfigMapInput.sitemap ?? sitemapConfig,
     robots: docsConfigMapInput.robots ?? robotsConfig,
     staticExport: docsConfigMapInput.staticExport ?? options?.staticExport,
@@ -3982,9 +4035,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   async function resolveStandardsResponse(request: Request, url: URL): Promise<Response | null> {
-    const apiRoute = url.pathname.startsWith("/.well-known/")
-      ? DEFAULT_DOCS_API_ROUTE
-      : url.pathname;
+    const apiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
     const resolved = resolveDocsStandardsDiscoveryRequest(url, { apiRoute });
     if (!resolved) return null;
 
@@ -3994,6 +4045,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       ? renderSkillDocument({
           origin: url.origin,
           entry,
+          apiRoute,
           apiCatalog: apiCatalogEnabled,
           i18n,
           search: searchConfig,
@@ -4040,6 +4092,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const url = new URL(request.url);
       const requestMethod = request.method.toUpperCase();
       const isHeadRequest = requestMethod === "HEAD";
+      const requestApiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
       const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       if (isDocsConfigRequest(url)) {
         return Response.json(buildDocsConfigMap(docsConfigMapInput), {
@@ -4055,6 +4108,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           buildDocsDiagnostics(docsDiagnosticsInput, {
             adapter: "next",
             entry,
+            apiRoute: requestApiRoute,
             i18n,
             mcp: mcpConfig,
             feedback: agentFeedbackConfig,
@@ -4098,6 +4152,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           buildAgentSpec({
             origin: url.origin,
             entry,
+            apiRoute: requestApiRoute,
             apiCatalog: apiCatalogEnabled,
             i18n,
             search: searchConfig,
@@ -4211,6 +4266,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
                 renderAgentsDocument({
                   origin: url.origin,
                   entry,
+                  apiRoute: requestApiRoute,
                   apiCatalog: apiCatalogEnabled,
                   search: searchConfig,
                   mcp: mcpConfig,
@@ -4250,6 +4306,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
                 renderSkillDocument({
                   origin: url.origin,
                   entry,
+                  apiRoute: requestApiRoute,
                   apiCatalog: apiCatalogEnabled,
                   i18n,
                   search: searchConfig,
@@ -4283,6 +4340,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       const sitemapResponse = createDocsSitemapResponse({
         request,
+        apiRoute: requestApiRoute,
         sitemap: sitemapConfig,
         entry,
         siteTitle: llmsConfig.siteTitle ?? "Documentation",
@@ -4340,6 +4398,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           });
           return createDocsMarkdownResponse({
             request,
+            apiRoute: requestApiRoute,
             document: null,
             entry,
             requestedPath: markdownRequest.requestedPath,
@@ -4381,6 +4440,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
         return createDocsMarkdownResponse({
           request,
+          apiRoute: requestApiRoute,
           document,
           entry,
           requestedPath: markdownRequest.requestedPath,
@@ -4392,7 +4452,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
-      const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsConfig, docsPath);
+      const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsConfig, docsPath, {
+        apiRoute: requestApiRoute,
+      });
       if (llmsRequest) {
         if (!llmsConfig.enabled) {
           return new Response("Not Found", {

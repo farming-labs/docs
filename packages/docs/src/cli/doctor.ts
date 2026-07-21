@@ -4,8 +4,6 @@ import path from "node:path";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import pc from "picocolors";
 import {
-  DEFAULT_DOCS_API_ROUTE,
-  DEFAULT_DOCS_CONFIG_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
   DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
@@ -27,6 +25,7 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsMcpEndpointCandidates,
+  resolveDocsDiscoveryApiRoute,
 } from "../agent.js";
 import {
   AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
@@ -1728,6 +1727,7 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
   const mcp = asRecord(root?.mcp);
   const agentContract = asRecord(root?.agentContract);
   const agentContractFields = asRecord(agentContract?.fields);
+  const apiRoute = isNonEmptyString(api?.docs) ? resolveDocsDiscoveryApiRoute(api.docs) : undefined;
 
   return Boolean(
     root &&
@@ -1739,25 +1739,25 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
     typeof capabilities?.mcp === "boolean" &&
     capabilities?.apiCatalog === true &&
     capabilities?.agentSkillsDiscovery === true &&
-    isNonEmptyString(api?.docs) &&
-    isNonEmptyString(api?.config) &&
+    apiRoute &&
+    api?.docs === apiRoute &&
+    api?.config === `${apiRoute}?format=config` &&
     api?.apiCatalog === DEFAULT_API_CATALOG_ROUTE &&
-    api?.apiCatalogQuery === `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
+    api?.apiCatalogQuery === `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
     api?.agentSkillsIndex === DEFAULT_AGENT_SKILLS_INDEX_ROUTE &&
     apiCatalog?.enabled === true &&
     apiCatalog?.route === DEFAULT_API_CATALOG_ROUTE &&
-    apiCatalog?.api === `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
+    apiCatalog?.api === `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
     apiCatalog?.mediaType === API_CATALOG_MEDIA_TYPE &&
     apiCatalog?.profile === API_CATALOG_PROFILE_URI &&
     skillsDiscovery?.schema === AGENT_SKILLS_DISCOVERY_SCHEMA_URI &&
     skillsDiscovery?.index === DEFAULT_AGENT_SKILLS_INDEX_ROUTE &&
     skillsDiscovery?.artifact === DEFAULT_AGENT_SKILLS_ROUTE_PATTERN &&
-    skillsDiscovery?.apiIndex ===
-      `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}` &&
+    skillsDiscovery?.apiIndex === `${apiRoute}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}` &&
     skillsDiscovery?.apiArtifact ===
-      `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}` &&
+      `${apiRoute}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}` &&
     skillsDiscovery?.digest === "sha256" &&
-    isNonEmptyString(config?.endpoint) &&
+    config?.endpoint === `${apiRoute}?format=config` &&
     typeof search?.enabled === "boolean" &&
     isNonEmptyString(search?.endpoint) &&
     typeof mcp?.enabled === "boolean" &&
@@ -2790,9 +2790,11 @@ export async function inspectAgentReadiness(
   );
   const feedbackRoute = DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = `${feedbackRoute}/schema`;
+  const apiRoute = resolveDocsDiscoveryApiRoute(config?.cloud?.apiRoute);
   const discovery = buildDocsAgentDiscoverySpec({
     origin: "http://localhost",
     entry,
+    apiRoute,
     search: searchEnabled,
     mcp: mcpConfig,
     feedback: {
@@ -2824,7 +2826,7 @@ export async function inspectAgentReadiness(
       entry,
       search: {
         enabled: searchEnabled,
-        endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+        endpoint: `${apiRoute}?query={query}`,
       },
       mcp: {
         enabled: mcpConfig.enabled,
@@ -2832,18 +2834,18 @@ export async function inspectAgentReadiness(
         tools: mcpConfig.tools,
       },
       routes: {
-        "api.docs": DEFAULT_DOCS_API_ROUTE,
-        "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
+        "api.docs": apiRoute,
+        "api.config": `${apiRoute}?format=config`,
         "api.apiCatalog": DEFAULT_API_CATALOG_ROUTE,
-        "api.apiCatalogQuery": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+        "api.apiCatalogQuery": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
         "api.agentSkillsIndex": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
         "apiCatalog.route": DEFAULT_API_CATALOG_ROUTE,
-        "apiCatalog.api": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
-        "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+        "apiCatalog.api": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+        "config.endpoint": `${apiRoute}?format=config`,
         "skills.discovery.index": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
         "skills.discovery.artifact": DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
-        "skills.discovery.apiIndex": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
-        "skills.discovery.apiArtifact": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
+        "skills.discovery.apiIndex": `${apiRoute}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
+        "skills.discovery.apiArtifact": `${apiRoute}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
       },
     },
   });

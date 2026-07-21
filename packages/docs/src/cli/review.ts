@@ -4,8 +4,6 @@ import path from "node:path";
 import matter from "gray-matter";
 import pc from "picocolors";
 import {
-  DEFAULT_DOCS_API_ROUTE,
-  DEFAULT_DOCS_CONFIG_ROUTE,
   DEFAULT_AGENT_SKILL_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
@@ -15,6 +13,7 @@ import {
   DOCS_CONFIG_MAP_TOP_LEVEL_KEYS,
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
+  resolveDocsDiscoveryApiRoute,
 } from "../agent.js";
 import {
   PAGE_AGENT_CONTRACT_FIELDS,
@@ -362,9 +361,11 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
       defaultName:
         typeof evaluatedConfig.nav?.title === "string" ? evaluatedConfig.nav.title : undefined,
     });
+    const apiRoute = resolveDocsDiscoveryApiRoute(evaluatedConfig.cloud?.apiRoute);
     const discovery = buildDocsAgentDiscoverySpec({
       origin: "http://localhost",
       entry,
+      apiRoute,
       search: evaluatedConfig.search,
       mcp,
     });
@@ -388,22 +389,22 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
         entry,
         search: {
           enabled: searchEnabled,
-          endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+          endpoint: `${apiRoute}?query={query}`,
         },
         mcp: { enabled: mcp.enabled, endpoint: mcp.route, tools: mcp.tools },
         routes: {
-          "api.docs": DEFAULT_DOCS_API_ROUTE,
-          "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
+          "api.docs": apiRoute,
+          "api.config": `${apiRoute}?format=config`,
           "api.apiCatalog": DEFAULT_API_CATALOG_ROUTE,
-          "api.apiCatalogQuery": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+          "api.apiCatalogQuery": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
           "api.agentSkillsIndex": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
           "apiCatalog.route": DEFAULT_API_CATALOG_ROUTE,
-          "apiCatalog.api": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
-          "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+          "apiCatalog.api": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+          "config.endpoint": `${apiRoute}?format=config`,
           "skills.discovery.index": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
           "skills.discovery.artifact": DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
-          "skills.discovery.apiIndex": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
-          "skills.discovery.apiArtifact": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
+          "skills.discovery.apiIndex": `${apiRoute}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
+          "skills.discovery.apiArtifact": `${apiRoute}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
         },
       },
     });

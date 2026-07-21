@@ -35,7 +35,9 @@ describe("agent export cli", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  function writeProject(options: { staticExport?: boolean; llms?: boolean } = {}) {
+  function writeProject(
+    options: { staticExport?: boolean; llms?: boolean; apiRoute?: string } = {},
+  ) {
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
       `export default {
@@ -44,6 +46,7 @@ describe("agent export cli", () => {
   staticExport: ${options.staticExport ?? true},
   nav: { title: "Example Docs" },
   metadata: { description: "Documentation for Example." },
+  ${options.apiRoute ? `cloud: { apiRoute: ${JSON.stringify(options.apiRoute)} },` : ""}
   llmsTxt: ${
     options.llms === false
       ? "false"
@@ -125,7 +128,7 @@ pnpm add example
   });
 
   it("exports a complete deterministic bundle and validates it", async () => {
-    writeProject();
+    writeProject({ apiRoute: " api//internal/docs/ " });
     writeFileSync(
       path.join(tmpDir, "AGENTS.md"),
       "# Private repository instructions\n\nNever publish this token: private-value.\n",
@@ -169,6 +172,9 @@ pnpm add example
     });
     expect(discovery.api).not.toHaveProperty("apiCatalog");
     expect(discovery.api).not.toHaveProperty("apiCatalogQuery");
+    expect(discovery.api.docs).toBe("/api/internal/docs");
+    expect(discovery.api.agentSpec).toBe("/api/internal/docs?agent=spec");
+    expect(discovery.skills.discovery.apiIndex).toBe("/api/internal/docs?format=agent-skills");
 
     const skillsIndex = JSON.parse(
       readFileSync(

@@ -43,6 +43,7 @@ import {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsMarkdownCanonicalUrl,
+  resolveDocsRequestApiRoute,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
   selectDocsLlmsTxtContent,
@@ -57,7 +58,34 @@ describe("agent route helpers", () => {
     expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/api/docs?agent=spec"))).toBe(
       true,
     );
+    const customAgentSpec = new URL("https://example.com/api/internal/docs?agent=spec");
+    expect(isDocsAgentDiscoveryRequest(customAgentSpec)).toBe(false);
+    expect(
+      isDocsAgentDiscoveryRequest(customAgentSpec, { apiRoute: " api//internal/docs/ " }),
+    ).toBe(true);
+    expect(
+      isDocsSkillRequest(new URL("https://example.com/api/internal/docs?format=skill"), {
+        apiRoute: "/api/internal/docs",
+      }),
+    ).toBe(true);
+    expect(
+      isDocsAgentsRequest(new URL("https://example.com/api/internal/docs?format=agents"), {
+        apiRoute: "/api/internal/docs",
+      }),
+    ).toBe(true);
     expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/blog?agent=spec"))).toBe(false);
+    expect(
+      resolveDocsRequestApiRoute(
+        new URL("https://example.com/api/internal/docs?format=skill"),
+        "/api/configured/docs",
+      ),
+    ).toBe("/api/internal/docs");
+    expect(
+      resolveDocsRequestApiRoute(
+        new URL("https://example.com/skill.md?lang=en"),
+        "/api/configured/docs",
+      ),
+    ).toBe("/api/configured/docs");
     expect(
       isDocsStandardsDiscoveryRequest(new URL("https://example.com/.well-known/api-catalog")),
     ).toBe(true);
@@ -376,6 +404,36 @@ describe("agent route helpers", () => {
     expect(diagnostics.features.skills.status).toBe("enabled");
   });
 
+  it("uses the configured API route throughout diagnostics", () => {
+    const diagnostics = buildDocsDiagnostics({
+      entry: "docs",
+      cloud: { apiRoute: " api//internal/docs/ " },
+      ai: { enabled: true },
+      apiReference: true,
+    });
+
+    expect(diagnostics.routes).toMatchObject({
+      api: "/api/internal/docs",
+      config: "/api/internal/docs?format=config",
+      diagnostics: "/api/internal/docs?format=diagnostics",
+      agentSpec: "/api/internal/docs?agent=spec",
+      agents: "/api/internal/docs?format=agents",
+      skill: "/api/internal/docs?format=skill",
+      search: "/api/internal/docs?query={query}",
+      askAi: "/api/internal/docs",
+      openapi: "/api/internal/docs?format=openapi",
+    });
+    expect(diagnostics.features).toMatchObject({
+      config: { route: "/api/internal/docs?format=config" },
+      diagnostics: { route: "/api/internal/docs?format=diagnostics" },
+      search: { route: "/api/internal/docs?query={query}" },
+      ai: { route: "/api/internal/docs" },
+      apiReference: { routes: { openapi: "/api/internal/docs?format=openapi" } },
+      agents: { routes: { api: "/api/internal/docs?format=agents" } },
+      skills: { routes: { api: "/api/internal/docs?format=skill" } },
+    });
+  });
+
   it("reports invalid search provider diagnostics without leaking configured values", () => {
     const diagnostics = buildDocsDiagnostics(
       {
@@ -490,6 +548,17 @@ describe("agent route helpers", () => {
     expect(rootShallowSection).toBeDefined();
     expect(matchesDocsLlmsTxtSection("/docs", rootShallowSection!)).toBe(true);
     expect(matchesDocsLlmsTxtSection("/docs/api", rootShallowSection!)).toBe(false);
+  });
+
+  it("resolves llms.txt query formats on a custom API route", () => {
+    const url = new URL("https://example.com/api/internal/docs?format=llms-full");
+
+    expect(resolveDocsLlmsTxtRequest(url)).toBeNull();
+    expect(
+      resolveDocsLlmsTxtRequest(url, undefined, undefined, {
+        apiRoute: "api/internal/docs/",
+      }),
+    ).toEqual({ format: "llms-full", section: undefined });
   });
 
   it("renders root and section llms.txt content with progressive disclosure", () => {
@@ -864,6 +933,14 @@ describe("agent route helpers", () => {
     );
     expect(apiFormatRoute).toEqual({ requestedPath: "install" });
 
+    const customApiFormatRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/api/internal/docs?format=markdown&path=install"),
+      new Request("https://example.com/api/internal/docs?format=markdown&path=install"),
+      { apiRoute: "/api/internal/docs" },
+    );
+    expect(customApiFormatRoute).toEqual({ requestedPath: "install" });
+
     const hijackRoute = resolveDocsMarkdownRequest(
       "docs",
       new URL("https://example.com/blog?format=markdown&path=install"),
@@ -1060,6 +1137,17 @@ describe("agent route helpers", () => {
     expect(document).toContain("`/docs-map/sitemap.xml`");
     expect(document).toContain("## Sitemap");
     expect(document).toContain("See the full [sitemap](/docs-map/sitemap.md)");
+
+    const customRouteDocument = renderDocsMarkdownNotFound({
+      entry: "docs",
+      apiRoute: "/api/internal/docs",
+      requestedPath: "unknown",
+      pages: [],
+    });
+    expect(customRouteDocument).toContain("`/api/internal/docs?agent=spec`");
+    expect(customRouteDocument).toContain("`/api/internal/docs?query={query}`");
+    expect(customRouteDocument).toContain("`/api/internal/docs?format=markdown&path=unknown`");
+    expect(customRouteDocument).not.toContain("`/api/docs?query={query}`");
   });
 
   it("resolves high-confidence markdown recovery redirects", () => {
@@ -1816,6 +1904,76 @@ After`;
     });
   });
 
+  it("normalizes a custom API route across generated discovery resources", () => {
+    const options = {
+      origin: "https://docs.example.com",
+      apiRoute: " api//internal/docs/ ",
+      mcp: {
+        enabled: false,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: {
+          listDocs: true,
+          listPages: true,
+          readPage: true,
+          searchDocs: true,
+          getNavigation: true,
+          getCodeExamples: true,
+          getConfigSchema: true,
+          getContext: true,
+        },
+      },
+      feedback: { enabled: true },
+      openapi: true,
+    } as const;
+    const spec = buildDocsAgentDiscoverySpec(options);
+
+    expect(spec.api).toMatchObject({
+      docs: "/api/internal/docs",
+      config: "/api/internal/docs?format=config",
+      diagnostics: "/api/internal/docs?format=diagnostics",
+      agentSpec: "/api/internal/docs?agent=spec",
+      agentSpecQuery: "/api/internal/docs?agent=spec",
+      agents: "/api/internal/docs?format=agents",
+      apiCatalog: "/.well-known/api-catalog",
+      apiCatalogQuery: "/api/internal/docs?format=api-catalog",
+      agentSkillsIndex: "/.well-known/agent-skills/index.json",
+      openapi: "/api/internal/docs?format=openapi",
+    });
+    expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.apiCatalog.api).toBe("/api/internal/docs?format=api-catalog");
+    expect(spec.config.endpoint).toBe("/api/internal/docs?format=config");
+    expect(spec.markdown.apiPattern).toBe("/api/internal/docs?format=markdown&path={slug}");
+    expect(spec.llms).toMatchObject({
+      txt: "/api/internal/docs?format=llms",
+      full: "/api/internal/docs?format=llms-full",
+    });
+    expect(spec.sitemap.xml.api).toBe("/api/internal/docs?format=sitemap-xml");
+    expect(spec.sitemap.markdown.api).toBe("/api/internal/docs?format=sitemap-md");
+    expect(spec.search.endpoint).toBe("/api/internal/docs?query={query}");
+    expect(spec.agents.api).toBe("/api/internal/docs?format=agents");
+    expect(spec.skills.api).toBe("/api/internal/docs?format=skill");
+    expect(spec.skills.discovery).toMatchObject({
+      index: "/.well-known/agent-skills/index.json",
+      artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+      apiIndex: "/api/internal/docs?format=agent-skills",
+      apiArtifact: "/api/internal/docs?format=agent-skill&name={name}",
+    });
+    expect(spec.openapi.url).toBe("/api/internal/docs?format=openapi");
+    expect(spec.feedback).toMatchObject({
+      schemaQuery: "/api/internal/docs?feedback=agent&schema=1",
+      submitQuery: "/api/internal/docs?feedback=agent",
+    });
+
+    const generatedSkill = renderDocsSkillDocument(options);
+    expect(generatedSkill).toContain("/api/internal/docs?query={query}");
+    expect(generatedSkill).toContain("/api/internal/docs?format=agents");
+    expect(generatedSkill).toContain("/api/internal/docs?format=skill");
+    expect(generatedSkill).toContain("/api/internal/docs?format=openapi");
+    expect(generatedSkill).toContain("/api/internal/docs?agent=spec");
+  });
+
   it("advertises only task tools exposed by the resolved MCP config", () => {
     const baseTools = {
       listDocs: true,
@@ -1964,5 +2122,34 @@ description: Use the example documentation.
       fallbackSkillDocument,
     });
     expect(explicitDisable?.status).toBe(404);
+  });
+
+  it("uses a normalized custom API route throughout the generated catalog", async () => {
+    const response = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/api/internal/docs?format=api-catalog"),
+      origin: "https://docs.example.com",
+      apiRoute: " api//internal/docs/ ",
+      mcp,
+      openapi: true,
+      fallbackSkillDocument,
+    });
+    const catalog = (await response?.json()) as {
+      linkset: Array<Record<string, Array<{ href: string }> | string>>;
+    };
+
+    expect(response?.status).toBe(200);
+    expect(catalog.linkset[0].item).toContainEqual(
+      expect.objectContaining({ href: "https://docs.example.com/api/internal/docs" }),
+    );
+    expect(catalog.linkset[0]["service-meta"]).toContainEqual(
+      expect.objectContaining({
+        href: "https://docs.example.com/api/internal/docs?format=config",
+      }),
+    );
+    expect(catalog.linkset[0]["service-desc"]).toContainEqual(
+      expect.objectContaining({
+        href: "https://docs.example.com/api/internal/docs?format=openapi",
+      }),
+    );
   });
 });

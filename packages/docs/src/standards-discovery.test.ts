@@ -82,6 +82,18 @@ describe("RFC 9727 API catalog", () => {
     expect(result.linkset[0]["service-desc"]).toBeUndefined();
   });
 
+  it("normalizes a custom query API route in direct catalog builds", () => {
+    const result = buildDocsApiCatalog({
+      origin: "https://docs.example.com",
+      apiRoute: " api//internal/docs/?ignored=true#fragment ",
+    });
+
+    expect(result.linkset[0].item).toEqual([
+      expect.objectContaining({ href: "https://docs.example.com/api/internal/docs" }),
+    ]);
+    expect(result.linkset[1].anchor).toBe("https://docs.example.com/api/internal/docs");
+  });
+
   it("serves GET and bodyless HEAD with the RFC media type and Link relation", async () => {
     const get = await createDocsStandardsResponse({
       request: new Request(`https://docs.example.com${DEFAULT_API_CATALOG_ROUTE}`),

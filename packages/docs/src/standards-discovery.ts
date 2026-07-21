@@ -91,10 +91,12 @@ export type DocsStandardsDiscoveryRequest =
   | { kind: "agent-skills-index" }
   | { kind: "agent-skill"; name: string };
 
-export interface DocsStandardsDiscoveryRouteOptions {
-  /** Internal docs API route used for query-form forwarding. */
+export interface DocsDiscoveryApiRouteOptions {
+  /** Same-origin Docs API pathname used by query-form discovery. @default "/api/docs" */
   apiRoute?: string;
 }
+
+export interface DocsStandardsDiscoveryRouteOptions extends DocsDiscoveryApiRouteOptions {}
 
 export interface CreateDocsStandardsResponseOptions {
   request: Request;
@@ -108,8 +110,14 @@ export interface CreateDocsStandardsResponseOptions {
 }
 
 function normalizeDocsRoute(value: string): string {
-  const normalized = `/${value}`.replace(/\/{2,}/g, "/");
+  const normalized = `/${value.trim()}`.replace(/\/{2,}/g, "/");
   return normalized === "/" ? normalized : normalized.replace(/\/+$/, "");
+}
+
+/** Resolve the same-origin Docs API pathname used by query-form discovery routes. */
+export function resolveDocsDiscoveryApiRoute(apiRoute?: string): string {
+  const candidate = apiRoute?.trim().split(/[?#]/, 1)[0];
+  return normalizeDocsRoute(candidate || DEFAULT_DOCS_API_ROUTE);
 }
 
 function resolveHttpUrl(value: string | null | undefined, origin: string): string | null {
@@ -153,7 +161,8 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
     throw new Error(`Invalid HTTP(S) docs origin for API catalog: ${options.origin}`);
   }
 
-  const apiRoute = options.apiRoute === undefined ? DEFAULT_DOCS_API_ROUTE : options.apiRoute;
+  const apiRoute =
+    options.apiRoute === null ? null : resolveDocsDiscoveryApiRoute(options.apiRoute);
   const agentManifestRoute =
     options.agentManifestRoute === undefined
       ? DEFAULT_AGENT_MANIFEST_ROUTE
@@ -381,7 +390,7 @@ export function resolveDocsStandardsDiscoveryRequest(
     }
   }
 
-  const apiRoute = normalizeDocsRoute(options.apiRoute ?? DEFAULT_DOCS_API_ROUTE);
+  const apiRoute = resolveDocsDiscoveryApiRoute(options.apiRoute);
   if (pathname !== apiRoute) return null;
   const format = url.searchParams.get("format")?.trim();
   if (format === DEFAULT_API_CATALOG_FORMAT) return { kind: "api-catalog" };

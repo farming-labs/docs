@@ -48,6 +48,7 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsMetadataBaseUrl,
+  resolveDocsRequestApiRoute,
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
@@ -954,6 +955,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           buildDocsDiagnostics(config as any, {
             adapter: "tanstack-start",
             entry,
+            apiRoute: url.pathname,
             i18n,
             mcp: mcpConfig,
             feedback: agentFeedbackDiscovery,
@@ -972,9 +974,15 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       );
     }
 
+    const configuredApiRoute =
+      typeof config.cloud?.apiRoute === "string" && config.cloud.apiRoute.trim()
+        ? config.cloud.apiRoute
+        : undefined;
+    const discoveryApiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
     const discoveryOptions = {
       origin: url.origin,
       entry,
+      apiRoute: discoveryApiRoute,
       docsPath: config.docsPath,
       apiCatalog: apiCatalogEnabled,
       i18n,
@@ -997,19 +1005,17 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         acceptHeader: false,
       },
     } as any;
-    const standardsApiRoute = url.pathname.startsWith("/.well-known/") ? undefined : url.pathname;
-    if (isDocsStandardsDiscoveryRequest(url, { apiRoute: standardsApiRoute })) {
+    if (isDocsStandardsDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
       const standardsDiscoveryResponse = await createDocsStandardsDiscoveryResponse({
         request: event.request,
         ...discoveryOptions,
-        apiRoute: standardsApiRoute,
         preferredSkillDocument: readRootSkillDocument(preloaded, rootDir),
         fallbackSkillDocument: renderDocsSkillDocument(discoveryOptions),
       });
       if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
     }
 
-    if (isDocsAgentDiscoveryRequest(url)) {
+    if (isDocsAgentDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
       return new Response(JSON.stringify(buildDocsAgentDiscoverySpec(discoveryOptions), null, 2), {
         headers: {
           "Content-Type": "application/json; charset=utf-8",
@@ -1067,7 +1073,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       });
     }
 
-    if (isDocsAgentsRequest(url) || resolveDocsAgentsFormat(url) === "agents") {
+    if (
+      isDocsAgentsRequest(url, { apiRoute: discoveryApiRoute }) ||
+      resolveDocsAgentsFormat(url) === "agents"
+    ) {
       return new Response(
         readRootAgentsDocument(preloaded, rootDir) ?? renderDocsAgentsDocument(discoveryOptions),
         {
@@ -1081,7 +1090,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       );
     }
 
-    if (isDocsSkillRequest(url) || resolveDocsSkillFormat(url) === "skill") {
+    if (
+      isDocsSkillRequest(url, { apiRoute: discoveryApiRoute }) ||
+      resolveDocsSkillFormat(url) === "skill"
+    ) {
       return new Response(
         readRootSkillDocument(preloaded, rootDir) ?? renderDocsSkillDocument(discoveryOptions),
         {
@@ -1097,6 +1109,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
     const sitemapResponse = createDocsSitemapResponse({
       request: event.request,
+      apiRoute: discoveryApiRoute,
       sitemap: config.sitemap,
       entry,
       siteTitle: llmsTitle,
@@ -1116,7 +1129,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     });
     if (robotsResponse) return robotsResponse;
 
-    const markdownRequest = resolveDocsMarkdownRequest(entry, url, event.request);
+    const markdownRequest = resolveDocsMarkdownRequest(entry, url, event.request, {
+      apiRoute: discoveryApiRoute,
+    });
     if (markdownRequest) {
       const markdownOrigin = markdownMetadataBaseUrl || url.origin;
       const representation = getMarkdownRepresentation(
@@ -1126,6 +1141,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       );
       return createDocsMarkdownResponse({
         request: event.request,
+        apiRoute: discoveryApiRoute,
         document: representation?.document ?? null,
         entry,
         requestedPath: markdownRequest.requestedPath,
@@ -1137,7 +1153,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       });
     }
 
-    const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsTxtConfig, entry);
+    const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsTxtConfig, entry, {
+      apiRoute: discoveryApiRoute,
+    });
     if (llmsRequest) {
       if (!llmsEnabled) {
         return new Response("Not Found", {
