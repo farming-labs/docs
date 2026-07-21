@@ -87,7 +87,11 @@ describe("agent route helpers", () => {
       "/docs/api/llms.txt",
       "/docs-map/sitemap.md",
       "/docs/installation.md",
+      "/docs-map/sitemap.xml",
     ]) {
+      expect(
+        resolveDocsRequestApiRoute(new URL(`https://example.com${publicPath}?format=diagnostics`)),
+      ).toBe("/api/docs");
       expect(
         resolveDocsRequestApiRoute(
           new URL(`https://example.com${publicPath}?format=diagnostics`),

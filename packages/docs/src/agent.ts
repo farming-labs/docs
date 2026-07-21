@@ -689,8 +689,10 @@ export function resolveDocsRequestApiRoute(url: URL, configuredApiRoute?: string
 
   const fallback = resolveDocsDiscoveryApiRoute();
   const pathname = normalizeDocsUrlPath(url.pathname);
+  const hasPublicRepresentationSuffix = /\.(?:md|txt|xml)$/i.test(pathname);
   const isPublicDiscoveryPath =
     pathname.startsWith("/.well-known/") ||
+    hasPublicRepresentationSuffix ||
     pathname === DEFAULT_SKILL_MD_ROUTE ||
     pathname === DEFAULT_AGENTS_MD_ROUTE ||
     pathname === DEFAULT_AGENT_MD_ROUTE ||

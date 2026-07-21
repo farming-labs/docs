@@ -3900,7 +3900,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   const indexesByLocale = new Map<string, DocsSearchSourcePage[]>();
-  const llmsCacheByLocale = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
+  const llmsCacheByLocale = new Map<
+    string,
+    { apiRoute: string; content: ReturnType<typeof renderDocsLlmsTxt> }
+  >();
   const markdownSourcesByLocale = new Map<
     string,
     ReturnType<typeof createFilesystemDocsMcpSource>[]
@@ -4020,21 +4023,21 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return null;
   }
 
-  function getLlmsContent(ctx: DocsContext) {
+  function getLlmsContent(ctx: DocsContext, apiRoute: string) {
     const key = ctx.locale ?? "__default__";
     const cached = llmsCacheByLocale.get(key);
-    if (cached) return cached;
+    if (cached?.apiRoute === apiRoute) return cached.content;
     const next = generateLlmsTxt(getIndexes(ctx), {
       siteTitle: llmsConfig.siteTitle ?? "Documentation",
       siteDescription: llmsConfig.siteDescription,
       baseUrl: llmsConfig.baseUrl ?? "",
-      apiRoute: configuredApiRoute,
+      apiRoute,
       maxChars: llmsConfig.maxChars,
       sections: llmsConfig.sections,
       apiCatalog: apiCatalogEnabled,
       openapi: openapiDiscovery,
     } as any);
-    llmsCacheByLocale.set(key, next);
+    llmsCacheByLocale.set(key, { apiRoute, content: next });
     return next;
   }
 
@@ -4471,7 +4474,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           });
         }
 
-        const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx), llmsRequest);
+        const selected = selectDocsLlmsTxtContent(
+          getLlmsContent(ctx, requestApiRoute),
+          llmsRequest,
+        );
         if (!selected) {
           return new Response("Not Found", {
             status: 404,

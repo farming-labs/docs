@@ -3340,7 +3340,7 @@ description: "Start building quickly"
       };
     };
 
-    const inferred = createDocsAPI({ rootDir, entry: "docs" });
+    const inferred = createDocsAPI({ rootDir, entry: "docs", apiReference: true });
     const inferredManifest = await parseManifest(
       await inferred.GET(new Request("http://localhost/api/internal/docs?agent=spec")),
     );
@@ -3392,6 +3392,25 @@ description: "Start building quickly"
       new Request("http://localhost/api/internal/docs?format=agent-skill&name=docs"),
     );
     expect(await inferredSkillArtifact.text()).toContain("/api/internal/docs?format=skill");
+
+    const inferredLlms = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=llms"),
+    );
+    const inferredLlmsText = await inferredLlms.text();
+    expect(inferredLlmsText).toContain("/api/internal/docs?format=openapi");
+    expect(inferredLlmsText).not.toContain("/api/docs?format=openapi");
+
+    const inferredPublicLlms = await inferred.GET(new Request("http://localhost/llms.txt"));
+    const inferredPublicLlmsText = await inferredPublicLlms.text();
+    expect(inferredPublicLlmsText).toContain("/api/docs?format=openapi");
+    expect(inferredPublicLlmsText).not.toContain("/api/internal/docs?format=openapi");
+
+    const inferredLlmsAfterPublic = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=llms"),
+    );
+    const inferredLlmsAfterPublicText = await inferredLlmsAfterPublic.text();
+    expect(inferredLlmsAfterPublicText).toContain("/api/internal/docs?format=openapi");
+    expect(inferredLlmsAfterPublicText).not.toContain("/api/docs?format=openapi");
 
     const configured = createDocsAPI({
       rootDir,

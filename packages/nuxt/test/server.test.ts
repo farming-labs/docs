@@ -63,4 +63,24 @@ describe("defineDocsHandler discovery requests", () => {
     expect(llms).toContain("/api/internal/docs?format=openapi");
     expect(llms).not.toContain("/api/docs?format=openapi");
   });
+
+  it("uses an inferred API route in generated llms discovery", async () => {
+    const handler = defineDocsHandler(
+      {
+        entry: "docs",
+        title: "Example Docs",
+        apiReference: true,
+      },
+      storage,
+    );
+    const defaultResponse = await handler(createEvent("GET", "/api/docs?format=llms"));
+    expect(await defaultResponse.text()).toContain("/api/docs?format=openapi");
+
+    const response = await handler(createEvent("GET", "/api/internal/docs?format=llms"));
+    const llms = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(llms).toContain("/api/internal/docs?format=openapi");
+    expect(llms).not.toContain("/api/docs?format=openapi");
+  });
 });

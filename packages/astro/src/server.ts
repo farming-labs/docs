@@ -917,7 +917,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     schemaRoute: "/api/docs?feedback=agent&schema=1",
   };
 
-  const llmsCache = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
+  const llmsCache = new Map<
+    string | undefined,
+    { apiRoute: string; content: ReturnType<typeof renderDocsLlmsTxt> }
+  >();
 
   function trackTelemetryRequest(request: Request) {
     emitDocsTelemetryProjectEvent(config, {
@@ -940,22 +943,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     });
   }
 
-  function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>) {
-    const key = ctx.locale ?? "__default__";
-    const cached = llmsCache.get(key);
-    if (cached) return cached;
+  function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>, apiRoute: string) {
+    const cached = llmsCache.get(ctx.locale);
+    if (cached?.apiRoute === apiRoute) return cached.content;
 
     const next = renderDocsLlmsTxt(getSearchIndex(ctx), {
       siteTitle: llmsTitle,
       siteDescription: llmsDesc,
       baseUrl: llmsBaseUrl,
-      apiRoute: configuredApiRoute,
+      apiRoute,
       maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
       sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
       openapi: openapiDiscovery,
       apiCatalog: apiCatalogEnabled,
     } as any);
-    llmsCache.set(key, next);
+    llmsCache.set(ctx.locale, { apiRoute, content: next });
     return next;
   }
 
@@ -1210,7 +1212,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         });
       }
 
-      const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx), llmsRequest);
+      const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx, requestApiRoute), llmsRequest);
       if (!selected) {
         return new Response("Not Found", {
           status: 404,
