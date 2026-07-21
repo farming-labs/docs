@@ -3,6 +3,44 @@ title: "Contributing"
 description: "How to contribute to @farming-labs/docs"
 icon: "gitPullRequest"
 order: 5.9
+related:
+  - /docs/installation
+  - /docs/configuration
+  - /docs/guides/adapter-agent-conformance
+  - /docs/guides/agent-friendly-docs
+agent:
+  tokenBudget: 750
+  task: Prepare a focused, tested contribution to the Farming Labs docs monorepo.
+  outcome: The change follows repository conventions, includes proportional tests or docs, and is ready for pull-request review.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package:
+      - "@farming-labs/docs"
+      - "@farming-labs/next"
+      - "@farming-labs/tanstack-start"
+      - "@farming-labs/svelte"
+      - "@farming-labs/astro"
+      - "@farming-labs/nuxt"
+  prerequisites:
+    - Read the repository AGENTS.md and the skill that matches the affected subsystem.
+    - Install the pinned pnpm workspace dependencies and identify the smallest affected package set.
+  files:
+    - AGENTS.md
+    - package.json
+    - pnpm-workspace.yaml
+  sideEffects:
+    - A contribution can change generated templates, public adapter behavior, documentation, and lockfile state.
+  verification:
+    - description: Run formatting, lint, type checking, and the smallest relevant test suite required by the changed packages.
+      expect: Every required check exits successfully and the worktree contains only intentional changes.
+  rollback:
+    - Revert only the contribution's files and restore generated artifacts from their source templates.
+  failureModes:
+    - symptom: A package-specific test passes but another adapter regresses.
+      resolution: Run the shared conformance tests and the affected adapter type checks before requesting review.
+    - symptom: Formatting introduces unrelated repository-wide changes.
+      resolution: Format only the files in scope and remove unrelated mechanical changes from the patch.
 ---
 
 # Contributing

@@ -3,6 +3,47 @@ title: "Agent Primitive"
 description: "Author human- and agent-specific page context, generated AGENTS.md instructions, and machine-readable route discovery."
 icon: "bot"
 order: 5.65
+related:
+  - /docs/guides/agent-friendly-docs
+  - /docs/customization/mcp
+  - /docs/customization/llms-txt
+  - /docs/customization/sitemaps
+  - /docs/configuration
+agent:
+  tokenBudget: 1100
+  task: Add audience-specific agent guidance without changing the human page or exposing private data.
+  outcome: Human HTML and search exclude agent-only guidance while Markdown, Ask AI, MCP, llms-full.txt, and exports include it consistently.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The target page is MDX when it uses Agent, Human, or Audience components.
+    - Decide whether additive embedded guidance or a full sibling agent.md override is required.
+    - Remove secrets and private content because audience projection is not authorization.
+  files:
+    - app/docs/example/page.mdx
+    - app/docs/example/agent.md
+    - docs/example/page.mdx
+    - docs/example/agent.md
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Audit audience coverage, usefulness, and discovery parity.
+  verification:
+    - description: Compare the rendered HTML page with its .md route and MCP read_page output.
+      expect: Human-only content stays in HTML, agent-only content stays in agent projections, and shared content appears in both.
+    - run: pnpm exec docs doctor --agent
+      expect: Audience coverage and agent surface checks report no new failures.
+  rollback:
+    - Remove the audience wrapper or sibling agent.md and restore the shared page content.
+  failureModes:
+    - symptom: Agent-only instructions appear in rendered HTML or public search.
+      resolution: Use a static Agent block or Audience only="agent" and verify that every surface uses the shared exposure resolver.
+    - symptom: The .md route omits the whole human-authored page.
+      resolution: Remove an accidental sibling agent.md override or copy the required contract into that override.
 ---
 
 # Agent Primitive

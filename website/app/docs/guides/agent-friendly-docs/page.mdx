@@ -10,6 +10,44 @@ related:
   - /docs/configuration
   - /docs/cli
 order: 1
+agent:
+  tokenBudget: 1300
+  task: Turn an implementation-heavy docs page into a measurable agent-ready task contract.
+  outcome: The page is retrievable for its target task, cites canonical sources, declares applicability, includes executable evidence, and stays within its context budget.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Start with accurate human-facing documentation and a concrete user task.
+    - Identify the framework, package version, required files, commands, side effects, and likely failure modes.
+    - Keep secrets and authorization-only content out of all audience projections.
+  files:
+    - app/docs/example/page.mdx
+    - app/docs/example/agent.md
+    - docs/example/page.mdx
+    - docs/example/agent.md
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Measure task completeness, applicability, commands, related routes, and golden evaluations.
+  sideEffects:
+    - Adding a sibling agent.md replaces the machine-readable body for that page.
+    - Golden tasks add offline retrieval work to docs doctor and docs review.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: The page is task-complete and its configured golden task passes retrieval, citation, scope, example, and budget checks.
+    - description: Compare rendered HTML, the .md route, search, Ask AI context, MCP read_page, llms-full.txt, and static export.
+      expect: Every surface applies the same audience policy and exposes the same structured contract.
+  rollback:
+    - Restore the previous page frontmatter and audience content, then remove its golden task if the contract is withdrawn.
+  failureModes:
+    - symptom: The doctor gives context credit to repeated generic guidance.
+      resolution: Replace boilerplate with page-specific paths, commands, expected results, and recovery instructions.
+    - symptom: Retrieval returns a plausible page for the wrong framework or version.
+      resolution: Declare agent.appliesTo and assert the same scope independently in a golden task.
 ---
 
 import { WebsiteThemePrompt } from "@/components/website-theme-prompt";

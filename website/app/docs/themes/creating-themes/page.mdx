@@ -3,6 +3,47 @@ title: "Creating Your Own Theme"
 description: "Step-by-step guide to building, publishing, and sharing custom themes"
 icon: "lightbulb"
 order: 4.95
+related:
+  - /docs/themes
+  - /docs/configuration
+  - /docs/customization/components
+  - /docs/customization/colors
+  - /docs/customization/typography
+agent:
+  tokenBudget: 1200
+  task: Create, apply, and optionally publish a reusable Farming Labs docs theme.
+  outcome: The custom theme loads from docs.config, its CSS is present globally, and a production build renders the intended tokens and components.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package:
+      - "@farming-labs/docs"
+      - "@farming-labs/theme"
+  prerequisites:
+    - Begin with a working docs application and identify the framework-specific global stylesheet.
+    - Decide whether to create a new theme, extend one preset, or override only a few theme values.
+  files:
+    - themes/my-theme.ts
+    - themes/my-theme.css
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/global.css
+    - src/styles/app.css
+    - src/app.css
+    - nuxt.config.ts
+  sideEffects:
+    - Changing the active theme or its CSS affects layout and styling across the entire docs site.
+    - Publishing creates a versioned package consumed by other projects.
+  verification:
+    - description: Run the project production build and inspect representative navigation, code, callout, table, and search components.
+      expect: The build succeeds with no missing CSS import and every component uses the intended theme tokens.
+  rollback:
+    - Restore the previous theme factory and CSS import, then unpublish or deprecate an incorrect package version according to registry policy.
+  failureModes:
+    - symptom: The theme configuration loads but pages look unstyled.
+      resolution: Import the theme's CSS from the framework global stylesheet and ensure its path matches the selected theme package.
+    - symptom: A shared theme works locally but fails for consumers.
+      resolution: Export the theme entry and CSS in package.json and test installation from the packed npm artifact.
 ---
 
 import { WebsiteThemePrompt } from "@/components/website-theme-prompt";

@@ -7,6 +7,32 @@ related:
   - /docs/customization/llms-txt
   - /docs/customization/sitemaps
   - /docs/cli
+agent:
+  tokenBudget: 850
+  task: Add the shared agent-surface conformance suite to a framework adapter.
+  outcome: The adapter passes the same discovery, Markdown, sitemap, robots, skills, and MCP contract as first-party adapters.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The adapter exposes one request handler that can serve the shared docs API and public aliases.
+    - A test fixture contains at least one docs page and can issue Web Request objects to the adapter.
+  files:
+    - src/server.ts
+    - src/agent-conformance.test.ts
+  sideEffects:
+    - Expanding the shared contract can require coordinated public-route changes across every adapter.
+  verification:
+    - description: Run the adapter test containing runDocsAgentConformance.
+      expect: The report contains no failed cases and identifies the expected contract version.
+  rollback:
+    - Restore the previous adapter handler and remove only the conformance wiring introduced by the change.
+  failureModes:
+    - symptom: One public alias fails while the canonical docs API passes.
+      resolution: Forward the alias through the same shared server and preserve its method, headers, status, and response body.
+    - symptom: Static and runtime discovery disagree.
+      resolution: Generate both surfaces from the same resolved config and assert their hashed artifacts in the conformance test.
 ---
 
 # Adapter Agent Conformance

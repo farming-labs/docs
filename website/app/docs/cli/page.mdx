@@ -8,6 +8,35 @@ related:
   - /docs/guides/agent-friendly-docs
   - /docs/customization/sitemaps
   - /docs/customization/llms-txt
+agent:
+  tokenBudget: 1400
+  task: Choose and run the appropriate Farming Labs docs CLI workflow for a project.
+  outcome: The selected CLI operation completes and the resulting docs configuration passes the agent doctor.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Run commands from the docs project root with its package manager available.
+    - Install project dependencies before invoking the local docs binary with pnpm exec.
+  files:
+    - package.json
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Validate the configured agent-facing docs surface after a CLI workflow.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: The doctor loads docs.config and reports the enabled discovery surfaces without hard failures.
+  rollback:
+    - Restore generated configuration and public artifacts from version control if a mutating command produced the wrong result.
+  failureModes:
+    - symptom: pnpm cannot find the docs executable.
+      resolution: Install dependencies or invoke the published CLI with pnpm dlx @farming-labs/docs.
+    - symptom: The CLI loads the wrong config file.
+      resolution: Run from the project root or pass the documented --config path explicitly.
 ---
 
 # CLI
