@@ -179,6 +179,14 @@ export default defineDocs({
 - Do not deploy the docs API route when using static export.
 - `docs agent export --public` always emits a statically truthful discovery document, even if this
   flag is omitted: server-only search, MCP, feedback, API reference, and OpenAPI are not advertised.
+- Static Agent Bundles always include the hashed Agent Skills index and its exact artifact. They
+  intentionally omit the RFC 9727 API catalog and remove it from generated `llms.txt`, `skill.md`,
+  `AGENTS.md`, and `robots.txt` discovery lists because a generic public directory cannot guarantee
+  the required profiled response type.
+- Dynamic adapters set the RFC media type and discovery `Link` headers automatically. For a purely
+  static deployment that needs an API catalog, publish `/.well-known/api-catalog` separately
+  through host-specific routing configured to serve
+  `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`.
 
 ---
 
@@ -374,6 +382,8 @@ Behavior:
   `/docs/api/llms.txt` and `/docs/api/llms-full.txt`
 - root `/llms.txt` lists configured sections first and leaves matched pages to their section files
 - section `maxChars` inherits the root `llmsTxt.maxChars` when omitted
+- set `llmsTxt.apiCatalog: false` when the deployment must not expose or advertise
+  `/.well-known/api-catalog`; hashed Agent Skills discovery remains enabled
 
 Use `/docs/customization/llms-txt` for output examples.
 
@@ -463,7 +473,8 @@ Behavior:
 - `path` changes where the CLI reads and writes the file
 - existing files are preserved unless the user passes `--append` or `--force`
 - generated policy includes docs entry routes, `.md` routes, `llms.txt`, sitemap routes,
-  `AGENTS.md`, `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents
+  `AGENTS.md`, `skill.md`, the API catalog, Agent Skills discovery, MCP aliases, agent discovery
+  routes, and common AI crawler user agents
 - the agent discovery JSON advertises `robots.enabled`, `robots.route`, and `robots.defaultRoute`
   as a pointer to the static policy file
 - `baseUrl` lets the generator include an absolute `Sitemap:` line
@@ -821,8 +832,17 @@ feedback: {
 
 Default behavior:
 
+- `GET` and `HEAD` on `/.well-known/api-catalog` serve an RFC 9727 JSON linkset; the catalog only
+  advertises enabled API and metadata resources
+- `GET` and `HEAD` on `/.well-known/agent-skills/index.json` serve an Agent Skills discovery index;
+  each entry links to `/.well-known/agent-skills/<name>/SKILL.md` and includes the SHA-256 digest of
+  those exact bytes
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
-- the discovery document includes site identity, locale config, capability flags, search, markdown routes, root and section `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, generated/root `AGENTS.md` metadata, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
+- the existing discovery document remains available and now cross-lists the API catalog and Agent
+  Skills index alongside site identity, locale config, capability flags, search, markdown routes,
+  `llms.txt`, OpenAPI, sitemap, robots, `AGENTS.md`, `skill.md`, MCP, and feedback metadata
+- public discovery responses expose useful HTTP `Link` headers for the RFC 9727 catalog, existing
+  agent manifest, and Agent Skills index
 - `GET /AGENTS.md` serves the root `AGENTS.md` or `AGENT.md` file when present, `GET /.well-known/AGENTS.md` is the fallback alias, and `GET /api/docs?format=agents` is the shared API format
 - `GET /skill.md` serves the root `skill.md` file when present, `GET /.well-known/skill.md` is the fallback alias, and `GET /api/docs?format=skill` is the shared API format
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema

@@ -1753,6 +1753,13 @@ export default defineDocs({
 
 Default behavior:
 
+- `GET` and `HEAD /.well-known/api-catalog` return the RFC 9727 API catalog
+- set `llmsTxt.apiCatalog: false` to remove that catalog route and its discovery links without
+  disabling the hashed Agent Skills routes
+- `GET` and `HEAD /.well-known/agent-skills/index.json` return the hashed Agent Skills index
+- `GET` and `HEAD /.well-known/agent-skills/<name>/SKILL.md` return the exact indexed skill bytes
+- dynamic adapters set the catalog media type and discovery `Link` headers; static hosts should
+  serve `/.well-known/api-catalog` as `application/linkset+json` with the RFC 9727 profile
 - `GET /.well-known/agent.json` is the preferred public agent discovery URL
 - `GET /.well-known/agent` is the public fallback discovery URL
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
@@ -1760,7 +1767,9 @@ Default behavior:
 - `GET /.well-known/AGENTS.md` and `GET /api/docs?format=agents` return the same agent instructions
 - `GET /skill.md` serves a root `skill.md` file when present, and otherwise returns a generated fallback
 - `GET /.well-known/skill.md` and `GET /api/docs?format=skill` return the same skill document
-- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `agents.file`, `agents.route`, `skills.file`, `skills.route`, the root and section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
+- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `apiCatalog`,
+  `skills.discovery`, `agents.file`, `agents.route`, `skills.file`, `skills.route`, the root and
+  section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`; without `onFeedback` it returns `{ ok: true, handled: false }`
 - non-Next server adapters also expose the same contract through `GET /api/docs?feedback=agent&schema=1` and `POST /api/docs?feedback=agent`

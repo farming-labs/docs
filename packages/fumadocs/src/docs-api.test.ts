@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import fs, { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
@@ -600,13 +601,22 @@ Install the package.
     );
     writeFileSync(
       join(rootDir, "docs.config.ts"),
-      `export default {
+      `import { createTheme, defineDocs } from "@farming-labs/docs";
+
+const theme = createTheme({
+  colors: {
+    primary: "indigo",
+  },
+});
+
+export default defineDocs({
+  theme,
   llmsTxt: {
     enabled: true,
     siteTitle: "Alias Docs",
     baseUrl: "https://docs.example.com",
   },
-};`,
+});`,
     );
 
     process.chdir(rootDir);
@@ -634,6 +644,10 @@ Install the package.
       expect(await response.text()).toBe(llmsApiText);
     }
 
+    const customLlms = await GET(new Request("http://localhost/api/internal/docs?format=llms"));
+    expect(customLlms.status).toBe(200);
+    expect(await customLlms.text()).toBe(llmsApiText);
+
     const llmsFullApi = await GET(new Request("http://localhost/api/docs?format=llms-full"));
     const llmsFullApiText = await llmsFullApi.text();
     expect(llmsFullApi.status).toBe(200);
@@ -657,6 +671,28 @@ Install the package.
       expect(sitemap).not.toContain("scripted indigo workflow");
     }
 
+    const customSitemap = await GET(
+      new Request("http://localhost/api/internal/docs?format=sitemap-md"),
+    );
+    expect(customSitemap.status).toBe(200);
+    expect(await customSitemap.text()).toContain("/docs/installation.md");
+
+    const customMarkdown = await GET(
+      new Request("http://localhost/api/internal/docs?format=markdown&path=installation"),
+    );
+    expect(customMarkdown.status).toBe(200);
+    expect(customMarkdown.headers.get("content-type")).toContain("text/markdown");
+    expect(await customMarkdown.text()).toContain("Install the package.");
+
+    const customMissingMarkdown = await GET(
+      new Request("http://localhost/api/internal/docs?format=markdown&path=zzzzzzzz"),
+    );
+    const customMissingMarkdownText = await customMissingMarkdown.text();
+    expect(customMissingMarkdown.status).toBe(404);
+    expect(customMissingMarkdownText).toContain("/api/internal/docs?agent=spec");
+    expect(customMissingMarkdownText).toContain("/api/internal/docs?query={query}");
+    expect(customMissingMarkdownText).not.toContain("/api/docs?query={query}");
+
     const skillApi = await GET(new Request("http://localhost/api/docs?format=skill"));
     const skillApiText = await skillApi.text();
     expect(skillApi.status).toBe(200);
@@ -666,12 +702,18 @@ Install the package.
     expect(skillApiText).toContain("/docs.md");
     expect(skillApiText).toContain("/.well-known/agent.json");
 
-    for (const path of ["/skill.md", "/.well-known/skill.md", "/api/internal/docs?format=skill"]) {
+    for (const path of ["/skill.md", "/.well-known/skill.md"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(skillApiText);
     }
+
+    const customSkill = await GET(new Request("http://localhost/api/internal/docs?format=skill"));
+    const customSkillText = await customSkill.text();
+    expect(customSkill.status).toBe(200);
+    expect(customSkillText).toContain("/api/internal/docs?format=skill");
+    expect(customSkillText).not.toContain("/api/docs?format=skill");
 
     const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
     const agentsApiText = await agentsApi.text();
@@ -687,13 +729,18 @@ Install the package.
       "/.well-known/AGENTS.md",
       "/AGENT.md",
       "/.well-known/AGENT.md",
-      "/api/internal/docs?format=agents",
     ]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(agentsApiText);
     }
+
+    const customAgents = await GET(new Request("http://localhost/api/internal/docs?format=agents"));
+    const customAgentsText = await customAgents.text();
+    expect(customAgents.status).toBe(200);
+    expect(customAgentsText).toContain("/api/internal/docs?format=agents");
+    expect(customAgentsText).not.toContain("/api/docs?format=agents");
   });
 
   it("serves opt-in section-level llms.txt routes", async () => {
@@ -971,6 +1018,129 @@ export async function GET() {
     expect(await response.text()).toBe("Not Found");
   });
 
+  it("keeps Agent Skills available when the API catalog is opted out", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-catalog-disabled-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  llmsTxt: { apiCatalog: false },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+    for (const path of ["/.well-known/api-catalog", "/api/internal/docs?format=api-catalog"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(404);
+      expect(response.headers.get("link")).not.toContain('rel="api-catalog"');
+    }
+
+    for (const path of [
+      "/.well-known/agent-skills/index.json",
+      "/api/internal/docs?format=agent-skills",
+    ]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("link")).not.toContain('rel="api-catalog"');
+      expect((await response.json()).skills).toHaveLength(1);
+    }
+
+    const manifestResponse = await GET(new Request("http://localhost/.well-known/agent.json"));
+    const manifest = (await manifestResponse.json()) as {
+      capabilities: { apiCatalog: boolean };
+      api: Record<string, unknown>;
+      apiCatalog: { enabled: boolean; route: string | null };
+    };
+    expect(manifest.capabilities.apiCatalog).toBe(false);
+    expect(manifest.api).not.toHaveProperty("apiCatalog");
+    expect(manifest.apiCatalog).toMatchObject({ enabled: false, route: null });
+    expect(manifestResponse.headers.get("link")).not.toContain('rel="api-catalog"');
+
+    for (const path of ["/skill.md", "/AGENTS.md", "/llms.txt"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      const content = await response.text();
+      expect(content).not.toContain("/.well-known/api-catalog");
+      expect(content).toContain("/.well-known/agent-skills/index.json");
+    }
+
+    const robotsResponse = await GET(new Request("http://localhost/robots.txt"));
+    const robots = await robotsResponse.text();
+    expect(robots).not.toContain("/.well-known/api-catalog");
+    expect(robots).toContain("/.well-known/agent-skills/index.json");
+
+    const explicitlyEnabled = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiCatalog: true,
+    });
+    const enabledCatalog = await explicitlyEnabled.GET(
+      new Request("http://localhost/.well-known/api-catalog"),
+    );
+    expect(enabledCatalog.status).toBe(200);
+  });
+
+  it("reads llmsTxt properties after nested config objects", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-nested-llms-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `import { createTheme, defineDocs } from "@farming-labs/docs";
+
+const theme = createTheme({
+  colors: {
+    primary: "indigo",
+  },
+});
+
+export default defineDocs({
+  theme,
+  llmsTxt: {
+    maxChars: {
+      mode: "warn",
+      chars: 50_000,
+    },
+    apiCatalog: false,
+    baseUrl: "https://docs.example.com",
+    siteTitle: "Nested Config Docs",
+    siteDescription: "Nested options stay readable",
+  },
+});`,
+    );
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+
+    const catalog = await GET(new Request("http://localhost/.well-known/api-catalog"));
+    expect(catalog.status).toBe(404);
+
+    const llms = await GET(new Request("http://localhost/llms.txt"));
+    const llmsText = await llms.text();
+    expect(llmsText).toContain("# Nested Config Docs");
+    expect(llmsText).toContain("> Nested options stay readable");
+    expect(llmsText).toContain("https://docs.example.com/docs.md");
+
+    const manifest = await GET(new Request("http://localhost/.well-known/agent.json"));
+    expect(await manifest.json()).toMatchObject({
+      capabilities: { apiCatalog: false },
+      apiCatalog: { enabled: false, route: null, api: null },
+    });
+  });
+
   it("serves a root skill.md file before falling back to generated skill content", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-root-skill-route-"));
     tempDirs.push(rootDir);
@@ -1000,7 +1170,7 @@ Use the product-specific workflow first.
 
     process.chdir(rootDir);
 
-    const { GET } = createDocsAPI({
+    const { GET, HEAD, POST } = createDocsAPI({
       rootDir,
       entry: "docs",
     });
@@ -1018,6 +1188,206 @@ Use the product-specific workflow first.
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(skillApiText);
+    }
+
+    const catalogResponse = await GET(new Request("http://localhost/.well-known/api-catalog"));
+    expect(catalogResponse.status).toBe(200);
+    expect(catalogResponse.headers.get("content-type")).toBe(
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+    );
+    expect(catalogResponse.headers.get("link")).toContain('rel="api-catalog"');
+    expect(catalogResponse.headers.get("link")).toContain("</.well-known/agent.json>");
+    expect(catalogResponse.headers.get("link")).toContain("</.well-known/agent-skills/index.json>");
+    const catalog = (await catalogResponse.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-doc"?: Array<{ href: string }>;
+        "service-meta"?: Array<{ href: string }>;
+      }>;
+    };
+    expect(catalog.linkset[0]).toMatchObject({
+      anchor: "http://localhost/.well-known/api-catalog",
+    });
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/docs",
+    );
+    expect(catalog.linkset[0]?.["service-doc"]?.map(({ href }) => href)).toEqual(
+      expect.arrayContaining([
+        "http://localhost/AGENTS.md",
+        "http://localhost/skill.md",
+        "http://localhost/docs.md",
+      ]),
+    );
+    expect(catalog.linkset[0]?.["service-meta"]?.map(({ href }) => href)).toEqual(
+      expect.arrayContaining([
+        "http://localhost/.well-known/agent.json",
+        "http://localhost/.well-known/agent-skills/index.json",
+      ]),
+    );
+
+    const catalogQueryResponse = await GET(
+      new Request("http://localhost/api/docs?format=api-catalog"),
+    );
+    expect(await catalogQueryResponse.json()).toEqual(catalog);
+
+    const catalogHead = await HEAD(
+      new Request("http://localhost/.well-known/api-catalog", { method: "HEAD" }),
+    );
+    expect(catalogHead.status).toBe(200);
+    expect(catalogHead.headers.get("content-type")).toContain("application/linkset+json");
+    expect(await catalogHead.text()).toBe("");
+
+    const indexResponse = await GET(
+      new Request("http://localhost/.well-known/agent-skills/index.json"),
+    );
+    expect(indexResponse.status).toBe(200);
+    expect(indexResponse.headers.get("content-type")).toContain("application/json");
+    expect(indexResponse.headers.get("access-control-allow-origin")).toBe("*");
+    expect(indexResponse.headers.get("link")).toContain('rel="item"');
+    const index = (await indexResponse.json()) as {
+      $schema: string;
+      skills: Array<{
+        name: string;
+        type: string;
+        description: string;
+        url: string;
+        digest: string;
+      }>;
+    };
+    const skillDigest = createHash("sha256").update(skillApiText, "utf8").digest("hex");
+    expect(index).toEqual({
+      $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+      skills: [
+        {
+          name: "docs",
+          type: "skill-md",
+          description: "Custom docs skill.",
+          url: "/.well-known/agent-skills/docs/SKILL.md",
+          digest: `sha256:${skillDigest}`,
+        },
+      ],
+    });
+
+    const indexQueryResponse = await GET(
+      new Request("http://localhost/api/docs?format=agent-skills"),
+    );
+    expect(await indexQueryResponse.json()).toEqual(index);
+
+    const customIndexQueryResponse = await GET(
+      new Request("http://localhost/api/internal/docs?format=agent-skills"),
+    );
+    expect(customIndexQueryResponse.status).toBe(200);
+    expect(await customIndexQueryResponse.json()).toEqual(index);
+
+    const customCatalogQueryResponse = await GET(
+      new Request("http://localhost/api/internal/docs?format=api-catalog"),
+    );
+    expect(customCatalogQueryResponse.status).toBe(200);
+    const customCatalog = (await customCatalogQueryResponse.json()) as {
+      linkset: Array<{ item?: Array<{ href: string }> }>;
+    };
+    expect(customCatalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/internal/docs",
+    );
+
+    for (const path of [
+      "/.well-known/agent-skills/docs/SKILL.md",
+      "/api/docs?format=agent-skill&name=docs",
+      "/api/internal/docs?format=agent-skill&name=docs",
+    ]) {
+      const artifactResponse = await GET(new Request(`http://localhost${path}`));
+      expect(artifactResponse.status).toBe(200);
+      expect(artifactResponse.headers.get("content-type")).toContain("text/markdown");
+      expect(artifactResponse.headers.get("etag")).toBe(`"${skillDigest}"`);
+      expect(artifactResponse.headers.get("link")).toContain('rel="collection"');
+      expect(await artifactResponse.text()).toBe(skillApiText);
+    }
+
+    for (const path of [
+      "/.well-known/agent-skills/index.json",
+      "/.well-known/agent-skills/docs/SKILL.md",
+    ]) {
+      const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
+      expect(await response.text()).toBe("");
+    }
+
+    const customIndexHead = await HEAD(
+      new Request("http://localhost/api/internal/docs?format=agent-skills", {
+        method: "HEAD",
+      }),
+    );
+    expect(customIndexHead.status).toBe(200);
+    expect(await customIndexHead.text()).toBe("");
+
+    const customIndexPost = await POST(
+      new Request("http://localhost/api/internal/docs?format=agent-skills", {
+        method: "POST",
+      }),
+    );
+    expect(customIndexPost.status).toBe(405);
+    expect(customIndexPost.headers.get("allow")).toBe("GET, HEAD");
+  });
+
+  it("serves legacy discovery HEAD without loading documents and records HEAD analytics", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-discovery-head-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(join(rootDir, "AGENTS.md"), "# Custom agent instructions\n");
+    writeFileSync(
+      join(rootDir, "skill.md"),
+      `---
+name: docs
+description: Custom docs skill.
+---
+
+# Custom skill
+`,
+    );
+
+    const events: DocsAnalyticsEvent[] = [];
+    const { HEAD, POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      analytics: {
+        console: false,
+        onEvent(event) {
+          events.push(event);
+        },
+      },
+    });
+    const readFileSpy = vi.spyOn(fs, "readFileSync");
+
+    try {
+      for (const path of ["/.well-known/agent.json", "/AGENTS.md", "/skill.md"]) {
+        const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe("");
+      }
+
+      const legacyFiles = new Set([join(rootDir, "AGENTS.md"), join(rootDir, "skill.md")]);
+      expect(
+        readFileSpy.mock.calls.some(([file]) => typeof file === "string" && legacyFiles.has(file)),
+      ).toBe(false);
+      expect(
+        events
+          .filter((event) =>
+            ["agent_spec_request", "agents_request", "skill_request"].includes(event.type),
+          )
+          .map((event) => event.properties?.method),
+      ).toEqual(["HEAD", "HEAD", "HEAD"]);
+
+      const unsupported = await POST(
+        new Request("http://localhost/api/docs?format=agent-skills", { method: "POST" }),
+      );
+      expect(unsupported.status).toBe(405);
+      expect(unsupported.headers.get("allow")).toBe("GET, HEAD");
+    } finally {
+      readFileSpy.mockRestore();
     }
   });
 
@@ -2334,6 +2704,8 @@ description: "Start building quickly"
     const response = await GET(new Request("http://localhost/api/docs/agent/spec"));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("link")).toContain("</.well-known/api-catalog>");
+    expect(response.headers.get("link")).toContain("</.well-known/agent-skills/index.json>");
 
     const spec = (await response.json()) as {
       version: string;
@@ -2347,6 +2719,7 @@ description: "Start building quickly"
       };
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
+      apiCatalog: Record<string, string | boolean>;
       config: { format: string; endpoint: string };
       agentContract: Record<string, unknown>;
       openapi: Record<string, unknown>;
@@ -2369,6 +2742,7 @@ description: "Start building quickly"
         wellKnown: string;
         api: string;
         generatedFallback: boolean;
+        discovery: Record<string, string>;
         registry: string;
         install: string;
         recommended: Array<{ name: string; description: string }>;
@@ -2411,6 +2785,8 @@ description: "Start building quickly"
       agents: true,
       llms: true,
       skills: true,
+      apiCatalog: true,
+      agentSkillsDiscovery: true,
       mcp: true,
       search: true,
       sitemap: true,
@@ -2432,7 +2808,17 @@ description: "Start building quickly"
       config: "/api/docs?format=config",
       diagnostics: "/api/docs?format=diagnostics",
       agents: "/api/docs?format=agents",
+      apiCatalog: "/.well-known/api-catalog",
+      apiCatalogQuery: "/api/docs?format=api-catalog",
+      agentSkillsIndex: "/.well-known/agent-skills/index.json",
       openapi: "/api/docs?format=openapi",
+    });
+    expect(spec.apiCatalog).toEqual({
+      enabled: true,
+      route: "/.well-known/api-catalog",
+      api: "/api/docs?format=api-catalog",
+      mediaType: "application/linkset+json",
+      profile: "https://www.rfc-editor.org/info/rfc9727",
     });
     expect(spec.config).toMatchObject({
       format: "docs-config-map.v1",
@@ -2508,6 +2894,14 @@ description: "Start building quickly"
       wellKnown: "/.well-known/skill.md",
       api: "/api/docs?format=skill",
       generatedFallback: true,
+      discovery: {
+        schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+        index: "/.well-known/agent-skills/index.json",
+        artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        apiIndex: "/api/docs?format=agent-skills",
+        apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        digest: "sha256",
+      },
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [
@@ -2557,6 +2951,7 @@ description: "Start building quickly"
       const wellKnownResponse = await GET(new Request(`http://localhost${path}`));
       expect(wellKnownResponse.status).toBe(200);
       expect(wellKnownResponse.headers.get("content-type")).toContain("application/json");
+      expect(wellKnownResponse.headers.get("link")).toContain('rel="api-catalog"');
       expect(await wellKnownResponse.json()).toEqual(spec);
     }
   });
@@ -2703,6 +3098,31 @@ description: "Start building quickly"
     expect(JSON.stringify(diagnostics)).not.toContain("search-secret");
   });
 
+  it("reports a top-level apiCatalog opt-out in docs diagnostics", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-diagnostics-api-catalog-"));
+    tempDirs.push(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiCatalog: false,
+      llmsTxt: { apiCatalog: true },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=diagnostics"));
+    expect(response.status).toBe(200);
+
+    const diagnostics = (await response.json()) as {
+      routes: Record<string, string | null>;
+      features: Record<string, { status: string; route?: string | null }>;
+    };
+    expect(diagnostics.routes.apiCatalog).toBeNull();
+    expect(diagnostics.features.apiCatalog).toMatchObject({
+      status: "disabled",
+      route: null,
+    });
+  });
+
   it("uses the resolved public docsPath in docs diagnostics", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-diagnostics-docspath-"));
     tempDirs.push(rootDir);
@@ -2773,6 +3193,7 @@ description: "Start building quickly"
         wellKnown: string;
         api: string;
         generatedFallback: boolean;
+        discovery: Record<string, string>;
         registry: string;
         install: string;
       };
@@ -2808,6 +3229,8 @@ description: "Start building quickly"
       agents: true,
       llms: true,
       skills: true,
+      apiCatalog: true,
+      agentSkillsDiscovery: true,
       mcp: false,
       search: false,
       sitemap: true,
@@ -2870,6 +3293,14 @@ description: "Start building quickly"
       wellKnown: "/.well-known/skill.md",
       api: "/api/docs?format=skill",
       generatedFallback: true,
+      discovery: {
+        schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+        index: "/.well-known/agent-skills/index.json",
+        artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        apiIndex: "/api/docs?format=agent-skills",
+        apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        digest: "sha256",
+      },
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
     });
@@ -2887,6 +3318,211 @@ description: "Start building quickly"
       schema: "/api/docs/agent/feedback/schema",
       submit: "/api/docs/agent/feedback",
     });
+  });
+
+  it("advertises the API route that serves a query-form agent manifest", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-custom-agent-spec-route-"));
+    tempDirs.push(rootDir);
+
+    const parseManifest = async (response: Response) => {
+      expect(response.status).toBe(200);
+      return (await response.json()) as {
+        api: Record<string, string>;
+        apiCatalog: { api: string | null };
+        config: { endpoint: string };
+        markdown: { apiPattern: string };
+        llms: { txt: string; full: string };
+        openapi: { enabled: boolean; url: string | null };
+        skills: {
+          api: string;
+          discovery: { apiIndex: string; apiArtifact: string };
+        };
+      };
+    };
+
+    const inferred = createDocsAPI({ rootDir, entry: "docs", apiReference: true });
+    const inferredManifest = await parseManifest(
+      await inferred.GET(new Request("http://localhost/api/internal/docs?agent=spec")),
+    );
+
+    expect(inferredManifest.api).toMatchObject({
+      docs: "/api/internal/docs",
+      config: "/api/internal/docs?format=config",
+      diagnostics: "/api/internal/docs?format=diagnostics",
+      agentSpec: "/api/internal/docs?agent=spec",
+      agentSpecQuery: "/api/internal/docs?agent=spec",
+      apiCatalogQuery: "/api/internal/docs?format=api-catalog",
+    });
+    expect(inferredManifest.apiCatalog.api).toBe("/api/internal/docs?format=api-catalog");
+    expect(inferredManifest.config.endpoint).toBe("/api/internal/docs?format=config");
+    expect(inferredManifest.markdown.apiPattern).toBe(
+      "/api/internal/docs?format=markdown&path={slug}",
+    );
+    expect(inferredManifest.llms).toMatchObject({
+      txt: "/api/internal/docs?format=llms",
+      full: "/api/internal/docs?format=llms-full",
+    });
+    expect(inferredManifest.skills).toMatchObject({
+      api: "/api/internal/docs?format=skill",
+      discovery: {
+        apiIndex: "/api/internal/docs?format=agent-skills",
+        apiArtifact: "/api/internal/docs?format=agent-skill&name={name}",
+      },
+    });
+
+    const inferredDiagnostics = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=diagnostics"),
+    );
+    expect(await inferredDiagnostics.json()).toMatchObject({
+      routes: {
+        api: "/api/internal/docs",
+        config: "/api/internal/docs?format=config",
+      },
+    });
+
+    const inferredSkill = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=skill"),
+    );
+    const inferredSkillText = await inferredSkill.text();
+    expect(inferredSkillText).toContain("/api/internal/docs?agent=spec");
+    expect(inferredSkillText).toContain("/api/internal/docs?query={query}");
+    expect(inferredSkillText).toContain("/api/internal/docs?format=agents");
+
+    const inferredSkillArtifact = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=agent-skill&name=docs"),
+    );
+    expect(await inferredSkillArtifact.text()).toContain("/api/internal/docs?format=skill");
+
+    const inferredLlms = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=llms"),
+    );
+    const inferredLlmsText = await inferredLlms.text();
+    expect(inferredLlmsText).toContain("/api/internal/docs?format=openapi");
+    expect(inferredLlmsText).not.toContain("/api/docs?format=openapi");
+
+    const inferredPublicLlms = await inferred.GET(new Request("http://localhost/llms.txt"));
+    const inferredPublicLlmsText = await inferredPublicLlms.text();
+    expect(inferredPublicLlmsText).toContain("/api/docs?format=openapi");
+    expect(inferredPublicLlmsText).not.toContain("/api/internal/docs?format=openapi");
+
+    const inferredLlmsAfterPublic = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=llms"),
+    );
+    const inferredLlmsAfterPublicText = await inferredLlmsAfterPublic.text();
+    expect(inferredLlmsAfterPublicText).toContain("/api/internal/docs?format=openapi");
+    expect(inferredLlmsAfterPublicText).not.toContain("/api/docs?format=openapi");
+
+    const configured = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiRoute: "api/internal/docs/",
+      apiReference: {
+        enabled: true,
+        path: "api-reference",
+      },
+    });
+    const wellKnownManifest = await parseManifest(
+      await configured.GET(new Request("http://localhost/.well-known/agent.json")),
+    );
+    expect(wellKnownManifest.api.docs).toBe("/api/internal/docs");
+    expect(wellKnownManifest.api.agentSpecQuery).toBe("/api/internal/docs?agent=spec");
+    expect(wellKnownManifest.skills.discovery.apiIndex).toBe(
+      "/api/internal/docs?format=agent-skills",
+    );
+    expect(wellKnownManifest.openapi).toMatchObject({
+      enabled: true,
+      url: "/api/internal/docs?format=openapi",
+    });
+
+    const configuredSkillWithLocale = await configured.GET(
+      new Request("http://localhost/skill.md?lang=en"),
+    );
+    const configuredSkillWithLocaleText = await configuredSkillWithLocale.text();
+    expect(configuredSkillWithLocaleText).toContain("/api/internal/docs?format=skill");
+    expect(configuredSkillWithLocaleText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredSkillWithLocaleText).not.toContain("/api/docs?format=openapi");
+    expect(configuredSkillWithLocaleText).not.toContain("/skill.md?format=skill");
+
+    const configuredAgents = await configured.GET(
+      new Request("http://localhost/.well-known/AGENTS.md"),
+    );
+    const configuredAgentsText = await configuredAgents.text();
+    expect(configuredAgentsText).toContain("/api/internal/docs?agent=spec");
+    expect(configuredAgentsText).toContain("/api/internal/docs?query={query}");
+    expect(configuredAgentsText).toContain("/api/internal/docs?format=skill");
+    expect(configuredAgentsText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredAgentsText).not.toContain("/api/docs?format=openapi");
+
+    const configuredLlms = await configured.GET(new Request("http://localhost/llms.txt"));
+    const configuredLlmsText = await configuredLlms.text();
+    expect(configuredLlmsText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredLlmsText).not.toContain("/api/docs?format=openapi");
+
+    const configuredOpenapi = await configured.GET(
+      new Request("http://localhost/api/internal/docs?format=openapi"),
+    );
+    expect(configuredOpenapi.status).toBe(200);
+
+    const configuredDiagnostics = await configured.GET(
+      new Request("http://localhost/api/internal/docs?format=diagnostics"),
+    );
+    expect(await configuredDiagnostics.json()).toMatchObject({
+      routes: {
+        api: "/api/internal/docs",
+        config: "/api/internal/docs?format=config",
+      },
+    });
+
+    for (const publicPath of [
+      "/docs/api/llms.txt",
+      "/docs-map/sitemap.md",
+      "/docs/installation.md",
+    ]) {
+      const publicDiagnostics = await configured.GET(
+        new Request(`http://localhost${publicPath}?format=diagnostics`),
+      );
+      expect(await publicDiagnostics.json()).toMatchObject({
+        routes: {
+          api: "/api/internal/docs",
+          config: "/api/internal/docs?format=config",
+        },
+      });
+    }
+
+    const configuredMap = await configured.GET(
+      new Request("http://localhost/api/internal/docs?format=config"),
+    );
+    expect(await configuredMap.json()).toMatchObject({
+      values: {
+        cloud: { apiRoute: "/api/internal/docs" },
+      },
+    });
+
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    apiRoute: " api//from-config/ ",
+  },
+};`,
+    );
+    const fromConfig = createDocsAPI({ rootDir, entry: "docs" });
+    const configManifest = await parseManifest(
+      await fromConfig.GET(new Request("http://localhost/.well-known/agent.json")),
+    );
+    expect(configManifest.api.docs).toBe("/api/from-config");
+    expect(configManifest.api.config).toBe("/api/from-config?format=config");
+
+    const configCatalog = await fromConfig.GET(
+      new Request("http://localhost/.well-known/api-catalog"),
+    );
+    const configCatalogBody = (await configCatalog.json()) as {
+      linkset: Array<{ item?: Array<{ href: string }> }>;
+    };
+    expect(configCatalogBody.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/from-config",
+    );
   });
 
   it("serves the default agent feedback schema through the shared docs api handler", async () => {

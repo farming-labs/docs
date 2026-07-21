@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { DocsAgentAdapter } from "./agent-conformance.js";
 import { runDocsAgentConformance } from "./agent-conformance.js";
@@ -47,6 +48,27 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
 
     expect(report.cases.filter((result) => !result.passed)).toEqual([]);
     expect(report.passed).toBe(true);
+
+    const indexUrl = new URL("/.well-known/agent-skills/index.json", "https://docs.example.com");
+    const indexResponse = await server.GET({
+      request: new Request(indexUrl),
+      url: indexUrl,
+    });
+    const index = (await indexResponse.json()) as {
+      skills: Array<{ digest: string; name: string; url: string }>;
+    };
+    expect(index.skills).toHaveLength(1);
+
+    const artifactUrl = new URL(index.skills[0]!.url, indexUrl);
+    const artifactResponse = await server.GET({
+      request: new Request(artifactUrl),
+      url: artifactUrl,
+    });
+    const artifact = await artifactResponse.text();
+    expect(index.skills[0]).toMatchObject({
+      name: "docs",
+      digest: `sha256:${createHash("sha256").update(artifact, "utf8").digest("hex")}`,
+    });
   });
 
   it("applies the same audience policy to search and agent outputs", async () => {

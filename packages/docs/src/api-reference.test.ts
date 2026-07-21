@@ -7,6 +7,8 @@ import {
   buildApiReferenceScalarCss,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
+  DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+  resolveApiReferenceOpenApiDiscovery,
   resolveApiReferenceRenderer,
 } from "./api-reference.js";
 import { defineDocs } from "./define-docs.js";
@@ -20,6 +22,23 @@ afterEach(() => {
   }
 
   vi.unstubAllGlobals();
+});
+
+describe("resolveApiReferenceOpenApiDiscovery", () => {
+  it("distinguishes the generated endpoint from an identical explicit route", () => {
+    expect(resolveApiReferenceOpenApiDiscovery(true)).toMatchObject({
+      url: DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+      urlSource: "default",
+    });
+    expect(
+      resolveApiReferenceOpenApiDiscovery(true, {
+        route: DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+      }),
+    ).toMatchObject({
+      url: DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+      urlSource: "configured",
+    });
+  });
 });
 
 describe("buildApiReferenceOpenApiDocument", () => {

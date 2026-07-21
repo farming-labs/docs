@@ -4,6 +4,12 @@ import {
   type AnalyzeAgentSurfaceDriftOptions,
 } from "./agent-surface-drift.js";
 import {
+  DEFAULT_AGENT_SKILL_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_API_CATALOG_FORMAT,
+  DEFAULT_API_CATALOG_ROUTE,
   DEFAULT_DOCS_API_ROUTE,
   DEFAULT_DOCS_CONFIG_ROUTE,
   DOCS_CONFIG_MAP_TOP_LEVEL_KEYS,
@@ -31,10 +37,23 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
     agentContractFields: ["task", "outcome", "rollback"],
     discovery: {
       site: { entry: "docs" },
-      capabilities: { search: true, mcp: true },
+      capabilities: {
+        search: true,
+        mcp: true,
+        apiCatalog: true,
+        agentSkillsDiscovery: true,
+      },
       api: {
         docs: "/api/docs",
         config: "/api/docs?format=config",
+        apiCatalog: "/.well-known/api-catalog",
+        apiCatalogQuery: "/api/docs?format=api-catalog",
+        agentSkillsIndex: "/.well-known/agent-skills/index.json",
+      },
+      apiCatalog: {
+        enabled: true,
+        route: "/.well-known/api-catalog",
+        api: "/api/docs?format=api-catalog",
       },
       config: { endpoint: "/api/docs?format=config" },
       search: {
@@ -53,6 +72,14 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
           rollback: "string[]",
         },
       },
+      skills: {
+        discovery: {
+          index: "/.well-known/agent-skills/index.json",
+          artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+          apiIndex: "/api/docs?format=agent-skills",
+          apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        },
+      },
     },
     expected: {
       entry: "docs",
@@ -68,7 +95,16 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
       routes: {
         "api.docs": "/api/docs",
         "api.config": "/api/docs?format=config",
+        "api.apiCatalog": "/.well-known/api-catalog",
+        "api.apiCatalogQuery": "/api/docs?format=api-catalog",
+        "api.agentSkillsIndex": "/.well-known/agent-skills/index.json",
+        "apiCatalog.route": "/.well-known/api-catalog",
+        "apiCatalog.api": "/api/docs?format=api-catalog",
         "config.endpoint": "/api/docs?format=config",
+        "skills.discovery.index": "/.well-known/agent-skills/index.json",
+        "skills.discovery.artifact": "/.well-known/agent-skills/{name}/SKILL.md",
+        "skills.discovery.apiIndex": "/api/docs?format=agent-skills",
+        "skills.discovery.apiArtifact": "/api/docs?format=agent-skill&name={name}",
       },
     },
   };
@@ -97,7 +133,16 @@ describe("agent surface drift", () => {
           routes: {
             "api.docs": DEFAULT_DOCS_API_ROUTE,
             "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
+            "api.apiCatalog": DEFAULT_API_CATALOG_ROUTE,
+            "api.apiCatalogQuery": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+            "api.agentSkillsIndex": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+            "apiCatalog.route": DEFAULT_API_CATALOG_ROUTE,
+            "apiCatalog.api": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
             "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+            "skills.discovery.index": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+            "skills.discovery.artifact": DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+            "skills.discovery.apiIndex": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
+            "skills.discovery.apiArtifact": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
           },
         },
       }),
@@ -194,6 +239,16 @@ describe("agent surface drift", () => {
       code: "mcp-tool-unexpected",
       expected: "<absent>",
       actual: "true",
+    });
+    expect(issues.find((issue) => issue.path === "api.apiCatalog")).toMatchObject({
+      code: "route-mismatch",
+      expected: JSON.stringify(DEFAULT_API_CATALOG_ROUTE),
+      actual: "<missing>",
+    });
+    expect(issues.find((issue) => issue.path === "skills.discovery.index")).toMatchObject({
+      code: "route-mismatch",
+      expected: JSON.stringify(DEFAULT_AGENT_SKILLS_INDEX_ROUTE),
+      actual: "<missing>",
     });
   });
 

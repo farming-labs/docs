@@ -13,7 +13,8 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
-- Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps, `robots.txt`, `skill.md`, agent discovery, and MCP
+- Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps,
+  `robots.txt`, RFC 9727 API catalogs, Agent Skills discovery, `skill.md`, agent discovery, and MCP
 - Complete static Agent Bundles with `docs agent export --public` and deterministic SHA-256 manifests
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 - Agent and reader-facing docs scoring with `docs doctor --agent` and `docs doctor --site`
@@ -110,6 +111,9 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 - `/.well-known/sitemap.md`
 - `/skill.md`
 - `/.well-known/skill.md`
+- `/.well-known/agent-skills/index.json`
+- `/.well-known/agent-skills/<name>/SKILL.md`
+- `/.well-known/api-catalog`
 - `/.well-known/agent.json`
 - `/.well-known/agent`
 - `/mcp`
@@ -127,7 +131,14 @@ are handled by that same shared `/api/docs` route, so apps do not need a second 
 wrapper. For mixed HTML/Markdown accept lists, use the exact `.md` or `format=markdown` route.
 The agent discovery JSON also includes structured-data capability metadata plus `robots.enabled`,
 `robots.route`, and `robots.defaultRoute` so agents can find page metadata and the static crawl
-policy without guessing.
+policy without guessing. The existing `/.well-known/agent.json` manifest remains available and
+cross-links the [RFC 9727 API catalog](https://datatracker.ietf.org/doc/html/rfc9727) and
+[Agent Skills index](https://www.mintlify.com/docs/ai/skillmd). Dynamic responses also advertise
+these discovery resources with HTTP `Link` headers.
+Static Agent Bundles always publish the hashed Agent Skills index, but intentionally omit the API
+catalog: a generic `public/` or `static/` directory cannot guarantee RFC 9727's required profiled
+`application/linkset+json` response type. Use a dynamic adapter or configure and publish that route
+through host-specific routing when the catalog is required.
 
 ## Agent Health Check
 

@@ -15,6 +15,7 @@ import pc from "picocolors";
 import {
   DEFAULT_AGENT_MD_ROUTE,
   DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
@@ -25,11 +26,13 @@ import {
   DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+  buildDocsAgentSkillsIndex,
   buildDocsAgentDiscoverySpec,
   renderDocsAgentsDocument,
   renderDocsLlmsTxt,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
+  resolveDocsPublishedAgentSkill,
   resolveDocsAgentFeedbackConfig,
   toDocsMarkdownUrl,
   type DocsLlmsDiscoveryConfig,
@@ -710,6 +713,7 @@ function resolveRobotsOutput(
   const existing = readExisting(absolutePath);
   const generatedBlock = renderDocsRobotsGeneratedBlock({
     entry,
+    apiCatalog: false,
     sitemap,
     baseUrl: robots.baseUrl,
     robots,
@@ -1019,9 +1023,11 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const siteDescription = llmsConfig?.siteDescription ?? metadataDescription;
   const resolvedSiteTitle = llmsConfig?.siteTitle ?? siteTitle;
   const sitemapInput = config?.sitemap ?? readStaticSitemapConfig(configContent) ?? true;
-  const baseUrl =
-    llmsConfig?.baseUrl ?? (typeof sitemapInput === "object" ? sitemapInput.baseUrl : undefined);
   const robotsInput = config?.robots ?? readStaticRobotsConfig(configContent) ?? true;
+  const baseUrl =
+    llmsConfig?.baseUrl ??
+    (typeof sitemapInput === "object" ? sitemapInput.baseUrl : undefined) ??
+    (typeof robotsInput === "object" ? robotsInput.baseUrl : undefined);
   const i18n = resolveDocsI18n(config?.i18n ?? readStaticI18nConfig(configContent));
   const framework = detectFramework(rootDir);
   const publicDirectory = framework === "sveltekit" ? "static" : "public";
@@ -1080,6 +1086,8 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const openapi = { enabled: false as const };
   const llms: DocsLlmsDiscoveryConfig = {
     enabled: llmsEnabled,
+    // Static public directories cannot guarantee RFC 9727's required profiled media type.
+    apiCatalog: false,
     baseUrl,
     siteTitle: resolvedSiteTitle,
     siteDescription,
@@ -1090,6 +1098,8 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const documentOptions = {
     origin: baseUrl ?? "/",
     entry: routeEntry || "docs",
+    apiRoute: config?.cloud?.apiRoute,
+    apiCatalog: false,
     // `agent export` publishes files only. Never advertise runtime endpoints that the bundle does
     // not contain, even when the application's server-rendered config enables them.
     search: false,
@@ -1285,13 +1295,39 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     outputs.push(resolveRobotsOutput(publicDir, routeEntry || "docs", sitemapInput, robots));
   }
 
+  // Resolve user-owned aliases before deriving the standards discovery artifact so the digest in
+  // the index always covers the exact SKILL.md bytes published by this bundle.
+  outputs = resolveUserOwnedOverrides(outputs, previous);
+  const effectiveSkillDocument =
+    outputs.find((output) => output.route === DEFAULT_SKILL_MD_ROUTE)?.content ??
+    normalizeContent(publicSkill);
+  const publishedAgentSkill = await resolveDocsPublishedAgentSkill({
+    preferredDocument: effectiveSkillDocument,
+    fallbackDocument: normalizeContent(generatedSkill),
+  });
+  addOutput(
+    outputs,
+    publicDir,
+    publishedAgentSkill.url,
+    "skill",
+    "text/markdown",
+    publishedAgentSkill.content,
+  );
+  addOutput(
+    outputs,
+    publicDir,
+    DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+    "discovery",
+    "application/json",
+    JSON.stringify(buildDocsAgentSkillsIndex(publishedAgentSkill), null, 2),
+  );
+
   assertOutputPathsDoNotCollide({
     outputs,
     internalOutputs,
     publicManifestPath,
     internalManifestPath,
   });
-  outputs = resolveUserOwnedOverrides(outputs, previous);
   outputs.sort((left, right) => left.publicPath.localeCompare(right.publicPath));
   const stalePaths = staleManagedPaths(publicDir, previous, outputs);
   const staleInternal = staleInternalPaths(rootDir, previous, internalOutputs);

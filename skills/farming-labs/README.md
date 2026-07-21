@@ -5,7 +5,8 @@ This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agen
 Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task
 (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search
 adapters, changelog setup, human page feedback, `agent.compact`, agent discovery/spec routes,
-`AGENTS.md`, `skill.md`, agent feedback endpoints, API reference, MCP, `llms.txt`, sitemaps, `robots.txt`,
+RFC 9727 API catalogs, Agent Skills indexes, `AGENTS.md`, `skill.md`, agent feedback endpoints,
+API reference, MCP, `llms.txt`, sitemaps, `robots.txt`,
 JSON-LD structured data, and machine-readable markdown
 routes with embedded `Agent` blocks, generated or hand-written `agent.md` overrides, or
 `Accept: text/markdown` negotiation).
@@ -20,6 +21,8 @@ pnpm --dir examples/next dev
 Useful routes:
 
 - Agent discovery spec: `http://127.0.0.1:3000/api/docs/agent/spec`
+- API catalog: `http://127.0.0.1:3000/.well-known/api-catalog`
+- Agent Skills index: `http://127.0.0.1:3000/.well-known/agent-skills/index.json`
 - Agent instructions: `http://127.0.0.1:3000/AGENTS.md` or `http://127.0.0.1:3000/.well-known/AGENTS.md`
 - Site skill: `http://127.0.0.1:3000/skill.md` or `http://127.0.0.1:3000/.well-known/skill.md`
 - Sitemaps: `http://127.0.0.1:3000/sitemap.xml`, `http://127.0.0.1:3000/sitemap.md`, `http://127.0.0.1:3000/docs/sitemap.md`, or `http://127.0.0.1:3000/.well-known/sitemap.md`
@@ -42,10 +45,11 @@ pnpm --dir examples/next exec docs agent export --public --config docs.config.ts
 pnpm --dir examples/next exec docs agent compact installation --config docs.config.tsx
 ```
 
-The agent discovery spec also advertises structured data support, OpenAPI schema discovery when
-`apiReference` is enabled, the sitemap routes, `robots.route`, the generated/root `AGENTS.md`, the root `skill.md` route, this Skills
-pack through `npx skills add farming-labs/docs`, and recommends the `getting-started` skill for
-first-run setup.
+The existing agent discovery spec also advertises structured data support, OpenAPI schema
+discovery when `apiReference` is enabled, the RFC 9727 API catalog, the hashed Agent Skills index,
+the sitemap routes, `robots.route`, the generated/root `AGENTS.md`, the root `skill.md` route, this
+Skills pack through `npx skills add farming-labs/docs`, and recommends the `getting-started` skill
+for first-run setup.
 
 ---
 

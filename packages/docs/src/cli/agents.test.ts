@@ -77,6 +77,54 @@ describe("agents cli", () => {
     expect(readFileSync(publicAgents, "utf-8")).toBe(content);
   });
 
+  it("uses the configured Docs API route in generated instructions", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  nav: { title: "Agent Docs" },
+  cloud: { apiRoute: "/internal/docs-api" },
+  apiReference: true,
+};
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await generateAgents();
+
+    const content = readFileSync(path.join(tmpDir, "AGENTS.md"), "utf-8");
+    expect(content).toContain("/internal/docs-api?query={query}");
+    expect(content).toContain("/internal/docs-api?agent=spec");
+    expect(content).toContain("/internal/docs-api?format=agents");
+    expect(content).toContain("/internal/docs-api?format=skill");
+    expect(content).toContain("/internal/docs-api?format=openapi");
+    expect(content).not.toContain("/api/docs?");
+  });
+
+  it("preserves a statically parsed Docs API route when config evaluation fails", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `throw new Error("runtime-only config dependency");
+export default {
+  entry: "docs",
+  nav: { title: "Agent Docs" },
+  cloud: { apiRoute: "/fallback/docs-api" },
+};
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await generateAgents();
+
+    const content = readFileSync(path.join(tmpDir, "AGENTS.md"), "utf-8");
+    expect(content).toContain("/fallback/docs-api?query={query}");
+    expect(content).toContain("/fallback/docs-api?format=agents");
+    expect(content).toContain("/fallback/docs-api?format=skill");
+    expect(content).not.toContain("/api/docs?");
+  });
+
   it("keeps a custom root AGENTS.md and copies it to missing public aliases", async () => {
     writeConfig();
     writeFileSync(path.join(tmpDir, "AGENTS.md"), "# Custom agents\n\nUse this first.\n", "utf-8");

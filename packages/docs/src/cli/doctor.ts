@@ -1,15 +1,20 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import pc from "picocolors";
 import {
-  DEFAULT_DOCS_API_ROUTE,
-  DEFAULT_DOCS_CONFIG_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
   DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
+  DEFAULT_AGENT_SKILL_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+  DEFAULT_API_CATALOG_ROUTE,
+  DEFAULT_API_CATALOG_FORMAT,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
   DEFAULT_LLMS_TXT_ROUTE,
   DEFAULT_MCP_PUBLIC_ROUTE,
@@ -20,7 +25,13 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsMcpEndpointCandidates,
+  resolveDocsDiscoveryApiRoute,
 } from "../agent.js";
+import {
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
+} from "../standards-discovery.js";
 import { PAGE_AGENT_CONTRACT_FIELDS } from "../agent-contract.js";
 import {
   analyzeAgentUsefulness,
@@ -29,6 +40,7 @@ import {
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
+import { httpLinkHeaderHasTargetRelation } from "../http-link.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import {
   createFilesystemDocsMcpSource,
@@ -1707,11 +1719,15 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
   const site = asRecord(root?.site);
   const capabilities = asRecord(root?.capabilities);
   const api = asRecord(root?.api);
+  const apiCatalog = asRecord(root?.apiCatalog);
   const config = asRecord(root?.config);
   const search = asRecord(root?.search);
+  const skills = asRecord(root?.skills);
+  const skillsDiscovery = asRecord(skills?.discovery);
   const mcp = asRecord(root?.mcp);
   const agentContract = asRecord(root?.agentContract);
   const agentContractFields = asRecord(agentContract?.fields);
+  const apiRoute = isNonEmptyString(api?.docs) ? resolveDocsDiscoveryApiRoute(api.docs) : undefined;
 
   return Boolean(
     root &&
@@ -1721,9 +1737,27 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
     isNonEmptyString(site?.entry) &&
     typeof capabilities?.search === "boolean" &&
     typeof capabilities?.mcp === "boolean" &&
-    isNonEmptyString(api?.docs) &&
-    isNonEmptyString(api?.config) &&
-    isNonEmptyString(config?.endpoint) &&
+    capabilities?.apiCatalog === true &&
+    capabilities?.agentSkillsDiscovery === true &&
+    apiRoute &&
+    api?.docs === apiRoute &&
+    api?.config === `${apiRoute}?format=config` &&
+    api?.apiCatalog === DEFAULT_API_CATALOG_ROUTE &&
+    api?.apiCatalogQuery === `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
+    api?.agentSkillsIndex === DEFAULT_AGENT_SKILLS_INDEX_ROUTE &&
+    apiCatalog?.enabled === true &&
+    apiCatalog?.route === DEFAULT_API_CATALOG_ROUTE &&
+    apiCatalog?.api === `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
+    apiCatalog?.mediaType === API_CATALOG_MEDIA_TYPE &&
+    apiCatalog?.profile === API_CATALOG_PROFILE_URI &&
+    skillsDiscovery?.schema === AGENT_SKILLS_DISCOVERY_SCHEMA_URI &&
+    skillsDiscovery?.index === DEFAULT_AGENT_SKILLS_INDEX_ROUTE &&
+    skillsDiscovery?.artifact === DEFAULT_AGENT_SKILLS_ROUTE_PATTERN &&
+    skillsDiscovery?.apiIndex === `${apiRoute}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}` &&
+    skillsDiscovery?.apiArtifact ===
+      `${apiRoute}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}` &&
+    skillsDiscovery?.digest === "sha256" &&
+    config?.endpoint === `${apiRoute}?format=config` &&
     typeof search?.enabled === "boolean" &&
     isNonEmptyString(search?.endpoint) &&
     typeof mcp?.enabled === "boolean" &&
@@ -1732,6 +1766,270 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
     agentContractFields &&
     Object.keys(agentContractFields).length > 0,
   );
+}
+
+interface HostedStandardsProbe {
+  ok: boolean;
+  detail: string;
+}
+
+function responseMediaType(contentType: string | null): string {
+  return contentType?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+}
+
+function contentTypeParameter(contentType: string | null, name: string): string | undefined {
+  if (!contentType) return undefined;
+  const parameterPattern = new RegExp(
+    `(?:^|;)\\s*${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\s*=\\s*(?:"([^"]*)"|([^;\\s]+))`,
+    "i",
+  );
+  const match = contentType.match(parameterPattern);
+  return match?.[1] ?? match?.[2];
+}
+
+function isApiCatalogLinkset(value: unknown): boolean {
+  const root = asRecord(value);
+  if (!Array.isArray(root?.linkset) || root.linkset.length === 0) return false;
+
+  let apiLinks = 0;
+  for (const rawContext of root.linkset) {
+    const context = asRecord(rawContext);
+    if (!isNonEmptyString(context?.anchor)) return false;
+    if (!Array.isArray(context.item)) continue;
+    for (const rawItem of context.item) {
+      const item = asRecord(rawItem);
+      if (!isNonEmptyString(item?.href)) return false;
+      apiLinks += 1;
+    }
+  }
+
+  return apiLinks > 0;
+}
+
+async function probeApiCatalogRoute(baseUrl: string): Promise<HostedStandardsProbe> {
+  const route = DEFAULT_API_CATALOG_ROUTE;
+  const url = joinDoctorUrl(baseUrl, route);
+
+  try {
+    const [getResponse, headResponse] = await Promise.all([
+      fetchWithTimeout(url, {
+        headers: { Accept: API_CATALOG_MEDIA_TYPE },
+      }),
+      fetchWithTimeout(url, {
+        method: "HEAD",
+        headers: { Accept: API_CATALOG_MEDIA_TYPE },
+      }),
+    ]);
+    const text = await getResponse.text().catch(() => "");
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = undefined;
+    }
+
+    const failures: string[] = [];
+    if (!getResponse.ok) failures.push(`GET returned HTTP ${getResponse.status}`);
+    if (!headResponse.ok) failures.push(`HEAD returned HTTP ${headResponse.status}`);
+
+    for (const [method, response] of [
+      ["GET", getResponse],
+      ["HEAD", headResponse],
+    ] as const) {
+      const contentType = response.headers.get("content-type");
+      if (responseMediaType(contentType) !== API_CATALOG_MEDIA_TYPE) {
+        failures.push(`${method} Content-Type is ${JSON.stringify(contentType ?? "<missing>")}`);
+      } else if (contentTypeParameter(contentType, "profile") !== API_CATALOG_PROFILE_URI) {
+        failures.push(`${method} Content-Type is missing the RFC 9727 profile`);
+      }
+      if (
+        !httpLinkHeaderHasTargetRelation(
+          response.headers.get("link"),
+          DEFAULT_API_CATALOG_ROUTE,
+          "api-catalog",
+          url,
+        )
+      ) {
+        failures.push(
+          `${method} is missing an ${DEFAULT_API_CATALOG_ROUTE} rel="api-catalog" Link value`,
+        );
+      }
+    }
+
+    if (!isApiCatalogLinkset(body)) {
+      failures.push("GET did not return a JSON Linkset with at least one API item");
+    }
+
+    return failures.length === 0
+      ? {
+          ok: true,
+          detail: `${route} passed RFC 9727 GET and HEAD checks with a profiled JSON Linkset and api-catalog Link headers.`,
+        }
+      : {
+          ok: false,
+          detail: `${route} failed standards validation: ${failures.join("; ")}.`,
+        };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+}
+
+function isValidAgentSkillEntry(value: unknown): value is {
+  name: string;
+  type: "skill-md";
+  description: string;
+  url: string;
+  digest: string;
+} {
+  const entry = asRecord(value);
+  return Boolean(
+    entry &&
+    typeof entry.name === "string" &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(entry.name) &&
+    entry.name.length <= 64 &&
+    entry.type === "skill-md" &&
+    isNonEmptyString(entry.description) &&
+    entry.description.length <= 1024 &&
+    isNonEmptyString(entry.url) &&
+    typeof entry.digest === "string" &&
+    /^sha256:[0-9a-f]{64}$/u.test(entry.digest),
+  );
+}
+
+async function probeAgentSkillsDiscovery(baseUrl: string): Promise<HostedStandardsProbe> {
+  const route = DEFAULT_AGENT_SKILLS_INDEX_ROUTE;
+  const indexUrl = joinDoctorUrl(baseUrl, route);
+
+  try {
+    const [indexResponse, indexHeadResponse] = await Promise.all([
+      fetchWithTimeout(indexUrl, {
+        headers: { Accept: "application/json" },
+      }),
+      fetchWithTimeout(indexUrl, {
+        method: "HEAD",
+        headers: { Accept: "application/json" },
+      }),
+    ]);
+    const text = await indexResponse.text().catch(() => "");
+    const failures: string[] = [];
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = undefined;
+    }
+
+    if (!indexResponse.ok) failures.push(`index returned HTTP ${indexResponse.status}`);
+    if (!indexHeadResponse.ok) {
+      failures.push(`index HEAD returned HTTP ${indexHeadResponse.status}`);
+    }
+    if (responseMediaType(indexResponse.headers.get("content-type")) !== "application/json") {
+      failures.push("index Content-Type is not application/json");
+    }
+    if (responseMediaType(indexHeadResponse.headers.get("content-type")) !== "application/json") {
+      failures.push("index HEAD Content-Type is not application/json");
+    }
+
+    const root = asRecord(body);
+    if (root?.$schema !== AGENT_SKILLS_DISCOVERY_SCHEMA_URI) {
+      failures.push("index $schema is not the Agent Skills discovery 0.2.0 schema");
+    }
+    const skills = Array.isArray(root?.skills) ? root.skills : [];
+    if (skills.length === 0) failures.push("index does not publish any skills");
+    if (skills.length > 100) failures.push("index publishes more than 100 skills");
+
+    const validSkills = skills.filter(isValidAgentSkillEntry);
+    if (validSkills.length !== skills.length) {
+      failures.push(
+        "one or more index entries have invalid name, type, description, URL, or digest fields",
+      );
+    }
+    if (new Set(validSkills.map((skill) => skill.name)).size !== validSkills.length) {
+      failures.push("index contains duplicate skill names");
+    }
+
+    const baseOrigin = new URL(baseUrl).origin;
+    const artifactDetails: string[] = [];
+    if (skills.length <= 100) {
+      for (const skill of validSkills) {
+        let artifactUrl: URL;
+        try {
+          artifactUrl = new URL(skill.url, indexUrl);
+        } catch {
+          failures.push(`${skill.name} has an invalid artifact URL`);
+          continue;
+        }
+
+        const expectedPath = DEFAULT_AGENT_SKILLS_ROUTE_PATTERN.replace("{name}", skill.name);
+        if (artifactUrl.origin !== baseOrigin) {
+          failures.push(`${skill.name} artifact is not same-origin`);
+          continue;
+        }
+        if (!artifactUrl.pathname.endsWith(expectedPath)) {
+          failures.push(`${skill.name} artifact URL does not match ${expectedPath}`);
+          continue;
+        }
+
+        try {
+          const [artifactResponse, artifactHeadResponse] = await Promise.all([
+            fetchWithTimeout(artifactUrl.toString(), {
+              headers: { Accept: "text/markdown" },
+            }),
+            fetchWithTimeout(artifactUrl.toString(), {
+              method: "HEAD",
+              headers: { Accept: "text/markdown" },
+            }),
+          ]);
+          const content = Buffer.from(await artifactResponse.arrayBuffer());
+          const computedDigest = `sha256:${createHash("sha256").update(content).digest("hex")}`;
+
+          if (!artifactResponse.ok) {
+            failures.push(`${skill.name} artifact returned HTTP ${artifactResponse.status}`);
+          } else if (!artifactHeadResponse.ok) {
+            failures.push(
+              `${skill.name} artifact HEAD returned HTTP ${artifactHeadResponse.status}`,
+            );
+          } else if (
+            responseMediaType(artifactResponse.headers.get("content-type")) !== "text/markdown"
+          ) {
+            failures.push(`${skill.name} artifact Content-Type is not text/markdown`);
+          } else if (
+            responseMediaType(artifactHeadResponse.headers.get("content-type")) !== "text/markdown"
+          ) {
+            failures.push(`${skill.name} artifact HEAD Content-Type is not text/markdown`);
+          } else if (content.length === 0) {
+            failures.push(`${skill.name} artifact is empty`);
+          } else if (computedDigest !== skill.digest) {
+            failures.push(`${skill.name} artifact digest does not match the index`);
+          } else {
+            artifactDetails.push(`${skill.name} digest verified`);
+          }
+        } catch (error) {
+          failures.push(
+            `${skill.name} artifact failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+    }
+
+    return failures.length === 0
+      ? {
+          ok: true,
+          detail: `${route} returned a valid Agent Skills index; ${artifactDetails.join(", ")}.`,
+        }
+      : {
+          ok: false,
+          detail: `${route} failed standards validation: ${failures.join("; ")}.`,
+        };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
 }
 
 function readDiscoveryRoute(value: unknown): string | undefined {
@@ -1970,6 +2268,37 @@ async function buildHostedAgentChecks(
       discoveryManifestValid
         ? undefined
         : `Make sure ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} returns the complete agent discovery manifest from the shared docs API.`,
+    ),
+  );
+
+  const [apiCatalog, agentSkills] = await Promise.all([
+    probeApiCatalogRoute(baseUrl),
+    probeAgentSkillsDiscovery(baseUrl),
+  ]);
+  checks.push(
+    makeCheck(
+      "hosted-api-catalog",
+      "Hosted RFC 9727 API catalog",
+      apiCatalog.ok ? "pass" : "fail",
+      apiCatalog.ok ? 5 : 0,
+      5,
+      apiCatalog.detail,
+      apiCatalog.ok
+        ? undefined
+        : `Publish ${DEFAULT_API_CATALOG_ROUTE} with GET and HEAD support, the profiled ${API_CATALOG_MEDIA_TYPE} content type, a rel="api-catalog" Link header, and API links.`,
+    ),
+  );
+  checks.push(
+    makeCheck(
+      "hosted-agent-skills",
+      "Hosted Agent Skills discovery",
+      agentSkills.ok ? "pass" : "fail",
+      agentSkills.ok ? 5 : 0,
+      5,
+      agentSkills.detail,
+      agentSkills.ok
+        ? undefined
+        : `Publish ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} and make every indexed SKILL.md artifact match its declared SHA-256 digest.`,
     ),
   );
 
@@ -2461,9 +2790,11 @@ export async function inspectAgentReadiness(
   );
   const feedbackRoute = DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = `${feedbackRoute}/schema`;
+  const apiRoute = resolveDocsDiscoveryApiRoute(config?.cloud?.apiRoute);
   const discovery = buildDocsAgentDiscoverySpec({
     origin: "http://localhost",
     entry,
+    apiRoute,
     search: searchEnabled,
     mcp: mcpConfig,
     feedback: {
@@ -2495,7 +2826,7 @@ export async function inspectAgentReadiness(
       entry,
       search: {
         enabled: searchEnabled,
-        endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+        endpoint: `${apiRoute}?query={query}`,
       },
       mcp: {
         enabled: mcpConfig.enabled,
@@ -2503,9 +2834,18 @@ export async function inspectAgentReadiness(
         tools: mcpConfig.tools,
       },
       routes: {
-        "api.docs": DEFAULT_DOCS_API_ROUTE,
-        "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
-        "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+        "api.docs": apiRoute,
+        "api.config": `${apiRoute}?format=config`,
+        "api.apiCatalog": DEFAULT_API_CATALOG_ROUTE,
+        "api.apiCatalogQuery": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+        "api.agentSkillsIndex": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+        "apiCatalog.route": DEFAULT_API_CATALOG_ROUTE,
+        "apiCatalog.api": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+        "config.endpoint": `${apiRoute}?format=config`,
+        "skills.discovery.index": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+        "skills.discovery.artifact": DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+        "skills.discovery.apiIndex": `${apiRoute}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
+        "skills.discovery.apiArtifact": `${apiRoute}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
       },
     },
   });
@@ -2551,7 +2891,7 @@ export async function inspectAgentReadiness(
       canScoreSurfaceDrift && surfaceDrift.length === 0
         ? undefined
         : canScoreSurfaceDrift
-          ? "Align docs config, agent discovery, MCP tools, config schema, and the canonical page agent contract before publishing."
+          ? "Align docs config, agent discovery (including API catalog and Agent Skills routes), MCP tools, config schema, and the canonical page agent contract before publishing."
           : "Fix docs.config module evaluation so doctor can compare resolved config with discovery and schema surfaces.",
     ),
   );
@@ -2628,7 +2968,7 @@ export async function inspectAgentReadiness(
       routeSurface.publicDetail,
       routeSurface.publicMounted
         ? undefined
-        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /docs/sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
+        : "Add the framework public forwarder so /.well-known/api-catalog, /.well-known/agent-skills/*, the other /.well-known/* resources, /llms.txt, /sitemap.xml, /sitemap.md, /docs/sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
     ),
   );
 
@@ -2640,11 +2980,11 @@ export async function inspectAgentReadiness(
       routeSurface.apiMounted && routeSurface.publicMounted ? 5 : 0,
       5,
       routeSurface.apiMounted && routeSurface.publicMounted
-        ? `Expected discovery endpoints are available through ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, and /api/docs?agent=spec.`
+        ? `Expected discovery endpoints are available through ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, ${DEFAULT_API_CATALOG_ROUTE}, ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}, and /api/docs?agent=spec.`
         : "Could not verify the shared agent discovery spec endpoints because docs API/public route wiring is incomplete.",
       routeSurface.apiMounted && routeSurface.publicMounted
         ? undefined
-        : "Make sure both the docs API handler and the public docs forwarder are mounted so agents can discover the site through the well-known agent spec.",
+        : "Make sure both the docs API handler and public docs forwarder expose the custom agent manifest, RFC 9727 API catalog, and Agent Skills discovery routes.",
     ),
   );
 

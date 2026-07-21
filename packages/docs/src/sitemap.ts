@@ -1,4 +1,8 @@
 import type { DocsSitemapConfig, ResolvedDocsRelatedLink } from "./types.js";
+import {
+  resolveDocsDiscoveryApiRoute,
+  type DocsDiscoveryApiRouteOptions,
+} from "./standards-discovery.js";
 
 export const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
 export const DEFAULT_SITEMAP_MD_ROUTE = "/sitemap.md";
@@ -63,7 +67,7 @@ export interface DocsSitemapResolvedConfig {
   };
 }
 
-export interface CreateDocsSitemapResponseOptions {
+export interface CreateDocsSitemapResponseOptions extends DocsDiscoveryApiRouteOptions {
   request: Request;
   sitemap?: boolean | DocsSitemapConfig;
   entry?: string;
@@ -165,11 +169,12 @@ export function resolveDocsSitemapConfig(
 export function resolveDocsSitemapRequest(
   url: URL,
   sitemap?: boolean | DocsSitemapConfig,
+  options: DocsDiscoveryApiRouteOptions = {},
 ): DocsSitemapFormat | null {
   const pathname = normalizeUrlPath(url.pathname);
   const format = url.searchParams.get("format")?.trim();
 
-  if (pathname === "/api/docs") {
+  if (pathname === resolveDocsDiscoveryApiRoute(options.apiRoute)) {
     if (format === "sitemap-xml") return "xml";
     if (format === "sitemap-md" || format === "sitemap-markdown") return "markdown";
   }
@@ -394,6 +399,7 @@ export function resolveDocsSitemapPageLastmod(
 
 export function createDocsSitemapResponse({
   request,
+  apiRoute,
   sitemap,
   entry = "docs",
   siteTitle,
@@ -402,7 +408,7 @@ export function createDocsSitemapResponse({
   manifest,
 }: CreateDocsSitemapResponseOptions): Response | null {
   const url = new URL(request.url);
-  const format = resolveDocsSitemapRequest(url, sitemap);
+  const format = resolveDocsSitemapRequest(url, sitemap, { apiRoute });
   if (!format) return null;
 
   const resolved = resolveDocsSitemapConfig(sitemap, { baseUrl });

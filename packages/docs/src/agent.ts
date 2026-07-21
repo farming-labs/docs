@@ -30,6 +30,58 @@ import {
   resolveDocsSitemapRequest,
 } from "./sitemap.js";
 import type { DocsSitemapConfig } from "./types.js";
+import {
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_API_CATALOG_FORMAT,
+  DEFAULT_API_CATALOG_ROUTE,
+  buildDocsApiCatalog,
+  createDocsStandardsResponse,
+  isDocsStandardsDiscoveryRequest,
+  resolveDocsDiscoveryApiRoute,
+  type DocsDiscoveryApiRouteOptions,
+} from "./standards-discovery.js";
+
+export {
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
+  DEFAULT_AGENT_SKILL_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_API_CATALOG_FORMAT,
+  DEFAULT_API_CATALOG_ROUTE,
+  appendDocsDiscoveryLinkHeader,
+  buildDocsAgentSkillsIndex,
+  buildDocsApiCatalog,
+  createDocsStandardsResponse,
+  getDocsDiscoveryLinkHeader,
+  isDocsStandardsDiscoveryRequest,
+  resolveDocsDiscoveryApiRoute,
+  resolveDocsPublishedAgentSkill,
+  resolveDocsStandardsDiscoveryRequest,
+  sha256DocsDiscoveryContent,
+} from "./standards-discovery.js";
+export type {
+  CreateDocsStandardsResponseOptions,
+  DocsAgentSkillIndexEntry,
+  DocsAgentSkillsIndex,
+  DocsApiCatalog,
+  DocsApiCatalogLinkContext,
+  DocsApiCatalogLinkTarget,
+  DocsApiCatalogOptions,
+  DocsDiscoveryApiRouteOptions,
+  DocsPublishedAgentSkill,
+  DocsPublishedAgentSkillOptions,
+  DocsStandardsDiscoveryRouteOptions,
+  DocsStandardsDiscoveryRequest,
+} from "./standards-discovery.js";
 
 export {
   findDocsAudienceMdxIssues,
@@ -243,8 +295,10 @@ export interface DocsAgentFeedbackDiscoveryConfig {
   schemaRoute?: string;
 }
 
-export interface DocsLlmsDiscoveryConfig {
+export interface DocsLlmsDiscoveryConfig extends DocsDiscoveryApiRouteOptions {
   enabled?: boolean;
+  /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
+  apiCatalog?: boolean;
   baseUrl?: string;
   siteTitle?: string;
   siteDescription?: string;
@@ -256,6 +310,8 @@ export interface DocsLlmsDiscoveryConfig {
 export interface DocsOpenApiDiscoveryConfig {
   enabled?: boolean;
   url?: string;
+  /** Whether `url` came from the framework default or explicit configuration. */
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
@@ -264,6 +320,8 @@ export interface DocsOpenApiDiscoveryConfig {
 export interface DocsOpenApiResolvedDiscoveryConfig {
   enabled: boolean;
   url?: string;
+  /** Whether `url` came from the framework default or explicit configuration. */
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
@@ -319,7 +377,7 @@ export interface DocsDiagnosticsFeature {
   routes?: Record<string, string | null>;
   provider?: string;
   mode?: string;
-  transport?: "GET" | "POST" | "GET/POST";
+  transport?: "GET" | "POST" | "GET/HEAD" | "GET/POST";
   tools?: Record<string, boolean>;
   human?: boolean;
   agent?: boolean;
@@ -336,6 +394,9 @@ export interface DocsDiagnostics {
     config: string;
     diagnostics: string;
     agentSpec: string;
+    apiCatalog: string | null;
+    agentSkillsIndex: string;
+    agentSkillsArtifact: string;
     agents: string;
     skill: string;
     search: string | null;
@@ -353,6 +414,7 @@ export interface DocsDiagnostics {
     staticExport: DocsDiagnosticsFeature;
     config: DocsDiagnosticsFeature;
     diagnostics: DocsDiagnosticsFeature;
+    apiCatalog: DocsDiagnosticsFeature;
     search: DocsDiagnosticsFeature;
     ai: DocsDiagnosticsFeature;
     mcp: DocsDiagnosticsFeature;
@@ -369,8 +431,10 @@ export interface DocsDiagnostics {
   errors: DocsDiagnosticsIssue[];
 }
 
-export interface DocsDiagnosticsOptions {
+export interface DocsDiagnosticsOptions extends DocsDiscoveryApiRouteOptions {
   adapter?: string;
+  /** Effective RFC 9727 catalog availability after runtime overrides are applied. */
+  apiCatalog?: boolean;
   entry?: string;
   i18n?: ResolvedDocsI18n | null;
   mcp?: DocsMcpResolvedConfig;
@@ -476,9 +540,13 @@ export interface DocsLlmsTxtMaxCharsIssue {
   message: string;
 }
 
-export interface DocsAgentDiscoverySpecOptions {
+export interface DocsAgentDiscoverySpecOptions extends DocsDiscoveryApiRouteOptions {
   origin: string;
   entry?: string;
+  /** Public rendered docs path when it differs from `entry`. */
+  docsPath?: string;
+  /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
+  apiCatalog?: boolean;
   i18n?: ResolvedDocsI18n | null;
   search?: boolean | DocsSearchConfig;
   mcp: DocsMcpResolvedConfig;
@@ -493,9 +561,13 @@ export interface DocsAgentDiscoverySpecOptions {
   };
 }
 
-export interface DocsSkillDocumentOptions {
+export interface DocsSkillDocumentOptions extends DocsDiscoveryApiRouteOptions {
   origin: string;
   entry?: string;
+  /** Public rendered docs path when it differs from `entry`. */
+  docsPath?: string;
+  /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
+  apiCatalog?: boolean;
   search?: boolean | DocsSearchConfig;
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
@@ -510,6 +582,12 @@ export interface DocsSkillDocumentOptions {
 }
 
 export interface DocsAgentsDocumentOptions extends DocsSkillDocumentOptions {}
+
+export interface DocsStandardsDiscoveryResponseOptions extends DocsAgentDiscoverySpecOptions {
+  request: Request;
+  preferredSkillDocument?: string | null;
+  fallbackSkillDocument: string;
+}
 
 export interface DocsAgentContractMcpTools {
   list?: "list_tasks";
@@ -541,7 +619,7 @@ export interface DocsMarkdownDocumentOptions {
   sitemap?: boolean | DocsSitemapConfig;
 }
 
-export interface DocsMarkdownNotFoundOptions {
+export interface DocsMarkdownNotFoundOptions extends DocsDiscoveryApiRouteOptions {
   entry?: string;
   requestedPath: string;
   origin?: string;
@@ -604,6 +682,26 @@ export function isDocsDiagnosticsRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "diagnostics";
 }
 
+/** Prefer an explicitly configured API route; otherwise infer a query-form route from the request. */
+export function resolveDocsRequestApiRoute(url: URL, configuredApiRoute?: string): string {
+  const configured = configuredApiRoute?.trim();
+  if (configured) return resolveDocsDiscoveryApiRoute(configured);
+
+  const fallback = resolveDocsDiscoveryApiRoute();
+  const pathname = normalizeDocsUrlPath(url.pathname);
+  const hasPublicRepresentationSuffix = /\.(?:md|txt|xml)$/i.test(pathname);
+  const isPublicDiscoveryPath =
+    pathname.startsWith("/.well-known/") || hasPublicRepresentationSuffix;
+  if (isPublicDiscoveryPath) return fallback;
+
+  const hasApiQueryMode =
+    Boolean(url.searchParams.get("format")?.trim()) ||
+    url.searchParams.get("agent")?.trim() === "spec" ||
+    url.searchParams.has("query") ||
+    url.searchParams.get("feedback")?.trim() === "agent";
+  return hasApiQueryMode ? resolveDocsDiscoveryApiRoute(pathname) : fallback;
+}
+
 export function buildDocsConfigMap(
   config: DocsConfig | Record<string, unknown>,
   options: { file?: string } = {},
@@ -643,17 +741,28 @@ export function buildDocsDiagnostics(
   const input = config as Record<string, unknown>;
   const entry = normalizeDocsPathSegment(stringConfigValue(input.entry) ?? options.entry ?? "docs");
   const docsRoute = routeFromConfigPath(stringConfigValue(input.docsPath) ?? entry);
+  const cloud = isPlainObject(input.cloud) ? input.cloud : undefined;
+  const apiRoute = resolveDocsDiscoveryApiRoute(
+    options.apiRoute ?? stringConfigValue(cloud?.apiRoute),
+  );
+  const apiQueryRoute = (query: string) => `${apiRoute}?${query}`;
   const staticExport = input.staticExport === true;
   const i18n = options.i18n ?? null;
   const localesEnabled = Boolean(i18n?.locales.length);
   const search = resolveDocsDiagnosticsSearch(input.search, staticExport);
   const ai = resolveDocsDiagnosticsAi(input.ai, staticExport);
   const llms = resolveDocsDiagnosticsLlms(input.llmsTxt);
+  const apiCatalog = resolveDocsDiagnosticsApiCatalog(
+    input.llmsTxt,
+    staticExport,
+    options.apiCatalog,
+  );
   const sitemapConfig = resolveDocsSitemapConfig(input.sitemap as boolean | DocsSitemapConfig);
   const robotsEnabled = isRobotsDiscoveryEnabled(input.robots as boolean | DocsRobotsConfig);
   const openapiConfig = resolveDocsOpenApiDiscoveryConfig(
     options.openapi ?? (input.apiReference as boolean | DocsOpenApiDiscoveryConfig),
   );
+  const openapiUrl = resolveDocsOpenApiDiscoveryUrl(openapiConfig, apiRoute);
   const apiReferenceRoute = resolveDocsDiagnosticsApiReferenceRoute(input.apiReference);
   const mcp = options.mcp ?? resolveDocsDiagnosticsMcp(input.mcp);
   const feedback = options.feedback ?? resolveDocsAgentFeedbackConfig(input.feedback as any);
@@ -669,8 +778,7 @@ export function buildDocsDiagnostics(
       severity: "warning",
       code: "static-export-runtime-api",
       path: "/staticExport",
-      message:
-        "staticExport is enabled; runtime API-backed capabilities are unavailable in production static export builds.",
+      message: `staticExport is enabled; runtime API-backed capabilities at ${apiRoute} are unavailable in production static export builds.`,
     });
   }
 
@@ -679,8 +787,7 @@ export function buildDocsDiagnostics(
       severity: "error",
       code: "ai-static-export",
       path: "/ai/enabled",
-      message:
-        "Ask AI requires the runtime /api/docs POST handler and will not run in static export builds.",
+      message: `Ask AI requires the runtime ${apiRoute} POST handler and will not run in static export builds.`,
     });
   }
 
@@ -724,14 +831,20 @@ export function buildDocsDiagnostics(
     adapter,
     routes: {
       docs: docsRoute,
-      api: DEFAULT_DOCS_API_ROUTE,
-      config: DEFAULT_DOCS_CONFIG_ROUTE,
-      diagnostics: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
-      agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
-      agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
-      skill: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
-      search: search.enabled ? `${DEFAULT_DOCS_API_ROUTE}?query={query}` : null,
-      askAi: ai.enabled ? DEFAULT_DOCS_API_ROUTE : null,
+      api: apiRoute,
+      config: apiQueryRoute("format=config"),
+      diagnostics: apiQueryRoute("format=diagnostics"),
+      agentSpec:
+        apiRoute === DEFAULT_DOCS_API_ROUTE
+          ? DEFAULT_AGENT_SPEC_ROUTE
+          : apiQueryRoute("agent=spec"),
+      apiCatalog: apiCatalog.enabled ? DEFAULT_API_CATALOG_ROUTE : null,
+      agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      agentSkillsArtifact: DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+      agents: apiQueryRoute("format=agents"),
+      skill: apiQueryRoute("format=skill"),
+      search: search.enabled ? apiQueryRoute("query={query}") : null,
+      askAi: ai.enabled ? apiRoute : null,
       mcp: mcp.enabled ? mcp.route : null,
       llmsTxt: llms.enabled ? DEFAULT_LLMS_TXT_ROUTE : null,
       llmsFullTxt: llms.enabled ? DEFAULT_LLMS_FULL_TXT_ROUTE : null,
@@ -742,7 +855,7 @@ export function buildDocsDiagnostics(
           ? sitemapConfig.markdown.route
           : null,
       robots: robotsEnabled ? DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE : null,
-      openapi: openapiConfig.enabled ? (openapiConfig.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE) : null,
+      openapi: openapiConfig.enabled ? (openapiUrl ?? apiQueryRoute("format=openapi")) : null,
       apiReference: openapiConfig.enabled ? apiReferenceRoute : null,
     },
     features: {
@@ -751,23 +864,29 @@ export function buildDocsDiagnostics(
       },
       config: {
         status: "enabled",
-        route: DEFAULT_DOCS_CONFIG_ROUTE,
+        route: apiQueryRoute("format=config"),
       },
       diagnostics: {
         status: "enabled",
-        route: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
+        route: apiQueryRoute("format=diagnostics"),
+      },
+      apiCatalog: {
+        status: apiCatalog.enabled ? "enabled" : "disabled",
+        reason: apiCatalog.reason,
+        route: apiCatalog.enabled ? DEFAULT_API_CATALOG_ROUTE : null,
+        transport: "GET/HEAD",
       },
       search: {
         status: search.enabled ? "enabled" : "disabled",
         reason: search.reason,
-        route: search.enabled ? `${DEFAULT_DOCS_API_ROUTE}?query={query}` : null,
+        route: search.enabled ? apiQueryRoute("query={query}") : null,
         provider: search.provider,
         transport: "GET",
       },
       ai: {
         status: ai.enabled ? "enabled" : "disabled",
         reason: ai.reason,
-        route: ai.enabled ? DEFAULT_DOCS_API_ROUTE : null,
+        route: ai.enabled ? apiRoute : null,
         mode: ai.mode,
         transport: "POST",
       },
@@ -822,9 +941,7 @@ export function buildDocsDiagnostics(
         status: openapiConfig.enabled ? "enabled" : "disabled",
         route: openapiConfig.enabled ? apiReferenceRoute : null,
         routes: {
-          openapi: openapiConfig.enabled
-            ? (openapiConfig.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE)
-            : null,
+          openapi: openapiConfig.enabled ? (openapiUrl ?? apiQueryRoute("format=openapi")) : null,
         },
         provider: openapiConfig.source,
       },
@@ -833,15 +950,18 @@ export function buildDocsDiagnostics(
         routes: {
           default: DEFAULT_AGENTS_MD_ROUTE,
           wellKnown: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
-          api: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+          api: apiQueryRoute("format=agents"),
         },
       },
       skills: {
         status: "enabled",
+        transport: "GET/HEAD",
         routes: {
           default: DEFAULT_SKILL_MD_ROUTE,
           wellKnown: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
-          api: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+          api: apiQueryRoute("format=skill"),
+          index: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          artifact: DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
         },
       },
       locales: {
@@ -1172,6 +1292,23 @@ function resolveDocsDiagnosticsLlms(llmsTxt: unknown): {
         enabled: false,
         reason: "configured-disabled",
       };
+}
+
+function resolveDocsDiagnosticsApiCatalog(
+  llmsTxt: unknown,
+  staticExport: boolean,
+  explicit?: boolean,
+): { enabled: boolean; reason?: string } {
+  if (staticExport) {
+    return { enabled: false, reason: "static-export" };
+  }
+  if (explicit !== undefined) {
+    return explicit ? { enabled: true } : { enabled: false, reason: "configured-disabled" };
+  }
+  if (isPlainObject(llmsTxt) && llmsTxt.apiCatalog === false) {
+    return { enabled: false, reason: "llms-txt-api-catalog-disabled" };
+  }
+  return { enabled: true };
 }
 
 function resolveDocsDiagnosticsMcp(mcp: unknown): DocsMcpResolvedConfig {
@@ -1645,8 +1782,10 @@ export function resolveDocsLlmsTxtRequest(
   url: URL,
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig,
   basePath?: string,
+  options: DocsDiscoveryApiRouteOptions = {},
 ): DocsLlmsTxtRequest | null {
   const pathname = normalizeDocsUrlPath(url.pathname);
+  const apiRoute = resolveDocsDiscoveryApiRoute(options.apiRoute);
   const sections = resolveDocsLlmsTxtSections(llms);
 
   for (const section of sections) {
@@ -1655,7 +1794,7 @@ export function resolveDocsLlmsTxtRequest(
   }
 
   const format = url.searchParams.get("format");
-  if (pathname === DEFAULT_DOCS_API_ROUTE && (format === "llms" || format === "llms-full")) {
+  if (pathname === apiRoute && (format === "llms" || format === "llms-full")) {
     const sectionRoute = url.searchParams.get("section")?.trim();
     const normalizedSectionRoute = sectionRoute ? normalizeDocsUrlPath(sectionRoute) : undefined;
     const section = normalizedSectionRoute
@@ -1738,8 +1877,13 @@ export function renderDocsLlmsTxt(
   const siteDescription = options.siteDescription;
   const baseUrl = options.baseUrl ?? "";
   const maxChars = normalizeLlmsTxtMaxChars(options.maxChars);
+  const apiCatalogEnabled = options.apiCatalog ?? true;
   const sections = resolveDocsLlmsTxtSections(options);
   const openapi = resolveDocsOpenApiDiscoveryConfig(options.openapi);
+  const openapiUrl = resolveDocsOpenApiDiscoveryUrl(
+    openapi,
+    resolveDocsDiscoveryApiRoute(options.apiRoute),
+  );
   const matchedPageUrls = new Set<string>();
 
   const generatedSections = sections.map((section) => {
@@ -1771,6 +1915,12 @@ export function renderDocsLlmsTxt(
 
   let llmsTxt = `# ${siteTitle}\n\n`;
   if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
+  llmsTxt += "## Agent Discovery\n\n";
+  llmsTxt += `- [Agent manifest](${resolveDocsResourceUrl(baseUrl, DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE)}): Farming Labs discovery manifest\n`;
+  if (apiCatalogEnabled) {
+    llmsTxt += `- [API catalog](${resolveDocsResourceUrl(baseUrl, DEFAULT_API_CATALOG_ROUTE)}): RFC 9727 API catalog\n`;
+  }
+  llmsTxt += `- [Agent Skills index](${resolveDocsResourceUrl(baseUrl, DEFAULT_AGENT_SKILLS_INDEX_ROUTE)}): Hashed Agent Skills discovery\n\n`;
   if (generatedSections.length > 0) {
     llmsTxt += "## Sections\n\n";
     for (const section of generatedSections) {
@@ -1780,11 +1930,11 @@ export function renderDocsLlmsTxt(
     }
     llmsTxt += "\n";
   }
-  if (openapi.enabled && openapi.url) {
+  if (openapi.enabled && openapiUrl) {
     llmsTxt += "## API Schemas\n\n";
     llmsTxt += `- [OpenAPI schema](${resolveDocsResourceUrl(
       baseUrl,
-      openapi.url,
+      openapiUrl,
     )}): Machine-readable API schema for tool use and API clients`;
     if (openapi.apiReferencePath) {
       llmsTxt += `; rendered API reference at ${resolveDocsResourceUrl(
@@ -1851,9 +2001,119 @@ export function getDocsLlmsTxtMaxCharsIssue(
   };
 }
 
-export function isDocsAgentDiscoveryRequest(url: URL): boolean {
+function resolveDocsStandardsOrigin(preferred: string | undefined, fallback: string): string {
+  for (const candidate of [preferred, fallback]) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      if (url.protocol === "http:" || url.protocol === "https:") return url.origin;
+    } catch {
+      // Fall through to the request origin.
+    }
+  }
+  return new URL(fallback).origin;
+}
+
+/** Build and serve standards-based discovery without replacing the custom agent manifest. */
+export async function createDocsStandardsDiscoveryResponse({
+  request,
+  preferredSkillDocument,
+  fallbackSkillDocument,
+  origin,
+  entry = "docs",
+  docsPath,
+  apiCatalog: explicitApiCatalog,
+  apiRoute,
+  i18n: _i18n,
+  search: _search,
+  mcp,
+  feedback,
+  llms,
+  sitemap,
+  robots,
+  openapi,
+  markdown: _markdown,
+}: DocsStandardsDiscoveryResponseOptions): Promise<Response | null> {
+  const url = new URL(request.url);
+  const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
+  if (!isDocsStandardsDiscoveryRequest(url, { apiRoute: resolvedApiRoute })) return null;
+
+  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const normalizedDocsPath = normalizeDocsPathSegment(docsPath ?? normalizedEntry);
+  const apiCatalogEnabled = explicitApiCatalog ?? llms?.apiCatalog ?? true;
+  const catalogOrigin = resolveDocsStandardsOrigin(llms?.baseUrl, origin || url.origin);
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
+  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
+  const openapiUrl = resolveDocsOpenApiDiscoveryUrl(openapiConfig, resolvedApiRoute);
+  const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
+  const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
+  const llmsEnabled = llms?.enabled ?? true;
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
+  const llmsRoutes = llmsEnabled
+    ? [
+        DEFAULT_LLMS_TXT_ROUTE,
+        DEFAULT_LLMS_FULL_TXT_ROUTE,
+        DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
+        DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+        ...llmsSections.flatMap((section) => [section.route, section.fullRoute]),
+      ]
+    : [];
+  const sitemapRoutes = sitemapConfig.enabled
+    ? [
+        ...(sitemapConfig.xml.enabled ? [sitemapConfig.xml.route] : []),
+        ...(sitemapConfig.markdown.enabled
+          ? [
+              sitemapConfig.markdown.route,
+              sitemapConfig.markdown.docsRoute,
+              sitemapConfig.markdown.wellKnownRoute,
+            ].filter((route): route is string => Boolean(route))
+          : []),
+      ]
+    : [];
+
+  return createDocsStandardsResponse({
+    request,
+    apiCatalogEnabled,
+    apiRoute: resolvedApiRoute,
+    preferredSkillDocument,
+    fallbackSkillDocument,
+    apiCatalog: apiCatalogEnabled
+      ? buildDocsApiCatalog({
+          origin: catalogOrigin,
+          docsRoute: normalizedDocsPath ? `/${normalizedDocsPath}` : "/",
+          apiRoute: resolvedApiRoute,
+          configRoute: `${resolvedApiRoute}?format=config`,
+          diagnosticsRoute: `${resolvedApiRoute}?format=diagnostics`,
+          agentManifestRoute: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+          agentSkillsIndexRoute: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          agentsRoute: DEFAULT_AGENTS_MD_ROUTE,
+          skillRoute: DEFAULT_SKILL_MD_ROUTE,
+          markdownRootRoute: `/${normalizedEntry}.md`,
+          llmsRoutes,
+          sitemapRoutes,
+          robotsRoute: robotsEnabled ? DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE : null,
+          mcpRoute: mcp.enabled ? mcp.route : null,
+          feedbackRoutes: feedback?.enabled ? [feedbackRoute, feedbackSchemaRoute] : [],
+          openapiRoute: openapiConfig.enabled
+            ? (openapiUrl ?? `${resolvedApiRoute}?format=openapi`)
+            : null,
+          apiReferenceRoute:
+            openapiConfig.enabled && openapiConfig.apiReferencePath
+              ? openapiConfig.apiReferencePath
+              : null,
+        })
+      : undefined,
+  });
+}
+
+export function isDocsAgentDiscoveryRequest(
+  url: URL,
+  options: DocsDiscoveryApiRouteOptions = {},
+): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
-  if (pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("agent")?.trim() === "spec") {
+  const apiRoute = resolveDocsDiscoveryApiRoute(options.apiRoute);
+  if (pathname === apiRoute && url.searchParams.get("agent")?.trim() === "spec") {
     return true;
   }
 
@@ -2009,13 +2269,16 @@ function isDocsIpHostname(hostname: string): boolean {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":");
 }
 
-export function isDocsSkillRequest(url: URL): boolean {
+export function isDocsSkillRequest(url: URL, options: DocsDiscoveryApiRouteOptions = {}): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
   if (pathname === DEFAULT_SKILL_MD_ROUTE || pathname === DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE) {
     return true;
   }
 
-  return pathname === DEFAULT_DOCS_API_ROUTE && resolveDocsSkillFormat(url) === "skill";
+  return (
+    pathname === resolveDocsDiscoveryApiRoute(options.apiRoute) &&
+    resolveDocsSkillFormat(url) === "skill"
+  );
 }
 
 export function resolveDocsSkillFormat(url: URL): "skill" | null {
@@ -2031,11 +2294,14 @@ function isDocsAgentsPath(pathname: string): boolean {
   );
 }
 
-export function isDocsAgentsRequest(url: URL): boolean {
+export function isDocsAgentsRequest(url: URL, options: DocsDiscoveryApiRouteOptions = {}): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
   if (isDocsAgentsPath(pathname)) return true;
 
-  return pathname === DEFAULT_DOCS_API_ROUTE && resolveDocsAgentsFormat(url) === "agents";
+  return (
+    pathname === resolveDocsDiscoveryApiRoute(options.apiRoute) &&
+    resolveDocsAgentsFormat(url) === "agents"
+  );
 }
 
 export function resolveDocsAgentsFormat(url: URL): "agents" | null {
@@ -2046,24 +2312,26 @@ export function isDocsPublicGetRequest(
   entry: string,
   url: URL,
   request: Request,
-  options: {
+  options: DocsDiscoveryApiRouteOptions & {
     sitemap?: boolean | DocsSitemapConfig;
     llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
     robots?: boolean | DocsRobotsConfig;
   } = {},
 ): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
-  if (pathname === DEFAULT_DOCS_API_ROUTE || pathname === DEFAULT_MCP_ROUTE) return false;
+  const apiRoute = resolveDocsDiscoveryApiRoute(options.apiRoute);
+  if (pathname === apiRoute || pathname === DEFAULT_MCP_ROUTE) return false;
 
   return (
-    isDocsAgentDiscoveryRequest(url) ||
-    isDocsAgentsRequest(url) ||
-    isDocsSkillRequest(url) ||
+    isDocsStandardsDiscoveryRequest(url, { apiRoute }) ||
+    isDocsAgentDiscoveryRequest(url, { apiRoute }) ||
+    isDocsAgentsRequest(url, { apiRoute }) ||
+    isDocsSkillRequest(url, { apiRoute }) ||
     (pathname === DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE &&
       isRobotsDiscoveryEnabled(options.robots)) ||
-    resolveDocsLlmsTxtRequest(url, options.llms, entry) !== null ||
-    resolveDocsSitemapRequest(url, options.sitemap) !== null ||
-    resolveDocsMarkdownRequest(entry, url, request) !== null
+    resolveDocsLlmsTxtRequest(url, options.llms, entry, { apiRoute }) !== null ||
+    resolveDocsSitemapRequest(url, options.sitemap, { apiRoute }) !== null ||
+    resolveDocsMarkdownRequest(entry, url, request, { apiRoute }) !== null
   );
 }
 
@@ -2071,25 +2339,32 @@ export function isDocsLlmsTxtPublicRequest(
   url: URL,
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig,
   basePath?: string,
+  options: DocsDiscoveryApiRouteOptions = {},
 ): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
+  const apiRoute = resolveDocsDiscoveryApiRoute(options.apiRoute);
   return (
-    pathname !== DEFAULT_DOCS_API_ROUTE && resolveDocsLlmsTxtRequest(url, llms, basePath) !== null
+    pathname !== apiRoute && resolveDocsLlmsTxtRequest(url, llms, basePath, { apiRoute }) !== null
   );
 }
 
-export function resolveDocsLlmsTxtFormat(url: URL, basePath?: string): "llms" | "llms-full" | null {
-  return resolveDocsLlmsTxtRequest(url, undefined, basePath)?.format ?? null;
+export function resolveDocsLlmsTxtFormat(
+  url: URL,
+  basePath?: string,
+  options: DocsDiscoveryApiRouteOptions = {},
+): "llms" | "llms-full" | null {
+  return resolveDocsLlmsTxtRequest(url, undefined, basePath, options)?.format ?? null;
 }
 
 export function resolveDocsMarkdownRequest(
   entry: string,
   url: URL,
   request: Request,
+  options: DocsDiscoveryApiRouteOptions = {},
 ): { requestedPath: string } | null {
   const pathname = normalizeDocsUrlPath(url.pathname);
   const format = url.searchParams.get("format")?.trim();
-  if (pathname === DEFAULT_DOCS_API_ROUTE && format === "markdown") {
+  if (pathname === resolveDocsDiscoveryApiRoute(options.apiRoute) && format === "markdown") {
     return {
       requestedPath: url.searchParams.get("path")?.trim() ?? "",
     };
@@ -2459,12 +2734,18 @@ function resolveDocsMarkdownPageMetadata(
 
 export function renderDocsMarkdownNotFound({
   entry = "docs",
+  apiRoute,
   requestedPath,
   origin,
   pages,
   sitemap,
 }: DocsMarkdownNotFoundOptions): string {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
+  const agentSpecApiRoute =
+    resolvedApiRoute === DEFAULT_DOCS_API_ROUTE
+      ? DEFAULT_AGENT_SPEC_ROUTE
+      : `${resolvedApiRoute}?agent=spec`;
   const normalizedRequest = normalizeRequestedMarkdownPath(normalizedEntry, requestedPath);
   const slugPrefix = `/${normalizedEntry}/`;
   const requestedSlug =
@@ -2472,8 +2753,8 @@ export function renderDocsMarkdownNotFound({
   const encodedRequestedSlug = requestedSlug.split("/").map(encodeURIComponent).join("/");
   const requestedMarkdownRoute = toDocsMarkdownUrl(normalizedRequest);
   const requestedApiRoute = requestedSlug
-    ? `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path=${encodedRequestedSlug}`
-    : `${DEFAULT_DOCS_API_ROUTE}?format=markdown`;
+    ? `${resolvedApiRoute}?format=markdown&path=${encodedRequestedSlug}`
+    : `${resolvedApiRoute}?format=markdown`;
   const sitemapConfig = resolveDocsSitemapConfig(sitemap);
   const recovery = resolveDocsMarkdownRecovery({
     entry: normalizedEntry,
@@ -2512,9 +2793,11 @@ export function renderDocsMarkdownNotFound({
     "",
     `- Agent discovery spec: \`${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}\``,
     `- Agent discovery fallback: \`${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}\``,
-    `- Agent discovery API: \`${DEFAULT_AGENT_SPEC_ROUTE}\``,
+    `- Agent discovery API: \`${agentSpecApiRoute}\``,
+    `- API catalog: \`${DEFAULT_API_CATALOG_ROUTE}\``,
+    `- Agent Skills index: \`${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}\``,
     `- Agent instructions: \`${DEFAULT_AGENTS_MD_ROUTE}\``,
-    `- Search endpoint: \`${DEFAULT_DOCS_API_ROUTE}?query={query}\``,
+    `- Search endpoint: \`${resolvedApiRoute}?query={query}\``,
     `- Docs index markdown: \`/${normalizedEntry}.md\``,
     `- Requested markdown API route: \`${requestedApiRoute}\``,
   );
@@ -2659,7 +2942,14 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     }
 
     return new Response(
-      renderDocsMarkdownNotFound({ entry, requestedPath, origin, pages, sitemap }),
+      renderDocsMarkdownNotFound({
+        entry,
+        apiRoute: options.apiRoute,
+        requestedPath,
+        origin,
+        pages,
+        sitemap,
+      }),
       {
         status: 404,
         headers: {
@@ -2726,6 +3016,7 @@ function shouldRenderLlmsDirective(options?: DocsMarkdownDocumentOptions): boole
 }
 
 interface DocsAgentDocumentContext {
+  apiRoute: string;
   normalizedEntry: string;
   siteTitle: string;
   siteDescription?: string;
@@ -2741,12 +3032,15 @@ interface DocsAgentDocumentContext {
   llmsSections: DocsLlmsTxtResolvedSection[];
   markdownAcceptHeader: string | null;
   markdownSignatureAgentHeader: string | null;
+  apiCatalogEnabled: boolean;
 }
 
 type DocsAgentDocumentVariant = "skill" | "agents";
 
 function resolveDocsAgentDocumentContext({
   entry = "docs",
+  apiRoute,
+  apiCatalog: explicitApiCatalog,
   search,
   mcp,
   feedback,
@@ -2757,8 +3051,11 @@ function resolveDocsAgentDocumentContext({
   markdown,
 }: DocsSkillDocumentOptions): DocsAgentDocumentContext {
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
+  const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
+  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
 
   return {
+    apiRoute: resolvedApiRoute,
     normalizedEntry: normalizeDocsPathSegment(entry) || "docs",
     siteTitle: compactSkillText(llms?.siteTitle ?? "Documentation"),
     siteDescription: llms?.siteDescription ? compactSkillText(llms.siteDescription) : undefined,
@@ -2768,13 +3065,17 @@ function resolveDocsAgentDocumentContext({
     feedbackEnabled: feedback?.enabled ?? false,
     sitemapConfig: resolveDocsSitemapConfig(sitemap),
     robotsEnabled: isRobotsDiscoveryEnabled(robots),
-    openapiConfig: resolveDocsOpenApiDiscoveryConfig(openapi),
+    openapiConfig: {
+      ...openapiConfig,
+      url: resolveDocsOpenApiDiscoveryUrl(openapiConfig, resolvedApiRoute),
+    },
     feedbackRoute,
     feedbackSchemaRoute: feedback?.schemaRoute ?? `${feedbackRoute}/schema`,
     llmsSections: resolveDocsLlmsTxtSections(llms),
     markdownAcceptHeader: markdown?.acceptHeader === false ? null : "text/markdown",
     markdownSignatureAgentHeader:
       markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
+    apiCatalogEnabled: explicitApiCatalog ?? llms?.apiCatalog ?? true,
   };
 }
 
@@ -2808,8 +3109,8 @@ function appendDocsSearchStartLine(
   if (!context.searchEnabled) return;
   lines.push(
     variant === "skill"
-      ? `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`
-      : `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when the route is unknown.`,
+      ? `- Search with ${context.apiRoute}?query={query} when you do not know the page.`
+      : `- Search with ${context.apiRoute}?query={query} when the route is unknown.`,
   );
 }
 
@@ -2923,10 +3224,26 @@ function appendDocsAgentStartHereLines(
   context: DocsAgentDocumentContext,
   variant: DocsAgentDocumentVariant,
 ): void {
+  const agentSpecFallback =
+    context.apiRoute === DEFAULT_DOCS_API_ROUTE
+      ? DEFAULT_AGENT_SPEC_ROUTE
+      : `${context.apiRoute}?agent=spec`;
   lines.push(
     variant === "skill"
-      ? `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`
-      : `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+      ? `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${agentSpecFallback}.`
+      : `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${agentSpecFallback}.`,
+  );
+  if (context.apiCatalogEnabled) {
+    lines.push(
+      variant === "skill"
+        ? `- Use ${DEFAULT_API_CATALOG_ROUTE} for standards-based API discovery.`
+        : `- Use ${DEFAULT_API_CATALOG_ROUTE} for RFC 9727 API discovery.`,
+    );
+  }
+  lines.push(
+    variant === "skill"
+      ? `- Use ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for hashed skill discovery.`
+      : `- Use ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} for integrity-checked skills.`,
     variant === "skill"
       ? `- Fetch /${context.normalizedEntry}.md for the root docs page.`
       : `- Read /${context.normalizedEntry}.md for the root docs page.`,
@@ -3007,12 +3324,19 @@ function appendDocsAgentPublicRouteLines(
     lines.push(
       `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
       `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
-      `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      `- Agent instructions API format: ${context.apiRoute}?format=agents`,
       `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
       `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
-      `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+      `- Skill API format: ${context.apiRoute}?format=skill`,
       `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
       `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+    );
+    if (context.apiCatalogEnabled) {
+      lines.push(`- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`);
+    }
+    lines.push(
+      `- Agent Skills index: ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`,
+      `- Agent Skills artifacts: ${DEFAULT_AGENT_SKILLS_ROUTE_PATTERN}`,
       `- Markdown root: /${context.normalizedEntry}.md`,
       `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
     );
@@ -3030,15 +3354,22 @@ function appendDocsAgentPublicRouteLines(
   lines.push(
     `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
     `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
-    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+    `- Agent instructions API format: ${context.apiRoute}?format=agents`,
     `- Agent instructions aliases: ${DEFAULT_AGENT_MD_ROUTE}, ${DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE}`,
     `- Site skill: ${DEFAULT_SKILL_MD_ROUTE}`,
     `- Site skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
-    `- Site skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Site skill API format: ${context.apiRoute}?format=skill`,
     `- Markdown root: /${context.normalizedEntry}.md`,
     `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
     `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
     `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+  );
+  if (context.apiCatalogEnabled) {
+    lines.push(`- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`);
+  }
+  lines.push(
+    `- Agent Skills index: ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`,
+    `- Agent Skills artifacts: ${DEFAULT_AGENT_SKILLS_ROUTE_PATTERN}`,
   );
 
   appendDocsLlmsRouteLines(lines, context);
@@ -3197,6 +3528,8 @@ export function resolveDocsAgentContractMcpTools(
 export function buildDocsAgentDiscoverySpec({
   origin,
   entry = "docs",
+  apiRoute,
+  apiCatalog: explicitApiCatalog,
   i18n = null,
   search,
   mcp,
@@ -3208,6 +3541,8 @@ export function buildDocsAgentDiscoverySpec({
   markdown,
 }: DocsAgentDiscoverySpecOptions) {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
+  const apiQueryRoute = (query: string) => `${resolvedApiRoute}?${query}`;
   const localesEnabled = i18n !== null;
   const searchEnabled = isSearchEnabled(search);
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
@@ -3217,7 +3552,10 @@ export function buildDocsAgentDiscoverySpec({
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
+  const defaultOpenapiRoute = apiQueryRoute("format=openapi");
+  const openapiUrl = resolveDocsOpenApiDiscoveryUrl(openapiConfig, resolvedApiRoute);
   const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
+  const apiCatalogEnabled = explicitApiCatalog ?? llms?.apiCatalog ?? true;
 
   return {
     version: "1",
@@ -3244,6 +3582,8 @@ export function buildDocsAgentDiscoverySpec({
       agents: true,
       llms: llmsEnabled,
       skills: true,
+      apiCatalog: apiCatalogEnabled,
+      agentSkillsDiscovery: true,
       mcp: mcp.enabled,
       search: searchEnabled,
       sitemap: sitemapConfig.enabled,
@@ -3255,21 +3595,38 @@ export function buildDocsAgentDiscoverySpec({
       locales: localesEnabled,
     },
     api: {
-      docs: DEFAULT_DOCS_API_ROUTE,
-      config: DEFAULT_DOCS_CONFIG_ROUTE,
-      diagnostics: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
-      agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
+      docs: resolvedApiRoute,
+      config: apiQueryRoute("format=config"),
+      diagnostics: apiQueryRoute("format=diagnostics"),
+      agentSpec:
+        resolvedApiRoute === DEFAULT_DOCS_API_ROUTE
+          ? DEFAULT_AGENT_SPEC_ROUTE
+          : apiQueryRoute("agent=spec"),
       agentSpecDefault: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecFallback: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
-      agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
-      agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
-      openapi: DEFAULT_OPENAPI_SCHEMA_ROUTE,
+      agentSpecQuery: apiQueryRoute("agent=spec"),
+      agents: apiQueryRoute("format=agents"),
+      ...(apiCatalogEnabled
+        ? {
+            apiCatalog: DEFAULT_API_CATALOG_ROUTE,
+            apiCatalogQuery: apiQueryRoute(`format=${DEFAULT_API_CATALOG_FORMAT}`),
+          }
+        : {}),
+      agentSkillsIndex: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      openapi: defaultOpenapiRoute,
+    },
+    apiCatalog: {
+      enabled: apiCatalogEnabled,
+      route: apiCatalogEnabled ? DEFAULT_API_CATALOG_ROUTE : null,
+      api: apiCatalogEnabled ? apiQueryRoute(`format=${DEFAULT_API_CATALOG_FORMAT}`) : null,
+      mediaType: API_CATALOG_MEDIA_TYPE,
+      profile: API_CATALOG_PROFILE_URI,
     },
     config: {
       format: DEFAULT_DOCS_CONFIG_FORMAT,
-      endpoint: DEFAULT_DOCS_CONFIG_ROUTE,
+      endpoint: apiQueryRoute("format=config"),
     },
     markdown: {
       enabled: true,
@@ -3278,7 +3635,7 @@ export function buildDocsAgentDiscoverySpec({
         markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
-      apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
+      apiPattern: apiQueryRoute("format=markdown&path={slug}"),
       resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     },
     agentContract: {
@@ -3296,8 +3653,8 @@ export function buildDocsAgentDiscoverySpec({
       enabled: llmsEnabled,
       defaultTxt: DEFAULT_LLMS_TXT_ROUTE,
       defaultFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
-      txt: `${DEFAULT_DOCS_API_ROUTE}?format=llms`,
-      full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
+      txt: apiQueryRoute("format=llms"),
+      full: apiQueryRoute("format=llms-full"),
       publicTxt: DEFAULT_LLMS_TXT_ROUTE,
       publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
@@ -3319,7 +3676,7 @@ export function buildDocsAgentDiscoverySpec({
       xml: {
         enabled: sitemapConfig.xml.enabled,
         route: sitemapConfig.xml.route,
-        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-xml`,
+        api: apiQueryRoute("format=sitemap-xml"),
         defaultRoute: DEFAULT_SITEMAP_XML_ROUTE,
       },
       markdown: {
@@ -3327,7 +3684,7 @@ export function buildDocsAgentDiscoverySpec({
         route: sitemapConfig.markdown.route,
         docsRoute: sitemapConfig.markdown.docsRoute,
         wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
-        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
+        api: apiQueryRoute("format=sitemap-md"),
         defaultRoute: DEFAULT_SITEMAP_MD_ROUTE,
         defaultDocsRoute: DEFAULT_SITEMAP_MD_DOCS_ROUTE,
         defaultWellKnownRoute: DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
@@ -3349,7 +3706,7 @@ export function buildDocsAgentDiscoverySpec({
     },
     openapi: {
       enabled: openapiConfig.enabled,
-      url: openapiConfig.url ?? null,
+      url: openapiUrl ?? null,
       source: openapiConfig.source ?? null,
       specUrl: openapiConfig.specUrl ?? null,
       apiReferencePath: openapiConfig.apiReferencePath ?? null,
@@ -3357,7 +3714,7 @@ export function buildDocsAgentDiscoverySpec({
     },
     search: {
       enabled: searchEnabled,
-      endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+      endpoint: apiQueryRoute("query={query}"),
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
@@ -3367,7 +3724,7 @@ export function buildDocsAgentDiscoverySpec({
       file: "AGENTS.md",
       route: DEFAULT_AGENTS_MD_ROUTE,
       wellKnown: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
-      api: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      api: apiQueryRoute("format=agents"),
       generatedFallback: true,
       aliases: [DEFAULT_AGENT_MD_ROUTE, DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE],
     },
@@ -3376,10 +3733,18 @@ export function buildDocsAgentDiscoverySpec({
       file: "skill.md",
       route: DEFAULT_SKILL_MD_ROUTE,
       wellKnown: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
-      api: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+      api: apiQueryRoute("format=skill"),
       generatedFallback: true,
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
+      discovery: {
+        schema: AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+        index: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+        artifact: DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+        apiIndex: apiQueryRoute(`format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`),
+        apiArtifact: apiQueryRoute("format=agent-skill&name={name}"),
+        digest: "sha256",
+      },
       recommended: [
         {
           name: "getting-started",
@@ -3404,8 +3769,8 @@ export function buildDocsAgentDiscoverySpec({
       enabled: feedback?.enabled ?? false,
       schema: feedbackSchemaRoute,
       submit: feedbackRoute,
-      schemaQuery: `${DEFAULT_DOCS_API_ROUTE}?feedback=agent&schema=1`,
-      submitQuery: `${DEFAULT_DOCS_API_ROUTE}?feedback=agent`,
+      schemaQuery: apiQueryRoute("feedback=agent&schema=1"),
+      submitQuery: apiQueryRoute("feedback=agent"),
     },
     instructions: {
       preferMarkdownRoutes: true,
@@ -3496,6 +3861,7 @@ export function resolveDocsOpenApiDiscoveryConfig(
     return {
       enabled: true,
       url: DEFAULT_OPENAPI_SCHEMA_ROUTE,
+      urlSource: "default",
       source: "generated",
     };
   }
@@ -3505,10 +3871,20 @@ export function resolveDocsOpenApiDiscoveryConfig(
   return {
     enabled: true,
     url: openapi.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE,
+    urlSource: openapi.urlSource ?? (openapi.url === undefined ? "default" : "configured"),
     source: openapi.source ?? "generated",
     specUrl: openapi.specUrl,
     apiReferencePath: openapi.apiReferencePath,
   };
+}
+
+function resolveDocsOpenApiDiscoveryUrl(
+  openapi: DocsOpenApiResolvedDiscoveryConfig,
+  apiRoute: string,
+): string | undefined {
+  return openapi.urlSource === "default" && openapi.url === DEFAULT_OPENAPI_SCHEMA_ROUTE
+    ? `${apiRoute}?format=openapi`
+    : openapi.url;
 }
 
 function compactSkillText(value: string): string {

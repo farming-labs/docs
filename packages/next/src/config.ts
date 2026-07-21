@@ -36,6 +36,9 @@ import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_API_CATALOG_ROUTE,
 } from "@farming-labs/docs";
 import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
 import matter from "gray-matter";
@@ -108,7 +111,7 @@ const docsCloud = createDocsCloudServer({
   config: docsConfig,
 });
 
-export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
+export const { GET, HEAD, POST } = createDocsAPI(docsConfig, docsCloud);
 
 export const revalidate = false;
 `;
@@ -1639,6 +1642,23 @@ function buildAgentSpecRewrites(): NextRewrite[] {
   ];
 }
 
+function buildStandardsDiscoveryRewrites(): NextRewrite[] {
+  return [
+    {
+      source: DEFAULT_API_CATALOG_ROUTE,
+      destination: "/api/docs?format=api-catalog",
+    },
+    {
+      source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      destination: "/api/docs?format=agent-skills",
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+      destination: "/api/docs?format=agent-skill&name=:name",
+    },
+  ];
+}
+
 function buildLlmsTxtRewrites(entry: string, docsPath: string): NextRewrite[] {
   const normalizedEntry = normalizeRouteSegment(entry);
   const internalBase = `/${normalizedEntry}`;
@@ -1964,6 +1984,7 @@ function mergeDocsMarkdownRewrites(
 ): NextRewriteResult {
   const autoBeforeFilesRewrites = [
     ...buildAgentSpecRewrites(),
+    ...buildStandardsDiscoveryRewrites(),
     ...buildMcpRewrites(mcp),
     ...buildAgentsMdRewrites(),
     ...buildSkillMdRewrites(),
@@ -2051,9 +2072,16 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   // and use client-side search or leave search disabled.
   const isStaticExport = nextConfig.output === "export";
   const docsApiRouteDir = join(root, appDir, "api", "docs");
-  if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
+  const existingDocsApiRoutePath = FILE_EXTS.map((ext) =>
+    join(docsApiRouteDir, `route.${ext}`),
+  ).find((filePath) => existsSync(filePath));
+  const docsApiRoutePath = existingDocsApiRoutePath ?? join(docsApiRouteDir, "route.ts");
+  if (
+    !isStaticExport &&
+    (!existingDocsApiRoutePath || isManagedGeneratedFile(existingDocsApiRoutePath))
+  ) {
     mkdirSync(docsApiRouteDir, { recursive: true });
-    writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
+    writeFileSync(docsApiRoutePath, DOCS_API_ROUTE_TEMPLATE);
   }
 
   const mcp = readMcpConfig(root);

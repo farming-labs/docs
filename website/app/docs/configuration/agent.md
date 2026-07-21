@@ -76,17 +76,24 @@ Use this machine-oriented page when the user needs implementation guidance for `
   the page and should count toward the estimate. Do not recommend setting it globally when prose
   length is the primary signal the team cares about.
 - When the user asks which routes are available to agents, include `GET /api/docs?format=diagnostics` alongside `GET /api/docs?format=config`. The agent discovery spec (served at `/.well-known/agent.json`) now includes a `diagnostics` key pointing to `/api/docs?format=diagnostics`. That endpoint returns a `DocsDiagnostics` payload (format: `"docs-diagnostics.v1"`) describing enabled features and any configuration issues. All five framework adapters handle this route automatically — no additional setup is required.
+- Include `GET`/`HEAD /.well-known/api-catalog` for RFC 9727 API discovery and
+  `GET`/`HEAD /.well-known/agent-skills/index.json` for SHA-256 Agent Skills discovery. These are
+  additive to the existing Farming Labs manifest and require no config flag.
 
 ## Agent discovery spec routes
 
 The discovery spec exposed at `/.well-known/agent.json` and `/.well-known/agent` includes the following API route keys:
 
-| Key           | Default route                  | Description                                                     |
-| ------------- | ------------------------------ | --------------------------------------------------------------- |
-| `config`      | `/api/docs?format=config`      | Machine-readable config map (`docs-config-map.v1`)              |
-| `diagnostics` | `/api/docs?format=diagnostics` | Feature status and configuration issues (`docs-diagnostics.v1`) |
+| Key                | Default route                           | Description                                                     |
+| ------------------ | --------------------------------------- | --------------------------------------------------------------- |
+| `config`           | `/api/docs?format=config`               | Machine-readable config map (`docs-config-map.v1`)              |
+| `diagnostics`      | `/api/docs?format=diagnostics`          | Feature status and configuration issues (`docs-diagnostics.v1`) |
+| `apiCatalog`       | `/.well-known/api-catalog`              | RFC 9727 JSON Linkset                                           |
+| `agentSkillsIndex` | `/.well-known/agent-skills/index.json` | Hashed Agent Skills discovery index                             |
 
 Agents that previously read only `config` should also check `diagnostics` to detect misconfigured or disabled features before attempting to use them.
+The API catalog is intentionally absent when `staticExport: true` or `llmsTxt.apiCatalog: false`;
+Agent Skills discovery remains available in both cases.
 
 ## Framework notes
 

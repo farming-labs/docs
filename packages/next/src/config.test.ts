@@ -14,6 +14,9 @@ import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_API_CATALOG_ROUTE,
 } from "@farming-labs/docs";
 import { withDocs } from "./config.js";
 
@@ -251,6 +254,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
       "createDocsAPI(docsConfig, docsCloud)",
     );
+    expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
+      "export const { GET, HEAD, POST }",
+    );
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(false);
   });
@@ -265,6 +271,39 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(true);
     expect(existsSync(join(tmpDir, "src/app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(false);
+  });
+
+  it("upgrades an existing managed docs API route to export HEAD", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+    const routePath = join(tmpDir, "app/api/docs/route.ts");
+    const previousManagedRoute = readFileSync(routePath, "utf-8").replace(
+      "export const { GET, HEAD, POST }",
+      "export const { GET, POST }",
+    );
+    writeFileSync(routePath, previousManagedRoute, "utf-8");
+
+    withDocs({});
+
+    expect(readFileSync(routePath, "utf-8")).toContain("export const { GET, HEAD, POST }");
+  });
+
+  it("preserves a user-customized docs API route while upgrading generated files", () => {
+    const routeDir = join(tmpDir, "app/api/docs");
+    const routePath = join(routeDir, "route.ts");
+    const customRoute = `export function GET() {
+  return new Response("custom");
+}
+`;
+    mkdirSync(routeDir, { recursive: true });
+    writeFileSync(routePath, customRoute, "utf-8");
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(readFileSync(routePath, "utf-8")).toBe(customRoute);
   });
 
   it("prefers src/app when both app and src/app exist", () => {
@@ -357,6 +396,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/agent.json",
           destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_API_CATALOG_ROUTE,
+          destination: "/api/docs?format=api-catalog",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=agent-skills",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+          destination: "/api/docs?format=agent-skill&name=:name",
         }),
         expect.objectContaining({
           source: "/mcp",
@@ -1309,6 +1360,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/agent.json",
           destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_API_CATALOG_ROUTE,
+          destination: "/api/docs?format=api-catalog",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=agent-skills",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+          destination: "/api/docs?format=agent-skill&name=:name",
         }),
         expect.objectContaining({
           source: "/mcp",

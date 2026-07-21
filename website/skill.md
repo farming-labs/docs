@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Use the Farming Labs docs website through agent discovery, AGENTS.md, markdown routes, search, llms.txt, OpenAPI schema discovery, and MCP.
+description: Use the Farming Labs docs website through standards discovery, AGENTS.md, markdown routes, search, llms.txt, OpenAPI schema discovery, and MCP.
 ---
 
 # Farming Labs Docs Website Skill
@@ -10,6 +10,8 @@ Use this skill when reading or implementing from the hosted Farming Labs docs we
 ## Start Here
 
 - Fetch `/.well-known/agent.json` first.
+- Use `/.well-known/api-catalog` for RFC 9727 API discovery.
+- Use `/.well-known/agent-skills/index.json` to discover the site skill and verify its SHA-256 digest.
 - Fetch `/AGENTS.md` for coding-agent operating instructions.
 - Read `/docs.md` for the root docs page.
 - Read `/docs/{slug}.md` for page-specific markdown.

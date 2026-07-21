@@ -32,6 +32,7 @@ export interface ResolvedApiReferenceConfig {
 export interface ApiReferenceOpenApiDiscovery {
   enabled: boolean;
   url?: string;
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
@@ -120,6 +121,7 @@ export function resolveApiReferenceOpenApiDiscovery(
   return {
     enabled: true,
     url: options.route ?? DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+    urlSource: options.route === undefined ? "default" : "configured",
     source: config.specUrl ? "configured" : "generated",
     specUrl: config.specUrl,
     apiReferencePath: `/${config.path}`,

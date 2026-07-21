@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdtempSync,
@@ -34,7 +35,9 @@ describe("agent export cli", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  function writeProject(options: { staticExport?: boolean; llms?: boolean } = {}) {
+  function writeProject(
+    options: { staticExport?: boolean; llms?: boolean; apiRoute?: string } = {},
+  ) {
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
       `export default {
@@ -43,6 +46,7 @@ describe("agent export cli", () => {
   staticExport: ${options.staticExport ?? true},
   nav: { title: "Example Docs" },
   metadata: { description: "Documentation for Example." },
+  ${options.apiRoute ? `cloud: { apiRoute: ${JSON.stringify(options.apiRoute)} },` : ""}
   llmsTxt: ${
     options.llms === false
       ? "false"
@@ -124,7 +128,7 @@ pnpm add example
   });
 
   it("exports a complete deterministic bundle and validates it", async () => {
-    writeProject();
+    writeProject({ apiRoute: " api//internal/docs/ " });
     writeFileSync(
       path.join(tmpDir, "AGENTS.md"),
       "# Private repository instructions\n\nNever publish this token: private-value.\n",
@@ -160,6 +164,51 @@ pnpm add example
     expect(discovery.staticBundle.manifest).toBe("/.well-known/agent-bundle.json");
     expect(discovery.capabilities.mcp).toBe(false);
     expect(discovery.capabilities.search).toBe(false);
+    expect(discovery.capabilities.apiCatalog).toBe(false);
+    expect(discovery.apiCatalog).toMatchObject({
+      enabled: false,
+      route: null,
+      api: null,
+    });
+    expect(discovery.api).not.toHaveProperty("apiCatalog");
+    expect(discovery.api).not.toHaveProperty("apiCatalogQuery");
+    expect(discovery.api.docs).toBe("/api/internal/docs");
+    expect(discovery.api.agentSpec).toBe("/api/internal/docs?agent=spec");
+    expect(discovery.skills.discovery.apiIndex).toBe("/api/internal/docs?format=agent-skills");
+
+    const skillsIndex = JSON.parse(
+      readFileSync(
+        path.join(tmpDir, "public", ".well-known", "agent-skills", "index.json"),
+        "utf-8",
+      ),
+    );
+    expect(skillsIndex.$schema).toBe("https://schemas.agentskills.io/discovery/0.2.0/schema.json");
+    expect(skillsIndex.skills).toHaveLength(1);
+    const publishedSkillPath = path.join(
+      tmpDir,
+      "public",
+      ".well-known",
+      "agent-skills",
+      skillsIndex.skills[0].name,
+      "SKILL.md",
+    );
+    const publishedSkill = readFileSync(publishedSkillPath, "utf-8");
+    expect(skillsIndex.skills[0].digest).toBe(
+      `sha256:${createHash("sha256").update(publishedSkill, "utf8").digest("hex")}`,
+    );
+    expect(existsSync(path.join(tmpDir, "public", ".well-known", "api-catalog"))).toBe(false);
+    expect(readFileSync(path.join(tmpDir, "public", "llms.txt"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
+    );
+    expect(readFileSync(path.join(tmpDir, "public", "skill.md"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
+    );
+    expect(readFileSync(path.join(tmpDir, "public", "AGENTS.md"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
+    );
+    expect(readFileSync(path.join(tmpDir, "public", "robots.txt"), "utf-8")).not.toContain(
+      "Allow: /.well-known/api-catalog",
+    );
 
     expect(existsSync(path.join(tmpDir, "public", "skills", "docs", "SKILL.md"))).toBe(true);
     expect(existsSync(path.join(tmpDir, "public", "sitemap.xml"))).toBe(true);
@@ -241,6 +290,37 @@ pnpm add example
       openapi: false,
       agentFeedback: false,
     });
+  });
+
+  it("publishes hashed skills without inventing an RFC catalog or relative llms link", async () => {
+    writeProject();
+    const configPath = path.join(tmpDir, "docs.config.ts");
+    writeFileSync(
+      configPath,
+      readFileSync(configPath, "utf-8")
+        .replace('    baseUrl: "https://docs.example.com",\n', "")
+        .replace(
+          'sitemap: { enabled: true, baseUrl: "https://docs.example.com" },',
+          "sitemap: true,",
+        ),
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+
+    expect(
+      existsSync(path.join(tmpDir, "public", ".well-known", "agent-skills", "index.json")),
+    ).toBe(true);
+    expect(existsSync(path.join(tmpDir, "public", ".well-known", "api-catalog"))).toBe(false);
+    const discovery = JSON.parse(
+      readFileSync(path.join(tmpDir, "public", ".well-known", "agent.json"), "utf-8"),
+    );
+    expect(discovery.capabilities.apiCatalog).toBe(false);
+    expect(discovery.apiCatalog.enabled).toBe(false);
+    expect(readFileSync(path.join(tmpDir, "public", "llms.txt"), "utf-8")).not.toContain(
+      "/.well-known/api-catalog",
+    );
   });
 
   it("preserves native public page and llms overrides", async () => {

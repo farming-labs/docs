@@ -37,6 +37,7 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
+  createDocsStandardsDiscoveryResponse,
   createDocsMarkdownResponse,
   createDocsRobotsResponse,
   createDocsSitemapResponse,
@@ -49,11 +50,13 @@ import {
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
+  getDocsDiscoveryLinkHeader,
   isDocsAgentDiscoveryRequest,
   isDocsAgentsRequest,
   isDocsConfigRequest,
   isDocsDiagnosticsRequest,
   isDocsSkillRequest,
+  isDocsStandardsDiscoveryRequest,
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
   parseDocsAgentFeedbackData,
@@ -75,6 +78,7 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsMetadataBaseUrl,
+  resolveDocsRequestApiRoute,
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
@@ -115,6 +119,7 @@ function resolveApiReferenceOpenApiDiscovery(value: unknown) {
   return {
     enabled: true,
     url: "/api/docs?format=openapi",
+    urlSource: "default" as const,
     source: apiReference.specUrl ? ("configured" as const) : ("generated" as const),
     specUrl: apiReference.specUrl,
     apiReferencePath: `/${apiReference.path}`,
@@ -877,6 +882,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     | boolean
     | {
         enabled?: boolean;
+        apiCatalog?: boolean;
         baseUrl?: string;
         siteTitle?: string;
         siteDescription?: string;
@@ -898,6 +904,14 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const llmsEnabled =
     llmsTxtConfig !== false &&
     !(llmsTxtConfig && typeof llmsTxtConfig === "object" && llmsTxtConfig.enabled === false);
+  const apiCatalogEnabled = typeof llmsTxtConfig !== "object" || llmsTxtConfig.apiCatalog !== false;
+  const configuredApiRoute =
+    typeof config.cloud?.apiRoute === "string" && config.cloud.apiRoute.trim()
+      ? config.cloud.apiRoute
+      : undefined;
+  const discoveryLinkHeader = getDocsDiscoveryLinkHeader({
+    includeApiCatalog: apiCatalogEnabled,
+  });
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(
     (config as Record<string, unknown>).apiReference as any,
   );
@@ -916,7 +930,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     schemaRoute: "/api/docs?feedback=agent&schema=1",
   };
 
-  const llmsCache = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
+  const llmsCache = new Map<
+    string | undefined,
+    { apiRoute: string; content: ReturnType<typeof renderDocsLlmsTxt> }
+  >();
 
   function trackTelemetryRequest(request: Request) {
     emitDocsTelemetryProjectEvent(config, {
@@ -939,20 +956,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     });
   }
 
-  function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>) {
-    const key = ctx.locale ?? "__default__";
-    const cached = llmsCache.get(key);
-    if (cached) return cached;
+  function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>, apiRoute: string) {
+    const cached = llmsCache.get(ctx.locale);
+    if (cached?.apiRoute === apiRoute) return cached.content;
 
     const next = renderDocsLlmsTxt(getSearchIndex(ctx), {
       siteTitle: llmsTitle,
       siteDescription: llmsDesc,
       baseUrl: llmsBaseUrl,
+      apiRoute,
       maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
       sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
       openapi: openapiDiscovery,
+      apiCatalog: apiCatalogEnabled,
     } as any);
-    llmsCache.set(key, next);
+    llmsCache.set(ctx.locale, { apiRoute, content: next });
     return next;
   }
 
@@ -980,6 +998,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   async function GET(event: RequestEvent): Promise<Response> {
     trackTelemetryRequest(event.request);
     const ctx = resolveContextFromRequest(event.request);
+    const requestApiRoute = resolveDocsRequestApiRoute(event.url, configuredApiRoute);
 
     if (isDocsConfigRequest(event.url)) {
       return new Response(JSON.stringify(buildDocsConfigMap(config as any), null, 2), {
@@ -997,6 +1016,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           buildDocsDiagnostics(config as any, {
             adapter: "sveltekit",
             entry,
+            apiRoute: requestApiRoute,
             i18n,
             mcp: mcpConfig,
             feedback: agentFeedbackDiscovery,
@@ -1015,42 +1035,52 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       );
     }
 
-    if (isDocsAgentDiscoveryRequest(event.url)) {
-      return new Response(
-        JSON.stringify(
-          buildDocsAgentDiscoverySpec({
-            origin: event.url.origin,
-            entry,
-            i18n,
-            search: config.search,
-            mcp: mcpConfig,
-            feedback: agentFeedbackDiscovery,
-            llms: {
-              enabled: llmsEnabled,
-              baseUrl: llmsBaseUrl || undefined,
-              siteTitle: llmsTitle,
-              siteDescription: llmsDesc,
-              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
-              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-            },
-            sitemap: config.sitemap,
-            robots: config.robots,
-            openapi: openapiDiscovery,
-            markdown: {
-              acceptHeader: false,
-            },
-          } as any),
-          null,
-          2,
-        ),
-        {
-          headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "public, max-age=0, s-maxage=3600",
-            "X-Robots-Tag": "noindex",
-          },
+    const discoveryApiRoute = requestApiRoute;
+    const discoveryOptions = {
+      origin: event.url.origin,
+      entry,
+      apiRoute: discoveryApiRoute,
+      docsPath: config.docsPath,
+      apiCatalog: apiCatalogEnabled,
+      i18n,
+      search: config.search,
+      mcp: mcpConfig,
+      feedback: agentFeedbackDiscovery,
+      llms: {
+        enabled: llmsEnabled,
+        apiCatalog: apiCatalogEnabled,
+        baseUrl: llmsBaseUrl || undefined,
+        siteTitle: llmsTitle,
+        siteDescription: llmsDesc,
+        maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+        sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+      },
+      sitemap: config.sitemap,
+      robots: config.robots,
+      openapi: openapiDiscovery,
+      markdown: {
+        acceptHeader: false,
+      },
+    } as any;
+    if (isDocsStandardsDiscoveryRequest(event.url, { apiRoute: discoveryApiRoute })) {
+      const standardsDiscoveryResponse = await createDocsStandardsDiscoveryResponse({
+        request: event.request,
+        ...discoveryOptions,
+        preferredSkillDocument: readRootSkillDocument(preloaded, rootDir),
+        fallbackSkillDocument: renderDocsSkillDocument(discoveryOptions),
+      });
+      if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
+    }
+
+    if (isDocsAgentDiscoveryRequest(event.url, { apiRoute: discoveryApiRoute })) {
+      return new Response(JSON.stringify(buildDocsAgentDiscoverySpec(discoveryOptions), null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+          Link: discoveryLinkHeader,
         },
-      );
+      });
     }
 
     if (isApiReferenceOpenApiRequest(event.url)) {
@@ -1100,69 +1130,35 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
-    if (isDocsAgentsRequest(event.url) || resolveDocsAgentsFormat(event.url) === "agents") {
+    if (
+      isDocsAgentsRequest(event.url, { apiRoute: discoveryApiRoute }) ||
+      resolveDocsAgentsFormat(event.url) === "agents"
+    ) {
       return new Response(
-        readRootAgentsDocument(preloaded, rootDir) ??
-          renderDocsAgentsDocument({
-            origin: event.url.origin,
-            entry,
-            search: config.search,
-            mcp: mcpConfig,
-            feedback: agentFeedbackDiscovery,
-            llms: {
-              enabled: llmsEnabled,
-              baseUrl: llmsBaseUrl || undefined,
-              siteTitle: llmsTitle,
-              siteDescription: llmsDesc,
-              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
-              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-            },
-            sitemap: config.sitemap,
-            robots: config.robots,
-            openapi: openapiDiscovery,
-            markdown: {
-              acceptHeader: false,
-            },
-          } as any),
+        readRootAgentsDocument(preloaded, rootDir) ?? renderDocsAgentsDocument(discoveryOptions),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
+            Link: discoveryLinkHeader,
           },
         },
       );
     }
 
-    if (isDocsSkillRequest(event.url) || resolveDocsSkillFormat(event.url) === "skill") {
+    if (
+      isDocsSkillRequest(event.url, { apiRoute: discoveryApiRoute }) ||
+      resolveDocsSkillFormat(event.url) === "skill"
+    ) {
       return new Response(
-        readRootSkillDocument(preloaded, rootDir) ??
-          renderDocsSkillDocument({
-            origin: event.url.origin,
-            entry,
-            search: config.search,
-            mcp: mcpConfig,
-            feedback: agentFeedbackDiscovery,
-            llms: {
-              enabled: llmsEnabled,
-              baseUrl: llmsBaseUrl || undefined,
-              siteTitle: llmsTitle,
-              siteDescription: llmsDesc,
-              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
-              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-            },
-            sitemap: config.sitemap,
-            robots: config.robots,
-            openapi: openapiDiscovery,
-            markdown: {
-              acceptHeader: false,
-            },
-          } as any),
+        readRootSkillDocument(preloaded, rootDir) ?? renderDocsSkillDocument(discoveryOptions),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
+            Link: discoveryLinkHeader,
           },
         },
       );
@@ -1170,6 +1166,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const sitemapResponse = createDocsSitemapResponse({
       request: event.request,
+      apiRoute: discoveryApiRoute,
       sitemap: config.sitemap,
       entry,
       siteTitle: llmsTitle,
@@ -1182,13 +1179,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const robotsResponse = createDocsRobotsResponse({
       request: event.request,
       entry,
+      apiCatalog: apiCatalogEnabled,
       sitemap: config.sitemap,
       baseUrl: llmsBaseUrl || event.url.origin,
       robots: config.robots,
     });
     if (robotsResponse) return robotsResponse;
 
-    const markdownRequest = resolveDocsMarkdownRequest(entry, event.url, event.request);
+    const markdownRequest = resolveDocsMarkdownRequest(entry, event.url, event.request, {
+      apiRoute: discoveryApiRoute,
+    });
     if (markdownRequest) {
       const markdownOrigin = markdownMetadataBaseUrl || event.url.origin;
       const representation = getMarkdownRepresentation(
@@ -1198,6 +1198,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       );
       return createDocsMarkdownResponse({
         request: event.request,
+        apiRoute: discoveryApiRoute,
         document: representation?.document ?? null,
         entry,
         requestedPath: markdownRequest.requestedPath,
@@ -1209,7 +1210,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
-    const llmsRequest = resolveDocsLlmsTxtRequest(event.url, llmsTxtConfig, entry);
+    const llmsRequest = resolveDocsLlmsTxtRequest(event.url, llmsTxtConfig, entry, {
+      apiRoute: discoveryApiRoute,
+    });
     if (llmsRequest) {
       if (!llmsEnabled) {
         return new Response("Not Found", {
@@ -1221,7 +1224,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         });
       }
 
-      const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx), llmsRequest);
+      const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx, requestApiRoute), llmsRequest);
       if (!selected) {
         return new Response("Not Found", {
           status: 404,
