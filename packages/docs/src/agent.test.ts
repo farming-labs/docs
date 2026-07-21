@@ -87,6 +87,12 @@ describe("agent route helpers", () => {
       ),
     ).toBe("/api/configured/docs");
     expect(
+      resolveDocsRequestApiRoute(
+        new URL("https://example.com/.well-known/api-catalog?format=diagnostics"),
+        "/api/configured/docs",
+      ),
+    ).toBe("/api/configured/docs");
+    expect(
       isDocsStandardsDiscoveryRequest(new URL("https://example.com/.well-known/api-catalog")),
     ).toBe(true);
     expect(
@@ -1939,7 +1945,11 @@ After`;
         },
       },
       feedback: { enabled: true },
-      openapi: true,
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        urlSource: "default",
+      },
     } as const;
     const spec = buildDocsAgentDiscoverySpec(options);
 
@@ -1986,6 +1996,68 @@ After`;
     expect(generatedSkill).toContain("/api/internal/docs?format=skill");
     expect(generatedSkill).toContain("/api/internal/docs?format=openapi");
     expect(generatedSkill).toContain("/api/internal/docs?agent=spec");
+
+    const generatedLlms = renderDocsLlmsTxt([], {
+      apiRoute: options.apiRoute,
+      openapi: options.openapi,
+    });
+    expect(generatedLlms.llmsTxt).toContain("/api/internal/docs?format=openapi");
+  });
+
+  it("preserves an explicitly configured default-looking OpenAPI URL", () => {
+    const explicitOpenApi = {
+      enabled: true,
+      url: "/api/docs?format=openapi",
+    } as const;
+    const options = {
+      origin: "https://docs.example.com",
+      apiRoute: "/api/internal/docs",
+      mcp: {
+        enabled: false,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: {
+          listDocs: true,
+          listPages: true,
+          readPage: true,
+          searchDocs: true,
+          getNavigation: true,
+          getCodeExamples: true,
+          getConfigSchema: true,
+          getContext: true,
+        },
+      },
+      openapi: explicitOpenApi,
+    } as const;
+
+    const spec = buildDocsAgentDiscoverySpec(options);
+    expect(spec.api.openapi).toBe("/api/internal/docs?format=openapi");
+    expect(spec.openapi.url).toBe("/api/docs?format=openapi");
+
+    const diagnostics = buildDocsDiagnostics(
+      {
+        cloud: { apiRoute: "/api/internal/docs" },
+        apiReference: true,
+      },
+      { openapi: explicitOpenApi },
+    );
+    expect(diagnostics.routes.openapi).toBe("/api/docs?format=openapi");
+    expect(diagnostics.features.apiReference).toMatchObject({
+      routes: { openapi: "/api/docs?format=openapi" },
+    });
+
+    for (const document of [renderDocsSkillDocument(options), renderDocsAgentsDocument(options)]) {
+      expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
+      expect(document).not.toContain("OpenAPI schema: /api/internal/docs?format=openapi");
+    }
+
+    const explicitLlms = renderDocsLlmsTxt([], {
+      apiRoute: options.apiRoute,
+      openapi: explicitOpenApi,
+    });
+    expect(explicitLlms.llmsTxt).toContain("/api/docs?format=openapi");
+    expect(explicitLlms.llmsTxt).not.toContain("/api/internal/docs?format=openapi");
   });
 
   it("advertises only task tools exposed by the resolved MCP config", () => {

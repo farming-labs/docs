@@ -3332,6 +3332,7 @@ description: "Start building quickly"
         config: { endpoint: string };
         markdown: { apiPattern: string };
         llms: { txt: string; full: string };
+        openapi: { enabled: boolean; url: string | null };
         skills: {
           api: string;
           discovery: { apiIndex: string; apiArtifact: string };
@@ -3396,6 +3397,10 @@ description: "Start building quickly"
       rootDir,
       entry: "docs",
       apiRoute: "api/internal/docs/",
+      apiReference: {
+        enabled: true,
+        path: "api-reference",
+      },
     });
     const wellKnownManifest = await parseManifest(
       await configured.GET(new Request("http://localhost/.well-known/agent.json")),
@@ -3405,12 +3410,18 @@ description: "Start building quickly"
     expect(wellKnownManifest.skills.discovery.apiIndex).toBe(
       "/api/internal/docs?format=agent-skills",
     );
+    expect(wellKnownManifest.openapi).toMatchObject({
+      enabled: true,
+      url: "/api/internal/docs?format=openapi",
+    });
 
     const configuredSkillWithLocale = await configured.GET(
       new Request("http://localhost/skill.md?lang=en"),
     );
     const configuredSkillWithLocaleText = await configuredSkillWithLocale.text();
     expect(configuredSkillWithLocaleText).toContain("/api/internal/docs?format=skill");
+    expect(configuredSkillWithLocaleText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredSkillWithLocaleText).not.toContain("/api/docs?format=openapi");
     expect(configuredSkillWithLocaleText).not.toContain("/skill.md?format=skill");
 
     const configuredAgents = await configured.GET(
@@ -3420,6 +3431,18 @@ description: "Start building quickly"
     expect(configuredAgentsText).toContain("/api/internal/docs?agent=spec");
     expect(configuredAgentsText).toContain("/api/internal/docs?query={query}");
     expect(configuredAgentsText).toContain("/api/internal/docs?format=skill");
+    expect(configuredAgentsText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredAgentsText).not.toContain("/api/docs?format=openapi");
+
+    const configuredLlms = await configured.GET(new Request("http://localhost/llms.txt"));
+    const configuredLlmsText = await configuredLlms.text();
+    expect(configuredLlmsText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredLlmsText).not.toContain("/api/docs?format=openapi");
+
+    const configuredOpenapi = await configured.GET(
+      new Request("http://localhost/api/internal/docs?format=openapi"),
+    );
+    expect(configuredOpenapi.status).toBe(200);
 
     const configuredDiagnostics = await configured.GET(
       new Request("http://localhost/api/internal/docs?format=diagnostics"),

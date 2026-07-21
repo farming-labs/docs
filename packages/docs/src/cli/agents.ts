@@ -188,6 +188,7 @@ function resolveOpenApiDiscovery(config?: DocsConfig) {
   return {
     enabled: true,
     url: DEFAULT_OPENAPI_SCHEMA_ROUTE,
+    urlSource: "default" as const,
     source: apiReference.specUrl ? ("configured" as const) : ("generated" as const),
     specUrl: apiReference.specUrl,
     apiReferencePath: `/${apiReference.path}`,

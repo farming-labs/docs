@@ -107,6 +107,7 @@ function resolveApiReferenceOpenApiDiscovery(value: unknown) {
   return {
     enabled: true,
     url: "/api/docs?format=openapi",
+    urlSource: "default" as const,
     source: apiReference.specUrl ? ("configured" as const) : ("generated" as const),
     specUrl: apiReference.specUrl,
     apiReferencePath: `/${apiReference.path}`,
@@ -881,6 +882,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     llmsTxtConfig !== false &&
     !(llmsTxtConfig && typeof llmsTxtConfig === "object" && llmsTxtConfig.enabled === false);
   const apiCatalogEnabled = typeof llmsTxtConfig !== "object" || llmsTxtConfig.apiCatalog !== false;
+  const configuredApiRoute =
+    typeof config.cloud?.apiRoute === "string" && config.cloud.apiRoute.trim()
+      ? config.cloud.apiRoute
+      : undefined;
   const discoveryLinkHeader = getDocsDiscoveryLinkHeader({
     includeApiCatalog: apiCatalogEnabled,
   });
@@ -934,6 +939,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       siteTitle: llmsTitle,
       siteDescription: llmsDesc,
       baseUrl: llmsBaseUrl,
+      apiRoute: configuredApiRoute,
       maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
       sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
       openapi: openapiDiscovery,
@@ -968,6 +974,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     trackTelemetryRequest(context.request);
     const ctx = resolveContextFromRequest(context.request);
     const url = new URL(context.request.url);
+    const requestApiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
 
     if (isDocsConfigRequest(url)) {
       return new Response(JSON.stringify(buildDocsConfigMap(config as any), null, 2), {
@@ -985,7 +992,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           buildDocsDiagnostics(config as any, {
             adapter: "nuxt",
             entry,
-            apiRoute: url.pathname,
+            apiRoute: requestApiRoute,
             i18n,
             mcp: mcpConfig,
             feedback: agentFeedbackDiscovery,
@@ -1004,11 +1011,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       );
     }
 
-    const configuredApiRoute =
-      typeof config.cloud?.apiRoute === "string" && config.cloud.apiRoute.trim()
-        ? config.cloud.apiRoute
-        : undefined;
-    const discoveryApiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
+    const discoveryApiRoute = requestApiRoute;
     const discoveryOptions = {
       origin: url.origin,
       entry,

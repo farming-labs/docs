@@ -458,6 +458,7 @@ function isApiReferenceOpenApiRequest(url: URL): boolean {
 function resolveApiReferenceOpenApiDiscovery(value: DocsConfig["apiReference"]): {
   enabled: boolean;
   url?: string;
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
@@ -468,6 +469,7 @@ function resolveApiReferenceOpenApiDiscovery(value: DocsConfig["apiReference"]):
   return {
     enabled: true,
     url: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
+    urlSource: "default",
     source: apiReference.specUrl ? "configured" : "generated",
     specUrl: apiReference.specUrl,
     apiReferencePath: `/${apiReference.path}`,
@@ -1971,7 +1973,7 @@ function renderSkillDocument({
   const agentSpecRoute =
     apiRoute === DEFAULT_DOCS_API_ROUTE ? DEFAULT_AGENT_SPEC_ROUTE : `${apiRoute}?agent=spec`;
   const openapiUrl =
-    openapi.url === `${DEFAULT_DOCS_API_ROUTE}?format=openapi`
+    openapi.urlSource === "default" && openapi.url === `${DEFAULT_DOCS_API_ROUTE}?format=openapi`
       ? `${apiRoute}?format=openapi`
       : openapi.url;
   const llmsSections = resolveDocsLlmsTxtSections(llms);
@@ -2098,8 +2100,8 @@ function renderSkillDocument({
     }
   }
 
-  if (openapi.enabled && openapi.url) {
-    lines.push(`- OpenAPI schema: ${openapi.url}`);
+  if (openapi.enabled && openapiUrl) {
+    lines.push(`- OpenAPI schema: ${openapiUrl}`);
     if (openapi.apiReferencePath) {
       lines.push(`- API reference: ${openapi.apiReferencePath}`);
     }
@@ -2157,7 +2159,7 @@ function renderAgentsDocument({
   const agentSpecRoute =
     apiRoute === DEFAULT_DOCS_API_ROUTE ? DEFAULT_AGENT_SPEC_ROUTE : `${apiRoute}?agent=spec`;
   const openapiUrl =
-    openapi.url === `${DEFAULT_DOCS_API_ROUTE}?format=openapi`
+    openapi.urlSource === "default" && openapi.url === `${DEFAULT_DOCS_API_ROUTE}?format=openapi`
       ? `${apiRoute}?format=openapi`
       : openapi.url;
   const llmsSections = resolveDocsLlmsTxtSections(llms);
@@ -2286,8 +2288,8 @@ function renderAgentsDocument({
     }
   }
 
-  if (openapi.enabled && openapi.url) {
-    lines.push(`- OpenAPI schema: ${openapi.url}`);
+  if (openapi.enabled && openapiUrl) {
+    lines.push(`- OpenAPI schema: ${openapiUrl}`);
     if (openapi.apiReferencePath) lines.push(`- API reference: ${openapi.apiReferencePath}`);
   }
 
@@ -4025,6 +4027,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       siteTitle: llmsConfig.siteTitle ?? "Documentation",
       siteDescription: llmsConfig.siteDescription,
       baseUrl: llmsConfig.baseUrl ?? "",
+      apiRoute: configuredApiRoute,
       maxChars: llmsConfig.maxChars,
       sections: llmsConfig.sections,
       apiCatalog: apiCatalogEnabled,

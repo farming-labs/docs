@@ -295,7 +295,7 @@ export interface DocsAgentFeedbackDiscoveryConfig {
   schemaRoute?: string;
 }
 
-export interface DocsLlmsDiscoveryConfig {
+export interface DocsLlmsDiscoveryConfig extends DocsDiscoveryApiRouteOptions {
   enabled?: boolean;
   /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
   apiCatalog?: boolean;
@@ -310,6 +310,8 @@ export interface DocsLlmsDiscoveryConfig {
 export interface DocsOpenApiDiscoveryConfig {
   enabled?: boolean;
   url?: string;
+  /** Whether `url` came from the framework default or explicit configuration. */
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
@@ -318,6 +320,8 @@ export interface DocsOpenApiDiscoveryConfig {
 export interface DocsOpenApiResolvedDiscoveryConfig {
   enabled: boolean;
   url?: string;
+  /** Whether `url` came from the framework default or explicit configuration. */
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
@@ -1881,6 +1885,10 @@ export function renderDocsLlmsTxt(
   const apiCatalogEnabled = options.apiCatalog ?? true;
   const sections = resolveDocsLlmsTxtSections(options);
   const openapi = resolveDocsOpenApiDiscoveryConfig(options.openapi);
+  const openapiUrl = resolveDocsOpenApiDiscoveryUrl(
+    openapi,
+    resolveDocsDiscoveryApiRoute(options.apiRoute),
+  );
   const matchedPageUrls = new Set<string>();
 
   const generatedSections = sections.map((section) => {
@@ -1927,11 +1935,11 @@ export function renderDocsLlmsTxt(
     }
     llmsTxt += "\n";
   }
-  if (openapi.enabled && openapi.url) {
+  if (openapi.enabled && openapiUrl) {
     llmsTxt += "## API Schemas\n\n";
     llmsTxt += `- [OpenAPI schema](${resolveDocsResourceUrl(
       baseUrl,
-      openapi.url,
+      openapiUrl,
     )}): Machine-readable API schema for tool use and API clients`;
     if (openapi.apiReferencePath) {
       llmsTxt += `; rendered API reference at ${resolveDocsResourceUrl(
@@ -3858,6 +3866,7 @@ export function resolveDocsOpenApiDiscoveryConfig(
     return {
       enabled: true,
       url: DEFAULT_OPENAPI_SCHEMA_ROUTE,
+      urlSource: "default",
       source: "generated",
     };
   }
@@ -3867,6 +3876,7 @@ export function resolveDocsOpenApiDiscoveryConfig(
   return {
     enabled: true,
     url: openapi.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE,
+    urlSource: openapi.urlSource ?? (openapi.url === undefined ? "default" : "configured"),
     source: openapi.source ?? "generated",
     specUrl: openapi.specUrl,
     apiReferencePath: openapi.apiReferencePath,
@@ -3877,7 +3887,9 @@ function resolveDocsOpenApiDiscoveryUrl(
   openapi: DocsOpenApiResolvedDiscoveryConfig,
   apiRoute: string,
 ): string | undefined {
-  return openapi.url === DEFAULT_OPENAPI_SCHEMA_ROUTE ? `${apiRoute}?format=openapi` : openapi.url;
+  return openapi.urlSource === "default" && openapi.url === DEFAULT_OPENAPI_SCHEMA_ROUTE
+    ? `${apiRoute}?format=openapi`
+    : openapi.url;
 }
 
 function compactSkillText(value: string): string {

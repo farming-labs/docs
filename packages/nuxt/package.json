@@ -45,7 +45,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "pnpm run build && node --test test/*.test.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -57,7 +58,8 @@
   "devDependencies": {
     "@farming-labs/docs": "workspace:*",
     "@types/node": "^22.10.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
   },
   "peerDependencies": {
     "@farming-labs/docs": "*"
