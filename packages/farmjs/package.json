@@ -1,0 +1,47 @@
+{
+  "name": "@farming-labs/farmjs",
+  "version": "0.2.58",
+  "description": "Farm.js adapter for @farming-labs/docs",
+  "keywords": [
+    "docs",
+    "documentation",
+    "farmjs",
+    "farm-js",
+    "react"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js",
+      "default": "./dist/config.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
+  },
+  "peerDependencies": {
+    "@farming-labs/docs": "*"
+  }
+}
