@@ -3703,7 +3703,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   // Read AI config from docs.config if not explicitly provided
   const aiConfig: AIOptions = options?.ai ?? readAIConfig(root);
   const cloudConfig = options?.cloud ?? readCloudConfig(root);
-  const configuredApiRoute = normalizeDocsApiRoute(options?.apiRoute ?? cloudConfig?.apiRoute);
+  const configuredApiRouteInput = options?.apiRoute ?? cloudConfig?.apiRoute;
+  const configuredApiRoute = normalizeDocsApiRoute(configuredApiRouteInput);
   const effectiveCloudConfig =
     options?.apiRoute !== undefined || cloudConfig?.apiRoute !== undefined
       ? { ...cloudConfig, apiRoute: configuredApiRoute }
@@ -4038,7 +4039,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   async function resolveStandardsResponse(request: Request, url: URL): Promise<Response | null> {
-    const apiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
+    const apiRoute = resolveDocsRequestApiRoute(url, configuredApiRouteInput);
     const resolved = resolveDocsStandardsDiscoveryRequest(url, { apiRoute });
     if (!resolved) return null;
 
@@ -4095,7 +4096,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const url = new URL(request.url);
       const requestMethod = request.method.toUpperCase();
       const isHeadRequest = requestMethod === "HEAD";
-      const requestApiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
+      const requestApiRoute = resolveDocsRequestApiRoute(url, configuredApiRouteInput);
       const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       if (isDocsConfigRequest(url)) {
         return Response.json(buildDocsConfigMap(docsConfigMapInput), {

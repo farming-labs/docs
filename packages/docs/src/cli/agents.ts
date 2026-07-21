@@ -120,6 +120,12 @@ function readSitemapBaseUrlFromConfig(content: string, config?: DocsConfig): str
   return block ? readStringProperty(block, "baseUrl") : undefined;
 }
 
+function readCloudApiRouteFromConfig(content: string, config?: DocsConfig): string | undefined {
+  if (typeof config?.cloud?.apiRoute === "string") return config.cloud.apiRoute;
+  const block = extractNestedObjectLiteral(content, ["cloud"]);
+  return block ? readStringProperty(block, "apiRoute") : undefined;
+}
+
 function readRobotsConfigFromStatic(content: string): boolean | { enabled?: boolean } | undefined {
   const topLevelBoolean = readTopLevelBooleanProperty(content, "robots");
   if (typeof topLevelBoolean === "boolean") return topLevelBoolean;
@@ -212,6 +218,7 @@ export async function generateAgents(options: AgentsGenerateOptions = {}): Promi
   const baseUrl =
     readLlmsBaseUrlFromConfig(configContent, config) ??
     readSitemapBaseUrlFromConfig(configContent, config);
+  const apiRoute = readCloudApiRouteFromConfig(configContent, config);
   const llmsTxt = config?.llmsTxt;
   const llmsEnabled =
     llmsTxt === false ? false : typeof llmsTxt === "object" ? (llmsTxt.enabled ?? true) : true;
@@ -222,6 +229,7 @@ export async function generateAgents(options: AgentsGenerateOptions = {}): Promi
     renderDocsAgentsDocument({
       origin: baseUrl ?? "http://localhost",
       entry,
+      apiRoute,
       search: config?.search,
       mcp: resolveDocsMcpConfig(config?.mcp),
       feedback: resolveDocsAgentFeedbackConfig(config?.feedback),

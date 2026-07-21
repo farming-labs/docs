@@ -682,9 +682,12 @@ export function isDocsDiagnosticsRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "diagnostics";
 }
 
-/** Resolve the API route represented by a request without mistaking queried public resources for it. */
+/** Prefer an explicitly configured API route; otherwise infer a query-form route from the request. */
 export function resolveDocsRequestApiRoute(url: URL, configuredApiRoute?: string): string {
-  const fallback = resolveDocsDiscoveryApiRoute(configuredApiRoute);
+  const configured = configuredApiRoute?.trim();
+  if (configured) return resolveDocsDiscoveryApiRoute(configured);
+
+  const fallback = resolveDocsDiscoveryApiRoute();
   const pathname = normalizeDocsUrlPath(url.pathname);
   const isPublicDiscoveryPath =
     pathname.startsWith("/.well-known/") ||

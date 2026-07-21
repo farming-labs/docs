@@ -3454,6 +3454,22 @@ description: "Start building quickly"
       },
     });
 
+    for (const publicPath of [
+      "/docs/api/llms.txt",
+      "/docs-map/sitemap.md",
+      "/docs/installation.md",
+    ]) {
+      const publicDiagnostics = await configured.GET(
+        new Request(`http://localhost${publicPath}?format=diagnostics`),
+      );
+      expect(await publicDiagnostics.json()).toMatchObject({
+        routes: {
+          api: "/api/internal/docs",
+          config: "/api/internal/docs?format=config",
+        },
+      });
+    }
+
     const configuredMap = await configured.GET(
       new Request("http://localhost/api/internal/docs?format=config"),
     );

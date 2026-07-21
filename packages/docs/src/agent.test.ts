@@ -79,7 +79,22 @@ describe("agent route helpers", () => {
         new URL("https://example.com/api/internal/docs?format=skill"),
         "/api/configured/docs",
       ),
+    ).toBe("/api/configured/docs");
+    expect(
+      resolveDocsRequestApiRoute(new URL("https://example.com/api/internal/docs?format=skill")),
     ).toBe("/api/internal/docs");
+    for (const publicPath of [
+      "/docs/api/llms.txt",
+      "/docs-map/sitemap.md",
+      "/docs/installation.md",
+    ]) {
+      expect(
+        resolveDocsRequestApiRoute(
+          new URL(`https://example.com${publicPath}?format=diagnostics`),
+          " api//configured/docs/ ",
+        ),
+      ).toBe("/api/configured/docs");
+    }
     expect(
       resolveDocsRequestApiRoute(
         new URL("https://example.com/skill.md?lang=en"),

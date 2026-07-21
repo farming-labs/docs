@@ -65,6 +65,9 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Run Nuxt adapter tests
+        run: pnpm --filter @farming-labs/nuxt test
   security-audit:
     runs-on: ubuntu-latest
 
