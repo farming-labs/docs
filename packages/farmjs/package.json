@@ -27,6 +27,31 @@
       "types": "./dist/config.d.ts",
       "import": "./dist/config.js",
       "default": "./dist/config.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    },
+    "./content": {
+      "types": "./dist/content.d.ts",
+      "import": "./dist/content.js",
+      "default": "./dist/content.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./api-reference": {
+      "types": "./dist/api-reference.d.ts",
+      "import": "./dist/api-reference.js",
+      "default": "./dist/api-reference.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js",
+      "default": "./dist/vite.js"
     }
   },
   "scripts": {
@@ -35,13 +60,29 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@mdx-js/rollup": "^3.1.1",
+    "@scalar/core": "^0.4.3",
+    "fumadocs-core": "16.7.16",
+    "gray-matter": "^4.0.3",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-mdx-frontmatter": "^5.2.0",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
     "@farming-labs/docs": "workspace:*",
+    "@farming-labs/theme": "workspace:*",
     "@types/node": "^22.10.0",
+    "@types/react": "^19.2.2",
+    "react": "^19.2.0",
     "typescript": "^5.9.3",
+    "vite": "^7.3.5",
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farming-labs/docs": "*"
+    "@farming-labs/docs": "*",
+    "@farming-labs/theme": "*",
+    "react": "^19.0.0"
   }
 }

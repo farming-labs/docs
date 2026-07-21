@@ -955,6 +955,7 @@ export interface DocsAnalyticsConfig {
 export type DocsTelemetryFramework =
   | "next"
   | "tanstack-start"
+  | "farmjs"
   | "sveltekit"
   | "astro"
   | "nuxt"

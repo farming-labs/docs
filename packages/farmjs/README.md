@@ -34,6 +34,38 @@ export default withDocs(defineConfig({}), {
 });
 ```
 
+## Server wrapper
+
+`withDocs()` is the normal integration. The lower-level server wrapper is
+available for custom runtimes, route testing, and framework development:
+
+```ts
+import docsConfig from "./docs.config";
+import { createDocsServer } from "@farming-labs/farmjs/server";
+
+const docs = createDocsServer({
+  ...docsConfig,
+  rootDir: process.cwd(),
+});
+
+const response = await docs.handle(request);
+```
+
+`handle()` returns `null` for non-docs requests so it can run in Farm's request
+pipeline without taking over application routes. The server also exposes
+`load`, `GET`, `POST`, and `MCP` for custom routing.
+
+## Entrypoints
+
+| Entrypoint | Purpose |
+| --- | --- |
+| `@farming-labs/farmjs/config` | Farm config wrapper |
+| `@farming-labs/farmjs/server` | Page loader and API, agent, and MCP request handlers |
+| `@farming-labs/farmjs/react` | React documentation page renderer |
+| `@farming-labs/farmjs/content` | Content and navigation utilities |
+| `@farming-labs/farmjs/vite` | MDX compilation plugin |
+| `@farming-labs/farmjs/api-reference` | Farm API-reference handler |
+
 ## License
 
 MIT
