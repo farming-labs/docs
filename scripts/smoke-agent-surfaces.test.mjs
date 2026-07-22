@@ -53,6 +53,7 @@ function response(method, body, options = {}) {
 
 function createFixtureFetch(options = {}) {
   const calls = [];
+  const streamState = { aborted: false, cancelled: false, pulls: 0 };
   const manifest = {
     version: "1",
     name: "@farming-labs/docs",
@@ -115,7 +116,7 @@ function createFixtureFetch(options = {}) {
     ],
   };
 
-  async function fixtureFetch(input, init = {}) {
+  async function fixtureResponse(input, init = {}) {
     const url = new URL(input);
     const method = init.method ?? "GET";
     calls.push({ method, pathname: url.pathname });
@@ -196,6 +197,30 @@ function createFixtureFetch(options = {}) {
       });
     }
 
+    if (url.pathname === "/.well-known/skill.md" && options.oversizedStream) {
+      init.signal?.addEventListener(
+        "abort",
+        () => {
+          streamState.aborted = true;
+        },
+        { once: true },
+      );
+      const body = new ReadableStream({
+        pull(controller) {
+          streamState.pulls += 1;
+          if (streamState.pulls > 100) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new Uint8Array(48 * 1024));
+        },
+        cancel() {
+          streamState.cancelled = true;
+        },
+      });
+      return response(method, body, { contentType: "text/markdown; charset=utf-8" });
+    }
+
     const textRoutes = {
       "/.well-known/skill.md": ["text/markdown", docsDocument],
       "/.well-known/AGENTS.md": ["text/markdown", "# AGENTS.md\n"],
@@ -209,7 +234,18 @@ function createFixtureFetch(options = {}) {
     return response(method, "Not Found", { status: 404, contentType: "text/plain" });
   }
 
-  return { calls, fetch: fixtureFetch };
+  async function fixtureFetch(input, init = {}) {
+    const requestedUrl = new URL(input);
+    const result = await fixtureResponse(input, init);
+    const finalUrl =
+      options.crossOriginRedirectPath === requestedUrl.pathname
+        ? new URL(requestedUrl.pathname, "https://redirect.example.net").href
+        : requestedUrl.href;
+    Object.defineProperty(result, "url", { configurable: true, value: finalUrl });
+    return result;
+  }
+
+  return { calls, fetch: fixtureFetch, streamState };
 }
 
 test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", async () => {
@@ -244,4 +280,46 @@ test("fails when an indexed Agent Skill artifact does not match its digest", asy
     }),
     /1 agent surface smoke check failed/u,
   );
+});
+
+test("fails when a followed redirect leaves the deployment origin", async () => {
+  const fixture = createFixtureFetch({
+    crossOriginRedirectPath: "/.well-known/agent-skills/docs/SKILL.md",
+  });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      assert.equal(error.failures.length, 1);
+      assert.match(error.failures[0].message, /redirected to cross-origin response/u);
+      return true;
+    },
+  );
+});
+
+test("aborts and cancels a response stream as soon as it exceeds the size cap", async () => {
+  const fixture = createFixtureFetch({ oversizedStream: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+      maxResponseBytes: 64 * 1024,
+    }),
+    (error) => {
+      assert.equal(error.failures.length, 1);
+      assert.match(error.failures[0].message, /returned more than 65536 bytes/u);
+      return true;
+    },
+  );
+  assert.equal(fixture.streamState.aborted, true);
+  assert.equal(fixture.streamState.cancelled, true);
+  assert(fixture.streamState.pulls < 10, "the oversized response was not fully consumed");
 });

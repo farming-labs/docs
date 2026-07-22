@@ -1631,9 +1631,12 @@ export default { entry: "docs", agent: { skills: "skills/one", ...sharedAgent } 
       `const key = "agent";
 export default { entry: "docs", [key]: { skills: "skills/one" } };
 `,
+      `export default { entry: "docs", ["agent"]: { skills: "skills/one" } };
+`,
       `const key = "skills";
 export default { entry: "docs", agent: { [key]: "skills/one" } };
 `,
+      'export default { entry: "docs", agent: { [`skills`]: "skills/one" } };\n',
       `export default { entry: "docs", agent: { "sk\\u0069lls": "skills/one" } };
 `,
       `export default { entry: "docs", agent: { sk\\u0069lls: "skills/one" } };
@@ -1656,6 +1659,11 @@ export default { entry: "docs", agent: { [key]: "skills/one" } };
       `export default {
   entry: "docs",
   agent: { skills: { "pa\\u0074hs": ["skills/one"] } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { ["paths"]: ["skills/one"] } },
 };
 `,
       `export default {

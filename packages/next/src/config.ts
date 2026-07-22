@@ -549,7 +549,8 @@ function unwrapStaticExpression(expression: Expression): Expression {
 function readStaticPropertyName(property: ObjectMethod | ObjectProperty): string | undefined {
   const key = unwrapStaticExpression(property.key as Expression);
 
-  if (!property.computed && key.type === "Identifier") return key.name;
+  if (property.computed) return undefined;
+  if (key.type === "Identifier") return key.name;
   if (key.type === "StringLiteral") return key.value;
   if (key.type === "NumericLiteral") return String(key.value);
   if (key.type === "BigIntLiteral") return key.value;

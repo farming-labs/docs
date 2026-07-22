@@ -119,7 +119,7 @@
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farming-labs/docs": ">=0.0.1",
+    "@farming-labs/docs": ">=0.2.61",
     "@farming-labs/theme": ">=0.0.1",
     "next": ">=16.0.0",
     "react": ">=19.2.0",

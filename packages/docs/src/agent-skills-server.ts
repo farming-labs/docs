@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { access, lstat, readFile, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
-import { gzipSync } from "node:zlib";
+import { gzip, gzipSync } from "node:zlib";
 import type { DocsAgentSkillsInput } from "./types.js";
 import {
   buildDocsPublishedAgentSkill,
@@ -43,6 +44,32 @@ function findWorkspaceRoot(rootDir: string): string {
   }
 }
 
+async function pathExists(candidate: string): Promise<boolean> {
+  try {
+    await access(candidate);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function findWorkspaceRootAsync(rootDir: string): Promise<string> {
+  const resolvedRoot = await realpath(rootDir);
+  let current = resolvedRoot;
+  for (;;) {
+    if (
+      (await pathExists(path.join(current, ".git"))) ||
+      (await pathExists(path.join(current, "pnpm-workspace.yaml"))) ||
+      (await pathExists(path.join(current, "pnpm-workspace.yml")))
+    ) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return resolvedRoot;
+    current = parent;
+  }
+}
+
 function normalizeConfiguredPaths(input: DocsAgentSkillsInput | undefined): string[] {
   if (!input) return [];
   const value =
@@ -67,6 +94,25 @@ function resolveSafeConfiguredPath(
     throw new Error(`Configured Agent Skill paths may not be symlinks: ${configuredPath}`);
   }
   const resolved = realpathSync(candidate);
+  if (!isInside(workspaceRoot, resolved)) {
+    throw new Error(`Agent Skill symlink escapes the workspace: ${configuredPath}`);
+  }
+  return resolved;
+}
+
+async function resolveSafeConfiguredPathAsync(
+  configuredPath: string,
+  rootDir: string,
+  workspaceRoot: string,
+): Promise<string> {
+  const candidate = path.resolve(rootDir, configuredPath);
+  if (!(await pathExists(candidate))) {
+    throw new Error(`Configured Agent Skill path does not exist: ${configuredPath}`);
+  }
+  if ((await lstat(candidate)).isSymbolicLink()) {
+    throw new Error(`Configured Agent Skill paths may not be symlinks: ${configuredPath}`);
+  }
+  const resolved = await realpath(candidate);
   if (!isInside(workspaceRoot, resolved)) {
     throw new Error(`Agent Skill symlink escapes the workspace: ${configuredPath}`);
   }
@@ -128,6 +174,67 @@ function collectSkillDocuments(
     } else if (entry.isDirectory() || entry.isFile()) {
       if (entry.isDirectory() || entry.name === "SKILL.md") {
         collectSkillDocuments(entryPath, workspaceRoot, results, visited, depth + 1);
+      }
+    } else {
+      throw new Error(`Unsafe filesystem entry in Agent Skill collection: ${entryPath}`);
+    }
+  }
+}
+
+async function collectSkillDocumentsAsync(
+  candidate: string,
+  workspaceRoot: string,
+  results: Set<string>,
+  visited: Set<string>,
+  depth = 0,
+): Promise<void> {
+  if (depth > MAX_COLLECTION_DEPTH) {
+    throw new Error(`Agent Skill collection exceeds ${MAX_COLLECTION_DEPTH} directory levels.`);
+  }
+  const resolved = await realpath(candidate);
+  if (!isInside(workspaceRoot, resolved)) {
+    throw new Error(`Agent Skill symlink escapes the workspace: ${candidate}`);
+  }
+  if (visited.has(resolved)) return;
+  visited.add(resolved);
+
+  const info = await stat(resolved);
+  if (info.isFile()) {
+    if (path.basename(resolved) !== "SKILL.md") {
+      throw new Error(`Agent Skill file must be named SKILL.md: ${candidate}`);
+    }
+    results.add(resolved);
+    return;
+  }
+  if (!info.isDirectory()) {
+    throw new Error(`Agent Skill path must be a regular file or directory: ${candidate}`);
+  }
+
+  const directSkill = path.join(resolved, "SKILL.md");
+  if (await pathExists(directSkill)) {
+    const directInfo = await lstat(directSkill);
+    if (!directInfo.isFile() || directInfo.isSymbolicLink()) {
+      throw new Error(`Agent Skill SKILL.md must be a non-symlink regular file: ${directSkill}`);
+    }
+    results.add(directSkill);
+    return;
+  }
+
+  const entries = await readdir(resolved, { withFileTypes: true });
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (
+      IGNORED_COLLECTION_DIRECTORIES.has(entry.name) ||
+      entry.name.startsWith(".") ||
+      COMPANION_DIRECTORIES.has(entry.name)
+    ) {
+      continue;
+    }
+    const entryPath = path.join(resolved, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`Agent Skill collections may not contain symlinks: ${entryPath}`);
+    } else if (entry.isDirectory() || entry.isFile()) {
+      if (entry.isDirectory() || entry.name === "SKILL.md") {
+        await collectSkillDocumentsAsync(entryPath, workspaceRoot, results, visited, depth + 1);
       }
     } else {
       throw new Error(`Unsafe filesystem entry in Agent Skill collection: ${entryPath}`);
@@ -261,6 +368,70 @@ function readCompanionFiles(
   return files;
 }
 
+async function readCompanionFilesAsync(
+  skillDir: string,
+  name: string,
+  rootSkillBytes: number,
+): Promise<DocsPublishedAgentSkillFile[]> {
+  const files: DocsPublishedAgentSkillFile[] = [];
+  let totalBytes = rootSkillBytes;
+
+  async function visit(absoluteDir: string, relativeDir: string, depth = 0): Promise<void> {
+    if (depth > MAX_COLLECTION_DEPTH) {
+      throw new Error(
+        `Agent Skill companion tree exceeds ${MAX_COLLECTION_DEPTH} levels: ${skillDir}`,
+      );
+    }
+    const entries = await readdir(absoluteDir, { withFileTypes: true });
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      const absolutePath = path.join(absoluteDir, entry.name);
+      const relativePath = path.posix.join(relativeDir, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Agent Skill companion files may not be symlinks: ${absolutePath}`);
+      }
+      if (entry.isDirectory()) {
+        await visit(absolutePath, relativePath, depth + 1);
+        continue;
+      }
+      if (!entry.isFile()) {
+        throw new Error(`Unsafe filesystem entry in Agent Skill: ${absolutePath}`);
+      }
+      const executable = ((await stat(absolutePath)).mode & 0o111) !== 0;
+      const content = await readFile(absolutePath);
+      if (content.byteLength > MAX_FILE_BYTES) {
+        throw new Error(`Agent Skill file exceeds ${MAX_FILE_BYTES} bytes: ${absolutePath}`);
+      }
+      totalBytes += content.byteLength;
+      if (totalBytes > MAX_SKILL_BYTES || files.length >= MAX_FILES_PER_SKILL - 1) {
+        throw new Error(`Agent Skill exceeds safe publication limits: ${skillDir}`);
+      }
+      const mediaType = mediaTypeFor(relativePath);
+      const value = preserveFileBytes(content, mediaType);
+      const sha256 = hashBytes(value);
+      files.push({
+        path: relativePath,
+        url: encodeSkillFileUrl(name, relativePath),
+        mediaType,
+        content: value,
+        sha256,
+        digest: `sha256:${sha256}`,
+        executable,
+      });
+    }
+  }
+
+  for (const directory of [...COMPANION_DIRECTORIES].sort()) {
+    const absoluteDir = path.join(skillDir, directory);
+    if (!(await pathExists(absoluteDir))) continue;
+    const info = await lstat(absoluteDir);
+    if (info.isSymbolicLink() || !info.isDirectory()) {
+      throw new Error(`Agent Skill ${directory}/ must be a non-symlink directory: ${absoluteDir}`);
+    }
+    await visit(absoluteDir, directory);
+  }
+  return files;
+}
+
 function writeTarString(header: Uint8Array, offset: number, length: number, value: string): void {
   const encoded = Buffer.from(value, "utf8");
   if (encoded.byteLength > length)
@@ -289,7 +460,7 @@ function createTarHeader(name: string, size: number, executable: boolean): Uint8
   return header;
 }
 
-function createDeterministicTarGzip(files: DocsPublishedAgentSkillFile[]): Uint8Array {
+function createDeterministicTar(files: DocsPublishedAgentSkillFile[]): Uint8Array {
   const chunks: Uint8Array[] = [];
   let total = 0;
   for (const file of [...files].sort(compareSkillFilePath)) {
@@ -311,12 +482,31 @@ function createDeterministicTarGzip(files: DocsPublishedAgentSkillFile[]): Uint8
     tar.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  const archive = new Uint8Array(gzipSync(tar, { level: 9 }));
+  return tar;
+}
+
+function normalizeGzipArchive(content: Uint8Array): Uint8Array {
+  const archive = new Uint8Array(content);
   if (archive.byteLength > 9) archive[9] = 255;
   return archive;
 }
 
-function publishSkillDocument(skillPath: string): DocsPublishedAgentSkill {
+function createDeterministicTarGzip(files: DocsPublishedAgentSkillFile[]): Uint8Array {
+  return normalizeGzipArchive(gzipSync(createDeterministicTar(files), { level: 9 }));
+}
+
+function createDeterministicTarGzipAsync(
+  files: DocsPublishedAgentSkillFile[],
+): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    gzip(createDeterministicTar(files), { level: 9 }, (error, content) => {
+      if (error) reject(error);
+      else resolve(normalizeGzipArchive(content));
+    });
+  });
+}
+
+function publishSkillDocumentSync(skillPath: string): DocsPublishedAgentSkill {
   const skillDir = path.dirname(skillPath);
   const skillDocument = readFileSync(skillPath, "utf8");
   const skillDocumentBytes = Buffer.byteLength(skillDocument, "utf8");
@@ -348,6 +538,48 @@ function publishSkillDocument(skillPath: string): DocsPublishedAgentSkill {
   };
 }
 
+async function publishSkillDocumentAsync(skillPath: string): Promise<DocsPublishedAgentSkill> {
+  const skillDir = path.dirname(skillPath);
+  const skillDocument = await readFile(skillPath, "utf8");
+  const skillDocumentBytes = Buffer.byteLength(skillDocument, "utf8");
+  if (skillDocumentBytes > MAX_FILE_BYTES) {
+    throw new Error(`Agent Skill SKILL.md exceeds ${MAX_FILE_BYTES} bytes: ${skillPath}`);
+  }
+  const base = buildDocsPublishedAgentSkill(skillDocument, hashBytes(skillDocument));
+  if (base.name !== path.basename(skillDir)) {
+    throw new Error(
+      `Agent Skill frontmatter name "${base.name}" must match its directory "${path.basename(skillDir)}".`,
+    );
+  }
+  const companions = await readCompanionFilesAsync(skillDir, base.name, skillDocumentBytes);
+  const files = [...base.files, ...companions].sort(compareSkillFilePath);
+  if (companions.length === 0) return { ...base, files };
+
+  const content = await createDeterministicTarGzipAsync(files);
+  const sha256 = hashBytes(content);
+  return {
+    name: base.name,
+    type: "archive",
+    description: base.description,
+    url: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(base.name)}.tar.gz`,
+    digest: `sha256:${sha256}`,
+    content,
+    sha256,
+    skillDocument,
+    files,
+  };
+}
+
+function validateAndSortSkills(published: DocsPublishedAgentSkill[]): DocsPublishedAgentSkill[] {
+  const names = new Set<string>();
+  for (const skill of published) {
+    if (names.has(skill.name))
+      throw new Error(`Duplicate configured Agent Skill name: ${skill.name}`);
+    names.add(skill.name);
+  }
+  return published.sort((left, right) => left.name.localeCompare(right.name));
+}
+
 /** Resolve and safely package all project skills configured through `agent.skills` synchronously. */
 export function resolveConfiguredAgentSkillsSync(
   input: DocsAgentSkillsInput | undefined,
@@ -373,20 +605,38 @@ export function resolveConfiguredAgentSkillsSync(
     );
   }
 
-  const published = [...documents].sort().map(publishSkillDocument);
-  const names = new Set<string>();
-  for (const skill of published) {
-    if (names.has(skill.name))
-      throw new Error(`Duplicate configured Agent Skill name: ${skill.name}`);
-    names.add(skill.name);
-  }
-  return published.sort((left, right) => left.name.localeCompare(right.name));
+  const published = [...documents].sort().map(publishSkillDocumentSync);
+  return validateAndSortSkills(published);
 }
 
-/** Resolve configured skills while preserving the original promise-based public API. */
+/** Resolve and package configured skills without blocking runtime filesystem or compression work. */
 export async function resolveConfiguredAgentSkills(
   input: DocsAgentSkillsInput | undefined,
   options: ResolveConfiguredAgentSkillsOptions = {},
 ): Promise<DocsPublishedAgentSkill[]> {
-  return resolveConfiguredAgentSkillsSync(input, options);
+  const configuredPaths = normalizeConfiguredPaths(input);
+  if (configuredPaths.length === 0) return [];
+
+  const rootDir = await realpath(options.rootDir ?? process.cwd());
+  const workspaceRoot =
+    options.workspaceRoot === undefined
+      ? await findWorkspaceRootAsync(rootDir)
+      : await realpath(options.workspaceRoot);
+  if (!isInside(workspaceRoot, rootDir)) {
+    throw new Error("Agent Skill rootDir must stay inside the configured workspace root.");
+  }
+
+  const documents = new Set<string>();
+  const visited = new Set<string>();
+  for (const configuredPath of configuredPaths) {
+    await collectSkillDocumentsAsync(
+      await resolveSafeConfiguredPathAsync(configuredPath, rootDir, workspaceRoot),
+      workspaceRoot,
+      documents,
+      visited,
+    );
+  }
+
+  const published = await Promise.all([...documents].sort().map(publishSkillDocumentAsync));
+  return validateAndSortSkills(published);
 }

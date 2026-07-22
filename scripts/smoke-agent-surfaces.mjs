@@ -99,7 +99,73 @@ function parseExpectedSkillNames(value) {
   );
 }
 
-function createRequester({ baseUrl, fetchImpl, timeoutMs, attempts }) {
+function validateFinalResponseOrigin(response, requestedUrl, baseUrl) {
+  let finalUrl;
+  try {
+    finalUrl = new URL(response.url);
+  } catch {
+    throw new Error(
+      `${requestedUrl} returned an invalid final response URL: ${JSON.stringify(response.url)}`,
+    );
+  }
+  assert(
+    finalUrl.origin === baseUrl,
+    `${requestedUrl} redirected to cross-origin response ${finalUrl.origin}`,
+  );
+}
+
+async function readResponseBytes(response, requestedUrl, abortController, maxResponseBytes) {
+  const declaredLength = Number.parseInt(response.headers.get("content-length") ?? "0", 10);
+  if (Number.isFinite(declaredLength) && declaredLength > maxResponseBytes) {
+    const error = new Error(
+      `${requestedUrl} declared an unexpectedly large ${declaredLength}-byte response`,
+    );
+    abortController.abort(error);
+    try {
+      await response.body?.cancel(error);
+    } catch {
+      // The aborted fetch may already have errored its response stream.
+    }
+    throw error;
+  }
+
+  if (!response.body) return new Uint8Array();
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+      if (chunk.byteLength > maxResponseBytes - byteLength) {
+        const error = new Error(`${requestedUrl} returned more than ${maxResponseBytes} bytes`);
+        abortController.abort(error);
+        try {
+          await reader.cancel(error);
+        } catch {
+          // The aborted fetch may already have errored its response stream.
+        }
+        throw error;
+      }
+      chunks.push(chunk);
+      byteLength += chunk.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+function createRequester({ baseUrl, fetchImpl, timeoutMs, attempts, maxResponseBytes }) {
   return async function request(target, init = {}, expectedStatuses = [200]) {
     const url = new URL(target, `${baseUrl}/`);
     const headers = new Headers(init.headers);
@@ -107,42 +173,42 @@ function createRequester({ baseUrl, fetchImpl, timeoutMs, attempts }) {
     headers.set("cache-control", "no-cache");
     headers.set("user-agent", "farming-labs-agent-surface-smoke/1.0");
 
-    let response;
+    let result;
     let requestError;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      response = undefined;
+      result = undefined;
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => {
+        abortController.abort(new Error(`${url} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
       try {
-        response = await fetchImpl(url, {
+        const response = await fetchImpl(url, {
           ...init,
           headers,
           redirect: "follow",
-          signal: AbortSignal.timeout(timeoutMs),
+          signal: abortController.signal,
         });
+        validateFinalResponseOrigin(response, url, baseUrl);
+        const bytes = await readResponseBytes(response, url, abortController, maxResponseBytes);
+        result = { bytes, response };
         if (response.status < 500 || attempt === attempts) break;
-        await response.arrayBuffer();
       } catch (error) {
         requestError = error;
+        if (!abortController.signal.aborted) abortController.abort(error);
         if (attempt === attempts) break;
+      } finally {
+        clearTimeout(timeout);
       }
       await new Promise((resolveDelay) => setTimeout(resolveDelay, attempt * 500));
     }
 
-    if (!response) {
+    if (!result) {
       throw new Error(
         `${url} could not be fetched: ${requestError instanceof Error ? requestError.message : String(requestError)}`,
       );
     }
 
-    const declaredLength = Number.parseInt(response.headers.get("content-length") ?? "0", 10);
-    assert(
-      !Number.isFinite(declaredLength) || declaredLength <= MAX_RESPONSE_BYTES,
-      `${url} declared an unexpectedly large ${declaredLength}-byte response`,
-    );
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    assert(
-      bytes.byteLength <= MAX_RESPONSE_BYTES,
-      `${url} returned more than ${MAX_RESPONSE_BYTES} bytes`,
-    );
+    const { bytes, response } = result;
     if (!expectedStatuses.includes(response.status)) {
       const preview = responsePreview(bytes);
       throw new Error(
@@ -552,12 +618,18 @@ export async function runAgentSurfaceSmoke(options = {}) {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const attempts = options.attempts ?? DEFAULT_ATTEMPTS;
   const expectedSkillNames = new Set(options.expectedSkillNames ?? []);
+  const maxResponseBytes = options.maxResponseBytes ?? MAX_RESPONSE_BYTES;
+  assert(
+    Number.isSafeInteger(maxResponseBytes) && maxResponseBytes > 0,
+    "Response size limit must be a positive safe integer",
+  );
   const log = options.log ?? console.log;
   const request = createRequester({
     baseUrl,
     fetchImpl: options.fetchImpl ?? globalThis.fetch,
     timeoutMs,
     attempts,
+    maxResponseBytes,
   });
   const recorder = createRecorder(log);
 
