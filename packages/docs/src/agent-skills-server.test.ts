@@ -3,7 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveConfiguredAgentSkills } from "./agent-skills-server.js";
+import {
+  resolveConfiguredAgentSkills,
+  resolveConfiguredAgentSkillsSync,
+} from "./agent-skills-server.js";
 
 const temporaryRoots: string[] = [];
 
@@ -78,6 +81,23 @@ describe("configured Agent Skills", () => {
     expect(skills[0].digest).toBe(`sha256:${skills[0].sha256}`);
   });
 
+  it("creates the same deterministic build-time snapshot through the synchronous API", async () => {
+    const root = createWorkspace();
+    const directory = writeSkill(root, "build-time");
+    mkdirSync(path.join(directory, "references"));
+    writeFileSync(path.join(directory, "references", "guide.md"), "# Guide\n", "utf8");
+
+    const synchronous = resolveConfiguredAgentSkillsSync("skills", { rootDir: root });
+    const asynchronous = await resolveConfiguredAgentSkills("skills", { rootDir: root });
+
+    expect(synchronous).toEqual(asynchronous);
+    expect(synchronous[0].type).toBe("archive");
+    expect(synchronous[0].files.map((file) => file.path)).toEqual([
+      "SKILL.md",
+      "references/guide.md",
+    ]);
+  });
+
   it("creates deterministic archives with safe companion files and binary assets", async () => {
     const root = createWorkspace();
     const directory = writeSkill(root, "with-files");
@@ -129,6 +149,9 @@ describe("configured Agent Skills", () => {
     await expect(
       resolveConfiguredAgentSkills(path.join(outside, "skills"), { rootDir: root }),
     ).rejects.toThrow("escapes the workspace");
+    expect(() =>
+      resolveConfiguredAgentSkillsSync(path.join(outside, "skills"), { rootDir: root }),
+    ).toThrow("escapes the workspace");
   });
 
   it("requires the frontmatter name to match the skill directory", async () => {

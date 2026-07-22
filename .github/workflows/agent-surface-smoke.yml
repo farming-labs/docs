@@ -1,0 +1,43 @@
+name: Agent surface smoke
+
+on:
+  deployment_status:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployment origin to test
+        required: false
+        default: https://docs.farming-labs.dev
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    # The docs-website preview project is intentionally protected by Vercel SSO.
+    # The public docs-cloud preview exercises the same site, while scheduled and
+    # manual runs continue to verify the production origin.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment != 'Preview – docs-website')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DOCS_SMOKE_BASE_URL: ${{ github.event_name == 'deployment_status' && github.event.deployment_status.environment_url || inputs.base_url || 'https://docs.farming-labs.dev' }}
+      DOCS_SMOKE_EXPECT_SKILLS: ask-ai,cli,configuration,creating-themes,getting-started,page-actions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test the smoke validator
+        run: node --test scripts/smoke-agent-surfaces.test.mjs
+
+      - name: Smoke-test deployed agent surfaces
+        run: node scripts/smoke-agent-surfaces.mjs

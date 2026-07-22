@@ -4,6 +4,7 @@ import {
   createDocsAPI as createThemeDocsAPI,
   createDocsMCPAPI as createThemeDocsMCPAPI,
 } from "@farming-labs/theme/api";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import type {
   DocsCloudRouteHandlerOptions,
   DocsCloudServer,
@@ -188,7 +189,12 @@ export function createDocsAPI(
   cloudIntegration?: DocsAPICloudIntegration,
 ) {
   const rootDir = options.rootDir ?? inferNextProjectRootFromCaller();
-  const handlers = createThemeDocsAPI(rootDir ? { ...options, rootDir } : options);
+  const resolvedOptions = {
+    ...options,
+    ...(rootDir ? { rootDir } : {}),
+    _preloadedAgentSkills: options._preloadedAgentSkills ?? bundledAgentSkills,
+  };
+  const handlers = createThemeDocsAPI(resolvedOptions);
   const integration = resolveDocsCloudIntegration(cloudIntegration);
 
   if (!integration) return handlers;
@@ -222,5 +228,9 @@ export function createDocsAPI(
 
 export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const rootDir = options.rootDir ?? inferNextProjectRootFromCaller();
-  return createThemeDocsMCPAPI(rootDir ? { ...options, rootDir } : options);
+  return createThemeDocsMCPAPI({
+    ...options,
+    ...(rootDir ? { rootDir } : {}),
+    _preloadedAgentSkills: options._preloadedAgentSkills ?? bundledAgentSkills,
+  });
 }

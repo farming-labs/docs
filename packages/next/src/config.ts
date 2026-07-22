@@ -30,7 +30,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep as pathSeparator } from "node:path";
+import { dirname, extname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
@@ -45,9 +45,21 @@ import {
   DEFAULT_API_CATALOG_ROUTE,
   type DocsConfig,
 } from "@farming-labs/docs";
-import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
+import {
+  ensureDocsReviewWorkflow,
+  renderDocsAgentSkillsBundle,
+  resolveConfiguredAgentSkillsSync,
+} from "@farming-labs/docs/server";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
+import { parse, type ParserPlugin } from "@babel/parser";
+import type {
+  Expression,
+  ObjectExpression,
+  ObjectMethod,
+  ObjectProperty,
+  Program,
+} from "@babel/types";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -178,6 +190,8 @@ export default function HiddenChangelogSourceLayout() {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
+const AGENT_SKILLS_BUNDLE_ALIAS = "@farming-labs/docs/agent-skills-bundle";
+const AGENT_SKILLS_BUNDLE_PATH = ".docs/agent-skills-bundle.mjs";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -233,8 +247,12 @@ function resolvePackageSubpath(packageDir: string, relativePath: string): string
 
 function toTurbopackAliasPath(root: string, value: string): string {
   if (!isAbsolute(value)) return value;
-  const relativePath = relative(root, value);
-  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+  const relativePath = relative(root, value).replaceAll("\\", "/");
+  return relativePath === ".." || relativePath.startsWith("../")
+    ? relativePath
+    : relativePath.startsWith("./")
+      ? relativePath
+      : `./${relativePath}`;
 }
 
 const FUMADOCS_OPENAPI_PACKAGE_ALIAS =
@@ -508,58 +526,236 @@ function readDocsConfigPath(root: string): string {
   return "docs.config.ts";
 }
 
-function readLiteralStringList(block: string, key: string): string[] | null {
-  const cursor = findTopLevelPropertyValueIndex(block, key);
-  if (cursor === undefined) return null;
-  const value = block.slice(cursor);
-  const quoted = value.match(/^(["'])(.*?)\1/s);
-  if (quoted) return [quoted[2]];
-  if (!value.startsWith("[")) return null;
-  const end = value.indexOf("]");
-  if (end === -1) return null;
-  return [...value.slice(1, end).matchAll(/(["'])(.*?)\1/g)].map((match) => match[2]);
+type StaticPropertyResolution =
+  | { status: "absent" }
+  | { status: "unknown" }
+  | { status: "value"; value: Expression };
+
+function unwrapStaticExpression(expression: Expression): Expression {
+  let current = expression;
+  while (
+    current.type === "ParenthesizedExpression" ||
+    current.type === "TSAsExpression" ||
+    current.type === "TSSatisfiesExpression" ||
+    current.type === "TSTypeAssertion" ||
+    current.type === "TSNonNullExpression" ||
+    current.type === "TSInstantiationExpression"
+  ) {
+    current = current.expression;
+  }
+  return current;
 }
 
-function readAgentSkillTraceGlobs(root: string, configPath: string): string[] {
-  const absoluteConfigPath = join(root, configPath);
-  if (!existsSync(absoluteConfigPath)) return [];
-  const content = readFileSync(absoluteConfigPath, "utf8");
-  const agent = extractTopLevelObjectLiteral(content, "agent");
-  if (!agent) return [];
-  const skillsCursor = findTopLevelPropertyValueIndex(agent, "skills");
-  if (skillsCursor === undefined) return [];
-  const skillsObject =
-    agent[skillsCursor] === "{" ? extractObjectLiteral(agent, "skills") : undefined;
-  const configured = skillsObject
-    ? readLiteralStringList(skillsObject, "paths")
-    : readLiteralStringList(agent, "skills");
-  if (!configured) {
+function readStaticPropertyName(property: ObjectMethod | ObjectProperty): string | undefined {
+  const key = unwrapStaticExpression(property.key as Expression);
+
+  if (property.computed) return undefined;
+  if (key.type === "Identifier") return key.name;
+  if (key.type === "StringLiteral") return key.value;
+  if (key.type === "NumericLiteral") return String(key.value);
+  if (key.type === "BigIntLiteral") return key.value;
+  if (key.type === "TemplateLiteral" && key.expressions.length === 0) {
+    return key.quasis[0]?.value.cooked ?? undefined;
+  }
+  return undefined;
+}
+
+function resolveStaticObjectProperty(
+  object: ObjectExpression,
+  key: string,
+): StaticPropertyResolution {
+  let resolution: StaticPropertyResolution = { status: "absent" };
+
+  for (const entry of object.properties) {
+    if (entry.type === "SpreadElement") {
+      resolution = { status: "unknown" };
+      continue;
+    }
+
+    const name = readStaticPropertyName(entry);
+    if (name === undefined) {
+      if (entry.computed) resolution = { status: "unknown" };
+      continue;
+    }
+    if (
+      name === "__proto__" &&
+      !entry.computed &&
+      entry.type === "ObjectProperty" &&
+      !entry.shorthand
+    ) {
+      if (resolution.status !== "value") resolution = { status: "unknown" };
+      continue;
+    }
+    if (name !== key) continue;
+
+    if (entry.type !== "ObjectProperty" || entry.shorthand) {
+      resolution = { status: "unknown" };
+      continue;
+    }
+
+    resolution = { status: "value", value: entry.value as Expression };
+  }
+
+  return resolution;
+}
+
+function hasDefineDocsImport(program: Program, localName: string): boolean {
+  return program.body.some(
+    (statement) =>
+      statement.type === "ImportDeclaration" &&
+      statement.importKind !== "type" &&
+      statement.source.value === "@farming-labs/docs" &&
+      statement.specifiers.some(
+        (specifier) =>
+          specifier.type === "ImportSpecifier" &&
+          specifier.importKind !== "type" &&
+          specifier.local.name === localName &&
+          specifier.imported.type === "Identifier" &&
+          specifier.imported.name === "defineDocs",
+      ),
+  );
+}
+
+function readDocsConfigRootObject(configPath: string, content: string): ObjectExpression {
+  let program: Program;
+  try {
+    const extension = extname(configPath).toLowerCase();
+    const syntaxPlugins: ParserPlugin[] =
+      extension === ".tsx"
+        ? ["typescript", "jsx", "decorators-legacy"]
+        : extension === ".ts"
+          ? ["typescript", "decorators-legacy"]
+          : extension === ".jsx"
+            ? ["jsx", "decorators-legacy"]
+            : ["decorators-legacy"];
+    program = parse(content, {
+      sourceType: "module",
+      sourceFilename: configPath,
+      plugins: syntaxPlugins,
+      createParenthesizedExpressions: true,
+    }).program;
+  } catch (error) {
     throw new Error(
-      "withDocs could not statically trace agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
+      `withDocs could not parse ${configPath} while bundling Agent Skills: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  return configured.map((configuredPath) => {
-    const normalized = configuredPath.replace(/\\/g, "/").replace(/\/$/, "");
-    return normalized.endsWith("/SKILL.md") || normalized === "SKILL.md"
-      ? normalized
-      : `${normalized}/**/*`;
-  });
+
+  const defaults = program.body.filter(
+    (statement) => statement.type === "ExportDefaultDeclaration",
+  );
+  if (defaults.length !== 1) {
+    throw new Error(
+      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+    );
+  }
+
+  let expression = unwrapStaticExpression(defaults[0]!.declaration as Expression);
+  if (expression.type === "CallExpression") {
+    const callee =
+      expression.callee.type === "V8IntrinsicIdentifier"
+        ? undefined
+        : unwrapStaticExpression(expression.callee);
+    const argument = expression.arguments[0];
+    if (
+      !callee ||
+      callee.type !== "Identifier" ||
+      !hasDefineDocsImport(program, callee.name) ||
+      !argument ||
+      argument.type === "SpreadElement" ||
+      argument.type === "ArgumentPlaceholder"
+    ) {
+      throw new Error(
+        "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+      );
+    }
+    expression = unwrapStaticExpression(argument);
+  }
+
+  if (expression.type !== "ObjectExpression") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+    );
+  }
+  return expression;
 }
 
-function commonTracingRoot(root: string, globs: readonly string[]): string {
-  let common = resolve(root);
-  for (const glob of globs) {
-    const candidate = resolve(root, glob.replace(/\/\*\*\/\*$/, ""));
-    while (
-      relative(common, candidate) === ".." ||
-      relative(common, candidate).startsWith(`..${pathSeparator}`)
-    ) {
-      const parent = dirname(common);
-      if (parent === common) break;
-      common = parent;
+function readStaticStringPaths(expression: Expression): string[] | null {
+  const value = unwrapStaticExpression(expression);
+  if (value.type === "StringLiteral") return [value.value];
+  if (value.type !== "ArrayExpression") return null;
+
+  const paths: string[] = [];
+  for (const entry of value.elements) {
+    if (!entry || entry.type === "SpreadElement") {
+      return null;
     }
+    const item = unwrapStaticExpression(entry);
+    if (item.type !== "StringLiteral") return null;
+    paths.push(item.value);
   }
-  return common;
+  return paths;
+}
+
+function readAgentSkillPaths(root: string, configPath: string): string[] {
+  const absoluteConfigPath = join(root, configPath);
+  if (!existsSync(absoluteConfigPath)) return [];
+
+  const content = readFileSync(absoluteConfigPath, "utf8");
+  const rootObject = readDocsConfigRootObject(absoluteConfigPath, content);
+  const agent = resolveStaticObjectProperty(rootObject, "agent");
+  if (agent.status === "absent") return [];
+  if (agent.status === "unknown") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+
+  const agentValue = unwrapStaticExpression(agent.value);
+  if (agentValue.type !== "ObjectExpression") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+
+  const skills = resolveStaticObjectProperty(agentValue, "skills");
+  if (skills.status === "absent") return [];
+  if (skills.status === "unknown") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+
+  const skillsValue = unwrapStaticExpression(skills.value);
+  let configured: string[] | null;
+  if (skillsValue.type === "ObjectExpression") {
+    const paths = resolveStaticObjectProperty(skillsValue, "paths");
+    configured = paths.status === "value" ? readStaticStringPaths(paths.value) : null;
+  } else {
+    configured = readStaticStringPaths(skillsValue);
+  }
+
+  if (!configured) {
+    throw new Error(
+      "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
+    );
+  }
+  return configured;
+}
+
+function writeAgentSkillsBundle(
+  root: string,
+  configuredSkills: NonNullable<DocsConfig["agent"]>["skills"],
+): string {
+  const bundlePath = join(root, AGENT_SKILLS_BUNDLE_PATH);
+  const skills = resolveConfiguredAgentSkillsSync(configuredSkills, { rootDir: root });
+  const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(skills)}`;
+
+  mkdirSync(dirname(bundlePath), { recursive: true });
+  if (!existsSync(bundlePath) || readFileSync(bundlePath, "utf8") !== source) {
+    writeFileSync(bundlePath, source, "utf8");
+  }
+
+  return bundlePath;
 }
 
 /** Read the OG endpoint from docs.config.ts[x] (returns undefined if not set). */
@@ -2165,7 +2361,7 @@ function mergeDocsRedirects(
 
 export function withDocs(
   nextConfig: NextConfig = {},
-  docsConfig?: Pick<DocsConfig, "mcp">,
+  docsConfig?: Pick<DocsConfig, "agent" | "mcp">,
 ): NextConfig {
   const root = process.cwd();
   const workspaceRoot = findDocsWorkspaceRoot(root);
@@ -2178,11 +2374,11 @@ export function withDocs(
       `@farming-labs/next: mcp.security.protectedResource cannot be combined with Next.js basePath ${JSON.stringify(nextBasePath)} because RFC 9728 metadata must be hosted at origin-root well-known URLs. Host the protected docs app at the origin root or publish the metadata and MCP proxy at the edge.`,
     );
   }
-  const agentSkillTraceGlobs = readAgentSkillTraceGlobs(root, docsConfigPath);
-  if (agentSkillTraceGlobs.some((glob) => glob.startsWith("../"))) {
-    nextConfig.outputFileTracingRoot ??=
-      workspaceRoot ?? commonTracingRoot(root, agentSkillTraceGlobs);
-  }
+  const configuredAgentSkills =
+    docsConfig === undefined || !Object.hasOwn(docsConfig, "agent")
+      ? readAgentSkillPaths(root, docsConfigPath)
+      : docsConfig.agent?.skills;
+  const agentSkillsBundlePath = writeAgentSkillsBundle(root, configuredAgentSkills);
   const agentFeedback = readAgentFeedbackConfig(root);
   const docsConfigRelativeAlias =
     docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
@@ -2436,6 +2632,7 @@ export function withDocs(
       ...(workspaceRoot ? createDocsWorkspaceAliases(root, workspaceRoot) : {}),
       ...existingResolveAlias,
       [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
+      [AGENT_SKILLS_BUNDLE_ALIAS]: toTurbopackAliasPath(root, agentSkillsBundlePath),
       "fumadocs-openapi": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_PACKAGE_ALIAS),
       "fumadocs-openapi/ui": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_UI_ALIAS),
       "fumadocs-openapi/server": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_SERVER_ALIAS),
@@ -2510,6 +2707,7 @@ export function withDocs(
       });
     }
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
+    resolvedConfig.resolve.alias[AGENT_SKILLS_BUNDLE_ALIAS] = agentSkillsBundlePath;
     resolvedConfig.resolve.alias["fumadocs-openapi"] = FUMADOCS_OPENAPI_PACKAGE_ALIAS;
     resolvedConfig.resolve.alias["fumadocs-openapi/ui"] = FUMADOCS_OPENAPI_UI_ALIAS;
     resolvedConfig.resolve.alias["fumadocs-openapi/server"] = FUMADOCS_OPENAPI_SERVER_ALIAS;
@@ -2579,7 +2777,6 @@ export function withDocs(
         agentsTraceFile,
         agentTraceFile,
         sitemapManifestTraceFile,
-        ...agentSkillTraceGlobs,
       ]),
     ],
     [DEFAULT_MCP_ROUTE]: [
@@ -2587,7 +2784,6 @@ export function withDocs(
         ...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []),
         docsTraceGlob,
         skillTraceFile,
-        ...agentSkillTraceGlobs,
       ]),
     ],
   };
