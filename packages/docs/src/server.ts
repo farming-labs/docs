@@ -79,6 +79,7 @@ export {
   formatDocsAskAIPackageHints,
   inferDocsAskAIPackageHints,
   performDocsSearch,
+  resolveDocsSearchAudience,
   resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
 } from "./search.js";

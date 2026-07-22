@@ -29,6 +29,7 @@ Useful routes:
 - Robots: `http://127.0.0.1:3000/robots.txt` after running `docs robots generate`
 - MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
+- Agent-projected search: `http://127.0.0.1:3000/api/docs?query=session&audience=agent`
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
 - Agent feedback schema: `http://127.0.0.1:3000/api/docs/agent/feedback/schema`
 - Public markdown page with embedded `Agent` block (Next.js): `http://127.0.0.1:3000/docs/quickstart.md`

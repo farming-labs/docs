@@ -1556,11 +1556,15 @@ export interface DocsSearchQuery {
   limit?: number;
   locale?: string;
   pathname?: string;
+  /** Requested content projection. Omitted callers retain the human-search default. */
+  audience?: "human" | "agent";
 }
 
 export interface DocsSearchAdapterContext {
   pages: DocsSearchSourcePage[];
   documents: DocsSearchDocument[];
+  /** Resolved content projection supplied to this adapter. */
+  audience?: "human" | "agent";
   locale?: string;
   pathname?: string;
   siteTitle?: string;
@@ -1652,6 +1656,12 @@ export interface McpDocsSearchConfig {
    * MCP tool name used for search. Defaults to `search_docs`.
    */
   toolName?: string;
+  /**
+   * Forward the resolved human/agent projection as the tool's `audience` argument.
+   * HTTP request resolution enables this for same-origin `search_docs` routes.
+   * Remote and custom tools must opt in explicitly after supporting the argument.
+   */
+  forwardAudience?: boolean;
   /**
    * Override the MCP protocol version header when needed.
    */

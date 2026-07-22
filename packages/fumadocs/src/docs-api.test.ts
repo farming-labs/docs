@@ -690,8 +690,8 @@ export default defineDocs({
     const customMissingMarkdownText = await customMissingMarkdown.text();
     expect(customMissingMarkdown.status).toBe(404);
     expect(customMissingMarkdownText).toContain("/api/internal/docs?agent=spec");
-    expect(customMissingMarkdownText).toContain("/api/internal/docs?query={query}");
-    expect(customMissingMarkdownText).not.toContain("/api/docs?query={query}");
+    expect(customMissingMarkdownText).toContain("/api/internal/docs?query={query}&audience=agent");
+    expect(customMissingMarkdownText).not.toContain("/api/docs?query={query}&audience=agent");
 
     const skillApi = await GET(new Request("http://localhost/api/docs?format=skill"));
     const skillApiText = await skillApi.text();
@@ -701,6 +701,7 @@ export default defineDocs({
     expect(skillApiText).toContain("# Alias Docs Skill");
     expect(skillApiText).toContain("/docs.md");
     expect(skillApiText).toContain("/.well-known/agent.json");
+    expect(skillApiText).toContain("/api/docs?query={query}&audience=agent");
 
     for (const path of ["/skill.md", "/.well-known/skill.md"]) {
       const response = await GET(new Request(`http://localhost${path}`));
@@ -713,6 +714,7 @@ export default defineDocs({
     const customSkillText = await customSkill.text();
     expect(customSkill.status).toBe(200);
     expect(customSkillText).toContain("/api/internal/docs?format=skill");
+    expect(customSkillText).toContain("/api/internal/docs?query={query}&audience=agent");
     expect(customSkillText).not.toContain("/api/docs?format=skill");
 
     const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
@@ -723,6 +725,7 @@ export default defineDocs({
     expect(agentsApiText).toContain("Site: Alias Docs");
     expect(agentsApiText).toContain("/AGENTS.md");
     expect(agentsApiText).toContain("/api/docs?format=agents");
+    expect(agentsApiText).toContain("/api/docs?query={query}&audience=agent");
 
     for (const path of [
       "/AGENTS.md",
@@ -740,6 +743,7 @@ export default defineDocs({
     const customAgentsText = await customAgents.text();
     expect(customAgents.status).toBe(200);
     expect(customAgentsText).toContain("/api/internal/docs?format=agents");
+    expect(customAgentsText).toContain("/api/internal/docs?query={query}&audience=agent");
     expect(customAgentsText).not.toContain("/api/docs?format=agents");
   });
 
@@ -1541,6 +1545,24 @@ Search should not return this hidden agent-only zebra token.
 
     const { GET } = createDocsAPI({
       entry: "docs",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+      search: {
+        provider: "custom",
+        adapter: {
+          name: "stale-audience-index",
+          async search() {
+            return [
+              {
+                id: "stale-audience-hit",
+                url: "https://docs.example.com/docs",
+                content: "Introduction",
+                description: "Search should not return this hidden agent-only zebra token.",
+                type: "page",
+              },
+            ];
+          },
+        },
+      },
     });
 
     const response = await GET(
@@ -1561,6 +1583,26 @@ Search should not return this hidden agent-only zebra token.
       description?: string;
     }>;
     expect(humanPayload.some((result) => result.content.includes("Introduction"))).toBe(true);
+
+    const agentResponse = await GET(
+      new Request("http://localhost/api/docs?query=agent-only%20zebra%20token&audience=agent"),
+    );
+    const agentPayload = (await agentResponse.json()) as Array<{
+      content: string;
+      description?: string;
+    }>;
+    expect(agentPayload.some((result) => result.content.includes("Introduction"))).toBe(true);
+    expect(JSON.stringify(agentPayload)).not.toContain("human-only coral token");
+
+    const invalidAudienceResponse = await GET(
+      new Request("http://localhost/api/docs?query=agent-only%20zebra%20token&audience=Agent"),
+    );
+    const invalidAudiencePayload = (await invalidAudienceResponse.json()) as Array<{
+      content: string;
+      description?: string;
+    }>;
+    expect(JSON.stringify(invalidAudiencePayload)).not.toContain("agent-only zebra token");
+    expect(JSON.stringify(invalidAudiencePayload)).toContain("human-only coral token");
   });
 
   it("serves markdown through the default docs api route, including Agent blocks and preferring agent.md when present", async () => {
@@ -2705,7 +2747,7 @@ description: "Start building quickly"
     expect(notFoundDocument).toContain("## Closest Matches");
     expect(notFoundDocument).toContain("[Quickstart](/docs/guides/quickstart.md)");
     expect(notFoundDocument).toContain("`/.well-known/agent.json`");
-    expect(notFoundDocument).toContain("`/api/docs?query={query}`");
+    expect(notFoundDocument).toContain("`/api/docs?query={query}&audience=agent`");
     expect(notFoundDocument).toContain("`/sitemap.md`");
     expect(notFoundDocument).toContain("## Sitemap");
 
@@ -2941,9 +2983,13 @@ description: "Start building quickly"
     expect(spec.search).toEqual({
       enabled: true,
       endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
     });
     expect(spec.robots).toEqual({
       enabled: true,
@@ -3160,6 +3206,7 @@ description: "Start building quickly"
         config: "/api/docs?format=config",
         diagnostics: "/api/docs?format=diagnostics",
         search: "/api/docs?query={query}",
+        agentSearch: "/api/docs?query={query}&audience=agent",
         askAi: "/api/docs",
       },
       features: {
@@ -3167,6 +3214,14 @@ description: "Start building quickly"
           status: "enabled",
           provider: "algolia",
           transport: "GET",
+          routes: {
+            human: "/api/docs?query={query}",
+            agent: "/api/docs?query={query}&audience=agent",
+          },
+          agentEndpoint: "/api/docs?query={query}&audience=agent",
+          audienceParam: "audience",
+          defaultAudience: "human",
+          supportedAudiences: ["human", "agent"],
         },
         ai: {
           status: "enabled",
@@ -3276,7 +3331,15 @@ description: "Start building quickly"
       llms: Record<string, string | boolean>;
       agents: Record<string, unknown>;
       openapi: Record<string, unknown>;
-      search: { enabled: boolean; endpoint: string; method: string };
+      search: {
+        enabled: boolean;
+        endpoint: string;
+        agentEndpoint: string;
+        method: string;
+        audienceParam: string;
+        defaultAudience: string;
+        supportedAudiences: string[];
+      };
       robots: { enabled: boolean; route: string; defaultRoute: string };
       structuredData: Record<string, unknown>;
       skills: {
@@ -3367,7 +3430,11 @@ description: "Start building quickly"
     expect(spec.search).toMatchObject({
       enabled: false,
       endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
       method: "GET",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
     });
     expect(spec.robots).toEqual({
       enabled: true,
@@ -4442,6 +4509,11 @@ Welcome to the docs.
 
       expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("http://localhost/api/docs/mcp");
       expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe("http://localhost/api/docs/mcp");
+      expect(
+        JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body)),
+      ).toMatchObject({
+        params: { arguments: { audience: "human" } },
+      });
     } finally {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();
@@ -4717,12 +4789,14 @@ Welcome to the docs.
         Authorization: "Bearer docs-mcp-token",
         "mcp-session-id": "remote-session-1",
       });
-      expect(JSON.parse(String(toolInit?.body))).toMatchObject({
+      const toolBody = JSON.parse(String(toolInit?.body));
+      expect(toolBody).toMatchObject({
         method: "tools/call",
         params: {
           name: "custom_search_docs",
         },
       });
+      expect(toolBody).not.toHaveProperty("params.arguments.audience");
 
       const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[3]?.[1];
       const upstreamBody = JSON.parse(String(upstreamInit?.body)) as {

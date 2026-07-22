@@ -1789,6 +1789,7 @@ const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
   locale: z.string().min(1).optional(),
+  audience: z.enum(["human", "agent"]).optional(),
 });
 
 const readPageInputSchema = z.object({
@@ -3050,9 +3051,10 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         outputSchema: searchDocsOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ query, limit, locale }) => {
+      async ({ query, limit, locale, audience }) => {
         const startedAt = nowMs();
         const resolvedLimit = limit ?? 10;
+        const resolvedAudience = audience ?? "agent";
         const trace = createDocsAgentTraceContext("mcp.tool.search_docs");
         const callSpanId = createDocsAgentTraceId("span");
         await emitDocsAgentTraceEvent(options.observability, {
@@ -3064,7 +3066,12 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           startedAt: trace.startedAt,
           status: "started",
           locale,
-          inputPreview: { queryLength: query.length, limit: resolvedLimit, locale },
+          inputPreview: {
+            queryLength: query.length,
+            limit: resolvedLimit,
+            locale,
+            audience: resolvedAudience,
+          },
           metadata: { tool: "search_docs" },
         });
 
@@ -3074,7 +3081,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             pages: toSearchSourcePages(pages),
             query,
             search: toolSearchConfig ?? true,
-            audience: "agent",
+            audience: resolvedAudience,
             locale,
             siteTitle: options.source.siteTitle,
             limit: resolvedLimit,
@@ -3089,11 +3096,15 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               tool: "search_docs",
               queryLength: query.length,
               limit: resolvedLimit,
+              audience: resolvedAudience,
               resultCount: results.length,
               durationMs: elapsed,
             },
           });
-          trackMcpTool("search_docs", { locale, resultCount: results.length });
+          trackMcpTool("search_docs", {
+            locale,
+            resultCount: results.length,
+          });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",

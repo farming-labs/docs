@@ -94,6 +94,23 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       entry: "docs",
       nav: { title: "Audience Docs" },
       mcp: true,
+      search: {
+        provider: "custom",
+        adapter: {
+          name: "stale-audience-index",
+          async search() {
+            return [
+              {
+                id: "stale-audience-hit",
+                url: "https://docs.example.com/docs",
+                content: "Audience",
+                description: "Agent indigo procedure.",
+                type: "page",
+              },
+            ];
+          },
+        },
+      },
       sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
       _preloadedContent: {
         "/docs/page.md": `---
@@ -112,14 +129,26 @@ Shared context.
     });
 
     async function get(path: string) {
-      const url = new URL(path, "https://docs.example.com");
+      const url = new URL(path, "https://preview.example.com");
       return server.GET({ request: new Request(url), url });
     }
 
     const humanSearch = await get("/api/docs?query=human%20coral%20walkthrough");
-    const agentSearch = await get("/api/docs?query=agent%20indigo%20procedure");
-    expect(await humanSearch.text()).toContain("Audience");
-    expect(await agentSearch.json()).toEqual([]);
+    const defaultAgentSearch = await get("/api/docs?query=agent%20indigo%20procedure");
+    const explicitAgentSearch = await get(
+      "/api/docs?query=agent%20indigo%20procedure&audience=agent",
+    );
+    const invalidAgentSearch = await get(
+      "/api/docs?query=agent%20indigo%20procedure&audience=Agent",
+    );
+    const humanSearchText = await humanSearch.text();
+    expect(humanSearchText).toContain("Human coral walkthrough");
+    expect(humanSearchText).not.toContain("Agent indigo procedure");
+    expect(await defaultAgentSearch.json()).toEqual([]);
+    const explicitAgentSearchText = await explicitAgentSearch.text();
+    expect(explicitAgentSearchText).toContain("Agent indigo procedure");
+    expect(explicitAgentSearchText).not.toContain("Human coral walkthrough");
+    expect(await invalidAgentSearch.json()).toEqual([]);
 
     const markdown = await (await get("/docs.md")).text();
     expect(markdown).toContain("Agent indigo procedure.");

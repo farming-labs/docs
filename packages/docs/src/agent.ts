@@ -412,6 +412,10 @@ export interface DocsDiagnosticsFeature {
   reason?: string;
   route?: string | null;
   routes?: Record<string, string | null>;
+  agentEndpoint?: string | null;
+  audienceParam?: string;
+  defaultAudience?: "human" | "agent";
+  supportedAudiences?: Array<"human" | "agent">;
   provider?: string;
   mode?: string;
   transport?: "GET" | "POST" | "GET/HEAD" | "GET/POST";
@@ -437,6 +441,7 @@ export interface DocsDiagnostics {
     agents: string;
     skill: string;
     search: string | null;
+    agentSearch: string | null;
     askAi: string | null;
     mcp: string | null;
     llmsTxt: string | null;
@@ -885,6 +890,7 @@ export function buildDocsDiagnostics(
       agents: apiQueryRoute("format=agents"),
       skill: apiQueryRoute("format=skill"),
       search: search.enabled ? apiQueryRoute("query={query}") : null,
+      agentSearch: search.enabled ? apiQueryRoute("query={query}&audience=agent") : null,
       askAi: ai.enabled ? apiRoute : null,
       mcp: mcp.enabled ? mcp.route : null,
       llmsTxt: llms.enabled ? DEFAULT_LLMS_TXT_ROUTE : null,
@@ -921,6 +927,14 @@ export function buildDocsDiagnostics(
         status: search.enabled ? "enabled" : "disabled",
         reason: search.reason,
         route: search.enabled ? apiQueryRoute("query={query}") : null,
+        routes: {
+          human: search.enabled ? apiQueryRoute("query={query}") : null,
+          agent: search.enabled ? apiQueryRoute("query={query}&audience=agent") : null,
+        },
+        agentEndpoint: search.enabled ? apiQueryRoute("query={query}&audience=agent") : null,
+        audienceParam: "audience",
+        defaultAudience: "human",
+        supportedAudiences: ["human", "agent"],
         provider: search.provider,
         transport: "GET",
       },
@@ -2840,7 +2854,7 @@ export function renderDocsMarkdownNotFound({
     `- API catalog: \`${DEFAULT_API_CATALOG_ROUTE}\``,
     `- Agent Skills index: \`${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}\``,
     `- Agent instructions: \`${DEFAULT_AGENTS_MD_ROUTE}\``,
-    `- Search endpoint: \`${resolvedApiRoute}?query={query}\``,
+    `- Agent search endpoint: \`${resolvedApiRoute}?query={query}&audience=agent\``,
     `- Docs index markdown: \`/${normalizedEntry}.md\``,
     `- Requested markdown API route: \`${requestedApiRoute}\``,
   );
@@ -3152,8 +3166,8 @@ function appendDocsSearchStartLine(
   if (!context.searchEnabled) return;
   lines.push(
     variant === "skill"
-      ? `- Search with ${context.apiRoute}?query={query} when you do not know the page.`
-      : `- Search with ${context.apiRoute}?query={query} when the route is unknown.`,
+      ? `- Search with ${context.apiRoute}?query={query}&audience=agent when you do not know the page.`
+      : `- Search with ${context.apiRoute}?query={query}&audience=agent when the route is unknown.`,
   );
 }
 
@@ -3767,9 +3781,13 @@ export function buildDocsAgentDiscoverySpec({
     search: {
       enabled: searchEnabled,
       endpoint: apiQueryRoute("query={query}"),
+      agentEndpoint: apiQueryRoute("query={query}&audience=agent"),
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
     },
     agents: {
       enabled: true,

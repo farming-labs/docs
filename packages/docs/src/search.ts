@@ -20,10 +20,11 @@ import {
   renderPageAgentContractMarkdown,
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
-import type { DocsContentAudience } from "./audience.js";
+import { resolveDocsAudienceMdxContent, type DocsContentAudience } from "./audience.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
+const MAX_SEARCH_SNIPPET_CHARS = 160;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
 const MCP_SESSION_CLEANUP_TIMEOUT_MS = 1_000;
 const syncedIndexes = new Set<string>();
@@ -222,15 +223,7 @@ function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
 }
 
 function getAskAIPageContent(page: DocsSearchSourcePage): string {
-  return upsertPageAgentContractMarkdown(
-    page.agentRawContent ??
-      page.agentFallbackRawContent ??
-      page.agentContent ??
-      page.agentFallbackContent ??
-      page.rawContent ??
-      page.content,
-    page.agent,
-  )
+  return upsertPageAgentContractMarkdown(getPageAudienceRawContent(page, "agent"), page.agent)
     .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
     .replace(PAGE_AGENT_CONTRACT_END_MARKER, "")
     .replace(/^\r?\n+/, "");
@@ -534,32 +527,37 @@ function mergeSearchResults(
   return results;
 }
 
-function buildAgentProjectionSearchResults(
+function buildAudienceProjectionSearchResults(
   documents: readonly DocsSearchDocument[],
+  query: string,
 ): DocsSearchResult[] {
-  return documents.map((document) => ({
-    id: document.id,
-    url: document.url,
-    content: document.section ? `${document.title} — ${document.section}` : document.title,
-    description: document.content || document.description,
-    type: document.type,
-    section: document.section,
-  }));
+  return documents.map((document) => {
+    const score = scoreDocument(query, document);
+    return {
+      id: document.id,
+      url: document.url,
+      content: document.section ? `${document.title} — ${document.section}` : document.title,
+      description: cleanSearchResultText(buildSnippet(document, query) ?? document.description),
+      type: document.type,
+      score,
+      section: document.section,
+    };
+  });
 }
 
-function sanitizeExternalAgentSearchResults(
+function sanitizeExternalAudienceSearchResults(
   results: DocsSearchResult[],
-  localAgentResults: DocsSearchResult[],
+  localAudienceResults: DocsSearchResult[],
   baseUrl?: string,
   strictExternalOrigins = false,
   preserveUnmatched?: (result: DocsSearchResult) => boolean,
 ): DocsSearchResult[] {
   const localByKey = new Map(
-    localAgentResults.map((result) => [getSearchResultKey(result), result] as const),
+    localAudienceResults.map((result) => [getSearchResultKey(result), result] as const),
   );
   const localPageResults = new Map<string, DocsSearchResult>();
 
-  for (const result of localAgentResults) {
+  for (const result of localAudienceResults) {
     const pageUrl = normalizeUrlPathname(result.url);
     const existing = localPageResults.get(pageUrl);
     if (!existing || result.type === "page") localPageResults.set(pageUrl, result);
@@ -597,60 +595,108 @@ function sanitizeExternalAgentSearchResults(
   });
 }
 
-function shouldPreserveUnmatchedMcpResult(options: {
+function shouldPreserveUnmatchedExternalResult(options: {
   result: DocsSearchResult;
   localPagePaths: ReadonlySet<string>;
   baseUrl?: string;
-  strictExternalOrigins: boolean;
 }): boolean {
-  const { result, localPagePaths, baseUrl, strictExternalOrigins } = options;
+  const { result, localPagePaths, baseUrl } = options;
   const path = normalizeUrlPathname(result.url);
   const rawUrl = result.url.trim();
   const explicitScheme = rawUrl.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
   if (explicitScheme && explicitScheme !== "http" && explicitScheme !== "https") return false;
   const explicitlyHosted = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl) || /^[\\/]{2}/u.test(rawUrl);
-  if (!strictExternalOrigins) return explicitlyHosted || !localPagePaths.has(path);
-  if (!explicitlyHosted) return !localPagePaths.has(path);
-  if (!baseUrl) return true;
+  const knownLocalPath = localPagePaths.has(path);
+  if (!explicitlyHosted) return !knownLocalPath;
+  if (!baseUrl) return !knownLocalPath;
   try {
     if (new URL(result.url, baseUrl).origin !== new URL(baseUrl).origin) return true;
   } catch {
     return false;
   }
-  return !localPagePaths.has(path);
+  return !knownLocalPath;
 }
 
 function getPageAudienceRawContent(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience,
 ): string {
-  if (audience === "agent") {
-    return (
-      page.agentRawContent ??
-      page.agentFallbackRawContent ??
-      page.agentContent ??
-      page.agentFallbackContent ??
-      page.rawContent ??
-      page.content
-    );
-  }
+  const source =
+    audience === "agent"
+      ? (page.agentRawContent ??
+        page.agentFallbackRawContent ??
+        page.agentContent ??
+        page.agentFallbackContent ??
+        page.rawContent ??
+        page.content)
+      : (page.rawContent ?? page.content);
 
-  return page.rawContent ?? page.content;
+  return resolveDocsAudienceMdxContent(source, audience);
 }
 
 function getPageAudienceSearchText(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience,
 ): string {
-  if (audience === "agent") {
-    return (
-      page.agentContent ??
-      page.agentFallbackContent ??
-      stripMarkdownText(getPageAudienceRawContent(page, audience))
-    );
+  return stripMarkdownText(getPageAudienceRawContent(page, audience));
+}
+
+function isLocalProviderResult(
+  result: DocsSearchResult,
+  baseUrl?: string,
+  strictExternalOrigins = false,
+): boolean {
+  const rawUrl = result.url.trim();
+  const explicitScheme = rawUrl.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
+  if (explicitScheme && explicitScheme !== "http" && explicitScheme !== "https") return false;
+  const explicitlyHosted = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl) || /^[\\/]{2}/u.test(rawUrl);
+  if (!explicitlyHosted) return true;
+  if (!baseUrl) return !strictExternalOrigins;
+
+  try {
+    return new URL(result.url, baseUrl).origin === new URL(baseUrl).origin;
+  } catch {
+    return false;
+  }
+}
+
+function hasOppositeAudienceEvidence(options: {
+  result: DocsSearchResult;
+  pages: DocsSearchSourcePage[];
+  query: string;
+  audience: DocsContentAudience;
+  baseUrl?: string;
+  strictExternalOrigins?: boolean;
+}): boolean {
+  const { result, pages, query, audience, baseUrl, strictExternalOrigins } = options;
+  if (!isLocalProviderResult(result, baseUrl, strictExternalOrigins)) return false;
+
+  const pagePath = normalizeUrlPathname(result.url);
+  const page = pages.find((candidate) => normalizeUrlPathname(candidate.url) === pagePath);
+  if (!page) return false;
+  if (scoreDocument(query, pageToSearchDocument(page, audience)) > 0) return false;
+
+  const oppositeAudience = audience === "agent" ? "human" : "agent";
+  if (scoreDocument(query, pageToSearchDocument(page, oppositeAudience)) > 0) return true;
+
+  const evidence = cleanSearchResultText(result.description);
+  if (!evidence) return false;
+  const selectedTokens = new Set(tokenizeSearchQuery(getPageAudienceSearchText(page, audience)));
+  const oppositeTokens = new Set(
+    tokenizeSearchQuery(getPageAudienceSearchText(page, oppositeAudience)),
+  );
+  const evidenceTokens = [...new Set(tokenizeSearchQuery(evidence))];
+  let selectedOnlyMatches = 0;
+  let oppositeOnlyMatches = 0;
+
+  for (const token of evidenceTokens) {
+    const inSelected = selectedTokens.has(token);
+    const inOpposite = oppositeTokens.has(token);
+    if (inSelected && !inOpposite) selectedOnlyMatches += 1;
+    if (inOpposite && !inSelected) oppositeOnlyMatches += 1;
   }
 
-  return page.content || stripMarkdownText(getPageAudienceRawContent(page, audience));
+  return oppositeOnlyMatches > selectedOnlyMatches;
 }
 
 function pageToSearchDocument(
@@ -919,7 +965,7 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
   }
 
   if (matchedWords === words.length && words.length > 1) score += 20;
-  if (document.type === "heading" && hasDistinctSection) score += 6;
+  if (score > 0 && document.type === "heading" && hasDistinctSection) score += 6;
 
   return score;
 }
@@ -932,7 +978,7 @@ function buildSnippet(document: DocsSearchDocument, query: string): string | und
   ].filter(Boolean);
 
   for (const source of sources) {
-    if (!q) return source.slice(0, 160);
+    if (!q) return clampSearchSnippet(source);
 
     const idx = source.toLowerCase().indexOf(q);
     if (idx === -1) continue;
@@ -941,10 +987,15 @@ function buildSnippet(document: DocsSearchDocument, query: string): string | und
     const end = Math.min(source.length, idx + q.length + 96);
     const prefix = start > 0 ? "..." : "";
     const suffix = end < source.length ? "..." : "";
-    return `${prefix}${source.slice(start, end).trim()}${suffix}`;
+    return clampSearchSnippet(`${prefix}${source.slice(start, end).trim()}${suffix}`);
   }
 
-  return sources[0]?.slice(0, 160);
+  return sources[0] ? clampSearchSnippet(sources[0]) : undefined;
+}
+
+function clampSearchSnippet(value: string): string {
+  if (value.length <= MAX_SEARCH_SNIPPET_CHARS) return value;
+  return `${value.slice(0, MAX_SEARCH_SNIPPET_CHARS - 3).trimEnd()}...`;
 }
 
 function cleanSearchResultText(value?: string): string | undefined {
@@ -1386,12 +1437,25 @@ export function resolveSearchRequestConfig(
     return search;
   }
 
-  if (/^https?:\/\//i.test(search.endpoint) || !requestUrl) return search;
+  if (!requestUrl) return search;
+
+  const resolvedEndpoint = new URL(search.endpoint, requestUrl);
+  const usesDefaultSearchTool = (search.toolName ?? "search_docs") === "search_docs";
+  const isSameOrigin = resolvedEndpoint.origin === new URL(requestUrl).origin;
 
   return {
     ...search,
-    endpoint: new URL(search.endpoint, requestUrl).toString(),
+    endpoint: resolvedEndpoint.toString(),
+    forwardAudience: search.forwardAudience ?? (usesDefaultSearchTool && isSameOrigin),
   };
+}
+
+/**
+ * Resolve the public search audience without allowing malformed values to opt into agent content.
+ * Human search remains the default for omitted, legacy, and unknown query values.
+ */
+export function resolveDocsSearchAudience(value: string | null | undefined): DocsContentAudience {
+  return value === "agent" ? "agent" : "human";
 }
 
 export function resolveAskAISearchRequestConfig(options: {
@@ -1436,7 +1500,15 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
       const endpoint = resolveMcpEndpoint(config.endpoint);
       const protocolVersion = config.protocolVersion ?? DEFAULT_MCP_PROTOCOL_VERSION;
       const toolName = config.toolName ?? "search_docs";
+      const forwardAudience = config.forwardAudience === true;
+      const audience = resolveDocsSearchAudience(query.audience);
       const baseHeaders = config.headers ?? {};
+
+      if (audience === "human" && !forwardAudience) {
+        throw new Error(
+          "MCP human-projection search requires forwardAudience: true on an audience-aware tool.",
+        );
+      }
 
       const initializeResponse = await fetch(endpoint, {
         method: "POST",
@@ -1488,6 +1560,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
                 query: query.query,
                 limit: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
                 locale: query.locale,
+                ...(forwardAudience ? { audience } : {}),
               },
             },
           }),
@@ -1750,11 +1823,12 @@ export async function performDocsSearch(options: {
   const search = normalizeDocsSearchConfig(options.search);
   if (!search.enabled) return [];
 
-  const audience = options.audience ?? "human";
+  const audience = resolveDocsSearchAudience(options.audience);
   const documents = buildDocsSearchDocuments(options.pages, search.chunking, audience);
   const context: DocsSearchAdapterContext = {
     pages: options.pages,
     documents,
+    audience,
     locale: options.locale,
     pathname: options.pathname,
     siteTitle: options.siteTitle,
@@ -1766,6 +1840,7 @@ export async function performDocsSearch(options: {
     limit: options.limit ?? search.maxResults,
     locale: options.locale,
     pathname: options.pathname,
+    audience,
   };
 
   try {
@@ -1775,47 +1850,67 @@ export async function performDocsSearch(options: {
         ? {
             ...context,
             documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
+            audience: "human" as const,
           }
         : context;
     await maybeSyncSearchIndex(adapter, search, syncContext);
     const results = await adapter.search(query, context);
     if (search.provider === "simple") return results;
 
-    const localAudienceResults =
-      audience === "agent" ? await createSimpleSearchAdapter().search(query, context) : [];
-    const localAgentProjectionResults =
-      audience === "agent" ? buildAgentProjectionSearchResults(documents) : [];
+    const localAudienceProjectionResults = buildAudienceProjectionSearchResults(
+      documents,
+      options.query,
+    );
     const localPagePaths = new Set(options.pages.map((page) => normalizeUrlPathname(page.url)));
-    // External providers may expose a human index, so local-page snippets must
-    // be replaced with the local agent projection. MCP can also return pages
-    // outside this docs corpus; preserve those agent-native remote results.
-    const safeAdapterResults =
-      audience !== "agent"
-        ? results
-        : sanitizeExternalAgentSearchResults(
-            results,
-            localAgentProjectionResults,
-            options.baseUrl,
-            options.strictExternalOrigins,
-            search.provider === "mcp"
-              ? (result) =>
-                  shouldPreserveUnmatchedMcpResult({
-                    result,
-                    localPagePaths,
-                    baseUrl: options.baseUrl,
-                    strictExternalOrigins: options.strictExternalOrigins === true,
-                  })
-              : undefined,
-          );
+    // External indexes can be stale or built for a different audience. Replace
+    // every local-page hit with the selected local projection before returning it.
+    // Human search preserves provider-only pages for backwards compatibility;
+    // agent search preserves them only for MCP, whose search_docs results may
+    // intentionally include a remote corpus.
+    const preserveUnmatched =
+      audience === "human" || search.provider === "mcp"
+        ? (result: DocsSearchResult) =>
+            shouldPreserveUnmatchedExternalResult({
+              result,
+              localPagePaths,
+              baseUrl: options.baseUrl,
+            })
+        : undefined;
+    // Provider ranking may be semantic, so lexical query overlap is not required.
+    // Fail closed only when a local snippet contains distinctive evidence from
+    // the opposite projection and none from the selected one.
+    const audienceSafeAdapterResults = results.filter(
+      (result) =>
+        !hasOppositeAudienceEvidence({
+          result,
+          pages: options.pages,
+          query: options.query,
+          audience,
+          baseUrl: options.baseUrl,
+          strictExternalOrigins: options.strictExternalOrigins,
+        }),
+    );
+    const safeAdapterResults = sanitizeExternalAudienceSearchResults(
+      audienceSafeAdapterResults,
+      localAudienceProjectionResults,
+      options.baseUrl,
+      options.strictExternalOrigins,
+      preserveUnmatched,
+    );
 
     if (options.supplementExternalResults === false) {
       return safeAdapterResults.slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
     }
+    const shouldSupplementWithLocalSearch =
+      audience === "agent" || results.length === 0 || safeAdapterResults.length < results.length;
+    const simpleAudienceResults = shouldSupplementWithLocalSearch
+      ? await createSimpleSearchAdapter().search(query, context)
+      : [];
     const combinedResults = mergeSearchResults(
       [
         buildExactPageSearchResults(options.query, options.pages, audience),
         safeAdapterResults,
-        localAudienceResults,
+        simpleAudienceResults,
       ],
       audience === "agent"
         ? (result) => getAskAIResultKey(result, options.baseUrl, options.strictExternalOrigins)

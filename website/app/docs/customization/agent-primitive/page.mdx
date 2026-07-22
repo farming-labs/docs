@@ -162,7 +162,8 @@ The framework resolves the same audience policy before each content surface cons
 | Surface | Projection |
 | ------- | ---------- |
 | Rendered docs HTML | Human |
-| Public docs search | Human |
+| Search API without `audience=agent` | Human |
+| Search API with exact `audience=agent` | Agent |
 | Markdown routes and the markdown API format | Agent |
 | Ask AI retrieval and context | Agent |
 | MCP search, context, and page reads | Agent |
@@ -232,7 +233,8 @@ Recommended bootstrap flow:
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when you want the concise site skill.
 3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read relevant docs pages as markdown.
-4. Use `spec.search.endpoint` when you need to find the right page first.
+4. Use `spec.search.agentEndpoint` when you need to find the right page first. Older discovery
+   documents can be handled by adding `&audience=agent` to `spec.search.endpoint`.
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy.
 7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
@@ -400,6 +402,12 @@ The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 `agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
 preference themselves. It also includes `robots.route` so agents can find the static crawl policy
 without guessing.
+
+The `search` object keeps `endpoint` as the backward-compatible human-default URL and adds
+`agentEndpoint` for agent-projected retrieval. It also declares `audienceParam: "audience"`,
+`defaultAudience: "human"`, and `supportedAudiences: ["human", "agent"]`. Only the exact lowercase
+`audience=agent` value opts into shared plus agent-only content; this is projection rather than an
+authorization boundary.
 
 The custom manifest remains supported and advertises the standards routes through
 `apiCatalog` and `skills.discovery`. Discovery responses also include an `api-catalog` HTTP

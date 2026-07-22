@@ -103,6 +103,7 @@ import {
   formatDocsAskAIPackageHints,
   performDocsSearch,
   resolveAskAISearchRequestConfig,
+  resolveDocsSearchAudience,
   resolveSearchRequestConfig,
 } from "@farming-labs/docs";
 import type {
@@ -692,9 +693,13 @@ function buildAgentSpec({
     search: {
       enabled: searchEnabled,
       endpoint: `${apiRoute}?query={query}`,
+      agentEndpoint: `${apiRoute}?query={query}&audience=agent`,
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
     },
     agents: {
       enabled: true,
@@ -2065,7 +2070,9 @@ function renderSkillDocument({
   );
 
   if (searchEnabled) {
-    lines.push(`- Search with ${apiRoute}?query={query} when you do not know the page.`);
+    lines.push(
+      `- Search with ${apiRoute}?query={query}&audience=agent when you do not know the page.`,
+    );
   }
 
   if (openapi.enabled && openapiUrl) {
@@ -2258,7 +2265,7 @@ function renderAgentsDocument({
   }
 
   if (searchEnabled) {
-    lines.push(`- Search with ${apiRoute}?query={query} when the route is unknown.`);
+    lines.push(`- Search with ${apiRoute}?query={query}&audience=agent when the route is unknown.`);
   }
 
   if (openapi.enabled && openapiUrl) {
@@ -4610,13 +4617,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const searchStartedAt = Date.now();
+      const audience = resolveDocsSearchAudience(url.searchParams.get("audience"));
       const results = await performDocsSearch({
         pages: getIndexes(ctx),
         query,
         search: resolveSearchRequestConfig(searchConfig, request.url),
+        audience,
         locale: ctx.locale,
         pathname: url.searchParams.get("pathname") ?? undefined,
         siteTitle: llmsConfig.siteTitle ?? "Documentation",
+        baseUrl: markdownMetadataBaseUrl || url.origin,
       });
       await emitDocsAnalyticsEvent(analytics, {
         type: "api_search",
@@ -4628,6 +4638,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         properties: {
           ...requestAnalyticsProperties,
           queryLength: query.length,
+          audience,
           resultCount: results.length,
           pathname: url.searchParams.get("pathname") ?? undefined,
           durationMs: Math.max(0, Date.now() - searchStartedAt),

@@ -42,6 +42,7 @@ import {
   resolveDocsAgentFeedbackRequest,
   resolvePageSidebarFolderIndexBehavior,
   resolveAskAISearchRequestConfig,
+  resolveDocsSearchAudience,
   resolveSearchRequestConfig,
   resolveDocsI18n,
   resolveDocsLlmsTxtRequest,
@@ -1243,13 +1244,16 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     }
 
     const searchStartedAt = Date.now();
+    const audience = resolveDocsSearchAudience(url.searchParams.get("audience"));
     const results = await performDocsSearch({
       pages: getSearchIndex(ctx),
       query,
       search: resolveSearchRequestConfig(config.search, event.request.url),
+      audience,
       locale: ctx.locale,
       pathname: url.searchParams.get("pathname") ?? undefined,
       siteTitle: llmsTitle,
+      baseUrl: markdownMetadataBaseUrl || url.origin,
     });
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_search",
@@ -1260,6 +1264,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       input: { query },
       properties: {
         queryLength: query.length,
+        audience,
         resultCount: results.length,
         pathname: url.searchParams.get("pathname") ?? undefined,
         durationMs: Math.max(0, Date.now() - searchStartedAt),
