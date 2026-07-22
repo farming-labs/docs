@@ -468,6 +468,7 @@ describe("api reference route templates", () => {
     expect(out).toContain('createFileRoute("/$")');
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain("isDocsMcpRequest");
+    expect(out).toContain("isDocsMcpRequest(url, docsConfig.mcp)");
     expect(out).toContain(serverImport);
     expect(out).toContain('import docsConfig from "../../docs.config";');
     expect(out).toContain("sitemap: docsConfig.sitemap");
@@ -493,6 +494,7 @@ describe("api reference route templates", () => {
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
     expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain("isDocsMcpRequest(event.url, config.mcp)");
     expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
@@ -513,6 +515,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).toContain("const existingHandle: Handle =");
     expect(out).toContain("const docsPublicHandle: Handle =");
     expect(out).toContain("docsMCP.OPTIONS");
+    expect(out).toContain("isDocsMcpRequest(event.url, docsConfig.mcp)");
     expect(out).toContain("isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry)");
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
@@ -534,6 +537,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
     expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain("isDocsMcpRequest(context.url, config.mcp)");
     expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
@@ -554,6 +558,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
     expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
     expect(out).toContain("docsMCP.OPTIONS");
+    expect(out).toContain("isDocsMcpRequest(context.url, docsConfig.mcp)");
     expect(out).toContain("isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry)");
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");

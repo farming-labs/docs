@@ -13,6 +13,7 @@ import {
   DOCS_CONFIG_MAP_TOP_LEVEL_KEYS,
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
+  getDocsMcpProtectedResourceMetadataRoutes,
   resolveDocsDiscoveryApiRoute,
 } from "../agent.js";
 import {
@@ -375,9 +376,20 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
         (optionPath) =>
           optionPath === "agent" ||
           optionPath.startsWith("agent.") ||
+          optionPath === "mcp" ||
+          optionPath.startsWith("mcp.") ||
           optionPath === "review" ||
           optionPath.startsWith("review."),
       );
+    const expectedMcpProtectedResource =
+      mcp.enabled && mcp.security?.authenticate && mcp.security.protectedResource
+        ? {
+            metadataEndpoints: [...getDocsMcpProtectedResourceMetadataRoutes(mcp.route)],
+            authorizationServers: mcp.security.protectedResource.authorizationServers,
+            scopesSupported: mcp.security.protectedResource.scopesSupported,
+            requiredScopes: mcp.security.protectedResource.requiredScopes,
+          }
+        : null;
     const drift = analyzeAgentSurfaceDrift({
       configOptionPaths: [
         ...new Set([...DOCS_CONFIG_MAP_TOP_LEVEL_KEYS, ...configuredAgentReviewPaths]),
@@ -391,7 +403,12 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
           enabled: searchEnabled,
           endpoint: `${apiRoute}?query={query}`,
         },
-        mcp: { enabled: mcp.enabled, endpoint: mcp.route, tools: mcp.tools },
+        mcp: {
+          enabled: mcp.enabled,
+          endpoint: mcp.route,
+          tools: mcp.tools,
+          protectedResource: expectedMcpProtectedResource,
+        },
         routes: {
           "api.docs": apiRoute,
           "api.config": `${apiRoute}?format=config`,

@@ -3012,7 +3012,7 @@ description: "Start building quickly"
       publicEndpoint: "/mcp",
       wellKnownEndpoint: "/.well-known/mcp",
       publicEndpoints: ["/mcp", "/.well-known/mcp"],
-      canonicalEndpoint: "/api/docs/mcp",
+      canonicalEndpoint: "/internal/docs/mcp",
       name: "Agent Docs",
       version: "0.0.0",
       tools: {
@@ -3410,6 +3410,49 @@ description: "Start building quickly"
       enabled: false,
       schema: "/api/docs/agent/feedback/schema",
       submit: "/api/docs/agent/feedback",
+    });
+  });
+
+  it("keeps OAuth protected-resource discovery aligned with the core agent spec", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-spec-oauth-mcp-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      mcp: {
+        route: "/internal/mcp",
+        security: {
+          authenticate: async () => ({ id: "reader", scopes: ["docs:read"] }),
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            scopesSupported: ["docs:read"],
+            requiredScopes: ["docs:read"],
+          },
+        },
+      },
+    });
+
+    const response = await GET(new Request("https://docs.example.com/api/docs?agent=spec"));
+    expect(response.status).toBe(200);
+    const spec = (await response.json()) as {
+      mcp: { canonicalEndpoint: string; protectedResource?: Record<string, unknown> };
+    };
+    expect(spec.mcp).toMatchObject({
+      canonicalEndpoint: "/internal/mcp",
+      protectedResource: {
+        metadataEndpoints: [
+          "/.well-known/oauth-protected-resource/internal/mcp",
+          "/.well-known/oauth-protected-resource/mcp",
+          "/.well-known/oauth-protected-resource/.well-known/mcp",
+        ],
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read"],
+        requiredScopes: ["docs:read"],
+      },
     });
   });
 

@@ -11,7 +11,7 @@ const docsEntry = config.entry ?? "docs";
 export async function handle({ event, resolve }) {
   const method = event.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(event.url)) {
+  if (isDocsMcpRequest(event.url, config.mcp)) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });

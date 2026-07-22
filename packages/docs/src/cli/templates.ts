@@ -1185,7 +1185,7 @@ async function handlePublicDocsRequest(request: Request) {
   const url = new URL(request.url);
   const method = request.method.toUpperCase();
 
-  if (isDocsMcpRequest(url)) {
+  if (isDocsMcpRequest(url, docsConfig.mcp)) {
     if (method === "OPTIONS") return docsServer.MCP.OPTIONS({ request });
     if (method === "POST") return docsServer.MCP.POST({ request });
     if (method === "DELETE") return docsServer.MCP.DELETE({ request });
@@ -1710,7 +1710,7 @@ const docsEntry = config.entry ?? "docs";
 export const handle: Handle = async ({ event, resolve }) => {
   const method = event.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(event.url)) {
+  if (isDocsMcpRequest(event.url, config.mcp)) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
@@ -1781,7 +1781,7 @@ const docsEntry = docsConfig.entry ?? "docs";
 const docsPublicHandle: Handle = async ({ event, resolve }) => {
   const method = event.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(event.url)) {
+  if (isDocsMcpRequest(event.url, docsConfig.mcp)) {
     if (method === "OPTIONS") return docsMCP.OPTIONS({ request: event.request });
     if (method === "POST") return docsMCP.POST({ request: event.request });
     if (method === "DELETE") return docsMCP.DELETE({ request: event.request });
@@ -2294,7 +2294,7 @@ const docsEntry = config.entry ?? "docs";
 export const onRequest: MiddlewareHandler = async (context, next) => {
   const method = context.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(context.url)) {
+  if (isDocsMcpRequest(context.url, config.mcp)) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
@@ -2367,7 +2367,7 @@ const docsEntry = docsConfig.entry ?? "docs";
 const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
   const method = context.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(context.url)) {
+  if (isDocsMcpRequest(context.url, docsConfig.mcp)) {
     if (method === "OPTIONS") return docsMCP.OPTIONS({ request: context.request });
     if (method === "POST") return docsMCP.POST({ request: context.request });
     if (method === "DELETE") return docsMCP.DELETE({ request: context.request });

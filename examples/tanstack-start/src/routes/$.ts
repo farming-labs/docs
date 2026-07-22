@@ -9,7 +9,7 @@ async function handlePublicDocsRequest(request: Request) {
   const url = new URL(request.url);
   const method = request.method.toUpperCase();
 
-  if (isDocsMcpRequest(url)) {
+  if (isDocsMcpRequest(url, docsConfig.mcp)) {
     if (method === "OPTIONS") return docsServer.MCP.OPTIONS({ request });
     if (method === "POST") return docsServer.MCP.POST({ request });
     if (method === "DELETE") return docsServer.MCP.DELETE({ request });

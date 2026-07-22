@@ -43,6 +43,7 @@ import {
   DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_API_CATALOG_ROUTE,
+  type DocsConfig,
 } from "@farming-labs/docs";
 import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
 import matter from "gray-matter";
@@ -185,6 +186,7 @@ const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
 const DEFAULT_MCP_WELL_KNOWN_ROUTE = "/.well-known/mcp";
+const DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE = "/.well-known/oauth-protected-resource";
 const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
@@ -1233,10 +1235,28 @@ function removeManagedFile(filePath: string) {
   }
 }
 
-function readMcpConfig(root: string): {
+type ResolvedNextMcpConfig = {
   enabled: boolean;
   route: string;
-} {
+  protectedResource: boolean;
+};
+
+function resolveMcpConfig(mcp: DocsConfig["mcp"]): ResolvedNextMcpConfig {
+  if (mcp === false) {
+    return { enabled: false, route: DEFAULT_MCP_ROUTE, protectedResource: false };
+  }
+  if (!mcp || mcp === true) {
+    return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
+  }
+
+  return {
+    enabled: mcp.enabled ?? true,
+    route: normalizeRoutePath(mcp.route ?? DEFAULT_MCP_ROUTE),
+    protectedResource: Boolean(mcp.security?.authenticate && mcp.security.protectedResource),
+  };
+}
+
+function readMcpConfig(root: string): ResolvedNextMcpConfig {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (!existsSync(configPath)) continue;
@@ -1245,11 +1265,11 @@ function readMcpConfig(root: string): {
       const content = readFileSync(configPath, "utf-8");
 
       if (content.match(/mcp\s*:\s*false/)) {
-        return { enabled: false, route: DEFAULT_MCP_ROUTE };
+        return { enabled: false, route: DEFAULT_MCP_ROUTE, protectedResource: false };
       }
 
       if (content.match(/mcp\s*:\s*true/)) {
-        return { enabled: true, route: DEFAULT_MCP_ROUTE };
+        return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
       }
 
       const block = extractObjectLiteral(content, "mcp");
@@ -1257,22 +1277,39 @@ function readMcpConfig(root: string): {
 
       const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
       const routeMatch = block.match(/route\s*:\s*["']([^"']+)["']/);
-
+      const securityBlock = extractObjectLiteral(block, "security");
+      const protectedResource = Boolean(
+        securityBlock &&
+        /\bauthenticate\b/u.test(securityBlock) &&
+        extractObjectLiteral(securityBlock, "protectedResource"),
+      );
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
         route: normalizeRoutePath(routeMatch?.[1] ?? DEFAULT_MCP_ROUTE),
+        protectedResource,
       };
     } catch {
-      return { enabled: true, route: DEFAULT_MCP_ROUTE };
+      return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
     }
   }
 
-  return { enabled: true, route: DEFAULT_MCP_ROUTE };
+  return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
 }
 
 function normalizeRoutePath(route: string): string {
   const normalized = `/${route}`.replace(/\/+/g, "/");
   return normalized !== "/" ? normalized.replace(/\/+$/, "") : DEFAULT_MCP_ROUTE;
+}
+
+function normalizeMcpResourcePath(route: string): string {
+  return route.trim() === "/" ? "/" : normalizeRoutePath(route);
+}
+
+function buildMcpProtectedResourceMetadataRoute(resourcePath: string): string {
+  const normalized = normalizeMcpResourcePath(resourcePath);
+  return normalized === "/"
+    ? DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE
+    : `${DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE}${normalized}`;
 }
 
 function normalizeRoutePrefix(prefix?: string): string {
@@ -1862,15 +1899,28 @@ function buildRobotsRewrites(config: { enabled: boolean; hasStaticFile: boolean 
   ];
 }
 
-function buildMcpRewrites(config: { enabled: boolean; route: string }): NextRewrite[] {
+function buildMcpRewrites(config: {
+  enabled: boolean;
+  route: string;
+  protectedResource: boolean;
+}): NextRewrite[] {
   if (!config.enabled) return [];
 
-  return [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE]
+  const endpointRewrites = [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE]
     .filter((source) => source !== config.route)
     .map((source) => ({
       source,
+      // Next.js preserves the incoming public URL for an internally rewritten Route Handler.
+      // Keeping the destination free of identity markers avoids trusting client-controlled input.
       destination: config.route,
     }));
+  const metadataRewrites = config.protectedResource
+    ? Array.from(new Set([config.route, DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE]))
+        .map(buildMcpProtectedResourceMetadataRoute)
+        .map((source) => ({ source, destination: config.route }))
+    : [];
+
+  return [...endpointRewrites, ...metadataRewrites];
 }
 
 function buildAgentFeedbackRewrites(config: {
@@ -2052,6 +2102,7 @@ function mergeDocsMarkdownRewrites(
   mcp: {
     enabled: boolean;
     route: string;
+    protectedResource: boolean;
   },
   sitemap: {
     enabled: boolean;
@@ -2112,11 +2163,21 @@ function mergeDocsRedirects(
 
 // ─── withDocs ───────────────────────────────────────────────────────
 
-export function withDocs(nextConfig: NextConfig = {}): NextConfig {
+export function withDocs(
+  nextConfig: NextConfig = {},
+  docsConfig?: Pick<DocsConfig, "mcp">,
+): NextConfig {
   const root = process.cwd();
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
   const docsConfigAbsolutePath = join(root, docsConfigPath);
+  const mcp = docsConfig ? resolveMcpConfig(docsConfig.mcp) : readMcpConfig(root);
+  const nextBasePath = normalizeRoutePrefix(nextConfig.basePath);
+  if (mcp.enabled && mcp.protectedResource && nextBasePath) {
+    throw new Error(
+      `@farming-labs/next: mcp.security.protectedResource cannot be combined with Next.js basePath ${JSON.stringify(nextBasePath)} because RFC 9728 metadata must be hosted at origin-root well-known URLs. Host the protected docs app at the origin root or publish the metadata and MCP proxy at the edge.`,
+    );
+  }
   const agentSkillTraceGlobs = readAgentSkillTraceGlobs(root, docsConfigPath);
   if (agentSkillTraceGlobs.some((glob) => glob.startsWith("../"))) {
     nextConfig.outputFileTracingRoot ??=
@@ -2175,7 +2236,6 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     writeFileSync(docsApiRoutePath, DOCS_API_ROUTE_TEMPLATE);
   }
 
-  const mcp = readMcpConfig(root);
   const sitemap = readSitemapConfig(root);
   const robots = readRobotsConfig(root);
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");

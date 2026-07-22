@@ -983,7 +983,9 @@ mcp: {
 
 HTTP MCP is public by default. Add `security.authenticate` only when the docs need access control;
 return a principal to continue, `null` for a framework-generated 401, or a Web `Response` to control
-the rejection yourself.
+the rejection yourself. Callback-only authentication remains supported. Add
+`security.protectedResource` alongside `authenticate` when OAuth-aware clients also need RFC 9728
+discovery and Bearer challenges.
 
 ```ts
 mcp: {
@@ -995,6 +997,71 @@ mcp: {
   },
 }
 ```
+
+OAuth protected-resource example:
+
+```ts
+mcp: {
+  security: {
+    protectedResource: {
+      authorizationServers: ["https://auth.example.com"],
+      scopesSupported: ["docs:read", "docs:search"],
+      requiredScopes: ["docs:read"],
+      resourceName: "Private product docs",
+      resourceDocumentation: "https://docs.example.com/auth/mcp",
+    },
+    async authenticate({ request, resource }) {
+      const token = await verifyAccessToken(request);
+      if (token && !token.audiences.includes(resource)) return null;
+      return token
+        ? { id: token.subject, scopes: token.scopes }
+        : null;
+    },
+  },
+}
+```
+
+Protected-resource behavior:
+
+- the framework acts as the OAuth resource server but does not issue or validate tokens;
+  `authenticate` must validate signature, issuer, expiry, the exact callback `resource` audience,
+  and derive scopes from the verified token without token passthrough; the callback `request`
+  retains the real incoming URL and query string
+- `authorizationServers` is required and must contain at least one HTTPS authorization-server
+  issuer URL without query or fragment; loopback HTTP is accepted for development
+- `scopesSupported` is advertised as `scopes_supported`; `requiredScopes` is enforced against the
+  principal returned by `authenticate`
+- returning `null` produces `401` with a Bearer `WWW-Authenticate` challenge containing
+  `resource_metadata` and the required `scope`
+- a valid principal missing any required scope receives `403` with `error="insufficient_scope"`
+- a Web `Response` returned by `authenticate` remains authoritative; its status, body, and headers
+  are preserved, so a custom OAuth rejection must provide its own `WWW-Authenticate` header
+- throwing produces a sanitized `500`; provider details are not exposed
+- protected-resource discovery is inactive without `authenticate`, so the endpoint remains public
+  and its metadata routes return `404`
+- TanStack Start, SvelteKit, and Astro forwarders must pass `config.mcp` as the second argument to
+  `isDocsMcpRequest`; update older generated forwarders before enabling protected auth
+- stdio is unaffected
+
+Public RFC 9728 metadata routes:
+
+- `/.well-known/oauth-protected-resource/mcp` for `/mcp`
+- `/.well-known/oauth-protected-resource/.well-known/mcp` for `/.well-known/mcp`
+- `/.well-known/oauth-protected-resource/api/docs/mcp` for the default canonical route; when
+  `mcp.route` changes, this path follows the configured route
+
+Each metadata document identifies its corresponding public resource URL and advertises
+`authorization_servers`, optional `scopes_supported`, `resource_name`, and optional
+`resource_documentation`. Metadata accepts unauthenticated `GET` and `HEAD` requests so clients can
+discover how to authenticate. Use absolute HTTPS URLs for hosted authorization servers and
+authentication documentation, and serve hosted MCP over HTTPS; reserve HTTP for loopback
+development.
+Each MCP alias is a distinct OAuth resource identifier. Token audience validation must accept the
+exact endpoint used by the client; prefer `/mcp` as the shared public endpoint.
+Next.js protected MCP cannot use `basePath`; host it at the origin root or publish the MCP and RFC
+9728 routes at an edge proxy. Inline MCP objects are detected automatically. When MCP configuration
+is imported, spread, or shorthand, pass the live config as `withDocs(nextConfig, docsConfig)` so
+protected rewrites and the `basePath` check use the resolved object.
 
 The HTTP transport validates supplied Origin headers as same-origin and limits POST bodies to 1 MiB
 by default, including when authentication is omitted. Use `security.allowedOrigins` for explicit

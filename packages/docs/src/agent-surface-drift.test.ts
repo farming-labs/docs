@@ -153,6 +153,44 @@ describe("agent surface drift", () => {
     expect(analyzeAgentSurfaceDrift(healthyOptions())).toEqual([]);
   });
 
+  it("detects protected-resource discovery drift", () => {
+    const options = healthyOptions();
+    const protectedResource = {
+      metadataEndpoints: [
+        "/.well-known/oauth-protected-resource/mcp",
+        "/.well-known/oauth-protected-resource/.well-known/mcp",
+      ],
+      authorizationServers: ["https://auth.example.com"],
+      scopesSupported: ["docs:read"],
+      requiredScopes: ["docs:read"],
+    };
+    (options.discovery as { mcp: Record<string, unknown> }).mcp.protectedResource = {
+      ...protectedResource,
+      metadataEndpoints: [...protectedResource.metadataEndpoints],
+    };
+    options.expected.mcp.protectedResource = protectedResource;
+
+    expect(analyzeAgentSurfaceDrift(options)).toEqual([]);
+
+    (options.discovery as { mcp: Record<string, unknown> }).mcp.protectedResource = {
+      ...protectedResource,
+      authorizationServers: ["https://stale-auth.example.com"],
+      metadataEndpoints: ["/.well-known/oauth-protected-resource/mcp"],
+    };
+    expect(analyzeAgentSurfaceDrift(options)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "mcp-protected-resource-mismatch",
+          path: "mcp.protectedResource.authorizationServers",
+        }),
+        expect.objectContaining({
+          code: "mcp-protected-resource-mismatch",
+          path: "mcp.protectedResource.metadataEndpoints",
+        }),
+      ]),
+    );
+  });
+
   it("reports every supported drift category with stable paths and values", () => {
     const options = healthyOptions();
     options.configOptionPaths = ["review", "entry", "mcp.tools.readPage"];

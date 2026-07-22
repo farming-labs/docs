@@ -21,6 +21,7 @@ agent:
     - The docs API and framework public forwarder are already wired.
     - Choose stdio for local use or Streamable HTTP for a shared endpoint.
     - Keep HTTP public by default and add security.authenticate only when the deployment requires access control.
+    - For OAuth discovery, have an authorization-server issuer URL and decide which scopes are advertised and required.
   files:
     - docs.config.ts
     - docs.config.tsx
@@ -38,6 +39,7 @@ agent:
   sideEffects:
     - A public HTTP MCP endpoint exposes the same documentation content as other public agent surfaces.
     - An authentication callback can reject clients and may depend on an external identity system.
+    - OAuth protected-resource metadata remains public so clients can discover how to authenticate.
   verification:
     - run: pnpm exec docs doctor --agent
       expect: MCP access and discovery/config/schema consistency pass.
@@ -50,6 +52,10 @@ agent:
       resolution: Align mcp.route with the framework public forwarder and keep the documented aliases pointing at the canonical handler.
     - symptom: Every HTTP request receives 401 after authentication is enabled.
       resolution: Return a principal from security.authenticate for valid credentials and test the callback independently of MCP tools.
+    - symptom: Protected-resource metadata returns 404.
+      resolution: Configure both security.authenticate and a non-empty protectedResource.authorizationServers list, then verify the public forwarder includes the metadata route.
+    - symptom: An authenticated client receives 403 insufficient_scope.
+      resolution: Return all protectedResource.requiredScopes in the principal scopes, or narrow the endpoint-wide requirements.
 ---
 
 # MCP Server
@@ -121,6 +127,10 @@ The HTTP MCP endpoint is **public by default**. Authentication only becomes requ
 `mcp.security.authenticate`. This lets public documentation stay zero-config while private docs can
 reuse any authentication provider that can inspect a Web `Request`.
 
+Adding `authenticate` by itself keeps the existing callback-only contract. Add
+`security.protectedResource` alongside it when OAuth-aware MCP clients should discover an
+authorization server, requested scopes, and RFC 9728 protected-resource metadata.
+
 Even for public endpoints, the HTTP transport validates a supplied `Origin` header against the
 request origin and limits POST bodies to 1 MiB by default. Origin-less requests remain supported
 for non-browser MCP clients. The body is buffered through that limit before an Origin or
@@ -152,9 +162,114 @@ export default defineDocs({
 The callback result controls the request:
 
 - Return `{ id, scopes?, claims? }` to continue as an authenticated principal.
-- Return `null` to receive `401 Unauthorized`.
-- Return a Web `Response` to control the rejection, redirect, or challenge yourself.
+- Return `null` to receive `401 Unauthorized`. With `protectedResource`, the response also includes
+  a Bearer `WWW-Authenticate` challenge that points to the resource metadata.
+- Return a Web `Response` to control the rejection, redirect, or challenge yourself. The framework
+  preserves its status, body, and headers instead of adding an OAuth challenge.
 - Throw to receive a sanitized `500` response; provider error details are not exposed.
+
+### OAuth protected-resource discovery
+
+Configure both `authenticate` and `protectedResource` to opt into RFC 9728 discovery and
+framework-generated Bearer challenges:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read", "docs:search"],
+        requiredScopes: ["docs:read"],
+        resourceName: "Private product docs",
+        resourceDocumentation: "https://docs.example.com/auth/mcp",
+      },
+      async authenticate({ request, resource }) {
+        const token = await verifyAccessToken(request);
+
+        if (!token) return null;
+        if (!token.audiences.includes(resource)) return null;
+
+        return {
+          id: token.subject,
+          scopes: token.scopes,
+        };
+      },
+    },
+  },
+});
+```
+
+`protectedResource` makes the docs endpoint an OAuth resource server; it does not issue or validate
+tokens. The callback must read the Bearer token, validate its signature, issuer, expiry, and the
+exact `resource` audience supplied in the callback context, and return only scopes verified from
+that token. The `request` retains the real incoming URL, including its query string. Never pass an
+upstream token through to another service. The configured authorization server must publish RFC
+8414 or OpenID Connect discovery and support a client-registration approach your MCP clients can
+use.
+
+`authorizationServers` is required and must contain at least one HTTPS authorization-server issuer
+URL without a query or fragment; loopback HTTP is accepted for development. `scopesSupported` is
+advertised to clients. `requiredScopes` is enforced against the
+`scopes` returned by `authenticate` for every HTTP MCP request.
+
+When this configuration is active:
+
+- missing or invalid credentials that make `authenticate` return `null` receive `401` with a
+  Bearer challenge containing `resource_metadata` and the required `scope`
+- an authenticated principal missing any `requiredScopes` receives `403` with
+  `error="insufficient_scope"`
+- a `Response` returned by `authenticate` remains authoritative, so add `WWW-Authenticate` to that
+  response yourself when a custom rejection should participate in OAuth discovery
+- the stdio transport is unchanged
+
+The framework publishes a public metadata document for each MCP HTTP alias:
+
+```txt title="RFC 9728 protected-resource metadata"
+/.well-known/oauth-protected-resource/mcp
+/.well-known/oauth-protected-resource/.well-known/mcp
+/.well-known/oauth-protected-resource/api/docs/mcp
+```
+
+If `mcp.route` is customized, the last path uses that configured route instead. Each document's
+`resource` value identifies the corresponding public MCP URL, and its
+`authorization_servers`, optional `scopes_supported`, resource name, and documentation URL come
+from `protectedResource`. Metadata stays public so a client can discover how to authenticate before
+it has a token. `GET` and `HEAD` are supported, and browser discovery receives public CORS headers.
+
+Each alias is a distinct OAuth resource identifier. Configure token audience validation for the
+exact endpoint your clients use; prefer `/mcp` as the shared public endpoint unless clients require
+the canonical or well-known alias.
+
+`protectedResource` is inactive without `authenticate`: the MCP endpoint remains public and the
+metadata routes return `404`. This prevents discovery metadata from claiming that a public endpoint
+is protected.
+
+Generated TanStack Start, SvelteKit, and Astro forwarders pass `config.mcp` to
+`isDocsMcpRequest(url, config.mcp)`. Update that call when enabling protected auth in a project
+generated by an older release. The legacy one-argument form continues to match MCP endpoints but
+deliberately does not reserve OAuth metadata paths in public projects.
+
+<Callout type="warning" title="Use HTTPS for hosted OAuth">
+  Use absolute `https://` authorization-server and resource-documentation URLs in production, and
+  serve the hosted MCP endpoint over HTTPS. Plain HTTP should be limited to loopback development.
+</Callout>
+
+<Callout type="warning" title="Next.js basePath">
+  Protected MCP cannot use Next.js `basePath`: RFC 9728 inserts its well-known path at the origin
+  root, while Next.js only supports disabling `basePath` for external rewrites. Host the protected
+  docs app at the origin root, or publish the MCP proxy and protected-resource metadata at the edge.
+  For an inline MCP object, `withDocs()` detects this combination. If the MCP configuration is
+  imported, spread, or shorthand, pass the live docs config as the second argument so protected
+  rewrites and the `basePath` check use the resolved object:
+
+  ```ts title="next.config.ts"
+  import { withDocs } from "@farming-labs/next/config";
+  import docsConfig from "./docs.config";
+
+  export default withDocs({}, docsConfig);
+  ```
+</Callout>
 
 Custom low-level `DocsMcpSource` implementations receive that principal in the optional second
 argument to `getPages(locale, context)` and `getNavigation(locale, context)`. They can use scopes or
@@ -266,26 +381,27 @@ export default withDocs();
 import { createFileRoute } from "@tanstack/react-router";
 import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
+import docsConfig from "../../docs.config";
 
 export const Route = createFileRoute("/$")({
   server: {
     handlers: {
       OPTIONS: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url))
+        isDocsMcpRequest(new URL(request.url), docsConfig.mcp)
           ? docsServer.MCP.OPTIONS({ request })
           : new Response("Not Found", { status: 404 }),
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        if (isDocsMcpRequest(url)) return docsServer.MCP.GET({ request });
+        if (isDocsMcpRequest(url, docsConfig.mcp)) return docsServer.MCP.GET({ request });
         if (isDocsPublicGetRequest("docs", url, request)) return docsServer.GET({ request });
         return new Response("Not Found", { status: 404 });
       },
       POST: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url))
+        isDocsMcpRequest(new URL(request.url), docsConfig.mcp)
           ? docsServer.MCP.POST({ request })
           : new Response("Not Found", { status: 404 }),
       DELETE: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url))
+        isDocsMcpRequest(new URL(request.url), docsConfig.mcp)
           ? docsServer.MCP.DELETE({ request })
           : new Response("Not Found", { status: 404 }),
     },
@@ -297,12 +413,13 @@ export const Route = createFileRoute("/$")({
 
 ```ts title="src/hooks.server.ts"
 import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import config from "$lib/docs.config";
 import { GET, MCP } from "$lib/docs.server";
 
 export async function handle({ event, resolve }) {
   const method = event.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(event.url)) {
+  if (isDocsMcpRequest(event.url, config.mcp)) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
@@ -332,12 +449,13 @@ export const { load, GET, POST, MCP } = createDocsServer({
 
 ```ts title="src/middleware.ts"
 import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import config from "./lib/docs.config";
 import { GET, MCP } from "./lib/docs.server";
 
 export async function onRequest(context, next) {
   const method = context.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(context.url)) {
+  if (isDocsMcpRequest(context.url, config.mcp)) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });

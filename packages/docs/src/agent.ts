@@ -16,6 +16,13 @@ import type {
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import {
+  DEFAULT_MCP_PUBLIC_ROUTE,
+  DEFAULT_MCP_ROUTE,
+  DEFAULT_MCP_WELL_KNOWN_ROUTE,
+  getDocsMcpProtectedResourceMetadataRoutes,
+  isDocsMcpRequest,
+} from "./mcp-auth.js";
+import {
   PAGE_AGENT_CONTRACT_FIELD_SCHEMA,
   renderPageAgentFrontmatterYamlLines,
   upsertPageAgentContractMarkdown,
@@ -85,6 +92,18 @@ export {
   resolveDocsStandardsDiscoveryRequest,
   sha256DocsDiscoveryContent,
 } from "./standards-discovery.js";
+export {
+  DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE,
+  DEFAULT_MCP_PUBLIC_ROUTE,
+  DEFAULT_MCP_ROUTE,
+  DEFAULT_MCP_WELL_KNOWN_ROUTE,
+  buildDocsMcpProtectedResourceMetadataRoute,
+  getDocsMcpProtectedResourceMetadataRoutes,
+  getDocsMcpResourcePaths,
+  hasDocsMcpProtectedResourceConfig,
+  isDocsMcpRequest,
+} from "./mcp-auth.js";
+export type { DocsMcpResourceLocation } from "./mcp-auth.js";
 export type {
   CreateDocsStandardsResponseOptions,
   DocsAgentSkillIndexEntry,
@@ -120,9 +139,6 @@ export const DEFAULT_OPENAPI_SCHEMA_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=op
 export const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 export const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
 export const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
-export const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
-export const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
-export const DEFAULT_MCP_WELL_KNOWN_ROUTE = "/.well-known/mcp";
 export const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 export const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 export const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
@@ -2098,6 +2114,10 @@ export async function createDocsStandardsDiscoveryResponse({
           : []),
       ]
     : [];
+  const protectedResourceMetadataRoutes =
+    mcp.enabled && mcp.security?.authenticate && mcp.security.protectedResource
+      ? getDocsMcpProtectedResourceMetadataRoutes(mcp.route)
+      : [];
 
   return createDocsStandardsResponse({
     request,
@@ -2125,6 +2145,7 @@ export async function createDocsStandardsDiscoveryResponse({
           sitemapRoutes,
           robotsRoute: robotsEnabled ? DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE : null,
           mcpRoute: mcp.enabled ? mcp.route : null,
+          protectedResourceMetadataRoutes,
           feedbackRoutes: feedback?.enabled ? [feedbackRoute, feedbackSchemaRoute] : [],
           openapiRoute: openapiConfig.enabled
             ? (openapiUrl ?? `${resolvedApiRoute}?format=openapi`)
@@ -2152,15 +2173,6 @@ export function isDocsAgentDiscoveryRequest(
     pathname === DEFAULT_AGENT_SPEC_ROUTE ||
     pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE ||
     pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE
-  );
-}
-
-export function isDocsMcpRequest(url: URL): boolean {
-  const pathname = normalizeDocsUrlPath(url.pathname);
-  return (
-    pathname === DEFAULT_MCP_ROUTE ||
-    pathname === DEFAULT_MCP_PUBLIC_ROUTE ||
-    pathname === DEFAULT_MCP_WELL_KNOWN_ROUTE
   );
 }
 
@@ -3589,6 +3601,11 @@ export function buildDocsAgentDiscoverySpec({
   const openapiUrl = resolveDocsOpenApiDiscoveryUrl(openapiConfig, resolvedApiRoute);
   const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
   const apiCatalogEnabled = explicitApiCatalog ?? llms?.apiCatalog ?? true;
+  const protectedResource =
+    mcp.enabled && mcp.security?.authenticate ? mcp.security.protectedResource : undefined;
+  const protectedResourceMetadataRoutes = protectedResource
+    ? getDocsMcpProtectedResourceMetadataRoutes(mcp.route)
+    : [];
 
   return {
     version: "1",
@@ -3811,10 +3828,20 @@ export function buildDocsAgentDiscoverySpec({
       publicEndpoint: DEFAULT_MCP_PUBLIC_ROUTE,
       wellKnownEndpoint: DEFAULT_MCP_WELL_KNOWN_ROUTE,
       publicEndpoints: [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE],
-      canonicalEndpoint: DEFAULT_MCP_ROUTE,
+      canonicalEndpoint: mcp.route,
       name: mcp.name,
       version: mcp.version,
       tools: mcp.tools,
+      ...(protectedResource
+        ? {
+            protectedResource: {
+              metadataEndpoints: protectedResourceMetadataRoutes,
+              authorizationServers: protectedResource.authorizationServers,
+              scopesSupported: protectedResource.scopesSupported,
+              requiredScopes: protectedResource.requiredScopes,
+            },
+          }
+        : {}),
     },
     feedback: {
       enabled: feedback?.enabled ?? false,

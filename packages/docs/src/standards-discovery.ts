@@ -157,6 +157,7 @@ export interface DocsApiCatalogOptions {
   sitemapRoutes?: readonly string[];
   robotsRoute?: string | null;
   mcpRoute?: string | null;
+  protectedResourceMetadataRoutes?: readonly string[];
   feedbackRoutes?: readonly string[];
   openapiRoute?: string | null;
   apiReferenceRoute?: string | null;
@@ -311,6 +312,9 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
     toTarget(options.configRoute, options.origin, "application/json", "Docs configuration map"),
     toTarget(options.diagnosticsRoute, options.origin, "application/json", "Docs diagnostics"),
     toTarget(options.robotsRoute, options.origin, "text/plain", "Robots policy"),
+    ...(options.protectedResourceMetadataRoutes ?? []).map((route) =>
+      toTarget(route, options.origin, "application/json", "OAuth protected-resource metadata"),
+    ),
   ]);
 
   const serviceDescriptions = compactUniqueTargets([
