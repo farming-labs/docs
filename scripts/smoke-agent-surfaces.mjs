@@ -328,7 +328,10 @@ async function validateModernSkillArtifact(request, baseUrl, skill) {
     `${skill.url} HEAD returned the wrong content-type`,
   );
   assert(
-    head.response.headers.get("etag") === `"${skill.digest.slice("sha256:".length)}"`,
+    [
+      `"${skill.digest.slice("sha256:".length)}"`,
+      `W/"${skill.digest.slice("sha256:".length)}"`,
+    ].includes(head.response.headers.get("etag")),
     `${skill.url} HEAD did not expose the indexed digest as its ETag`,
   );
 }

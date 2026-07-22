@@ -158,7 +158,7 @@ function createFixtureFetch(options = {}) {
       return response(method, docsDocument, {
         contentType: "text/markdown; charset=utf-8",
         headers: {
-          etag: `"${docsDigest}"`,
+          etag: `W/"${docsDigest}"`,
           link: `<${AGENT_SKILLS_INDEX_ROUTE}>; rel="collection"`,
         },
       });
