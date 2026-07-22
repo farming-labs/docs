@@ -17,7 +17,13 @@ permissions:
 
 jobs:
   smoke:
-    if: github.event_name != 'deployment_status' || github.event.deployment_status.state == 'success'
+    # The docs-website preview project is intentionally protected by Vercel SSO.
+    # The public docs-cloud preview exercises the same site, while scheduled and
+    # manual runs continue to verify the production origin.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment != 'Preview – docs-website')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
