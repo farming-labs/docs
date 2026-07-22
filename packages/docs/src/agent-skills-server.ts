@@ -4,8 +4,8 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import type { DocsAgentSkillsInput } from "./types.js";
 import {
+  buildDocsPublishedAgentSkill,
   DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
-  resolveDocsPublishedAgentSkill,
   type DocsPublishedAgentSkill,
   type DocsPublishedAgentSkillFile,
 } from "./standards-discovery.js";
@@ -316,17 +316,14 @@ function createDeterministicTarGzip(files: DocsPublishedAgentSkillFile[]): Uint8
   return archive;
 }
 
-async function publishSkillDocument(skillPath: string): Promise<DocsPublishedAgentSkill> {
+function publishSkillDocument(skillPath: string): DocsPublishedAgentSkill {
   const skillDir = path.dirname(skillPath);
   const skillDocument = readFileSync(skillPath, "utf8");
   const skillDocumentBytes = Buffer.byteLength(skillDocument, "utf8");
   if (skillDocumentBytes > MAX_FILE_BYTES) {
     throw new Error(`Agent Skill SKILL.md exceeds ${MAX_FILE_BYTES} bytes: ${skillPath}`);
   }
-  const base = await resolveDocsPublishedAgentSkill({
-    preferredDocument: skillDocument,
-    fallbackDocument: skillDocument,
-  });
+  const base = buildDocsPublishedAgentSkill(skillDocument, hashBytes(skillDocument));
   if (base.name !== path.basename(skillDir)) {
     throw new Error(
       `Agent Skill frontmatter name "${base.name}" must match its directory "${path.basename(skillDir)}".`,
@@ -351,11 +348,11 @@ async function publishSkillDocument(skillPath: string): Promise<DocsPublishedAge
   };
 }
 
-/** Resolve and safely package all project skills configured through `agent.skills`. */
-export async function resolveConfiguredAgentSkills(
+/** Resolve and safely package all project skills configured through `agent.skills` synchronously. */
+export function resolveConfiguredAgentSkillsSync(
   input: DocsAgentSkillsInput | undefined,
   options: ResolveConfiguredAgentSkillsOptions = {},
-): Promise<DocsPublishedAgentSkill[]> {
+): DocsPublishedAgentSkill[] {
   const configuredPaths = normalizeConfiguredPaths(input);
   if (configuredPaths.length === 0) return [];
 
@@ -376,7 +373,7 @@ export async function resolveConfiguredAgentSkills(
     );
   }
 
-  const published = await Promise.all([...documents].sort().map(publishSkillDocument));
+  const published = [...documents].sort().map(publishSkillDocument);
   const names = new Set<string>();
   for (const skill of published) {
     if (names.has(skill.name))
@@ -384,4 +381,12 @@ export async function resolveConfiguredAgentSkills(
     names.add(skill.name);
   }
   return published.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/** Resolve configured skills while preserving the original promise-based public API. */
+export async function resolveConfiguredAgentSkills(
+  input: DocsAgentSkillsInput | undefined,
+  options: ResolveConfiguredAgentSkillsOptions = {},
+): Promise<DocsPublishedAgentSkill[]> {
+  return resolveConfiguredAgentSkillsSync(input, options);
 }

@@ -27,6 +27,7 @@ export default defineConfig({
     "react-dom",
     "@/docs.config",
     "@farming-labs/docs",
+    "@farming-labs/docs/agent-skills-bundle",
     "@farming-labs/docs/client/react",
     "@farming-labs/docs/cloud/server",
     "@farming-labs/docs/server",

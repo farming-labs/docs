@@ -203,6 +203,8 @@ interface DocsAPIOptions {
   metadata?: DocsConfig["metadata"];
   /** Reusable skill publication and optional real A2A service metadata. */
   agent?: DocsConfig["agent"];
+  /** @internal Build-time Agent Skills snapshot supplied by framework adapters. */
+  _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
 }
 
 interface DocsMCPAPIOptions {
@@ -217,6 +219,8 @@ interface DocsMCPAPIOptions {
   telemetry?: boolean | DocsTelemetryConfig;
   observability?: boolean | DocsObservabilityConfig;
   agent?: DocsConfig["agent"];
+  /** @internal Build-time Agent Skills snapshot supplied by framework adapters. */
+  _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -3744,9 +3748,15 @@ function generateLlmsTxt(
  */
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
-  const publishedAgentSkills = resolveConfiguredAgentSkills(options?.agent?.skills, {
-    rootDir: root,
-  });
+  let publishedAgentSkills: Promise<DocsPublishedAgentSkill[]> | undefined;
+  function getPublishedAgentSkills(): Promise<DocsPublishedAgentSkill[]> {
+    if (!publishedAgentSkills) {
+      publishedAgentSkills = Array.isArray(options?._preloadedAgentSkills)
+        ? Promise.resolve([...options._preloadedAgentSkills])
+        : resolveConfiguredAgentSkills(options?.agent?.skills, { rootDir: root });
+    }
+    return publishedAgentSkills;
+  }
   const entry = options?.entry ?? readEntry(root);
   const docsPath = normalizeDocsPublicPath(options?.docsPath ?? readDocsPath(root), entry);
   const analytics = options?.analytics;
@@ -4127,7 +4137,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       request,
       preferredSkillDocument: needsSkill ? readRootSkillDocument(root) : null,
       fallbackSkillDocument,
-      publishedSkills: await publishedAgentSkills,
+      publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: options?.agent?.a2a,
       origin: url.origin,
       entry,
@@ -4248,7 +4258,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
                   openapi: openapiDiscovery,
                 }),
               }),
-              ...(await publishedAgentSkills),
+              ...(await getPublishedAgentSkills()),
             ],
             agentCard: options?.agent?.a2a,
           }),
@@ -4818,6 +4828,15 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     typeof options.nav?.title === "string" && options.nav.title.trim().length > 0
       ? options.nav.title
       : "Documentation";
+  let configuredAgentSkills: Promise<DocsPublishedAgentSkill[]> | undefined;
+  function getConfiguredAgentSkills(): Promise<DocsPublishedAgentSkill[]> {
+    if (!configuredAgentSkills) {
+      configuredAgentSkills = Array.isArray(options._preloadedAgentSkills)
+        ? Promise.resolve([...options._preloadedAgentSkills])
+        : resolveConfiguredAgentSkills(options.agent?.skills, { rootDir });
+    }
+    return configuredAgentSkills;
+  }
 
   const filesystemSource = createFilesystemDocsMcpSource({
     rootDir,
@@ -4829,7 +4848,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const source = {
     ...filesystemSource,
     async getSkills() {
-      const configured = await resolveConfiguredAgentSkills(options.agent?.skills, { rootDir });
+      const configured = await getConfiguredAgentSkills();
       const preferredDocument = readRootSkillDocument(rootDir);
       const fallbackDocument = `---\nname: docs\ndescription: Use the project documentation through MCP resources and tools.\n---\n\n# Documentation\n`;
       const rootSkill = await resolveDocsPublishedAgentSkill({

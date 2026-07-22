@@ -84,8 +84,12 @@ export {
   resolveSearchRequestConfig,
 } from "./search.js";
 export { runDocsGoldenTasks } from "./agent-evals.js";
-export { resolveConfiguredAgentSkills } from "./agent-skills-server.js";
+export {
+  resolveConfiguredAgentSkills,
+  resolveConfiguredAgentSkillsSync,
+} from "./agent-skills-server.js";
 export type { ResolveConfiguredAgentSkillsOptions } from "./agent-skills-server.js";
+export { renderDocsAgentSkillsBundle } from "./agent-skills-vite.js";
 export type {
   DocsGoldenAnswerMetrics,
   DocsGoldenCitationMetrics,

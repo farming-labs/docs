@@ -30,7 +30,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep as pathSeparator } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
@@ -45,7 +45,11 @@ import {
   DEFAULT_API_CATALOG_ROUTE,
   type DocsConfig,
 } from "@farming-labs/docs";
-import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
+import {
+  ensureDocsReviewWorkflow,
+  renderDocsAgentSkillsBundle,
+  resolveConfiguredAgentSkillsSync,
+} from "@farming-labs/docs/server";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
 
@@ -178,6 +182,8 @@ export default function HiddenChangelogSourceLayout() {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
+const AGENT_SKILLS_BUNDLE_ALIAS = "@farming-labs/docs/agent-skills-bundle";
+const AGENT_SKILLS_BUNDLE_PATH = ".docs/agent-skills-bundle.mjs";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -233,8 +239,12 @@ function resolvePackageSubpath(packageDir: string, relativePath: string): string
 
 function toTurbopackAliasPath(root: string, value: string): string {
   if (!isAbsolute(value)) return value;
-  const relativePath = relative(root, value);
-  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+  const relativePath = relative(root, value).replaceAll("\\", "/");
+  return relativePath === ".." || relativePath.startsWith("../")
+    ? relativePath
+    : relativePath.startsWith("./")
+      ? relativePath
+      : `./${relativePath}`;
 }
 
 const FUMADOCS_OPENAPI_PACKAGE_ALIAS =
@@ -508,58 +518,305 @@ function readDocsConfigPath(root: string): string {
   return "docs.config.ts";
 }
 
-function readLiteralStringList(block: string, key: string): string[] | null {
-  const cursor = findTopLevelPropertyValueIndex(block, key);
-  if (cursor === undefined) return null;
-  const value = block.slice(cursor);
-  const quoted = value.match(/^(["'])(.*?)\1/s);
-  if (quoted) return [quoted[2]];
-  if (!value.startsWith("[")) return null;
-  const end = value.indexOf("]");
-  if (end === -1) return null;
-  return [...value.slice(1, end).matchAll(/(["'])(.*?)\1/g)].map((match) => match[2]);
+function skipStaticTrivia(source: string, start: number): number {
+  let cursor = start;
+  while (cursor < source.length) {
+    if (/\s/.test(source[cursor] ?? "")) {
+      cursor += 1;
+      continue;
+    }
+    if (source.startsWith("//", cursor)) {
+      const lineEnd = source.indexOf("\n", cursor + 2);
+      return lineEnd === -1 ? source.length : skipStaticTrivia(source, lineEnd + 1);
+    }
+    if (source.startsWith("/*", cursor)) {
+      const commentEnd = source.indexOf("*/", cursor + 2);
+      return commentEnd === -1 ? source.length : skipStaticTrivia(source, commentEnd + 2);
+    }
+    break;
+  }
+  return cursor;
 }
 
-function readAgentSkillTraceGlobs(root: string, configPath: string): string[] {
+function readStaticStringLiteral(
+  source: string,
+  start: number,
+): { value: string; end: number } | null {
+  const quote = source[start];
+  if (quote !== '"' && quote !== "'") return null;
+  let value = "";
+
+  for (let cursor = start + 1; cursor < source.length; cursor += 1) {
+    const char = source[cursor]!;
+    if (char === quote) return { value, end: cursor + 1 };
+    if (char === "\n" || char === "\r") return null;
+    if (char !== "\\") {
+      value += char;
+      continue;
+    }
+
+    const escaped = source[cursor + 1];
+    if (!escaped) return null;
+    const simpleEscapes: Record<string, string> = {
+      "0": "\0",
+      b: "\b",
+      f: "\f",
+      n: "\n",
+      r: "\r",
+      t: "\t",
+      v: "\v",
+      "\\": "\\",
+      '"': '"',
+      "'": "'",
+    };
+    if (escaped in simpleEscapes) {
+      value += simpleEscapes[escaped]!;
+      cursor += 1;
+      continue;
+    }
+    const digits = escaped === "x" ? 2 : escaped === "u" ? 4 : 0;
+    if (digits > 0) {
+      const hex = source.slice(cursor + 2, cursor + 2 + digits);
+      if (!new RegExp(`^[0-9a-fA-F]{${digits}}$`).test(hex)) return null;
+      value += String.fromCodePoint(Number.parseInt(hex, 16));
+      cursor += digits + 1;
+      continue;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+function isStaticPropertyValueEnd(source: string, start: number): boolean {
+  const cursor = skipStaticTrivia(source, start);
+  return cursor === source.length || source[cursor] === ",";
+}
+
+function readLiteralStringList(block: string, key: string): string[] | null {
+  const valueStart = findTopLevelPropertyValueIndex(block, key);
+  if (valueStart === undefined) return null;
+
+  const single = readStaticStringLiteral(block, valueStart);
+  if (single) return isStaticPropertyValueEnd(block, single.end) ? [single.value] : null;
+  if (block[valueStart] !== "[") return null;
+
+  const values: string[] = [];
+  let cursor = valueStart + 1;
+  while (cursor < block.length) {
+    cursor = skipStaticTrivia(block, cursor);
+    if (block[cursor] === "]") {
+      return isStaticPropertyValueEnd(block, cursor + 1) ? values : null;
+    }
+
+    const item = readStaticStringLiteral(block, cursor);
+    if (!item) return null;
+    values.push(item.value);
+    cursor = skipStaticTrivia(block, item.end);
+    if (block[cursor] === "]") {
+      return isStaticPropertyValueEnd(block, cursor + 1) ? values : null;
+    }
+    if (block[cursor] !== ",") return null;
+    cursor += 1;
+  }
+
+  return null;
+}
+
+function maskNestedObjectSource(block: string): string {
+  let objectDepth = 0;
+  let arrayDepth = 0;
+  let parenDepth = 0;
+  let inString: '"' | "'" | "`" | null = null;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+  let result = "";
+
+  for (let index = 0; index < block.length; index += 1) {
+    const char = block[index]!;
+    const next = block[index + 1];
+    const atTopLevel = objectDepth === 0 && arrayDepth === 0 && parenDepth === 0;
+
+    if (inLineComment) {
+      if (char === "\n") inLineComment = false;
+      result += char === "\n" ? "\n" : " ";
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && next === "/") {
+        inBlockComment = false;
+        result += "  ";
+        index += 1;
+      } else {
+        result += char === "\n" ? "\n" : " ";
+      }
+      continue;
+    }
+
+    if (inString) {
+      result += char === "\n" ? "\n" : " ";
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === inString) {
+        inString = null;
+      }
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      inLineComment = true;
+      result += "  ";
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      inBlockComment = true;
+      result += "  ";
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      if (atTopLevel && char !== "`") {
+        const literal = readStaticStringLiteral(block, index);
+        if (literal) {
+          const isPropertyKey = block[skipStaticTrivia(block, literal.end)] === ":";
+          result += isPropertyKey
+            ? block.slice(index, literal.end)
+            : " ".repeat(literal.end - index);
+          index = literal.end - 1;
+          continue;
+        }
+      }
+      inString = char;
+      result += " ";
+      continue;
+    }
+
+    if (char === "{") objectDepth += 1;
+    else if (char === "}") objectDepth = Math.max(0, objectDepth - 1);
+    else if (char === "[") arrayDepth += 1;
+    else if (char === "]") arrayDepth = Math.max(0, arrayDepth - 1);
+    else if (char === "(") parenDepth += 1;
+    else if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
+
+    result += atTopLevel ? char : " ";
+  }
+
+  return result;
+}
+
+function hasUnresolvedTopLevelProperty(block: string, key: string): boolean {
+  const visible = maskNestedObjectSource(block);
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (
+    /(?:^|,)\s*\.\.\./s.test(visible) ||
+    /(?:^|,)\s*\[/s.test(visible) ||
+    new RegExp(`(?:^|,)\\s*${escapedKey}\\s*(?=,|$)`, "s").test(visible) ||
+    new RegExp(`["']${escapedKey}["']\\s*:`).test(visible)
+  );
+}
+
+function hasDuplicateTopLevelProperty(block: string, key: string): boolean {
+  const visible = maskNestedObjectSource(block);
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return [...visible.matchAll(new RegExp(`(?:^|,)\\s*${escapedKey}\\s*:`, "gs"))].length > 1;
+}
+
+function readAgentSkillPaths(root: string, configPath: string): string[] {
   const absoluteConfigPath = join(root, configPath);
   if (!existsSync(absoluteConfigPath)) return [];
   const content = readFileSync(absoluteConfigPath, "utf8");
-  const agent = extractTopLevelObjectLiteral(content, "agent");
-  if (!agent) return [];
+  const rootObject = extractRootObjectLiteral(content);
+  if (!rootObject) {
+    throw new Error(
+      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+    );
+  }
+  if (
+    hasUnresolvedTopLevelProperty(rootObject, "agent") ||
+    hasDuplicateTopLevelProperty(rootObject, "agent")
+  ) {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+  const agentCursor = findTopLevelPropertyValueIndex(rootObject, "agent");
+  if (agentCursor === undefined) {
+    return [];
+  }
+  if (rootObject[agentCursor] !== "{") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+  const agentEnd = findMatchingObjectEnd(rootObject, agentCursor);
+  if (agentEnd === undefined || !isStaticPropertyValueEnd(rootObject, agentEnd + 1)) {
+    throw new Error(
+      "withDocs could not parse the literal agent config while bundling Agent Skills.",
+    );
+  }
+  const agent = rootObject.slice(agentCursor + 1, agentEnd);
+  if (
+    hasUnresolvedTopLevelProperty(agent, "skills") ||
+    hasDuplicateTopLevelProperty(agent, "skills")
+  ) {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
   const skillsCursor = findTopLevelPropertyValueIndex(agent, "skills");
-  if (skillsCursor === undefined) return [];
-  const skillsObject =
-    agent[skillsCursor] === "{" ? extractObjectLiteral(agent, "skills") : undefined;
+  if (skillsCursor === undefined) {
+    return [];
+  }
+  let skillsObject: string | undefined;
+  if (agent[skillsCursor] === "{") {
+    const skillsEnd = findMatchingObjectEnd(agent, skillsCursor);
+    if (skillsEnd === undefined || !isStaticPropertyValueEnd(agent, skillsEnd + 1)) {
+      throw new Error(
+        "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
+      );
+    }
+    skillsObject = agent.slice(skillsCursor + 1, skillsEnd);
+    if (
+      hasUnresolvedTopLevelProperty(skillsObject, "paths") ||
+      hasDuplicateTopLevelProperty(skillsObject, "paths")
+    ) {
+      throw new Error(
+        "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
+      );
+    }
+  }
   const configured = skillsObject
     ? readLiteralStringList(skillsObject, "paths")
     : readLiteralStringList(agent, "skills");
   if (!configured) {
     throw new Error(
-      "withDocs could not statically trace agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
+      "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
     );
   }
-  return configured.map((configuredPath) => {
-    const normalized = configuredPath.replace(/\\/g, "/").replace(/\/$/, "");
-    return normalized.endsWith("/SKILL.md") || normalized === "SKILL.md"
-      ? normalized
-      : `${normalized}/**/*`;
-  });
+  return configured;
 }
 
-function commonTracingRoot(root: string, globs: readonly string[]): string {
-  let common = resolve(root);
-  for (const glob of globs) {
-    const candidate = resolve(root, glob.replace(/\/\*\*\/\*$/, ""));
-    while (
-      relative(common, candidate) === ".." ||
-      relative(common, candidate).startsWith(`..${pathSeparator}`)
-    ) {
-      const parent = dirname(common);
-      if (parent === common) break;
-      common = parent;
-    }
+function writeAgentSkillsBundle(
+  root: string,
+  configuredSkills: NonNullable<DocsConfig["agent"]>["skills"],
+): string {
+  const bundlePath = join(root, AGENT_SKILLS_BUNDLE_PATH);
+  const skills = resolveConfiguredAgentSkillsSync(configuredSkills, { rootDir: root });
+  const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(skills)}`;
+
+  mkdirSync(dirname(bundlePath), { recursive: true });
+  if (!existsSync(bundlePath) || readFileSync(bundlePath, "utf8") !== source) {
+    writeFileSync(bundlePath, source, "utf8");
   }
-  return common;
+
+  return bundlePath;
 }
 
 /** Read the OG endpoint from docs.config.ts[x] (returns undefined if not set). */
@@ -2165,7 +2422,7 @@ function mergeDocsRedirects(
 
 export function withDocs(
   nextConfig: NextConfig = {},
-  docsConfig?: Pick<DocsConfig, "mcp">,
+  docsConfig?: Pick<DocsConfig, "agent" | "mcp">,
 ): NextConfig {
   const root = process.cwd();
   const workspaceRoot = findDocsWorkspaceRoot(root);
@@ -2178,11 +2435,11 @@ export function withDocs(
       `@farming-labs/next: mcp.security.protectedResource cannot be combined with Next.js basePath ${JSON.stringify(nextBasePath)} because RFC 9728 metadata must be hosted at origin-root well-known URLs. Host the protected docs app at the origin root or publish the metadata and MCP proxy at the edge.`,
     );
   }
-  const agentSkillTraceGlobs = readAgentSkillTraceGlobs(root, docsConfigPath);
-  if (agentSkillTraceGlobs.some((glob) => glob.startsWith("../"))) {
-    nextConfig.outputFileTracingRoot ??=
-      workspaceRoot ?? commonTracingRoot(root, agentSkillTraceGlobs);
-  }
+  const configuredAgentSkills =
+    docsConfig?.agent === undefined
+      ? readAgentSkillPaths(root, docsConfigPath)
+      : docsConfig.agent.skills;
+  const agentSkillsBundlePath = writeAgentSkillsBundle(root, configuredAgentSkills);
   const agentFeedback = readAgentFeedbackConfig(root);
   const docsConfigRelativeAlias =
     docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
@@ -2436,6 +2693,7 @@ export function withDocs(
       ...(workspaceRoot ? createDocsWorkspaceAliases(root, workspaceRoot) : {}),
       ...existingResolveAlias,
       [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
+      [AGENT_SKILLS_BUNDLE_ALIAS]: toTurbopackAliasPath(root, agentSkillsBundlePath),
       "fumadocs-openapi": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_PACKAGE_ALIAS),
       "fumadocs-openapi/ui": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_UI_ALIAS),
       "fumadocs-openapi/server": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_SERVER_ALIAS),
@@ -2510,6 +2768,7 @@ export function withDocs(
       });
     }
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
+    resolvedConfig.resolve.alias[AGENT_SKILLS_BUNDLE_ALIAS] = agentSkillsBundlePath;
     resolvedConfig.resolve.alias["fumadocs-openapi"] = FUMADOCS_OPENAPI_PACKAGE_ALIAS;
     resolvedConfig.resolve.alias["fumadocs-openapi/ui"] = FUMADOCS_OPENAPI_UI_ALIAS;
     resolvedConfig.resolve.alias["fumadocs-openapi/server"] = FUMADOCS_OPENAPI_SERVER_ALIAS;
@@ -2579,7 +2838,6 @@ export function withDocs(
         agentsTraceFile,
         agentTraceFile,
         sitemapManifestTraceFile,
-        ...agentSkillTraceGlobs,
       ]),
     ],
     [DEFAULT_MCP_ROUTE]: [
@@ -2587,7 +2845,6 @@ export function withDocs(
         ...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []),
         docsTraceGlob,
         skillTraceFile,
-        ...agentSkillTraceGlobs,
       ]),
     ],
   };

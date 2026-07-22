@@ -9,6 +9,8 @@
     "try:init": "pnpm --filter @farming-labs/docs run build && cd examples/next && node ../../packages/docs/dist/cli/index.mjs init",
     "dev": "pnpm --filter example-next dev",
     "examples:version": "node scripts/set-examples-version.mjs",
+    "smoke:agent-surfaces": "node scripts/smoke-agent-surfaces.mjs",
+    "test:smoke-agent-surfaces": "node --test scripts/smoke-agent-surfaces.test.mjs",
     "test": "pnpm --filter @farming-labs/docs run test",
     "typecheck": "pnpm --filter @farming-labs/docs run build && pnpm --filter './packages/*' run typecheck",
     "release": "bumpp",

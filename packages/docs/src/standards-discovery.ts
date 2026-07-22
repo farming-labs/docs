@@ -405,23 +405,11 @@ export async function sha256DocsDiscoveryContent(content: string | Uint8Array): 
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-/** Select a valid public skill and hash the exact bytes returned by its standards route. */
-export async function resolveDocsPublishedAgentSkill({
-  preferredDocument,
-  fallbackDocument,
-}: DocsPublishedAgentSkillOptions): Promise<DocsPublishedAgentSkill> {
-  const preferredMetadata = preferredDocument ? readAgentSkillFrontmatter(preferredDocument) : null;
-  const fallbackMetadata = readAgentSkillFrontmatter(fallbackDocument);
-  const content = preferredMetadata ? preferredDocument! : fallbackDocument;
-  const metadata = preferredMetadata ?? fallbackMetadata;
-
-  if (!metadata) {
-    throw new Error(
-      "The generated Agent Skills fallback must contain valid name and description frontmatter.",
-    );
-  }
-
-  const sha256 = await sha256DocsDiscoveryContent(content);
+function createDocsPublishedAgentSkill(
+  content: string,
+  metadata: { name: string; description: string },
+  sha256: string,
+): DocsPublishedAgentSkill {
   return {
     name: metadata.name,
     type: "skill-md",
@@ -442,6 +430,43 @@ export async function resolveDocsPublishedAgentSkill({
       },
     ],
   };
+}
+
+/** Build a published skill from an exact SKILL.md document and its precomputed SHA-256. */
+export function buildDocsPublishedAgentSkill(
+  document: string,
+  sha256: string,
+): DocsPublishedAgentSkill {
+  const metadata = readAgentSkillFrontmatter(document);
+  if (!metadata) {
+    throw new Error(
+      "The generated Agent Skills fallback must contain valid name and description frontmatter.",
+    );
+  }
+  if (!/^[a-f0-9]{64}$/.test(sha256)) {
+    throw new Error("Agent Skill SHA-256 must be a lowercase 64-character hexadecimal digest.");
+  }
+  return createDocsPublishedAgentSkill(document, metadata, sha256);
+}
+
+/** Select a valid public skill and hash the exact bytes returned by its standards route. */
+export async function resolveDocsPublishedAgentSkill({
+  preferredDocument,
+  fallbackDocument,
+}: DocsPublishedAgentSkillOptions): Promise<DocsPublishedAgentSkill> {
+  const preferredMetadata = preferredDocument ? readAgentSkillFrontmatter(preferredDocument) : null;
+  const fallbackMetadata = readAgentSkillFrontmatter(fallbackDocument);
+  const content = preferredMetadata ? preferredDocument! : fallbackDocument;
+  const metadata = preferredMetadata ?? fallbackMetadata;
+
+  if (!metadata) {
+    throw new Error(
+      "The generated Agent Skills fallback must contain valid name and description frontmatter.",
+    );
+  }
+
+  const sha256 = await sha256DocsDiscoveryContent(content);
+  return createDocsPublishedAgentSkill(content, metadata, sha256);
 }
 
 export function buildDocsAgentSkillsIndex(

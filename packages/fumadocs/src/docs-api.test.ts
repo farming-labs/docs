@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs, { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
+import type {
+  DocsAnalyticsEvent,
+  DocsObservabilityEvent,
+  DocsPublishedAgentSkill,
+} from "@farming-labs/docs";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
 
 function createDeferredPromise<T = void>() {
@@ -36,6 +40,39 @@ async function parseMcpPayload<T>(response: Response): Promise<T> {
 
     return JSON.parse(payload) as T;
   }
+}
+
+function createPreloadedAgentSkill(): DocsPublishedAgentSkill {
+  const skillDocument = `---
+name: packaged-skill
+description: Use the skill bundled into the deployment.
+---
+
+# Packaged skill
+`;
+  const sha256 = createHash("sha256").update(skillDocument, "utf8").digest("hex");
+  const url = "/.well-known/agent-skills/packaged-skill/SKILL.md";
+
+  return {
+    name: "packaged-skill",
+    type: "skill-md",
+    description: "Use the skill bundled into the deployment.",
+    url,
+    digest: `sha256:${sha256}`,
+    content: skillDocument,
+    sha256,
+    skillDocument,
+    files: [
+      {
+        path: "SKILL.md",
+        url,
+        mediaType: "text/markdown",
+        content: skillDocument,
+        sha256,
+        digest: `sha256:${sha256}`,
+      },
+    ],
+  };
 }
 
 describe("createDocsMCPAPI", () => {
@@ -146,6 +183,45 @@ Welcome to the docs.
     );
     expect(preflight.status).toBe(204);
     expect(preflight.headers.get("access-control-allow-origin")).toBe("http://localhost");
+  });
+
+  it("publishes preloaded Agent Skills through MCP without runtime filesystem access", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-preloaded-skills-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Introduction\n");
+
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      agent: { skills: "../runtime-skills-not-deployed" },
+      _preloadedAgentSkills: [createPreloadedAgentSkill()],
+    });
+    const response = await POST(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "resources/list",
+          params: {},
+        }),
+      }),
+    );
+    const payload = await parseMcpPayload<{
+      result?: { resources?: Array<{ uri?: string }> };
+    }>(response);
+
+    expect(response.status).toBe(200);
+    expect(payload.result?.resources?.map((resource) => resource.uri)).toContain(
+      "docs://skills/packaged-skill/SKILL.md",
+    );
   });
 
   it("fails closed when the legacy constructor would drop source-configured MCP security", () => {
@@ -1405,6 +1481,64 @@ Use the product-specific workflow first.
         expect.objectContaining({ id: "portable", url: portable!.url }),
       ]),
     });
+  });
+
+  it("uses preloaded Agent Skills when deployment filesystem paths are unavailable", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-preloaded-skills-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    const runtimeOnlyAgent = {
+      skills: "../runtime-skills-not-deployed",
+    };
+    const catalogOnly = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      agent: runtimeOnlyAgent,
+    });
+    const catalog = await catalogOnly.GET(
+      new Request("https://docs.example.com/.well-known/api-catalog"),
+    );
+    expect(catalog.status).toBe(200);
+
+    const preloaded = createPreloadedAgentSkill();
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      agent: runtimeOnlyAgent,
+      _preloadedAgentSkills: [preloaded],
+    });
+
+    const indexResponse = await GET(
+      new Request("https://docs.example.com/.well-known/agent-skills/index.json"),
+    );
+    expect(indexResponse.status).toBe(200);
+    await expect(indexResponse.json()).resolves.toMatchObject({
+      skills: expect.arrayContaining([
+        {
+          name: preloaded.name,
+          type: preloaded.type,
+          description: preloaded.description,
+          url: preloaded.url,
+          digest: preloaded.digest,
+        },
+      ]),
+    });
+
+    const artifact = await GET(new Request(`https://docs.example.com${preloaded.url}`));
+    expect(artifact.status).toBe(200);
+    expect(await artifact.text()).toBe(preloaded.skillDocument);
+
+    for (const route of ["/.well-known/agent.json", "/api/docs/agent/spec"]) {
+      const response = await GET(new Request(`https://docs.example.com${route}`));
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        skills: {
+          published: expect.arrayContaining([expect.objectContaining({ name: preloaded.name })]),
+        },
+      });
+    }
   });
 
   it("serves legacy discovery HEAD without loading documents and records HEAD analytics", async () => {

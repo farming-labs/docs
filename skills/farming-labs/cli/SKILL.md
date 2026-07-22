@@ -1,6 +1,12 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits and docs review checks, export static Agent Bundles, compact agent docs, validate code blocks, generate AGENTS.md, sitemaps, and robots.txt, sync search indexes, and run MCP. Use for init, deploy, upgrade, doctor, review, agent export, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags. Covers framework detection and package managers.
+description: >-
+  @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews,
+  run doctor audits and docs review checks, export static Agent Bundles, compact agent docs,
+  validate code blocks, generate AGENTS.md, sitemaps, and robots.txt, sync search indexes, and
+  run MCP. Use for init, deploy, upgrade, doctor, review, agent export, agent compact,
+  codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp,
+  and their flags. Covers framework detection and package managers.
 ---
 
 # @farming-labs/docs — CLI
