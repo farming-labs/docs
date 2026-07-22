@@ -1501,9 +1501,10 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
       const protocolVersion = config.protocolVersion ?? DEFAULT_MCP_PROTOCOL_VERSION;
       const toolName = config.toolName ?? "search_docs";
       const forwardAudience = config.forwardAudience === true;
+      const audience = resolveDocsSearchAudience(query.audience);
       const baseHeaders = config.headers ?? {};
 
-      if (query.audience === "human" && !forwardAudience) {
+      if (audience === "human" && !forwardAudience) {
         throw new Error(
           "MCP human-projection search requires forwardAudience: true on an audience-aware tool.",
         );
@@ -1559,7 +1560,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
                 query: query.query,
                 limit: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
                 locale: query.locale,
-                ...(forwardAudience && query.audience ? { audience: query.audience } : {}),
+                ...(forwardAudience ? { audience } : {}),
               },
             },
           }),

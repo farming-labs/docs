@@ -1789,7 +1789,7 @@ describe("remote search adapters", () => {
       endpoint: "https://docs.example.com/api/docs/mcp",
     });
 
-    const results = await adapter.search({ query: "install", limit: 5 }, {
+    const results = await adapter.search({ query: "install", limit: 5, audience: "agent" }, {
       pages: [],
       documents: [],
     } as DocsSearchAdapterContext);
@@ -1808,6 +1808,72 @@ describe("remote search adapters", () => {
     expect(
       JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body)),
     ).not.toHaveProperty("params.arguments.audience");
+  });
+
+  it("fails direct MCP searches closed when the default human audience cannot be forwarded", async () => {
+    const adapter = createMcpSearchAdapter({
+      provider: "mcp",
+      endpoint: "https://docs.example.com/api/docs/mcp",
+    });
+
+    await expect(
+      adapter.search({ query: "install", limit: 5 }, {
+        pages: [],
+        documents: [],
+      } as DocsSearchAdapterContext),
+    ).rejects.toThrow(
+      "MCP human-projection search requires forwardAudience: true on an audience-aware tool.",
+    );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("forwards human for direct MCP searches that omit audience", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: { content: [{ type: "text", text: JSON.stringify({ results: [] }) }] },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+
+    const adapter = createMcpSearchAdapter({
+      provider: "mcp",
+      endpoint: "https://docs.example.com/api/docs/mcp",
+      forwardAudience: true,
+    });
+
+    await adapter.search({ query: "install", limit: 5 }, {
+      pages: [],
+      documents: [],
+    } as DocsSearchAdapterContext);
+
+    expect(JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body))).toMatchObject({
+      params: { arguments: { audience: "human" } },
+    });
   });
 
   it("attempts independently bounded MCP session cleanup after caller abort", async () => {
@@ -1860,7 +1926,7 @@ describe("remote search adapters", () => {
         provider: "mcp",
         endpoint: "https://docs.example.com/api/docs/mcp",
       });
-      const request = adapter.search({ query: "install", limit: 5 }, {
+      const request = adapter.search({ query: "install", limit: 5, audience: "agent" }, {
         pages: [],
         documents: [],
         signal: callerController.signal,
