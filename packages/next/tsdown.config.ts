@@ -34,6 +34,7 @@ export default defineConfig({
     "@farming-labs/theme/api",
     "@farming-labs/theme/client-hooks",
     "@next/mdx",
+    "@babel/parser",
     "@mdx-js/loader",
     "@mdx-js/react",
     "fumadocs-core",

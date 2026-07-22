@@ -30,7 +30,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, extname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
@@ -52,6 +52,14 @@ import {
 } from "@farming-labs/docs/server";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
+import { parse, type ParserPlugin } from "@babel/parser";
+import type {
+  Expression,
+  ObjectExpression,
+  ObjectMethod,
+  ObjectProperty,
+  Program,
+} from "@babel/types";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -518,283 +526,213 @@ function readDocsConfigPath(root: string): string {
   return "docs.config.ts";
 }
 
-function skipStaticTrivia(source: string, start: number): number {
-  let cursor = start;
-  while (cursor < source.length) {
-    if (/\s/.test(source[cursor] ?? "")) {
-      cursor += 1;
-      continue;
-    }
-    if (source.startsWith("//", cursor)) {
-      const lineEnd = source.indexOf("\n", cursor + 2);
-      return lineEnd === -1 ? source.length : skipStaticTrivia(source, lineEnd + 1);
-    }
-    if (source.startsWith("/*", cursor)) {
-      const commentEnd = source.indexOf("*/", cursor + 2);
-      return commentEnd === -1 ? source.length : skipStaticTrivia(source, commentEnd + 2);
-    }
-    break;
+type StaticPropertyResolution =
+  | { status: "absent" }
+  | { status: "unknown" }
+  | { status: "value"; value: Expression };
+
+function unwrapStaticExpression(expression: Expression): Expression {
+  let current = expression;
+  while (
+    current.type === "ParenthesizedExpression" ||
+    current.type === "TSAsExpression" ||
+    current.type === "TSSatisfiesExpression" ||
+    current.type === "TSTypeAssertion" ||
+    current.type === "TSNonNullExpression" ||
+    current.type === "TSInstantiationExpression"
+  ) {
+    current = current.expression;
   }
-  return cursor;
+  return current;
 }
 
-function readStaticStringLiteral(
-  source: string,
-  start: number,
-): { value: string; end: number } | null {
-  const quote = source[start];
-  if (quote !== '"' && quote !== "'") return null;
-  let value = "";
+function readStaticPropertyName(property: ObjectMethod | ObjectProperty): string | undefined {
+  const key = unwrapStaticExpression(property.key as Expression);
 
-  for (let cursor = start + 1; cursor < source.length; cursor += 1) {
-    const char = source[cursor]!;
-    if (char === quote) return { value, end: cursor + 1 };
-    if (char === "\n" || char === "\r") return null;
-    if (char !== "\\") {
-      value += char;
-      continue;
-    }
-
-    const escaped = source[cursor + 1];
-    if (!escaped) return null;
-    const simpleEscapes: Record<string, string> = {
-      "0": "\0",
-      b: "\b",
-      f: "\f",
-      n: "\n",
-      r: "\r",
-      t: "\t",
-      v: "\v",
-      "\\": "\\",
-      '"': '"',
-      "'": "'",
-    };
-    if (escaped in simpleEscapes) {
-      value += simpleEscapes[escaped]!;
-      cursor += 1;
-      continue;
-    }
-    const digits = escaped === "x" ? 2 : escaped === "u" ? 4 : 0;
-    if (digits > 0) {
-      const hex = source.slice(cursor + 2, cursor + 2 + digits);
-      if (!new RegExp(`^[0-9a-fA-F]{${digits}}$`).test(hex)) return null;
-      value += String.fromCodePoint(Number.parseInt(hex, 16));
-      cursor += digits + 1;
-      continue;
-    }
-    return null;
+  if (!property.computed && key.type === "Identifier") return key.name;
+  if (key.type === "StringLiteral") return key.value;
+  if (key.type === "NumericLiteral") return String(key.value);
+  if (key.type === "BigIntLiteral") return key.value;
+  if (key.type === "TemplateLiteral" && key.expressions.length === 0) {
+    return key.quasis[0]?.value.cooked ?? undefined;
   }
-
-  return null;
+  return undefined;
 }
 
-function isStaticPropertyValueEnd(source: string, start: number): boolean {
-  const cursor = skipStaticTrivia(source, start);
-  return cursor === source.length || source[cursor] === ",";
-}
+function resolveStaticObjectProperty(
+  object: ObjectExpression,
+  key: string,
+): StaticPropertyResolution {
+  let resolution: StaticPropertyResolution = { status: "absent" };
 
-function readLiteralStringList(block: string, key: string): string[] | null {
-  const valueStart = findTopLevelPropertyValueIndex(block, key);
-  if (valueStart === undefined) return null;
-
-  const single = readStaticStringLiteral(block, valueStart);
-  if (single) return isStaticPropertyValueEnd(block, single.end) ? [single.value] : null;
-  if (block[valueStart] !== "[") return null;
-
-  const values: string[] = [];
-  let cursor = valueStart + 1;
-  while (cursor < block.length) {
-    cursor = skipStaticTrivia(block, cursor);
-    if (block[cursor] === "]") {
-      return isStaticPropertyValueEnd(block, cursor + 1) ? values : null;
+  for (const entry of object.properties) {
+    if (entry.type === "SpreadElement") {
+      resolution = { status: "unknown" };
+      continue;
     }
 
-    const item = readStaticStringLiteral(block, cursor);
-    if (!item) return null;
-    values.push(item.value);
-    cursor = skipStaticTrivia(block, item.end);
-    if (block[cursor] === "]") {
-      return isStaticPropertyValueEnd(block, cursor + 1) ? values : null;
+    const name = readStaticPropertyName(entry);
+    if (name === undefined) {
+      if (entry.computed) resolution = { status: "unknown" };
+      continue;
     }
-    if (block[cursor] !== ",") return null;
-    cursor += 1;
+    if (
+      name === "__proto__" &&
+      !entry.computed &&
+      entry.type === "ObjectProperty" &&
+      !entry.shorthand
+    ) {
+      if (resolution.status !== "value") resolution = { status: "unknown" };
+      continue;
+    }
+    if (name !== key) continue;
+
+    if (entry.type !== "ObjectProperty" || entry.shorthand) {
+      resolution = { status: "unknown" };
+      continue;
+    }
+
+    resolution = { status: "value", value: entry.value as Expression };
   }
 
-  return null;
+  return resolution;
 }
 
-function maskNestedObjectSource(block: string): string {
-  let objectDepth = 0;
-  let arrayDepth = 0;
-  let parenDepth = 0;
-  let inString: '"' | "'" | "`" | null = null;
-  let inLineComment = false;
-  let inBlockComment = false;
-  let escaped = false;
-  let result = "";
-
-  for (let index = 0; index < block.length; index += 1) {
-    const char = block[index]!;
-    const next = block[index + 1];
-    const atTopLevel = objectDepth === 0 && arrayDepth === 0 && parenDepth === 0;
-
-    if (inLineComment) {
-      if (char === "\n") inLineComment = false;
-      result += char === "\n" ? "\n" : " ";
-      continue;
-    }
-
-    if (inBlockComment) {
-      if (char === "*" && next === "/") {
-        inBlockComment = false;
-        result += "  ";
-        index += 1;
-      } else {
-        result += char === "\n" ? "\n" : " ";
-      }
-      continue;
-    }
-
-    if (inString) {
-      result += char === "\n" ? "\n" : " ";
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === inString) {
-        inString = null;
-      }
-      continue;
-    }
-
-    if (char === "/" && next === "/") {
-      inLineComment = true;
-      result += "  ";
-      index += 1;
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      inBlockComment = true;
-      result += "  ";
-      index += 1;
-      continue;
-    }
-
-    if (char === '"' || char === "'" || char === "`") {
-      if (atTopLevel && char !== "`") {
-        const literal = readStaticStringLiteral(block, index);
-        if (literal) {
-          const isPropertyKey = block[skipStaticTrivia(block, literal.end)] === ":";
-          result += isPropertyKey
-            ? block.slice(index, literal.end)
-            : " ".repeat(literal.end - index);
-          index = literal.end - 1;
-          continue;
-        }
-      }
-      inString = char;
-      result += " ";
-      continue;
-    }
-
-    if (char === "{") objectDepth += 1;
-    else if (char === "}") objectDepth = Math.max(0, objectDepth - 1);
-    else if (char === "[") arrayDepth += 1;
-    else if (char === "]") arrayDepth = Math.max(0, arrayDepth - 1);
-    else if (char === "(") parenDepth += 1;
-    else if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
-
-    result += atTopLevel ? char : " ";
-  }
-
-  return result;
-}
-
-function hasUnresolvedTopLevelProperty(block: string, key: string): boolean {
-  const visible = maskNestedObjectSource(block);
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return (
-    /(?:^|,)\s*\.\.\./s.test(visible) ||
-    /(?:^|,)\s*\[/s.test(visible) ||
-    new RegExp(`(?:^|,)\\s*${escapedKey}\\s*(?=,|$)`, "s").test(visible) ||
-    new RegExp(`["']${escapedKey}["']\\s*:`).test(visible)
+function hasDefineDocsImport(program: Program, localName: string): boolean {
+  return program.body.some(
+    (statement) =>
+      statement.type === "ImportDeclaration" &&
+      statement.importKind !== "type" &&
+      statement.source.value === "@farming-labs/docs" &&
+      statement.specifiers.some(
+        (specifier) =>
+          specifier.type === "ImportSpecifier" &&
+          specifier.importKind !== "type" &&
+          specifier.local.name === localName &&
+          specifier.imported.type === "Identifier" &&
+          specifier.imported.name === "defineDocs",
+      ),
   );
 }
 
-function hasDuplicateTopLevelProperty(block: string, key: string): boolean {
-  const visible = maskNestedObjectSource(block);
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return [...visible.matchAll(new RegExp(`(?:^|,)\\s*${escapedKey}\\s*:`, "gs"))].length > 1;
+function readDocsConfigRootObject(configPath: string, content: string): ObjectExpression {
+  let program: Program;
+  try {
+    const extension = extname(configPath).toLowerCase();
+    const syntaxPlugins: ParserPlugin[] =
+      extension === ".tsx"
+        ? ["typescript", "jsx", "decorators-legacy"]
+        : extension === ".ts"
+          ? ["typescript", "decorators-legacy"]
+          : extension === ".jsx"
+            ? ["jsx", "decorators-legacy"]
+            : ["decorators-legacy"];
+    program = parse(content, {
+      sourceType: "module",
+      sourceFilename: configPath,
+      plugins: syntaxPlugins,
+      createParenthesizedExpressions: true,
+    }).program;
+  } catch (error) {
+    throw new Error(
+      `withDocs could not parse ${configPath} while bundling Agent Skills: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const defaults = program.body.filter(
+    (statement) => statement.type === "ExportDefaultDeclaration",
+  );
+  if (defaults.length !== 1) {
+    throw new Error(
+      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+    );
+  }
+
+  let expression = unwrapStaticExpression(defaults[0]!.declaration as Expression);
+  if (expression.type === "CallExpression") {
+    const callee =
+      expression.callee.type === "V8IntrinsicIdentifier"
+        ? undefined
+        : unwrapStaticExpression(expression.callee);
+    const argument = expression.arguments[0];
+    if (
+      !callee ||
+      callee.type !== "Identifier" ||
+      !hasDefineDocsImport(program, callee.name) ||
+      !argument ||
+      argument.type === "SpreadElement" ||
+      argument.type === "ArgumentPlaceholder"
+    ) {
+      throw new Error(
+        "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+      );
+    }
+    expression = unwrapStaticExpression(argument);
+  }
+
+  if (expression.type !== "ObjectExpression") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+    );
+  }
+  return expression;
+}
+
+function readStaticStringPaths(expression: Expression): string[] | null {
+  const value = unwrapStaticExpression(expression);
+  if (value.type === "StringLiteral") return [value.value];
+  if (value.type !== "ArrayExpression") return null;
+
+  const paths: string[] = [];
+  for (const entry of value.elements) {
+    if (!entry || entry.type === "SpreadElement") {
+      return null;
+    }
+    const item = unwrapStaticExpression(entry);
+    if (item.type !== "StringLiteral") return null;
+    paths.push(item.value);
+  }
+  return paths;
 }
 
 function readAgentSkillPaths(root: string, configPath: string): string[] {
   const absoluteConfigPath = join(root, configPath);
   if (!existsSync(absoluteConfigPath)) return [];
+
   const content = readFileSync(absoluteConfigPath, "utf8");
-  const rootObject = extractRootObjectLiteral(content);
-  if (!rootObject) {
-    throw new Error(
-      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
-    );
-  }
-  if (
-    hasUnresolvedTopLevelProperty(rootObject, "agent") ||
-    hasDuplicateTopLevelProperty(rootObject, "agent")
-  ) {
+  const rootObject = readDocsConfigRootObject(absoluteConfigPath, content);
+  const agent = resolveStaticObjectProperty(rootObject, "agent");
+  if (agent.status === "absent") return [];
+  if (agent.status === "unknown") {
     throw new Error(
       "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
     );
   }
-  const agentCursor = findTopLevelPropertyValueIndex(rootObject, "agent");
-  if (agentCursor === undefined) {
-    return [];
-  }
-  if (rootObject[agentCursor] !== "{") {
+
+  const agentValue = unwrapStaticExpression(agent.value);
+  if (agentValue.type !== "ObjectExpression") {
     throw new Error(
       "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
     );
   }
-  const agentEnd = findMatchingObjectEnd(rootObject, agentCursor);
-  if (agentEnd === undefined || !isStaticPropertyValueEnd(rootObject, agentEnd + 1)) {
-    throw new Error(
-      "withDocs could not parse the literal agent config while bundling Agent Skills.",
-    );
-  }
-  const agent = rootObject.slice(agentCursor + 1, agentEnd);
-  if (
-    hasUnresolvedTopLevelProperty(agent, "skills") ||
-    hasDuplicateTopLevelProperty(agent, "skills")
-  ) {
+
+  const skills = resolveStaticObjectProperty(agentValue, "skills");
+  if (skills.status === "absent") return [];
+  if (skills.status === "unknown") {
     throw new Error(
       "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
     );
   }
-  const skillsCursor = findTopLevelPropertyValueIndex(agent, "skills");
-  if (skillsCursor === undefined) {
-    return [];
+
+  const skillsValue = unwrapStaticExpression(skills.value);
+  let configured: string[] | null;
+  if (skillsValue.type === "ObjectExpression") {
+    const paths = resolveStaticObjectProperty(skillsValue, "paths");
+    configured = paths.status === "value" ? readStaticStringPaths(paths.value) : null;
+  } else {
+    configured = readStaticStringPaths(skillsValue);
   }
-  let skillsObject: string | undefined;
-  if (agent[skillsCursor] === "{") {
-    const skillsEnd = findMatchingObjectEnd(agent, skillsCursor);
-    if (skillsEnd === undefined || !isStaticPropertyValueEnd(agent, skillsEnd + 1)) {
-      throw new Error(
-        "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
-      );
-    }
-    skillsObject = agent.slice(skillsCursor + 1, skillsEnd);
-    if (
-      hasUnresolvedTopLevelProperty(skillsObject, "paths") ||
-      hasDuplicateTopLevelProperty(skillsObject, "paths")
-    ) {
-      throw new Error(
-        "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
-      );
-    }
-  }
-  const configured = skillsObject
-    ? readLiteralStringList(skillsObject, "paths")
-    : readLiteralStringList(agent, "skills");
+
   if (!configured) {
     throw new Error(
       "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
@@ -2436,9 +2374,9 @@ export function withDocs(
     );
   }
   const configuredAgentSkills =
-    docsConfig?.agent === undefined
+    docsConfig === undefined || !Object.hasOwn(docsConfig, "agent")
       ? readAgentSkillPaths(root, docsConfigPath)
-      : docsConfig.agent.skills;
+      : docsConfig.agent?.skills;
   const agentSkillsBundlePath = writeAgentSkillsBundle(root, configuredAgentSkills);
   const agentFeedback = readAgentFeedbackConfig(root);
   const docsConfigRelativeAlias =

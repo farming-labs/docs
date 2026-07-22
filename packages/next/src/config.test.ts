@@ -1547,11 +1547,6 @@ export default { entry: "docs", agent: { skills: "skills" + suffix } };
       `const shared = { paths: ["skills/two"] };
 export default { entry: "docs", agent: { skills: { paths: ["skills/one"], ...shared } } };
 `,
-      `export default {
-  entry: "docs",
-  agent: { skills: { paths: ["skills/one"], paths: ["skills/two"] } },
-};
-`,
       `const key = "paths";
 export default { entry: "docs", agent: { skills: { [key]: ["skills/one"] } } };
 `,
@@ -1563,7 +1558,7 @@ export default { entry: "docs", agent: { skills: { [key]: ["skills/one"] } } };
     expect(existsSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"))).toBe(false);
   });
 
-  it("fails closed when a composed agent config cannot be statically inspected", () => {
+  it("never silently omits statically present or ambiguous configured skill paths", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
@@ -1574,6 +1569,36 @@ export default { entry: "docs", agent };
       `const shared = { agent: { skills: "skills/one" } };
 export default { entry: "docs", ...shared };
 `,
+      `export default { "ag\\u0065nt": { skills: "skills/one" } };
+`,
+      `export default { "ag\\u{65}nt": { skills: "skills/one" } };
+`,
+      `export default { "a\\gent": { skills: "skills/one" } };
+`,
+      String.raw`export default { "ag\
+ent": { skills: "skills/one" } };
+`,
+      `export default { ag\\u0065nt: { skills: "skills/one" } };
+`,
+      `export default { ag\\u{65}nt: { skills: "skills/one" } };
+`,
+      `export default { get agent() { return { skills: "skills/one" }; } };
+`,
+      `export default { get ["agent"]() { return { skills: "skills/one" }; } };
+`,
+      `export default { agent<T>() { return { skills: "skills/one" }; } };
+`,
+      `export default { agent /* comment */ : { skills: "skills/one" } };
+`,
+      `export default {
+  agent // comment
+  : { skills: "skills/one" },
+};
+`,
+      `// defineDocs({})
+const closingBrace = /}/;
+export default { agent: { skills: "skills/one" } };
+`,
       `const sharedAgent = { skills: "skills/one" };
 export default { entry: "docs", agent: sharedAgent };
 `,
@@ -1582,6 +1607,12 @@ export default { entry: "docs", agent: { ...sharedAgent } };
 `,
       `const shared = { agent: { skills: "skills/two" } };
 export default { entry: "docs", agent: { skills: "skills/one" }, ...shared };
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: "skills/one" },
+  get agent() { return { skills: "skills/two" }; },
+};
 `,
       `const sharedAgent = { skills: "skills/two" };
 export default { entry: "docs", agent: { skills: "skills/one", ...sharedAgent } };
@@ -1603,10 +1634,263 @@ export default { entry: "docs", [key]: { skills: "skills/one" } };
       `const key = "skills";
 export default { entry: "docs", agent: { [key]: "skills/one" } };
 `,
+      `export default { entry: "docs", agent: { "sk\\u0069lls": "skills/one" } };
+`,
+      `export default { entry: "docs", agent: { sk\\u0069lls: "skills/one" } };
+`,
+      `export default {
+  entry: "docs",
+  agent: { get skills() { return "skills/one"; } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { get ["skills"]() { return "skills/one"; } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills /* comment */ : "skills/one" },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { "pa\\u0074hs": ["skills/one"] } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { get ["paths"]() { return ["skills/one"]; } } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { paths /* comment */ : ["skills/one"] } },
+};
+`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+      expect(() => withDocs({})).toThrow();
+    }
+  });
+
+  it("recognizes deterministic Agent Skill syntax without falling back to filesystem errors", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    for (const name of ["one", "two"]) {
+      const skillDir = join(tmpDir, "skills", name);
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(
+        join(skillDir, "SKILL.md"),
+        `---\nname: ${name}\ndescription: Test ${name}.\n---\n\n# ${name}\n`,
+        "utf8",
+      );
+    }
+    process.chdir(tmpDir);
+
+    for (const [source, expectedName] of [
+      [`export default { "ag\\u0065nt": { skills: "skills/one" } };\n`, "one"],
+      [`export default { ag\\u0065nt: { skills: "skills/one" } };\n`, "one"],
+      [`export default { agent /* comment */ : { skills: "skills/one" } };\n`, "one"],
+      [`const closingBrace = /}/;\nexport default { agent: { skills: "skills/one" } };\n`, "one"],
+      [`export default { agent: { "sk\\u0069lls": "skills/one" } };\n`, "one"],
+      [
+        `export default {
+  agent: { skills: "skills/one" },
+  agent: { skills: "skills/two" },
+};
+`,
+        "two",
+      ],
+      [
+        `export default {
+  agent: { skills: "skills/one", skills: "skills/two" },
+};
+`,
+        "two",
+      ],
+      [
+        `export default {
+  agent: { skills: { paths: ["skills/one"], paths: ["skills/two"] } },
+};
+`,
+        "two",
+      ],
+    ] as const) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+
+      expect(() => withDocs({})).not.toThrow();
+      expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+        `"name":"${expectedName}"`,
+      );
+    }
+  });
+
+  it("accepts a literal agent config that overrides earlier composed properties", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    for (const source of [
+      `const search = { search: { provider: "mcp" } };
+export default { entry: "docs", ...search, agent: { compact: { tokenBudget: 5_000 } } };
+`,
+      `export default {
+  get agent() { return { skills: "skills/ignored" }; },
+  agent: { compact: { tokenBudget: 5_000 } },
+};
+`,
+      `const key = "search";
+export default {
+  [key]: { provider: "mcp" },
+  agent: { compact: { tokenBudget: 5_000 } },
+};
+`,
+      `const shared = { agent: { skills: "skills/ignored" } };
+export default {
+  agent: { skills: "skills/ignored" },
+  ...shared,
+  agent: { compact: { tokenBudget: 5_000 } },
+};
+`,
+      `const shared = { skills: "skills/ignored" };
+export default {
+  agent: {
+    skills: "skills/ignored",
+    ...shared,
+    skills: [],
+  },
+};
+`,
+      `const shared = { paths: ["skills/ignored"] };
+export default {
+  agent: {
+    skills: {
+      paths: ["skills/ignored"],
+      ...shared,
+      paths: [],
+    },
+  },
+};
+`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+
+      expect(() => withDocs({})).not.toThrow();
+    }
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("parses a composed TSX defineDocs config when a literal agent overrides earlier properties", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    writeFileSync(
+      join(tmpDir, "docs.config.tsx"),
+      `import { defineDocs } from "@farming-labs/docs";
+const condition = true;
+const search = { provider: "mcp" };
+export default defineDocs({
+  ...(condition ? { search } : {}),
+  agent: { compact: { tokenBudget: 5_000 } },
+  nav: { title: <div>Docs</div> },
+});
+`,
+      "utf8",
+    );
+
+    expect(() => withDocs({})).not.toThrow();
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("parses TypeScript assertions and decorated declarations without enabling JSX", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `type DocsConfig = { agent: { skills: string[] } };
+function sealed(value: unknown) { return value; }
+@sealed
+class ConfigMarker {}
+export default <DocsConfig>{ agent: { skills: [] } };
+`,
+      "utf8",
+    );
+
+    expect(() => withDocs({})).not.toThrow();
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("fails closed when an object prototype could provide agent or skills", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    for (const source of [
+      `export default { __proto__: { agent: { skills: "skills/one" } } };\n`,
+      `export default { agent: { __proto__: { skills: "skills/one" } } };\n`,
     ]) {
       writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
       expect(() => withDocs({})).toThrow("could not statically determine agent.skills");
     }
+  });
+
+  it("rejects defineDocs calls that are not bound to @farming-labs/docs", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    for (const source of [
+      `function defineDocs(value: unknown) { return value; }
+export default defineDocs({ agent: { skills: "skills/one" } });
+`,
+      `import { defineDocs } from "unrelated-package";
+export default defineDocs({ agent: { skills: "skills/one" } });
+`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+      expect(() => withDocs({})).toThrow("could not statically determine agent.skills");
+    }
+  });
+
+  it("uses an explicitly provided live agent value even when it is undefined", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `const shared = { entry: "docs" };
+export default { ...shared };
+`,
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({}, { agent: undefined })).not.toThrow();
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("keeps statically configured skills when a partial live config only overrides MCP", () => {
+    const skillDir = join(tmpDir, "skills", "one");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default { agent: { skills: "skills/one" } };\n`,
+      "utf8",
+    );
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      `---\nname: one\ndescription: Test one.\n---\n\n# One\n`,
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    withDocs({}, { mcp: { enabled: false } });
+
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      `"name":"one"`,
+    );
   });
 
   it("bundles skills from a live composed docs config", () => {
