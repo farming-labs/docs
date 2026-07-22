@@ -1402,6 +1402,8 @@ export interface DocsMcpAuthenticateContext {
   request: Request;
   /** Normalized pathname of the MCP endpoint being requested. */
   pathname: string;
+  /** Canonical OAuth resource identifier for exact token audience validation. */
+  resource: string;
 }
 
 export type DocsMcpAllowedOrigins =
@@ -1427,6 +1429,23 @@ export interface DocsMcpCorsConfig {
   maxAgeSeconds?: number;
 }
 
+/** RFC 9728 discovery and endpoint-wide OAuth scope requirements for protected HTTP MCP. */
+export interface DocsMcpProtectedResourceConfig {
+  /**
+   * OAuth authorization server issuer identifiers advertised to MCP clients.
+   * Requires at least one HTTPS URL without query or fragment; loopback HTTP is accepted for development.
+   */
+  authorizationServers: readonly string[];
+  /** OAuth scopes advertised through RFC 9728 `scopes_supported` metadata. */
+  scopesSupported?: readonly string[];
+  /** Scopes every authenticated HTTP MCP principal must have. */
+  requiredScopes?: readonly string[];
+  /** Human-readable protected-resource name. Defaults to the resolved MCP server name. */
+  resourceName?: string;
+  /** Absolute HTTP(S) URL of human-readable authentication guidance for this MCP resource. */
+  resourceDocumentation?: string;
+}
+
 /** Security controls for the Streamable HTTP MCP transport. */
 export interface DocsMcpSecurityConfig {
   /**
@@ -1439,6 +1458,11 @@ export interface DocsMcpSecurityConfig {
    * returning `null` rejects the request with 401 and returning a Response passes it through.
    */
   authenticate?: DocsMcpAuthenticate;
+  /**
+   * Opt-in OAuth protected-resource discovery. Requires `authenticate` to protect HTTP MCP.
+   * When active, adapters publish RFC 9728 metadata and framework-generated Bearer challenges.
+   */
+  protectedResource?: DocsMcpProtectedResourceConfig;
   /** Maximum POST body size in bytes. Defaults to 1 MiB. */
   maxBodyBytes?: number;
   /**

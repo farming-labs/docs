@@ -32,6 +32,11 @@ describe("defineDocs", () => {
         route: "/api/docs/mcp",
         security: {
           authenticate: authenticateMcp,
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            scopesSupported: ["docs:read"],
+            requiredScopes: ["docs:read"],
+          },
         },
       },
       changelog: {
@@ -63,6 +68,11 @@ describe("defineDocs", () => {
       route: "/api/docs/mcp",
       security: {
         authenticate: authenticateMcp,
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+          scopesSupported: ["docs:read"],
+          requiredScopes: ["docs:read"],
+        },
       },
     });
     expect(config.changelog).toEqual({

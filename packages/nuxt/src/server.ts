@@ -2071,7 +2071,7 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
     const url = resolveEventUrl(event);
     const headers = event.headers ?? event.node?.req?.headers ?? {};
 
-    if (isDocsMcpRequest(url)) {
+    if (isDocsMcpRequest(url, config.mcp)) {
       const server = await getServer();
       const request = toWebRequest(event);
 

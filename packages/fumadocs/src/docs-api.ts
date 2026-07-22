@@ -31,6 +31,7 @@ import {
   DEFAULT_A2A_AGENT_CARD_ROUTE,
   DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
+  getDocsMcpProtectedResourceMetadataRoutes,
   acceptsDocsMarkdown,
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
@@ -227,7 +228,6 @@ const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
-const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
 const DEFAULT_MCP_WELL_KNOWN_ROUTE = "/.well-known/mcp";
 const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
@@ -513,6 +513,11 @@ function buildAgentSpec({
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const llmsSections = resolveDocsLlmsTxtSections(llms);
   const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
+  const protectedResource =
+    mcp.enabled && mcp.security?.authenticate ? mcp.security.protectedResource : undefined;
+  const protectedResourceMetadataRoutes = protectedResource
+    ? getDocsMcpProtectedResourceMetadataRoutes(mcp.route)
+    : [];
   const agentSpecRoute =
     apiRoute === DEFAULT_DOCS_API_ROUTE ? DEFAULT_AGENT_SPEC_ROUTE : `${apiRoute}?agent=spec`;
 
@@ -750,10 +755,20 @@ function buildAgentSpec({
       publicEndpoint: DEFAULT_MCP_PUBLIC_ROUTE,
       wellKnownEndpoint: DEFAULT_MCP_WELL_KNOWN_ROUTE,
       publicEndpoints: [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE],
-      canonicalEndpoint: DEFAULT_MCP_ROUTE,
+      canonicalEndpoint: mcp.route,
       name: mcp.name,
       version: mcp.version,
       tools: mcp.tools,
+      ...(protectedResource
+        ? {
+            protectedResource: {
+              metadataEndpoints: protectedResourceMetadataRoutes,
+              authorizationServers: protectedResource.authorizationServers,
+              scopesSupported: protectedResource.scopesSupported,
+              requiredScopes: protectedResource.requiredScopes,
+            },
+          }
+        : {}),
     },
     feedback: {
       enabled: feedback.enabled,

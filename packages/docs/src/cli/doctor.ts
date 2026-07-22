@@ -26,6 +26,7 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsMcpEndpointCandidates,
+  getDocsMcpProtectedResourceMetadataRoutes,
   resolveDocsDiscoveryApiRoute,
 } from "../agent.js";
 import {
@@ -43,6 +44,7 @@ import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.j
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
 import { httpLinkHeaderHasTargetRelation } from "../http-link.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
+import { isDocsMcpOAuthScopeToken, normalizeDocsMcpAuthorizationServerUrls } from "../mcp-auth.js";
 import {
   createFilesystemDocsMcpSource,
   getDocsConfigSchema,
@@ -1597,6 +1599,9 @@ async function probeMcpRoute(
         },
       },
     });
+    if (initializeResponse.status === 401) {
+      return await probeProtectedMcpDiscovery(baseUrl, route, initializeResponse);
+    }
     const initializePayload = await parseMcpResponse(initializeResponse);
 
     if (!initializeResponse.ok || initializePayload.error) {
@@ -1674,6 +1679,178 @@ async function probeMcpRoute(
       detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
     };
   }
+}
+
+export async function probeProtectedMcpDiscovery(
+  baseUrl: string,
+  route: string,
+  response: Response,
+): Promise<{ ok: boolean; detail: string }> {
+  const challenge = response.headers.get("www-authenticate") ?? "";
+  const bearerChallenge = findBearerChallenge(challenge);
+  const rawMetadataUrl = bearerChallenge
+    ? readHttpAuthQuotedParameter(bearerChallenge, "resource_metadata")
+    : undefined;
+  if (!bearerChallenge || !rawMetadataUrl) {
+    return {
+      ok: false,
+      detail: `${route} requires authentication but did not return a Bearer resource_metadata challenge.`,
+    };
+  }
+
+  const resourceUrl = new URL(joinDoctorUrl(baseUrl, route));
+  let metadataUrl: URL;
+  try {
+    metadataUrl = new URL(rawMetadataUrl);
+  } catch {
+    return { ok: false, detail: `${route} returned an invalid resource_metadata URL.` };
+  }
+  if (metadataUrl.origin !== resourceUrl.origin) {
+    return {
+      ok: false,
+      detail: `${route} returned cross-origin protected-resource metadata; the hosted doctor will not fetch it.`,
+    };
+  }
+
+  let metadataResponse: Response;
+  try {
+    metadataResponse = await fetchWithTimeout(metadataUrl.href, {
+      headers: { Accept: "application/json" },
+      redirect: "manual",
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+
+  if (metadataResponse.status !== 200) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata returned HTTP ${metadataResponse.status}.`,
+    };
+  }
+  if (responseMediaType(metadataResponse.headers.get("content-type")) !== "application/json") {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata did not return application/json.`,
+    };
+  }
+
+  let metadata: Record<string, unknown>;
+  try {
+    const parsedMetadata = await metadataResponse.json();
+    const metadataRecord = asRecord(parsedMetadata);
+    if (!metadataRecord) {
+      return {
+        ok: false,
+        detail: `${route} protected-resource metadata must be a JSON object.`,
+      };
+    }
+    metadata = metadataRecord;
+  } catch {
+    return { ok: false, detail: `${route} protected-resource metadata is not valid JSON.` };
+  }
+
+  if (metadata.resource !== resourceUrl.href) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata identifies ${String(metadata.resource ?? "no resource")} instead of ${resourceUrl.href}.`,
+    };
+  }
+  const authorizationServers = metadata.authorization_servers;
+  if (
+    !Array.isArray(authorizationServers) ||
+    authorizationServers.length === 0 ||
+    normalizeDocsMcpAuthorizationServerUrls(
+      authorizationServers.filter((issuer): issuer is string => typeof issuer === "string"),
+    ).length !== authorizationServers.length
+  ) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata is missing valid authorization_servers.`,
+    };
+  }
+  const scopesSupported = metadata.scopes_supported;
+  if (
+    scopesSupported !== undefined &&
+    (!Array.isArray(scopesSupported) ||
+      scopesSupported.some((scope) => !isDocsMcpOAuthScopeToken(scope)))
+  ) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata has invalid scopes_supported.`,
+    };
+  }
+  const challengeScope = readHttpAuthQuotedParameter(bearerChallenge, "scope");
+  if (
+    challengeScope !== undefined &&
+    challengeScope.split(" ").some((scope) => !isDocsMcpOAuthScopeToken(scope))
+  ) {
+    return { ok: false, detail: `${route} returned an invalid Bearer scope challenge.` };
+  }
+
+  return {
+    ok: true,
+    detail: `${route} is protected and exposes valid RFC 9728 metadata at ${metadataUrl.pathname}.`,
+  };
+}
+
+function findBearerChallenge(header: string): string | undefined {
+  let first = 0;
+  while (first < header.length && /\s/u.test(header[first] ?? "")) first += 1;
+  const starts = [first];
+  let quoted = false;
+  let escaped = false;
+
+  for (let index = 0; index < header.length; index += 1) {
+    const character = header[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quoted && character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (quoted || character !== ",") continue;
+
+    let candidate = index + 1;
+    while (candidate < header.length && /\s/u.test(header[candidate] ?? "")) candidate += 1;
+    const tokenStart = candidate;
+    while (
+      candidate < header.length &&
+      /[!#$%&'*+\-.^_`|~0-9A-Za-z]/u.test(header[candidate] ?? "")
+    ) {
+      candidate += 1;
+    }
+    if (candidate === tokenStart) continue;
+    let afterToken = candidate;
+    while (afterToken < header.length && /\s/u.test(header[afterToken] ?? "")) {
+      afterToken += 1;
+    }
+    if (header[afterToken] !== "=") starts.push(tokenStart);
+  }
+
+  for (let index = 0; index < starts.length; index += 1) {
+    const start = starts[index] ?? 0;
+    const scheme = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+/u.exec(header.slice(start))?.[0];
+    if (scheme?.toLowerCase() !== "bearer") continue;
+    const end = starts[index + 1] ?? header.length;
+    return header.slice(start, end).replace(/,\s*$/u, "").trim();
+  }
+  return undefined;
+}
+
+function readHttpAuthQuotedParameter(header: string, name: string): string | undefined {
+  const expression = new RegExp(`(?:^|[,\\s])${name}\\s*=\\s*"((?:\\\\.|[^"\\\\])*)"`, "i");
+  const value = expression.exec(header)?.[1];
+  return value?.replace(/\\(.)/g, "$1");
 }
 
 async function probeMcpRouteCandidates(
@@ -2817,10 +2994,21 @@ export async function inspectAgentReadiness(
             (optionPath) =>
               optionPath === "agent" ||
               optionPath.startsWith("agent.") ||
+              optionPath === "mcp" ||
+              optionPath.startsWith("mcp.") ||
               optionPath === "review" ||
               optionPath.startsWith("review."),
           )
       : [];
+  const expectedMcpProtectedResource =
+    mcpConfig.enabled && mcpConfig.security?.authenticate && mcpConfig.security.protectedResource
+      ? {
+          metadataEndpoints: [...getDocsMcpProtectedResourceMetadataRoutes(mcpConfig.route)],
+          authorizationServers: mcpConfig.security.protectedResource.authorizationServers,
+          scopesSupported: mcpConfig.security.protectedResource.scopesSupported,
+          requiredScopes: mcpConfig.security.protectedResource.requiredScopes,
+        }
+      : null;
   const surfaceDrift = analyzeAgentSurfaceDrift({
     configOptionPaths: [
       ...new Set([...DOCS_CONFIG_MAP_TOP_LEVEL_KEYS, ...configuredAgentReviewPaths]),
@@ -2838,6 +3026,7 @@ export async function inspectAgentReadiness(
         enabled: mcpConfig.enabled,
         endpoint: mcpConfig.route,
         tools: mcpConfig.tools,
+        protectedResource: expectedMcpProtectedResource,
       },
       routes: {
         "api.docs": apiRoute,

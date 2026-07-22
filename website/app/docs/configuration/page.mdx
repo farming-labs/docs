@@ -767,6 +767,50 @@ export default defineDocs({
 });
 ```
 
+Streamable HTTP MCP is public by default. Add `security.authenticate` only when the endpoint needs
+access control. To support OAuth-aware MCP clients, configure `protectedResource` alongside the
+callback:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read"],
+        requiredScopes: ["docs:read"],
+      },
+      async authenticate({ request, resource }) {
+        const user = await authenticateRequest(request, { audience: resource });
+        return user ? { id: user.id, scopes: user.scopes } : null;
+      },
+    },
+  },
+});
+```
+
+`authorizationServers` must be non-empty and contain HTTPS issuer URLs without query or fragment
+(loopback HTTP is accepted for development). `scopesSupported` is discovery metadata, while
+`requiredScopes` is enforced against the principal returned by `authenticate`. A `null` result
+receives a `401` Bearer challenge that links to public RFC 9728 metadata; a principal missing a
+required scope receives `403 insufficient_scope`. If the callback returns a Web `Response`, that
+response is preserved and must include its own challenge when needed.
+The framework does not issue or validate tokens; the callback must validate signature, issuer,
+expiry, the exact callback `resource` audience, and derive scopes from the verified token. The
+callback `request` retains the real incoming URL and query string.
+
+The default metadata routes are `/.well-known/oauth-protected-resource/mcp`,
+`/.well-known/oauth-protected-resource/.well-known/mcp`, and
+`/.well-known/oauth-protected-resource/api/docs/mcp`. The last path follows a custom `mcp.route`.
+Protected-resource discovery is inactive without `authenticate`, and stdio is unaffected. Use HTTPS
+for hosted MCP, authorization-server, and authentication-documentation URLs.
+Treat each MCP alias as a distinct OAuth resource identifier and validate token audiences against
+the exact endpoint used by the client.
+On Next.js, do not combine protected MCP with `basePath`; host the protected routes at the origin
+root or an edge proxy. Inline MCP objects are detected automatically. For imported, spread, or
+shorthand MCP configuration, import `docsConfig` in `next.config.ts` and call
+`withDocs(nextConfig, docsConfig)` so routing and the `basePath` check use the live object.
+
 Default behavior:
 
 - **Public HTTP route:** `/mcp`

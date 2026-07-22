@@ -3,7 +3,11 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
-import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "./types.js";
+import type {
+  DocsAnalyticsEvent,
+  DocsMcpAuthenticateContext,
+  DocsObservabilityEvent,
+} from "./types.js";
 import type {
   DocsMcpConfigSchemaOption,
   DocsMcpDocsPageSummary,
@@ -19,6 +23,7 @@ import {
   normalizeDocsMcpRoute,
   resolveDocsMcpConfig,
 } from "./mcp.js";
+import { buildDocsMcpProtectedResourceMetadataRoute } from "./mcp-auth.js";
 
 async function parseMcpPayload<T>(response: Response): Promise<T> {
   const body = await response.text();
@@ -161,6 +166,7 @@ describe("resolveDocsMcpConfig", () => {
       security: {
         allowedOrigins: "same-origin",
         authenticate: undefined,
+        protectedResource: undefined,
         maxBodyBytes: 1_048_576,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
@@ -188,6 +194,7 @@ describe("resolveDocsMcpConfig", () => {
       security: {
         allowedOrigins: "same-origin",
         authenticate: undefined,
+        protectedResource: undefined,
         maxBodyBytes: 1_048_576,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
@@ -219,6 +226,7 @@ describe("resolveDocsMcpConfig", () => {
       security: {
         allowedOrigins: "same-origin",
         authenticate: undefined,
+        protectedResource: undefined,
         maxBodyBytes: 1_048_576,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
@@ -239,6 +247,7 @@ describe("resolveDocsMcpConfig", () => {
     ).toEqual({
       allowedOrigins: ["https://app.example.com"],
       authenticate,
+      protectedResource: undefined,
       maxBodyBytes: 4096,
       cors: DEFAULT_RESOLVED_MCP_CORS,
     });
@@ -246,6 +255,7 @@ describe("resolveDocsMcpConfig", () => {
     expect(resolveDocsMcpConfig({ security: { maxBodyBytes: 0 } }).security).toMatchObject({
       allowedOrigins: "same-origin",
       authenticate: undefined,
+      protectedResource: undefined,
       maxBodyBytes: 1_048_576,
       cors: DEFAULT_RESOLVED_MCP_CORS,
     });
@@ -271,8 +281,77 @@ describe("resolveDocsMcpConfig", () => {
     expect(resolveDocsMcpConfig({ security: { cors: false } }).security?.cors.enabled).toBe(false);
   });
 
+  it("normalizes RFC 9728 protected-resource configuration", () => {
+    const resolved = resolveDocsMcpConfig({
+      security: {
+        protectedResource: {
+          authorizationServers: [
+            " https://auth.example.com ",
+            "https://auth.example.com",
+            "http://localhost:4100",
+          ],
+          scopesSupported: ["docs:read", "docs:read"],
+          requiredScopes: ["docs:read", " docs:write "],
+          resourceName: " Product docs ",
+          resourceDocumentation: " https://docs.example.com/auth ",
+        },
+      },
+    }).security?.protectedResource;
+
+    expect(resolved).toEqual({
+      authorizationServers: ["https://auth.example.com", "http://localhost:4100"],
+      scopesSupported: ["docs:read"],
+      requiredScopes: ["docs:read", "docs:write"],
+      resourceName: "Product docs",
+      resourceDocumentation: "https://docs.example.com/auth",
+    });
+  });
+
+  it("rejects invalid OAuth protected-resource configuration instead of weakening auth", () => {
+    for (const authorizationServers of [
+      [],
+      ["http://auth.example.com"],
+      ["/relative-issuer"],
+      ["https://auth.example.com/?tenant=one"],
+      ["https://auth.example.com/#fragment"],
+      ["https://user@auth.example.com"],
+    ]) {
+      expect(() =>
+        resolveDocsMcpConfig({
+          security: { protectedResource: { authorizationServers } },
+        }),
+      ).toThrow(/authorizationServers/);
+    }
+    expect(() =>
+      resolveDocsMcpConfig({
+        security: {
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            requiredScopes: ["docs:read write"],
+          },
+        },
+      }),
+    ).toThrow(/requiredScopes/);
+    expect(() =>
+      resolveDocsMcpConfig({
+        security: {
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            resourceDocumentation: "/auth/mcp",
+          },
+        },
+      }),
+    ).toThrow(/resourceDocumentation/);
+  });
+
   it("normalizes custom routes", () => {
     expect(normalizeDocsMcpRoute("api/internal/docs/mcp/")).toBe("/api/internal/docs/mcp");
+    expect(buildDocsMcpProtectedResourceMetadataRoute("/")).toBe(
+      "/.well-known/oauth-protected-resource",
+    );
+    expect(buildDocsMcpProtectedResourceMetadataRoute("/mcp/")).toBe(
+      "/.well-known/oauth-protected-resource/mcp/",
+    );
   });
 });
 
@@ -2078,6 +2157,272 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     });
 
     expect(response.status).toBe(200);
+  });
+
+  it("does not publish protected-resource metadata without authentication", async () => {
+    const rootDir = createTempDocsProject();
+    const handlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({ rootDir }),
+      mcp: {
+        security: {
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+          },
+        },
+      },
+    });
+
+    const response = await handlers.GET({
+      request: new Request("https://docs.example.com/.well-known/oauth-protected-resource/mcp"),
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it("publishes RFC 9728 metadata and returns scoped Bearer challenges", async () => {
+    const rootDir = createTempDocsProject();
+    const authenticate = vi.fn(async ({ request }: DocsMcpAuthenticateContext) => {
+      const authorization = request.headers.get("authorization");
+      if (!authorization) return null;
+      if (authorization === "Bearer limited") {
+        return { id: "limited", scopes: ["docs:list"] };
+      }
+      if (authorization === "Bearer custom-response") {
+        return new Response("provider challenge", {
+          status: 429,
+          headers: {
+            "WWW-Authenticate": 'Bearer realm="provider"',
+            "X-Auth-Provider": "custom",
+          },
+        });
+      }
+      return { id: "reader", scopes: ["docs:list", "docs:read", "docs:write"] };
+    });
+    const handlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({ rootDir }),
+      mcp: {
+        route: "/internal/mcp",
+        name: "Product docs MCP",
+        security: {
+          authenticate,
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            scopesSupported: ["docs:list", "docs:read", "docs:write"],
+            requiredScopes: ["docs:read", "docs:write"],
+            resourceDocumentation: "https://docs.example.com/docs/mcp-auth",
+          },
+        },
+      },
+    });
+
+    const metadataCases = [
+      ["/.well-known/oauth-protected-resource/mcp", "https://docs.example.com/mcp"],
+      ["/.well-known/oauth-protected-resource/mcp/", "https://docs.example.com/mcp/"],
+      [
+        "/.well-known/oauth-protected-resource/.well-known/mcp",
+        "https://docs.example.com/.well-known/mcp",
+      ],
+      [
+        "/.well-known/oauth-protected-resource/internal/mcp",
+        "https://docs.example.com/internal/mcp",
+      ],
+    ] as const;
+
+    for (const [metadataPath, resource] of metadataCases) {
+      const response = await handlers.GET({
+        request: new Request(`https://docs.example.com${metadataPath}`),
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("application/json");
+      await expect(response.json()).resolves.toEqual({
+        resource,
+        authorization_servers: ["https://auth.example.com"],
+        scopes_supported: ["docs:list", "docs:read", "docs:write"],
+        bearer_methods_supported: ["header"],
+        resource_name: "Product docs MCP",
+        resource_documentation: "https://docs.example.com/docs/mcp-auth",
+      });
+    }
+    expect(authenticate).not.toHaveBeenCalled();
+
+    const originMetadata = await handlers.GET({
+      request: new Request("https://docs.example.com/.well-known/oauth-protected-resource"),
+    });
+    expect(originMetadata.status).toBe(404);
+
+    const insecureMetadata = await handlers.GET({
+      request: new Request("http://docs.example.com/.well-known/oauth-protected-resource/mcp"),
+    });
+    expect(insecureMetadata.status).toBe(400);
+
+    const loopbackMetadata = await handlers.GET({
+      request: new Request("http://localhost/.well-known/oauth-protected-resource/mcp"),
+    });
+    expect(loopbackMetadata.status).toBe(200);
+    await expect(loopbackMetadata.json()).resolves.toMatchObject({
+      resource: "http://localhost/mcp",
+    });
+
+    const head = await handlers.GET({
+      request: new Request("https://docs.example.com/.well-known/oauth-protected-resource/mcp", {
+        method: "HEAD",
+      }),
+    });
+    expect(head.status).toBe(200);
+    await expect(head.text()).resolves.toBe("");
+
+    const options = await handlers.OPTIONS({
+      request: new Request("https://docs.example.com/.well-known/oauth-protected-resource/mcp", {
+        method: "OPTIONS",
+      }),
+    });
+    expect(options.status).toBe(204);
+    expect(options.headers.get("access-control-allow-origin")).toBe("*");
+    expect(options.headers.get("access-control-allow-methods")).toBe("GET, HEAD, OPTIONS");
+
+    const unsupported = await handlers.POST({
+      request: new Request("https://docs.example.com/.well-known/oauth-protected-resource/mcp", {
+        method: "POST",
+      }),
+    });
+    expect(unsupported.status).toBe(405);
+    expect(authenticate).not.toHaveBeenCalled();
+
+    const initializeBody = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: "vitest", version: "1.0.0" },
+      },
+    });
+    const requestHeaders = {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+    };
+    const insecureEndpoint = await handlers.POST({
+      request: new Request("http://docs.example.com/mcp", {
+        method: "POST",
+        headers: requestHeaders,
+        body: initializeBody,
+      }),
+    });
+    expect(insecureEndpoint.status).toBe(400);
+    expect(authenticate).not.toHaveBeenCalled();
+
+    const unauthorized = await handlers.POST({
+      request: new Request("https://docs.example.com/mcp", {
+        method: "POST",
+        headers: requestHeaders,
+        body: initializeBody,
+      }),
+    });
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get("www-authenticate")).toBe(
+      'Bearer resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope="docs:read docs:write"',
+    );
+    await expect(unauthorized.json()).resolves.toEqual({ error: "invalid_token" });
+    const authenticationContext = authenticate.mock.calls.at(-1)?.[0];
+    expect(authenticationContext?.request.url).toBe("https://docs.example.com/mcp");
+    expect(authenticationContext?.pathname).toBe("/mcp");
+    expect(authenticationContext?.resource).toBe("https://docs.example.com/mcp");
+
+    const queryUnauthorized = await handlers.POST({
+      request: new Request("https://docs.example.com/mcp?tenant=one", {
+        method: "POST",
+        headers: requestHeaders,
+        body: initializeBody,
+      }),
+    });
+    expect(queryUnauthorized.headers.get("www-authenticate")).toContain(
+      'resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp?tenant=one"',
+    );
+    expect(authenticate.mock.calls.at(-1)?.[0].resource).toBe(
+      "https://docs.example.com/mcp?tenant=one",
+    );
+
+    const queryMetadata = await handlers.GET({
+      request: new Request(
+        "https://docs.example.com/.well-known/oauth-protected-resource/mcp?tenant=one",
+      ),
+    });
+    await expect(queryMetadata.json()).resolves.toMatchObject({
+      resource: "https://docs.example.com/mcp?tenant=one",
+    });
+
+    const spoofedAlias = await handlers.POST({
+      request: new Request(
+        "https://docs.example.com/internal/mcp?__farming_docs_mcp_resource=/mcp",
+        {
+          method: "POST",
+          headers: requestHeaders,
+          body: initializeBody,
+        },
+      ),
+    });
+    expect(spoofedAlias.headers.get("www-authenticate")).toContain(
+      "https://docs.example.com/.well-known/oauth-protected-resource/internal/mcp?__farming_docs_mcp_resource=/mcp",
+    );
+    expect(authenticate.mock.calls.at(-1)?.[0].resource).toBe(
+      "https://docs.example.com/internal/mcp?__farming_docs_mcp_resource=/mcp",
+    );
+
+    const callsBeforeNonCanonicalPath = authenticate.mock.calls.length;
+    const nonCanonicalPath = await handlers.POST({
+      request: new Request("https://docs.example.com/mcp///", {
+        method: "POST",
+        headers: requestHeaders,
+        body: initializeBody,
+      }),
+    });
+    expect(nonCanonicalPath.status).toBe(404);
+    expect(authenticate).toHaveBeenCalledTimes(callsBeforeNonCanonicalPath);
+
+    const trailingSlashUnauthorized = await handlers.POST({
+      request: new Request("https://docs.example.com/mcp/", {
+        method: "POST",
+        headers: requestHeaders,
+        body: initializeBody,
+      }),
+    });
+    expect(trailingSlashUnauthorized.headers.get("www-authenticate")).toContain(
+      'resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp/"',
+    );
+
+    const insufficient = await handlers.POST({
+      request: new Request("https://docs.example.com/mcp", {
+        method: "POST",
+        headers: { ...requestHeaders, authorization: "Bearer limited" },
+        body: initializeBody,
+      }),
+    });
+    expect(insufficient.status).toBe(403);
+    expect(insufficient.headers.get("www-authenticate")).toContain('error="insufficient_scope"');
+    expect(insufficient.headers.get("www-authenticate")).toContain('scope="docs:read docs:write"');
+    await expect(insufficient.json()).resolves.toEqual({ error: "insufficient_scope" });
+
+    const customResponse = await handlers.POST({
+      request: new Request("https://docs.example.com/mcp", {
+        method: "POST",
+        headers: { ...requestHeaders, authorization: "Bearer custom-response" },
+        body: initializeBody,
+      }),
+    });
+    expect(customResponse.status).toBe(429);
+    expect(customResponse.headers.get("www-authenticate")).toBe('Bearer realm="provider"');
+    expect(customResponse.headers.get("x-auth-provider")).toBe("custom");
+    await expect(customResponse.text()).resolves.toBe("provider challenge");
+
+    const authorized = await handlers.POST({
+      request: new Request("https://docs.example.com/mcp", {
+        method: "POST",
+        headers: { ...requestHeaders, authorization: "Bearer valid" },
+        body: initializeBody,
+      }),
+    });
+    expect(authorized.status).toBe(200);
   });
 
   it("requires opt-in authentication and exposes the principal to custom sources", async () => {

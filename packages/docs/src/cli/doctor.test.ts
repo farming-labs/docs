@@ -18,6 +18,7 @@ import {
   inspectAgentReadiness,
   inspectHumanReadiness,
   parseDoctorArgs,
+  probeProtectedMcpDiscovery,
   runDoctor,
 } from "./doctor.js";
 
@@ -174,6 +175,182 @@ describe("parseDoctorArgs", () => {
     expect(() => parseDoctorArgs(["--fail-on", "error"])).toThrow(
       "Invalid value for --fail-on. Expected warn or fail.",
     );
+  });
+});
+
+describe("protected MCP doctor discovery", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function challenge(
+    value = 'Basic realm="legacy", Bearer resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope="docs:read"',
+  ) {
+    return new Response(null, { status: 401, headers: { "WWW-Authenticate": value } });
+  }
+
+  it("accepts a valid RFC 9728 challenge and metadata document", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+          scopes_supported: ["docs:read"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toEqual({
+      ok: true,
+      detail:
+        "/mcp is protected and exposes valid RFC 9728 metadata at /.well-known/oauth-protected-resource/mcp.",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs.example.com/.well-known/oauth-protected-resource/mcp",
+      expect.objectContaining({ redirect: "manual" }),
+    );
+  });
+
+  it("rejects missing and cross-origin resource_metadata challenges", async () => {
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge('Bearer scope="docs:read"'),
+      ),
+    ).resolves.toMatchObject({ ok: false });
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata="https://attacker.example/.well-known/oauth-protected-resource/mcp"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("cross-origin"),
+    });
+  });
+
+  it("does not borrow resource metadata from a later non-Bearer challenge", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer realm="docs", Basic resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("did not return a Bearer resource_metadata"),
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts optional whitespace around Bearer auth-param equals signs", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata = "https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope = "docs:read"',
+        ),
+      ),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
+  it("requires an exact HTTP 200 metadata response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 204, headers: { "Content-Type": "application/json" } }),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("HTTP 204"),
+    });
+  });
+
+  it.each([
+    [
+      "resource mismatch",
+      {
+        resource: "https://docs.example.com/other",
+        authorization_servers: ["https://auth.example.com"],
+      },
+      "instead of",
+    ],
+    [
+      "invalid authorization server",
+      {
+        resource: "https://docs.example.com/mcp",
+        authorization_servers: ["http://auth.example.com"],
+      },
+      "authorization_servers",
+    ],
+    [
+      "invalid scopes",
+      {
+        resource: "https://docs.example.com/mcp",
+        authorization_servers: ["https://auth.example.com"],
+        scopes_supported: ["docs read"],
+      },
+      "scopes_supported",
+    ],
+    ["non-object JSON", null, "JSON object"],
+  ])("rejects protected-resource metadata with %s", async (_label, metadata, detail) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(metadata), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toMatchObject({ ok: false, detail: expect.stringContaining(detail) });
+  });
+
+  it("rejects malformed required scopes in the Bearer challenge", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope="docs:read  docs:write"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("scope challenge"),
+    });
   });
 });
 

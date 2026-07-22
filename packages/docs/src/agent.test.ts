@@ -49,6 +49,7 @@ import {
   selectDocsLlmsTxtContent,
   toDocsMarkdownUrl,
 } from "./agent.js";
+import { resolveDocsMcpConfig } from "./mcp.js";
 
 describe("agent route helpers", () => {
   it("detects well-known agent and llms routes", () => {
@@ -199,6 +200,9 @@ describe("agent route helpers", () => {
 
   it("builds a JSON-safe docs config map with pointers and redaction", () => {
     function submitDocsFeedback() {}
+    function authenticateMcp() {
+      return null;
+    }
     const navTitle = {
       $$typeof: Symbol.for("react.element"),
       type: "div",
@@ -236,6 +240,13 @@ describe("agent route helpers", () => {
         },
         mcp: {
           tools: { listTasks: true, readTask: true },
+          security: {
+            authenticate: authenticateMcp,
+            protectedResource: {
+              authorizationServers: ["https://auth.example.com"],
+              scopesSupported: ["docs:read"],
+            },
+          },
         },
         rootDir: "/tmp/site",
         _preloadedContent: {
@@ -295,6 +306,13 @@ describe("agent route helpers", () => {
     });
     expect(map.values.mcp).toEqual({
       tools: { listTasks: true, readTask: true },
+      security: {
+        authenticate: { $kind: "function", name: "authenticateMcp" },
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+          scopesSupported: ["docs:read"],
+        },
+      },
     });
     expect(map.pointers["/mcp/tools/listTasks"]).toEqual({
       path: "mcp.tools.listTasks",
@@ -700,6 +718,65 @@ describe("agent route helpers", () => {
   it("detects public docs forwarder requests without taking over api/docs", () => {
     expect(isDocsMcpRequest(new URL("https://example.com/.well-known/mcp"))).toBe(true);
     expect(isDocsMcpRequest(new URL("https://example.com/mcp"))).toBe(true);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp")),
+    ).toBe(false);
+    expect(isDocsMcpRequest(new URL("https://example.com/mcp///"))).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp///")),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource")),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp"), {
+        security: {
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+          },
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp"), {
+        enabled: false,
+        security: {
+          authenticate: async () => ({ id: "agent" }),
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+          },
+        },
+      }),
+    ).toBe(false);
+    const protectedMcp = {
+      route: "/internal/mcp",
+      security: {
+        authenticate: async () => ({ id: "agent" }),
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+        },
+      },
+    };
+    for (const route of [
+      "/internal/mcp",
+      "/.well-known/oauth-protected-resource/mcp",
+      "/.well-known/oauth-protected-resource/.well-known/mcp",
+      "/.well-known/oauth-protected-resource/internal/mcp",
+    ]) {
+      expect(isDocsMcpRequest(new URL(`https://example.com${route}`), protectedMcp)).toBe(true);
+    }
+    expect(
+      isDocsMcpRequest(
+        new URL("https://example.com/.well-known/oauth-protected-resource"),
+        protectedMcp,
+      ),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(
+        new URL("https://example.com/.well-known/oauth-protected-resource/unknown"),
+        protectedMcp,
+      ),
+    ).toBe(false);
 
     expect(
       isDocsPublicGetRequest(
@@ -2140,6 +2217,36 @@ After`;
     ).toMatchObject({ mcpTools: { list: "list_tasks", read: "read_task" } });
   });
 
+  it("cross-lists opt-in OAuth protected-resource discovery", () => {
+    const authenticate = async () => ({ id: "reader", scopes: ["docs:read"] });
+    const spec = buildDocsAgentDiscoverySpec({
+      origin: "https://docs.example.com",
+      mcp: resolveDocsMcpConfig({
+        route: "/internal/mcp",
+        security: {
+          authenticate,
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            scopesSupported: ["docs:read"],
+            requiredScopes: ["docs:read"],
+          },
+        },
+      }),
+    });
+
+    expect(spec.mcp.canonicalEndpoint).toBe("/internal/mcp");
+    expect(spec.mcp.protectedResource).toEqual({
+      metadataEndpoints: [
+        "/.well-known/oauth-protected-resource/internal/mcp",
+        "/.well-known/oauth-protected-resource/mcp",
+        "/.well-known/oauth-protected-resource/.well-known/mcp",
+      ],
+      authorizationServers: ["https://auth.example.com"],
+      scopesSupported: ["docs:read"],
+      requiredScopes: ["docs:read"],
+    });
+  });
+
   it("resolves agent feedback endpoints as default-on with explicit opt-out", () => {
     const enabled = resolveDocsAgentFeedbackConfig();
 
@@ -2259,6 +2366,45 @@ description: Use the example documentation.
       expect.objectContaining({
         href: "https://docs.example.com/api/internal/docs?format=openapi",
       }),
+    );
+  });
+
+  it("catalogs protected-resource metadata only for an enabled protected MCP server", async () => {
+    const protectedConfig = {
+      route: "/internal/mcp",
+      security: {
+        authenticate: async () => ({ id: "reader", scopes: ["docs:read"] }),
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+          scopesSupported: ["docs:read"],
+          requiredScopes: ["docs:read"],
+        },
+      },
+    } as const;
+    const readMetadataHrefs = async (enabled: boolean) => {
+      const response = await createDocsStandardsDiscoveryResponse({
+        request: new Request("https://docs.example.com/.well-known/api-catalog"),
+        origin: "https://docs.example.com",
+        mcp: resolveDocsMcpConfig({ ...protectedConfig, enabled }),
+        fallbackSkillDocument,
+      });
+      const catalog = (await response?.json()) as {
+        linkset: Array<Record<string, Array<{ href: string }> | string>>;
+      };
+      return (catalog.linkset[0]["service-meta"] as Array<{ href: string }>).map(
+        (target) => target.href,
+      );
+    };
+
+    expect(await readMetadataHrefs(true)).toEqual(
+      expect.arrayContaining([
+        "https://docs.example.com/.well-known/oauth-protected-resource/internal/mcp",
+        "https://docs.example.com/.well-known/oauth-protected-resource/mcp",
+        "https://docs.example.com/.well-known/oauth-protected-resource/.well-known/mcp",
+      ]),
+    );
+    expect((await readMetadataHrefs(false)).some((href) => href.includes("oauth-protected"))).toBe(
+      false,
     );
   });
 });

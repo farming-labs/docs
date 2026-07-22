@@ -26,6 +26,16 @@ import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-s
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
+  isDocsMcpProtectedResourceMetadataPath,
+  isDocsMcpOAuthScopeToken,
+  isDocsMcpResourcePath,
+  normalizeDocsMcpEndpointPath,
+  normalizeDocsMcpAuthorizationServerUrls,
+  resolveDocsMcpProtectedResourceMetadataLocation,
+  resolveDocsMcpResourceLocation,
+  type DocsMcpResourceLocation,
+} from "./mcp-auth.js";
+import {
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
@@ -43,6 +53,7 @@ import type {
   DocsMcpAuthenticate,
   DocsMcpConfig,
   DocsMcpCorsConfig,
+  DocsMcpProtectedResourceConfig,
   DocsObservabilityConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
@@ -283,8 +294,17 @@ export interface DocsMcpRequestContext {
 export interface DocsMcpResolvedSecurityConfig {
   allowedOrigins: DocsMcpAllowedOrigins;
   authenticate?: DocsMcpAuthenticate;
+  protectedResource?: DocsMcpResolvedProtectedResourceConfig;
   maxBodyBytes: number;
   cors: DocsMcpResolvedCorsConfig;
+}
+
+export interface DocsMcpResolvedProtectedResourceConfig {
+  authorizationServers: string[];
+  scopesSupported: string[];
+  requiredScopes: string[];
+  resourceName?: string;
+  resourceDocumentation?: string;
 }
 
 export interface DocsMcpResolvedCorsConfig {
@@ -349,7 +369,6 @@ interface ScannedDocsMcpPage extends DocsMcpPage {
   order: number;
 }
 
-const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
 const DEFAULT_MCP_CONTEXT_TOKEN_BUDGET = 4_000;
@@ -1431,6 +1450,48 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
               "Opt-in HTTP authentication callback. Return a principal to continue, null for 401, or a Response to control the rejection.",
           },
           {
+            path: "mcp.security.protectedResource",
+            name: "protectedResource",
+            type: "DocsMcpProtectedResourceConfig",
+            description:
+              "Opt-in RFC 9728 OAuth protected-resource metadata and endpoint-wide scope enforcement. Active only with authenticate.",
+            children: [
+              {
+                path: "mcp.security.protectedResource.authorizationServers",
+                name: "authorizationServers",
+                type: "string[]",
+                description:
+                  "One or more HTTPS OAuth issuer URLs without query or fragment; loopback HTTP is accepted for development.",
+              },
+              {
+                path: "mcp.security.protectedResource.scopesSupported",
+                name: "scopesSupported",
+                type: "string[]",
+                description: "OAuth scopes advertised through RFC 9728 scopes_supported metadata.",
+              },
+              {
+                path: "mcp.security.protectedResource.requiredScopes",
+                name: "requiredScopes",
+                type: "string[]",
+                description:
+                  "Scopes required on every principal returned by authenticate; missing scopes receive a challenged 403.",
+              },
+              {
+                path: "mcp.security.protectedResource.resourceName",
+                name: "resourceName",
+                type: "string",
+                default: "resolved MCP server name",
+                description: "Human-readable protected-resource name shown during authorization.",
+              },
+              {
+                path: "mcp.security.protectedResource.resourceDocumentation",
+                name: "resourceDocumentation",
+                type: "string",
+                description: "Absolute HTTP(S) URL with human-readable authentication guidance.",
+              },
+            ],
+          },
+          {
             path: "mcp.security.maxBodyBytes",
             name: "maxBodyBytes",
             type: "number",
@@ -1679,13 +1740,18 @@ export default defineDocs({
 });`,
   },
   {
-    title: "Opt-in MCP authentication",
+    title: "Opt-in OAuth MCP authentication",
     code: `export default defineDocs({
   mcp: {
     security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read"],
+        requiredScopes: ["docs:read"],
+      },
       async authenticate({ request }) {
         const user = await authenticateRequest(request);
-        return user ? { id: user.id, scopes: ["docs:read"] } : null;
+        return user ? { id: user.id, scopes: user.scopes } : null;
       },
     },
   },
@@ -2040,10 +2106,7 @@ const contextOutputSchema = z.object({
 });
 
 export function normalizeDocsMcpRoute(route?: string): string {
-  if (!route || route.trim().length === 0) return DEFAULT_MCP_ROUTE;
-
-  const normalized = `/${route}`.replace(/\/+/g, "/");
-  return normalized !== "/" ? normalized.replace(/\/+$/, "") : DEFAULT_MCP_ROUTE;
+  return normalizeDocsMcpEndpointPath(route);
 }
 
 export function resolveDocsMcpConfig(
@@ -2113,9 +2176,101 @@ function resolveDocsMcpSecurityConfig(
   return {
     allowedOrigins: security?.allowedOrigins ?? "same-origin",
     authenticate: security?.authenticate,
+    protectedResource: resolveDocsMcpProtectedResourceConfig(security?.protectedResource),
     maxBodyBytes,
     cors: resolveDocsMcpCorsConfig(security?.cors),
   };
+}
+
+function resolveDocsMcpProtectedResourceConfig(
+  config?: DocsMcpProtectedResourceConfig,
+): DocsMcpResolvedProtectedResourceConfig | undefined {
+  if (!config || typeof config !== "object") return undefined;
+
+  const configuredAuthorizationServers = config.authorizationServers;
+  if (
+    !Array.isArray(configuredAuthorizationServers) ||
+    configuredAuthorizationServers.length === 0 ||
+    configuredAuthorizationServers.some(
+      (value) => typeof value !== "string" || value.trim().length === 0,
+    )
+  ) {
+    throw new TypeError(
+      "mcp.security.protectedResource.authorizationServers must contain at least one authorization server issuer URL.",
+    );
+  }
+  const authorizationServerCandidates = normalizeMcpStringList(configuredAuthorizationServers);
+  const authorizationServers = normalizeDocsMcpAuthorizationServerUrls(
+    authorizationServerCandidates,
+  );
+  if (authorizationServers.length !== authorizationServerCandidates.length) {
+    throw new TypeError(
+      "mcp.security.protectedResource.authorizationServers must use HTTPS issuer URLs without query strings or fragments; HTTP is allowed only for loopback development.",
+    );
+  }
+
+  const resourceName = normalizeMcpOptionalString(config.resourceName);
+  const resourceDocumentation = normalizeMcpOptionalHttpUrl(config.resourceDocumentation);
+  if (config.resourceDocumentation !== undefined && !resourceDocumentation) {
+    throw new TypeError(
+      "mcp.security.protectedResource.resourceDocumentation must be an absolute HTTP or HTTPS URL.",
+    );
+  }
+  return {
+    authorizationServers,
+    scopesSupported: normalizeMcpScopeList(
+      config.scopesSupported,
+      "mcp.security.protectedResource.scopesSupported",
+    ),
+    requiredScopes: normalizeMcpScopeList(
+      config.requiredScopes,
+      "mcp.security.protectedResource.requiredScopes",
+    ),
+    ...(resourceName ? { resourceName } : {}),
+    ...(resourceDocumentation ? { resourceDocumentation } : {}),
+  };
+}
+
+function normalizeMcpStringList(values?: readonly string[]): string[] {
+  if (!Array.isArray(values)) return [];
+  return Array.from(
+    new Set(
+      values
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function normalizeMcpScopeList(values: readonly string[] | undefined, path: string): string[] {
+  if (values === undefined) return [];
+  if (
+    !Array.isArray(values) ||
+    values.some((value) => typeof value !== "string" || !isDocsMcpOAuthScopeToken(value.trim()))
+  ) {
+    throw new TypeError(`${path} must contain valid OAuth scope tokens.`);
+  }
+  return normalizeMcpStringList(values);
+}
+
+function normalizeMcpOptionalString(value?: string): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  return normalized || undefined;
+}
+
+function normalizeMcpOptionalHttpUrl(value?: string): string | undefined {
+  const normalized = normalizeMcpOptionalString(value);
+  if (!normalized) return undefined;
+  try {
+    const url = new URL(normalized);
+    return (url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password
+      ? normalized
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function resolveDocsMcpCorsConfig(cors?: boolean | DocsMcpCorsConfig): DocsMcpResolvedCorsConfig {
@@ -3492,15 +3647,57 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
   }
 
   async function handle(request: Request): Promise<Response> {
-    const url = new URL(request.url);
+    const originalUrl = new URL(request.url);
     const method = request.method.toUpperCase();
     const security = resolved.security ?? resolveDocsMcpSecurityConfig();
+    const metadataLocation = resolveDocsMcpProtectedResourceMetadataLocation(
+      request,
+      resolved.route,
+    );
+    if (metadataLocation || isDocsMcpProtectedResourceMetadataPath(originalUrl.pathname)) {
+      if (
+        security.authenticate &&
+        security.protectedResource &&
+        metadataLocation &&
+        !isAllowedMcpProtectedResourceUrl(metadataLocation.resourceUrl)
+      ) {
+        return createMcpHttpSecurityErrorResponse(
+          400,
+          "Protected MCP requires HTTPS; HTTP is allowed only for loopback development",
+        );
+      }
+      return createDocsMcpProtectedResourceMetadataResponse({
+        request,
+        location: metadataLocation,
+        config: security.authenticate ? security.protectedResource : undefined,
+        defaultResourceName: resolved.name,
+      });
+    }
+    if (
+      security.authenticate &&
+      security.protectedResource &&
+      !isDocsMcpResourcePath(originalUrl.pathname, resolved.route)
+    ) {
+      return createJsonErrorResponse(404, "Not Found");
+    }
 
+    const resourceLocation = resolveDocsMcpResourceLocation(request, resolved.route);
+    if (
+      security.authenticate &&
+      security.protectedResource &&
+      !isAllowedMcpProtectedResourceUrl(resourceLocation.resourceUrl)
+    ) {
+      return createMcpHttpSecurityErrorResponse(
+        400,
+        "Protected MCP requires HTTPS; HTTP is allowed only for loopback development",
+      );
+    }
     const prepared = await prepareDocsMcpHttpRequest(request, security.maxBodyBytes);
     if (prepared.status === "too-large") {
       return createMcpRequestTooLargeResponse(security.maxBodyBytes);
     }
     request = prepared.request;
+    const url = new URL(request.url);
 
     let originAllowed: boolean;
     try {
@@ -3526,7 +3723,8 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       try {
         authentication = await security.authenticate({
           request: request.clone(),
-          pathname: url.pathname,
+          pathname: resourceLocation.resourceUrl.pathname,
+          resource: serializeMcpResourceIdentifier(resourceLocation.resourceUrl),
         });
       } catch {
         return withCors(createMcpHttpSecurityErrorResponse(500, "MCP authentication failed"));
@@ -3534,7 +3732,9 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
 
       if (authentication instanceof Response) return withCors(authentication);
       if (authentication === null || authentication === undefined) {
-        return withCors(createMcpHttpSecurityErrorResponse(401, "Unauthorized"));
+        return withCors(
+          createMcpUnauthorizedResponse(request, resourceLocation, security.protectedResource),
+        );
       }
       if (!isDocsMcpAuthPrincipal(authentication)) {
         return withCors(
@@ -3542,6 +3742,15 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
             500,
             "MCP authentication returned an invalid principal",
           ),
+        );
+      }
+      const missingScopes = findMissingMcpScopes(
+        authentication.scopes,
+        security.protectedResource?.requiredScopes,
+      );
+      if (missingScopes.length > 0) {
+        return withCors(
+          createMcpInsufficientScopeResponse(resourceLocation, security.protectedResource),
         );
       }
       auth = authentication;
@@ -3882,6 +4091,149 @@ function cloneResponseWithHeaders(response: Response, headers: Headers): Respons
     status: response.status,
     statusText: response.statusText,
     headers,
+  });
+}
+
+function createDocsMcpProtectedResourceMetadataResponse({
+  request,
+  location,
+  config,
+  defaultResourceName,
+}: {
+  request: Request;
+  location?: DocsMcpResourceLocation;
+  config?: DocsMcpResolvedProtectedResourceConfig;
+  defaultResourceName: string;
+}): Response {
+  const method = request.method.toUpperCase();
+  const headers = new Headers({
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Expose-Headers": "Content-Type",
+    Allow: "GET, HEAD, OPTIONS",
+    "Cache-Control": config && location ? "public, max-age=300" : "no-store",
+    "Content-Type": "application/json",
+    "X-Robots-Tag": "noindex",
+  });
+
+  if (!config || !location) {
+    return new Response(method === "HEAD" ? null : JSON.stringify({ error: "Not Found" }), {
+      status: 404,
+      headers,
+    });
+  }
+
+  if (method === "OPTIONS") {
+    headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    headers.set("Access-Control-Allow-Headers", "MCP-Protocol-Version");
+    headers.set("Access-Control-Max-Age", "600");
+    return new Response(null, { status: 204, headers });
+  }
+
+  if (method !== "GET" && method !== "HEAD") {
+    return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+      status: 405,
+      headers,
+    });
+  }
+
+  const resource = serializeMcpResourceIdentifier(location.resourceUrl);
+  const metadata = {
+    resource,
+    authorization_servers: config.authorizationServers,
+    scopes_supported: config.scopesSupported.length > 0 ? config.scopesSupported : undefined,
+    bearer_methods_supported: ["header"],
+    resource_name: config.resourceName ?? defaultResourceName,
+    resource_documentation: config.resourceDocumentation,
+  };
+
+  return new Response(method === "HEAD" ? null : JSON.stringify(metadata), { headers });
+}
+
+function serializeMcpResourceIdentifier(resourceUrl: URL): string {
+  return resourceUrl.pathname === "/" ? resourceUrl.origin : resourceUrl.href;
+}
+
+function isAllowedMcpProtectedResourceUrl(resourceUrl: URL): boolean {
+  if (resourceUrl.protocol === "https:") return true;
+  return (
+    resourceUrl.protocol === "http:" &&
+    (resourceUrl.hostname === "localhost" ||
+      resourceUrl.hostname === "127.0.0.1" ||
+      resourceUrl.hostname === "[::1]")
+  );
+}
+
+function findMissingMcpScopes(
+  grantedScopes: readonly string[] | undefined,
+  requiredScopes: readonly string[] | undefined,
+): string[] {
+  if (!requiredScopes || requiredScopes.length === 0) return [];
+  const granted = new Set(grantedScopes ?? []);
+  return requiredScopes.filter((scope) => !granted.has(scope));
+}
+
+function createMcpUnauthorizedResponse(
+  request: Request,
+  location: DocsMcpResourceLocation,
+  config?: DocsMcpResolvedProtectedResourceConfig,
+): Response {
+  if (!config) return createMcpHttpSecurityErrorResponse(401, "Unauthorized");
+
+  const challenge = buildMcpBearerChallenge({
+    error: request.headers.has("authorization") ? "invalid_token" : undefined,
+    resourceMetadata: location.metadataUrl.href,
+    scopes: config.requiredScopes,
+  });
+  return createMcpOAuthErrorResponse(401, "invalid_token", challenge);
+}
+
+function createMcpInsufficientScopeResponse(
+  location: DocsMcpResourceLocation,
+  config?: DocsMcpResolvedProtectedResourceConfig,
+): Response {
+  if (!config) return createMcpHttpSecurityErrorResponse(403, "Forbidden");
+
+  const challenge = buildMcpBearerChallenge({
+    error: "insufficient_scope",
+    resourceMetadata: location.metadataUrl.href,
+    scopes: config.requiredScopes,
+  });
+  return createMcpOAuthErrorResponse(403, "insufficient_scope", challenge);
+}
+
+function buildMcpBearerChallenge({
+  error,
+  resourceMetadata,
+  scopes,
+}: {
+  error?: "invalid_token" | "insufficient_scope";
+  resourceMetadata: string;
+  scopes: readonly string[];
+}): string {
+  const parameters = [
+    ...(error ? [`error=${quoteHttpAuthParameter(error)}`] : []),
+    `resource_metadata=${quoteHttpAuthParameter(resourceMetadata)}`,
+    ...(scopes.length > 0 ? [`scope=${quoteHttpAuthParameter(scopes.join(" "))}`] : []),
+  ];
+  return `Bearer ${parameters.join(", ")}`;
+}
+
+function quoteHttpAuthParameter(value: string): string {
+  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+}
+
+function createMcpOAuthErrorResponse(
+  status: 401 | 403,
+  error: "invalid_token" | "insufficient_scope",
+  challenge: string,
+): Response {
+  return new Response(JSON.stringify({ error }), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "WWW-Authenticate": challenge,
+    },
   });
 }
 

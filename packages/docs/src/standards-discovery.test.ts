@@ -36,6 +36,7 @@ function catalog() {
     markdownRootRoute: "/docs.md",
     llmsRoutes: ["/llms.txt", "/llms.txt"],
     mcpRoute: "/api/docs/mcp",
+    protectedResourceMetadataRoutes: ["/.well-known/oauth-protected-resource/api/docs/mcp"],
     feedbackRoutes: ["/api/docs/agent/feedback", "/api/docs/agent/feedback/schema"],
     openapiRoute: "/api/docs?format=openapi",
     apiReferenceRoute: "/api-reference",
@@ -66,6 +67,14 @@ describe("RFC 9727 API catalog", () => {
     expect(result.linkset[0]["service-desc"]).toEqual([
       expect.objectContaining({ href: "https://docs.example.com/api/docs?format=openapi" }),
     ]);
+    expect(result.linkset[0]["service-meta"]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: "https://docs.example.com/.well-known/oauth-protected-resource/api/docs/mcp",
+          type: "application/json",
+        }),
+      ]),
+    );
     expect(
       result.linkset[0]["service-doc"]?.filter(
         (item) => item.href === "https://docs.example.com/llms.txt",

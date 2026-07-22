@@ -502,21 +502,27 @@ export default defineDocs({
 Authentication is opt-in. Omitting `authenticate` keeps HTTP MCP public, while Origin validation
 and the request-size limit still apply. The stdio transport is unaffected.
 
-| Property         | Type                                            | Default         | Description |
-| ---------------- | ----------------------------------------------- | --------------- | ----------- |
-| `allowedOrigins` | `"same-origin" \| string[] \| callback`         | `"same-origin"` | Policy for a supplied HTTP Origin header; requests without Origin are accepted |
-| `authenticate`   | `(context) => principal \| null \| Response`     | public          | Optional Web Request callback; adding it makes authentication required |
-| `maxBodyBytes`   | `number`                                        | `1048576`       | Maximum Streamable HTTP POST body size |
-| `cors`           | `boolean \| DocsMcpCorsConfig`                   | `true`          | Exact-Origin browser CORS for accepted Origins; set false to suppress headers |
+| Property            | Type                                            | Default         | Description |
+| ------------------- | ----------------------------------------------- | --------------- | ----------- |
+| `allowedOrigins`    | `"same-origin" \| string[] \| callback`         | `"same-origin"` | Policy for a supplied HTTP Origin header; requests without Origin are accepted |
+| `authenticate`      | `(context) => principal \| null \| Response`     | public          | Optional Web Request callback; adding it makes authentication required |
+| `protectedResource` | `DocsMcpProtectedResourceConfig`                | —               | Opt-in RFC 9728 metadata, Bearer challenges, and endpoint-wide scope requirements; active only with `authenticate` |
+| `maxBodyBytes`      | `number`                                        | `1048576`       | Maximum Streamable HTTP POST body size |
+| `cors`              | `boolean \| DocsMcpCorsConfig`                   | `true`          | Exact-Origin browser CORS for accepted Origins; set false to suppress headers |
 
 ```ts title="docs.config.ts"
 export default defineDocs({
   mcp: {
     security: {
-      authenticate: async ({ request, pathname }) => {
-        const user = await authenticateRequest(request);
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read"],
+        requiredScopes: ["docs:read"],
+      },
+      authenticate: async ({ request, pathname, resource }) => {
+        const user = await authenticateRequest(request, { audience: resource });
         return user
-          ? { id: user.id, scopes: ["docs:read"], claims: { pathname } }
+          ? { id: user.id, scopes: user.scopes, claims: { pathname, resource } }
           : null;
       },
     },
@@ -526,6 +532,41 @@ export default defineDocs({
 
 POST bodies are capped before `allowedOrigins` or `authenticate` callbacks run. Browser preflight
 uses the `OPTIONS` handler and does not run authentication.
+
+### `DocsMcpProtectedResourceConfig`
+
+RFC 9728 protected-resource discovery for OAuth-aware HTTP MCP clients. This object only becomes
+active when `authenticate` is also configured. Omitting both keeps HTTP MCP public by default.
+It does not issue or validate tokens: `authenticate` remains responsible for signature, issuer,
+expiry, the exact callback `resource` audience, and token-derived scope validation. The callback
+`request` retains the real incoming URL and query string.
+
+| Property                | Type                | Required | Description |
+| ----------------------- | ------------------- | -------- | ----------- |
+| `authorizationServers`  | `readonly string[]` | yes      | Non-empty list of HTTPS OAuth issuer URLs without query or fragment; loopback HTTP is accepted for development |
+| `scopesSupported`       | `readonly string[]` | no       | Scopes advertised as `scopes_supported` |
+| `requiredScopes`        | `readonly string[]` | no       | Scopes every principal returned by `authenticate` must include |
+| `resourceName`          | `string`            | no       | Human-readable protected-resource name; defaults to the resolved MCP server name |
+| `resourceDocumentation` | `string`            | no       | Absolute HTTP(S) URL with human-readable authentication instructions |
+
+The metadata routes are public and support `GET` and `HEAD`:
+
+- `/.well-known/oauth-protected-resource/mcp` for `/mcp`
+- `/.well-known/oauth-protected-resource/.well-known/mcp` for `/.well-known/mcp`
+- `/.well-known/oauth-protected-resource/api/docs/mcp` for the default canonical route; a custom
+  `mcp.route` produces the matching path instead
+
+When `authenticate` returns `null`, protected-resource mode returns `401` with a Bearer
+`WWW-Authenticate` challenge containing the metadata URL and required scopes. A valid principal
+missing a required scope receives `403` with `error="insufficient_scope"`. Returning a Web
+`Response` bypasses framework-generated challenges and preserves the custom response. Use HTTPS for
+hosted MCP and authorization-server URLs; plain HTTP is appropriate only for loopback development.
+Each alias is a distinct OAuth resource identifier, so token audience validation must accept the
+exact endpoint used by the client.
+For Next.js, protected MCP is incompatible with `basePath`; host it at the origin root or terminate
+the MCP and RFC 9728 routes at an edge proxy. Inline MCP objects are detected automatically. Pass
+the live docs config to `withDocs(nextConfig, docsConfig)` when MCP configuration is imported,
+spread, or shorthand.
 
 ### `DocsMcpCorsConfig`
 
@@ -2429,7 +2470,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 > `suppressHydrationWarning` on `<html>` prevents React warnings caused by the theme class being injected before hydration.
 
-### `withDocs(nextConfig)`
+### `withDocs(nextConfig, docsConfig?)`
 
 Wraps your Next.js config with docs framework support. Handles MDX, routing, search index generation, and auto-generates `mdx-components.tsx` and `app/docs/layout.tsx` if missing.
 
@@ -2437,6 +2478,10 @@ Wraps your Next.js config with docs framework support. Handles MDX, routing, sea
 import { withDocs } from "@farming-labs/next/config";
 export default withDocs({});
 ```
+
+The optional second argument supplies the live docs config when build-time routing cannot be read
+statically from an imported, spread, or shorthand `docs.config` value. Protected MCP users should
+pass it so RFC 9728 rewrites and the incompatible-`basePath` check use the resolved configuration.
 
 ### `createDocsLayout(config)`
 

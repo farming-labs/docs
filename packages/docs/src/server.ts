@@ -159,6 +159,7 @@ export type {
   DocsMcpRequestContext,
   DocsMcpResolvedCorsConfig,
   DocsMcpResolvedConfig,
+  DocsMcpResolvedProtectedResourceConfig,
   DocsMcpResolvedSecurityConfig,
   DocsMcpSource,
   DocsMcpTaskSummary,

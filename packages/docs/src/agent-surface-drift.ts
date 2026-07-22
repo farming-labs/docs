@@ -13,6 +13,12 @@ export interface AgentSurfaceExpectedValues {
     enabled: boolean;
     endpoint: string | null;
     tools: Readonly<Record<string, boolean>>;
+    protectedResource?: {
+      metadataEndpoints: readonly string[];
+      authorizationServers: readonly string[];
+      scopesSupported: readonly string[];
+      requiredScopes: readonly string[];
+    } | null;
   };
   /**
    * Discovery dot paths whose values must match their resolved runtime values.
@@ -45,6 +51,7 @@ export type AgentSurfaceDriftCode =
   | "mcp-enabled-mismatch"
   | "mcp-capability-mismatch"
   | "mcp-route-mismatch"
+  | "mcp-protected-resource-mismatch"
   | "mcp-tool-mismatch"
   | "mcp-tool-unexpected"
   | "route-mismatch";
@@ -160,7 +167,15 @@ function displayValue(value: unknown, present = true): string {
 }
 
 function valuesMatch(actual: PathValue, expected: unknown): boolean {
-  return actual.present && Object.is(actual.value, expected);
+  if (!actual.present) return false;
+  if (Object.is(actual.value, expected)) return true;
+  if (
+    (Array.isArray(actual.value) || isRecord(actual.value)) &&
+    (Array.isArray(expected) || isRecord(expected))
+  ) {
+    return displayValue(actual.value) === displayValue(expected);
+  }
+  return false;
 }
 
 function mismatchIssue(
@@ -312,6 +327,40 @@ export function analyzeAgentSurfaceDrift(
     options.expected.mcp.endpoint,
     "Discovery mcp.endpoint",
   );
+
+  if (options.expected.mcp.protectedResource !== undefined) {
+    const expectedProtectedResource = options.expected.mcp.protectedResource;
+    const discoveredProtectedResource = readPath(options.discovery, "mcp.protectedResource");
+    if (expectedProtectedResource === null) {
+      if (discoveredProtectedResource.present) {
+        issues.push(
+          mismatchIssue(
+            "mcp-protected-resource-mismatch",
+            "mcp.protectedResource",
+            undefined,
+            discoveredProtectedResource,
+            "Discovery mcp.protectedResource",
+          ),
+        );
+      }
+    } else {
+      for (const field of [
+        "metadataEndpoints",
+        "authorizationServers",
+        "scopesSupported",
+        "requiredScopes",
+      ] as const) {
+        compareExpectedValue(
+          issues,
+          options.discovery,
+          "mcp-protected-resource-mismatch",
+          `mcp.protectedResource.${field}`,
+          expectedProtectedResource[field],
+          `Discovery mcp.protectedResource.${field}`,
+        );
+      }
+    }
+  }
 
   const expectedToolNames = Object.keys(options.expected.mcp.tools).sort();
   const expectedToolSet = new Set(expectedToolNames);

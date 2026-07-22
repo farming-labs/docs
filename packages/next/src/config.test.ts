@@ -30,6 +30,14 @@ type TestRewrite = {
   missing?: Array<Record<string, string>>;
 };
 
+const DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE = "/.well-known/oauth-protected-resource";
+
+function buildMcpProtectedResourceMetadataRoute(resourcePath: string): string {
+  return resourcePath === "/"
+    ? DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE
+    : `${DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE}${resourcePath}`;
+}
+
 type TestRewriteResult =
   | TestRewrite[]
   | {
@@ -173,6 +181,23 @@ const DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE = `export default {
   mcp: {
     enabled: true,
     route: "/api/internal/docs/mcp",
+  },
+};
+`;
+
+const DOCS_CONFIG_WITH_PROTECTED_MCP = `export default {
+  entry: "docs",
+  mcp: {
+    enabled: true,
+    route: "/api/internal/docs/mcp",
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+      },
+      async authenticate() {
+        return null;
+      },
+    },
   },
 };
 `;
@@ -386,6 +411,12 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const beforeFiles = getBeforeFilesRewrites(rewritesResult);
     const afterFiles = getAfterFilesRewrites(rewritesResult);
 
+    expect(
+      beforeFiles.some((rewrite) =>
+        rewrite.source.startsWith(DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE),
+      ),
+    ).toBe(false);
+
     expect(beforeFiles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -535,6 +566,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
       ]),
+    );
+    expect(beforeFiles).not.toContainEqual(
+      expect.objectContaining({ source: DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE }),
     );
     expect(afterFiles).toEqual(
       expect.arrayContaining([
@@ -1151,6 +1185,120 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
       ]),
     );
+  });
+
+  it("routes RFC 9728 metadata while preserving each protected MCP resource", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_PROTECTED_MCP, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+    const resources = ["/api/internal/docs/mcp", "/mcp", "/.well-known/mcp"];
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        ...resources.map((resourcePath) =>
+          expect.objectContaining({
+            source: buildMcpProtectedResourceMetadataRoute(resourcePath),
+            destination: "/api/internal/docs/mcp",
+          }),
+        ),
+      ]),
+    );
+  });
+
+  it("uses a live docs config for composed protected MCP routing", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `const sharedMcp = {};
+export default { mcp: sharedMcp };
+`,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const liveDocsConfig = {
+      mcp: {
+        route: "/api/live/mcp",
+        security: {
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+          },
+          async authenticate() {
+            return null;
+          },
+        },
+      },
+    };
+
+    expect(() => withDocs({ basePath: "/product" }, liveDocsConfig)).toThrow(
+      /protectedResource cannot be combined with Next\.js basePath/,
+    );
+
+    const nextConfig = withDocs({}, liveDocsConfig);
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: buildMcpProtectedResourceMetadataRoute("/api/live/mcp"),
+          destination: "/api/live/mcp",
+        }),
+        expect.objectContaining({
+          source: buildMcpProtectedResourceMetadataRoute("/mcp"),
+          destination: "/api/live/mcp",
+        }),
+      ]),
+    );
+  });
+
+  it("fails fast when protected MCP is combined with a Next.js basePath", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_PROTECTED_MCP, "utf-8");
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({ basePath: "/product" })).toThrow(
+      /protectedResource cannot be combined with Next\.js basePath/,
+    );
+  });
+
+  it("allows an inactive protectedResource block with a Next.js basePath", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  mcp: {
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+      },
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({ basePath: "/product" })).not.toThrow();
+  });
+
+  it("keeps public and callback-only MCP compatible with a Next.js basePath", () => {
+    process.chdir(tmpDir);
+
+    expect(() =>
+      withDocs(
+        { basePath: "/product" },
+        {
+          mcp: {
+            security: {
+              async authenticate() {
+                return { id: "reader" };
+              },
+            },
+          },
+        },
+      ),
+    ).not.toThrow();
   });
 
   it("skips API reference generation for static export", () => {
