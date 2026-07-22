@@ -840,6 +840,17 @@ export default defineDocs({
 });
 ```
 
+`GET /api/docs?query=<query>` searches the human projection by default. The exact lowercase
+`audience=agent` query parameter selects the agent projection:
+
+```text
+GET /api/docs?query=installation&audience=agent
+```
+
+The human projection contains shared plus human-only content; the agent projection contains shared
+plus agent-only content. `audience=human`, a missing value, and invalid values all resolve to human.
+This is content projection, not authentication or authorization.
+
 Built-in providers:
 
 - `simple` — zero-config docs search with section chunking
@@ -988,7 +999,11 @@ export default defineDocs({
 ### `DocsSearchAdapter`
 
 Custom adapters receive normalized source pages and chunked search documents so you can focus on
-retrieval and ranking instead of rebuilding the docs scan pipeline.
+retrieval and ranking instead of rebuilding the docs scan pipeline. `DocsSearchQuery.audience` and
+`DocsSearchAdapterContext.audience` are both `"human" | "agent"` and contain the resolved request
+projection; `context.documents` is projected to match. Hosted index synchronization always uses
+the human projection. Custom adapters should apply `query.audience` while filtering and ranking
+provider results.
 
 ```ts title="search-adapter.ts"
 import type { DocsSearchAdapter } from "@farming-labs/docs";
@@ -1026,8 +1041,13 @@ Notes:
 
 - `search: false` disables search entirely
 - Search requires the docs API route; static export hides the UI because there is no server route
+- `GET /api/docs?query=...` remains human by default; only exact `audience=agent` opts into agent
+  content
 - On Next.js, generated routes from `withDocs()` pass `docsConfig` directly into `createDocsAPI`
 - MCP-backed search works with relative endpoints like `/mcp` or `/.well-known/mcp` and absolute remote endpoints like `https://docs.example.com/mcp`
+- same-origin MCP `search_docs` routes receive the resolved `audience`; set `forwardAudience: true`
+  only when a remote endpoint or custom tool supports the same argument; human-projection requests
+  fall back to local search until then
 - If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
 - On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass the whole config: `createDocsAPI(docsConfig)`
 

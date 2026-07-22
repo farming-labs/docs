@@ -59,6 +59,10 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
       search: {
         enabled: true,
         endpoint: "/api/docs?query={query}",
+        agentEndpoint: "/api/docs?query={query}&audience=agent",
+        audienceParam: "audience",
+        defaultAudience: "human",
+        supportedAudiences: ["human", "agent"],
       },
       mcp: {
         enabled: true,
@@ -205,6 +209,10 @@ describe("agent surface drift", () => {
       search: {
         enabled: false,
         endpoint: "/wrong-search",
+        agentEndpoint: "/wrong-agent-search",
+        audienceParam: "target",
+        defaultAudience: "agent",
+        supportedAudiences: ["agent"],
       },
       mcp: {
         enabled: false,
@@ -244,6 +252,7 @@ describe("agent surface drift", () => {
         "search-enabled-mismatch",
         "search-capability-mismatch",
         "search-route-mismatch",
+        "search-audience-mismatch",
         "mcp-enabled-mismatch",
         "mcp-capability-mismatch",
         "mcp-route-mismatch",
@@ -265,6 +274,16 @@ describe("agent surface drift", () => {
       expected: "documented schema option",
       actual: "<missing>",
     });
+    expect(
+      issues
+        .filter((issue) => issue.code === "search-audience-mismatch")
+        .map((issue) => issue.path),
+    ).toEqual([
+      "search.agentEndpoint",
+      "search.audienceParam",
+      "search.defaultAudience",
+      "search.supportedAudiences",
+    ]);
     expect(issues.find((issue) => issue.path === "agentContract.fields.rollback")).toMatchObject({
       code: "agent-contract-field-missing",
     });

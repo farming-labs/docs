@@ -604,6 +604,16 @@ export default defineDocs({
 });
 ```
 
+The same route supports two content projections. `GET /api/docs?query=<query>` remains the human
+default and searches shared plus human-only content. Use the exact lowercase
+`GET /api/docs?query=<query>&audience=agent` form to search shared plus agent-only content.
+`audience=human`, an omitted value, and invalid values all stay on the human projection.
+
+<Callout type="warning" title="Audience is not access control">
+  The query parameter selects a public content projection; it does not authenticate or authorize
+  the caller. Never place secrets or private data in audience-specific docs content.
+</Callout>
+
 Use an object when you want to switch providers or tune indexing behavior:
 
 ### Simple search
@@ -727,9 +737,17 @@ Notes:
 
 - `search: false` disables search entirely
 - `chunking.strategy` defaults to `"section"` and can be changed to `"page"` for one-document-per-page indexing
+- custom adapters receive the resolved value as `query.audience` and `context.audience`, and
+  `context.documents` uses the matching content projection
+- custom adapters should apply `query.audience` while filtering and ranking provider results
 - Typesense and Algolia can sync documents automatically on the first search request when `adminApiKey` is present
+- hosted index sync remains human-projected; requesting `audience=agent` does not replace the public
+  index with agent-only text
 - Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want manual indexing as a CLI step
 - `provider: "mcp"` can target a relative route like `/mcp` or `/.well-known/mcp` or an absolute remote MCP endpoint
+- same-origin MCP `search_docs` routes receive the resolved `audience`; remote endpoints and custom
+  tool names must set `forwardAudience: true` after supporting that argument; human-projection
+  requests fall back to local search until then
 - when MCP search points at the same site's relative MCP route, the MCP `search_docs` tool falls back to built-in simple search to avoid recursive loops
 - If you use a custom Next.js docs API route, import `createDocsAPI` from `@farming-labs/next/api` and pass the whole config: `createDocsAPI(docsConfig)`
 - Search requires the docs API route; with `staticExport: true` the UI is hidden because there is no server route

@@ -48,6 +48,7 @@ export type AgentSurfaceDriftCode =
   | "search-enabled-mismatch"
   | "search-capability-mismatch"
   | "search-route-mismatch"
+  | "search-audience-mismatch"
   | "mcp-enabled-mismatch"
   | "mcp-capability-mismatch"
   | "mcp-route-mismatch"
@@ -301,6 +302,44 @@ export function analyzeAgentSurfaceDrift(
     "search.endpoint",
     options.expected.search.endpoint,
     "Discovery search.endpoint",
+  );
+  const expectedAgentSearchEndpoint =
+    options.expected.search.endpoint === null
+      ? null
+      : `${options.expected.search.endpoint}${
+          options.expected.search.endpoint.includes("?") ? "&" : "?"
+        }audience=agent`;
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.agentEndpoint",
+    expectedAgentSearchEndpoint,
+    "Discovery search.agentEndpoint",
+  );
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.audienceParam",
+    "audience",
+    "Discovery search.audienceParam",
+  );
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.defaultAudience",
+    "human",
+    "Discovery search.defaultAudience",
+  );
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.supportedAudiences",
+    ["human", "agent"],
+    "Discovery search.supportedAudiences",
   );
 
   compareExpectedValue(

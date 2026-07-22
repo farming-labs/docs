@@ -8,6 +8,7 @@ import {
   createMcpSearchAdapter,
   createTypesenseSearchAdapter,
   performDocsSearch,
+  resolveDocsSearchAudience,
   resolveSearchRequestConfig,
 } from "./search.js";
 
@@ -217,6 +218,42 @@ export const auth = betterAuth({});
 });
 
 describe("performDocsSearch", () => {
+  it.each([
+    [undefined, "human"],
+    [null, "human"],
+    ["", "human"],
+    ["human", "human"],
+    ["Agent", "human"],
+    ["bot", "human"],
+    ["agent", "agent"],
+  ] as const)("resolves the %s audience query value to %s", (value, expected) => {
+    expect(resolveDocsSearchAudience(value)).toBe(expected);
+  });
+
+  it("auto-forwards MCP audience only to the same-origin default search tool", () => {
+    expect(
+      resolveSearchRequestConfig(
+        { provider: "mcp", endpoint: "/api/docs/mcp" },
+        "https://docs.example.com/api/docs",
+      ),
+    ).toMatchObject({
+      endpoint: "https://docs.example.com/api/docs/mcp",
+      forwardAudience: true,
+    });
+    expect(
+      resolveSearchRequestConfig(
+        { provider: "mcp", endpoint: "https://remote.example/mcp" },
+        "https://docs.example.com/api/docs",
+      ),
+    ).toMatchObject({ forwardAudience: false });
+    expect(
+      resolveSearchRequestConfig(
+        { provider: "mcp", endpoint: "/api/docs/mcp", toolName: "custom_search" },
+        "https://docs.example.com/api/docs",
+      ),
+    ).toMatchObject({ forwardAudience: false });
+  });
+
   it("keeps public search human-only while allowing explicit agent retrieval", async () => {
     const audiencePages = [
       {
@@ -508,6 +545,8 @@ Customize the loading UI.
         name: "custom",
         async search(query, context) {
           expect(query.query).toBe("install");
+          expect(query.audience).toBe("human");
+          expect(context.audience).toBe("human");
           expect(context.documents.length).toBeGreaterThan(0);
           return [
             {
@@ -531,6 +570,175 @@ Customize the loading UI.
         type: "page",
       },
     ]);
+  });
+
+  it("projects raw audience blocks before passing documents to custom adapters", async () => {
+    const seen: string[] = [];
+    const adapter = createCustomSearchAdapter({
+      name: "audience-aware-custom",
+      async search(query, context) {
+        seen.push(`${query.audience}:${context.audience}:${context.documents[0]?.content ?? ""}`);
+        return [];
+      },
+    });
+    const sourcePages = [
+      {
+        title: "Audience projection",
+        url: "/docs/audience-projection",
+        content:
+          "Shared context. <Human>Human coral token.</Human> <Agent>Agent indigo token.</Agent>",
+      },
+    ];
+
+    await performDocsSearch({ pages: sourcePages, query: "token", search: adapter });
+    await performDocsSearch({
+      pages: sourcePages,
+      query: "token",
+      audience: "agent",
+      search: adapter,
+    });
+
+    expect(seen[0]).toContain("human:human:Shared context. Human coral token.");
+    expect(seen[0]).not.toContain("Agent indigo token");
+    expect(seen[1]).toContain("agent:agent:Shared context. Agent indigo token.");
+    expect(seen[1]).not.toContain("Human coral token");
+  });
+
+  it("replaces stale local provider snippets with the selected human projection", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Audience-safe search",
+          url: "/docs/audience-safe-search",
+          content: "Shared setup. Human coral walkthrough.",
+          rawContent: "# Audience-safe search\n\nShared setup. Human coral walkthrough.",
+          agentFallbackContent: "Shared setup. Agent indigo procedure.",
+          agentFallbackRawContent:
+            "# Audience-safe search\n\nShared setup. Agent indigo procedure.",
+        },
+      ],
+      query: "shared setup",
+      search: createCustomSearchAdapter({
+        name: "stale-agent-index",
+        async search() {
+          return [
+            {
+              id: "stale-hit",
+              url: "/docs/audience-safe-search",
+              content: "Audience-safe search",
+              description: "Shared setup. Agent indigo procedure.",
+              type: "page",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results.find((result) => result.id === "stale-hit")?.description).toContain(
+      "Human coral walkthrough",
+    );
+    expect(JSON.stringify(results)).not.toContain("Agent indigo procedure");
+  });
+
+  it("does not turn cross-audience provider hits into false-positive local results", async () => {
+    const sourcePages = [
+      {
+        title: "Audience-safe filtering",
+        url: "/docs/audience-safe-filtering",
+        content: "Shared setup. Human coral walkthrough.",
+        rawContent: "# Audience-safe filtering\n\nShared setup. Human coral walkthrough.",
+        agentFallbackContent: "Shared setup. Agent indigo procedure.",
+        agentFallbackRawContent:
+          "# Audience-safe filtering\n\nShared setup. Agent indigo procedure.",
+      },
+    ];
+    const staleProvider = createCustomSearchAdapter({
+      name: "cross-audience-index",
+      async search(query) {
+        return [
+          {
+            id: `stale-${query.audience}`,
+            url: "/docs/audience-safe-filtering",
+            content: "Audience-safe filtering",
+            type: "page",
+          },
+        ];
+      },
+    });
+
+    await expect(
+      performDocsSearch({
+        pages: sourcePages,
+        query: "indigo",
+        search: staleProvider,
+      }),
+    ).resolves.toEqual([]);
+    await expect(
+      performDocsSearch({
+        pages: sourcePages,
+        query: "coral",
+        audience: "agent",
+        search: staleProvider,
+      }),
+    ).resolves.toEqual([]);
+  });
+
+  it("falls back to current human content when a provider returns a stale absolute anchor", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Current search guide",
+          url: "/docs/current-search-guide",
+          content: `Current amber workflow. ${"Detailed human guidance. ".repeat(30)}`,
+          rawContent: `# Current search guide\n\nCurrent amber workflow. ${"Detailed human guidance. ".repeat(30)}`,
+          agentFallbackContent: "Agent violet workflow.",
+          agentFallbackRawContent: "# Current search guide\n\nAgent violet workflow.",
+        },
+      ],
+      query: "amber",
+      baseUrl: "https://docs.example.com",
+      search: createCustomSearchAdapter({
+        name: "stale-anchor-index",
+        async search() {
+          return [
+            {
+              id: "removed-anchor",
+              url: "https://docs.example.com/docs/current-search-guide#removed",
+              content: "Current search guide — Removed",
+              description: "Agent violet workflow.",
+              type: "heading",
+              section: "Removed",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results.some((result) => result.url === "/docs/current-search-guide")).toBe(true);
+    expect(JSON.stringify(results)).toContain("Current amber workflow");
+    expect(JSON.stringify(results)).not.toContain("Agent violet workflow");
+    expect(
+      Math.max(...results.map((result) => result.description?.length ?? 0)),
+    ).toBeLessThanOrEqual(160);
+  });
+
+  it("fails remote MCP human projection closed when audience forwarding is not enabled", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      const results = await performDocsSearch({
+        pages,
+        query: "configure",
+        search: {
+          provider: "mcp",
+          endpoint: "https://remote.example/mcp",
+        },
+      });
+
+      expect(results[0]?.url).toBe("/docs/installation#quickstart");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it("falls back to simple search when a custom adapter throws", async () => {
@@ -635,6 +843,13 @@ Customize the loading UI.
       const searchCall = vi.mocked(globalThis.fetch).mock.calls[1]?.[1];
       expect(searchCall?.headers).toBeDefined();
       expect(searchCall?.headers).not.toHaveProperty("mcp-session-id");
+      expect(JSON.parse(String(searchCall?.body))).toMatchObject({
+        params: {
+          arguments: {
+            audience: "agent",
+          },
+        },
+      });
     } finally {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();
@@ -684,6 +899,23 @@ Your page is now available at \`/docs/my-page\`.
     expect(results[0]?.description).not.toContain("```");
     expect(results[0]?.description).not.toContain("`");
     expect(results[0]?.description).not.toContain("|");
+  });
+
+  it("keeps snippets bounded when the matching query itself is long", async () => {
+    const longQuery = `agent-${"projection-".repeat(24)}token`;
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Long query",
+          url: "/docs/long-query",
+          content: `Prefix ${longQuery} suffix`,
+        },
+      ],
+      query: longQuery,
+      limit: 1,
+    });
+
+    expect(results[0]?.description?.length).toBeLessThanOrEqual(160);
   });
 
   it("ignores question stopwords and punctuation when ranking natural-language queries", async () => {
@@ -1573,6 +1805,9 @@ describe("remote search adapters", () => {
         section: undefined,
       },
     ]);
+    expect(
+      JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body)),
+    ).not.toHaveProperty("params.arguments.audience");
   });
 
   it("attempts independently bounded MCP session cleanup after caller abort", async () => {

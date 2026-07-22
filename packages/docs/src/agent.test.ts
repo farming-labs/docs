@@ -367,6 +367,7 @@ describe("agent route helpers", () => {
         agentSkillsIndex: "/.well-known/agent-skills/index.json",
         agentSkillsArtifact: "/.well-known/agent-skills/{name}/SKILL.md",
         search: null,
+        agentSearch: null,
         askAi: null,
         llmsTxt: null,
         robots: null,
@@ -385,6 +386,11 @@ describe("agent route helpers", () => {
           status: "disabled",
           reason: "static-export",
           provider: "algolia",
+          routes: { human: null, agent: null },
+          agentEndpoint: null,
+          audienceParam: "audience",
+          defaultAudience: "human",
+          supportedAudiences: ["human", "agent"],
         },
         ai: {
           status: "disabled",
@@ -463,13 +469,24 @@ describe("agent route helpers", () => {
       agents: "/api/internal/docs?format=agents",
       skill: "/api/internal/docs?format=skill",
       search: "/api/internal/docs?query={query}",
+      agentSearch: "/api/internal/docs?query={query}&audience=agent",
       askAi: "/api/internal/docs",
       openapi: "/api/internal/docs?format=openapi",
     });
     expect(diagnostics.features).toMatchObject({
       config: { route: "/api/internal/docs?format=config" },
       diagnostics: { route: "/api/internal/docs?format=diagnostics" },
-      search: { route: "/api/internal/docs?query={query}" },
+      search: {
+        route: "/api/internal/docs?query={query}",
+        routes: {
+          human: "/api/internal/docs?query={query}",
+          agent: "/api/internal/docs?query={query}&audience=agent",
+        },
+        agentEndpoint: "/api/internal/docs?query={query}&audience=agent",
+        audienceParam: "audience",
+        defaultAudience: "human",
+        supportedAudiences: ["human", "agent"],
+      },
       ai: { route: "/api/internal/docs" },
       apiReference: { routes: { openapi: "/api/internal/docs?format=openapi" } },
       agents: { routes: { api: "/api/internal/docs?format=agents" } },
@@ -1246,7 +1263,7 @@ describe("agent route helpers", () => {
     expect(document).toContain("[Missing Pages](/docs/missing-pages.md)");
     expect(document).toContain("`/docs/missing/page.md`");
     expect(document).toContain("`/.well-known/agent.json`");
-    expect(document).toContain("`/api/docs?query={query}`");
+    expect(document).toContain("`/api/docs?query={query}&audience=agent`");
     expect(document).toContain("`/api/docs?format=markdown&path=missing/page`");
     expect(document).toContain("`/docs-map/sitemap.md`");
     expect(document).toContain("`/docs-map/.well-known/sitemap.md`");
@@ -1261,9 +1278,9 @@ describe("agent route helpers", () => {
       pages: [],
     });
     expect(customRouteDocument).toContain("`/api/internal/docs?agent=spec`");
-    expect(customRouteDocument).toContain("`/api/internal/docs?query={query}`");
+    expect(customRouteDocument).toContain("`/api/internal/docs?query={query}&audience=agent`");
     expect(customRouteDocument).toContain("`/api/internal/docs?format=markdown&path=unknown`");
-    expect(customRouteDocument).not.toContain("`/api/docs?query={query}`");
+    expect(customRouteDocument).not.toContain("`/api/docs?query={query}&audience=agent`");
   });
 
   it("resolves high-confidence markdown recovery redirects", () => {
@@ -1831,6 +1848,7 @@ After`;
     expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/robots.txt");
     expect(document).toContain("/api/docs?format=skill");
+    expect(document).toContain("/api/docs?query={query}&audience=agent");
     expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
     expect(document).toContain("API reference: /api-reference");
     expect(document).toContain("npx skills add farming-labs/docs");
@@ -1887,6 +1905,7 @@ After`;
     expect(document).toContain("/.well-known/agent-skills/index.json");
     expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/api/docs?format=agents");
+    expect(document).toContain("/api/docs?query={query}&audience=agent");
     expect(document).toContain("/api/docs?format=openapi");
     expect(document).toContain("npx @farming-labs/docs@latest upgrade --latest");
     expect(document).toContain("npx skills add farming-labs/docs");
@@ -1945,6 +1964,17 @@ After`;
       "shared page markdown",
     ]);
     expect(spec.llms.publicTxt).toBe("/llms.txt");
+    expect(spec.search).toEqual({
+      enabled: true,
+      endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
+      method: "GET",
+      queryParam: "query",
+      localeParam: "lang",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
+    });
     expect(spec.agents).toEqual({
       enabled: true,
       file: "AGENTS.md",
@@ -2076,6 +2106,12 @@ After`;
     expect(spec.sitemap.xml.api).toBe("/api/internal/docs?format=sitemap-xml");
     expect(spec.sitemap.markdown.api).toBe("/api/internal/docs?format=sitemap-md");
     expect(spec.search.endpoint).toBe("/api/internal/docs?query={query}");
+    expect(spec.search).toMatchObject({
+      agentEndpoint: "/api/internal/docs?query={query}&audience=agent",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
+    });
     expect(spec.agents.api).toBe("/api/internal/docs?format=agents");
     expect(spec.skills.api).toBe("/api/internal/docs?format=skill");
     expect(spec.skills.discovery).toMatchObject({
@@ -2091,7 +2127,7 @@ After`;
     });
 
     const generatedSkill = renderDocsSkillDocument(options);
-    expect(generatedSkill).toContain("/api/internal/docs?query={query}");
+    expect(generatedSkill).toContain("/api/internal/docs?query={query}&audience=agent");
     expect(generatedSkill).toContain("/api/internal/docs?format=agents");
     expect(generatedSkill).toContain("/api/internal/docs?format=skill");
     expect(generatedSkill).toContain("/api/internal/docs?format=openapi");

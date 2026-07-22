@@ -746,6 +746,17 @@ adapter with section-based chunking.
 search: true,
 ```
 
+The HTTP search route is audience-aware while remaining backward compatible:
+
+- `GET /api/docs?query=<query>` returns the human projection (shared content plus `Human` content)
+- `GET /api/docs?query=<query>&audience=agent` opts into the agent projection (shared content plus
+  `Agent` content)
+- `audience=human`, an omitted value, or any value other than the exact lowercase `agent` stays on
+  the human projection
+
+Audience selection shapes public search content; it is not authentication or authorization. Never
+put secrets or private data in an audience block.
+
 Built-in provider options:
 
 - `simple` — zero-config docs search
@@ -818,8 +829,16 @@ search: createCustomSearchAdapter({
 Important notes:
 
 - `chunking.strategy` defaults to `"section"` and can be changed to `"page"`
+- custom adapters receive the resolved projection as `query.audience` and `context.audience`; the
+  `context.documents` supplied to the request use that same projection
+- custom adapters should apply `query.audience` while filtering and ranking provider results
 - Typesense and Algolia can sync the index on first request when `adminApiKey` is present
+- hosted Typesense and Algolia index sync remains human-projected; agent searches are projected at
+  request time and do not replace the public index with agent-only text
 - `provider: "mcp"` supports relative endpoints like `/mcp` or `/.well-known/mcp` and absolute remote endpoints
+- same-origin MCP `search_docs` routes receive the resolved `audience`; remote endpoints and custom
+  tool names must set `forwardAudience: true` after their input schema supports that argument;
+  human-projection requests fall back to local search until then
 - if `provider: "mcp"` points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally so the route does not recurse forever
 - On custom/manual Next routes, pass the full config into `createDocsAPI(docsConfig)`
 - Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want to push external indexes from the CLI instead of waiting for the first request
@@ -830,6 +849,8 @@ Testing tip:
 - The Next example under `examples/next` is the easiest place to verify provider-backed search.
 - Set `DOCS_SEARCH_PROVIDER=typesense`, `algolia`, or `mcp`, restart the app, and query
   `/api/docs?query=...` to confirm the active backend.
+- Query `/api/docs?query=...&audience=agent` to verify the agent projection without changing the
+  human-default search contract.
 
 ---
 

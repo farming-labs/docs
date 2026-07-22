@@ -3015,6 +3015,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
 
   it("uses the shared search adapter pipeline for search_docs", async () => {
     const rootDir = createTempDocsProject();
+    const seenAudiences: string[] = [];
     const source = createFilesystemDocsMcpSource({
       rootDir,
       entry: "docs",
@@ -3029,15 +3030,21 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         provider: "custom",
         adapter: {
           name: "custom-search",
-          async search(_query, context) {
+          async search(query, context) {
+            seenAudiences.push(`${query.audience}:${context.audience}`);
             const installationPage = context.pages.find(
               (page) => page.url === "/docs/installation",
             );
             expect(installationPage?.content).toContain("Run pnpm install.");
             expect(installationPage?.content).not.toContain("--frozen-lockfile");
-            expect(context.documents.map((document) => document.content).join(" ")).toContain(
-              "--frozen-lockfile",
-            );
+            const searchableContent = context.documents
+              .map((document) => document.content)
+              .join(" ");
+            if (query.audience === "agent") {
+              expect(searchableContent).toContain("--frozen-lockfile");
+            } else {
+              expect(searchableContent).toContain("Run pnpm install");
+            }
             return [
               {
                 id: "custom-hit",
@@ -3109,6 +3116,12 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     expect(searchPayload.result?.content?.[0]?.text).toContain('"id": "custom-hit"');
     expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
     expect(searchPayload.result?.content?.[0]?.text).not.toContain("Custom search result");
+
+    const humanSearchPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(await callMcpTool(handlers, "search_docs", { query: "install", audience: "human" }));
+    expect(humanSearchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
+    expect(seenAudiences).toEqual(["agent:agent", "human:human"]);
   });
 
   it("falls back to simple search for self-referential MCP search configs", async () => {
