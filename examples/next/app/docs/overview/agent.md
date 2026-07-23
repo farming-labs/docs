@@ -1257,6 +1257,7 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | `GET`    | `({ request }) => Response`                                | Search / `llms.txt` endpoint handler |
 | `HEAD`   | `({ request }) => Promise<Response>`                       | Bodyless public-read handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
+| `MCP`    | `DocsMcpHttpHandlers`                                      | MCP HTTP transport handlers |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/tanstack-start/server";
@@ -1353,6 +1354,7 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 | `GET`    | `(event) => Response`          | Search endpoint handler                           |
 | `HEAD`   | `(event) => Promise<Response>` | Bodyless public-read handler                      |
 | `POST`   | `(event) => Promise<Response>` | AI chat endpoint handler                          |
+| `MCP`    | `DocsMcpHttpHandlers`          | MCP HTTP transport handlers                       |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/svelte/server";
@@ -1364,7 +1366,7 @@ const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, HEAD, POST } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });
@@ -1386,7 +1388,7 @@ Imported from `@farming-labs/svelte-theme`:
 
 ### `createDocsServer(config)`
 
-Same as SvelteKit — returns `{ load, GET, HEAD, POST }`.
+Same as SvelteKit — returns `{ load, GET, HEAD, POST, MCP }`.
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
@@ -1407,6 +1409,7 @@ import { createDocsServer } from "@farming-labs/astro/server";
 | `GET`    | `({ request }) => Response`               | Search endpoint handler for `GET /api/docs?query=...` |
 | `HEAD`   | `({ request }) => Promise<Response>`      | Bodyless public-read handler                          |
 | `POST`   | `({ request }) => Promise<Response>`      | AI chat endpoint handler with SSE streaming           |
+| `MCP`    | `DocsMcpHttpHandlers`                     | MCP HTTP transport handlers                           |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
@@ -1418,7 +1421,7 @@ const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, HEAD, POST } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });

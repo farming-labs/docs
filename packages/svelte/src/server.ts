@@ -16,7 +16,7 @@
  *   query: "?raw", import: "default", eager: true,
  * }) as Record<string, string>;
  *
- * export const { load, GET, HEAD, POST } = createDocsServer({
+ * export const { load, GET, HEAD, POST, MCP } = createDocsServer({
  *   ...config,
  *   _preloadedContent: contentFiles,
  * });

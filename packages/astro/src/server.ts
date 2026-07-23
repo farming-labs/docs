@@ -3,7 +3,7 @@
  *
  * `createDocsServer(config)` returns all the functions needed for
  * a complete docs site: `load` for getting page data, `GET` and `HEAD`
- * for public reads, and `POST` for AI chat.
+ * for public reads, `POST` for AI chat, and `MCP` for MCP transport.
  *
  * @example
  * ```ts
@@ -15,7 +15,7 @@
  *   query: "?raw", import: "default", eager: true,
  * }) as Record<string, string>;
  *
- * export const { load, GET, HEAD, POST } = createDocsServer({
+ * export const { load, GET, HEAD, POST, MCP } = createDocsServer({
  *   ...config,
  *   _preloadedContent: contentFiles,
  * });

@@ -110,7 +110,7 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       },
     });
 
-    for (const method of ["POST", "PUT", "PATCH"]) {
+    for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
       for (const path of [
         DEFAULT_API_CATALOG_ROUTE,
         DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
@@ -140,7 +140,7 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
         "/docs/page.md": "# Home\n",
       },
     });
-    for (const method of ["PUT", "PATCH"]) {
+    for (const method of ["PUT", "PATCH", "DELETE", "OPTIONS"]) {
       const url = new URL("/api/internal/docs?format=agent-skills", "https://docs.example.com");
       const response = await customRouteServer.GET({
         request: new Request(url, { method }),
