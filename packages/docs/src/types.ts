@@ -3069,7 +3069,7 @@ interface DocsAgentA2ASingleInterfaceConfig {
 
 interface DocsAgentA2AInterfacesConfig {
   /** Ordered interfaces; the first entry is preferred. At least one is required. */
-  supportedInterfaces: readonly DocsAgentA2AInterfaceConfig[];
+  supportedInterfaces: readonly [DocsAgentA2AInterfaceConfig, ...DocsAgentA2AInterfaceConfig[]];
   /** Capabilities actually implemented by the configured A2A interfaces. */
   skills: readonly DocsAgentA2ASkill[];
   interfaceUrl?: never;

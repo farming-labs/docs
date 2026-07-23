@@ -38,13 +38,30 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
         a2a: {
           name: "Conformance agent",
           description: "Answers questions from the conformance documentation.",
-          supportedInterfaces: [{ url: "https://agent.example.com/a2a" }],
+          supportedInterfaces: [
+            { url: "https://agent.example.com/a2a" },
+            {
+              url: "https://agent.example.com/rpc",
+              protocolBinding: "JSONRPC",
+              protocolVersion: "1.1",
+              tenant: "acme",
+            },
+          ],
           skills: [
             {
               id: "docs",
               name: "Documentation",
               description: "Answers questions from the conformance documentation.",
               tags: ["documentation"],
+            },
+            {
+              id: "search",
+              name: "Search documentation",
+              description: "Finds relevant pages in the conformance documentation.",
+              tags: ["documentation", "search"],
+              examples: ["Find the installation guide."],
+              inputModes: ["application/json"],
+              outputModes: ["application/json"],
             },
           ],
         },
@@ -109,23 +126,44 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     });
     const cardEtag = cardResponse.headers.get("etag");
     const card = await cardResponse.json();
-    expect(card).toMatchObject({
+    expect(card).toStrictEqual({
       name: "Conformance agent",
+      description: "Answers questions from the conformance documentation.",
       supportedInterfaces: [
         {
           url: "https://agent.example.com/a2a",
           protocolBinding: "HTTP+JSON",
           protocolVersion: "1.0",
         },
+        {
+          url: "https://agent.example.com/rpc",
+          protocolBinding: "JSONRPC",
+          protocolVersion: "1.1",
+          tenant: "acme",
+        },
       ],
+      version: "1.0.0",
       capabilities: { streaming: false, pushNotifications: false },
       defaultInputModes: ["text/plain"],
       defaultOutputModes: ["text/plain"],
+      skills: [
+        {
+          id: "docs",
+          name: "Documentation",
+          description: "Answers questions from the conformance documentation.",
+          tags: ["documentation"],
+        },
+        {
+          id: "search",
+          name: "Search documentation",
+          description: "Finds relevant pages in the conformance documentation.",
+          tags: ["documentation", "search"],
+          examples: ["Find the installation guide."],
+          inputModes: ["application/json"],
+          outputModes: ["application/json"],
+        },
+      ],
     });
-    expect(card).not.toHaveProperty("url");
-    expect(card).not.toHaveProperty("protocolVersion");
-    expect(card).not.toHaveProperty("preferredTransport");
-    expect(card.skills[0]).not.toHaveProperty("url");
 
     const cardHead = await server.GET({
       request: new Request(cardUrl, { method: "HEAD" }),

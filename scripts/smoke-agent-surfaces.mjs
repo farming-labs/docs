@@ -320,6 +320,31 @@ function validateSecureHttpUrl(value, label) {
   );
 }
 
+function validatePublicCacheControl(value, label) {
+  const directives = new Map(
+    value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const separator = part.indexOf("=");
+        return separator === -1
+          ? [part.toLowerCase(), ""]
+          : [part.slice(0, separator).trim().toLowerCase(), part.slice(separator + 1).trim()];
+      }),
+  );
+  assert(directives.has("public"), `${label} did not declare public caching`);
+  assert(
+    !directives.has("private") && !directives.has("no-store"),
+    `${label} disabled public caching`,
+  );
+  assert(/^\d+$/u.test(directives.get("max-age") ?? ""), `${label} omitted a numeric max-age`);
+  assert(
+    /^\d+$/u.test(directives.get("s-maxage") ?? ""),
+    `${label} omitted a numeric shared-cache max-age`,
+  );
+}
+
 function validateStringArray(value, label, { allowEmpty = false } = {}) {
   assert(
     Array.isArray(value) && (allowEmpty || value.length > 0) && value.every(isNonEmptyString),
@@ -512,6 +537,7 @@ async function validateA2AAgentCard(request) {
     Array.isArray(card.supportedInterfaces) && card.supportedInterfaces.length > 0,
     "A2A v1 Agent Card did not declare supportedInterfaces",
   );
+  const interfaceKeys = new Set();
   for (const [index, value] of card.supportedInterfaces.entries()) {
     const agentInterface = asRecord(value);
     assert(agentInterface, `A2A interface ${index} was not an object`);
@@ -526,6 +552,7 @@ async function validateA2AAgentCard(request) {
     );
     const interfaceUrl = parseAgentCardUrl(agentInterface.url, `A2A interface ${index} URL`);
     const isCoreBinding = ["JSONRPC", "GRPC", "HTTP+JSON"].includes(agentInterface.protocolBinding);
+    let normalizedProtocolBinding = agentInterface.protocolBinding;
     if (isCoreBinding) {
       assert(
         interfaceUrl.protocol === "https:" ||
@@ -533,6 +560,11 @@ async function validateA2AAgentCard(request) {
         `A2A interface ${index} core binding did not use HTTPS or loopback HTTP`,
       );
     } else {
+      try {
+        normalizedProtocolBinding = new URL(agentInterface.protocolBinding).href;
+      } catch {
+        throw new Error(`A2A interface ${index} protocol binding was not an absolute URI`);
+      }
       const unsafeProtocols = new Set([
         "file:",
         "data:",
@@ -559,6 +591,17 @@ async function validateA2AAgentCard(request) {
       agentInterface.tenant === undefined || isNonEmptyString(agentInterface.tenant),
       `A2A interface ${index} had an invalid tenant`,
     );
+    const interfaceKey = JSON.stringify([
+      interfaceUrl.href,
+      normalizedProtocolBinding,
+      agentInterface.protocolVersion.trim(),
+      agentInterface.tenant?.trim() ?? "",
+    ]);
+    assert(
+      !interfaceKeys.has(interfaceKey),
+      `A2A Agent Card duplicated supported interface ${index}`,
+    );
+    interfaceKeys.add(interfaceKey);
   }
 
   if (card.provider !== undefined) {
@@ -704,7 +747,7 @@ async function validateA2AAgentCard(request) {
 
   const cacheControl = result.response.headers.get("cache-control") ?? "";
   const etag = result.response.headers.get("etag");
-  assert(/\bmax-age=\d+\b/iu.test(cacheControl), `${AGENT_CARD_ROUTE} was not cacheable`);
+  validatePublicCacheControl(cacheControl, AGENT_CARD_ROUTE);
   assert(isNonEmptyString(etag), `${AGENT_CARD_ROUTE} did not return an ETag`);
 
   const head = await request(AGENT_CARD_ROUTE, { method: "HEAD" });
@@ -723,6 +766,15 @@ async function validateA2AAgentCard(request) {
     [304],
   );
   assert(notModified.bytes.byteLength === 0, `${AGENT_CARD_ROUTE} 304 returned a body`);
+  assert(
+    notModified.response.headers.get("etag") === etag,
+    `${AGENT_CARD_ROUTE} 304 returned a different ETag`,
+  );
+  assert(
+    notModified.response.headers.get("cache-control") ===
+      result.response.headers.get("cache-control"),
+    `${AGENT_CARD_ROUTE} 304 returned different cache metadata`,
+  );
 }
 
 async function validateApiCatalog(request) {

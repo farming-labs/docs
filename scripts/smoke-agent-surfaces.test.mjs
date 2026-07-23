@@ -142,6 +142,15 @@ function createFixtureFetch(options = {}) {
     securityRequirements: [{ schemes: { bearer: { list: ["docs.read"] } } }],
     ...(options.invalidAgentCard ? { url: `${BASE_URL}/a2a` } : {}),
   };
+  if (options.duplicateAgentInterfaces) {
+    agentCard.supportedInterfaces.push({
+      ...agentCard.supportedInterfaces[0],
+      url: "https://deployment.example.com:443/a2a",
+    });
+  }
+  if (options.customProtocolBinding) {
+    agentCard.supportedInterfaces[0].protocolBinding = options.customProtocolBinding;
+  }
   const agentCardEtag = `"${digest(`${JSON.stringify(agentCard)}\n`)}"`;
   const modernIndex = {
     $schema: AGENT_SKILLS_SCHEMA,
@@ -237,11 +246,21 @@ function createFixtureFetch(options = {}) {
     }
     if (url.pathname === AGENT_CARD_ROUTE && options.agentCard) {
       const headers = {
-        "cache-control": "public, max-age=0, s-maxage=3600",
+        "cache-control": options.agentCardCacheControl ?? "public, max-age=0, s-maxage=3600",
         etag: agentCardEtag,
       };
       if (new Headers(init.headers).get("if-none-match") === agentCardEtag) {
-        return response("HEAD", "", { status: 304, headers });
+        const notModifiedHeaders = { ...headers };
+        if (options.notModifiedEtag === null) delete notModifiedHeaders.etag;
+        else if (options.notModifiedEtag !== undefined) {
+          notModifiedHeaders.etag = options.notModifiedEtag;
+        }
+        if (options.notModifiedCacheControl === null) {
+          delete notModifiedHeaders["cache-control"];
+        } else if (options.notModifiedCacheControl !== undefined) {
+          notModifiedHeaders["cache-control"] = options.notModifiedCacheControl;
+        }
+        return response("HEAD", "", { status: 304, headers: notModifiedHeaders });
       }
       return jsonResponse(method, agentCard, { headers });
     }
@@ -309,6 +328,25 @@ function createFixtureFetch(options = {}) {
   }
 
   return { calls, fetch: fixtureFetch, streamState };
+}
+
+async function expectAgentCardFailure(options, expectedMessage) {
+  const fixture = createFixtureFetch({ ...options, agentCard: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      assert.equal(error.failures.length, 1);
+      assert.equal(error.failures[0].label, "optional A2A agent card");
+      assert.match(error.failures[0].message, expectedMessage);
+      return true;
+    },
+  );
 }
 
 test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", async () => {
@@ -396,6 +434,47 @@ test("rejects malformed nested A2A security metadata", async () => {
     },
   );
 });
+
+test("rejects duplicate A2A supported interface tuples", async () => {
+  await expectAgentCardFailure(
+    { duplicateAgentInterfaces: true },
+    /duplicated supported interface/u,
+  );
+});
+
+test("rejects a custom A2A protocol binding that is not an absolute URI", async () => {
+  await expectAgentCardFailure(
+    { customProtocolBinding: "custom" },
+    /protocol binding was not an absolute URI/u,
+  );
+});
+
+for (const [name, cacheControl, expectedMessage] of [
+  ["private", "private, max-age=0, s-maxage=3600", /did not declare public caching/u],
+  ["no-store", "public, no-store, max-age=0, s-maxage=3600", /disabled public caching/u],
+  [
+    "missing shared-cache lifetime",
+    "public, max-age=3600",
+    /omitted a numeric shared-cache max-age/u,
+  ],
+]) {
+  test(`rejects ${name} A2A Agent Card cache metadata`, async () => {
+    await expectAgentCardFailure({ agentCardCacheControl: cacheControl }, expectedMessage);
+  });
+}
+
+for (const [name, options, expectedMessage] of [
+  ["missing ETag", { notModifiedEtag: null }, /304 returned a different ETag/u],
+  [
+    "changed cache metadata",
+    { notModifiedCacheControl: "public, max-age=0, s-maxage=60" },
+    /304 returned different cache metadata/u,
+  ],
+]) {
+  test(`rejects an A2A Agent Card 304 with ${name}`, async () => {
+    await expectAgentCardFailure(options, expectedMessage);
+  });
+}
 
 test("fails when a followed redirect leaves the deployment origin", async () => {
   const fixture = createFixtureFetch({

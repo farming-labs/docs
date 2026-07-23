@@ -773,7 +773,7 @@ function normalizeA2AOAuthFlows(
           `${label}.authorizationCode.authorizationUrl`,
         ),
         tokenUrl: resolveA2ASecureHttpUrl(flow.tokenUrl, `${label}.authorizationCode.tokenUrl`),
-        ...(flow.refreshUrl
+        ...(flow.refreshUrl !== undefined
           ? {
               refreshUrl: resolveA2ASecureHttpUrl(
                 flow.refreshUrl,
@@ -791,7 +791,7 @@ function normalizeA2AOAuthFlows(
     return {
       clientCredentials: {
         tokenUrl: resolveA2ASecureHttpUrl(flow.tokenUrl, `${label}.clientCredentials.tokenUrl`),
-        ...(flow.refreshUrl
+        ...(flow.refreshUrl !== undefined
           ? {
               refreshUrl: resolveA2ASecureHttpUrl(
                 flow.refreshUrl,
@@ -812,7 +812,7 @@ function normalizeA2AOAuthFlows(
           `${label}.deviceCode.deviceAuthorizationUrl`,
         ),
         tokenUrl: resolveA2ASecureHttpUrl(flow.tokenUrl, `${label}.deviceCode.tokenUrl`),
-        ...(flow.refreshUrl
+        ...(flow.refreshUrl !== undefined
           ? {
               refreshUrl: resolveA2ASecureHttpUrl(
                 flow.refreshUrl,
@@ -832,7 +832,7 @@ function normalizeA2AOAuthFlows(
           flow.authorizationUrl,
           `${label}.implicit.authorizationUrl`,
         ),
-        ...(flow.refreshUrl
+        ...(flow.refreshUrl !== undefined
           ? {
               refreshUrl: resolveA2ASecureHttpUrl(flow.refreshUrl, `${label}.implicit.refreshUrl`),
             }
@@ -846,7 +846,7 @@ function normalizeA2AOAuthFlows(
   return {
     password: {
       tokenUrl: resolveA2ASecureHttpUrl(flow.tokenUrl, `${label}.password.tokenUrl`),
-      ...(flow.refreshUrl
+      ...(flow.refreshUrl !== undefined
         ? {
             refreshUrl: resolveA2ASecureHttpUrl(flow.refreshUrl, `${label}.password.refreshUrl`),
           }
@@ -929,7 +929,7 @@ function normalizeA2ASecurityScheme(
             }
           : {}),
         flows: normalizeA2AOAuthFlows(value.flows, `${label}.oauth2SecurityScheme.flows`),
-        ...(value.oauth2MetadataUrl
+        ...(value.oauth2MetadataUrl !== undefined
           ? {
               oauth2MetadataUrl: resolveA2ASecureHttpUrl(
                 value.oauth2MetadataUrl,
@@ -1069,12 +1069,14 @@ export function buildDocsA2AAgentCard(
         url: resolveA2ASecureHttpUrl(options.provider.url, "agent.a2a.provider.url"),
       }
     : undefined;
-  const documentationUrl = options.documentationUrl
-    ? resolveA2ASecureHttpUrl(options.documentationUrl, "agent.a2a.documentationUrl")
-    : undefined;
-  const iconUrl = options.iconUrl
-    ? resolveA2ASecureHttpUrl(options.iconUrl, "agent.a2a.iconUrl")
-    : undefined;
+  const documentationUrl =
+    options.documentationUrl !== undefined
+      ? resolveA2ASecureHttpUrl(options.documentationUrl, "agent.a2a.documentationUrl")
+      : undefined;
+  const iconUrl =
+    options.iconUrl !== undefined
+      ? resolveA2ASecureHttpUrl(options.iconUrl, "agent.a2a.iconUrl")
+      : undefined;
   const capabilities = normalizeA2ACapabilities(options.capabilities);
 
   let securitySchemes: Record<string, DocsAgentA2ASecurityScheme> | undefined;

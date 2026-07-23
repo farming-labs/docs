@@ -585,6 +585,8 @@ describe("MCP context and schema APIs", () => {
       "agent.a2a.skills[].securityRequirements",
       "agent.a2a.securitySchemes.<name>.httpAuthSecurityScheme",
       "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.clientCredentials",
+      "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.implicit",
+      "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.password",
       "agent.a2a.securitySchemes.<name>.openIdConnectSecurityScheme",
       "agent.a2a.securityRequirements[].schemes.<name>.list",
     ];
@@ -602,6 +604,18 @@ describe("MCP context and schema APIs", () => {
     expect(
       findSchemaOption(schema.options, "agent.a2a.securitySchemes.<name>")?.description,
     ).toContain("exactly one wrapper");
+    expect(
+      findSchemaOption(
+        schema.options,
+        "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.implicit",
+      )?.description,
+    ).toContain("Deprecated");
+    expect(
+      findSchemaOption(
+        schema.options,
+        "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.password",
+      )?.description,
+    ).toContain("Deprecated");
   });
 });
 

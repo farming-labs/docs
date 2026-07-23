@@ -898,7 +898,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                 name: "oauth2SecurityScheme",
                 type: "DocsAgentA2AOAuth2SecurityScheme",
                 description:
-                  "OAuth 2 metadata with exactly one authorizationCode, clientCredentials, deviceCode, implicit, or password flow.",
+                  "OAuth 2 metadata with exactly one authorizationCode, clientCredentials, deviceCode, implicit, or password flow. Implicit and password are deprecated A2A v1 compatibility flows.",
                 children: [
                   {
                     path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.authorizationCode",
@@ -920,6 +920,20 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                     type: "DocsAgentA2AOAuthDeviceCodeFlow",
                     description:
                       "Device code flow with HTTPS deviceAuthorizationUrl, tokenUrl, scopes, and optional refreshUrl.",
+                  },
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.implicit",
+                    name: "implicit",
+                    type: "DocsAgentA2AOAuthImplicitFlow",
+                    description:
+                      "Deprecated A2A v1 compatibility flow with HTTPS authorizationUrl, scopes, and optional refreshUrl.",
+                  },
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.password",
+                    name: "password",
+                    type: "DocsAgentA2AOAuthPasswordFlow",
+                    description:
+                      "Deprecated A2A v1 compatibility flow with HTTPS tokenUrl, scopes, and optional refreshUrl.",
                   },
                   {
                     path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.oauth2MetadataUrl",

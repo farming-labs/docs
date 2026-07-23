@@ -14,8 +14,10 @@ import {
   createDocsStandardsResponse,
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
+  type DocsA2AAgentCardOptions,
   type DocsPublishedAgentSkill,
 } from "./standards-discovery.js";
+import type { DocsAgentA2AOAuthFlows } from "./types.js";
 
 const generatedSkill = `---
 name: docs
@@ -460,6 +462,19 @@ describe("A2A v1 Agent Cards", () => {
     ],
   } satisfies Parameters<typeof buildDocsA2AAgentCard>[0];
 
+  it("requires at least one supported interface in the public config type", () => {
+    const validConfig: DocsA2AAgentCardOptions = validOptions;
+    const emptyInterfaces = {
+      ...validOptions,
+      supportedInterfaces: [],
+    };
+    // @ts-expect-error Empty arrays are not valid A2A v1 supportedInterfaces configurations.
+    const invalidConfig: DocsA2AAgentCardOptions = emptyInterfaces;
+
+    expect(validConfig.supportedInterfaces).toHaveLength(1);
+    expect(invalidConfig.supportedInterfaces).toEqual([]);
+  });
+
   it("keeps the historical shorthand default inside the strict v1 shape", () => {
     const card = buildDocsA2AAgentCard(
       {
@@ -634,9 +649,15 @@ describe("A2A v1 Agent Cards", () => {
       ),
     ).toThrow("skills is required with supportedInterfaces");
 
-    expect(() => buildDocsA2AAgentCard({ ...validOptions, supportedInterfaces: [] }, [])).toThrow(
-      "supportedInterfaces must contain at least one interface",
-    );
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          supportedInterfaces: [],
+        } as unknown as Parameters<typeof buildDocsA2AAgentCard>[0],
+        [],
+      ),
+    ).toThrow("supportedInterfaces must contain at least one interface");
 
     expect(() =>
       buildDocsA2AAgentCard(
@@ -720,6 +741,125 @@ describe("A2A v1 Agent Cards", () => {
         [],
       ),
     ).toThrow("agent.a2a.documentationUrl must be an absolute URL");
+  });
+
+  it("rejects explicitly empty optional secure URLs", () => {
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          documentationUrl: "",
+        },
+        [],
+      ),
+    ).toThrow("agent.a2a.documentationUrl must be an absolute URL");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          iconUrl: "",
+        },
+        [],
+      ),
+    ).toThrow("agent.a2a.iconUrl must be an absolute URL");
+
+    const oauthFlows = [
+      {
+        name: "authorizationCode",
+        flows: {
+          authorizationCode: {
+            authorizationUrl: "https://auth.example.com/authorize",
+            tokenUrl: "https://auth.example.com/token",
+            refreshUrl: "",
+            scopes: {},
+          },
+        },
+      },
+      {
+        name: "clientCredentials",
+        flows: {
+          clientCredentials: {
+            tokenUrl: "https://auth.example.com/token",
+            refreshUrl: "",
+            scopes: {},
+          },
+        },
+      },
+      {
+        name: "deviceCode",
+        flows: {
+          deviceCode: {
+            deviceAuthorizationUrl: "https://auth.example.com/device",
+            tokenUrl: "https://auth.example.com/token",
+            refreshUrl: "",
+            scopes: {},
+          },
+        },
+      },
+      {
+        name: "implicit",
+        flows: {
+          implicit: {
+            authorizationUrl: "https://auth.example.com/authorize",
+            refreshUrl: "",
+            scopes: {},
+          },
+        },
+      },
+      {
+        name: "password",
+        flows: {
+          password: {
+            tokenUrl: "https://auth.example.com/token",
+            refreshUrl: "",
+            scopes: {},
+          },
+        },
+      },
+    ] satisfies readonly { name: string; flows: DocsAgentA2AOAuthFlows }[];
+
+    for (const { name, flows } of oauthFlows) {
+      expect(() =>
+        buildDocsA2AAgentCard(
+          {
+            ...validOptions,
+            securitySchemes: {
+              oauth: {
+                oauth2SecurityScheme: { flows },
+              },
+            },
+          },
+          [],
+        ),
+      ).toThrow(
+        `agent.a2a.securitySchemes.oauth.oauth2SecurityScheme.flows.${name}.refreshUrl must be an absolute URL`,
+      );
+    }
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          securitySchemes: {
+            oauth: {
+              oauth2SecurityScheme: {
+                flows: {
+                  clientCredentials: {
+                    tokenUrl: "https://auth.example.com/token",
+                    scopes: {},
+                  },
+                },
+                oauth2MetadataUrl: "",
+              },
+            },
+          },
+        },
+        [],
+      ),
+    ).toThrow(
+      "agent.a2a.securitySchemes.oauth.oauth2SecurityScheme.oauth2MetadataUrl must be an absolute URL",
+    );
   });
 
   it("rejects duplicate skill IDs", () => {
