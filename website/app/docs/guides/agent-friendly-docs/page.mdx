@@ -352,7 +352,12 @@ system you have to keep in sync by hand. The existing Farming Labs manifest stay
 standards routes and HTTP `Link` headers are additive and cross-link back to it. Static Agent
 Bundles emit the same skill indexes, artifacts, companion files, and hashes. An A2A Agent Card is
 separate and opt-in: configure `agent.a2a` only when there is a real A2A interface behind the
-advertised URL. The default protocol is A2A `0.3` over `HTTP+JSON`.
+advertised URL. Prefer ordered `supportedInterfaces`, whose first entry is preferred and whose
+entries default to A2A `1.0` over `HTTP+JSON`; `JSONRPC` and `GRPC` are the other core bindings.
+The emitted card uses the strict v1 shape. `interfaceUrl` remains a deprecated single-interface
+shorthand with its historical `0.3` default. The preferred interface-array form requires explicit
+A2A skills. Capabilities, media modes, skills, and optional security metadata should describe the
+service itself; Agent Skill document and artifact URLs stay in skill discovery and MCP.
 
 ## Expose API Schemas Before API Pages
 

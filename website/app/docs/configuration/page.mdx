@@ -1858,25 +1858,63 @@ for static hosts.
 
 ### Optional A2A Agent Card
 
-Configure `agent.a2a` only when `interfaceUrl` implements a real A2A interface. A docs API, Ask AI
-route, or MCP endpoint does not satisfy that contract. The protocol defaults to `0.3` over
-`HTTP+JSON`; set `protocolVersion` and `protocolBinding` only when the implemented interface
-differs. When configured, the framework publishes `/.well-known/agent-card.json`; otherwise it
-leaves the route absent.
+Configure `agent.a2a` only when the advertised URLs implement real A2A interfaces. A docs API, Ask
+AI route, or MCP endpoint does not satisfy that contract. Prefer ordered `supportedInterfaces`; the
+first entry is the preferred interface. Each interface defaults to A2A protocol `1.0` over
+`HTTP+JSON`. The core bindings are `JSONRPC`, `GRPC`, and `HTTP+JSON`; identify a custom binding
+with an absolute URI. The deprecated `interfaceUrl` shorthand remains available for a single
+interface, with top-level `protocolVersion` and `protocolBinding` applying only to that shorthand.
+It retains the historical protocol `0.3` default; set `protocolVersion: "1.0"` explicitly when a
+shorthand interface implements v1. Core interfaces and all HTTP card/authentication metadata
+require HTTPS outside loopback development. Custom bindings use a secure binding-appropriate
+absolute URL such as WSS or MQTTS.
+
+The published `/.well-known/agent-card.json` uses the strict A2A v1 shape: it does not emit the
+legacy top-level `url`, `protocolVersion`, or `preferredTransport` fields. Describe only
+capabilities, media modes, A2A skills, and optional security metadata that the service really
+implements. An A2A skill has no URL; configured Agent Skill documents and artifacts keep their URLs
+in the Agent Skills indexes and MCP resources. `supportedInterfaces` requires explicit A2A skills;
+automatic projection of published documentation skills remains only for the deprecated shorthand.
+When `agent.a2a` is omitted, the Agent Card route is not advertised or generated.
 
 ```ts title="docs.config.ts"
 agent: {
   skills: "./skills",
   a2a: {
-    interfaceUrl: "https://agent.example.com/a2a",
     name: "Product docs agent",
     description: "Answers implementation questions from the product docs.",
+    supportedInterfaces: [
+      {
+        url: "https://agent.example.com/a2a",
+        protocolBinding: "HTTP+JSON",
+        protocolVersion: "1.0",
+      },
+      {
+        url: "https://agent.example.com/a2a/rpc",
+        protocolBinding: "JSONRPC",
+        protocolVersion: "1.0",
+      },
+    ],
     documentationUrl: "https://docs.example.com/docs",
     provider: {
       organization: "Example, Inc.",
       url: "https://example.com",
     },
     version: "1.0.0",
+    capabilities: {
+      streaming: true,
+      pushNotifications: false,
+    },
+    defaultInputModes: ["text/plain"],
+    defaultOutputModes: ["text/plain"],
+    skills: [
+      {
+        id: "answer-docs",
+        name: "Answer documentation questions",
+        description: "Answers implementation questions using the product docs.",
+        tags: ["documentation", "implementation"],
+      },
+    ],
   },
 },
 ```

@@ -2840,19 +2840,246 @@ export interface DocsAgentSkillsConfig {
 /** Concise array shorthand for `agent.skills.paths`. */
 export type DocsAgentSkillsInput = string | readonly string[] | DocsAgentSkillsConfig;
 
-/** Explicit A2A service metadata. Configure this only when the URL implements A2A. */
-export interface DocsAgentA2AConfig {
-  interfaceUrl: string;
+/** Core A2A v1 bindings plus URI-identified custom bindings. */
+export type DocsAgentA2AProtocolBinding = "JSONRPC" | "GRPC" | "HTTP+JSON" | (string & {});
+
+/** One A2A protocol interface advertised by an Agent Card. */
+export interface DocsAgentA2AInterfaceConfig {
+  /** Absolute binding-appropriate URL. Core bindings require HTTPS outside loopback development. */
+  url: string;
+  /** A2A protocol binding implemented at this URL. @default "HTTP+JSON" */
+  protocolBinding?: DocsAgentA2AProtocolBinding;
+  /** A2A protocol version implemented at this URL. @default "1.0" */
+  protocolVersion?: string;
+  /** Optional tenant identifier clients must send when calling this interface. */
+  tenant?: string;
+}
+
+/** A protocol extension implemented by the configured A2A service. */
+export interface DocsAgentA2AExtension {
+  /** Stable URI identifying the extension. */
+  uri: string;
+  /** How this agent implements the extension. */
+  description?: string;
+  /** Whether clients must understand the extension before using the agent. */
+  required?: boolean;
+  /** Extension-specific JSON configuration. */
+  params?: Readonly<Record<string, unknown>>;
+}
+
+/** Optional capabilities implemented by the configured A2A service. */
+export interface DocsAgentA2ACapabilities {
+  streaming?: boolean;
+  pushNotifications?: boolean;
+  extensions?: readonly DocsAgentA2AExtension[];
+  /** Requires implemented GetExtendedAgentCard plus a declared scheme and security requirement. */
+  extendedAgentCard?: boolean;
+}
+
+/** A list of OAuth scopes associated with one named security scheme. */
+export interface DocsAgentA2ASecurityScopeList {
+  list: readonly string[];
+}
+
+/** One alternative set of security schemes required to call an A2A service or skill. */
+export interface DocsAgentA2ASecurityRequirement {
+  schemes: Readonly<Record<string, DocsAgentA2ASecurityScopeList>>;
+}
+
+export interface DocsAgentA2AApiKeySecurityScheme {
+  description?: string;
+  location: "query" | "header" | "cookie";
+  name: string;
+}
+
+export interface DocsAgentA2AHttpAuthSecurityScheme {
+  description?: string;
+  scheme: string;
+  bearerFormat?: string;
+}
+
+export interface DocsAgentA2AOAuthAuthorizationCodeFlow {
+  authorizationUrl: string;
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+  pkceRequired?: boolean;
+}
+
+export interface DocsAgentA2AOAuthClientCredentialsFlow {
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+export interface DocsAgentA2AOAuthDeviceCodeFlow {
+  deviceAuthorizationUrl: string;
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** @deprecated A2A v1 retains this OAuth flow for compatibility only. */
+export interface DocsAgentA2AOAuthImplicitFlow {
+  authorizationUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** @deprecated A2A v1 retains this OAuth flow for compatibility only. */
+export interface DocsAgentA2AOAuthPasswordFlow {
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** A2A v1 OAuth flow union. Exactly one flow is allowed by the protocol. */
+export type DocsAgentA2AOAuthFlows =
+  | {
+      authorizationCode: DocsAgentA2AOAuthAuthorizationCodeFlow;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials: DocsAgentA2AOAuthClientCredentialsFlow;
+      deviceCode?: never;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode: DocsAgentA2AOAuthDeviceCodeFlow;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit: DocsAgentA2AOAuthImplicitFlow;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit?: never;
+      password: DocsAgentA2AOAuthPasswordFlow;
+    };
+
+export interface DocsAgentA2AOAuth2SecurityScheme {
+  description?: string;
+  flows: DocsAgentA2AOAuthFlows;
+  oauth2MetadataUrl?: string;
+}
+
+export interface DocsAgentA2AOpenIdConnectSecurityScheme {
+  description?: string;
+  openIdConnectUrl: string;
+}
+
+export interface DocsAgentA2AMutualTlsSecurityScheme {
+  description?: string;
+}
+
+/** A2A v1 security scheme union. Exactly one scheme is allowed by the protocol. */
+export type DocsAgentA2ASecurityScheme =
+  | {
+      apiKeySecurityScheme: DocsAgentA2AApiKeySecurityScheme;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme: DocsAgentA2AHttpAuthSecurityScheme;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme: DocsAgentA2AOAuth2SecurityScheme;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme: DocsAgentA2AOpenIdConnectSecurityScheme;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme: DocsAgentA2AMutualTlsSecurityScheme;
+    };
+
+/** One capability implemented by the configured A2A service. */
+export interface DocsAgentA2ASkill {
+  id: string;
   name: string;
   description: string;
-  documentationUrl: string;
-  provider: { organization: string; url: string };
-  version?: string;
-  /** A2A protocol version exposed by the interface. @default "0.3" */
-  protocolVersion?: string;
-  /** Transport binding exposed by the interface. @default "HTTP+JSON" */
-  protocolBinding?: string;
+  tags: readonly string[];
+  examples?: readonly string[];
+  inputModes?: readonly string[];
+  outputModes?: readonly string[];
+  securityRequirements?: readonly DocsAgentA2ASecurityRequirement[];
 }
+
+interface DocsAgentA2ABaseConfig {
+  name: string;
+  description: string;
+  /** Absolute HTTPS documentation URL; HTTP is allowed only for loopback development. */
+  documentationUrl?: string;
+  /** Provider identity with an absolute HTTPS URL outside loopback development. */
+  provider?: { organization: string; url: string };
+  version?: string;
+  /** Absolute HTTPS icon URL; HTTP is allowed only for loopback development. */
+  iconUrl?: string;
+  capabilities?: DocsAgentA2ACapabilities;
+  /** Agent-wide supported input media types. @default ["text/plain"] */
+  defaultInputModes?: readonly string[];
+  /** Agent-wide supported output media types. @default ["text/plain"] */
+  defaultOutputModes?: readonly string[];
+  securitySchemes?: Readonly<Record<string, DocsAgentA2ASecurityScheme>>;
+  securityRequirements?: readonly DocsAgentA2ASecurityRequirement[];
+}
+
+interface DocsAgentA2ASingleInterfaceConfig {
+  /** @deprecated Prefer `supportedInterfaces` for new A2A v1 configurations. */
+  interfaceUrl: string;
+  supportedInterfaces?: never;
+  /** A2A protocol version exposed by the shorthand interface. @default "0.3" */
+  protocolVersion?: string;
+  /** Transport binding exposed by the shorthand interface. @default "HTTP+JSON" */
+  protocolBinding?: DocsAgentA2AProtocolBinding;
+  /** Explicit A2A skills; published documentation skills are projected when omitted. */
+  skills?: readonly DocsAgentA2ASkill[];
+}
+
+interface DocsAgentA2AInterfacesConfig {
+  /** Ordered interfaces; the first entry is preferred. At least one is required. */
+  supportedInterfaces: readonly DocsAgentA2AInterfaceConfig[];
+  /** Capabilities actually implemented by the configured A2A interfaces. */
+  skills: readonly DocsAgentA2ASkill[];
+  interfaceUrl?: never;
+  protocolVersion?: never;
+  protocolBinding?: never;
+}
+
+/** Explicit A2A service metadata. Configure this only when the URL implements A2A. */
+export type DocsAgentA2AConfig = DocsAgentA2ABaseConfig &
+  (DocsAgentA2ASingleInterfaceConfig | DocsAgentA2AInterfacesConfig);
 
 export interface DocsAgentConfig {
   /**

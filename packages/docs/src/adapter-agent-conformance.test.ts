@@ -34,6 +34,21 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       mcp: true,
       sitemap: true,
       robots: true,
+      agent: {
+        a2a: {
+          name: "Conformance agent",
+          description: "Answers questions from the conformance documentation.",
+          supportedInterfaces: [{ url: "https://agent.example.com/a2a" }],
+          skills: [
+            {
+              id: "docs",
+              name: "Documentation",
+              description: "Answers questions from the conformance documentation.",
+              tags: ["documentation"],
+            },
+          ],
+        },
+      },
       _preloadedContent: {
         "/docs/en/page.md": `---\ntitle: Introduction\ndescription: Start here.\n---\n\n# Introduction\n\nWelcome.`,
         "/docs/fr/page.md": `---\ntitle: Introduction\n---\n\n# Introduction\n\nBonjour.`,
@@ -86,6 +101,39 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       name: "docs",
       digest: `sha256:${createHash("sha256").update(artifact, "utf8").digest("hex")}`,
     });
+
+    const cardUrl = new URL("/.well-known/agent-card.json", "https://docs.example.com");
+    const cardResponse = await server.GET({
+      request: new Request(cardUrl),
+      url: cardUrl,
+    });
+    const cardEtag = cardResponse.headers.get("etag");
+    const card = await cardResponse.json();
+    expect(card).toMatchObject({
+      name: "Conformance agent",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/a2a",
+          protocolBinding: "HTTP+JSON",
+          protocolVersion: "1.0",
+        },
+      ],
+      capabilities: { streaming: false, pushNotifications: false },
+      defaultInputModes: ["text/plain"],
+      defaultOutputModes: ["text/plain"],
+    });
+    expect(card).not.toHaveProperty("url");
+    expect(card).not.toHaveProperty("protocolVersion");
+    expect(card).not.toHaveProperty("preferredTransport");
+    expect(card.skills[0]).not.toHaveProperty("url");
+
+    const cardHead = await server.GET({
+      request: new Request(cardUrl, { method: "HEAD" }),
+      url: cardUrl,
+    });
+    expect(cardHead.status).toBe(200);
+    expect(cardHead.headers.get("etag")).toBe(cardEtag);
+    expect(await cardHead.text()).toBe("");
   });
 
   it("applies the same audience policy to search and agent outputs", async () => {

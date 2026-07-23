@@ -537,25 +537,69 @@ The project-root `skill.md` remains the backwards-compatible site skill and is p
 configured skills. `docs agent export --public` writes the same modern and legacy indexes,
 artifacts, direct files, and digests as the runtime.
 
-`agent.a2a` is a separate opt-in. Configure it only when `interfaceUrl` is a real A2A interface—not
-a docs route or MCP endpoint. The protocol defaults to `0.3` with the `HTTP+JSON` binding; use
-`protocolVersion` and `protocolBinding` only when the implemented interface differs. When
-configured, the runtime and static export publish `/.well-known/agent-card.json`; when omitted,
-that route is not advertised or generated.
+`agent.a2a` is a separate opt-in. Configure it only when the advertised URLs implement A2A—not for
+a docs route, Ask AI route, or MCP endpoint. Prefer the ordered `supportedInterfaces` array; its
+first entry is the preferred interface. Each entry defaults to A2A protocol `1.0` with the
+`HTTP+JSON` binding. The core bindings are `JSONRPC`, `GRPC`, and `HTTP+JSON`; a custom binding must
+be an absolute URI. The deprecated `interfaceUrl` shorthand remains available for one interface,
+with `protocolVersion` and `protocolBinding` applying only to that shorthand. It retains the
+historical protocol `0.3` default so existing services are not silently misadvertised; set
+`protocolVersion: "1.0"` explicitly when using the shorthand for a v1 service. Core interfaces and
+all HTTP card/authentication metadata use HTTPS outside loopback development. Custom bindings use a
+secure binding-appropriate absolute URL such as WSS or MQTTS.
+
+The generated card uses the strict A2A v1 shape: interface metadata lives in
+`supportedInterfaces`, not legacy top-level `url`, `protocolVersion`, or `preferredTransport`
+fields. Set `capabilities`, default media modes, and `skills` to what the A2A service actually
+implements. An A2A `AgentSkill` has `id`, `name`, `description`, and `tags`, but no URL. Published
+Agent Skill documents and artifact URLs remain available through the Agent Skills indexes and MCP
+resources; they are a separate discovery surface. The preferred `supportedInterfaces` form
+requires explicit A2A skills. Published documentation skills are projected only when `a2a.skills`
+is omitted from the deprecated shorthand, preserving its previous behavior. Use optional
+`securitySchemes` and `securityRequirements` when the A2A service requires authentication.
+
+When configured, the runtime and static export publish `/.well-known/agent-card.json`; when
+omitted, that route is not advertised or generated.
 
 ```ts
 agent: {
   skills: "./skills",
   a2a: {
-    interfaceUrl: "https://agent.example.com/a2a",
     name: "Product docs agent",
     description: "Answers implementation questions from the product documentation.",
+    supportedInterfaces: [
+      {
+        url: "https://agent.example.com/a2a",
+        protocolBinding: "HTTP+JSON",
+        protocolVersion: "1.0",
+      },
+      {
+        url: "https://agent.example.com/a2a/rpc",
+        protocolBinding: "JSONRPC",
+        protocolVersion: "1.0",
+      },
+    ],
     documentationUrl: "https://docs.example.com/docs",
     provider: {
       organization: "Example, Inc.",
       url: "https://example.com",
     },
     version: "1.0.0",
+    capabilities: {
+      streaming: true,
+      pushNotifications: false,
+    },
+    defaultInputModes: ["text/plain"],
+    defaultOutputModes: ["text/plain"],
+    skills: [
+      {
+        id: "answer-docs",
+        name: "Answer documentation questions",
+        description: "Answers implementation questions using the product documentation.",
+        tags: ["documentation", "implementation"],
+        examples: ["How do I configure the Next.js adapter?"],
+      },
+    ],
   },
 },
 ```

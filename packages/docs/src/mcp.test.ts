@@ -574,6 +574,35 @@ describe("MCP context and schema APIs", () => {
     expect(Object.isFrozen(publicMode)).toBe(true);
     expect(Object.isFrozen(publicMode?.values)).toBe(true);
   });
+
+  it("publishes actionable A2A v1 interface, skill, extension, and security schema paths", () => {
+    const schema = getDocsConfigSchema();
+    const expectedPaths = [
+      "agent.a2a.supportedInterfaces[].url",
+      "agent.a2a.supportedInterfaces[].protocolBinding",
+      "agent.a2a.capabilities.extensions[].uri",
+      "agent.a2a.skills[].id",
+      "agent.a2a.skills[].securityRequirements",
+      "agent.a2a.securitySchemes.<name>.httpAuthSecurityScheme",
+      "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.clientCredentials",
+      "agent.a2a.securitySchemes.<name>.openIdConnectSecurityScheme",
+      "agent.a2a.securityRequirements[].schemes.<name>.list",
+    ];
+    for (const path of expectedPaths) {
+      expect(findSchemaOption(schema.options, path), path).toBeDefined();
+    }
+
+    expect(
+      findSchemaOption(schema.options, "agent.a2a.supportedInterfaces[].protocolVersion")?.default,
+    ).toBe("1.0");
+    expect(findSchemaOption(schema.options, "agent.a2a.protocolVersion")?.default).toBe("0.3");
+    expect(findSchemaOption(schema.options, "agent.a2a.skills")?.description).toContain(
+      "Required with supportedInterfaces",
+    );
+    expect(
+      findSchemaOption(schema.options, "agent.a2a.securitySchemes.<name>")?.description,
+    ).toContain("exactly one wrapper");
+  });
 });
 
 describe("createFilesystemDocsMcpSource", () => {

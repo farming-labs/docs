@@ -371,6 +371,102 @@ pnpm add example
     await expect(exportAgentBundle({ check: true })).resolves.toBeUndefined();
   });
 
+  it("exports and removes a strict A2A v1 Agent Card with matching bundle metadata", async () => {
+    writeProject();
+    const configPath = path.join(tmpDir, "docs.config.ts");
+    writeFileSync(
+      configPath,
+      readFileSync(configPath, "utf8").replace(
+        '  entry: "docs",',
+        `  entry: "docs",
+  agent: {
+    a2a: {
+      name: "Example docs agent",
+      description: "Answers questions from the Example documentation.",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/a2a",
+          protocolBinding: "HTTP+JSON",
+          protocolVersion: "1.0",
+        },
+        {
+          url: "https://agent.example.com/a2a/jsonrpc",
+          protocolBinding: "JSONRPC",
+          protocolVersion: "1.0",
+          tenant: "public",
+        },
+      ],
+      documentationUrl: "https://docs.example.com/docs",
+      provider: { organization: "Example", url: "https://example.com" },
+      skills: [
+        {
+          id: "docs",
+          name: "Documentation",
+          description: "Answers questions from the Example documentation.",
+          tags: ["documentation"],
+        },
+      ],
+    },
+  },`,
+      ),
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+
+    const cardPath = path.join(tmpDir, "public", ".well-known", "agent-card.json");
+    const cardBytes = readFileSync(cardPath, "utf8");
+    const card = JSON.parse(cardBytes);
+    expect(card).toMatchObject({
+      name: "Example docs agent",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/a2a",
+          protocolBinding: "HTTP+JSON",
+          protocolVersion: "1.0",
+        },
+        {
+          url: "https://agent.example.com/a2a/jsonrpc",
+          protocolBinding: "JSONRPC",
+          protocolVersion: "1.0",
+          tenant: "public",
+        },
+      ],
+      version: "1.0.0",
+      capabilities: { streaming: false, pushNotifications: false },
+      defaultInputModes: ["text/plain"],
+      defaultOutputModes: ["text/plain"],
+    });
+    expect(card).not.toHaveProperty("url");
+    expect(card).not.toHaveProperty("protocolVersion");
+    expect(card).not.toHaveProperty("preferredTransport");
+    expect(card.skills.length).toBeGreaterThan(0);
+    expect(card.skills.every((skill: Record<string, unknown>) => !("url" in skill))).toBe(true);
+
+    const manifest = JSON.parse(
+      readFileSync(path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json"), "utf8"),
+    ) as AgentBundleManifest;
+    expect(
+      manifest.files.find((file) => file.path === ".well-known/agent-card.json"),
+    ).toMatchObject({
+      route: "/.well-known/agent-card.json",
+      sha256: createHash("sha256").update(cardBytes, "utf8").digest("hex"),
+    });
+    const discovery = JSON.parse(
+      readFileSync(path.join(tmpDir, "public", ".well-known", "agent.json"), "utf8"),
+    );
+    expect(discovery.api.agentCard).toBe("/.well-known/agent-card.json");
+    expect(readFileSync(path.join(tmpDir, "public", "robots.txt"), "utf8")).toContain(
+      "Allow: /.well-known/agent-card.json",
+    );
+    await expect(exportAgentBundle({ check: true })).resolves.toBeUndefined();
+
+    writeProject();
+    await exportAgentBundle({ public: true });
+    expect(existsSync(cardPath)).toBe(false);
+  });
+
   it("publishes hashed skills without inventing an RFC catalog or relative llms link", async () => {
     writeProject();
     const configPath = path.join(tmpDir, "docs.config.ts");

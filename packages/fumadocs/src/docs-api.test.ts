@@ -1474,13 +1474,61 @@ Use the product-specific workflow first.
     });
 
     const card = await GET(new Request("https://docs.example.com/.well-known/agent-card.json"));
-    await expect(card.json()).resolves.toMatchObject({
+    expect(card.status).toBe(200);
+    const cardBody = (await card.json()) as {
+      name: string;
+      description: string;
+      supportedInterfaces: Array<{
+        url: string;
+        protocolBinding: string;
+        protocolVersion: string;
+      }>;
+      version: string;
+      capabilities: {
+        streaming: boolean;
+        pushNotifications: boolean;
+      };
+      defaultInputModes: string[];
+      defaultOutputModes: string[];
+      skills: Array<{
+        id: string;
+        name: string;
+        description: string;
+        tags: string[];
+      }>;
+    };
+    expect(cardBody).toMatchObject({
       name: "Docs agent",
-      url: "https://agent.example.com/a2a",
+      description: "A real A2A documentation agent.",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/a2a",
+          protocolBinding: "HTTP+JSON",
+          protocolVersion: "0.3",
+        },
+      ],
+      version: "1.0.0",
+      capabilities: {
+        streaming: false,
+        pushNotifications: false,
+      },
+      defaultInputModes: ["text/plain"],
+      defaultOutputModes: ["text/plain"],
       skills: expect.arrayContaining([
-        expect.objectContaining({ id: "portable", url: portable!.url }),
+        expect.objectContaining({
+          id: "portable",
+          name: "portable",
+          description: "Reuse the portable workflow.",
+          tags: ["documentation"],
+        }),
       ]),
     });
+    expect(cardBody).not.toHaveProperty("url");
+    expect(cardBody).not.toHaveProperty("protocolVersion");
+    expect(cardBody).not.toHaveProperty("preferredTransport");
+    for (const skill of cardBody.skills) {
+      expect(skill).not.toHaveProperty("url");
+    }
   });
 
   it("uses preloaded Agent Skills when deployment filesystem paths are unavailable", async () => {

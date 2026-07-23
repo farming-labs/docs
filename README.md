@@ -154,8 +154,12 @@ Each published skill includes `SKILL.md` plus safe regular files below `referenc
 and `assets/`. Skills with companion files use a deterministic archive so the discovery digest is
 stable; every file is also available directly and as a `docs://skills/<name>/<path>` MCP resource.
 The existing project-root `skill.md` remains the site skill and is published alongside configured
-skills. Configure `agent.a2a` only when the site fronts a real A2A interface (HTTP+JSON by default);
-docs and MCP routes alone do not make an A2A endpoint.
+skills. Configure `agent.a2a` only when the site fronts a real A2A interface; docs and MCP routes
+alone do not make an A2A endpoint. New configurations should use ordered `supportedInterfaces`
+(first is preferred), which default to A2A `1.0` over `HTTP+JSON`. The generated card uses the
+strict v1 shape. The single-interface `interfaceUrl` form remains as a deprecated compatibility
+shorthand. Configure its capabilities, media modes, A2A skills, and optional security metadata to
+match the service; Agent Skill document and artifact URLs remain in skill discovery and MCP.
 
 Static Agent Bundles publish the same modern and legacy skill indexes, artifacts, companion files,
 and optional Agent Card as the runtime. They intentionally omit the API catalog: a generic

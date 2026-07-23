@@ -8,6 +8,7 @@ import {
   DEFAULT_A2A_AGENT_CARD_ROUTE,
   DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
+  buildDocsA2AAgentCard,
   buildDocsAgentSkillsIndex,
   buildDocsApiCatalog,
   createDocsStandardsResponse,
@@ -408,10 +409,503 @@ description: 'Use the café documentation.'
         provider: { organization: "Example", url: "https://example.com" },
       },
     });
-    expect(await present?.json()).toMatchObject({
-      protocolVersion: "0.3",
-      url: "https://agent.example.com/a2a",
-      skills: [{ id: "docs", url: "/.well-known/agent-skills/docs/SKILL.md" }],
+    const card = await present!.json();
+    expect(card).toMatchObject({
+      name: "Example agent",
+      description: "Answers documentation questions.",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/a2a",
+          protocolBinding: "HTTP+JSON",
+          protocolVersion: "0.3",
+        },
+      ],
+      version: "1.0.0",
+      provider: { organization: "Example", url: "https://example.com/" },
+      documentationUrl: "https://docs.example.com/",
+      capabilities: {
+        streaming: false,
+        pushNotifications: false,
+      },
+      defaultInputModes: ["text/plain"],
+      defaultOutputModes: ["text/plain"],
+      skills: [
+        {
+          id: "docs",
+          name: "docs",
+          description: "Use the Example documentation.",
+          tags: ["documentation"],
+        },
+      ],
     });
+    expect(card).not.toHaveProperty("url");
+    expect(card).not.toHaveProperty("protocolVersion");
+    expect(card).not.toHaveProperty("preferredTransport");
+    expect(card.skills[0]).not.toHaveProperty("url");
+  });
+});
+
+describe("A2A v1 Agent Cards", () => {
+  const validOptions = {
+    name: "Example agent",
+    description: "Answers documentation questions.",
+    supportedInterfaces: [{ url: "https://agent.example.com/a2a" }],
+    skills: [
+      {
+        id: "docs",
+        name: "Documentation",
+        description: "Search the documentation.",
+        tags: ["documentation"],
+      },
+    ],
+  } satisfies Parameters<typeof buildDocsA2AAgentCard>[0];
+
+  it("keeps the historical shorthand default inside the strict v1 shape", () => {
+    const card = buildDocsA2AAgentCard(
+      {
+        name: "Compatibility agent",
+        description: "Implements an older A2A protocol interface.",
+        interfaceUrl: "https://agent.example.com/a2a",
+        protocolBinding: "JSONRPC",
+      },
+      [
+        {
+          name: "docs",
+          type: "skill-md",
+          description: "Use the documentation.",
+          url: "/.well-known/agent-skills/docs/SKILL.md",
+          digest: `sha256:${"0".repeat(64)}`,
+          sha256: "0".repeat(64),
+          content: generatedSkill,
+          skillDocument: generatedSkill,
+          files: [],
+        },
+      ],
+    );
+
+    expect(card.supportedInterfaces).toEqual([
+      {
+        url: "https://agent.example.com/a2a",
+        protocolBinding: "JSONRPC",
+        protocolVersion: "0.3",
+      },
+    ]);
+    expect(card).not.toHaveProperty("protocolVersion");
+    expect(card).not.toHaveProperty("preferredTransport");
+    expect(card).not.toHaveProperty("url");
+  });
+
+  it("preserves interface preference and publishes configured capabilities, skills, and security", () => {
+    const card = buildDocsA2AAgentCard(
+      {
+        name: "Example agent",
+        description: "Answers documentation questions.",
+        supportedInterfaces: [
+          {
+            url: "https://agent.example.com/rpc",
+            protocolBinding: "JSONRPC",
+            protocolVersion: "1.0",
+            tenant: "acme",
+          },
+          {
+            url: "wss://agent.example.com/events",
+            protocolBinding: "https://agent.example.com/bindings/events",
+            protocolVersion: "1.1",
+          },
+        ],
+        capabilities: {
+          streaming: true,
+          pushNotifications: true,
+          extendedAgentCard: true,
+          extensions: [
+            {
+              uri: "https://agent.example.com/extensions/audit",
+              description: "Includes an audit record with each result.",
+              required: true,
+              params: { level: "full" },
+            },
+          ],
+        },
+        defaultInputModes: ["application/json"],
+        defaultOutputModes: ["application/json", "text/event-stream"],
+        securitySchemes: {
+          bearer: {
+            httpAuthSecurityScheme: {
+              description: "A signed access token.",
+              scheme: "bearer",
+              bearerFormat: "JWT",
+            },
+          },
+        },
+        securityRequirements: [{ schemes: { bearer: { list: [] } } }],
+        skills: [
+          {
+            id: "search-docs",
+            name: "Search documentation",
+            description: "Find relevant documentation pages.",
+            tags: ["documentation", "search"],
+            examples: ["Find the authentication guide."],
+            inputModes: ["application/json"],
+            outputModes: ["application/json"],
+            securityRequirements: [{ schemes: { bearer: { list: [] } } }],
+          },
+        ],
+      },
+      [],
+    );
+
+    expect(card).toEqual({
+      name: "Example agent",
+      description: "Answers documentation questions.",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/rpc",
+          protocolBinding: "JSONRPC",
+          protocolVersion: "1.0",
+          tenant: "acme",
+        },
+        {
+          url: "wss://agent.example.com/events",
+          protocolBinding: "https://agent.example.com/bindings/events",
+          protocolVersion: "1.1",
+        },
+      ],
+      version: "1.0.0",
+      capabilities: {
+        streaming: true,
+        pushNotifications: true,
+        extendedAgentCard: true,
+        extensions: [
+          {
+            uri: "https://agent.example.com/extensions/audit",
+            description: "Includes an audit record with each result.",
+            required: true,
+            params: { level: "full" },
+          },
+        ],
+      },
+      defaultInputModes: ["application/json"],
+      defaultOutputModes: ["application/json", "text/event-stream"],
+      skills: [
+        {
+          id: "search-docs",
+          name: "Search documentation",
+          description: "Find relevant documentation pages.",
+          tags: ["documentation", "search"],
+          examples: ["Find the authentication guide."],
+          inputModes: ["application/json"],
+          outputModes: ["application/json"],
+          securityRequirements: [{ schemes: { bearer: { list: [] } } }],
+        },
+      ],
+      securitySchemes: {
+        bearer: {
+          httpAuthSecurityScheme: {
+            description: "A signed access token.",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+          },
+        },
+      },
+      securityRequirements: [{ schemes: { bearer: { list: [] } } }],
+    });
+  });
+
+  it("rejects empty, malformed, and duplicate interface declarations", () => {
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          interfaceUrl: "https://agent.example.com/legacy",
+        } as unknown as Parameters<typeof buildDocsA2AAgentCard>[0],
+        [],
+      ),
+    ).toThrow("supportedInterfaces cannot be combined");
+
+    const withoutSkills = {
+      name: validOptions.name,
+      description: validOptions.description,
+      supportedInterfaces: validOptions.supportedInterfaces,
+    };
+    expect(() =>
+      buildDocsA2AAgentCard(
+        withoutSkills as unknown as Parameters<typeof buildDocsA2AAgentCard>[0],
+        [],
+      ),
+    ).toThrow("skills is required with supportedInterfaces");
+
+    expect(() => buildDocsA2AAgentCard({ ...validOptions, supportedInterfaces: [] }, [])).toThrow(
+      "supportedInterfaces must contain at least one interface",
+    );
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          supportedInterfaces: [{ url: "https://agent.example.com/a2a", protocolVersion: "1" }],
+        },
+        [],
+      ),
+    ).toThrow("protocolVersion must use A2A major.minor form");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          supportedInterfaces: [
+            { url: "https://agent.example.com/a2a", protocolBinding: "custom" },
+          ],
+        },
+        [],
+      ),
+    ).toThrow("protocolBinding must be a core A2A binding or an absolute URI");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          supportedInterfaces: [{ url: "http://agent.example.com/a2a" }],
+        },
+        [],
+      ),
+    ).toThrow("must use HTTPS for core A2A bindings");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          supportedInterfaces: [
+            {
+              url: "file:///tmp/agent.sock",
+              protocolBinding: "https://agent.example.com/bindings/custom",
+            },
+          ],
+        },
+        [],
+      ),
+    ).toThrow("must use a secure binding-appropriate URL");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          supportedInterfaces: [
+            { url: "https://agent.example.com/a2a" },
+            { url: "https://agent.example.com/a2a" },
+          ],
+        },
+        [],
+      ),
+    ).toThrow("supportedInterfaces must not contain duplicate interfaces");
+  });
+
+  it("permits loopback HTTP during development and requires absolute secure metadata URLs", () => {
+    const card = buildDocsA2AAgentCard(
+      {
+        ...validOptions,
+        supportedInterfaces: [{ url: "http://localhost:3200/a2a" }],
+        documentationUrl: "http://127.0.0.1:3200/docs",
+      },
+      [],
+    );
+    expect(card.supportedInterfaces[0]?.url).toBe("http://localhost:3200/a2a");
+    expect(card.documentationUrl).toBe("http://127.0.0.1:3200/docs");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          documentationUrl: "docs.example.com",
+        },
+        [],
+      ),
+    ).toThrow("agent.a2a.documentationUrl must be an absolute URL");
+  });
+
+  it("rejects duplicate skill IDs", () => {
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          skills: [
+            validOptions.skills[0],
+            { ...validOptions.skills[0], name: "Duplicate documentation skill" },
+          ],
+        },
+        [],
+      ),
+    ).toThrow("agent.a2a.skills[1].id must be unique");
+  });
+
+  it("rejects undefined card and skill security scheme references", () => {
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          securityRequirements: [{ schemes: { missing: { list: [] } } }],
+        },
+        [],
+      ),
+    ).toThrow('references undefined security scheme "missing"');
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          skills: [
+            {
+              ...validOptions.skills[0],
+              securityRequirements: [{ schemes: { missing: { list: [] } } }],
+            },
+          ],
+        },
+        [],
+      ),
+    ).toThrow('references undefined security scheme "missing"');
+  });
+
+  it("rejects security keys that collide after trimming", () => {
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          securitySchemes: {
+            bearer: { httpAuthSecurityScheme: { scheme: "bearer" } },
+            " bearer ": { httpAuthSecurityScheme: { scheme: "basic" } },
+          },
+        },
+        [],
+      ),
+    ).toThrow("securitySchemes must not contain duplicate keys after trimming");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          securitySchemes: {
+            bearer: { httpAuthSecurityScheme: { scheme: "bearer" } },
+          },
+          securityRequirements: [
+            {
+              schemes: {
+                bearer: { list: [] },
+                " bearer ": { list: [] },
+              },
+            },
+          ],
+        },
+        [],
+      ),
+    ).toThrow("schemes must not contain duplicate keys after trimming");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          securitySchemes: {
+            oauth: {
+              oauth2SecurityScheme: {
+                flows: {
+                  clientCredentials: {
+                    tokenUrl: "https://auth.example.com/token",
+                    scopes: {
+                      "docs.read": "Read documentation",
+                      " docs.read ": "Overlapping scope",
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        [],
+      ),
+    ).toThrow("scopes must not contain duplicate keys after trimming");
+  });
+
+  it("preserves __proto__ security and OAuth scope keys as data", () => {
+    const card = buildDocsA2AAgentCard(
+      {
+        ...validOptions,
+        securitySchemes: {
+          ["__proto__"]: {
+            oauth2SecurityScheme: {
+              flows: {
+                clientCredentials: {
+                  tokenUrl: "https://auth.example.com/token",
+                  scopes: { ["__proto__"]: "Prototype-named scope" },
+                },
+              },
+            },
+          },
+        },
+        securityRequirements: [
+          {
+            schemes: {
+              ["__proto__"]: { list: ["__proto__"] },
+            },
+          },
+        ],
+      },
+      [],
+    );
+
+    expect(Object.hasOwn(card.securitySchemes ?? {}, "__proto__")).toBe(true);
+    expect(
+      Object.hasOwn(
+        card.securitySchemes?.["__proto__"].oauth2SecurityScheme?.flows.clientCredentials?.scopes ??
+          {},
+        "__proto__",
+      ),
+    ).toBe(true);
+    expect(Object.hasOwn(card.securityRequirements?.[0]?.schemes ?? {}, "__proto__")).toBe(true);
+  });
+
+  it("requires security metadata for extended cards and TLS for OAuth endpoints", () => {
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          capabilities: { extendedAgentCard: true },
+        },
+        [],
+      ),
+    ).toThrow("extendedAgentCard requires a configured security scheme");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          capabilities: { extendedAgentCard: true },
+          securitySchemes: {
+            bearer: {
+              httpAuthSecurityScheme: { scheme: "bearer" },
+            },
+          },
+        },
+        [],
+      ),
+    ).toThrow("and a non-empty security requirement");
+
+    expect(() =>
+      buildDocsA2AAgentCard(
+        {
+          ...validOptions,
+          securitySchemes: {
+            oauth: {
+              oauth2SecurityScheme: {
+                flows: {
+                  clientCredentials: {
+                    tokenUrl: "http://auth.example.com/token",
+                    scopes: { "docs.read": "Read documentation" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        [],
+      ),
+    ).toThrow("tokenUrl must use HTTPS");
   });
 });

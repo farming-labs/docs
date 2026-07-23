@@ -10,6 +10,7 @@ const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
 const API_CATALOG_ROUTE = "/.well-known/api-catalog";
 const AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
 const LEGACY_SKILLS_INDEX_ROUTE = "/.well-known/skills/index.json";
+const AGENT_CARD_ROUTE = "/.well-known/agent-card.json";
 
 const docsDocument = `---
 name: docs
@@ -90,6 +91,58 @@ function createFixtureFetch(options = {}) {
       publicEndpoints: ["/mcp", "/.well-known/mcp"],
     },
   };
+  if (options.agentCard) manifest.api.agentCard = AGENT_CARD_ROUTE;
+  const agentCard = {
+    name: "Fixture docs agent",
+    description: "Answers questions from the fixture documentation.",
+    supportedInterfaces: [
+      {
+        url: `${BASE_URL}/a2a`,
+        protocolBinding: "HTTP+JSON",
+        protocolVersion: "1.0",
+      },
+    ],
+    provider: { organization: "Example", url: "https://example.com/" },
+    version: "1.0.0",
+    documentationUrl: `${BASE_URL}/docs`,
+    capabilities: {
+      streaming: false,
+      pushNotifications: false,
+      extensions: [
+        {
+          uri: "https://example.com/a2a/extensions/citations",
+          description: "Returns documentation citations.",
+          required: false,
+          params: { format: "url" },
+        },
+      ],
+    },
+    defaultInputModes: ["text/plain"],
+    defaultOutputModes: ["text/plain"],
+    skills: [
+      {
+        id: "docs",
+        name: "Documentation",
+        description: "Answers questions from the documentation.",
+        tags: ["documentation"],
+        examples: ["How do I install the package?"],
+        securityRequirements: [{ schemes: { bearer: { list: ["docs.read"] } } }],
+      },
+    ],
+    securitySchemes: options.invalidAgentSecurity
+      ? { bearer: { type: "http", scheme: "bearer" } }
+      : {
+          bearer: {
+            httpAuthSecurityScheme: {
+              scheme: "bearer",
+              bearerFormat: "JWT",
+            },
+          },
+        },
+    securityRequirements: [{ schemes: { bearer: { list: ["docs.read"] } } }],
+    ...(options.invalidAgentCard ? { url: `${BASE_URL}/a2a` } : {}),
+  };
+  const agentCardEtag = `"${digest(`${JSON.stringify(agentCard)}\n`)}"`;
   const modernIndex = {
     $schema: AGENT_SKILLS_SCHEMA,
     skills: [
@@ -182,7 +235,17 @@ function createFixtureFetch(options = {}) {
     if (url.pathname === "/.well-known/skills/portable/SKILL.md") {
       return response(method, portableDocument, { contentType: "text/markdown; charset=utf-8" });
     }
-    if (url.pathname === "/.well-known/agent-card.json") {
+    if (url.pathname === AGENT_CARD_ROUTE && options.agentCard) {
+      const headers = {
+        "cache-control": "public, max-age=0, s-maxage=3600",
+        etag: agentCardEtag,
+      };
+      if (new Headers(init.headers).get("if-none-match") === agentCardEtag) {
+        return response("HEAD", "", { status: 304, headers });
+      }
+      return jsonResponse(method, agentCard, { headers });
+    }
+    if (url.pathname === AGENT_CARD_ROUTE) {
       return response(method, "Not Found", { status: 404, contentType: "text/plain" });
     }
     if (url.pathname === "/mcp" || url.pathname === "/.well-known/mcp") {
@@ -279,6 +342,58 @@ test("fails when an indexed Agent Skill artifact does not match its digest", asy
       log() {},
     }),
     /1 agent surface smoke check failed/u,
+  );
+});
+
+test("validates an advertised strict A2A v1 Agent Card and its cache contract", async () => {
+  const fixture = createFixtureFetch({ agentCard: true });
+  const result = await runAgentSurfaceSmoke({
+    attempts: 1,
+    baseUrl: BASE_URL,
+    expectedSkillNames: ["portable"],
+    fetchImpl: fixture.fetch,
+    log() {},
+  });
+
+  assert.equal(result.passed, true);
+  assert(
+    fixture.calls.some((call) => call.method === "HEAD" && call.pathname === AGENT_CARD_ROUTE),
+  );
+});
+
+test("rejects a legacy or hybrid A2A Agent Card", async () => {
+  const fixture = createFixtureFetch({ agentCard: true, invalidAgentCard: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      assert.equal(error.failures.length, 1);
+      assert.match(error.failures[0].message, /unsupported field "url"/u);
+      return true;
+    },
+  );
+});
+
+test("rejects malformed nested A2A security metadata", async () => {
+  const fixture = createFixtureFetch({ agentCard: true, invalidAgentSecurity: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      assert.equal(error.failures.length, 1);
+      assert.match(error.failures[0].message, /unsupported field "type"/u);
+      return true;
+    },
   );
 });
 
