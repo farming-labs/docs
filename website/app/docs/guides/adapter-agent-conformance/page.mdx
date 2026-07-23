@@ -114,7 +114,6 @@ requiring the useful recovery document in either response.
 Run the relevant adapter test and core typecheck before publishing:
 
 ```bash title="terminal"
-pnpm --filter @farming-labs/docs build
-pnpm --filter @farming-labs/svelte test
+pnpm --filter @farming-labs/docs test adapter-agent-conformance.test.ts
 pnpm --filter @farming-labs/svelte typecheck
 ```

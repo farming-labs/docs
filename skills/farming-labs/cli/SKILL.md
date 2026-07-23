@@ -708,10 +708,13 @@ What it checks:
 - configured golden tasks for retrieval, citations, version selection, answers, examples, and budgets
 - generated `agent.md` freshness and `agent.compact` defaults
 
-Command checks never execute arbitrary commands from docs. Golden evaluations default to the local
-`mcp-context` surface and make no implicit model, network, or runtime-execution request. Configure
-them under `agent.evaluations.tasks`; when no tasks exist, doctor reports the suite as `unmeasured`
-and awards no usefulness credit.
+Command checks never execute arbitrary commands from docs or make network requests. They resolve
+package scripts from an enclosing workspace and statically recognize constrained `curl` probes,
+safe shell built-ins, Agent Skills installation, and Claude MCP JSON setup commands. Unknown
+binaries, unsupported options, compound shell expressions, and unresolved selectors remain
+unverified. Golden evaluations default to the local `mcp-context` surface and make no implicit
+model, network, or runtime-execution request. Configure them under `agent.evaluations.tasks`; when
+no tasks exist, doctor reports the suite as `unmeasured` and awards no usefulness credit.
 
 Use `surface: "configured-search"` to measure the actual search provider or
 `surface: "ask-ai-context"` to measure the production Ask AI context path. Non-simple search, the

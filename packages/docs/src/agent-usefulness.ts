@@ -424,6 +424,80 @@ const PACKAGE_MANAGER_OPTIONS_WITH_VALUES = new Set([
   "-w",
 ]);
 
+const CURL_OPTIONS_WITH_VALUES = new Set([
+  "--cacert",
+  "--cert",
+  "--connect-timeout",
+  "--data",
+  "--data-ascii",
+  "--data-binary",
+  "--data-raw",
+  "--data-urlencode",
+  "--form",
+  "--header",
+  "--json",
+  "--key",
+  "--max-time",
+  "--output",
+  "--request",
+  "--resolve",
+  "--retry",
+  "--retry-delay",
+  "--url",
+  "--user",
+  "--user-agent",
+]);
+
+const CURL_OPTIONS_WITHOUT_VALUES = new Set([
+  "--compressed",
+  "--fail",
+  "--fail-with-body",
+  "--head",
+  "--include",
+  "--insecure",
+  "--location",
+  "--show-error",
+  "--silent",
+  "--verbose",
+]);
+
+const CURL_SHORT_OPTIONS_WITH_VALUES = new Set(["A", "d", "F", "H", "o", "u", "X"]);
+const CURL_SHORT_OPTIONS_WITHOUT_VALUES = new Set(["f", "I", "i", "k", "L", "s", "S", "v"]);
+const TEST_UNARY_OPERATORS = new Set([
+  "-b",
+  "-c",
+  "-d",
+  "-e",
+  "-f",
+  "-g",
+  "-h",
+  "-L",
+  "-n",
+  "-p",
+  "-r",
+  "-S",
+  "-s",
+  "-t",
+  "-u",
+  "-w",
+  "-x",
+  "-z",
+]);
+const TEST_BINARY_OPERATORS = new Set([
+  "=",
+  "==",
+  "!=",
+  "-ef",
+  "-eq",
+  "-ge",
+  "-gt",
+  "-le",
+  "-lt",
+  "-ne",
+  "-nt",
+  "-ot",
+]);
+
 interface AgentContextScope {
   id: number;
   name: DocsAudienceMdxTag["name"];
@@ -522,7 +596,8 @@ export function analyzeAgentUsefulness(
     ...DEFAULT_DOCS_COMMANDS,
     ...(options.knownDocsCommands ?? []),
   ]);
-  const packageManifests = readProjectPackageManifests(rootDir);
+  const workspaceRoot = findEnclosingWorkspaceRoot(rootDir);
+  const packageManifests = readProjectPackageManifests(workspaceRoot);
   const pages = options.pages.map((page) => analyzePage(page));
   const findings: AgentUsefulnessFinding[] = [];
   const unhealthyCommandKeys = new Set<string>();
@@ -615,6 +690,7 @@ export function analyzeAgentUsefulness(
         packageManager,
         knownDocsCommands,
         packageManifests,
+        workspaceRoot,
       });
       if (commandAnalysis.status === "unhealthy") unhealthyCommandKeys.add(commandKey);
       if (commandAnalysis.status === "unverified") unverifiedCommandKeys.add(commandKey);
@@ -952,6 +1028,7 @@ function analyzeCommand(options: {
   packageManager?: string;
   knownDocsCommands: Set<string>;
   packageManifests: Map<string, ProjectPackageManifest>;
+  workspaceRoot: string;
 }): CommandAnalysis {
   const findings: AgentUsefulnessFinding[] = [];
   let verificationEstablished = false;
@@ -986,6 +1063,18 @@ function analyzeCommand(options: {
     return commandAnalysis(findings);
   }
 
+  if (hasUnsupportedShellControlSyntax(executableCommand)) {
+    findings.push(
+      commandFinding(options, {
+        code: "command-unverified",
+        severity: "suggestion",
+        message:
+          "Compound commands, redirections, and shell expansions are not executed or inferred; this command is unverified.",
+      }),
+    );
+    return commandAnalysis(findings);
+  }
+
   const tokens = tokenizeShellCommand(executableCommand);
   const commandPackageManager = readCommandPackageManager(tokens);
   const expectedPackageManager =
@@ -1010,6 +1099,7 @@ function analyzeCommand(options: {
     workspaceSelection,
     options.packageManifests,
     options.rootDir,
+    options.workspaceRoot,
   );
   if (workspaceResolution.status === "unresolved") {
     const selectors = workspaceSelection.selectors.length
@@ -1075,7 +1165,13 @@ function analyzeCommand(options: {
     }
   }
 
-  if (isStaticallyKnownPackageManagerCommand(tokens) || isVersionProbe(tokens)) {
+  if (
+    isStaticallyKnownPackageManagerCommand(tokens) ||
+    isVersionProbe(tokens) ||
+    isStaticallyValidCurlCommand(tokens) ||
+    isStaticallyValidShellBuiltin(tokens, resolvedCwd, options.rootDir) ||
+    isStaticallyValidAgentToolCommand(tokens)
+  ) {
     verificationEstablished = true;
   }
 
@@ -1415,8 +1511,89 @@ function detectPackageManager(rootDir: string): "npm" | "pnpm" | "yarn" | "bun" 
   return name as "npm" | "pnpm" | "yarn" | "bun" | undefined;
 }
 
+function findEnclosingWorkspaceRoot(startDir: string): string {
+  const repositoryBoundary = findNearestGitBoundary(startDir);
+  let current = startDir;
+  let traversed = 0;
+  while (true) {
+    if (
+      existsSync(path.join(current, "pnpm-workspace.yaml")) ||
+      existsSync(path.join(current, "pnpm-workspace.yml"))
+    ) {
+      return current;
+    }
+
+    const packageJson = readJsonFile(path.join(current, "package.json"));
+    const workspaces = packageJson?.workspaces;
+    if (
+      Array.isArray(workspaces) ||
+      (workspaces !== null && typeof workspaces === "object" && !Array.isArray(workspaces))
+    ) {
+      return current;
+    }
+
+    if (current === repositoryBoundary || (!repositoryBoundary && traversed >= 12)) {
+      return startDir;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return startDir;
+    current = parent;
+    traversed += 1;
+  }
+}
+
+function findNearestGitBoundary(startDir: string): string | undefined {
+  let current = startDir;
+  while (true) {
+    if (existsSync(path.join(current, ".git"))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+}
+
 function normalizeShellCommand(command: string): string {
   return command.trim().replace(/^\$\s*/, "");
+}
+
+function hasUnsupportedShellControlSyntax(command: string): boolean {
+  let quote: "'" | '"' | undefined;
+  let escaped = false;
+
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command[index] ?? "";
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      continue;
+    }
+    if (character === "<") {
+      const placeholder = /^<[A-Za-z0-9._-]+>/.exec(command.slice(index))?.[0];
+      if (placeholder) {
+        index += placeholder.length - 1;
+        continue;
+      }
+    }
+    if (
+      ["&", "|", ";", "<", ">", "`", "\n", "\r"].includes(character) ||
+      (character === "$" && command[index + 1] === "(")
+    ) {
+      return true;
+    }
+  }
+
+  return Boolean(quote || escaped);
 }
 
 function tokenizeShellCommand(command: string): string[] {
@@ -1596,10 +1773,190 @@ function isVersionProbe(tokens: string[]): boolean {
   );
 }
 
+function isStaticallyValidCurlCommand(tokens: string[]): boolean {
+  if (tokens[0] !== "curl") return false;
+  let urls = 0;
+  let parseOptions = true;
+
+  for (let index = 1; index < tokens.length; index += 1) {
+    const token = tokens[index] ?? "";
+    if (parseOptions && token === "--") {
+      parseOptions = false;
+      continue;
+    }
+
+    if (parseOptions && token.startsWith("--")) {
+      const equalsIndex = token.indexOf("=");
+      const option = equalsIndex >= 0 ? token.slice(0, equalsIndex) : token;
+      const inlineValue = equalsIndex >= 0 ? token.slice(equalsIndex + 1) : undefined;
+      if (CURL_OPTIONS_WITHOUT_VALUES.has(option)) {
+        if (inlineValue !== undefined) return false;
+        continue;
+      }
+      if (!CURL_OPTIONS_WITH_VALUES.has(option)) return false;
+
+      const value = inlineValue ?? tokens[index + 1];
+      if (!value || (!inlineValue && value.startsWith("-"))) return false;
+      if (inlineValue === undefined) index += 1;
+      if (!isValidCurlOptionValue(option, value)) return false;
+      if (option === "--url") urls += 1;
+      continue;
+    }
+
+    if (parseOptions && token.startsWith("-") && token !== "-") {
+      const shortOptions = token.slice(1);
+      if (!shortOptions) return false;
+      let consumed = false;
+
+      for (let offset = 0; offset < shortOptions.length; offset += 1) {
+        const option = shortOptions[offset] ?? "";
+        if (CURL_SHORT_OPTIONS_WITHOUT_VALUES.has(option)) continue;
+        if (!CURL_SHORT_OPTIONS_WITH_VALUES.has(option)) return false;
+
+        const inlineValue = shortOptions.slice(offset + 1);
+        const value = inlineValue || tokens[index + 1];
+        if (!value || (!inlineValue && value.startsWith("-"))) return false;
+        if (!inlineValue) index += 1;
+        if (!isValidCurlOptionValue(`-${option}`, value)) return false;
+        consumed = true;
+        break;
+      }
+
+      if (
+        consumed ||
+        [...shortOptions].every((item) => CURL_SHORT_OPTIONS_WITHOUT_VALUES.has(item))
+      ) {
+        continue;
+      }
+      return false;
+    }
+
+    if (!isHttpUrl(token)) return false;
+    urls += 1;
+  }
+
+  return urls > 0;
+}
+
+function isValidCurlOptionValue(option: string, value: string): boolean {
+  if (option === "--url") return isHttpUrl(value);
+  if (option === "--request" || option === "-X") return /^[A-Z]+$/i.test(value);
+  if (option === "--header" || option === "-H") return /^[^:\s][^:]*:\s*.*$/.test(value);
+  if (option === "--connect-timeout" || option === "--max-time") {
+    return /^\d+(?:\.\d+)?$/.test(value);
+  }
+  if (option === "--retry" || option === "--retry-delay") return /^\d+$/.test(value);
+  return value.length > 0;
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isStaticallyValidShellBuiltin(tokens: string[], cwd: string, rootDir: string): boolean {
+  const command = tokens[0];
+  const args = tokens.slice(1);
+
+  if (command === "echo") return true;
+  if (command === "printf") return args.length > 0;
+  if (command === "pwd") return args.every((argument) => argument === "-L" || argument === "-P");
+  if (command === "export" || command === "unset") {
+    if (args.length === 0) return false;
+    return args.every((argument) =>
+      command === "export"
+        ? /^[A-Za-z_][A-Za-z0-9_]*(?:=.*)?$/.test(argument)
+        : /^[A-Za-z_][A-Za-z0-9_]*$/.test(argument),
+    );
+  }
+  if (command === "test") return isValidTestExpression(args);
+  if (command === "[") return args.at(-1) === "]" && isValidTestExpression(args.slice(0, -1));
+  if (command !== "cd" || args.length !== 1) return false;
+
+  const target = args[0] ?? "";
+  if (!target || target === "-" || path.isAbsolute(target) || /[$*?[\]{}]/.test(target)) {
+    return false;
+  }
+  return isPathInside(rootDir, path.resolve(cwd, target));
+}
+
+function isValidTestExpression(args: string[]): boolean {
+  if (args[0] === "!") return args.length > 1 && isValidTestExpression(args.slice(1));
+  if (args.length === 1) return true;
+  if (args.length === 2) return TEST_UNARY_OPERATORS.has(args[0] ?? "");
+  return args.length === 3 && TEST_BINARY_OPERATORS.has(args[1] ?? "");
+}
+
+function isStaticallyValidAgentToolCommand(tokens: string[]): boolean {
+  return isStaticallyValidSkillsCommand(tokens) || isStaticallyValidClaudeMcpCommand(tokens);
+}
+
+function isStaticallyValidSkillsCommand(tokens: string[]): boolean {
+  const invocation = unwrapDownloadRunner(tokens);
+  if (!invocation || !/^skills(?:@(?:latest|\d+(?:\.\d+){0,2}))?$/.test(invocation[0] ?? "")) {
+    return false;
+  }
+  if (invocation.length !== 3 || invocation[1] !== "add") return false;
+
+  const source = invocation[2] ?? "";
+  if (/^https:\/\/(?:www\.)?github\.com\/[^/\s]+\/[^/\s]+(?:\.git)?(?:#[^\s]+)?$/.test(source)) {
+    return true;
+  }
+  return /^@?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:#[A-Za-z0-9._/-]+)?$/.test(source);
+}
+
+function unwrapDownloadRunner(tokens: string[]): string[] | undefined {
+  const runner = tokens[0];
+  if (runner === "skills") return tokens;
+  if (runner === "npx" || runner === "pnpx" || runner === "bunx") return tokens.slice(1);
+  if (runner === "npm" && tokens[1] === "exec" && tokens[2] === "--") return tokens.slice(3);
+  if (
+    (runner === "pnpm" || runner === "yarn" || runner === "bun") &&
+    ["dlx", "x"].includes(tokens[1] ?? "")
+  ) {
+    return tokens.slice(2);
+  }
+  return undefined;
+}
+
+function isStaticallyValidClaudeMcpCommand(tokens: string[]): boolean {
+  if (
+    tokens.length !== 5 ||
+    tokens[0] !== "claude" ||
+    tokens[1] !== "mcp" ||
+    tokens[2] !== "add-json" ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(tokens[3] ?? "")
+  ) {
+    return false;
+  }
+
+  try {
+    const config = JSON.parse(tokens[4] ?? "") as Record<string, unknown>;
+    if (!config || typeof config !== "object" || Array.isArray(config)) return false;
+    if (config.type === "http" || config.type === "sse") {
+      return typeof config.url === "string" && isHttpUrl(config.url);
+    }
+    if (config.type !== "stdio" || typeof config.command !== "string" || !config.command.trim()) {
+      return false;
+    }
+    return (
+      config.args === undefined ||
+      (Array.isArray(config.args) && config.args.every((argument) => typeof argument === "string"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 function resolveWorkspaceSelection(
   selection: WorkspaceSelection,
   manifests: Map<string, ProjectPackageManifest>,
   rootDir: string,
+  workspaceRoot: string,
 ): WorkspaceResolution {
   if (!selection.requested) return { status: "none", manifests: [] };
   if (selection.selectors.length === 0) return { status: "unresolved", manifests: [] };
@@ -1617,9 +1974,11 @@ function resolveWorkspaceSelection(
       continue;
     }
 
-    const selectorPath = path.resolve(rootDir, selector);
-    const pathManifest = [...manifests.values()].find(
-      (manifest) => path.resolve(manifest.directory) === selectorPath,
+    const selectorPaths = Array.from(
+      new Set([path.resolve(rootDir, selector), path.resolve(workspaceRoot, selector)]),
+    );
+    const pathManifest = [...manifests.values()].find((manifest) =>
+      selectorPaths.includes(path.resolve(manifest.directory)),
     );
     if (!pathManifest) return { status: "unresolved", manifests: [] };
     resolved.push(pathManifest);
