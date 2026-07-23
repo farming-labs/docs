@@ -2,9 +2,10 @@ import {
   isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
 } from "@farming-labs/docs";
 import config from "$lib/docs.config";
-import { GET, MCP } from "$lib/docs.server.js";
+import { GET, HEAD, POST, MCP } from "$lib/docs.server.js";
 
 const docsEntry = config.entry ?? "docs";
 
@@ -22,9 +23,17 @@ export async function handle({ event, resolve }) {
     });
   }
 
+  if (isDocsStandardsDiscoveryRequest(event.url, { apiRoute: config.cloud?.apiRoute })) {
+    if (method === "HEAD") return HEAD({ url: event.url, request: event.request });
+    if (method === "POST") return POST({ url: event.url, request: event.request });
+    return GET({ url: event.url, request: event.request });
+  }
+
   if (
     (method === "GET" || method === "HEAD") &&
-    isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry)
+    isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry, {
+      apiRoute: config.cloud?.apiRoute,
+    })
   ) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
@@ -33,11 +42,14 @@ export async function handle({ event, resolve }) {
   if (
     (method === "GET" || method === "HEAD") &&
     isDocsPublicGetRequest(docsEntry, event.url, event.request, {
+      apiRoute: config.cloud?.apiRoute,
       sitemap: config.sitemap,
       llms: config.llmsTxt,
     })
   ) {
-    return GET({ url: event.url, request: event.request });
+    return method === "HEAD"
+      ? HEAD({ url: event.url, request: event.request })
+      : GET({ url: event.url, request: event.request });
   }
 
   return resolve(event);

@@ -121,7 +121,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
@@ -151,7 +151,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,

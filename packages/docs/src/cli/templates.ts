@@ -1106,6 +1106,13 @@ export const Route = createFileRoute("${entryUrl}/$")({
         }
         return undefined;
       },
+      HEAD: async ({ request }) => {
+        const url = new URL(request.url);
+        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+          return docsServer.HEAD({ request });
+        }
+        return undefined;
+      },
     },
   },
   loader: async ({ location }) => {
@@ -1148,16 +1155,32 @@ export function tanstackApiDocsRouteTemplate(useAlias: boolean, filePath: string
   const serverImport = useAlias
     ? "@/lib/docs.server"
     : relativeImport(filePath, "src/lib/docs.server.ts");
+  const configImport = tanstackDocsConfigImport(filePath);
 
   return `\
 import { createFileRoute } from "@tanstack/react-router";
+import { isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import { docsServer } from "${serverImport}";
+import docsConfig from "${configImport}";
+
+async function handleUnsupportedDocsMethod(request: Request) {
+  const url = new URL(request.url);
+  if (isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    return docsServer.GET({ request });
+  }
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: { Allow: "GET, HEAD, POST" },
+  });
+}
 
 export const Route = createFileRoute("/api/docs")({
   server: {
     handlers: {
       GET: async ({ request }) => docsServer.GET({ request }),
+      HEAD: async ({ request }) => docsServer.HEAD({ request }),
       POST: async ({ request }) => docsServer.POST({ request }),
+      ANY: async ({ request }) => handleUnsupportedDocsMethod(request),
     },
   },
 });
@@ -1175,7 +1198,7 @@ export function tanstackDocsPublicRouteTemplate(
 
   return `\
 import { createFileRoute } from "@tanstack/react-router";
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import { docsServer } from "${serverImport}";
 import docsConfig from "${tanstackDocsConfigImport(filePath)}";
 
@@ -1196,8 +1219,14 @@ async function handlePublicDocsRequest(request: Request) {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+  if (isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    if (method === "HEAD") return docsServer.HEAD({ request });
+    if (method === "POST") return docsServer.POST({ request });
     return docsServer.GET({ request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { apiRoute: docsConfig.cloud?.apiRoute, sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+    return method === "HEAD" ? docsServer.HEAD({ request }) : docsServer.GET({ request });
   }
 
   return new Response("Not Found", { status: 404 });
@@ -1207,9 +1236,11 @@ export const Route = createFileRoute("/$")({
   server: {
     handlers: {
       GET: async ({ request }) => handlePublicDocsRequest(request),
+      HEAD: async ({ request }) => handlePublicDocsRequest(request),
       POST: async ({ request }) => handlePublicDocsRequest(request),
       DELETE: async ({ request }) => handlePublicDocsRequest(request),
       OPTIONS: async ({ request }) => handlePublicDocsRequest(request),
+      ANY: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });
@@ -1629,7 +1660,7 @@ const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
   _preloadedAgentSkills: bundledAgentSkills,
@@ -1691,7 +1722,7 @@ export function svelteDocsApiRouteTemplate(filePath: string, useAlias: boolean):
   const serverImport = svelteRouteServerImport(filePath, useAlias);
 
   return `\
-export { GET, POST } from "${serverImport}";
+export { GET, HEAD, POST } from "${serverImport}";
 `;
 }
 
@@ -1700,10 +1731,10 @@ export function svelteDocsPublicHookTemplate(filePath: string, useAlias: boolean
   const configImport = svelteRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import type { Handle } from "@sveltejs/kit";
 import config from "${configImport}";
-import { GET, MCP } from "${serverImport}";
+import { GET, HEAD, POST, MCP } from "${serverImport}";
 
 const docsEntry = config.entry ?? "docs";
 
@@ -1721,13 +1752,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(event.url, { apiRoute: config.cloud?.apiRoute })) {
+    if (method === "HEAD") return HEAD({ url: event.url, request: event.request });
+    if (method === "POST") return POST({ url: event.url, request: event.request });
+    return GET({ url: event.url, request: event.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry, { apiRoute: config.cloud?.apiRoute })) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
-    return GET({ url: event.url, request: event.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: config.cloud?.apiRoute, sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
+    return method === "HEAD"
+      ? HEAD({ url: event.url, request: event.request })
+      : GET({ url: event.url, request: event.request });
   }
 
   return resolve(event);
@@ -1766,13 +1805,13 @@ export function injectSvelteDocsPublicHook(
   }
 
   const imports = [
-    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";',
     ...(next.includes("Handle") ? [] : ['import type { Handle } from "@sveltejs/kit";']),
     ...(hasExistingHandle && !next.includes("sequence")
       ? ['import { sequence } from "@sveltejs/kit/hooks";']
       : []),
     `import docsConfig from "${configImport}";`,
-    `import { GET as docsGET, MCP as docsMCP } from "${serverImport}";`,
+    `import { GET as docsGET, HEAD as docsHEAD, POST as docsPOST, MCP as docsMCP } from "${serverImport}";`,
   ];
 
   const docsHandle = `\
@@ -1792,13 +1831,21 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(event.url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    if (method === "HEAD") return docsHEAD({ url: event.url, request: event.request });
+    if (method === "POST") return docsPOST({ url: event.url, request: event.request });
+    return docsGET({ url: event.url, request: event.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
-    return docsGET({ url: event.url, request: event.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: docsConfig.cloud?.apiRoute, sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+    return method === "HEAD"
+      ? docsHEAD({ url: event.url, request: event.request })
+      : docsGET({ url: event.url, request: event.request });
   }
 
   return resolve(event);
@@ -2131,7 +2178,7 @@ const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/AGE
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
   _preloadedAgentSkills: bundledAgentSkills,
@@ -2267,10 +2314,14 @@ export function astroApiRouteTemplate(cfg: TemplateConfig): string {
   const serverImport = astroPageServerImport(cfg.useAlias, 2);
   return `\
 import type { APIRoute } from "astro";
-import { GET as docsGET, POST as docsPOST } from "${serverImport}";
+import { GET as docsGET, HEAD as docsHEAD, POST as docsPOST } from "${serverImport}";
 
 export const GET: APIRoute = async ({ request }) => {
   return docsGET({ request });
+};
+
+export const HEAD: APIRoute = async ({ request }) => {
+  return docsHEAD({ request });
 };
 
 export const POST: APIRoute = async ({ request }) => {
@@ -2284,10 +2335,10 @@ export function astroDocsMiddlewareTemplate(filePath: string, useAlias: boolean)
   const configImport = astroRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import type { MiddlewareHandler } from "astro";
 import config from "${configImport}";
-import { GET, MCP } from "${serverImport}";
+import { GET, HEAD, POST, MCP } from "${serverImport}";
 
 const docsEntry = config.entry ?? "docs";
 
@@ -2305,13 +2356,21 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(context.url, { apiRoute: config.cloud?.apiRoute })) {
+    if (method === "HEAD") return HEAD({ request: context.request });
+    if (method === "POST") return POST({ request: context.request });
+    return GET({ request: context.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry, { apiRoute: config.cloud?.apiRoute })) {
     const nativeResponse = await next();
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
-    return GET({ request: context.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: config.cloud?.apiRoute, sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
+    return method === "HEAD"
+      ? HEAD({ request: context.request })
+      : GET({ request: context.request });
   }
 
   return next();
@@ -2350,7 +2409,7 @@ export function injectAstroDocsMiddleware(
   }
 
   const imports = [
-    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";',
     ...(next.includes("MiddlewareHandler")
       ? []
       : ['import type { MiddlewareHandler } from "astro";']),
@@ -2358,7 +2417,7 @@ export function injectAstroDocsMiddleware(
       ? ['import { sequence } from "astro:middleware";']
       : []),
     `import docsConfig from "${configImport}";`,
-    `import { GET as docsGET, MCP as docsMCP } from "${serverImport}";`,
+    `import { GET as docsGET, HEAD as docsHEAD, POST as docsPOST, MCP as docsMCP } from "${serverImport}";`,
   ];
 
   const docsMiddleware = `\
@@ -2378,13 +2437,21 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(context.url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    if (method === "HEAD") return docsHEAD({ request: context.request });
+    if (method === "POST") return docsPOST({ request: context.request });
+    return docsGET({ request: context.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })) {
     const nativeResponse = await next();
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
-    return docsGET({ request: context.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: docsConfig.cloud?.apiRoute, sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+    return method === "HEAD"
+      ? docsHEAD({ request: context.request })
+      : docsGET({ request: context.request });
   }
 
   return next();

@@ -1255,6 +1255,7 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | -------- | ---------------------------------------------------------- | ----------- |
 | `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
 | `GET`    | `({ request }) => Response`                                | Search / `llms.txt` endpoint handler |
+| `HEAD`   | `({ request }) => Promise<Response>`                       | Bodyless public-read handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
 
 ```ts title="src/lib/docs.server.ts"
@@ -1293,13 +1294,31 @@ function DocsIndexPage() {
 
 ```ts title="src/routes/api.docs.ts"
 import { createFileRoute } from "@tanstack/react-router";
+import { isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
+import docsConfig from "../../docs.config";
+
+async function handleUnsupportedDocsMethod(request: Request) {
+  if (
+    isDocsStandardsDiscoveryRequest(new URL(request.url), {
+      apiRoute: docsConfig.cloud?.apiRoute,
+    })
+  ) {
+    return docsServer.GET({ request });
+  }
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: { Allow: "GET, HEAD, POST" },
+  });
+}
 
 export const Route = createFileRoute("/api/docs")({
   server: {
     handlers: {
       GET: async ({ request }) => docsServer.GET({ request }),
+      HEAD: async ({ request }) => docsServer.HEAD({ request }),
       POST: async ({ request }) => docsServer.POST({ request }),
+      ANY: async ({ request }) => handleUnsupportedDocsMethod(request),
     },
   },
 });
@@ -1332,6 +1351,7 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 | -------- | ------------------------------ | ------------------------------------------------- |
 | `load`   | `(event) => Promise<PageData>` | Layout load function (use in `+layout.server.js`) |
 | `GET`    | `(event) => Response`          | Search endpoint handler                           |
+| `HEAD`   | `(event) => Promise<Response>` | Bodyless public-read handler                      |
 | `POST`   | `(event) => Promise<Response>` | AI chat endpoint handler                          |
 
 ```ts title="src/lib/docs.server.ts"
@@ -1344,7 +1364,7 @@ const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST } = createDocsServer({
+export const { load, GET, HEAD, POST } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });
@@ -1366,7 +1386,7 @@ Imported from `@farming-labs/svelte-theme`:
 
 ### `createDocsServer(config)`
 
-Same as SvelteKit — returns `{ load, GET, POST }`.
+Same as SvelteKit — returns `{ load, GET, HEAD, POST }`.
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
@@ -1385,6 +1405,7 @@ import { createDocsServer } from "@farming-labs/astro/server";
 | -------- | ----------------------------------------- | ----------------------------------------------------- |
 | `load`   | `(pathname: string) => Promise<PageData>` | Takes a URL pathname string, returns page data        |
 | `GET`    | `({ request }) => Response`               | Search endpoint handler for `GET /api/docs?query=...` |
+| `HEAD`   | `({ request }) => Promise<Response>`      | Bodyless public-read handler                          |
 | `POST`   | `({ request }) => Promise<Response>`      | AI chat endpoint handler with SSE streaming           |
 
 ```ts title="src/lib/docs.server.ts"
@@ -1397,7 +1418,7 @@ const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST } = createDocsServer({
+export const { load, GET, HEAD, POST } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });

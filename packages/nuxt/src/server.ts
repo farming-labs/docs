@@ -46,7 +46,6 @@ import {
   isDocsAgentsRequest,
   isDocsDiagnosticsRequest,
   isDocsSkillRequest,
-  isDocsStandardsDiscoveryRequest,
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
   parseDocsAgentFeedbackData,
@@ -71,6 +70,7 @@ import {
   resolveDocsMetadataBaseUrl,
   resolveDocsRequestApiRoute,
   resolveDocsPublishedAgentSkill,
+  resolveDocsStandardsDiscoveryRequest,
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
@@ -209,6 +209,7 @@ export interface DocsServer {
     structuredData: string;
   }>;
   GET: (context: { request: Request }) => Promise<Response>;
+  HEAD: (context: { request: Request }) => Promise<Response>;
   POST: (context: { request: Request }) => Promise<Response>;
   MCP: DocsMcpHttpHandlers;
 }
@@ -591,9 +592,13 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const rootDir = path.resolve(
     ((config as Record<string, unknown>).rootDir as string | undefined) ?? process.cwd(),
   );
-  const publishedAgentSkills = Array.isArray(config._preloadedAgentSkills)
-    ? Promise.resolve(config._preloadedAgentSkills)
-    : resolveConfiguredAgentSkills(config.agent?.skills, { rootDir });
+  let publishedAgentSkills: ReturnType<typeof resolveConfiguredAgentSkills> | undefined;
+  function getPublishedAgentSkills() {
+    publishedAgentSkills ??= Array.isArray(config._preloadedAgentSkills)
+      ? Promise.resolve(config._preloadedAgentSkills)
+      : resolveConfiguredAgentSkills(config.agent?.skills, { rootDir });
+    return publishedAgentSkills;
+  }
   const i18n = resolveDocsI18n((config as Record<string, unknown>).i18n as any);
 
   const githubRaw = config.github;
@@ -978,11 +983,63 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       : null;
   }
 
+  function createDiscoveryOptions(origin: string, apiRoute: string) {
+    return {
+      origin,
+      entry,
+      apiRoute,
+      docsPath: config.docsPath,
+      apiCatalog: apiCatalogEnabled,
+      i18n,
+      search: config.search,
+      mcp: mcpConfig,
+      feedback: agentFeedbackDiscovery,
+      llms: {
+        enabled: llmsEnabled,
+        apiCatalog: apiCatalogEnabled,
+        baseUrl: llmsBaseUrl || undefined,
+        siteTitle: llmsTitle,
+        siteDescription: llmsDesc,
+        maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+        sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+      },
+      sitemap: config.sitemap,
+      robots: config.robots,
+      openapi: openapiDiscovery,
+      markdown: {
+        acceptHeader: true,
+      },
+    } as any;
+  }
+
+  async function resolveStandardsResponse(
+    request: Request,
+    url: URL,
+    discoveryOptions: ReturnType<typeof createDiscoveryOptions>,
+  ): Promise<Response | null> {
+    const resolved = resolveDocsStandardsDiscoveryRequest(url, {
+      apiRoute: discoveryOptions.apiRoute,
+    });
+    if (!resolved) return null;
+    const method = request.method.toUpperCase();
+    const needsSkill = (method === "GET" || method === "HEAD") && resolved.kind !== "api-catalog";
+
+    return createDocsStandardsDiscoveryResponse({
+      request,
+      ...discoveryOptions,
+      preferredSkillDocument: needsSkill ? readRootSkillDocument(preloaded, rootDir) : null,
+      fallbackSkillDocument: needsSkill ? renderDocsSkillDocument(discoveryOptions) : "",
+      publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
+      agentCard: config.agent?.a2a,
+    });
+  }
+
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
   async function GET(context: { request: Request }): Promise<Response> {
     trackTelemetryRequest(context.request);
     const ctx = resolveContextFromRequest(context.request);
     const url = new URL(context.request.url);
+    const isHeadRequest = context.request.method.toUpperCase() === "HEAD";
     const requestApiRoute = resolveDocsRequestApiRoute(url, configuredApiRoute);
 
     if (isDocsConfigRequest(url)) {
@@ -1021,61 +1078,33 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     }
 
     const discoveryApiRoute = requestApiRoute;
-    const discoveryOptions = {
-      origin: url.origin,
-      entry,
-      apiRoute: discoveryApiRoute,
-      docsPath: config.docsPath,
-      apiCatalog: apiCatalogEnabled,
-      i18n,
-      search: config.search,
-      mcp: mcpConfig,
-      feedback: agentFeedbackDiscovery,
-      llms: {
-        enabled: llmsEnabled,
-        apiCatalog: apiCatalogEnabled,
-        baseUrl: llmsBaseUrl || undefined,
-        siteTitle: llmsTitle,
-        siteDescription: llmsDesc,
-        maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
-        sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-      },
-      sitemap: config.sitemap,
-      robots: config.robots,
-      openapi: openapiDiscovery,
-      markdown: {
-        acceptHeader: true,
-      },
-    } as any;
-    if (isDocsStandardsDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
-      const standardsDiscoveryResponse = await createDocsStandardsDiscoveryResponse({
-        request: context.request,
-        ...discoveryOptions,
-        preferredSkillDocument: readRootSkillDocument(preloaded, rootDir),
-        fallbackSkillDocument: renderDocsSkillDocument(discoveryOptions),
-        publishedSkills: await publishedAgentSkills,
-        agentCard: config.agent?.a2a,
-      });
-      if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
-    }
+    const discoveryOptions = createDiscoveryOptions(url.origin, discoveryApiRoute);
+    const standardsDiscoveryResponse = await resolveStandardsResponse(
+      context.request,
+      url,
+      discoveryOptions,
+    );
+    if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
 
     if (isDocsAgentDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
       return new Response(
-        JSON.stringify(
-          buildDocsAgentDiscoverySpec({
-            ...discoveryOptions,
-            publishedSkills: [
-              await resolveDocsPublishedAgentSkill({
-                preferredDocument: readRootSkillDocument(preloaded, rootDir),
-                fallbackDocument: renderDocsSkillDocument(discoveryOptions),
+        isHeadRequest
+          ? null
+          : JSON.stringify(
+              buildDocsAgentDiscoverySpec({
+                ...discoveryOptions,
+                publishedSkills: [
+                  await resolveDocsPublishedAgentSkill({
+                    preferredDocument: readRootSkillDocument(preloaded, rootDir),
+                    fallbackDocument: renderDocsSkillDocument(discoveryOptions),
+                  }),
+                  ...(await getPublishedAgentSkills()),
+                ],
+                agentCard: config.agent?.a2a,
               }),
-              ...(await publishedAgentSkills),
-            ],
-            agentCard: config.agent?.a2a,
-          }),
-          null,
-          2,
-        ),
+              null,
+              2,
+            ),
         {
           headers: {
             "Content-Type": "application/json; charset=utf-8",
@@ -1093,6 +1122,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           status: 404,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
+      if (isHeadRequest) {
+        return new Response(null, {
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
           },
         });
@@ -1125,13 +1164,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         });
       }
 
-      return new Response(JSON.stringify(agentFeedbackConfig.schema, null, 2), {
-        headers: {
-          "Content-Type": "application/schema+json; charset=utf-8",
-          "Cache-Control": "public, max-age=0, s-maxage=3600",
-          "X-Robots-Tag": "noindex",
+      return new Response(
+        isHeadRequest ? null : JSON.stringify(agentFeedbackConfig.schema, null, 2),
+        {
+          headers: {
+            "Content-Type": "application/schema+json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
         },
-      });
+      );
     }
 
     if (
@@ -1139,7 +1181,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       resolveDocsAgentsFormat(url) === "agents"
     ) {
       return new Response(
-        readRootAgentsDocument(preloaded, rootDir) ?? renderDocsAgentsDocument(discoveryOptions),
+        isHeadRequest
+          ? null
+          : (readRootAgentsDocument(preloaded, rootDir) ??
+              renderDocsAgentsDocument(discoveryOptions)),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
@@ -1156,7 +1201,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       resolveDocsSkillFormat(url) === "skill"
     ) {
       return new Response(
-        readRootSkillDocument(preloaded, rootDir) ?? renderDocsSkillDocument(discoveryOptions),
+        isHeadRequest
+          ? null
+          : (readRootSkillDocument(preloaded, rootDir) ??
+              renderDocsSkillDocument(discoveryOptions)),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
@@ -1349,6 +1397,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   async function POST(context: { request: Request }): Promise<Response> {
     trackTelemetryRequest(context.request);
     const requestUrl = new URL(context.request.url);
+    const standardsDiscoveryResponse = await resolveStandardsResponse(
+      context.request,
+      requestUrl,
+      createDiscoveryOptions(
+        requestUrl.origin,
+        resolveDocsRequestApiRoute(requestUrl, configuredApiRoute),
+      ),
+    );
+    if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
+
     const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(requestUrl, agentFeedbackConfig);
     if (agentFeedbackRequest) {
       if (agentFeedbackRequest.kind === "schema") {
@@ -1936,7 +1994,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           preferredDocument: readRootSkillDocument(preloaded, rootDir),
           fallbackDocument: renderDocsSkillDocument(skillOptions),
         });
-        return [rootSkill, ...(await publishedAgentSkills)];
+        return [rootSkill, ...(await getPublishedAgentSkills())];
       },
     },
     mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
@@ -1947,7 +2005,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     defaultName: mcpSiteTitle,
   });
 
-  return { load, GET, POST, MCP };
+  async function HEAD(context: { request: Request }): Promise<Response> {
+    const response = await GET(context);
+    return new Response(null, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  }
+
+  return { load, GET, HEAD, POST, MCP };
 }
 
 // ─── Nuxt event handler helper ───────────────────────────────
@@ -1984,9 +2051,9 @@ export function defineDocsHandler(config: Record<string, any>, storage: DocsStor
 
     const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
     const headers = event.headers ?? event.node?.req?.headers ?? {};
+    const reqUrl = new URL(event.node?.req?.url ?? "/", "http://localhost");
 
     if (method === "POST") {
-      const url = new URL(event.node.req.url ?? "/", "http://localhost");
       let body: string | undefined;
       try {
         body = await new Promise<string>((resolve, reject) => {
@@ -1999,26 +2066,27 @@ export function defineDocsHandler(config: Record<string, any>, storage: DocsStor
         /* empty */
       }
       return server.POST({
-        request: new Request(url.href, { method: "POST", headers, body }),
+        request: new Request(reqUrl.href, { method, headers, body }),
       });
     }
 
-    const reqUrl = new URL(event.node.req.url ?? "/", "http://localhost");
     const pathname = reqUrl.searchParams.get("pathname");
-    if (pathname) {
+    if (method === "GET" && pathname) {
       return server.load(pathname);
     }
 
-    const response = await server.GET({
-      request: new Request(reqUrl.href, { method: method === "HEAD" ? "HEAD" : "GET", headers }),
-    });
-    if (method !== "HEAD") return response;
+    if (method === "GET" || method === "HEAD") {
+      const request = new Request(reqUrl.href, { method, headers });
+      return method === "HEAD" ? server.HEAD({ request }) : server.GET({ request });
+    }
 
-    return new Response(null, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
+    const discoveryApiRoute = resolveDocsRequestApiRoute(reqUrl, config.cloud?.apiRoute);
+    if (resolveDocsStandardsDiscoveryRequest(reqUrl, { apiRoute: discoveryApiRoute })) {
+      const request = createUnsupportedMethodRequest(reqUrl, method, headers);
+      return server.GET({ request });
+    }
+
+    return methodNotAllowedResponse("GET, HEAD, POST");
   });
 }
 
@@ -2099,10 +2167,21 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
       return methodNotAllowedResponse();
     }
 
+    const discoveryApiRoute = resolveDocsRequestApiRoute(url, config.cloud?.apiRoute);
+    if (resolveDocsStandardsDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
+      const server = await getServer();
+      const request = createUnsupportedMethodRequest(url, method, headers);
+      if (method === "POST") return server.POST({ request });
+      if (method === "HEAD") return server.HEAD({ request });
+      return server.GET({ request });
+    }
+
     if (method === "GET" || method === "HEAD") {
       const request = new Request(url.href, { method, headers });
       if (
-        isDocsLlmsTxtPublicRequest(url, config.llmsTxt, entry) &&
+        isDocsLlmsTxtPublicRequest(url, config.llmsTxt, entry, {
+          apiRoute: discoveryApiRoute,
+        }) &&
         hasNativeNuxtPublicFile(url.pathname)
       ) {
         return undefined;
@@ -2110,6 +2189,7 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
 
       if (
         !isDocsPublicGetRequest(entry, url, request, {
+          apiRoute: discoveryApiRoute,
           sitemap: config.sitemap,
           llms: config.llmsTxt,
           robots: config.robots,
@@ -2119,11 +2199,14 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
       }
 
       const server = await getServer();
-      return server.GET({
-        request,
-      });
+      return method === "HEAD" ? server.HEAD({ request }) : server.GET({ request });
     }
   });
+}
+
+function createUnsupportedMethodRequest(url: URL, method: string, headers: any): Request {
+  const requestMethod = /^(?:CONNECT|TRACE|TRACK)$/i.test(method) ? "PUT" : method;
+  return new Request(url.href, { method: requestMethod, headers });
 }
 
 function hasNativeNuxtPublicFile(pathname: string): boolean {
@@ -2147,11 +2230,11 @@ function hasNativeNuxtPublicFile(pathname: string): boolean {
   });
 }
 
-function methodNotAllowedResponse() {
+function methodNotAllowedResponse(allow = "GET, HEAD, POST, DELETE, OPTIONS") {
   return new Response("Method Not Allowed", {
     status: 405,
     headers: {
-      Allow: "GET, HEAD, POST, DELETE, OPTIONS",
+      Allow: allow,
       "Content-Type": "text/plain; charset=utf-8",
     },
   });

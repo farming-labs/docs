@@ -387,31 +387,65 @@ export default withDocs();
 
 ```ts title="src/routes/$.ts"
 import { createFileRoute } from "@tanstack/react-router";
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
+} from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
 import docsConfig from "../../docs.config";
+
+const docsEntry = docsConfig.entry ?? "docs";
+
+async function handlePublicDocsRequest(request: Request) {
+  const url = new URL(request.url);
+  const method = request.method.toUpperCase();
+
+  if (isDocsMcpRequest(url, docsConfig.mcp)) {
+    if (method === "OPTIONS") return docsServer.MCP.OPTIONS({ request });
+    if (method === "POST") return docsServer.MCP.POST({ request });
+    if (method === "DELETE") return docsServer.MCP.DELETE({ request });
+    if (method === "GET" || method === "HEAD") return docsServer.MCP.GET({ request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
+    });
+  }
+
+  if (
+    isDocsStandardsDiscoveryRequest(url, {
+      apiRoute: docsConfig.cloud?.apiRoute,
+    })
+  ) {
+    if (method === "HEAD") return docsServer.HEAD({ request });
+    if (method === "POST") return docsServer.POST({ request });
+    return docsServer.GET({ request });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, url, request, {
+      apiRoute: docsConfig.cloud?.apiRoute,
+      sitemap: docsConfig.sitemap,
+      llms: docsConfig.llmsTxt,
+      robots: docsConfig.robots,
+    })
+  ) {
+    return method === "HEAD" ? docsServer.HEAD({ request }) : docsServer.GET({ request });
+  }
+
+  return new Response("Not Found", { status: 404 });
+}
 
 export const Route = createFileRoute("/$")({
   server: {
     handlers: {
-      OPTIONS: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url), docsConfig.mcp)
-          ? docsServer.MCP.OPTIONS({ request })
-          : new Response("Not Found", { status: 404 }),
-      GET: async ({ request }) => {
-        const url = new URL(request.url);
-        if (isDocsMcpRequest(url, docsConfig.mcp)) return docsServer.MCP.GET({ request });
-        if (isDocsPublicGetRequest("docs", url, request)) return docsServer.GET({ request });
-        return new Response("Not Found", { status: 404 });
-      },
-      POST: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url), docsConfig.mcp)
-          ? docsServer.MCP.POST({ request })
-          : new Response("Not Found", { status: 404 }),
-      DELETE: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url), docsConfig.mcp)
-          ? docsServer.MCP.DELETE({ request })
-          : new Response("Not Found", { status: 404 }),
+      GET: async ({ request }) => handlePublicDocsRequest(request),
+      HEAD: async ({ request }) => handlePublicDocsRequest(request),
+      POST: async ({ request }) => handlePublicDocsRequest(request),
+      DELETE: async ({ request }) => handlePublicDocsRequest(request),
+      OPTIONS: async ({ request }) => handlePublicDocsRequest(request),
+      ANY: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });
@@ -420,9 +454,16 @@ export const Route = createFileRoute("/$")({
 ### SvelteKit
 
 ```ts title="src/hooks.server.ts"
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsLlmsTxtPublicRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
+} from "@farming-labs/docs";
 import config from "$lib/docs.config";
-import { GET, MCP } from "$lib/docs.server";
+import { GET, HEAD, POST, MCP } from "$lib/docs.server";
+
+const docsEntry = config.entry ?? "docs";
 
 export async function handle({ event, resolve }) {
   const method = event.request.method.toUpperCase();
@@ -431,11 +472,45 @@ export async function handle({ event, resolve }) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
-    return MCP.GET({ request: event.request });
+    if (method === "GET" || method === "HEAD") return MCP.GET({ request: event.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
+    });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest("docs", event.url, event.request)) {
+  if (
+    isDocsStandardsDiscoveryRequest(event.url, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    if (method === "HEAD") return HEAD({ url: event.url, request: event.request });
+    if (method === "POST") return POST({ url: event.url, request: event.request });
     return GET({ url: event.url, request: event.request });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    const nativeResponse = await resolve(event);
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, event.url, event.request, {
+      apiRoute: config.cloud?.apiRoute,
+      sitemap: config.sitemap,
+      llms: config.llmsTxt,
+      robots: config.robots,
+    })
+  ) {
+    return method === "HEAD"
+      ? HEAD({ url: event.url, request: event.request })
+      : GET({ url: event.url, request: event.request });
   }
 
   return resolve(event);
@@ -448,7 +523,7 @@ Your `src/lib/docs.server.ts` can keep using the normal helper:
 import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "./docs.config";
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
 });
 ```
@@ -456,9 +531,16 @@ export const { load, GET, POST, MCP } = createDocsServer({
 ### Astro
 
 ```ts title="src/middleware.ts"
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsLlmsTxtPublicRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
+} from "@farming-labs/docs";
 import config from "./lib/docs.config";
-import { GET, MCP } from "./lib/docs.server";
+import { GET, HEAD, POST, MCP } from "./lib/docs.server";
+
+const docsEntry = config.entry ?? "docs";
 
 export async function onRequest(context, next) {
   const method = context.request.method.toUpperCase();
@@ -467,11 +549,45 @@ export async function onRequest(context, next) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
-    return MCP.GET({ request: context.request });
+    if (method === "GET" || method === "HEAD") return MCP.GET({ request: context.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
+    });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest("docs", context.url, context.request)) {
+  if (
+    isDocsStandardsDiscoveryRequest(context.url, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    if (method === "HEAD") return HEAD({ request: context.request });
+    if (method === "POST") return POST({ request: context.request });
     return GET({ request: context.request });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, context.url, context.request, {
+      apiRoute: config.cloud?.apiRoute,
+      sitemap: config.sitemap,
+      llms: config.llmsTxt,
+      robots: config.robots,
+    })
+  ) {
+    return method === "HEAD"
+      ? HEAD({ request: context.request })
+      : GET({ request: context.request });
   }
 
   return next();

@@ -425,7 +425,7 @@ export default defineDocs({
           code={`import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "./docs.config";
 
-export const { load, GET, POST } = createDocsServer(config);`}
+export const { load, GET, HEAD, POST } = createDocsServer(config);`}
         />
       </div>
 
@@ -547,7 +547,7 @@ export default defineDocs({
           code={`import { createDocsServer } from "@farming-labs/astro/server";
 import config from "./docs.config";
 
-export const { load, GET, POST } = createDocsServer(config);`}
+export const { load, GET, HEAD, POST } = createDocsServer(config);`}
         />
       </div>
 
