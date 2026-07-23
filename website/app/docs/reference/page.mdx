@@ -668,21 +668,77 @@ Discovery preserves both client generations:
 
 ### `DocsAgentA2AConfig`
 
+The generated document follows the
+[A2A v1 Agent Card](https://a2a-protocol.org/v1.0.0/specification/#8-agent-discovery-the-agent-card)
+wire shape.
+
 | Property | Type | Required | Description |
 | -------- | ---- | -------- | ----------- |
-| `interfaceUrl` | `string` | yes | HTTP(S) URL of an implemented A2A interface |
 | `name` | `string` | yes | Agent display name |
 | `description` | `string` | yes | Agent purpose |
-| `documentationUrl` | `string` | yes | HTTP(S) documentation URL for the A2A service |
-| `provider` | `{ organization: string; url: string }` | yes | Provider identity and HTTP(S) URL |
+| `supportedInterfaces` | `readonly DocsAgentA2AInterfaceConfig[]` | yes* | Ordered implemented interfaces; the first is preferred |
+| `interfaceUrl` | `string` | deprecated alternative | Single-interface shorthand; prefer `supportedInterfaces` |
+| `documentationUrl` | `string` | no | Absolute HTTPS documentation URL; HTTP is limited to loopback development |
+| `provider` | `{ organization: string; url: string }` | no | Provider identity and absolute HTTPS URL outside loopback |
 | `version` | `string` | no | Agent version; defaults to `"1.0.0"` |
-| `protocolVersion` | `string` | no | Implemented A2A protocol version; defaults to `"0.3"` |
-| `protocolBinding` | `string` | no | Implemented A2A transport binding; defaults to `"HTTP+JSON"` |
+| `iconUrl` | `string` | no | Absolute HTTPS icon URL; HTTP is limited to loopback development |
+| `capabilities` | `DocsAgentA2ACapabilities` | no | Implemented streaming, push notification, extension, and extended-card capabilities |
+| `defaultInputModes` | `readonly string[]` | no | Agent-wide input media types; defaults to `["text/plain"]` |
+| `defaultOutputModes` | `readonly string[]` | no | Agent-wide output media types; defaults to `["text/plain"]` |
+| `skills` | `readonly DocsAgentA2ASkill[]` | yes with `supportedInterfaces` | Explicit capabilities implemented by the A2A service; optional only for the deprecated shorthand |
+| `securitySchemes` | `Readonly<Record<string, DocsAgentA2ASecurityScheme>>` | no | Named API key, HTTP auth, OAuth 2, OpenID Connect, or mutual TLS schemes |
+| `securityRequirements` | `readonly DocsAgentA2ASecurityRequirement[]` | no | Agent-wide alternatives over named security schemes |
+| `protocolVersion` | `string` | deprecated shorthand only | Protocol for `interfaceUrl`; retains the historical `"0.3"` default |
+| `protocolBinding` | `string` | deprecated shorthand only | Binding for `interfaceUrl`; defaults to `"HTTP+JSON"` |
 
-When `a2a` is set, `/.well-known/agent-card.json` advertises the configured interface and published
-skills, using A2A protocol `0.3` over `HTTP+JSON` by default. When it is omitted, the route is not
-published. Do not point `interfaceUrl` at a docs, Ask AI, or MCP route; those transports do not
-implement A2A.
+`supportedInterfaces` must contain at least one `{ url, protocolBinding?, protocolVersion?,
+tenant? }` entry. Each entry defaults to A2A protocol `1.0` over `HTTP+JSON`. The core bindings are
+`JSONRPC`, `GRPC`, and `HTTP+JSON`; a custom binding is an absolute URI. Ordering is meaningful: the
+first interface is the client's preferred starting point. The deprecated `interfaceUrl` form
+cannot be combined with `supportedInterfaces`; it retains protocol `0.3` as its default so existing
+services are not silently misadvertised. Set its `protocolVersion` explicitly for other versions.
+Core interfaces and all HTTP card/authentication metadata require HTTPS outside loopback
+development. Custom bindings use a secure binding-appropriate absolute URL such as WSS or MQTTS.
+
+`DocsAgentA2ASkill` requires `id`, `name`, `description`, and non-empty `tags`; it can also set
+`examples`, capability-specific `inputModes` and `outputModes`, and `securityRequirements`. It
+does not have a URL in A2A v1. URLs for configured Agent Skill documents and artifacts remain in
+`/.well-known/agent-skills/index.json`, its legacy compatibility index, and MCP resources. The
+preferred `supportedInterfaces` form requires explicit A2A skills. Published documentation skills
+are projected only when `a2a.skills` is omitted from the deprecated shorthand, preserving its
+previous behavior.
+
+Security schemes use the A2A v1 discriminated wrappers, and each requirement maps a configured
+scheme name to its scope list. For example:
+
+```ts
+securitySchemes: {
+  bearer: {
+    httpAuthSecurityScheme: {
+      scheme: "bearer",
+      bearerFormat: "JWT",
+    },
+  },
+},
+securityRequirements: [
+  {
+    schemes: {
+      bearer: { list: ["docs.read"] },
+    },
+  },
+],
+```
+
+Use exactly one wrapper per named scheme. Requirement objects are alternatives; multiple schemes
+inside one object are required together. `capabilities.extendedAgentCard: true` requires at least
+one declared security scheme and a non-empty applicable security requirement.
+
+When `a2a` is set, `/.well-known/agent-card.json` uses the strict v1 shape with
+`supportedInterfaces`; it does not emit legacy top-level `url`, `protocolVersion`,
+`preferredTransport`, or per-skill `url` fields. Capabilities default to non-streaming with no push
+notifications, while security metadata is omitted unless configured. When `a2a` is omitted, the
+route is not published. Do not point an advertised interface at a docs, Ask AI, or MCP route; those
+transports do not implement A2A.
 
 ### `DocsAgentEvaluationsConfig`
 

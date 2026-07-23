@@ -627,10 +627,54 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         description: "Opt-in Agent Card metadata for a separately implemented real A2A service.",
         children: [
           {
+            path: "agent.a2a.supportedInterfaces",
+            name: "supportedInterfaces",
+            type: "readonly DocsAgentA2AInterfaceConfig[]",
+            description:
+              "Ordered A2A v1 interfaces implemented by the service; the first entry is preferred.",
+            children: [
+              {
+                path: "agent.a2a.supportedInterfaces[]",
+                name: "interface",
+                type: "DocsAgentA2AInterfaceConfig",
+                description: "One implemented A2A protocol interface.",
+              },
+              {
+                path: "agent.a2a.supportedInterfaces[].url",
+                name: "url",
+                type: "string",
+                description:
+                  "Absolute binding-appropriate URL; core bindings require HTTPS outside loopback development.",
+              },
+              {
+                path: "agent.a2a.supportedInterfaces[].protocolBinding",
+                name: "protocolBinding",
+                type: "DocsAgentA2AProtocolBinding",
+                default: "HTTP+JSON",
+                description:
+                  "Core binding JSONRPC, GRPC, or HTTP+JSON, or an absolute URI for a custom binding.",
+              },
+              {
+                path: "agent.a2a.supportedInterfaces[].protocolVersion",
+                name: "protocolVersion",
+                type: "string",
+                default: "1.0",
+                description: "A2A major.minor protocol version implemented by this interface.",
+              },
+              {
+                path: "agent.a2a.supportedInterfaces[].tenant",
+                name: "tenant",
+                type: "string",
+                description: "Optional tenant identifier required by this interface.",
+              },
+            ],
+          },
+          {
             path: "agent.a2a.interfaceUrl",
             name: "interfaceUrl",
             type: "string",
-            description: "HTTP(S) URL of the real A2A interface.",
+            description:
+              "Deprecated single-interface shorthand. Prefer supportedInterfaces for new A2A v1 configurations.",
           },
           {
             path: "agent.a2a.name",
@@ -648,19 +692,297 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             path: "agent.a2a.documentationUrl",
             name: "documentationUrl",
             type: "string",
-            description: "HTTP(S) documentation URL for the A2A service.",
+            description:
+              "Optional absolute HTTPS documentation URL; HTTP is limited to loopback development.",
           },
           {
-            path: "agent.a2a.provider.organization",
-            name: "organization",
-            type: "string",
-            description: "A2A service provider organization.",
+            path: "agent.a2a.provider",
+            name: "provider",
+            type: "{ organization: string; url: string }",
+            description: "Optional A2A service provider identity.",
+            children: [
+              {
+                path: "agent.a2a.provider.organization",
+                name: "organization",
+                type: "string",
+                description: "A2A service provider organization.",
+              },
+              {
+                path: "agent.a2a.provider.url",
+                name: "url",
+                type: "string",
+                description:
+                  "Absolute HTTPS provider URL; HTTP is limited to loopback development.",
+              },
+            ],
           },
           {
-            path: "agent.a2a.provider.url",
-            name: "url",
+            path: "agent.a2a.iconUrl",
+            name: "iconUrl",
             type: "string",
-            description: "HTTP(S) provider URL.",
+            description:
+              "Optional absolute HTTPS icon URL; HTTP is limited to loopback development.",
+          },
+          {
+            path: "agent.a2a.capabilities",
+            name: "capabilities",
+            type: "DocsAgentA2ACapabilities",
+            description: "Capabilities actually implemented by the A2A service.",
+            children: [
+              {
+                path: "agent.a2a.capabilities.streaming",
+                name: "streaming",
+                type: "boolean",
+                default: false,
+                description: "Whether the A2A service implements streaming.",
+              },
+              {
+                path: "agent.a2a.capabilities.pushNotifications",
+                name: "pushNotifications",
+                type: "boolean",
+                default: false,
+                description: "Whether the A2A service implements push notifications.",
+              },
+              {
+                path: "agent.a2a.capabilities.extensions",
+                name: "extensions",
+                type: "readonly DocsAgentA2AExtension[]",
+                description: "URI-identified A2A protocol extensions implemented by the service.",
+                children: [
+                  {
+                    path: "agent.a2a.capabilities.extensions[]",
+                    name: "extension",
+                    type: "DocsAgentA2AExtension",
+                    description: "One protocol extension implemented by the service.",
+                  },
+                  {
+                    path: "agent.a2a.capabilities.extensions[].uri",
+                    name: "uri",
+                    type: "string",
+                    description: "Absolute URI identifying the extension.",
+                  },
+                  {
+                    path: "agent.a2a.capabilities.extensions[].description",
+                    name: "description",
+                    type: "string",
+                    description: "How this agent implements the extension.",
+                  },
+                  {
+                    path: "agent.a2a.capabilities.extensions[].required",
+                    name: "required",
+                    type: "boolean",
+                    default: false,
+                    description: "Whether clients must understand this extension.",
+                  },
+                  {
+                    path: "agent.a2a.capabilities.extensions[].params",
+                    name: "params",
+                    type: "Readonly<Record<string, unknown>>",
+                    description: "Extension-specific JSON parameters.",
+                  },
+                ],
+              },
+              {
+                path: "agent.a2a.capabilities.extendedAgentCard",
+                name: "extendedAgentCard",
+                type: "boolean",
+                description:
+                  "Whether the service implements authenticated GetExtendedAgentCard; requires a declared scheme and non-empty requirement.",
+              },
+            ],
+          },
+          {
+            path: "agent.a2a.defaultInputModes",
+            name: "defaultInputModes",
+            type: "readonly string[]",
+            description: 'Agent-wide input media types; defaults to ["text/plain"].',
+          },
+          {
+            path: "agent.a2a.defaultOutputModes",
+            name: "defaultOutputModes",
+            type: "readonly string[]",
+            description: 'Agent-wide output media types; defaults to ["text/plain"].',
+          },
+          {
+            path: "agent.a2a.skills",
+            name: "skills",
+            type: "readonly DocsAgentA2ASkill[]",
+            description:
+              "A2A capabilities implemented by the service. Required with supportedInterfaces; distinct from published Agent Skill files.",
+            children: [
+              {
+                path: "agent.a2a.skills[]",
+                name: "skill",
+                type: "DocsAgentA2ASkill",
+                description: "One capability implemented by the A2A service.",
+              },
+              {
+                path: "agent.a2a.skills[].id",
+                name: "id",
+                type: "string",
+                description: "Stable unique capability identifier.",
+              },
+              {
+                path: "agent.a2a.skills[].name",
+                name: "name",
+                type: "string",
+                description: "Human-readable capability name.",
+              },
+              {
+                path: "agent.a2a.skills[].description",
+                name: "description",
+                type: "string",
+                description: "Capability purpose and behavior.",
+              },
+              {
+                path: "agent.a2a.skills[].tags",
+                name: "tags",
+                type: "readonly string[]",
+                description: "Non-empty discovery tags for the capability.",
+              },
+              {
+                path: "agent.a2a.skills[].examples",
+                name: "examples",
+                type: "readonly string[]",
+                description: "Optional example prompts for this capability.",
+              },
+              {
+                path: "agent.a2a.skills[].inputModes",
+                name: "inputModes",
+                type: "readonly string[]",
+                description: "Optional capability-specific input media types.",
+              },
+              {
+                path: "agent.a2a.skills[].outputModes",
+                name: "outputModes",
+                type: "readonly string[]",
+                description: "Optional capability-specific output media types.",
+              },
+              {
+                path: "agent.a2a.skills[].securityRequirements",
+                name: "securityRequirements",
+                type: "readonly DocsAgentA2ASecurityRequirement[]",
+                description:
+                  "Optional capability-specific alternatives over named security schemes.",
+              },
+            ],
+          },
+          {
+            path: "agent.a2a.securitySchemes",
+            name: "securitySchemes",
+            type: "Readonly<Record<string, DocsAgentA2ASecurityScheme>>",
+            description:
+              "Optional named A2A v1 API key, HTTP auth, OAuth 2, OpenID Connect, or mutual TLS schemes.",
+            children: [
+              {
+                path: "agent.a2a.securitySchemes.<name>",
+                name: "scheme",
+                type: "DocsAgentA2ASecurityScheme",
+                description:
+                  "One named scheme containing exactly one wrapper: apiKeySecurityScheme, httpAuthSecurityScheme, oauth2SecurityScheme, openIdConnectSecurityScheme, or mtlsSecurityScheme.",
+              },
+              {
+                path: "agent.a2a.securitySchemes.<name>.apiKeySecurityScheme",
+                name: "apiKeySecurityScheme",
+                type: '{ description?: string; location: "query" | "header" | "cookie"; name: string }',
+                description: "API key location and parameter name.",
+              },
+              {
+                path: "agent.a2a.securitySchemes.<name>.httpAuthSecurityScheme",
+                name: "httpAuthSecurityScheme",
+                type: "{ description?: string; scheme: string; bearerFormat?: string }",
+                description: "HTTP authentication scheme such as bearer.",
+              },
+              {
+                path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme",
+                name: "oauth2SecurityScheme",
+                type: "DocsAgentA2AOAuth2SecurityScheme",
+                description:
+                  "OAuth 2 metadata with exactly one authorizationCode, clientCredentials, deviceCode, implicit, or password flow. Implicit and password are deprecated A2A v1 compatibility flows.",
+                children: [
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.authorizationCode",
+                    name: "authorizationCode",
+                    type: "DocsAgentA2AOAuthAuthorizationCodeFlow",
+                    description:
+                      "Authorization code flow with HTTPS authorizationUrl, tokenUrl, scopes, and optional refreshUrl/pkceRequired.",
+                  },
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.clientCredentials",
+                    name: "clientCredentials",
+                    type: "DocsAgentA2AOAuthClientCredentialsFlow",
+                    description:
+                      "Client credentials flow with HTTPS tokenUrl, scopes, and optional refreshUrl.",
+                  },
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.deviceCode",
+                    name: "deviceCode",
+                    type: "DocsAgentA2AOAuthDeviceCodeFlow",
+                    description:
+                      "Device code flow with HTTPS deviceAuthorizationUrl, tokenUrl, scopes, and optional refreshUrl.",
+                  },
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.implicit",
+                    name: "implicit",
+                    type: "DocsAgentA2AOAuthImplicitFlow",
+                    description:
+                      "Deprecated A2A v1 compatibility flow with HTTPS authorizationUrl, scopes, and optional refreshUrl.",
+                  },
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.password",
+                    name: "password",
+                    type: "DocsAgentA2AOAuthPasswordFlow",
+                    description:
+                      "Deprecated A2A v1 compatibility flow with HTTPS tokenUrl, scopes, and optional refreshUrl.",
+                  },
+                  {
+                    path: "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.oauth2MetadataUrl",
+                    name: "oauth2MetadataUrl",
+                    type: "string",
+                    description: "Optional HTTPS RFC 8414 authorization-server metadata URL.",
+                  },
+                ],
+              },
+              {
+                path: "agent.a2a.securitySchemes.<name>.openIdConnectSecurityScheme",
+                name: "openIdConnectSecurityScheme",
+                type: "{ description?: string; openIdConnectUrl: string }",
+                description: "OpenID Connect scheme with an HTTPS discovery URL.",
+              },
+              {
+                path: "agent.a2a.securitySchemes.<name>.mtlsSecurityScheme",
+                name: "mtlsSecurityScheme",
+                type: "{ description?: string }",
+                description: "Mutual TLS scheme.",
+              },
+            ],
+          },
+          {
+            path: "agent.a2a.securityRequirements",
+            name: "securityRequirements",
+            type: "readonly DocsAgentA2ASecurityRequirement[]",
+            description: "Optional agent-wide alternatives over named security schemes.",
+            children: [
+              {
+                path: "agent.a2a.securityRequirements[]",
+                name: "requirement",
+                type: "DocsAgentA2ASecurityRequirement",
+                description:
+                  "One alternative requirement; schemes inside the object are all required together.",
+              },
+              {
+                path: "agent.a2a.securityRequirements[].schemes",
+                name: "schemes",
+                type: "Readonly<Record<string, DocsAgentA2ASecurityScopeList>>",
+                description: "Named security schemes and their required scopes.",
+              },
+              {
+                path: "agent.a2a.securityRequirements[].schemes.<name>.list",
+                name: "list",
+                type: "readonly string[]",
+                description: "Required scopes for this named scheme; use an empty list for none.",
+              },
+            ],
           },
           {
             path: "agent.a2a.version",
@@ -674,14 +996,16 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             name: "protocolVersion",
             type: "string",
             default: "0.3",
-            description: "A2A protocol version implemented by the configured interface.",
+            description:
+              "Deprecated interfaceUrl shorthand option. It retains the historical 0.3 default; set it explicitly when that interface implements another version.",
           },
           {
             path: "agent.a2a.protocolBinding",
             name: "protocolBinding",
             type: "string",
             default: "HTTP+JSON",
-            description: "A2A transport binding implemented by the configured interface.",
+            description:
+              "Deprecated interfaceUrl shorthand option. Binding implemented by that interface.",
           },
         ],
       },

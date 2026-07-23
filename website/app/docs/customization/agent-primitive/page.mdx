@@ -365,8 +365,15 @@ clients see the same files at `docs://skills/<name>/<path>`, with text returned 
 assets returned as base64 blobs.
 
 The optional `/.well-known/agent-card.json` route is different from skill discovery. It appears
-only when `agent.a2a` describes a real A2A interface, using protocol `0.3` over `HTTP+JSON` by
-default. Do not configure it merely because the site exposes docs, Ask AI, or MCP.
+only when `agent.a2a` describes a real A2A interface. A preferred ordered
+`supportedInterfaces` configuration defaults each entry to protocol `1.0` over `HTTP+JSON`; the
+first entry is preferred, and the other core bindings are `JSONRPC` and `GRPC`. The generated card
+uses the strict A2A v1 shape. `interfaceUrl` remains only as a deprecated single-interface
+shorthand and retains its historical protocol `0.3` default. The preferred interface-array form
+requires explicit A2A skills; it does not turn published Agent Skill documents into callable
+capabilities automatically. A2A capability entries do not carry Agent Skill document URLs—those
+stay in the skill indexes and MCP resources. Do not configure the card merely because the site
+exposes docs, Ask AI, or MCP.
 
 `GET /.well-known/agent.json` is the preferred public discovery URL. `GET /.well-known/agent` is the
 public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. Next.js wires

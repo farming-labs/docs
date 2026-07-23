@@ -40,6 +40,38 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       mcp: true,
       sitemap: true,
       robots: true,
+      agent: {
+        a2a: {
+          name: "Conformance agent",
+          description: "Answers questions from the conformance documentation.",
+          supportedInterfaces: [
+            { url: "https://agent.example.com/a2a" },
+            {
+              url: "https://agent.example.com/rpc",
+              protocolBinding: "JSONRPC",
+              protocolVersion: "1.1",
+              tenant: "acme",
+            },
+          ],
+          skills: [
+            {
+              id: "docs",
+              name: "Documentation",
+              description: "Answers questions from the conformance documentation.",
+              tags: ["documentation"],
+            },
+            {
+              id: "search",
+              name: "Search documentation",
+              description: "Finds relevant pages in the conformance documentation.",
+              tags: ["documentation", "search"],
+              examples: ["Find the installation guide."],
+              inputModes: ["application/json"],
+              outputModes: ["application/json"],
+            },
+          ],
+        },
+      },
       _preloadedContent: {
         "/docs/en/page.md": `---\ntitle: Introduction\ndescription: Start here.\n---\n\n# Introduction\n\nWelcome.`,
         "/docs/fr/page.md": `---\ntitle: Introduction\n---\n\n# Introduction\n\nBonjour.`,
@@ -98,6 +130,60 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       name: "docs",
       digest: `sha256:${createHash("sha256").update(artifact, "utf8").digest("hex")}`,
     });
+
+    const cardUrl = new URL("/.well-known/agent-card.json", "https://docs.example.com");
+    const cardResponse = await server.GET({
+      request: new Request(cardUrl),
+      url: cardUrl,
+    });
+    const cardEtag = cardResponse.headers.get("etag");
+    const card = await cardResponse.json();
+    expect(card).toStrictEqual({
+      name: "Conformance agent",
+      description: "Answers questions from the conformance documentation.",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/a2a",
+          protocolBinding: "HTTP+JSON",
+          protocolVersion: "1.0",
+        },
+        {
+          url: "https://agent.example.com/rpc",
+          protocolBinding: "JSONRPC",
+          protocolVersion: "1.1",
+          tenant: "acme",
+        },
+      ],
+      version: "1.0.0",
+      capabilities: { streaming: false, pushNotifications: false },
+      defaultInputModes: ["text/plain"],
+      defaultOutputModes: ["text/plain"],
+      skills: [
+        {
+          id: "docs",
+          name: "Documentation",
+          description: "Answers questions from the conformance documentation.",
+          tags: ["documentation"],
+        },
+        {
+          id: "search",
+          name: "Search documentation",
+          description: "Finds relevant pages in the conformance documentation.",
+          tags: ["documentation", "search"],
+          examples: ["Find the installation guide."],
+          inputModes: ["application/json"],
+          outputModes: ["application/json"],
+        },
+      ],
+    });
+
+    const cardHead = await server.GET({
+      request: new Request(cardUrl, { method: "HEAD" }),
+      url: cardUrl,
+    });
+    expect(cardHead.status).toBe(200);
+    expect(cardHead.headers.get("etag")).toBe(cardEtag);
+    expect(await cardHead.text()).toBe("");
   });
 
   it("matches the shared discovery method contract", async () => {

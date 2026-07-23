@@ -284,6 +284,499 @@ function validateManifest(json, route) {
   return manifest;
 }
 
+function assertOnlyKeys(value, allowed, label) {
+  for (const key of Object.keys(value)) {
+    assert(allowed.has(key), `${label} contained unsupported field ${JSON.stringify(key)}`);
+  }
+}
+
+function isLoopbackHostname(hostname) {
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "[::1]" ||
+    hostname === "::1" ||
+    /^127(?:\.\d{1,3}){3}$/u.test(hostname)
+  );
+}
+
+function parseAgentCardUrl(value, label) {
+  assert(isNonEmptyString(value), `${label} was empty`);
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${label} was not an absolute URL`);
+  }
+  assert(!url.username && !url.password, `${label} contained credentials`);
+  return url;
+}
+
+function validateSecureHttpUrl(value, label) {
+  const url = parseAgentCardUrl(value, label);
+  assert(
+    url.protocol === "https:" || (url.protocol === "http:" && isLoopbackHostname(url.hostname)),
+    `${label} did not use HTTPS or loopback HTTP`,
+  );
+}
+
+function validatePublicCacheControl(value, label) {
+  const directives = new Map(
+    value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const separator = part.indexOf("=");
+        return separator === -1
+          ? [part.toLowerCase(), ""]
+          : [part.slice(0, separator).trim().toLowerCase(), part.slice(separator + 1).trim()];
+      }),
+  );
+  assert(directives.has("public"), `${label} did not declare public caching`);
+  assert(
+    !directives.has("private") && !directives.has("no-store"),
+    `${label} disabled public caching`,
+  );
+  assert(/^\d+$/u.test(directives.get("max-age") ?? ""), `${label} omitted a numeric max-age`);
+  assert(
+    /^\d+$/u.test(directives.get("s-maxage") ?? ""),
+    `${label} omitted a numeric shared-cache max-age`,
+  );
+}
+
+function validateStringArray(value, label, { allowEmpty = false } = {}) {
+  assert(
+    Array.isArray(value) && (allowEmpty || value.length > 0) && value.every(isNonEmptyString),
+    `${label} was not a valid string array`,
+  );
+}
+
+function validateSecurityRequirements(value, schemeNames, label) {
+  if (value === undefined) return;
+  assert(Array.isArray(value), `${label} was not an array`);
+  for (const [requirementIndex, candidate] of value.entries()) {
+    const requirement = asRecord(candidate);
+    assert(requirement, `${label}[${requirementIndex}] was not an object`);
+    assertOnlyKeys(requirement, new Set(["schemes"]), `${label}[${requirementIndex}]`);
+    const schemes = asRecord(requirement.schemes);
+    assert(schemes, `${label}[${requirementIndex}].schemes was not an object`);
+    for (const [schemeName, scopeCandidate] of Object.entries(schemes)) {
+      assert(
+        schemeNames.has(schemeName),
+        `${label}[${requirementIndex}] referenced unknown scheme ${JSON.stringify(schemeName)}`,
+      );
+      const scopes = asRecord(scopeCandidate);
+      assert(scopes, `${label}[${requirementIndex}].schemes.${schemeName} was not an object`);
+      assertOnlyKeys(
+        scopes,
+        new Set(["list"]),
+        `${label}[${requirementIndex}].schemes.${schemeName}`,
+      );
+      validateStringArray(scopes.list, `${label}[${requirementIndex}].schemes.${schemeName}.list`, {
+        allowEmpty: true,
+      });
+    }
+  }
+}
+
+function validateOAuthScopes(value, label) {
+  const scopes = asRecord(value);
+  assert(scopes, `${label} was not an object`);
+  for (const [name, description] of Object.entries(scopes)) {
+    assert(isNonEmptyString(name), `${label} contained an empty scope name`);
+    assert(isNonEmptyString(description), `${label}.${name} had no description`);
+  }
+}
+
+function validateOAuthFlows(value, label) {
+  const flows = asRecord(value);
+  assert(flows, `${label} was not an object`);
+  const flowNames = [
+    "authorizationCode",
+    "clientCredentials",
+    "deviceCode",
+    "implicit",
+    "password",
+  ];
+  assertOnlyKeys(flows, new Set(flowNames), label);
+  const configured = flowNames.filter((name) => flows[name] !== undefined);
+  assert(configured.length === 1, `${label} did not configure exactly one OAuth flow`);
+  const flowName = configured[0];
+  const flow = asRecord(flows[flowName]);
+  assert(flow, `${label}.${flowName} was not an object`);
+
+  const allowedFields = {
+    authorizationCode: ["authorizationUrl", "tokenUrl", "refreshUrl", "scopes", "pkceRequired"],
+    clientCredentials: ["tokenUrl", "refreshUrl", "scopes"],
+    deviceCode: ["deviceAuthorizationUrl", "tokenUrl", "refreshUrl", "scopes"],
+    implicit: ["authorizationUrl", "refreshUrl", "scopes"],
+    password: ["tokenUrl", "refreshUrl", "scopes"],
+  };
+  assertOnlyKeys(flow, new Set(allowedFields[flowName]), `${label}.${flowName}`);
+  for (const urlField of ["authorizationUrl", "deviceAuthorizationUrl", "tokenUrl", "refreshUrl"]) {
+    if (flow[urlField] !== undefined) {
+      validateSecureHttpUrl(flow[urlField], `${label}.${flowName}.${urlField}`);
+    }
+  }
+  if (flowName === "authorizationCode") {
+    assert(
+      isNonEmptyString(flow.authorizationUrl),
+      `${label}.${flowName} omitted authorizationUrl`,
+    );
+    assert(isNonEmptyString(flow.tokenUrl), `${label}.${flowName} omitted tokenUrl`);
+    assert(
+      flow.pkceRequired === undefined || typeof flow.pkceRequired === "boolean",
+      `${label}.${flowName}.pkceRequired was not boolean`,
+    );
+  } else if (flowName === "clientCredentials" || flowName === "password") {
+    assert(isNonEmptyString(flow.tokenUrl), `${label}.${flowName} omitted tokenUrl`);
+  } else if (flowName === "deviceCode") {
+    assert(
+      isNonEmptyString(flow.deviceAuthorizationUrl),
+      `${label}.${flowName} omitted deviceAuthorizationUrl`,
+    );
+    assert(isNonEmptyString(flow.tokenUrl), `${label}.${flowName} omitted tokenUrl`);
+  } else {
+    assert(
+      isNonEmptyString(flow.authorizationUrl),
+      `${label}.${flowName} omitted authorizationUrl`,
+    );
+  }
+  validateOAuthScopes(flow.scopes, `${label}.${flowName}.scopes`);
+}
+
+function validateSecuritySchemes(value) {
+  const names = new Set();
+  if (value === undefined) return names;
+  const schemes = asRecord(value);
+  assert(schemes && Object.keys(schemes).length > 0, "A2A securitySchemes was empty or invalid");
+  const variantNames = [
+    "apiKeySecurityScheme",
+    "httpAuthSecurityScheme",
+    "oauth2SecurityScheme",
+    "openIdConnectSecurityScheme",
+    "mtlsSecurityScheme",
+  ];
+  for (const [name, candidate] of Object.entries(schemes)) {
+    assert(isNonEmptyString(name), "A2A securitySchemes contained an empty name");
+    const wrapper = asRecord(candidate);
+    assert(wrapper, `A2A security scheme ${name} was not an object`);
+    assertOnlyKeys(wrapper, new Set(variantNames), `A2A security scheme ${name}`);
+    const configured = variantNames.filter((variant) => wrapper[variant] !== undefined);
+    assert(
+      configured.length === 1,
+      `A2A security scheme ${name} did not configure exactly one variant`,
+    );
+    const variantName = configured[0];
+    const scheme = asRecord(wrapper[variantName]);
+    assert(scheme, `A2A security scheme ${name}.${variantName} was not an object`);
+    const label = `A2A security scheme ${name}.${variantName}`;
+
+    if (variantName === "apiKeySecurityScheme") {
+      assertOnlyKeys(scheme, new Set(["description", "location", "name"]), label);
+      assert(["query", "header", "cookie"].includes(scheme.location), `${label} had bad location`);
+      assert(isNonEmptyString(scheme.name), `${label} had no parameter name`);
+    } else if (variantName === "httpAuthSecurityScheme") {
+      assertOnlyKeys(scheme, new Set(["description", "scheme", "bearerFormat"]), label);
+      assert(isNonEmptyString(scheme.scheme), `${label} had no HTTP auth scheme`);
+      assert(
+        scheme.bearerFormat === undefined || isNonEmptyString(scheme.bearerFormat),
+        `${label} had an invalid bearerFormat`,
+      );
+    } else if (variantName === "oauth2SecurityScheme") {
+      assertOnlyKeys(scheme, new Set(["description", "flows", "oauth2MetadataUrl"]), label);
+      validateOAuthFlows(scheme.flows, `${label}.flows`);
+      if (scheme.oauth2MetadataUrl !== undefined) {
+        validateSecureHttpUrl(scheme.oauth2MetadataUrl, `${label}.oauth2MetadataUrl`);
+      }
+    } else if (variantName === "openIdConnectSecurityScheme") {
+      assertOnlyKeys(scheme, new Set(["description", "openIdConnectUrl"]), label);
+      validateSecureHttpUrl(scheme.openIdConnectUrl, `${label}.openIdConnectUrl`);
+    } else {
+      assertOnlyKeys(scheme, new Set(["description"]), label);
+    }
+    assert(
+      scheme.description === undefined || isNonEmptyString(scheme.description),
+      `${label} had an invalid description`,
+    );
+    names.add(name);
+  }
+  return names;
+}
+
+async function validateA2AAgentCard(request) {
+  const result = await readJson(request, AGENT_CARD_ROUTE);
+  const card = asRecord(result.json);
+  assert(card, `${AGENT_CARD_ROUTE} did not return a JSON object`);
+  assertOnlyKeys(
+    card,
+    new Set([
+      "name",
+      "description",
+      "supportedInterfaces",
+      "provider",
+      "version",
+      "documentationUrl",
+      "capabilities",
+      "defaultInputModes",
+      "defaultOutputModes",
+      "skills",
+      "securitySchemes",
+      "securityRequirements",
+      "signatures",
+      "iconUrl",
+    ]),
+    "A2A v1 Agent Card",
+  );
+  assert(isNonEmptyString(card.name), "A2A v1 Agent Card did not declare a name");
+  assert(isNonEmptyString(card.description), "A2A v1 Agent Card did not declare a description");
+  assert(isNonEmptyString(card.version), "A2A v1 Agent Card did not declare an agent version");
+
+  assert(
+    Array.isArray(card.supportedInterfaces) && card.supportedInterfaces.length > 0,
+    "A2A v1 Agent Card did not declare supportedInterfaces",
+  );
+  const interfaceKeys = new Set();
+  for (const [index, value] of card.supportedInterfaces.entries()) {
+    const agentInterface = asRecord(value);
+    assert(agentInterface, `A2A interface ${index} was not an object`);
+    assertOnlyKeys(
+      agentInterface,
+      new Set(["url", "protocolBinding", "protocolVersion", "tenant"]),
+      `A2A interface ${index}`,
+    );
+    assert(
+      isNonEmptyString(agentInterface.protocolBinding),
+      `A2A interface ${index} had no protocol binding`,
+    );
+    const interfaceUrl = parseAgentCardUrl(agentInterface.url, `A2A interface ${index} URL`);
+    const isCoreBinding = ["JSONRPC", "GRPC", "HTTP+JSON"].includes(agentInterface.protocolBinding);
+    let normalizedProtocolBinding = agentInterface.protocolBinding;
+    if (isCoreBinding) {
+      assert(
+        interfaceUrl.protocol === "https:" ||
+          (interfaceUrl.protocol === "http:" && isLoopbackHostname(interfaceUrl.hostname)),
+        `A2A interface ${index} core binding did not use HTTPS or loopback HTTP`,
+      );
+    } else {
+      try {
+        normalizedProtocolBinding = new URL(agentInterface.protocolBinding).href;
+      } catch {
+        throw new Error(`A2A interface ${index} protocol binding was not an absolute URI`);
+      }
+      const unsafeProtocols = new Set([
+        "file:",
+        "data:",
+        "javascript:",
+        "blob:",
+        "ftp:",
+        "mqtt:",
+        "amqp:",
+      ]);
+      assert(
+        !unsafeProtocols.has(interfaceUrl.protocol) &&
+          !(
+            (interfaceUrl.protocol === "http:" || interfaceUrl.protocol === "ws:") &&
+            !isLoopbackHostname(interfaceUrl.hostname)
+          ),
+        `A2A interface ${index} custom binding used an unsafe or insecure URL`,
+      );
+    }
+    assert(
+      /^\d+\.\d+$/u.test(agentInterface.protocolVersion),
+      `A2A interface ${index} protocol version did not use major.minor form`,
+    );
+    assert(
+      agentInterface.tenant === undefined || isNonEmptyString(agentInterface.tenant),
+      `A2A interface ${index} had an invalid tenant`,
+    );
+    const interfaceKey = JSON.stringify([
+      interfaceUrl.href,
+      normalizedProtocolBinding,
+      agentInterface.protocolVersion.trim(),
+      agentInterface.tenant?.trim() ?? "",
+    ]);
+    assert(
+      !interfaceKeys.has(interfaceKey),
+      `A2A Agent Card duplicated supported interface ${index}`,
+    );
+    interfaceKeys.add(interfaceKey);
+  }
+
+  if (card.provider !== undefined) {
+    const provider = asRecord(card.provider);
+    assert(provider, "A2A provider was not an object");
+    assertOnlyKeys(provider, new Set(["organization", "url"]), "A2A provider");
+    assert(isNonEmptyString(provider.organization), "A2A provider had no organization");
+    validateSecureHttpUrl(provider.url, "A2A provider URL");
+  }
+  if (card.documentationUrl !== undefined) {
+    validateSecureHttpUrl(card.documentationUrl, "A2A documentationUrl");
+  }
+  if (card.iconUrl !== undefined) {
+    validateSecureHttpUrl(card.iconUrl, "A2A iconUrl");
+  }
+
+  const securitySchemeNames = validateSecuritySchemes(card.securitySchemes);
+  validateSecurityRequirements(
+    card.securityRequirements,
+    securitySchemeNames,
+    "A2A securityRequirements",
+  );
+
+  const capabilities = asRecord(card.capabilities);
+  assert(capabilities, "A2A v1 Agent Card did not declare capabilities");
+  assertOnlyKeys(
+    capabilities,
+    new Set(["streaming", "pushNotifications", "extensions", "extendedAgentCard"]),
+    "A2A capabilities",
+  );
+  for (const key of ["streaming", "pushNotifications", "extendedAgentCard"]) {
+    assert(
+      capabilities[key] === undefined || typeof capabilities[key] === "boolean",
+      `A2A capability ${key} was not boolean`,
+    );
+  }
+  if (capabilities.extendedAgentCard === true) {
+    assert(
+      securitySchemeNames.size > 0,
+      "A2A extendedAgentCard capability had no security schemes",
+    );
+    assert(
+      Array.isArray(card.securityRequirements) &&
+        card.securityRequirements.some((candidate) => {
+          const requirement = asRecord(candidate);
+          const schemes = asRecord(requirement?.schemes);
+          return schemes && Object.keys(schemes).length > 0;
+        }),
+      "A2A extendedAgentCard capability had no applicable security requirement",
+    );
+  }
+  if (capabilities.extensions !== undefined) {
+    assert(Array.isArray(capabilities.extensions), "A2A capability extensions was not an array");
+    for (const [index, candidate] of capabilities.extensions.entries()) {
+      const extension = asRecord(candidate);
+      assert(extension, `A2A extension ${index} was not an object`);
+      assertOnlyKeys(
+        extension,
+        new Set(["uri", "description", "required", "params"]),
+        `A2A extension ${index}`,
+      );
+      parseAgentCardUrl(extension.uri, `A2A extension ${index} URI`);
+      assert(
+        extension.description === undefined || isNonEmptyString(extension.description),
+        `A2A extension ${index} had an invalid description`,
+      );
+      assert(
+        extension.required === undefined || typeof extension.required === "boolean",
+        `A2A extension ${index} required flag was not boolean`,
+      );
+      assert(
+        extension.params === undefined || asRecord(extension.params),
+        `A2A extension ${index} params was not an object`,
+      );
+    }
+  }
+  for (const key of ["defaultInputModes", "defaultOutputModes"]) {
+    validateStringArray(card[key], `A2A v1 Agent Card ${key}`);
+  }
+
+  assert(Array.isArray(card.skills) && card.skills.length > 0, "A2A v1 Agent Card had no skills");
+  const skillIds = new Set();
+  for (const [index, value] of card.skills.entries()) {
+    const skill = asRecord(value);
+    assert(skill, `A2A skill ${index} was not an object`);
+    assertOnlyKeys(
+      skill,
+      new Set([
+        "id",
+        "name",
+        "description",
+        "tags",
+        "examples",
+        "inputModes",
+        "outputModes",
+        "securityRequirements",
+      ]),
+      `A2A skill ${index}`,
+    );
+    assert(isNonEmptyString(skill.id), `A2A skill ${index} had no ID`);
+    assert(!skillIds.has(skill.id), `A2A Agent Card duplicated skill ID ${skill.id}`);
+    skillIds.add(skill.id);
+    assert(isNonEmptyString(skill.name), `A2A skill ${index} had no name`);
+    assert(isNonEmptyString(skill.description), `A2A skill ${index} had no description`);
+    assert(
+      Array.isArray(skill.tags) && skill.tags.length > 0 && skill.tags.every(isNonEmptyString),
+      `A2A skill ${index} had invalid tags`,
+    );
+    if (skill.examples !== undefined) {
+      validateStringArray(skill.examples, `A2A skill ${index} examples`, { allowEmpty: true });
+    }
+    if (skill.inputModes !== undefined) {
+      validateStringArray(skill.inputModes, `A2A skill ${index} inputModes`);
+    }
+    if (skill.outputModes !== undefined) {
+      validateStringArray(skill.outputModes, `A2A skill ${index} outputModes`);
+    }
+    validateSecurityRequirements(
+      skill.securityRequirements,
+      securitySchemeNames,
+      `A2A skill ${index} securityRequirements`,
+    );
+  }
+
+  if (card.signatures !== undefined) {
+    assert(Array.isArray(card.signatures), "A2A signatures was not an array");
+    for (const [index, candidate] of card.signatures.entries()) {
+      const signature = asRecord(candidate);
+      assert(signature, `A2A signature ${index} was not an object`);
+      assertOnlyKeys(
+        signature,
+        new Set(["protected", "signature", "header"]),
+        `A2A signature ${index}`,
+      );
+      assert(isNonEmptyString(signature.protected), `A2A signature ${index} omitted protected`);
+      assert(isNonEmptyString(signature.signature), `A2A signature ${index} omitted signature`);
+      assert(
+        signature.header === undefined || asRecord(signature.header),
+        `A2A signature ${index} header was not an object`,
+      );
+    }
+  }
+
+  const cacheControl = result.response.headers.get("cache-control") ?? "";
+  const etag = result.response.headers.get("etag");
+  validatePublicCacheControl(cacheControl, AGENT_CARD_ROUTE);
+  assert(isNonEmptyString(etag), `${AGENT_CARD_ROUTE} did not return an ETag`);
+
+  const head = await request(AGENT_CARD_ROUTE, { method: "HEAD" });
+  assert(head.bytes.byteLength === 0, `${AGENT_CARD_ROUTE} HEAD returned a body`);
+  assert(
+    head.response.headers.get("etag") === etag,
+    `${AGENT_CARD_ROUTE} HEAD returned a different ETag`,
+  );
+  assert(
+    head.response.headers.get("cache-control") === result.response.headers.get("cache-control"),
+    `${AGENT_CARD_ROUTE} HEAD returned different cache metadata`,
+  );
+  const notModified = await request(
+    AGENT_CARD_ROUTE,
+    { headers: { "If-None-Match": etag } },
+    [304],
+  );
+  assert(notModified.bytes.byteLength === 0, `${AGENT_CARD_ROUTE} 304 returned a body`);
+  assert(
+    notModified.response.headers.get("etag") === etag,
+    `${AGENT_CARD_ROUTE} 304 returned a different ETag`,
+  );
+  assert(
+    notModified.response.headers.get("cache-control") ===
+      result.response.headers.get("cache-control"),
+    `${AGENT_CARD_ROUTE} 304 returned different cache metadata`,
+  );
+}
+
 async function validateApiCatalog(request) {
   const catalog = await readJson(request, API_CATALOG_ROUTE);
   assert(
@@ -710,16 +1203,8 @@ export async function runAgentSurfaceSmoke(options = {}) {
 
   await recorder.check("optional A2A agent card", async () => {
     const advertised = isNonEmptyString(asRecord(manifest?.api)?.agentCard);
-    const result = advertised
-      ? await readJson(request, AGENT_CARD_ROUTE)
-      : await request(AGENT_CARD_ROUTE, {}, [404]);
-    if (advertised) {
-      const card = asRecord(result.json);
-      assert(
-        card && isNonEmptyString(card.name),
-        `${AGENT_CARD_ROUTE} returned an invalid A2A card`,
-      );
-    }
+    if (advertised) return validateA2AAgentCard(request);
+    await request(AGENT_CARD_ROUTE, {}, [404]);
   });
 
   await Promise.all(
