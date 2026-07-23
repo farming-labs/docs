@@ -10,9 +10,9 @@ agent:
 # Default Theme
 
 <Agent>
-Use this page when the user asks about this topic: Clean, neutral palette with standard border radius.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+`fumadocs`, available from either `@farming-labs/theme` or `@farming-labs/theme/default`, pairs `theme: fumadocs()` with the separate `@farming-labs/theme/default/css` entrypoint.
+The factory declares indigo/white config defaults, standard radii, a 768px content width, and a 280px sidebar; the stylesheet and color mode determine the final computed palette. `ui.colors.primary` and `ui.layout.contentWidth` are documented overrides.
+If the factory resolves but styling is absent, verify the `/default/css` import and inspect the computed `--color-fd-*` variables before adding more overrides.
 </Agent>
 
 The default Fumadocs theme with a neutral color palette and standard border radii.

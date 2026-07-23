@@ -45,9 +45,9 @@ agent:
 # Themes
 
 <Agent>
-Use this page when the user asks about this topic: Built-in themes and how to create your own.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Select the factory and package subpath as a pair—for example, `pixelBorder` from `@farming-labs/theme/pixel-border` with `theme: pixelBorder()`—then import the matching `@farming-labs/theme/pixel-border/css` globally.
+Test navigation, code blocks, callouts, and tables after switching presets. Use `createTheme()` for a reusable custom factory and `extendTheme()` to derive a theme from an existing preset.
+If config builds but visuals do not change, repair the CSS entrypoint; if the factory cannot be resolved, copy its exact export and import path from the built-in themes table.
 </Agent>
 
 @farming-labs/docs ships with twelve built-in theme entrypoints. Each is a preset factory function that you pass to `defineDocs()`. `hardline` stays as the original hard-edge preset, `concrete` is the louder brutalist variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, `ledger` brings a Stripe Docs-inspired product documentation shell, and `threadline` adds compact neutral chrome for chat and agent docs.

@@ -316,7 +316,7 @@ export default defineDocs({
         {
           id: "prepare-monorepo-contribution",
           query:
-            "Contributing Pull requests fork farming-labs/docs branch from main install pnpm and run pnpm --filter website dev",
+            "Contributing Pull requests fork farming-labs/docs branch from main install pnpm and run pnpm --dir website dev",
           topK: 5,
           filters: { framework: "astro", version: "0.2.60" },
           expect: {
@@ -331,7 +331,7 @@ export default defineDocs({
                 language: "bash",
                 title: "terminal",
                 runnable: false,
-                includes: ["pnpm --filter website dev"],
+                includes: ["pnpm --dir website dev"],
                 verification: "present",
               },
             ],

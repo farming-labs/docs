@@ -10,9 +10,9 @@ agent:
 # Threadline Theme
 
 <Agent>
-Use this page when the user asks about this topic: compact neutral theme with page-action defaults.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Both `threadline` and `threadlinePageActions` come from `@farming-labs/theme/threadline`; their config fields are `theme: threadline()` and `pageActions: threadlinePageActions`, with styles from `@farming-labs/theme/threadline/css`.
+Verify the 48px header, compact Geist typography, 944px content width, and ghost-style action menu. The GitHub provider additionally requires top-level `github.url` in `docs.config.ts`.
+For a missing GitHub action, `github.url` is the relevant recovery; for an absent compact shell, the `/threadline/css` import is the relevant check.
 </Agent>
 
 A compact neutral preset for chat, agent, and product documentation. It uses a 48px header, compact Geist typography, muted shadcn surfaces, and ghost-style page actions for dense, readable docs.
@@ -59,7 +59,7 @@ The GitHub action needs top-level `github` config so the theme can resolve `{git
 | Background    | `oklch(1 0 0)` (light), `oklch(0.145 0 0)` (dark) |
 | Border        | `oklch(0.922 0 0)`                     |
 | Border radius | `0.625rem`                             |
-| Content width | 912px                                  |
+| Content width | 944px                                  |
 | Sidebar width | 260px                                  |
 | TOC width     | 224px                                  |
 | Header height | 48px                                   |

@@ -10,9 +10,9 @@ agent:
 # DarkBold Theme
 
 <Agent>
-Use this page when the user asks about this topic: Pure monochrome design with Geist typography and clean minimalism.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+DarkBold uses `darkbold` from `@farming-labs/theme/darkbold`, `theme: darkbold()` in `docs.config.ts`, and `@farming-labs/theme/darkbold/css` in the global stylesheet.
+Validate the monochrome `#000` primary, Geist/Geist Mono fonts, and tighter H1–H3 letter spacing; supported examples override `ui.colors.primary` and `ui.typography.font.h1`.
+If the site retains another preset's colors or type scale, correct the `/darkbold/css` entrypoint before adding typography overrides.
 </Agent>
 
 A pure monochrome design inspired by <HoverLink href="https://vercel.com/docs" title="Vercel Docs" description="Vercel's documentation style pairs crisp monochrome UI, Geist typography, and compact spacing across technical content." linkLabel="Visit Vercel Docs" external>Vercel</HoverLink> — featuring Geist typography, tight letter-spacing, and clean minimalism.

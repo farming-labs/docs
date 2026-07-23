@@ -10,9 +10,15 @@ agent:
 # Observability
 
 <Agent>
-Use this page when the user asks about this topic: Trace Ask AI and MCP runs with span IDs, timing, status, previews, errors, and callbacks.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Top-level `observability` covers steps inside Ask AI and MCP runs. `observability: true` writes the
+`[@farming-labs/docs:observability]` stream; its console mode shows local traces, while
+`observability.onEvent` forwards `DocsObservabilityEvent` objects.
+
+Verify one trace contains a shared `traceId`, child `spanId` values, status, and `durationMs`, with
+Ask AI lifecycle events or `tool.call`/`tool.result` for MCP. Built-in previews exclude raw user
+text; separate raw `input` fields are omitted unless `includeInputs` is enabled. If only `page_view`,
+`search_query`, `api_ai_request`, or `mcp_tool` appears, inspect `analytics.onEvent`; those are usage
+events rather than runtime spans.
 </Agent>
 
 Use `observability` when you need step-level visibility into agent runtime behavior. It emits

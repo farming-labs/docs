@@ -51,9 +51,9 @@ import { WebsiteThemePrompt } from "@/components/website-theme-prompt";
 # Creating Your Own Theme
 
 <Agent>
-Use this page when the user asks about this topic: Step-by-step guide to building, publishing, and sharing custom themes.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Build reusable presets with `createTheme` from `@farming-labs/docs`, give each one a unique `name`, and call its factory as `theme: myTheme()` inside `defineDocs()`. In contrast, pass the `DocsTheme` instance from `extendTheme()` as `theme: myTheme` without calling it.
+Validate the production build plus navigation, search, code, callouts, and tables. Config-only themes need no custom CSS; when a package ships custom CSS, export it as `./css` and import it from the consumer's global stylesheet.
+For an unstyled config-only theme, verify that the intended factory or extended instance reaches `defineDocs()`. For a package that only fails for consumers, verify `.` and, when present, `./css` in `package.json` exports against the packed artifact.
 </Agent>
 
 Everything starts with `createTheme()`. No CSS required — just a config object.

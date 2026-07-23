@@ -43,9 +43,19 @@ agent:
 # API Reference
 
 <Agent>
-Use this page when the user asks about this topic: Complete reference for all configuration options.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Before changing configuration, inspect the existing `defineDocs()` call and select the exact
+exported `DocsConfig` field or nested type documented below. Preserve the framework's config path:
+`docs.config.ts[x]` for Next.js, TanStack Start, and Nuxt, or `src/lib/docs.config.ts` for SvelteKit
+and Astro. The non-Next adapters can configure `contentDir` and `nav` explicitly, while Next.js
+derives its content tree from `app/{entry}/`.
+
+When MCP `get_config_schema` publishes the option, compare its type and default; otherwise verify
+against the installed exported types and matching-version reference. Then run
+`pnpm exec docs doctor --agent` for the resolved capability and discovery fields it audits. For
+SvelteKit or Astro, append `--config src/lib/docs.config.ts`. If TypeScript rejects the documented
+shape, first align all `@farming-labs/*` package versions and rename the config to `.tsx` when it
+contains JSX. If diagnostics and public discovery disagree, restore the previous value and repair
+the adapter route or stale static export before enabling the capability again.
 </Agent>
 
 Complete reference for every option in `docs.config.ts`. All types are exported from `@farming-labs/docs`.

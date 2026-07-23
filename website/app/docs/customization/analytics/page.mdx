@@ -10,9 +10,15 @@ agent:
 # Analytics
 
 <Agent>
-Use this page when the user asks about this topic: Track product and usage events from docs, search, AI, feedback, agent, and MCP routes.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Top-level `analytics` records product usage, not step-level agent traces. `analytics: true` writes
+events with the `[@farming-labs/docs:analytics]` prefix; `analytics.onEvent` forwards normalized
+`DocsAnalyticsEvent` objects to a custom destination.
+
+Leave `analytics.includeInputs` false unless the project has consent and a retention policy; paths,
+counts, status, durations, and model IDs remain available without raw queries or questions. Verify
+the integration by triggering a page, search, Ask AI, Markdown, or MCP action and checking its exact
+event type and `source`. Retrieval, model, or tool spans inside one request belong to
+`observability` instead.
 </Agent>
 
 Use `analytics` when you want to understand how people and agents use your docs. It emits

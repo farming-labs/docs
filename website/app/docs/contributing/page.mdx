@@ -46,9 +46,19 @@ agent:
 # Contributing
 
 <Agent>
-Use this page when the user asks about this topic: How to contribute to @farming-labs/docs.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Start by reading the repository `AGENTS.md` and the matching file under
+`skills/farming-labs/*/SKILL.md`, then branch from `main` with a focused `fix/`, `feat/`, or `chore/`
+name. Install the pinned workspace dependencies from the repository root and keep edits inside the
+smallest affected package, example, or `website/app/docs/` page set.
+
+For a documentation preview, run `pnpm --dir website dev` and open the changed route. Core or
+theme work may also require `pnpm build`; adapter agent-surface changes must run the shared
+conformance test described at `/docs/guides/adapter-agent-conformance`. The expected handoff is a
+clean, intentional diff with formatting, type checks, and the smallest relevant tests passing.
+
+If a package test passes but another adapter regresses, run the shared conformance tests and the
+affected adapter type check before review. If formatting touches unrelated files, remove those
+mechanical changes instead of including them in the pull request.
 </Agent>
 
 Thanks for your interest in contributing to **@farming-labs/docs**. This guide explains how to report issues, propose changes, and submit pull requests.
@@ -107,7 +117,7 @@ Please be respectful and constructive. We aim to keep the community welcoming an
    ```
 5. **Run the docs site** (from repo root):
    ```bash title="terminal"
-   pnpm --filter website dev
+   pnpm --dir website dev
    ```
    Then open [http://localhost:3000](http://localhost:3000) to preview.
 6. **Make your changes** — Keep edits focused; doc-only and small fixes are welcome.

@@ -10,9 +10,9 @@ agent:
 # Colorful Theme
 
 <Agent>
-Use this page when the user asks about this topic: Warm amber accent with Inter typography and a clean layout.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Apply this preset with `colorful` from `@farming-labs/theme/colorful`, `theme: colorful()` in `docs.config.ts`, and `@import "@farming-labs/theme/colorful/css"` in `app/global.css`.
+Check for the amber `hsl(40, 96%, 40%)` primary, 768px content width, and directional TOC; the documented overrides are `ui.colors.primary` and `ui.layout.contentWidth`.
+If the config compiles but those defaults are absent, make the CSS subpath match the `colorful` factory before changing theme tokens.
 </Agent>
 
 A warm, vibrant theme with an amber primary accent, Inter typography, and directional TOC styling.
