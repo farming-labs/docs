@@ -2046,7 +2046,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -2089,7 +2089,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     **`src/routes/api/docs/+server.js`** (search & AI)
 
     ```js title="src/routes/api/docs/+server.js"
-    export { GET, POST } from "../../../lib/docs.server";
+    export { GET, HEAD, POST } from "../../../lib/docs.server";
     ```
 
     **`src/app.css`** — add your theme's CSS here so docs styling applies.
@@ -2155,7 +2155,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -2188,9 +2188,14 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
 
     ```ts title="src/pages/api/docs.ts"
     import type { APIRoute } from "astro";
-    import { GET as docsGET, POST as docsPOST } from "../../lib/docs.server";
+    import {
+      GET as docsGET,
+      HEAD as docsHEAD,
+      POST as docsPOST,
+    } from "../../lib/docs.server";
 
     export const GET: APIRoute = async ({ request }) => docsGET({ request });
+    export const HEAD: APIRoute = async ({ request }) => docsHEAD({ request });
     export const POST: APIRoute = async ({ request }) => docsPOST({ request });
     ```
 

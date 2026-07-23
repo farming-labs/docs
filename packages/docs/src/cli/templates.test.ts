@@ -9,7 +9,9 @@ import {
   rootLayoutTemplate,
   injectRootProviderIntoLayout,
   tanstackDocsConfigTemplate,
+  tanstackDocsCatchAllRouteTemplate,
   tanstackInstallationPageTemplate,
+  tanstackApiDocsRouteTemplate,
   tanstackApiReferenceRouteTemplate,
   tanstackDocsPublicRouteTemplate,
   tanstackRootRouteTemplate,
@@ -33,6 +35,7 @@ import {
   svelteViteConfigTemplate,
   injectDocsAgentSkillsVitePlugin,
   svelteDocsLayoutServerTemplate,
+  svelteDocsApiRouteTemplate,
   svelteDocsPublicHookTemplate,
   injectSvelteDocsPublicHook,
   svelteApiReferenceRouteTemplate,
@@ -42,6 +45,7 @@ import {
   injectAstroAgentSkillsPlugin,
   astroDocsMiddlewareTemplate,
   injectAstroDocsMiddleware,
+  astroApiRouteTemplate,
   astroApiReferenceRouteTemplate,
   nuxtServerApiReferenceRouteTemplate,
   nuxtServerDocsPublicMiddlewareTemplate,
@@ -416,6 +420,13 @@ describe("Agent Skills production bundle templates", () => {
     expect(output).toContain("_preloadedAgentSkills: bundledAgentSkills");
   });
 
+  it.each([
+    ["SvelteKit", svelteDocsServerTemplate({ ...baseConfig, framework: "sveltekit" })],
+    ["Astro", astroDocsServerTemplate({ ...baseConfig, framework: "astro" })],
+  ])("exposes the dedicated HEAD handler from the %s server", (_framework, output) => {
+    expect(output).toContain("{ load, GET, HEAD, POST, MCP }");
+  });
+
   it("wires the plugin into generated Vite, Astro, and Nitro configs", () => {
     expect(tanstackViteConfigTemplate(true)).toContain("docsAgentSkills(docsConfig)");
     expect(svelteViteConfigTemplate()).toContain("docsAgentSkills(docsConfig)");
@@ -447,6 +458,32 @@ describe("Agent Skills production bundle templates", () => {
 });
 
 describe("api reference route templates", () => {
+  it("creates a bodyless HEAD path on the specific TanStack docs route", () => {
+    const out = tanstackDocsCatchAllRouteTemplate({
+      entry: "docs",
+      filePath: "src/routes/docs.$.tsx",
+      useAlias: true,
+      projectName: "my-docs",
+    });
+
+    expect(out).toContain("HEAD: async ({ request }) =>");
+    expect(out).toContain("return docsServer.HEAD({ request })");
+    expect(out.match(/isDocsPublicGetRequest/g)).toHaveLength(3);
+  });
+
+  it("creates a method-aware TanStack docs API route", () => {
+    const out = tanstackApiDocsRouteTemplate(true, "src/routes/api.docs.ts");
+
+    expect(out).toContain("GET: async ({ request }) => docsServer.GET({ request })");
+    expect(out).toContain("HEAD: async ({ request }) => docsServer.HEAD({ request })");
+    expect(out).toContain("POST: async ({ request }) => docsServer.POST({ request })");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain("ANY: async ({ request }) => handleUnsupportedDocsMethod(request)");
+    expect(out).toContain('headers: { Allow: "GET, HEAD, POST" }');
+  });
+
   it("creates a TanStack API reference route handler", () => {
     const out = tanstackApiReferenceRouteTemplate({
       filePath: "src/routes/api-reference.index.ts",
@@ -467,15 +504,27 @@ describe("api reference route templates", () => {
     const out = tanstackDocsPublicRouteTemplate(useAlias, "src/routes/$.ts", "docs");
     expect(out).toContain('createFileRoute("/$")');
     expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
     expect(out).toContain("isDocsMcpRequest");
     expect(out).toContain("isDocsMcpRequest(url, docsConfig.mcp)");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, url, request, { apiRoute: docsConfig.cloud?.apiRoute",
+    );
     expect(out).toContain(serverImport);
     expect(out).toContain('import docsConfig from "../../docs.config";');
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).toContain("llms: docsConfig.llmsTxt");
     expect(out).toContain("robots: docsConfig.robots");
     expect(out).toContain("docsServer.MCP.OPTIONS");
+    expect(out).toContain('if (method === "HEAD") return docsServer.HEAD({ request })');
+    expect(out).toContain('if (method === "POST") return docsServer.POST({ request })');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
+    expect(out).toContain("HEAD: async ({ request }) => handlePublicDocsRequest(request)");
     expect(out).toContain("OPTIONS: async");
+    expect(out).toContain("ANY: async ({ request }) => handlePublicDocsRequest(request)");
     expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
@@ -485,15 +534,32 @@ describe("api reference route templates", () => {
     expect(out).toContain('import config from "$lib/docs.config"');
   });
 
+  it("creates a method-aware SvelteKit docs API route", () => {
+    const out = svelteDocsApiRouteTemplate("src/routes/api/docs/+server.ts", true);
+
+    expect(out).toContain("export { GET, HEAD, POST }");
+  });
+
   it("creates a SvelteKit public docs hook", () => {
     const out = svelteDocsPublicHookTemplate("src/hooks.server.ts", false);
     expect(out).toContain("export const handle");
     expect(out).toContain("isDocsLlmsTxtPublicRequest");
     expect(out).toContain("const nativeResponse = await resolve(event)");
     expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(event.url, { apiRoute: config.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: config.cloud?.apiRoute",
+    );
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
     expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain("import { GET, HEAD, POST, MCP }");
+    expect(out).toContain('if (method === "HEAD") return HEAD(');
+    expect(out).toContain('if (method === "POST") return POST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
     expect(out).toContain("isDocsMcpRequest(event.url, config.mcp)");
     expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
@@ -515,8 +581,22 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).toContain("const existingHandle: Handle =");
     expect(out).toContain("const docsPublicHandle: Handle =");
     expect(out).toContain("docsMCP.OPTIONS");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(event.url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: docsConfig.cloud?.apiRoute",
+    );
+    expect(out).toContain("HEAD as docsHEAD");
+    expect(out).toContain("POST as docsPOST");
+    expect(out).toContain('if (method === "HEAD") return docsHEAD(');
+    expect(out).toContain('if (method === "POST") return docsPOST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
     expect(out).toContain("isDocsMcpRequest(event.url, docsConfig.mcp)");
-    expect(out).toContain("isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry)");
+    expect(out).toContain(
+      "isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
     expect(out).toContain("export const handle = sequence(docsPublicHandle, existingHandle);");
@@ -528,15 +608,34 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).toContain('import config from "../../lib/docs.config"');
   });
 
+  it("creates a method-aware Astro docs API route", () => {
+    const out = astroApiRouteTemplate({ ...baseConfig, framework: "astro" });
+
+    expect(out).toContain("HEAD as docsHEAD");
+    expect(out).toContain("export const HEAD: APIRoute");
+    expect(out).toContain("return docsHEAD({ request })");
+  });
+
   it("creates an Astro public docs middleware", () => {
     const out = astroDocsMiddlewareTemplate("src/middleware.ts", false);
     expect(out).toContain("export const onRequest");
     expect(out).toContain("isDocsLlmsTxtPublicRequest");
     expect(out).toContain("const nativeResponse = await next()");
     expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(context.url, { apiRoute: config.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: config.cloud?.apiRoute",
+    );
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
     expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain("import { GET, HEAD, POST, MCP }");
+    expect(out).toContain('if (method === "HEAD") return HEAD(');
+    expect(out).toContain('if (method === "POST") return POST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
     expect(out).toContain("isDocsMcpRequest(context.url, config.mcp)");
     expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
@@ -558,8 +657,22 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
     expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
     expect(out).toContain("docsMCP.OPTIONS");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(context.url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: docsConfig.cloud?.apiRoute",
+    );
+    expect(out).toContain("HEAD as docsHEAD");
+    expect(out).toContain("POST as docsPOST");
+    expect(out).toContain('if (method === "HEAD") return docsHEAD(');
+    expect(out).toContain('if (method === "POST") return docsPOST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
     expect(out).toContain("isDocsMcpRequest(context.url, docsConfig.mcp)");
-    expect(out).toContain("isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry)");
+    expect(out).toContain(
+      "isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
     expect(out).toContain(
