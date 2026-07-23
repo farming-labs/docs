@@ -582,10 +582,12 @@ What it checks:
 - configured golden tasks for retrieval, citations, version selection, answers, examples, and budgets
 - generated `agent.md` freshness and `agent.compact` defaults
 
-Command health is a static check: the doctor validates package-manager usage, package scripts,
-working directories, and known docs CLI commands without executing arbitrary snippets from the
-documentation. Workspace selectors that cannot be resolved safely are reported as unverified and
-do not receive healthy-command credit. Corpus checks compare every docs page, so copying the same
+Command health is a static check: the doctor validates package-manager usage, package scripts
+(including selectors resolved from an enclosing workspace), working directories, known docs CLI
+commands, constrained HTTP probes, safe shell built-ins, and supported Agent Skills or Claude MCP
+setup forms without executing arbitrary snippets or making network requests. Unknown binaries,
+unsupported options, compound shell expressions, and unresolved selectors stay unverified and do
+not receive healthy-command credit. Corpus checks compare every docs page, so copying the same
 plausible-looking Agent template onto many pages no longer increases the score.
 
 Golden tasks are configured under `agent.evaluations.tasks`. When none are configured, the doctor

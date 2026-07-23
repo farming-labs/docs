@@ -808,6 +808,168 @@ pnpm run test -- --filter missing-workspace
     });
   });
 
+  it("resolves named and path selectors from an enclosing package-manager workspace", () => {
+    const workspaceRoot = path.join(rootDir, "monorepo");
+    const docsRoot = path.join(workspaceRoot, "website");
+    const packageRoot = path.join(workspaceRoot, "packages", "app");
+    mkdirSync(docsRoot, { recursive: true });
+    mkdirSync(packageRoot, { recursive: true });
+    writeFileSync(path.join(workspaceRoot, ".git"), "gitdir: fixture\n", "utf-8");
+    writeFileSync(
+      path.join(workspaceRoot, "pnpm-workspace.yaml"),
+      "packages:\n  - website\n  - packages/*\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(docsRoot, "package.json"),
+      JSON.stringify({ name: "website", scripts: { dev: "next dev" } }),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(packageRoot, "package.json"),
+      JSON.stringify({ name: "@acme/app", scripts: { check: "tsc --noEmit" } }),
+      "utf-8",
+    );
+
+    const report = analyzeAgentUsefulness({
+      rootDir: docsRoot,
+      pages: [
+        {
+          ...page(
+            "nested-workspace",
+            `# Workspace commands
+
+\`\`\`bash
+pnpm --filter @acme/app check
+pnpm --filter ./packages/app check
+pnpm --filter @acme/app test
+\`\`\``,
+          ),
+          actionable: false,
+        },
+      ],
+    });
+
+    expect(
+      report.findings
+        .filter((finding) => finding.code === "command-script-missing")
+        .map((finding) => finding.command),
+    ).toEqual(["pnpm --filter @acme/app test"]);
+    expect(report.findings.map((finding) => finding.code)).not.toContain("command-unverified");
+    expect(report.metrics.commands).toEqual({
+      total: 3,
+      healthy: 2,
+      unhealthy: 1,
+      unverified: 0,
+    });
+  });
+
+  it("does not resolve selectors from a workspace outside the nearest Git boundary", () => {
+    const outerRoot = path.join(rootDir, "outer");
+    const repositoryRoot = path.join(outerRoot, "repository");
+    const docsRoot = path.join(repositoryRoot, "website");
+    const unrelatedPackageRoot = path.join(outerRoot, "packages", "outside");
+    mkdirSync(docsRoot, { recursive: true });
+    mkdirSync(unrelatedPackageRoot, { recursive: true });
+    writeFileSync(
+      path.join(outerRoot, "pnpm-workspace.yaml"),
+      "packages:\n  - repository/website\n  - packages/*\n",
+      "utf-8",
+    );
+    writeFileSync(path.join(repositoryRoot, ".git"), "gitdir: fixture\n", "utf-8");
+    writeFileSync(
+      path.join(docsRoot, "package.json"),
+      JSON.stringify({ name: "website", scripts: { dev: "next dev" } }),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(unrelatedPackageRoot, "package.json"),
+      JSON.stringify({ name: "@outside/app", scripts: { check: "tsc --noEmit" } }),
+      "utf-8",
+    );
+
+    const report = analyzeAgentUsefulness({
+      rootDir: docsRoot,
+      pages: [
+        {
+          ...page(
+            "bounded-workspace",
+            `# Workspace boundary
+
+\`\`\`bash
+pnpm --filter @outside/app check
+\`\`\``,
+          ),
+          actionable: false,
+        },
+      ],
+    });
+
+    expect(report.findings.map((finding) => finding.code)).toContain("command-unverified");
+    expect(report.metrics.commands).toEqual({
+      total: 1,
+      healthy: 0,
+      unhealthy: 0,
+      unverified: 1,
+    });
+  });
+
+  it("recognizes constrained probes and agent setup commands without executing them", () => {
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page(
+            "static-command-confidence",
+            `# Static command confidence
+
+\`\`\`bash
+curl -fsSL "https://docs.example.com/docs.md" -H "Accept: text/markdown"
+curl -X POST "https://docs.example.com/api/feedback" -H "content-type: application/json" -d '{"outcome":"implemented"}'
+curl "https://docs.example.com/search?q=agent&format=markdown"
+cd generated-app
+export DOCS_API_KEY=example
+test "docs" = "docs"
+echo "shell ok"
+echo "operators such as && and > stay literal when quoted"
+npx skills add farming-labs/docs
+claude mcp add-json farming-labs-docs '{"type":"http","url":"https://docs.example.com/mcp"}'
+pnpm exec docs mcp setup --deployment <id>
+curl --imaginary "https://docs.example.com"
+npx skills add not-a-repository
+npx mystery-tool run build
+claude mcp add-json farming-labs-docs '{"type":"http","url":"not-a-url"}'
+echo "first" && mystery-tool
+echo first > output.txt
+\`\`\``,
+          ),
+          actionable: false,
+        },
+      ],
+    });
+    const unverified = report.findings
+      .filter((finding) => finding.code === "command-unverified")
+      .map((finding) => finding.command);
+
+    expect(unverified).toEqual(
+      expect.arrayContaining([
+        'claude mcp add-json farming-labs-docs \'{"type":"http","url":"not-a-url"}\'',
+        'echo "first" && mystery-tool',
+        "echo first > output.txt",
+        'curl --imaginary "https://docs.example.com"',
+        "npx skills add not-a-repository",
+        "npx mystery-tool run build",
+      ]),
+    );
+    expect(unverified).toHaveLength(6);
+    expect(report.metrics.commands).toEqual({
+      total: 17,
+      healthy: 11,
+      unhealthy: 0,
+      unverified: 6,
+    });
+  });
+
   it("skips prompted console output and marks unknown command forms as unverified", () => {
     const report = analyzeAgentUsefulness({
       rootDir,
