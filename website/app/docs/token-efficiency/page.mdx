@@ -51,9 +51,19 @@ agent:
 # Token Efficiency
 
 <Agent>
-Use this page when the user asks about this topic: How @farming-labs/docs keeps your project lean for AI-assisted development - without sacrificing flexibility.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Measure retrieval before compacting. Set per-page `agent.tokenBudget` in `page.mdx` and configure
+`agent.compact` in `docs.config.ts[x]`; keep the Docs Cloud key outside source control through
+`agent.compact.apiKeyEnv`. Preview writes with
+`pnpm exec docs agent compact --changed --dry-run`, then compact only pages whose task commands,
+constraints, expected results, and recovery steps remain recoverable. For SvelteKit or Astro,
+append `--config src/lib/docs.config.ts` to this command and the doctor command below.
+
+Run `pnpm exec docs doctor --agent` after compaction. Any configured golden tasks should still
+satisfy their source, citation, scope, example, and UTF-8 budget requirements. Remember that a
+generated sibling `agent.md` replaces only machine-readable page output; the rendered `page.mdx`
+remains unchanged. If a compacted result drops required evidence or lowers the relevant page below
+an overview, restore the prior `agent.md`, improve its contract and retrieval metadata, and rerun
+the task before raising compaction aggressiveness.
 </Agent>
 
 AI tools like Cursor, Copilot, and Claude read your project files to help you write code. Every file they read costs **tokens** — the units that determine response speed, API cost, and how much of your project fits in a single conversation.

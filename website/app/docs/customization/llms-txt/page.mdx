@@ -10,9 +10,15 @@ agent:
 # llms.txt
 
 <Agent>
-Use this page when the user asks about this topic: Auto-generate llms.txt and llms-full.txt for LLM-friendly documentation.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+`llmsTxt` is enabled by default. Verify `/llms.txt`, `/llms-full.txt`, their `/.well-known/` aliases,
+and the `format=llms` or `format=llms-full` docs API responses before adding route files.
+`llmsTxt.baseUrl` corrects the generated origin, `llmsTxt.sections` divides a large corpus, and
+`llmsTxt.maxChars` limits compact output.
+
+Static deployment uses `pnpm exec docs agent export --public`; committed output is checked with
+`pnpm exec docs agent export --check`. A native `public/llms.txt` (or SvelteKit `static/llms.txt`)
+intentionally wins over generated fallback content, so that file is the first place to inspect or
+delete when runtime configuration appears to have no effect.
 </Agent>
 
 Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An open convention for exposing website content to language models in a predictable, crawlable text format." linkLabel="Read the llms.txt spec" external><code>llms.txt</code></HoverLink> content through your existing docs API and the default public aliases. It is enabled by default.

@@ -41,9 +41,16 @@ agent:
 # Page Actions
 
 <Agent>
-Use this page when the user asks about this topic: Add "Open in LLM" and "Copy Markdown" buttons to your doc pages.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Edit top-level `pageActions` in `docs.config.ts` or `docs.config.tsx`. Enable
+`copyMarkdown` for clipboard output and `openDocs` for provider links; prefer
+`openDocs.target: "markdown"` so the prompt receives the current machine-readable page. Configure
+top-level `github` before using the `github` target or `{githubUrl}` template value.
+
+First verify the page's `.md` route, then copy Markdown and open every configured provider from that
+page. If copying returns HTML or an empty body, repair the Markdown route rather than the button. If
+a provider URL contains an unresolved token, use only the documented template placeholders and
+check the required `github.url`. To remove both actions, delete `pageActions` or set both
+`copyMarkdown: false` and `openDocs: false`.
 </Agent>
 
 Page actions are buttons rendered above or below the page title. They let users interact with page content — copy it as Markdown, or open it in an LLM provider like ChatGPT or Claude.

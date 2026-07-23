@@ -42,9 +42,21 @@ agent:
 # CLI
 
 <Agent>
-Use this page when the user asks about this topic: Scaffold, upgrade, export static Agent Bundles, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Choose the CLI workflow before changing files. For a published release use
+`pnpm dlx @farming-labs/docs <command>`; use `pnpm exec docs <command>` only after the project has
+installed its dependencies. For a non-interactive fresh scaffold, use
+`init --template <framework> --name <dir>`; omit `--name` to be prompted. Plain `init` asks whether
+to modify the current app or create a fresh project.
+
+After a mutating command, run `pnpm exec docs doctor --agent`; the expected result is a loaded
+`docs.config.ts`, `docs.config.tsx`, or `src/lib/docs.config.ts` with no hard failure for an enabled
+agent surface. For SvelteKit or Astro, append `--config src/lib/docs.config.ts`. Prefer `--dry-run`
+for upgrade or compaction previews and `--check` for generated agent bundles, sitemaps, robots, or
+AGENTS files where the command documents that flag.
+
+If `pnpm` cannot find `docs`, install dependencies or switch to the published `pnpm dlx` form. If
+the wrong config is loaded, return to the project root or pass the command's documented
+`--config <path>` option; do not copy flags between unrelated subcommands.
 </Agent>
 
 The `@farming-labs/docs` CLI has a few main jobs:

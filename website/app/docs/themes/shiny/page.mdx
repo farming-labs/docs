@@ -10,9 +10,9 @@ agent:
 # Shiny Theme
 
 <Agent>
-Use this page when the user asks about this topic: Clerk-inspired theme with purple accents and a polished light/dark design.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Shiny pairs `shiny` from `@farming-labs/theme/shiny` with `theme: shiny()` and `@farming-labs/theme/shiny/css` after Tailwind in `app/global.css`.
+Confirm the purple `hsl(256, 100%, 64%)` primary, polished light/dark surfaces, 280px sidebar, and 64px header; the local examples permit `ui.colors.primary` and `ui.layout.sidebarWidth` changes.
+If those dimensions apply without the polished surfaces, verify the `/shiny/css` package export is present rather than copying Clerk-specific styles.
 </Agent>
 
 Inspired by <HoverLink href="https://clerk.com/docs" title="Clerk Docs" description="Clerk's documentation combines polished product styling, strong hierarchy, and approachable auth-focused guides." linkLabel="Visit Clerk Docs" external>Clerk</HoverLink> — a clean, polished UI with purple accents and a professional light/dark design.

@@ -61,9 +61,17 @@ agent:
 # MCP Server
 
 <Agent>
-Use this page when the user asks about this topic: Expose your docs as MCP tools and resources over stdio, /mcp, or /.well-known/mcp.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+MCP is enabled and public by default: `/mcp` and `/.well-known/mcp` forward to the canonical
+`/api/docs/mcp` handler. Add `mcp.security.authenticate` only for private docs; return a principal to
+continue or `null` for `401`. Add `mcp.security.protectedResource.authorizationServers` and scopes
+only when OAuth-aware clients need RFC 9728 discovery.
+
+Run `pnpm exec docs doctor --agent`, then initialize a client and call `list_docs` followed by
+`read_page` for a known route. A `404` can mean MCP is disabled, static export omitted the server
+route, or the canonical handler and public forwarder are missing or disagree; use doctor output to
+distinguish them. Repeated `401` responses mean the callback is not returning a valid principal;
+`403` with `insufficient_scope` means the principal lacks a configured required scope. Local-only
+clients can avoid HTTP routing with `pnpm exec docs mcp`.
 </Agent>
 
 `@farming-labs/docs` can expose your docs as a built-in MCP server, so AI clients can search the docs, read pages, list sections, inspect code examples, and understand config options without scraping HTML.

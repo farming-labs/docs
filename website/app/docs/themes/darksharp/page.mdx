@@ -10,9 +10,9 @@ agent:
 # Darksharp Theme
 
 <Agent>
-Use this page when the user asks about this topic: All-black theme with sharp corners.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Activate Darksharp with `darksharp` from `@farming-labs/theme/darksharp`, `theme: darksharp()`, and `@import "@farming-labs/theme/darksharp/css"` in `app/global.css`.
+Confirm the neutral light palette, pure-black dark-mode background, near-white dark-mode primary, sharp low-radius chrome, and the factory's 768px/280px content-sidebar defaults; the page demonstrates a `ui.colors.primary` override.
+If the preset styling is absent in both color modes, verify that `darksharp()` is paired with the `/darksharp/css` entrypoint before adding overrides.
 </Agent>
 
 An all-black theme with `rounded-none` styling — clean, minimal, and sharp.
@@ -38,11 +38,11 @@ export default defineDocs({
 
 | Property      | Value                  |
 | ------------- | ---------------------- |
-| Primary       | Near-white             |
-| Background    | `#000000` (pure black) |
-| Border radius | `0px` (no rounding)    |
-| Content width | 860px                  |
-| Sidebar width | 286px                  |
+| Primary       | Near-white in dark mode               |
+| Background    | Neutral light, `#000000` in dark mode |
+| Border radius | Sharp / low-radius                    |
+| Content width | 768px                                 |
+| Sidebar width | 280px                                 |
 
 ## Customizing
 

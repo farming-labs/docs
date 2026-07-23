@@ -10,9 +10,15 @@ agent:
 # Typography
 
 <Agent>
-Use this page when the user asks about this topic: Fonts, heading sizes, weights, and spacing.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Font families live at `theme.ui.typography.font.style.sans` and `.mono`; `h1` through `h4`, `body`,
+and `small` accept the documented `size`, `weight`, `lineHeight`, and `letterSpacing` fields in
+`docs.config.ts` or `docs.config.tsx`.
+
+For Next.js Google Fonts, CSS variables originate in `app/layout.tsx`; their generated variable
+classes belong on `<body>`, and the typography config references those exact names. Verify the
+computed sans and mono families on the rendered page. If the fallback font remains, check that the
+body class includes both font variables and that the config spelling matches before changing type
+sizes or weights.
 </Agent>
 
 Control fonts, heading sizes, weights, line heights, and letter spacing — all from config.

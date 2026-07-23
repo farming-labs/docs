@@ -10,9 +10,9 @@ agent:
 # Command Grid Theme
 
 <Agent>
-Use this page when the user asks about this topic: Mono-first paper-grid theme inspired by the better-cmdk landing page.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Choose Command Grid by importing `commandGrid` from `@farming-labs/theme/command-grid`, calling `commandGrid()` in the `theme` field, and loading `@farming-labs/theme/command-grid/css` globally.
+Verify the paper-grid light background, mono-first UI, `0px` radius, 900px content area, and 304px sidebar; customize only the shown `ui.colors.accent` or `ui.layout.sidebarWidth` when answering from this page.
+A plain ungridded result usually means the `/command-grid/css` entrypoint is missing or paired with a different factory.
 </Agent>
 
 A mono-first preset with a paper-grid light mode, lead-toned dark mode, sharper borders, and calmer surfaces inspired by the better-cmdk landing page.

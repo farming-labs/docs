@@ -43,9 +43,17 @@ agent:
 # Components
 
 <Agent>
-Use this page when the user asks about this topic: Override built-in or add custom MDX components.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+For Next.js or TanStack Start, create the React component and register its exact case-sensitive name
+under top-level `components` in `docs.config.ts[x]`; MDX can then use that name without an import.
+Astro, SvelteKit, and Nuxt use their adapter-native component registration instead. Use
+`theme.ui.components` only to change default props for a built-in; a top-level entry such as
+`components.HoverLink` replaces that component across the React-rendered docs pages.
+
+Build the docs app and render one MDX page with the documented props while confirming existing
+built-ins still work. If MDX reports an undefined component, check its export and registration name
+and restart the dev server. If JSX makes the config fail to parse, rename `docs.config.ts` to
+`docs.config.tsx`. Remove a built-in override to restore the previous component; when removing a
+custom component, remove its MDX usages too.
 </Agent>
 
 Pass custom React components that become available in **all MDX files** — no imports needed.

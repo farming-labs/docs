@@ -41,9 +41,15 @@ agent:
 # OG Images
 
 <Agent>
-Use this page when the user asks about this topic: Dynamic and static Open Graph images for docs - how they work, what context is passed, and how the docs website generates them.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+For Next.js dynamic previews, set `og.enabled`, `og.type: "dynamic"`, and `og.endpoint` in
+`docs.config.ts`, then implement `GET` in `app/api/og/route.tsx` when the response contains JSX.
+Read the `title` and `description` query parameters and return a 1200x630 image. For a reliable
+per-page override, set explicit `openGraph` and `twitter` frontmatter.
+
+Fetch a representative page's absolute `og:image` URL and require HTTP 200 with an image content
+type. If a dynamic image is stale, hard-refresh or add a cache-busting query. If rendering throws,
+limit the route to fonts, layout, and CSS supported by `ImageResponse`; restore the previous `og`
+config and remove the new route or static image to roll back.
 </Agent>
 
 Open Graph (OG) images are the preview images shown when your docs pages are shared on social platforms, Slack, or messaging apps. This guide explains how the framework supports **dynamic** (generated per page) and **static** (per-page image file) OG images, what data your image generator receives, and how the docs website implements dynamic OG.
