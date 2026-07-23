@@ -42,13 +42,13 @@ const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });
 ```
 
-Re-export `load` from the docs `+layout.server.ts` and `GET`/`POST` from the docs API route. Use
+Re-export `load` from the docs `+layout.server.ts` and `GET`/`HEAD`/`POST` from the docs API route. Use
 `DocsLayout` and `DocsContent` from `@farming-labs/svelte-theme` for presentation. The CLI
 generates all of these files, including public agent and MCP forwarding.
 

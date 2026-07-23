@@ -458,13 +458,31 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ```ts title="src/routes/api.docs.ts"
     import { createFileRoute } from "@tanstack/react-router";
+    import { isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
     import { docsServer } from "@/lib/docs.server";
+    import docsConfig from "../../docs.config";
+
+    async function handleUnsupportedDocsMethod(request: Request) {
+      if (
+        isDocsStandardsDiscoveryRequest(new URL(request.url), {
+          apiRoute: docsConfig.cloud?.apiRoute,
+        })
+      ) {
+        return docsServer.GET({ request });
+      }
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: { Allow: "GET, HEAD, POST" },
+      });
+    }
 
     export const Route = createFileRoute("/api/docs")({
       server: {
         handlers: {
           GET: async ({ request }) => docsServer.GET({ request }),
+          HEAD: async ({ request }) => docsServer.HEAD({ request }),
           POST: async ({ request }) => docsServer.POST({ request }),
+          ANY: async ({ request }) => handleUnsupportedDocsMethod(request),
         },
       },
     });
@@ -534,7 +552,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -579,7 +597,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     **`src/routes/api/docs/+server.js`** (for search and AI):
 
     ```js title="src/routes/api/docs/+server.js"
-    export { GET, POST } from "../../../lib/docs.server";
+    export { GET, HEAD, POST } from "../../../lib/docs.server";
     ```
 
     > **Production note**: The `docs.server.ts` file uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
@@ -674,7 +692,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -713,9 +731,14 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ```ts title="src/pages/api/docs.ts"
     import type { APIRoute } from "astro";
-    import { GET as docsGET, POST as docsPOST } from "../../lib/docs.server";
+    import {
+      GET as docsGET,
+      HEAD as docsHEAD,
+      POST as docsPOST,
+    } from "../../lib/docs.server";
 
     export const GET: APIRoute = async ({ request }) => docsGET({ request });
+    export const HEAD: APIRoute = async ({ request }) => docsHEAD({ request });
     export const POST: APIRoute = async ({ request }) => docsPOST({ request });
     ```
 

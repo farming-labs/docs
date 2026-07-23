@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
+} from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
 import docsConfig from "../../docs.config";
 
@@ -20,14 +24,22 @@ async function handlePublicDocsRequest(request: Request) {
     });
   }
 
+  if (isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    if (method === "HEAD") return docsServer.HEAD({ request });
+    if (method === "POST") return docsServer.POST({ request });
+    return docsServer.GET({ request });
+  }
+
   if (
     (method === "GET" || method === "HEAD") &&
     isDocsPublicGetRequest(docsEntry, url, request, {
+      apiRoute: docsConfig.cloud?.apiRoute,
       sitemap: docsConfig.sitemap,
       llms: docsConfig.llmsTxt,
+      robots: docsConfig.robots,
     })
   ) {
-    return docsServer.GET({ request });
+    return method === "HEAD" ? docsServer.HEAD({ request }) : docsServer.GET({ request });
   }
 
   return new Response("Not Found", { status: 404 });
@@ -37,9 +49,11 @@ export const Route = createFileRoute("/$")({
   server: {
     handlers: {
       GET: async ({ request }) => handlePublicDocsRequest(request),
+      HEAD: async ({ request }) => handlePublicDocsRequest(request),
       POST: async ({ request }) => handlePublicDocsRequest(request),
       DELETE: async ({ request }) => handlePublicDocsRequest(request),
       OPTIONS: async ({ request }) => handlePublicDocsRequest(request),
+      ANY: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });

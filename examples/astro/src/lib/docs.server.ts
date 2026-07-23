@@ -16,7 +16,7 @@ const contentFiles = import.meta.glob(
   },
 ) as Record<string, string>;
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });

@@ -2207,7 +2207,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
     ```ts title="src/lib/docs.server.ts"
     import { env } from "$env/dynamic/private";
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
@@ -2229,7 +2229,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
     Pass the API key through `docs.server.ts` (Astro requires server-only env access):
 
     ```ts title="src/lib/docs.server.ts"
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
