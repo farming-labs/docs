@@ -435,6 +435,7 @@ export type {
   DocsAgentFeedbackData,
   FeedbackConfig,
   AgentFeedbackConfig,
+  TweaksConfig,
   DocsAskAIMcpConfig,
   DocsSearchAdapter,
   DocsSearchAdapterContext,
