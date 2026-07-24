@@ -33,7 +33,6 @@ function expectValid(value: unknown) {
 }
 
 async function exportStaticManifest() {
-  const originalCwd = process.cwd();
   const rootDir = mkdtempSync(join(tmpdir(), "docs-agent-manifest-schema-"));
 
   try {
@@ -64,14 +63,12 @@ description: "Start here"
 `,
       "utf8",
     );
-    process.chdir(rootDir);
-    await exportAgentBundle({ public: true });
+    await exportAgentBundle({ public: true, rootDir });
 
     return JSON.parse(
       readFileSync(join(rootDir, "public", ".well-known", "agent.json"), "utf8"),
     ) as unknown;
   } finally {
-    process.chdir(originalCwd);
     rmSync(rootDir, { recursive: true, force: true });
   }
 }
