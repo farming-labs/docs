@@ -40,6 +40,10 @@ export const DEFAULT_A2A_PROTOCOL_BINDING = "HTTP+JSON";
 export const DEFAULT_A2A_PROTOCOL_VERSION = "1.0";
 export const AGENT_SKILLS_DISCOVERY_SCHEMA_URI =
   "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
+export const DOCS_AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
+export const DOCS_AGENT_MANIFEST_SCHEMA_URI =
+  "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+export const DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE = "application/schema+json";
 
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 const DEFAULT_AGENT_MANIFEST_ROUTE = "/.well-known/agent.json";
@@ -1337,6 +1341,23 @@ export function getDocsDiscoveryLinkHeader(
         ]
       : []),
   ].join(", ");
+}
+
+/**
+ * Add the registered `describedby` relation for the Farming Labs manifest schema.
+ *
+ * Keep this scoped to agent-manifest responses: the shared discovery Link header is
+ * also used by unrelated resources that the manifest schema does not describe.
+ */
+export function getDocsAgentManifestLinkHeader(
+  discoveryLinkHeader = getDocsDiscoveryLinkHeader(),
+): string {
+  const schemaLink = formatLinkTarget(DOCS_AGENT_MANIFEST_SCHEMA_URI, "describedby", {
+    type: DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  });
+  if (!discoveryLinkHeader.trim()) return schemaLink;
+  if (discoveryLinkHeader.includes(schemaLink)) return discoveryLinkHeader;
+  return `${discoveryLinkHeader}, ${schemaLink}`;
 }
 
 export function appendDocsDiscoveryLinkHeader(headers: Headers, value?: string): Headers {

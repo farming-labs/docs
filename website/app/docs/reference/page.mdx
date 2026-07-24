@@ -156,6 +156,9 @@ The agent discovery spec (`GET /.well-known/agent.json`) now includes:
 
 ```json
 {
+  "$schema": "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
+  "format": "farming-labs-agent-manifest.v1",
+  "version": "1",
   "api": {
     "config": "/api/docs?format=config"
   },
@@ -168,6 +171,16 @@ The agent discovery spec (`GET /.well-known/agent.json`) now includes:
 
 Agents that read the discovery spec can use `spec.config.endpoint` and `spec.config.format` to
 fetch and identify the config map without hard-coding the route.
+
+The root `$schema` and `format` identify this as the Farming Labs manifest extension. Dynamic
+manifest responses keep `Content-Type: application/json` and add:
+
+```http
+Link: <https://docs.farming-labs.dev/schema/agent-manifest.v1.json>; rel="describedby"; type="application/schema+json"
+```
+
+This is intentionally distinct from the opt-in A2A v1 Agent Card at
+`/.well-known/agent-card.json`.
 
 ---
 

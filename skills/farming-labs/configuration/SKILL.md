@@ -973,6 +973,12 @@ Default behavior:
   indexed artifacts and safe direct files are hashed, and `/.well-known/skills/index.json` remains
   available for legacy clients
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
+- the manifest is a Farming Labs documentation-discovery extension identified by
+  `$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+  `format: "farming-labs-agent-manifest.v1"`; dynamic responses associate the Draft 2020-12 schema
+  with `rel="describedby"` and `type="application/schema+json"`
+- do not treat the Farming Labs manifest as A2A; `/.well-known/agent-card.json` remains a separate,
+  opt-in A2A v1 document
 - the existing discovery document remains available and now cross-lists the API catalog and Agent
   Skills index alongside site identity, locale config, capability flags, search, markdown routes,
   `llms.txt`, OpenAPI, sitemap, robots, `AGENTS.md`, `skill.md`, MCP, and feedback metadata

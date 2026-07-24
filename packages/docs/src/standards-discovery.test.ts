@@ -8,10 +8,14 @@ import {
   DEFAULT_A2A_AGENT_CARD_ROUTE,
   DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
+  DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
   buildDocsA2AAgentCard,
   buildDocsAgentSkillsIndex,
   buildDocsApiCatalog,
   createDocsStandardsResponse,
+  getDocsAgentManifestLinkHeader,
+  getDocsDiscoveryLinkHeader,
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
   type DocsA2AAgentCardOptions,
@@ -26,6 +30,19 @@ description: "Use the Example documentation."
 
 # Example skill
 `;
+
+describe("Farming Labs agent manifest links", () => {
+  it("adds the schema relation only when constructing a manifest response header", () => {
+    const discovery = getDocsDiscoveryLinkHeader();
+    const manifest = getDocsAgentManifestLinkHeader(discovery);
+
+    expect(discovery).not.toContain(DOCS_AGENT_MANIFEST_SCHEMA_URI);
+    expect(manifest).toContain(
+      `<${DOCS_AGENT_MANIFEST_SCHEMA_URI}>; rel="describedby"; type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+    );
+    expect(getDocsAgentManifestLinkHeader(manifest)).toBe(manifest);
+  });
+});
 
 function catalog() {
   return buildDocsApiCatalog({

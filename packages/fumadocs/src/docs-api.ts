@@ -31,6 +31,8 @@ import {
   DEFAULT_A2A_AGENT_CARD_ROUTE,
   DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
   getDocsMcpProtectedResourceMetadataRoutes,
   acceptsDocsMarkdown,
   normalizeDocsRelated,
@@ -50,6 +52,7 @@ import {
   emitDocsTelemetryProjectEvent,
   inferDocsTelemetryAgentSurface,
   hasDocsMarkdownSignatureAgent,
+  getDocsAgentManifestLinkHeader,
   getDocsDiscoveryLinkHeader,
   getDocsLlmsTxtMaxCharsIssue,
   renderDocsMarkdownDocument,
@@ -527,6 +530,8 @@ function buildAgentSpec({
     apiRoute === DEFAULT_DOCS_API_ROUTE ? DEFAULT_AGENT_SPEC_ROUTE : `${apiRoute}?agent=spec`;
 
   return {
+    $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+    format: DOCS_AGENT_MANIFEST_FORMAT,
     version: "1",
     name: "@farming-labs/docs",
     baseUrl: origin,
@@ -3808,6 +3813,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     includeApiCatalog: apiCatalogEnabled,
     includeAgentCard: Boolean(options?.agent?.a2a),
   });
+  const agentManifestLinkHeader = getDocsAgentManifestLinkHeader(discoveryLinkHeader);
   const telemetryConfig: Partial<DocsConfig> = {
     entry,
     docsPath,
@@ -4221,7 +4227,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             headers: {
               "Content-Type": "application/json",
               "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: discoveryLinkHeader,
+              Link: agentManifestLinkHeader,
               "X-Robots-Tag": "noindex",
             },
           });
@@ -4265,7 +4271,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           {
             headers: {
               "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: discoveryLinkHeader,
+              Link: agentManifestLinkHeader,
               "X-Robots-Tag": "noindex",
             },
           },

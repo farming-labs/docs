@@ -14,6 +14,9 @@ import {
   DEFAULT_LLMS_TXT_ROUTE,
   DEFAULT_MCP_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
 } from "./agent.js";
 import {
   httpLinkMatchesExpectation,
@@ -24,7 +27,7 @@ import {
 import { DEFAULT_SITEMAP_MD_ROUTE, DEFAULT_SITEMAP_XML_ROUTE } from "./sitemap.js";
 import { DEFAULT_ROBOTS_TXT_ROUTE } from "./robots.js";
 
-export const DOCS_AGENT_CONTRACT_VERSION = "1.1";
+export const DOCS_AGENT_CONTRACT_VERSION = "1.2";
 
 export type DocsAgentAdapter = "next" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
 
@@ -63,7 +66,7 @@ export interface DocsAgentContractExpectation {
   bodyIncludes?: readonly string[];
   bodyEmpty?: boolean;
   headerIncludes?: Readonly<Record<string, readonly string[]>>;
-  linkRelations?: readonly { href: string; rel: string }[];
+  linkRelations?: readonly { href: string; rel: string; type?: string }[];
 }
 
 export interface DocsAgentContractCase {
@@ -134,6 +137,11 @@ export function createDocsAgentContractCases(
         linkRelations: [
           { href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" },
           { href: DEFAULT_AGENT_SKILLS_INDEX_ROUTE, rel: "service-meta" },
+          {
+            href: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+            rel: "describedby",
+            type: DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+          },
         ],
       },
     },
@@ -381,6 +389,80 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function validateAgentManifest(content: string): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return ["Agent manifest did not contain valid JSON"];
+  }
+
+  const root = asRecord(parsed);
+  const issues: string[] = [];
+  if (root?.$schema !== DOCS_AGENT_MANIFEST_SCHEMA_URI) {
+    issues.push(
+      `Agent manifest did not declare top-level $schema ${DOCS_AGENT_MANIFEST_SCHEMA_URI}`,
+    );
+  }
+  if (root?.format !== DOCS_AGENT_MANIFEST_FORMAT) {
+    issues.push(`Agent manifest did not declare top-level format ${DOCS_AGENT_MANIFEST_FORMAT}`);
+  }
+  return issues;
+}
+
+function httpLinkMatchesContractExpectation(
+  header: string | null,
+  expectation: { href: string; rel: string; type?: string },
+  responseUrl: string,
+): boolean {
+  const parsedLinks = parseHttpLinkHeader(header);
+  if (!httpLinkMatchesExpectation(parsedLinks, expectation, responseUrl)) return false;
+  if (!expectation.type) return true;
+
+  let expectedUrl: string;
+  try {
+    expectedUrl = new URL(expectation.href, responseUrl).toString();
+  } catch {
+    return false;
+  }
+
+  for (const value of splitHttpList(header ?? "", ",")) {
+    const target = value.match(/^\s*<([^>]*)>/);
+    if (!target) continue;
+
+    let actualUrl: string;
+    try {
+      actualUrl = new URL(target[1], responseUrl).toString();
+    } catch {
+      continue;
+    }
+    if (actualUrl !== expectedUrl) continue;
+
+    const relations: string[] = [];
+    let type: string | undefined;
+    for (const rawParameter of splitHttpList(value.slice(target[0].length), ";")) {
+      const separator = rawParameter.indexOf("=");
+      if (separator < 0) continue;
+      const name = rawParameter.slice(0, separator).trim().toLowerCase();
+      const parameterValue = unquoteHttpValue(rawParameter.slice(separator + 1));
+      if (name === "rel") {
+        relations.push(...parameterValue.toLowerCase().split(/\s+/).filter(Boolean));
+      } else if (name === "type") {
+        type = parameterValue.toLowerCase();
+      }
+    }
+
+    if (
+      relations.includes(expectation.rel.toLowerCase()) &&
+      type === expectation.type.toLowerCase()
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function sha256Content(content: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest("SHA-256", content);
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
@@ -523,6 +605,10 @@ export async function runDocsAgentConformance(
         issues.push(`expected an empty response body, received ${body.length} characters`);
       }
 
+      if (contractCase.surface === "discovery") {
+        issues.push(...validateAgentManifest(body));
+      }
+
       if (contractCase.surface === "agent-skills-index") {
         issues.push(
           ...(await validateAgentSkillsIndex(body, contractCase.request.url, options.handle)),
@@ -542,11 +628,16 @@ export async function runDocsAgentConformance(
         }
       }
 
-      const parsedLinks = parseHttpLinkHeader(response.headers.get("link"));
+      const linkHeader = response.headers.get("link");
       for (const expectation of contractCase.expect.linkRelations ?? []) {
-        if (!httpLinkMatchesExpectation(parsedLinks, expectation, contractCase.request.url)) {
+        if (
+          !httpLinkMatchesContractExpectation(linkHeader, expectation, contractCase.request.url)
+        ) {
+          const typeRequirement = expectation.type
+            ? ` and type=${JSON.stringify(expectation.type)}`
+            : "";
           issues.push(
-            `response Link header did not include ${JSON.stringify(expectation.href)} with rel=${JSON.stringify(expectation.rel)} in the same link-value`,
+            `response Link header did not include ${JSON.stringify(expectation.href)} with rel=${JSON.stringify(expectation.rel)}${typeRequirement} in the same link-value`,
           );
         }
       }

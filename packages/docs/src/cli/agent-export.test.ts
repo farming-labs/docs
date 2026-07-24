@@ -19,6 +19,7 @@ import {
   parseAgentExportArgs,
   type AgentBundleManifest,
 } from "./agent-export.js";
+import { DOCS_AGENT_MANIFEST_FORMAT, DOCS_AGENT_MANIFEST_SCHEMA_URI } from "../agent.js";
 
 describe("agent export cli", () => {
   const originalCwd = process.cwd();
@@ -161,6 +162,14 @@ pnpm add example
     const discovery = JSON.parse(
       readFileSync(path.join(tmpDir, "public", ".well-known", "agent.json"), "utf-8"),
     );
+    const discoveryFallback = JSON.parse(
+      readFileSync(path.join(tmpDir, "public", ".well-known", "agent"), "utf-8"),
+    );
+    expect(discoveryFallback).toEqual(discovery);
+    expect(discovery.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
+    expect(discovery.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
+    expect(discovery.version).toBe("1");
+    expect(discovery.api).not.toHaveProperty("agentCard");
     expect(discovery.staticBundle.manifest).toBe("/.well-known/agent-bundle.json");
     expect(discovery.capabilities.mcp).toBe(false);
     expect(discovery.capabilities.search).toBe(false);
@@ -444,6 +453,17 @@ pnpm add example
     expect(card.skills.length).toBeGreaterThan(0);
     expect(card.skills.every((skill: Record<string, unknown>) => !("url" in skill))).toBe(true);
 
+    const discovery = JSON.parse(
+      readFileSync(path.join(tmpDir, "public", ".well-known", "agent.json"), "utf8"),
+    );
+    expect(discovery).toMatchObject({
+      $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+      format: DOCS_AGENT_MANIFEST_FORMAT,
+      version: "1",
+      api: { agentCard: "/.well-known/agent-card.json" },
+    });
+    expect(discovery).not.toHaveProperty("supportedInterfaces");
+
     const manifest = JSON.parse(
       readFileSync(path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json"), "utf8"),
     ) as AgentBundleManifest;
@@ -453,9 +473,6 @@ pnpm add example
       route: "/.well-known/agent-card.json",
       sha256: createHash("sha256").update(cardBytes, "utf8").digest("hex"),
     });
-    const discovery = JSON.parse(
-      readFileSync(path.join(tmpDir, "public", ".well-known", "agent.json"), "utf8"),
-    );
     expect(discovery.api.agentCard).toBe("/.well-known/agent-card.json");
     expect(readFileSync(path.join(tmpDir, "public", "robots.txt"), "utf8")).toContain(
       "Allow: /.well-known/agent-card.json",

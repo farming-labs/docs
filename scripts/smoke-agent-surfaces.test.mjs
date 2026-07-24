@@ -6,6 +6,10 @@ import { runAgentSurfaceSmoke } from "./smoke-agent-surfaces.mjs";
 
 const BASE_URL = "https://deployment.example.com";
 const AGENT_SKILLS_SCHEMA = "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
+const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
+const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_SCHEMA_MEDIA_TYPE = "application/schema+json";
+const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v1.json";
 const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
 const API_CATALOG_ROUTE = "/.well-known/api-catalog";
 const AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
@@ -56,6 +60,8 @@ function createFixtureFetch(options = {}) {
   const calls = [];
   const streamState = { aborted: false, cancelled: false, pulls: 0 };
   const manifest = {
+    $schema: AGENT_MANIFEST_SCHEMA,
+    format: AGENT_MANIFEST_FORMAT,
     version: "1",
     name: "@farming-labs/docs",
     capabilities: { agentSkillsDiscovery: true, mcp: true },
@@ -181,14 +187,43 @@ function createFixtureFetch(options = {}) {
   async function fixtureResponse(input, init = {}) {
     const url = new URL(input);
     const method = init.method ?? "GET";
-    calls.push({ method, pathname: url.pathname });
+    const requestHeaders = new Headers(init.headers);
+    calls.push({ accept: requestHeaders.get("accept"), method, pathname: url.pathname });
 
     if (
       url.pathname === "/.well-known/agent.json" ||
       url.pathname === "/.well-known/agent" ||
       url.pathname === "/api/docs/agent/spec"
     ) {
-      return jsonResponse(method, manifest);
+      return jsonResponse(method, manifest, {
+        headers: {
+          link:
+            options.manifestLink ??
+            `<${AGENT_MANIFEST_SCHEMA}>; rel="describedby"; type="${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+        },
+      });
+    }
+    if (url.pathname === AGENT_MANIFEST_SCHEMA_ROUTE) {
+      if (
+        options.strictSchemaNegotiation &&
+        requestHeaders.get("accept") !== AGENT_MANIFEST_SCHEMA_MEDIA_TYPE
+      ) {
+        return response(method, "Not Acceptable", {
+          status: 406,
+          contentType: "text/plain; charset=utf-8",
+        });
+      }
+      return jsonResponse(
+        method,
+        {
+          $schema: "https://json-schema.org/draft/2020-12/schema",
+          $id: AGENT_MANIFEST_SCHEMA,
+          properties: {
+            format: { const: AGENT_MANIFEST_FORMAT },
+          },
+        },
+        { contentType: `${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}; charset=utf-8` },
+      );
     }
     if (url.pathname === API_CATALOG_ROUTE) {
       return jsonResponse(
@@ -367,6 +402,61 @@ test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", asy
   assert(
     fixture.calls.some((call) => call.pathname === "/.well-known/agent-skills/portable/SKILL.md"),
   );
+  assert(fixture.calls.some((call) => call.pathname === AGENT_MANIFEST_SCHEMA_ROUTE));
+});
+
+for (const [name, manifestLink] of [
+  [
+    "describedby relation on another Link entry",
+    `<${AGENT_MANIFEST_SCHEMA}>; rel="alternate"; type="${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}", <https://example.com/other>; rel="describedby"`,
+  ],
+  [
+    "schema media type on another Link entry",
+    `<${AGENT_MANIFEST_SCHEMA}>; rel="describedby", <https://example.com/other>; rel="alternate"; type="${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+  ],
+]) {
+  test(`rejects a manifest with the ${name}`, async () => {
+    const fixture = createFixtureFetch({ manifestLink });
+    await assert.rejects(
+      runAgentSurfaceSmoke({
+        attempts: 1,
+        baseUrl: BASE_URL,
+        expectedSkillNames: ["portable"],
+        fetchImpl: fixture.fetch,
+        log() {},
+      }),
+      (error) => {
+        const manifestFailures = error.failures.filter(({ label }) =>
+          label.startsWith("agent manifest "),
+        );
+        assert.equal(manifestFailures.length, 3);
+        for (const failure of manifestFailures) {
+          assert.match(
+            failure.message,
+            /did not link the manifest schema as rel="describedby" with type="application\/schema\+json"/u,
+          );
+        }
+        return true;
+      },
+    );
+  });
+}
+
+test("requests the manifest schema with application/schema+json", async () => {
+  const fixture = createFixtureFetch({ strictSchemaNegotiation: true });
+  const result = await runAgentSurfaceSmoke({
+    attempts: 1,
+    baseUrl: BASE_URL,
+    expectedSkillNames: ["portable"],
+    fetchImpl: fixture.fetch,
+    log() {},
+  });
+
+  assert.equal(result.passed, true);
+  const schemaCall = fixture.calls.find(
+    (call) => call.method === "GET" && call.pathname === AGENT_MANIFEST_SCHEMA_ROUTE,
+  );
+  assert.equal(schemaCall?.accept, AGENT_MANIFEST_SCHEMA_MEDIA_TYPE);
 });
 
 test("fails when an indexed Agent Skill artifact does not match its digest", async () => {

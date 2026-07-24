@@ -1937,6 +1937,7 @@ out.
 Agents should discover the configured routes first with `GET /.well-known/agent.json`.
 `GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
 canonical framework route. Generated projects wire all three to the same JSON. The spec includes
+the versioned Farming Labs manifest schema and format identifiers,
 site identity, locale config, capability flags, the search endpoint, markdown route pattern,
 `Accept: text/markdown` contract, `Signature-Agent` support, API, public, and section-level
 `llms.txt` routes, sitemap routes, the `robots.txt` route, generated `AGENTS.md` metadata, root
@@ -1970,6 +1971,11 @@ Default behavior:
 - `GET /.well-known/agent.json` is the preferred public agent discovery URL
 - `GET /.well-known/agent` is the public fallback discovery URL
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
+- the manifest declares the Draft 2020-12 schema at
+  `https://docs.farming-labs.dev/schema/agent-manifest.v1.json`; dynamic responses advertise it with
+  `rel="describedby"` while preserving `application/json`
+- the manifest is a Farming Labs extension; the separate `/.well-known/agent-card.json` route is
+  only published when `agent.a2a` configures a real A2A service
 - `GET /AGENTS.md` serves a root `AGENTS.md` or `AGENT.md` file when present, and otherwise returns a generated fallback
 - `GET /.well-known/AGENTS.md` and `GET /api/docs?format=agents` return the same agent instructions
 - `GET /skill.md` serves a root `skill.md` file when present, and otherwise returns a generated fallback

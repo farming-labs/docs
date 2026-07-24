@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import fs, { chmodSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -8,7 +10,22 @@ import type {
   DocsObservabilityEvent,
   DocsPublishedAgentSkill,
 } from "@farming-labs/docs";
+import {
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
+} from "@farming-labs/docs";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
+
+const agentManifestSchema = JSON.parse(
+  fs.readFileSync(
+    new URL("../../../website/public/schema/agent-manifest.v1.json", import.meta.url),
+    "utf8",
+  ),
+) as Record<string, unknown>;
+const agentManifestSchemaValidator = new Ajv2020({ allErrors: true, strict: true });
+addFormats(agentManifestSchemaValidator);
+const validateAgentManifest = agentManifestSchemaValidator.compile(agentManifestSchema);
 
 function createDeferredPromise<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -1625,6 +1642,12 @@ description: Custom docs skill.
         const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
         expect(response.status).toBe(200);
         expect(await response.text()).toBe("");
+        if (path === "/.well-known/agent.json") {
+          expect(response.headers.get("link")).toContain('rel="describedby"');
+          expect(response.headers.get("link")).toContain(
+            `type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+          );
+        }
       }
 
       const legacyFiles = new Set([join(rootDir, "AGENTS.md"), join(rootDir, "skill.md")]);
@@ -3002,8 +3025,13 @@ description: "Start building quickly"
     expect(response.headers.get("content-type")).toContain("application/json");
     expect(response.headers.get("link")).toContain("</.well-known/api-catalog>");
     expect(response.headers.get("link")).toContain("</.well-known/agent-skills/index.json>");
+    expect(response.headers.get("link")).toContain(
+      `<${DOCS_AGENT_MANIFEST_SCHEMA_URI}>; rel="describedby"; type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+    );
 
     const spec = (await response.json()) as {
+      $schema: string;
+      format: string;
       version: string;
       site: { title: string; description?: string; entry: string; baseUrl: string };
       locales: {
@@ -3059,7 +3087,12 @@ description: "Start building quickly"
       instructions: Record<string, boolean>;
     };
 
+    expect(spec.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
+    expect(spec.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
     expect(spec.version).toBe("1");
+    expect(validateAgentManifest(spec), JSON.stringify(validateAgentManifest.errors, null, 2)).toBe(
+      true,
+    );
     expect(spec.site).toEqual({
       title: "Agent Docs",
       description: "Machine-readable documentation",
@@ -3273,6 +3306,7 @@ description: "Start building quickly"
       expect(wellKnownResponse.status).toBe(200);
       expect(wellKnownResponse.headers.get("content-type")).toContain("application/json");
       expect(wellKnownResponse.headers.get("link")).toContain('rel="api-catalog"');
+      expect(wellKnownResponse.headers.get("link")).toContain('rel="describedby"');
       expect(await wellKnownResponse.json()).toEqual(spec);
     }
   });

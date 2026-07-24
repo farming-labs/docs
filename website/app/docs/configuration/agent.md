@@ -79,6 +79,11 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - Include `GET`/`HEAD /.well-known/api-catalog` for RFC 9727 API discovery and
   `GET`/`HEAD /.well-known/agent-skills/index.json` for SHA-256 Agent Skills discovery. These are
   additive to the existing Farming Labs manifest and require no config flag.
+- Identify the Farming Labs manifest by
+  `$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+  `format: "farming-labs-agent-manifest.v1"`. Dynamic responses link the Draft 2020-12 schema with
+  `rel="describedby"`. Do not confuse it with the separate, opt-in A2A Agent Card at
+  `/.well-known/agent-card.json`.
 
 ## Agent discovery spec routes
 

@@ -86,6 +86,8 @@ export interface AgentExportOptions {
   configPath?: string;
   public?: boolean;
   check?: boolean;
+  /** Project root used for config discovery and generated outputs. Defaults to the current directory. */
+  rootDir?: string;
 }
 
 export interface ParsedAgentExportArgs extends AgentExportOptions {
@@ -1044,7 +1046,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     );
   }
 
-  const rootDir = process.cwd();
+  const rootDir = path.resolve(options.rootDir ?? process.cwd());
   const loadedConfigModule = await loadDocsConfigModule(rootDir, options.configPath);
   const configPath = loadedConfigModule?.path ?? resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = readFileSync(configPath, "utf-8");

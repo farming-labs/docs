@@ -375,10 +375,17 @@ capabilities automatically. A2A capability entries do not carry Agent Skill docu
 stay in the skill indexes and MCP resources. Do not configure the card merely because the site
 exposes docs, Ask AI, or MCP.
 
-`GET /.well-known/agent.json` is the preferred public discovery URL. `GET /.well-known/agent` is the
-public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. Next.js wires
-these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt scaffold one public forwarder
-each, so the well-known aliases share the same docs server handler.
+`GET /.well-known/agent.json` is the preferred public discovery URL. It is a Farming Labs
+documentation-discovery extension, not an A2A Agent Card. The document identifies itself with
+`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+`format: "farming-labs-agent-manifest.v1"`. The schema uses JSON Schema Draft 2020-12, and dynamic
+responses link it with the registered HTTP `describedby` relation. Existing fields and routes remain
+available.
+
+`GET /.well-known/agent` is the public fallback, and `GET /api/docs/agent/spec` is the canonical
+framework route. Next.js wires these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt
+scaffold one public forwarder each, so the aliases share the same docs server handler. The separate,
+opt-in A2A document remains at `/.well-known/agent-card.json`.
 
 Agents should fetch it before choosing a transport. It tells them:
 
