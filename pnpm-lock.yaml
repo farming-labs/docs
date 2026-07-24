@@ -87,16 +87,16 @@ importers:
         specifier: ^10.0.8
         version: 10.0.8(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.51.3)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.51.3)(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)))(astro@6.4.8(@types/node@22.19.11)(@vercel/functions@3.7.1(ws@8.21.0))(db0@0.3.4)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.31.1)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(next@16.2.11(@playwright/test@1.59.1)(@types/node@22.19.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(rollup@4.59.0)(svelte@5.51.3)(vue-router@4.6.4(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))(ws@8.21.0)
       '@farming-labs/astro':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/astro
       '@farming-labs/astro-theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/astro-theme
       '@farming-labs/docs':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/docs
       '@farming-labs/theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/fumadocs
       astro:
         specifier: 6.4.8
@@ -108,13 +108,13 @@ importers:
   examples/fumadocs-cloud:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -157,13 +157,13 @@ importers:
   examples/next:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -212,16 +212,16 @@ importers:
   examples/nuxt:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/docs
       '@farming-labs/nuxt':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/nuxt
       '@farming-labs/nuxt-theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/nuxt-theme
       '@farming-labs/theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -240,16 +240,16 @@ importers:
   examples/sveltekit:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/docs
       '@farming-labs/svelte':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/svelte
       '@farming-labs/svelte-theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/svelte-theme
       '@farming-labs/theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -277,13 +277,13 @@ importers:
   examples/tanstack-start:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/docs
       '@farming-labs/tanstack-start':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/tanstack-start
       '@farming-labs/theme':
-        specifier: 0.2.67
+        specifier: 0.2.68
         version: link:../../packages/fumadocs
       '@tanstack/react-router':
         specifier: ^1.0.0
@@ -4007,8 +4007,6 @@ packages:
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
-
-  balanced-match@1.0.2: {}
 
   balanced-match@4.0.3:
     resolution: {integrity: sha512-1pHv8LX9CpKut1Zp4EXey7Z8OfH11ONNH6Dhi2WDUt31VVZFXZzKwXcysBgqSumFCmR+0dqjMK5v5JiFHzi0+g==}
@@ -11471,8 +11469,6 @@ snapshots:
       - supports-color
 
   bail@2.0.2: {}
-
-  balanced-match@1.0.2: {}
 
   balanced-match@4.0.3: {}
 
