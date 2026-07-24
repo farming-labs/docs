@@ -335,6 +335,11 @@ Useful flags:
 | `--check` | Fail if the generated output would change. |
 | `--config <path>` | Use a custom docs config path. |
 
+The generated allow-list covers wildcard agent-skills routes (`/.well-known/agent-skills/*`) and the legacy skills namespace (`/.well-known/skills/index.json`, `/.well-known/skills/*`). Two rules are conditional:
+
+- `Allow: /.well-known/api-catalog` is **omitted** when `llmsTxt.apiCatalog: false` or `staticExport: true`.
+- `Allow: /.well-known/agent-card.json` is **included** only when `agent.a2a` is configured.
+
 Configure defaults with `robots` in `docs.config.ts`, then run the command during release prep or
 static export builds when you want the policy committed.
 
