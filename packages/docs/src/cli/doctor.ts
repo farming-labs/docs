@@ -61,6 +61,7 @@ import {
   DEFAULT_ROBOTS_TXT_ROUTE,
   analyzeDocsRobotsTxt,
   resolveDocsRobotsConfig,
+  type DocsRobotsAnalysisOptions,
 } from "../robots.js";
 import type { DocsConfig, DocsMcpConfig, DocsRobotsConfig, DocsSitemapConfig } from "../types.js";
 import {
@@ -572,6 +573,25 @@ function resolveRobotsFilePath(
 function resolveStaticExport(config: DocsConfig | undefined, content: string): boolean {
   if (typeof config?.staticExport === "boolean") return config.staticExport;
   return readTopLevelBooleanProperty(content, "staticExport") ?? false;
+}
+
+function resolveApiCatalogEnabled(
+  config: DocsConfig | undefined,
+  content: string,
+  staticExport: boolean,
+): boolean {
+  if (staticExport) return false;
+  if (config?.llmsTxt && typeof config.llmsTxt === "object") {
+    return config.llmsTxt.apiCatalog !== false;
+  }
+
+  const llmsBlock = extractNestedObjectLiteral(content, ["llmsTxt"]);
+  return llmsBlock ? readObjectBooleanProperty(llmsBlock, "apiCatalog") !== false : true;
+}
+
+function resolveAgentCardEnabled(config: DocsConfig | undefined, content: string): boolean {
+  if (config) return Boolean(config.agent?.a2a);
+  return Boolean(extractNestedObjectLiteral(content, ["agent", "a2a"]));
 }
 
 function resolveAgentFeedbackEnabled(config: DocsConfig | undefined, content: string): boolean {
@@ -2306,6 +2326,16 @@ function hostedCapability(discoveryBody: unknown, key: string): boolean | undefi
   return typeof enabled === "boolean" ? enabled : undefined;
 }
 
+function hostedRobotsAnalysisOptions(
+  discoveryBody: unknown,
+): Pick<DocsRobotsAnalysisOptions, "apiCatalog" | "agentCard"> {
+  const api = asRecord(asRecord(discoveryBody)?.api);
+  return {
+    apiCatalog: hostedCapability(discoveryBody, "apiCatalog") !== false,
+    agentCard: Boolean(readDiscoveryRoute(api?.agentCard)),
+  };
+}
+
 function hostedRootDocsRoute(discoveryBody: unknown): string {
   const site = asRecord(asRecord(discoveryBody)?.site);
   const entry = typeof site?.entry === "string" && site.entry.trim() ? site.entry.trim() : "docs";
@@ -2552,7 +2582,12 @@ async function buildHostedAgentChecks(
   const robotsRoute = hostedRobotsRoute(discovery.body);
   if (robotsRoute.enabled) {
     const robots = await probeRobotsRoute(baseUrl, robotsRoute.route);
-    const robotsAnalysis = robots.body ? analyzeDocsRobotsTxt(robots.body) : undefined;
+    const robotsAnalysis = robots.body
+      ? analyzeDocsRobotsTxt(robots.body, {
+          ...hostedRobotsAnalysisOptions(discovery.body),
+          sitemapRoutes: sitemapRoutes.enabled ? sitemapRoutes.routes : [],
+        })
+      : undefined;
     const robotsBlocked = robotsAnalysis?.blocksAgentRoutes || robotsAnalysis?.blocksAiAgents;
     const robotsComplete = robotsAnalysis?.hasAgentRoutes && robotsAnalysis?.hasAiPolicy;
     checks.push(
@@ -2860,6 +2895,8 @@ export async function inspectAgentReadiness(
       ? config.nav.title
       : (readNavTitle(configContent) ?? "Documentation");
   const staticExport = resolveStaticExport(config, configContent);
+  const apiCatalogEnabled = resolveApiCatalogEnabled(config, configContent, staticExport);
+  const agentCardEnabled = resolveAgentCardEnabled(config, configContent);
   const llmsEnabled = resolveFeatureEnabled(config, configContent, "llmsTxt");
   const searchEnabled = resolveFeatureEnabled(config, configContent, "search");
   const mcpEnabled = resolveFeatureEnabled(config, configContent, "mcp");
@@ -3274,6 +3311,8 @@ export async function inspectAgentReadiness(
     const robots = readFileSync(robotsPath, "utf-8");
     const analysis = analyzeDocsRobotsTxt(robots, {
       entry,
+      apiCatalog: apiCatalogEnabled,
+      agentCard: agentCardEnabled,
       sitemap: sitemapConfig,
       baseUrl: robotsConfig.baseUrl,
       robots: robotsConfig,

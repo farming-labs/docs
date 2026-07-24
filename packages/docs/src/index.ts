@@ -293,7 +293,12 @@ export type {
   DocsSitemapPageInput,
   DocsSitemapResolvedConfig,
 } from "./sitemap.js";
-export type { DocsRobotsResolvedConfig, DocsRobotsRenderOptions } from "./robots.js";
+export type {
+  DocsRobotsAnalysis,
+  DocsRobotsAnalysisOptions,
+  DocsRobotsResolvedConfig,
+  DocsRobotsRenderOptions,
+} from "./robots.js";
 export {
   buildDocsSearchDocuments,
   buildDocsAskAIContext,
