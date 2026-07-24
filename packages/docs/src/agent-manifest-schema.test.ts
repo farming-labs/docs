@@ -1,12 +1,11 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
-import {
-  buildDocsAgentDiscoverySpec,
-  DOCS_AGENT_MANIFEST_FORMAT,
-  DOCS_AGENT_MANIFEST_SCHEMA_URI,
-} from "./agent.js";
+import { buildDocsAgentDiscoverySpec } from "./agent.js";
+import { exportAgentBundle } from "./cli/agent-export.js";
 import { resolveDocsMcpConfig } from "./mcp.js";
 
 const schemaPath = new URL(
@@ -33,17 +32,61 @@ function expectValid(value: unknown) {
   expect(valid).toBe(true);
 }
 
+async function exportStaticManifest() {
+  const originalCwd = process.cwd();
+  const rootDir = mkdtempSync(join(tmpdir(), "docs-agent-manifest-schema-"));
+
+  try {
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  staticExport: true,
+  nav: { title: "Example Docs" },
+  metadata: { description: "Documentation for Example." },
+  llmsTxt: { enabled: true, baseUrl: "https://docs.example.com" },
+  sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+  robots: { enabled: true },
+};
+`,
+      "utf8",
+    );
+    mkdirSync(join(rootDir, "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "docs", "page.mdx"),
+      `---
+title: "Home"
+description: "Start here"
+---
+
+# Home
+`,
+      "utf8",
+    );
+    process.chdir(rootDir);
+    await exportAgentBundle({ public: true });
+
+    return JSON.parse(
+      readFileSync(join(rootDir, "public", ".well-known", "agent.json"), "utf8"),
+    ) as unknown;
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+}
+
 describe("Farming Labs agent manifest schema", () => {
   it("publishes an immutable Draft 2020-12 identity", () => {
     expect(schema).toMatchObject({
       $schema: "https://json-schema.org/draft/2020-12/schema",
-      $id: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+      $id: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
     });
 
     const manifest = buildManifest();
     expect(manifest).toMatchObject({
-      $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
-      format: DOCS_AGENT_MANIFEST_FORMAT,
+      $schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
+      format: "farming-labs-agent-manifest.v1",
       version: "1",
       name: "@farming-labs/docs",
     });
@@ -51,7 +94,7 @@ describe("Farming Labs agent manifest schema", () => {
     expectValid(manifest);
   });
 
-  it("validates feature-rich, disabled-feature, and static-export manifests", () => {
+  it("validates feature-rich, disabled-feature, and exported static manifests", async () => {
     expectValid(
       buildManifest({
         apiCatalog: false,
@@ -92,26 +135,26 @@ describe("Farming Labs agent manifest schema", () => {
       }),
     );
 
-    expectValid({
-      ...buildManifest({ origin: "/" }),
+    const exportedManifest = await exportStaticManifest();
+    expect(exportedManifest).toMatchObject({
       staticBundle: {
         format: "farming-labs-agent-bundle.v1",
         manifest: "/.well-known/agent-bundle.json",
         check: "docs agent export --check",
       },
     });
+    expectValid(exportedManifest);
   });
 
-  it("rejects wrong identities and an A2A Agent Card at the custom-manifest schema", () => {
+  it("rejects wrong identities and A2A-only fields at the custom-manifest schema", () => {
     expect(validate({ ...buildManifest(), format: "agent-card" })).toBe(false);
     expect(validate({ ...buildManifest(), $schema: "https://example.com/schema.json" })).toBe(
       false,
     );
     expect(
       validate({
+        ...buildManifest(),
         protocolVersion: "1.0",
-        name: "Example agent",
-        description: "A real callable agent.",
         supportedInterfaces: [{ url: "https://agent.example.com/a2a" }],
       }),
     ).toBe(false);

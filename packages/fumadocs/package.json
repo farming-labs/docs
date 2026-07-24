@@ -151,6 +151,8 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "next": ">=14.0.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",

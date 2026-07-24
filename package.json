@@ -28,8 +28,6 @@
     "@farming-labs/next": "workspace:*",
     "@farming-labs/theme": "workspace:*",
     "@tailwindcss/postcss": "^4.1.18",
-    "ajv": "^8.18.0",
-    "ajv-formats": "^3.0.1",
     "bumpp": "^10.4.1",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",

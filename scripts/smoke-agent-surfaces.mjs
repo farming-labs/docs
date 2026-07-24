@@ -8,6 +8,7 @@ const DEFAULT_BASE_URL = "https://docs.farming-labs.dev";
 const AGENT_SKILLS_SCHEMA = "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
 const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
 const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_SCHEMA_MEDIA_TYPE = "application/schema+json";
 const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v1.json";
 const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
 const API_CATALOG_ROUTE = "/.well-known/api-catalog";
@@ -74,6 +75,65 @@ function includesLinkRelation(response, relation) {
     `(?:^|[,;]\\s*)rel=(?:"[^"]*\\b${relation}\\b[^"]*"|${relation})(?:[,;]|$)`,
     "i",
   ).test(link);
+}
+
+function splitLinkValues(header) {
+  const values = [];
+  let start = 0;
+  let inTarget = false;
+  let inQuotes = false;
+  let escaped = false;
+
+  for (let index = 0; index < header.length; index += 1) {
+    const character = header[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (inQuotes && character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (inQuotes) continue;
+    if (character === "<") inTarget = true;
+    else if (character === ">") inTarget = false;
+    else if (character === "," && !inTarget) {
+      const value = header.slice(start, index).trim();
+      if (value) values.push(value);
+      start = index + 1;
+    }
+  }
+
+  const value = header.slice(start).trim();
+  if (value) values.push(value);
+  return values;
+}
+
+function parseLinkParameters(linkValue) {
+  const parameters = new Map();
+  const pattern = /;\s*([!#$%&'*+\-.^_`|~\dA-Za-z]+)\s*=\s*(?:"((?:\\.|[^"\\])*)"|([^;,\s]*))/gu;
+  for (const match of linkValue.matchAll(pattern)) {
+    const name = match[1].toLowerCase();
+    const value = match[2] === undefined ? match[3] : match[2].replace(/\\(.)/gu, "$1");
+    parameters.set(name, value);
+  }
+  return parameters;
+}
+
+function includesTypedLinkRelation(response, href, relation, type) {
+  const link = response.headers.get("link") ?? "";
+  return splitLinkValues(link).some((linkValue) => {
+    const target = /^\s*<([^>]*)>/u.exec(linkValue)?.[1];
+    if (target !== href) return false;
+    const parameters = parseLinkParameters(linkValue);
+    const relations = (parameters.get("rel") ?? "").toLowerCase().split(/\s+/u);
+    const linkedType = (parameters.get("type") ?? "").split(";", 1)[0].trim().toLowerCase();
+    return relations.includes(relation.toLowerCase()) && linkedType === type.toLowerCase();
+  });
 }
 
 function encodePath(path) {
@@ -222,12 +282,13 @@ function createRequester({ baseUrl, fetchImpl, timeoutMs, attempts, maxResponseB
   };
 }
 
-async function readJson(request, route, expectedStatuses = [200]) {
-  const result = await request(
-    route,
-    { headers: { accept: "application/json, application/linkset+json" } },
-    expectedStatuses,
-  );
+async function readJson(
+  request,
+  route,
+  expectedStatuses = [200],
+  accept = "application/json, application/linkset+json",
+) {
+  const result = await request(route, { headers: { accept } }, expectedStatuses);
   const type = mediaType(result.response);
   assert(
     type === "application/json" || type.endsWith("+json"),
@@ -253,12 +314,14 @@ function validateManifest(json, route, response) {
   );
   assert(manifest.version === "1", `${route} did not declare agent manifest version 1`);
   assert(isNonEmptyString(manifest.name), `${route} did not declare a name`);
-  assert(includesLinkRelation(response, "describedby"), `${route} omitted rel="describedby"`);
-  const link = response.headers.get("link") ?? "";
-  assert(link.includes(`<${AGENT_MANIFEST_SCHEMA}>`), `${route} linked the wrong manifest schema`);
   assert(
-    /type=(?:"application\/schema\+json"|application\/schema\+json)(?:[,;]|$)/iu.test(link),
-    `${route} omitted the manifest schema media type`,
+    includesTypedLinkRelation(
+      response,
+      AGENT_MANIFEST_SCHEMA,
+      "describedby",
+      AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+    ),
+    `${route} did not link the manifest schema as rel="describedby" with type="${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
   );
 
   const capabilities = asRecord(manifest.capabilities);
@@ -303,10 +366,15 @@ function validateManifest(json, route, response) {
 }
 
 async function validateAgentManifestSchema(request) {
-  const result = await readJson(request, AGENT_MANIFEST_SCHEMA_ROUTE);
+  const result = await readJson(
+    request,
+    AGENT_MANIFEST_SCHEMA_ROUTE,
+    [200],
+    AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  );
   assert(
-    mediaType(result.response) === "application/schema+json",
-    `${AGENT_MANIFEST_SCHEMA_ROUTE} did not return application/schema+json`,
+    mediaType(result.response) === AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+    `${AGENT_MANIFEST_SCHEMA_ROUTE} did not return ${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}`,
   );
   const schema = asRecord(result.json);
   assert(

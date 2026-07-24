@@ -85,6 +85,8 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.2",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "react": "^19.2.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",

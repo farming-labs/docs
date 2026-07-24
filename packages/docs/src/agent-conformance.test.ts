@@ -6,6 +6,13 @@ import {
   runDocsAgentConformance,
 } from "./agent-conformance.js";
 import type { DocsAgentContractSurface } from "./agent-conformance.js";
+import {
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_API_CATALOG_ROUTE,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
+} from "./agent.js";
 
 const AGENT_SKILL_CONTENT = `---
 name: docs
@@ -36,14 +43,19 @@ function createPassingResponse(surface: DocsAgentContractSurface, contentType?: 
       contractCase.expect.linkRelations
         .map(
           ({ href, rel }) =>
-            `<${href}>; title="Docs, API"; rel="${rel}"${rel === "describedby" ? '; type="application/schema+json"' : ""}`,
+            `<${href}>; title="Docs, API"; rel="${rel}"${rel === "describedby" ? `; type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"` : ""}`,
         )
         .join(", "),
     );
   }
 
   let body = contractCase.expect.bodyIncludes?.join("\n") ?? "ok";
-  if (surface === "agent-skills-index") {
+  if (surface === "discovery") {
+    body = JSON.stringify({
+      $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+      format: DOCS_AGENT_MANIFEST_FORMAT,
+    });
+  } else if (surface === "agent-skills-index") {
     body = JSON.stringify({
       $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
       skills: [
@@ -217,6 +229,63 @@ describe("agent conformance contract", () => {
     expect(report.cases.find((result) => result.surface === "agent-skills-index")).toMatchObject({
       passed: false,
       issues: [expect.stringContaining("same link-value")],
+    });
+  });
+
+  it("requires manifest identity fields at the top level of valid JSON", async () => {
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(_request, surface) {
+        const response = createPassingResponse(surface);
+        if (surface !== "discovery") return response;
+
+        return new Response(
+          JSON.stringify({
+            nested: {
+              $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+              format: DOCS_AGENT_MANIFEST_FORMAT,
+            },
+          }),
+          {
+            status: response.status,
+            headers: response.headers,
+          },
+        );
+      },
+    });
+
+    expect(report.cases.find((result) => result.surface === "discovery")).toMatchObject({
+      passed: false,
+      issues: [
+        expect.stringContaining("top-level $schema"),
+        expect.stringContaining("top-level format"),
+      ],
+    });
+  });
+
+  it("requires the describedby media type on the schema link-value itself", async () => {
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(_request, surface) {
+        const response = createPassingResponse(surface);
+        if (surface !== "discovery") return response;
+
+        response.headers.set(
+          "Link",
+          [
+            `<${DEFAULT_API_CATALOG_ROUTE}>; rel="api-catalog"`,
+            `<${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}>; rel="service-meta"`,
+            `<${DOCS_AGENT_MANIFEST_SCHEMA_URI}>; rel="describedby"`,
+            `</unrelated>; type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+          ].join(", "),
+        );
+        return response;
+      },
+    });
+
+    expect(report.cases.find((result) => result.surface === "discovery")).toMatchObject({
+      passed: false,
+      issues: [expect.stringContaining(`type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`)],
     });
   });
 
