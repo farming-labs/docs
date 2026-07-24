@@ -118,6 +118,23 @@ function readLlmsBaseUrlFromConfig(content: string, config?: DocsConfig): string
   return block ? readStringProperty(block, "baseUrl") : undefined;
 }
 
+function isApiCatalogEnabled(content: string, config?: DocsConfig): boolean {
+  const staticExport =
+    config?.staticExport ?? readTopLevelBooleanProperty(content, "staticExport") ?? false;
+  if (staticExport) return false;
+  if (config?.llmsTxt && typeof config.llmsTxt === "object") {
+    return config.llmsTxt.apiCatalog !== false;
+  }
+
+  const block = extractNestedObjectLiteral(content, ["llmsTxt"]);
+  return block ? readBooleanProperty(block, "apiCatalog") !== false : true;
+}
+
+function isAgentCardEnabled(content: string, config?: DocsConfig): boolean {
+  if (config) return Boolean(config.agent?.a2a);
+  return Boolean(extractNestedObjectLiteral(content, ["agent", "a2a"]));
+}
+
 function readSitemapConfigFromStatic(content: string): boolean | DocsSitemapConfig | undefined {
   const topLevelBoolean = readTopLevelBooleanProperty(content, "sitemap");
   if (typeof topLevelBoolean === "boolean") return topLevelBoolean;
@@ -199,6 +216,8 @@ export async function generateRobots(options: RobotsGenerateOptions = {}): Promi
   const sitemap = config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? true;
   const sitemapBaseUrl = typeof sitemap === "object" ? sitemap.baseUrl : undefined;
   const llmsBaseUrl = readLlmsBaseUrlFromConfig(configContent, config);
+  const apiCatalog = isApiCatalogEnabled(configContent, config);
+  const agentCard = isAgentCardEnabled(configContent, config);
   const configuredRobots = resolveConfiguredRobots(configContent, config);
 
   if (configuredRobots === false) {
@@ -218,6 +237,8 @@ export async function generateRobots(options: RobotsGenerateOptions = {}): Promi
   const relativeRobotsPath = path.relative(rootDir, robotsPath).replace(/\\/g, "/");
   const generatedBlock = renderDocsRobotsGeneratedBlock({
     entry,
+    apiCatalog,
+    agentCard,
     sitemap,
     baseUrl: robots.baseUrl,
     robots,

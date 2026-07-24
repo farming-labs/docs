@@ -67,6 +67,11 @@ export interface DocsRobotsAnalysis {
   missingRoutes: string[];
 }
 
+export interface DocsRobotsAnalysisOptions extends DocsRobotsRenderOptions {
+  /** Exact sitemap routes advertised by a fetched discovery manifest. */
+  sitemapRoutes?: readonly string[];
+}
+
 export interface CreateDocsRobotsResponseOptions extends DocsRobotsRenderOptions {
   request: Request;
 }
@@ -133,13 +138,20 @@ export function resolveDocsRobotsConfig(
 
 export function getDocsRobotsAllowRoutes(options: DocsRobotsRenderOptions = {}): string[] {
   const normalizedEntry = normalizeDocsPathSegment(options.entry ?? "docs") || "docs";
-  const sitemapConfig = resolveDocsSitemapConfig(options.sitemap);
   const routes = [
     "/",
     `/${normalizedEntry}`,
     `/${normalizedEntry}/`,
     `/${normalizedEntry}.md`,
     `/${normalizedEntry}/*.md`,
+    ...getDocsRobotsDiscoveryRoutes(options),
+  ];
+
+  return unique(routes.map(normalizeRoute));
+}
+
+function getDocsRobotsDiscoveryRoutes(options: DocsRobotsRenderOptions = {}): string[] {
+  const routes = [
     DEFAULT_LLMS_TXT_ROUTE,
     DEFAULT_LLMS_FULL_TXT_ROUTE,
     DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
@@ -161,6 +173,7 @@ export function getDocsRobotsAllowRoutes(options: DocsRobotsRenderOptions = {}):
     DEFAULT_MCP_PUBLIC_ROUTE,
     DEFAULT_MCP_WELL_KNOWN_ROUTE,
   ];
+  const sitemapConfig = resolveDocsSitemapConfig(options.sitemap);
 
   if (sitemapConfig.enabled) {
     if (sitemapConfig.xml.enabled) routes.push(sitemapConfig.xml.route);
@@ -293,49 +306,90 @@ export function upsertDocsRobotsGeneratedBlock(existing: string, block: string):
   return `${prefix}${prefix ? "\n\n" : ""}${block}`;
 }
 
-function blockForUserAgent(content: string, userAgent: string): string {
-  const escaped = userAgent.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = content.match(
-    new RegExp(`(?:^|\\n)\\s*User-agent:\\s*${escaped}\\s*(?:\\n[ \\t]*(?!User-agent:).*)*`, "i"),
-  );
-  return match?.[0] ?? "";
+interface ParsedRobotsGroup {
+  userAgents: Set<string>;
+  allowRoutes: Set<string>;
+  disallowRoutes: Set<string>;
+  hasDirectives: boolean;
 }
 
-function disallowsRoute(content: string, route: string): boolean {
-  const escapedRoute = route.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`^\\s*Disallow:\\s*${escapedRoute}(?:\\s|$)`, "im").test(content);
+function parseRobotsGroups(content: string): ParsedRobotsGroup[] {
+  const groups: ParsedRobotsGroup[] = [];
+  let current: ParsedRobotsGroup | undefined;
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.replace(/#.*$/, "").trim();
+    const separator = line.indexOf(":");
+    if (separator === -1) continue;
+
+    const field = line.slice(0, separator).trim().toLowerCase();
+    const value = line.slice(separator + 1).trim();
+    if (field === "user-agent") {
+      if (!value) continue;
+      if (!current || current.hasDirectives) {
+        current = {
+          userAgents: new Set(),
+          allowRoutes: new Set(),
+          disallowRoutes: new Set(),
+          hasDirectives: false,
+        };
+        groups.push(current);
+      }
+      current.userAgents.add(value.toLowerCase());
+      continue;
+    }
+
+    if (!current) continue;
+    current.hasDirectives = true;
+    if (!value) continue;
+    if (field === "allow") current.allowRoutes.add(normalizeRoute(value));
+    if (field === "disallow") current.disallowRoutes.add(normalizeRoute(value));
+  }
+
+  return groups;
+}
+
+function rulesForUserAgent(groups: ParsedRobotsGroup[], userAgent: string) {
+  const normalizedUserAgent = userAgent.toLowerCase();
+  const matches = groups.filter((group) => group.userAgents.has(normalizedUserAgent));
+  return {
+    found: matches.length > 0,
+    allowRoutes: new Set(matches.flatMap((group) => [...group.allowRoutes])),
+    disallowRoutes: new Set(matches.flatMap((group) => [...group.disallowRoutes])),
+  };
 }
 
 export function analyzeDocsRobotsTxt(
   content: string,
-  options: DocsRobotsRenderOptions = {},
+  options: DocsRobotsAnalysisOptions = {},
 ): DocsRobotsAnalysis {
-  const expectedRoutes = getDocsRobotsAllowRoutes(options).filter(
-    (route) =>
-      [
-        DEFAULT_LLMS_TXT_ROUTE,
-        DEFAULT_LLMS_FULL_TXT_ROUTE,
-        DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
-        DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
-        DEFAULT_AGENTS_MD_ROUTE,
-        DEFAULT_SKILL_MD_ROUTE,
-        DEFAULT_MCP_PUBLIC_ROUTE,
-      ].includes(route) || route.includes("sitemap"),
-  );
-  const missingRoutes = expectedRoutes.filter((route) => !content.includes(route));
-  const blocksWildcard = /Disallow:\s*\/(?:\s|$)/i.test(blockForUserAgent(content, "*"));
+  const expectedRoutes =
+    options.sitemapRoutes === undefined
+      ? getDocsRobotsDiscoveryRoutes(options)
+      : unique(
+          [
+            ...getDocsRobotsDiscoveryRoutes({ ...options, sitemap: false }),
+            ...options.sitemapRoutes,
+          ].map(normalizeRoute),
+        );
+  const groups = parseRobotsGroups(content);
+  const wildcardRules = rulesForUserAgent(groups, "*");
+  const allowedRoutes = wildcardRules.allowRoutes;
+  const disallowedRoutes = wildcardRules.disallowRoutes;
+  const missingRoutes = expectedRoutes.filter((route) => !allowedRoutes.has(route));
+  const blocksWildcard = disallowedRoutes.has("/");
   const blocksAgentRoutes =
-    blocksWildcard || expectedRoutes.some((route) => disallowsRoute(content, route));
+    blocksWildcard || expectedRoutes.some((route) => disallowedRoutes.has(route));
   const blocksAiAgents = DEFAULT_DOCS_AI_ROBOTS_USER_AGENTS.some((userAgent) =>
-    /Disallow:\s*\/(?:\s|$)/i.test(blockForUserAgent(content, userAgent)),
+    rulesForUserAgent(groups, userAgent).disallowRoutes.has("/"),
   );
 
   return {
     blocksAgentRoutes,
     blocksAiAgents,
     hasAgentRoutes: missingRoutes.length === 0,
-    hasAiPolicy: DEFAULT_DOCS_AI_ROBOTS_USER_AGENTS.some((userAgent) =>
-      content.includes(userAgent),
+    hasAiPolicy: DEFAULT_DOCS_AI_ROBOTS_USER_AGENTS.some(
+      (userAgent) => rulesForUserAgent(groups, userAgent).found,
     ),
     missingRoutes,
   };

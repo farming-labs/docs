@@ -78,6 +78,38 @@ describe("robots cli", () => {
     expect(robots).toContain("Sitemap: https://docs.example.com/sitemap.xml");
   });
 
+  it("aligns generated discovery routes with API catalog and A2A config", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: {
+    enabled: true,
+    apiCatalog: false,
+    baseUrl: "https://docs.example.com",
+  },
+  sitemap: true,
+  robots: true,
+  agent: {
+    a2a: {
+      name: "Docs agent",
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await generateRobots();
+
+    const robots = readFileSync(path.join(tmpDir, "public", "robots.txt"), "utf-8");
+    expect(robots).not.toContain("Allow: /.well-known/api-catalog");
+    expect(robots).toContain("Allow: /.well-known/agent-card.json");
+    expect(robots).toContain("Allow: /.well-known/agent-skills/*");
+    expect(robots).toContain("Allow: /.well-known/skills/*");
+  });
+
   it("keeps an existing robots.txt unless append or force is passed", async () => {
     writeConfig();
     mkdirSync(path.join(tmpDir, "public"), { recursive: true });

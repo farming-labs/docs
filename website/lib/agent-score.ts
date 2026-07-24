@@ -725,6 +725,7 @@ interface DiscoveryView {
   sitemapRoutes: string[];
   robotsEnabled: boolean;
   robotsRoute: string;
+  agentCardEnabled: boolean;
   agentsRoutes: string[];
   mcpRoutes: string[];
   markdownRoute?: string;
@@ -770,6 +771,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
       sitemapRoutes: [DEFAULT_SITEMAP_XML_ROUTE, DEFAULT_SITEMAP_MD_ROUTE],
       robotsEnabled: true,
       robotsRoute: DEFAULT_ROBOTS_TXT_ROUTE,
+      agentCardEnabled: false,
       agentsRoutes: [DEFAULT_AGENTS_MD_ROUTE, DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE],
       mcpRoutes: [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE],
     };
@@ -786,6 +788,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     mcp: readCapability(root, capabilities, "mcp"),
     search: readCapability(root, capabilities, "search"),
     agentFeedback: readCapability(root, capabilities, "agentFeedback"),
+    apiCatalog: readCapability(root, capabilities, "apiCatalog"),
     apiReference: readCapability(root, capabilities, "apiReference"),
     openapi: readCapability(root, capabilities, "openapi"),
     structuredData: readBool(capabilities.structuredData),
@@ -865,6 +868,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
   const feedbackRoot = asRecord(root.feedback);
   const openapiRoot = asRecord(root.openapi);
   const apiRoot = asRecord(root.api);
+  const agentCardEnabled = Boolean(readDiscoveryRoute(apiRoot?.agentCard));
   const openapiRouteFromSpec = readDiscoveryRoute(openapiRoot?.url);
   const openapiEnabled =
     openapiRoot?.enabled === false
@@ -881,6 +885,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     sitemapRoutes,
     robotsEnabled,
     robotsRoute,
+    agentCardEnabled,
     agentsRoutes,
     mcpRoutes,
     markdownRoute,
@@ -1775,7 +1780,13 @@ async function buildFrameworkChecks(
       ),
     );
   } else {
-    const analysis = robotsProbe.body ? analyzeDocsRobotsTxt(robotsProbe.body) : undefined;
+    const analysis = robotsProbe.body
+      ? analyzeDocsRobotsTxt(robotsProbe.body, {
+          apiCatalog: view.capabilities.apiCatalog !== false,
+          agentCard: view.agentCardEnabled,
+          sitemapRoutes: view.sitemapEnabled ? view.sitemapRoutes : [],
+        })
+      : undefined;
     const blocks = analysis?.blocksAgentRoutes || analysis?.blocksAiAgents;
     const complete = analysis?.hasAgentRoutes && analysis?.hasAiPolicy;
     const passing = robotsProbe.ok && !blocks && complete;

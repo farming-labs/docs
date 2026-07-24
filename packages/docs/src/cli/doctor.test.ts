@@ -14,6 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { compactAgentDocs } from "./agent.js";
+import { renderDocsRobotsTxt } from "../robots.js";
 import {
   inspectAgentReadiness,
   inspectHumanReadiness,
@@ -1076,7 +1077,7 @@ Point to the closest related docs instead of inventing config.
     expect(report.evaluations?.status).toBe("unmeasured");
   });
 
-  it("checks the local robots.txt agent policy", async () => {
+  it("detects stale discovery coverage in a local robots.txt policy", async () => {
     writePackageJson(tmpDir, "doctor-robots", { next: "16.0.0" });
 
     writeFileSync(
@@ -1109,44 +1110,44 @@ export const { GET, POST } = createDocsAPI({});
       "utf-8",
     );
     mkdirSync(path.join(tmpDir, "public"), { recursive: true });
+    const robotsPath = path.join(tmpDir, "public", "robots.txt");
+    const completeRobots = renderDocsRobotsTxt({
+      entry: "docs",
+      baseUrl: "https://docs.example.com",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+    });
     writeFileSync(
-      path.join(tmpDir, "public", "robots.txt"),
-      `User-agent: *
-Allow: /
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /sitemap.xml
-Allow: /sitemap.md
-Allow: /docs/sitemap.md
-Allow: /.well-known/sitemap.md
-Allow: /.well-known/agent.json
-Allow: /.well-known/agent
-Allow: /AGENTS.md
-Allow: /skill.md
-Allow: /mcp
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-`,
+      robotsPath,
+      completeRobots
+        .replace(
+          "Allow: /.well-known/agent-skills/*\n",
+          "Allow: /.well-known/agent-skills/*/SKILL.md\n",
+        )
+        .replace("Allow: /.well-known/skills/index.json\n", "")
+        .replace("Allow: /.well-known/skills/*\n", ""),
       "utf-8",
     );
     writeDocsPage(tmpDir);
     process.chdir(tmpDir);
 
-    const report = await inspectAgentReadiness();
+    const staleReport = await inspectAgentReadiness();
+    const staleRobots = staleReport.checks.find((check) => check.id === "robots");
 
-    expect(report.checks.find((check) => check.id === "robots")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
-      "public/robots.txt",
+    expect(staleRobots).toMatchObject({ status: "warn", score: 3, maxScore: 5 });
+    expect(staleRobots?.detail).toContain(
+      "agent routes (/.well-known/agent-skills/*, /.well-known/skills/index.json",
     );
-    expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
+
+    writeFileSync(robotsPath, completeRobots, "utf-8");
+    const completeReport = await inspectAgentReadiness();
+
+    expect(completeReport.checks.find((check) => check.id === "robots")).toMatchObject({
+      status: "pass",
+      score: 5,
+      maxScore: 5,
+    });
+    expect(completeReport.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+    expect(completeReport.checks.find((check) => check.id === "skill")?.status).toBe("pass");
   });
 
   it("detects agent.compact in static config parsing after module evaluation fails", async () => {
@@ -1247,6 +1248,7 @@ description: Use the hosted documentation through its agent-readable resources.
 Use MCP and markdown routes.
 `;
     const hostedSkillDigest = createHash("sha256").update(hostedSkill).digest("hex");
+    let serveStaleRobots = false;
 
     const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -1420,32 +1422,18 @@ Use MCP and markdown routes.
 
         if (url.pathname === "/robots.txt") {
           res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(`User-agent: *
-Allow: /
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /sitemap.xml
-Allow: /sitemap.md
-Allow: /docs/sitemap.md
-Allow: /.well-known/sitemap.md
-Allow: /.well-known/agent.json
-Allow: /.well-known/agent
-Allow: /.well-known/api-catalog
-Allow: /.well-known/agent-skills/index.json
-Allow: /.well-known/agent-skills/*/SKILL.md
-Allow: /AGENTS.md
-Allow: /skill.md
-Allow: /mcp
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-`);
+          const completeRobots = renderDocsRobotsTxt({ entry: "docs" });
+          res.end(
+            serveStaleRobots
+              ? completeRobots
+                  .replace(
+                    "Allow: /.well-known/agent-skills/*\n",
+                    "Allow: /.well-known/agent-skills/*/SKILL.md\n",
+                  )
+                  .replace("Allow: /.well-known/skills/index.json\n", "")
+                  .replace("Allow: /.well-known/skills/*\n", "")
+              : completeRobots,
+          );
           return;
         }
 
@@ -1610,6 +1598,14 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
         "/.well-known/mcp initialized statelessly",
+      );
+
+      serveStaleRobots = true;
+      const staleReport = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+      const staleRobots = staleReport.checks.find((check) => check.id === "hosted-robots");
+      expect(staleRobots).toMatchObject({ status: "warn", score: 3, maxScore: 5 });
+      expect(staleRobots?.detail).toContain(
+        "agent routes (/.well-known/agent-skills/*, /.well-known/skills/index.json",
       );
     } finally {
       await new Promise<void>((resolve, reject) =>
