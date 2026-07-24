@@ -1,0 +1,1110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
+  "title": "Farming Labs docs agent manifest v1",
+  "description": "Schema for the Farming Labs documentation discovery extension published at /.well-known/agent.json. This is not an A2A Agent Card; A2A services use /.well-known/agent-card.json.",
+  "type": "object",
+  "additionalProperties": true,
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nullableString": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "route": {
+      "type": "string",
+      "minLength": 1
+    },
+    "booleanMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "publishedSkillFile": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "url": {
+          "$ref": "#/$defs/route"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "url",
+        "digest"
+      ]
+    },
+    "publishedSkill": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "type": {
+          "enum": [
+            "skill-md",
+            "archive"
+          ]
+        },
+        "url": {
+          "$ref": "#/$defs/route"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/publishedSkillFile"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "type",
+        "url",
+        "digest",
+        "files"
+      ]
+    }
+  },
+  "properties": {
+    "$schema": {
+      "const": "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
+      "description": "Immutable JSON Schema for this manifest version."
+    },
+    "format": {
+      "const": "farming-labs-agent-manifest.v1",
+      "description": "Farming Labs extension identifier. It intentionally does not identify this document as an A2A Agent Card."
+    },
+    "supportedInterfaces": false,
+    "version": {
+      "const": "1"
+    },
+    "name": {
+      "const": "@farming-labs/docs"
+    },
+    "baseUrl": {
+      "$ref": "#/$defs/nonEmptyString",
+      "description": "Deployment origin or a relative base used by portable static exports."
+    },
+    "site": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "type": "string"
+        },
+        "entry": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "baseUrl": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      },
+      "required": [
+        "title",
+        "entry",
+        "baseUrl"
+      ]
+    },
+    "locales": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "available": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "default": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "queryParam": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "fallbackQueryParam": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      },
+      "required": [
+        "enabled",
+        "available",
+        "default",
+        "queryParam",
+        "fallbackQueryParam"
+      ]
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "properties": {
+        "markdownRoutes": {
+          "type": "boolean"
+        },
+        "agentMdOverrides": {
+          "type": "boolean"
+        },
+        "agentBlocks": {
+          "type": "boolean"
+        },
+        "structuredAgentContracts": {
+          "type": "boolean"
+        },
+        "agents": {
+          "type": "boolean"
+        },
+        "llms": {
+          "type": "boolean"
+        },
+        "skills": {
+          "type": "boolean"
+        },
+        "apiCatalog": {
+          "type": "boolean"
+        },
+        "agentSkillsDiscovery": {
+          "type": "boolean"
+        },
+        "mcp": {
+          "type": "boolean"
+        },
+        "search": {
+          "type": "boolean"
+        },
+        "sitemap": {
+          "type": "boolean"
+        },
+        "robots": {
+          "type": "boolean"
+        },
+        "structuredData": {
+          "type": "boolean"
+        },
+        "apiReference": {
+          "type": "boolean"
+        },
+        "openapi": {
+          "type": "boolean"
+        },
+        "agentFeedback": {
+          "type": "boolean"
+        },
+        "locales": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "markdownRoutes",
+        "agentMdOverrides",
+        "agentBlocks",
+        "structuredAgentContracts",
+        "agents",
+        "llms",
+        "skills",
+        "apiCatalog",
+        "agentSkillsDiscovery",
+        "mcp",
+        "search",
+        "sitemap",
+        "robots",
+        "structuredData",
+        "apiReference",
+        "openapi",
+        "agentFeedback",
+        "locales"
+      ]
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "docs": {
+          "$ref": "#/$defs/route"
+        },
+        "config": {
+          "$ref": "#/$defs/route"
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/route"
+        },
+        "agentSpec": {
+          "$ref": "#/$defs/route"
+        },
+        "agentSpecDefault": {
+          "$ref": "#/$defs/route"
+        },
+        "agentSpecFallback": {
+          "$ref": "#/$defs/route"
+        },
+        "agentSpecWellKnown": {
+          "$ref": "#/$defs/route"
+        },
+        "agentSpecWellKnownJson": {
+          "$ref": "#/$defs/route"
+        },
+        "agentSpecQuery": {
+          "$ref": "#/$defs/route"
+        },
+        "agents": {
+          "$ref": "#/$defs/route"
+        },
+        "apiCatalog": {
+          "$ref": "#/$defs/route"
+        },
+        "apiCatalogQuery": {
+          "$ref": "#/$defs/route"
+        },
+        "agentSkillsIndex": {
+          "$ref": "#/$defs/route"
+        },
+        "legacySkillsIndex": {
+          "$ref": "#/$defs/route"
+        },
+        "agentCard": {
+          "$ref": "#/$defs/route"
+        },
+        "openapi": {
+          "$ref": "#/$defs/route"
+        }
+      },
+      "required": [
+        "docs",
+        "config",
+        "diagnostics",
+        "agentSpec",
+        "agentSpecDefault",
+        "agentSpecFallback",
+        "agentSpecWellKnown",
+        "agentSpecWellKnownJson",
+        "agentSpecQuery",
+        "agents",
+        "agentSkillsIndex",
+        "legacySkillsIndex",
+        "openapi"
+      ]
+    },
+    "apiCatalog": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "route": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "api": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "mediaType": {
+          "const": "application/linkset+json"
+        },
+        "profile": {
+          "const": "https://www.rfc-editor.org/info/rfc9727"
+        }
+      },
+      "required": [
+        "enabled",
+        "route",
+        "api",
+        "mediaType",
+        "profile"
+      ]
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "format": {
+          "const": "docs-config-map.v1"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/route"
+        }
+      },
+      "required": [
+        "format",
+        "endpoint"
+      ]
+    },
+    "markdown": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "acceptHeader": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "signatureAgentHeader": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "pagePattern": {
+          "$ref": "#/$defs/route"
+        },
+        "rootPage": {
+          "$ref": "#/$defs/route"
+        },
+        "apiPattern": {
+          "$ref": "#/$defs/route"
+        },
+        "resolutionOrder": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
+      "required": [
+        "enabled",
+        "acceptHeader",
+        "pagePattern",
+        "rootPage",
+        "apiPattern",
+        "resolutionOrder"
+      ]
+    },
+    "agentContract": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "schemaVersion": {
+          "const": "page-agent-contract.v1"
+        },
+        "source": {
+          "const": "page-frontmatter"
+        },
+        "frontmatterPath": {
+          "const": "agent"
+        },
+        "markdownSection": {
+          "const": "Agent Contract"
+        },
+        "mcpField": {
+          "const": "agent"
+        },
+        "mcpTools": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "list": {
+              "const": "list_tasks"
+            },
+            "read": {
+              "const": "read_task"
+            }
+          },
+          "minProperties": 1
+        },
+        "usefulContractFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "contains": {
+            "const": "task"
+          }
+        },
+        "fields": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "enabled",
+        "schemaVersion",
+        "source",
+        "frontmatterPath",
+        "markdownSection",
+        "mcpField",
+        "usefulContractFields",
+        "fields"
+      ]
+    },
+    "llms": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "defaultTxt": {
+          "$ref": "#/$defs/route"
+        },
+        "defaultFull": {
+          "$ref": "#/$defs/route"
+        },
+        "txt": {
+          "$ref": "#/$defs/route"
+        },
+        "full": {
+          "$ref": "#/$defs/route"
+        },
+        "publicTxt": {
+          "$ref": "#/$defs/route"
+        },
+        "publicFull": {
+          "$ref": "#/$defs/route"
+        },
+        "wellKnownTxt": {
+          "$ref": "#/$defs/route"
+        },
+        "wellKnownFull": {
+          "$ref": "#/$defs/route"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "title": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "description": {
+                "type": "string"
+              },
+              "match": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/stringArray"
+                  }
+                ]
+              },
+              "txt": {
+                "$ref": "#/$defs/route"
+              },
+              "full": {
+                "$ref": "#/$defs/route"
+              }
+            },
+            "required": [
+              "title",
+              "match",
+              "txt",
+              "full"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "defaultTxt",
+        "defaultFull",
+        "txt",
+        "full",
+        "publicTxt",
+        "publicFull",
+        "wellKnownTxt",
+        "wellKnownFull"
+      ]
+    },
+    "sitemap": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "xml": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "route": {
+              "$ref": "#/$defs/route"
+            },
+            "api": {
+              "$ref": "#/$defs/route"
+            },
+            "defaultRoute": {
+              "$ref": "#/$defs/route"
+            }
+          },
+          "required": [
+            "enabled",
+            "route",
+            "api"
+          ]
+        },
+        "markdown": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "route": {
+              "$ref": "#/$defs/route"
+            },
+            "docsRoute": {
+              "$ref": "#/$defs/route"
+            },
+            "wellKnownRoute": {
+              "$ref": "#/$defs/route"
+            },
+            "api": {
+              "$ref": "#/$defs/route"
+            },
+            "defaultRoute": {
+              "$ref": "#/$defs/route"
+            },
+            "defaultDocsRoute": {
+              "$ref": "#/$defs/route"
+            },
+            "defaultWellKnownRoute": {
+              "$ref": "#/$defs/route"
+            }
+          },
+          "required": [
+            "enabled",
+            "route",
+            "docsRoute",
+            "wellKnownRoute",
+            "api",
+            "defaultDocsRoute"
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "xml",
+        "markdown"
+      ]
+    },
+    "robots": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "route": {
+          "$ref": "#/$defs/route"
+        },
+        "defaultRoute": {
+          "$ref": "#/$defs/route"
+        }
+      },
+      "required": [
+        "enabled",
+        "route",
+        "defaultRoute"
+      ]
+    },
+    "structuredData": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "format": {
+          "const": "application/ld+json"
+        },
+        "schema": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fields": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "canonicalUrlField": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "breadcrumbType": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "agentContractType": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      },
+      "required": [
+        "enabled",
+        "format",
+        "schema",
+        "fields",
+        "canonicalUrlField",
+        "breadcrumbType",
+        "agentContractType"
+      ]
+    },
+    "openapi": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "url": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "generated",
+            "configured",
+            null
+          ]
+        },
+        "specUrl": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "apiReferencePath": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "format": {
+          "const": "OpenAPI 3.1"
+        }
+      },
+      "required": [
+        "enabled",
+        "url",
+        "source",
+        "specUrl",
+        "apiReferencePath",
+        "format"
+      ]
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/route"
+        },
+        "agentEndpoint": {
+          "$ref": "#/$defs/route"
+        },
+        "method": {
+          "const": "GET"
+        },
+        "queryParam": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "localeParam": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "audienceParam": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "defaultAudience": {
+          "const": "human"
+        },
+        "supportedAudiences": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            {
+              "const": "human"
+            },
+            {
+              "const": "agent"
+            }
+          ],
+          "items": false
+        }
+      },
+      "required": [
+        "enabled",
+        "endpoint",
+        "agentEndpoint",
+        "method",
+        "queryParam",
+        "localeParam",
+        "audienceParam",
+        "defaultAudience",
+        "supportedAudiences"
+      ]
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "file": {
+          "const": "AGENTS.md"
+        },
+        "route": {
+          "$ref": "#/$defs/route"
+        },
+        "wellKnown": {
+          "$ref": "#/$defs/route"
+        },
+        "api": {
+          "$ref": "#/$defs/route"
+        },
+        "generatedFallback": {
+          "type": "boolean"
+        },
+        "aliases": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
+      "required": [
+        "enabled",
+        "file",
+        "route",
+        "wellKnown",
+        "api",
+        "generatedFallback",
+        "aliases"
+      ]
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "file": {
+          "const": "skill.md"
+        },
+        "route": {
+          "$ref": "#/$defs/route"
+        },
+        "wellKnown": {
+          "$ref": "#/$defs/route"
+        },
+        "api": {
+          "$ref": "#/$defs/route"
+        },
+        "generatedFallback": {
+          "type": "boolean"
+        },
+        "registry": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "install": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "discovery": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "index": {
+              "$ref": "#/$defs/route"
+            },
+            "artifact": {
+              "$ref": "#/$defs/route"
+            },
+            "archive": {
+              "$ref": "#/$defs/route"
+            },
+            "file": {
+              "$ref": "#/$defs/route"
+            },
+            "legacyIndex": {
+              "$ref": "#/$defs/route"
+            },
+            "apiIndex": {
+              "$ref": "#/$defs/route"
+            },
+            "apiArtifact": {
+              "$ref": "#/$defs/route"
+            },
+            "apiFile": {
+              "$ref": "#/$defs/route"
+            },
+            "digest": {
+              "const": "sha256"
+            }
+          },
+          "required": [
+            "schema",
+            "index",
+            "artifact",
+            "archive",
+            "file",
+            "legacyIndex",
+            "apiIndex",
+            "apiArtifact",
+            "apiFile",
+            "digest"
+          ]
+        },
+        "published": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/publishedSkill"
+          }
+        },
+        "recommended": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "description": {
+                "$ref": "#/$defs/nonEmptyString"
+              }
+            },
+            "required": [
+              "name",
+              "description"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "file",
+        "route",
+        "wellKnown",
+        "api",
+        "generatedFallback",
+        "registry",
+        "install",
+        "discovery",
+        "published",
+        "recommended"
+      ]
+    },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/route"
+        },
+        "defaultEndpoint": {
+          "$ref": "#/$defs/route"
+        },
+        "publicEndpoint": {
+          "$ref": "#/$defs/route"
+        },
+        "wellKnownEndpoint": {
+          "$ref": "#/$defs/route"
+        },
+        "publicEndpoints": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "canonicalEndpoint": {
+          "$ref": "#/$defs/route"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "version": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "tools": {
+          "$ref": "#/$defs/booleanMap"
+        },
+        "protectedResource": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "metadataEndpoints": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "authorizationServers": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "scopesSupported": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "requiredScopes": {
+              "$ref": "#/$defs/stringArray"
+            }
+          },
+          "required": [
+            "metadataEndpoints",
+            "authorizationServers",
+            "scopesSupported",
+            "requiredScopes"
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "endpoint",
+        "defaultEndpoint",
+        "publicEndpoint",
+        "wellKnownEndpoint",
+        "publicEndpoints",
+        "canonicalEndpoint",
+        "name",
+        "version",
+        "tools"
+      ]
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "schema": {
+          "$ref": "#/$defs/route"
+        },
+        "submit": {
+          "$ref": "#/$defs/route"
+        },
+        "schemaQuery": {
+          "$ref": "#/$defs/route"
+        },
+        "submitQuery": {
+          "$ref": "#/$defs/route"
+        }
+      },
+      "required": [
+        "enabled",
+        "schema",
+        "submit",
+        "schemaQuery",
+        "submitQuery"
+      ]
+    },
+    "instructions": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "preferMarkdownRoutes": {
+          "type": "boolean"
+        },
+        "useMcpWhenAvailable": {
+          "type": "boolean"
+        },
+        "useOpenApiWhenAvailable": {
+          "type": "boolean"
+        },
+        "readFeedbackSchemaBeforeSubmitting": {
+          "type": "boolean"
+        },
+        "doNotAssumeFeedbackPayloadShape": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "preferMarkdownRoutes",
+        "useMcpWhenAvailable",
+        "useOpenApiWhenAvailable",
+        "readFeedbackSchemaBeforeSubmitting",
+        "doNotAssumeFeedbackPayloadShape"
+      ]
+    },
+    "staticBundle": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "format": {
+          "const": "farming-labs-agent-bundle.v1"
+        },
+        "manifest": {
+          "$ref": "#/$defs/route"
+        },
+        "check": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "locales": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "default": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "pathPattern": {
+              "$ref": "#/$defs/route"
+            }
+          },
+          "required": [
+            "default",
+            "pathPattern"
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "manifest",
+        "check"
+      ]
+    }
+  },
+  "required": [
+    "$schema",
+    "format",
+    "version",
+    "name",
+    "baseUrl",
+    "site",
+    "locales",
+    "capabilities",
+    "api",
+    "apiCatalog",
+    "config",
+    "markdown",
+    "agentContract",
+    "llms",
+    "sitemap",
+    "robots",
+    "structuredData",
+    "openapi",
+    "search",
+    "agents",
+    "skills",
+    "mcp",
+    "feedback",
+    "instructions"
+  ]
+}

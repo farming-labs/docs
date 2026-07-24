@@ -34,7 +34,10 @@ function createPassingResponse(surface: DocsAgentContractSurface, contentType?: 
     headers.set(
       "Link",
       contractCase.expect.linkRelations
-        .map(({ href, rel }) => `<${href}>; title="Docs, API"; rel="${rel}"`)
+        .map(
+          ({ href, rel }) =>
+            `<${href}>; title="Docs, API"; rel="${rel}"${rel === "describedby" ? '; type="application/schema+json"' : ""}`,
+        )
         .join(", "),
     );
   }

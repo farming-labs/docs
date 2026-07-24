@@ -6,6 +6,9 @@ import { runAgentSurfaceSmoke } from "./smoke-agent-surfaces.mjs";
 
 const BASE_URL = "https://deployment.example.com";
 const AGENT_SKILLS_SCHEMA = "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
+const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
+const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v1.json";
 const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
 const API_CATALOG_ROUTE = "/.well-known/api-catalog";
 const AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
@@ -56,6 +59,8 @@ function createFixtureFetch(options = {}) {
   const calls = [];
   const streamState = { aborted: false, cancelled: false, pulls: 0 };
   const manifest = {
+    $schema: AGENT_MANIFEST_SCHEMA,
+    format: AGENT_MANIFEST_FORMAT,
     version: "1",
     name: "@farming-labs/docs",
     capabilities: { agentSkillsDiscovery: true, mcp: true },
@@ -188,7 +193,24 @@ function createFixtureFetch(options = {}) {
       url.pathname === "/.well-known/agent" ||
       url.pathname === "/api/docs/agent/spec"
     ) {
-      return jsonResponse(method, manifest);
+      return jsonResponse(method, manifest, {
+        headers: {
+          link: `<${AGENT_MANIFEST_SCHEMA}>; rel="describedby"; type="application/schema+json"`,
+        },
+      });
+    }
+    if (url.pathname === AGENT_MANIFEST_SCHEMA_ROUTE) {
+      return jsonResponse(
+        method,
+        {
+          $schema: "https://json-schema.org/draft/2020-12/schema",
+          $id: AGENT_MANIFEST_SCHEMA,
+          properties: {
+            format: { const: AGENT_MANIFEST_FORMAT },
+          },
+        },
+        { contentType: "application/schema+json; charset=utf-8" },
+      );
     }
     if (url.pathname === API_CATALOG_ROUTE) {
       return jsonResponse(
@@ -367,6 +389,7 @@ test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", asy
   assert(
     fixture.calls.some((call) => call.pathname === "/.well-known/agent-skills/portable/SKILL.md"),
   );
+  assert(fixture.calls.some((call) => call.pathname === AGENT_MANIFEST_SCHEMA_ROUTE));
 });
 
 test("fails when an indexed Agent Skill artifact does not match its digest", async () => {

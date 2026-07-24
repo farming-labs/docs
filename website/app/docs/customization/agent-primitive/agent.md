@@ -90,6 +90,13 @@ exact `SKILL.md` bytes covered by its `sha256:` digest.
 Fetch `GET /.well-known/agent.json` before choosing how to read or report on the docs. If that is
 unavailable, fall back to `GET /.well-known/agent` and then `GET /api/docs/agent/spec`.
 
+This is the Farming Labs documentation-discovery extension. Verify
+`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+`format: "farming-labs-agent-manifest.v1"` before consuming it. Dynamic responses also associate
+the Draft 2020-12 schema with `Link: <...>; rel="describedby"; type="application/schema+json"`.
+Do not parse this document as A2A; an explicitly configured A2A service uses the separate,
+opt-in `/.well-known/agent-card.json` route.
+
 The spec is generated from `docs.config` and includes:
 
 - site title, description, docs entry, and base URL

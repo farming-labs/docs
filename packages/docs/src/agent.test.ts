@@ -12,6 +12,8 @@ import {
   createDocsMarkdownResponse,
   createDocsStandardsDiscoveryResponse,
   detectDocsMarkdownAgentRequest,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
   findDocsAudienceMdxIssues,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
@@ -1944,7 +1946,11 @@ After`;
       },
     });
 
+    expect(spec.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
+    expect(spec.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
+    expect(spec.version).toBe("1");
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.api).not.toHaveProperty("agentCard");
     expect(spec.api.config).toBe("/api/docs?format=config");
     expect(spec.api.diagnostics).toBe("/api/docs?format=diagnostics");
     expect(spec.api.agents).toBe("/api/docs?format=agents");

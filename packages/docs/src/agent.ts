@@ -41,6 +41,8 @@ import {
   AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
   API_CATALOG_MEDIA_TYPE,
   API_CATALOG_PROFILE_URI,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
   DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SKILLS_ARCHIVE_ROUTE_PATTERN,
@@ -63,6 +65,9 @@ export {
   AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
   API_CATALOG_MEDIA_TYPE,
   API_CATALOG_PROFILE_URI,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
   DEFAULT_AGENT_SKILL_FORMAT,
   DEFAULT_AGENT_SKILL_ARCHIVE_FORMAT,
   DEFAULT_AGENT_SKILL_FILE_FORMAT,
@@ -87,6 +92,7 @@ export {
   buildDocsA2AAgentCard,
   buildDocsApiCatalog,
   createDocsStandardsResponse,
+  getDocsAgentManifestLinkHeader,
   getDocsDiscoveryLinkHeader,
   isDocsStandardsDiscoveryRequest,
   resolveDocsDiscoveryApiRoute,
@@ -3625,6 +3631,8 @@ export function buildDocsAgentDiscoverySpec({
     : [];
 
   return {
+    $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+    format: DOCS_AGENT_MANIFEST_FORMAT,
     version: "1",
     name: "@farming-labs/docs",
     baseUrl: origin,

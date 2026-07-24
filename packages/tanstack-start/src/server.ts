@@ -20,6 +20,7 @@ import {
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
+  getDocsAgentManifestLinkHeader,
   getDocsDiscoveryLinkHeader,
   isDocsAgentDiscoveryRequest,
   isDocsAgentsRequest,
@@ -879,6 +880,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     includeApiCatalog: apiCatalogEnabled,
     includeAgentCard: Boolean(config.agent?.a2a),
   });
+  const agentManifestLinkHeader = getDocsAgentManifestLinkHeader(discoveryLinkHeader);
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(config.apiReference);
   const mcpConfig = resolveDocsMcpConfig(config.mcp, {
     defaultName: llmsTitle,
@@ -1080,7 +1082,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
             "Content-Type": "application/json; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
-            Link: discoveryLinkHeader,
+            Link: agentManifestLinkHeader,
           },
         },
       );

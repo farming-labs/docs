@@ -14,6 +14,9 @@ import {
   DEFAULT_LLMS_TXT_ROUTE,
   DEFAULT_MCP_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
 } from "./agent.js";
 import {
   httpLinkMatchesExpectation,
@@ -24,7 +27,7 @@ import {
 import { DEFAULT_SITEMAP_MD_ROUTE, DEFAULT_SITEMAP_XML_ROUTE } from "./sitemap.js";
 import { DEFAULT_ROBOTS_TXT_ROUTE } from "./robots.js";
 
-export const DOCS_AGENT_CONTRACT_VERSION = "1.1";
+export const DOCS_AGENT_CONTRACT_VERSION = "1.2";
 
 export type DocsAgentAdapter = "next" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
 
@@ -131,9 +134,14 @@ export function createDocsAgentContractCases(
       expect: {
         statuses: [200],
         contentTypes: json,
+        bodyIncludes: [DOCS_AGENT_MANIFEST_SCHEMA_URI, DOCS_AGENT_MANIFEST_FORMAT],
+        headerIncludes: {
+          Link: [`rel="describedby"`, `type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`],
+        },
         linkRelations: [
           { href: DEFAULT_API_CATALOG_ROUTE, rel: "api-catalog" },
           { href: DEFAULT_AGENT_SKILLS_INDEX_ROUTE, rel: "service-meta" },
+          { href: DOCS_AGENT_MANIFEST_SCHEMA_URI, rel: "describedby" },
         ],
       },
     },

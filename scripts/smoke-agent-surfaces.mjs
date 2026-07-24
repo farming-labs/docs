@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_BASE_URL = "https://docs.farming-labs.dev";
 const AGENT_SKILLS_SCHEMA = "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
+const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
+const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v1.json";
 const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
 const API_CATALOG_ROUTE = "/.well-known/api-catalog";
 const AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
@@ -237,11 +240,26 @@ async function readJson(request, route, expectedStatuses = [200]) {
   }
 }
 
-function validateManifest(json, route) {
+function validateManifest(json, route, response) {
   const manifest = asRecord(json);
   assert(manifest, `${route} did not return a JSON object`);
+  assert(
+    manifest.$schema === AGENT_MANIFEST_SCHEMA,
+    `${route} did not declare the Farming Labs manifest schema`,
+  );
+  assert(
+    manifest.format === AGENT_MANIFEST_FORMAT,
+    `${route} did not declare the Farming Labs manifest format`,
+  );
   assert(manifest.version === "1", `${route} did not declare agent manifest version 1`);
   assert(isNonEmptyString(manifest.name), `${route} did not declare a name`);
+  assert(includesLinkRelation(response, "describedby"), `${route} omitted rel="describedby"`);
+  const link = response.headers.get("link") ?? "";
+  assert(link.includes(`<${AGENT_MANIFEST_SCHEMA}>`), `${route} linked the wrong manifest schema`);
+  assert(
+    /type=(?:"application\/schema\+json"|application\/schema\+json)(?:[,;]|$)/iu.test(link),
+    `${route} omitted the manifest schema media type`,
+  );
 
   const capabilities = asRecord(manifest.capabilities);
   const api = asRecord(manifest.api);
@@ -282,6 +300,25 @@ function validateManifest(json, route) {
     `${route} did not advertise both public MCP endpoints`,
   );
   return manifest;
+}
+
+async function validateAgentManifestSchema(request) {
+  const result = await readJson(request, AGENT_MANIFEST_SCHEMA_ROUTE);
+  assert(
+    mediaType(result.response) === "application/schema+json",
+    `${AGENT_MANIFEST_SCHEMA_ROUTE} did not return application/schema+json`,
+  );
+  const schema = asRecord(result.json);
+  assert(
+    schema?.$schema === "https://json-schema.org/draft/2020-12/schema",
+    `${AGENT_MANIFEST_SCHEMA_ROUTE} did not use JSON Schema Draft 2020-12`,
+  );
+  assert(schema?.$id === AGENT_MANIFEST_SCHEMA, `${AGENT_MANIFEST_SCHEMA_ROUTE} had the wrong $id`);
+  const properties = asRecord(schema?.properties);
+  assert(
+    asRecord(properties?.format)?.const === AGENT_MANIFEST_FORMAT,
+    `${AGENT_MANIFEST_SCHEMA_ROUTE} did not define the manifest format`,
+  );
 }
 
 function assertOnlyKeys(value, allowed, label) {
@@ -1130,17 +1167,20 @@ export async function runAgentSurfaceSmoke(options = {}) {
 
   const manifest = await recorder.check("agent manifest /.well-known/agent.json", async () => {
     const result = await readJson(request, "/.well-known/agent.json");
-    return validateManifest(result.json, "/.well-known/agent.json");
+    return validateManifest(result.json, "/.well-known/agent.json", result.response);
   });
   await Promise.all([
     recorder.check("agent manifest /.well-known/agent", async () => {
       const result = await readJson(request, "/.well-known/agent");
-      validateManifest(result.json, "/.well-known/agent");
+      validateManifest(result.json, "/.well-known/agent", result.response);
     }),
     recorder.check("agent manifest /api/docs/agent/spec", async () => {
       const result = await readJson(request, "/api/docs/agent/spec");
-      validateManifest(result.json, "/api/docs/agent/spec");
+      validateManifest(result.json, "/api/docs/agent/spec", result.response);
     }),
+    recorder.check("Farming Labs agent manifest schema", () =>
+      validateAgentManifestSchema(request),
+    ),
     recorder.check("RFC 9727 API catalog", () => validateApiCatalog(request)),
   ]);
 
