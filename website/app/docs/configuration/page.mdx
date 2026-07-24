@@ -429,6 +429,8 @@ No separate config flag is required for machine-readable page markdown.
   That means a CDN can cache the HTML and markdown versions separately even though the URL is the
   same:
 
+| `apiCatalog` | `boolean` | `true` | When `false`, suppresses `Allow: /.well-known/api-catalog` from the generated `robots.txt` policy and removes that route from discovery links. Has no effect on hashed Agent Skills routes. |
+
   ```txt
   /docs/installation + normal browser headers      -> cached HTML
   /docs/installation + Accept: text/markdown       -> cached markdown
@@ -539,6 +541,7 @@ The generated policy explicitly allows the docs entry, `.md` routes, `llms.txt`,
 `AGENTS.md`, `skill.md`, MCP aliases, and agent discovery routes. It also includes common AI crawler user agents
 such as `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `CCBot`, and `Google-Extended`.
 
+Two allow rules are conditional: `Allow: /.well-known/api-catalog` is omitted when `llmsTxt.apiCatalog: false` or `staticExport: true`, and `Allow: /.well-known/agent-card.json` is included only when `agent.a2a` is configured.
 Generate the file with:
 
 ```bash title="terminal"
