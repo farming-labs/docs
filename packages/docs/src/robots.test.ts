@@ -90,6 +90,49 @@ describe("docs robots helpers", () => {
     expect(analysis.blocksAiAgents).toBe(false);
   });
 
+  it("uses longest-match and allow-tie precedence for appended policies", () => {
+    const generatedBlock = renderDocsRobotsGeneratedBlock();
+    const wildcardBlock = analyzeDocsRobotsTxt(
+      upsertDocsRobotsGeneratedBlock("User-agent: *\nDisallow: /\n", generatedBlock),
+    );
+    expect(wildcardBlock.hasAgentRoutes).toBe(true);
+    expect(wildcardBlock.blocksAgentRoutes).toBe(false);
+
+    const specificRouteBlock = analyzeDocsRobotsTxt(
+      upsertDocsRobotsGeneratedBlock("User-agent: GPTBot\nDisallow: /llms.txt\n", generatedBlock),
+    );
+    expect(specificRouteBlock.hasAgentRoutes).toBe(true);
+    expect(specificRouteBlock.blocksAiAgents).toBe(true);
+
+    const equivalentAllow = analyzeDocsRobotsTxt(
+      upsertDocsRobotsGeneratedBlock("User-agent: GPTBot\nDisallow: /\n", generatedBlock),
+    );
+    expect(equivalentAllow.blocksAiAgents).toBe(false);
+
+    for (const pattern of ["/llms.txt$", "/llms.txt*"]) {
+      const specialCharacterBlock = analyzeDocsRobotsTxt(
+        upsertDocsRobotsGeneratedBlock(
+          `User-agent: GPTBot\nAllow: /llms.txt\nDisallow: ${pattern}\n`,
+          generatedBlock,
+        ),
+      );
+      expect(specialCharacterBlock.blocksAiAgents).toBe(true);
+    }
+  });
+
+  it("does not let other records terminate a multi-user-agent group", () => {
+    const content = `${renderDocsRobotsTxt()}
+User-agent: GPTBot
+Sitemap: https://docs.example.com/sitemap.xml
+Crawl-delay: 5
+User-agent: ExampleBot
+Disallow: /llms.txt
+`;
+    const analysis = analyzeDocsRobotsTxt(content);
+
+    expect(analysis.blocksAiAgents).toBe(true);
+  });
+
   it("honors optional API catalog and A2A discovery coverage", () => {
     const staticContent = renderDocsRobotsTxt({ apiCatalog: false });
     expect(analyzeDocsRobotsTxt(staticContent, { apiCatalog: false }).hasAgentRoutes).toBe(true);

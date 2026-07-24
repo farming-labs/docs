@@ -309,8 +309,8 @@ export function upsertDocsRobotsGeneratedBlock(existing: string, block: string):
 interface ParsedRobotsGroup {
   userAgents: Set<string>;
   allowRoutes: Set<string>;
-  disallowRoutes: Set<string>;
-  hasDirectives: boolean;
+  rules: Array<{ directive: "allow" | "disallow"; pattern: string }>;
+  hasRules: boolean;
 }
 
 function parseRobotsGroups(content: string): ParsedRobotsGroup[] {
@@ -326,12 +326,12 @@ function parseRobotsGroups(content: string): ParsedRobotsGroup[] {
     const value = line.slice(separator + 1).trim();
     if (field === "user-agent") {
       if (!value) continue;
-      if (!current || current.hasDirectives) {
+      if (!current || current.hasRules) {
         current = {
           userAgents: new Set(),
           allowRoutes: new Set(),
-          disallowRoutes: new Set(),
-          hasDirectives: false,
+          rules: [],
+          hasRules: false,
         };
         groups.push(current);
       }
@@ -340,10 +340,12 @@ function parseRobotsGroups(content: string): ParsedRobotsGroup[] {
     }
 
     if (!current) continue;
-    current.hasDirectives = true;
+    if (field !== "allow" && field !== "disallow") continue;
+    current.hasRules = true;
     if (!value) continue;
-    if (field === "allow") current.allowRoutes.add(normalizeRoute(value));
-    if (field === "disallow") current.disallowRoutes.add(normalizeRoute(value));
+    const pattern = normalizeRoute(value);
+    if (field === "allow") current.allowRoutes.add(pattern);
+    current.rules.push({ directive: field, pattern });
   }
 
   return groups;
@@ -351,12 +353,56 @@ function parseRobotsGroups(content: string): ParsedRobotsGroup[] {
 
 function rulesForUserAgent(groups: ParsedRobotsGroup[], userAgent: string) {
   const normalizedUserAgent = userAgent.toLowerCase();
-  const matches = groups.filter((group) => group.userAgents.has(normalizedUserAgent));
+  const explicitMatches = groups.filter((group) => group.userAgents.has(normalizedUserAgent));
+  const matches =
+    explicitMatches.length > 0
+      ? explicitMatches
+      : groups.filter((group) => group.userAgents.has("*"));
   return {
-    found: matches.length > 0,
+    found: explicitMatches.length > 0,
     allowRoutes: new Set(matches.flatMap((group) => [...group.allowRoutes])),
-    disallowRoutes: new Set(matches.flatMap((group) => [...group.disallowRoutes])),
+    rules: matches.flatMap((group) => group.rules),
   };
+}
+
+function concreteDiscoveryRoute(route: string): string {
+  return route.replace(/\*/g, "resource");
+}
+
+function robotsRuleMatches(pattern: string, route: string): boolean {
+  const endAnchored = pattern.endsWith("$");
+  const source = endAnchored ? pattern.slice(0, -1) : pattern;
+  const expression = source
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*");
+  return new RegExp(`^${expression}${endAnchored ? "$" : ""}`).test(route);
+}
+
+function robotsRuleSpecificity(pattern: string): number {
+  return new TextEncoder().encode(pattern).byteLength;
+}
+
+function rulesAllowRoute(
+  rules: Array<{ directive: "allow" | "disallow"; pattern: string }>,
+  route: string,
+): boolean {
+  const concreteRoute = concreteDiscoveryRoute(route);
+  let strongestMatch = -1;
+  let allowed = true;
+
+  for (const rule of rules) {
+    if (!robotsRuleMatches(rule.pattern, concreteRoute)) continue;
+    const specificity = robotsRuleSpecificity(rule.pattern);
+    if (specificity > strongestMatch) {
+      strongestMatch = specificity;
+      allowed = rule.directive === "allow";
+      continue;
+    }
+    if (specificity === strongestMatch && rule.directive === "allow") allowed = true;
+  }
+
+  return allowed;
 }
 
 export function analyzeDocsRobotsTxt(
@@ -375,13 +421,14 @@ export function analyzeDocsRobotsTxt(
   const groups = parseRobotsGroups(content);
   const wildcardRules = rulesForUserAgent(groups, "*");
   const allowedRoutes = wildcardRules.allowRoutes;
-  const disallowedRoutes = wildcardRules.disallowRoutes;
   const missingRoutes = expectedRoutes.filter((route) => !allowedRoutes.has(route));
-  const blocksWildcard = disallowedRoutes.has("/");
-  const blocksAgentRoutes =
-    blocksWildcard || expectedRoutes.some((route) => disallowedRoutes.has(route));
+  const blocksAgentRoutes = expectedRoutes.some(
+    (route) => !rulesAllowRoute(wildcardRules.rules, route),
+  );
   const blocksAiAgents = DEFAULT_DOCS_AI_ROBOTS_USER_AGENTS.some((userAgent) =>
-    rulesForUserAgent(groups, userAgent).disallowRoutes.has("/"),
+    expectedRoutes.some(
+      (route) => !rulesAllowRoute(rulesForUserAgent(groups, userAgent).rules, route),
+    ),
   );
 
   return {

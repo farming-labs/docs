@@ -14,6 +14,7 @@ import {
   loadDocsConfigModule,
   readBooleanProperty,
   readStringProperty,
+  readTopLevelBooleanProperty,
   readTopLevelStringProperty,
   resolveDocsConfigPath,
 } from "./config.js";
@@ -105,11 +106,6 @@ export function parseRobotsGenerateArgs(argv: string[]): ParsedRobotsGenerateArg
   }
 
   return parsed;
-}
-
-function readTopLevelBooleanProperty(content: string, key: string): boolean | undefined {
-  const match = content.match(new RegExp(`\\b${key}\\b\\s*:\\s*(true|false)`));
-  return match ? match[1] === "true" : undefined;
 }
 
 function readLlmsBaseUrlFromConfig(content: string, config?: DocsConfig): string | undefined {
