@@ -1,4 +1,3 @@
-import matter from "gray-matter";
 import type {
   DocsAgentA2AApiKeySecurityScheme,
   DocsAgentA2ACapabilities,
@@ -16,6 +15,12 @@ import type {
   DocsAgentA2ASecurityScopeList,
   DocsAgentA2ASkill,
 } from "./types.js";
+import {
+  parseDocsAgentSkillFrontmatter,
+  validateDocsAgentSkillFrontmatter,
+  type DocsAgentSkillFrontmatter,
+  type DocsAgentSkillFrontmatterValidationOptions,
+} from "./agent-skills-spec.js";
 
 export const DEFAULT_API_CATALOG_ROUTE = "/.well-known/api-catalog";
 export const DEFAULT_API_CATALOG_FORMAT = "api-catalog";
@@ -47,9 +52,6 @@ export const DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE = "application/schema+json";
 
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 const DEFAULT_AGENT_MANIFEST_ROUTE = "/.well-known/agent.json";
-const AGENT_SKILL_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const AGENT_SKILL_NAME_MAX_LENGTH = 64;
-const AGENT_SKILL_DESCRIPTION_MAX_LENGTH = 1024;
 const DISCOVERY_CACHE_CONTROL = "public, max-age=0, s-maxage=3600";
 const LEGACY_A2A_PROTOCOL_VERSION = "0.3";
 
@@ -124,6 +126,8 @@ export interface DocsPublishedAgentSkillOptions {
   preferredDocument?: string | null;
   fallbackDocument: string;
 }
+
+export type DocsPublishedAgentSkillBuildOptions = DocsAgentSkillFrontmatterValidationOptions;
 
 export interface DocsApiCatalogLinkTarget {
   href: string;
@@ -368,29 +372,6 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
   return { linkset };
 }
 
-function readAgentSkillFrontmatter(document: string): { name: string; description: string } | null {
-  const normalized = document.startsWith("\uFEFF") ? document.slice(1) : document;
-  let data: Record<string, unknown>;
-  try {
-    data = matter(normalized).data;
-  } catch {
-    return null;
-  }
-  const name = typeof data.name === "string" ? data.name.trim() : "";
-  const description = typeof data.description === "string" ? data.description.trim() : "";
-  if (
-    !name ||
-    name.length > AGENT_SKILL_NAME_MAX_LENGTH ||
-    !AGENT_SKILL_NAME_PATTERN.test(name) ||
-    !description ||
-    description.length > AGENT_SKILL_DESCRIPTION_MAX_LENGTH
-  ) {
-    return null;
-  }
-
-  return { name, description };
-}
-
 function toDiscoveryBytes(content: string | Uint8Array): Uint8Array<ArrayBuffer> {
   if (typeof content === "string") return new TextEncoder().encode(content);
   const bytes = new Uint8Array(new ArrayBuffer(content.byteLength));
@@ -417,14 +398,14 @@ export async function sha256DocsDiscoveryContent(content: string | Uint8Array): 
 
 function createDocsPublishedAgentSkill(
   content: string,
-  metadata: { name: string; description: string },
+  metadata: Pick<DocsAgentSkillFrontmatter, "name" | "description">,
   sha256: string,
 ): DocsPublishedAgentSkill {
   return {
     name: metadata.name,
     type: "skill-md",
     description: metadata.description,
-    url: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${metadata.name}/SKILL.md`,
+    url: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(metadata.name)}/SKILL.md`,
     digest: `sha256:${sha256}`,
     content,
     sha256,
@@ -432,7 +413,7 @@ function createDocsPublishedAgentSkill(
     files: [
       {
         path: "SKILL.md",
-        url: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${metadata.name}/SKILL.md`,
+        url: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(metadata.name)}/SKILL.md`,
         mediaType: "text/markdown",
         content,
         sha256,
@@ -446,13 +427,9 @@ function createDocsPublishedAgentSkill(
 export function buildDocsPublishedAgentSkill(
   document: string,
   sha256: string,
+  options: DocsPublishedAgentSkillBuildOptions = {},
 ): DocsPublishedAgentSkill {
-  const metadata = readAgentSkillFrontmatter(document);
-  if (!metadata) {
-    throw new Error(
-      "The generated Agent Skills fallback must contain valid name and description frontmatter.",
-    );
-  }
+  const metadata = parseDocsAgentSkillFrontmatter(document, options);
   if (!/^[a-f0-9]{64}$/.test(sha256)) {
     throw new Error("Agent Skill SHA-256 must be a lowercase 64-character hexadecimal digest.");
   }
@@ -464,16 +441,15 @@ export async function resolveDocsPublishedAgentSkill({
   preferredDocument,
   fallbackDocument,
 }: DocsPublishedAgentSkillOptions): Promise<DocsPublishedAgentSkill> {
-  const preferredMetadata = preferredDocument ? readAgentSkillFrontmatter(preferredDocument) : null;
-  const fallbackMetadata = readAgentSkillFrontmatter(fallbackDocument);
-  const content = preferredMetadata ? preferredDocument! : fallbackDocument;
-  const metadata = preferredMetadata ?? fallbackMetadata;
-
-  if (!metadata) {
-    throw new Error(
-      "The generated Agent Skills fallback must contain valid name and description frontmatter.",
-    );
-  }
+  const preferredValidation = preferredDocument
+    ? validateDocsAgentSkillFrontmatter(preferredDocument)
+    : null;
+  const content = preferredValidation?.valid ? preferredDocument! : fallbackDocument;
+  const metadata = preferredValidation?.valid
+    ? preferredValidation.data
+    : parseDocsAgentSkillFrontmatter(fallbackDocument, {
+        source: "generated Agent Skills fallback",
+      });
 
   const sha256 = await sha256DocsDiscoveryContent(content);
   return createDocsPublishedAgentSkill(content, metadata, sha256);

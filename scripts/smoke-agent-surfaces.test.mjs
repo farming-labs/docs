@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
+import { gzipSync } from "node:zlib";
 
 import { runAgentSurfaceSmoke } from "./smoke-agent-surfaces.mjs";
 
@@ -30,7 +31,48 @@ description: Use the portable workflow.
 
 # Portable workflow
 `;
-const portableArchive = new Uint8Array([31, 139, 8, 0, 1, 2, 3, 4]);
+const invalidPortableDocument = `---
+name: portable
+description: Wrong archive description.
+---
+
+# Portable workflow
+`;
+
+function writeTarText(header, offset, length, value) {
+  header.set(new TextEncoder().encode(value).subarray(0, length), offset);
+}
+
+function tarEntry(name, content) {
+  const header = new Uint8Array(512);
+  writeTarText(header, 0, 100, name);
+  writeTarText(header, 100, 8, "0000644");
+  writeTarText(header, 108, 8, "0000000");
+  writeTarText(header, 116, 8, "0000000");
+  writeTarText(header, 124, 12, content.byteLength.toString(8).padStart(11, "0"));
+  writeTarText(header, 136, 12, "00000000000");
+  header.fill(0x20, 148, 156);
+  header[156] = "0".charCodeAt(0);
+  writeTarText(header, 257, 6, "ustar");
+  writeTarText(header, 263, 2, "00");
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  writeTarText(header, 148, 8, `${checksum.toString(8).padStart(6, "0")}\0 `);
+
+  const entry = new Uint8Array(512 + Math.ceil(content.byteLength / 512) * 512);
+  entry.set(header);
+  entry.set(content, 512);
+  return entry;
+}
+
+function createSkillArchive(document) {
+  const entry = tarEntry("SKILL.md", new TextEncoder().encode(document));
+  const archive = new Uint8Array(entry.byteLength + 1024);
+  archive.set(entry);
+  return gzipSync(archive);
+}
+
+const portableArchive = createSkillArchive(portableDocument);
+const invalidPortableArchive = createSkillArchive(invalidPortableDocument);
 
 function digest(content) {
   return createHash("sha256").update(content).digest("hex");
@@ -38,7 +80,6 @@ function digest(content) {
 
 const docsDigest = digest(docsDocument);
 const portableDocumentDigest = digest(portableDocument);
-const portableArchiveDigest = digest(portableArchive);
 
 function jsonResponse(method, value, options = {}) {
   return response(method, `${JSON.stringify(value)}\n`, {
@@ -82,6 +123,8 @@ function createFixtureFetch(options = {}) {
   const calls = [];
   const streamState = { aborted: false, cancelled: false, pulls: 0 };
   const canonicalBaseUrl = options.canonicalBaseUrl ?? BASE_URL;
+  const archiveBytes = options.invalidArchiveFrontmatter ? invalidPortableArchive : portableArchive;
+  const archiveDigest = digest(archiveBytes);
   const manifest = {
     $schema: AGENT_MANIFEST_SCHEMA,
     format: AGENT_MANIFEST_FORMAT,
@@ -149,7 +192,7 @@ function createFixtureFetch(options = {}) {
           type: "archive",
           description: "Use the portable workflow.",
           url: "/.well-known/agent-skills/portable.tar.gz",
-          digest: `sha256:${portableArchiveDigest}`,
+          digest: `sha256:${archiveDigest}`,
           files: [
             {
               path: "SKILL.md",
@@ -247,7 +290,7 @@ function createFixtureFetch(options = {}) {
         type: "archive",
         description: "Use the portable workflow.",
         url: "/.well-known/agent-skills/portable.tar.gz",
-        digest: `sha256:${portableArchiveDigest}`,
+        digest: `sha256:${archiveDigest}`,
       },
     ],
   };
@@ -363,11 +406,11 @@ function createFixtureFetch(options = {}) {
     if (url.pathname === "/.well-known/agent-skills/portable.tar.gz") {
       return cachedResponse(
         method,
-        options.corruptArchive ? new Uint8Array([0]) : portableArchive,
+        options.corruptArchive ? new Uint8Array([0]) : archiveBytes,
         requestHeaders,
         {
           contentType: "application/gzip",
-          etag: `"${portableArchiveDigest}"`,
+          etag: `"${archiveDigest}"`,
           headers: {
             link: `<${AGENT_SKILLS_INDEX_ROUTE}>; rel="collection"; type="application/json"`,
           },
@@ -797,6 +840,28 @@ test("fails when an indexed Agent Skill artifact does not match its digest", asy
     /1 agent surface smoke check failed/u,
   );
 });
+
+test(
+  "fails when an archived Agent Skill has invalid frontmatter",
+  { skip: process.env.DOCS_SMOKE_VALIDATE_SKILL_FRONTMATTER !== "1" },
+  async () => {
+    const fixture = createFixtureFetch({ invalidArchiveFrontmatter: true });
+    const logs = [];
+    await assert.rejects(
+      runAgentSurfaceSmoke({
+        attempts: 1,
+        baseUrl: BASE_URL,
+        expectedSkillNames: ["portable"],
+        fetchImpl: fixture.fetch,
+        log(message) {
+          logs.push(message);
+        },
+      }),
+      /1 agent surface smoke check failed/u,
+    );
+    assert.match(logs.join("\n"), /frontmatter description did not match its index entry/u);
+  },
+);
 
 test("validates an advertised strict A2A v1 Agent Card and its cache contract", async () => {
   const fixture = createFixtureFetch({ agentCard: true });

@@ -4,6 +4,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/server.ts",
+    "src/agent-skills-spec.ts",
     "src/agent-skills-bundle.ts",
     "src/agent-skills-vite.ts",
     "src/docs-cloud-server.ts",

@@ -29,12 +29,22 @@ jobs:
     env:
       DOCS_SMOKE_BASE_URL: ${{ github.event_name == 'deployment_status' && github.event.deployment_status.environment_url || inputs.base_url || 'https://docs.farming-labs.dev' }}
       DOCS_SMOKE_EXPECT_SKILLS: ask-ai,cli,configuration,creating-themes,getting-started,page-actions
+      DOCS_SMOKE_VALIDATE_SKILL_FRONTMATTER: "1"
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: pnpm
+
+      - name: Install validator dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the Agent Skills validator
+        run: pnpm --filter @farming-labs/docs build
 
       - name: Test the smoke validator
         run: node --test scripts/smoke-agent-surfaces.test.mjs

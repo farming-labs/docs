@@ -17,7 +17,13 @@ import {
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  isDocsAgentSkillName,
+  validateDocsAgentSkillFrontmatter,
 } from "./agent.js";
+import {
+  AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
+  readAgentSkillDocumentFromTar,
+} from "./agent-skills-archive.js";
 import {
   httpLinkMatchesExpectation,
   parseHttpLinkHeader,
@@ -27,7 +33,7 @@ import {
 import { DEFAULT_SITEMAP_MD_ROUTE, DEFAULT_SITEMAP_XML_ROUTE } from "./sitemap.js";
 import { DEFAULT_ROBOTS_TXT_ROUTE } from "./robots.js";
 
-export const DOCS_AGENT_CONTRACT_VERSION = "1.2";
+export const DOCS_AGENT_CONTRACT_VERSION = "1.3";
 
 export type DocsAgentAdapter = "next" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
 
@@ -468,6 +474,35 @@ async function sha256Content(content: Uint8Array<ArrayBuffer>): Promise<string> 
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+async function decompressAgentSkillArchive(
+  content: Uint8Array<ArrayBuffer>,
+): Promise<Uint8Array<ArrayBuffer>> {
+  if (typeof DecompressionStream !== "function") {
+    throw new Error("gzip decompression is unavailable in this runtime");
+  }
+
+  const stream = new Blob([content]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  let totalBytes = 0;
+  for await (const chunk of stream) {
+    totalBytes += chunk.byteLength;
+    if (totalBytes > AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES) {
+      throw new Error(
+        `archive exceeds ${AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES} uncompressed bytes`,
+      );
+    }
+    chunks.push(chunk);
+  }
+
+  const archive = new Uint8Array(new ArrayBuffer(totalBytes));
+  let offset = 0;
+  for (const chunk of chunks) {
+    archive.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return archive;
+}
+
 async function validateAgentSkillsIndex(
   content: string,
   indexUrl: string,
@@ -499,11 +534,10 @@ async function validateAgentSkillsIndex(
     const digest = skill?.digest;
     if (
       !isNonEmptyString(name) ||
-      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name) ||
-      name.length > 64 ||
+      !isDocsAgentSkillName(name) ||
       (skill?.type !== "skill-md" && skill?.type !== "archive") ||
       !isNonEmptyString(description) ||
-      description.length > 1024 ||
+      Array.from(description).length > 1024 ||
       !isNonEmptyString(artifactRoute) ||
       typeof digest !== "string" ||
       !/^sha256:[0-9a-f]{64}$/u.test(digest)
@@ -526,8 +560,8 @@ async function validateAgentSkillsIndex(
     }
     const expectedPath =
       skill.type === "archive"
-        ? `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${name}.tar.gz`
-        : `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${name}/SKILL.md`;
+        ? `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(name)}.tar.gz`
+        : `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(name)}/SKILL.md`;
     if (artifactUrl.origin !== origin || !artifactUrl.pathname.endsWith(expectedPath)) {
       issues.push(
         `Agent Skills artifact URL for ${JSON.stringify(name)} did not resolve to same-origin ${expectedPath}`,
@@ -535,6 +569,7 @@ async function validateAgentSkillsIndex(
       continue;
     }
 
+    let skillDocument: string | null = null;
     try {
       const response = await handle(new Request(artifactUrl), "agent-skill");
       const artifact = new Uint8Array(await response.arrayBuffer());
@@ -556,10 +591,35 @@ async function validateAgentSkillsIndex(
           `Agent Skills artifact ${JSON.stringify(artifactRoute)} digest ${actualDigest} did not match ${digest}`,
         );
       }
+      if (skill.type === "skill-md") {
+        skillDocument = new TextDecoder("utf-8", { fatal: true }).decode(artifact);
+      } else {
+        const archive = await decompressAgentSkillArchive(artifact);
+        skillDocument = readAgentSkillDocumentFromTar(archive);
+      }
     } catch (error) {
       issues.push(
         `Agent Skills artifact ${JSON.stringify(artifactRoute)} failed: ${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+
+    if (skillDocument !== null) {
+      const validation = validateDocsAgentSkillFrontmatter(skillDocument, {
+        directoryName: name,
+      });
+      if (!validation.valid) {
+        issues.push(
+          `Agent Skill ${JSON.stringify(name)} has invalid SKILL.md frontmatter: ${validation.issues
+            .map((issue) => issue.message)
+            .join("; ")}`,
+        );
+      } else {
+        if (validation.data.description !== description) {
+          issues.push(
+            `Agent Skill ${JSON.stringify(name)} SKILL.md description does not match the discovery index`,
+          );
+        }
+      }
     }
   }
 

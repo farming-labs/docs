@@ -1,6 +1,15 @@
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -167,6 +176,29 @@ describe("configured Agent Skills", () => {
     );
   });
 
+  it("reports full-spec frontmatter errors through both filesystem resolvers", async () => {
+    const root = createWorkspace();
+    const directory = writeSkill(root, "invalid-fields");
+    writeFileSync(
+      path.join(directory, "SKILL.md"),
+      `---
+name: invalid-fields
+description: Exercise configured skill validation.
+version: "1.0"
+metadata:
+  numeric-version: 1
+---
+`,
+    );
+
+    expect(() => resolveConfiguredAgentSkillsSync(directory, { rootDir: root })).toThrow(
+      "Unexpected fields in frontmatter: version",
+    );
+    await expect(resolveConfiguredAgentSkills(directory, { rootDir: root })).rejects.toThrow(
+      "Unexpected fields in frontmatter: version",
+    );
+  });
+
   it("accepts spec-valid folded YAML descriptions and inline comments", async () => {
     const root = createWorkspace();
     const directory = writeSkill(root, "yaml-skill");
@@ -184,6 +216,28 @@ description: >
     );
 
     const [skill] = await resolveConfiguredAgentSkills(directory, { rootDir: root });
-    expect(skill.description).toBe("Use the folded workflow without losing YAML semantics.");
+    expect(skill.description).toBe("Use the folded workflow without losing YAML semantics.\n");
+  });
+
+  it("keeps every Agent Skill shipped by this repository spec-valid", () => {
+    const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
+    const skills = resolveConfiguredAgentSkillsSync("skills/farming-labs", {
+      rootDir: repositoryRoot,
+      workspaceRoot: repositoryRoot,
+    });
+    const expectedNames = readdirSync(path.join(repositoryRoot, "skills", "farming-labs"), {
+      withFileTypes: true,
+    })
+      .filter(
+        (entry) =>
+          entry.isDirectory() &&
+          readdirSync(path.join(repositoryRoot, "skills", "farming-labs", entry.name)).includes(
+            "SKILL.md",
+          ),
+      )
+      .map((entry) => entry.name)
+      .sort();
+
+    expect(skills.map((skill) => skill.name)).toEqual(expectedNames);
   });
 });
