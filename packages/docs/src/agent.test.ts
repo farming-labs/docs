@@ -1239,7 +1239,7 @@ describe("agent route helpers", () => {
       "prerequisites",
       "expected-results",
       "logs",
-      "expected-results-1",
+      "expected-results-2",
     ]);
 
     const selected = selectDocsMarkdownSection(document, {
@@ -1281,7 +1281,7 @@ describe("agent route helpers", () => {
     expect(selected.document).toContain("## Expected Results");
   });
 
-  it("keeps section ids aligned with search and MCP heading parsing", () => {
+  it("reuses search and MCP heading parsing while preserving public duplicate ids", () => {
     const document = [
       "# [Install the CLI](https://example.com/install)",
       "",
@@ -1301,6 +1301,10 @@ describe("agent route helpers", () => {
       "## Repeat",
       "",
       "Second.",
+      "",
+      "## Repeat",
+      "",
+      "Third.",
     ].join("\r\n");
     const sections = collectDocsMarkdownSections(document);
 
@@ -1308,11 +1312,13 @@ describe("agent route helpers", () => {
       "install-the-cli",
       "verify-setup",
       "repeat",
-      "repeat-1",
+      "repeat-2",
+      "repeat-3",
     ]);
     expect(sections.map((section) => section.heading)).toEqual([
       "Install the CLI",
       "Verify setup",
+      "Repeat",
       "Repeat",
       "Repeat",
     ]);
@@ -1323,11 +1329,56 @@ describe("agent route helpers", () => {
         section: { id: section.id },
       });
     }
-    expect(selectDocsMarkdownSection(document, { section: "repeat-2" })).toMatchObject({
+    expect(
+      buildDocsMarkdownSectionIndex(document, {
+        canonicalUrl: "https://example.com/docs/repeated",
+        markdownUrl: "https://example.com/docs/repeated.md",
+      }).sections.map((section) => section.id),
+    ).toEqual(["install-the-cli", "verify-setup", "repeat", "repeat-2", "repeat-3"]);
+    expect(selectDocsMarkdownSection(document, { section: "repeat-1" })).toMatchObject({
       found: true,
-      section: { id: "repeat-1" },
+      section: { id: "repeat-2" },
       document: expect.stringContaining("Second."),
     });
+    expect(selectDocsMarkdownSection(document, { section: "repeat-2" })).toMatchObject({
+      found: true,
+      section: { id: "repeat-2" },
+      document: expect.stringContaining("Second."),
+    });
+    expect(selectDocsMarkdownSection(document, { section: "repeat-2" }).document).not.toContain(
+      "Third.",
+    );
+  });
+
+  it("applies budget-only Markdown requests to the full document", () => {
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "Install overview.",
+          "",
+          "## Prerequisites",
+          "",
+          "Install Node.",
+          "",
+          "## Expected Results",
+          "",
+          "The docs app starts.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+
+    const selected = selectDocsMarkdownSection(document, { tokenBudget: 1_000 });
+    expect(selected).toMatchObject({
+      found: true,
+      truncated: false,
+    });
+    expect(selected.section).toBeUndefined();
+    expect(selected.document).toContain("Install overview.");
+    expect(selected.document).toContain("## Prerequisites");
+    expect(selected.document).toContain("## Expected Results");
   });
 
   it("builds compact section discovery metadata without section bodies", async () => {
@@ -1611,6 +1662,44 @@ describe("agent route helpers", () => {
     expect(response.headers.get("x-docs-markdown-byte-budget")).toBe("120");
     expect(new TextEncoder().encode(body).byteLength).toBeLessThanOrEqual(120);
     expect(body).not.toContain("# Markdown Section Not Found");
+  });
+
+  it("applies budget-only Markdown requests to the complete headed document", async () => {
+    const request = new Request("https://example.com/docs/install.md?byteBudget=4000");
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "Install overview.",
+          "",
+          "## Prerequisites",
+          "",
+          "Install Node.",
+          "",
+          "## Expected Results",
+          "",
+          "The docs app starts.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section")).toBe("");
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-section-truncated")).toBe("false");
+    expect(body).toContain("Install overview.");
+    expect(body).toContain("## Prerequisites");
+    expect(body).toContain("## Expected Results");
   });
 
   it("returns available sections when a Markdown section is not found", async () => {

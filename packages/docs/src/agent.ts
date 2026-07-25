@@ -28,7 +28,11 @@ import {
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
-import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
+import {
+  findDocsMarkdownSection,
+  parseDocsMarkdownSections,
+  slugifyDocsMarkdownHeading,
+} from "./markdown-sections.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   DEFAULT_SITEMAP_MD_ROUTE,
@@ -2993,14 +2997,23 @@ export function isDocsMarkdownSectionIndexRequest(url: URL): boolean {
 
 export function collectDocsMarkdownSections(document: string): DocsMarkdownSection[] {
   const { body, lineOffset } = resolveDocsMarkdownSectionBody(document);
-  return parseDocsMarkdownSections(body).map((section) => ({
-    id: section.anchor,
-    heading: section.title,
-    level: section.level,
-    content: section.content,
-    startLine: section.startLine + lineOffset,
-    endLine: section.endLine + lineOffset,
-  }));
+  const seen = new Map<string, number>();
+  return parseDocsMarkdownSections(body).flatMap((section) => {
+    const baseId = slugifyDocsMarkdownHeading(section.title);
+    if (!baseId) return [];
+    const count = seen.get(baseId) ?? 0;
+    seen.set(baseId, count + 1);
+    return [
+      {
+        id: count === 0 ? baseId : `${baseId}-${count + 1}`,
+        heading: section.title,
+        level: section.level,
+        content: section.content,
+        startLine: section.startLine + lineOffset,
+        endLine: section.endLine + lineOffset,
+      },
+    ];
+  });
 }
 
 function updateDocsMarkdownUrl(value: string, update: (url: URL) => void): string {
@@ -3121,10 +3134,7 @@ export function buildDocsMarkdownSectionIndex(
   };
 }
 
-function findLegacyDocsMarkdownSectionAlias(
-  sections: DocsMarkdownSection[],
-  requestedSection: string,
-): DocsMarkdownSection | undefined {
+function normalizeRequestedDocsMarkdownSectionId(requestedSection: string): string {
   let selector = requestedSection.trim();
   const hashIndex = selector.lastIndexOf("#");
   if (hashIndex >= 0) selector = selector.slice(hashIndex + 1);
@@ -3133,17 +3143,7 @@ function findLegacyDocsMarkdownSectionAlias(
   } catch {
     // Keep malformed fragments usable as literal selectors.
   }
-  selector = selector.replace(/^#+/u, "").toLowerCase();
-  const canonicalIds = new Set(sections.map((section) => section.id));
-
-  return sections.find((section) => {
-    const duplicate = section.id.match(/^(.*)-(\d+)$/u);
-    if (!duplicate?.[1] || !duplicate[2]) return false;
-    const duplicateIndex = Number.parseInt(duplicate[2], 10);
-    if (!Number.isSafeInteger(duplicateIndex) || duplicateIndex < 1) return false;
-    const legacyId = `${duplicate[1]}-${duplicateIndex + 1}`;
-    return !canonicalIds.has(legacyId) && selector === legacyId;
-  });
+  return selector.replace(/^#+/u, "").toLowerCase();
 }
 
 export function selectDocsMarkdownSection(
@@ -3152,7 +3152,7 @@ export function selectDocsMarkdownSection(
 ): DocsMarkdownSectionResult {
   const availableSections = collectDocsMarkdownSections(document);
   const requestedSection = request.section?.trim();
-  if (!requestedSection && availableSections.length === 0) {
+  if (!requestedSection) {
     const { document: budgetedDocument, truncated } = truncateDocsMarkdownSectionContent(
       document,
       request,
@@ -3169,13 +3169,18 @@ export function selectDocsMarkdownSection(
     };
   }
 
-  const selectedSharedSection = requestedSection
-    ? findDocsMarkdownSection(resolveDocsMarkdownSectionBody(document).body, requestedSection)
+  const requestedId = normalizeRequestedDocsMarkdownSectionId(requestedSection);
+  const directSection = availableSections.find((candidate) => candidate.id === requestedId);
+  const { body, lineOffset } = resolveDocsMarkdownSectionBody(document);
+  const selectedSharedSection = directSection
+    ? undefined
+    : findDocsMarkdownSection(body, requestedSection);
+  const sharedAliasSection = selectedSharedSection
+    ? availableSections.find(
+        (candidate) => candidate.startLine === selectedSharedSection.startLine + lineOffset,
+      )
     : undefined;
-  const section = requestedSection
-    ? (availableSections.find((candidate) => candidate.id === selectedSharedSection?.anchor) ??
-      findLegacyDocsMarkdownSectionAlias(availableSections, requestedSection))
-    : availableSections[0];
+  const section = directSection ?? sharedAliasSection;
 
   if (!section) {
     const lines = [
