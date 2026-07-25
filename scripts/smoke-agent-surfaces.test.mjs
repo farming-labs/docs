@@ -56,20 +56,87 @@ function response(method, body, options = {}) {
   });
 }
 
+function cachedResponse(method, body, requestHeaders, options = {}) {
+  const etag = options.etag ?? `"${digest(body)}"`;
+  const cacheControl = options.cacheControl ?? "public, max-age=0";
+  const headers = new Headers(options.headers);
+  headers.set("cache-control", cacheControl);
+  headers.set("etag", etag);
+  const requestedEtag = requestHeaders.get("if-none-match")?.replace(/^W\//u, "");
+  if (requestedEtag === etag.replace(/^W\//u, "")) {
+    return response("HEAD", "", {
+      status: 304,
+      headers: {
+        "cache-control": cacheControl,
+        etag: options.notModifiedEtag ?? etag,
+      },
+    });
+  }
+  return response(method, body, {
+    contentType: options.contentType,
+    headers,
+  });
+}
+
 function createFixtureFetch(options = {}) {
   const calls = [];
   const streamState = { aborted: false, cancelled: false, pulls: 0 };
+  const canonicalBaseUrl = options.canonicalBaseUrl ?? BASE_URL;
   const manifest = {
     $schema: AGENT_MANIFEST_SCHEMA,
     format: AGENT_MANIFEST_FORMAT,
     version: "1",
     name: "@farming-labs/docs",
-    capabilities: { agentSkillsDiscovery: true, mcp: true },
+    site: { baseUrl: canonicalBaseUrl, entry: "docs" },
+    capabilities: {
+      agentFeedback: true,
+      agentSkillsDiscovery: true,
+      markdownRoutes: true,
+      mcp: true,
+      robots: true,
+      search: true,
+      sitemap: true,
+    },
     api: {
       agentSkillsIndex: AGENT_SKILLS_INDEX_ROUTE,
+      agentSpecDefault: "/.well-known/agent.json",
+      diagnostics: "/api/docs?format=diagnostics",
       legacySkillsIndex: LEGACY_SKILLS_INDEX_ROUTE,
     },
     apiCatalog: { enabled: true, route: API_CATALOG_ROUTE },
+    config: {
+      endpoint: "/api/docs?format=config",
+      format: "docs-config-map.v1",
+    },
+    markdown: {
+      enabled: true,
+      rootPage: "/docs.md",
+    },
+    llms: {
+      enabled: true,
+      defaultTxt: "/llms.txt",
+      defaultFull: "/llms-full.txt",
+    },
+    sitemap: {
+      enabled: true,
+      xml: { enabled: true, route: "/sitemap.xml" },
+      markdown: {
+        enabled: true,
+        route: "/sitemap.md",
+        docsRoute: "/docs/sitemap.md",
+      },
+    },
+    robots: { enabled: true, route: "/robots.txt" },
+    search: {
+      enabled: true,
+      endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
+    },
+    agents: {
+      enabled: true,
+      route: "/AGENTS.md",
+      aliases: ["/AGENT.md"],
+    },
     skills: {
       discovery: {
         schema: AGENT_SKILLS_SCHEMA,
@@ -92,12 +159,19 @@ function createFixtureFetch(options = {}) {
           ],
         },
       ],
+      route: "/skill.md",
     },
     mcp: {
+      canonicalEndpoint: "/api/docs/mcp",
       publicEndpoints: ["/mcp", "/.well-known/mcp"],
+    },
+    feedback: {
+      enabled: true,
+      schema: "/api/docs/agent/feedback/schema",
     },
   };
   if (options.agentCard) manifest.api.agentCard = AGENT_CARD_ROUTE;
+  if (options.missingCanonicalMcp) delete manifest.mcp.canonicalEndpoint;
   const agentCard = {
     name: "Fixture docs agent",
     description: "Answers questions from the fixture documentation.",
@@ -188,7 +262,14 @@ function createFixtureFetch(options = {}) {
     const url = new URL(input);
     const method = init.method ?? "GET";
     const requestHeaders = new Headers(init.headers);
-    calls.push({ accept: requestHeaders.get("accept"), method, pathname: url.pathname });
+    calls.push({
+      accept: requestHeaders.get("accept"),
+      acceptEncoding: requestHeaders.get("accept-encoding"),
+      ifNoneMatch: requestHeaders.get("if-none-match"),
+      method,
+      pathname: url.pathname,
+      search: url.search,
+    });
 
     if (
       url.pathname === "/.well-known/agent.json" ||
@@ -197,6 +278,7 @@ function createFixtureFetch(options = {}) {
     ) {
       return jsonResponse(method, manifest, {
         headers: {
+          "cache-control": "public, max-age=0",
           link:
             options.manifestLink ??
             `<${AGENT_MANIFEST_SCHEMA}>; rel="describedby"; type="${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
@@ -226,49 +308,71 @@ function createFixtureFetch(options = {}) {
       );
     }
     if (url.pathname === API_CATALOG_ROUTE) {
-      return jsonResponse(
-        method,
-        {
-          linkset: [
-            {
-              anchor: `${BASE_URL}${API_CATALOG_ROUTE}`,
-              item: [{ href: `${BASE_URL}/api/docs` }],
-              "service-meta": [
-                { href: `${BASE_URL}/.well-known/agent.json` },
-                { href: `${BASE_URL}${AGENT_SKILLS_INDEX_ROUTE}` },
-              ],
-            },
-          ],
+      const value = {
+        linkset: [
+          {
+            anchor: `${BASE_URL}${API_CATALOG_ROUTE}`,
+            item: [{ href: `${BASE_URL}/api/docs` }],
+            "service-meta": [
+              { href: `${BASE_URL}/.well-known/agent.json` },
+              { href: `${BASE_URL}${AGENT_SKILLS_INDEX_ROUTE}` },
+            ],
+          },
+        ],
+      };
+      return cachedResponse(method, `${JSON.stringify(value)}\n`, requestHeaders, {
+        contentType: `application/linkset+json; profile="${API_CATALOG_PROFILE}"; charset=utf-8`,
+        headers: {
+          link:
+            options.apiCatalogLink ??
+            `<${API_CATALOG_ROUTE}>; rel="api-catalog"; type="application/linkset+json"`,
         },
-        {
-          contentType: `application/linkset+json; profile="${API_CATALOG_PROFILE}"; charset=utf-8`,
-          headers: { link: `<${API_CATALOG_ROUTE}>; rel="api-catalog"` },
-        },
-      );
+      });
     }
     if (url.pathname === AGENT_SKILLS_INDEX_ROUTE) {
-      return jsonResponse(method, modernIndex);
+      const links = modernIndex.skills
+        .map(
+          (skill) =>
+            `<${skill.url}>; rel="item"; type="${skill.type === "archive" ? "application/gzip" : "text/markdown"}"`,
+        )
+        .join(", ");
+      return cachedResponse(method, `${JSON.stringify(modernIndex)}\n`, requestHeaders, {
+        contentType: "application/json; charset=utf-8",
+        headers: { link: links },
+      });
     }
     if (url.pathname === LEGACY_SKILLS_INDEX_ROUTE) {
-      return jsonResponse(method, legacyIndex);
+      return cachedResponse(method, `${JSON.stringify(legacyIndex)}\n`, requestHeaders, {
+        contentType: "application/json; charset=utf-8",
+      });
     }
     if (url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
-      return response(method, docsDocument, {
+      return cachedResponse(method, docsDocument, requestHeaders, {
+        cacheControl:
+          options.docsArtifactHeadCacheMismatch && method === "HEAD"
+            ? "public, max-age=60"
+            : undefined,
         contentType: "text/markdown; charset=utf-8",
+        etag: `W/"${docsDigest}"`,
+        notModifiedEtag: options.docsArtifactNotModifiedEtag,
         headers: {
-          etag: `W/"${docsDigest}"`,
-          link: `<${AGENT_SKILLS_INDEX_ROUTE}>; rel="collection"`,
+          link: `<${AGENT_SKILLS_INDEX_ROUTE}>; rel="collection"; type="application/json"`,
         },
       });
     }
     if (url.pathname === "/.well-known/agent-skills/portable.tar.gz") {
-      return response(method, options.corruptArchive ? new Uint8Array([0]) : portableArchive, {
-        contentType: "application/gzip",
-        headers: {
+      return cachedResponse(
+        method,
+        options.corruptArchive ? new Uint8Array([0]) : portableArchive,
+        requestHeaders,
+        {
+          contentType: "application/gzip",
           etag: `"${portableArchiveDigest}"`,
-          link: `<${AGENT_SKILLS_INDEX_ROUTE}>; rel="collection"`,
+          headers: {
+            link: `<${AGENT_SKILLS_INDEX_ROUTE}>; rel="collection"; type="application/json"`,
+          },
         },
-      });
+      );
     }
     if (url.pathname === "/.well-known/agent-skills/portable/SKILL.md") {
       return response(method, portableDocument, { contentType: "text/markdown; charset=utf-8" });
@@ -302,7 +406,11 @@ function createFixtureFetch(options = {}) {
     if (url.pathname === AGENT_CARD_ROUTE) {
       return response(method, "Not Found", { status: 404, contentType: "text/plain" });
     }
-    if (url.pathname === "/mcp" || url.pathname === "/.well-known/mcp") {
+    if (
+      url.pathname === "/mcp" ||
+      url.pathname === "/.well-known/mcp" ||
+      url.pathname === "/api/docs/mcp"
+    ) {
       return jsonResponse(method, {
         jsonrpc: "2.0",
         id: 1,
@@ -312,6 +420,72 @@ function createFixtureFetch(options = {}) {
           serverInfo: { name: "Fixture docs", version: "1.0.0" },
         },
       });
+    }
+    if (url.pathname === "/api/docs/agent/feedback/schema") {
+      return jsonResponse(
+        method,
+        {
+          type: "object",
+          properties: { helpful: { type: "boolean" } },
+        },
+        { contentType: "application/schema+json; charset=utf-8" },
+      );
+    }
+    if (url.pathname === "/api/docs" && url.searchParams.get("format") === "config") {
+      return jsonResponse(method, { format: "docs-config-map.v1" });
+    }
+    if (url.pathname === "/api/docs" && url.searchParams.get("format") === "diagnostics") {
+      return jsonResponse(method, { format: "docs-diagnostics.v1", ok: true });
+    }
+    if (url.pathname === "/api/docs" && url.searchParams.has("query")) {
+      return jsonResponse(method, [
+        {
+          id: "/docs/installation",
+          url: "/docs/installation",
+          content: "Installation",
+        },
+      ]);
+    }
+    if (url.pathname === "/docs" && requestHeaders.get("accept") === "text/markdown") {
+      return response(method, "# Introduction\n", {
+        contentType: "text/markdown; charset=utf-8",
+        headers: {
+          link: `<${canonicalBaseUrl}/docs>; rel="canonical"`,
+          vary: "Accept",
+        },
+      });
+    }
+    if (url.pathname === "/docs") {
+      return response(method, "<!doctype html><title>Introduction</title>", {
+        contentType: "text/html; charset=utf-8",
+      });
+    }
+    if (url.pathname === "/docs.md") {
+      return response(method, options.explicitMarkdownBody ?? "# Introduction\n", {
+        contentType: "text/markdown; charset=utf-8",
+        headers: { link: `<${canonicalBaseUrl}/docs>; rel="canonical"` },
+      });
+    }
+    if (url.pathname === "/robots.txt") {
+      const rootMcpAllow = options.robotsOmitRootMcp ? "" : "Allow: /mcp\n";
+      return response(
+        method,
+        `User-agent: *
+Allow: /.well-known/agent.json
+Allow: /.well-known/api-catalog
+Allow: /.well-known/agent-skills/index.json
+${rootMcpAllow}Allow: /.well-known/mcp
+Sitemap: ${BASE_URL}/sitemap.xml
+`,
+        { contentType: "text/plain; charset=utf-8" },
+      );
+    }
+    if (url.pathname === "/sitemap.xml") {
+      return response(
+        method,
+        `<?xml version="1.0"?><urlset><url><loc>${BASE_URL}/docs</loc></url></urlset>`,
+        { contentType: "application/xml; charset=utf-8" },
+      );
     }
 
     if (url.pathname === "/.well-known/skill.md" && options.oversizedStream) {
@@ -345,6 +519,13 @@ function createFixtureFetch(options = {}) {
       "/.well-known/llms.txt": ["text/plain", "# Documentation\n"],
       "/.well-known/llms-full.txt": ["text/plain", "# Full documentation\n"],
       "/.well-known/sitemap.md": ["text/markdown", "# Sitemap\n"],
+      "/skill.md": ["text/markdown", docsDocument],
+      "/AGENTS.md": ["text/markdown", "# AGENTS.md\n"],
+      "/AGENT.md": ["text/markdown", "# AGENT.md\n"],
+      "/llms.txt": ["text/plain", "# Documentation\n"],
+      "/llms-full.txt": ["text/plain", "# Full documentation\n"],
+      "/sitemap.md": ["text/markdown", "# Sitemap\n"],
+      "/docs/sitemap.md": ["text/markdown", "# Documentation sitemap\n"],
     };
     const textRoute = textRoutes[url.pathname];
     if (textRoute) return response(method, textRoute[1], { contentType: textRoute[0] });
@@ -403,6 +584,150 @@ test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", asy
     fixture.calls.some((call) => call.pathname === "/.well-known/agent-skills/portable/SKILL.md"),
   );
   assert(fixture.calls.some((call) => call.pathname === AGENT_MANIFEST_SCHEMA_ROUTE));
+  assert(fixture.calls.some((call) => call.method === "POST" && call.pathname === "/api/docs/mcp"));
+  assert(
+    fixture.calls.some(
+      (call) =>
+        call.pathname === "/docs" && call.accept === "text/markdown" && call.method === "GET",
+    ),
+  );
+  assert(
+    fixture.calls.some(
+      (call) => call.pathname === "/api/docs" && call.search.includes("audience=agent"),
+    ),
+  );
+  assert(fixture.calls.some((call) => call.pathname === "/robots.txt"));
+  assert(fixture.calls.some((call) => call.pathname === "/sitemap.xml"));
+  assert(fixture.calls.some((call) => call.ifNoneMatch));
+  assert(fixture.calls.every((call) => call.acceptEncoding === "identity"));
+});
+
+test("rejects stale typed API catalog Link metadata", async () => {
+  const fixture = createFixtureFetch({
+    apiCatalogLink: `<${API_CATALOG_ROUTE}>; rel="api-catalog"; type="application/json"`,
+  });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(({ label }) => label === "RFC 9727 API catalog");
+      assert.match(failure?.message ?? "", /omitted its typed api-catalog Link relation/u);
+      return true;
+    },
+  );
+});
+
+test("rejects a hashed skill artifact with mismatched HEAD cache metadata", async () => {
+  const fixture = createFixtureFetch({ docsArtifactHeadCacheMismatch: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(({ label }) => label === "Agent Skill artifact docs");
+      assert.match(failure?.message ?? "", /HEAD returned different cache metadata/u);
+      return true;
+    },
+  );
+});
+
+test("rejects a hashed skill artifact whose 304 changes ETag strength", async () => {
+  const fixture = createFixtureFetch({
+    docsArtifactNotModifiedEtag: `"${docsDigest}"`,
+  });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(({ label }) => label === "Agent Skill artifact docs");
+      assert.match(failure?.message ?? "", /304 returned a different ETag/u);
+      return true;
+    },
+  );
+});
+
+test("rejects a missing advertised canonical MCP endpoint", async () => {
+  const fixture = createFixtureFetch({ missingCanonicalMcp: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(
+        ({ label }) => label === "advertised canonical MCP endpoint",
+      );
+      assert.match(failure?.message ?? "", /canonical MCP endpoint was not advertised/u);
+      return true;
+    },
+  );
+});
+
+test("rejects explicit Markdown that drifts from content negotiation", async () => {
+  const fixture = createFixtureFetch({ explicitMarkdownBody: "# Stale documentation\n" });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(
+        ({ label }) => label === "advertised Markdown negotiation",
+      );
+      assert.match(failure?.message ?? "", /differed from the negotiated Markdown/u);
+      return true;
+    },
+  );
+});
+
+test("accepts a preview whose Markdown links to its advertised production canonical", async () => {
+  const fixture = createFixtureFetch({ canonicalBaseUrl: "https://docs.example.com" });
+  const result = await runAgentSurfaceSmoke({
+    attempts: 1,
+    baseUrl: BASE_URL,
+    expectedSkillNames: ["portable"],
+    fetchImpl: fixture.fetch,
+    log() {},
+  });
+  assert.equal(result.passed, true);
+});
+
+test("requires exact robots.txt coverage for both MCP routes", async () => {
+  const fixture = createFixtureFetch({ robotsOmitRootMcp: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(({ label }) => label === "advertised robots.txt");
+      assert.match(failure?.message ?? "", /did not cover \/mcp/u);
+      return true;
+    },
+  );
 });
 
 for (const [name, manifestLink] of [

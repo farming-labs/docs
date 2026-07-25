@@ -69,14 +69,6 @@ function formatStatusExpectation(statuses) {
   return statuses.length === 1 ? String(statuses[0]) : statuses.join(" or ");
 }
 
-function includesLinkRelation(response, relation) {
-  const link = response.headers.get("link") ?? "";
-  return new RegExp(
-    `(?:^|[,;]\\s*)rel=(?:"[^"]*\\b${relation}\\b[^"]*"|${relation})(?:[,;]|$)`,
-    "i",
-  ).test(link);
-}
-
 function splitLinkValues(header) {
   const values = [];
   let start = 0;
@@ -124,16 +116,66 @@ function parseLinkParameters(linkValue) {
   return parameters;
 }
 
+function linkTargetMatches(response, actual, expected) {
+  try {
+    return new URL(actual, response.url).href === new URL(expected, response.url).href;
+  } catch {
+    return actual === expected;
+  }
+}
+
 function includesTypedLinkRelation(response, href, relation, type) {
   const link = response.headers.get("link") ?? "";
   return splitLinkValues(link).some((linkValue) => {
     const target = /^\s*<([^>]*)>/u.exec(linkValue)?.[1];
-    if (target !== href) return false;
+    if (!target || !linkTargetMatches(response, target, href)) return false;
     const parameters = parseLinkParameters(linkValue);
     const relations = (parameters.get("rel") ?? "").toLowerCase().split(/\s+/u);
     const linkedType = (parameters.get("type") ?? "").split(";", 1)[0].trim().toLowerCase();
     return relations.includes(relation.toLowerCase()) && linkedType === type.toLowerCase();
   });
+}
+
+function includesExactLinkRelation(response, href, relation) {
+  const link = response.headers.get("link") ?? "";
+  return splitLinkValues(link).some((linkValue) => {
+    const target = /^\s*<([^>]*)>/u.exec(linkValue)?.[1];
+    if (!target || !linkTargetMatches(response, target, href)) return false;
+    const relations = (parseLinkParameters(linkValue).get("rel") ?? "").toLowerCase().split(/\s+/u);
+    return relations.includes(relation.toLowerCase());
+  });
+}
+
+function includesHeaderToken(response, header, token) {
+  return (response.headers.get(header) ?? "")
+    .split(",")
+    .some((value) => value.trim().toLowerCase() === token.toLowerCase());
+}
+
+function normalizeEtag(value) {
+  return isNonEmptyString(value) ? value.trim() : null;
+}
+
+function resolveSameOriginTarget(baseUrl, value, label) {
+  assert(isNonEmptyString(value), `${label} was not advertised`);
+  let url;
+  try {
+    url = new URL(value, `${baseUrl}/`);
+  } catch {
+    throw new Error(`${label} was not a valid URL`);
+  }
+  assert(!url.username && !url.password, `${label} contained credentials`);
+  assert(url.origin === baseUrl, `${label} was not same-origin`);
+  assert(!url.hash, `${label} contained a fragment`);
+  return url;
+}
+
+function readAdvertisedValue(root, path) {
+  let value = root;
+  for (const key of path) {
+    value = asRecord(value)?.[key];
+  }
+  return value;
 }
 
 function encodePath(path) {
@@ -233,6 +275,7 @@ function createRequester({ baseUrl, fetchImpl, timeoutMs, attempts, maxResponseB
     const url = new URL(target, `${baseUrl}/`);
     const headers = new Headers(init.headers);
     if (!headers.has("accept")) headers.set("accept", "*/*");
+    if (!headers.has("accept-encoding")) headers.set("accept-encoding", "identity");
     headers.set("cache-control", "no-cache");
     headers.set("user-agent", "farming-labs-agent-surface-smoke/1.0");
 
@@ -365,6 +408,13 @@ function validateManifest(json, route, response) {
   return manifest;
 }
 
+async function validateManifestEndpoint(request, route) {
+  const result = await readJson(request, route);
+  const manifest = validateManifest(result.json, route, result.response);
+  await validateHeadParity(request, route, result, route);
+  return manifest;
+}
+
 async function validateAgentManifestSchema(request) {
   const result = await readJson(
     request,
@@ -447,6 +497,69 @@ function validatePublicCacheControl(value, label) {
   assert(
     /^\d+$/u.test(directives.get("s-maxage") ?? ""),
     `${label} omitted a numeric shared-cache max-age`,
+  );
+}
+
+function validateRevalidationCacheControl(value, label) {
+  const directives = new Map(
+    value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const separator = part.indexOf("=");
+        return separator === -1
+          ? [part.toLowerCase(), ""]
+          : [part.slice(0, separator).trim().toLowerCase(), part.slice(separator + 1).trim()];
+      }),
+  );
+  assert(directives.has("public"), `${label} did not declare public caching`);
+  assert(
+    !directives.has("private") && !directives.has("no-store"),
+    `${label} disabled public caching`,
+  );
+  assert(/^\d+$/u.test(directives.get("max-age") ?? ""), `${label} omitted a numeric max-age`);
+}
+
+async function validateHeadParity(request, target, initial, label) {
+  const cacheControl = initial.response.headers.get("cache-control") ?? "";
+  validateRevalidationCacheControl(cacheControl, label);
+  const head = await request(target, { method: "HEAD" });
+  assert(head.bytes.byteLength === 0, `${label} HEAD returned a body`);
+  assert(
+    head.response.headers.get("content-type") === initial.response.headers.get("content-type"),
+    `${label} HEAD returned different content metadata`,
+  );
+  assert(
+    head.response.headers.get("cache-control") === cacheControl,
+    `${label} HEAD returned different cache metadata`,
+  );
+  assert(
+    head.response.headers.get("link") === initial.response.headers.get("link"),
+    `${label} HEAD returned different Link metadata`,
+  );
+  return head;
+}
+
+async function validateHashedCacheContract(request, target, initial, label) {
+  const etag = initial.response.headers.get("etag");
+  assert(normalizeEtag(etag), `${label} did not return an ETag`);
+  const head = await validateHeadParity(request, target, initial, label);
+  assert(
+    normalizeEtag(head.response.headers.get("etag")) === normalizeEtag(etag),
+    `${label} HEAD returned a different ETag`,
+  );
+
+  const notModified = await request(target, { headers: { "If-None-Match": etag } }, [304]);
+  assert(notModified.bytes.byteLength === 0, `${label} 304 returned a body`);
+  assert(
+    normalizeEtag(notModified.response.headers.get("etag")) === normalizeEtag(etag),
+    `${label} 304 returned a different ETag`,
+  );
+  assert(
+    notModified.response.headers.get("cache-control") ===
+      initial.response.headers.get("cache-control"),
+    `${label} 304 returned different cache metadata`,
   );
 }
 
@@ -895,8 +1008,13 @@ async function validateApiCatalog(request) {
     `${API_CATALOG_ROUTE} did not declare the RFC 9727 profile`,
   );
   assert(
-    includesLinkRelation(catalog.response, "api-catalog"),
-    `${API_CATALOG_ROUTE} omitted its Link relation`,
+    includesTypedLinkRelation(
+      catalog.response,
+      API_CATALOG_ROUTE,
+      "api-catalog",
+      "application/linkset+json",
+    ),
+    `${API_CATALOG_ROUTE} omitted its typed api-catalog Link relation`,
   );
   const root = asRecord(catalog.json);
   assert(
@@ -908,19 +1026,10 @@ async function validateApiCatalog(request) {
     assert(serialized.includes(route), `${API_CATALOG_ROUTE} did not advertise ${route}`);
   }
 
-  const head = await request(API_CATALOG_ROUTE, { method: "HEAD" });
-  assert(head.bytes.byteLength === 0, `${API_CATALOG_ROUTE} HEAD returned a body`);
-  assert(
-    mediaType(head.response) === "application/linkset+json",
-    `${API_CATALOG_ROUTE} HEAD returned the wrong content-type`,
-  );
-  assert(
-    (head.response.headers.get("content-type") ?? "").includes(`profile="${API_CATALOG_PROFILE}"`),
-    `${API_CATALOG_ROUTE} HEAD did not declare the RFC 9727 profile`,
-  );
+  await validateHashedCacheContract(request, API_CATALOG_ROUTE, catalog, API_CATALOG_ROUTE);
 }
 
-function validateModernSkillIndex(json, expectedSkillNames) {
+function validateModernSkillIndex(json, expectedSkillNames, response) {
   const root = asRecord(json);
   assert(root?.$schema === AGENT_SKILLS_SCHEMA, "Agent Skills index declared the wrong schema");
   assert(
@@ -947,6 +1056,11 @@ function validateModernSkillIndex(json, expectedSkillNames) {
     assert(
       /^sha256:[0-9a-f]{64}$/u.test(skill.digest),
       `Agent Skill ${skill.name} had an invalid digest`,
+    );
+    const expectedType = skill.type === "archive" ? "application/gzip" : "text/markdown";
+    assert(
+      includesTypedLinkRelation(response, skill.url, "item", expectedType),
+      `Agent Skills index omitted the typed item Link for ${skill.name}`,
     );
     return skill;
   });
@@ -981,22 +1095,22 @@ async function validateModernSkillArtifact(request, baseUrl, skill) {
     `${skill.url} did not match its published digest`,
   );
   assert(
-    includesLinkRelation(artifact.response, "collection"),
-    `${skill.url} omitted its collection Link`,
+    includesTypedLinkRelation(
+      artifact.response,
+      AGENT_SKILLS_INDEX_ROUTE,
+      "collection",
+      "application/json",
+    ),
+    `${skill.url} omitted its typed collection Link`,
   );
 
-  const head = await request(artifactUrl, { method: "HEAD" });
-  assert(head.bytes.byteLength === 0, `${skill.url} HEAD returned a body`);
-  assert(
-    mediaType(head.response) === expectedType,
-    `${skill.url} HEAD returned the wrong content-type`,
-  );
+  await validateHashedCacheContract(request, artifactUrl, artifact, skill.url);
   assert(
     [
       `"${skill.digest.slice("sha256:".length)}"`,
       `W/"${skill.digest.slice("sha256:".length)}"`,
-    ].includes(head.response.headers.get("etag")),
-    `${skill.url} HEAD did not expose the indexed digest as its ETag`,
+    ].includes(artifact.response.headers.get("etag")),
+    `${skill.url} did not expose the indexed digest as its ETag`,
   );
 }
 
@@ -1187,6 +1301,202 @@ async function validateWellKnownText(request, route, expectedType, requiredText)
     assert(text.includes(requiredText), `${route} did not include ${JSON.stringify(requiredText)}`);
 }
 
+async function validateAdvertisedJsonFormat(
+  request,
+  baseUrl,
+  manifest,
+  path,
+  expectedFormat,
+  label,
+) {
+  assert(isNonEmptyString(expectedFormat), `${label} did not advertise its response format`);
+  const target = resolveSameOriginTarget(baseUrl, readAdvertisedValue(manifest, path), label);
+  const result = await readJson(request, target);
+  const root = asRecord(result.json);
+  assert(root, `${label} did not return a JSON object`);
+  assert(root.format === expectedFormat, `${label} returned the wrong format`);
+}
+
+async function validateAdvertisedFeedbackSchema(request, baseUrl, manifest) {
+  const target = resolveSameOriginTarget(
+    baseUrl,
+    readAdvertisedValue(manifest, ["feedback", "schema"]),
+    "feedback schema",
+  );
+  const result = await readJson(request, target, [200], "application/schema+json");
+  assert(
+    mediaType(result.response) === "application/schema+json",
+    "feedback schema returned the wrong content-type",
+  );
+  assert(asRecord(result.json), "feedback schema did not return a JSON object");
+}
+
+async function validateAdvertisedSearch(request, baseUrl, manifest, path, label) {
+  const template = readAdvertisedValue(manifest, path);
+  assert(isNonEmptyString(template) && template.includes("{query}"), `${label} was not templated`);
+  const target = resolveSameOriginTarget(
+    baseUrl,
+    template.replaceAll("{query}", encodeURIComponent("installation")),
+    label,
+  );
+  const result = await readJson(request, target);
+  assert(Array.isArray(result.json) && result.json.length > 0, `${label} returned no results`);
+  for (const [index, value] of result.json.slice(0, 5).entries()) {
+    const item = asRecord(value);
+    assert(item, `${label} result ${index} was not an object`);
+    assert(
+      isNonEmptyString(item.url) && isNonEmptyString(item.content),
+      `${label} result ${index} omitted its URL or content`,
+    );
+  }
+}
+
+async function validateMarkdownNegotiation(request, baseUrl, manifest) {
+  const entry = readAdvertisedValue(manifest, ["site", "entry"]);
+  assert(isNonEmptyString(entry), "agent manifest did not advertise a docs entry");
+  const pagePath = `/${entry.replace(/^\/+|\/+$/gu, "")}`;
+  const pageTarget = new URL(pagePath, `${baseUrl}/`);
+  const advertisedSiteBaseUrl = readAdvertisedValue(manifest, ["site", "baseUrl"]);
+  let canonicalBaseUrl;
+  try {
+    canonicalBaseUrl = new URL(
+      isNonEmptyString(advertisedSiteBaseUrl) ? advertisedSiteBaseUrl : baseUrl,
+    );
+  } catch {
+    throw new Error("agent manifest advertised an invalid site base URL");
+  }
+  assert(
+    ["http:", "https:"].includes(canonicalBaseUrl.protocol) &&
+      !canonicalBaseUrl.username &&
+      !canonicalBaseUrl.password,
+    "agent manifest advertised an unsafe site base URL",
+  );
+  const canonical = new URL(pagePath, canonicalBaseUrl);
+  const explicitTarget = resolveSameOriginTarget(
+    baseUrl,
+    readAdvertisedValue(manifest, ["markdown", "rootPage"]),
+    "explicit root Markdown route",
+  );
+
+  const negotiated = await request(pageTarget, { headers: { accept: "text/markdown" } });
+  assert(
+    mediaType(negotiated.response) === "text/markdown",
+    `${pageTarget.pathname} did not negotiate Markdown`,
+  );
+  assert(negotiated.bytes.byteLength > 0, `${pageTarget.pathname} returned empty Markdown`);
+  assert(
+    includesHeaderToken(negotiated.response, "vary", "accept"),
+    `${pageTarget.pathname} Markdown response did not vary on Accept`,
+  );
+  assert(
+    includesExactLinkRelation(negotiated.response, canonical.href, "canonical"),
+    `${pageTarget.pathname} Markdown response omitted its canonical Link`,
+  );
+
+  const explicit = await request(explicitTarget);
+  assert(
+    mediaType(explicit.response) === "text/markdown",
+    `${explicitTarget.pathname} returned the wrong content-type`,
+  );
+  assert(
+    sha256(explicit.bytes) === sha256(negotiated.bytes),
+    `${explicitTarget.pathname} differed from the negotiated Markdown representation`,
+  );
+  assert(
+    includesExactLinkRelation(explicit.response, canonical.href, "canonical"),
+    `${explicitTarget.pathname} omitted its canonical Link`,
+  );
+
+  const html = await request(pageTarget, { headers: { accept: "text/html" } });
+  assert(
+    mediaType(html.response) === "text/html" && html.bytes.byteLength > 0,
+    `${pageTarget.pathname} did not preserve its HTML representation`,
+  );
+}
+
+function advertisedTextSurfaceSpecs(manifest) {
+  const specs = [];
+  const seen = new Set();
+  const add = (label, value, type) => {
+    if (!isNonEmptyString(value) || seen.has(value)) return;
+    seen.add(value);
+    specs.push({ label, type, value });
+  };
+
+  add("public llms.txt", readAdvertisedValue(manifest, ["llms", "defaultTxt"]), "text/plain");
+  add("public llms-full.txt", readAdvertisedValue(manifest, ["llms", "defaultFull"]), "text/plain");
+  add("public AGENTS.md", readAdvertisedValue(manifest, ["agents", "route"]), "text/markdown");
+  for (const [index, alias] of (Array.isArray(readAdvertisedValue(manifest, ["agents", "aliases"]))
+    ? readAdvertisedValue(manifest, ["agents", "aliases"])
+    : []
+  ).entries()) {
+    add(`public agent instructions alias ${index + 1}`, alias, "text/markdown");
+  }
+  add("public skill.md", readAdvertisedValue(manifest, ["skills", "route"]), "text/markdown");
+  add(
+    "public Markdown sitemap",
+    readAdvertisedValue(manifest, ["sitemap", "markdown", "route"]),
+    "text/markdown",
+  );
+  add(
+    "docs Markdown sitemap",
+    readAdvertisedValue(manifest, ["sitemap", "markdown", "docsRoute"]),
+    "text/markdown",
+  );
+  return specs;
+}
+
+async function validateAdvertisedTextSurface(request, baseUrl, spec) {
+  const target = resolveSameOriginTarget(baseUrl, spec.value, spec.label);
+  const result = await request(target);
+  assert(mediaType(result.response) === spec.type, `${spec.value} returned the wrong content-type`);
+  assert(result.bytes.byteLength > 0, `${spec.value} returned an empty document`);
+}
+
+async function validateAdvertisedRobots(request, baseUrl, manifest) {
+  const route = readAdvertisedValue(manifest, ["robots", "route"]);
+  const target = resolveSameOriginTarget(baseUrl, route, "robots.txt");
+  const result = await request(target);
+  assert(mediaType(result.response) === "text/plain", `${route} returned the wrong content-type`);
+  const text = new TextDecoder().decode(result.bytes);
+  assert(text.includes("User-agent:"), `${route} did not contain a User-agent directive`);
+  assert(text.includes("Sitemap:"), `${route} did not advertise a sitemap`);
+  const allowedPaths = new Set(
+    text
+      .split(/\r?\n/u)
+      .map((line) => line.replace(/#.*$/u, "").trim())
+      .map((line) => /^allow\s*:\s*(\S+)\s*$/iu.exec(line)?.[1])
+      .filter(isNonEmptyString),
+  );
+
+  const requiredRoutes = [
+    readAdvertisedValue(manifest, ["api", "agentSpecDefault"]),
+    readAdvertisedValue(manifest, ["apiCatalog", "route"]),
+    readAdvertisedValue(manifest, ["skills", "discovery", "index"]),
+    ...(Array.isArray(readAdvertisedValue(manifest, ["mcp", "publicEndpoints"]))
+      ? readAdvertisedValue(manifest, ["mcp", "publicEndpoints"])
+      : []),
+  ].filter(isNonEmptyString);
+  for (const requiredRoute of requiredRoutes) {
+    const requiredPath = new URL(requiredRoute, `${baseUrl}/`).pathname;
+    assert(allowedPaths.has(requiredPath), `${route} did not cover ${requiredPath}`);
+  }
+}
+
+async function validateAdvertisedXmlSitemap(request, baseUrl, manifest) {
+  const route = readAdvertisedValue(manifest, ["sitemap", "xml", "route"]);
+  const target = resolveSameOriginTarget(baseUrl, route, "XML sitemap");
+  const result = await request(target);
+  assert(
+    ["application/xml", "text/xml"].includes(mediaType(result.response)),
+    `${route} returned the wrong content-type`,
+  );
+  assert(
+    new TextDecoder().decode(result.bytes).includes("<urlset"),
+    `${route} did not contain a URL set`,
+  );
+}
+
 function createRecorder(log) {
   const failures = [];
   let passed = 0;
@@ -1233,19 +1543,16 @@ export async function runAgentSurfaceSmoke(options = {}) {
 
   log(`Agent surface smoke test: ${baseUrl}`);
 
-  const manifest = await recorder.check("agent manifest /.well-known/agent.json", async () => {
-    const result = await readJson(request, "/.well-known/agent.json");
-    return validateManifest(result.json, "/.well-known/agent.json", result.response);
-  });
+  const manifest = await recorder.check("agent manifest /.well-known/agent.json", () =>
+    validateManifestEndpoint(request, "/.well-known/agent.json"),
+  );
   await Promise.all([
-    recorder.check("agent manifest /.well-known/agent", async () => {
-      const result = await readJson(request, "/.well-known/agent");
-      validateManifest(result.json, "/.well-known/agent", result.response);
-    }),
-    recorder.check("agent manifest /api/docs/agent/spec", async () => {
-      const result = await readJson(request, "/api/docs/agent/spec");
-      validateManifest(result.json, "/api/docs/agent/spec", result.response);
-    }),
+    recorder.check("agent manifest /.well-known/agent", () =>
+      validateManifestEndpoint(request, "/.well-known/agent"),
+    ),
+    recorder.check("agent manifest /api/docs/agent/spec", () =>
+      validateManifestEndpoint(request, "/api/docs/agent/spec"),
+    ),
     recorder.check("Farming Labs agent manifest schema", () =>
       validateAgentManifestSchema(request),
     ),
@@ -1254,9 +1561,14 @@ export async function runAgentSurfaceSmoke(options = {}) {
 
   const modernIndex = await recorder.check("Agent Skills v0.2 index", async () => {
     const result = await readJson(request, AGENT_SKILLS_INDEX_ROUTE);
-    const head = await request(AGENT_SKILLS_INDEX_ROUTE, { method: "HEAD" });
-    assert(head.bytes.byteLength === 0, `${AGENT_SKILLS_INDEX_ROUTE} HEAD returned a body`);
-    return validateModernSkillIndex(result.json, expectedSkillNames);
+    const skills = validateModernSkillIndex(result.json, expectedSkillNames, result.response);
+    await validateHashedCacheContract(
+      request,
+      AGENT_SKILLS_INDEX_ROUTE,
+      result,
+      AGENT_SKILLS_INDEX_ROUTE,
+    );
+    return skills;
   });
   const modernNames = new Set((modernIndex ?? []).map((skill) => skill.name));
   const expectedFileDigests = new Map(
@@ -1295,9 +1607,14 @@ export async function runAgentSurfaceSmoke(options = {}) {
 
   const legacyFiles = await recorder.check("legacy Agent Skills index", async () => {
     const result = await readJson(request, LEGACY_SKILLS_INDEX_ROUTE);
-    const head = await request(LEGACY_SKILLS_INDEX_ROUTE, { method: "HEAD" });
-    assert(head.bytes.byteLength === 0, `${LEGACY_SKILLS_INDEX_ROUTE} HEAD returned a body`);
-    return validateLegacySkillIndex(result.json, modernNames);
+    const files = validateLegacySkillIndex(result.json, modernNames);
+    await validateHashedCacheContract(
+      request,
+      LEGACY_SKILLS_INDEX_ROUTE,
+      result,
+      LEGACY_SKILLS_INDEX_ROUTE,
+    );
+    return files;
   });
   if (legacyFiles) {
     await Promise.all(
@@ -1320,6 +1637,20 @@ export async function runAgentSurfaceSmoke(options = {}) {
       recorder.check(`MCP initialize ${route}`, () => validateMcp(request, route)),
     ),
   );
+  if (manifest) {
+    const canonicalMcp = readAdvertisedValue(manifest, ["mcp", "canonicalEndpoint"]);
+    if (!MCP_ROUTES.includes(canonicalMcp)) {
+      const label = isNonEmptyString(canonicalMcp)
+        ? `MCP initialize ${canonicalMcp}`
+        : "advertised canonical MCP endpoint";
+      await recorder.check(label, () =>
+        validateMcp(
+          request,
+          resolveSameOriginTarget(baseUrl, canonicalMcp, "canonical MCP endpoint"),
+        ),
+      );
+    }
+  }
 
   await Promise.all([
     recorder.check("well-known site skill", () =>
@@ -1341,6 +1672,76 @@ export async function runAgentSurfaceSmoke(options = {}) {
       validateWellKnownText(request, "/.well-known/sitemap.md", "text/markdown"),
     ),
   ]);
+
+  if (manifest) {
+    const advertisedChecks = [
+      recorder.check("advertised config endpoint", () =>
+        validateAdvertisedJsonFormat(
+          request,
+          baseUrl,
+          manifest,
+          ["config", "endpoint"],
+          readAdvertisedValue(manifest, ["config", "format"]),
+          "config endpoint",
+        ),
+      ),
+      recorder.check("advertised diagnostics endpoint", () =>
+        validateAdvertisedJsonFormat(
+          request,
+          baseUrl,
+          manifest,
+          ["api", "diagnostics"],
+          "docs-diagnostics.v1",
+          "diagnostics endpoint",
+        ),
+      ),
+      recorder.check("advertised Markdown negotiation", () =>
+        validateMarkdownNegotiation(request, baseUrl, manifest),
+      ),
+      recorder.check("advertised robots.txt", () =>
+        validateAdvertisedRobots(request, baseUrl, manifest),
+      ),
+      recorder.check("advertised XML sitemap", () =>
+        validateAdvertisedXmlSitemap(request, baseUrl, manifest),
+      ),
+    ];
+
+    if (asRecord(manifest.feedback)?.enabled === true) {
+      advertisedChecks.push(
+        recorder.check("advertised feedback schema", () =>
+          validateAdvertisedFeedbackSchema(request, baseUrl, manifest),
+        ),
+      );
+    }
+    if (asRecord(manifest.search)?.enabled === true) {
+      advertisedChecks.push(
+        recorder.check("advertised human search", () =>
+          validateAdvertisedSearch(
+            request,
+            baseUrl,
+            manifest,
+            ["search", "endpoint"],
+            "human search endpoint",
+          ),
+        ),
+        recorder.check("advertised agent search", () =>
+          validateAdvertisedSearch(
+            request,
+            baseUrl,
+            manifest,
+            ["search", "agentEndpoint"],
+            "agent search endpoint",
+          ),
+        ),
+      );
+    }
+    for (const spec of advertisedTextSurfaceSpecs(manifest)) {
+      advertisedChecks.push(
+        recorder.check(spec.label, () => validateAdvertisedTextSurface(request, baseUrl, spec)),
+      );
+    }
+    await Promise.all(advertisedChecks);
+  }
 
   if (recorder.failures.length > 0) {
     const error = new Error(
