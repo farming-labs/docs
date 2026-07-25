@@ -275,6 +275,7 @@ function createRequester({ baseUrl, fetchImpl, timeoutMs, attempts, maxResponseB
     const url = new URL(target, `${baseUrl}/`);
     const headers = new Headers(init.headers);
     if (!headers.has("accept")) headers.set("accept", "*/*");
+    if (!headers.has("accept-encoding")) headers.set("accept-encoding", "identity");
     headers.set("cache-control", "no-cache");
     headers.set("user-agent", "farming-labs-agent-surface-smoke/1.0");
 

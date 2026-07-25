@@ -264,6 +264,7 @@ function createFixtureFetch(options = {}) {
     const requestHeaders = new Headers(init.headers);
     calls.push({
       accept: requestHeaders.get("accept"),
+      acceptEncoding: requestHeaders.get("accept-encoding"),
       ifNoneMatch: requestHeaders.get("if-none-match"),
       method,
       pathname: url.pathname,
@@ -598,6 +599,7 @@ test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", asy
   assert(fixture.calls.some((call) => call.pathname === "/robots.txt"));
   assert(fixture.calls.some((call) => call.pathname === "/sitemap.xml"));
   assert(fixture.calls.some((call) => call.ifNoneMatch));
+  assert(fixture.calls.every((call) => call.acceptEncoding === "identity"));
 });
 
 test("rejects stale typed API catalog Link metadata", async () => {
