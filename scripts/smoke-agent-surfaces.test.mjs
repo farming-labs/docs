@@ -66,7 +66,10 @@ function cachedResponse(method, body, requestHeaders, options = {}) {
   if (requestedEtag === etag.replace(/^W\//u, "")) {
     return response("HEAD", "", {
       status: 304,
-      headers: { "cache-control": cacheControl, etag: etag.replace(/^W\//u, "") },
+      headers: {
+        "cache-control": cacheControl,
+        etag: options.notModifiedEtag ?? etag,
+      },
     });
   }
   return response(method, body, {
@@ -168,6 +171,7 @@ function createFixtureFetch(options = {}) {
     },
   };
   if (options.agentCard) manifest.api.agentCard = AGENT_CARD_ROUTE;
+  if (options.missingCanonicalMcp) delete manifest.mcp.canonicalEndpoint;
   const agentCard = {
     name: "Fixture docs agent",
     description: "Answers questions from the fixture documentation.",
@@ -349,6 +353,7 @@ function createFixtureFetch(options = {}) {
             : undefined,
         contentType: "text/markdown; charset=utf-8",
         etag: `W/"${docsDigest}"`,
+        notModifiedEtag: options.docsArtifactNotModifiedEtag,
         headers: {
           link: `<${AGENT_SKILLS_INDEX_ROUTE}>; rel="collection"; type="application/json"`,
         },
@@ -628,6 +633,46 @@ test("rejects a hashed skill artifact with mismatched HEAD cache metadata", asyn
     (error) => {
       const failure = error.failures.find(({ label }) => label === "Agent Skill artifact docs");
       assert.match(failure?.message ?? "", /HEAD returned different cache metadata/u);
+      return true;
+    },
+  );
+});
+
+test("rejects a hashed skill artifact whose 304 changes ETag strength", async () => {
+  const fixture = createFixtureFetch({
+    docsArtifactNotModifiedEtag: `"${docsDigest}"`,
+  });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(({ label }) => label === "Agent Skill artifact docs");
+      assert.match(failure?.message ?? "", /304 returned a different ETag/u);
+      return true;
+    },
+  );
+});
+
+test("rejects a missing advertised canonical MCP endpoint", async () => {
+  const fixture = createFixtureFetch({ missingCanonicalMcp: true });
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      expectedSkillNames: ["portable"],
+      fetchImpl: fixture.fetch,
+      log() {},
+    }),
+    (error) => {
+      const failure = error.failures.find(
+        ({ label }) => label === "advertised canonical MCP endpoint",
+      );
+      assert.match(failure?.message ?? "", /canonical MCP endpoint was not advertised/u);
       return true;
     },
   );

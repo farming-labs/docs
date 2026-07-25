@@ -152,8 +152,8 @@ function includesHeaderToken(response, header, token) {
     .some((value) => value.trim().toLowerCase() === token.toLowerCase());
 }
 
-function normalizeOpaqueEtag(value) {
-  return isNonEmptyString(value) ? value.trim().replace(/^W\//iu, "") : null;
+function normalizeEtag(value) {
+  return isNonEmptyString(value) ? value.trim() : null;
 }
 
 function resolveSameOriginTarget(baseUrl, value, label) {
@@ -542,17 +542,17 @@ async function validateHeadParity(request, target, initial, label) {
 
 async function validateHashedCacheContract(request, target, initial, label) {
   const etag = initial.response.headers.get("etag");
-  assert(normalizeOpaqueEtag(etag), `${label} did not return an ETag`);
+  assert(normalizeEtag(etag), `${label} did not return an ETag`);
   const head = await validateHeadParity(request, target, initial, label);
   assert(
-    normalizeOpaqueEtag(head.response.headers.get("etag")) === normalizeOpaqueEtag(etag),
+    normalizeEtag(head.response.headers.get("etag")) === normalizeEtag(etag),
     `${label} HEAD returned a different ETag`,
   );
 
   const notModified = await request(target, { headers: { "If-None-Match": etag } }, [304]);
   assert(notModified.bytes.byteLength === 0, `${label} 304 returned a body`);
   assert(
-    normalizeOpaqueEtag(notModified.response.headers.get("etag")) === normalizeOpaqueEtag(etag),
+    normalizeEtag(notModified.response.headers.get("etag")) === normalizeEtag(etag),
     `${label} 304 returned a different ETag`,
   );
   assert(
@@ -1638,8 +1638,11 @@ export async function runAgentSurfaceSmoke(options = {}) {
   );
   if (manifest) {
     const canonicalMcp = readAdvertisedValue(manifest, ["mcp", "canonicalEndpoint"]);
-    if (isNonEmptyString(canonicalMcp) && !MCP_ROUTES.includes(canonicalMcp)) {
-      await recorder.check(`MCP initialize ${canonicalMcp}`, () =>
+    if (!MCP_ROUTES.includes(canonicalMcp)) {
+      const label = isNonEmptyString(canonicalMcp)
+        ? `MCP initialize ${canonicalMcp}`
+        : "advertised canonical MCP endpoint";
+      await recorder.check(label, () =>
         validateMcp(
           request,
           resolveSameOriginTarget(baseUrl, canonicalMcp, "canonical MCP endpoint"),
