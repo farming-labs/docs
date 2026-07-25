@@ -658,6 +658,34 @@ useful when one page needs a tighter machine contract than the rest of the site.
 
 Do not use compaction to paper over vague docs. Shorter confusion is still confusion.
 
+## Request a Single Section From the Markdown API
+
+Agents that only need one heading block from a long page can request it directly using the `section` query parameter on the markdown API route:
+
+```bash title="terminal"
+curl "https://docs.example.com/api/docs?format=markdown&path=installation&section=prerequisites"
+```
+
+When the section is found, the response body contains only that heading block's content and the `x-docs-markdown-section` response header confirms which section was resolved:
+
+```http
+x-docs-markdown-section: prerequisites
+```
+
+Pair `section` with `tokenBudget` (or `byteBudget`) to enforce a size ceiling on the returned content:
+
+```bash title="terminal"
+curl "https://docs.example.com/api/docs?format=markdown&path=installation&section=prerequisites&tokenBudget=60"
+```
+
+When the requested section is not found, the response still returns `200` with the full document and includes an `availableSections` list in the result so an agent can recover by picking the correct heading id from the list and retrying.
+
+| Query parameter | Type | Description |
+| --------------- | ---- | ----------- |
+| `section` | `string` | Stable kebab-case heading id to extract, e.g. `prerequisites` |
+| `tokenBudget` | `number` | Soft token ceiling; the section content is truncated when the estimate exceeds this value |
+| `byteBudget` | `number` | Soft UTF-8 byte ceiling applied before the token estimate |
+
 ## The Practical Authoring Loop
 
 For most teams, the healthy flow looks like this:
