@@ -3,6 +3,10 @@ export interface DocsMarkdownSection {
   anchor: string;
   level: number;
   content: string;
+  /** 1-based line containing the heading, relative to the Markdown body. */
+  startLine: number;
+  /** 1-based inclusive final line in the selected section. */
+  endLine: number;
 }
 
 interface ParsedDocsMarkdownHeading {
@@ -122,7 +126,7 @@ function normalizeDocsSectionSelector(value: string): string {
  * visible inline labels, and stable duplicate anchors.
  */
 export function parseDocsMarkdownSections(markdown: string): DocsMarkdownSection[] {
-  const lines = markdown.split("\n");
+  const lines = markdown.split(/\r?\n/u);
   const headings: ParsedDocsMarkdownHeading[] = [];
   const headingCounts = new Map<string, number>();
   let openFence: OpenMarkdownFence | undefined;
@@ -187,6 +191,8 @@ export function parseDocsMarkdownSections(markdown: string): DocsMarkdownSection
       anchor: heading.anchor,
       level: heading.level,
       content: lines.slice(heading.start, end).join("\n").trim(),
+      startLine: heading.start + 1,
+      endLine: end,
     };
   });
 }

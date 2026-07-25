@@ -174,6 +174,8 @@ pnpm add example
     expect(discovery.capabilities.mcp).toBe(false);
     expect(discovery.capabilities.search).toBe(false);
     expect(discovery.capabilities.apiCatalog).toBe(false);
+    expect(discovery.capabilities.markdownSectionDiscovery).toBe(false);
+    expect(discovery.markdown.sectionDiscovery).toEqual({ enabled: false });
     expect(discovery.apiCatalog).toMatchObject({
       enabled: false,
       route: null,
@@ -214,6 +216,12 @@ pnpm add example
     );
     expect(readFileSync(path.join(tmpDir, "public", "AGENTS.md"), "utf-8")).not.toContain(
       "/.well-known/api-catalog",
+    );
+    expect(readFileSync(path.join(tmpDir, "public", "skill.md"), "utf-8")).not.toContain(
+      ".md?sections",
+    );
+    expect(readFileSync(path.join(tmpDir, "public", "AGENTS.md"), "utf-8")).not.toContain(
+      ".md?sections",
     );
     expect(readFileSync(path.join(tmpDir, "public", "robots.txt"), "utf-8")).not.toContain(
       "Allow: /.well-known/api-catalog",
