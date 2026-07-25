@@ -1187,26 +1187,18 @@
       "properties": {
         "capabilities": {
           "type": "object",
-          "not": {
-            "type": "object",
-            "properties": {
-              "markdownSectionDiscovery": {}
-            },
-            "required": [
-              "markdownSectionDiscovery"
-            ]
+          "propertyNames": {
+            "not": {
+              "const": "markdownSectionDiscovery"
+            }
           }
         },
         "markdown": {
           "type": "object",
-          "not": {
-            "type": "object",
-            "properties": {
-              "sectionDiscovery": {}
-            },
-            "required": [
-              "sectionDiscovery"
-            ]
+          "propertyNames": {
+            "not": {
+              "const": "sectionDiscovery"
+            }
           }
         }
       }
