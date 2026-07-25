@@ -117,6 +117,62 @@ Top-level configuration object passed to `defineDocs()`.
 
 ---
 
+## `DocsMarkdownSection`, `DocsMarkdownSectionRequest`, and `DocsMarkdownSectionResult`
+
+Three interfaces that power section-addressable markdown reads. All are exported from `@farming-labs/docs`.
+
+### `DocsMarkdownSection`
+
+Represents a single heading-delimited section parsed from a markdown document.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `string` | Stable kebab-case heading id used as the `section` query parameter |
+| `heading` | `string` | Raw heading text |
+| `level` | `number` | Heading level (1–6) |
+| `content` | `string` | Full markdown content of the section, including the heading line |
+| `startLine` | `number` | Zero-based line index where the section starts |
+| `endLine` | `number` | Zero-based line index where the section ends (exclusive) |
+
+### `DocsMarkdownSectionRequest`
+
+Input parameters for a section-addressable markdown request.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `section` | `string \| null` | Heading id to select, e.g. `"prerequisites"`. When omitted the full document is returned. |
+| `tokenBudget` | `number \| null` | Soft token ceiling; the response is truncated when the estimated token count exceeds this value |
+| `byteBudget` | `number \| null` | Soft UTF-8 byte ceiling applied before the token estimate |
+
+### `DocsMarkdownSectionResult`
+
+Result returned by `resolveDocsMarkdownSectionRequest`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `found` | `boolean` | `true` when the requested section was resolved |
+| `requestedSection` | `string` | The `section` value from the request, when provided |
+| `section` | `DocsMarkdownSection` | The resolved section, present when `found` is `true` |
+| `document` | `string` | The content to return — the matched section body or the full document |
+| `truncated` | `boolean` | `true` when the document was cut to fit the budget |
+| `tokenBudget` | `number` | Applied token budget |
+| `byteBudget` | `number` | Applied byte budget |
+| `estimatedTokens` | `number` | Estimated token count for the returned `document` |
+| `utf8Bytes` | `number` | UTF-8 byte length of the returned `document` |
+| `availableSections` | `DocsMarkdownSection[]` | All sections parsed from the full document; useful for agent recovery when `found` is `false` |
+
+### Related functions
+
+Three functions are exported from `@farming-labs/docs` for working with these types:
+
+| Function | Description |
+| -------- | ----------- |
+| `collectDocsMarkdownSections(markdown)` | Parse a markdown string into an array of `DocsMarkdownSection` objects, one per heading block |
+| `selectDocsMarkdownSection(sections, id)` | Find a section by its stable heading id; returns the matching `DocsMarkdownSection` or `undefined` |
+| `resolveDocsMarkdownSectionRequest(markdown, request)` | Combine parsing, section lookup, and budget enforcement in one call; returns a `DocsMarkdownSectionResult` |
+
+The constant `DOCS_MARKDOWN_SECTION_MAX_BUDGET = 1_000_000` is the hard upper limit accepted for `tokenBudget` and `byteBudget`.
+
 ## `DocsConfigMap`, `DocsConfigMapPointer`, and config-map constants
 
 The config-map endpoint (`GET /api/docs?format=config`) returns a `DocsConfigMap` JSON document
