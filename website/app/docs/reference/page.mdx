@@ -9,6 +9,8 @@ related:
   - /docs/installation
   - /docs/customization/mcp
 agent:
+
+| `sectionDiscovery` | `boolean` | Whether runtime Markdown routes advertise and serve the `?sections` index endpoint. Defaults to `true`; set `false` to suppress the endpoint and the `markdownSectionDiscovery` capability flag in `/.well-known/agent.json`. Static Agent Bundle exports always set this to `false`. |
   tokenBudget: 1800
   task: Select and configure the exact typed Farming Labs docs option required by a project.
   outcome: The chosen defineDocs option has the documented type and default and the resolved runtime exposes matching behavior.
@@ -131,6 +133,8 @@ Represents a single heading-delimited section parsed from a markdown document.
 | `heading` | `string` | Raw heading text |
 | `level` | `number` | Heading level (1–6) |
 | `content` | `string` | Full markdown content of the section, including the heading line |
+| `startLine` | `number` | 1-based line number of the heading that opens this section, relative to the Markdown body |
+| `endLine` | `number` | 1-based inclusive line number of the last line in this section |
 | `startLine` | `number` | Zero-based line index where the section starts |
 | `endLine` | `number` | Zero-based line index where the section ends (exclusive) |
 
@@ -173,6 +177,50 @@ Three functions are exported from `@farming-labs/docs` for working with these ty
 
 The constant `DOCS_MARKDOWN_SECTION_MAX_BUDGET = 1_000_000` is the hard upper limit accepted for `tokenBudget` and `byteBudget`.
 
+### `DocsMarkdownSectionIndex`
+
+The `docs-markdown-sections.v1` JSON payload returned by the `?sections` endpoint.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `format` | `"docs-markdown-sections.v1"` | Fixed format identifier |
+| `sectionCount` | `number` | Total number of sections in the document |
+| `sections` | `DocsMarkdownSectionMetadata[]` | Ordered array of section descriptors |
+
+### `DocsMarkdownSectionMetadata`
+
+One entry in the `sections` array of a `DocsMarkdownSectionIndex`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `string` | Stable kebab-case heading id, usable as the `section` query parameter |
+| `heading` | `string` | Raw heading label |
+| `level` | `number` | Heading level (1–6) |
+| `parentId` | `string \| null` | Id of the nearest ancestor heading, or `null` for top-level sections |
+| `startLine` | `number` | 1-based line of the heading within the Markdown body |
+| `endLine` | `number` | 1-based inclusive final line of the section |
+| `estimatedTokens` | `number` | Conservative token estimate for the section content |
+| `markdownUrl` | `string` | Absolute URL for fetching this section with `?section={id}` |
+
+### `DocsMarkdownSectionIndexOptions`
+
+Options accepted by `buildDocsMarkdownSectionIndex`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `markdown` | `string` | Raw Markdown source to index |
+| `baseUrl` | `string` | Base URL used to construct `markdownUrl` values for each section |
+
+### Section-index functions
+
+Two additional functions are exported from `@farming-labs/docs`:
+
+| Function | Description |
+| -------- | ----------- |
+| `buildDocsMarkdownSectionIndex(options)` | Parse a Markdown string and build a `DocsMarkdownSectionIndex` response object with per-section metadata and absolute `markdownUrl` values |
+| `isDocsMarkdownSectionIndexRequest(request)` | Return `true` when the incoming `Request` includes the `sections` query parameter and should receive a section-index response instead of the full Markdown body |
+
+The constant `DOCS_MARKDOWN_SECTION_INDEX_FORMAT = "docs-markdown-sections.v1"` is the fixed format string included in every index response and advertised in `/.well-known/agent.json`.
 ## `DocsConfigMap`, `DocsConfigMapPointer`, and config-map constants
 
 The config-map endpoint (`GET /api/docs?format=config`) returns a `DocsConfigMap` JSON document
