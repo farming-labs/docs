@@ -9,6 +9,7 @@ import {
   buildDocsConfigMap,
   buildDocsDiagnostics,
   buildDocsMcpEndpointCandidates,
+  collectDocsMarkdownSections,
   createDocsMarkdownResponse,
   createDocsStandardsDiscoveryResponse,
   detectDocsMarkdownAgentRequest,
@@ -45,9 +46,11 @@ import {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsMarkdownCanonicalUrl,
+  resolveDocsMarkdownSectionRequest,
   resolveDocsRequestApiRoute,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
+  selectDocsMarkdownSection,
   selectDocsLlmsTxtContent,
   toDocsMarkdownUrl,
 } from "./agent.js";
@@ -1199,6 +1202,234 @@ describe("agent route helpers", () => {
     expect(missing.status).toBe(404);
     expect(missing.headers.get("cache-control")).toBe("no-store");
     expect(await missing.text()).toContain("# Docs Page Not Found");
+  });
+
+  it("collects and selects addressable Markdown sections by stable heading ids", () => {
+    const document = [
+      "---",
+      'title: "Install"',
+      "---",
+      "",
+      "# Install",
+      "",
+      "Intro.",
+      "",
+      "## Prerequisites",
+      "",
+      "Install Node.",
+      "",
+      "## Expected Results",
+      "",
+      "The dev server starts.",
+      "",
+      "### Logs",
+      "",
+      "Look for ready output.",
+      "",
+      "## Expected Results",
+      "",
+      "Duplicate heading coverage.",
+    ].join("\n");
+
+    expect(collectDocsMarkdownSections(document).map((section) => section.id)).toEqual([
+      "install",
+      "prerequisites",
+      "expected-results",
+      "logs",
+      "expected-results-2",
+    ]);
+
+    const selected = selectDocsMarkdownSection(document, {
+      section: "expected-results",
+      tokenBudget: 200,
+    });
+    expect(selected.found).toBe(true);
+    expect(selected.section?.heading).toBe("Expected Results");
+    expect(selected.document).toContain("The dev server starts.");
+    expect(selected.document).toContain("### Logs");
+    expect(selected.document).not.toContain("Duplicate heading coverage.");
+  });
+
+  it("ignores headings inside fenced code blocks when collecting Markdown sections", () => {
+    const document = [
+      "# Install",
+      "",
+      "```bash",
+      "# this is a shell comment, not a heading",
+      "pnpm dev",
+      "```",
+      "",
+      "~~~yaml",
+      "# also not a heading",
+      "name: docs",
+      "~~~",
+      "",
+      "## Expected Results",
+      "",
+      "The dev server starts.",
+    ].join("\n");
+
+    expect(collectDocsMarkdownSections(document).map((section) => section.id)).toEqual([
+      "install",
+      "expected-results",
+    ]);
+    const selected = selectDocsMarkdownSection(document, { section: "install" });
+    expect(selected.document).toContain("# this is a shell comment, not a heading");
+    expect(selected.document).toContain("## Expected Results");
+  });
+
+  it("serves one Markdown section with token and byte budget metadata", async () => {
+    const request = new Request(
+      "https://example.com/docs/install.md?section=prerequisites&tokenBudget=24",
+    );
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "Install overview.",
+          "",
+          "## Prerequisites",
+          "",
+          "Install Node.js 22 or newer.",
+          "",
+          "Install pnpm 10.",
+          "",
+          "## Expected Results",
+          "",
+          "The docs app starts.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/install#prerequisites>; rel="canonical"',
+    );
+    expect(response.headers.get("content-location")).toBe(
+      "https://example.com/docs/install.md?section=prerequisites&tokenBudget=24",
+    );
+    expect(response.headers.get("x-docs-markdown-section")).toBe("prerequisites");
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-token-budget")).toBe("24");
+    expect(response.headers.get("x-docs-markdown-estimated-tokens")).toMatch(/^\d+$/);
+    expect(body).toContain("## Prerequisites");
+    expect(body).toContain("Install Node.js 22 or newer.");
+    expect(body).not.toContain("## Expected Results");
+  });
+
+  it("truncates selected Markdown sections to a byte budget", async () => {
+    const request = new Request(
+      "https://example.com/docs/install.md?section=troubleshooting&byteBudget=120",
+    );
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "# Install",
+          "",
+          "## Troubleshooting",
+          "",
+          "First paragraph should fit.",
+          "",
+          "Second paragraph is intentionally much longer so the section response must compact it under the requested budget.",
+          "",
+          "## Next",
+          "",
+          "Do not include this.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section-truncated")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-byte-budget")).toBe("120");
+    expect(new TextEncoder().encode(body).byteLength).toBeLessThanOrEqual(120);
+    expect(body).toContain("section truncated");
+    expect(body).not.toContain("## Next");
+  });
+
+  it("applies budget-only Markdown requests to heading-less documents", async () => {
+    const request = new Request("https://example.com/docs/install.md?byteBudget=120");
+    const document = [
+      "---",
+      'title: "Install"',
+      "---",
+      "",
+      "Install the package. This page intentionally has no headings, but agents may still need a compact response.",
+    ].join("\n");
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/install>; rel="canonical"',
+    );
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-section-truncated")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-byte-budget")).toBe("120");
+    expect(new TextEncoder().encode(body).byteLength).toBeLessThanOrEqual(120);
+    expect(body).not.toContain("# Markdown Section Not Found");
+  });
+
+  it("returns available sections when a Markdown section is not found", async () => {
+    const request = new Request("https://example.com/docs/install.md?section=missing");
+    const document = renderDocsMarkdownDocument({
+      url: "/docs/install",
+      title: "Install",
+      content: "## Prerequisites\n\nInstall Node.",
+    });
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("false");
+    expect(body).toContain("# Markdown Section Not Found");
+    expect(body).toContain("- Install (#install)");
+    expect(body).toContain("- Prerequisites (#prerequisites)");
+  });
+
+  it("resolves section-addressable Markdown query parameters", () => {
+    expect(
+      resolveDocsMarkdownSectionRequest(
+        new URL("https://example.com/api/docs?format=markdown&section=setup&tokens=400"),
+      ),
+    ).toEqual({ section: "setup", tokenBudget: 400, byteBudget: null });
+    expect(
+      resolveDocsMarkdownSectionRequest(new URL("https://example.com/docs/install.md")),
+    ).toBeNull();
   });
 
   it("builds per-page markdown alternate URLs", () => {

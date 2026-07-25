@@ -658,6 +658,56 @@ Surge overview child.
     expect(await markdownResponse.text()).toContain("# Docs Page Not Found");
   });
 
+  it("serves section-addressable markdown through the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-section-markdown-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "How to install"
+---
+
+# Installation
+
+Install the package.
+
+## Prerequisites
+
+Use Node.js 22 or newer.
+
+## Expected Results
+
+The docs app starts.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      entry: "docs",
+    });
+
+    const response = await GET(
+      new Request(
+        "http://localhost/api/docs?format=markdown&path=installation&section=prerequisites&tokenBudget=60",
+      ),
+    );
+    const markdown = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section")).toBe("prerequisites");
+    expect(response.headers.get("x-docs-markdown-token-budget")).toBe("60");
+    expect(response.headers.get("link")).toBe(
+      '<http://localhost/docs/installation#prerequisites>; rel="canonical"',
+    );
+    expect(markdown).toContain("## Prerequisites");
+    expect(markdown).toContain("Use Node.js 22 or newer.");
+    expect(markdown).not.toContain("## Expected Results");
+  });
+
   it("serves llms.txt aliases through the shared docs api handler", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-alias-route-"));
     tempDirs.push(rootDir);
