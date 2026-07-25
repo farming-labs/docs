@@ -173,6 +173,9 @@
         "markdownRoutes": {
           "type": "boolean"
         },
+        "markdownSectionDiscovery": {
+          "type": "boolean"
+        },
         "agentMdOverrides": {
           "type": "boolean"
         },
@@ -380,6 +383,33 @@
         },
         "apiPattern": {
           "$ref": "#/$defs/route"
+        },
+        "sectionDiscovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "format": {
+              "const": "docs-markdown-sections.v1"
+            },
+            "indexParam": {
+              "const": "sections"
+            },
+            "sectionParam": {
+              "const": "section"
+            },
+            "tokenBudgetParam": {
+              "const": "tokenBudget"
+            },
+            "byteBudgetParam": {
+              "const": "byteBudget"
+            }
+          },
+          "required": [
+            "enabled"
+          ]
         },
         "resolutionOrder": {
           "$ref": "#/$defs/stringArray"
@@ -1081,6 +1111,99 @@
       ]
     }
   },
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "markdownSectionDiscovery": {
+              "const": true
+            }
+          },
+          "required": [
+            "markdownSectionDiscovery"
+          ]
+        },
+        "markdown": {
+          "type": "object",
+          "properties": {
+            "sectionDiscovery": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "const": true
+                }
+              },
+              "required": [
+                "enabled"
+              ]
+            }
+          },
+          "required": [
+            "sectionDiscovery"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "markdownSectionDiscovery": {
+              "const": false
+            }
+          },
+          "required": [
+            "markdownSectionDiscovery"
+          ]
+        },
+        "markdown": {
+          "type": "object",
+          "properties": {
+            "sectionDiscovery": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "const": false
+                }
+              },
+              "required": [
+                "enabled"
+              ]
+            }
+          },
+          "required": [
+            "sectionDiscovery"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "propertyNames": {
+            "not": {
+              "const": "markdownSectionDiscovery"
+            }
+          }
+        },
+        "markdown": {
+          "type": "object",
+          "propertyNames": {
+            "not": {
+              "const": "sectionDiscovery"
+            }
+          }
+        }
+      }
+    }
+  ],
   "required": [
     "$schema",
     "format",

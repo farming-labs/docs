@@ -143,6 +143,55 @@ describe("Farming Labs agent manifest schema", () => {
     expectValid(exportedManifest);
   });
 
+  it("keeps Markdown section-discovery declarations synchronized", () => {
+    const enabledManifest = buildManifest();
+    const disabledManifest = buildManifest({
+      markdown: { sectionDiscovery: false },
+    });
+
+    expectValid(enabledManifest);
+    expectValid(disabledManifest);
+
+    expect(
+      validate({
+        ...enabledManifest,
+        capabilities: {
+          ...enabledManifest.capabilities,
+          markdownSectionDiscovery: false,
+        },
+      }),
+    ).toBe(false);
+    expect(
+      validate({
+        ...enabledManifest,
+        markdown: {
+          ...enabledManifest.markdown,
+          sectionDiscovery: {
+            ...enabledManifest.markdown.sectionDiscovery,
+            enabled: false,
+          },
+        },
+      }),
+    ).toBe(false);
+
+    const legacyCapabilities: Partial<typeof enabledManifest.capabilities> = {
+      ...enabledManifest.capabilities,
+    };
+    const legacyMarkdown: Partial<typeof enabledManifest.markdown> = {
+      ...enabledManifest.markdown,
+    };
+    delete legacyCapabilities.markdownSectionDiscovery;
+    delete legacyMarkdown.sectionDiscovery;
+
+    expect(validate({ ...enabledManifest, capabilities: legacyCapabilities })).toBe(false);
+    expect(validate({ ...enabledManifest, markdown: legacyMarkdown })).toBe(false);
+    expectValid({
+      ...enabledManifest,
+      capabilities: legacyCapabilities,
+      markdown: legacyMarkdown,
+    });
+  });
+
   it("rejects wrong identities and A2A-only fields at the custom-manifest schema", () => {
     expect(validate({ ...buildManifest(), format: "agent-card" })).toBe(false);
     expect(validate({ ...buildManifest(), $schema: "https://example.com/schema.json" })).toBe(

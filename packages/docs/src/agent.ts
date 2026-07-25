@@ -28,6 +28,7 @@ import {
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
+import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   DEFAULT_SITEMAP_MD_ROUTE,
@@ -234,6 +235,7 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   getContext: true,
 } satisfies DocsMcpResolvedConfig["tools"];
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
+export const DOCS_MARKDOWN_SECTION_INDEX_FORMAT = "docs-markdown-sections.v1";
 const DOCS_AI_AGENT_USER_AGENT_PATTERNS = [
   "claudebot",
   "claude-searchbot",
@@ -626,6 +628,8 @@ export interface DocsAgentDiscoverySpecOptions extends DocsDiscoveryApiRouteOpti
   markdown?: {
     acceptHeader?: boolean;
     signatureAgentHeader?: boolean;
+    /** Whether runtime Markdown routes support `?sections` metadata discovery. Defaults to true. */
+    sectionDiscovery?: boolean;
   };
   /** Additional validated project skills to cross-list in custom discovery. */
   publishedSkills?: readonly DocsPublishedAgentSkill[];
@@ -650,6 +654,8 @@ export interface DocsSkillDocumentOptions extends DocsDiscoveryApiRouteOptions {
   markdown?: {
     acceptHeader?: boolean;
     signatureAgentHeader?: boolean;
+    /** Whether runtime Markdown routes support `?sections` metadata discovery. Defaults to true. */
+    sectionDiscovery?: boolean;
   };
 }
 
@@ -698,6 +704,44 @@ export interface DocsMarkdownSection {
   content: string;
   startLine: number;
   endLine: number;
+}
+
+export interface DocsMarkdownSectionMetadata {
+  id: string;
+  heading: string;
+  level: number;
+  parentId?: string;
+  startLine: number;
+  endLine: number;
+  estimatedTokens: number;
+  utf8Bytes: number;
+  canonicalUrl: string;
+  markdownUrl: string;
+}
+
+export interface DocsMarkdownSectionIndex {
+  schemaVersion: 1;
+  format: typeof DOCS_MARKDOWN_SECTION_INDEX_FORMAT;
+  canonicalUrl: string;
+  markdownUrl: string;
+  sectionIndexUrl: string;
+  lineNumbering: "body";
+  sectionCount: number;
+  estimatedTokens: number;
+  utf8Bytes: number;
+  fetchBudget?: {
+    tokenBudget?: number;
+    byteBudget?: number;
+  };
+  sections: DocsMarkdownSectionMetadata[];
+}
+
+export interface DocsMarkdownSectionIndexOptions {
+  canonicalUrl: string;
+  markdownUrl: string;
+  sectionIndexUrl?: string;
+  tokenBudget?: number | null;
+  byteBudget?: number | null;
 }
 
 export interface DocsMarkdownSectionRequest {
@@ -2834,7 +2878,7 @@ function stripDocsMarkdownFrontmatter(markdown: string): { frontmatter: string; 
   return { frontmatter: match[1] ?? "", body: match[2] ?? "" };
 }
 
-function slugifyDocsMarkdownHeading(value: string): string {
+function slugifyPublicDocsMarkdownSectionId(value: string): string {
   return value
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -2848,20 +2892,41 @@ function slugifyDocsMarkdownHeading(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function normalizeDocsMarkdownSectionIdentifier(value: string): string {
-  return slugifyDocsMarkdownHeading(value.replace(/^#+/, "").replace(/^#/, ""));
-}
+function resolveDocsMarkdownSectionBody(document: string): { body: string; lineOffset: number } {
+  const stripped = stripDocsMarkdownFrontmatter(document).body;
+  const lines = stripped.split(/\r?\n/u);
+  let generatedPreambleStart = 0;
+  while (
+    generatedPreambleStart < lines.length &&
+    (lines[generatedPreambleStart] ?? "").trim() === ""
+  ) {
+    generatedPreambleStart += 1;
+  }
 
-function markdownHeadingText(value: string): string {
-  return value
-    .replace(/\s+#+\s*$/u, "")
-    .replace(/^\s{0,3}#{1,6}\s+/u, "")
-    .trim();
+  if (
+    /^#(?:\s+|$)/u.test(lines[generatedPreambleStart] ?? "") &&
+    /^URL:\s+\S/u.test(lines[generatedPreambleStart + 1] ?? "")
+  ) {
+    let metadataEnd = generatedPreambleStart + 2;
+    while (/^(?:LLM index|Description|Related):\s*/u.test(lines[metadataEnd] ?? "")) {
+      metadataEnd += 1;
+    }
+    for (let index = generatedPreambleStart + 1; index < metadataEnd; index += 1) {
+      lines[index] = "";
+    }
+  }
+
+  const content = lines.join("\n");
+  const body = content.replace(
+    /\n{2,}## Sitemap\n\n(?:(?:See the (?:full|XML) \[sitemap\]\()|Sitemap discovery is not enabled)[\s\S]*$/u,
+    "",
+  );
+  return { body, lineOffset: 0 };
 }
 
 function estimateDocsMarkdownTokens(value: string): number {
   if (!value) return 0;
-  return Math.max(1, Math.ceil(Array.from(value).length / 4));
+  return Math.max(1, Math.ceil(docsMarkdownUtf8Bytes(value) / 4));
 }
 
 function docsMarkdownUtf8Bytes(value: string): number {
@@ -2935,55 +3000,161 @@ export function resolveDocsMarkdownSectionRequest(url: URL): DocsMarkdownSection
   return { section, tokenBudget, byteBudget };
 }
 
+export function isDocsMarkdownSectionIndexRequest(url: URL): boolean {
+  if (!url.searchParams.has("sections")) return false;
+  const value = url.searchParams.get("sections")?.trim().toLowerCase();
+  return value === undefined || !["0", "false", "no", "off"].includes(value);
+}
+
 export function collectDocsMarkdownSections(document: string): DocsMarkdownSection[] {
-  const { body } = stripDocsMarkdownFrontmatter(document);
-  const lines = body.split(/\r?\n/);
-  const headings: Array<{ lineIndex: number; level: number; heading: string; id: string }> = [];
+  const { body, lineOffset } = resolveDocsMarkdownSectionBody(document);
   const seen = new Map<string, number>();
-  let fence: { marker: "`" | "~"; size: number } | null = null;
-
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-    const line = lines[lineIndex] ?? "";
-    const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})/u);
-    if (fenceMatch?.[1]) {
-      const marker = fenceMatch[1][0] as "`" | "~";
-      const size = fenceMatch[1].length;
-      if (fence) {
-        if (marker === fence.marker && size >= fence.size) fence = null;
-      } else {
-        fence = { marker, size };
-      }
-      continue;
-    }
-    if (fence) continue;
-
-    const match = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*$/u);
-    if (!match) continue;
-    const heading = markdownHeadingText(line);
-    const baseId = slugifyDocsMarkdownHeading(heading);
-    if (!baseId) continue;
+  return parseDocsMarkdownSections(body).flatMap((section) => {
+    const baseId = slugifyPublicDocsMarkdownSectionId(section.title);
+    if (!baseId) return [];
     const count = seen.get(baseId) ?? 0;
     seen.set(baseId, count + 1);
-    headings.push({
-      lineIndex,
-      level: match[1]?.length ?? 1,
-      heading,
-      id: count === 0 ? baseId : `${baseId}-${count + 1}`,
-    });
-  }
-
-  return headings.map((heading, index) => {
-    const next = headings.slice(index + 1).find((candidate) => candidate.level <= heading.level);
-    const endLineExclusive = next?.lineIndex ?? lines.length;
-    return {
-      id: heading.id,
-      heading: heading.heading,
-      level: heading.level,
-      content: lines.slice(heading.lineIndex, endLineExclusive).join("\n").trimEnd(),
-      startLine: heading.lineIndex + 1,
-      endLine: endLineExclusive,
-    };
+    return [
+      {
+        id: count === 0 ? baseId : `${baseId}-${count + 1}`,
+        heading: section.title,
+        level: section.level,
+        content: section.content,
+        startLine: section.startLine + lineOffset,
+        endLine: section.endLine + lineOffset,
+      },
+    ];
   });
+}
+
+function updateDocsMarkdownUrl(value: string, update: (url: URL) => void): string {
+  const isAbsolute = /^[a-z][a-z\d+.-]*:/iu.test(value);
+  try {
+    const url = new URL(value, "https://docs.invalid");
+    update(url);
+    const output = isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+    return output.replace(/([?&])sections=(?=&|$)/u, "$1sections");
+  } catch {
+    return value;
+  }
+}
+
+function resolveDocsMarkdownSectionCanonicalUrl(canonicalUrl: string, sectionId: string): string {
+  return updateDocsMarkdownUrl(canonicalUrl, (url) => {
+    url.hash = sectionId;
+  });
+}
+
+function resolveDocsMarkdownSectionFetchUrl(
+  markdownUrl: string,
+  sectionId: string,
+  request: Pick<DocsMarkdownSectionRequest, "tokenBudget" | "byteBudget">,
+): string {
+  return updateDocsMarkdownUrl(markdownUrl, (url) => {
+    url.searchParams.delete("sections");
+    url.searchParams.delete("section");
+    url.searchParams.delete("tokens");
+    url.searchParams.delete("bytes");
+    url.searchParams.delete("tokenBudget");
+    url.searchParams.delete("byteBudget");
+    url.searchParams.set("section", sectionId);
+    if (request.tokenBudget) {
+      url.searchParams.set("tokenBudget", String(request.tokenBudget));
+    }
+    if (request.byteBudget) {
+      url.searchParams.set("byteBudget", String(request.byteBudget));
+    }
+  });
+}
+
+function resolveDocsMarkdownSectionIndexUrl(
+  markdownUrl: string,
+  request: Pick<DocsMarkdownSectionRequest, "tokenBudget" | "byteBudget">,
+): string {
+  return updateDocsMarkdownUrl(markdownUrl, (url) => {
+    url.searchParams.delete("sections");
+    url.searchParams.delete("section");
+    url.searchParams.delete("tokens");
+    url.searchParams.delete("bytes");
+    url.searchParams.delete("tokenBudget");
+    url.searchParams.delete("byteBudget");
+    url.searchParams.set("sections", "");
+    if (request.tokenBudget) {
+      url.searchParams.set("tokenBudget", String(request.tokenBudget));
+    }
+    if (request.byteBudget) {
+      url.searchParams.set("byteBudget", String(request.byteBudget));
+    }
+  });
+}
+
+export function buildDocsMarkdownSectionIndex(
+  document: string,
+  options: DocsMarkdownSectionIndexOptions,
+): DocsMarkdownSectionIndex {
+  const request = {
+    tokenBudget: options.tokenBudget ?? undefined,
+    byteBudget: options.byteBudget ?? undefined,
+  };
+  const sections = collectDocsMarkdownSections(document);
+  const ancestors: DocsMarkdownSection[] = [];
+  const metadata = sections.map((section): DocsMarkdownSectionMetadata => {
+    while (
+      ancestors.length > 0 &&
+      (ancestors[ancestors.length - 1]?.level ?? Number.NEGATIVE_INFINITY) >= section.level
+    ) {
+      ancestors.pop();
+    }
+    const parentId = ancestors.at(-1)?.id;
+    const item: DocsMarkdownSectionMetadata = {
+      id: section.id,
+      heading: section.heading,
+      level: section.level,
+      ...(parentId ? { parentId } : {}),
+      startLine: section.startLine,
+      endLine: section.endLine,
+      estimatedTokens: estimateDocsMarkdownTokens(section.content),
+      utf8Bytes: docsMarkdownUtf8Bytes(section.content),
+      canonicalUrl: resolveDocsMarkdownSectionCanonicalUrl(options.canonicalUrl, section.id),
+      markdownUrl: resolveDocsMarkdownSectionFetchUrl(options.markdownUrl, section.id, request),
+    };
+    ancestors.push(section);
+    return item;
+  });
+  const fetchBudget =
+    request.tokenBudget || request.byteBudget
+      ? {
+          ...(request.tokenBudget ? { tokenBudget: request.tokenBudget } : {}),
+          ...(request.byteBudget ? { byteBudget: request.byteBudget } : {}),
+        }
+      : undefined;
+
+  return {
+    schemaVersion: 1,
+    format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+    canonicalUrl: options.canonicalUrl,
+    markdownUrl: options.markdownUrl,
+    sectionIndexUrl:
+      options.sectionIndexUrl ?? resolveDocsMarkdownSectionIndexUrl(options.markdownUrl, request),
+    lineNumbering: "body",
+    sectionCount: metadata.length,
+    estimatedTokens: estimateDocsMarkdownTokens(document),
+    utf8Bytes: docsMarkdownUtf8Bytes(document),
+    ...(fetchBudget ? { fetchBudget } : {}),
+    sections: metadata,
+  };
+}
+
+function normalizeRequestedDocsMarkdownSectionId(requestedSection: string): string {
+  let selector = requestedSection.trim();
+  const hashIndex = selector.lastIndexOf("#");
+  if (hashIndex >= 0) selector = selector.slice(hashIndex + 1);
+  try {
+    selector = decodeURIComponent(selector);
+  } catch {
+    // Keep malformed fragments usable as literal selectors.
+  }
+  return selector.replace(/^#+/u, "").toLowerCase();
 }
 
 export function selectDocsMarkdownSection(
@@ -2992,7 +3163,7 @@ export function selectDocsMarkdownSection(
 ): DocsMarkdownSectionResult {
   const availableSections = collectDocsMarkdownSections(document);
   const requestedSection = request.section?.trim();
-  if (!requestedSection && availableSections.length === 0) {
+  if (!requestedSection) {
     const { document: budgetedDocument, truncated } = truncateDocsMarkdownSectionContent(
       document,
       request,
@@ -3009,15 +3180,18 @@ export function selectDocsMarkdownSection(
     };
   }
 
-  const section = requestedSection
-    ? availableSections.find((candidate) => {
-        return (
-          candidate.id === normalizeDocsMarkdownSectionIdentifier(requestedSection) ||
-          normalizeDocsMarkdownSectionIdentifier(candidate.heading) ===
-            normalizeDocsMarkdownSectionIdentifier(requestedSection)
-        );
-      })
-    : availableSections[0];
+  const requestedId = normalizeRequestedDocsMarkdownSectionId(requestedSection);
+  const directSection = availableSections.find((candidate) => candidate.id === requestedId);
+  const { body, lineOffset } = resolveDocsMarkdownSectionBody(document);
+  const selectedSharedSection = directSection
+    ? undefined
+    : findDocsMarkdownSection(body, requestedSection);
+  const sharedAliasSection = selectedSharedSection
+    ? availableSections.find(
+        (candidate) => candidate.startLine === selectedSharedSection.startLine + lineOffset,
+      )
+    : undefined;
+  const section = directSection ?? sharedAliasSection;
 
   if (!section) {
     const lines = [
@@ -3334,7 +3508,62 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     );
   }
 
-  const sectionRequest = resolveDocsMarkdownSectionRequest(new URL(request.url));
+  const requestUrl = new URL(request.url);
+  const sectionRequest = resolveDocsMarkdownSectionRequest(requestUrl);
+  if (isDocsMarkdownSectionIndexRequest(requestUrl)) {
+    const sectionIndexRequest = sectionRequest ?? {};
+    const sectionIndexContentLocation = resolveDocsMarkdownSectionIndexUrl(
+      contentLocation,
+      sectionIndexRequest,
+    );
+    const sectionIndex = buildDocsMarkdownSectionIndex(document, {
+      canonicalUrl,
+      markdownUrl: contentLocation,
+      sectionIndexUrl: sectionIndexContentLocation,
+      tokenBudget: sectionIndexRequest.tokenBudget,
+      byteBudget: sectionIndexRequest.byteBudget,
+    });
+    const responseDocument = JSON.stringify(sectionIndex);
+    const etag = createDocsMarkdownEtag(responseDocument);
+    const lastModified = resolveDocsMarkdownHttpDate(
+      options.lastModified ?? extractDocsMarkdownLastModified(document),
+    );
+    const responseHeaders: Record<string, string> = {
+      ...baseSharedHeaders,
+      "Content-Location": sectionIndexContentLocation,
+      Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown"`,
+      "Cache-Control": options.cacheControl ?? "public, max-age=0, s-maxage=3600",
+      "Content-Type": "application/json; charset=utf-8",
+      ETag: etag,
+      "X-Docs-Markdown-Section-Index": DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+      "X-Docs-Markdown-Section-Count": String(sectionIndex.sectionCount),
+      "X-Docs-Markdown-Source-Estimated-Tokens": String(sectionIndex.estimatedTokens),
+      "X-Docs-Markdown-Source-Utf8-Bytes": String(sectionIndex.utf8Bytes),
+      "X-Docs-Markdown-Estimated-Tokens": String(estimateDocsMarkdownTokens(responseDocument)),
+      "X-Docs-Markdown-Utf8-Bytes": String(docsMarkdownUtf8Bytes(responseDocument)),
+      ...(sectionIndexRequest.tokenBudget
+        ? { "X-Docs-Markdown-Token-Budget": String(sectionIndexRequest.tokenBudget) }
+        : {}),
+      ...(sectionIndexRequest.byteBudget
+        ? { "X-Docs-Markdown-Byte-Budget": String(sectionIndexRequest.byteBudget) }
+        : {}),
+      ...(lastModified ? { "Last-Modified": lastModified } : {}),
+    };
+
+    if (
+      requestMatchesDocsMarkdownEtag(request, etag) ||
+      requestHasFreshDocsMarkdownDate(request, lastModified)
+    ) {
+      const { "Content-Type": _contentType, ...notModifiedHeaders } = responseHeaders;
+      return new Response(null, { status: 304, headers: notModifiedHeaders });
+    }
+
+    return new Response(request.method.toUpperCase() === "HEAD" ? null : responseDocument, {
+      status: 200,
+      headers: responseHeaders,
+    });
+  }
+
   const sectionResult = sectionRequest
     ? selectDocsMarkdownSection(document, sectionRequest)
     : undefined;
@@ -3442,6 +3671,7 @@ interface DocsAgentDocumentContext {
   llmsSections: DocsLlmsTxtResolvedSection[];
   markdownAcceptHeader: string | null;
   markdownSignatureAgentHeader: string | null;
+  markdownSectionDiscoveryEnabled: boolean;
   apiCatalogEnabled: boolean;
 }
 
@@ -3485,6 +3715,7 @@ function resolveDocsAgentDocumentContext({
     markdownAcceptHeader: markdown?.acceptHeader === false ? null : "text/markdown",
     markdownSignatureAgentHeader:
       markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
+    markdownSectionDiscoveryEnabled: markdown?.sectionDiscovery !== false,
     apiCatalogEnabled: explicitApiCatalog ?? llms?.apiCatalog ?? true,
   };
 }
@@ -3661,6 +3892,13 @@ function appendDocsAgentStartHereLines(
       ? `- Fetch /${context.normalizedEntry}/{slug}.md for page-specific context.`
       : `- Read /${context.normalizedEntry}/{slug}.md for page-specific context.`,
   );
+  if (context.markdownSectionDiscoveryEnabled) {
+    lines.push(
+      variant === "skill"
+        ? `- Fetch /${context.normalizedEntry}/{slug}.md?sections to list section IDs and size estimates before requesting ?section={id}.`
+        : `- Read /${context.normalizedEntry}/{slug}.md?sections before fetching ?section={id} when a full page is larger than needed.`,
+    );
+  }
 
   if (variant === "skill") {
     appendDocsMarkdownNegotiationStartLines(lines, context, variant);
@@ -3750,6 +3988,12 @@ function appendDocsAgentPublicRouteLines(
       `- Markdown root: /${context.normalizedEntry}.md`,
       `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
     );
+    if (context.markdownSectionDiscoveryEnabled) {
+      lines.push(
+        `- Markdown section index: /${context.normalizedEntry}/{slug}.md?sections`,
+        `- Markdown section fetch: /${context.normalizedEntry}/{slug}.md?section={id}&tokenBudget={tokens}`,
+      );
+    }
 
     if (context.robotsEnabled) {
       lines.push(`- Robots policy: ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE}`);
@@ -3774,6 +4018,12 @@ function appendDocsAgentPublicRouteLines(
     `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
     `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
   );
+  if (context.markdownSectionDiscoveryEnabled) {
+    lines.push(
+      `- Markdown section index: /${context.normalizedEntry}/{slug}.md?sections`,
+      `- Markdown section fetch: /${context.normalizedEntry}/{slug}.md?section={id}&tokenBudget={tokens}`,
+    );
+  }
   if (context.apiCatalogEnabled) {
     lines.push(`- API catalog (RFC 9727): ${DEFAULT_API_CATALOG_ROUTE}`);
   }
@@ -3968,6 +4218,7 @@ export function buildDocsAgentDiscoverySpec({
   const openapiUrl = resolveDocsOpenApiDiscoveryUrl(openapiConfig, resolvedApiRoute);
   const agentContractMcpTools = resolveDocsAgentContractMcpTools(mcp);
   const apiCatalogEnabled = explicitApiCatalog ?? llms?.apiCatalog ?? true;
+  const markdownSectionDiscoveryEnabled = markdown?.sectionDiscovery !== false;
   const protectedResource =
     mcp.enabled && mcp.security?.authenticate ? mcp.security.protectedResource : undefined;
   const protectedResourceMetadataRoutes = protectedResource
@@ -3995,6 +4246,7 @@ export function buildDocsAgentDiscoverySpec({
     },
     capabilities: {
       markdownRoutes: true,
+      markdownSectionDiscovery: markdownSectionDiscoveryEnabled,
       agentMdOverrides: true,
       agentBlocks: true,
       structuredAgentContracts: true,
@@ -4057,6 +4309,18 @@ export function buildDocsAgentDiscoverySpec({
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: apiQueryRoute("format=markdown&path={slug}"),
+      sectionDiscovery: {
+        enabled: markdownSectionDiscoveryEnabled,
+        ...(markdownSectionDiscoveryEnabled
+          ? {
+              format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+              indexParam: "sections",
+              sectionParam: "section",
+              tokenBudgetParam: "tokenBudget",
+              byteBudgetParam: "byteBudget",
+            }
+          : {}),
+      },
       resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     },
     agentContract: {

@@ -31,6 +31,7 @@ import {
   DEFAULT_A2A_AGENT_CARD_ROUTE,
   DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_API_CATALOG_ROUTE,
+  DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
   getDocsMcpProtectedResourceMetadataRoutes,
@@ -550,6 +551,7 @@ function buildAgentSpec({
     },
     capabilities: {
       markdownRoutes: true,
+      markdownSectionDiscovery: true,
       agentMdOverrides: true,
       agentBlocks: true,
       structuredAgentContracts: true,
@@ -610,6 +612,14 @@ function buildAgentSpec({
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${apiRoute}?format=markdown&path={slug}`,
+      sectionDiscovery: {
+        enabled: true,
+        format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+        indexParam: "sections",
+        sectionParam: "section",
+        tokenBudgetParam: "tokenBudget",
+        byteBudgetParam: "byteBudget",
+      },
       resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     },
     agentContract: {
@@ -2075,6 +2085,7 @@ function renderSkillDocument({
     `- Fetch ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} to discover the published site skill and verify its SHA-256 digest.`,
     `- Fetch /${normalizedEntry}.md for the root docs page.`,
     `- Fetch /${normalizedEntry}/{slug}.md for page-specific context.`,
+    `- Fetch /${normalizedEntry}/{slug}.md?sections to list section IDs and size estimates before requesting ?section={id}.`,
     "- You can also request text/markdown from normal page URLs.",
   );
 
@@ -2147,6 +2158,8 @@ function renderSkillDocument({
     `- Agent Skills artifacts: ${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/{name}/SKILL.md`,
     `- Markdown root: /${normalizedEntry}.md`,
     `- Markdown pages: /${normalizedEntry}/{slug}.md`,
+    `- Markdown section index: /${normalizedEntry}/{slug}.md?sections`,
+    `- Markdown section fetch: /${normalizedEntry}/{slug}.md?section={id}&tokenBudget={tokens}`,
   );
 
   if (robotsEnabled) {
@@ -2248,6 +2261,7 @@ function renderAgentsDocument({
     `- Read ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} to discover the published site skill and verify its SHA-256 digest.`,
     `- Read /${normalizedEntry}.md for the root docs page.`,
     `- Read /${normalizedEntry}/{slug}.md for page-specific context.`,
+    `- Read /${normalizedEntry}/{slug}.md?sections before fetching ?section={id} when a full page is larger than needed.`,
   );
 
   if (llms.enabled) {
@@ -2311,6 +2325,8 @@ function renderAgentsDocument({
     `- Site skill API format: ${apiRoute}?format=skill`,
     `- Markdown root: /${normalizedEntry}.md`,
     `- Markdown pages: /${normalizedEntry}/{slug}.md`,
+    `- Markdown section index: /${normalizedEntry}/{slug}.md?sections`,
+    `- Markdown section fetch: /${normalizedEntry}/{slug}.md?section={id}&tokenBudget={tokens}`,
     `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
     `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
   );

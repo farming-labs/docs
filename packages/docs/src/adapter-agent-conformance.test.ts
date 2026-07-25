@@ -263,6 +263,46 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     }
   });
 
+  it("serves section discovery metadata with GET and HEAD parity", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const server = createDocsServer({
+      entry: "docs",
+      _preloadedContent: {
+        "/docs/page.md": "# Home\n\nOverview.\n\n## Install\n\nRun the installer.\n",
+      },
+    });
+    const url = new URL("/docs.md?sections", "https://docs.example.com");
+    const getResponse = await server.GET({
+      request: new Request(url),
+      url,
+    });
+    const getHeaders = Object.fromEntries(getResponse.headers);
+    const payload = (await getResponse.json()) as {
+      format: string;
+      sectionCount: number;
+      sections: Array<{ id: string }>;
+    };
+
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(getResponse.headers.get("x-docs-markdown-section-count")).toBe("3");
+    expect(payload.format).toBe("docs-markdown-sections.v1");
+    expect(payload.sectionCount).toBe(3);
+    expect(payload.sections.map((section) => section.id)).toEqual([
+      adapter === "tanstack-start" ? "documentation" : "page",
+      "home",
+      "install",
+    ]);
+
+    const headResponse = await server.HEAD({
+      request: new Request(url, { method: "HEAD" }),
+      url,
+    });
+    expect(headResponse.status).toBe(200);
+    expect(Object.fromEntries(headResponse.headers)).toEqual(getHeaders);
+    expect(await headResponse.text()).toBe("");
+  });
+
   it("keeps discovery HEAD requests metadata-only", async () => {
     const { createDocsServer } = await loadCreateDocsServer();
     const config: Record<string, unknown> = {

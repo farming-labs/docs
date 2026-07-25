@@ -1158,7 +1158,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     sitemap: sitemapInput,
     robots: robotsInput,
     openapi,
-    markdown: { acceptHeader: false },
+    markdown: { acceptHeader: false, sectionDiscovery: false },
   };
   const configuredAgentSkills = await resolveConfiguredAgentSkills(config?.agent?.skills, {
     rootDir,

@@ -706,6 +706,46 @@ The docs app starts.
     expect(markdown).toContain("## Prerequisites");
     expect(markdown).toContain("Use Node.js 22 or newer.");
     expect(markdown).not.toContain("## Expected Results");
+
+    const indexResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=installation&sections"),
+    );
+    const index = (await indexResponse.json()) as {
+      format: string;
+      sectionCount: number;
+      sections: Array<{ id: string; heading: string; markdownUrl: string }>;
+    };
+
+    expect(indexResponse.status).toBe(200);
+    expect(indexResponse.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(indexResponse.headers.get("x-docs-markdown-section-count")).toBe("4");
+    expect(index).toMatchObject({
+      format: "docs-markdown-sections.v1",
+      sectionCount: 4,
+      sections: [
+        {
+          id: "installation",
+          heading: "Installation",
+          markdownUrl: "http://localhost/docs/installation.md?section=installation",
+        },
+        {
+          id: "installation-2",
+          heading: "Installation",
+          markdownUrl: "http://localhost/docs/installation.md?section=installation-2",
+        },
+        {
+          id: "prerequisites",
+          heading: "Prerequisites",
+          markdownUrl: "http://localhost/docs/installation.md?section=prerequisites",
+        },
+        {
+          id: "expected-results",
+          heading: "Expected Results",
+          markdownUrl: "http://localhost/docs/installation.md?section=expected-results",
+        },
+      ],
+    });
+    expect(JSON.stringify(index)).not.toContain("Use Node.js 22 or newer.");
   });
 
   it("serves llms.txt aliases through the shared docs api handler", async () => {
@@ -843,6 +883,7 @@ export default defineDocs({
     expect(skillApiText).toContain("name: docs");
     expect(skillApiText).toContain("# Alias Docs Skill");
     expect(skillApiText).toContain("/docs.md");
+    expect(skillApiText).toContain("/docs/{slug}.md?sections");
     expect(skillApiText).toContain("/.well-known/agent.json");
     expect(skillApiText).toContain("/api/docs?query={query}&audience=agent");
 
@@ -869,6 +910,7 @@ export default defineDocs({
     expect(agentsApiText).toContain("/AGENTS.md");
     expect(agentsApiText).toContain("/api/docs?format=agents");
     expect(agentsApiText).toContain("/api/docs?query={query}&audience=agent");
+    expect(agentsApiText).toContain("/docs/{slug}.md?sections");
 
     for (const path of [
       "/AGENTS.md",
@@ -3158,6 +3200,7 @@ description: "Start building quickly"
     });
     expect(spec.capabilities).toEqual({
       markdownRoutes: true,
+      markdownSectionDiscovery: true,
       agentMdOverrides: true,
       agentBlocks: true,
       structuredAgentContracts: true,
@@ -3645,6 +3688,7 @@ description: "Start building quickly"
     });
     expect(spec.capabilities).toEqual({
       markdownRoutes: true,
+      markdownSectionDiscovery: true,
       agentMdOverrides: true,
       agentBlocks: true,
       structuredAgentContracts: true,
