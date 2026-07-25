@@ -131,6 +131,23 @@ export type {
   DocsStandardsDiscoveryRouteOptions,
   DocsStandardsDiscoveryRequest,
 } from "./standards-discovery.js";
+export {
+  AGENT_SKILL_COMPATIBILITY_MAX_LENGTH,
+  AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
+  AGENT_SKILL_FRONTMATTER_FIELDS,
+  AGENT_SKILL_NAME_MAX_LENGTH,
+  DocsAgentSkillFrontmatterError,
+  isDocsAgentSkillName,
+  parseDocsAgentSkillFrontmatter,
+  validateDocsAgentSkillFrontmatter,
+} from "./agent-skills-spec.js";
+export type {
+  DocsAgentSkillFrontmatter,
+  DocsAgentSkillFrontmatterField,
+  DocsAgentSkillFrontmatterIssue,
+  DocsAgentSkillFrontmatterValidation,
+  DocsAgentSkillFrontmatterValidationOptions,
+} from "./agent-skills-spec.js";
 
 export {
   findDocsAudienceMdxIssues,

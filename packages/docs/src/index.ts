@@ -154,6 +154,11 @@ export {
   API_CATALOG_MEDIA_TYPE,
   API_CATALOG_PROFILE_URI,
   AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  AGENT_SKILL_COMPATIBILITY_MAX_LENGTH,
+  AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
+  AGENT_SKILL_FRONTMATTER_FIELDS,
+  AGENT_SKILL_NAME_MAX_LENGTH,
+  DocsAgentSkillFrontmatterError,
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
@@ -186,6 +191,7 @@ export {
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
+  isDocsAgentSkillName,
   isDocsAgentsRequest,
   isDocsConfigRequest,
   isDocsDiagnosticsRequest,
@@ -209,6 +215,7 @@ export {
   renderDocsAgentsDocument,
   renderDocsSkillDocument,
   parseDocsAgentFeedbackData,
+  parseDocsAgentSkillFrontmatter,
   findDocsAudienceMdxIssues,
   resolveDocsAgentFeedbackConfig,
   resolveDocsAgentFeedbackRequest,
@@ -231,6 +238,7 @@ export {
   resolveDocsMarkdownRequest,
   toDocsMarkdownUrl,
   validateDocsAgentFeedbackPayload,
+  validateDocsAgentSkillFrontmatter,
 } from "./agent.js";
 export type { DocsAudienceMdxIssue, DocsContentAudience } from "./audience.js";
 export type {
@@ -253,6 +261,11 @@ export type {
   DocsOpenApiDiscoveryConfig,
   DocsOpenApiResolvedDiscoveryConfig,
   DocsStandardsDiscoveryResponseOptions,
+  DocsAgentSkillFrontmatter,
+  DocsAgentSkillFrontmatterField,
+  DocsAgentSkillFrontmatterIssue,
+  DocsAgentSkillFrontmatterValidation,
+  DocsAgentSkillFrontmatterValidationOptions,
 } from "./agent.js";
 export type {
   PromptAction,

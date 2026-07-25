@@ -13,6 +13,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
+import { gzipSync } from "node:zlib";
 import { compactAgentDocs } from "./agent.js";
 import { renderDocsRobotsTxt } from "../robots.js";
 import {
@@ -54,6 +55,31 @@ description: "Docs home"
 `,
     "utf-8",
   );
+}
+
+function createAgentSkillArchive(document: string): Uint8Array {
+  const content = new TextEncoder().encode(document);
+  const header = new Uint8Array(512);
+  const write = (offset: number, length: number, value: string) => {
+    header.set(new TextEncoder().encode(value).subarray(0, length), offset);
+  };
+  write(0, 100, "SKILL.md");
+  write(100, 8, "0000644");
+  write(108, 8, "0000000");
+  write(116, 8, "0000000");
+  write(124, 12, content.byteLength.toString(8).padStart(11, "0"));
+  write(136, 12, "00000000000");
+  header.fill(0x20, 148, 156);
+  header[156] = "0".charCodeAt(0);
+  write(257, 6, "ustar");
+  write(263, 2, "00");
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  write(148, 8, `${checksum.toString(8).padStart(6, "0")}\0 `);
+
+  const tar = new Uint8Array(512 + Math.ceil(content.byteLength / 512) * 512 + 1024);
+  tar.set(header);
+  tar.set(content, 512);
+  return new Uint8Array(gzipSync(tar));
 }
 
 describe("parseDoctorArgs", () => {
@@ -612,7 +638,12 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "public-routes")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "agent-discovery")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "sitemap")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "skill")).toMatchObject({
+      status: "warn",
+      score: 4,
+      maxScore: 5,
+      detail: expect.stringContaining("Agent Skills discovery will publish the generated fallback"),
+    });
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
@@ -622,6 +653,42 @@ Use this docs site through markdown routes and MCP.
     );
     expect(report.checks.find((check) => check.id === "golden-tasks")?.status).toBe("pass");
     expect(report.evaluations).toMatchObject({ status: "passed", passedTaskCount: 1 });
+  });
+
+  it("reports full-spec errors in every configured Agent Skill", async () => {
+    writePackageJson(tmpDir, "doctor-invalid-agent-skill", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: { skills: "skills/broken" },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "skills", "broken"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "skills", "broken", "SKILL.md"),
+      `---
+name: broken
+description: Exercise doctor validation for configured skills.
+version: "1.0"
+metadata:
+  revision: 1
+---
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const check = report.checks.find((candidate) => candidate.id === "agent-skills-frontmatter");
+
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toContain("Unexpected fields in frontmatter: version");
+    expect(check?.detail).toContain("Field 'metadata.revision' must be a string");
+    expect(report.grade).not.toBe("Agent-optimized");
   });
 
   it("evaluates the configured Ask AI surface, answer callback, base URL, and runtime examples", async () => {
@@ -1247,8 +1314,16 @@ description: Use the hosted documentation through its agent-readable resources.
 
 Use MCP and markdown routes.
 `;
-    const hostedSkillDigest = createHash("sha256").update(hostedSkill).digest("hex");
+    const invalidHostedSkill = hostedSkill.replace(
+      "description: Use the hosted documentation through its agent-readable resources.",
+      'description: Use the hosted documentation through its agent-readable resources.\nversion: "1.0"',
+    );
+    const invalidHostedSkillUtf8 = Buffer.from([0xff, 0xfe, 0xfd]);
+    const invalidHostedSkillArchive = createAgentSkillArchive(invalidHostedSkill);
     let serveStaleRobots = false;
+    let serveInvalidSkillFrontmatter = false;
+    let serveInvalidSkillUtf8 = false;
+    let serveArchiveSkill = false;
 
     const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -1290,6 +1365,12 @@ Use MCP and markdown routes.
 
       if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
         res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+        res.end();
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/docs.tar.gz") {
+        res.writeHead(200, { "Content-Type": "application/gzip" });
         res.end();
         return;
       }
@@ -1386,10 +1467,22 @@ Use MCP and markdown routes.
               skills: [
                 {
                   name: "docs",
-                  type: "skill-md",
+                  type: serveArchiveSkill ? "archive" : "skill-md",
                   description: "Use the hosted documentation through its agent-readable resources.",
-                  url: "/.well-known/agent-skills/docs/SKILL.md",
-                  digest: `sha256:${hostedSkillDigest}`,
+                  url: serveArchiveSkill
+                    ? "/.well-known/agent-skills/docs.tar.gz"
+                    : "/.well-known/agent-skills/docs/SKILL.md",
+                  digest: `sha256:${createHash("sha256")
+                    .update(
+                      serveArchiveSkill
+                        ? invalidHostedSkillArchive
+                        : serveInvalidSkillUtf8
+                          ? invalidHostedSkillUtf8
+                          : serveInvalidSkillFrontmatter
+                            ? invalidHostedSkill
+                            : hostedSkill,
+                    )
+                    .digest("hex")}`,
                 },
               ],
             }),
@@ -1399,7 +1492,19 @@ Use MCP and markdown routes.
 
         if (url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
           res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
-          res.end(hostedSkill);
+          res.end(
+            serveInvalidSkillUtf8
+              ? invalidHostedSkillUtf8
+              : serveInvalidSkillFrontmatter
+                ? invalidHostedSkill
+                : hostedSkill,
+          );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/docs.tar.gz") {
+          res.writeHead(200, { "Content-Type": "application/gzip" });
+          res.end(invalidHostedSkillArchive);
           return;
         }
 
@@ -1606,6 +1711,43 @@ Use MCP and markdown routes.
       expect(staleRobots).toMatchObject({ status: "warn", score: 3, maxScore: 5 });
       expect(staleRobots?.detail).toContain(
         "agent routes (/.well-known/agent-skills/*, /.well-known/skills/index.json",
+      );
+
+      serveStaleRobots = false;
+      serveInvalidSkillFrontmatter = true;
+      const invalidSkillReport = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidSkillCheck = invalidSkillReport.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidSkillCheck?.status).toBe("fail");
+      expect(invalidSkillCheck?.detail).toContain(
+        "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
+      );
+
+      serveInvalidSkillFrontmatter = false;
+      serveInvalidSkillUtf8 = true;
+      const invalidUtf8Report = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidUtf8Check = invalidUtf8Report.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidUtf8Check?.status).toBe("fail");
+      expect(invalidUtf8Check?.detail).toContain("artifact failed:");
+
+      serveInvalidSkillUtf8 = false;
+      serveArchiveSkill = true;
+      const invalidArchiveReport = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidArchiveCheck = invalidArchiveReport.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidArchiveCheck?.status).toBe("fail");
+      expect(invalidArchiveCheck?.detail).toContain(
+        "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
       );
     } finally {
       await new Promise<void>((resolve, reject) =>

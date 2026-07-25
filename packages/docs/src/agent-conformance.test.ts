@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import {
   createDocsAgentContractCases,
@@ -22,6 +23,34 @@ description: Use the documentation through its agent-readable resources.
 # Documentation
 `;
 const AGENT_SKILL_DIGEST = createHash("sha256").update(AGENT_SKILL_CONTENT, "utf8").digest("hex");
+
+function createAgentSkillArchive(document: string): Uint8Array<ArrayBuffer> {
+  const content = new TextEncoder().encode(document);
+  const header = new Uint8Array(512);
+  const write = (offset: number, length: number, value: string) => {
+    header.set(new TextEncoder().encode(value).subarray(0, length), offset);
+  };
+  write(0, 100, "SKILL.md");
+  write(100, 8, "0000644");
+  write(108, 8, "0000000");
+  write(116, 8, "0000000");
+  write(124, 12, content.byteLength.toString(8).padStart(11, "0"));
+  write(136, 12, "00000000000");
+  header.fill(0x20, 148, 156);
+  header[156] = "0".charCodeAt(0);
+  write(257, 6, "ustar");
+  write(263, 2, "00");
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  write(148, 8, `${checksum.toString(8).padStart(6, "0")}\0 `);
+
+  const tar = new Uint8Array(512 + Math.ceil(content.byteLength / 512) * 512 + 1024);
+  tar.set(header);
+  tar.set(content, 512);
+  const compressed = gzipSync(tar);
+  const archive = new Uint8Array(new ArrayBuffer(compressed.byteLength));
+  archive.set(compressed);
+  return archive;
+}
 
 function createPassingResponse(surface: DocsAgentContractSurface, contentType?: string): Response {
   const contractCase = createDocsAgentContractCases().find(
@@ -177,8 +206,58 @@ describe("agent conformance contract", () => {
     });
   });
 
-  it("validates archive artifacts as exact binary bytes", async () => {
-    const archive = Uint8Array.from([31, 139, 8, 0, 255, 0, 128, 1]);
+  it("validates every published SKILL.md against the complete frontmatter contract", async () => {
+    const invalidSkill = `---
+name: docs
+description: Use the documentation through its agent-readable resources.
+version: "1.0"
+---
+
+# Documentation
+`;
+    const invalidDigest = createHash("sha256").update(invalidSkill, "utf8").digest("hex");
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(request, surface) {
+        const response = createPassingResponse(surface);
+        if (surface === "agent-skills-index") {
+          const index = (await response.json()) as { skills: Array<{ digest: string }> };
+          index.skills[0]!.digest = `sha256:${invalidDigest}`;
+          return new Response(JSON.stringify(index), {
+            status: response.status,
+            headers: response.headers,
+          });
+        }
+        if (
+          surface === "agent-skill" &&
+          request.url.endsWith("/.well-known/agent-skills/docs/SKILL.md")
+        ) {
+          return new Response(invalidSkill, {
+            headers: { "Content-Type": "text/markdown; charset=utf-8" },
+          });
+        }
+        return response;
+      },
+    });
+
+    expect(report.cases.find((result) => result.surface === "agent-skills-index")).toMatchObject({
+      passed: false,
+      issues: [
+        expect.stringContaining(
+          "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
+        ),
+      ],
+    });
+  });
+
+  it("validates archive artifacts and their embedded SKILL.md as exact binary bytes", async () => {
+    const archive = createAgentSkillArchive(`---
+name: bundle
+description: Use the bundled binary workflow.
+---
+
+# Bundle
+`);
     const digest = createHash("sha256").update(archive).digest("hex");
     const report = await runDocsAgentConformance({
       adapter: "next",
@@ -209,6 +288,53 @@ describe("agent conformance contract", () => {
 
     expect(report.cases.filter((result) => !result.passed)).toEqual([]);
     expect(report.passed).toBe(true);
+  });
+
+  it("rejects invalid frontmatter from the SKILL.md embedded in an archive", async () => {
+    const archive = createAgentSkillArchive(`---
+name: bundle
+description: Use the bundled binary workflow.
+version: "1.0"
+---
+
+# Bundle
+`);
+    const digest = createHash("sha256").update(archive).digest("hex");
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(request, surface) {
+        if (surface === "agent-skills-index") {
+          const response = createPassingResponse(surface);
+          const index = (await response.json()) as {
+            skills: Array<Record<string, unknown>>;
+          };
+          index.skills.push({
+            name: "bundle",
+            description: "Use the bundled binary workflow.",
+            type: "archive",
+            url: "/.well-known/agent-skills/bundle.tar.gz",
+            digest: `sha256:${digest}`,
+          });
+          return new Response(JSON.stringify(index), {
+            status: response.status,
+            headers: response.headers,
+          });
+        }
+        if (surface === "agent-skill" && request.url.endsWith("/bundle.tar.gz")) {
+          return new Response(archive, { headers: { "Content-Type": "application/gzip" } });
+        }
+        return createPassingResponse(surface);
+      },
+    });
+
+    expect(report.cases.find((result) => result.surface === "agent-skills-index")).toMatchObject({
+      passed: false,
+      issues: [
+        expect.stringContaining(
+          "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
+        ),
+      ],
+    });
   });
 
   it("correlates each Link target and relation while allowing quoted commas", async () => {

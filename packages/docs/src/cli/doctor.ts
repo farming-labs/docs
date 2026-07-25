@@ -1,6 +1,7 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import pc from "picocolors";
 import {
@@ -27,7 +28,9 @@ import {
   buildDocsConfigMap,
   buildDocsMcpEndpointCandidates,
   getDocsMcpProtectedResourceMetadataRoutes,
+  isDocsAgentSkillName,
   resolveDocsDiscoveryApiRoute,
+  validateDocsAgentSkillFrontmatter,
 } from "../agent.js";
 import {
   AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
@@ -42,6 +45,11 @@ import {
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
+import { resolveConfiguredAgentSkills } from "../agent-skills-server.js";
+import {
+  AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
+  readAgentSkillDocumentFromTar,
+} from "../agent-skills-archive.js";
 import { httpLinkHeaderHasTargetRelation } from "../http-link.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import { isDocsMcpOAuthScopeToken, normalizeDocsMcpAuthorizationServerUrls } from "../mcp-auth.js";
@@ -958,6 +966,7 @@ function navigationScore(navigationCoverage: number): { status: DoctorStatus; sc
 
 const AGENT_OPTIMIZATION_BLOCKING_CHECKS = new Set([
   "surface-drift",
+  "agent-skills-frontmatter",
   "agent-context-quality",
   "agent-task-completeness",
   "agent-applicability",
@@ -2086,11 +2095,10 @@ function isValidAgentSkillEntry(value: unknown): value is {
   return Boolean(
     entry &&
     typeof entry.name === "string" &&
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(entry.name) &&
-    entry.name.length <= 64 &&
+    isDocsAgentSkillName(entry.name) &&
     (entry.type === "skill-md" || entry.type === "archive") &&
     isNonEmptyString(entry.description) &&
-    entry.description.length <= 1024 &&
+    Array.from(entry.description).length <= 1024 &&
     isNonEmptyString(entry.url) &&
     typeof entry.digest === "string" &&
     /^sha256:[0-9a-f]{64}$/u.test(entry.digest),
@@ -2163,8 +2171,8 @@ async function probeAgentSkillsDiscovery(baseUrl: string): Promise<HostedStandar
 
         const expectedPath =
           skill.type === "archive"
-            ? `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${skill.name}.tar.gz`
-            : DEFAULT_AGENT_SKILLS_ROUTE_PATTERN.replace("{name}", skill.name);
+            ? `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(skill.name)}.tar.gz`
+            : DEFAULT_AGENT_SKILLS_ROUTE_PATTERN.replace("{name}", encodeURIComponent(skill.name));
         const expectedMediaType = skill.type === "archive" ? "application/gzip" : "text/markdown";
         if (artifactUrl.origin !== baseOrigin) {
           failures.push(`${skill.name} artifact is not same-origin`);
@@ -2209,6 +2217,28 @@ async function probeAgentSkillsDiscovery(baseUrl: string): Promise<HostedStandar
             failures.push(`${skill.name} artifact digest does not match the index`);
           } else {
             artifactDetails.push(`${skill.name} digest verified`);
+          }
+
+          const skillDocument =
+            skill.type === "skill-md"
+              ? new TextDecoder("utf-8", { fatal: true }).decode(content)
+              : readAgentSkillDocumentFromTar(
+                  gunzipSync(content, {
+                    maxOutputLength: AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
+                  }),
+                );
+
+          const validation = validateDocsAgentSkillFrontmatter(skillDocument, {
+            directoryName: skill.name,
+          });
+          if (!validation.valid) {
+            failures.push(
+              `${skill.name} has invalid SKILL.md frontmatter: ${validation.issues
+                .map((issue) => issue.message)
+                .join("; ")}`,
+            );
+          } else if (validation.data.description !== skill.description) {
+            failures.push(`${skill.name} SKILL.md description does not match the index`);
           }
         } catch (error) {
           failures.push(
@@ -2882,6 +2912,18 @@ export async function inspectAgentReadiness(
   const configContent = readFileSync(configPath, "utf-8");
   const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
   const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
+  let configuredAgentSkillNames: string[] | undefined;
+  let configuredAgentSkillsError: string | undefined;
+  const configuredAgentSkills = config?.agent?.skills;
+  if (configuredAgentSkills) {
+    try {
+      configuredAgentSkillNames = (
+        await resolveConfiguredAgentSkills(configuredAgentSkills, { rootDir })
+      ).map((skill) => skill.name);
+    } catch (error) {
+      configuredAgentSkillsError = error instanceof Error ? error.message : String(error);
+    }
+  }
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = config?.contentDir ?? resolveDocsContentDir(rootDir, configContent, entry);
   const ordering =
@@ -2902,7 +2944,11 @@ export async function inspectAgentReadiness(
   const mcpEnabled = resolveFeatureEnabled(config, configContent, "mcp");
   const agentFeedbackEnabled = resolveAgentFeedbackEnabled(config, configContent);
   const compactConfigured = hasAgentCompactDefaults(config, configContent);
-  const skillFileExists = existsSync(path.join(rootDir, "skill.md"));
+  const skillFilePath = path.join(rootDir, "skill.md");
+  const skillFileExists = existsSync(skillFilePath);
+  const rootSkillValidation = skillFileExists
+    ? validateDocsAgentSkillFrontmatter(readFileSync(skillFilePath, "utf8"))
+    : undefined;
   const agentsFileExists =
     existsSync(path.join(rootDir, "AGENTS.md")) || existsSync(path.join(rootDir, "AGENT.md"));
 
@@ -3097,6 +3143,26 @@ export async function inspectAgentReadiness(
       configLoad.status === "evaluated"
         ? undefined
         : "Fix docs.config module evaluation before relying on resolved diagnostic scores.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
+      "agent-skills-frontmatter",
+      "Configured Agent Skills frontmatter",
+      configLoad.status !== "evaluated" ? "warn" : configuredAgentSkillsError ? "fail" : "pass",
+      configLoad.status === "evaluated" && !configuredAgentSkillsError ? 1 : 0,
+      1,
+      configLoad.status !== "evaluated"
+        ? "Not verified because docs.config could not be evaluated."
+        : configuredAgentSkillsError
+          ? configuredAgentSkillsError
+          : configuredAgentSkillNames
+            ? `${configuredAgentSkillNames.length} configured Agent Skill${configuredAgentSkillNames.length === 1 ? "" : "s"} passed full frontmatter validation: ${configuredAgentSkillNames.join(", ")}.`
+            : "No configured Agent Skills require validation.",
+      configuredAgentSkillsError
+        ? "Fix every configured SKILL.md field reported here before building or publishing the docs site."
+        : undefined,
     ),
   );
 
@@ -3341,14 +3407,26 @@ export async function inspectAgentReadiness(
 
   checks.push(
     skillFileExists
-      ? makeCheck(
-          "skill",
-          "Skill document",
-          "pass",
-          5,
-          5,
-          `Found root skill.md for ${DEFAULT_SKILL_MD_ROUTE} and ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}.`,
-        )
+      ? rootSkillValidation?.valid
+        ? makeCheck(
+            "skill",
+            "Skill document",
+            "pass",
+            5,
+            5,
+            `Found a standards-compliant root skill.md for ${DEFAULT_SKILL_MD_ROUTE}, ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}, and Agent Skills discovery.`,
+          )
+        : makeCheck(
+            "skill",
+            "Skill document",
+            "warn",
+            4,
+            5,
+            `Root skill.md remains available on the legacy routes, but Agent Skills discovery will publish the generated fallback because its frontmatter is invalid: ${rootSkillValidation?.issues
+              .map((issue) => issue.message)
+              .join("; ")}`,
+            "Add complete Agent Skills frontmatter to root skill.md if it should be published through standards discovery.",
+          )
       : makeCheck(
           "skill",
           "Skill document",

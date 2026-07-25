@@ -234,6 +234,21 @@ description: 'Use the café documentation.'
     });
   });
 
+  it("publishes spec-valid Unicode names on encoded discovery routes", async () => {
+    const document = `---
+name: 文档-工具
+description: Use the localized documentation tools.
+---
+`;
+    const skill = await resolveDocsPublishedAgentSkill({
+      preferredDocument: document,
+      fallbackDocument: generatedSkill,
+    });
+
+    expect(skill.name).toBe("文档-工具");
+    expect(skill.url).toBe(`/.well-known/agent-skills/${encodeURIComponent("文档-工具")}/SKILL.md`);
+  });
+
   it("keeps an invalid custom legacy skill private from the standards index", async () => {
     const selected = await resolveDocsPublishedAgentSkill({
       preferredDocument: "# Custom legacy instructions without frontmatter\n",
@@ -241,6 +256,44 @@ description: 'Use the café documentation.'
     });
     expect(selected.name).toBe("docs");
     expect(selected.content).toBe(generatedSkill);
+  });
+
+  it("keeps a legacy skill with non-standard frontmatter fields private", async () => {
+    const selected = await resolveDocsPublishedAgentSkill({
+      preferredDocument: `---
+name: custom
+description: Use the custom legacy instructions.
+version: "1.0"
+---
+`,
+      fallbackDocument: generatedSkill,
+    });
+
+    expect(selected.name).toBe("docs");
+    expect(selected.content).toBe(generatedSkill);
+  });
+
+  it("reports every full-spec error in an invalid generated fallback", async () => {
+    await expect(
+      resolveDocsPublishedAgentSkill({
+        fallbackDocument: `---
+name: BROKEN--fallback
+description: Use the generated fallback.
+version: "1.0"
+---
+`,
+      }),
+    ).rejects.toThrow("Unexpected fields in frontmatter: version");
+    await expect(
+      resolveDocsPublishedAgentSkill({
+        fallbackDocument: `---
+name: BROKEN--fallback
+description: Use the generated fallback.
+version: "1.0"
+---
+`,
+      }),
+    ).rejects.toThrow("cannot contain consecutive hyphens");
   });
 
   it("serves an index whose digest matches the exact individual response", async () => {

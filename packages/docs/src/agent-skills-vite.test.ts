@@ -70,4 +70,29 @@ describe("docsAgentSkills", () => {
     const source = await plugin.load(resolvedId);
     expect(source).toContain("const snapshot = [];");
   });
+
+  it("fails the build with full-spec frontmatter diagnostics", async () => {
+    const { app, root } = createWorkspace();
+    const skillDir = path.join(root, "shared", "skills", "invalid");
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, "SKILL.md"),
+      `---
+name: invalid
+description: Exercise Vite snapshot validation.
+allowed-tools:
+  - Read
+---
+`,
+    );
+    const plugin = docsAgentSkills(
+      { agent: { skills: "../../shared/skills" } },
+      { rootDir: app, workspaceRoot: root },
+    );
+    const resolvedId = plugin.resolveId(DOCS_AGENT_SKILLS_BUNDLE_MODULE)!;
+
+    await expect(plugin.load(resolvedId)).rejects.toThrow(
+      "Field 'allowed-tools' must be a space-separated string",
+    );
+  });
 });

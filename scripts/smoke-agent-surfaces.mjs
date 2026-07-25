@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 
 const DEFAULT_BASE_URL = "https://docs.farming-labs.dev";
 const AGENT_SKILLS_SCHEMA = "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
@@ -20,6 +21,17 @@ const MCP_PROTOCOL_VERSION = "2025-06-18";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_ATTEMPTS = 3;
 const MAX_RESPONSE_BYTES = 20 * 1024 * 1024;
+const TAR_BLOCK_BYTES = 512;
+const TAR_NAME_BYTES = 100;
+const TAR_PREFIX_OFFSET = 345;
+const TAR_PREFIX_BYTES = 155;
+const AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES = 10 * 1024 * 1024;
+const AGENT_SKILL_DOCUMENT_MAX_BYTES = 1024 * 1024;
+const fullSkillFrontmatterValidator =
+  process.env.DOCS_SMOKE_VALIDATE_SKILL_FRONTMATTER === "1"
+    ? (await import("../packages/docs/dist/agent-skills-spec.mjs"))
+        .validateDocsAgentSkillFrontmatter
+    : null;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -31,6 +43,145 @@ function asRecord(value) {
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isAgentSkillName(value) {
+  if (typeof value !== "string") return false;
+  const normalized = value.normalize("NFKC");
+  const characters = Array.from(normalized);
+  return (
+    characters.length > 0 &&
+    characters.length <= 64 &&
+    normalized === normalized.toLowerCase() &&
+    !normalized.startsWith("-") &&
+    !normalized.endsWith("-") &&
+    !normalized.includes("--") &&
+    characters.every((character) => character === "-" || /^[\p{L}\p{N}]$/u.test(character))
+  );
+}
+
+function validateAgentSkillDocument(bytes, name, label) {
+  if (!fullSkillFrontmatterValidator) return null;
+
+  let document;
+  try {
+    document = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error(`${label} was not valid UTF-8`);
+  }
+  const validation = fullSkillFrontmatterValidator(document, { directoryName: name });
+  assert(
+    validation.valid,
+    `${label} had invalid Agent Skills frontmatter: ${validation.issues
+      .map((issue) => issue.message)
+      .join("; ")}`,
+  );
+  return validation.data;
+}
+
+function isZeroTarBlock(block) {
+  return block.every((byte) => byte === 0);
+}
+
+function readTarText(header, offset, length, field) {
+  const bytes = header.subarray(offset, offset + length);
+  const terminator = bytes.indexOf(0);
+  const value = terminator < 0 ? bytes : bytes.subarray(0, terminator);
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(value);
+  } catch {
+    throw new Error(`Agent Skill archive had invalid UTF-8 in its ${field}`);
+  }
+}
+
+function readTarOctal(header, offset, length, field) {
+  const value = readTarText(header, offset, length, field).trim();
+  assert(/^[0-7]+$/u.test(value), `Agent Skill archive had an invalid ${field}`);
+  const parsed = Number.parseInt(value, 8);
+  assert(Number.isSafeInteger(parsed) && parsed >= 0, `Agent Skill archive had an unsafe ${field}`);
+  return parsed;
+}
+
+function validateTarChecksum(header) {
+  const expected = readTarOctal(header, 148, 8, "header checksum");
+  const actual = header.reduce((sum, byte, index) => {
+    return sum + (index >= 148 && index < 156 ? 0x20 : byte);
+  }, 0);
+  assert(actual === expected, "Agent Skill archive had an invalid tar header checksum");
+}
+
+function readAgentSkillDocumentFromTar(archive) {
+  assert(
+    archive.byteLength <= AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
+    "Agent Skill archive exceeded the uncompressed size limit",
+  );
+
+  let skillDocument = null;
+  let foundEndOfArchive = false;
+  let offset = 0;
+  while (offset < archive.byteLength) {
+    assert(
+      offset + TAR_BLOCK_BYTES <= archive.byteLength,
+      "Agent Skill archive contained a truncated tar header",
+    );
+    const header = archive.subarray(offset, offset + TAR_BLOCK_BYTES);
+    if (isZeroTarBlock(header)) {
+      const secondZeroBlockStart = offset + TAR_BLOCK_BYTES;
+      const secondZeroBlockEnd = secondZeroBlockStart + TAR_BLOCK_BYTES;
+      assert(
+        secondZeroBlockEnd <= archive.byteLength,
+        "Agent Skill archive contained a truncated end-of-archive marker",
+      );
+      assert(
+        isZeroTarBlock(archive.subarray(secondZeroBlockStart, secondZeroBlockEnd)),
+        "Agent Skill archive was missing the second end-of-archive block",
+      );
+      assert(
+        archive.subarray(secondZeroBlockEnd).every((byte) => byte === 0),
+        "Agent Skill archive had non-zero bytes after its end marker",
+      );
+      foundEndOfArchive = true;
+      break;
+    }
+
+    validateTarChecksum(header);
+    const name = readTarText(header, 0, TAR_NAME_BYTES, "file name");
+    const prefix = readTarText(header, TAR_PREFIX_OFFSET, TAR_PREFIX_BYTES, "file prefix");
+    const path = prefix ? `${prefix}/${name}` : name;
+    const size = readTarOctal(header, 124, 12, "file size");
+    const contentStart = offset + TAR_BLOCK_BYTES;
+    const contentEnd = contentStart + size;
+    assert(
+      contentEnd <= archive.byteLength,
+      `Agent Skill archive entry ${JSON.stringify(path)} was truncated`,
+    );
+
+    const typeFlag = header[156];
+    if (path === "SKILL.md") {
+      assert(
+        typeFlag === 0 || typeFlag === "0".charCodeAt(0),
+        "Agent Skill archive root SKILL.md was not a regular file",
+      );
+      assert(!skillDocument, "Agent Skill archive contained more than one root SKILL.md");
+      assert(
+        size <= AGENT_SKILL_DOCUMENT_MAX_BYTES,
+        "Agent Skill archive SKILL.md exceeded the document size limit",
+      );
+      skillDocument = archive.subarray(contentStart, contentEnd);
+    }
+
+    const paddedSize = Math.ceil(size / TAR_BLOCK_BYTES) * TAR_BLOCK_BYTES;
+    const nextOffset = contentStart + paddedSize;
+    assert(
+      nextOffset <= archive.byteLength,
+      `Agent Skill archive entry ${JSON.stringify(path)} had truncated padding`,
+    );
+    offset = nextOffset;
+  }
+
+  assert(foundEndOfArchive, "Agent Skill archive was missing its end-of-archive marker");
+  assert(skillDocument, "Agent Skill archive did not contain a root SKILL.md");
+  return skillDocument;
 }
 
 function parsePositiveInteger(value, fallback) {
@@ -1041,13 +1192,13 @@ function validateModernSkillIndex(json, expectedSkillNames, response) {
   const skills = root.skills.map((value) => {
     const skill = asRecord(value);
     assert(skill, "Agent Skills index contained a non-object entry");
-    assert(
-      isNonEmptyString(skill.name) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(skill.name),
-      "Agent Skills index contained an invalid name",
-    );
+    assert(isAgentSkillName(skill.name), "Agent Skills index contained an invalid name");
     assert(!seen.has(skill.name), `Agent Skills index duplicated ${JSON.stringify(skill.name)}`);
     seen.add(skill.name);
-    assert(isNonEmptyString(skill.description), `Agent Skill ${skill.name} had no description`);
+    assert(
+      isNonEmptyString(skill.description) && Array.from(skill.description).length <= 1024,
+      `Agent Skill ${skill.name} had an invalid description`,
+    );
     assert(
       skill.type === "skill-md" || skill.type === "archive",
       `Agent Skill ${skill.name} had an invalid type`,
@@ -1112,6 +1263,25 @@ async function validateModernSkillArtifact(request, baseUrl, skill) {
     ].includes(artifact.response.headers.get("etag")),
     `${skill.url} did not expose the indexed digest as its ETag`,
   );
+  if (skill.type === "skill-md" || skill.type === "archive") {
+    const documentBytes =
+      skill.type === "skill-md"
+        ? artifact.bytes
+        : readAgentSkillDocumentFromTar(
+            gunzipSync(artifact.bytes, {
+              maxOutputLength: AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
+            }),
+          );
+    const frontmatter = validateAgentSkillDocument(
+      documentBytes,
+      skill.name,
+      `Agent Skill ${skill.name}`,
+    );
+    assert(
+      !frontmatter || frontmatter.description === skill.description,
+      `Agent Skill ${skill.name} frontmatter description did not match its index entry`,
+    );
+  }
 }
 
 function validateManifestPublishedSkills(manifest, modernNames, expectedSkillNames) {
@@ -1175,6 +1345,13 @@ async function validateManifestSkillFile(request, baseUrl, file) {
     `sha256:${sha256(result.bytes)}` === file.digest,
     `Agent Skill file ${file.name}/${file.path} did not match its published digest`,
   );
+  if (file.path === "SKILL.md") {
+    validateAgentSkillDocument(
+      result.bytes,
+      file.name,
+      `Agent Skill file ${file.name}/${file.path}`,
+    );
+  }
 }
 
 function validateLegacySkillIndex(json, modernNames) {
@@ -1218,6 +1395,7 @@ async function validateLegacySkillFile(request, file, expectedDigests) {
       mediaType(result.response) === "text/markdown",
       `${route} returned the wrong content-type`,
     );
+    validateAgentSkillDocument(result.bytes, file.name, `Legacy Agent Skill ${file.name}`);
   }
   const expectedDigest = expectedDigests.get(`${file.name}/${file.path}`);
   if (expectedDigest) {

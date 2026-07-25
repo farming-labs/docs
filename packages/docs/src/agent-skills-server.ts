@@ -513,12 +513,10 @@ function publishSkillDocumentSync(skillPath: string): DocsPublishedAgentSkill {
   if (skillDocumentBytes > MAX_FILE_BYTES) {
     throw new Error(`Agent Skill SKILL.md exceeds ${MAX_FILE_BYTES} bytes: ${skillPath}`);
   }
-  const base = buildDocsPublishedAgentSkill(skillDocument, hashBytes(skillDocument));
-  if (base.name !== path.basename(skillDir)) {
-    throw new Error(
-      `Agent Skill frontmatter name "${base.name}" must match its directory "${path.basename(skillDir)}".`,
-    );
-  }
+  const base = buildDocsPublishedAgentSkill(skillDocument, hashBytes(skillDocument), {
+    directoryName: path.basename(skillDir),
+    source: skillPath,
+  });
   const companions = readCompanionFiles(skillDir, base.name, skillDocumentBytes);
   const files = [...base.files, ...companions].sort(compareSkillFilePath);
   if (companions.length === 0) return { ...base, files };
@@ -545,12 +543,10 @@ async function publishSkillDocumentAsync(skillPath: string): Promise<DocsPublish
   if (skillDocumentBytes > MAX_FILE_BYTES) {
     throw new Error(`Agent Skill SKILL.md exceeds ${MAX_FILE_BYTES} bytes: ${skillPath}`);
   }
-  const base = buildDocsPublishedAgentSkill(skillDocument, hashBytes(skillDocument));
-  if (base.name !== path.basename(skillDir)) {
-    throw new Error(
-      `Agent Skill frontmatter name "${base.name}" must match its directory "${path.basename(skillDir)}".`,
-    );
-  }
+  const base = buildDocsPublishedAgentSkill(skillDocument, hashBytes(skillDocument), {
+    directoryName: path.basename(skillDir),
+    source: skillPath,
+  });
   const companions = await readCompanionFilesAsync(skillDir, base.name, skillDocumentBytes);
   const files = [...base.files, ...companions].sort(compareSkillFilePath);
   if (companions.length === 0) return { ...base, files };

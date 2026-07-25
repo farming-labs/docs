@@ -1197,14 +1197,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const resources = ["/api/internal/docs/mcp", "/mcp", "/.well-known/mcp"];
 
     expect(rewrites).toEqual(
-      expect.arrayContaining([
-        ...resources.map((resourcePath) =>
+      expect.arrayContaining(
+        resources.map((resourcePath) =>
           expect.objectContaining({
             source: buildMcpProtectedResourceMetadataRoute(resourcePath),
             destination: "/api/internal/docs/mcp",
           }),
         ),
-      ]),
+      ),
     );
   });
 
@@ -1934,10 +1934,19 @@ export default { entry: "docs", agent };
     );
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     mkdirSync(join(tmpDir, "skills", "broken"), { recursive: true });
-    writeFileSync(join(tmpDir, "skills", "broken", "SKILL.md"), "# Missing frontmatter\n", "utf8");
+    writeFileSync(
+      join(tmpDir, "skills", "broken", "SKILL.md"),
+      `---
+name: broken
+description: Exercise full Agent Skills frontmatter validation.
+version: "1.0"
+---
+`,
+      "utf8",
+    );
     process.chdir(tmpDir);
 
-    expect(() => withDocs({})).toThrow("valid name and description frontmatter");
+    expect(() => withDocs({})).toThrow("Unexpected fields in frontmatter: version");
   });
 
   it("reads a top-level contentDir even when nested config uses deeper indentation", () => {
