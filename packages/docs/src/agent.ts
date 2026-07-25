@@ -28,11 +28,7 @@ import {
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
-import {
-  findDocsMarkdownSection,
-  parseDocsMarkdownSections,
-  slugifyDocsMarkdownHeading,
-} from "./markdown-sections.js";
+import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   DEFAULT_SITEMAP_MD_ROUTE,
@@ -2882,10 +2878,23 @@ function stripDocsMarkdownFrontmatter(markdown: string): { frontmatter: string; 
   return { frontmatter: match[1] ?? "", body: match[2] ?? "" };
 }
 
+function slugifyPublicDocsMarkdownSectionId(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function resolveDocsMarkdownSectionBody(document: string): { body: string; lineOffset: number } {
   const stripped = stripDocsMarkdownFrontmatter(document).body;
   const lines = stripped.split(/\r?\n/u);
-  let start = 0;
   let generatedPreambleStart = 0;
   while (
     generatedPreambleStart < lines.length &&
@@ -2898,19 +2907,21 @@ function resolveDocsMarkdownSectionBody(document: string): { body: string; lineO
     /^#(?:\s+|$)/u.test(lines[generatedPreambleStart] ?? "") &&
     /^URL:\s+\S/u.test(lines[generatedPreambleStart + 1] ?? "")
   ) {
-    start = generatedPreambleStart + 2;
-    while (/^(?:LLM index|Description|Related):\s*/u.test(lines[start] ?? "")) {
-      start += 1;
+    let metadataEnd = generatedPreambleStart + 2;
+    while (/^(?:LLM index|Description|Related):\s*/u.test(lines[metadataEnd] ?? "")) {
+      metadataEnd += 1;
     }
-    while ((lines[start] ?? "").trim() === "" && start < lines.length) start += 1;
+    for (let index = generatedPreambleStart + 1; index < metadataEnd; index += 1) {
+      lines[index] = "";
+    }
   }
 
-  const content = lines.slice(start).join("\n");
+  const content = lines.join("\n");
   const body = content.replace(
     /\n{2,}## Sitemap\n\n(?:(?:See the (?:full|XML) \[sitemap\]\()|Sitemap discovery is not enabled)[\s\S]*$/u,
     "",
   );
-  return { body, lineOffset: start };
+  return { body, lineOffset: 0 };
 }
 
 function estimateDocsMarkdownTokens(value: string): number {
@@ -2999,7 +3010,7 @@ export function collectDocsMarkdownSections(document: string): DocsMarkdownSecti
   const { body, lineOffset } = resolveDocsMarkdownSectionBody(document);
   const seen = new Map<string, number>();
   return parseDocsMarkdownSections(body).flatMap((section) => {
-    const baseId = slugifyDocsMarkdownHeading(section.title);
+    const baseId = slugifyPublicDocsMarkdownSectionId(section.title);
     if (!baseId) return [];
     const count = seen.get(baseId) ?? 0;
     seen.set(baseId, count + 1);

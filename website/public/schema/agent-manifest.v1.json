@@ -1111,6 +1111,107 @@
       ]
     }
   },
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "markdownSectionDiscovery": {
+              "const": true
+            }
+          },
+          "required": [
+            "markdownSectionDiscovery"
+          ]
+        },
+        "markdown": {
+          "type": "object",
+          "properties": {
+            "sectionDiscovery": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "const": true
+                }
+              },
+              "required": [
+                "enabled"
+              ]
+            }
+          },
+          "required": [
+            "sectionDiscovery"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "markdownSectionDiscovery": {
+              "const": false
+            }
+          },
+          "required": [
+            "markdownSectionDiscovery"
+          ]
+        },
+        "markdown": {
+          "type": "object",
+          "properties": {
+            "sectionDiscovery": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "const": false
+                }
+              },
+              "required": [
+                "enabled"
+              ]
+            }
+          },
+          "required": [
+            "sectionDiscovery"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "not": {
+            "type": "object",
+            "properties": {
+              "markdownSectionDiscovery": {}
+            },
+            "required": [
+              "markdownSectionDiscovery"
+            ]
+          }
+        },
+        "markdown": {
+          "type": "object",
+          "not": {
+            "type": "object",
+            "properties": {
+              "sectionDiscovery": {}
+            },
+            "required": [
+              "sectionDiscovery"
+            ]
+          }
+        }
+      }
+    }
+  ],
   "required": [
     "$schema",
     "format",

@@ -718,15 +718,20 @@ The docs app starts.
 
     expect(indexResponse.status).toBe(200);
     expect(indexResponse.headers.get("content-type")).toBe("application/json; charset=utf-8");
-    expect(indexResponse.headers.get("x-docs-markdown-section-count")).toBe("3");
+    expect(indexResponse.headers.get("x-docs-markdown-section-count")).toBe("4");
     expect(index).toMatchObject({
       format: "docs-markdown-sections.v1",
-      sectionCount: 3,
+      sectionCount: 4,
       sections: [
         {
           id: "installation",
           heading: "Installation",
           markdownUrl: "http://localhost/docs/installation.md?section=installation",
+        },
+        {
+          id: "installation-2",
+          heading: "Installation",
+          markdownUrl: "http://localhost/docs/installation.md?section=installation-2",
         },
         {
           id: "prerequisites",
