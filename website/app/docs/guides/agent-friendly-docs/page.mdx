@@ -658,6 +658,40 @@ useful when one page needs a tighter machine contract than the rest of the site.
 
 Do not use compaction to paper over vague docs. Shorter confusion is still confusion.
 
+## Discover Sections Before Fetching One
+
+Agents can enumerate all heading sections of any Markdown page without downloading the full content by appending `?sections` to a `.md` route or to the API format route:
+
+```bash title="terminal"
+curl "https://docs.example.com/docs/installation.md?sections"
+curl "https://docs.example.com/api/docs?format=markdown&path=installation&sections"
+```
+
+The response is a `docs-markdown-sections.v1` JSON payload:
+
+```json title="docs-markdown-sections.v1 response"
+{
+  "format": "docs-markdown-sections.v1",
+  "sectionCount": 4,
+  "sections": [
+    {
+      "id": "installation",
+      "heading": "Installation",
+      "markdownUrl": "https://docs.example.com/docs/installation.md?section=installation"
+    },
+    {
+      "id": "prerequisites",
+      "heading": "Prerequisites",
+      "markdownUrl": "https://docs.example.com/docs/installation.md?section=prerequisites"
+    }
+  ]
+}
+```
+
+The response also includes the `x-docs-markdown-section-count` header with the total section count. Use the `markdownUrl` values directly to fetch individual sections with optional `tokenBudget` or `byteBudget` params.
+
+This capability is advertised in `/.well-known/agent.json` under `markdown.sectionDiscovery` when enabled. Static Agent Bundle exports set `sectionDiscovery: { enabled: false }` because the feature requires a live runtime.
+
 ## Request a Single Section From the Markdown API
 
 Agents that only need one heading block from a long page can request it directly using the `section` query parameter on the markdown API route:
