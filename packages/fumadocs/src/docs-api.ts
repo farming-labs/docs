@@ -106,8 +106,10 @@ import {
   buildDocsAskAIContext,
   formatDocsAskAIPackageHints,
   performDocsSearch,
+  performDocsSearchWithMetadata,
   resolveAskAISearchRequestConfig,
   resolveDocsSearchAudience,
+  resolveDocsSearchFilters,
   resolveSearchRequestConfig,
 } from "@farming-labs/docs";
 import type {
@@ -713,10 +715,22 @@ function buildAgentSpec({
       enabled: searchEnabled,
       endpoint: `${apiRoute}?query={query}`,
       agentEndpoint: `${apiRoute}?query={query}&audience=agent`,
+      structuredAgentEndpoint: `${apiRoute}?query={query}&audience=agent&response=structured`,
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
       audienceParam: "audience",
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      responseFormat: "docs-search.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
       defaultAudience: "human",
       supportedAudiences: ["human", "agent"],
     },
@@ -1571,6 +1585,11 @@ function scanDocsDir(
             slugParts[slugParts.length - 1]?.replace(/-/g, " ") ||
             "Documentation";
           const description = data.description as string | undefined;
+          const framework = typeof data.framework === "string" ? data.framework : undefined;
+          const version = typeof data.version === "string" ? data.version : undefined;
+          const tags = Array.isArray(data.tags)
+            ? data.tags.filter((value): value is string => typeof value === "string")
+            : undefined;
           const { content: fileContent } = matter(raw);
           const rawContent = resolveDocsAudienceMdxContent(fileContent, "human");
           const agentRawContent = resolveDocsAudienceMdxContent(fileContent, "agent");
@@ -1591,6 +1610,9 @@ function scanDocsDir(
             sourcePath: pageSource.replace(/\\/g, "/"),
             lastModified: fs.statSync(pageSource).mtime.toISOString(),
             locale,
+            framework,
+            version,
+            tags,
             ...agentDoc,
           });
         }
@@ -2091,7 +2113,7 @@ function renderSkillDocument({
 
   if (searchEnabled) {
     lines.push(
-      `- Search with ${apiRoute}?query={query}&audience=agent when you do not know the page.`,
+      `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when you do not know the page; add framework, version, package, or repeated tags filters when scope matters.`,
     );
   }
 
@@ -2288,7 +2310,9 @@ function renderAgentsDocument({
   }
 
   if (searchEnabled) {
-    lines.push(`- Search with ${apiRoute}?query={query}&audience=agent when the route is unknown.`);
+    lines.push(
+      `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when the route is unknown; add framework, version, package, or repeated tags filters when scope matters.`,
+    );
   }
 
   if (openapi.enabled && openapiUrl) {
@@ -4642,24 +4666,44 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const query = url.searchParams.get("query")?.trim();
+      const audience = resolveDocsSearchAudience(url.searchParams.get("audience"));
+      const filters = resolveDocsSearchFilters(url.searchParams);
+      const structured = url.searchParams.get("response") === "structured";
       if (!query) {
-        return new Response(JSON.stringify([]), {
+        const searchResponse = structured
+          ? {
+              format: "docs-search.v1",
+              query: "",
+              audience,
+              filters,
+              resultCount: 0,
+              results: [],
+              warnings: [],
+            }
+          : [];
+        return new Response(JSON.stringify(searchResponse), {
           headers: { "Content-Type": "application/json" },
         });
       }
 
       const searchStartedAt = Date.now();
-      const audience = resolveDocsSearchAudience(url.searchParams.get("audience"));
-      const results = await performDocsSearch({
+      const searchOptions = {
         pages: getIndexes(ctx),
         query,
         search: resolveSearchRequestConfig(searchConfig, request.url),
         audience,
+        filters,
         locale: ctx.locale,
         pathname: url.searchParams.get("pathname") ?? undefined,
         siteTitle: llmsConfig.siteTitle ?? "Documentation",
         baseUrl: markdownMetadataBaseUrl || url.origin,
-      });
+      };
+      const searchResponse = structured
+        ? await performDocsSearchWithMetadata(searchOptions)
+        : await performDocsSearch(searchOptions);
+      const resultCount = Array.isArray(searchResponse)
+        ? searchResponse.length
+        : searchResponse.resultCount;
       await emitDocsAnalyticsEvent(analytics, {
         type: "api_search",
         source: "server",
@@ -4671,13 +4715,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           ...requestAnalyticsProperties,
           queryLength: query.length,
           audience,
-          resultCount: results.length,
+          resultCount,
           pathname: url.searchParams.get("pathname") ?? undefined,
           durationMs: Math.max(0, Date.now() - searchStartedAt),
         },
       });
 
-      return new Response(JSON.stringify(results), {
+      return new Response(JSON.stringify(searchResponse), {
         headers: { "Content-Type": "application/json" },
       });
     },

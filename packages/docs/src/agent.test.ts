@@ -394,11 +394,20 @@ describe("agent route helpers", () => {
           status: "disabled",
           reason: "static-export",
           provider: "algolia",
-          routes: { human: null, agent: null },
+          routes: { human: null, agent: null, structuredAgent: null },
           agentEndpoint: null,
+          structuredAgentEndpoint: null,
           audienceParam: "audience",
           defaultAudience: "human",
           supportedAudiences: ["human", "agent"],
+          filterParams: {
+            framework: "framework",
+            version: "version",
+            package: "package",
+            tags: "tags",
+          },
+          responseFormat: "docs-search.v1",
+          warningsField: "warnings",
         },
         ai: {
           status: "disabled",
@@ -489,11 +498,22 @@ describe("agent route helpers", () => {
         routes: {
           human: "/api/internal/docs?query={query}",
           agent: "/api/internal/docs?query={query}&audience=agent",
+          structuredAgent: "/api/internal/docs?query={query}&audience=agent&response=structured",
         },
         agentEndpoint: "/api/internal/docs?query={query}&audience=agent",
+        structuredAgentEndpoint:
+          "/api/internal/docs?query={query}&audience=agent&response=structured",
         audienceParam: "audience",
         defaultAudience: "human",
         supportedAudiences: ["human", "agent"],
+        filterParams: {
+          framework: "framework",
+          version: "version",
+          package: "package",
+          tags: "tags",
+        },
+        responseFormat: "docs-search.v1",
+        warningsField: "warnings",
       },
       ai: { route: "/api/internal/docs" },
       apiReference: { routes: { openapi: "/api/internal/docs?format=openapi" } },
@@ -1922,7 +1942,8 @@ describe("agent route helpers", () => {
     expect(document).toContain("[Missing Pages](/docs/missing-pages.md)");
     expect(document).toContain("`/docs/missing/page.md`");
     expect(document).toContain("`/.well-known/agent.json`");
-    expect(document).toContain("`/api/docs?query={query}&audience=agent`");
+    expect(document).toContain("`/api/docs?query={query}&audience=agent&response=structured`");
+    expect(document).toContain("`framework`, `version`, `package`, or `tags`");
     expect(document).toContain("`/api/docs?format=markdown&path=missing/page`");
     expect(document).toContain("`/docs-map/sitemap.md`");
     expect(document).toContain("`/docs-map/.well-known/sitemap.md`");
@@ -1937,9 +1958,13 @@ describe("agent route helpers", () => {
       pages: [],
     });
     expect(customRouteDocument).toContain("`/api/internal/docs?agent=spec`");
-    expect(customRouteDocument).toContain("`/api/internal/docs?query={query}&audience=agent`");
+    expect(customRouteDocument).toContain(
+      "`/api/internal/docs?query={query}&audience=agent&response=structured`",
+    );
     expect(customRouteDocument).toContain("`/api/internal/docs?format=markdown&path=unknown`");
-    expect(customRouteDocument).not.toContain("`/api/docs?query={query}&audience=agent`");
+    expect(customRouteDocument).not.toContain(
+      "`/api/docs?query={query}&audience=agent&response=structured`",
+    );
   });
 
   it("resolves high-confidence markdown recovery redirects", () => {
@@ -2507,7 +2532,8 @@ After`;
     expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/robots.txt");
     expect(document).toContain("/api/docs?format=skill");
-    expect(document).toContain("/api/docs?query={query}&audience=agent");
+    expect(document).toContain("/api/docs?query={query}&audience=agent&response=structured");
+    expect(document).toContain("framework, version, package, or tags filters");
     expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
     expect(document).toContain("API reference: /api-reference");
     expect(document).toContain("npx skills add farming-labs/docs");
@@ -2564,7 +2590,8 @@ After`;
     expect(document).toContain("/.well-known/agent-skills/index.json");
     expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/api/docs?format=agents");
-    expect(document).toContain("/api/docs?query={query}&audience=agent");
+    expect(document).toContain("/api/docs?query={query}&audience=agent&response=structured");
+    expect(document).toContain("framework, version, package, or tags filters");
     expect(document).toContain("/api/docs?format=openapi");
     expect(document).toContain("/guides/{slug}.md?sections");
     expect(document).toContain("/guides/{slug}.md?section={id}&tokenBudget={tokens}");
@@ -2642,12 +2669,24 @@ After`;
       enabled: true,
       endpoint: "/api/docs?query={query}",
       agentEndpoint: "/api/docs?query={query}&audience=agent",
+      structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
       audienceParam: "audience",
       defaultAudience: "human",
       supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      responseFormat: "docs-search.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
     });
     expect(spec.agents).toEqual({
       enabled: true,
@@ -2782,9 +2821,22 @@ After`;
     expect(spec.search.endpoint).toBe("/api/internal/docs?query={query}");
     expect(spec.search).toMatchObject({
       agentEndpoint: "/api/internal/docs?query={query}&audience=agent",
+      structuredAgentEndpoint:
+        "/api/internal/docs?query={query}&audience=agent&response=structured",
       audienceParam: "audience",
       defaultAudience: "human",
       supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      responseFormat: "docs-search.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
     });
     expect(spec.agents.api).toBe("/api/internal/docs?format=agents");
     expect(spec.skills.api).toBe("/api/internal/docs?format=skill");
@@ -2801,7 +2853,10 @@ After`;
     });
 
     const generatedSkill = renderDocsSkillDocument(options);
-    expect(generatedSkill).toContain("/api/internal/docs?query={query}&audience=agent");
+    expect(generatedSkill).toContain(
+      "/api/internal/docs?query={query}&audience=agent&response=structured",
+    );
+    expect(generatedSkill).toContain("framework, version, package, or tags filters");
     expect(generatedSkill).toContain("/api/internal/docs?format=agents");
     expect(generatedSkill).toContain("/api/internal/docs?format=skill");
     expect(generatedSkill).toContain("/api/internal/docs?format=openapi");

@@ -610,6 +610,150 @@ Install and configure the docs framework.
     expect(payload[0]?.content).toContain("Quickstart");
   });
 
+  it("filters regular docs metadata and returns opt-in structured agent warnings", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-scoped-search-route-"));
+    tempDirs.push(rootDir);
+
+    for (const slug of ["next", "astro", "unscoped"]) {
+      mkdirSync(join(rootDir, "app", "docs", slug), { recursive: true });
+    }
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "app", "docs", "next", "page.mdx"),
+      `---
+title: "Next scoped setup"
+framework: "Next.js"
+version: "16"
+tags:
+  - routing
+  - setup
+agent:
+  appliesTo:
+    package: "@farming-labs/next"
+---
+
+# Next scoped setup
+
+Scoped adapter token for Next.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "astro", "page.mdx"),
+      `---
+title: "Astro scoped setup"
+framework: "astro"
+version: "5"
+tags:
+  - routing
+  - setup
+agent:
+  appliesTo:
+    package: "@farming-labs/astro"
+---
+
+# Astro scoped setup
+
+Scoped adapter token for Astro.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "unscoped", "page.mdx"),
+      `---
+title: "Unscoped setup"
+---
+
+# Unscoped setup
+
+Scoped adapter token without metadata.
+`,
+    );
+
+    process.chdir(rootDir);
+    const { GET } = createDocsAPI({ entry: "docs" });
+    const requestUrl = new URL("http://localhost/api/docs");
+    requestUrl.searchParams.set("query", "Scoped adapter token");
+    requestUrl.searchParams.set("audience", "agent");
+    requestUrl.searchParams.append("framework", "next");
+    requestUrl.searchParams.append("version", "v16");
+    requestUrl.searchParams.append("package", "@FARMING-LABS/NEXT");
+    requestUrl.searchParams.append("tags", "routing");
+    requestUrl.searchParams.append("tags", "setup");
+
+    const legacyResponse = await GET(new Request(requestUrl));
+    const legacyPayload = (await legacyResponse.json()) as Array<{ url: string }>;
+    expect(Array.isArray(legacyPayload)).toBe(true);
+    expect(legacyPayload.length).toBeGreaterThan(0);
+    expect(legacyPayload.every((result) => result.url.split("#", 1)[0] === "/docs/next")).toBe(
+      true,
+    );
+
+    requestUrl.searchParams.set("response", "structured");
+    const structuredResponse = await GET(new Request(requestUrl));
+    const structuredPayload = (await structuredResponse.json()) as {
+      format: string;
+      filters: Record<string, string[]>;
+      resultCount: number;
+      results: Array<{ url: string }>;
+      warnings: Array<{ code: string; field: string }>;
+    };
+    expect(structuredPayload).toMatchObject({
+      format: "docs-search.v1",
+      filters: {
+        framework: ["nextjs"],
+        version: ["16"],
+        package: ["@farming-labs/next"],
+        tags: ["routing", "setup"],
+      },
+    });
+    expect(structuredPayload.resultCount).toBe(structuredPayload.results.length);
+    expect(
+      structuredPayload.results.every((result) => result.url.split("#", 1)[0] === "/docs/next"),
+    ).toBe(true);
+    expect(
+      structuredPayload.warnings.some(
+        (warning) => warning.code === "missing_scope_metadata" && warning.field === "framework",
+      ),
+    ).toBe(true);
+
+    requestUrl.searchParams.set("framework", "remix");
+    requestUrl.searchParams.delete("version");
+    requestUrl.searchParams.delete("package");
+    requestUrl.searchParams.delete("tags");
+    const unknownResponse = await GET(new Request(requestUrl));
+    const unknownPayload = (await unknownResponse.json()) as {
+      results: unknown[];
+      warnings: Array<{ code: string; field: string }>;
+    };
+    expect(unknownPayload.results).toEqual([]);
+    expect(unknownPayload.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unknown_filter_value",
+          field: "framework",
+        }),
+      ]),
+    );
+
+    requestUrl.searchParams.set("query", "   ");
+    requestUrl.searchParams.delete("response");
+    const blankLegacyResponse = await GET(new Request(requestUrl));
+    await expect(blankLegacyResponse.json()).resolves.toEqual([]);
+
+    requestUrl.searchParams.set("response", "structured");
+    const blankStructuredResponse = await GET(new Request(requestUrl));
+    await expect(blankStructuredResponse.json()).resolves.toEqual({
+      format: "docs-search.v1",
+      query: "",
+      audience: "agent",
+      filters: {
+        framework: ["remix"],
+      },
+      resultCount: 0,
+      results: [],
+      warnings: [],
+    });
+  });
+
   it("omits hidden folder index pages from search and markdown lookups", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-hidden-folder-index-"));
     tempDirs.push(rootDir);
@@ -3044,7 +3188,9 @@ description: "Start building quickly"
     expect(notFoundDocument).toContain("## Closest Matches");
     expect(notFoundDocument).toContain("[Quickstart](/docs/guides/quickstart.md)");
     expect(notFoundDocument).toContain("`/.well-known/agent.json`");
-    expect(notFoundDocument).toContain("`/api/docs?query={query}&audience=agent`");
+    expect(notFoundDocument).toContain(
+      "`/api/docs?query={query}&audience=agent&response=structured`",
+    );
     expect(notFoundDocument).toContain("`/sitemap.md`");
     expect(notFoundDocument).toContain("## Sitemap");
 
@@ -3292,10 +3438,22 @@ description: "Start building quickly"
       enabled: true,
       endpoint: "/api/docs?query={query}",
       agentEndpoint: "/api/docs?query={query}&audience=agent",
+      structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
       audienceParam: "audience",
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      responseFormat: "docs-search.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
       defaultAudience: "human",
       supportedAudiences: ["human", "agent"],
     });

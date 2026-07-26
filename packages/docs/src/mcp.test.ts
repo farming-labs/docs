@@ -517,6 +517,38 @@ describe("MCP context and schema APIs", () => {
     ]);
   });
 
+  it("filters package and tags strictly and excludes pages with missing scope metadata", async () => {
+    const result = await buildDocsMcpContext({
+      pages: [
+        page("matching", {
+          agent: { appliesTo: { package: ["@example/runtime"] } },
+          tags: ["setup", "agent"],
+        }),
+        page("missing"),
+        page("wrong", {
+          agent: { appliesTo: { package: ["@example/other"] } },
+          tags: ["setup"],
+        }),
+      ],
+      query: "shared scope selection guide",
+      package: ["@EXAMPLE/RUNTIME"],
+      tags: "agent",
+      tokenBudget: 8_000,
+    });
+
+    expect(result.filters).toMatchObject({
+      package: ["@example/runtime"],
+      tags: ["agent"],
+    });
+    expect(result.sources).toEqual([
+      expect.objectContaining({
+        pageUrl: "/docs/matching",
+        package: ["@example/runtime"],
+        tags: ["setup", "agent"],
+      }),
+    ]);
+  });
+
   it("caps ranked resolved context candidates with maxResults", async () => {
     const result = await buildDocsMcpContext({
       pages: [page("c"), page("a"), page("b")],
@@ -616,6 +648,20 @@ describe("MCP context and schema APIs", () => {
         "agent.a2a.securitySchemes.<name>.oauth2SecurityScheme.flows.password",
       )?.description,
     ).toContain("Deprecated");
+  });
+
+  it("publishes package and tag golden-task filter and scope schema paths", () => {
+    const schema = getDocsConfigSchema();
+    for (const path of [
+      "agent.evaluations.tasks[].filters.package",
+      "agent.evaluations.tasks[].filters.tags",
+      "agent.evaluations.tasks[].expect.scope.package",
+      "agent.evaluations.tasks[].expect.scope.tags",
+    ]) {
+      expect(findSchemaOption(schema.options, path), path).toMatchObject({
+        type: "string | readonly string[]",
+      });
+    }
   });
 });
 
@@ -1589,6 +1635,7 @@ sidebar:
       query: "generated example paths",
       framework: "next",
       version: "v16",
+      tags: ["SETUP"],
       tokenBudget: 256,
     };
     const contextPayload = await parseMcpPayload<{
@@ -1598,6 +1645,7 @@ sidebar:
           context?: string;
           resultCount?: number;
           candidateCount?: number;
+          filters?: { tags?: string[] };
           budget?: {
             requestedTokens?: number;
             strategy?: string;
@@ -1612,6 +1660,7 @@ sidebar:
             anchor?: string;
             framework?: string;
             version?: string;
+            tags?: string[];
           }>;
         };
       };
@@ -1628,6 +1677,7 @@ sidebar:
     expect(context?.budget?.usedUtf8Bytes).toBe(contextUtf8Bytes);
     expect(context?.budget?.conservativeTokenUpperBound).toBe(contextUtf8Bytes);
     expect(contextUtf8Bytes).toBeLessThanOrEqual(256);
+    expect(context?.filters?.tags).toEqual(["setup"]);
     expect(context?.sources).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1637,6 +1687,7 @@ sidebar:
           anchor: "verify-generated-paths",
           framework: "nextjs",
           version: "16",
+          tags: ["setup"],
         }),
       ]),
     );
@@ -3059,6 +3110,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
   it("uses the shared search adapter pipeline for search_docs", async () => {
     const rootDir = createTempDocsProject();
     const seenAudiences: string[] = [];
+    const seenFilters: unknown[] = [];
     const source = createFilesystemDocsMcpSource({
       rootDir,
       entry: "docs",
@@ -3075,6 +3127,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
           name: "custom-search",
           async search(query, context) {
             seenAudiences.push(`${query.audience}:${context.audience}`);
+            seenFilters.push(query.filters);
             const installationPage = context.pages.find(
               (page) => page.url === "/docs/installation",
             );
@@ -3164,7 +3217,48 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
       result?: { content?: Array<{ text?: string }> };
     }>(await callMcpTool(handlers, "search_docs", { query: "install", audience: "human" }));
     expect(humanSearchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
-    expect(seenAudiences).toEqual(["agent:agent", "human:human"]);
+
+    const scopedSearchPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          format?: string;
+          filters?: Record<string, string[]>;
+          resultCount?: number;
+          results?: Array<{ url?: string }>;
+          warnings?: unknown[];
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "search_docs", {
+        query: "install",
+        framework: "Next.js",
+        package: ["@FARMING-LABS/NEXT"],
+      }),
+    );
+    expect(scopedSearchPayload.result?.structuredContent).toMatchObject({
+      format: "docs-search.v1",
+      filters: {
+        framework: ["nextjs"],
+        package: ["@farming-labs/next"],
+      },
+      resultCount: expect.any(Number),
+      warnings: [],
+    });
+    expect(scopedSearchPayload.result?.structuredContent?.resultCount).toBeGreaterThan(0);
+    expect(
+      scopedSearchPayload.result?.structuredContent?.results?.every(
+        (result) => result.url?.split("#", 1)[0] === "/docs/installation",
+      ),
+    ).toBe(true);
+    expect(seenAudiences).toEqual(["agent:agent", "human:human", "agent:agent"]);
+    expect(seenFilters).toEqual([
+      undefined,
+      undefined,
+      {
+        framework: ["nextjs"],
+        package: ["@farming-labs/next"],
+      },
+    ]);
   });
 
   it("falls back to simple search for self-referential MCP search configs", async () => {

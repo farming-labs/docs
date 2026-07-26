@@ -78,11 +78,16 @@ export {
   createTypesenseSearchAdapter,
   formatDocsAskAIPackageHints,
   inferDocsAskAIPackageHints,
+  normalizeDocsSearchFilters,
   performDocsSearch,
+  performDocsSearchWithMetadata,
   resolveDocsSearchAudience,
+  resolveDocsSearchFilters,
+  resolveDocsSearchRequest,
   resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
+export type { PerformDocsSearchOptions } from "./search.js";
 export { runDocsGoldenTasks } from "./agent-evals.js";
 export {
   resolveConfiguredAgentSkills,
@@ -192,9 +197,16 @@ export type {
   DocsAskAIMcpConfig,
   DocsSearchConfig,
   DocsSearchDocument,
+  DocsSearchFilterField,
+  DocsSearchFilterInput,
+  DocsSearchFilters,
   DocsSearchQuery,
+  DocsSearchRequest,
   DocsSearchResult,
+  DocsSearchResponse,
   DocsSearchSourcePage,
+  DocsSearchWarning,
+  DocsSearchWarningCode,
   McpDocsSearchConfig,
   DocsAskAIFeedbackConfig,
   DocsAskAIFeedbackData,

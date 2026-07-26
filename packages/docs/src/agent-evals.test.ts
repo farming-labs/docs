@@ -760,6 +760,89 @@ Use the scoped integration.
     });
   });
 
+  it("forwards normalized package and tag scopes through configured search and Ask AI", async () => {
+    const scopedPages = [
+      page({
+        slug: "package-tags",
+        url: "/docs/package-tags",
+        title: "Scoped package setup",
+        agent: { appliesTo: { package: ["@example/sdk"] } },
+        tags: ["setup", "agent"],
+        rawContent: "# Scoped package setup\n\nInstall the scoped package for agent setup.",
+      }),
+      page({
+        slug: "unscoped-package",
+        url: "/docs/unscoped-package",
+        title: "Unscoped package setup",
+        rawContent: "# Unscoped package setup\n\nInstall the scoped package for agent setup.",
+      }),
+    ];
+    const seenFilters: unknown[] = [];
+    const adapter = {
+      name: "scoped-fixture",
+      async search(
+        query: { filters?: unknown },
+        context: {
+          documents: Array<{
+            id: string;
+            url: string;
+            title: string;
+            content: string;
+            type: "page" | "heading" | "text";
+          }>;
+        },
+      ) {
+        seenFilters.push(query.filters);
+        return context.documents.slice(0, 1).map((document) => ({
+          id: document.id,
+          url: document.url,
+          content: document.title,
+          description: document.content,
+          type: document.type,
+        }));
+      },
+    };
+    const tasks = (["configured-search", "ask-ai-context"] as const).map((surface) => ({
+      id: `package-tags-${surface}`,
+      query: "scoped package agent setup",
+      surface,
+      filters: { package: ["@EXAMPLE/SDK"], tags: ["agent", "missing"] },
+      topK: 1,
+      expect: {
+        relevantSources: ["/docs/package-tags"],
+        scope: { package: "@example/sdk", tags: "agent" },
+      },
+    }));
+    const report = await runDocsGoldenTasks(scopedPages, tasks, {
+      allowNetwork: true,
+      search: { provider: "custom", adapter },
+      askAISearch: { provider: "custom", adapter },
+    });
+
+    expect(report.status).toBe("passed");
+    expect(seenFilters).toEqual([
+      { package: ["@example/sdk"], tags: ["agent", "missing"] },
+      { package: ["@example/sdk"], tags: ["agent", "missing"] },
+    ]);
+    expect(report.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          selection: expect.objectContaining({
+            firstPackageMatchRank: 1,
+            firstTagsMatchRank: 1,
+            passed: true,
+          }),
+          sources: [
+            expect.objectContaining({
+              package: ["@example/sdk"],
+              tags: ["setup", "agent"],
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+
   it("does not supplement an empty configured provider with local results", async () => {
     const report = await runDocsGoldenTasks(
       pages,
