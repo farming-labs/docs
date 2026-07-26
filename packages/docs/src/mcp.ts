@@ -21,7 +21,11 @@ import {
   normalizeAgentScopeValues,
 } from "./agent-scope.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
-import { performDocsSearch } from "./search.js";
+import {
+  normalizeDocsSearchFilters,
+  performDocsSearch,
+  performDocsSearchWithMetadata,
+} from "./search.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
@@ -194,6 +198,7 @@ export interface DocsMcpContextSource {
   locale?: string;
   framework?: string;
   version?: string;
+  package?: string[];
   tags?: string[];
   score?: number;
   content: string;
@@ -209,6 +214,8 @@ export interface DocsMcpContextResult {
   filters: {
     framework?: string;
     version?: string;
+    package?: string[];
+    tags?: string[];
     locale?: string;
   };
   budget: {
@@ -236,6 +243,8 @@ export interface DocsMcpContextOptions {
   query: string;
   framework?: string;
   version?: string;
+  package?: string | readonly string[];
+  tags?: string | readonly string[];
   locale?: string;
   tokenBudget: number;
   entry?: string;
@@ -1211,7 +1220,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                 path: "agent.evaluations.tasks[].filters",
                 name: "filters",
                 type: "DocsAgentGoldenTaskFilters",
-                description: "Framework, version, and locale retrieval scope.",
+                description: "Framework, version, package, tags, and locale retrieval scope.",
                 children: [
                   {
                     path: "agent.evaluations.tasks[].filters.framework",
@@ -1224,6 +1233,18 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                     name: "version",
                     type: "string",
                     description: "Exact version requested by the task.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].filters.package",
+                    name: "package",
+                    type: "string | readonly string[]",
+                    description: "Package name or names requested by the task.",
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].filters.tags",
+                    name: "tags",
+                    type: "string | readonly string[]",
+                    description: "Page tag or tags requested by the task.",
                   },
                   {
                     path: "agent.evaluations.tasks[].filters.locale",
@@ -1288,7 +1309,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                     name: "scope",
                     type: "DocsAgentGoldenTaskFilters",
                     description:
-                      "Framework, version, and locale assertions checked against returned sources without pre-filtering retrieval.",
+                      "Framework, version, package, tags, and locale assertions checked against returned sources without pre-filtering retrieval.",
                     children: [
                       {
                         path: "agent.evaluations.tasks[].expect.scope.framework",
@@ -1301,6 +1322,18 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                         name: "version",
                         type: "string",
                         description: "Version the returned sources must select.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.scope.package",
+                        name: "package",
+                        type: "string | readonly string[]",
+                        description: "Package name or names the returned sources must select.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.scope.tags",
+                        name: "tags",
+                        type: "string | readonly string[]",
+                        description: "Page tag or tags the returned sources must select.",
                       },
                       {
                         path: "agent.evaluations.tasks[].expect.scope.locale",
@@ -2109,11 +2142,20 @@ const DOCS_CONFIG_SCHEMA_EXAMPLES = freezeDocsConfigSchemaExamples(
   DOCS_CONFIG_SCHEMA_EXAMPLES_TEMPLATE,
 );
 
+const searchFilterValueSchema = z.union([
+  z.string().trim().min(1).max(128),
+  z.array(z.string().trim().min(1).max(128)).min(1).max(16),
+]);
+
 const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
   locale: z.string().min(1).optional(),
   audience: z.enum(["human", "agent"]).optional(),
+  framework: searchFilterValueSchema.optional(),
+  version: searchFilterValueSchema.optional(),
+  package: searchFilterValueSchema.optional(),
+  tags: searchFilterValueSchema.optional(),
 });
 
 const readPageInputSchema = z.object({
@@ -2239,6 +2281,8 @@ const getContextInputSchema = z.object({
   query: z.string().trim().min(1),
   framework: z.string().trim().min(1).optional(),
   version: z.string().trim().min(1).optional(),
+  package: searchFilterValueSchema.optional(),
+  tags: searchFilterValueSchema.optional(),
   locale: z.string().trim().min(1).optional(),
   tokenBudget: z
     .number()
@@ -2321,7 +2365,34 @@ const searchResultOutputSchema = z.object({
   score: z.number().optional(),
   section: z.string().optional(),
 });
-const searchDocsOutputSchema = z.object({ results: z.array(searchResultOutputSchema) });
+const searchFiltersOutputSchema = z.object({
+  framework: z.array(z.string()).optional(),
+  version: z.array(z.string()).optional(),
+  package: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+});
+const searchWarningOutputSchema = z.object({
+  code: z.enum([
+    "ambiguous_scope",
+    "unknown_filter_value",
+    "missing_scope_metadata",
+    "conflicting_scope_metadata",
+  ]),
+  field: z.enum(["framework", "version", "package", "tags"]),
+  message: z.string(),
+  values: z.array(z.string()).optional(),
+  pageUrls: z.array(z.string()).optional(),
+  count: z.number().int().nonnegative().optional(),
+});
+const searchDocsOutputSchema = z.object({
+  format: z.literal("docs-search.v1"),
+  query: z.string(),
+  audience: z.enum(["human", "agent"]),
+  filters: searchFiltersOutputSchema,
+  resultCount: z.number().int().nonnegative(),
+  results: z.array(searchResultOutputSchema),
+  warnings: z.array(searchWarningOutputSchema),
+});
 const codeExampleOutputSchema = z.object({
   id: z.string(),
   page: z.object({
@@ -2401,6 +2472,7 @@ const contextSourceOutputSchema = z.object({
   locale: z.string().optional(),
   framework: z.string().optional(),
   version: z.string().optional(),
+  package: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   score: z.number().optional(),
   content: z.string(),
@@ -2413,6 +2485,8 @@ const contextOutputSchema = z.object({
   filters: z.object({
     framework: z.string().optional(),
     version: z.string().optional(),
+    package: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
     locale: z.string().optional(),
   }),
   budget: z.object({
@@ -3370,15 +3444,31 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       "search_docs",
       {
         title: "Search documentation",
-        description: "Search the docs by keyword across titles, descriptions, and page content.",
+        description:
+          "Search the docs by keyword with optional framework, version, package, and tag filters. Returns structured ambiguity and metadata warnings.",
         inputSchema: searchDocsInputSchema,
         outputSchema: searchDocsOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ query, limit, locale, audience }) => {
+      async ({
+        query,
+        limit,
+        locale,
+        audience,
+        framework,
+        version,
+        package: packageName,
+        tags,
+      }) => {
         const startedAt = nowMs();
         const resolvedLimit = limit ?? 10;
         const resolvedAudience = audience ?? "agent";
+        const filters = {
+          framework,
+          version,
+          package: packageName,
+          tags,
+        };
         const trace = createDocsAgentTraceContext("mcp.tool.search_docs");
         const callSpanId = createDocsAgentTraceId("span");
         await emitDocsAgentTraceEvent(options.observability, {
@@ -3395,17 +3485,21 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             limit: resolvedLimit,
             locale,
             audience: resolvedAudience,
+            filterFields: Object.entries(filters)
+              .filter(([, value]) => value !== undefined)
+              .map(([field]) => field),
           },
           metadata: { tool: "search_docs" },
         });
 
         try {
           const pages = dedupePages(await getSourcePages(locale));
-          const results = await performDocsSearch({
+          const searchResponse = await performDocsSearchWithMetadata({
             pages: toSearchSourcePages(pages),
             query,
             search: toolSearchConfig ?? true,
             audience: resolvedAudience,
+            filters,
             locale,
             siteTitle: options.source.siteTitle,
             limit: resolvedLimit,
@@ -3421,13 +3515,14 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               queryLength: query.length,
               limit: resolvedLimit,
               audience: resolvedAudience,
-              resultCount: results.length,
+              resultCount: searchResponse.resultCount,
+              warningCount: searchResponse.warnings.length,
               durationMs: elapsed,
             },
           });
           trackMcpTool("search_docs", {
             locale,
-            resultCount: results.length,
+            resultCount: searchResponse.resultCount,
           });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
@@ -3440,10 +3535,13 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             durationMs: elapsed,
             status: "success",
             locale,
-            outputPreview: { resultCount: results.length },
+            outputPreview: {
+              resultCount: searchResponse.resultCount,
+              warningCount: searchResponse.warnings.length,
+            },
             metadata: { tool: "search_docs" },
           });
-          return createStructuredTextResult({ results });
+          return createStructuredTextResult(searchResponse);
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -3597,7 +3695,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         outputSchema: contextOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ query, framework, version, locale, tokenBudget }) => {
+      async ({ query, framework, version, package: packageName, tags, locale, tokenBudget }) => {
         const startedAt = nowMs();
         const trace = createDocsAgentTraceContext("mcp.tool.get_context");
         const callSpanId = createDocsAgentTraceId("span");
@@ -3614,6 +3712,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             queryLength: query.length,
             framework,
             version,
+            package: packageName,
+            tags,
             locale,
             tokenBudget,
           },
@@ -3627,6 +3727,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             query,
             framework,
             version,
+            package: packageName,
+            tags,
             locale,
             tokenBudget,
             entry: options.source.entry,
@@ -3643,6 +3745,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               queryLength: query.length,
               framework,
               version,
+              package: packageName,
+              tags,
               tokenBudget,
               usedUtf8Bytes: result.budget.usedUtf8Bytes,
               conservativeTokenUpperBound: result.budget.conservativeTokenUpperBound,
@@ -5741,6 +5845,8 @@ interface DocsMcpScopeField {
 interface DocsMcpEffectiveScope {
   framework?: string;
   version?: string;
+  package: string[];
+  tags: string[];
   locale?: string;
   conflict: boolean;
   matches: boolean;
@@ -5783,8 +5889,18 @@ function resolveDocsMcpScopeField(
 
 function resolveDocsMcpEffectiveScope(
   page: DocsMcpPage,
-  filters: { framework?: string; version?: string; locale?: string },
+  filters: {
+    framework?: string;
+    version?: string;
+    package?: string | readonly string[];
+    tags?: string | readonly string[];
+    locale?: string;
+  },
 ): DocsMcpEffectiveScope {
+  const normalizedFilters = normalizeDocsSearchFilters({
+    package: filters.package,
+    tags: filters.tags,
+  });
   const framework = resolveDocsMcpScopeField(
     page.framework,
     page.agent?.appliesTo?.framework,
@@ -5804,13 +5920,25 @@ function resolveDocsMcpEffectiveScope(
     !filters.locale ||
     !locale ||
     normalizeAgentLocale(locale) === normalizeAgentLocale(filters.locale);
+  const packageValues =
+    normalizeDocsSearchFilters({ package: page.agent?.appliesTo?.package }).package ?? [];
+  const tagValues = normalizeDocsSearchFilters({ tags: page.tags }).tags ?? [];
+  const packageMatches =
+    !normalizedFilters.package ||
+    (packageValues.length > 0 &&
+      normalizedFilters.package.some((value) => packageValues.includes(value)));
+  const tagsMatch =
+    !normalizedFilters.tags ||
+    (tagValues.length > 0 && normalizedFilters.tags.some((value) => tagValues.includes(value)));
 
   return {
     framework: framework.value,
     version: version.value,
+    package: packageValues,
+    tags: tagValues,
     locale,
     conflict: framework.conflict || version.conflict,
-    matches: framework.matches && version.matches && localeMatches,
+    matches: framework.matches && version.matches && packageMatches && tagsMatch && localeMatches,
   };
 }
 
@@ -5836,6 +5964,8 @@ export async function buildDocsMcpContext(
     const scope = resolveDocsMcpEffectiveScope(page, {
       framework: options.framework,
       version: options.version,
+      package: options.package,
+      tags: options.tags,
       locale: options.locale,
     });
     return scope.matches && !scope.conflict ? [{ page, scope }] : [];
@@ -5926,6 +6056,8 @@ export async function buildDocsMcpContext(
     if (selectedSection?.title) headerLines.push(`Section: ${selectedSection.title}`);
     if (scope.framework) headerLines.push(`Framework: ${scope.framework}`);
     if (scope.version) headerLines.push(`Version: ${scope.version}`);
+    if (scope.package.length > 0) headerLines.push(`Package: ${scope.package.join(", ")}`);
+    if (scope.tags.length > 0) headerLines.push(`Tags: ${scope.tags.join(", ")}`);
     if (scope.locale) headerLines.push(`Locale: ${scope.locale}`);
     const header = headerLines.join("\n");
     const separatorBytes = blocks.length === 0 ? 0 : separatorUtf8Bytes;
@@ -5951,7 +6083,8 @@ export async function buildDocsMcpContext(
       locale: scope.locale,
       framework: scope.framework,
       version: scope.version,
-      tags: page.tags ? [...page.tags] : undefined,
+      package: scope.package.length > 0 ? [...scope.package] : undefined,
+      tags: scope.tags.length > 0 ? [...scope.tags] : undefined,
       score: result.score,
       content: limited.text,
       chars: limited.text.length,
@@ -5967,12 +6100,18 @@ export async function buildDocsMcpContext(
   const remainingUtf8Bytes = Math.max(0, maxUtf8Bytes - usedUtf8Bytes);
   const truncated =
     sources.some((source) => source.truncated) || sources.length < resolvedCandidates.length;
+  const normalizedFilters = normalizeDocsSearchFilters({
+    package: options.package,
+    tags: options.tags,
+  });
 
   return {
     query: options.query,
     filters: {
       framework: options.framework,
       version: options.version,
+      package: normalizedFilters.package,
+      tags: normalizedFilters.tags,
       locale: options.locale,
     },
     budget: {

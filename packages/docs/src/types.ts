@@ -1538,6 +1538,7 @@ export interface DocsSearchDocument {
   locale?: string;
   framework?: string;
   version?: string;
+  package?: string[];
   tags?: string[];
 }
 
@@ -1551,6 +1552,56 @@ export interface DocsSearchResult {
   section?: string;
 }
 
+export type DocsSearchFilterField = "framework" | "version" | "package" | "tags";
+
+export interface DocsSearchFilterInput {
+  framework?: string | readonly string[];
+  version?: string | readonly string[];
+  package?: string | readonly string[];
+  tags?: string | readonly string[];
+}
+
+/** Normalized search scope. Values are ORed within a field and fields are ANDed together. */
+export interface DocsSearchFilters {
+  framework?: string[];
+  version?: string[];
+  package?: string[];
+  tags?: string[];
+}
+
+export type DocsSearchWarningCode =
+  | "ambiguous_scope"
+  | "unknown_filter_value"
+  | "missing_scope_metadata"
+  | "conflicting_scope_metadata";
+
+export interface DocsSearchWarning {
+  code: DocsSearchWarningCode;
+  field: DocsSearchFilterField;
+  message: string;
+  /** Bounded, normalized values relevant to this warning. */
+  values?: string[];
+  /** Bounded, deterministic sample of affected canonical page URLs. */
+  pageUrls?: string[];
+  /** Total number of affected values or pages before samples were bounded. */
+  count?: number;
+}
+
+export interface DocsSearchResponse {
+  format: "docs-search.v1";
+  query: string;
+  audience: "human" | "agent";
+  filters: DocsSearchFilters;
+  resultCount: number;
+  results: DocsSearchResult[];
+  warnings: DocsSearchWarning[];
+}
+
+export interface DocsSearchRequest {
+  filters: DocsSearchFilters;
+  structured: boolean;
+}
+
 export interface DocsSearchQuery {
   query: string;
   limit?: number;
@@ -1558,6 +1609,8 @@ export interface DocsSearchQuery {
   pathname?: string;
   /** Requested content projection. Omitted callers retain the human-search default. */
   audience?: "human" | "agent";
+  /** Normalized framework, version, package, and tag constraints. */
+  filters?: DocsSearchFilters;
 }
 
 export interface DocsSearchAdapterContext {
@@ -2663,6 +2716,10 @@ export interface DocsAgentGoldenTaskFilters {
   framework?: string;
   /** Limit retrieval to an exact documented version. */
   version?: string;
+  /** Limit retrieval to one or more documented package names. */
+  package?: string | readonly string[];
+  /** Limit retrieval to pages with one or more matching tags. */
+  tags?: string | readonly string[];
   /** Limit retrieval to a locale. */
   locale?: string;
 }
@@ -2751,6 +2808,8 @@ export interface DocsAgentEvaluationSourceReference {
   title?: string;
   framework?: string;
   version?: string;
+  package?: readonly string[];
+  tags?: readonly string[];
   locale?: string;
 }
 

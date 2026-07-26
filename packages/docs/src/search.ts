@@ -7,9 +7,15 @@ import type {
   DocsSearchAdapterContext,
   DocsSearchConfig,
   DocsSearchDocument,
+  DocsSearchFilterField,
+  DocsSearchFilterInput,
+  DocsSearchFilters,
   DocsSearchQuery,
+  DocsSearchRequest,
   DocsSearchResult,
+  DocsSearchResponse,
   DocsSearchSourcePage,
+  DocsSearchWarning,
   DocsSearchChunkingConfig,
   McpDocsSearchConfig,
   TypesenseDocsSearchConfig,
@@ -20,6 +26,13 @@ import {
   renderPageAgentContractMarkdown,
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
+import {
+  agentVersionConstraintGroupsOverlap,
+  agentVersionConstraintsOverlap,
+  normalizeAgentFramework,
+  normalizeAgentScopeValues,
+  normalizeAgentVersion,
+} from "./agent-scope.js";
 import { resolveDocsAudienceMdxContent, type DocsContentAudience } from "./audience.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 
@@ -31,6 +44,17 @@ const syncedIndexes = new Set<string>();
 const ALGOLIA_MAX_RECORD_BYTES = 9_500;
 const DEFAULT_ASK_AI_CONTEXT_CHARS = 24_000;
 const DEFAULT_ASK_AI_RESULT_CHARS = 6_000;
+const MAX_SEARCH_FILTER_VALUES = 16;
+const MAX_SEARCH_FILTER_VALUE_CHARS = 128;
+const MAX_SEARCH_FILTER_RAW_CHARS = 4_096;
+const MAX_SEARCH_FILTER_SEGMENTS = 64;
+const MAX_PROVIDER_SCOPE_FILTER_IDS = 1_000;
+const MAX_PROVIDER_SCOPE_FILTER_CHARS = 16_000;
+const MAX_SEARCH_WARNINGS = 16;
+const MAX_SEARCH_WARNING_VALUES = 16;
+const MAX_SEARCH_WARNING_PAGE_URLS = 8;
+const SEARCH_FILTER_FIELDS = ["framework", "version", "package", "tags"] as const;
+const SEARCH_AMBIGUITY_FIELDS = ["framework", "version", "package"] as const;
 const SEARCH_STOP_WORDS = new Set([
   "a",
   "an",
@@ -89,6 +113,261 @@ export interface DocsAskAIPackageHints {
   packages: string[];
   imports: string[];
   installCommands: string[];
+}
+
+interface ResolvedDocsSearchPageScope {
+  framework: string[];
+  version: string[];
+  package: string[];
+  tags: string[];
+  declarations: Record<DocsSearchFilterField, string[][]>;
+  conflicts: DocsSearchFilterField[];
+}
+
+function normalizeDocsSearchFilterValue(field: DocsSearchFilterField, value: string): string {
+  const bounded = value.trim().slice(0, MAX_SEARCH_FILTER_VALUE_CHARS).trim();
+  if (!bounded) return "";
+  if (field === "framework") return normalizeAgentFramework(bounded);
+  if (field === "version") return normalizeAgentVersion(bounded);
+  return bounded.toLowerCase();
+}
+
+function normalizeDocsSearchFilterValues(
+  field: DocsSearchFilterField,
+  input: string | readonly string[] | undefined,
+): string[] {
+  const values = typeof input === "string" ? [input] : (input ?? []);
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  let remainingChars = MAX_SEARCH_FILTER_RAW_CHARS;
+  let remainingSegments = MAX_SEARCH_FILTER_SEGMENTS;
+
+  for (const item of values) {
+    if (remainingChars <= 0 || remainingSegments <= 0) break;
+    const boundedItem = item.slice(0, remainingChars);
+    remainingChars -= boundedItem.length;
+    for (const part of boundedItem.split(",")) {
+      if (remainingSegments <= 0) break;
+      remainingSegments -= 1;
+      const value = normalizeDocsSearchFilterValue(field, part);
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      normalized.push(value);
+      if (normalized.length >= MAX_SEARCH_FILTER_VALUES) return normalized;
+    }
+  }
+
+  return normalized;
+}
+
+/** Normalize scalar or array-valued scope filters for programmatic, HTTP, and MCP callers. */
+export function normalizeDocsSearchFilters(
+  input: DocsSearchFilterInput | DocsSearchFilters = {},
+): DocsSearchFilters {
+  const filters: DocsSearchFilters = {};
+
+  for (const field of SEARCH_FILTER_FIELDS) {
+    const values = normalizeDocsSearchFilterValues(field, input[field]);
+    if (values.length > 0) filters[field] = values;
+  }
+
+  return filters;
+}
+
+/** Parse the public search scope parameters from a URL query string. */
+export function resolveDocsSearchFilters(searchParams: URLSearchParams): DocsSearchFilters {
+  return normalizeDocsSearchFilters({
+    framework: searchParams.getAll("framework"),
+    version: searchParams.getAll("version"),
+    package: searchParams.getAll("package"),
+    tags: searchParams.getAll("tags"),
+  });
+}
+
+/** Resolve search filters and the backwards-compatible structured response opt-in. */
+export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSearchRequest {
+  return {
+    filters: resolveDocsSearchFilters(searchParams),
+    structured: searchParams.get("response") === "structured",
+  };
+}
+
+function hasDocsSearchFilters(filters: DocsSearchFilters): boolean {
+  return SEARCH_FILTER_FIELDS.some((field) => (filters[field]?.length ?? 0) > 0);
+}
+
+function resolveProviderScopeDocumentIds(
+  query: DocsSearchQuery,
+  context: DocsSearchAdapterContext,
+): string[] | undefined {
+  if (!hasDocsSearchFilters(query.filters ?? {})) return undefined;
+
+  const ids = Array.from(new Set(context.documents.map((document) => document.id)));
+  return ids.length <= MAX_PROVIDER_SCOPE_FILTER_IDS ? ids : [];
+}
+
+function docsSearchFiltersMatch(expected: DocsSearchFilters, actual: DocsSearchFilters): boolean {
+  return SEARCH_FILTER_FIELDS.every((field) => {
+    const expectedValues = expected[field] ?? [];
+    const actualValues = actual[field] ?? [];
+    return (
+      expectedValues.length === actualValues.length &&
+      expectedValues.every((value) => actualValues.includes(value))
+    );
+  });
+}
+
+function parseVerifiedMcpSearchFilters(value: unknown): DocsSearchFilters | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+
+  const record = value as Record<string, unknown>;
+  const filterFields: readonly string[] = SEARCH_FILTER_FIELDS;
+  if (Object.keys(record).some((field) => !filterFields.includes(field))) {
+    return undefined;
+  }
+
+  const input: DocsSearchFilterInput = {};
+  for (const field of SEARCH_FILTER_FIELDS) {
+    const values = record[field];
+    if (values === undefined) continue;
+    if (
+      !Array.isArray(values) ||
+      values.length > MAX_SEARCH_FILTER_VALUES ||
+      values.some((item) => typeof item !== "string" || item.length > MAX_SEARCH_FILTER_VALUE_CHARS)
+    ) {
+      return undefined;
+    }
+    input[field] = values as string[];
+  }
+
+  const normalized = normalizeDocsSearchFilters(input);
+  for (const field of SEARCH_FILTER_FIELDS) {
+    const values = record[field];
+    if (values === undefined) continue;
+    if (
+      !Array.isArray(values) ||
+      values.length !== (normalized[field]?.length ?? 0) ||
+      values.some((value, index) => value !== normalized[field]?.[index])
+    ) {
+      return undefined;
+    }
+  }
+  return normalized;
+}
+
+function normalizeDocsSearchMetadataValues(
+  field: DocsSearchFilterField,
+  value: string | string[] | undefined,
+): string[] {
+  const values = normalizeAgentScopeValues(value);
+  return Array.from(
+    new Set(
+      values
+        .map((item) => normalizeDocsSearchFilterValue(field, item))
+        .filter((item): item is string => Boolean(item)),
+    ),
+  );
+}
+
+function valuesOverlap(
+  left: readonly string[],
+  right: readonly string[],
+  matches: (leftValue: string, rightValue: string) => boolean,
+): boolean {
+  return left.some((leftValue) => right.some((rightValue) => matches(leftValue, rightValue)));
+}
+
+function resolveDocsSearchPageScope(page: DocsSearchSourcePage): ResolvedDocsSearchPageScope {
+  const topFramework = normalizeDocsSearchMetadataValues("framework", page.framework);
+  const contractFramework = normalizeDocsSearchMetadataValues(
+    "framework",
+    page.agent?.appliesTo?.framework,
+  );
+  const topVersion = normalizeDocsSearchMetadataValues("version", page.version);
+  const contractVersion = normalizeDocsSearchMetadataValues(
+    "version",
+    page.agent?.appliesTo?.version,
+  );
+  const packageValues = normalizeDocsSearchMetadataValues(
+    "package",
+    page.agent?.appliesTo?.package,
+  );
+  const tags = normalizeDocsSearchMetadataValues("tags", page.tags);
+  const conflicts: DocsSearchFilterField[] = [];
+
+  if (
+    topFramework.length > 0 &&
+    contractFramework.length > 0 &&
+    !valuesOverlap(topFramework, contractFramework, (left, right) => left === right)
+  ) {
+    conflicts.push("framework");
+  }
+  if (
+    topVersion.length > 0 &&
+    contractVersion.length > 0 &&
+    !valuesOverlap(topVersion, contractVersion, agentVersionConstraintsOverlap)
+  ) {
+    conflicts.push("version");
+  }
+  const framework =
+    topFramework.length > 0 && contractFramework.length > 0
+      ? topFramework.filter((value) => contractFramework.includes(value))
+      : Array.from(new Set([...topFramework, ...contractFramework]));
+
+  return {
+    framework,
+    version: Array.from(new Set([...topVersion, ...contractVersion])),
+    package: packageValues,
+    tags,
+    declarations: {
+      framework: [topFramework, contractFramework].filter((values) => values.length > 0),
+      version: [topVersion, contractVersion].filter((values) => values.length > 0),
+      package: packageValues.length > 0 ? [packageValues] : [],
+      tags: tags.length > 0 ? [tags] : [],
+    },
+    conflicts,
+  };
+}
+
+function docsSearchScopeValueMatches(
+  field: DocsSearchFilterField,
+  requested: string,
+  candidate: string,
+): boolean {
+  return field === "version"
+    ? agentVersionConstraintsOverlap(requested, candidate)
+    : requested === candidate;
+}
+
+function docsSearchPageMatchesFilters(
+  scope: ResolvedDocsSearchPageScope,
+  filters: DocsSearchFilters,
+): boolean {
+  if (scope.conflicts.length > 0) return false;
+
+  return SEARCH_FILTER_FIELDS.every((field) => {
+    const requested = filters[field];
+    if (!requested || requested.length === 0) return true;
+    return docsSearchScopeFieldMatches(scope, field, requested);
+  });
+}
+
+function docsSearchScopeFieldMatches(
+  scope: ResolvedDocsSearchPageScope,
+  field: DocsSearchFilterField,
+  requested: readonly string[],
+): boolean {
+  const declarations = scope.declarations[field];
+  if (declarations.length === 0) return false;
+  if (field === "version") {
+    return agentVersionConstraintGroupsOverlap([requested, ...declarations]);
+  }
+
+  return requested.some((value) =>
+    declarations.every((candidates) =>
+      candidates.some((candidate) => docsSearchScopeValueMatches(field, value, candidate)),
+    ),
+  );
 }
 
 function stripMarkdownText(content: string): string {
@@ -703,6 +982,7 @@ function pageToSearchDocument(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience = "human",
 ): DocsSearchDocument {
+  const scope = resolveDocsSearchPageScope(page);
   return {
     id: makeDocumentId(page.url, "page"),
     url: page.url,
@@ -713,9 +993,10 @@ function pageToSearchDocument(
     description: page.description,
     type: "page",
     locale: page.locale,
-    framework: page.framework,
-    version: page.version,
-    tags: page.tags,
+    framework: scope.framework[0],
+    version: scope.version[0],
+    package: scope.package.length > 0 ? scope.package : undefined,
+    tags: scope.tags.length > 0 ? scope.tags : undefined,
   };
 }
 
@@ -812,6 +1093,7 @@ function splitPageIntoSections(
   audience: DocsContentAudience = "human",
 ): DocsSearchDocument[] {
   const raw = getPageAudienceRawContent(page, audience);
+  const scope = resolveDocsSearchPageScope(page);
   return parseDocsMarkdownSections(raw).flatMap((section, index) => {
     const content = normalizeWhitespace(stripMarkdownText(section.content));
     if (!content) return [];
@@ -826,9 +1108,10 @@ function splitPageIntoSections(
         description: page.description,
         type: "heading" as const,
         locale: page.locale,
-        framework: page.framework,
-        version: page.version,
-        tags: page.tags,
+        framework: scope.framework[0],
+        version: scope.version[0],
+        package: scope.package.length > 0 ? scope.package : undefined,
+        tags: scope.tags.length > 0 ? scope.tags : undefined,
       },
     ];
   });
@@ -1039,6 +1322,11 @@ function buildAlgoliaRecord(document: DocsSearchDocument) {
     content: document.content,
     description: document.description,
     type: document.type,
+    locale: document.locale,
+    framework: document.framework,
+    version: document.version,
+    package: document.package,
+    tags: document.tags,
   };
 
   const encoder = new TextEncoder();
@@ -1206,6 +1494,39 @@ function mapMcpSearchResult(value: unknown): DocsSearchResult | null {
   };
 }
 
+function readMcpSearchToolPayload(payload: unknown): unknown {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("result" in payload) ||
+    !payload.result ||
+    typeof payload.result !== "object"
+  ) {
+    return null;
+  }
+
+  const result = payload.result as Record<string, unknown>;
+  if (
+    result.structuredContent &&
+    typeof result.structuredContent === "object" &&
+    !Array.isArray(result.structuredContent)
+  ) {
+    return result.structuredContent;
+  }
+
+  const content = Array.isArray(result.content) ? result.content : [];
+  const resultText =
+    content.length > 0 &&
+    content[0] &&
+    typeof content[0] === "object" &&
+    "text" in content[0] &&
+    typeof content[0].text === "string"
+      ? content[0].text
+      : null;
+
+  return resultText ? JSON.parse(resultText) : null;
+}
+
 async function createOllamaEmbedding(
   text: string,
   config: NonNullable<TypesenseDocsSearchConfig["embeddings"]>,
@@ -1244,6 +1565,10 @@ function getTypesenseSearchBase(config: TypesenseDocsSearchConfig): string {
   return config.baseUrl.replace(/\/$/, "");
 }
 
+function quoteTypesenseFilterValue(value: string): string {
+  return `\`${value.replace(/\\/gu, "\\\\").replace(/`/gu, "\\`")}\``;
+}
+
 async function ensureTypesenseCollection(
   config: TypesenseDocsSearchConfig,
   dimensions?: number,
@@ -1276,6 +1601,7 @@ async function ensureTypesenseCollection(
     { name: "locale", type: "string", optional: true },
     { name: "framework", type: "string", optional: true },
     { name: "version", type: "string", optional: true },
+    { name: "package", type: "string[]", optional: true },
     { name: "tags", type: "string[]", optional: true },
   ];
 
@@ -1319,6 +1645,7 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
             locale: document.locale,
             framework: document.framework,
             version: document.version,
+            package: document.package,
             tags: document.tags,
           };
 
@@ -1358,6 +1685,9 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
       ensureOk(response, "Failed to sync documents to Typesense");
     },
     async search(query, context) {
+      const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context);
+      if (scopedDocumentIds?.length === 0) return [];
+
       const params = new URLSearchParams({
         q: query.query,
         query_by: (config.queryBy ?? ["title", "section", "content", "description"]).join(","),
@@ -1375,24 +1705,55 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
         );
       }
 
-      const response = await fetch(
-        `${getTypesenseSearchBase(config)}/collections/${encodeURIComponent(config.collection)}/documents/search?${params.toString()}`,
-        {
-          headers: {
-            "X-TYPESENSE-API-KEY": config.apiKey,
-          },
-          signal: context.signal,
-        },
-      );
+      const filterBy = scopedDocumentIds
+        ? `id:=[${scopedDocumentIds.map(quoteTypesenseFilterValue).join(",")}]`
+        : undefined;
+      if (filterBy && filterBy.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) return [];
+
+      const response = filterBy
+        ? await fetch(`${getTypesenseSearchBase(config)}/multi_search`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-TYPESENSE-API-KEY": config.apiKey,
+            },
+            body: JSON.stringify({
+              searches: [
+                {
+                  collection: config.collection,
+                  ...Object.fromEntries(params),
+                  filter_by: filterBy,
+                },
+              ],
+            }),
+            signal: context.signal,
+          })
+        : await fetch(
+            `${getTypesenseSearchBase(config)}/collections/${encodeURIComponent(config.collection)}/documents/search?${params.toString()}`,
+            {
+              headers: {
+                "X-TYPESENSE-API-KEY": config.apiKey,
+              },
+              signal: context.signal,
+            },
+          );
 
       ensureOk(response, "Typesense search failed");
-      const payload = (await readResponseJson(response)) as {
+      const rawPayload = (await readResponseJson(response)) as {
         hits?: Array<{
           document?: Record<string, unknown>;
           text_match?: number;
           highlights?: Array<{ field?: string; snippet?: string }>;
         }>;
+        results?: Array<{
+          hits?: Array<{
+            document?: Record<string, unknown>;
+            text_match?: number;
+            highlights?: Array<{ field?: string; snippet?: string }>;
+          }>;
+        }>;
       };
+      const payload = filterBy ? (rawPayload.results?.[0] ?? {}) : rawPayload;
 
       return (payload.hits ?? []).map((hit) => {
         const document = hit.document ?? {};
@@ -1561,6 +1922,10 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
                 limit: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
                 locale: query.locale,
                 ...(forwardAudience ? { audience } : {}),
+                ...(query.filters?.framework ? { framework: query.filters.framework } : {}),
+                ...(query.filters?.version ? { version: query.filters.version } : {}),
+                ...(query.filters?.package ? { package: query.filters.package } : {}),
+                ...(query.filters?.tags ? { tags: query.filters.tags } : {}),
               },
             },
           }),
@@ -1571,23 +1936,24 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
         ensureOk(searchResponse, "MCP search request failed");
         ensureJsonRpcOk(payload, "MCP search request failed");
 
-        const resultText =
-          payload &&
-          typeof payload === "object" &&
-          "result" in payload &&
-          payload.result &&
-          typeof payload.result === "object" &&
-          "content" in payload.result &&
-          Array.isArray(payload.result.content) &&
-          typeof payload.result.content[0]?.text === "string"
-            ? payload.result.content[0].text
-            : null;
+        const parsed = readMcpSearchToolPayload(payload) as
+          | {
+              format?: unknown;
+              filters?: unknown;
+              results?: unknown[];
+              pages?: unknown[];
+            }
+          | unknown[]
+          | null;
+        if (!parsed) return [];
 
-        if (!resultText) return [];
-
-        const parsed = JSON.parse(resultText) as
-          | { results?: unknown[]; pages?: unknown[] }
-          | unknown[];
+        if (hasDocsSearchFilters(query.filters ?? {})) {
+          if (Array.isArray(parsed) || parsed.format !== "docs-search.v1") return [];
+          const echoedFilters = parseVerifiedMcpSearchFilters(parsed.filters);
+          if (!echoedFilters || !docsSearchFiltersMatch(query.filters ?? {}, echoedFilters)) {
+            return [];
+          }
+        }
 
         const rawResults = Array.isArray(parsed)
           ? parsed
@@ -1632,6 +1998,10 @@ function getAlgoliaBase(config: AlgoliaDocsSearchConfig): string {
   return `https://${config.appId}-dsn.algolia.net`;
 }
 
+function quoteAlgoliaFilterValue(value: string): string {
+  return `"${value.replace(/\\/gu, "\\\\").replace(/"/gu, '\\"')}"`;
+}
+
 export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): DocsSearchAdapter {
   return {
     name: "algolia",
@@ -1660,6 +2030,13 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
       ensureOk(response, "Failed to sync documents to Algolia");
     },
     async search(query, context) {
+      const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context);
+      if (scopedDocumentIds?.length === 0) return [];
+      const filters = scopedDocumentIds
+        ?.map((id) => `objectID:${quoteAlgoliaFilterValue(id)}`)
+        .join(" OR ");
+      if (filters && filters.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) return [];
+
       const response = await fetch(
         `${getAlgoliaBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/query`,
         {
@@ -1673,6 +2050,7 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
             query: query.query,
             hitsPerPage: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
             attributesToSnippet: ["content:20"],
+            ...(filters ? { filters } : {}),
           }),
           signal: context.signal,
         },
@@ -1792,7 +2170,7 @@ async function maybeSyncSearchIndex(
   syncedIndexes.add(syncKey);
 }
 
-export async function performDocsSearch(options: {
+export interface PerformDocsSearchOptions {
   pages: DocsSearchSourcePage[];
   query: string;
   search?: boolean | DocsSearchConfig;
@@ -1804,6 +2182,8 @@ export async function performDocsSearch(options: {
   /** Canonical docs URL used to distinguish same-site absolute hits from foreign MCP results. */
   baseUrl?: string;
   limit?: number;
+  /** Optional framework, version, package, and tag constraints. */
+  filters?: DocsSearchFilterInput;
   /**
    * Controls provider failures. Runtime search keeps the resilient `fallback` default;
    * diagnostics can request `throw` so a broken configured provider cannot be scored as
@@ -1819,14 +2199,25 @@ export async function performDocsSearch(options: {
   strictExternalOrigins?: boolean;
   /** Optional cancellation signal forwarded to adapters and their managed requests. */
   signal?: AbortSignal;
-}): Promise<DocsSearchResult[]> {
+}
+
+export async function performDocsSearch(
+  options: PerformDocsSearchOptions,
+): Promise<DocsSearchResult[]> {
   const search = normalizeDocsSearchConfig(options.search);
   if (!search.enabled) return [];
 
   const audience = resolveDocsSearchAudience(options.audience);
-  const documents = buildDocsSearchDocuments(options.pages, search.chunking, audience);
+  const filters = normalizeDocsSearchFilters(options.filters);
+  const hasFilters = hasDocsSearchFilters(filters);
+  const scopedPages = hasFilters
+    ? options.pages.filter((page) =>
+        docsSearchPageMatchesFilters(resolveDocsSearchPageScope(page), filters),
+      )
+    : options.pages;
+  const documents = buildDocsSearchDocuments(scopedPages, search.chunking, audience);
   const context: DocsSearchAdapterContext = {
-    pages: options.pages,
+    pages: scopedPages,
     documents,
     audience,
     locale: options.locale,
@@ -1841,14 +2232,16 @@ export async function performDocsSearch(options: {
     locale: options.locale,
     pathname: options.pathname,
     audience,
+    ...(hasFilters ? { filters } : {}),
   };
 
   try {
     const adapter = await resolveSearchAdapter(search, context);
     const syncContext =
-      audience === "agent"
+      audience === "agent" || hasFilters
         ? {
             ...context,
+            pages: options.pages,
             documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
             audience: "human" as const,
           }
@@ -1861,18 +2254,22 @@ export async function performDocsSearch(options: {
       documents,
       options.query,
     );
-    const localPagePaths = new Set(options.pages.map((page) => normalizeUrlPathname(page.url)));
+    const localPagePaths = new Set(scopedPages.map((page) => normalizeUrlPathname(page.url)));
+    const allLocalPagePaths =
+      hasFilters && search.provider === "mcp"
+        ? new Set(options.pages.map((page) => normalizeUrlPathname(page.url)))
+        : localPagePaths;
     // External indexes can be stale or built for a different audience. Replace
     // every local-page hit with the selected local projection before returning it.
     // Human search preserves provider-only pages for backwards compatibility;
-    // agent search preserves them only for MCP, whose search_docs results may
-    // intentionally include a remote corpus.
+    // MCP can preserve remote-corpus hits after its adapter verifies the echoed
+    // normalized filters. Known local pages still have to survive local scoping.
     const preserveUnmatched =
-      audience === "human" || search.provider === "mcp"
+      (!hasFilters && audience === "human") || search.provider === "mcp"
         ? (result: DocsSearchResult) =>
             shouldPreserveUnmatchedExternalResult({
               result,
-              localPagePaths,
+              localPagePaths: allLocalPagePaths,
               baseUrl: options.baseUrl,
             })
         : undefined;
@@ -1883,7 +2280,7 @@ export async function performDocsSearch(options: {
       (result) =>
         !hasOppositeAudienceEvidence({
           result,
-          pages: options.pages,
+          pages: scopedPages,
           query: options.query,
           audience,
           baseUrl: options.baseUrl,
@@ -1908,7 +2305,7 @@ export async function performDocsSearch(options: {
       : [];
     const combinedResults = mergeSearchResults(
       [
-        buildExactPageSearchResults(options.query, options.pages, audience),
+        buildExactPageSearchResults(options.query, scopedPages, audience),
         safeAdapterResults,
         simpleAudienceResults,
       ],
@@ -1926,6 +2323,189 @@ export async function performDocsSearch(options: {
   }
 }
 
+function compareSearchMetadataValues(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+function boundedSearchWarningValues(values: readonly string[]): string[] | undefined {
+  const bounded = Array.from(new Set(values))
+    .sort(compareSearchMetadataValues)
+    .slice(0, MAX_SEARCH_WARNING_VALUES);
+  return bounded.length > 0 ? bounded : undefined;
+}
+
+function boundedSearchWarningPageUrls(
+  pages: readonly DocsSearchSourcePage[],
+): string[] | undefined {
+  const bounded = Array.from(new Set(pages.map((page) => page.url)))
+    .sort(compareSearchMetadataValues)
+    .slice(0, MAX_SEARCH_WARNING_PAGE_URLS);
+  return bounded.length > 0 ? bounded : undefined;
+}
+
+function findSearchResultPages(
+  pages: readonly DocsSearchSourcePage[],
+  results: readonly DocsSearchResult[],
+  baseUrl?: string,
+): DocsSearchSourcePage[] {
+  const pagesByPath = new Map(pages.map((page) => [normalizeUrlPathname(page.url), page] as const));
+  const found = new Map<string, DocsSearchSourcePage>();
+
+  for (const result of results) {
+    if (!isLocalProviderResult(result, baseUrl, true)) continue;
+    const page = pagesByPath.get(normalizeUrlPathname(result.url));
+    if (page) found.set(page.url, page);
+  }
+
+  return [...found.values()].sort((left, right) =>
+    compareSearchMetadataValues(left.url, right.url),
+  );
+}
+
+function searchScopeIsAmbiguous(
+  field: (typeof SEARCH_AMBIGUITY_FIELDS)[number],
+  values: readonly string[],
+): boolean {
+  if (values.length < 2) return false;
+  if (field !== "version") return true;
+
+  return values.some((left, index) =>
+    values.slice(index + 1).some((right) => !agentVersionConstraintsOverlap(left, right)),
+  );
+}
+
+function buildDocsSearchWarnings(options: {
+  pages: readonly DocsSearchSourcePage[];
+  results: readonly DocsSearchResult[];
+  filters: DocsSearchFilters;
+  query: string;
+  audience: DocsContentAudience;
+  baseUrl?: string;
+}): DocsSearchWarning[] {
+  const pageScopes = options.pages.map((page) => ({
+    page,
+    scope: resolveDocsSearchPageScope(page),
+  }));
+  const relevantPageScopes = pageScopes.filter(
+    ({ page }) => scoreDocument(options.query, pageToSearchDocument(page, options.audience)) > 0,
+  );
+  const warnings: DocsSearchWarning[] = [];
+
+  for (const field of SEARCH_FILTER_FIELDS) {
+    const conflicting = relevantPageScopes.filter(({ scope }) => scope.conflicts.includes(field));
+    if (conflicting.length > 0) {
+      warnings.push({
+        code: "conflicting_scope_metadata",
+        field,
+        message: `${conflicting.length} page${conflicting.length === 1 ? "" : "s"} declare conflicting ${field} metadata and cannot be selected safely by scoped search.`,
+        pageUrls: boundedSearchWarningPageUrls(conflicting.map(({ page }) => page)),
+        count: conflicting.length,
+      });
+    }
+
+    const requested = options.filters[field];
+    if (!requested || requested.length === 0) continue;
+
+    const missing = relevantPageScopes.filter(
+      ({ scope }) => scope.declarations[field].length === 0,
+    );
+    if (missing.length > 0) {
+      warnings.push({
+        code: "missing_scope_metadata",
+        field,
+        message: `${missing.length} page${missing.length === 1 ? "" : "s"} lack ${field} metadata and were excluded by the strict scope filter.`,
+        pageUrls: boundedSearchWarningPageUrls(missing.map(({ page }) => page)),
+        count: missing.length,
+      });
+    }
+
+    const unknown = requested.filter(
+      (value) =>
+        !pageScopes.some(
+          ({ scope }) =>
+            !scope.conflicts.includes(field) && docsSearchScopeFieldMatches(scope, field, [value]),
+        ),
+    );
+    if (unknown.length > 0) {
+      warnings.push({
+        code: "unknown_filter_value",
+        field,
+        message: `No page metadata matches ${field} filter value${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.`,
+        values: boundedSearchWarningValues(unknown),
+        count: unknown.length,
+      });
+    }
+  }
+
+  const resultPages = findSearchResultPages(options.pages, options.results, options.baseUrl);
+  for (const field of SEARCH_AMBIGUITY_FIELDS) {
+    if ((options.filters[field]?.length ?? 0) > 0) continue;
+    const values = resultPages.flatMap((page) => {
+      const scope = resolveDocsSearchPageScope(page);
+      return scope.conflicts.includes(field) ? [] : scope[field];
+    });
+    const unique = Array.from(new Set(values)).sort(compareSearchMetadataValues);
+    if (!searchScopeIsAmbiguous(field, unique)) continue;
+    const contributingPages = resultPages.filter((page) => {
+      const scope = resolveDocsSearchPageScope(page);
+      return !scope.conflicts.includes(field) && scope[field].length > 0;
+    });
+
+    warnings.push({
+      code: "ambiguous_scope",
+      field,
+      message: `Search results span multiple ${field} scopes; add a ${field} filter before acting on scope-specific guidance.`,
+      values: boundedSearchWarningValues(unique),
+      pageUrls: boundedSearchWarningPageUrls(contributingPages),
+      count: unique.length,
+    });
+  }
+
+  const codeOrder: Record<DocsSearchWarning["code"], number> = {
+    ambiguous_scope: 0,
+    unknown_filter_value: 1,
+    missing_scope_metadata: 2,
+    conflicting_scope_metadata: 3,
+  };
+  return warnings
+    .sort((left, right) => {
+      const codeDelta = codeOrder[left.code] - codeOrder[right.code];
+      if (codeDelta !== 0) return codeDelta;
+      return SEARCH_FILTER_FIELDS.indexOf(left.field) - SEARCH_FILTER_FIELDS.indexOf(right.field);
+    })
+    .slice(0, MAX_SEARCH_WARNINGS);
+}
+
+export async function performDocsSearchWithMetadata(
+  options: PerformDocsSearchOptions,
+): Promise<DocsSearchResponse> {
+  const audience = resolveDocsSearchAudience(options.audience);
+  const filters = normalizeDocsSearchFilters(options.filters);
+  const results = await performDocsSearch({
+    ...options,
+    audience,
+    filters,
+  });
+
+  return {
+    format: "docs-search.v1",
+    query: options.query,
+    audience,
+    filters,
+    resultCount: results.length,
+    results,
+    warnings: buildDocsSearchWarnings({
+      pages: options.pages,
+      results,
+      filters,
+      query: options.query,
+      audience,
+      baseUrl: options.baseUrl,
+    }),
+  };
+}
+
 export async function buildDocsAskAIContext(options: {
   pages: DocsSearchSourcePage[];
   query: string;
@@ -1935,6 +2515,7 @@ export async function buildDocsAskAIContext(options: {
   siteTitle?: string;
   baseUrl?: string;
   limit?: number;
+  filters?: DocsSearchFilterInput;
   maxContextChars?: number;
   maxResultChars?: number;
   /** See `performDocsSearch.failureMode`. Defaults to resilient runtime fallback. */
@@ -1959,6 +2540,7 @@ export async function buildDocsAskAIContext(options: {
     siteTitle: options.siteTitle,
     baseUrl: options.baseUrl,
     limit: searchLimit,
+    filters: options.filters,
     failureMode: options.searchFailureMode,
     strictExternalOrigins: options.strictExternalOrigins,
     signal: options.signal,

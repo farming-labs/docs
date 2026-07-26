@@ -751,6 +751,9 @@
         "agentEndpoint": {
           "$ref": "#/$defs/route"
         },
+        "structuredAgentEndpoint": {
+          "$ref": "#/$defs/route"
+        },
         "method": {
           "const": "GET"
         },
@@ -779,7 +782,93 @@
             }
           ],
           "items": false
+        },
+        "responseParam": {
+          "const": "response"
+        },
+        "structuredResponseValue": {
+          "const": "structured"
+        },
+        "responseFormat": {
+          "const": "docs-search.v1"
+        },
+        "filterParams": {
+          "const": {
+            "framework": "framework",
+            "version": "version",
+            "package": "package",
+            "tags": "tags"
+          }
+        },
+        "repeatedFilterParams": {
+          "const": [
+            "framework",
+            "version",
+            "package",
+            "tags"
+          ]
+        },
+        "warningsField": {
+          "const": "warnings"
         }
+      },
+      "dependentRequired": {
+        "structuredAgentEndpoint": [
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "responseParam": [
+          "structuredAgentEndpoint",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "structuredResponseValue": [
+          "structuredAgentEndpoint",
+          "responseParam",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "responseFormat": [
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "filterParams": [
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "repeatedFilterParams": [
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "warningsField"
+        ],
+        "warningsField": [
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams"
+        ]
       },
       "required": [
         "enabled",

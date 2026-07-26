@@ -7,8 +7,11 @@ import {
   createCustomSearchAdapter,
   createMcpSearchAdapter,
   createTypesenseSearchAdapter,
+  normalizeDocsSearchFilters,
   performDocsSearch,
+  performDocsSearchWithMetadata,
   resolveDocsSearchAudience,
+  resolveDocsSearchRequest,
   resolveSearchRequestConfig,
 } from "./search.js";
 
@@ -215,6 +218,36 @@ export const auth = betterAuth({});
     expect(page?.content).toContain("Every package resolves from the committed lockfile");
     expect(page?.content).not.toContain("farming-labs:agent-contract");
   });
+
+  it("adds normalized page and contract scope metadata to search documents", () => {
+    const [document] = buildDocsSearchDocuments(
+      [
+        {
+          title: "Scoped setup",
+          url: "/docs/scoped",
+          content: "Configure setup.",
+          framework: "Next.js",
+          version: "v16",
+          tags: ["Setup", "AUTH"],
+          agent: {
+            appliesTo: {
+              framework: "next",
+              version: ">=16 <18",
+              package: ["@FARMING-LABS/NEXT", "@farming-labs/docs"],
+            },
+          },
+        },
+      ],
+      { strategy: "page" },
+    );
+
+    expect(document).toMatchObject({
+      framework: "nextjs",
+      version: "16",
+      package: ["@farming-labs/next", "@farming-labs/docs"],
+      tags: ["setup", "auth"],
+    });
+  });
 });
 
 describe("performDocsSearch", () => {
@@ -228,6 +261,324 @@ describe("performDocsSearch", () => {
     ["agent", "agent"],
   ] as const)("resolves the %s audience query value to %s", (value, expected) => {
     expect(resolveDocsSearchAudience(value)).toBe(expected);
+  });
+
+  it("normalizes bounded scalar, repeated, and comma-separated scope filters", () => {
+    const params = new URLSearchParams();
+    params.append("framework", "Next.js, astro");
+    params.append("framework", "next");
+    params.append("version", "v16, >=17");
+    params.append("package", "@FARMING-LABS/NEXT");
+    for (let index = 0; index < 20; index += 1) params.append("tags", `Tag-${index}`);
+    params.set("response", "structured");
+
+    expect(resolveDocsSearchRequest(params)).toEqual({
+      structured: true,
+      filters: {
+        framework: ["nextjs", "astro"],
+        version: ["16", ">=17"],
+        package: ["@farming-labs/next"],
+        tags: Array.from({ length: 16 }, (_, index) => `tag-${index}`),
+      },
+    });
+    expect(
+      normalizeDocsSearchFilters({
+        framework: ["SvelteKit", "svelte"],
+        package: `Example/${"X".repeat(200)}`,
+      }),
+    ).toEqual({
+      framework: ["sveltekit"],
+      package: [`example/${"x".repeat(120)}`],
+    });
+    expect(resolveDocsSearchRequest(new URLSearchParams("response=Structured")).structured).toBe(
+      false,
+    );
+    expect(
+      normalizeDocsSearchFilters({
+        framework: `${"next,".repeat(10_000)}astro`,
+      }),
+    ).toEqual({ framework: ["nextjs"] });
+  });
+
+  it("applies OR within scope fields and AND across fields", async () => {
+    const scopedPages = [
+      {
+        title: "Next install",
+        url: "/docs/next",
+        content: "Install the shared package.",
+        framework: "Next.js",
+        version: ">=16",
+        tags: ["setup", "react"],
+        agent: {
+          appliesTo: {
+            framework: ["next"],
+            version: "<18",
+            package: "@farming-labs/next",
+          },
+        },
+      },
+      {
+        title: "Astro install",
+        url: "/docs/astro",
+        content: "Install the shared package.",
+        framework: "astro",
+        version: "5",
+        tags: ["setup"],
+        agent: { appliesTo: { package: "@farming-labs/astro" } },
+      },
+    ];
+
+    const results = await performDocsSearch({
+      pages: scopedPages,
+      query: "install",
+      filters: {
+        framework: ["nuxt", "Next.js"],
+        version: ["17", "20"],
+        package: ["@farming-labs/next"],
+        tags: ["guides", "react"],
+      },
+    });
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((result) => result.url.startsWith("/docs/next"))).toBe(true);
+  });
+
+  it("requires one requested version to satisfy every nonempty declaration", async () => {
+    const intersectionPage = {
+      title: "Versioned install",
+      url: "/docs/versioned",
+      content: "Install the versioned package.",
+      version: ">=16",
+      agent: { appliesTo: { version: "<18" } },
+    };
+
+    expect(
+      await performDocsSearch({
+        pages: [intersectionPage],
+        query: "install",
+        filters: { version: "17" },
+      }),
+    ).not.toHaveLength(0);
+    expect(
+      await performDocsSearch({
+        pages: [intersectionPage],
+        query: "install",
+        filters: { version: "20" },
+      }),
+    ).toEqual([]);
+  });
+
+  it("requires one shared version across all alternative version declarations", async () => {
+    const intersectionPage = {
+      title: "Version alternatives",
+      url: "/docs/version-alternatives",
+      content: "Install the versioned package.",
+      version: "1 || 3",
+      agent: { appliesTo: { version: ["2", "3"] } },
+    };
+
+    expect(
+      await performDocsSearch({
+        pages: [intersectionPage],
+        query: "install",
+        filters: { version: ">=1 <3" },
+      }),
+    ).toEqual([]);
+    expect(
+      await performDocsSearch({
+        pages: [intersectionPage],
+        query: "install",
+        filters: { version: "3" },
+      }),
+    ).not.toHaveLength(0);
+  });
+
+  it("forwards normalized filters and only scoped documents to custom adapters", async () => {
+    const seen: Array<{ query: unknown; urls: string[] }> = [];
+    await performDocsSearch({
+      pages: [
+        {
+          title: "Next guide",
+          url: "/docs/next",
+          content: "Shared guide token.",
+          framework: "nextjs",
+          agent: { appliesTo: { package: "@farming-labs/next" } },
+        },
+        {
+          title: "Astro guide",
+          url: "/docs/astro",
+          content: "Shared guide token.",
+          framework: "astro",
+          agent: { appliesTo: { package: "@farming-labs/astro" } },
+        },
+      ],
+      query: "guide",
+      filters: { framework: "Next.js", package: "@FARMING-LABS/NEXT" },
+      search: createCustomSearchAdapter({
+        name: "scoped-custom",
+        async search(query, context) {
+          seen.push({
+            query,
+            urls: context.pages.map((page) => page.url),
+          });
+          return [];
+        },
+      }),
+    });
+
+    expect(seen[0]).toMatchObject({
+      query: {
+        filters: {
+          framework: ["nextjs"],
+          package: ["@farming-labs/next"],
+        },
+      },
+      urls: ["/docs/next"],
+    });
+  });
+
+  it("does not leak stale local provider hits outside the requested scope", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Next shared guide",
+          url: "/docs/next",
+          content: "Configure the shared token.",
+          framework: "nextjs",
+        },
+        {
+          title: "Astro shared guide",
+          url: "/docs/astro",
+          content: "Configure the shared token.",
+          framework: "astro",
+        },
+      ],
+      query: "shared token",
+      filters: { framework: "next" },
+      search: createCustomSearchAdapter({
+        name: "stale-scope-index",
+        async search() {
+          return [
+            {
+              id: "stale-astro",
+              url: "/docs/astro",
+              content: "Astro shared guide",
+              description: "Configure the shared token.",
+              type: "page",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((result) => result.url.startsWith("/docs/next"))).toBe(true);
+    expect(results.some((result) => result.id === "stale-astro")).toBe(false);
+  });
+
+  it("returns bounded structured warnings without changing legacy array results", async () => {
+    const scopedPages = [
+      {
+        title: "Next setup",
+        url: "/docs/next",
+        content: "Configure shared setup.",
+        framework: "nextjs",
+        version: "16",
+        agent: { appliesTo: { package: "@farming-labs/next" } },
+      },
+      {
+        title: "Astro setup",
+        url: "/docs/astro",
+        content: "Configure shared setup.",
+        framework: "astro",
+        version: "5",
+        agent: { appliesTo: { package: "@farming-labs/astro" } },
+      },
+      {
+        title: "Shared setup",
+        url: "/docs/aaa-missing-scope",
+        content: "Configure shared setup without declared scope.",
+      },
+    ];
+
+    const legacy = await performDocsSearch({ pages: scopedPages, query: "configure" });
+    const structured = await performDocsSearchWithMetadata({
+      pages: scopedPages,
+      query: "configure",
+    });
+
+    expect(Array.isArray(legacy)).toBe(true);
+    expect(structured).toMatchObject({
+      format: "docs-search.v1",
+      query: "configure",
+      audience: "human",
+      filters: {},
+      resultCount: legacy.length,
+      results: legacy,
+    });
+    expect(structured.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "ambiguous_scope", field: "framework" }),
+        expect.objectContaining({ code: "ambiguous_scope", field: "version" }),
+        expect.objectContaining({ code: "ambiguous_scope", field: "package" }),
+      ]),
+    );
+    expect(structured.warnings.length).toBeLessThanOrEqual(16);
+    for (const field of ["framework", "version", "package"] as const) {
+      const warning = structured.warnings.find(
+        (item) => item.code === "ambiguous_scope" && item.field === field,
+      );
+      expect(warning?.pageUrls).not.toContain("/docs/aaa-missing-scope");
+    }
+  });
+
+  it("reports and excludes unknown, missing, and conflicting scope metadata", async () => {
+    const structured = await performDocsSearchWithMetadata({
+      pages: [
+        {
+          title: "Missing scope",
+          url: "/docs/missing",
+          content: "Configure scope.",
+        },
+        {
+          title: "Conflicting scope",
+          url: "/docs/conflict",
+          content: "Configure scope.",
+          framework: "nextjs",
+          agent: { appliesTo: { framework: "astro" } },
+        },
+        {
+          title: "Unrelated missing scope",
+          url: "/docs/unrelated",
+          content: "Observe the turquoise migration token.",
+        },
+      ],
+      query: "configure",
+      filters: { framework: "nuxt" },
+    });
+
+    expect(structured.results).toEqual([]);
+    expect(structured.filters).toEqual({ framework: ["nuxt"] });
+    expect(structured.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unknown_filter_value",
+          field: "framework",
+          values: ["nuxt"],
+        }),
+        expect.objectContaining({
+          code: "missing_scope_metadata",
+          field: "framework",
+          pageUrls: ["/docs/missing"],
+          count: 1,
+        }),
+        expect.objectContaining({
+          code: "conflicting_scope_metadata",
+          field: "framework",
+          pageUrls: ["/docs/conflict"],
+        }),
+      ]),
+    );
   });
 
   it("auto-forwards MCP audience only to the same-origin default search tool", () => {
@@ -298,14 +649,25 @@ describe("performDocsSearch", () => {
           {
             title: "Audience sync",
             url: "/docs/audience-sync",
+            framework: "nextjs",
             content: "Human coral walkthrough.",
             rawContent: "# Audience sync\n\nHuman coral walkthrough.",
             agentFallbackContent: "Agent indigo procedure.",
             agentFallbackRawContent: "# Audience sync\n\nAgent indigo procedure.",
           },
+          {
+            title: "Out-of-scope sync",
+            url: "/docs/out-of-scope-sync",
+            framework: "astro",
+            content: "Human amber walkthrough.",
+            rawContent: "# Out-of-scope sync\n\nHuman amber walkthrough.",
+            agentFallbackContent: "Agent violet procedure.",
+            agentFallbackRawContent: "# Out-of-scope sync\n\nAgent violet procedure.",
+          },
         ],
         query: "indigo procedure",
         audience: "agent",
+        filters: { framework: "next" },
         search: {
           provider: "algolia",
           appId: "audience-sync-app",
@@ -323,7 +685,9 @@ describe("performDocsSearch", () => {
         .map((request) => request.body.content ?? "")
         .join(" ");
       expect(indexedContent).toContain("Human coral walkthrough");
+      expect(indexedContent).toContain("Human amber walkthrough");
       expect(indexedContent).not.toContain("Agent indigo procedure");
+      expect(indexedContent).not.toContain("Agent violet procedure");
     } finally {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();
@@ -1601,6 +1965,50 @@ describe("remote search adapters", () => {
     ]);
   });
 
+  it("filters Algolia before provider top-k using the locally scoped document ids", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ hits: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const adapter = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+
+    await adapter.search(
+      {
+        query: "install",
+        limit: 5,
+        filters: { framework: ["nextjs"] },
+      },
+      {
+        pages: [],
+        documents: [
+          {
+            id: "/docs/next#page",
+            url: "/docs/next",
+            title: "Next",
+            content: "Install Next.",
+            type: "page",
+          },
+        ],
+      } as DocsSearchAdapterContext,
+    );
+
+    const request = JSON.parse(
+      String(vi.mocked(globalThis.fetch).mock.calls[0]?.[1]?.body),
+    ) as Record<string, unknown>;
+    expect(request).toMatchObject({
+      hitsPerPage: 5,
+      filters: 'objectID:"/docs/next#page"',
+    });
+  });
+
   it("trims oversized Algolia records before syncing", async () => {
     vi.mocked(globalThis.fetch).mockResolvedValue(new Response("{}", { status: 200 }));
 
@@ -1623,6 +2031,10 @@ describe("remote search adapters", () => {
           content: "A".repeat(20_000),
           description: "B".repeat(2_000),
           type: "page",
+          framework: "nextjs",
+          version: "16",
+          package: ["@farming-labs/next"],
+          tags: ["setup"],
         },
       ],
     } as DocsSearchAdapterContext);
@@ -1638,6 +2050,12 @@ describe("remote search adapters", () => {
     expect(bytes).toBeLessThanOrEqual(9_500);
     expect(record.objectID).toBe("/docs/cli#page");
     expect(record.content).toBeTypeOf("string");
+    expect(record).toMatchObject({
+      framework: "nextjs",
+      version: "16",
+      package: ["@farming-labs/next"],
+      tags: ["setup"],
+    });
   });
 
   it("maps Typesense hits into docs search results", async () => {
@@ -1696,6 +2114,56 @@ describe("remote search adapters", () => {
     ]);
   });
 
+  it("filters Typesense before provider top-k using the locally scoped document ids", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ results: [{ hits: [] }] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const adapter = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+    });
+
+    await adapter.search(
+      {
+        query: "install",
+        limit: 5,
+        filters: { framework: ["nextjs"] },
+      },
+      {
+        pages: [],
+        documents: [
+          {
+            id: "/docs/next#page",
+            url: "/docs/next",
+            title: "Next",
+            content: "Install Next.",
+            type: "page",
+          },
+        ],
+      } as DocsSearchAdapterContext,
+    );
+
+    const [url, init] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
+    expect(String(url)).toBe("https://typesense.example.com/multi_search");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      searches: [
+        expect.objectContaining({
+          collection: "docs",
+          q: "install",
+          per_page: "5",
+          filter_by: "id:=[`/docs/next#page`]",
+        }),
+      ],
+    });
+  });
+
   it("creates a Typesense collection without an invalid default sorting field", async () => {
     vi.mocked(globalThis.fetch)
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
@@ -1723,6 +2191,11 @@ describe("remote search adapters", () => {
     expect(typeof init?.body).toBe("string");
     const payload = JSON.parse(String(init?.body));
     expect(payload.default_sorting_field).toBeUndefined();
+    expect(payload.fields).toContainEqual({
+      name: "package",
+      type: "string[]",
+      optional: true,
+    });
   });
 
   it("maps legacy MCP search_docs payloads into docs search results", async () => {
@@ -1789,10 +2262,17 @@ describe("remote search adapters", () => {
       endpoint: "https://docs.example.com/api/docs/mcp",
     });
 
-    const results = await adapter.search({ query: "install", limit: 5, audience: "agent" }, {
-      pages: [],
-      documents: [],
-    } as DocsSearchAdapterContext);
+    const results = await adapter.search(
+      {
+        query: "install",
+        limit: 5,
+        audience: "agent",
+      },
+      {
+        pages: [],
+        documents: [],
+      } as DocsSearchAdapterContext,
+    );
 
     expect(results).toEqual([
       {
@@ -1805,9 +2285,170 @@ describe("remote search adapters", () => {
         section: undefined,
       },
     ]);
-    expect(
-      JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body)),
-    ).not.toHaveProperty("params.arguments.audience");
+    const requestPayload = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body));
+    expect(requestPayload).not.toHaveProperty("params.arguments.audience");
+    expect(requestPayload).not.toHaveProperty("params.arguments.framework");
+  });
+
+  it("preserves verified filtered foreign MCP hits without leaking known out-of-scope pages", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "mcp-session-id": "session-filtered",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    format: "docs-search.v1",
+                    query: "remote orchid",
+                    audience: "agent",
+                    filters: { framework: ["nextjs"] },
+                    resultCount: 2,
+                    results: [
+                      {
+                        id: "foreign-next",
+                        url: "https://remote.example/docs/next",
+                        content: "Remote Next guidance",
+                        description: "Remote orchid procedure.",
+                        type: "page",
+                      },
+                      {
+                        id: "known-local-astro",
+                        url: "https://docs.example.com/docs/astro",
+                        content: "Astro guidance",
+                        description: "Remote orchid procedure.",
+                        type: "page",
+                      },
+                    ],
+                    warnings: [],
+                  }),
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Local Next",
+          url: "/docs/next",
+          content: "Local Next setup.",
+          framework: "nextjs",
+        },
+        {
+          title: "Local Astro",
+          url: "/docs/astro",
+          content: "Remote orchid procedure.",
+          framework: "astro",
+        },
+      ],
+      query: "remote orchid",
+      audience: "agent",
+      filters: { framework: "next" },
+      search: {
+        provider: "mcp",
+        endpoint: "https://remote.example/mcp",
+      },
+      baseUrl: "https://docs.example.com",
+    });
+
+    expect(results.map((result) => result.id)).toContain("foreign-next");
+    expect(results.map((result) => result.id)).not.toContain("known-local-astro");
+    const requestPayload = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body));
+    expect(requestPayload).toHaveProperty("params.arguments.framework", ["nextjs"]);
+  });
+
+  it("rejects filtered MCP hits when the response does not verify the applied scope", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "mcp-session-id": "session-unverified",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        id: "unverified",
+                        url: "https://remote.example/docs/next",
+                        content: "Unverified result",
+                        type: "page",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const adapter = createMcpSearchAdapter({
+      provider: "mcp",
+      endpoint: "https://remote.example/mcp",
+    });
+    const results = await adapter.search(
+      {
+        query: "install",
+        audience: "agent",
+        filters: normalizeDocsSearchFilters({ framework: "next" }),
+      },
+      { pages: [], documents: [] } as DocsSearchAdapterContext,
+    );
+
+    expect(results).toEqual([]);
   });
 
   it("fails direct MCP searches closed when the default human audience cannot be forwarded", async () => {

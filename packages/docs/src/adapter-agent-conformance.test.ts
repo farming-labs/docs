@@ -432,6 +432,139 @@ Shared context.
     expect(sitemap).not.toContain("Agent indigo procedure.");
   });
 
+  it("applies scoped search filters and preserves the legacy response shape", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const server = createDocsServer({
+      entry: "docs",
+      nav: { title: "Scoped Search Docs" },
+      _preloadedContent: {
+        "/docs/next-14.md": `---
+title: Next 14 scoped setup
+framework: Next.js
+version: v14
+tags:
+  - routing
+  - setup
+agent:
+  appliesTo:
+    package: "@scope/router"
+---
+
+# Next 14 scoped setup
+
+Scoped Setup Token for the legacy router.`,
+        "/docs/next-15.md": `---
+title: Next 15 scoped setup
+framework: next
+version: "15"
+tags:
+  - routing
+  - setup
+agent:
+  appliesTo:
+    package: "@scope/router"
+---
+
+# Next 15 scoped setup
+
+Scoped Setup Token for the current router.`,
+        "/docs/astro-5.md": `---
+title: Astro 5 scoped setup
+framework: astro
+version: "5"
+tags:
+  - routing
+  - setup
+agent:
+  appliesTo:
+    package: "@scope/router"
+---
+
+# Astro 5 scoped setup
+
+Scoped Setup Token for Astro.`,
+      },
+    });
+
+    async function search(response?: "structured") {
+      const url = new URL("/api/docs", "https://docs.example.com");
+      url.searchParams.set("query", "Scoped Setup Token");
+      url.searchParams.set("audience", "agent");
+      url.searchParams.append("framework", "Next.js");
+      url.searchParams.append("version", "v15");
+      url.searchParams.append("package", "@scope/router");
+      url.searchParams.append("tags", "routing");
+      if (response) url.searchParams.set("response", response);
+      return server.GET({ request: new Request(url), url });
+    }
+
+    const legacyResponse = await search();
+    const legacyPayload = (await legacyResponse.json()) as Array<{ url: string }>;
+    expect(Array.isArray(legacyPayload)).toBe(true);
+    expect(legacyPayload.length).toBeGreaterThan(0);
+    expect(Array.from(new Set(legacyPayload.map((result) => result.url.split("#", 1)[0])))).toEqual(
+      ["/docs/next-15"],
+    );
+
+    const structuredResponse = await search("structured");
+    const structuredPayload = (await structuredResponse.json()) as {
+      format: string;
+      query: string;
+      audience: string;
+      filters: Record<string, string[]>;
+      resultCount: number;
+      results: Array<{ url: string }>;
+      warnings: unknown[];
+    };
+    expect(structuredPayload).toMatchObject({
+      format: "docs-search.v1",
+      query: "Scoped Setup Token",
+      audience: "agent",
+      filters: {
+        framework: ["nextjs"],
+        version: ["15"],
+        package: ["@scope/router"],
+        tags: ["routing"],
+      },
+      warnings: [],
+    });
+    expect(structuredPayload.resultCount).toBe(structuredPayload.results.length);
+    expect(structuredPayload.results.length).toBeGreaterThan(0);
+    expect(
+      Array.from(new Set(structuredPayload.results.map((result) => result.url.split("#", 1)[0]))),
+    ).toEqual(["/docs/next-15"]);
+
+    const blankUrl = new URL("/api/docs", "https://docs.example.com");
+    blankUrl.searchParams.set("query", "   ");
+    blankUrl.searchParams.set("audience", "agent");
+    blankUrl.searchParams.set("framework", "Next.js");
+    blankUrl.searchParams.append("tags", "Routing,Setup");
+
+    const blankLegacyResponse = await server.GET({
+      request: new Request(blankUrl),
+      url: blankUrl,
+    });
+    await expect(blankLegacyResponse.json()).resolves.toEqual([]);
+
+    blankUrl.searchParams.set("response", "structured");
+    const blankStructuredResponse = await server.GET({
+      request: new Request(blankUrl),
+      url: blankUrl,
+    });
+    await expect(blankStructuredResponse.json()).resolves.toEqual({
+      format: "docs-search.v1",
+      query: "",
+      audience: "agent",
+      filters: {
+        framework: ["nextjs"],
+        tags: ["routing", "setup"],
+      },
+      resultCount: 0,
+      results: [],
+      warnings: [],
+    });
+  });
+
   it("uses a build-time skill snapshot without touching unavailable source paths", async () => {
     const { createDocsServer } = await loadCreateDocsServer();
     const bundledSkill = await resolveDocsPublishedAgentSkill({

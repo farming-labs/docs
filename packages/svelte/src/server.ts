@@ -61,6 +61,7 @@ import {
   normalizePageAgentFrontmatter,
   parseDocsAgentFeedbackData,
   performDocsSearch,
+  performDocsSearchWithMetadata,
   renderDocsMarkdownDocument,
   renderDocsLlmsTxt,
   renderDocsAgentsDocument,
@@ -73,6 +74,7 @@ import {
   resolvePageSidebarFolderIndexBehavior,
   resolveAskAISearchRequestConfig,
   resolveDocsSearchAudience,
+  resolveDocsSearchFilters,
   resolveSearchRequestConfig,
   resolveDocsI18n,
   resolveDocsLlmsTxtRequest,
@@ -1339,24 +1341,44 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     }
 
     const query = event.url.searchParams.get("query")?.trim();
+    const audience = resolveDocsSearchAudience(event.url.searchParams.get("audience"));
+    const filters = resolveDocsSearchFilters(event.url.searchParams);
+    const structured = event.url.searchParams.get("response") === "structured";
     if (!query) {
-      return new Response(JSON.stringify([]), {
+      const searchResponse = structured
+        ? {
+            format: "docs-search.v1",
+            query: "",
+            audience,
+            filters,
+            resultCount: 0,
+            results: [],
+            warnings: [],
+          }
+        : [];
+      return new Response(JSON.stringify(searchResponse), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
     const searchStartedAt = Date.now();
-    const audience = resolveDocsSearchAudience(event.url.searchParams.get("audience"));
-    const results = await performDocsSearch({
+    const searchOptions = {
       pages: getSearchIndex(ctx),
       query,
       search: resolveSearchRequestConfig(config.search, event.request.url),
       audience,
+      filters,
       locale: ctx.locale,
       pathname: event.url.searchParams.get("pathname") ?? undefined,
       siteTitle: llmsTitle,
       baseUrl: markdownMetadataBaseUrl || event.url.origin,
-    });
+    };
+    const searchResponse = structured
+      ? await performDocsSearchWithMetadata(searchOptions)
+      : await performDocsSearch(searchOptions);
+    const resultCount = Array.isArray(searchResponse)
+      ? searchResponse.length
+      : searchResponse.resultCount;
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_search",
       source: "server",
@@ -1367,13 +1389,13 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       properties: {
         queryLength: query.length,
         audience,
-        resultCount: results.length,
+        resultCount,
         pathname: event.url.searchParams.get("pathname") ?? undefined,
         durationMs: Math.max(0, Date.now() - searchStartedAt),
       },
     });
 
-    return new Response(JSON.stringify(results), {
+    return new Response(JSON.stringify(searchResponse), {
       headers: { "Content-Type": "application/json" },
     });
   }

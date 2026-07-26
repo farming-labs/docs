@@ -23,7 +23,12 @@ import {
   type DocsMcpPage,
 } from "./mcp.js";
 import { findDocsMarkdownSection } from "./markdown-sections.js";
-import { buildDocsAskAIContext, performDocsSearch, resolveSearchRequestConfig } from "./search.js";
+import {
+  buildDocsAskAIContext,
+  normalizeDocsSearchFilters,
+  performDocsSearch,
+  resolveSearchRequestConfig,
+} from "./search.js";
 import type {
   DocsAgentEvaluationAnswerProvider,
   DocsAgentEvaluationAnswerRequest,
@@ -77,6 +82,8 @@ export interface DocsGoldenRetrievedSource {
   title: string;
   framework?: string;
   version?: string;
+  package?: string[];
+  tags?: string[];
   utf8Bytes: number;
   relevant: boolean;
   truncated: boolean;
@@ -109,12 +116,18 @@ export interface DocsGoldenCitationMetrics {
 export interface DocsGoldenSelectionMetrics {
   requestedFramework?: string;
   requestedVersion?: string;
+  requestedPackage?: string | readonly string[];
+  requestedTags?: string | readonly string[];
   requestedLocale?: string;
   expectedFramework?: string;
   expectedVersion?: string;
+  expectedPackage?: string | readonly string[];
+  expectedTags?: string | readonly string[];
   expectedLocale?: string;
   firstFrameworkMatchRank: number | null;
   firstVersionMatchRank: number | null;
+  firstPackageMatchRank?: number | null;
+  firstTagsMatchRank?: number | null;
   firstLocaleMatchRank: number | null;
   conflictingSources: string[];
   ambiguousSources: string[];
@@ -208,6 +221,8 @@ export interface DocsGoldenTasksReport {
 interface NormalizedScope {
   framework: string[];
   version: string[];
+  package: string[];
+  tags: string[];
   locale: string[];
   frameworkAmbiguous: boolean;
   versionAmbiguous: boolean;
@@ -359,8 +374,37 @@ function normalizeRuntimeFilters(
 
   const framework = normalizeRuntimeString(value.framework, `${path}.framework`, issues);
   const version = normalizeRuntimeString(value.version, `${path}.version`, issues);
+  const packageName = normalizeRuntimeFilterValue(value.package, `${path}.package`, issues);
+  const tags = normalizeRuntimeFilterValue(value.tags, `${path}.tags`, issues);
   const locale = normalizeRuntimeString(value.locale, `${path}.locale`, issues);
-  return framework || version || locale ? { framework, version, locale } : undefined;
+  return framework || version || packageName || tags || locale
+    ? { framework, version, package: packageName, tags, locale }
+    : undefined;
+}
+
+function normalizeRuntimeFilterValue(
+  value: unknown,
+  path: string,
+  issues: string[],
+): string | string[] | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string") return normalizeRuntimeString(value, path, issues);
+  if (!Array.isArray(value)) {
+    issues.push(`${path} must be a non-empty string or string array.`);
+    return undefined;
+  }
+
+  const normalized = value
+    .filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    .map((item) => item.trim())
+    .filter((item, index, items) => items.indexOf(item) === index);
+  const hasInvalidItem = value.some((item) => typeof item !== "string" || !item.trim());
+  if (hasInvalidItem) issues.push(`${path} must contain only non-empty strings.`);
+  if (normalized.length === 0) {
+    if (!hasInvalidItem) issues.push(`${path} must contain at least one non-empty string.`);
+    return undefined;
+  }
+  return normalized;
 }
 
 function normalizeRuntimeEnum<T extends string>(
@@ -687,11 +731,16 @@ function getPageScope(page: DocsMcpPage): NormalizedScope {
   const contractVersion = normalizeAgentScopeValues(page.agent?.appliesTo?.version).map(
     normalizeAgentVersion,
   );
+  const packageValues =
+    normalizeDocsSearchFilters({ package: page.agent?.appliesTo?.package }).package ?? [];
+  const tags = normalizeDocsSearchFilters({ tags: page.tags }).tags ?? [];
   const locale = normalizeAgentScopeValues(page.locale).map(normalizeAgentLocale);
 
   return {
     framework: Array.from(new Set([...topFramework, ...contractFramework])),
     version: Array.from(new Set([...topVersion, ...contractVersion])),
+    package: packageValues,
+    tags,
     locale,
     frameworkAmbiguous:
       topFramework.length > 0 &&
@@ -720,6 +769,8 @@ function toGoldenSources(
     title: source.section ?? source.title,
     framework: source.framework,
     version: source.version,
+    package: source.package,
+    tags: source.tags,
     utf8Bytes: source.utf8Bytes,
     relevant: relevantSources.some((expected) => sourceMatches(source.url, expected, baseUrl)),
     truncated: source.truncated,
@@ -840,7 +891,8 @@ function hydrateSearchSource(
     locale: scope?.locale[0],
     framework: scope?.framework[0],
     version: scope?.version[0],
-    tags: page?.tags ? [...page.tags] : undefined,
+    package: scope?.package.length ? [...scope.package] : undefined,
+    tags: scope?.tags.length ? [...scope.tags] : undefined,
     score: result.score,
     content,
     chars: content.length,
@@ -892,11 +944,17 @@ function buildContextFromSources(options: {
 
   const context = blocks.join(CONTEXT_SEPARATOR);
   usedUtf8Bytes = Buffer.byteLength(context, "utf8");
+  const normalizedFilters = normalizeDocsSearchFilters({
+    package: options.filters?.package,
+    tags: options.filters?.tags,
+  });
   return {
     query: options.query,
     filters: {
       framework: options.filters?.framework,
       version: options.filters?.version,
+      package: normalizedFilters.package,
+      tags: normalizedFilters.tags,
       locale: options.filters?.locale,
     },
     budget: {
@@ -1059,11 +1117,17 @@ function createContextShell(options: {
   const context = options.context ?? "";
   const sources = options.sources ?? [];
   const usedUtf8Bytes = Buffer.byteLength(context, "utf8");
+  const normalizedFilters = normalizeDocsSearchFilters({
+    package: options.filters?.package,
+    tags: options.filters?.tags,
+  });
   return {
     query: options.query,
     filters: {
       framework: options.filters?.framework,
       version: options.filters?.version,
+      package: normalizedFilters.package,
+      tags: normalizedFilters.tags,
       locale: options.filters?.locale,
     },
     budget: {
@@ -1165,6 +1229,8 @@ async function buildGoldenSurface(options: {
       query: options.task.query,
       framework: options.task.filters?.framework,
       version: options.task.filters?.version,
+      package: options.task.filters?.package,
+      tags: options.task.filters?.tags,
       locale: options.task.filters?.locale,
       maxResults: options.topK,
     };
@@ -1218,6 +1284,12 @@ async function buildGoldenSurface(options: {
           search: surfaceSearch,
           audience: "agent",
           locale: options.task.filters?.locale,
+          filters: {
+            framework: options.task.filters?.framework,
+            version: options.task.filters?.version,
+            package: options.task.filters?.package,
+            tags: options.task.filters?.tags,
+          },
           siteTitle: options.runOptions.siteTitle,
           baseUrl: options.runOptions.baseUrl,
           limit: options.topK,
@@ -1270,6 +1342,12 @@ async function buildGoldenSurface(options: {
         query: options.task.query,
         search: surfaceSearch,
         locale: options.task.filters?.locale,
+        filters: {
+          framework: options.task.filters?.framework,
+          version: options.task.filters?.version,
+          package: options.task.filters?.package,
+          tags: options.task.filters?.tags,
+        },
         siteTitle: options.runOptions.siteTitle,
         baseUrl: options.runOptions.baseUrl,
         limit: options.topK,
@@ -2180,11 +2258,19 @@ function buildSelectionMetrics(
 ): DocsGoldenSelectionMetrics {
   const requestedFramework = task.filters?.framework;
   const requestedVersion = task.filters?.version;
+  const requestedPackage = task.filters?.package;
+  const requestedTags = task.filters?.tags;
   const requestedLocale = task.filters?.locale;
   const expectedFramework = task.expect.scope?.framework ?? requestedFramework;
   const expectedVersion = task.expect.scope?.version ?? requestedVersion;
+  const expectedPackage = task.expect.scope?.package ?? requestedPackage;
+  const expectedTags = task.expect.scope?.tags ?? requestedTags;
   const expectedLocale = task.expect.scope?.locale ?? requestedLocale;
   const framework = expectedFramework ? normalizeAgentFramework(expectedFramework) : undefined;
+  const expectedSearchScope = normalizeDocsSearchFilters({
+    package: expectedPackage,
+    tags: expectedTags,
+  });
   const locale = expectedLocale ? normalizeAgentLocale(expectedLocale) : undefined;
   const candidates = sources.map((source) => {
     const page = findPageForSource(pagesByUrl, source.pageUrl || source.url);
@@ -2193,6 +2279,8 @@ function buildSelectionMetrics(
       : {
           framework: normalizeAgentScopeValues(source.framework).map(normalizeAgentFramework),
           version: normalizeAgentScopeValues(source.version).map(normalizeAgentVersion),
+          package: normalizeDocsSearchFilters({ package: source.package }).package ?? [],
+          tags: normalizeDocsSearchFilters({ tags: source.tags }).tags ?? [],
           locale: normalizeAgentScopeValues(source.locale).map(normalizeAgentLocale),
           frameworkAmbiguous: false,
           versionAmbiguous: false,
@@ -2206,6 +2294,24 @@ function buildSelectionMetrics(
     ? candidates.findIndex((candidate) =>
         candidate.scope.version.some((version) =>
           agentVersionConstraintMatches(expectedVersion, version),
+        ),
+      ) + 1 || null
+    : null;
+  const firstPackageMatchRank = expectedSearchScope.package
+    ? candidates.findIndex((candidate) =>
+        valuesOverlap(
+          expectedSearchScope.package ?? [],
+          candidate.scope.package,
+          (left, right) => left === right,
+        ),
+      ) + 1 || null
+    : null;
+  const firstTagsMatchRank = expectedSearchScope.tags
+    ? candidates.findIndex((candidate) =>
+        valuesOverlap(
+          expectedSearchScope.tags ?? [],
+          candidate.scope.tags,
+          (left, right) => left === right,
         ),
       ) + 1 || null
     : null;
@@ -2223,6 +2329,20 @@ function buildSelectionMetrics(
           !candidate.scope.version.some((version) =>
             agentVersionConstraintMatches(expectedVersion, version),
           )) ||
+        (expectedSearchScope.package &&
+          candidate.scope.package.length > 0 &&
+          !valuesOverlap(
+            expectedSearchScope.package,
+            candidate.scope.package,
+            (left, right) => left === right,
+          )) ||
+        (expectedSearchScope.tags &&
+          candidate.scope.tags.length > 0 &&
+          !valuesOverlap(
+            expectedSearchScope.tags,
+            candidate.scope.tags,
+            (left, right) => left === right,
+          )) ||
         (locale && candidate.scope.locale.length > 0 && !candidate.scope.locale.includes(locale)),
     )
     .map((candidate) => candidate.source);
@@ -2233,27 +2353,39 @@ function buildSelectionMetrics(
         candidate.scope.versionAmbiguous ||
         Boolean(framework && candidate.scope.framework.length === 0) ||
         Boolean(expectedVersion && candidate.scope.version.length === 0) ||
+        Boolean(expectedSearchScope.package && candidate.scope.package.length === 0) ||
+        Boolean(expectedSearchScope.tags && candidate.scope.tags.length === 0) ||
         Boolean(locale && candidate.scope.locale.length === 0),
     )
     .map((candidate) => candidate.source);
   const frameworkPassed = !framework || firstFrameworkMatchRank !== null;
   const versionPassed = !expectedVersion || firstVersionMatchRank !== null;
+  const packagePassed = !expectedSearchScope.package || firstPackageMatchRank !== null;
+  const tagsPassed = !expectedSearchScope.tags || firstTagsMatchRank !== null;
   const localePassed = !locale || firstLocaleMatchRank !== null;
   return {
     requestedFramework,
     requestedVersion,
+    requestedPackage,
+    requestedTags,
     requestedLocale,
     expectedFramework,
     expectedVersion,
+    expectedPackage,
+    expectedTags,
     expectedLocale,
     firstFrameworkMatchRank,
     firstVersionMatchRank,
+    firstPackageMatchRank,
+    firstTagsMatchRank,
     firstLocaleMatchRank,
     conflictingSources,
     ambiguousSources,
     passed:
       frameworkPassed &&
       versionPassed &&
+      packagePassed &&
+      tagsPassed &&
       localePassed &&
       conflictingSources.length === 0 &&
       ambiguousSources.length === 0,
@@ -2478,6 +2610,8 @@ async function evaluateTask(
             title: source.title,
             framework: source.framework,
             version: source.version,
+            package: source.package,
+            tags: source.tags,
             locale: source.locale,
           })),
         },
@@ -2502,10 +2636,19 @@ async function evaluateTask(
     issues.push(
       "The actual answer is missing required text/citations or contains invalid evidence.",
     );
-  if (!selection.passed)
-    issues.push(
-      "Retrieved sources are ambiguous or do not explicitly match the expected framework/version/locale.",
+  if (!selection.passed) {
+    const checksPackageOrTags = Boolean(
+      task.expect.scope?.package ||
+      task.expect.scope?.tags ||
+      task.filters?.package ||
+      task.filters?.tags,
     );
+    issues.push(
+      checksPackageOrTags
+        ? "Retrieved sources are ambiguous or do not explicitly match the expected framework/version/package/tags/locale."
+        : "Retrieved sources are ambiguous or do not explicitly match the expected framework/version/locale.",
+    );
+  }
   if (!examples.passed)
     issues.push("One or more expected examples did not meet the requested verification level.");
   if (!usage.passed)
@@ -2534,9 +2677,13 @@ async function evaluateTask(
           hasSelectionExpectation: Boolean(
             task.expect.scope?.framework ||
             task.expect.scope?.version ||
+            task.expect.scope?.package ||
+            task.expect.scope?.tags ||
             task.expect.scope?.locale ||
             task.filters?.framework ||
             task.filters?.version ||
+            task.filters?.package ||
+            task.filters?.tags ||
             task.filters?.locale,
           ),
           hasExampleExpectation: (task.expect.examples?.length ?? 0) > 0,

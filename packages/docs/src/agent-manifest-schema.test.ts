@@ -143,6 +143,56 @@ describe("Farming Labs agent manifest schema", () => {
     expectValid(exportedManifest);
   });
 
+  it("advertises a complete backwards-compatible structured search contract", () => {
+    const manifest = buildManifest();
+
+    expect(manifest.search).toMatchObject({
+      endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
+      structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      responseFormat: "docs-search.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
+    });
+    expectValid(manifest);
+
+    const legacySearch: Record<string, unknown> = { ...manifest.search };
+    for (const field of [
+      "structuredAgentEndpoint",
+      "responseParam",
+      "structuredResponseValue",
+      "responseFormat",
+      "filterParams",
+      "repeatedFilterParams",
+      "warningsField",
+    ]) {
+      delete legacySearch[field];
+    }
+    expectValid({ ...manifest, search: legacySearch });
+
+    expect(
+      validate({
+        ...manifest,
+        search: {
+          ...manifest.search,
+          responseFormat: "docs-search.v2",
+        },
+      }),
+    ).toBe(false);
+
+    const partialSearch: Record<string, unknown> = { ...manifest.search };
+    delete partialSearch.warningsField;
+    expect(validate({ ...manifest, search: partialSearch })).toBe(false);
+  });
+
   it("keeps Markdown section-discovery declarations synchronized", () => {
     const enabledManifest = buildManifest();
     const disabledManifest = buildManifest({

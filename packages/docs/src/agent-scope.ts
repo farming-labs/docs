@@ -255,6 +255,63 @@ function parseVersionRanges(value: string): VersionRange[] {
     .filter((range): range is VersionRange => Boolean(range));
 }
 
+type VersionConstraintBranch =
+  | { kind: "range"; range: VersionRange }
+  | { kind: "opaque"; value: string };
+
+function parseVersionConstraintBranches(value: string): VersionConstraintBranch[] {
+  const ranges = parseVersionRanges(value);
+  if (ranges.length > 0) {
+    return ranges.map((range) => ({ kind: "range", range }));
+  }
+
+  const normalized = normalizeAgentVersion(value);
+  return normalized ? [{ kind: "opaque", value: normalized }] : [];
+}
+
+function intersectVersionConstraintBranches(
+  left: VersionConstraintBranch,
+  right: VersionConstraintBranch,
+): VersionConstraintBranch | undefined {
+  if (left.kind === "opaque" || right.kind === "opaque") {
+    return left.kind === "opaque" && right.kind === "opaque" && left.value === right.value
+      ? left
+      : undefined;
+  }
+
+  const range = intersectRanges(left.range, right.range);
+  return range ? { kind: "range", range } : undefined;
+}
+
+/**
+ * Return true when choosing one alternative from every group can select one shared version.
+ *
+ * Each inner group is an OR list while the groups themselves are intersected. Computing the
+ * accumulated range prevents pairwise matches from accepting three mutually incompatible scopes.
+ */
+export function agentVersionConstraintGroupsOverlap(
+  groups: readonly (readonly string[])[],
+): boolean {
+  if (groups.length === 0) return false;
+
+  let intersections = groups[0].flatMap(parseVersionConstraintBranches);
+  if (intersections.length === 0) return false;
+
+  for (const group of groups.slice(1)) {
+    const branches = group.flatMap(parseVersionConstraintBranches);
+    if (branches.length === 0) return false;
+
+    intersections = intersections.flatMap((intersection) =>
+      branches
+        .map((branch) => intersectVersionConstraintBranches(intersection, branch))
+        .filter((value): value is VersionConstraintBranch => Boolean(value)),
+    );
+    if (intersections.length === 0) return false;
+  }
+
+  return true;
+}
+
 function rangeContains(range: VersionRange, version: Version): boolean {
   if (range.minimum) {
     const compared = compareVersions(version, range.minimum);

@@ -49,6 +49,7 @@ export type AgentSurfaceDriftCode =
   | "search-capability-mismatch"
   | "search-route-mismatch"
   | "search-audience-mismatch"
+  | "search-scope-mismatch"
   | "mcp-enabled-mismatch"
   | "mcp-capability-mismatch"
   | "mcp-route-mismatch"
@@ -341,6 +342,36 @@ export function analyzeAgentSurfaceDrift(
     ["human", "agent"],
     "Discovery search.supportedAudiences",
   );
+  const expectedStructuredAgentSearchEndpoint =
+    expectedAgentSearchEndpoint === null
+      ? null
+      : `${expectedAgentSearchEndpoint}&response=structured`;
+  for (const [path, expected] of [
+    ["search.structuredAgentEndpoint", expectedStructuredAgentSearchEndpoint],
+    ["search.responseParam", "response"],
+    ["search.structuredResponseValue", "structured"],
+    ["search.responseFormat", "docs-search.v1"],
+    [
+      "search.filterParams",
+      {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+    ],
+    ["search.repeatedFilterParams", ["framework", "version", "package", "tags"]],
+    ["search.warningsField", "warnings"],
+  ] as const) {
+    compareExpectedValue(
+      issues,
+      options.discovery,
+      "search-scope-mismatch",
+      path,
+      expected,
+      `Discovery ${path}`,
+    );
+  }
 
   compareExpectedValue(
     issues,
