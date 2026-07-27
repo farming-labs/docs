@@ -350,6 +350,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.8(@types/node@22.19.11)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
 
   packages/astro-theme:
     dependencies:
@@ -634,6 +637,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.8(@types/node@22.19.11)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
 
   packages/svelte-theme:
     dependencies:
@@ -686,6 +692,9 @@ importers:
       '@farming-labs/theme':
         specifier: workspace:*
         version: link:../fumadocs
+      '@mdx-js/mdx':
+        specifier: ^3.1.1
+        version: 3.1.1
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.11
@@ -701,6 +710,9 @@ importers:
       vite:
         specifier: ^7.3.5
         version: 7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.8(@types/node@22.19.11)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
 
   website:
     dependencies:

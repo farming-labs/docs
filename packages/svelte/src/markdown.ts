@@ -11,6 +11,7 @@
 
 import { resolveDocsAudienceMdxContent, type DocsTheme } from "@farming-labs/docs";
 import {
+  createDocsMarkdownBlockPlaceholderAllocator,
   extractDocsMarkdownReferenceDefinitions as extractMarkdownReferenceDefinitions,
   extractDocsRenderedHeadingElements as extractRenderedHeadingElements,
   prepareDocsMarkdownHeadings as prepareMarkdownHeadings,
@@ -23,6 +24,7 @@ import {
   type DocsMarkdownReferenceDefinitions as MarkdownReferenceDefinitions,
 } from "@farming-labs/docs/markdown-rendering";
 import {
+  extractDocsMarkdownPromptBlocks,
   parsePromptStringArray,
   resolvePromptProviderChoices,
   sanitizePromptText,
@@ -99,6 +101,11 @@ interface RenderMarkdownOptions {
   theme?: DocsTheme;
   icons?: Record<string, string>;
   openDocsProviders?: SerializedOpenDocsProvider[];
+}
+
+interface RenderedMarkdownBlock {
+  html: string;
+  token: string;
 }
 
 function escapeHtml(value: string): string {
@@ -603,7 +610,15 @@ export async function renderMarkdown(
   if (!content) return "";
 
   const hl = await getHighlighter();
-  let result = resolveDocsAudienceMdxContent(content, "human");
+  // Prompt children are literal copyable text, not renderable Markdown. Protect
+  // them before audience projection, reference collection, and heading
+  // preparation so none of those document-level passes can consume or interpret
+  // Prompt-only syntax.
+  const extractedPrompts = extractDocsMarkdownPromptBlocks(content);
+  const promptBlocks = extractedPrompts.blocks;
+  let result = extractedPrompts.markdown;
+  result = resolveDocsAudienceMdxContent(result, "human");
+  const allocateBlockPlaceholder = createDocsMarkdownBlockPlaceholderAllocator(result);
   const extractedReferences = extractMarkdownReferenceDefinitions(result);
   const referenceDefinitions = extractedReferences.definitions;
   const preparedHeadings = prepareMarkdownHeadings(result);
@@ -618,7 +633,7 @@ export async function renderMarkdown(
   const headingOpeningTags = renderedHeadings.openingTags;
 
   // ── Mintlify-style code groups: <CodeGroup> fenced code blocks </CodeGroup> ──
-  const tabsBlocks: string[] = [];
+  const tabsBlocks: RenderedMarkdownBlock[] = [];
   result = result.replace(
     /<CodeGroup(?:\s+([^>]*?))?>([\s\S]*?)<\/CodeGroup>/g,
     (_: string, attrSource: string | undefined, body: string) => {
@@ -663,8 +678,8 @@ export async function renderMarkdown(
       }
       tabsHtml += `</div>`;
 
-      const placeholder = `%%TABS_${tabsBlocks.length}%%`;
-      tabsBlocks.push(tabsHtml);
+      const placeholder = allocateBlockPlaceholder("TABS");
+      tabsBlocks.push({ html: tabsHtml, token: placeholder });
       return placeholder;
     },
   );
@@ -722,78 +737,60 @@ export async function renderMarkdown(
       }
       tabsHtml += `</div>`;
 
-      const placeholder = `%%TABS_${tabsBlocks.length}%%`;
-      tabsBlocks.push(tabsHtml);
+      const placeholder = allocateBlockPlaceholder("TABS");
+      tabsBlocks.push({ html: tabsHtml, token: placeholder });
       return placeholder;
     },
   );
 
-  // Prompt bodies are literal copyable text. Protect them before fenced code
-  // rendering so examples remain escaped text rather than injected figures.
-  const promptBlocks: string[] = [];
-  result = result.replace(
-    /<Prompt(?:\s+([^>]*?))?>([\s\S]*?)<\/Prompt>/g,
-    (_: string, attrSource: string | undefined, children: string) => {
-      const placeholder = `%%PROMPT_${promptBlocks.length}%%`;
-      const extractedHeadings = extractRenderedHeadingElements(
-        children,
-        referenceDefinitions,
-        true,
-        headingOpeningTags,
-      );
-      promptBlocks.push(
-        extractedHeadings.headingsHtml +
-          renderPrompt(attrSource ?? "", extractedHeadings.content, options),
-      );
-      return placeholder;
-    },
-  );
-
-  const hoverLinkBlocks: string[] = [];
+  const hoverLinkBlocks: RenderedMarkdownBlock[] = [];
   result = result.replace(
     /<HoverLink\s+([^>]*?)>([\s\S]*?)<\/HoverLink>/g,
     (_: string, attrSource: string, children: string) => {
-      const placeholder = `%%HOVERLINK_${hoverLinkBlocks.length}%%`;
+      const placeholder = allocateBlockPlaceholder("HOVERLINK");
       const extractedHeadings = extractRenderedHeadingElements(
         children,
         referenceDefinitions,
         false,
         headingOpeningTags,
       );
-      hoverLinkBlocks.push(
-        extractedHeadings.headingsHtml +
+      hoverLinkBlocks.push({
+        html:
+          extractedHeadings.headingsHtml +
           renderHoverLink(attrSource, extractedHeadings.content, options.theme),
-      );
+        token: placeholder,
+      });
       return placeholder;
     },
   );
 
   // ── Fenced code blocks ──
-  const codeBlocks: string[] = [];
+  const codeBlocks: RenderedMarkdownBlock[] = [];
   result = replaceMarkdownFencedCodeBlocks(result, ({ code, info }) => {
     const { lang, title } = parseMeta(info);
     const { html, raw } = highlightCode(hl, code, lang);
-    const placeholder = `%%CODEBLOCK_${codeBlocks.length}%%`;
-    codeBlocks.push(wrapCodeWithCopy(html, raw, title, lang));
+    const placeholder = allocateBlockPlaceholder("CODEBLOCK");
+    codeBlocks.push({ html: wrapCodeWithCopy(html, raw, title, lang), token: placeholder });
     return placeholder;
   });
 
-  const calloutBlocks: string[] = [];
+  const calloutBlocks: RenderedMarkdownBlock[] = [];
   result = result.replace(
     /<Callout(?:\s+([^>]*?))?>([\s\S]*?)<\/Callout>/g,
     (_: string, attrSource: string | undefined, children: string) => {
       const attrs = parseJsxAttributes(attrSource ?? "");
       const type = toStringValue(attrs.type) ?? toStringValue(attrs.kind) ?? "note";
       const title = toStringValue(attrs.title);
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(
-        renderCallout(
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(
           type,
           restoreMarkdownHeadingOpeningTags(children, headingOpeningTags),
           title,
           referenceDefinitions,
         ),
-      );
+        token: placeholder,
+      });
       return placeholder;
     },
   );
@@ -810,8 +807,11 @@ export async function renderMarkdown(
     if (ghMatch) {
       const type = ghMatch[1].toLowerCase();
       const calloutContent = ghMatch[2].trim();
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(renderCallout(type, calloutContent, undefined, referenceDefinitions));
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(type, calloutContent, undefined, referenceDefinitions),
+        token: placeholder,
+      });
       return placeholder;
     }
 
@@ -819,15 +819,19 @@ export async function renderMarkdown(
     if (boldMatch) {
       const type = boldMatch[1].toLowerCase();
       const calloutContent = boldMatch[2].trim();
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(renderCallout(type, calloutContent, undefined, referenceDefinitions));
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(type, calloutContent, undefined, referenceDefinitions),
+        token: placeholder,
+      });
       return placeholder;
     }
 
-    const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-    calloutBlocks.push(
-      `<blockquote>${renderMarkdownBlockContent(inner, referenceDefinitions)}</blockquote>`,
-    );
+    const placeholder = allocateBlockPlaceholder("CALLOUT");
+    calloutBlocks.push({
+      html: `<blockquote>${renderMarkdownBlockContent(inner, referenceDefinitions)}</blockquote>`,
+      token: placeholder,
+    });
     return placeholder;
   });
 
@@ -862,24 +866,47 @@ export async function renderMarkdown(
   );
 
   // Unordered lists
-  result = result.replace(/(?:^- .+\n?)+/gm, (block: string) => {
-    const items = block
-      .split("\n")
-      .filter((l: string) => l.startsWith("- "))
-      .map((l: string) => `<li>${l.slice(2)}</li>`)
-      .join("");
-    return `<ul>${items}</ul>`;
-  });
+  result = result.replace(
+    /(?:^[-+*] [^\r\n]+(?:\r?\n(?:(?: {2,}|\t)[^\r\n]+))*(?:\r?\n|$))+/gm,
+    (block: string) => {
+      const items: string[] = [];
+      for (const line of block.trimEnd().split(/\r?\n/)) {
+        if (/^[-+*] /.test(line)) {
+          items.push(line.slice(2));
+          continue;
+        }
+        if (items.length > 0) {
+          items[items.length - 1] += `\n${line.replace(/^(?: {2}|\t)/, "")}`;
+        }
+      }
+      return `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+    },
+  );
 
   // Ordered lists
-  result = result.replace(/(?:^\d+\. .+\n?)+/gm, (block: string) => {
-    const items = block
-      .split("\n")
-      .filter((l: string) => /^\d+\. /.test(l))
-      .map((l: string) => `<li>${l.replace(/^\d+\. /, "")}</li>`)
-      .join("");
-    return `<ol>${items}</ol>`;
-  });
+  result = result.replace(
+    /(?:^\d{1,9}[.)] [^\r\n]+(?:\r?\n(?:(?: {3,}|\t)[^\r\n]+))*(?:\r?\n|$))+/gm,
+    (block: string) => {
+      const items: string[] = [];
+      let continuationIndent = 0;
+      for (const line of block.trimEnd().split(/\r?\n/)) {
+        const marker = /^(\d{1,9}[.)]) (.*)$/.exec(line);
+        if (marker) {
+          items.push(marker[2]);
+          continuationIndent = marker[1].length + 1;
+          continue;
+        }
+        if (items.length > 0) {
+          const content =
+            line[0] === "\t"
+              ? line.slice(1)
+              : line.slice(Math.min(continuationIndent, /^ */.exec(line)?.[0].length ?? 0));
+          items[items.length - 1] += `\n${content}`;
+        }
+      }
+      return `<ol>${items.map((item) => `<li>${item}</li>`).join("")}</ol>`;
+    },
+  );
 
   // Wrap remaining bare text in <p> tags
   result = result
@@ -897,24 +924,27 @@ export async function renderMarkdown(
     .join("\n");
 
   // Restore placeholders
-  for (let i = 0; i < calloutBlocks.length; i++) {
-    result = result.replace(`%%CALLOUT_${i}%%`, calloutBlocks[i]);
+  for (const block of calloutBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < tabsBlocks.length; i++) {
-    result = result.replace(`%%TABS_${i}%%`, tabsBlocks[i]);
+  for (const block of tabsBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < hoverLinkBlocks.length; i++) {
-    result = result.replace(`%%HOVERLINK_${i}%%`, hoverLinkBlocks[i]);
+  for (const block of hoverLinkBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < promptBlocks.length; i++) {
-    result = result.replace(`%%PROMPT_${i}%%`, promptBlocks[i]);
-  }
-  for (let i = 0; i < codeBlocks.length; i++) {
-    result = result.replace(`%%CODEBLOCK_${i}%%`, codeBlocks[i]);
+  for (const block of codeBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
 
-  return restoreMarkdownHeadingOpeningTags(
+  result = restoreMarkdownHeadingOpeningTags(
     stripPreparedMarkdownHeadingTokens(result),
     headingOpeningTags,
   );
+  for (const block of promptBlocks) {
+    result = result.replace(block.token, () =>
+      renderPrompt(block.attributes, block.children, options),
+    );
+  }
+  return result;
 }

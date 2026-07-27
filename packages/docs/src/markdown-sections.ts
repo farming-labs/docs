@@ -65,6 +65,13 @@ interface DocsMarkdownFallbackEsmState {
   quote?: "'" | '"' | "`";
 }
 
+interface DocsMarkdownFallbackPromptTagState {
+  braceDepth: number;
+  closing: boolean;
+  lastNonWhitespace: string;
+  quote?: "'" | '"' | "`";
+}
+
 export interface DocsMarkdownHeadingAnchor {
   /** Heading source without a trailing Fumadocs custom-id marker. */
   source: string;
@@ -91,6 +98,10 @@ interface DocsMarkdownAstNode {
   name?: unknown;
   depth?: unknown;
   value?: unknown;
+  alt?: unknown;
+  identifier?: unknown;
+  label?: unknown;
+  referenceType?: unknown;
   children?: DocsMarkdownAstNode[];
   position?: {
     start?: {
@@ -475,9 +486,70 @@ export function createDocsMarkdownHeadingAnchorResolver(): (
   return createDocsMarkdownHeadingAnchorResolverWithReferences();
 }
 
-function flattenDocsMarkdownAstNode(node: DocsMarkdownAstNode): string {
+function collectDocsMarkdownAstReferenceDefinitions(
+  root: DocsMarkdownAstNode,
+): ReadonlySet<string> {
+  const definitions = new Set<string>();
+
+  const visit = (node: DocsMarkdownAstNode): void => {
+    if (isDocsMarkdownLiteralPrompt(node)) return;
+    if (node.type === "definition" && typeof node.identifier === "string") {
+      definitions.add(normalizeDocsMarkdownReferenceLabel(node.identifier));
+    }
+    for (const child of node.children ?? []) visit(child);
+  };
+
+  visit(root);
+  return definitions;
+}
+
+function formatDocsMarkdownAstReference(
+  node: DocsMarkdownAstNode,
+  definedReferences: ReadonlySet<string>,
+): string {
+  const image = node.type === "imageReference";
+  const identifier =
+    typeof node.identifier === "string" ? normalizeDocsMarkdownReferenceLabel(node.identifier) : "";
+  const resolved = Boolean(identifier) && definedReferences.has(identifier);
+  if (resolved) {
+    return image
+      ? ""
+      : (node.children ?? [])
+          .map((child) => flattenDocsMarkdownAstNode(child, definedReferences))
+          .join("");
+  }
+
+  const visibleLabel = image
+    ? typeof node.alt === "string"
+      ? node.alt
+      : ""
+    : (node.children ?? [])
+        .map((child) => flattenDocsMarkdownAstNode(child, definedReferences))
+        .join("");
+  const referenceLabel =
+    typeof node.label === "string"
+      ? node.label
+      : typeof node.identifier === "string"
+        ? node.identifier
+        : visibleLabel;
+  const prefix = image ? "!" : "";
+
+  if (node.referenceType === "collapsed") return `${prefix}[${visibleLabel}][]`;
+  if (node.referenceType === "shortcut") return `${prefix}[${visibleLabel}]`;
+  return `${prefix}[${visibleLabel}][${referenceLabel}]`;
+}
+
+function flattenDocsMarkdownAstNode(
+  node: DocsMarkdownAstNode,
+  definedReferences: ReadonlySet<string>,
+): string {
+  if (node.type === "linkReference" || node.type === "imageReference") {
+    return formatDocsMarkdownAstReference(node, definedReferences);
+  }
   if (Array.isArray(node.children)) {
-    return node.children.map((child) => flattenDocsMarkdownAstNode(child)).join("");
+    return node.children
+      .map((child) => flattenDocsMarkdownAstNode(child, definedReferences))
+      .join("");
   }
   return typeof node.value === "string" ? node.value : "";
 }
@@ -497,6 +569,7 @@ function assignDocsMarkdownAstHeadingAnchors(
 ): DocsMarkdownAstHeadingCandidate[] {
   const customId = options.customId ?? true;
   const headings: DocsMarkdownAstHeadingCandidate[] = [];
+  const definedReferences = collectDocsMarkdownAstReferenceDefinitions(root);
 
   const visit = (node: DocsMarkdownAstNode): void => {
     if (isDocsMarkdownLiteralPrompt(node)) return;
@@ -515,7 +588,7 @@ function assignDocsMarkdownAstHeadingAnchors(
       const existingAnchor = node.data?.hProperties?.id;
       headings.push({
         node,
-        title: cleanDocsRenderedHeadingLabel(flattenDocsMarkdownAstNode(node)),
+        title: cleanDocsRenderedHeadingLabel(flattenDocsMarkdownAstNode(node, definedReferences)),
         explicit: Boolean(explicitAnchor),
         explicitAnchor:
           explicitAnchor || (typeof existingAnchor === "string" ? existingAnchor : undefined),
@@ -761,60 +834,96 @@ function scanDocsMarkdownFallbackEsmLine(
   );
 }
 
-function scanDocsMarkdownLiteralPromptTags(value: string): {
+function scanDocsMarkdownLiteralPromptTags(
+  value: string,
+  initialState?: DocsMarkdownFallbackPromptTagState,
+): {
   delta: number;
   found: boolean;
+  pending?: DocsMarkdownFallbackPromptTagState;
 } {
   let delta = 0;
-  let found = false;
+  let found = Boolean(initialState);
+  let pending = initialState;
+  let index = 0;
 
-  for (let index = 0; index < value.length; index += 1) {
-    if (value[index] !== "<") continue;
-    const closing = value[index + 1] === "/";
-    const nameStart = index + (closing ? 2 : 1);
-    if (value.slice(nameStart, nameStart + 6) !== "Prompt") continue;
-    const boundary = value[nameStart + 6];
-    if (boundary && !/[\t\n\r />]/u.test(boundary)) continue;
+  while (index < value.length) {
+    if (!pending) {
+      const tagStart = value.indexOf("<", index);
+      if (tagStart < 0) break;
+      // Prompt is a flow component in the docs renderer. Restrict fallback
+      // detection to a tag at the start of the logical line so literal examples
+      // in headings, code spans, and link labels cannot hide later headings.
+      if (!found && value.slice(0, tagStart).trim()) {
+        index = tagStart + 1;
+        continue;
+      }
 
-    let quote: "'" | '"' | "`" | undefined;
-    let braceDepth = 0;
-    let end = nameStart + 6;
-    for (; end < value.length; end += 1) {
-      const character = value[end];
-      if (quote) {
+      const closing = value[tagStart + 1] === "/";
+      const nameStart = tagStart + (closing ? 2 : 1);
+      if (value.slice(nameStart, nameStart + 6) !== "Prompt") {
+        index = tagStart + 1;
+        continue;
+      }
+      const boundary = value[nameStart + 6];
+      if (boundary && !/[\t\n\r />]/u.test(boundary)) {
+        index = tagStart + 1;
+        continue;
+      }
+
+      pending = {
+        braceDepth: 0,
+        closing,
+        lastNonWhitespace: "t",
+      };
+      found = true;
+      index = nameStart + 6;
+    }
+
+    while (pending && index < value.length) {
+      const character = value[index];
+      if (pending.quote) {
         if (character === "\\") {
-          end += 1;
+          index += 2;
           continue;
         }
-        if (character === quote) quote = undefined;
+        if (character === pending.quote) pending.quote = undefined;
+        index += 1;
         continue;
       }
       if (character === "'" || character === '"' || character === "`") {
-        quote = character;
+        pending.quote = character;
+        index += 1;
         continue;
       }
       if (character === "{") {
-        braceDepth += 1;
+        pending.braceDepth += 1;
+        pending.lastNonWhitespace = character;
+        index += 1;
         continue;
       }
       if (character === "}") {
-        braceDepth = Math.max(0, braceDepth - 1);
+        pending.braceDepth = Math.max(0, pending.braceDepth - 1);
+        pending.lastNonWhitespace = character;
+        index += 1;
         continue;
       }
-      if (character === ">" && braceDepth === 0) break;
+      if (character === ">" && pending.braceDepth === 0) {
+        if (pending.closing) {
+          delta -= 1;
+        } else if (pending.lastNonWhitespace !== "/") {
+          delta += 1;
+        }
+        pending = undefined;
+        index += 1;
+        break;
+      }
+      if (!/\s/u.test(character)) pending.lastNonWhitespace = character;
+      index += 1;
     }
-    if (end >= value.length) continue;
-
-    found = true;
-    if (closing) {
-      delta -= 1;
-    } else if (!/\/[\t ]*>$/u.test(value.slice(index, end + 1))) {
-      delta += 1;
-    }
-    index = end;
   }
 
-  return { delta, found };
+  return { delta, found, ...(pending ? { pending } : {}) };
 }
 
 function collectDocsMarkdownFallbackIgnoredLines(lines: readonly string[]): ReadonlySet<number> {
@@ -823,10 +932,28 @@ function collectDocsMarkdownFallbackIgnoredLines(lines: readonly string[]): Read
   let htmlComment = false;
   let mdxComment = false;
   let literalPromptDepth = 0;
+  let literalPromptTagContainers: DocsMarkdownContainer[] = [];
+  let literalPromptTagState: DocsMarkdownFallbackPromptTagState | undefined;
   let openFence: OpenMarkdownFence | undefined;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
+
+    if (literalPromptTagState) {
+      const continuation =
+        literalPromptTagContainers.length > 0
+          ? continueDocsMarkdownContainerLine(line, literalPromptTagContainers)
+          : { content: line };
+      const promptTags = scanDocsMarkdownLiteralPromptTags(
+        continuation?.content ?? line,
+        literalPromptTagState,
+      );
+      ignored.add(index);
+      literalPromptDepth = Math.max(0, literalPromptDepth + promptTags.delta);
+      literalPromptTagState = promptTags.pending;
+      if (!literalPromptTagState) literalPromptTagContainers = [];
+      continue;
+    }
 
     if (!esmState && !htmlComment && !mdxComment && openFence) {
       const fenceLine = readDocsMarkdownFenceLine(line, openFence);
@@ -893,6 +1020,12 @@ function collectDocsMarkdownFallbackIgnoredLines(lines: readonly string[]): Read
     if (literalPromptDepth > 0 || promptTags.found) {
       ignored.add(index);
       literalPromptDepth = Math.max(0, literalPromptDepth + promptTags.delta);
+      literalPromptTagState = promptTags.pending;
+      if (literalPromptTagState) {
+        literalPromptTagContainers = containerLine.containers.map((container) => ({
+          ...container,
+        }));
+      }
     }
   }
 
@@ -959,14 +1092,6 @@ function collectGeneratedAgentContractRanges(markdown: string): DocsMarkdownLine
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
 
-    if (contractStart !== undefined) {
-      if (isTopLevelDocsMarkdownMarker(line, PAGE_AGENT_CONTRACT_END_MARKER)) {
-        ranges.push({ start: contractStart, end: index });
-        contractStart = undefined;
-      }
-      continue;
-    }
-
     if (openFence) {
       const fenceLine = readDocsMarkdownFenceLine(line, openFence);
       if (fenceLine) {
@@ -986,15 +1111,64 @@ function collectGeneratedAgentContractRanges(markdown: string): DocsMarkdownLine
       continue;
     }
 
-    if (
-      containerLine.containers.length === 0 &&
-      isTopLevelDocsMarkdownMarker(line, PAGE_AGENT_CONTRACT_START_MARKER)
-    ) {
+    if (containerLine.containers.length > 0) continue;
+
+    if (contractStart !== undefined) {
+      if (isTopLevelDocsMarkdownMarker(line, PAGE_AGENT_CONTRACT_END_MARKER)) {
+        ranges.push({ start: contractStart, end: index });
+        contractStart = undefined;
+      }
+    } else if (isTopLevelDocsMarkdownMarker(line, PAGE_AGENT_CONTRACT_START_MARKER)) {
       contractStart = index;
     }
   }
 
   return ranges;
+}
+
+export interface DocsGeneratedAgentContractRange {
+  /** 1-based line containing the generated contract start marker. */
+  startLine: number;
+  /** 1-based line containing the generated contract end marker. */
+  endLine: number;
+}
+
+/** Locate complete generated contract blocks while keeping fenced marker examples inert. */
+export function findDocsGeneratedAgentContractRanges(
+  markdown: string,
+): DocsGeneratedAgentContractRange[] {
+  return collectGeneratedAgentContractRanges(markdown).map(({ start, end }) => ({
+    startLine: start + 1,
+    endLine: end + 1,
+  }));
+}
+
+/** Remove only generated boundary markers that overlap a full document or derived fragment. */
+export function stripDocsGeneratedAgentContractMarkers(
+  markdown: string,
+  location?: {
+    /** Full Markdown source from which this fragment was selected. */
+    sourceMarkdown: string;
+    /** 1-based source line corresponding to the fragment's first line. */
+    startLine: number;
+  },
+): string {
+  const ranges = findDocsGeneratedAgentContractRanges(location?.sourceMarkdown ?? markdown);
+  if (ranges.length === 0) return markdown;
+
+  const markerLines = new Set<number>();
+  for (const range of ranges) {
+    markerLines.add(range.startLine);
+    markerLines.add(range.endLine);
+  }
+
+  const newline = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const startLine = location?.startLine ?? 1;
+  const output = markdown
+    .split(/\r?\n/u)
+    .filter((_line, index) => !markerLines.has(startLine + index));
+  while (output[0] === "") output.shift();
+  return output.join(newline);
 }
 
 function isDocsMarkdownLineInRanges(

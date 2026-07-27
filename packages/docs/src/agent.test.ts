@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findDocsAudienceMdxTags } from "./audience.js";
+import { extractDocsMarkdownPromptBlocks, findDocsAudienceMdxTags } from "./audience.js";
 import {
   acceptsDocsMarkdown,
   AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
@@ -2233,6 +2233,211 @@ describe("agent route helpers", () => {
     expect(document).toContain("Related: /docs/configuration");
     expect(document).toContain("Hidden");
     expect(document).toContain("## Sitemap");
+  });
+
+  describe("Prompt literal extraction", () => {
+    it("preserves flow-component block grammar around paragraphs and thematic breaks", () => {
+      const extracted = extractDocsMarkdownPromptBlocks(
+        ["Before", "<Prompt>", "Run the check.", "</Prompt>", "---", "After"].join("\n"),
+      );
+
+      expect(extracted.blocks).toEqual([
+        {
+          attributes: "",
+          children: "\nRun the check.\n",
+          token: "%%PROMPT_0%%",
+        },
+      ]);
+      expect(extracted.markdown).toBe(
+        ["Before", "", "%%PROMPT_0%%", "", "---", "After"].join("\n"),
+      );
+    });
+
+    it("preserves standalone flow grammar when malformed MDX requires fallback parsing", () => {
+      const standalone = extractDocsMarkdownPromptBlocks("<Prompt>x</Prompt>\n---\n{invalid");
+      expect(standalone.markdown).toBe("%%PROMPT_0%%\n\n---\n{invalid");
+
+      const inline = extractDocsMarkdownPromptBlocks("Before <Prompt>x</Prompt> after\n{invalid");
+      expect(inline.markdown).toBe("Before %%PROMPT_0%% after\n{invalid");
+    });
+
+    it("preserves standalone flow grammar after successful parsing without changing inline Prompt", () => {
+      const lf = extractDocsMarkdownPromptBlocks("<Prompt>x</Prompt>\n---\nAfter");
+      expect(lf.markdown).toBe("%%PROMPT_0%%\n\n---\nAfter");
+
+      const crlf = extractDocsMarkdownPromptBlocks("<Prompt>x</Prompt>\r\n===\r\nAfter");
+      expect(crlf.markdown).toBe("%%PROMPT_0%%\r\n\r\n===\r\nAfter");
+
+      const inline = extractDocsMarkdownPromptBlocks("Before <Prompt>x</Prompt> after");
+      expect(inline.markdown).toBe("Before %%PROMPT_0%% after");
+    });
+
+    it("keeps flow Prompt placeholders and copied text inside Markdown containers", () => {
+      const blockquote = extractDocsMarkdownPromptBlocks(
+        ["> <Prompt>", "> Quote task", "> </Prompt>"].join("\n"),
+      );
+      expect(blockquote.markdown).toBe("> %%PROMPT_0%%");
+      expect(blockquote.blocks[0]?.children.trim()).toBe("Quote task");
+
+      const list = extractDocsMarkdownPromptBlocks(
+        ["- <Prompt>", "  List task", "  </Prompt>"].join("\n"),
+      );
+      expect(list.markdown).toBe("- %%PROMPT_0%%");
+      expect(list.blocks[0]?.children.trim()).toBe("List task");
+
+      const continuedList = extractDocsMarkdownPromptBlocks(
+        ["- Before", "  <Prompt>", "  Continued task", "  </Prompt>", "  After"].join("\n"),
+      );
+      expect(continuedList.markdown).toBe("- Before\n  %%PROMPT_0%%\n  After");
+      expect(continuedList.blocks[0]?.children.trim()).toBe("Continued task");
+
+      const continuedQuote = extractDocsMarkdownPromptBlocks(
+        ["> Before", "> <Prompt>", "> Continued quote", "> </Prompt>", "> After"].join("\n"),
+      );
+      expect(continuedQuote.markdown).toBe(["> Before", "> %%PROMPT_0%%", "> After"].join("\n"));
+      expect(continuedQuote.blocks[0]?.children.trim()).toBe("Continued quote");
+    });
+
+    it("pairs nested and sibling Prompts without truncating their literal children", () => {
+      const nested = extractDocsMarkdownPromptBlocks(
+        "<Prompt>outer <Prompt>inner</Prompt> tail</Prompt>",
+      );
+      expect(nested.blocks).toEqual([
+        {
+          attributes: "",
+          children: "outer <Prompt>inner</Prompt> tail",
+          token: "%%PROMPT_0%%",
+        },
+      ]);
+      expect(nested.markdown).toBe("%%PROMPT_0%%");
+
+      const siblings = extractDocsMarkdownPromptBlocks(
+        "<Prompt>first</Prompt>\n<Prompt>second</Prompt>",
+      );
+      expect(siblings.blocks.map((block) => block.children)).toEqual(["first", "second"]);
+      expect(siblings.markdown).toBe("%%PROMPT_0%%\n%%PROMPT_1%%");
+    });
+
+    it("recovers balanced children after an unmatched opener without consuming trailing content", () => {
+      const source = "<Prompt>unclosed\n<Prompt>valid</Prompt>\nAfter";
+      const extracted = extractDocsMarkdownPromptBlocks(source);
+
+      expect(extracted.blocks.map((block) => block.children)).toEqual(["valid"]);
+      expect(extracted.markdown).toBe("<Prompt>unclosed\n\n%%PROMPT_0%%\n\nAfter");
+      expect(extractDocsMarkdownPromptBlocks("</Prompt>\nShared.")).toEqual({
+        blocks: [],
+        markdown: "</Prompt>\nShared.",
+      });
+    });
+
+    it.each([
+      ["raw HTML blocks", "<div>\n<Prompt>raw div</Prompt>\n</div>"],
+      ["inline raw HTML", "<span><Prompt>raw span</Prompt></span>"],
+      ["raw pre blocks", "<pre>\n<Prompt>raw pre</Prompt>\n</pre>"],
+      ["raw textarea blocks", "<textarea>\n<Prompt>raw textarea</Prompt>\n</textarea>"],
+      ["raw script elements", "<script><Prompt>raw script</Prompt></script>"],
+      ["uppercase raw script elements", "<SCRIPT><Prompt>raw script</Prompt></SCRIPT>"],
+      ["uppercase raw HTML blocks", "<DIV>\n<Prompt>raw div</Prompt>\n</DIV>"],
+      ["SVG namespace roots", "<svg><Prompt>raw svg</Prompt></svg>"],
+      ["uppercase SVG namespace roots", "<SVG><Prompt>raw svg</Prompt></SVG>"],
+      ["MathML namespace roots", "<math><Prompt>raw math</Prompt></math>"],
+      ["uppercase MathML namespace roots", "<MATH><Prompt>raw math</Prompt></MATH>"],
+      ["processing instructions", "<?sample <Prompt>raw instruction</Prompt> ?>"],
+      ["CDATA", "<![CDATA[<Prompt>raw cdata</Prompt>]]>"],
+      ["declarations", "<!DOCTYPE sample <Prompt>raw declaration</Prompt>>"],
+    ])("keeps Prompt-looking text inert inside %s", (_name, source) => {
+      expect(extractDocsMarkdownPromptBlocks(source)).toEqual({
+        blocks: [],
+        markdown: source,
+      });
+    });
+
+    it("keeps Prompt live inside capitalized MDX and custom elements", () => {
+      for (const source of [
+        "<Script><Prompt>capitalized</Prompt></Script>",
+        "<Div><Prompt>capitalized div</Prompt></Div>",
+        "<script-loader><Prompt>custom</Prompt></script-loader>",
+      ]) {
+        expect(extractDocsMarkdownPromptBlocks(source).blocks).toHaveLength(1);
+      }
+    });
+
+    it("keeps Prompt JSX used as expression values out of document block extraction", () => {
+      for (const source of [
+        "{<Prompt>expression value</Prompt>}",
+        "<Card example={<Prompt>prop value</Prompt>}>Card body</Card>",
+        "<Card>{ready ? <Prompt>conditional value</Prompt> : null}</Card>",
+        "<Card render={() => <Prompt>render value</Prompt>} />",
+      ]) {
+        expect(extractDocsMarkdownPromptBlocks(source)).toEqual({
+          blocks: [],
+          markdown: source,
+        });
+      }
+
+      const directChild = extractDocsMarkdownPromptBlocks(
+        "<Card><Prompt>direct child</Prompt></Card>",
+      );
+      expect(directChild.blocks.map((block) => block.children)).toEqual(["direct child"]);
+
+      const literalOuter = extractDocsMarkdownPromptBlocks(
+        "<Prompt>outer {<Prompt>expression child</Prompt>} tail</Prompt>",
+      );
+      expect(literalOuter.blocks.map((block) => block.children)).toEqual([
+        "outer {<Prompt>expression child</Prompt>} tail",
+      ]);
+    });
+
+    it("keeps expression-contained Prompt JSX inert when malformed MDX uses fallback scanning", () => {
+      const source = [
+        "<Card example={<Prompt>prop value</Prompt>}>Card body</Card>",
+        "",
+        "<Prompt>document block</Prompt>",
+        "",
+        "{invalid",
+      ].join("\n");
+      const extracted = extractDocsMarkdownPromptBlocks(source);
+
+      expect(extracted.blocks.map((block) => block.children)).toEqual(["document block"]);
+      expect(extracted.markdown).toContain(
+        "<Card example={<Prompt>prop value</Prompt>}>Card body</Card>",
+      );
+      expect(extracted.markdown).toContain("%%PROMPT_0%%");
+    });
+
+    it("still extracts a standalone multiline Prompt HTML block", () => {
+      const extracted = extractDocsMarkdownPromptBlocks("<Prompt>\nlive\n</Prompt>");
+      expect(extracted.blocks.map((block) => block.children)).toEqual(["\nlive\n"]);
+      expect(extracted.markdown).toBe("%%PROMPT_0%%");
+
+      const bomPrefixed = extractDocsMarkdownPromptBlocks("\uFEFF<Prompt>live</Prompt>");
+      expect(bomPrefixed.blocks.map((block) => block.children)).toEqual(["live"]);
+      expect(bomPrefixed.markdown).toBe("\uFEFF%%PROMPT_0%%");
+    });
+
+    it.each([
+      "[<Prompt>shortcut</Prompt>]",
+      "![<Prompt>image shortcut</Prompt>]",
+      "[<Prompt>collapsed</Prompt>][]",
+      "![<Prompt>collapsed image</Prompt>][]",
+      "[<Prompt>full</Prompt>][missing]",
+      "![<Prompt>full image</Prompt>][missing]",
+    ])("keeps unresolved Markdown reference syntax inert: %s", (source) => {
+      expect(extractDocsMarkdownPromptBlocks(source)).toEqual({
+        blocks: [],
+        markdown: source,
+      });
+    });
+
+    it("allocates placeholders that cannot collide with authored content", () => {
+      const extracted = extractDocsMarkdownPromptBlocks(
+        "%%PROMPT_0%%\n<Prompt>first</Prompt>\n<Prompt>second</Prompt>",
+      );
+      expect(extracted.blocks.map((block) => block.token)).toEqual([
+        "%%PROMPT_1%%",
+        "%%PROMPT_2%%",
+      ]);
+    });
   });
 
   it("resolves Agent, Human, and Audience blocks without changing literal examples", () => {

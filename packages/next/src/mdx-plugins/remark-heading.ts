@@ -1,40 +1,28 @@
 import {
   applyDocsMarkdownHeadingAnchors,
+  encodeDocsHeadingTocUrls,
+  isolateDocsMarkdownPromptReferences,
   withDocsMarkdownRenderableHeadings,
 } from "@farming-labs/docs";
 import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
-
-function encodeDocsHeadingTocUrls(value: unknown): void {
-  if (Array.isArray(value)) {
-    for (const item of value) encodeDocsHeadingTocUrls(item);
-    return;
-  }
-  if (!value || typeof value !== "object") return;
-
-  const item = value as { url?: unknown; children?: unknown };
-  if (typeof item.url === "string") {
-    const hashIndex = item.url.indexOf("#");
-    if (hashIndex >= 0) {
-      item.url = `${item.url.slice(0, hashIndex)}#${encodeURIComponent(
-        item.url.slice(hashIndex + 1),
-      )}`;
-    }
-  }
-  encodeDocsHeadingTocUrls(item.children);
-}
 
 export default function remarkHeading(
   options: Parameters<typeof createFumadocsRemarkHeading>[0] = {},
 ): ReturnType<typeof createFumadocsRemarkHeading> {
   if (options.slug) {
     const customRemarkHeading = createFumadocsRemarkHeading(options);
-    return (root, file) =>
-      withDocsMarkdownRenderableHeadings(root, () =>
+    return (root, file) => {
+      isolateDocsMarkdownPromptReferences(root, file.value);
+      const result = withDocsMarkdownRenderableHeadings(root, () =>
         customRemarkHeading(root, file, () => undefined),
       );
+      encodeDocsHeadingTocUrls(file.data.toc);
+      return result;
+    };
   }
 
   return (root, file) => {
+    isolateDocsMarkdownPromptReferences(root, file.value);
     applyDocsMarkdownHeadingAnchors(root, { customId: options.customId });
     withDocsMarkdownRenderableHeadings(root, () =>
       createFumadocsRemarkHeading({

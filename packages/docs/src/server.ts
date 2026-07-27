@@ -127,6 +127,8 @@ export {
   serializeOpenDocsProvider,
   serializeOpenDocsProviders,
 } from "./prompt-utils.js";
+export { extractDocsMarkdownPromptBlocks } from "./audience.js";
+export type { DocsMarkdownPromptBlock, ExtractedDocsMarkdownPromptBlocks } from "./audience.js";
 export {
   DEFAULT_SITEMAP_MANIFEST_PATH,
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,

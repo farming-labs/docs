@@ -22,12 +22,11 @@ import {
   type DocsMcpContextSource,
   type DocsMcpPage,
 } from "./mcp.js";
+import { upsertPageAgentContractMarkdown } from "./agent-contract.js";
 import {
-  PAGE_AGENT_CONTRACT_END_MARKER,
-  PAGE_AGENT_CONTRACT_START_MARKER,
-  upsertPageAgentContractMarkdown,
-} from "./agent-contract.js";
-import { findDocsMarkdownSection } from "./markdown-sections.js";
+  findDocsMarkdownSection,
+  stripDocsGeneratedAgentContractMarkers,
+} from "./markdown-sections.js";
 import {
   buildDocsAskAIContext,
   normalizeDocsSearchFilters,
@@ -855,11 +854,14 @@ function getPageAgentSectionMarkdown(page: DocsMcpPage): string {
   return upsertPageAgentContractMarkdown(source, page.agent);
 }
 
-function cleanPageAgentContractMarkers(markdown: string): string {
-  return markdown
-    .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
-    .replace(PAGE_AGENT_CONTRACT_END_MARKER, "")
-    .replace(/^\r?\n+/, "");
+function cleanPageAgentContractMarkers(
+  markdown: string,
+  sourceMarkdown?: string,
+  startLine?: number,
+): string {
+  return sourceMarkdown && startLine
+    ? stripDocsGeneratedAgentContractMarkers(markdown, { sourceMarkdown, startLine })
+    : stripDocsGeneratedAgentContractMarkers(markdown);
 }
 
 function getPageAgentMarkdown(page: DocsMcpPage): string {
@@ -898,7 +900,11 @@ export function hydrateDocsEvaluationSearchSource(
   if (contentMode === "page-section" && page && section && !pageSection) return undefined;
   const content =
     contentMode === "page-section" && page
-      ? cleanPageAgentContractMarkers(pageSection?.content ?? getPageAgentMarkdown(page)).trim()
+      ? cleanPageAgentContractMarkers(
+          pageSection?.content ?? getPageAgentMarkdown(page),
+          pageSection ? sectionMarkdown : undefined,
+          pageSection?.startLine,
+        ).trim()
       : [result.content, result.description].filter(Boolean).join("\n\n").trim();
   const scope = page ? getPageScope(page) : undefined;
   const url = normalizedResultUrl;

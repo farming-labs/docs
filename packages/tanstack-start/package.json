@@ -51,6 +51,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -66,11 +68,13 @@
   "devDependencies": {
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
-    "@types/react": "^19.2.2",
+    "@mdx-js/mdx": "^3.1.1",
     "@types/node": "^22.10.0",
+    "@types/react": "^19.2.2",
     "react": "^19.2.0",
+    "typescript": "^5.9.3",
     "vite": "^7.3.5",
-    "typescript": "^5.9.3"
+    "vitest": "^4.1.8"
   },
   "peerDependencies": {
     "@farming-labs/docs": ">=0.2.73",

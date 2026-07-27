@@ -6,8 +6,10 @@ import {
   applyDocsMarkdownHeadingAnchors,
   createDocsMarkdownHeadingAnchorResolver,
   createDocsRenderedHeadingAnchorResolver,
+  findDocsGeneratedAgentContractRanges,
   findDocsMarkdownSection,
   parseDocsMarkdownSections,
+  stripDocsGeneratedAgentContractMarkers,
 } from "./markdown-sections.js";
 
 interface TestMarkdownAstNode {
@@ -149,9 +151,68 @@ describe("canonical Markdown heading anchors", () => {
   });
 
   it("keeps Prompt headings excluded when malformed MDX requires the fallback parser", () => {
-    const markdown = ["<Prompt>", "## Hidden", "</Prompt>", "", "## Visible", "", "{invalid"].join(
-      "\n",
-    );
+    const markdown = [
+      "<Prompt>",
+      "## Hidden",
+      "</Prompt>",
+      "",
+      "## Use `<Prompt>` safely",
+      "",
+      "Visible code-span example.",
+      "",
+      "## [Read `<Prompt>` guidance](/prompt)",
+      "",
+      "Visible link-label example.",
+      "",
+      "{invalid",
+    ].join("\n");
+
+    expect(parseDocsMarkdownSections(markdown).map((section) => section.anchor)).toEqual([
+      "use-prompt-safely",
+      "read-prompt-guidance",
+    ]);
+  });
+
+  it("keeps multiline Prompt tags excluded when malformed MDX requires fallback", () => {
+    const markdown = [
+      "<Prompt",
+      '  title="Copy > safely"',
+      "  providers={[",
+      '    "openai",',
+      '    "anthropic",',
+      "  ]}",
+      ">",
+      "## Hidden",
+      "</Prompt>",
+      "",
+      "## Visible",
+      "",
+      "{invalid",
+    ].join("\n");
+
+    expect(parseDocsMarkdownSections(markdown).map((section) => section.anchor)).toEqual([
+      "visible",
+    ]);
+  });
+
+  it("tracks multiline Prompt tags through fallback block containers", () => {
+    const markdown = [
+      "> <Prompt",
+      '>   title="Quoted copy"',
+      "> >",
+      "> ## Quoted hidden",
+      "> </Prompt>",
+      "",
+      "- <Prompt",
+      '  title="Listed copy"',
+      "  >",
+      "  ## Listed hidden",
+      "  </Prompt>",
+      "",
+      "## Visible",
+      "",
+      "{invalid",
+    ].join("\n");
 
     expect(parseDocsMarkdownSections(markdown).map((section) => section.anchor)).toEqual([
       "visible",
@@ -336,6 +397,76 @@ describe("canonical Markdown heading anchors", () => {
     expect(root.children[0]?.children[1]?.value).toBe("");
   });
 
+  it("preserves unresolved AST reference syntax when assigning rendered anchors", () => {
+    const root = {
+      type: "root",
+      children: [
+        {
+          type: "heading",
+          children: [
+            {
+              type: "linkReference",
+              identifier: "missing",
+              label: "missing",
+              referenceType: "full",
+              children: [{ type: "text", value: "Guide" }],
+            },
+            { type: "text", value: " Setup" },
+          ],
+        },
+        {
+          type: "heading",
+          children: [
+            {
+              type: "imageReference",
+              identifier: "missing-image",
+              label: "missing-image",
+              referenceType: "full",
+              alt: "Diagram",
+            },
+            { type: "text", value: " Setup" },
+          ],
+        },
+      ],
+    };
+
+    applyDocsMarkdownHeadingAnchors(root);
+
+    expect(
+      root.children.map(
+        (heading) =>
+          (heading as { data?: { hProperties?: { id?: string } } }).data?.hProperties?.id,
+      ),
+    ).toEqual(["guidemissing-setup", "diagrammissing-image-setup"]);
+  });
+
+  it("does not resolve outside headings from definitions inside literal Prompt content", () => {
+    const markdown = [
+      "## [Inside][prompt-ref] Setup",
+      "",
+      "## [Outside][outside-ref] Setup",
+      "",
+      "<Prompt>",
+      "[prompt-ref]: /prompt-only",
+      "</Prompt>",
+      "",
+      "[outside-ref]: /outside",
+    ].join("\n");
+
+    expect(
+      parseDocsMarkdownSections(markdown).map(({ title, anchor }) => ({ title, anchor })),
+    ).toEqual([
+      {
+        title: "[Inside][prompt-ref] Setup",
+        anchor: "insideprompt-ref-setup",
+      },
+      {
+        title: "Outside Setup",
+        anchor: "outside-setup",
+      },
+    ]);
+  });
+
   it("matches rendered AST labels for balanced destinations, escapes, tags, and containers", () => {
     const markdown = [
       "## [Balanced](https://example.com/a_(b)c) Link",
@@ -396,7 +527,8 @@ describe("canonical Markdown heading anchors", () => {
       "        [Indented definition]: /indented.png",
     ].join("\n");
 
-    expect(parseDocsMarkdownSections(markdown).map((section) => section.anchor)).toEqual([
+    const sections = parseDocsMarkdownSections(markdown);
+    expect(sections.map((section) => section.anchor)).toEqual([
       "setup",
       "setup-1",
       "missing-shortcut-setup",
@@ -407,6 +539,29 @@ describe("canonical Markdown heading anchors", () => {
       "defined-link-setup",
       "missing-linkmissing-guide-setup",
     ]);
+    expect(sections[2]?.title).toBe("![Missing shortcut] Setup");
+    expect(sections[4]?.title).toBe("![Missing full][missing] Setup");
+    expect(sections[8]?.title).toBe("[Missing link][missing-guide] Setup");
+  });
+
+  it("keeps fenced contract-marker examples outside generated contract ranges", () => {
+    const markdown = [
+      "```md",
+      "<!-- farming-labs:agent-contract:start -->",
+      "<!-- farming-labs:agent-contract:end -->",
+      "```",
+      "",
+      "<!-- farming-labs:agent-contract:start -->",
+      "## Agent Contract",
+      "<!-- farming-labs:agent-contract:end -->",
+    ].join("\n");
+
+    expect(findDocsGeneratedAgentContractRanges(markdown)).toEqual([{ startLine: 6, endLine: 8 }]);
+    const cleaned = stripDocsGeneratedAgentContractMarkers(markdown);
+    expect(cleaned.match(/farming-labs:agent-contract:start/gu)).toHaveLength(1);
+    expect(cleaned.match(/farming-labs:agent-contract:end/gu)).toHaveLength(1);
+    expect(cleaned).toContain("```md\n<!-- farming-labs:agent-contract:start -->");
+    expect(cleaned).toContain("## Agent Contract");
   });
 
   it("ends container-scoped fences when their container ends", () => {

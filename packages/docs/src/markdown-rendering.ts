@@ -37,7 +37,35 @@ export interface DocsMarkdownHeadingOpeningTag {
 
 export type DocsMarkdownReferenceDefinitions = ReadonlyMap<string, DocsMarkdownReferenceDefinition>;
 
+export type DocsMarkdownBlockPlaceholderKind = "CALLOUT" | "CODEBLOCK" | "HOVERLINK" | "TABS";
+
 const TRAILING_DOCS_MARKDOWN_HEADING_ID = /\s*\\?\[#([^\]\r\n]+)\]\s*$/;
+
+/**
+ * Allocate transport placeholders without colliding with authored Markdown.
+ *
+ * Manual renderers restore these tokens after their inline/block passes, so a
+ * collision would otherwise move rendered component HTML to user-authored text.
+ */
+export function createDocsMarkdownBlockPlaceholderAllocator(
+  source: string,
+): (kind: DocsMarkdownBlockPlaceholderKind) => string {
+  const nextIndexes = new Map<DocsMarkdownBlockPlaceholderKind, number>();
+  const used = new Set<string>();
+
+  return (kind) => {
+    let index = nextIndexes.get(kind) ?? 0;
+    let token = "";
+    do {
+      token = `%%${kind}_${index}%%`;
+      index += 1;
+    } while (source.includes(token) || used.has(token));
+
+    nextIndexes.set(kind, index);
+    used.add(token);
+    return token;
+  };
+}
 
 function createDocsMarkdownTransportToken(
   source: string,
@@ -781,7 +809,7 @@ export function renderDocsMarkdownBlockContent(
       continue;
     }
 
-    if (/^%%CODEBLOCK_\d+%%$/.test(trimmed)) {
+    if (/^%%(?:CODEBLOCK|CALLOUT|TABS|PROMPT|HOVERLINK)_\d+%%$/.test(trimmed)) {
       flushParagraph();
       output.push(trimmed);
       continue;

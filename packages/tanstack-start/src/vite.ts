@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import mdx from "@mdx-js/rollup";
 import {
   applyDocsMarkdownHeadingAnchors,
+  encodeDocsHeadingTocUrls,
+  isolateDocsMarkdownPromptReferences,
   withDocsMarkdownRenderableHeadings,
 } from "@farming-labs/docs";
 import { remarkCodeGroup } from "@farming-labs/docs/server";
@@ -15,27 +17,9 @@ import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
 
-function encodeDocsHeadingTocUrls(value: unknown): void {
-  if (Array.isArray(value)) {
-    for (const item of value) encodeDocsHeadingTocUrls(item);
-    return;
-  }
-  if (!value || typeof value !== "object") return;
-
-  const item = value as { url?: unknown; children?: unknown };
-  if (typeof item.url === "string") {
-    const hashIndex = item.url.indexOf("#");
-    if (hashIndex >= 0) {
-      item.url = `${item.url.slice(0, hashIndex)}#${encodeURIComponent(
-        item.url.slice(hashIndex + 1),
-      )}`;
-    }
-  }
-  encodeDocsHeadingTocUrls(item.children);
-}
-
-function canonicalRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
+export function createCanonicalDocsRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
   return (root, file) => {
+    isolateDocsMarkdownPromptReferences(root, file.value);
     applyDocsMarkdownHeadingAnchors(root);
     withDocsMarkdownRenderableHeadings(root, () =>
       createFumadocsRemarkHeading({ customId: false })(root, file, () => undefined),
@@ -177,7 +161,7 @@ export function docsMdx(): PluginOption {
         remarkFrontmatter,
         [remarkMdxFrontmatter, { name: "metadata" }],
         remarkCodeGroup,
-        canonicalRemarkHeading,
+        createCanonicalDocsRemarkHeading,
       ],
       rehypePlugins: [
         rehypeToc,

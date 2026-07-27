@@ -255,6 +255,8 @@ export {
   slugifyDocsMarkdownHeading,
   withDocsMarkdownRenderableHeadings,
 } from "./markdown-sections.js";
+export { encodeDocsHeadingTocUrls } from "./heading-toc.js";
+export { isolateDocsMarkdownPromptReferences } from "./prompt-references.js";
 export type {
   ApplyDocsMarkdownHeadingAnchorsOptions,
   DocsMarkdownHeadingAnchor,

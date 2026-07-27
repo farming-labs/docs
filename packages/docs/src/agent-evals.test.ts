@@ -464,6 +464,63 @@ ${"Useful café guidance 🚜. ".repeat(60)}
     });
   });
 
+  it("preserves authored fenced contract-marker examples during hydration", () => {
+    const markerExamplePage = page({
+      slug: "contract-marker-example",
+      url: "/docs/contract-marker-example",
+      title: "Contract marker example",
+      rawContent: [
+        "## Marker example",
+        "",
+        "Keep both literal markers.",
+        "",
+        "```md",
+        "<!-- farming-labs:agent-contract:start -->",
+        "<!-- farming-labs:agent-contract:end -->",
+        "```",
+      ].join("\n"),
+    });
+    const source = hydrateDocsEvaluationSearchSource(
+      {
+        id: "marker-example",
+        url: "/docs/contract-marker-example#marker-example",
+        content: "Provider snippet.",
+        type: "heading",
+      },
+      0,
+      new Map([[markerExamplePage.url, markerExamplePage]]),
+      "page-section",
+    );
+
+    expect(source?.content).toContain("<!-- farming-labs:agent-contract:start -->");
+    expect(source?.content).toContain("<!-- farming-labs:agent-contract:end -->");
+
+    const generatedContractPage = page({
+      slug: "generated-contract-marker",
+      url: "/docs/generated-contract-marker",
+      title: "Generated contract marker",
+      rawContent: "## Authored section\n\nAuthored guidance.",
+      agent: {
+        task: "Inspect generated contract cleanup.",
+        outcome: "Only generated boundary markers are removed.",
+      },
+    });
+    const generatedSource = hydrateDocsEvaluationSearchSource(
+      {
+        id: "generated-contract",
+        url: "/docs/generated-contract-marker#agent-contract",
+        content: "Provider snippet.",
+        type: "heading",
+      },
+      0,
+      new Map([[generatedContractPage.url, generatedContractPage]]),
+      "page-section",
+    );
+
+    expect(generatedSource?.content).toContain("## Agent Contract");
+    expect(generatedSource?.content).not.toContain("farming-labs:agent-contract");
+  });
+
   it("does not count a source when the budget can render only its header", async () => {
     const headerOnlyPage = page({
       slug: "header-only",

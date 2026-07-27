@@ -176,6 +176,35 @@ Second.
     ]);
   });
 
+  it("keeps contract-marker examples in fences inert for agent section filtering", () => {
+    const documents = buildDocsSearchDocuments(
+      [
+        {
+          title: "Contract marker examples",
+          url: "/docs/contract-marker-examples",
+          content: "Explain contract marker examples.",
+          rawContent: [
+            "```md",
+            "<!-- farming-labs:agent-contract:start -->",
+            "```",
+            "",
+            "## Keep this section",
+            "",
+            "Authored retrieval guidance.",
+            "",
+            "<!-- farming-labs:agent-contract:end -->",
+          ].join("\n"),
+        },
+      ],
+      {},
+      "agent",
+    );
+
+    expect(
+      documents.filter((document) => document.type === "heading").map((document) => document.url),
+    ).toContain("/docs/contract-marker-examples#keep-this-section");
+  });
+
   it("builds distinct human and agent audience indexes", () => {
     const audiencePages = [
       {

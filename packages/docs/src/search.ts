@@ -34,7 +34,12 @@ import {
   normalizeAgentVersion,
 } from "./agent-scope.js";
 import { resolveDocsAudienceMdxContent, type DocsContentAudience } from "./audience.js";
-import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
+import {
+  findDocsGeneratedAgentContractRanges,
+  findDocsMarkdownSection,
+  parseDocsMarkdownSections,
+  stripDocsGeneratedAgentContractMarkers,
+} from "./markdown-sections.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const MAX_SEARCH_SNIPPET_CHARS = 160;
@@ -502,10 +507,7 @@ function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
 }
 
 function cleanGeneratedAgentContractMarkers(content: string): string {
-  return content
-    .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
-    .replace(PAGE_AGENT_CONTRACT_END_MARKER, "")
-    .replace(/^\r?\n+/, "");
+  return stripDocsGeneratedAgentContractMarkers(content);
 }
 
 function getAskAIPageSectionContent(page: DocsSearchSourcePage): string {
@@ -928,22 +930,6 @@ function getPageAudienceSectionContent(
   return audience === "agent" ? upsertPageAgentContractMarkdown(content, page.agent) : content;
 }
 
-function getGeneratedAgentContractLineRange(
-  content: string,
-): { startLine: number; endLine: number } | undefined {
-  const lines = content.split(/\r?\n/u);
-  const startIndex = lines.findIndex((line) => line.trim() === PAGE_AGENT_CONTRACT_START_MARKER);
-  if (startIndex < 0) return undefined;
-  const relativeEndIndex = lines
-    .slice(startIndex + 1)
-    .findIndex((line) => line.trim() === PAGE_AGENT_CONTRACT_END_MARKER);
-  if (relativeEndIndex < 0) return undefined;
-  return {
-    startLine: startIndex + 1,
-    endLine: startIndex + relativeEndIndex + 2,
-  };
-}
-
 function getPageAudienceSearchText(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience,
@@ -1127,7 +1113,7 @@ function splitPageIntoSections(
   // authored/rendered anchors before marker-wrapped contract headings, preserving DOM citations.
   const raw = getPageAudienceSectionContent(page, audience);
   const generatedContract =
-    audience === "agent" ? getGeneratedAgentContractLineRange(raw) : undefined;
+    audience === "agent" ? findDocsGeneratedAgentContractRanges(raw)[0] : undefined;
   const scope = resolveDocsSearchPageScope(page);
   let documentIndex = 0;
   return parseDocsMarkdownSections(raw).flatMap((section) => {

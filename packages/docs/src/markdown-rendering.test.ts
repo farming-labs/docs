@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createDocsMarkdownBlockPlaceholderAllocator,
   extractDocsMarkdownReferenceDefinitions,
   extractDocsRenderedHeadingElements,
   prepareDocsMarkdownHeadings,
@@ -141,6 +142,36 @@ custom second [#custom-setext]
     const html = renderDocsMarkdownBlockContent("Before.\n\n%%CODEBLOCK_0%%\n\nAfter.", new Map());
 
     expect(html).toBe("<p>Before.</p>%%CODEBLOCK_0%%<p>After.</p>");
+  });
+
+  it("keeps every nested component placeholder outside callout paragraphs", () => {
+    const placeholders = [
+      "%%CODEBLOCK_0%%",
+      "%%CALLOUT_1%%",
+      "%%TABS_2%%",
+      "%%PROMPT_3%%",
+      "%%HOVERLINK_4%%",
+    ];
+    const html = renderDocsMarkdownBlockContent(
+      ["Before.", "", ...placeholders.flatMap((placeholder) => [placeholder, ""]), "After."].join(
+        "\n",
+      ),
+      new Map(),
+    );
+
+    expect(html).toBe(`<p>Before.</p>${placeholders.join("")}<p>After.</p>`);
+    expect(html).not.toContain("<p>%%");
+  });
+
+  it("allocates block placeholders around authored token-like text", () => {
+    const allocate = createDocsMarkdownBlockPlaceholderAllocator(
+      ["%%CALLOUT_0%%", "%%CALLOUT_1%%", "%%CODEBLOCK_0%%"].join("\n"),
+    );
+
+    expect(allocate("CALLOUT")).toBe("%%CALLOUT_2%%");
+    expect(allocate("CALLOUT")).toBe("%%CALLOUT_3%%");
+    expect(allocate("CODEBLOCK")).toBe("%%CODEBLOCK_1%%");
+    expect(allocate("TABS")).toBe("%%TABS_0%%");
   });
 
   it("extracts only protected pipeline headings and leaves authored HTML in content", () => {
