@@ -7,10 +7,11 @@ import { runAgentSurfaceSmoke } from "./smoke-agent-surfaces.mjs";
 
 const BASE_URL = "https://deployment.example.com";
 const AGENT_SKILLS_SCHEMA = "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
-const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
-const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v2";
+const AGENT_MANIFEST_VERSION = "2";
+const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v2.json";
 const AGENT_MANIFEST_SCHEMA_MEDIA_TYPE = "application/schema+json";
-const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v2.json";
 const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
 const API_CATALOG_ROUTE = "/.well-known/api-catalog";
 const AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
@@ -128,7 +129,7 @@ function createFixtureFetch(options = {}) {
   const manifest = {
     $schema: AGENT_MANIFEST_SCHEMA,
     format: AGENT_MANIFEST_FORMAT,
-    version: "1",
+    version: AGENT_MANIFEST_VERSION,
     name: "@farming-labs/docs",
     site: { baseUrl: canonicalBaseUrl, entry: "docs" },
     capabilities: {
@@ -345,6 +346,7 @@ function createFixtureFetch(options = {}) {
           $id: AGENT_MANIFEST_SCHEMA,
           properties: {
             format: { const: AGENT_MANIFEST_FORMAT },
+            version: { const: AGENT_MANIFEST_VERSION },
           },
         },
         { contentType: `${AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}; charset=utf-8` },

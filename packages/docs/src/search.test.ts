@@ -68,6 +68,143 @@ Second section.
     ]);
   });
 
+  it("uses canonical Unicode, explicit, and collision-safe heading anchors", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Anchor guide",
+        url: "/docs/anchors",
+        content: "Canonical anchor guidance.",
+        rawContent: `# Café 配置
+
+## Overview [#release-overview]
+
+## Repeat
+
+First.
+
+## Repeat
+
+Second.
+
+## Foo
+
+## Foo
+
+## Foo-1
+`,
+      },
+    ]);
+
+    expect(
+      documents.filter((document) => document.type === "heading").map((document) => document.url),
+    ).toEqual([
+      "/docs/anchors#caf%C3%A9-%E9%85%8D%E7%BD%AE",
+      "/docs/anchors#release-overview",
+      "/docs/anchors#repeat",
+      "/docs/anchors#repeat-1",
+      "/docs/anchors#foo",
+      "/docs/anchors#foo-1",
+      "/docs/anchors#foo-1-1",
+    ]);
+  });
+
+  it("keeps reserved explicit anchors distinct and URL-safe", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Reserved anchors",
+        url: "/docs/reserved",
+        content: "Reserved anchor guidance.",
+        rawContent: [
+          "## Hash [#foo#bar]",
+          "",
+          "Hash content.",
+          "",
+          "## Percent [#foo%23bar]",
+          "",
+          "Percent content.",
+        ].join("\n"),
+      },
+    ]);
+
+    expect(
+      documents.filter((document) => document.type === "heading").map((document) => document.url),
+    ).toEqual(["/docs/reserved#foo%23bar", "/docs/reserved#foo%2523bar"]);
+  });
+
+  it("keeps authored DOM anchors ahead of generated contract-only headings", () => {
+    const documents = buildDocsSearchDocuments(
+      [
+        {
+          title: "Contract collision",
+          url: "/docs/contract-collision",
+          content: "Authored contract collision guidance.",
+          rawContent: [
+            "## Authored [#agent-contract]",
+            "",
+            "Authored collision marker.",
+            "",
+            "## Prerequisites",
+            "",
+            "Authored prerequisite collision marker.",
+          ].join("\n"),
+          agent: {
+            task: "Run the generated contract task.",
+            outcome: "The generated contract outcome is available.",
+            prerequisites: ["Generated prerequisite collision marker."],
+          },
+        },
+      ],
+      {},
+      "agent",
+    );
+
+    expect(
+      documents
+        .filter((document) => document.type === "heading")
+        .map(({ id, section, url }) => ({ id, section, url })),
+    ).toEqual([
+      {
+        id: "/docs/contract-collision#section-0",
+        section: "Authored",
+        url: "/docs/contract-collision#agent-contract",
+      },
+      {
+        id: "/docs/contract-collision#section-1",
+        section: "Prerequisites",
+        url: "/docs/contract-collision#prerequisites",
+      },
+    ]);
+  });
+
+  it("keeps contract-marker examples in fences inert for agent section filtering", () => {
+    const documents = buildDocsSearchDocuments(
+      [
+        {
+          title: "Contract marker examples",
+          url: "/docs/contract-marker-examples",
+          content: "Explain contract marker examples.",
+          rawContent: [
+            "```md",
+            "<!-- farming-labs:agent-contract:start -->",
+            "```",
+            "",
+            "## Keep this section",
+            "",
+            "Authored retrieval guidance.",
+            "",
+            "<!-- farming-labs:agent-contract:end -->",
+          ].join("\n"),
+        },
+      ],
+      {},
+      "agent",
+    );
+
+    expect(
+      documents.filter((document) => document.type === "heading").map((document) => document.url),
+    ).toContain("/docs/contract-marker-examples#keep-this-section");
+  });
+
   it("builds distinct human and agent audience indexes", () => {
     const audiencePages = [
       {
@@ -692,6 +829,117 @@ describe("performDocsSearch", () => {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();
     }
+  });
+
+  it("starts provider search before building local documents and skips unused sync projections", async () => {
+    let adapterStarted = false;
+    let agentProjectionReads = 0;
+    let humanProjectionReads = 0;
+    let projectedAfterAdapterStarted = false;
+    const sourcePages = [
+      {
+        title: "Lazy agent search",
+        url: "/docs/lazy-agent-search",
+        content: "Human coral walkthrough.",
+        get rawContent() {
+          humanProjectionReads += 1;
+          return "# Lazy agent search\n\nHuman coral walkthrough.";
+        },
+        get agentRawContent() {
+          agentProjectionReads += 1;
+          projectedAfterAdapterStarted ||= adapterStarted;
+          return "# Lazy agent search\n\nAgent indigo procedure.";
+        },
+      },
+    ];
+
+    const results = await performDocsSearch({
+      pages: sourcePages,
+      query: "agent indigo procedure",
+      audience: "agent",
+      search: createCustomSearchAdapter({
+        name: "lazy-provider",
+        async search() {
+          adapterStarted = true;
+          return [];
+        },
+      }),
+    });
+
+    expect(adapterStarted).toBe(true);
+    expect(projectedAfterAdapterStarted).toBe(true);
+    expect(agentProjectionReads).toBeGreaterThan(0);
+    expect(humanProjectionReads).toBe(0);
+    expect(results[0]?.url).toBe("/docs/lazy-agent-search");
+  });
+
+  it("preserves writable adapter document contexts while materializing lazily", async () => {
+    const replacementDocuments = buildDocsSearchDocuments([
+      {
+        title: "Adapter replacement",
+        url: "/docs/adapter-replacement",
+        content: "Replacement indigo procedure.",
+        rawContent: "# Adapter replacement\n\nReplacement indigo procedure.",
+      },
+    ]);
+
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Unread source",
+          url: "/docs/unread-source",
+          content: "Unread source content.",
+          get rawContent(): string {
+            throw new Error("The replaced document context should not be materialized.");
+          },
+        },
+      ],
+      query: "replacement indigo procedure",
+      search: createCustomSearchAdapter({
+        name: "document-replacement-provider",
+        search(_query, context) {
+          context.documents = replacementDocuments;
+          return Promise.resolve([]);
+        },
+      }),
+    });
+
+    expect(results[0]?.url).toBe("/docs/adapter-replacement");
+  });
+
+  it("observes an in-flight provider rejection when local projection fails", async () => {
+    let rejectProvider: ((reason?: unknown) => void) | undefined;
+    const providerSearch = new Promise<never>((_resolve, reject) => {
+      rejectProvider = reject;
+    });
+    const catchSpy = vi.spyOn(providerSearch, "catch");
+
+    await expect(
+      performDocsSearch({
+        pages: [
+          {
+            title: "Broken projection",
+            url: "/docs/broken-projection",
+            content: "Broken projection content.",
+            get rawContent(): string {
+              throw new Error("Local projection failed.");
+            },
+          },
+        ],
+        query: "broken projection",
+        failureMode: "throw",
+        search: createCustomSearchAdapter({
+          name: "rejecting-provider",
+          search() {
+            return providerSearch;
+          },
+        }),
+      }),
+    ).rejects.toThrow("Local projection failed.");
+
+    expect(catchSpy).toHaveBeenCalledOnce();
+    rejectProvider?.(new Error("Provider failed after local projection."));
+    await Promise.resolve();
   });
 
   it("returns simple search results with snippets", async () => {
@@ -1341,6 +1589,35 @@ describe("buildDocsAskAIContext", () => {
     expect(context.results[0]?.url).toBe("/docs/audience-aware#automation");
     expect(context.context).toContain("zircon handshake nonce");
     expect(context.context).not.toContain("Human screenshot walkthrough");
+  });
+
+  it("keeps case-sensitive custom section anchors distinct", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Case-sensitive anchors",
+          url: "/docs/case-sensitive",
+          content: "Case-sensitive anchor guidance.",
+          rawContent: [
+            "## Upper [#Foo]",
+            "",
+            "Shared case-sensitive marker for the uppercase section.",
+            "",
+            "## Lower [#foo]",
+            "",
+            "Shared case-sensitive marker for the lowercase section.",
+          ].join("\n"),
+        },
+      ],
+      query: "shared case-sensitive marker",
+      limit: 5,
+    });
+
+    expect(context.results.map((result) => result.url)).toEqual(
+      expect.arrayContaining(["/docs/case-sensitive#Foo", "/docs/case-sensitive#foo"]),
+    );
+    expect(context.context).toContain("uppercase section");
+    expect(context.context).toContain("lowercase section");
   });
 
   it("retrieves and includes a contract when only its task terms match", async () => {
@@ -2196,6 +2473,71 @@ describe("remote search adapters", () => {
       type: "string[]",
       optional: true,
     });
+  });
+
+  it("starts non-sync MCP I/O before agent projection without building the human corpus", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [{ type: "text", text: JSON.stringify({ results: [] }) }],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    let agentProjectionReads = 0;
+    let humanProjectionReads = 0;
+    let mcpStartedBeforeProjection = false;
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Lazy MCP search",
+          url: "/docs/lazy-mcp-search",
+          content: "Human coral walkthrough.",
+          get rawContent() {
+            humanProjectionReads += 1;
+            return "# Lazy MCP search\n\nHuman coral walkthrough.";
+          },
+          get agentRawContent() {
+            agentProjectionReads += 1;
+            mcpStartedBeforeProjection ||= vi.mocked(globalThis.fetch).mock.calls.length > 0;
+            return "# Lazy MCP search\n\nAgent indigo procedure.";
+          },
+        },
+      ],
+      query: "agent indigo procedure",
+      audience: "agent",
+      search: {
+        provider: "mcp",
+        endpoint: "https://docs.example.com/mcp",
+        forwardAudience: true,
+      },
+      baseUrl: "https://docs.example.com",
+    });
+
+    expect(mcpStartedBeforeProjection).toBe(true);
+    expect(agentProjectionReads).toBeGreaterThan(0);
+    expect(humanProjectionReads).toBe(0);
+    expect(results[0]?.url).toBe("/docs/lazy-mcp-search");
   });
 
   it("maps legacy MCP search_docs payloads into docs search results", async () => {

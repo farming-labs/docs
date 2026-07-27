@@ -44,6 +44,7 @@ import {
   API_CATALOG_PROFILE_URI,
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
   DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
   DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
   DEFAULT_AGENT_SKILLS_ARCHIVE_ROUTE_PATTERN,
@@ -69,6 +70,7 @@ export {
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
   DEFAULT_AGENT_SKILL_FORMAT,
   DEFAULT_AGENT_SKILL_ARCHIVE_FORMAT,
   DEFAULT_AGENT_SKILL_FILE_FORMAT,
@@ -235,7 +237,7 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   getContext: true,
 } satisfies DocsMcpResolvedConfig["tools"];
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
-export const DOCS_MARKDOWN_SECTION_INDEX_FORMAT = "docs-markdown-sections.v1";
+export const DOCS_MARKDOWN_SECTION_INDEX_FORMAT = "docs-markdown-sections.v2";
 const DOCS_AI_AGENT_USER_AGENT_PATTERNS = [
   "claudebot",
   "claude-searchbot",
@@ -303,6 +305,7 @@ export const DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN = buildDocsUserAgentHeaderP
   DOCS_BOT_LIKE_USER_AGENT_TERMS,
 );
 const DOCS_LLMS_TXT_DIRECTIVE_LINE = "LLM index: /llms.txt";
+const DOCS_MARKDOWN_GENERATED_PREAMBLE_FIELD = "x_farming_labs_generated_preamble";
 
 const DOCS_MCP_SERVICE_SUBDOMAIN_LABELS = new Set([
   "api",
@@ -729,7 +732,7 @@ export interface DocsMarkdownSectionMetadata {
 }
 
 export interface DocsMarkdownSectionIndex {
-  schemaVersion: 1;
+  schemaVersion: 2;
   format: typeof DOCS_MARKDOWN_SECTION_INDEX_FORMAT;
   canonicalUrl: string;
   markdownUrl: string;
@@ -1825,7 +1828,9 @@ export function validateDocsAgentFeedbackPayload(
 }
 
 export function toDocsMarkdownUrl(url: string, options: { locale?: string } = {}): string {
-  const [withoutHash, hash = ""] = url.split("#", 2);
+  const hashIndex = url.indexOf("#");
+  const withoutHash = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
+  const hash = hashIndex >= 0 ? url.slice(hashIndex + 1) : "";
   const [pathname, query = ""] = withoutHash.split("?", 2);
   const normalizedPath = normalizeDocsUrlPath(pathname || "/");
   const markdownPath = normalizedPath.endsWith(".md") ? normalizedPath : `${normalizedPath}.md`;
@@ -2861,6 +2866,7 @@ function renderDocsMarkdownFrontmatter({
   markdownUrl,
   lastUpdated,
   agent,
+  generatedPreamble,
 }: {
   title: string;
   description?: string;
@@ -2868,6 +2874,7 @@ function renderDocsMarkdownFrontmatter({
   markdownUrl: string;
   lastUpdated?: string;
   agent?: PageAgentFrontmatter;
+  generatedPreamble?: boolean;
 }): string {
   const lines = [
     "---",
@@ -2876,6 +2883,7 @@ function renderDocsMarkdownFrontmatter({
     `canonical_url: ${toYamlString(canonicalUrl)}`,
     `markdown_url: ${toYamlString(markdownUrl)}`,
     ...(lastUpdated ? [`last_updated: ${toYamlString(lastUpdated)}`] : []),
+    ...(generatedPreamble ? [`${DOCS_MARKDOWN_GENERATED_PREAMBLE_FIELD}: true`] : []),
     ...renderPageAgentFrontmatterYamlLines(agent),
     "---",
   ];
@@ -2901,23 +2909,12 @@ function stripDocsMarkdownFrontmatter(markdown: string): { frontmatter: string; 
   return { frontmatter: match[1] ?? "", body: match[2] ?? "" };
 }
 
-function slugifyPublicDocsMarkdownSectionId(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/<[^>]*>/g, "")
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 function resolveDocsMarkdownSectionBody(document: string): { body: string; lineOffset: number } {
-  const stripped = stripDocsMarkdownFrontmatter(document).body;
-  const lines = stripped.split(/\r?\n/u);
+  const stripped = stripDocsMarkdownFrontmatter(document);
+  const hasGeneratedPreamble = stripped.frontmatter
+    .split(/\r?\n/u)
+    .some((line) => line.trim() === `${DOCS_MARKDOWN_GENERATED_PREAMBLE_FIELD}: true`);
+  const lines = stripped.body.split(/\r?\n/u);
   let generatedPreambleStart = 0;
   while (
     generatedPreambleStart < lines.length &&
@@ -2927,9 +2924,14 @@ function resolveDocsMarkdownSectionBody(document: string): { body: string; lineO
   }
 
   if (
+    hasGeneratedPreamble &&
     /^#(?:\s+|$)/u.test(lines[generatedPreambleStart] ?? "") &&
     /^URL:\s+\S/u.test(lines[generatedPreambleStart + 1] ?? "")
   ) {
+    // The page-title heading is generated for the Markdown representation. It is not part
+    // of the rendered MDX heading tree, search index, Ask AI, or MCP source, so it must not
+    // consume an anchor or advertise a fragment that those surfaces cannot resolve.
+    lines[generatedPreambleStart] = "";
     let metadataEnd = generatedPreambleStart + 2;
     while (/^(?:LLM index|Description|Related):\s*/u.test(lines[metadataEnd] ?? "")) {
       metadataEnd += 1;
@@ -3031,23 +3033,14 @@ export function isDocsMarkdownSectionIndexRequest(url: URL): boolean {
 
 export function collectDocsMarkdownSections(document: string): DocsMarkdownSection[] {
   const { body, lineOffset } = resolveDocsMarkdownSectionBody(document);
-  const seen = new Map<string, number>();
-  return parseDocsMarkdownSections(body).flatMap((section) => {
-    const baseId = slugifyPublicDocsMarkdownSectionId(section.title);
-    if (!baseId) return [];
-    const count = seen.get(baseId) ?? 0;
-    seen.set(baseId, count + 1);
-    return [
-      {
-        id: count === 0 ? baseId : `${baseId}-${count + 1}`,
-        heading: section.title,
-        level: section.level,
-        content: section.content,
-        startLine: section.startLine + lineOffset,
-        endLine: section.endLine + lineOffset,
-      },
-    ];
-  });
+  return parseDocsMarkdownSections(body).map((section) => ({
+    id: section.anchor,
+    heading: section.title,
+    level: section.level,
+    content: section.content,
+    startLine: section.startLine + lineOffset,
+    endLine: section.endLine + lineOffset,
+  }));
 }
 
 function updateDocsMarkdownUrl(value: string, update: (url: URL) => void): string {
@@ -3064,7 +3057,9 @@ function updateDocsMarkdownUrl(value: string, update: (url: URL) => void): strin
 
 function resolveDocsMarkdownSectionCanonicalUrl(canonicalUrl: string, sectionId: string): string {
   return updateDocsMarkdownUrl(canonicalUrl, (url) => {
-    url.hash = sectionId;
+    // URL.hash does not encode "%" or an embedded "#". Encode the complete identifier
+    // first so distinct section IDs always round-trip through standards-compliant URLs.
+    url.hash = encodeURIComponent(sectionId);
   });
 }
 
@@ -3153,7 +3148,7 @@ export function buildDocsMarkdownSectionIndex(
       : undefined;
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
     canonicalUrl: options.canonicalUrl,
     markdownUrl: options.markdownUrl,
@@ -3170,14 +3165,14 @@ export function buildDocsMarkdownSectionIndex(
 
 function normalizeRequestedDocsMarkdownSectionId(requestedSection: string): string {
   let selector = requestedSection.trim();
-  const hashIndex = selector.lastIndexOf("#");
+  const hashIndex = selector.indexOf("#");
   if (hashIndex >= 0) selector = selector.slice(hashIndex + 1);
   try {
     selector = decodeURIComponent(selector);
   } catch {
     // Keep malformed fragments usable as literal selectors.
   }
-  return selector.replace(/^#+/u, "").toLowerCase();
+  return selector;
 }
 
 export function selectDocsMarkdownSection(
@@ -3203,8 +3198,18 @@ export function selectDocsMarkdownSection(
     };
   }
 
+  const rawRequestedId = requestedSection.trim();
+  const rawExactSection = availableSections.find((candidate) => candidate.id === rawRequestedId);
   const requestedId = normalizeRequestedDocsMarkdownSectionId(requestedSection);
-  const directSection = availableSections.find((candidate) => candidate.id === requestedId);
+  const exactSection =
+    rawExactSection ?? availableSections.find((candidate) => candidate.id === requestedId);
+  const caseInsensitiveSections = exactSection
+    ? []
+    : availableSections.filter(
+        (candidate) => candidate.id.toLowerCase() === requestedId.toLowerCase(),
+      );
+  const directSection =
+    exactSection ?? (caseInsensitiveSections.length === 1 ? caseInsensitiveSections[0] : undefined);
   const { body, lineOffset } = resolveDocsMarkdownSectionBody(document);
   const selectedSharedSection = directSection
     ? undefined
@@ -3593,14 +3598,16 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
   const responseDocument = sectionResult?.document ?? document;
   const sectionCanonicalUrl =
     sectionResult?.found && sectionResult.section
-      ? `${canonicalUrl}#${sectionResult.section.id}`
+      ? resolveDocsMarkdownSectionCanonicalUrl(canonicalUrl, sectionResult.section.id)
       : canonicalUrl;
   const sectionContentLocation = sectionRequest
     ? appendDocsMarkdownSectionQuery(contentLocation, sectionRequest)
     : contentLocation;
   const sectionHeaders: Record<string, string> = sectionResult
     ? {
-        "X-Docs-Markdown-Section": sectionResult.section?.id ?? "",
+        "X-Docs-Markdown-Section": sectionResult.section
+          ? encodeURIComponent(sectionResult.section.id)
+          : "",
         "X-Docs-Markdown-Section-Found": sectionResult.found ? "true" : "false",
         "X-Docs-Markdown-Section-Truncated": sectionResult.truncated ? "true" : "false",
         "X-Docs-Markdown-Estimated-Tokens": String(sectionResult.estimatedTokens),
@@ -4098,10 +4105,10 @@ export function renderDocsMarkdownDocument(
     ),
   );
   return appendDocsMarkdownSitemapFooter(
-    prependDocsMarkdownFrontmatter(
-      lines.join("\n"),
-      resolveDocsMarkdownPageMetadata(page, options),
-    ),
+    prependDocsMarkdownFrontmatter(lines.join("\n"), {
+      ...resolveDocsMarkdownPageMetadata(page, options),
+      generatedPreamble: true,
+    }),
     options?.sitemap,
   );
 }
@@ -4251,7 +4258,7 @@ export function buildDocsAgentDiscoverySpec({
   return {
     $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
     format: DOCS_AGENT_MANIFEST_FORMAT,
-    version: "1",
+    version: DOCS_AGENT_MANIFEST_VERSION,
     name: "@farming-labs/docs",
     baseUrl: origin,
     site: {

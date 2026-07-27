@@ -14,12 +14,13 @@ import {
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
 } from "@farming-labs/docs";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
 
 const agentManifestSchema = JSON.parse(
   fs.readFileSync(
-    new URL("../../../website/public/schema/agent-manifest.v1.json", import.meta.url),
+    new URL("../../../website/public/schema/agent-manifest.v2.json", import.meta.url),
     "utf8",
   ),
 ) as Record<string, unknown>;
@@ -862,20 +863,15 @@ The docs app starts.
 
     expect(indexResponse.status).toBe(200);
     expect(indexResponse.headers.get("content-type")).toBe("application/json; charset=utf-8");
-    expect(indexResponse.headers.get("x-docs-markdown-section-count")).toBe("4");
+    expect(indexResponse.headers.get("x-docs-markdown-section-count")).toBe("3");
     expect(index).toMatchObject({
-      format: "docs-markdown-sections.v1",
-      sectionCount: 4,
+      format: "docs-markdown-sections.v2",
+      sectionCount: 3,
       sections: [
         {
           id: "installation",
           heading: "Installation",
           markdownUrl: "http://localhost/docs/installation.md?section=installation",
-        },
-        {
-          id: "installation-2",
-          heading: "Installation",
-          markdownUrl: "http://localhost/docs/installation.md?section=installation-2",
         },
         {
           id: "prerequisites",
@@ -3327,7 +3323,7 @@ description: "Start building quickly"
 
     expect(spec.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
     expect(spec.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
-    expect(spec.version).toBe("1");
+    expect(spec.version).toBe(DOCS_AGENT_MANIFEST_VERSION);
     expect(validateAgentManifest(spec), JSON.stringify(validateAgentManifest.errors, null, 2)).toBe(
       true,
     );

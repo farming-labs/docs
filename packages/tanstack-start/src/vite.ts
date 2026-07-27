@@ -2,14 +2,32 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@mdx-js/rollup";
+import {
+  applyDocsMarkdownHeadingAnchors,
+  encodeDocsHeadingTocUrls,
+  isolateDocsMarkdownPromptReferences,
+  withDocsMarkdownRenderableHeadings,
+} from "@farming-labs/docs";
 import { remarkCodeGroup } from "@farming-labs/docs/server";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
-import { remarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
+import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
+
+export function createCanonicalDocsRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
+  return (root, file) => {
+    isolateDocsMarkdownPromptReferences(root, file.value);
+    applyDocsMarkdownHeadingAnchors(root);
+    withDocsMarkdownRenderableHeadings(root, () =>
+      createFumadocsRemarkHeading({ customId: false })(root, file, () => undefined),
+    );
+    encodeDocsHeadingTocUrls(file.data.toc);
+    return root;
+  };
+}
 
 function findWorkspaceRoot(startDir: string): string | null {
   let current = startDir;
@@ -143,7 +161,7 @@ export function docsMdx(): PluginOption {
         remarkFrontmatter,
         [remarkMdxFrontmatter, { name: "metadata" }],
         remarkCodeGroup,
-        remarkHeading,
+        createCanonicalDocsRemarkHeading,
       ],
       rehypePlugins: [
         rehypeToc,

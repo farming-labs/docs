@@ -13,6 +13,7 @@ import {
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
 } from "./agent.js";
 
 const AGENT_SKILL_CONTENT = `---
@@ -83,6 +84,7 @@ function createPassingResponse(surface: DocsAgentContractSurface, contentType?: 
     body = JSON.stringify({
       $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
       format: DOCS_AGENT_MANIFEST_FORMAT,
+      version: DOCS_AGENT_MANIFEST_VERSION,
     });
   } else if (surface === "agent-skills-index") {
     body = JSON.stringify({
@@ -370,6 +372,7 @@ version: "1.0"
             nested: {
               $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
               format: DOCS_AGENT_MANIFEST_FORMAT,
+              version: DOCS_AGENT_MANIFEST_VERSION,
             },
           }),
           {
@@ -385,7 +388,35 @@ version: "1.0"
       issues: [
         expect.stringContaining("top-level $schema"),
         expect.stringContaining("top-level format"),
+        expect.stringContaining("top-level version"),
       ],
+    });
+  });
+
+  it("rejects a manifest version that does not match its schema identity", async () => {
+    const report = await runDocsAgentConformance({
+      adapter: "next",
+      async handle(_request, surface) {
+        const response = createPassingResponse(surface);
+        if (surface !== "discovery") return response;
+
+        return new Response(
+          JSON.stringify({
+            $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
+            format: DOCS_AGENT_MANIFEST_FORMAT,
+            version: "1",
+          }),
+          {
+            status: response.status,
+            headers: response.headers,
+          },
+        );
+      },
+    });
+
+    expect(report.cases.find((result) => result.surface === "discovery")).toMatchObject({
+      passed: false,
+      issues: [expect.stringContaining(`top-level version ${DOCS_AGENT_MANIFEST_VERSION}`)],
     });
   });
 

@@ -34,7 +34,12 @@ import {
   normalizeAgentVersion,
 } from "./agent-scope.js";
 import { resolveDocsAudienceMdxContent, type DocsContentAudience } from "./audience.js";
-import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
+import {
+  findDocsGeneratedAgentContractRanges,
+  findDocsMarkdownSection,
+  parseDocsMarkdownSections,
+  stripDocsGeneratedAgentContractMarkers,
+} from "./markdown-sections.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const MAX_SEARCH_SNIPPET_CHARS = 160;
@@ -501,11 +506,16 @@ function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
   }
 }
 
+function cleanGeneratedAgentContractMarkers(content: string): string {
+  return stripDocsGeneratedAgentContractMarkers(content);
+}
+
+function getAskAIPageSectionContent(page: DocsSearchSourcePage): string {
+  return getPageAudienceSectionContent(page, "agent");
+}
+
 function getAskAIPageContent(page: DocsSearchSourcePage): string {
-  return upsertPageAgentContractMarkdown(getPageAudienceRawContent(page, "agent"), page.agent)
-    .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
-    .replace(PAGE_AGENT_CONTRACT_END_MARKER, "")
-    .replace(/^\r?\n+/, "");
+  return cleanGeneratedAgentContractMarkers(getAskAIPageSectionContent(page));
 }
 
 function getPageAgentContractSearchText(page: DocsSearchSourcePage): string {
@@ -713,7 +723,9 @@ function formatAskAIContextResult(options: {
   const sectionSelector = anchor ?? section;
   const rawContent = page
     ? sectionSelector
-      ? (findDocsMarkdownSection(getAskAIPageContent(page), sectionSelector)?.content ?? "")
+      ? cleanGeneratedAgentContractMarkers(
+          findDocsMarkdownSection(getAskAIPageSectionContent(page), sectionSelector)?.content ?? "",
+        )
       : getAskAIPageContent(page)
     : [result.content, result.description].filter(Boolean).join("\n\n");
   const contextContent = clampText(cleanAskAIContextMarkdown(rawContent), maxChars);
@@ -727,17 +739,9 @@ function formatAskAIContextResult(options: {
 }
 
 function getSearchResultKey(result: DocsSearchResult): string {
-  let hash = "";
-
-  try {
-    hash = new URL(result.url, "https://docs.local").hash.replace(/^#/, "");
-  } catch {
-    hash = result.url.split("#")[1]?.split(/[?&]/)[0] ?? "";
-  }
-
-  return `${normalizeUrlPathname(result.url)}#${normalizeWhitespace(
-    hash || result.section || "",
-  ).toLowerCase()}`;
+  const anchor = getSearchResultAnchor(result.url);
+  const sectionFallback = normalizeWhitespace(result.section ?? "").toLowerCase();
+  return `${normalizeUrlPathname(result.url)}#${anchor ?? sectionFallback}`;
 }
 
 function getSearchResultAnchor(value: string): string | undefined {
@@ -746,7 +750,8 @@ function getSearchResultAnchor(value: string): string | undefined {
   try {
     hash = new URL(value, "https://docs.local").hash.replace(/^#/, "");
   } catch {
-    hash = value.split("#")[1]?.split(/[?&]/)[0] ?? "";
+    const hashIndex = value.indexOf("#");
+    hash = hashIndex >= 0 ? value.slice(hashIndex + 1) : "";
   }
 
   if (!hash) return undefined;
@@ -782,9 +787,13 @@ function getAskAIResultKey(
   baseUrl?: string,
   strictExternalOrigins = false,
 ): string {
-  return `${getAskAIResultPageKey(result.url, baseUrl, strictExternalOrigins)}#${normalizeWhitespace(
-    getSearchResultAnchor(result.url) || result.section || "",
-  ).toLowerCase()}`;
+  const anchor = getSearchResultAnchor(result.url);
+  const sectionFallback = normalizeWhitespace(result.section ?? "").toLowerCase();
+  return `${getAskAIResultPageKey(
+    result.url,
+    baseUrl,
+    strictExternalOrigins,
+  )}#${anchor ?? sectionFallback}`;
 }
 
 function mergeSearchResults(
@@ -911,6 +920,14 @@ function getPageAudienceRawContent(
       : (page.rawContent ?? page.content);
 
   return resolveDocsAudienceMdxContent(source, audience);
+}
+
+function getPageAudienceSectionContent(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+): string {
+  const content = getPageAudienceRawContent(page, audience);
+  return audience === "agent" ? upsertPageAgentContractMarkdown(content, page.agent) : content;
 }
 
 function getPageAudienceSearchText(
@@ -1092,16 +1109,32 @@ function splitPageIntoSections(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience = "human",
 ): DocsSearchDocument[] {
-  const raw = getPageAudienceRawContent(page, audience);
+  // Search, Ask AI, and MCP parse the same agent document. The shared section parser assigns
+  // authored/rendered anchors before marker-wrapped contract headings, preserving DOM citations.
+  const raw = getPageAudienceSectionContent(page, audience);
+  const generatedContract =
+    audience === "agent" ? findDocsGeneratedAgentContractRanges(raw)[0] : undefined;
   const scope = resolveDocsSearchPageScope(page);
-  return parseDocsMarkdownSections(raw).flatMap((section, index) => {
+  let documentIndex = 0;
+  return parseDocsMarkdownSections(raw).flatMap((section) => {
+    // Contract metadata remains searchable through the page summary. Its generated headings stay
+    // MCP-addressable but do not become duplicate search chunks.
+    if (
+      generatedContract &&
+      section.startLine > generatedContract.startLine &&
+      section.startLine < generatedContract.endLine
+    ) {
+      return [];
+    }
     const content = normalizeWhitespace(stripMarkdownText(section.content));
     if (!content) return [];
+    const index = documentIndex;
+    documentIndex += 1;
 
     return [
       {
         id: makeDocumentId(page.url, `section-${index}`),
-        url: `${page.url}#${section.anchor}`,
+        url: `${page.url.split("#", 1)[0]}#${encodeURIComponent(section.anchor)}`,
         title: page.title,
         section: section.title,
         content,
@@ -2215,10 +2248,23 @@ export async function performDocsSearch(
         docsSearchPageMatchesFilters(resolveDocsSearchPageScope(page), filters),
       )
     : options.pages;
-  const documents = buildDocsSearchDocuments(scopedPages, search.chunking, audience);
+  let resolvedDocuments: DocsSearchDocument[] | undefined;
+  const getDocuments = (): DocsSearchDocument[] => {
+    if (!resolvedDocuments) {
+      resolvedDocuments = buildDocsSearchDocuments(scopedPages, search.chunking, audience);
+    }
+    return resolvedDocuments;
+  };
   const context: DocsSearchAdapterContext = {
     pages: scopedPages,
-    documents,
+    // Keep document construction lazy so remote providers can begin I/O before the local
+    // audience projection is materialized. Adapters retain the existing array contract.
+    get documents() {
+      return getDocuments();
+    },
+    set documents(documents) {
+      resolvedDocuments = documents;
+    },
     audience,
     locale: options.locale,
     pathname: options.pathname,
@@ -2237,17 +2283,36 @@ export async function performDocsSearch(
 
   try {
     const adapter = await resolveSearchAdapter(search, context);
-    const syncContext =
-      audience === "agent" || hasFilters
-        ? {
-            ...context,
-            pages: options.pages,
-            documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
-            audience: "human" as const,
-          }
-        : context;
-    await maybeSyncSearchIndex(adapter, search, syncContext);
-    const results = await adapter.search(query, context);
+    if (shouldSyncOnSearch(search) && typeof adapter.index === "function") {
+      const syncContext: DocsSearchAdapterContext =
+        audience === "agent" || hasFilters
+          ? {
+              pages: options.pages,
+              documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
+              audience: "human",
+              locale: options.locale,
+              pathname: options.pathname,
+              siteTitle: options.siteTitle,
+              signal: options.signal,
+            }
+          : context;
+      await maybeSyncSearchIndex(adapter, search, syncContext);
+    }
+
+    // Async adapters execute through their first await immediately, which starts remote
+    // provider work before the CPU-heavy local projection below. Filtered providers that
+    // require local document IDs still materialize the getter synchronously as before.
+    const adapterSearch = adapter.search(query, context);
+    let documents: DocsSearchDocument[];
+    try {
+      documents = getDocuments();
+    } catch (error) {
+      // The provider may still be in flight. Observe a later rejection before falling
+      // through to the configured local-fallback/error path.
+      void adapterSearch.catch(() => undefined);
+      throw error;
+    }
+    const results = await adapterSearch;
     if (search.provider === "simple") return results;
 
     const localAudienceProjectionResults = buildAudienceProjectionSearchResults(

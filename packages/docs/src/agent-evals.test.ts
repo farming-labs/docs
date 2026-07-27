@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DocsMcpPage } from "./mcp.js";
-import { runDocsGoldenTasks, type DocsGoldenTask } from "./agent-evals.js";
+import {
+  hydrateDocsEvaluationSearchSource,
+  runDocsGoldenTasks,
+  type DocsGoldenTask,
+} from "./agent-evals.js";
 
 function page(
   input: Partial<DocsMcpPage> & Pick<DocsMcpPage, "slug" | "url" | "title">,
@@ -268,7 +272,7 @@ ${"Useful café guidance 🚜. ".repeat(60)}
       query: "configure café",
       tokenBudget: 220,
       topK: 1,
-      expect: { relevantSources: ["/docs/unicode#configure-caf"] },
+      expect: { relevantSources: ["/docs/unicode#configure-café"] },
     };
 
     const forward = await runDocsGoldenTasks([...pages, unicodePage], [task]);
@@ -280,6 +284,241 @@ ${"Useful café guidance 🚜. ".repeat(60)}
     expect(result.usage.usedUtf8Bytes).toBe(Buffer.byteLength(result.context, "utf8"));
     expect(result.usage.usedUtf8Bytes).toBeLessThanOrEqual(220);
     expect(result.context).not.toContain("�");
+  });
+
+  it("keeps case-sensitive custom anchors distinct in retrieval and citations", async () => {
+    const caseSensitivePage = page({
+      slug: "case-sensitive",
+      url: "/docs/case-sensitive",
+      title: "Case-sensitive anchors",
+      rawContent: [
+        "## Upper [#Foo]",
+        "",
+        "Uppercase section marker.",
+        "",
+        "## Lower [#foo]",
+        "",
+        "Lowercase unique retrieval marker.",
+      ].join("\n"),
+    });
+    const report = await runDocsGoldenTasks(
+      [caseSensitivePage],
+      [
+        {
+          id: "case-sensitive-anchor",
+          query: "lowercase unique retrieval marker",
+          surface: "configured-search",
+          topK: 1,
+          expect: {
+            relevantSources: ["/docs/case-sensitive#Foo"],
+            forbiddenSources: ["/docs/case-sensitive#foo"],
+          },
+        },
+      ],
+    );
+    const result = report.tasks[0];
+
+    expect(report.status).toBe("failed");
+    expect(result.retrieval).toMatchObject({
+      expectedRelevant: 1,
+      retrievedRelevant: 0,
+      forbiddenSources: ["/docs/case-sensitive#foo"],
+      passed: false,
+    });
+    expect(result.citations).toMatchObject({
+      expected: ["/docs/case-sensitive#Foo"],
+      actual: ["/docs/case-sensitive#foo"],
+      passed: false,
+    });
+    expect(result.issues.join(" ")).not.toContain("Invalid golden task configuration");
+  });
+
+  it("keeps literal percent escapes distinct from their decoded reserved characters", async () => {
+    const reservedPage = page({
+      slug: "reserved-evaluation",
+      url: "/docs/reserved-evaluation",
+      title: "Reserved evaluation anchors",
+      rawContent: [
+        "## Hash [#foo#bar]",
+        "",
+        "Hash character retrieval marker.",
+        "",
+        "## Percent [#foo%23bar]",
+        "",
+        "Literal percent escape retrieval marker.",
+      ].join("\n"),
+    });
+    const tasks: DocsGoldenTask[] = ["configured-search", "ask-ai-context"].map((surface) => ({
+      id: `reserved-anchor-${surface}`,
+      query: "literal percent escape retrieval marker",
+      surface: surface as DocsGoldenTask["surface"],
+      topK: 1,
+      tokenBudget: 2_000,
+      expect: {
+        relevantSources: ["/docs/reserved-evaluation#foo%2523bar"],
+        forbiddenSources: ["/docs/reserved-evaluation#foo%23bar"],
+      },
+    }));
+    const report = await runDocsGoldenTasks([reservedPage], tasks);
+
+    expect(report.status).toBe("passed");
+    for (const result of report.tasks) {
+      expect(result.retrieval).toMatchObject({
+        retrievedRelevant: 1,
+        forbiddenSources: [],
+        passed: true,
+      });
+      expect(result.citations).toMatchObject({
+        actual: ["/docs/reserved-evaluation#foo%2523bar"],
+        missing: [],
+        unexpected: [],
+        integrity: true,
+        passed: true,
+      });
+    }
+  });
+
+  it("hydrates authored DOM anchors ahead of generated contracts on the Ask AI surface", async () => {
+    const collisionPage = page({
+      slug: "contract-collision-evaluation",
+      url: "/docs/contract-collision-evaluation",
+      title: "Contract collision evaluation",
+      rawContent: "## Authored [#agent-contract]\n\nAuthored golden collision marker.",
+      agent: {
+        task: "Run the generated contract task.",
+        outcome: "The generated contract outcome is available.",
+      },
+    });
+    const report = await runDocsGoldenTasks(
+      [collisionPage],
+      [
+        {
+          id: "contract-reserved-anchor",
+          query: "authored golden collision marker",
+          surface: "ask-ai-context",
+          topK: 1,
+          tokenBudget: 2_000,
+          expect: {
+            relevantSources: ["/docs/contract-collision-evaluation#agent-contract"],
+            forbiddenSources: ["/docs/contract-collision-evaluation#agent-contract-1"],
+          },
+        },
+      ],
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].citations).toMatchObject({
+      actual: ["/docs/contract-collision-evaluation#agent-contract"],
+      integrity: true,
+      passed: true,
+    });
+    expect(report.tasks[0].context).toContain("Authored golden collision marker.");
+    expect(report.tasks[0].context).not.toContain("generated contract outcome");
+  });
+
+  it("rejects unresolved section hydration instead of substituting a whole page", () => {
+    const caseSensitivePage = page({
+      slug: "case-sensitive-hydration",
+      url: "/docs/case-sensitive-hydration",
+      title: "Case-sensitive hydration",
+      rawContent: [
+        "## Upper [#Foo]",
+        "",
+        "Uppercase section.",
+        "",
+        "## Lower [#foo]",
+        "",
+        "Lowercase section.",
+      ].join("\n"),
+    });
+    const pagesByUrl = new Map([[caseSensitivePage.url, caseSensitivePage]]);
+
+    expect(
+      hydrateDocsEvaluationSearchSource(
+        {
+          id: "stale-anchor",
+          url: "/docs/case-sensitive-hydration#FOO",
+          content: "Provider snippet.",
+          type: "heading",
+        },
+        0,
+        pagesByUrl,
+        "page-section",
+      ),
+    ).toBeUndefined();
+    expect(
+      hydrateDocsEvaluationSearchSource(
+        {
+          id: "exact-anchor",
+          url: "/docs/case-sensitive-hydration#foo",
+          content: "Provider snippet.",
+          type: "heading",
+        },
+        0,
+        pagesByUrl,
+        "page-section",
+      ),
+    ).toMatchObject({
+      anchor: "foo",
+      content: expect.stringContaining("Lowercase section."),
+    });
+  });
+
+  it("preserves authored fenced contract-marker examples during hydration", () => {
+    const markerExamplePage = page({
+      slug: "contract-marker-example",
+      url: "/docs/contract-marker-example",
+      title: "Contract marker example",
+      rawContent: [
+        "## Marker example",
+        "",
+        "Keep both literal markers.",
+        "",
+        "```md",
+        "<!-- farming-labs:agent-contract:start -->",
+        "<!-- farming-labs:agent-contract:end -->",
+        "```",
+      ].join("\n"),
+    });
+    const source = hydrateDocsEvaluationSearchSource(
+      {
+        id: "marker-example",
+        url: "/docs/contract-marker-example#marker-example",
+        content: "Provider snippet.",
+        type: "heading",
+      },
+      0,
+      new Map([[markerExamplePage.url, markerExamplePage]]),
+      "page-section",
+    );
+
+    expect(source?.content).toContain("<!-- farming-labs:agent-contract:start -->");
+    expect(source?.content).toContain("<!-- farming-labs:agent-contract:end -->");
+
+    const generatedContractPage = page({
+      slug: "generated-contract-marker",
+      url: "/docs/generated-contract-marker",
+      title: "Generated contract marker",
+      rawContent: "## Authored section\n\nAuthored guidance.",
+      agent: {
+        task: "Inspect generated contract cleanup.",
+        outcome: "Only generated boundary markers are removed.",
+      },
+    });
+    const generatedSource = hydrateDocsEvaluationSearchSource(
+      {
+        id: "generated-contract",
+        url: "/docs/generated-contract-marker#agent-contract",
+        content: "Provider snippet.",
+        type: "heading",
+      },
+      0,
+      new Map([[generatedContractPage.url, generatedContractPage]]),
+      "page-section",
+    );
+
+    expect(generatedSource?.content).toContain("## Agent Contract");
+    expect(generatedSource?.content).not.toContain("farming-labs:agent-contract");
   });
 
   it("does not count a source when the budget can render only its header", async () => {

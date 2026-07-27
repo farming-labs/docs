@@ -111,6 +111,7 @@
     "@babel/types": "7.29.7",
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
+    "@mdx-js/mdx": "^3.1.1",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
@@ -119,7 +120,7 @@
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farming-labs/docs": ">=0.2.61",
+    "@farming-labs/docs": ">=0.2.73",
     "@farming-labs/theme": ">=0.0.1",
     "next": ">=16.0.0",
     "react": ">=19.2.0",

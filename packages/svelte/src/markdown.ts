@@ -11,6 +11,20 @@
 
 import { resolveDocsAudienceMdxContent, type DocsTheme } from "@farming-labs/docs";
 import {
+  createDocsMarkdownBlockPlaceholderAllocator,
+  extractDocsMarkdownReferenceDefinitions as extractMarkdownReferenceDefinitions,
+  extractDocsRenderedHeadingElements as extractRenderedHeadingElements,
+  prepareDocsMarkdownHeadings as prepareMarkdownHeadings,
+  replaceDocsMarkdownFencedCodeBlocks as replaceMarkdownFencedCodeBlocks,
+  renderDocsMarkdownBlockContent as renderMarkdownBlockContent,
+  renderDocsMarkdownHeadings as renderMarkdownHeadings,
+  renderDocsMarkdownInline as renderMarkdownInline,
+  restoreDocsMarkdownHeadingOpeningTags as restoreMarkdownHeadingOpeningTags,
+  stripPreparedDocsMarkdownHeadingTokens as stripPreparedMarkdownHeadingTokens,
+  type DocsMarkdownReferenceDefinitions as MarkdownReferenceDefinitions,
+} from "@farming-labs/docs/markdown-rendering";
+import {
+  extractDocsMarkdownPromptBlocks,
   parsePromptStringArray,
   resolvePromptProviderChoices,
   sanitizePromptText,
@@ -45,16 +59,6 @@ function getHighlighter(): Promise<Highlighter> {
   return highlighterPromise;
 }
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/<[^>]+>/g, "")
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim();
-}
-
 const hoverLinkDefaults = {
   linkLabel: "Open page",
   showIndicator: false,
@@ -73,6 +77,16 @@ const promptDefaults = {
   openIcon: "arrowUpRight",
 } as const;
 
+function slugifyCodeGroupTab(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]+>/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+}
+
 const promptActionIcons: Record<string, string> = {
   copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>',
   check:
@@ -87,6 +101,11 @@ interface RenderMarkdownOptions {
   theme?: DocsTheme;
   icons?: Record<string, string>;
   openDocsProviders?: SerializedOpenDocsProvider[];
+}
+
+interface RenderedMarkdownBlock {
+  html: string;
+  token: string;
 }
 
 function escapeHtml(value: string): string {
@@ -408,23 +427,17 @@ function normalizeCalloutType(type: string): string {
   return calloutIcons[aliased] ? aliased : "note";
 }
 
-function renderInlineCalloutContent(content: string): string {
-  return content
-    .trim()
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/\n+/g, "<br />");
-}
-
-function renderCallout(type: string, content: string, title?: string | null): string {
+function renderCallout(
+  type: string,
+  content: string,
+  title: string | null | undefined,
+  definitions: MarkdownReferenceDefinitions,
+): string {
   const normalizedType = normalizeCalloutType(type);
   const icon = calloutIcons[normalizedType] || calloutIcons.note;
   const label = title?.trim() || calloutLabels[normalizedType] || "Note";
-  const renderedContent = renderInlineCalloutContent(content);
-  return `<div class="fd-callout fd-callout-${normalizedType}" role="note"><div class="fd-callout-indicator" role="none"></div><div class="fd-callout-icon">${icon}</div><div class="fd-callout-content"><p class="fd-callout-title">${escapeHtml(label)}</p><p>${renderedContent}</p></div></div>`;
+  const renderedContent = renderMarkdownBlockContent(content, definitions);
+  return `<div class="fd-callout fd-callout-${normalizedType}" role="note"><div class="fd-callout-indicator" role="none"></div><div class="fd-callout-icon">${icon}</div><div class="fd-callout-content"><p class="fd-callout-title">${escapeHtml(label)}</p>${renderedContent}</div></div>`;
 }
 
 function highlightCode(hl: Highlighter, code: string, lang: string): { html: string; raw: string } {
@@ -515,7 +528,7 @@ function parseCodeGroupMeta(meta: string): { lang: string; title: string | null 
 }
 
 function createCodeGroupTabValue(label: string, used: Set<string>): string {
-  const slug = slugify(label) || `code-${used.size + 1}`;
+  const slug = slugifyCodeGroupTab(label) || `code-${used.size + 1}`;
   let value = slug;
   let suffix = 2;
 
@@ -597,10 +610,30 @@ export async function renderMarkdown(
   if (!content) return "";
 
   const hl = await getHighlighter();
-  let result = resolveDocsAudienceMdxContent(content, "human");
+  // Prompt children are literal copyable text, not renderable Markdown. Protect
+  // them before audience projection, reference collection, and heading
+  // preparation so none of those document-level passes can consume or interpret
+  // Prompt-only syntax.
+  const extractedPrompts = extractDocsMarkdownPromptBlocks(content);
+  const promptBlocks = extractedPrompts.blocks;
+  let result = extractedPrompts.markdown;
+  result = resolveDocsAudienceMdxContent(result, "human");
+  const allocateBlockPlaceholder = createDocsMarkdownBlockPlaceholderAllocator(result);
+  const extractedReferences = extractMarkdownReferenceDefinitions(result);
+  const referenceDefinitions = extractedReferences.definitions;
+  const preparedHeadings = prepareMarkdownHeadings(result);
+  const preparedWithoutReferences = extractMarkdownReferenceDefinitions(
+    preparedHeadings.markdown,
+  ).markdown;
+  const renderedHeadings = renderMarkdownHeadings(
+    preparedWithoutReferences,
+    preparedHeadings.headings,
+  );
+  result = renderedHeadings.markdown;
+  const headingOpeningTags = renderedHeadings.openingTags;
 
   // ── Mintlify-style code groups: <CodeGroup> fenced code blocks </CodeGroup> ──
-  const tabsBlocks: string[] = [];
+  const tabsBlocks: RenderedMarkdownBlock[] = [];
   result = result.replace(
     /<CodeGroup(?:\s+([^>]*?))?>([\s\S]*?)<\/CodeGroup>/g,
     (_: string, attrSource: string | undefined, body: string) => {
@@ -608,25 +641,31 @@ export async function renderMarkdown(
       const dropdown = toBoolean(attrs.dropdown, false);
       const usedValues = new Set<string>();
       const panels: { label: string; value: string; html: string }[] = [];
-      const codeRegex = /```([^\n]*)\n([\s\S]*?)```/g;
-      let codeMatch: RegExpExecArray | null;
-
-      while ((codeMatch = codeRegex.exec(body)) !== null) {
-        const { lang, title } = parseCodeGroupMeta(codeMatch[1]);
+      replaceMarkdownFencedCodeBlocks(body, ({ code, info }) => {
+        const { lang, title } = parseCodeGroupMeta(info);
         const label = title || lang || `Code ${panels.length + 1}`;
         const value = createCodeGroupTabValue(label, usedValues);
-        const dedented = dedentCode(codeMatch[2]);
+        const dedented = dedentCode(code);
         const { html, raw } = highlightCode(hl, dedented, lang);
         panels.push({
           label,
           value,
           html: wrapCodeWithCopy(html, raw, null, lang),
         });
-      }
+        return "";
+      });
 
       if (panels.length === 0) return body;
+      const extractedHeadings = extractRenderedHeadingElements(
+        body,
+        referenceDefinitions,
+        false,
+        headingOpeningTags,
+      );
 
-      let tabsHtml = `<div class="fd-tabs fd-code-group" data-tabs data-code-group data-fd-code-group${dropdown ? ' data-dropdown="true"' : ""}>`;
+      let tabsHtml =
+        extractedHeadings.headingsHtml +
+        `<div class="fd-tabs fd-code-group" data-tabs data-code-group data-fd-code-group${dropdown ? ' data-dropdown="true"' : ""}>`;
       tabsHtml += `<div class="fd-tabs-list fd-code-group-list" role="tablist">`;
       for (let i = 0; i < panels.length; i++) {
         const state = i === 0 ? "active" : "inactive";
@@ -639,8 +678,8 @@ export async function renderMarkdown(
       }
       tabsHtml += `</div>`;
 
-      const placeholder = `%%TABS_${tabsBlocks.length}%%`;
-      tabsBlocks.push(tabsHtml);
+      const placeholder = allocateBlockPlaceholder("TABS");
+      tabsBlocks.push({ html: tabsHtml, token: placeholder });
       return placeholder;
     },
   );
@@ -655,15 +694,33 @@ export async function renderMarkdown(
       let tabMatch: RegExpExecArray | null;
       while ((tabMatch = tabRegex.exec(body)) !== null) {
         const tabValue = tabMatch[1];
-        const tabContent = tabMatch[2].trim();
-        const codeMatch = tabContent.match(/```([^\n]*)\n([\s\S]*?)```/);
-        if (codeMatch) {
-          const { lang, title } = parseMeta(codeMatch[1]);
-          const dedented = dedentCode(codeMatch[2]);
+        const extractedHeadings = extractRenderedHeadingElements(
+          tabMatch[2].trim(),
+          referenceDefinitions,
+          false,
+          headingOpeningTags,
+        );
+        let renderedCode: string | undefined;
+        replaceMarkdownFencedCodeBlocks(extractedHeadings.content, ({ code, info }) => {
+          if (renderedCode !== undefined) return "";
+          const { lang, title } = parseMeta(info);
+          const dedented = dedentCode(code);
           const { html, raw } = highlightCode(hl, dedented, lang);
-          panels.push({ value: tabValue, html: wrapCodeWithCopy(html, raw, title, lang) });
+          renderedCode = wrapCodeWithCopy(html, raw, title, lang);
+          return "";
+        });
+        if (renderedCode !== undefined) {
+          panels.push({
+            value: tabValue,
+            html: extractedHeadings.headingsHtml + renderedCode,
+          });
         } else {
-          panels.push({ value: tabValue, html: `<p>${tabContent}</p>` });
+          panels.push({
+            value: tabValue,
+            html:
+              extractedHeadings.headingsHtml +
+              renderMarkdownBlockContent(extractedHeadings.content, referenceDefinitions),
+          });
         }
       }
 
@@ -680,84 +737,81 @@ export async function renderMarkdown(
       }
       tabsHtml += `</div>`;
 
-      const placeholder = `%%TABS_${tabsBlocks.length}%%`;
-      tabsBlocks.push(tabsHtml);
+      const placeholder = allocateBlockPlaceholder("TABS");
+      tabsBlocks.push({ html: tabsHtml, token: placeholder });
+      return placeholder;
+    },
+  );
+
+  const hoverLinkBlocks: RenderedMarkdownBlock[] = [];
+  result = result.replace(
+    /<HoverLink\s+([^>]*?)>([\s\S]*?)<\/HoverLink>/g,
+    (_: string, attrSource: string, children: string) => {
+      const placeholder = allocateBlockPlaceholder("HOVERLINK");
+      const extractedHeadings = extractRenderedHeadingElements(
+        children,
+        referenceDefinitions,
+        false,
+        headingOpeningTags,
+      );
+      hoverLinkBlocks.push({
+        html:
+          extractedHeadings.headingsHtml +
+          renderHoverLink(attrSource, extractedHeadings.content, options.theme),
+        token: placeholder,
+      });
       return placeholder;
     },
   );
 
   // ── Fenced code blocks ──
-  const codeBlocks: string[] = [];
-  result = result.replace(
-    /```([^\n]*)\n([\s\S]*?)```/g,
-    (_: string, meta: string, code: string) => {
-      const { lang, title } = parseMeta(meta);
-      const { html, raw } = highlightCode(hl, code, lang);
-      const placeholder = `%%CODEBLOCK_${codeBlocks.length}%%`;
-      codeBlocks.push(wrapCodeWithCopy(html, raw, title, lang));
-      return placeholder;
-    },
-  );
+  const codeBlocks: RenderedMarkdownBlock[] = [];
+  result = replaceMarkdownFencedCodeBlocks(result, ({ code, info }) => {
+    const { lang, title } = parseMeta(info);
+    const { html, raw } = highlightCode(hl, code, lang);
+    const placeholder = allocateBlockPlaceholder("CODEBLOCK");
+    codeBlocks.push({ html: wrapCodeWithCopy(html, raw, title, lang), token: placeholder });
+    return placeholder;
+  });
 
-  const hoverLinkBlocks: string[] = [];
-  result = result.replace(
-    /<HoverLink\s+([^>]*?)>([\s\S]*?)<\/HoverLink>/g,
-    (_: string, attrSource: string, children: string) => {
-      const placeholder = `%%HOVERLINK_${hoverLinkBlocks.length}%%`;
-      hoverLinkBlocks.push(renderHoverLink(attrSource, children, options.theme));
-      return placeholder;
-    },
-  );
-
-  const promptBlocks: string[] = [];
-  result = result.replace(
-    /<Prompt(?:\s+([^>]*?))?>([\s\S]*?)<\/Prompt>/g,
-    (_: string, attrSource: string | undefined, children: string) => {
-      const placeholder = `%%PROMPT_${promptBlocks.length}%%`;
-      promptBlocks.push(renderPrompt(attrSource ?? "", children, options));
-      return placeholder;
-    },
-  );
-
-  const calloutBlocks: string[] = [];
+  const calloutBlocks: RenderedMarkdownBlock[] = [];
   result = result.replace(
     /<Callout(?:\s+([^>]*?))?>([\s\S]*?)<\/Callout>/g,
     (_: string, attrSource: string | undefined, children: string) => {
       const attrs = parseJsxAttributes(attrSource ?? "");
       const type = toStringValue(attrs.type) ?? toStringValue(attrs.kind) ?? "note";
       const title = toStringValue(attrs.title);
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(renderCallout(type, children, title));
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(
+          type,
+          restoreMarkdownHeadingOpeningTags(children, headingOpeningTags),
+          title,
+          referenceDefinitions,
+        ),
+        token: placeholder,
+      });
       return placeholder;
     },
   );
 
-  // Inline code
-  result = result.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-  // Headings (h4 → h1 order to avoid prefix collisions)
-  result = result.replace(/^#### (.+)$/gm, (_: string, text: string) => {
-    return `<h4 id="${slugify(text)}">${text}</h4>`;
-  });
-  result = result.replace(/^### (.+)$/gm, (_: string, text: string) => {
-    return `<h3 id="${slugify(text)}">${text}</h3>`;
-  });
-  result = result.replace(/^## (.+)$/gm, (_: string, text: string) => {
-    return `<h2 id="${slugify(text)}">${text}</h2>`;
-  });
-  result = result.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-
   // ── Callouts / blockquotes (before inline formatting) ──
   result = result.replace(/(?:^>\s*.+\n?)+/gm, (block: string) => {
     const lines = block.split("\n").filter(Boolean);
-    const inner = lines.map((l: string) => l.replace(/^>\s?/, "")).join("\n");
+    const inner = restoreMarkdownHeadingOpeningTags(
+      lines.map((l: string) => l.replace(/^>\s?/, "")).join("\n"),
+      headingOpeningTags,
+    );
 
     const ghMatch = inner.match(/^\[!(NOTE|WARNING|TIP|IMPORTANT|CAUTION)\]\s*\n?([\s\S]*)/i);
     if (ghMatch) {
       const type = ghMatch[1].toLowerCase();
       const calloutContent = ghMatch[2].trim();
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(renderCallout(type, calloutContent));
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(type, calloutContent, undefined, referenceDefinitions),
+        token: placeholder,
+      });
       return placeholder;
     }
 
@@ -765,27 +819,23 @@ export async function renderMarkdown(
     if (boldMatch) {
       const type = boldMatch[1].toLowerCase();
       const calloutContent = boldMatch[2].trim();
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(renderCallout(type, calloutContent));
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(type, calloutContent, undefined, referenceDefinitions),
+        token: placeholder,
+      });
       return placeholder;
     }
 
-    return `<blockquote><p>${inner}</p></blockquote>`;
+    const placeholder = allocateBlockPlaceholder("CALLOUT");
+    calloutBlocks.push({
+      html: `<blockquote>${renderMarkdownBlockContent(inner, referenceDefinitions)}</blockquote>`,
+      token: placeholder,
+    });
+    return placeholder;
   });
 
-  // Inline formatting
-  result = result.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
-  result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  result = result.replace(/\*(.+?)\*/g, "<em>$1</em>");
-
-  // Images — before links so ![alt](url) is not captured as a link
-  result = result.replace(
-    /!\[([^\]]*)\]\(([^)]+)\)/g,
-    (_: string, alt: string, src: string) =>
-      `<img src="${src}" alt="${alt.replace(/"/g, "&quot;")}" class="fd-docs-content-img" loading="lazy" decoding="async" />`,
-  );
-  // Links
-  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  result = renderMarkdownInline(result, referenceDefinitions);
 
   // Horizontal rules
   result = result.replace(/^---$/gm, "<hr />");
@@ -816,24 +866,47 @@ export async function renderMarkdown(
   );
 
   // Unordered lists
-  result = result.replace(/(?:^- .+\n?)+/gm, (block: string) => {
-    const items = block
-      .split("\n")
-      .filter((l: string) => l.startsWith("- "))
-      .map((l: string) => `<li>${l.slice(2)}</li>`)
-      .join("");
-    return `<ul>${items}</ul>`;
-  });
+  result = result.replace(
+    /(?:^[-+*] [^\r\n]+(?:\r?\n(?:(?: {2,}|\t)[^\r\n]+))*(?:\r?\n|$))+/gm,
+    (block: string) => {
+      const items: string[] = [];
+      for (const line of block.trimEnd().split(/\r?\n/)) {
+        if (/^[-+*] /.test(line)) {
+          items.push(line.slice(2));
+          continue;
+        }
+        if (items.length > 0) {
+          items[items.length - 1] += `\n${line.replace(/^(?: {2}|\t)/, "")}`;
+        }
+      }
+      return `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+    },
+  );
 
   // Ordered lists
-  result = result.replace(/(?:^\d+\. .+\n?)+/gm, (block: string) => {
-    const items = block
-      .split("\n")
-      .filter((l: string) => /^\d+\. /.test(l))
-      .map((l: string) => `<li>${l.replace(/^\d+\. /, "")}</li>`)
-      .join("");
-    return `<ol>${items}</ol>`;
-  });
+  result = result.replace(
+    /(?:^\d{1,9}[.)] [^\r\n]+(?:\r?\n(?:(?: {3,}|\t)[^\r\n]+))*(?:\r?\n|$))+/gm,
+    (block: string) => {
+      const items: string[] = [];
+      let continuationIndent = 0;
+      for (const line of block.trimEnd().split(/\r?\n/)) {
+        const marker = /^(\d{1,9}[.)]) (.*)$/.exec(line);
+        if (marker) {
+          items.push(marker[2]);
+          continuationIndent = marker[1].length + 1;
+          continue;
+        }
+        if (items.length > 0) {
+          const content =
+            line[0] === "\t"
+              ? line.slice(1)
+              : line.slice(Math.min(continuationIndent, /^ */.exec(line)?.[0].length ?? 0));
+          items[items.length - 1] += `\n${content}`;
+        }
+      }
+      return `<ol>${items.map((item) => `<li>${item}</li>`).join("")}</ol>`;
+    },
+  );
 
   // Wrap remaining bare text in <p> tags
   result = result
@@ -842,27 +915,36 @@ export async function renderMarkdown(
       block = block.trim();
       if (!block) return "";
       if (/^<(h[1-6]|pre|ul|ol|blockquote|hr|table|div)/.test(block)) return block;
-      if (/^%%(CODEBLOCK|CALLOUT|TABS|PROMPT|HOVERLINK)_\d+%%$/.test(block)) return block;
+      if (/^%%FARMINGLABS_DOCS_HEADING_OPEN_\d+%%/.test(block)) return block;
+      if (/^%%(?:CODEBLOCK|CALLOUT|TABS|PROMPT|HOVERLINK)_\d+%%/.test(block)) {
+        return block;
+      }
       return `<p>${block}</p>`;
     })
     .join("\n");
 
   // Restore placeholders
-  for (let i = 0; i < codeBlocks.length; i++) {
-    result = result.replace(`%%CODEBLOCK_${i}%%`, codeBlocks[i]);
+  for (const block of calloutBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < calloutBlocks.length; i++) {
-    result = result.replace(`%%CALLOUT_${i}%%`, calloutBlocks[i]);
+  for (const block of tabsBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < tabsBlocks.length; i++) {
-    result = result.replace(`%%TABS_${i}%%`, tabsBlocks[i]);
+  for (const block of hoverLinkBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < hoverLinkBlocks.length; i++) {
-    result = result.replace(`%%HOVERLINK_${i}%%`, hoverLinkBlocks[i]);
-  }
-  for (let i = 0; i < promptBlocks.length; i++) {
-    result = result.replace(`%%PROMPT_${i}%%`, promptBlocks[i]);
+  for (const block of codeBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
 
+  result = restoreMarkdownHeadingOpeningTags(
+    stripPreparedMarkdownHeadingTokens(result),
+    headingOpeningTags,
+  );
+  for (const block of promptBlocks) {
+    result = result.replace(block.token, () =>
+      renderPrompt(block.attributes, block.children, options),
+    );
+  }
   return result;
 }

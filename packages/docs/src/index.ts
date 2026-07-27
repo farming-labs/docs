@@ -162,6 +162,7 @@ export {
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
@@ -246,6 +247,21 @@ export {
   validateDocsAgentFeedbackPayload,
   validateDocsAgentSkillFrontmatter,
 } from "./agent.js";
+export {
+  applyDocsMarkdownHeadingAnchors,
+  cleanDocsRenderedHeadingLabel,
+  createDocsMarkdownHeadingAnchorResolver,
+  createDocsRenderedHeadingAnchorResolver,
+  slugifyDocsMarkdownHeading,
+  withDocsMarkdownRenderableHeadings,
+} from "./markdown-sections.js";
+export { encodeDocsHeadingTocUrls } from "./heading-toc.js";
+export { isolateDocsMarkdownPromptReferences } from "./prompt-references.js";
+export type {
+  ApplyDocsMarkdownHeadingAnchorsOptions,
+  DocsMarkdownHeadingAnchor,
+  DocsRenderedHeadingAnchorOptions,
+} from "./markdown-sections.js";
 export type { DocsAudienceMdxIssue, DocsContentAudience } from "./audience.js";
 export type {
   DocsAgentsDocumentOptions,

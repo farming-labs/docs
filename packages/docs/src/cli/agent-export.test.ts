@@ -19,7 +19,11 @@ import {
   parseAgentExportArgs,
   type AgentBundleManifest,
 } from "./agent-export.js";
-import { DOCS_AGENT_MANIFEST_FORMAT, DOCS_AGENT_MANIFEST_SCHEMA_URI } from "../agent.js";
+import {
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
+} from "../agent.js";
 
 describe("agent export cli", () => {
   const originalCwd = process.cwd();
@@ -168,7 +172,7 @@ pnpm add example
     expect(discoveryFallback).toEqual(discovery);
     expect(discovery.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
     expect(discovery.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
-    expect(discovery.version).toBe("1");
+    expect(discovery.version).toBe(DOCS_AGENT_MANIFEST_VERSION);
     expect(discovery.api).not.toHaveProperty("agentCard");
     expect(discovery.staticBundle.manifest).toBe("/.well-known/agent-bundle.json");
     expect(discovery.capabilities.mcp).toBe(false);
@@ -467,7 +471,7 @@ pnpm add example
     expect(discovery).toMatchObject({
       $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
       format: DOCS_AGENT_MANIFEST_FORMAT,
-      version: "1",
+      version: DOCS_AGENT_MANIFEST_VERSION,
       api: { agentCard: "/.well-known/agent-card.json" },
     });
     expect(discovery).not.toHaveProperty("supportedInterfaces");

@@ -17,6 +17,7 @@ import {
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
   isDocsAgentSkillName,
   validateDocsAgentSkillFrontmatter,
 } from "./agent.js";
@@ -412,6 +413,9 @@ function validateAgentManifest(content: string): string[] {
   }
   if (root?.format !== DOCS_AGENT_MANIFEST_FORMAT) {
     issues.push(`Agent manifest did not declare top-level format ${DOCS_AGENT_MANIFEST_FORMAT}`);
+  }
+  if (root?.version !== DOCS_AGENT_MANIFEST_VERSION) {
+    issues.push(`Agent manifest did not declare top-level version ${DOCS_AGENT_MANIFEST_VERSION}`);
   }
   return issues;
 }

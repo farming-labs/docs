@@ -62,6 +62,6 @@
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farming-labs/docs": "*"
+    "@farming-labs/docs": ">=0.2.73"
   }
 }

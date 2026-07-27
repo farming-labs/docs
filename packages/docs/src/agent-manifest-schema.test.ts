@@ -8,13 +8,19 @@ import { buildDocsAgentDiscoverySpec } from "./agent.js";
 import { exportAgentBundle } from "./cli/agent-export.js";
 import { resolveDocsMcpConfig } from "./mcp.js";
 
-const schemaPath = new URL(
+const legacySchemaPath = new URL(
   "../../../website/public/schema/agent-manifest.v1.json",
   import.meta.url,
 );
+const schemaPath = new URL(
+  "../../../website/public/schema/agent-manifest.v2.json",
+  import.meta.url,
+);
+const legacySchema = JSON.parse(readFileSync(legacySchemaPath, "utf8")) as Record<string, unknown>;
 const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as Record<string, unknown>;
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
+const validateLegacy = ajv.compile(legacySchema);
 const validate = ajv.compile(schema);
 
 function buildManifest(overrides: Partial<Parameters<typeof buildDocsAgentDiscoverySpec>[0]> = {}) {
@@ -74,21 +80,60 @@ description: "Start here"
 }
 
 describe("Farming Labs agent manifest schema", () => {
-  it("publishes an immutable Draft 2020-12 identity", () => {
+  it("publishes a versioned Draft 2020-12 identity", () => {
     expect(schema).toMatchObject({
       $schema: "https://json-schema.org/draft/2020-12/schema",
-      $id: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
+      $id: "https://docs.farming-labs.dev/schema/agent-manifest.v2.json",
     });
 
     const manifest = buildManifest();
     expect(manifest).toMatchObject({
-      $schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
-      format: "farming-labs-agent-manifest.v1",
-      version: "1",
+      $schema: "https://docs.farming-labs.dev/schema/agent-manifest.v2.json",
+      format: "farming-labs-agent-manifest.v2",
+      version: "2",
       name: "@farming-labs/docs",
     });
     expect(manifest.api).not.toHaveProperty("agentCard");
     expectValid(manifest);
+  });
+
+  it("keeps the published v1 schema immutable and valid for v1 manifests", () => {
+    expect(legacySchema).toMatchObject({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
+      properties: {
+        $schema: { const: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json" },
+        format: { const: "farming-labs-agent-manifest.v1" },
+        version: { const: "1" },
+        markdown: {
+          properties: {
+            sectionDiscovery: {
+              properties: {
+                format: { const: "docs-markdown-sections.v1" },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const current = buildManifest();
+    const legacy = {
+      ...current,
+      $schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
+      format: "farming-labs-agent-manifest.v1",
+      version: "1",
+      markdown: {
+        ...current.markdown,
+        sectionDiscovery: {
+          ...current.markdown.sectionDiscovery,
+          format: "docs-markdown-sections.v1",
+        },
+      },
+    };
+
+    expect(validateLegacy(legacy), JSON.stringify(validateLegacy.errors, null, 2)).toBe(true);
+    expect(validateLegacy(current)).toBe(false);
   });
 
   it("validates feature-rich, disabled-feature, and exported static manifests", async () => {

@@ -581,6 +581,76 @@ describe("MCP context and schema APIs", () => {
     expect(result.context).not.toContain("Human screenshot walkthrough");
   });
 
+  it("keeps reserved section anchors distinct through search and MCP hydration", async () => {
+    const rawContent = [
+      "# Reserved anchors",
+      "",
+      "## Hash [#foo#bar]",
+      "",
+      "Reserved anchor marker hash content.",
+      "",
+      "## Percent [#foo%23bar]",
+      "",
+      "Reserved anchor marker percent content.",
+    ].join("\n");
+    const result = await buildDocsMcpContext({
+      pages: [
+        page("reserved", {
+          title: "Reserved anchors",
+          content: rawContent,
+          rawContent,
+        }),
+      ],
+      query: "reserved anchor marker",
+      tokenBudget: 8_000,
+    });
+
+    expect(result.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          anchor: "foo#bar",
+          url: "/docs/reserved#foo%23bar",
+          content: expect.stringContaining("hash content"),
+        }),
+        expect.objectContaining({
+          anchor: "foo%23bar",
+          url: "/docs/reserved#foo%2523bar",
+          content: expect.stringContaining("percent content"),
+        }),
+      ]),
+    );
+  });
+
+  it("hydrates authored custom anchors ahead of generated contract-only headings", async () => {
+    const rawContent = "## Authored [#agent-contract]\n\nAuthored collision retrieval marker.";
+    const result = await buildDocsMcpContext({
+      pages: [
+        page("contract-collision", {
+          title: "Contract collision",
+          content: rawContent,
+          rawContent,
+          agent: {
+            task: "Run the generated contract task.",
+            outcome: "The generated contract outcome is available.",
+          },
+        }),
+      ],
+      query: "authored collision retrieval marker",
+      tokenBudget: 8_000,
+      maxResults: 1,
+    });
+
+    expect(result.sources).toEqual([
+      expect.objectContaining({
+        section: "Authored",
+        anchor: "agent-contract",
+        url: "/docs/contract-collision#agent-contract",
+        content: expect.stringContaining("Authored collision retrieval marker."),
+      }),
+    ]);
+    expect(result.context).not.toContain("generated contract outcome");
+  });
+
   it("returns deep-cloned schema options and examples while freezing the public template", () => {
     const first = getDocsConfigSchema();
     const mode = findSchemaOption(first.options, "review.ci.mode");
@@ -2143,6 +2213,115 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
       title: "Available heading 1",
       anchor: "available-heading-1",
     });
+  });
+
+  it("reads duplicate Unicode sections with the canonical rendered anchor", async () => {
+    const rawContent = [
+      "# International setup",
+      "",
+      "## Café 配置",
+      "",
+      "First configuration.",
+      "",
+      "## Café 配置",
+      "",
+      "Second configuration.",
+    ].join("\n");
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        getPages: () => [
+          {
+            slug: "international",
+            url: "/docs/international",
+            title: "International setup",
+            content: rawContent,
+            rawContent,
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const payload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          document?: string;
+          section?: string;
+          anchor?: string;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "read_page", {
+        path: "/docs/international",
+        section: "café-配置-1",
+      }),
+    );
+
+    expect(payload.result?.structuredContent).toMatchObject({
+      section: "Café 配置",
+      anchor: "café-配置-1",
+      document: expect.stringContaining("Second configuration."),
+    });
+    expect(payload.result?.content?.[0]?.text).not.toContain("First configuration.");
+  });
+
+  it("does not let the synthetic page title shift an MCP contract anchor", async () => {
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        getPages: () => [
+          {
+            slug: "agent-contract",
+            url: "/docs/agent-contract",
+            title: "Agent Contract",
+            content: "Use the generated contract.",
+            rawContent: "Use the generated contract.",
+            agent: {
+              task: "Read the generated contract.",
+              outcome: "The canonical contract section is returned.",
+            },
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const canonical = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          document?: string;
+          section?: string;
+          anchor?: string;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "read_page", {
+        path: "/docs/agent-contract",
+        section: "agent-contract",
+      }),
+    );
+
+    expect(canonical.result?.structuredContent).toMatchObject({
+      section: "Agent Contract",
+      anchor: "agent-contract",
+      document: expect.stringContaining("## Agent Contract"),
+    });
+    expect(canonical.result?.structuredContent?.document).not.toContain("URL:");
+
+    const shifted = await parseMcpPayload<{
+      result?: {
+        isError?: boolean;
+        content?: Array<{ text?: string }>;
+      };
+    }>(
+      await callMcpTool(handlers, "read_page", {
+        path: "/docs/agent-contract",
+        section: "agent-contract-1",
+      }),
+    );
+    expect(shifted.result?.isError).toBe(true);
+    expect(shifted.result?.content?.[0]?.text).toContain('"agent-contract"');
   });
 
   it("rejects invalid supplied Origins before authentication", async () => {

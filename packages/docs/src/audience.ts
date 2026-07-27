@@ -37,6 +37,20 @@ interface ProtectedRange {
   end: number;
 }
 
+export interface DocsMarkdownPromptBlock {
+  /** Raw JSX attributes between the Prompt name and opening bracket. */
+  attributes: string;
+  /** Literal source between the Prompt tags, with enclosing Markdown container prefixes removed. */
+  children: string;
+  /** Collision-safe placeholder carried through document-level rendering. */
+  token: string;
+}
+
+export interface ExtractedDocsMarkdownPromptBlocks {
+  blocks: DocsMarkdownPromptBlock[];
+  markdown: string;
+}
+
 export interface DocsAudienceMdxIssue {
   code:
     | "missing-only"
@@ -1396,6 +1410,729 @@ function findProtectedRanges(content: string): ProtectedRange[] {
   const excludedRanges = mergeProtectedRanges([...baseExcludedRanges, ...svelteDirectives]);
   const htmlLiterals = findHtmlLiteralRanges(content, excludedRanges);
   return mergeProtectedRanges([...excludedRanges, ...htmlLiterals]);
+}
+
+function findMarkdownLinkLiteralRanges(content: string): ProtectedRange[] {
+  try {
+    const offsetAdjustment = content.startsWith("\uFEFF") ? 1 : 0;
+    const tree = docsAudienceMarkdownProcessor.parse(
+      offsetAdjustment > 0 ? content.slice(offsetAdjustment) : content,
+    ) as MdxAstNode;
+    const ranges: ProtectedRange[] = [];
+
+    const visit = (node: MdxAstNode): void => {
+      const rawStart = getOffset(node.position, "start");
+      const rawEnd = getOffset(node.position, "end");
+      const start = rawStart === undefined ? undefined : rawStart + offsetAdjustment;
+      const end = rawEnd === undefined ? undefined : rawEnd + offsetAdjustment;
+      if (
+        start !== undefined &&
+        end !== undefined &&
+        (node.type === "link" ||
+          node.type === "image" ||
+          node.type === "linkReference" ||
+          node.type === "imageReference")
+      ) {
+        ranges.push({ start, end });
+        return;
+      }
+      for (const child of node.children ?? []) visit(child);
+    };
+
+    visit(tree);
+    return ranges;
+  } catch {
+    return [];
+  }
+}
+
+function findDocsMarkdownPromptBracketLiteralRanges(
+  content: string,
+  protectedRanges: readonly ProtectedRange[],
+): ProtectedRange[] {
+  const ranges: ProtectedRange[] = [];
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const index = content.indexOf("[", cursor);
+    if (index === -1 || isEscapedAt(content, index) || isInsideRange(index, protectedRanges)) {
+      if (index === -1) break;
+      cursor = index + 1;
+      continue;
+    }
+
+    let depth = 1;
+    let end = index + 1;
+    while (end < content.length && depth > 0) {
+      if (content[end] === "\\") {
+        end += 2;
+        continue;
+      }
+      if (content[end] === "[") depth += 1;
+      if (content[end] === "]") depth -= 1;
+      end += 1;
+    }
+
+    if (depth !== 0) {
+      cursor = index + 1;
+      continue;
+    }
+
+    const label = content.slice(index + 1, end - 1);
+    if (/<Prompt(?=[\s/>])/.test(label) && /<\/Prompt\s*>/.test(label)) {
+      let rangeEnd = end;
+      if (content[rangeEnd] === "[") {
+        let referenceEnd = rangeEnd + 1;
+        while (referenceEnd < content.length) {
+          if (content[referenceEnd] === "\\") {
+            referenceEnd += 2;
+            continue;
+          }
+          if (content[referenceEnd] === "]") {
+            referenceEnd += 1;
+            break;
+          }
+          referenceEnd += 1;
+        }
+        if (content[referenceEnd - 1] === "]") rangeEnd = referenceEnd;
+      }
+      ranges.push({ start: content[index - 1] === "!" ? index - 1 : index, end: rangeEnd });
+    }
+
+    cursor = end;
+  }
+
+  return ranges;
+}
+
+interface DocsMarkdownPromptTag {
+  attributes: string;
+  closing: boolean;
+  end: number;
+  index: number;
+  selfClosing: boolean;
+}
+
+interface DocsMarkdownPromptContainer {
+  blockquoteDepth: number;
+  listIndent: number;
+}
+
+// Keep this finite so lowercase custom elements remain live MDX. The HTML list
+// contains every non-void container element; the SVG and MathML namespace roots
+// protect their complete descendant trees without classifying arbitrary
+// lowercase component names as raw markup.
+const DOCS_MARKDOWN_INTRINSIC_CONTAINER_NAMES = new Set([
+  "a",
+  "abbr",
+  "address",
+  "article",
+  "aside",
+  "audio",
+  "b",
+  "bdi",
+  "bdo",
+  "blockquote",
+  "body",
+  "button",
+  "canvas",
+  "caption",
+  "cite",
+  "code",
+  "colgroup",
+  "data",
+  "datalist",
+  "dd",
+  "del",
+  "details",
+  "dfn",
+  "dialog",
+  "div",
+  "dl",
+  "dt",
+  "em",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "head",
+  "header",
+  "hgroup",
+  "html",
+  "i",
+  "iframe",
+  "ins",
+  "kbd",
+  "label",
+  "legend",
+  "li",
+  "main",
+  "map",
+  "mark",
+  "math",
+  "menu",
+  "meter",
+  "nav",
+  "noembed",
+  "noframes",
+  "noscript",
+  "object",
+  "ol",
+  "optgroup",
+  "option",
+  "output",
+  "p",
+  "picture",
+  "pre",
+  "progress",
+  "q",
+  "rp",
+  "rt",
+  "ruby",
+  "s",
+  "samp",
+  "script",
+  "search",
+  "section",
+  "select",
+  "slot",
+  "small",
+  "span",
+  "strong",
+  "style",
+  "sub",
+  "summary",
+  "sup",
+  "svg",
+  "table",
+  "tbody",
+  "td",
+  "template",
+  "textarea",
+  "tfoot",
+  "th",
+  "thead",
+  "time",
+  "title",
+  "tr",
+  "u",
+  "ul",
+  "var",
+  "video",
+  "xmp",
+]);
+
+function normalizeDocsMarkdownIntrinsicContainerName(name: string): string | undefined {
+  const normalized = name.toLowerCase();
+  if (!DOCS_MARKDOWN_INTRINSIC_CONTAINER_NAMES.has(normalized)) return undefined;
+  const isLowercase = name === normalized;
+  const isUppercase = name === name.toUpperCase() && /[A-Z]/.test(name);
+  return isLowercase || isUppercase ? normalized : undefined;
+}
+
+function readDocsMarkdownPromptTagAt(
+  content: string,
+  index: number,
+): DocsMarkdownPromptTag | undefined {
+  const closing = content[index + 1] === "/";
+  const nameStart = index + (closing ? 2 : 1);
+  if (
+    !content.startsWith("Prompt", nameStart) ||
+    !/[\s/>]/.test(content[nameStart + "Prompt".length] ?? "")
+  ) {
+    return undefined;
+  }
+
+  const tag = readGenericMdxJsxTag(content, index);
+  if (!tag) return undefined;
+
+  const attributesStart = nameStart + "Prompt".length;
+  let attributesEnd = tag.end - 1;
+  while (attributesEnd > attributesStart && /\s/.test(content[attributesEnd - 1] ?? "")) {
+    attributesEnd -= 1;
+  }
+  if (content[attributesEnd - 1] === "/") attributesEnd -= 1;
+
+  return {
+    attributes: closing ? "" : content.slice(attributesStart, attributesEnd),
+    closing,
+    end: tag.end,
+    index,
+    selfClosing: tag.selfClosing,
+  };
+}
+
+function findDocsMarkdownHtmlContainerLiteralRanges(
+  content: string,
+  protectedRanges: readonly ProtectedRange[],
+): ProtectedRange[] {
+  const ranges: ProtectedRange[] = [];
+  const openings: Array<{ name: string; start: number }> = [];
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const index = content.indexOf("<", cursor);
+    if (index === -1) break;
+    if (isEscapedAt(content, index) || isInsideRange(index, protectedRanges)) {
+      cursor = index + 1;
+      continue;
+    }
+
+    const closing = content[index + 1] === "/";
+    const nameStart = index + (closing ? 2 : 1);
+    let nameEnd = nameStart;
+    while (/[\w:.-]/.test(content[nameEnd] ?? "")) nameEnd += 1;
+    const name = normalizeDocsMarkdownIntrinsicContainerName(content.slice(nameStart, nameEnd));
+    if (!name) {
+      cursor = index + 1;
+      continue;
+    }
+
+    const tag = readGenericMdxJsxTag(content, index);
+    if (!tag) {
+      cursor = index + 1;
+      continue;
+    }
+    cursor = tag.end;
+    if (!closing) {
+      if (!tag.selfClosing) openings.push({ name, start: index });
+      continue;
+    }
+
+    let openingIndex = openings.length - 1;
+    while (openingIndex >= 0 && openings[openingIndex].name !== name) openingIndex -= 1;
+    if (openingIndex < 0) continue;
+    const [opening] = openings.splice(openingIndex);
+    ranges.push({ start: opening.start, end: tag.end });
+  }
+
+  return ranges;
+}
+
+function isStandaloneDocsMarkdownPromptHtmlRange(
+  content: string,
+  start: number,
+  end: number,
+): boolean {
+  while (start < end && /\s/.test(content[start] ?? "")) start += 1;
+  while (end > start && /\s/.test(content[end - 1] ?? "")) end -= 1;
+
+  const first = readDocsMarkdownPromptTagAt(content, start);
+  // CommonMark may split one multiline Prompt component into several `html`
+  // nodes at blank lines. Exempt every fragment whose first tag is Prompt; the
+  // balanced scanner below still decides whether the full component is live.
+  return first !== undefined;
+}
+
+function findDocsMarkdownRawHtmlLiteralRanges(content: string): ProtectedRange[] {
+  try {
+    const offsetAdjustment = content.startsWith("\uFEFF") ? 1 : 0;
+    const tree = docsAudienceMarkdownProcessor.parse(
+      offsetAdjustment > 0 ? content.slice(offsetAdjustment) : content,
+    ) as MdxAstNode;
+    const ranges: ProtectedRange[] = [];
+
+    const visit = (node: MdxAstNode): void => {
+      const rawStart = getOffset(node.position, "start");
+      const rawEnd = getOffset(node.position, "end");
+      const start = rawStart === undefined ? undefined : rawStart + offsetAdjustment;
+      const end = rawEnd === undefined ? undefined : rawEnd + offsetAdjustment;
+      if (node.type === "html" && start !== undefined && end !== undefined) {
+        if (isStandaloneDocsMarkdownPromptHtmlRange(content, start, end)) return;
+        const raw = content.slice(start, end).trimStart();
+        const elementName = raw.match(/^<\/?([A-Za-z][\w:.-]*)(?=[\s/>])/)?.[1];
+        if (elementName && !normalizeDocsMarkdownIntrinsicContainerName(elementName)) return;
+
+        let cursor = start;
+        let promptDepth = 0;
+        let trailingClosingPrompt: number | undefined;
+        while (cursor < end) {
+          const index = content.indexOf("<", cursor);
+          if (index === -1 || index >= end) break;
+          const tag = readDocsMarkdownPromptTagAt(content, index);
+          if (!tag || tag.end > end) {
+            cursor = index + 1;
+            continue;
+          }
+          if (!tag.closing && !tag.selfClosing) {
+            promptDepth += 1;
+          } else if (tag.closing && promptDepth > 0) {
+            promptDepth -= 1;
+          } else if (tag.closing && content.slice(tag.end, end).trim().length === 0) {
+            trailingClosingPrompt = tag.index;
+          }
+          cursor = tag.end;
+        }
+
+        // A CommonMark raw-HTML node inside Prompt can absorb the outer closing
+        // tag. Keep the raw child protected without hiding that delimiter from
+        // the balanced Prompt scanner.
+        const literalEnd = trailingClosingPrompt ?? end;
+        if (literalEnd > start) ranges.push({ start, end: literalEnd });
+        return;
+      }
+      for (const child of node.children ?? []) visit(child);
+    };
+
+    visit(tree);
+    return ranges;
+  } catch {
+    return [];
+  }
+}
+
+interface DocsMarkdownPromptAstInfo {
+  flowStarts: ReadonlySet<number>;
+  starts: ReadonlySet<number>;
+}
+
+function findDocsMarkdownPromptAstInfo(content: string): DocsMarkdownPromptAstInfo | undefined {
+  try {
+    const prepared = prepareMdxParserSource(content);
+    const offsetAdjustment = prepared.startsWith("\uFEFF") ? 1 : 0;
+    const tree = docsAudienceMdxProcessor.parse(
+      offsetAdjustment > 0 ? prepared.slice(offsetAdjustment) : prepared,
+    ) as MdxAstNode;
+    const flowStarts = new Set<number>();
+    const starts = new Set<number>();
+
+    const visit = (node: MdxAstNode): void => {
+      if (
+        node.name === "Prompt" &&
+        (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") &&
+        getOffset(node.position, "start") !== undefined
+      ) {
+        const start = getOffset(node.position, "start")! + offsetAdjustment;
+        starts.add(start);
+        if (node.type === "mdxJsxFlowElement") flowStarts.add(start);
+      }
+      for (const child of node.children ?? []) visit(child);
+    };
+
+    visit(tree);
+    return { flowStarts, starts };
+  } catch {
+    return undefined;
+  }
+}
+
+function findDocsMarkdownPromptExpressionRanges(
+  content: string,
+  protectedRanges: readonly ProtectedRange[],
+): ProtectedRange[] {
+  const ranges: ProtectedRange[] = [];
+  let protectedIndex = 0;
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const start = content.indexOf("{", cursor);
+    if (start === -1) break;
+    if (isEscapedAt(content, start) || isInsideRange(start, protectedRanges)) {
+      cursor = start + 1;
+      continue;
+    }
+
+    let depth = 1;
+    let end = start + 1;
+    while (end < content.length && depth > 0) {
+      while (
+        protectedIndex < protectedRanges.length &&
+        protectedRanges[protectedIndex].end <= end
+      ) {
+        protectedIndex += 1;
+      }
+      const candidate = protectedRanges[protectedIndex];
+      const protectedRange =
+        candidate && end >= candidate.start && end < candidate.end ? candidate : undefined;
+      if (protectedRange) {
+        end = protectedRange.end;
+        continue;
+      }
+      if (content[end] === "{") depth += 1;
+      if (content[end] === "}") depth -= 1;
+      end += 1;
+    }
+
+    // An unterminated expression makes the remaining source ambiguous. Keeping
+    // it protected is safer than promoting a JSX value to a document block.
+    ranges.push({ start, end: depth === 0 ? end : content.length });
+    if (depth !== 0) break;
+    cursor = end;
+  }
+
+  return ranges;
+}
+
+function createDocsMarkdownPromptToken(
+  content: string,
+  used: ReadonlySet<string>,
+  startAt: number,
+): string {
+  let index = startAt;
+  let token = "";
+  do {
+    token = `%%PROMPT_${index}%%`;
+    index += 1;
+  } while (content.includes(token) || used.has(token));
+  return token;
+}
+
+function isFallbackDocsMarkdownPromptFlow(
+  content: string,
+  opening: DocsMarkdownPromptTag,
+  closing: DocsMarkdownPromptTag,
+): boolean {
+  const lineStart = Math.max(0, content.lastIndexOf("\n", opening.index - 1) + 1);
+  const prefix = content.slice(lineStart, opening.index);
+  if (!/^[\t ]{0,3}$/.test(prefix)) return false;
+
+  const lineEnd = content.indexOf("\n", closing.end);
+  const suffix = content.slice(closing.end, lineEnd === -1 ? content.length : lineEnd);
+  return content.slice(opening.end, closing.index).includes("\n") || /^[\t\r ]*$/.test(suffix);
+}
+
+function resolveDocsMarkdownPromptContainer(
+  content: string,
+  opening: DocsMarkdownPromptTag,
+): DocsMarkdownPromptContainer | undefined {
+  const lineStart = Math.max(0, content.lastIndexOf("\n", opening.index - 1) + 1);
+  let prefix = content.slice(lineStart, opening.index);
+  let blockquoteDepth = 0;
+  let listIndent = 0;
+
+  while (true) {
+    const blockquote = /^ {0,3}>[\t ]?/.exec(prefix);
+    if (!blockquote) break;
+    blockquoteDepth += 1;
+    prefix = prefix.slice(blockquote[0].length);
+  }
+
+  while (true) {
+    const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])[\t ]+/.exec(prefix);
+    if (!list) break;
+    listIndent += list[0].length;
+    prefix = prefix.slice(list[0].length);
+  }
+
+  // A flow component can begin on a continuation line after a list item's
+  // initial text. Recover the marker's continuation width so the placeholder
+  // remains in that same item and the copied Prompt body loses only the list
+  // indentation.
+  if (listIndent === 0 && /^[\t ]+$/.test(prefix)) {
+    let previousLineEnd = Math.max(0, lineStart - 1);
+    while (previousLineEnd > 0) {
+      const previousLineStart = Math.max(0, content.lastIndexOf("\n", previousLineEnd - 1) + 1);
+      let previousLine = content.slice(previousLineStart, previousLineEnd).replace(/\r$/, "");
+      for (let depth = 0; depth < blockquoteDepth; depth += 1) {
+        const blockquote = /^ {0,3}>[\t ]?/.exec(previousLine);
+        if (!blockquote) {
+          previousLine = "";
+          break;
+        }
+        previousLine = previousLine.slice(blockquote[0].length);
+      }
+      const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])[\t ]+/.exec(previousLine);
+      if (list && prefix.length >= list[0].length) {
+        listIndent = list[0].length;
+        break;
+      }
+      if (previousLine.trim().length === 0) break;
+      previousLineEnd = Math.max(0, previousLineStart - 1);
+    }
+  }
+
+  if ((blockquoteDepth === 0 && listIndent === 0) || !/^[\t ]*$/.test(prefix)) {
+    return undefined;
+  }
+  return { blockquoteDepth, listIndent };
+}
+
+function stripDocsMarkdownPromptContainer(
+  children: string,
+  container: DocsMarkdownPromptContainer | undefined,
+): string {
+  if (!container) return children;
+
+  return children
+    .split(/(\r?\n)/)
+    .map((segment, index) => {
+      if (index % 2 === 1) return segment;
+      let line = segment;
+      for (let depth = 0; depth < container.blockquoteDepth; depth += 1) {
+        const blockquote = /^ {0,3}>[\t ]?/.exec(line);
+        if (!blockquote) break;
+        line = line.slice(blockquote[0].length);
+      }
+      let remainingIndent = container.listIndent;
+      while (remainingIndent > 0 && /^[\t ]/.test(line)) {
+        line = line.slice(1);
+        remainingIndent -= 1;
+      }
+      return line;
+    })
+    .join("");
+}
+
+function createDocsMarkdownPromptReplacement(
+  content: string,
+  start: number,
+  end: number,
+  token: string,
+  flow: boolean,
+  container?: DocsMarkdownPromptContainer,
+  adjacentFlowBefore = false,
+  adjacentFlowAfter = false,
+): string {
+  if (!flow || container) return token;
+
+  const newline = content.includes("\r\n") ? "\r\n" : "\n";
+  const before = content.slice(0, start);
+  const after = content.slice(end);
+  const leading =
+    adjacentFlowBefore || before.length === 0 || /(?:\r?\n){2}$/.test(before)
+      ? ""
+      : /\r?\n$/.test(before)
+        ? newline
+        : newline + newline;
+  const trailing =
+    adjacentFlowAfter || after.length === 0 || /^(?:\r?\n){2}/.test(after)
+      ? ""
+      : /^\r?\n/.test(after)
+        ? newline
+        : newline + newline;
+  return leading + token + trailing;
+}
+
+/**
+ * Extract live MDX Prompt blocks while leaving Markdown literals untouched.
+ *
+ * Prompt bodies are copyable source, so callers can safely run audience,
+ * reference-definition, and heading passes over `markdown`, then restore each
+ * block from its token. Fences (including container fences), inline code, links,
+ * comments, raw elements, and other literal contexts are never extracted.
+ */
+export function extractDocsMarkdownPromptBlocks(
+  content: string,
+): ExtractedDocsMarkdownPromptBlocks {
+  if (!/<Prompt(?=[\s/>])/.test(content)) return { blocks: [], markdown: content };
+
+  const syntaxProtectedRanges = mergeProtectedRanges([
+    ...findProtectedRanges(content),
+    ...findMarkdownLinkLiteralRanges(content),
+  ]);
+  const expressionRanges = findDocsMarkdownPromptExpressionRanges(content, syntaxProtectedRanges);
+  const baseProtectedRanges = mergeProtectedRanges([
+    ...syntaxProtectedRanges,
+    ...expressionRanges,
+    ...findDocsMarkdownRawHtmlLiteralRanges(content),
+    ...findDocsMarkdownHtmlContainerLiteralRanges(content, syntaxProtectedRanges),
+  ]);
+  const protectedRanges = mergeProtectedRanges([
+    ...baseProtectedRanges,
+    ...findDocsMarkdownPromptBracketLiteralRanges(content, baseProtectedRanges),
+  ]);
+  const promptAst = findDocsMarkdownPromptAstInfo(content);
+  const pairs: Array<{
+    attributes: string;
+    children: string;
+    container?: DocsMarkdownPromptContainer;
+    end: number;
+    flow: boolean;
+    start: number;
+  }> = [];
+  const openings: Array<{
+    completedChildren: typeof pairs;
+    tag: DocsMarkdownPromptTag;
+  }> = [];
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const index = content.indexOf("<", cursor);
+    if (index === -1) break;
+    if (isEscapedAt(content, index) || isInsideRange(index, protectedRanges)) {
+      cursor = index + 1;
+      continue;
+    }
+
+    const tag = readDocsMarkdownPromptTagAt(content, index);
+    if (!tag) {
+      cursor = index + 1;
+      continue;
+    }
+
+    cursor = tag.end;
+    if (!tag.closing) {
+      if (promptAst && !promptAst.starts.has(tag.index)) continue;
+      if (!tag.selfClosing) openings.push({ completedChildren: [], tag });
+      continue;
+    }
+    const frame = openings.pop();
+    if (!frame) continue;
+
+    const container = resolveDocsMarkdownPromptContainer(content, frame.tag);
+    const pair = {
+      attributes: frame.tag.attributes,
+      children: stripDocsMarkdownPromptContainer(
+        content.slice(frame.tag.end, tag.index),
+        container,
+      ),
+      container,
+      end: tag.end,
+      flow:
+        promptAst?.flowStarts.has(frame.tag.index) === true ||
+        isFallbackDocsMarkdownPromptFlow(content, frame.tag, tag),
+      start: frame.tag.index,
+    };
+    const parent = openings.at(-1);
+    if (parent) parent.completedChildren.push(pair);
+    else pairs.push(pair);
+  }
+
+  // When an outer opener is malformed, retain it verbatim but still recover
+  // any fully balanced Prompt children that follow it.
+  for (const frame of openings) pairs.push(...frame.completedChildren);
+  pairs.sort((left, right) => left.start - right.start);
+
+  if (pairs.length === 0) return { blocks: [], markdown: content };
+
+  const usedTokens = new Set<string>();
+  const blocks: DocsMarkdownPromptBlock[] = pairs.map((pair, index) => {
+    const token = createDocsMarkdownPromptToken(content, usedTokens, index);
+    usedTokens.add(token);
+    return {
+      attributes: pair.attributes,
+      children: pair.children,
+      token,
+    };
+  });
+  let markdown = content;
+  for (let index = pairs.length - 1; index >= 0; index -= 1) {
+    const replacement = createDocsMarkdownPromptReplacement(
+      content,
+      pairs[index].start,
+      pairs[index].end,
+      blocks[index].token,
+      pairs[index].flow,
+      pairs[index].container,
+      index > 0 &&
+        pairs[index - 1].flow &&
+        /^[\t \r\n]*$/.test(content.slice(pairs[index - 1].end, pairs[index].start)),
+      index + 1 < pairs.length &&
+        pairs[index + 1].flow &&
+        /^[\t \r\n]*$/.test(content.slice(pairs[index].end, pairs[index + 1].start)),
+    );
+    markdown =
+      markdown.slice(0, pairs[index].start) + replacement + markdown.slice(pairs[index].end);
+  }
+
+  return { blocks, markdown };
 }
 
 function normalizeProjectedWhitespace(content: string): string {

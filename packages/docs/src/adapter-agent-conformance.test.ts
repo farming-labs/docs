@@ -285,14 +285,10 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
 
     expect(getResponse.status).toBe(200);
     expect(getResponse.headers.get("content-type")).toBe("application/json; charset=utf-8");
-    expect(getResponse.headers.get("x-docs-markdown-section-count")).toBe("3");
-    expect(payload.format).toBe("docs-markdown-sections.v1");
-    expect(payload.sectionCount).toBe(3);
-    expect(payload.sections.map((section) => section.id)).toEqual([
-      adapter === "tanstack-start" ? "documentation" : "page",
-      "home",
-      "install",
-    ]);
+    expect(getResponse.headers.get("x-docs-markdown-section-count")).toBe("2");
+    expect(payload.format).toBe("docs-markdown-sections.v2");
+    expect(payload.sectionCount).toBe(2);
+    expect(payload.sections.map((section) => section.id)).toEqual(["home", "install"]);
 
     const headResponse = await server.HEAD({
       request: new Request(url, { method: "HEAD" }),
