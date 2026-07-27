@@ -2262,10 +2262,23 @@ export async function performDocsSearch(
         docsSearchPageMatchesFilters(resolveDocsSearchPageScope(page), filters),
       )
     : options.pages;
-  const documents = buildDocsSearchDocuments(scopedPages, search.chunking, audience);
+  let resolvedDocuments: DocsSearchDocument[] | undefined;
+  const getDocuments = (): DocsSearchDocument[] => {
+    if (!resolvedDocuments) {
+      resolvedDocuments = buildDocsSearchDocuments(scopedPages, search.chunking, audience);
+    }
+    return resolvedDocuments;
+  };
   const context: DocsSearchAdapterContext = {
     pages: scopedPages,
-    documents,
+    // Keep document construction lazy so remote providers can begin I/O before the local
+    // audience projection is materialized. Adapters retain the existing array contract.
+    get documents() {
+      return getDocuments();
+    },
+    set documents(documents) {
+      resolvedDocuments = documents;
+    },
     audience,
     locale: options.locale,
     pathname: options.pathname,
@@ -2284,17 +2297,36 @@ export async function performDocsSearch(
 
   try {
     const adapter = await resolveSearchAdapter(search, context);
-    const syncContext =
-      audience === "agent" || hasFilters
-        ? {
-            ...context,
-            pages: options.pages,
-            documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
-            audience: "human" as const,
-          }
-        : context;
-    await maybeSyncSearchIndex(adapter, search, syncContext);
-    const results = await adapter.search(query, context);
+    if (shouldSyncOnSearch(search) && typeof adapter.index === "function") {
+      const syncContext: DocsSearchAdapterContext =
+        audience === "agent" || hasFilters
+          ? {
+              pages: options.pages,
+              documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
+              audience: "human",
+              locale: options.locale,
+              pathname: options.pathname,
+              siteTitle: options.siteTitle,
+              signal: options.signal,
+            }
+          : context;
+      await maybeSyncSearchIndex(adapter, search, syncContext);
+    }
+
+    // Async adapters execute through their first await immediately, which starts remote
+    // provider work before the CPU-heavy local projection below. Filtered providers that
+    // require local document IDs still materialize the getter synchronously as before.
+    const adapterSearch = adapter.search(query, context);
+    let documents: DocsSearchDocument[];
+    try {
+      documents = getDocuments();
+    } catch (error) {
+      // The provider may still be in flight. Observe a later rejection before falling
+      // through to the configured local-fallback/error path.
+      void adapterSearch.catch(() => undefined);
+      throw error;
+    }
+    const results = await adapterSearch;
     if (search.provider === "simple") return results;
 
     const localAudienceProjectionResults = buildAudienceProjectionSearchResults(

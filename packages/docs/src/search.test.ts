@@ -802,6 +802,117 @@ describe("performDocsSearch", () => {
     }
   });
 
+  it("starts provider search before building local documents and skips unused sync projections", async () => {
+    let adapterStarted = false;
+    let agentProjectionReads = 0;
+    let humanProjectionReads = 0;
+    let projectedAfterAdapterStarted = false;
+    const sourcePages = [
+      {
+        title: "Lazy agent search",
+        url: "/docs/lazy-agent-search",
+        content: "Human coral walkthrough.",
+        get rawContent() {
+          humanProjectionReads += 1;
+          return "# Lazy agent search\n\nHuman coral walkthrough.";
+        },
+        get agentRawContent() {
+          agentProjectionReads += 1;
+          projectedAfterAdapterStarted ||= adapterStarted;
+          return "# Lazy agent search\n\nAgent indigo procedure.";
+        },
+      },
+    ];
+
+    const results = await performDocsSearch({
+      pages: sourcePages,
+      query: "agent indigo procedure",
+      audience: "agent",
+      search: createCustomSearchAdapter({
+        name: "lazy-provider",
+        async search() {
+          adapterStarted = true;
+          return [];
+        },
+      }),
+    });
+
+    expect(adapterStarted).toBe(true);
+    expect(projectedAfterAdapterStarted).toBe(true);
+    expect(agentProjectionReads).toBeGreaterThan(0);
+    expect(humanProjectionReads).toBe(0);
+    expect(results[0]?.url).toBe("/docs/lazy-agent-search");
+  });
+
+  it("preserves writable adapter document contexts while materializing lazily", async () => {
+    const replacementDocuments = buildDocsSearchDocuments([
+      {
+        title: "Adapter replacement",
+        url: "/docs/adapter-replacement",
+        content: "Replacement indigo procedure.",
+        rawContent: "# Adapter replacement\n\nReplacement indigo procedure.",
+      },
+    ]);
+
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Unread source",
+          url: "/docs/unread-source",
+          content: "Unread source content.",
+          get rawContent(): string {
+            throw new Error("The replaced document context should not be materialized.");
+          },
+        },
+      ],
+      query: "replacement indigo procedure",
+      search: createCustomSearchAdapter({
+        name: "document-replacement-provider",
+        search(_query, context) {
+          context.documents = replacementDocuments;
+          return Promise.resolve([]);
+        },
+      }),
+    });
+
+    expect(results[0]?.url).toBe("/docs/adapter-replacement");
+  });
+
+  it("observes an in-flight provider rejection when local projection fails", async () => {
+    let rejectProvider: ((reason?: unknown) => void) | undefined;
+    const providerSearch = new Promise<never>((_resolve, reject) => {
+      rejectProvider = reject;
+    });
+    const catchSpy = vi.spyOn(providerSearch, "catch");
+
+    await expect(
+      performDocsSearch({
+        pages: [
+          {
+            title: "Broken projection",
+            url: "/docs/broken-projection",
+            content: "Broken projection content.",
+            get rawContent(): string {
+              throw new Error("Local projection failed.");
+            },
+          },
+        ],
+        query: "broken projection",
+        failureMode: "throw",
+        search: createCustomSearchAdapter({
+          name: "rejecting-provider",
+          search() {
+            return providerSearch;
+          },
+        }),
+      }),
+    ).rejects.toThrow("Local projection failed.");
+
+    expect(catchSpy).toHaveBeenCalledOnce();
+    rejectProvider?.(new Error("Provider failed after local projection."));
+    await Promise.resolve();
+  });
+
   it("returns simple search results with snippets", async () => {
     const results = await performDocsSearch({
       pages,
@@ -2333,6 +2444,71 @@ describe("remote search adapters", () => {
       type: "string[]",
       optional: true,
     });
+  });
+
+  it("starts non-sync MCP I/O before agent projection without building the human corpus", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [{ type: "text", text: JSON.stringify({ results: [] }) }],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    let agentProjectionReads = 0;
+    let humanProjectionReads = 0;
+    let mcpStartedBeforeProjection = false;
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Lazy MCP search",
+          url: "/docs/lazy-mcp-search",
+          content: "Human coral walkthrough.",
+          get rawContent() {
+            humanProjectionReads += 1;
+            return "# Lazy MCP search\n\nHuman coral walkthrough.";
+          },
+          get agentRawContent() {
+            agentProjectionReads += 1;
+            mcpStartedBeforeProjection ||= vi.mocked(globalThis.fetch).mock.calls.length > 0;
+            return "# Lazy MCP search\n\nAgent indigo procedure.";
+          },
+        },
+      ],
+      query: "agent indigo procedure",
+      audience: "agent",
+      search: {
+        provider: "mcp",
+        endpoint: "https://docs.example.com/mcp",
+        forwardAudience: true,
+      },
+      baseUrl: "https://docs.example.com",
+    });
+
+    expect(mcpStartedBeforeProjection).toBe(true);
+    expect(agentProjectionReads).toBeGreaterThan(0);
+    expect(humanProjectionReads).toBe(0);
+    expect(results[0]?.url).toBe("/docs/lazy-mcp-search");
   });
 
   it("maps legacy MCP search_docs payloads into docs search results", async () => {
