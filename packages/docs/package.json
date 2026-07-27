@@ -30,6 +30,11 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./markdown-rendering": {
+      "types": "./dist/markdown-rendering.d.mts",
+      "import": "./dist/markdown-rendering.mjs",
+      "default": "./dist/markdown-rendering.mjs"
+    },
     "./agent-skills-bundle": {
       "types": "./dist/agent-skills-bundle.d.mts",
       "import": "./dist/agent-skills-bundle.mjs",
@@ -74,9 +79,12 @@
     "@modelcontextprotocol/sdk": "1.29.0",
     "@scalar/core": "^0.4.3",
     "@vercel/sandbox": "^2.0.0",
+    "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "jiti": "^2.7.0",
+    "parse-entities": "^4.0.2",
     "picocolors": "^1.1.1",
+    "remark-gfm": "^4.0.1",
     "yaml": "^2.8.2",
     "zod": "^4.3.6"
   },

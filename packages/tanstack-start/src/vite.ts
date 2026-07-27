@@ -2,14 +2,48 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@mdx-js/rollup";
+import {
+  applyDocsMarkdownHeadingAnchors,
+  withDocsMarkdownRenderableHeadings,
+} from "@farming-labs/docs";
 import { remarkCodeGroup } from "@farming-labs/docs/server";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
-import { remarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
+import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
+
+function encodeDocsHeadingTocUrls(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) encodeDocsHeadingTocUrls(item);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+
+  const item = value as { url?: unknown; children?: unknown };
+  if (typeof item.url === "string") {
+    const hashIndex = item.url.indexOf("#");
+    if (hashIndex >= 0) {
+      item.url = `${item.url.slice(0, hashIndex)}#${encodeURIComponent(
+        item.url.slice(hashIndex + 1),
+      )}`;
+    }
+  }
+  encodeDocsHeadingTocUrls(item.children);
+}
+
+function canonicalRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
+  return (root, file) => {
+    applyDocsMarkdownHeadingAnchors(root);
+    withDocsMarkdownRenderableHeadings(root, () =>
+      createFumadocsRemarkHeading({ customId: false })(root, file, () => undefined),
+    );
+    encodeDocsHeadingTocUrls(file.data.toc);
+    return root;
+  };
+}
 
 function findWorkspaceRoot(startDir: string): string | null {
   let current = startDir;
@@ -143,7 +177,7 @@ export function docsMdx(): PluginOption {
         remarkFrontmatter,
         [remarkMdxFrontmatter, { name: "metadata" }],
         remarkCodeGroup,
-        remarkHeading,
+        canonicalRemarkHeading,
       ],
       rehypePlugins: [
         rehypeToc,

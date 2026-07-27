@@ -4,8 +4,11 @@ import { notFound } from "next/navigation";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createPageMetadata, type DocsConfig } from "@farming-labs/theme";
-import type { ChangelogFrontmatter } from "@farming-labs/docs";
-import { resolveChangelogConfig } from "@farming-labs/docs";
+import {
+  collectDocsMarkdownSections,
+  resolveChangelogConfig,
+  type ChangelogFrontmatter,
+} from "@farming-labs/docs";
 import { createElement, isValidElement, type ComponentType, type ReactNode } from "react";
 import {
   ChangelogDirectory,
@@ -94,91 +97,16 @@ function truncatePaginationDescription(value: string, maxLength = 110) {
   return truncatePaginationText(value, maxLength);
 }
 
-function stripInlineMarkdown(value: string) {
-  return normalizeWhitespace(
-    value
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-      .replace(/`([^`]+)`/g, "$1")
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/\*([^*]+)\*/g, "$1")
-      .replace(/__([^_]+)__/g, "$1")
-      .replace(/_([^_]+)_/g, "$1")
-      .replace(/<[^>]+>/g, ""),
-  );
-}
-
-function slugifyHeading(text: string) {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[`'"‘’“”]/g, "")
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function extractHeadingId(value: string): { title: string; id?: string } {
-  const match = value.match(/\s+(?:\[#([A-Za-z0-9._:-]+)\]|\{#([A-Za-z0-9._:-]+)\})\s*$/);
-  if (!match) return { title: value };
-
-  return {
-    title: value.slice(0, match.index).trimEnd(),
-    id: match[1] ?? match[2],
-  };
-}
-
 function extractChangelogToc(sourcePath: string): TOCItem[] {
   try {
     const content = readFileSync(join(process.cwd(), sourcePath), "utf-8");
-    const lines = content.split(/\r?\n/);
-    const items: TOCItem[] = [];
-    const seenSlugs = new Map<string, number>();
-    let inFrontmatter = false;
-    let frontmatterDone = false;
-    let inFence = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (!frontmatterDone && trimmed === "---") {
-        inFrontmatter = !inFrontmatter;
-        if (!inFrontmatter) frontmatterDone = true;
-        continue;
-      }
-
-      if (inFrontmatter) continue;
-
-      if (/^(```|~~~)/.test(trimmed)) {
-        inFence = !inFence;
-        continue;
-      }
-
-      if (inFence) continue;
-
-      const headingMatch = line.match(/^(#{2,4})\s+(.+?)\s*#*\s*$/);
-      if (!headingMatch) continue;
-
-      const depth = headingMatch[1].length;
-      const resolvedHeading = extractHeadingId(headingMatch[2]);
-      const title = stripInlineMarkdown(resolvedHeading.title);
-      if (!title) continue;
-
-      const baseSlug = resolvedHeading.id || slugifyHeading(title) || `section-${items.length + 1}`;
-      const seen = seenSlugs.get(baseSlug) ?? 0;
-      seenSlugs.set(baseSlug, seen + 1);
-      const slug = resolvedHeading.id ? baseSlug : seen === 0 ? baseSlug : `${baseSlug}-${seen}`;
-
-      items.push({
-        title,
-        url: `#${slug}`,
-        depth,
-      });
-    }
-
-    return items;
+    return collectDocsMarkdownSections(content)
+      .filter((heading) => heading.level >= 2 && heading.level <= 4 && heading.heading)
+      .map((heading) => ({
+        title: heading.heading,
+        url: `#${encodeURIComponent(heading.id)}`,
+        depth: heading.level,
+      }));
   } catch {
     return [];
   }

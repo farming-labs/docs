@@ -22,6 +22,11 @@ import {
   type DocsMcpContextSource,
   type DocsMcpPage,
 } from "./mcp.js";
+import {
+  PAGE_AGENT_CONTRACT_END_MARKER,
+  PAGE_AGENT_CONTRACT_START_MARKER,
+  upsertPageAgentContractMarkdown,
+} from "./agent-contract.js";
 import { findDocsMarkdownSection } from "./markdown-sections.js";
 import {
   buildDocsAskAIContext,
@@ -683,7 +688,9 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
       origin = `${parsed.protocol}//${parsed.host}`;
     }
   } catch {
-    const [pathAndQuery = "/", fragment = ""] = rawValue.split("#", 2);
+    const hashIndex = rawValue.indexOf("#");
+    const pathAndQuery = hashIndex >= 0 ? rawValue.slice(0, hashIndex) : rawValue || "/";
+    const fragment = hashIndex >= 0 ? rawValue.slice(hashIndex + 1) : "";
     pathname = pathAndQuery.split("?", 1)[0] || "/";
     hash = fragment ? `#${fragment}` : "";
   }
@@ -692,9 +699,11 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
   if (pathname !== "/") pathname = pathname.replace(/\/+$/gu, "");
   if (!pathname.startsWith("/")) pathname = `/${pathname}`;
 
-  const normalizedHash = hash
-    ? `#${safeDecode(hash.slice(1)).trim().replace(/^#+/u, "").toLowerCase()}`
-    : "";
+  // Canonical section anchors are case-sensitive. Keep the fragment URL-encoded so this
+  // operation is idempotent: returning a decoded literal such as `foo%23bar` would cause a
+  // later canonicalization pass to reinterpret it as the distinct `foo#bar` identifier.
+  const decodedHash = hash ? safeDecode(hash.slice(1)).trim() : "";
+  const normalizedHash = decodedHash ? `#${encodeURIComponent(decodedHash)}` : "";
   return `${origin}${pathname || "/"}${normalizedHash === "#" ? "" : normalizedHash}`;
 }
 
@@ -835,15 +844,26 @@ function extractRenderedCitations(
   return { actual, layoutIntegrity, blockUtf8Bytes };
 }
 
-function getPageAgentMarkdown(page: DocsMcpPage): string {
-  return (
+function getPageAgentSectionMarkdown(page: DocsMcpPage): string {
+  const source =
     page.agentRawContent ??
     page.agentFallbackRawContent ??
     page.agentContent ??
     page.agentFallbackContent ??
     page.rawContent ??
-    page.content
-  );
+    page.content;
+  return upsertPageAgentContractMarkdown(source, page.agent);
+}
+
+function cleanPageAgentContractMarkers(markdown: string): string {
+  return markdown
+    .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
+    .replace(PAGE_AGENT_CONTRACT_END_MARKER, "")
+    .replace(/^\r?\n+/, "");
+}
+
+function getPageAgentMarkdown(page: DocsMcpPage): string {
+  return cleanPageAgentContractMarkers(getPageAgentSectionMarkdown(page));
 }
 
 function findPageForSource(
@@ -855,26 +875,30 @@ function findPageForSource(
 
 function getResultAnchor(value: string): string | undefined {
   const canonical = canonicalizeSource(value);
-  const anchor = canonical.split("#", 2)[1];
+  const hashIndex = canonical.indexOf("#");
+  const anchor = hashIndex >= 0 ? canonical.slice(hashIndex + 1) : "";
   return anchor || undefined;
 }
 
-function hydrateSearchSource(
+/** @internal */
+export function hydrateDocsEvaluationSearchSource(
   result: DocsSearchResult,
   index: number,
   pagesByUrl: ReadonlyMap<string, DocsMcpPage>,
   contentMode: "result" | "page-section",
   baseUrl?: string,
-): DocsMcpContextSource {
+): DocsMcpContextSource | undefined {
   const normalizedResultUrl = canonicalizeSource(result.url, baseUrl);
   const page = findPageForSource(pagesByUrl, normalizedResultUrl);
   const anchor = getResultAnchor(result.url);
   const section = anchor ?? result.section;
+  const sectionMarkdown = page ? getPageAgentSectionMarkdown(page) : undefined;
   const pageSection =
-    page && section ? findDocsMarkdownSection(getPageAgentMarkdown(page), section) : undefined;
+    sectionMarkdown && section ? findDocsMarkdownSection(sectionMarkdown, section) : undefined;
+  if (contentMode === "page-section" && page && section && !pageSection) return undefined;
   const content =
     contentMode === "page-section" && page
-      ? (pageSection?.content ?? getPageAgentMarkdown(page)).trim()
+      ? cleanPageAgentContractMarkers(pageSection?.content ?? getPageAgentMarkdown(page)).trim()
       : [result.content, result.description].filter(Boolean).join("\n\n").trim();
   const scope = page ? getPageScope(page) : undefined;
   const url = normalizedResultUrl;
@@ -1149,7 +1173,7 @@ function createContextShell(options: {
 function parseAskAIContextSources(options: {
   context: string;
   blocks: readonly string[];
-  results: readonly ReturnType<typeof hydrateSearchSource>[];
+  results: readonly ReturnType<typeof hydrateDocsEvaluationSearchSource>[];
   baseUrl?: string;
 }): { sources: DocsMcpContextSource[]; citations: string[]; integrity: boolean } {
   if (!options.context) {
@@ -1302,8 +1326,15 @@ async function buildGoldenSurface(options: {
     const rankedSources = results
       .slice(0, options.topK)
       .map((result, index) =>
-        hydrateSearchSource(result, index, pagesByUrl, "result", options.runOptions.baseUrl),
-      );
+        hydrateDocsEvaluationSearchSource(
+          result,
+          index,
+          pagesByUrl,
+          "result",
+          options.runOptions.baseUrl,
+        ),
+      )
+      .filter((source): source is DocsMcpContextSource => Boolean(source));
     const rankedContext = buildContextFromSources({
       query: options.task.query,
       filters: options.task.filters,
@@ -1360,10 +1391,23 @@ async function buildGoldenSurface(options: {
   const rankedSources = askAI.searchResults
     .slice(0, options.topK)
     .map((result, index) =>
-      hydrateSearchSource(result, index, pagesByUrl, "result", options.runOptions.baseUrl),
-    );
+      hydrateDocsEvaluationSearchSource(
+        result,
+        index,
+        pagesByUrl,
+        "result",
+        options.runOptions.baseUrl,
+      ),
+    )
+    .filter((source): source is DocsMcpContextSource => Boolean(source));
   const resultSources = askAI.results.map((result, index) =>
-    hydrateSearchSource(result, index, pagesByUrl, "page-section", options.runOptions.baseUrl),
+    hydrateDocsEvaluationSearchSource(
+      result,
+      index,
+      pagesByUrl,
+      "page-section",
+      options.runOptions.baseUrl,
+    ),
   );
   const parsed = parseAskAIContextSources({
     context: askAI.context,

@@ -15,6 +15,15 @@ export default withDocs({
           },
         ],
       },
+      {
+        source: "/schema/agent-manifest.v2.json",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/schema+json; charset=utf-8",
+          },
+        ],
+      },
     ];
   },
   turbopack: {

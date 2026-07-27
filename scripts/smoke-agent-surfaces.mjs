@@ -7,10 +7,11 @@ import { gunzipSync } from "node:zlib";
 
 const DEFAULT_BASE_URL = "https://docs.farming-labs.dev";
 const AGENT_SKILLS_SCHEMA = "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
-const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
-const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v2";
+const AGENT_MANIFEST_VERSION = "2";
+const AGENT_MANIFEST_SCHEMA = "https://docs.farming-labs.dev/schema/agent-manifest.v2.json";
 const AGENT_MANIFEST_SCHEMA_MEDIA_TYPE = "application/schema+json";
-const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v1.json";
+const AGENT_MANIFEST_SCHEMA_ROUTE = "/schema/agent-manifest.v2.json";
 const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
 const API_CATALOG_ROUTE = "/.well-known/api-catalog";
 const AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
@@ -506,7 +507,10 @@ function validateManifest(json, route, response) {
     manifest.format === AGENT_MANIFEST_FORMAT,
     `${route} did not declare the Farming Labs manifest format`,
   );
-  assert(manifest.version === "1", `${route} did not declare agent manifest version 1`);
+  assert(
+    manifest.version === AGENT_MANIFEST_VERSION,
+    `${route} did not declare agent manifest version ${AGENT_MANIFEST_VERSION}`,
+  );
   assert(isNonEmptyString(manifest.name), `${route} did not declare a name`);
   assert(
     includesTypedLinkRelation(
@@ -587,6 +591,10 @@ async function validateAgentManifestSchema(request) {
   assert(
     asRecord(properties?.format)?.const === AGENT_MANIFEST_FORMAT,
     `${AGENT_MANIFEST_SCHEMA_ROUTE} did not define the manifest format`,
+  );
+  assert(
+    asRecord(properties?.version)?.const === AGENT_MANIFEST_VERSION,
+    `${AGENT_MANIFEST_SCHEMA_ROUTE} did not define the manifest version`,
   );
 }
 

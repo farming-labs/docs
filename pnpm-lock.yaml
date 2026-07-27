@@ -383,15 +383,24 @@ importers:
       '@vercel/sandbox':
         specifier: ^2.0.0
         version: 2.0.0
+      github-slugger:
+        specifier: ^2.0.0
+        version: 2.0.0
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
+      parse-entities:
+        specifier: ^4.0.2
+        version: 4.0.2
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
       yaml:
         specifier: ^2.8.2
         version: 2.8.2
@@ -539,6 +548,9 @@ importers:
       '@farming-labs/theme':
         specifier: workspace:*
         version: link:../fumadocs
+      '@mdx-js/mdx':
+        specifier: ^3.1.1
+        version: 3.1.1
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.11

@@ -3893,19 +3893,16 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           }
 
           const fullDocument = renderPageDocument(page);
-          const sectionDocument = getDocsMcpSourceMarkdown(page);
+          const sectionDocument = upsertPageAgentContractMarkdown(
+            getDocsMcpSourceMarkdown(page),
+            page.agent,
+          );
           const selectedSection = section
-            ? (findDocsMarkdownSection(sectionDocument, section) ??
-              (sectionDocument !== fullDocument
-                ? findDocsMarkdownSection(fullDocument, section)
-                : undefined))
+            ? findDocsMarkdownSection(sectionDocument, section)
             : undefined;
 
           if (section && !selectedSection) {
-            const sourceSections = parseDocsMarkdownSections(sectionDocument);
-            const availableSections = (
-              sourceSections.length > 0 ? sourceSections : parseDocsMarkdownSections(fullDocument)
-            ).map((item) => ({
+            const availableSections = parseDocsMarkdownSections(sectionDocument).map((item) => ({
               title: item.title,
               anchor: item.anchor,
             }));
@@ -5947,7 +5944,8 @@ function getDocsMcpResultPageUrl(value: string): string {
 }
 
 function getDocsMcpResultAnchor(value: string): string | undefined {
-  const anchor = value.split("#", 2)[1];
+  const hashIndex = value.indexOf("#");
+  const anchor = hashIndex >= 0 ? value.slice(hashIndex + 1) : "";
   if (!anchor) return undefined;
 
   try {
@@ -6051,7 +6049,9 @@ export async function buildDocsMcpContext(
 
   for (const { result, page, scope, selectedSection, rawContent } of resolvedCandidates) {
     const anchor = selectedSection?.anchor;
-    const sourceUrl = anchor ? `${page.url}#${anchor}` : page.url;
+    const sourceUrl = anchor
+      ? `${page.url.split("#", 1)[0]}#${encodeURIComponent(anchor)}`
+      : page.url;
     const headerLines = [`## ${page.title}`, `Source: ${sourceUrl}`];
     if (selectedSection?.title) headerLines.push(`Section: ${selectedSection.title}`);
     if (scope.framework) headerLines.push(`Framework: ${scope.framework}`);

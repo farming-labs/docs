@@ -16,6 +16,7 @@ import {
   detectDocsMarkdownAgentRequest,
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
   DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
   findDocsAudienceMdxIssues,
   findDocsMarkdownPage,
@@ -1259,7 +1260,7 @@ describe("agent route helpers", () => {
       "prerequisites",
       "expected-results",
       "logs",
-      "expected-results-2",
+      "expected-results-1",
     ]);
 
     const selected = selectDocsMarkdownSection(document, {
@@ -1301,7 +1302,7 @@ describe("agent route helpers", () => {
     expect(selected.document).toContain("## Expected Results");
   });
 
-  it("reuses search and MCP heading parsing while preserving public duplicate ids", () => {
+  it("reuses canonical search and MCP anchors for public section ids", () => {
     const document = [
       "# [Install the CLI](https://example.com/install)",
       "",
@@ -1313,6 +1314,10 @@ describe("agent route helpers", () => {
       "```bash",
       "# not-a-section",
       "```",
+      "",
+      "## Overview [#release-overview]",
+      "",
+      "Custom anchor.",
       "",
       "## Repeat",
       "",
@@ -1331,13 +1336,15 @@ describe("agent route helpers", () => {
     expect(sections.map((section) => section.id)).toEqual([
       "install-the-cli",
       "verify-setup",
+      "release-overview",
       "repeat",
+      "repeat-1",
       "repeat-2",
-      "repeat-3",
     ]);
     expect(sections.map((section) => section.heading)).toEqual([
       "Install the CLI",
       "Verify setup",
+      "Overview",
       "Repeat",
       "Repeat",
       "Repeat",
@@ -1354,20 +1361,55 @@ describe("agent route helpers", () => {
         canonicalUrl: "https://example.com/docs/repeated",
         markdownUrl: "https://example.com/docs/repeated.md",
       }).sections.map((section) => section.id),
-    ).toEqual(["install-the-cli", "verify-setup", "repeat", "repeat-2", "repeat-3"]);
+    ).toEqual([
+      "install-the-cli",
+      "verify-setup",
+      "release-overview",
+      "repeat",
+      "repeat-1",
+      "repeat-2",
+    ]);
     expect(selectDocsMarkdownSection(document, { section: "repeat-1" })).toMatchObject({
       found: true,
-      section: { id: "repeat-2" },
+      section: { id: "repeat-1" },
       document: expect.stringContaining("Second."),
     });
     expect(selectDocsMarkdownSection(document, { section: "repeat-2" })).toMatchObject({
       found: true,
       section: { id: "repeat-2" },
-      document: expect.stringContaining("Second."),
+      document: expect.stringContaining("Third."),
     });
-    expect(selectDocsMarkdownSection(document, { section: "repeat-2" }).document).not.toContain(
+    expect(selectDocsMarkdownSection(document, { section: "repeat-1" }).document).not.toContain(
       "Third.",
     );
+  });
+
+  it("round-trips case-sensitive custom section ids without ambiguous aliases", () => {
+    const document = [
+      "## Upper [#Foo]",
+      "",
+      "Uppercase content.",
+      "",
+      "## Lower [#foo]",
+      "",
+      "Lowercase content.",
+    ].join("\n");
+    const sections = collectDocsMarkdownSections(document);
+
+    expect(sections.map((section) => section.id)).toEqual(["Foo", "foo"]);
+    expect(selectDocsMarkdownSection(document, { section: "Foo" })).toMatchObject({
+      found: true,
+      section: { id: "Foo" },
+      document: expect.stringContaining("Uppercase content."),
+    });
+    expect(selectDocsMarkdownSection(document, { section: "foo" })).toMatchObject({
+      found: true,
+      section: { id: "foo" },
+      document: expect.stringContaining("Lowercase content."),
+    });
+    expect(selectDocsMarkdownSection(document, { section: "FOO" })).toMatchObject({
+      found: false,
+    });
   });
 
   it("applies budget-only Markdown requests to the full document", () => {
@@ -1401,47 +1443,38 @@ describe("agent route helpers", () => {
     expect(selected.document).toContain("## Expected Results");
   });
 
-  it("keeps generated page titles addressable without generated metadata or Sitemap content", async () => {
+  it("excludes generated page titles so source heading anchors stay canonical", async () => {
     const document = renderDocsMarkdownDocument(
       {
         url: "/docs/install",
         title: "Install",
         description: "Install the framework.",
         related: [{ href: "/docs/configuration" }],
-        content: ["Install overview.", "", "## Prerequisites", "", "Use Node.js 22."].join("\n"),
+        content: [
+          "Install overview.",
+          "",
+          "## Install",
+          "",
+          "Run the installer.",
+          "",
+          "## Prerequisites",
+          "",
+          "Use Node.js 22.",
+        ].join("\n"),
       },
       { origin: "https://example.com" },
     );
     const sections = collectDocsMarkdownSections(document);
 
-    expect(
-      sections.map(({ id, heading, level, startLine, endLine }) => ({
-        id,
-        heading,
-        level,
-        startLine,
-        endLine,
-      })),
-    ).toEqual([
-      {
-        id: "install",
-        heading: "Install",
-        level: 1,
-        startLine: 2,
-        endLine: 12,
-      },
-      {
-        id: "prerequisites",
-        heading: "Prerequisites",
-        level: 2,
-        startLine: 10,
-        endLine: 12,
-      },
+    expect(document).toContain("x_farming_labs_generated_preamble: true");
+    expect(sections.map(({ id, heading, level }) => ({ id, heading, level }))).toEqual([
+      { id: "install", heading: "Install", level: 2 },
+      { id: "prerequisites", heading: "Prerequisites", level: 2 },
     ]);
-    expect(sections[0]?.content).toContain("# Install");
-    expect(sections[0]?.content).toContain("Install overview.");
-    expect(sections[0]?.content).toContain("## Prerequisites");
-    expect(sections[0]?.content).not.toMatch(
+    expect(sections[0]?.content).toContain("## Install");
+    expect(sections[0]?.content).toContain("Run the installer.");
+    expect(sections[0]?.content).not.toContain("## Prerequisites");
+    expect(sections.map((section) => section.content).join("\n")).not.toMatch(
       /^(?:URL|LLM index|Description|Related):|^## Sitemap$/mu,
     );
 
@@ -1454,9 +1487,10 @@ describe("agent route helpers", () => {
     });
     const index = (await indexResponse.json()) as ReturnType<typeof buildDocsMarkdownSectionIndex>;
     expect(index.sections).toMatchObject([
-      { id: "install", level: 1 },
-      { id: "prerequisites", level: 2, parentId: "install" },
+      { id: "install", level: 2 },
+      { id: "prerequisites", level: 2 },
     ]);
+    expect(index.sections.every((section) => section.parentId === undefined)).toBe(true);
 
     const sectionResponse = createDocsMarkdownResponse({
       request: new Request("https://example.com/docs/install.md?section=install"),
@@ -1468,10 +1502,37 @@ describe("agent route helpers", () => {
     const sectionBody = await sectionResponse.text();
     expect(sectionResponse.status).toBe(200);
     expect(sectionResponse.headers.get("x-docs-markdown-section")).toBe("install");
-    expect(sectionBody).toContain("# Install");
-    expect(sectionBody).toContain("Install overview.");
-    expect(sectionBody).toContain("## Prerequisites");
+    expect(sectionBody).toContain("## Install");
+    expect(sectionBody).toContain("Run the installer.");
+    expect(sectionBody).not.toContain("Install overview.");
+    expect(sectionBody).not.toContain("## Prerequisites");
     expect(sectionBody).not.toMatch(/^(?:URL|LLM index|Description|Related):|^## Sitemap$/mu);
+  });
+
+  it("does not infer a generated preamble from authored heading and URL text", () => {
+    const document = renderDocsMarkdownDocument({
+      url: "/docs/authored",
+      title: "Authored",
+      content: "Human fallback.",
+      agentRawContent: [
+        "# Authored heading",
+        "URL: https://example.com/source",
+        "",
+        "Authored introduction.",
+        "",
+        "## Next step",
+        "",
+        "Continue here.",
+      ].join("\n"),
+    });
+
+    expect(document).not.toContain("x_farming_labs_generated_preamble: true");
+    expect(
+      collectDocsMarkdownSections(document).map(({ id, heading }) => ({ id, heading })),
+    ).toEqual([
+      { id: "authored-heading", heading: "Authored heading" },
+      { id: "next-step", heading: "Next step" },
+    ]);
   });
 
   it("builds compact section discovery metadata without section bodies", async () => {
@@ -1527,7 +1588,7 @@ describe("agent route helpers", () => {
     expect(response.headers.get("etag")).toMatch(/^W\/"/u);
     expect(response.headers.get("last-modified")).toBe("Sat, 25 Jul 2026 10:00:00 GMT");
     expect(index).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
       canonicalUrl: "https://example.com/docs/install?lang=en",
       markdownUrl: "https://example.com/docs/install.md?lang=en",
@@ -1607,7 +1668,7 @@ describe("agent route helpers", () => {
     expect(await head.text()).toBe("");
   });
 
-  it("preserves Unicode public section ids and encodes them in fetch URLs", () => {
+  it("preserves Unicode public section ids and encodes them in fetch URLs and headers", async () => {
     const document = [
       "# 安装",
       "",
@@ -1625,7 +1686,7 @@ describe("agent route helpers", () => {
 
     expect(sections.map(({ id, heading }) => ({ id, heading }))).toEqual([
       { id: "安装", heading: "安装" },
-      { id: "cafe-配置", heading: "Café 配置" },
+      { id: "café-配置", heading: "Café 配置" },
       { id: "привет-мир", heading: "Привет мир" },
     ]);
     for (const section of sections) {
@@ -1641,18 +1702,95 @@ describe("agent route helpers", () => {
     });
     expect(index.sections.map((section) => section.id)).toEqual([
       "安装",
-      "cafe-配置",
+      "café-配置",
       "привет-мир",
     ]);
     expect(index.sections[0]?.markdownUrl).toBe(
       "https://example.com/docs/international.md?section=%E5%AE%89%E8%A3%85",
     );
     expect(index.sections[1]?.markdownUrl).toBe(
-      "https://example.com/docs/international.md?section=cafe-%E9%85%8D%E7%BD%AE",
+      "https://example.com/docs/international.md?section=caf%C3%A9-%E9%85%8D%E7%BD%AE",
     );
     expect(index.sections[2]?.markdownUrl).toBe(
       "https://example.com/docs/international.md?section=%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82-%D0%BC%D0%B8%D1%80",
     );
+
+    const response = createDocsMarkdownResponse({
+      request: new Request(index.sections[0]?.markdownUrl ?? ""),
+      document,
+      entry: "docs",
+      requestedPath: "international",
+      origin: "https://example.com",
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section")).toBe("%E5%AE%89%E8%A3%85");
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/international#%E5%AE%89%E8%A3%85>; rel="canonical"',
+    );
+    expect(await response.text()).toContain("中文。");
+  });
+
+  it("round-trips reserved characters in explicit section ids", async () => {
+    const document = [
+      "## Hash [#foo#bar]",
+      "",
+      "Hash content.",
+      "",
+      "## Percent [#foo%23bar]",
+      "",
+      "Percent content.",
+      "",
+      "## Entity [#foo&amp;bar]",
+      "",
+      "Entity content.",
+      "",
+      "## Leading hash [##foo]",
+      "",
+      "Leading content.",
+    ].join("\n");
+    const index = buildDocsMarkdownSectionIndex(document, {
+      canonicalUrl: "https://example.com/docs/punctuation",
+      markdownUrl: "https://example.com/docs/punctuation.md",
+    });
+
+    expect(index.sections.map((section) => section.id)).toEqual([
+      "foo#bar",
+      "foo%23bar",
+      "foo&bar",
+      "#foo",
+    ]);
+    expect(index.sections.map((section) => section.markdownUrl)).toEqual([
+      "https://example.com/docs/punctuation.md?section=foo%23bar",
+      "https://example.com/docs/punctuation.md?section=foo%2523bar",
+      "https://example.com/docs/punctuation.md?section=foo%26bar",
+      "https://example.com/docs/punctuation.md?section=%23foo",
+    ]);
+    expect(index.sections.map((section) => section.canonicalUrl)).toEqual([
+      "https://example.com/docs/punctuation#foo%23bar",
+      "https://example.com/docs/punctuation#foo%2523bar",
+      "https://example.com/docs/punctuation#foo%26bar",
+      "https://example.com/docs/punctuation#%23foo",
+    ]);
+
+    for (const section of index.sections) {
+      expect(selectDocsMarkdownSection(document, { section: section.canonicalUrl })).toMatchObject({
+        found: true,
+        section: { id: section.id },
+      });
+
+      const response = createDocsMarkdownResponse({
+        request: new Request(section.markdownUrl),
+        document,
+        entry: "docs",
+        requestedPath: "punctuation",
+        origin: "https://example.com",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-docs-markdown-section")).toBe(encodeURIComponent(section.id));
+      expect(response.headers.get("link")).toBe(`<${section.canonicalUrl}>; rel="canonical"`);
+      expect(await response.text()).toContain(`${section.heading} [#`);
+    }
   });
 
   it("returns an empty section index for heading-less Markdown", async () => {
@@ -1864,7 +2002,7 @@ describe("agent route helpers", () => {
     expect(response.headers.get("x-docs-markdown-section-found")).toBe("false");
     expect(body).toContain("# Markdown Section Not Found");
     expect(body).toContain("- Prerequisites (#prerequisites)");
-    expect(body).toContain("- Install (#install)");
+    expect(body).not.toContain("- Install (#install)");
   });
 
   it("resolves section-addressable Markdown query parameters", () => {
@@ -1888,6 +2026,7 @@ describe("agent route helpers", () => {
     expect(toDocsMarkdownUrl("/docs/install?lang=es", { locale: "fr" })).toBe(
       "/docs/install.md?lang=es",
     );
+    expect(toDocsMarkdownUrl("/docs/install#foo#bar")).toBe("/docs/install.md#foo#bar");
   });
 
   it("builds canonical Link headers for markdown mirrors", () => {
@@ -2634,7 +2773,7 @@ After`;
 
     expect(spec.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
     expect(spec.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
-    expect(spec.version).toBe("1");
+    expect(spec.version).toBe(DOCS_AGENT_MANIFEST_VERSION);
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
     expect(spec.api).not.toHaveProperty("agentCard");
     expect(spec.api.config).toBe("/api/docs?format=config");

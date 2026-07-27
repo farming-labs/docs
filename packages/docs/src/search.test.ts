@@ -68,6 +68,114 @@ Second section.
     ]);
   });
 
+  it("uses canonical Unicode, explicit, and collision-safe heading anchors", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Anchor guide",
+        url: "/docs/anchors",
+        content: "Canonical anchor guidance.",
+        rawContent: `# Café 配置
+
+## Overview [#release-overview]
+
+## Repeat
+
+First.
+
+## Repeat
+
+Second.
+
+## Foo
+
+## Foo
+
+## Foo-1
+`,
+      },
+    ]);
+
+    expect(
+      documents.filter((document) => document.type === "heading").map((document) => document.url),
+    ).toEqual([
+      "/docs/anchors#caf%C3%A9-%E9%85%8D%E7%BD%AE",
+      "/docs/anchors#release-overview",
+      "/docs/anchors#repeat",
+      "/docs/anchors#repeat-1",
+      "/docs/anchors#foo",
+      "/docs/anchors#foo-1",
+      "/docs/anchors#foo-1-1",
+    ]);
+  });
+
+  it("keeps reserved explicit anchors distinct and URL-safe", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Reserved anchors",
+        url: "/docs/reserved",
+        content: "Reserved anchor guidance.",
+        rawContent: [
+          "## Hash [#foo#bar]",
+          "",
+          "Hash content.",
+          "",
+          "## Percent [#foo%23bar]",
+          "",
+          "Percent content.",
+        ].join("\n"),
+      },
+    ]);
+
+    expect(
+      documents.filter((document) => document.type === "heading").map((document) => document.url),
+    ).toEqual(["/docs/reserved#foo%23bar", "/docs/reserved#foo%2523bar"]);
+  });
+
+  it("keeps authored DOM anchors ahead of generated contract-only headings", () => {
+    const documents = buildDocsSearchDocuments(
+      [
+        {
+          title: "Contract collision",
+          url: "/docs/contract-collision",
+          content: "Authored contract collision guidance.",
+          rawContent: [
+            "## Authored [#agent-contract]",
+            "",
+            "Authored collision marker.",
+            "",
+            "## Prerequisites",
+            "",
+            "Authored prerequisite collision marker.",
+          ].join("\n"),
+          agent: {
+            task: "Run the generated contract task.",
+            outcome: "The generated contract outcome is available.",
+            prerequisites: ["Generated prerequisite collision marker."],
+          },
+        },
+      ],
+      {},
+      "agent",
+    );
+
+    expect(
+      documents
+        .filter((document) => document.type === "heading")
+        .map(({ id, section, url }) => ({ id, section, url })),
+    ).toEqual([
+      {
+        id: "/docs/contract-collision#section-0",
+        section: "Authored",
+        url: "/docs/contract-collision#agent-contract",
+      },
+      {
+        id: "/docs/contract-collision#section-1",
+        section: "Prerequisites",
+        url: "/docs/contract-collision#prerequisites",
+      },
+    ]);
+  });
+
   it("builds distinct human and agent audience indexes", () => {
     const audiencePages = [
       {
@@ -1341,6 +1449,35 @@ describe("buildDocsAskAIContext", () => {
     expect(context.results[0]?.url).toBe("/docs/audience-aware#automation");
     expect(context.context).toContain("zircon handshake nonce");
     expect(context.context).not.toContain("Human screenshot walkthrough");
+  });
+
+  it("keeps case-sensitive custom section anchors distinct", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Case-sensitive anchors",
+          url: "/docs/case-sensitive",
+          content: "Case-sensitive anchor guidance.",
+          rawContent: [
+            "## Upper [#Foo]",
+            "",
+            "Shared case-sensitive marker for the uppercase section.",
+            "",
+            "## Lower [#foo]",
+            "",
+            "Shared case-sensitive marker for the lowercase section.",
+          ].join("\n"),
+        },
+      ],
+      query: "shared case-sensitive marker",
+      limit: 5,
+    });
+
+    expect(context.results.map((result) => result.url)).toEqual(
+      expect.arrayContaining(["/docs/case-sensitive#Foo", "/docs/case-sensitive#foo"]),
+    );
+    expect(context.context).toContain("uppercase section");
+    expect(context.context).toContain("lowercase section");
   });
 
   it("retrieves and includes a contract when only its task terms match", async () => {

@@ -21,7 +21,7 @@ describe("changelog rendering", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("preserves explicit heading ids in the changelog TOC", async () => {
+  it("uses canonical explicit, Unicode, duplicate, and collision-safe ids in the TOC", async () => {
     const sourcePath = "app/docs/changelog/2026-04-15/page.mdx";
     mkdirSync(join(tempDir, "app", "docs", "changelog", "2026-04-15"), { recursive: true });
     writeFileSync(
@@ -30,9 +30,35 @@ describe("changelog rendering", () => {
 title: "Release"
 ---
 
+# Repeat
+
 ## Overview [#release-overview]
 
 Release notes.
+
+## Café 配置
+
+International notes.
+
+## Repeat
+
+First.
+
+## Repeat
+
+Second.
+
+##### Foo
+
+## Foo
+
+## Foo
+
+## Foo-1
+
+## Hash [#foo#bar]
+
+## Percent [#foo%23bar]
 `,
       "utf-8",
     );
@@ -65,6 +91,14 @@ Release notes.
     );
 
     expect(html).toContain('href="#release-overview"');
+    expect(html).toContain('href="#caf%C3%A9-%E9%85%8D%E7%BD%AE"');
+    expect(html).toContain('href="#repeat-1"');
+    expect(html).toContain('href="#repeat-2"');
+    expect(html).not.toContain('href="#repeat"');
+    expect(html).toContain('href="#foo-1"');
+    expect(html).toContain('href="#foo-1-1"');
+    expect(html).toContain('href="#foo%23bar"');
+    expect(html).toContain('href="#foo%2523bar"');
   });
 
   it("renders the changelog TOC without injecting an inline script", () => {

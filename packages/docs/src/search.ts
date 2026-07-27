@@ -501,11 +501,19 @@ function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
   }
 }
 
-function getAskAIPageContent(page: DocsSearchSourcePage): string {
-  return upsertPageAgentContractMarkdown(getPageAudienceRawContent(page, "agent"), page.agent)
+function cleanGeneratedAgentContractMarkers(content: string): string {
+  return content
     .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
     .replace(PAGE_AGENT_CONTRACT_END_MARKER, "")
     .replace(/^\r?\n+/, "");
+}
+
+function getAskAIPageSectionContent(page: DocsSearchSourcePage): string {
+  return getPageAudienceSectionContent(page, "agent");
+}
+
+function getAskAIPageContent(page: DocsSearchSourcePage): string {
+  return cleanGeneratedAgentContractMarkers(getAskAIPageSectionContent(page));
 }
 
 function getPageAgentContractSearchText(page: DocsSearchSourcePage): string {
@@ -713,7 +721,9 @@ function formatAskAIContextResult(options: {
   const sectionSelector = anchor ?? section;
   const rawContent = page
     ? sectionSelector
-      ? (findDocsMarkdownSection(getAskAIPageContent(page), sectionSelector)?.content ?? "")
+      ? cleanGeneratedAgentContractMarkers(
+          findDocsMarkdownSection(getAskAIPageSectionContent(page), sectionSelector)?.content ?? "",
+        )
       : getAskAIPageContent(page)
     : [result.content, result.description].filter(Boolean).join("\n\n");
   const contextContent = clampText(cleanAskAIContextMarkdown(rawContent), maxChars);
@@ -727,17 +737,9 @@ function formatAskAIContextResult(options: {
 }
 
 function getSearchResultKey(result: DocsSearchResult): string {
-  let hash = "";
-
-  try {
-    hash = new URL(result.url, "https://docs.local").hash.replace(/^#/, "");
-  } catch {
-    hash = result.url.split("#")[1]?.split(/[?&]/)[0] ?? "";
-  }
-
-  return `${normalizeUrlPathname(result.url)}#${normalizeWhitespace(
-    hash || result.section || "",
-  ).toLowerCase()}`;
+  const anchor = getSearchResultAnchor(result.url);
+  const sectionFallback = normalizeWhitespace(result.section ?? "").toLowerCase();
+  return `${normalizeUrlPathname(result.url)}#${anchor ?? sectionFallback}`;
 }
 
 function getSearchResultAnchor(value: string): string | undefined {
@@ -746,7 +748,8 @@ function getSearchResultAnchor(value: string): string | undefined {
   try {
     hash = new URL(value, "https://docs.local").hash.replace(/^#/, "");
   } catch {
-    hash = value.split("#")[1]?.split(/[?&]/)[0] ?? "";
+    const hashIndex = value.indexOf("#");
+    hash = hashIndex >= 0 ? value.slice(hashIndex + 1) : "";
   }
 
   if (!hash) return undefined;
@@ -782,9 +785,13 @@ function getAskAIResultKey(
   baseUrl?: string,
   strictExternalOrigins = false,
 ): string {
-  return `${getAskAIResultPageKey(result.url, baseUrl, strictExternalOrigins)}#${normalizeWhitespace(
-    getSearchResultAnchor(result.url) || result.section || "",
-  ).toLowerCase()}`;
+  const anchor = getSearchResultAnchor(result.url);
+  const sectionFallback = normalizeWhitespace(result.section ?? "").toLowerCase();
+  return `${getAskAIResultPageKey(
+    result.url,
+    baseUrl,
+    strictExternalOrigins,
+  )}#${anchor ?? sectionFallback}`;
 }
 
 function mergeSearchResults(
@@ -911,6 +918,30 @@ function getPageAudienceRawContent(
       : (page.rawContent ?? page.content);
 
   return resolveDocsAudienceMdxContent(source, audience);
+}
+
+function getPageAudienceSectionContent(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+): string {
+  const content = getPageAudienceRawContent(page, audience);
+  return audience === "agent" ? upsertPageAgentContractMarkdown(content, page.agent) : content;
+}
+
+function getGeneratedAgentContractLineRange(
+  content: string,
+): { startLine: number; endLine: number } | undefined {
+  const lines = content.split(/\r?\n/u);
+  const startIndex = lines.findIndex((line) => line.trim() === PAGE_AGENT_CONTRACT_START_MARKER);
+  if (startIndex < 0) return undefined;
+  const relativeEndIndex = lines
+    .slice(startIndex + 1)
+    .findIndex((line) => line.trim() === PAGE_AGENT_CONTRACT_END_MARKER);
+  if (relativeEndIndex < 0) return undefined;
+  return {
+    startLine: startIndex + 1,
+    endLine: startIndex + relativeEndIndex + 2,
+  };
 }
 
 function getPageAudienceSearchText(
@@ -1092,16 +1123,32 @@ function splitPageIntoSections(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience = "human",
 ): DocsSearchDocument[] {
-  const raw = getPageAudienceRawContent(page, audience);
+  // Search, Ask AI, and MCP parse the same agent document. The shared section parser assigns
+  // authored/rendered anchors before marker-wrapped contract headings, preserving DOM citations.
+  const raw = getPageAudienceSectionContent(page, audience);
+  const generatedContract =
+    audience === "agent" ? getGeneratedAgentContractLineRange(raw) : undefined;
   const scope = resolveDocsSearchPageScope(page);
-  return parseDocsMarkdownSections(raw).flatMap((section, index) => {
+  let documentIndex = 0;
+  return parseDocsMarkdownSections(raw).flatMap((section) => {
+    // Contract metadata remains searchable through the page summary. Its generated headings stay
+    // MCP-addressable but do not become duplicate search chunks.
+    if (
+      generatedContract &&
+      section.startLine > generatedContract.startLine &&
+      section.startLine < generatedContract.endLine
+    ) {
+      return [];
+    }
     const content = normalizeWhitespace(stripMarkdownText(section.content));
     if (!content) return [];
+    const index = documentIndex;
+    documentIndex += 1;
 
     return [
       {
         id: makeDocumentId(page.url, `section-${index}`),
-        url: `${page.url}#${section.anchor}`,
+        url: `${page.url.split("#", 1)[0]}#${encodeURIComponent(section.anchor)}`,
         title: page.title,
         section: section.title,
         content,

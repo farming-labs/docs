@@ -34,6 +34,7 @@ import {
   DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
   getDocsMcpProtectedResourceMetadataRoutes,
   acceptsDocsMarkdown,
   normalizeDocsRelated,
@@ -535,7 +536,7 @@ function buildAgentSpec({
   return {
     $schema: DOCS_AGENT_MANIFEST_SCHEMA_URI,
     format: DOCS_AGENT_MANIFEST_FORMAT,
-    version: "1",
+    version: DOCS_AGENT_MANIFEST_VERSION,
     name: "@farming-labs/docs",
     baseUrl: origin,
     site: {

@@ -45,9 +45,10 @@ export const DEFAULT_A2A_PROTOCOL_BINDING = "HTTP+JSON";
 export const DEFAULT_A2A_PROTOCOL_VERSION = "1.0";
 export const AGENT_SKILLS_DISCOVERY_SCHEMA_URI =
   "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
-export const DOCS_AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v1";
+export const DOCS_AGENT_MANIFEST_FORMAT = "farming-labs-agent-manifest.v2";
+export const DOCS_AGENT_MANIFEST_VERSION = "2";
 export const DOCS_AGENT_MANIFEST_SCHEMA_URI =
-  "https://docs.farming-labs.dev/schema/agent-manifest.v1.json";
+  "https://docs.farming-labs.dev/schema/agent-manifest.v2.json";
 export const DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE = "application/schema+json";
 
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";

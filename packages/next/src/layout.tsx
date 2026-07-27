@@ -55,7 +55,9 @@ function withAnalyticsAction(route: string): string {
       ? url.toString()
       : `${url.pathname}${url.search}${url.hash}`;
   } catch {
-    const [pathAndQuery, hash = ""] = route.split("#", 2);
+    const hashIndex = route.indexOf("#");
+    const pathAndQuery = hashIndex >= 0 ? route.slice(0, hashIndex) : route;
+    const hash = hashIndex >= 0 ? route.slice(hashIndex + 1) : "";
     const separator = pathAndQuery.includes("?") ? "&" : "?";
     return `${pathAndQuery}${separator}action=analytics${hash ? `#${hash}` : ""}`;
   }

@@ -64,6 +64,6 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@farming-labs/docs": "*"
+    "@farming-labs/docs": ">=0.2.73"
   }
 }
