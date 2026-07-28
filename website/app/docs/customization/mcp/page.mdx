@@ -81,6 +81,8 @@ The current built-in surface includes:
 - `list_docs`
 - `list_pages`
 - `get_navigation`
+
+- `list_page_sections`
 - `search_docs`
 - `read_page`
 - `get_code_examples`
@@ -837,6 +839,7 @@ The built-in HTTP route exposes the full MCP surface:
 
 ## What to ask it
 
+- `list_page_sections`
 Once your MCP client is connected, these are good first checks:
 
 - `list_docs` for `getting-started` before deciding which page to read
@@ -858,6 +861,8 @@ In Cursor or VS Code, natural prompts like these work well too:
 
 - `list_docs` returns page summaries grouped by section; pass `section` such as `getting-started` to narrow the result
 - `list_pages` returns page titles, slugs, and URLs
+
+- `list_page_sections` returns body-free section discovery metadata (ids, headings, levels, parent ids, line ranges, token estimates, and markdown URLs) for a given page
 - `get_navigation` returns the docs tree in a readable text outline
 - `search_docs` ranks pages by title, description, and content matches
 - `read_page` accepts either a slug like `installation` or a full docs path like `/docs/installation`; pass `section` for one heading and `maxChars` to cap both successful content and section-not-found output
