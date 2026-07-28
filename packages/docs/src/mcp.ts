@@ -14,6 +14,12 @@ import {
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 import {
+  DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+  buildDocsMarkdownSectionIndex,
+  toDocsMarkdownUrl,
+  type DocsMarkdownSectionIndex,
+} from "./agent.js";
+import {
   agentVersionConstraintMatches,
   agentVersionConstraintsOverlap,
   normalizeAgentFramework,
@@ -93,6 +99,9 @@ export interface DocsMcpPage {
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
 }
+
+/** Body-free section discovery metadata returned by the `list_page_sections` MCP tool. */
+export type DocsMcpPageSectionIndex = DocsMarkdownSectionIndex;
 
 export interface DocsMcpCodeExample {
   id: string;
@@ -344,6 +353,8 @@ export interface DocsMcpResolvedConfig {
   tools: {
     listDocs: boolean;
     listPages: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    listPageSections?: boolean;
     readPage: boolean;
     listTasks?: boolean;
     readTask?: boolean;
@@ -1936,6 +1947,14 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Expose the list_pages tool.",
           },
           {
+            path: "mcp.tools.listPageSections",
+            name: "listPageSections",
+            type: "boolean",
+            default: true,
+            description:
+              "Expose the body-free list_page_sections discovery tool for page headings, anchors, hierarchy, sizes, and follow-up fetch URLs.",
+          },
+          {
             path: "mcp.tools.listTasks",
             name: "listTasks",
             type: "boolean",
@@ -2183,6 +2202,13 @@ const readPageInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
   section: z.string().trim().min(1).optional(),
   maxChars: z.number().int().min(256).max(1_000_000).optional(),
+});
+
+const listPageSectionsInputSchema = z.object({
+  path: z.string().min(1),
+  locale: z.string().trim().min(1).max(128).optional(),
+  tokenBudget: z.number().int().min(1).max(1_000_000).optional(),
+  byteBudget: z.number().int().min(1).max(1_000_000).optional(),
 });
 
 const listTasksInputSchema = z.object({
@@ -2516,6 +2542,36 @@ const readPageOutputSchema = z.object({
   totalChars: z.number().int().nonnegative(),
   truncated: z.boolean(),
 });
+const pageSectionMetadataOutputSchema = z.object({
+  id: z.string(),
+  heading: z.string(),
+  level: z.number().int().positive(),
+  parentId: z.string().optional(),
+  startLine: z.number().int().positive(),
+  endLine: z.number().int().positive(),
+  estimatedTokens: z.number().int().nonnegative(),
+  utf8Bytes: z.number().int().nonnegative(),
+  canonicalUrl: z.string(),
+  markdownUrl: z.string(),
+});
+const pageSectionIndexOutputSchema = z.object({
+  schemaVersion: z.literal(2),
+  format: z.literal(DOCS_MARKDOWN_SECTION_INDEX_FORMAT),
+  canonicalUrl: z.string(),
+  markdownUrl: z.string(),
+  sectionIndexUrl: z.string(),
+  lineNumbering: z.literal("body"),
+  sectionCount: z.number().int().nonnegative(),
+  estimatedTokens: z.number().int().nonnegative(),
+  utf8Bytes: z.number().int().nonnegative(),
+  fetchBudget: z
+    .object({
+      tokenBudget: z.number().int().positive().optional(),
+      byteBudget: z.number().int().positive().optional(),
+    })
+    .optional(),
+  sections: z.array(pageSectionMetadataOutputSchema),
+});
 const contextSourceOutputSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -2582,6 +2638,7 @@ export function resolveDocsMcpConfig(
       tools: {
         listDocs: true,
         listPages: true,
+        listPageSections: true,
         readPage: true,
         listTasks: true,
         readTask: true,
@@ -2605,6 +2662,7 @@ export function resolveDocsMcpConfig(
     tools: {
       listDocs: config.tools?.listDocs ?? true,
       listPages: config.tools?.listPages ?? true,
+      listPageSections: config.tools?.listPageSections ?? true,
       readPage: config.tools?.readPage ?? true,
       listTasks: config.tools?.listTasks ?? true,
       readTask: config.tools?.readTask ?? true,
@@ -3882,6 +3940,187 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "get_context" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.listPageSections !== false) {
+    server.registerTool(
+      "list_page_sections",
+      {
+        title: "List sections in a docs page",
+        description:
+          "Discover a page's canonical headings, anchors, hierarchy, line ranges, size estimates, and budget-aware fetch URLs without returning the page body.",
+        inputSchema: listPageSectionsInputSchema,
+        outputSchema: pageSectionIndexOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ path: requestedPath, locale, tokenBudget, byteBudget }) => {
+        const startedAt = nowMs();
+        const resolvedLocale = resolveSourceLocale(locale);
+        const trace = createDocsAgentTraceContext("mcp.tool.list_page_sections");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "list_page_sections",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale: resolvedLocale,
+          inputPreview: {
+            path: requestedPath,
+            locale,
+            resolvedLocale,
+            tokenBudget,
+            byteBudget,
+          },
+          metadata: { tool: "list_page_sections" },
+        });
+
+        try {
+          const pages = dedupePages(
+            await options.source.getPages(resolvedLocale, options.requestContext),
+          );
+          const page = findDocsPage(pages, requestedPath, options.source.entry);
+
+          if (!page) {
+            const elapsed = durationMs(startedAt);
+            await emitDocsAnalyticsEvent(options.analytics, {
+              type: "mcp_tool",
+              source: "mcp",
+              locale: resolvedLocale,
+              properties: {
+                tool: "list_page_sections",
+                requestedPath,
+                found: false,
+                durationMs: elapsed,
+              },
+            });
+            trackMcpTool("list_page_sections", {
+              locale: resolvedLocale,
+              resultCount: 0,
+            });
+            await emitDocsAgentTraceEvent(options.observability, {
+              type: "tool.error",
+              source: "mcp",
+              traceId: trace.traceId,
+              parentSpanId: callSpanId,
+              name: "list_page_sections",
+              startedAt: trace.startedAt,
+              endedAt: new Date().toISOString(),
+              durationMs: elapsed,
+              status: "error",
+              locale: resolvedLocale,
+              outputPreview: { found: false, path: requestedPath },
+              metadata: { tool: "list_page_sections", reason: "not_found" },
+            });
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    {
+                      error: `No docs page matched "${requestedPath}".`,
+                    },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const document = upsertPageAgentContractMarkdown(
+            getDocsMcpSourceMarkdown(page),
+            page.agent,
+          );
+          const publicBaseUrl =
+            options.source.baseUrl ??
+            (options.requestContext?.request
+              ? new URL(options.requestContext.request.url).origin
+              : undefined);
+          const canonicalUrl = resolveDocsMcpPublicUrl(
+            withDocsMcpUrlLocale(page.url, resolvedLocale),
+            publicBaseUrl,
+          );
+          const markdownUrl = resolveDocsMcpPublicUrl(
+            toDocsMcpPageMarkdownUrl(page.url, resolvedLocale),
+            publicBaseUrl,
+          );
+          const sectionIndex: DocsMcpPageSectionIndex = buildDocsMarkdownSectionIndex(document, {
+            canonicalUrl,
+            markdownUrl,
+            tokenBudget,
+            byteBudget,
+          });
+          const elapsed = durationMs(startedAt);
+
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale: resolvedLocale,
+            path: page.url,
+            properties: {
+              tool: "list_page_sections",
+              requestedPath,
+              slug: page.slug,
+              found: true,
+              sectionCount: sectionIndex.sectionCount,
+              estimatedTokens: sectionIndex.estimatedTokens,
+              utf8Bytes: sectionIndex.utf8Bytes,
+              tokenBudget,
+              byteBudget,
+              durationMs: elapsed,
+            },
+          });
+          trackMcpTool("list_page_sections", {
+            locale: resolvedLocale,
+            resultCount: sectionIndex.sectionCount,
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_page_sections",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale: resolvedLocale,
+            path: page.url,
+            outputPreview: {
+              found: true,
+              slug: page.slug,
+              sectionCount: sectionIndex.sectionCount,
+              estimatedTokens: sectionIndex.estimatedTokens,
+              utf8Bytes: sectionIndex.utf8Bytes,
+            },
+            metadata: { tool: "list_page_sections" },
+          });
+
+          return createStructuredTextResult(sectionIndex);
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_page_sections",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale: resolvedLocale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "list_page_sections" },
           });
           throw error;
         }
@@ -5899,6 +6138,41 @@ function toStructuredDocsMcpPage(page: DocsMcpPage) {
   };
 }
 
+function withDocsMcpUrlLocale(value: string, locale?: string): string {
+  if (!locale) return value;
+  const absolute = /^[a-z][a-z\d+.-]*:/iu.test(value);
+
+  try {
+    const url = new URL(value, "https://docs.invalid");
+    if (!url.searchParams.has("lang")) url.searchParams.set("lang", locale);
+    return absolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return value;
+  }
+}
+
+function toDocsMcpPageMarkdownUrl(value: string, locale?: string): string {
+  const absolute = /^[a-z][a-z\d+.-]*:/iu.test(value);
+
+  try {
+    const url = new URL(value, "https://docs.invalid");
+    const markdownPath = toDocsMarkdownUrl(`${url.pathname}${url.search}${url.hash}`, { locale });
+    return absolute ? new URL(markdownPath, url.origin).toString() : markdownPath;
+  } catch {
+    return toDocsMarkdownUrl(value, { locale });
+  }
+}
+
+function resolveDocsMcpPublicUrl(value: string, baseUrl?: string): string {
+  if (!baseUrl || /^[a-z][a-z\d+.-]*:/iu.test(value)) return value;
+
+  try {
+    return new URL(value, `${baseUrl.replace(/\/+$/u, "")}/`).toString();
+  } catch {
+    return value;
+  }
+}
+
 function getDocsMcpSourceMarkdown(page: DocsMcpPage): string {
   return (
     page.agentRawContent ??
@@ -6219,38 +6493,42 @@ function findDocsPage(
   requestedPath: string,
   entry?: string,
 ): DocsMcpPage | null {
-  const normalizedRequest = normalizeRequestedPath(requestedPath, entry);
-  const normalizedRequestWithoutLocale = normalizeRequestedPath(
-    removeDocsLocaleQuery(requestedPath),
-    entry,
+  const normalizedRequest = normalizeDocsMcpPageIdentity(requestedPath, entry, true);
+
+  for (const page of pages) {
+    if (normalizeDocsMcpPageIdentity(page.url, entry, true) === normalizedRequest) return page;
+  }
+
+  const normalizedRequestPath = normalizeDocsMcpPageIdentity(requestedPath, entry, false);
+  const pathMatches = pages.filter(
+    (page) => normalizeDocsMcpPageIdentity(page.url, entry, false) === normalizedRequestPath,
   );
+  if (pathMatches.length === 1) return pathMatches[0]!;
+  if (pathMatches.length > 1) return null;
 
-  for (const page of pages) {
-    const normalizedPageUrl = normalizeUrlPath(page.url);
-    if (
-      normalizedPageUrl === normalizedRequest ||
-      normalizedPageUrl === normalizedRequestWithoutLocale
-    ) {
-      return page;
-    }
-  }
+  const normalizedSlug = normalizePathSegment(
+    normalizeDocsMcpPageIdentity(requestedPath, undefined, false).replace(/^\//u, ""),
+  );
+  const slugMatches = pages.filter((page) => normalizePathSegment(page.slug) === normalizedSlug);
 
-  const normalizedSlug = normalizePathSegment(requestedPath.replace(/^\//, ""));
-  for (const page of pages) {
-    if (normalizePathSegment(page.slug) === normalizedSlug) return page;
-  }
-
-  return null;
+  return slugMatches.length === 1 ? slugMatches[0]! : null;
 }
 
-function removeDocsLocaleQuery(value: string): string {
+function normalizeDocsMcpPageIdentity(
+  value: string,
+  entry: string | undefined,
+  includeSearch: boolean,
+): string {
   try {
-    const absolute = /^[a-z][a-z\d+.-]*:/iu.test(value);
     const url = new URL(value, "https://docs.local");
-    url.searchParams.delete("lang");
-    return absolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+    if (includeSearch) url.searchParams.sort();
+    const pathname = normalizeRequestedPath(url.pathname, entry);
+    return `${pathname}${includeSearch ? url.search : ""}`;
   } catch {
-    return value;
+    const [pathname = value, search = ""] = value.split("?", 2);
+    return `${normalizeRequestedPath(pathname, entry)}${
+      includeSearch && search ? `?${search}` : ""
+    }`;
   }
 }
 

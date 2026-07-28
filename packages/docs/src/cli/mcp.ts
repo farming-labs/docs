@@ -237,6 +237,7 @@ export function readMcpConfig(content: string): boolean | DocsMcpConfig | undefi
     tools: {
       listDocs: readBooleanProperty(block, "listDocs"),
       listPages: readBooleanProperty(block, "listPages"),
+      listPageSections: readBooleanProperty(block, "listPageSections"),
       listTasks: readBooleanProperty(block, "listTasks"),
       readTask: readBooleanProperty(block, "readTask"),
       readPage: readBooleanProperty(block, "readPage"),

@@ -227,6 +227,7 @@ export const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
 const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   listDocs: true,
   listPages: true,
+  listPageSections: true,
   readPage: true,
   listTasks: true,
   readTask: true,
@@ -1505,6 +1506,7 @@ function resolveDocsDiagnosticsMcp(mcp: unknown): DocsMcpResolvedConfig {
       ...DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS,
       listDocs: tools.listDocs !== false,
       listPages: tools.listPages !== false,
+      listPageSections: tools.listPageSections !== false,
       readPage: tools.readPage !== false,
       listTasks: tools.listTasks !== false,
       readTask: tools.readTask !== false,

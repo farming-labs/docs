@@ -174,6 +174,7 @@ export type {
   DocsMcpNavigationNode,
   DocsMcpNavigationTree,
   DocsMcpPage,
+  DocsMcpPageSectionIndex,
   DocsMcpRequestContext,
   DocsMcpResolvedCorsConfig,
   DocsMcpResolvedConfig,

@@ -1360,6 +1360,11 @@ export interface DocsMcpToolsConfig {
   listDocs?: boolean;
   /** Expose a `list_pages` tool that returns the known docs pages. */
   listPages?: boolean;
+  /**
+   * Expose a `list_page_sections` tool that returns body-free section discovery metadata
+   * for a page.
+   */
+  listPageSections?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */
   readPage?: boolean;
   /** Expose a `list_tasks` tool for pages with actionable agent contracts. */
