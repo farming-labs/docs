@@ -88,6 +88,7 @@ interface ManagedOpenApiSpec {
   route: string;
   path: string;
   specUrl: string;
+  catalogTargets?: string[];
   sourcePath?: string;
   navigationLabel?: string;
 }
@@ -269,6 +270,7 @@ const managedConfigSchema = z
                 name: z.string().optional(),
                 path: z.string(),
                 route: z.string().optional(),
+                catalogTargets: z.array(z.string()).optional(),
                 navigationLabel: z.string().optional(),
               })
               .passthrough(),
@@ -360,6 +362,7 @@ function resolveManagedOpenApiSpec(
         name?: string;
         path: string;
         route?: string;
+        catalogTargets?: string[];
         navigationLabel?: string;
       }>
     | undefined,
@@ -368,6 +371,12 @@ function resolveManagedOpenApiSpec(
   if (configured) {
     const rawPath = configured.path.trim();
     const route = normalizeManagedRoutePath(configured.route);
+    const catalogTargets =
+      configured.catalogTargets === undefined
+        ? undefined
+        : Array.from(
+            new Set(configured.catalogTargets.map((target) => target.trim()).filter(Boolean)),
+          );
 
     if (isRemoteManagedSpecPath(rawPath) || isRequestRelativeManagedSpecPath(rawPath)) {
       return {
@@ -375,6 +384,7 @@ function resolveManagedOpenApiSpec(
         route,
         path: rawPath,
         specUrl: rawPath,
+        catalogTargets,
         navigationLabel: configured.navigationLabel?.trim() || undefined,
       };
     }
@@ -384,6 +394,7 @@ function resolveManagedOpenApiSpec(
       route,
       path: rawPath,
       specUrl: DEFAULT_MANAGED_OPENAPI_ENDPOINT,
+      catalogTargets,
       sourcePath: path.resolve(projectRoot, rawPath),
       navigationLabel: configured.navigationLabel?.trim() || undefined,
     };
@@ -889,15 +900,20 @@ function renderDocsConfigFile(options: {
   apiReference?: {
     path: string;
     specUrl: string;
+    catalogTargets?: string[];
   };
 }): string {
+  const catalogTargetsLine =
+    options.apiReference?.catalogTargets === undefined
+      ? ""
+      : `    catalogTargets: ${JSON.stringify(options.apiReference.catalogTargets)},\n`;
   const apiReferenceBlock = options.apiReference
     ? `  apiReference: {
     enabled: true,
     path: ${JSON.stringify(options.apiReference.path)},
     renderer: "fumadocs",
     specUrl: ${JSON.stringify(options.apiReference.specUrl)},
-  },
+${catalogTargetsLine}  },
 `
     : "";
   const analyticsBlock = renderManagedAnalyticsBlock(options.analytics);
@@ -1458,6 +1474,7 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
         ? {
             path: apiReferenceRoute,
             specUrl: project.apiReferenceSpec.specUrl,
+            catalogTargets: project.apiReferenceSpec.catalogTargets,
           }
         : undefined,
     }),

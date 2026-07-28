@@ -2702,6 +2702,20 @@ export interface ApiReferenceConfig {
    */
   specUrl?: string;
   /**
+   * Product API base URLs described by the OpenAPI document.
+   *
+   * These URLs become RFC 9727 API catalog targets, and the OpenAPI document is
+   * associated with each target through `service-desc`. Relative URLs resolve
+   * against the docs origin.
+   *
+   * Same-origin generated schemas default to the request origin. Set this for
+   * remotely hosted schemas because the schema URL is not necessarily the API
+   * URL. An explicit empty array disables the catalog association.
+   *
+   * @example ["https://api.example.com/v1"]
+   */
+  catalogTargets?: string[];
+  /**
    * Which renderer to use for the API reference UI.
    *
    * - `"fumadocs"` uses the Fumadocs OpenAPI renderer bundled by `@farming-labs/next`

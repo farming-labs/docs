@@ -352,6 +352,43 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     }
   });
 
+  it("associates remote OpenAPI discovery with its configured product API target", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const server = createDocsServer({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "https://schemas.example.com/product.json",
+        catalogTargets: ["https://api.example.com/v1"],
+      },
+      _preloadedContent: {
+        "/docs/page.md": "# Home\n",
+      },
+    });
+    const url = new URL("/.well-known/api-catalog", "https://docs.example.com");
+    const response = await server.GET({ request: new Request(url), url });
+    const catalog = (await response.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string }>;
+      }>;
+    };
+    const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+
+    expect(response.status).toBe(200);
+    expect(catalog.linkset[0]?.["service-desc"]).toBeUndefined();
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "https://api.example.com/v1",
+    );
+    expect(contexts.get("https://docs.example.com/api/docs")?.["service-desc"]).toBeUndefined();
+    expect(contexts.get("https://api.example.com/v1")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/api/docs?format=openapi",
+      }),
+    ]);
+  });
+
   it("applies the same audience policy to search and agent outputs", async () => {
     const { createDocsServer } = await loadCreateDocsServer();
     const server = createDocsServer({

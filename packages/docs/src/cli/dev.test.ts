@@ -343,6 +343,10 @@ title: "Home"
                 name: "Remote API",
                 path: "https://petstore3.swagger.io/api/v3/openapi.json",
                 route: "/api-reference",
+                catalogTargets: [
+                  " https://petstore3.swagger.io/api/v3 ",
+                  "https://petstore3.swagger.io/api/v3",
+                ],
               },
             ],
           },
@@ -375,6 +379,7 @@ title: "Home"
     expect(docsConfig).toContain("apiReference:");
     expect(docsConfig).toContain('path: "api-reference"');
     expect(docsConfig).toContain('specUrl: "https://petstore3.swagger.io/api/v3/openapi.json"');
+    expect(docsConfig).toContain('catalogTargets: ["https://petstore3.swagger.io/api/v3"]');
     expect(fs.existsSync(path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts"))).toBe(
       false,
     );

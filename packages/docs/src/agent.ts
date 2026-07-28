@@ -124,8 +124,10 @@ export type {
   DocsA2AAgentCardOptions,
   DocsLegacySkillsIndex,
   DocsApiCatalog,
+  DocsApiCatalogApiTarget,
   DocsApiCatalogLinkContext,
   DocsApiCatalogLinkTarget,
+  DocsApiCatalogOpenApiDefinition,
   DocsApiCatalogOptions,
   DocsDiscoveryApiRouteOptions,
   DocsPublishedAgentSkill,
@@ -384,6 +386,8 @@ export interface DocsOpenApiDiscoveryConfig {
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
+  /** Product API targets described by this OpenAPI document. */
+  catalogTargets?: readonly string[];
 }
 
 export interface DocsOpenApiResolvedDiscoveryConfig {
@@ -394,6 +398,8 @@ export interface DocsOpenApiResolvedDiscoveryConfig {
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
+  /** Product API targets described by this OpenAPI document. */
+  catalogTargets?: readonly string[];
 }
 
 export type DocsConfigMapJsonPrimitive = string | number | boolean | null;
@@ -2301,9 +2307,18 @@ export async function createDocsStandardsDiscoveryResponse({
           mcpRoute: mcp.enabled ? mcp.route : null,
           protectedResourceMetadataRoutes,
           feedbackRoutes: feedback?.enabled ? [feedbackRoute, feedbackSchemaRoute] : [],
-          openapiRoute: openapiConfig.enabled
-            ? (openapiUrl ?? `${resolvedApiRoute}?format=openapi`)
-            : null,
+          openapiDefinitions:
+            openapiConfig.enabled && openapiConfig.catalogTargets?.length
+              ? [
+                  {
+                    route: openapiUrl ?? `${resolvedApiRoute}?format=openapi`,
+                    targets: openapiConfig.catalogTargets.map((route) => ({
+                      route,
+                      title: "Product API",
+                    })),
+                  },
+                ]
+              : [],
           apiReferenceRoute:
             openapiConfig.enabled && openapiConfig.apiReferencePath
               ? openapiConfig.apiReferencePath
@@ -4632,18 +4647,36 @@ export function resolveDocsOpenApiDiscoveryConfig(
       url: DEFAULT_OPENAPI_SCHEMA_ROUTE,
       urlSource: "default",
       source: "generated",
+      catalogTargets: ["/"],
     };
   }
 
   if (openapi.enabled === false) return { enabled: false };
+  const specUrl = openapi.specUrl?.trim();
+  const source = openapi.source ?? (specUrl ? "configured" : "generated");
+  const requestRelativeSpecUrl = specUrl?.startsWith("/") && !specUrl.startsWith("//");
+  const catalogTargets =
+    openapi.catalogTargets === undefined
+      ? source === "generated" || requestRelativeSpecUrl
+        ? ["/"]
+        : undefined
+      : Array.from(
+          new Set(
+            openapi.catalogTargets
+              .filter((target): target is string => typeof target === "string")
+              .map((target) => target.trim())
+              .filter(Boolean),
+          ),
+        );
 
   return {
     enabled: true,
     url: openapi.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE,
     urlSource: openapi.urlSource ?? (openapi.url === undefined ? "default" : "configured"),
-    source: openapi.source ?? "generated",
+    source,
     specUrl: openapi.specUrl,
     apiReferencePath: openapi.apiReferencePath,
+    catalogTargets,
   };
 }
 

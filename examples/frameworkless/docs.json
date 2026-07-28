@@ -13,7 +13,10 @@
       {
         "name": "Remote API",
         "path": "https://petstore3.swagger.io/api/v3/openapi.json",
-        "route": "/api-reference"
+        "route": "/api-reference",
+        "catalogTargets": [
+          "https://petstore3.swagger.io/api/v3"
+        ]
       }
     ]
   },
