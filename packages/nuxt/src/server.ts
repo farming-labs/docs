@@ -91,7 +91,7 @@ import {
   buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
   readDocsSitemapManifest,
-  resolveApiReferenceConfig,
+  resolveApiReferenceOpenApiDiscovery,
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
   serializeDocsIconRegistry,
@@ -110,20 +110,6 @@ export { defineApiReferenceHandler } from "./api-reference.js";
 
 function isApiReferenceOpenApiRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "openapi";
-}
-
-function resolveApiReferenceOpenApiDiscovery(value: unknown) {
-  const apiReference = resolveApiReferenceConfig(value as any);
-  if (!apiReference.enabled) return { enabled: false };
-
-  return {
-    enabled: true,
-    url: "/api/docs?format=openapi",
-    urlSource: "default" as const,
-    source: apiReference.specUrl ? ("configured" as const) : ("generated" as const),
-    specUrl: apiReference.specUrl,
-    apiReferencePath: `/${apiReference.path}`,
-  };
 }
 
 interface GithubConfigObj {

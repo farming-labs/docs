@@ -104,6 +104,13 @@
           "type": "string",
           "minLength": 1
         },
+        "catalogTargets": {
+          "type": "array",
+          "description": "Product API base URLs described by this OpenAPI document for RFC 9727 catalog discovery.",
+          "items": {
+            "$ref": "#/$defs/href"
+          }
+        },
         "navigationLabel": {
           "type": "string",
           "minLength": 1
@@ -742,6 +749,9 @@
             "name": "Core API",
             "path": "api/openapi.json",
             "route": "/api-reference/core",
+            "catalogTargets": [
+              "https://api.acme.dev/v1"
+            ],
             "navigationLabel": "Core API"
           }
         ]

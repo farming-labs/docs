@@ -1369,6 +1369,69 @@ export async function GET() {
         },
       },
     });
+
+    const catalogResponse = await GET(new Request("http://localhost/.well-known/api-catalog"));
+    const catalog = (await catalogResponse.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string }>;
+      }>;
+    };
+    const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+
+    expect(catalogResponse.status).toBe(200);
+    expect(catalog.linkset[0]?.["service-desc"]).toBeUndefined();
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain("http://localhost/");
+    expect(contexts.get("http://localhost/api/docs")?.["service-desc"]).toBeUndefined();
+    expect(contexts.get("http://localhost/")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "http://localhost/api/docs?format=openapi",
+      }),
+    ]);
+  });
+
+  it("reads product API catalog targets from docs.config", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-openapi-catalog-target-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  apiReference: {
+    enabled: true,
+    specUrl: "https://schemas.example.com/product.json",
+    catalogTargets: ["https://api.example.com/v1"],
+  },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+    const response = await GET(new Request("https://docs.example.com/.well-known/api-catalog"));
+    const catalog = (await response.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string }>;
+      }>;
+    };
+    const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+
+    expect(response.status).toBe(200);
+    expect(catalog.linkset[0]?.["service-desc"]).toBeUndefined();
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "https://api.example.com/v1",
+    );
+    expect(contexts.get("https://docs.example.com/api/docs")?.["service-desc"]).toBeUndefined();
+    expect(contexts.get("https://api.example.com/v1")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/api/docs?format=openapi",
+      }),
+    ]);
   });
 
   it("serves robots.txt by default through the shared docs api handler", async () => {

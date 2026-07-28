@@ -99,7 +99,7 @@ import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
   readDocsSitemapManifest,
-  resolveApiReferenceConfig,
+  resolveApiReferenceOpenApiDiscovery,
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
   type DocsMcpPage,
@@ -482,27 +482,6 @@ function isRobotsDiscoveryEnabled(robots?: boolean | DocsRobotsConfig): boolean 
 
 function isApiReferenceOpenApiRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "openapi";
-}
-
-function resolveApiReferenceOpenApiDiscovery(value: DocsConfig["apiReference"]): {
-  enabled: boolean;
-  url?: string;
-  urlSource?: "default" | "configured";
-  source?: "generated" | "configured";
-  specUrl?: string;
-  apiReferencePath?: string;
-} {
-  const apiReference = resolveApiReferenceConfig(value);
-  if (!apiReference.enabled) return { enabled: false };
-
-  return {
-    enabled: true,
-    url: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
-    urlSource: "default",
-    source: apiReference.specUrl ? "configured" : "generated",
-    specUrl: apiReference.specUrl,
-    apiReferencePath: `/${apiReference.path}`,
-  };
 }
 
 function buildAgentSpec({
@@ -3747,8 +3726,15 @@ function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | unde
       const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
       const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
       const specUrlMatch = block.match(/specUrl\s*:\s*["']([^"']+)["']/);
+      const catalogTargetsMatch = block.match(/catalogTargets\s*:\s*\[([\s\S]*?)\]/);
       const rendererMatch = block.match(/renderer\s*:\s*["'](fumadocs|scalar)["']/);
       const excludeMatch = block.match(/exclude\s*:\s*\[([\s\S]*?)\]/);
+      const catalogTargets =
+        catalogTargetsMatch?.[1] === undefined
+          ? undefined
+          : Array.from(catalogTargetsMatch[1].matchAll(/["']([^"']+)["']/g))
+              .map((match) => match[1])
+              .filter(Boolean);
       const exclude =
         excludeMatch?.[1] === undefined
           ? undefined
@@ -3765,6 +3751,7 @@ function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | unde
         path: pathMatch?.[1],
         routeRoot: routeRootMatch?.[1],
         specUrl: specUrlMatch?.[1],
+        catalogTargets,
         renderer,
         exclude,
       };

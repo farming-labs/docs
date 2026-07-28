@@ -50,6 +50,7 @@ import {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsMarkdownCanonicalUrl,
+  resolveDocsOpenApiDiscoveryConfig,
   resolveDocsMarkdownSectionRequest,
   resolveDocsRequestApiRoute,
   resolveDocsSkillFormat,
@@ -3270,6 +3271,31 @@ After`;
     expect(explicitLlms.llmsTxt).not.toContain("/api/internal/docs?format=openapi");
   });
 
+  it("does not infer a product target for a remote OpenAPI schema", () => {
+    expect(
+      resolveDocsOpenApiDiscoveryConfig({
+        enabled: true,
+        specUrl: "https://schemas.example.com/product.openapi.json",
+      }),
+    ).toMatchObject({
+      enabled: true,
+      source: "configured",
+      specUrl: "https://schemas.example.com/product.openapi.json",
+      catalogTargets: undefined,
+    });
+
+    expect(
+      resolveDocsOpenApiDiscoveryConfig({
+        enabled: true,
+        specUrl: "/product.openapi.json",
+      }),
+    ).toMatchObject({
+      enabled: true,
+      source: "configured",
+      catalogTargets: ["/"],
+    });
+  });
+
   it("advertises only task tools exposed by the resolved MCP config", () => {
     const baseTools = {
       listDocs: true,
@@ -3467,12 +3493,25 @@ description: Use the example documentation.
     expect(catalog.linkset[0].item).toContainEqual(
       expect.objectContaining({ href: "https://docs.example.com/api/internal/docs" }),
     );
+    expect(catalog.linkset[0].item).toContainEqual(
+      expect.objectContaining({ href: "https://docs.example.com/" }),
+    );
     expect(catalog.linkset[0]["service-meta"]).toContainEqual(
       expect.objectContaining({
         href: "https://docs.example.com/api/internal/docs?format=config",
       }),
     );
-    expect(catalog.linkset[0]["service-desc"]).toContainEqual(
+    expect(catalog.linkset[0]["service-desc"]).toBeUndefined();
+    expect(
+      catalog.linkset.find(
+        (context) => context.anchor === "https://docs.example.com/api/internal/docs",
+      )?.["service-desc"],
+    ).toBeUndefined();
+    expect(
+      catalog.linkset.find((context) => context.anchor === "https://docs.example.com/")?.[
+        "service-desc"
+      ],
+    ).toContainEqual(
       expect.objectContaining({
         href: "https://docs.example.com/api/internal/docs?format=openapi",
       }),

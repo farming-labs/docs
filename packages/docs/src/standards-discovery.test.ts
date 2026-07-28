@@ -58,7 +58,12 @@ function catalog() {
     mcpRoute: "/api/docs/mcp",
     protectedResourceMetadataRoutes: ["/.well-known/oauth-protected-resource/api/docs/mcp"],
     feedbackRoutes: ["/api/docs/agent/feedback", "/api/docs/agent/feedback/schema"],
-    openapiRoute: "/api/docs?format=openapi",
+    openapiDefinitions: [
+      {
+        route: "/api/docs?format=openapi",
+        targets: [{ route: "/product-api", title: "Product API" }],
+      },
+    ],
     apiReferenceRoute: "/api-reference",
   });
 }
@@ -77,6 +82,7 @@ describe("RFC 9727 API catalog", () => {
     });
     expect(result.linkset[0].item?.map((item) => item.href)).toEqual([
       "https://docs.example.com/api/docs",
+      "https://docs.example.com/product-api",
       "https://docs.example.com/api/docs/mcp",
       "https://docs.example.com/api/docs/agent/feedback",
       "https://docs.example.com/api/docs/agent/feedback/schema",
@@ -84,7 +90,17 @@ describe("RFC 9727 API catalog", () => {
     expect(result.linkset[0]["service-doc"]?.map((item) => item.href)).toContain(
       "https://docs.example.com/guide",
     );
-    expect(result.linkset[0]["service-desc"]).toEqual([
+    expect(result.linkset[0]["service-desc"]).toBeUndefined();
+    expect(
+      result.linkset.find((context) => context.anchor === "https://docs.example.com/api/docs")?.[
+        "service-desc"
+      ],
+    ).toBeUndefined();
+    expect(
+      result.linkset.find((context) => context.anchor === "https://docs.example.com/product-api")?.[
+        "service-desc"
+      ],
+    ).toEqual([
       expect.objectContaining({ href: "https://docs.example.com/api/docs?format=openapi" }),
     ]);
     expect(result.linkset[0]["service-meta"]).toEqual(
@@ -100,6 +116,94 @@ describe("RFC 9727 API catalog", () => {
         (item) => item.href === "https://docs.example.com/llms.txt",
       ),
     ).toHaveLength(1);
+  });
+
+  it("associates each OpenAPI definition only with the product targets it describes", () => {
+    const result = buildDocsApiCatalog({
+      origin: "https://docs.example.com",
+      apiRoute: "/api/docs",
+      openapiDefinitions: [
+        {
+          route: "/schemas/billing.json",
+          title: "Billing OpenAPI schema",
+          targets: [
+            { route: "https://api.example.com/billing/v1", title: "Billing API" },
+            { route: "https://api.example.com/billing/v1", title: "Duplicate target" },
+          ],
+        },
+        {
+          route: "/schemas/accounts.json",
+          targets: [{ route: "https://api.example.com/accounts/v2", title: "Accounts API" }],
+        },
+        {
+          route: "file:///tmp/private.json",
+          targets: [{ route: "file:///tmp/private-api" }],
+        },
+      ],
+    });
+
+    expect(result.linkset[0].item?.map((item) => item.href)).toEqual([
+      "https://docs.example.com/api/docs",
+      "https://api.example.com/billing/v1",
+      "https://api.example.com/accounts/v2",
+    ]);
+    expect(result.linkset[0]["service-desc"]).toBeUndefined();
+
+    const contexts = new Map(result.linkset.map((context) => [context.anchor, context]));
+    expect(contexts.get("https://docs.example.com/api/docs")?.["service-desc"]).toBeUndefined();
+    expect(contexts.get("https://api.example.com/billing/v1")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/schemas/billing.json",
+        title: "Billing OpenAPI schema",
+      }),
+    ]);
+    expect(contexts.get("https://api.example.com/accounts/v2")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/schemas/accounts.json",
+      }),
+    ]);
+  });
+
+  it("keeps a legacy OpenAPI description on the API route without leaking to the catalog", () => {
+    const legacy = buildDocsApiCatalog({
+      origin: "https://docs.example.com",
+      apiRoute: "/api/docs",
+      openapiRoute: "/openapi.json",
+    });
+    expect(legacy.linkset[0]["service-desc"]).toBeUndefined();
+    expect(
+      legacy.linkset.find((context) => context.anchor === "https://docs.example.com/api/docs")?.[
+        "service-desc"
+      ],
+    ).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/openapi.json",
+      }),
+    ]);
+
+    const scoped = buildDocsApiCatalog({
+      origin: "https://docs.example.com",
+      apiRoute: "/api/docs",
+      openapiRoute: "/openapi.json",
+      openapiTargetRoutes: ["/product/v1"],
+    });
+    expect(
+      scoped.linkset.find((context) => context.anchor === "https://docs.example.com/product/v1")?.[
+        "service-desc"
+      ],
+    ).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/openapi.json",
+      }),
+    ]);
+
+    const disabled = buildDocsApiCatalog({
+      origin: "https://docs.example.com",
+      apiRoute: "/api/docs",
+      openapiRoute: "/openapi.json",
+      openapiTargetRoutes: [],
+    });
+    expect(disabled.linkset.every((context) => context["service-desc"] === undefined)).toBe(true);
   });
 
   it("omits disabled and non-HTTP endpoints", () => {

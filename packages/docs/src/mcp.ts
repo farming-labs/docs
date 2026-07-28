@@ -2036,6 +2036,13 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         type: "string",
         description: "Docs route where the API reference is rendered.",
       },
+      {
+        path: "apiReference.catalogTargets",
+        name: "catalogTargets",
+        type: "string[]",
+        description:
+          "Product API base URLs that the OpenAPI document describes in the RFC 9727 catalog.",
+      },
     ],
   },
   {

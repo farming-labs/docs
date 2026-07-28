@@ -136,6 +136,21 @@ export interface DocsApiCatalogLinkTarget {
   title?: string;
 }
 
+export interface DocsApiCatalogApiTarget {
+  route: string;
+  type?: string;
+  title?: string;
+}
+
+export interface DocsApiCatalogOpenApiDefinition {
+  /** OpenAPI document URL, relative to the docs origin or absolute. */
+  route: string;
+  /** Product API targets described by this OpenAPI document. */
+  targets: readonly DocsApiCatalogApiTarget[];
+  type?: string;
+  title?: string;
+}
+
 export interface DocsApiCatalogLinkContext {
   anchor: string;
   item?: DocsApiCatalogLinkTarget[];
@@ -154,11 +169,7 @@ export interface DocsApiCatalogOptions {
   docsRoute?: string;
   apiRoute?: string | null;
   /** Additional HTTP API endpoints to list as RFC 9727 `item` links. */
-  apiRoutes?: readonly {
-    route: string;
-    type?: string;
-    title?: string;
-  }[];
+  apiRoutes?: readonly DocsApiCatalogApiTarget[];
   configRoute?: string | null;
   diagnosticsRoute?: string | null;
   agentManifestRoute?: string | null;
@@ -174,7 +185,25 @@ export interface DocsApiCatalogOptions {
   mcpRoute?: string | null;
   protectedResourceMetadataRoutes?: readonly string[];
   feedbackRoutes?: readonly string[];
+  /** OpenAPI documents paired with the product API targets they describe. */
+  openapiDefinitions?: readonly DocsApiCatalogOpenApiDefinition[];
+  /**
+   * Legacy single OpenAPI document URL.
+   *
+   * By default this describes `apiRoute`, preserving the previous single-schema
+   * behavior without attaching it to the catalog itself. Set
+   * `openapiTargetRoutes` to associate product APIs or to `[]` to disable the
+   * association. Prefer `openapiDefinitions` for new integrations.
+   *
+   * @deprecated Use `openapiDefinitions`.
+   */
   openapiRoute?: string | null;
+  /**
+   * Product targets described by the legacy `openapiRoute`.
+   *
+   * @deprecated Use `openapiDefinitions`.
+   */
+  openapiTargetRoutes?: readonly string[];
   apiReferenceRoute?: string | null;
 }
 
@@ -244,6 +273,15 @@ function compactUniqueTargets(targets: Array<DocsApiCatalogLinkTarget | null>) {
   });
 }
 
+function compactUniqueTargetsByHref(targets: Array<DocsApiCatalogLinkTarget | null>) {
+  const seen = new Set<string>();
+  return targets.filter((target): target is DocsApiCatalogLinkTarget => {
+    if (!target || seen.has(target.href)) return false;
+    seen.add(target.href);
+    return true;
+  });
+}
+
 function toTarget(
   route: string | null | undefined,
   origin: string,
@@ -271,12 +309,58 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
     options.agentSkillsIndexRoute === undefined
       ? DEFAULT_AGENT_SKILLS_INDEX_ROUTE
       : options.agentSkillsIndexRoute;
+  const legacyOpenapiTargetRoutes =
+    options.openapiTargetRoutes === undefined
+      ? apiRoute
+        ? [apiRoute]
+        : []
+      : options.openapiTargetRoutes;
 
-  const apiTargets = compactUniqueTargets([
+  const openapiDefinitions: readonly DocsApiCatalogOpenApiDefinition[] = [
+    ...(options.openapiDefinitions ?? []),
+    ...(options.openapiRoute && legacyOpenapiTargetRoutes.length
+      ? [
+          {
+            route: options.openapiRoute,
+            targets: legacyOpenapiTargetRoutes.map((route) => ({
+              route,
+              title: route === apiRoute ? "Documentation API" : "Product API",
+            })),
+          },
+        ]
+      : []),
+  ];
+  const openapiApiTargets: DocsApiCatalogLinkTarget[] = [];
+  const serviceDescriptionsByAnchor = new Map<string, DocsApiCatalogLinkTarget[]>();
+
+  for (const definition of openapiDefinitions) {
+    const targets = compactUniqueTargetsByHref(
+      definition.targets.map((target) =>
+        toTarget(target.route, options.origin, target.type, target.title),
+      ),
+    );
+    openapiApiTargets.push(...targets);
+
+    const descriptor = toTarget(
+      definition.route,
+      options.origin,
+      definition.type ?? "application/vnd.oai.openapi+json;version=3.1",
+      definition.title ?? "OpenAPI schema",
+    );
+    if (!descriptor) continue;
+
+    for (const target of targets) {
+      const current = serviceDescriptionsByAnchor.get(target.href) ?? [];
+      serviceDescriptionsByAnchor.set(target.href, compactUniqueTargets([...current, descriptor]));
+    }
+  }
+
+  const apiTargets = compactUniqueTargetsByHref([
     toTarget(apiRoute, options.origin, "application/json", "Documentation API"),
     ...(options.apiRoutes ?? []).map((target) =>
       toTarget(target.route, options.origin, target.type, target.title),
     ),
+    ...openapiApiTargets,
     toTarget(options.mcpRoute, options.origin, "application/json", "Documentation MCP endpoint"),
     ...(options.feedbackRoutes ?? []).map((route, index) =>
       toTarget(
@@ -332,15 +416,6 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
     ),
   ]);
 
-  const serviceDescriptions = compactUniqueTargets([
-    toTarget(
-      options.openapiRoute,
-      options.origin,
-      "application/vnd.oai.openapi+json;version=3.1",
-      "OpenAPI schema",
-    ),
-  ]);
-
   const catalogContext: DocsApiCatalogLinkContext = {
     anchor: catalogUrl,
     "api-catalog": [
@@ -354,19 +429,14 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
   if (apiTargets.length > 0) catalogContext.item = apiTargets;
   if (serviceDocs.length > 0) catalogContext["service-doc"] = serviceDocs;
   if (serviceMetadata.length > 0) catalogContext["service-meta"] = serviceMetadata;
-  if (serviceDescriptions.length > 0) catalogContext["service-desc"] = serviceDescriptions;
 
   const linkset = [catalogContext];
   for (const target of apiTargets) {
     const context: DocsApiCatalogLinkContext = { anchor: target.href };
     if (serviceDocs.length > 0) context["service-doc"] = serviceDocs;
     if (serviceMetadata.length > 0) context["service-meta"] = serviceMetadata;
-    if (
-      serviceDescriptions.length > 0 &&
-      target.href === resolveHttpUrl(apiRoute, options.origin)
-    ) {
-      context["service-desc"] = serviceDescriptions;
-    }
+    const serviceDescriptions = serviceDescriptionsByAnchor.get(target.href);
+    if (serviceDescriptions?.length) context["service-desc"] = serviceDescriptions;
     linkset.push(context);
   }
 
