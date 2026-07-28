@@ -1210,6 +1210,34 @@ export const adapter: DocsSearchAdapter = {
 | ---------- | ----------------------- | ----------- | ----------- |
 | `strategy` | `"page" \| "section"`   | `"section"` | Chunk by whole page or split by headings |
 
+### `SearchSyncOptions` — additional sync fields
+
+These options are available on the `search sync` CLI command and on the `SearchSyncOptions` interface:
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `syncNamespace` | `string` | Optional namespace that scopes the synced corpus. Maximum 1024 characters. Set via `--sync-namespace` flag or the `DOCS_SEARCH_SYNC_NAMESPACE` environment variable. A value exceeding 1024 chars is rejected with error code `invalid-search-sync-namespace`. |
+| `siteUrl` | `string` | Canonical public URL embedded in indexed documents during sync. Set via `--site-url` flag. |
+
+### `DocsSearchSourcePage` — additional fields
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `canonicalUrl` | `string` | Optional canonical public URL override for this page. Relative values are resolved against the request base URL. |
+| `agentLastModified` | `string` | ISO-8601 modification time for an explicit agent-source override file (e.g. `agent.md`), tracked separately from the page's own `lastModified`. |
+
+### Retrieval provenance types and exports
+
+The following are exported from `@farming-labs/docs` and `@farming-labs/docs/server`:
+
+| Export | Kind | Description |
+| ------ | ---- | ----------- |
+| `buildDocsRetrievalDigestProjection` | function | Builds a projection object containing a SHA-256 digest (`sha256:<hex>`) of normalized page content, suitable for change-detection in search indexes. |
+| `enrichDocsSearchDocumentsWithProvenance` | function | Attaches retrieval provenance metadata (scope, canonical URL, digest) to an array of search documents. |
+| `resolveDocsRetrievalLastModified` | function | Resolves the canonical last-modified date for a page, preferring the `lastmod` frontmatter value over the filesystem mtime. |
+| `DocsRetrievalSourceProvenance` | type | Normalized provenance metadata attached to a retrieved source, including `canonicalUrl`, `lastModified`, `digest`, and scope fields. |
+| `DocsRetrievalSourceScope` | type | Applicability metadata for a retrieved source: `audience`, `locale`, `framework`, `version`, `versionGroups`, and `package`. |
+| `EnrichDocsSearchDocumentsWithProvenanceOptions` | type | Options accepted by `enrichDocsSearchDocumentsWithProvenance`. |
 ### `DocsSearchEmbeddingsConfig`
 
 | Property   | Type        | Default                   | Description |
