@@ -1202,6 +1202,7 @@ function readMcpConfig(
         tools: {
           listDocs: readBooleanFromBlock(block, "listDocs"),
           listPages: readBooleanFromBlock(block, "listPages"),
+          listPageSections: readBooleanFromBlock(block, "listPageSections"),
           listTasks: readBooleanFromBlock(block, "listTasks"),
           readTask: readBooleanFromBlock(block, "readTask"),
           readPage: readBooleanFromBlock(block, "readPage"),

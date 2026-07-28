@@ -579,6 +579,7 @@ describe("agent route helpers", () => {
       tools: {
         listDocs: true,
         listPages: true,
+        listPageSections: true,
         readPage: true,
         listTasks: true,
         readTask: true,

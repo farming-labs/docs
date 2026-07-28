@@ -2327,6 +2327,7 @@ function hostedMcpRoutes(discoveryBody: unknown): string[] {
 const MCP_DISCOVERY_TOOL_NAMES = [
   ["listDocs", "list_docs"],
   ["listPages", "list_pages"],
+  ["listPageSections", "list_page_sections"],
   ["listTasks", "list_tasks"],
   ["readTask", "read_task"],
   ["getNavigation", "get_navigation"],

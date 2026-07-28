@@ -405,6 +405,7 @@ title: "Introduction"
   mcp: {
     enabled: true,
     tools: {
+      listPageSections: false,
       listTasks: false,
       readTask: false,
       getContext: false,
@@ -439,7 +440,7 @@ title: "Introduction"
     expect(response.status).toBe(200);
     expect(toolNames).toContain("list_pages");
     expect(toolNames).not.toEqual(
-      expect.arrayContaining(["list_tasks", "read_task", "get_context"]),
+      expect.arrayContaining(["list_page_sections", "list_tasks", "read_task", "get_context"]),
     );
   });
 
@@ -3615,6 +3616,7 @@ description: "Start building quickly"
       tools: {
         listDocs: true,
         listPages: true,
+        listPageSections: true,
         readPage: true,
         listTasks: false,
         readTask: true,

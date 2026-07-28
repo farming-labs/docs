@@ -156,6 +156,7 @@ describe("resolveDocsMcpConfig", () => {
       tools: {
         listDocs: true,
         listPages: true,
+        listPageSections: true,
         readPage: true,
         listTasks: true,
         readTask: true,
@@ -184,6 +185,7 @@ describe("resolveDocsMcpConfig", () => {
       tools: {
         listDocs: true,
         listPages: true,
+        listPageSections: true,
         readPage: true,
         listTasks: true,
         readTask: true,
@@ -216,6 +218,7 @@ describe("resolveDocsMcpConfig", () => {
       tools: {
         listDocs: true,
         listPages: true,
+        listPageSections: true,
         readPage: true,
         listTasks: true,
         readTask: true,
@@ -232,6 +235,21 @@ describe("resolveDocsMcpConfig", () => {
         maxBodyBytes: 1_048_576,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
+    });
+  });
+
+  it("publishes the list_page_sections tool toggle in the config schema", () => {
+    expect(getDocsConfigSchema({ option: "mcp.tools.listPageSections" })).toMatchObject({
+      resultCount: 1,
+      options: [
+        {
+          path: "mcp.tools.listPageSections",
+          name: "listPageSections",
+          type: "boolean",
+          default: true,
+          description: expect.stringContaining("list_page_sections"),
+        },
+      ],
     });
   });
 
@@ -1455,6 +1473,7 @@ sidebar:
       expect.arrayContaining([
         "list_docs",
         "list_pages",
+        "list_page_sections",
         "list_tasks",
         "read_task",
         "get_navigation",
@@ -1470,6 +1489,7 @@ sidebar:
         [
           "list_docs",
           "list_pages",
+          "list_page_sections",
           "list_tasks",
           "read_task",
           "get_navigation",
@@ -2555,6 +2575,230 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     });
   });
 
+  it("discovers canonical page sections without returning the document body", async () => {
+    const resolvedLocaleInputs: Array<string | undefined> = [];
+    const servedLocales: Array<string | undefined> = [];
+    const rawContent = [
+      "# Install",
+      "",
+      "PRIVATE_PAGE_BODY",
+      "",
+      "## Café 配置",
+      "",
+      "PRIVATE_FIRST_SECTION",
+      "",
+      "### Verify",
+      "",
+      "PRIVATE_NESTED_SECTION",
+      "",
+      "## Café 配置",
+      "",
+      "PRIVATE_SECOND_SECTION",
+    ].join("\n");
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        baseUrl: "https://canonical.docs.example",
+        resolveLocale: (locale) => {
+          resolvedLocaleInputs.push(locale);
+          if (locale === "fr") return "fr-CA";
+          if (locale === "fr-CA") return "resolved-twice";
+          return locale;
+        },
+        getPages: (locale) => {
+          servedLocales.push(locale);
+          return [
+            {
+              slug: "international-v1",
+              url: "/docs/international?source=other",
+              title: "Wrong international version",
+              content: "# Wrong\n\nWRONG_VERSION_BODY",
+              rawContent: "# Wrong\n\nWRONG_VERSION_BODY",
+            },
+            {
+              slug: "international",
+              url: "/docs/international?source=page",
+              title: "International",
+              content: rawContent,
+              rawContent,
+            },
+          ];
+        },
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const payload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: {
+          schemaVersion?: number;
+          format?: string;
+          canonicalUrl?: string;
+          markdownUrl?: string;
+          sectionIndexUrl?: string;
+          lineNumbering?: string;
+          sectionCount?: number;
+          estimatedTokens?: number;
+          utf8Bytes?: number;
+          fetchBudget?: { tokenBudget?: number; byteBudget?: number };
+          sections?: Array<{
+            id?: string;
+            heading?: string;
+            level?: number;
+            parentId?: string;
+            startLine?: number;
+            endLine?: number;
+            estimatedTokens?: number;
+            utf8Bytes?: number;
+            canonicalUrl?: string;
+            markdownUrl?: string;
+            content?: string;
+            document?: string;
+          }>;
+        };
+        isError?: boolean;
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "list_page_sections",
+        {
+          path: "/docs/international?source=page",
+          locale: "fr",
+          tokenBudget: 80,
+          byteBudget: 256,
+        },
+        "https://untrusted-preview.example/api/docs/mcp",
+      ),
+    );
+
+    expectSuccessfulStructuredTextResult(payload);
+    const result = payload.result?.structuredContent;
+    expect(result).toMatchObject({
+      schemaVersion: 2,
+      format: "docs-markdown-sections.v2",
+      lineNumbering: "body",
+      sectionCount: 4,
+      fetchBudget: { tokenBudget: 80, byteBudget: 256 },
+      sections: [
+        expect.objectContaining({ id: "install", heading: "Install", level: 1 }),
+        expect.objectContaining({
+          id: "café-配置",
+          heading: "Café 配置",
+          level: 2,
+          parentId: "install",
+        }),
+        expect.objectContaining({
+          id: "verify",
+          heading: "Verify",
+          level: 3,
+          parentId: "café-配置",
+        }),
+        expect.objectContaining({
+          id: "café-配置-1",
+          heading: "Café 配置",
+          level: 2,
+          parentId: "install",
+        }),
+      ],
+    });
+    expect(result?.estimatedTokens).toBeGreaterThan(0);
+    expect(result?.utf8Bytes).toBeGreaterThan(0);
+    expect(result?.sections?.every((section) => (section.startLine ?? 0) > 0)).toBe(true);
+    expect(
+      result?.sections?.every(
+        (section) =>
+          (section.endLine ?? 0) >= (section.startLine ?? 0) &&
+          (section.estimatedTokens ?? 0) > 0 &&
+          (section.utf8Bytes ?? 0) > 0,
+      ),
+    ).toBe(true);
+
+    for (const value of [
+      result?.canonicalUrl,
+      result?.markdownUrl,
+      result?.sectionIndexUrl,
+      ...((result?.sections ?? []).flatMap((section) => [
+        section.canonicalUrl,
+        section.markdownUrl,
+      ]) as Array<string | undefined>),
+    ]) {
+      expect(value).toBeTruthy();
+      expect(new URL(value!).origin).toBe("https://canonical.docs.example");
+      expect(new URL(value!).searchParams.get("lang")).toBe("fr-CA");
+    }
+    expect(new URL(result?.sectionIndexUrl ?? "").searchParams.has("sections")).toBe(true);
+    const secondFetchUrl = new URL(result?.sections?.[3]?.markdownUrl ?? "");
+    expect(secondFetchUrl.searchParams.get("section")).toBe("café-配置-1");
+    expect(secondFetchUrl.searchParams.get("tokenBudget")).toBe("80");
+    expect(secondFetchUrl.searchParams.get("byteBudget")).toBe("256");
+    expect(
+      decodeURIComponent(new URL(result?.sections?.[3]?.canonicalUrl ?? "").hash.slice(1)),
+    ).toBe("café-配置-1");
+
+    const serialized = JSON.stringify(payload.result);
+    expect(serialized).not.toContain("PRIVATE_PAGE_BODY");
+    expect(serialized).not.toContain("PRIVATE_FIRST_SECTION");
+    expect(serialized).not.toContain("PRIVATE_NESTED_SECTION");
+    expect(serialized).not.toContain("PRIVATE_SECOND_SECTION");
+    expect(serialized).not.toContain("WRONG_VERSION_BODY");
+    expect(result?.sections?.every((section) => !("content" in section))).toBe(true);
+    expect(result?.sections?.every((section) => !("document" in section))).toBe(true);
+    expect(resolvedLocaleInputs).toContain("fr");
+    expect(resolvedLocaleInputs).not.toContain("fr-CA");
+    expect(servedLocales).toContain("fr-CA");
+    expect(servedLocales).not.toContain("resolved-twice");
+  });
+
+  it("returns an empty body-free index for heading-less pages and an error for missing pages", async () => {
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        getPages: () => [
+          {
+            slug: "heading-less",
+            url: "/docs/heading-less?source=page",
+            title: "Synthetic title must stay absent",
+            content: "PRIVATE_HEADING_LESS_BODY",
+            rawContent: "PRIVATE_HEADING_LESS_BODY",
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+
+    const emptyPayload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: { sectionCount?: number; sections?: unknown[] };
+      };
+    }>(
+      await callMcpTool(handlers, "list_page_sections", {
+        path: "/docs/heading-less",
+      }),
+    );
+    expectSuccessfulStructuredTextResult(emptyPayload);
+    expect(emptyPayload.result?.structuredContent).toMatchObject({
+      sectionCount: 0,
+      sections: [],
+    });
+    expect(JSON.stringify(emptyPayload.result)).not.toContain("PRIVATE_HEADING_LESS_BODY");
+    expect(JSON.stringify(emptyPayload.result)).not.toContain("Synthetic title must stay absent");
+
+    const missingPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }>; isError?: boolean };
+    }>(
+      await callMcpTool(handlers, "list_page_sections", {
+        path: "/docs/missing",
+      }),
+    );
+    expect(missingPayload.result?.isError).toBe(true);
+    expect(JSON.parse(missingPayload.result?.content?.[0]?.text ?? "{}")).toEqual({
+      error: 'No docs page matched "/docs/missing".',
+    });
+    expect(JSON.stringify(missingPayload.result)).not.toContain("PRIVATE_HEADING_LESS_BODY");
+  });
+
   it("caps section-not-found errors and includes only headings that fit", async () => {
     const rawContent = Array.from(
       { length: 20 },
@@ -3475,6 +3719,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
       expect.arrayContaining([
         "list_docs",
         "list_pages",
+        "list_page_sections",
         "get_navigation",
         "search_docs",
         "read_page",
@@ -3510,6 +3755,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
       expect.arrayContaining([
         "list_docs",
         "list_pages",
+        "list_page_sections",
         "get_navigation",
         "search_docs",
         "read_page",
@@ -3969,6 +4215,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
           listTasks: false,
           readTask: false,
           searchDocs: false,
+          listPageSections: false,
           readPage: false,
           getConfigSchema: false,
           getContext: false,
@@ -4034,6 +4281,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         "list_tasks",
         "read_task",
         "search_docs",
+        "list_page_sections",
         "read_page",
         "get_config_schema",
         "get_context",

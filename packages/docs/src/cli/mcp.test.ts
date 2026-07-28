@@ -82,6 +82,7 @@ describe("readMcpConfig", () => {
         mcp: {
           enabled: true,
           tools: {
+            listPageSections: false,
             listTasks: false,
             readTask: false,
             getContext: false,
@@ -93,6 +94,7 @@ describe("readMcpConfig", () => {
     expect(config).toMatchObject({
       enabled: true,
       tools: {
+        listPageSections: false,
         listTasks: false,
         readTask: false,
         getContext: false,

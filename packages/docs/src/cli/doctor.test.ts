@@ -1419,6 +1419,7 @@ Use MCP and markdown routes.
                 tools: {
                   listDocs: true,
                   listPages: true,
+                  listPageSections: true,
                   listTasks: false,
                   readTask: false,
                   getNavigation: true,
@@ -1645,6 +1646,7 @@ Use MCP and markdown routes.
               tools: [
                 { name: "list_docs" },
                 { name: "list_pages" },
+                { name: "list_page_sections" },
                 { name: "get_navigation" },
                 { name: "search_docs" },
                 { name: "read_page" },
