@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
@@ -7,6 +7,7 @@ import type {
   DocsAnalyticsEvent,
   DocsMcpAuthenticateContext,
   DocsObservabilityEvent,
+  DocsSearchAdapterContext,
 } from "./types.js";
 import type {
   DocsMcpConfigSchemaOption,
@@ -51,9 +52,10 @@ async function callMcpTool(
   handlers: ReturnType<typeof createDocsMcpHttpHandler>,
   name: string,
   args: Record<string, unknown>,
+  requestUrl = "http://localhost/api/docs/mcp",
 ) {
   return handlers.POST({
-    request: new Request("http://localhost/api/docs/mcp", {
+    request: new Request(requestUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -905,6 +907,393 @@ Validate the generated example paths before editing this guide.
     });
   });
 
+  it("preserves explicit agent-source provenance across search_docs and get_context", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-mcp-provenance-"));
+    tempDirs.push(rootDir);
+
+    const pageDir = join(rootDir, "docs", "provenance");
+    const pagePath = join(pageDir, "page.mdx");
+    const agentPath = join(pageDir, "agent.md");
+    mkdirSync(pageDir, { recursive: true });
+    writeFileSync(
+      pagePath,
+      `---
+title: "Retrieval provenance"
+framework: nextjs
+version: "16"
+lastmod: 2026-07-17
+tags:
+  - retrieval
+---
+
+# Retrieval provenance
+
+Human-facing overview.
+`,
+    );
+    writeFileSync(
+      agentPath,
+      `# Retrieval provenance
+
+## Verify source provenance
+
+Run the provenance-exclusive verification command.
+`,
+    );
+    const pageModified = new Date("2026-07-18T08:00:00.000Z");
+    const agentModified = new Date("2026-07-19T09:30:00.000Z");
+    utimesSync(pagePath, pageModified, pageModified);
+    utimesSync(agentPath, agentModified, agentModified);
+    const otherPageDir = join(rootDir, "docs", "other");
+    mkdirSync(otherPageDir, { recursive: true });
+    writeFileSync(
+      join(otherPageDir, "page.mdx"),
+      `---
+title: "Other framework"
+framework: astro
+---
+
+# Other framework
+
+Unrelated corpus content still belongs to the complete index generation.
+`,
+    );
+
+    const handlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({
+        rootDir,
+        entry: "docs",
+        contentDir: "docs",
+        siteTitle: "Provenance docs",
+      }),
+    });
+    const requestUrl = "https://preview.docs.example/api/docs/mcp";
+    const digestPattern = /^sha256:[a-f0-9]{64}$/;
+
+    type RetrievalSource = {
+      canonicalUrl: string;
+      scope: { audience: string; framework?: string[]; version?: string[]; tags?: string[] };
+      lastModified?: string;
+      digest: string;
+      indexGeneration: string;
+    };
+    const searchPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          indexGeneration: string;
+          results: Array<{ url: string; source?: RetrievalSource }>;
+        };
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "search_docs",
+        { query: "provenance-exclusive", audience: "agent" },
+        requestUrl,
+      ),
+    );
+    const search = searchPayload.result?.structuredContent;
+    const searchResult = search?.results.find((result) =>
+      result.url.startsWith("/docs/provenance"),
+    );
+
+    expect(search?.indexGeneration).toMatch(digestPattern);
+    expect(searchResult?.source).toMatchObject({
+      canonicalUrl: expect.stringMatching(
+        /^https:\/\/preview\.docs\.example\/docs\/provenance(?:#|$)/,
+      ),
+      scope: {
+        audience: "agent",
+        framework: ["nextjs"],
+        version: ["16"],
+        tags: ["retrieval"],
+      },
+      lastModified: agentModified.toISOString(),
+      digest: expect.stringMatching(digestPattern),
+      indexGeneration: search?.indexGeneration,
+    });
+    expect(searchResult?.source?.lastModified).not.toBe(pageModified.toISOString());
+
+    const humanPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          results: Array<{ url: string; source?: RetrievalSource }>;
+        };
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "search_docs",
+        { query: "human-facing overview", audience: "human" },
+        requestUrl,
+      ),
+    );
+    expect(
+      humanPayload.result?.structuredContent?.results.find((result) =>
+        result.url.startsWith("/docs/provenance"),
+      )?.source?.lastModified,
+    ).toBe("2026-07-17T00:00:00.000Z");
+
+    const contextPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          context: string;
+          sources: Array<{
+            pageUrl: string;
+            url: string;
+            lastModified?: string;
+            source?: RetrievalSource;
+          }>;
+        };
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "get_context",
+        {
+          query: "provenance-exclusive",
+          framework: "nextjs",
+          tokenBudget: 2_000,
+        },
+        requestUrl,
+      ),
+    );
+    const contextResult = contextPayload.result?.structuredContent;
+    const contextSource = contextResult?.sources.find(
+      (source) => source.pageUrl === "/docs/provenance",
+    );
+
+    expect(contextSource).toMatchObject({
+      pageUrl: "/docs/provenance",
+      url: "https://preview.docs.example/docs/provenance#verify-source-provenance",
+      lastModified: agentModified.toISOString(),
+      source: {
+        canonicalUrl: "https://preview.docs.example/docs/provenance#verify-source-provenance",
+        scope: {
+          audience: "agent",
+          framework: ["nextjs"],
+          version: ["16"],
+          tags: ["retrieval"],
+        },
+        lastModified: agentModified.toISOString(),
+        digest: searchResult?.source?.digest,
+        indexGeneration: search?.indexGeneration,
+      },
+    });
+    expect(contextResult?.context).toContain(
+      "Source: https://preview.docs.example/docs/provenance#verify-source-provenance",
+    );
+
+    const canonicalHandlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({
+        rootDir,
+        entry: "docs",
+        contentDir: "docs",
+        siteTitle: "Provenance docs",
+        baseUrl: "https://canonical.docs.example",
+      }),
+    });
+    const canonicalPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          results: Array<{ source?: RetrievalSource }>;
+        };
+      };
+    }>(
+      await callMcpTool(
+        canonicalHandlers,
+        "search_docs",
+        { query: "provenance-exclusive", audience: "agent" },
+        requestUrl,
+      ),
+    );
+    expect(canonicalPayload.result?.structuredContent?.results[0]?.source?.canonicalUrl).toMatch(
+      /^https:\/\/canonical\.docs\.example\/docs\/provenance(?:#|$)/,
+    );
+  });
+
+  it("does not trust the request origin for hosted-index ownership", async () => {
+    let observedContext: Pick<DocsSearchAdapterContext, "baseUrl" | "indexBaseUrl"> | undefined;
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        siteTitle: "Unconfigured origin docs",
+        getPages: () => [
+          {
+            slug: "install",
+            url: "/docs/install",
+            title: "Install",
+            content: "Install the origin-safe package.",
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+      search: {
+        provider: "custom",
+        adapter: {
+          name: "capture-index-origin",
+          async search(_query, context) {
+            observedContext = {
+              baseUrl: context.baseUrl,
+              indexBaseUrl: context.indexBaseUrl,
+            };
+            return [];
+          },
+        },
+      },
+    });
+
+    const payload = await parseMcpPayload<{
+      result?: {
+        content?: Array<{ text?: string }>;
+        structuredContent?: unknown;
+        isError?: boolean;
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "search_docs",
+        { query: "origin-safe" },
+        "https://attacker-controlled.example/api/docs/mcp",
+      ),
+    );
+    expectSuccessfulStructuredTextResult(payload);
+
+    expect(observedContext).toEqual({
+      baseUrl: "https://attacker-controlled.example",
+      indexBaseUrl: undefined,
+    });
+  });
+
+  it("ignores request-controlled locales for locale-agnostic filesystem sources", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-mcp-locale-agnostic-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "docs", "install"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "docs", "install", "page.mdx"),
+      "# Install\n\nInstall the locale-safe package.",
+    );
+    let observedLocale: string | undefined = "not-called";
+    let observedUrls: string[] = [];
+    const handlers = createDocsMcpHttpHandler({
+      source: createFilesystemDocsMcpSource({ rootDir, entry: "docs", contentDir: "docs" }),
+      search: {
+        provider: "custom",
+        adapter: {
+          name: "capture-filesystem-locale",
+          async search(query, context) {
+            observedLocale = query.locale;
+            observedUrls = context.pages.map((page) => page.url);
+            return [];
+          },
+        },
+      },
+    });
+    const payload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          results: Array<{
+            source?: { canonicalUrl: string; scope: { locale?: string[] } };
+          }>;
+        };
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "search_docs",
+        { query: "locale-safe", locale: "attacker-controlled" },
+        "https://docs.example.com/api/docs/mcp",
+      ),
+    );
+
+    expect(observedLocale).toBeUndefined();
+    expect(observedUrls).toEqual(["/docs/install"]);
+    expect(payload.result?.structuredContent?.results[0]?.source).toMatchObject({
+      canonicalUrl: "https://docs.example.com/docs/install",
+      scope: { audience: "agent" },
+    });
+    expect(payload.result?.structuredContent?.results[0]?.source?.scope.locale).toBeUndefined();
+  });
+
+  it("attributes provenance to the locale actually selected by the source", async () => {
+    const requestedLocales: Array<string | undefined> = [];
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        entry: "docs",
+        siteTitle: "Localized docs",
+        resolveLocale(locale) {
+          if (locale === "fr") return "fr-CA";
+          if (locale === "fr-CA") return "en";
+          return "en";
+        },
+        getPages(locale) {
+          requestedLocales.push(locale);
+          return [
+            {
+              slug: "install",
+              url: "/docs/install",
+              title: "Install",
+              content: "Localized provenance needle.",
+              rawContent: "# Install\n\nLocalized provenance needle.",
+            },
+          ];
+        },
+        getNavigation() {
+          return { name: "Localized docs", children: [] };
+        },
+      },
+    });
+
+    const payload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          results: Array<{
+            source?: {
+              canonicalUrl: string;
+              scope: { locale?: string[] };
+            };
+          }>;
+        };
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "search_docs",
+        { query: "localized provenance", locale: "fr", audience: "agent" },
+        "https://docs.example.com/mcp",
+      ),
+    );
+
+    expect(requestedLocales.at(-1)).toBe("fr-CA");
+    expect(payload.result?.structuredContent?.results[0]?.source).toMatchObject({
+      canonicalUrl: expect.stringContaining("?lang=fr-CA"),
+      scope: { locale: ["fr-ca"] },
+    });
+
+    const contextPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          sources: Array<{
+            url: string;
+            source?: { scope: { locale?: string[] } };
+          }>;
+        };
+      };
+    }>(
+      await callMcpTool(
+        handlers,
+        "get_context",
+        { query: "localized provenance", locale: "fr", tokenBudget: 512 },
+        "https://docs.example.com/mcp",
+      ),
+    );
+    expect(requestedLocales.at(-1)).toBe("fr-CA");
+    expect(contextPayload.result?.structuredContent?.sources[0]).toMatchObject({
+      url: expect.stringContaining("?lang=fr-CA"),
+      source: { scope: { locale: ["fr-ca"] } },
+    });
+  });
+
   it("uses the current file name for non-index fallback titles", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "docs-mcp-fallback-title-"));
     tempDirs.push(rootDir);
@@ -1751,7 +2140,7 @@ sidebar:
     expect(context?.sources).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          url: "/docs/guides/quickstart#verify-generated-paths",
+          url: "http://localhost/docs/guides/quickstart#verify-generated-paths",
           pageUrl: "/docs/guides/quickstart",
           section: "Verify generated paths",
           anchor: "verify-generated-paths",
@@ -1782,7 +2171,7 @@ sidebar:
     expect(pageHeadingContextPayload.result?.structuredContent?.sources).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          url: "/docs/guides/quickstart#quickstart",
+          url: "http://localhost/docs/guides/quickstart#quickstart",
           content: expect.stringContaining("Build your first app."),
         }),
       ]),
@@ -2081,7 +2470,7 @@ General operational guidance.
       resultCount: 1,
       sources: [
         expect.objectContaining({
-          url: "/docs/credential-rotation",
+          url: "http://localhost/docs/credential-rotation",
           content: expect.stringContaining("Task: Rotate quasar production credentials"),
         }),
       ],

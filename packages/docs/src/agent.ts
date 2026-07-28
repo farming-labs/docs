@@ -1571,6 +1571,16 @@ function validateDocsDiagnosticsSearchConfig(
     requireString("endpoint");
   }
 
+  const syncNamespace = stringConfigValue(search.syncNamespace);
+  if (syncNamespace && syncNamespace.length > 1_024) {
+    errors.push({
+      severity: "error",
+      code: "invalid-search-sync-namespace",
+      path: "/search/syncNamespace",
+      message: "search.syncNamespace must be 1024 characters or fewer.",
+    });
+  }
+
   if (provider === "custom" && !("adapter" in search)) {
     errors.push({
       severity: "error",

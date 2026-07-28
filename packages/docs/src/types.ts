@@ -1508,6 +1508,8 @@ export type DocsSearchResultType = "page" | "heading" | "text";
 export interface DocsSearchSourcePage {
   title: string;
   url: string;
+  /** Canonical public URL override. Relative values are resolved against the request base URL. */
+  canonicalUrl?: string;
   content: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
@@ -1518,6 +1520,8 @@ export interface DocsSearchSourcePage {
   rawContent?: string;
   agentContent?: string;
   agentRawContent?: string;
+  /** Modified time for an explicit agent-source override such as agent.md. */
+  agentLastModified?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
   type?: "page" | "api" | "code" | "changelog";
@@ -1525,6 +1529,39 @@ export interface DocsSearchSourcePage {
   framework?: string;
   version?: string;
   tags?: string[];
+}
+
+/** Normalized applicability metadata attached to a retrieved source. */
+export interface DocsRetrievalSourceScope {
+  audience: "human" | "agent";
+  locale?: string[];
+  framework?: string[];
+  version?: string[];
+  /**
+   * Version declarations remain grouped so consumers can enforce their intersection
+   * (for example, top-level `>=1` together with an agent contract `<2`).
+   */
+  versionGroups?: string[][];
+  package?: string[];
+  tags?: string[];
+  /** Scope fields with additional authored values omitted from this bounded payload. */
+  truncated?: DocsSearchFilterField[];
+  /** Conflicting declarations that prevent the affected scope fields from being trusted. */
+  conflicts?: DocsSearchFilterField[];
+}
+
+/**
+ * Verifiable metadata for the canonical source behind a retrieval result.
+ *
+ * Digests and generations are algorithm-prefixed. The digest identifies the selected
+ * audience projection of one page; the generation identifies the complete index snapshot.
+ */
+export interface DocsRetrievalSourceProvenance {
+  canonicalUrl: string;
+  scope: DocsRetrievalSourceScope;
+  lastModified?: string;
+  digest: string;
+  indexGeneration: string;
 }
 
 export interface DocsSearchDocument {
@@ -1540,6 +1577,8 @@ export interface DocsSearchDocument {
   version?: string;
   package?: string[];
   tags?: string[];
+  /** Source metadata persisted with hosted search records. */
+  source?: DocsRetrievalSourceProvenance;
 }
 
 export interface DocsSearchResult {
@@ -1550,6 +1589,8 @@ export interface DocsSearchResult {
   type: DocsSearchResultType;
   score?: number;
   section?: string;
+  /** Canonical, scope-aware provenance when supplied or recoverable locally. */
+  source?: DocsRetrievalSourceProvenance;
 }
 
 export type DocsSearchFilterField = "framework" | "version" | "package" | "tags";
@@ -1592,6 +1633,12 @@ export interface DocsSearchResponse {
   query: string;
   audience: "human" | "agent";
   filters: DocsSearchFilters;
+  /**
+   * Generation of the complete local index snapshot used for this retrieval.
+   * Built-in search endpoints always emit it; optionality preserves source compatibility
+   * for callers that construct the versioned response object themselves.
+   */
+  indexGeneration?: string;
   resultCount: number;
   results: DocsSearchResult[];
   warnings: DocsSearchWarning[];
@@ -1621,6 +1668,16 @@ export interface DocsSearchAdapterContext {
   locale?: string;
   pathname?: string;
   siteTitle?: string;
+  /** Canonical docs origin used to make result provenance URLs absolute. */
+  baseUrl?: string;
+  /** @internal Trusted canonical origin used to identify hosted-index ownership. */
+  indexBaseUrl?: string;
+  /** Complete index generation represented by this adapter context. */
+  indexGeneration?: string;
+  /** Chunking policy represented by this adapter context. */
+  chunking?: DocsSearchChunkingConfig;
+  /** @internal Let the shared search pipeline attach provenance once after provider merging. */
+  deferSourceProvenance?: boolean;
   /** Optional cancellation signal, including diagnostic timeouts. */
   signal?: AbortSignal;
 }
@@ -1675,6 +1732,8 @@ export interface AlgoliaDocsSearchConfig {
   adminApiKey?: string;
   maxResults?: number;
   syncOnSearch?: boolean;
+  /** Stable namespace used to identify this docs corpus in a shared index. */
+  syncNamespace?: string;
   chunking?: DocsSearchChunkingConfig;
 }
 
@@ -1687,6 +1746,8 @@ export interface TypesenseDocsSearchConfig {
   adminApiKey?: string;
   maxResults?: number;
   syncOnSearch?: boolean;
+  /** Stable namespace used to identify this docs corpus in a shared collection. */
+  syncNamespace?: string;
   queryBy?: string[];
   mode?: "keyword" | "hybrid";
   embeddings?: DocsSearchEmbeddingsConfig;

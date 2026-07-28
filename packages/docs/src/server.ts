@@ -70,12 +70,14 @@ export type {
 export type { DocsCloudAskAIConfig, DocsCloudAskAIResponseOptions } from "./cloud-ask-ai.js";
 export {
   buildDocsSearchDocuments,
+  buildDocsRetrievalDigestProjection,
   buildDocsAskAIContext,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
   createMcpSearchAdapter,
   createSimpleSearchAdapter,
   createTypesenseSearchAdapter,
+  enrichDocsSearchDocumentsWithProvenance,
   formatDocsAskAIPackageHints,
   inferDocsAskAIPackageHints,
   normalizeDocsSearchFilters,
@@ -84,10 +86,14 @@ export {
   resolveDocsSearchAudience,
   resolveDocsSearchFilters,
   resolveDocsSearchRequest,
+  resolveDocsRetrievalLastModified,
   resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
-export type { PerformDocsSearchOptions } from "./search.js";
+export type {
+  EnrichDocsSearchDocumentsWithProvenanceOptions,
+  PerformDocsSearchOptions,
+} from "./search.js";
 export { runDocsGoldenTasks } from "./agent-evals.js";
 export {
   resolveConfiguredAgentSkills,
@@ -204,6 +210,8 @@ export type {
   DocsSearchFilters,
   DocsSearchQuery,
   DocsSearchRequest,
+  DocsRetrievalSourceProvenance,
+  DocsRetrievalSourceScope,
   DocsSearchResult,
   DocsSearchResponse,
   DocsSearchSourcePage,
@@ -224,6 +232,8 @@ export type {
   DocsAgentTraceEventType,
   DocsAgentTraceStatus,
 } from "./types.js";
+
+export { digestDocsRetrievalContent, isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 export type {
   DocsAgentTraceContext,
   ResolvedDocsAnalyticsConfig,

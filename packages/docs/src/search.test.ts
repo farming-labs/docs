@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DocsSearchAdapterContext } from "./types.js";
+import type { DocsSearchAdapterContext, DocsSearchResult } from "./types.js";
 import {
   buildDocsAskAIContext,
+  buildDocsRetrievalDigestProjection,
   buildDocsSearchDocuments,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
   createMcpSearchAdapter,
   createTypesenseSearchAdapter,
+  enrichDocsSearchDocumentsWithProvenance,
   normalizeDocsSearchFilters,
   performDocsSearch,
   performDocsSearchWithMetadata,
@@ -14,6 +16,7 @@ import {
   resolveDocsSearchRequest,
   resolveSearchRequestConfig,
 } from "./search.js";
+import { digestDocsRetrievalContent } from "./retrieval-digest.js";
 
 const pages = [
   {
@@ -40,6 +43,24 @@ describe("buildDocsSearchDocuments", () => {
     expect(documents.some((item) => item.section === "Quickstart")).toBe(true);
     expect(documents.find((item) => item.section === "Quickstart")?.url).toBe(
       "/docs/installation#quickstart",
+    );
+  });
+
+  it("uses the locale-qualified URL for page and section document identities", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        ...pages[0],
+        locale: "pt_BR",
+      },
+    ]);
+
+    expect(documents.map((document) => document.id)).toEqual([
+      "/docs/installation?lang=pt_BR#page",
+      "/docs/installation?lang=pt_BR#section-0",
+      "/docs/installation?lang=pt_BR#section-1",
+    ]);
+    expect(documents.find((document) => document.section === "Quickstart")?.url).toBe(
+      "/docs/installation?lang=pt_BR#quickstart",
     );
   });
 
@@ -669,6 +690,373 @@ describe("performDocsSearch", () => {
     }
   });
 
+  it("attaches canonical, scoped provenance to simple and structured search results", async () => {
+    const provenancePages = [
+      {
+        title: "Provenance install",
+        url: "/docs/provenance-install",
+        canonicalUrl: "/guides/provenance-install",
+        description: "Install the provenance-aware package.",
+        content: "Install the provenance-aware package with the cobalt marker.",
+        rawContent: `# Provenance install
+
+Install the provenance-aware package.
+
+## Quick start
+
+Run the cobalt provenance marker.
+`,
+        locale: "en-US",
+        framework: "Next.js",
+        version: "v16",
+        tags: ["Setup", "AUTH"],
+        lastModified: "2026-07-27T12:34:56.000Z",
+        agent: {
+          appliesTo: {
+            framework: "next",
+            version: "16",
+            package: "@FARMING-LABS/NEXT",
+          },
+        },
+      },
+    ];
+    const options = {
+      pages: provenancePages,
+      query: "cobalt provenance marker",
+      baseUrl: "https://docs.example.com/api/docs/search",
+    };
+
+    const legacy = await performDocsSearch(options);
+    const structured = await performDocsSearchWithMetadata(options);
+    const legacySection = legacy.find((result) => result.section === "Quick start");
+    const structuredSection = structured.results.find((result) => result.section === "Quick start");
+
+    expect(legacySection?.source).toMatchObject({
+      canonicalUrl: "https://docs.example.com/guides/provenance-install#quick-start",
+      scope: {
+        audience: "human",
+        locale: ["en-us"],
+        framework: ["nextjs"],
+        version: ["16"],
+        package: ["@farming-labs/next"],
+        tags: ["auth", "setup"],
+      },
+      lastModified: "2026-07-27T12:34:56.000Z",
+    });
+    expect(legacySection?.source?.digest).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(legacySection?.source?.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(structured.indexGeneration).toBe(legacySection?.source?.indexGeneration);
+    expect(structuredSection?.source).toEqual(legacySection?.source);
+  });
+
+  it("returns reproducible digests for human and explicit agent source projections", async () => {
+    const page = {
+      title: "Reproducible provenance",
+      url: "/docs/reproducible-provenance",
+      content: "Human vermilion retrieval marker.",
+      rawContent: "# Reproducible provenance\n\nHuman vermilion retrieval marker.",
+      agentContent: "Agent cerulean retrieval marker.",
+      agentRawContent: "# Reproducible provenance\n\nAgent cerulean retrieval marker.",
+      lastModified: "2026-07-20T10:00:00.000Z",
+      agentLastModified: "2026-07-19T09:00:00.000Z",
+      agent: {
+        task: "Verify the selected retrieval projection.",
+        outcome: "The projection digest matches.",
+      },
+    };
+    const [humanResult] = await performDocsSearch({
+      pages: [page],
+      query: "human vermilion",
+      audience: "human",
+    });
+    const [agentResult] = await performDocsSearch({
+      pages: [page],
+      query: "agent cerulean",
+      audience: "agent",
+    });
+
+    expect(humanResult?.source?.digest).toBe(
+      digestDocsRetrievalContent(buildDocsRetrievalDigestProjection(page, "human")),
+    );
+    expect(agentResult?.source?.digest).toBe(
+      digestDocsRetrievalContent(buildDocsRetrievalDigestProjection(page, "agent")),
+    );
+    expect(agentResult?.source?.digest).not.toBe(humanResult?.source?.digest);
+    expect(agentResult?.source?.lastModified).toBe("2026-07-20T10:00:00.000Z");
+  });
+
+  it("normalizes provenance locale scope without changing its addressable locale query", async () => {
+    const [result] = await performDocsSearch({
+      pages: [
+        {
+          title: "Localized provenance",
+          url: "/docs/localized-provenance",
+          content: "Localized provenance marker.",
+          locale: "pt_BR",
+        },
+      ],
+      query: "localized provenance marker",
+      baseUrl: "https://docs.example.com",
+    });
+
+    expect(result?.source).toMatchObject({
+      canonicalUrl: "https://docs.example.com/docs/localized-provenance?lang=pt_BR",
+      scope: { audience: "human", locale: ["pt-br"] },
+    });
+  });
+
+  it("keeps index generations stable across request noise and changes them with index semantics", async () => {
+    const alphaPage = {
+      title: "Alpha provenance",
+      url: "/docs/alpha-provenance",
+      content: "Alpha provenance marker.",
+      rawContent: "# Alpha provenance\n\nAlpha provenance marker.",
+      framework: "nextjs",
+    };
+    const betaPage = {
+      title: "Beta provenance",
+      url: "/docs/beta-provenance",
+      content: "Beta provenance marker.",
+      rawContent: "# Beta provenance\n\nBeta provenance marker.",
+      framework: "astro",
+    };
+    const baseline = await performDocsSearchWithMetadata({
+      pages: [alphaPage, betaPage],
+      query: "alpha",
+      baseUrl: "https://docs.example.com/api/docs/search",
+    });
+    const reordered = await performDocsSearchWithMetadata({
+      pages: [betaPage, alphaPage],
+      query: "beta",
+      baseUrl: "https://docs.example.com/api/docs/search",
+    });
+    const previewHost = await performDocsSearchWithMetadata({
+      pages: [alphaPage, betaPage],
+      query: "unmatched request text",
+      baseUrl: "https://preview.example.net/other/base",
+    });
+    const changedContent = await performDocsSearchWithMetadata({
+      pages: [
+        {
+          ...alphaPage,
+          content: "Alpha provenance marker with changed content.",
+          rawContent: "# Alpha provenance\n\nAlpha provenance marker with changed content.",
+        },
+        betaPage,
+      ],
+      query: "alpha",
+    });
+    const changedScope = await performDocsSearchWithMetadata({
+      pages: [{ ...alphaPage, framework: "nuxt" }, betaPage],
+      query: "alpha",
+    });
+    const changedFilesystemTime = await performDocsSearchWithMetadata({
+      pages: [{ ...alphaPage, lastModified: "2026-07-28T00:00:00.000Z" }, betaPage],
+      query: "alpha",
+    });
+    const changedAuthoredTime = await performDocsSearchWithMetadata({
+      pages: [{ ...alphaPage, lastmod: "2026-07-28" }, betaPage],
+      query: "alpha",
+    });
+    const changedAgentContract = await performDocsSearchWithMetadata({
+      pages: [
+        {
+          ...alphaPage,
+          agent: {
+            task: "Configure the contract-only retrieval marker.",
+            outcome: "The contract marker is indexed.",
+          },
+        },
+        betaPage,
+      ],
+      query: "alpha",
+    });
+    const agentAudience = await performDocsSearchWithMetadata({
+      pages: [alphaPage, betaPage],
+      query: "alpha",
+      audience: "agent",
+    });
+    const pageChunking = await performDocsSearchWithMetadata({
+      pages: [alphaPage, betaPage],
+      query: "alpha",
+      search: { provider: "simple", chunking: { strategy: "page" } },
+    });
+
+    expect(baseline.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(reordered.indexGeneration).toBe(baseline.indexGeneration);
+    expect(previewHost.indexGeneration).toBe(baseline.indexGeneration);
+    expect(changedContent.indexGeneration).not.toBe(baseline.indexGeneration);
+    expect(changedScope.indexGeneration).not.toBe(baseline.indexGeneration);
+    expect(changedFilesystemTime.indexGeneration).toBe(baseline.indexGeneration);
+    expect(changedAuthoredTime.indexGeneration).not.toBe(baseline.indexGeneration);
+    expect(changedAgentContract.indexGeneration).not.toBe(baseline.indexGeneration);
+    expect(agentAudience.indexGeneration).not.toBe(baseline.indexGeneration);
+    expect(pageChunking.indexGeneration).not.toBe(baseline.indexGeneration);
+  });
+
+  it("returns a structured generation for blank queries without invoking the provider", async () => {
+    const providerSearch = vi.fn(async () => {
+      throw new Error("Blank structured queries must not reach the provider.");
+    });
+
+    const structured = await performDocsSearchWithMetadata({
+      pages: [
+        {
+          title: "Blank query provenance",
+          url: "/docs/blank-query-provenance",
+          content: "Blank query provenance marker.",
+        },
+      ],
+      query: " \n ",
+      search: createCustomSearchAdapter({
+        name: "blank-query-provenance-provider",
+        search: providerSearch,
+      }),
+    });
+
+    expect(providerSearch).not.toHaveBeenCalled();
+    expect(structured).toMatchObject({
+      query: " \n ",
+      resultCount: 0,
+      results: [],
+    });
+    expect(structured.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/u);
+  });
+
+  it("drops malformed provenance returned by a custom provider", async () => {
+    const malformedResult = {
+      id: "malformed-provenance",
+      url: "https://remote.example/docs/install",
+      content: "Remote installation result",
+      type: "page",
+      source: {
+        canonicalUrl: "javascript:alert(1)",
+        scope: { audience: "human" },
+        digest: "sha256:aaaaaaaa",
+        indexGeneration: "sha256:bbbbbbbb",
+      },
+    } as unknown as DocsSearchResult;
+
+    const results = await performDocsSearch({
+      pages: [],
+      query: "installation",
+      baseUrl: "https://docs.example.com",
+      supplementExternalResults: false,
+      search: createCustomSearchAdapter({
+        name: "malformed-provenance-provider",
+        async search() {
+          return [malformedResult];
+        },
+      }),
+    });
+
+    expect(results).toEqual([]);
+  });
+
+  it.each([
+    { framework: "nextjs" },
+    { tags: Array.from({ length: 17 }, (_, index) => `tag-${index}`) },
+    { locale: [123] },
+    { versionGroups: [["16"], "17"] },
+    { truncated: ["framework", "unknown"] },
+    { conflicts: ["framework", "version", "package", "tags", "framework"] },
+  ])("fails closed for malformed or oversized source scope %#", async (scope) => {
+    const results = await performDocsSearch({
+      pages: [],
+      query: "installation",
+      baseUrl: "https://docs.example.com",
+      supplementExternalResults: false,
+      search: createCustomSearchAdapter({
+        name: "malformed-scope-provider",
+        async search() {
+          return [
+            {
+              id: "malformed-scope",
+              url: "https://remote.example/docs/install",
+              content: "Remote installation result",
+              type: "page",
+              source: {
+                canonicalUrl: "https://remote.example/docs/install",
+                scope: { audience: "human", ...scope },
+                digest: `sha256:${"a".repeat(64)}`,
+                indexGeneration: `sha256:${"b".repeat(64)}`,
+              },
+            } as DocsSearchResult,
+          ];
+        },
+      }),
+    });
+
+    expect(results).toEqual([]);
+  });
+
+  it("rejects foreign results whose valid provenance targets another audience", async () => {
+    const source = {
+      canonicalUrl: "https://remote.example/docs/install",
+      scope: { audience: "agent" as const, framework: ["nextjs"] },
+      digest: `sha256:${"a".repeat(64)}`,
+      indexGeneration: `sha256:${"b".repeat(64)}`,
+    };
+    const results = await performDocsSearch({
+      pages: [],
+      query: "installation",
+      audience: "human",
+      baseUrl: "https://docs.example.com",
+      supplementExternalResults: false,
+      search: createCustomSearchAdapter({
+        name: "cross-audience-provenance-provider",
+        async search() {
+          return [
+            {
+              id: "cross-audience-provenance",
+              url: source.canonicalUrl,
+              content: "Agent-only installation result",
+              type: "page",
+              source,
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results).toEqual([]);
+  });
+
+  it("rejects filtered foreign results whose relevant provenance scope was truncated", async () => {
+    const results = await performDocsSearch({
+      pages: [],
+      query: "installation",
+      filters: { framework: "nextjs" },
+      baseUrl: "https://docs.example.com",
+      supplementExternalResults: false,
+      search: createCustomSearchAdapter({
+        name: "truncated-scope-provider",
+        async search() {
+          return [
+            {
+              id: "truncated-scope",
+              url: "https://remote.example/docs/install",
+              content: "Remote installation result",
+              type: "page",
+              source: {
+                canonicalUrl: "https://remote.example/docs/install",
+                scope: {
+                  audience: "human",
+                  framework: ["nextjs"],
+                  truncated: ["framework"],
+                },
+                digest: `sha256:${"a".repeat(64)}`,
+                indexGeneration: `sha256:${"b".repeat(64)}`,
+              },
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results).toEqual([]);
+  });
+
   it("reports and excludes unknown, missing, and conflicting scope metadata", async () => {
     const structured = await performDocsSearchWithMetadata({
       pages: [
@@ -1182,6 +1570,42 @@ Customize the loading UI.
         type: "page",
       },
     ]);
+  });
+
+  it("round-trips helper-generated relative provenance through a custom adapter", async () => {
+    const search = await performDocsSearch({
+      pages,
+      query: "install",
+      supplementExternalResults: false,
+      search: createCustomSearchAdapter({
+        name: "provenance-aware-custom",
+        async search(_query, context) {
+          const [document] = await enrichDocsSearchDocumentsWithProvenance({
+            documents: context.documents,
+            pages: context.pages,
+            audience: context.audience,
+            chunking: context.chunking,
+          });
+          if (!document) return [];
+          return [
+            {
+              id: document.id,
+              url: document.url,
+              content: document.title,
+              type: document.type,
+              source: document.source,
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(search[0]?.source).toMatchObject({
+      canonicalUrl: "/docs/installation",
+      scope: { audience: "human" },
+      digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/u),
+      indexGeneration: expect.stringMatching(/^sha256:[a-f0-9]{64}$/u),
+    });
   });
 
   it("projects raw audience blocks before passing documents to custom adapters", async () => {
@@ -2176,11 +2600,18 @@ Nine built-in themes are available.
     expect(context.context).toContain(
       "URL: https://docs.example.com/docs/customize#available-themes",
     );
+    expect(context.context).toContain(
+      "Canonical URL: https://docs.example.com/docs/customize#available-themes",
+    );
+    expect(context.context).toMatch(/Source digest: sha256:[a-f0-9]{64}/u);
+    expect(context.context).toMatch(/Index generation: sha256:[a-f0-9]{64}/u);
   });
 });
 
 describe("remote search adapters", () => {
   const originalFetch = globalThis.fetch;
+  const sourceDigest = `sha256:${"a".repeat(64)}`;
+  const sourceGeneration = `sha256:${"b".repeat(64)}`;
 
   beforeEach(() => {
     globalThis.fetch = vi.fn() as typeof fetch;
@@ -2202,6 +2633,12 @@ describe("remote search adapters", () => {
               title: "Installation",
               section: "Quickstart",
               type: "heading",
+              source_canonical_url: "https://docs.example.com/docs/installation#quickstart",
+              source_scope_audience: "human",
+              source_scope_framework: ["nextjs"],
+              source_last_modified: "2026-07-27T12:34:56.000Z",
+              source_digest: sourceDigest,
+              source_index_generation: sourceGeneration,
               _snippetResult: {
                 content: {
                   value: "Install the docs framework in your app.",
@@ -2238,8 +2675,61 @@ describe("remote search adapters", () => {
         type: "heading",
         score: undefined,
         section: "Quickstart",
+        source: {
+          canonicalUrl: "https://docs.example.com/docs/installation#quickstart",
+          scope: { audience: "human", framework: ["nextjs"] },
+          lastModified: "2026-07-27T12:34:56.000Z",
+          digest: sourceDigest,
+          indexGeneration: sourceGeneration,
+        },
       },
     ]);
+  });
+
+  it("rejects hosted hits with malformed nested provenance despite valid flattened fields", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          hits: [
+            {
+              objectID: "alg-mixed-source",
+              url: "/docs/installation",
+              title: "Installation",
+              type: "page",
+              source: { canonicalUrl: "javascript:alert(1)" },
+              source_canonical_url: "https://docs.example.com/docs/installation",
+              source_scope_audience: "human",
+              source_digest: sourceDigest,
+              source_index_generation: sourceGeneration,
+            },
+            {
+              objectID: "alg-null-source",
+              url: "/docs/null-source",
+              title: "Null source",
+              type: "page",
+              source: null,
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    const adapter = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+
+    await expect(
+      adapter.search({ query: "install", limit: 5 }, {
+        pages: [],
+        documents: [],
+      } as DocsSearchAdapterContext),
+    ).resolves.toEqual([]);
   });
 
   it("filters Algolia before provider top-k using the locally scoped document ids", async () => {
@@ -2282,12 +2772,18 @@ describe("remote search adapters", () => {
     ) as Record<string, unknown>;
     expect(request).toMatchObject({
       hitsPerPage: 5,
+      restrictSearchableAttributes: ["title", "section", "content", "description"],
       filters: 'objectID:"/docs/next#page"',
     });
   });
 
   it("trims oversized Algolia records before syncing", async () => {
-    vi.mocked(globalThis.fetch).mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (String(input).endsWith("/batch")) {
+        return new Response(JSON.stringify({ taskID: 1 }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ status: "published" }), { status: 200 });
+    });
 
     const adapter = createAlgoliaSearchAdapter({
       provider: "algolia",
@@ -2333,6 +2829,608 @@ describe("remote search adapters", () => {
       package: ["@farming-labs/next"],
       tags: ["setup"],
     });
+    expect(String(call?.[0])).toBe("https://app-id.algolia.net/1/indexes/docs/batch");
+  });
+
+  it("owns Algolia records with scoped ids and avoids unsafe cross-generation pruning", async () => {
+    let indexedRecord: Record<string, unknown> | undefined;
+    const operations: string[] = [];
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/batch")) {
+        const payload = JSON.parse(String(init?.body)) as {
+          requests: Array<{ action: string; body: Record<string, unknown> }>;
+        };
+        const action = payload.requests[0]?.action;
+        operations.push(action ?? "empty");
+        if (action === "addObject") indexedRecord = payload.requests[0]?.body;
+        return new Response(JSON.stringify({ taskID: action === "addObject" ? 1 : 2 }), {
+          status: 200,
+        });
+      }
+      if (url.includes("/task/")) {
+        return new Response(JSON.stringify({ status: "published" }), { status: 200 });
+      }
+      if (url.endsWith("/query")) {
+        return new Response(JSON.stringify({ hits: [indexedRecord] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected Algolia request: ${url}`);
+    });
+
+    const adapter = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "owned-app",
+      indexName: "owned-index",
+      searchApiKey: "search-key",
+      adminApiKey: "admin-key",
+      syncNamespace: "site-a",
+    });
+    const context = {
+      pages,
+      documents: buildDocsSearchDocuments(pages),
+      audience: "human" as const,
+      baseUrl: "https://docs.example.com",
+      indexBaseUrl: "https://docs.example.com",
+      chunking: { strategy: "section" as const },
+    };
+
+    await adapter.index?.(context);
+
+    expect(indexedRecord?.objectID).toMatch(/^docs_[a-f0-9]{64}$/u);
+    expect(indexedRecord).toMatchObject({
+      id: indexedRecord?.objectID,
+      source_document_id: "/docs/installation#page",
+      _tags: [indexedRecord?.source_corpus_id],
+    });
+    expect(indexedRecord?.source_corpus_id).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(operations).toEqual(["addObject"]);
+    expect(
+      vi.mocked(globalThis.fetch).mock.calls.some(([input]) => String(input).endsWith("/browse")),
+    ).toBe(false);
+
+    const results = await adapter.search({ query: "install", limit: 5 }, context);
+    const queryCall = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.find(([input]) => String(input).endsWith("/query"));
+    const queryBody = JSON.parse(String(queryCall?.[1]?.body)) as {
+      filters?: string;
+    };
+    expect(queryBody.filters).toBe(`_tags:"${String(indexedRecord?.source_corpus_id)}"`);
+    expect(results[0]?.id).toBe("/docs/installation#page");
+  });
+
+  it("uses the current human hosted generation only as a ranking hint for agent output", async () => {
+    let pageRecord: Record<string, unknown> | undefined;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/batch")) {
+        const payload = JSON.parse(String(init?.body)) as {
+          requests: Array<{ action: string; body: Record<string, unknown> }>;
+        };
+        if (payload.requests[0]?.action === "addObject") {
+          pageRecord = payload.requests
+            .map((request) => request.body)
+            .find((record) => record.source_document_id === "/docs/audience-ranking#page");
+        }
+        return new Response(JSON.stringify({ taskID: 1 }), { status: 200 });
+      }
+      if (url.includes("/task/")) {
+        return new Response(JSON.stringify({ status: "published" }), { status: 200 });
+      }
+      if (url.endsWith("/browse")) {
+        return new Response(
+          JSON.stringify({
+            hits: pageRecord
+              ? [
+                  {
+                    objectID: pageRecord.objectID,
+                    source_corpus_id: pageRecord.source_corpus_id,
+                  },
+                ]
+              : [],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith("/query")) {
+        return new Response(
+          JSON.stringify({
+            hits: pageRecord
+              ? [
+                  {
+                    ...pageRecord,
+                    _snippetResult: {
+                      content: { value: "Human-only semantic cobalt explanation." },
+                    },
+                  },
+                ]
+              : [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw new Error(`Unexpected Algolia request: ${url}`);
+    });
+
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Audience ranking",
+          url: "/docs/audience-ranking",
+          content: "Human and agent guidance.",
+          rawContent: `# Audience ranking
+
+<Human>
+Human-only semantic cobalt explanation.
+</Human>
+
+<Agent>
+Agent-safe indigo procedure.
+</Agent>
+`,
+        },
+      ],
+      query: "semantic cobalt",
+      audience: "agent",
+      baseUrl: "https://docs.example.com",
+      syncBaseUrl: "https://docs.example.com",
+      supplementExternalResults: false,
+      search: {
+        provider: "algolia",
+        appId: "agent-ranking-app",
+        indexName: "agent-ranking-index",
+        searchApiKey: "search-key",
+        adminApiKey: "admin-key",
+        syncNamespace: "agent-ranking-site",
+      },
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      id: "/docs/audience-ranking#page",
+      url: "/docs/audience-ranking",
+      content: "Audience ranking",
+      source: {
+        scope: { audience: "agent" },
+      },
+    });
+    expect(results[0]?.description).toContain("Agent-safe indigo procedure");
+    expect(results[0]?.description).not.toContain("Human-only");
+  });
+
+  it("uses local scope when a known hosted result has bounded provenance values", async () => {
+    let indexedRecord: Record<string, unknown> | undefined;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/batch")) {
+        const payload = JSON.parse(String(init?.body)) as {
+          requests: Array<{ action: string; body: Record<string, unknown> }>;
+        };
+        if (payload.requests[0]?.action === "addObject") {
+          indexedRecord = payload.requests[0]?.body;
+        }
+        return Response.json({ taskID: 1 });
+      }
+      if (url.includes("/task/")) return Response.json({ status: "published" });
+      if (url.endsWith("/browse")) {
+        return Response.json({
+          hits: indexedRecord
+            ? [
+                {
+                  objectID: indexedRecord.objectID,
+                  source_corpus_id: indexedRecord.source_corpus_id,
+                },
+              ]
+            : [],
+        });
+      }
+      if (url.endsWith("/query")) {
+        return Response.json({ hits: indexedRecord ? [indexedRecord] : [] });
+      }
+      throw new Error(`Unexpected Algolia request: ${url}`);
+    });
+    const tags = Array.from({ length: 17 }, (_, index) => `tag-${String(index).padStart(2, "0")}`);
+
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Bounded provenance",
+          url: "/docs/bounded-provenance",
+          content: "Bounded provenance retrieval marker.",
+          tags,
+        },
+      ],
+      query: "bounded provenance",
+      filters: { tags: "tag-16" },
+      baseUrl: "https://docs.example.com",
+      syncBaseUrl: "https://docs.example.com",
+      supplementExternalResults: false,
+      search: {
+        provider: "algolia",
+        appId: "bounded-scope-app",
+        indexName: "bounded-scope-index",
+        searchApiKey: "search-key",
+        adminApiKey: "admin-key",
+        syncNamespace: "bounded-scope-site",
+        chunking: { strategy: "page" },
+      },
+    });
+
+    expect(indexedRecord?.source_scope_tags).not.toContain("tag-16");
+    expect(indexedRecord?.source_scope_truncated).toContain("tags");
+    expect(results).toHaveLength(1);
+    expect(results[0]?.source?.scope.truncated).toContain("tags");
+  });
+
+  it("uses source-less legacy local hits only as ranking hints", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          hits: [
+            {
+              objectID: "/docs/installation#page",
+              url: "/docs/installation",
+              title: "Installation",
+              type: "page",
+            },
+            {
+              objectID: "partial-provenance",
+              url: "/docs/installation",
+              title: "Partial installation",
+              type: "page",
+              source_canonical_url: "/docs/installation",
+              source_scope_audience: "human",
+              source_digest: `sha256:${"a".repeat(64)}`,
+            },
+            {
+              objectID: "foreign-legacy",
+              url: "https://foreign.example/docs/install",
+              title: "Foreign installation",
+              type: "page",
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const results = await performDocsSearch({
+      pages,
+      query: "install",
+      baseUrl: "https://docs.example.com",
+      syncBaseUrl: "https://docs.example.com",
+      supplementExternalResults: false,
+      search: {
+        provider: "algolia",
+        appId: "legacy-hint-app",
+        indexName: "legacy-hint-index",
+        searchApiKey: "search-key",
+        syncNamespace: "legacy-hint-site",
+      },
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      id: "/docs/installation#page",
+      url: "/docs/installation",
+      source: { scope: { audience: "human" } },
+    });
+  });
+
+  it("does not prune an owned Algolia corpus when discovery is empty", async () => {
+    const fetchSpy = vi.mocked(globalThis.fetch);
+    const adapter = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "empty-owned-app",
+      indexName: "empty-owned-index",
+      searchApiKey: "search-key",
+      adminApiKey: "admin-key",
+      syncNamespace: "empty-owned-site",
+    });
+
+    await adapter.index?.({
+      pages: [],
+      documents: [],
+      audience: "human",
+    } as DocsSearchAdapterContext);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("re-syncs Algolia only when the complete index generation changes", async () => {
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (String(input).endsWith("/batch")) {
+        return new Response(JSON.stringify({ taskID: 1 }), { status: 200 });
+      }
+      if (String(input).includes("/task/")) {
+        return new Response(JSON.stringify({ status: "published" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ hits: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const search = {
+      provider: "algolia" as const,
+      appId: "provenance-generation-app",
+      indexName: "provenance-generation-index",
+      searchApiKey: "search-key",
+      adminApiKey: "admin-key",
+      syncOnSearch: true,
+    };
+    const originalPages = [
+      {
+        title: "Generation sync",
+        url: "/docs/generation-sync",
+        content: "First generation provenance marker.",
+        rawContent: "# Generation sync\n\nFirst generation provenance marker.",
+      },
+    ];
+
+    await performDocsSearch({
+      pages: originalPages,
+      query: "generation provenance",
+      search,
+      baseUrl: "https://docs.example.com",
+    });
+    await performDocsSearch({
+      pages: originalPages,
+      query: "different request",
+      search,
+      baseUrl: "https://docs.example.com",
+    });
+    await performDocsSearch({
+      pages: [
+        {
+          ...originalPages[0],
+          content: "Second generation provenance marker.",
+          rawContent: "# Generation sync\n\nSecond generation provenance marker.",
+        },
+      ],
+      query: "generation provenance",
+      search,
+      baseUrl: "https://docs.example.com",
+    });
+
+    const batchCalls = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.filter(([input]) => String(input).endsWith("/batch"));
+    const generations = batchCalls.map(([, init]) => {
+      const payload = JSON.parse(String(init?.body)) as {
+        requests: Array<{
+          body: { source_canonical_url?: string; source_index_generation?: string };
+        }>;
+      };
+      return payload.requests[0]?.body.source_index_generation;
+    });
+
+    expect(batchCalls).toHaveLength(2);
+    expect(generations.every((generation) => /^sha256:[a-f0-9]{64}$/u.test(generation ?? ""))).toBe(
+      true,
+    );
+    expect(new Set(generations).size).toBe(2);
+    const firstBatch = JSON.parse(String(batchCalls[0]?.[1]?.body)) as {
+      requests: Array<{ body: { source_canonical_url?: string } }>;
+    };
+    expect(firstBatch.requests[0]?.body.source_canonical_url).toBe(
+      "https://docs.example.com/docs/generation-sync",
+    );
+  });
+
+  it("keeps canonical hosted sync state isolated between sites in one process", async () => {
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/batch")) {
+        return Response.json({ taskID: 1 });
+      }
+      if (url.includes("/task/")) {
+        return Response.json({ status: "published" });
+      }
+      return Response.json({ hits: [] });
+    });
+    const search = {
+      provider: "algolia" as const,
+      appId: "multi-site-sync-app",
+      indexName: "multi-site-sync-index",
+      searchApiKey: "search-key",
+      adminApiKey: "admin-key",
+      syncOnSearch: true,
+    };
+    const run = (baseUrl: string) =>
+      performDocsSearch({
+        pages,
+        query: "install",
+        search,
+        baseUrl,
+        syncBaseUrl: baseUrl,
+      });
+
+    await run("https://alpha.example.com");
+    await run("https://beta.example.com");
+    await run("https://alpha.example.com");
+
+    const addBatches = vi.mocked(globalThis.fetch).mock.calls.filter(([, init]) => {
+      if (!init?.body) return false;
+      const body = JSON.parse(String(init.body)) as {
+        requests?: Array<{ action?: string }>;
+      };
+      return body.requests?.[0]?.action === "addObject";
+    });
+    expect(addBatches).toHaveLength(2);
+  });
+
+  it("retries a failed generation sync instead of marking it complete", async () => {
+    let failBatch = true;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (String(input).endsWith("/batch")) {
+        if (failBatch) return new Response("sync failed", { status: 500 });
+        return new Response(JSON.stringify({ taskID: 1 }), { status: 200 });
+      }
+      if (String(input).includes("/task/")) {
+        return new Response(JSON.stringify({ status: "published" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ hits: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const options = {
+      pages: [
+        {
+          title: "Retry generation sync",
+          url: "/docs/retry-generation-sync",
+          content: "Retry generation provenance marker.",
+          rawContent: "# Retry generation sync\n\nRetry generation provenance marker.",
+        },
+      ],
+      query: "retry generation",
+      failureMode: "throw" as const,
+      search: {
+        provider: "algolia" as const,
+        appId: "provenance-retry-app",
+        indexName: "provenance-retry-index",
+        searchApiKey: "search-key",
+        adminApiKey: "admin-key",
+        syncOnSearch: true,
+      },
+    };
+
+    await expect(performDocsSearch(options)).rejects.toThrow("Failed to sync documents to Algolia");
+    failBatch = false;
+    await expect(performDocsSearch(options)).resolves.not.toHaveLength(0);
+
+    expect(
+      vi.mocked(globalThis.fetch).mock.calls.filter(([input]) => String(input).endsWith("/batch")),
+    ).toHaveLength(2);
+  });
+
+  it("serializes concurrent syncs for different generations of one hosted index", async () => {
+    let releaseFirstSync: (() => void) | undefined;
+    const firstSyncGate = new Promise<void>((resolve) => {
+      releaseFirstSync = resolve;
+    });
+    let batchCalls = 0;
+    let activeBatches = 0;
+    let maxActiveBatches = 0;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (String(input).endsWith("/batch")) {
+        batchCalls += 1;
+        activeBatches += 1;
+        maxActiveBatches = Math.max(maxActiveBatches, activeBatches);
+        if (batchCalls === 1) await firstSyncGate;
+        activeBatches -= 1;
+        return new Response(JSON.stringify({ taskID: batchCalls }), { status: 200 });
+      }
+      if (String(input).includes("/task/")) {
+        return new Response(JSON.stringify({ status: "published" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ hits: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const search = {
+      provider: "algolia" as const,
+      appId: "provenance-concurrent-app",
+      indexName: "provenance-concurrent-index",
+      searchApiKey: "search-key",
+      adminApiKey: "admin-key",
+      syncOnSearch: true,
+    };
+    const basePage = {
+      title: "Concurrent generation",
+      url: "/docs/concurrent-generation",
+      content: "First concurrent generation.",
+      rawContent: "# Concurrent generation\n\nFirst concurrent generation.",
+    };
+    const firstSearch = performDocsSearch({
+      pages: [basePage],
+      query: "concurrent generation",
+      search,
+    });
+    await vi.waitFor(() => expect(batchCalls).toBe(1));
+    const secondSearch = performDocsSearch({
+      pages: [
+        {
+          ...basePage,
+          content: "Second concurrent generation.",
+          rawContent: "# Concurrent generation\n\nSecond concurrent generation.",
+        },
+      ],
+      query: "concurrent generation",
+      search,
+    });
+    await Promise.resolve();
+
+    expect(batchCalls).toBe(1);
+    releaseFirstSync?.();
+    await Promise.all([firstSearch, secondSearch]);
+
+    expect(batchCalls).toBe(2);
+    expect(maxActiveBatches).toBe(1);
+  });
+
+  it("re-syncs A after an in-flight B generation would otherwise overwrite it", async () => {
+    let releaseGenerationB: (() => void) | undefined;
+    const generationBGate = new Promise<void>((resolve) => {
+      releaseGenerationB = resolve;
+    });
+    let batchCalls = 0;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (String(input).endsWith("/batch")) {
+        batchCalls += 1;
+        if (batchCalls === 2) await generationBGate;
+        return new Response(JSON.stringify({ taskID: batchCalls }), { status: 200 });
+      }
+      if (String(input).includes("/task/")) {
+        return new Response(JSON.stringify({ status: "published" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ hits: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const search = {
+      provider: "algolia" as const,
+      appId: "provenance-aba-app",
+      indexName: "provenance-aba-index",
+      searchApiKey: "search-key",
+      adminApiKey: "admin-key",
+      syncOnSearch: true,
+    };
+    const generationA = {
+      title: "A-B-A generation",
+      url: "/docs/aba-generation",
+      content: "Generation A.",
+      rawContent: "# A-B-A generation\n\nGeneration A.",
+    };
+    const generationB = {
+      ...generationA,
+      content: "Generation B.",
+      rawContent: "# A-B-A generation\n\nGeneration B.",
+    };
+
+    await performDocsSearch({ pages: [generationA], query: "generation", search });
+    const searchB = performDocsSearch({ pages: [generationB], query: "generation", search });
+    await vi.waitFor(() => expect(batchCalls).toBe(2));
+    const finalSearchA = performDocsSearch({
+      pages: [generationA],
+      query: "generation",
+      search,
+    });
+    await Promise.resolve();
+    expect(batchCalls).toBe(2);
+
+    releaseGenerationB?.();
+    await Promise.all([searchB, finalSearchA]);
+    expect(batchCalls).toBe(3);
   });
 
   it("maps Typesense hits into docs search results", async () => {
@@ -2349,6 +3447,11 @@ describe("remote search adapters", () => {
                 section: "Quickstart",
                 type: "heading",
                 description: "Install the docs framework in your app.",
+                source_canonical_url: "https://docs.example.com/docs/installation#quickstart",
+                source_scope_audience: "agent",
+                source_scope_package: ["@farming-labs/docs"],
+                source_digest: sourceDigest,
+                source_index_generation: sourceGeneration,
               },
               highlights: [
                 {
@@ -2387,6 +3490,12 @@ describe("remote search adapters", () => {
         type: "heading",
         score: 123,
         section: "Quickstart",
+        source: {
+          canonicalUrl: "https://docs.example.com/docs/installation#quickstart",
+          scope: { audience: "agent", package: ["@farming-labs/docs"] },
+          digest: sourceDigest,
+          indexGeneration: sourceGeneration,
+        },
       },
     ]);
   });
@@ -2442,10 +3551,20 @@ describe("remote search adapters", () => {
   });
 
   it("creates a Typesense collection without an invalid default sorting field", async () => {
-    vi.mocked(globalThis.fetch)
-      .mockResolvedValueOnce(new Response(null, { status: 404 }))
-      .mockResolvedValueOnce(new Response("{}", { status: 201 }))
-      .mockResolvedValueOnce(new Response("", { status: 200 }));
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/collections/docs") && !init?.method) {
+        return new Response(null, { status: 404 });
+      }
+      if (url.endsWith("/collections") && init?.method === "POST") {
+        return new Response("{}", { status: 201 });
+      }
+      const count = String(init?.body).split("\n").filter(Boolean).length;
+      return new Response(
+        Array.from({ length: count }, () => JSON.stringify({ success: true })).join("\n"),
+        { status: 200 },
+      );
+    });
 
     const adapter = createTypesenseSearchAdapter({
       provider: "typesense",
@@ -2459,6 +3578,7 @@ describe("remote search adapters", () => {
     await adapter.index!({
       pages,
       documents: buildDocsSearchDocuments(pages),
+      baseUrl: "https://docs.example.com",
     } as DocsSearchAdapterContext);
 
     const createCall = vi.mocked(globalThis.fetch).mock.calls[1];
@@ -2473,6 +3593,272 @@ describe("remote search adapters", () => {
       type: "string[]",
       optional: true,
     });
+    expect(payload.fields).toContainEqual({
+      name: "source_digest",
+      type: "string",
+      optional: true,
+    });
+    const imported = JSON.parse(
+      String(vi.mocked(globalThis.fetch).mock.calls[2]?.[1]?.body).split("\n")[0],
+    ) as Record<string, unknown>;
+    expect(imported.source_canonical_url).toBe("https://docs.example.com/docs/installation");
+    expect(imported.source_scope_audience).toBe("human");
+    expect(imported.source_digest).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(imported.source_index_generation).toMatch(/^sha256:[a-f0-9]{64}$/u);
+  });
+
+  it("recovers when another sync creates the Typesense collection concurrently", async () => {
+    let inspectCount = 0;
+    let createdFields: Array<Record<string, unknown>> = [];
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/collections/docs") && !init?.method) {
+        inspectCount += 1;
+        return inspectCount === 1
+          ? new Response(null, { status: 404 })
+          : Response.json({ fields: createdFields });
+      }
+      if (url.endsWith("/collections") && init?.method === "POST") {
+        createdFields = (
+          JSON.parse(String(init.body)) as { fields: Array<Record<string, unknown>> }
+        ).fields;
+        return new Response("already exists", { status: 409 });
+      }
+      if (url.includes("/documents/import")) {
+        const count = String(init?.body).split("\n").filter(Boolean).length;
+        return new Response(
+          Array.from({ length: count }, () => JSON.stringify({ success: true })).join("\n"),
+          { status: 200 },
+        );
+      }
+      throw new Error(`Unexpected Typesense request: ${url}`);
+    });
+
+    const adapter = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+      adminApiKey: "admin-key",
+    });
+
+    await adapter.index!({
+      pages,
+      documents: buildDocsSearchDocuments(pages),
+      audience: "human",
+    } as DocsSearchAdapterContext);
+    expect(inspectCount).toBe(2);
+  });
+
+  it("recovers when another sync adds missing Typesense provenance fields concurrently", async () => {
+    let inspectCount = 0;
+    let alteredFields: Array<Record<string, unknown>> = [];
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/collections/docs") && !init?.method) {
+        inspectCount += 1;
+        return Response.json({ fields: inspectCount === 1 ? [] : alteredFields });
+      }
+      if (url.endsWith("/collections/docs") && init?.method === "PATCH") {
+        alteredFields = (
+          JSON.parse(String(init.body)) as { fields: Array<Record<string, unknown>> }
+        ).fields;
+        return new Response("fields already exist", { status: 409 });
+      }
+      if (url.includes("/documents/import")) {
+        const count = String(init?.body).split("\n").filter(Boolean).length;
+        return new Response(
+          Array.from({ length: count }, () => JSON.stringify({ success: true })).join("\n"),
+          { status: 200 },
+        );
+      }
+      throw new Error(`Unexpected Typesense request: ${url}`);
+    });
+    const adapter = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+      adminApiKey: "admin-key",
+    });
+
+    await adapter.index!({
+      pages,
+      documents: buildDocsSearchDocuments(pages),
+      audience: "human",
+    } as DocsSearchAdapterContext);
+
+    expect(inspectCount).toBe(2);
+    expect(alteredFields).toContainEqual({
+      name: "source_digest",
+      type: "string",
+      optional: true,
+    });
+  });
+
+  it("owns Typesense records with scoped ids and avoids unsafe cross-generation pruning", async () => {
+    let importedRecord: Record<string, unknown> | undefined;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/collections/owned-docs") && !init?.method) {
+        return new Response(null, { status: 404 });
+      }
+      if (url.pathname.endsWith("/collections") && init?.method === "POST") {
+        return new Response("{}", { status: 201 });
+      }
+      if (url.pathname.endsWith("/documents/import")) {
+        const records = String(init?.body)
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line) as Record<string, unknown>);
+        importedRecord = records[0];
+        return new Response(records.map(() => JSON.stringify({ success: true })).join("\n"), {
+          status: 200,
+        });
+      }
+      if (url.pathname.endsWith("/multi_search")) {
+        return new Response(
+          JSON.stringify({
+            results: [{ hits: [{ document: importedRecord, text_match: 123 }] }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw new Error(`Unexpected Typesense request: ${url.toString()}`);
+    });
+
+    const adapter = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "owned-docs",
+      apiKey: "search-key",
+      adminApiKey: "admin-key",
+      syncNamespace: "site-a",
+    });
+    const context = {
+      pages,
+      documents: buildDocsSearchDocuments(pages),
+      audience: "human" as const,
+      baseUrl: "https://docs.example.com",
+      indexBaseUrl: "https://docs.example.com",
+      chunking: { strategy: "section" as const },
+    };
+
+    await adapter.index?.(context);
+
+    expect(importedRecord).toMatchObject({
+      id: expect.stringMatching(/^docs_[a-f0-9]{64}$/u),
+      source_document_id: "/docs/installation#page",
+    });
+    expect(importedRecord?.source_corpus_id).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(
+      vi.mocked(globalThis.fetch).mock.calls.some(([input, init]) => {
+        const url = new URL(String(input));
+        return (
+          url.pathname.endsWith("/documents/export") ||
+          (url.pathname.endsWith("/documents") && init?.method === "DELETE")
+        );
+      }),
+    ).toBe(false);
+
+    const results = await adapter.search({ query: "install", limit: 5 }, context);
+    const searchCall = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.find(([input]) => String(input).endsWith("/multi_search"));
+    const searchBody = JSON.parse(String(searchCall?.[1]?.body)) as {
+      searches: Array<{ filter_by?: string }>;
+    };
+    expect(searchBody.searches[0]?.filter_by).toBe(
+      `source_corpus_id:=\`${String(importedRecord?.source_corpus_id)}\``,
+    );
+    expect(results[0]?.id).toBe("/docs/installation#page");
+  });
+
+  it("rejects incompatible existing Typesense provenance field types", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          fields: [
+            {
+              name: "source_scope_locale",
+              type: "string",
+              optional: true,
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const adapter = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "incompatible-provenance",
+      apiKey: "search-key",
+      adminApiKey: "admin-key",
+    });
+
+    await expect(
+      adapter.index?.({
+        pages,
+        documents: buildDocsSearchDocuments(pages),
+      } as DocsSearchAdapterContext),
+    ).rejects.toThrow(
+      "Typesense collection has incompatible provenance fields: source_scope_locale.",
+    );
+  });
+
+  it("rejects per-record Typesense import failures and retries the generation", async () => {
+    let importAttempts = 0;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/documents/import?action=upsert")) {
+        importAttempts += 1;
+        const count = String(init?.body).split("\n").filter(Boolean).length;
+        return new Response(
+          Array.from({ length: count }, (_, index) =>
+            JSON.stringify(
+              importAttempts === 1 && index === 0
+                ? { success: false, error: "schema rejected the document" }
+                : { success: true },
+            ),
+          ).join("\n"),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/documents/search?")) {
+        return new Response(JSON.stringify({ hits: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (!init?.method) {
+        return new Response(JSON.stringify({ fields: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("{}", { status: 200 });
+    });
+
+    const options = {
+      pages,
+      query: "install",
+      failureMode: "throw" as const,
+      search: {
+        provider: "typesense" as const,
+        baseUrl: "https://typesense.example.com",
+        collection: "provenance-import-retry",
+        apiKey: "search-key",
+        adminApiKey: "admin-key",
+        syncOnSearch: true,
+      },
+    };
+
+    await expect(performDocsSearch(options)).rejects.toThrow(
+      "Typesense failed to import record 1: schema rejected the document",
+    );
+    await expect(performDocsSearch(options)).resolves.not.toHaveLength(0);
+    expect(importAttempts).toBe(2);
   });
 
   it("starts non-sync MCP I/O before agent projection without building the human corpus", async () => {
@@ -2540,7 +3926,7 @@ describe("remote search adapters", () => {
     expect(results[0]?.url).toBe("/docs/lazy-mcp-search");
   });
 
-  it("maps legacy MCP search_docs payloads into docs search results", async () => {
+  it("maps legacy MCP search_docs payloads and drops malformed provenance", async () => {
     vi.mocked(globalThis.fetch)
       .mockResolvedValueOnce(
         new Response(
@@ -2578,6 +3964,25 @@ describe("remote search adapters", () => {
                         url: "/docs/installation",
                         title: "Installation",
                         excerpt: "Install the docs framework in your app.",
+                      },
+                      {
+                        slug: "unsafe-installation",
+                        url: "/docs/unsafe-installation",
+                        title: "Unsafe installation",
+                        excerpt: "This malformed provenance result must be dropped.",
+                        source: {
+                          canonicalUrl: "data:text/html,unsafe",
+                          scope: { audience: "human" },
+                          digest: "invalid",
+                          indexGeneration: "invalid",
+                        },
+                      },
+                      {
+                        slug: "partial-installation",
+                        url: "/docs/partial-installation",
+                        title: "Partial installation",
+                        excerpt: "This partial provenance result must be dropped.",
+                        source: { lastModified: "2026-07-28" },
                       },
                     ],
                   }),

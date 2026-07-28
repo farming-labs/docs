@@ -8,6 +8,7 @@ import {
   runDocsMcpStdio,
 } from "../server.js";
 import { resolveDocsPublishedAgentSkill } from "../agent.js";
+import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import type { DocsMcpConfig } from "../types.js";
 import {
   extractObjectLiteral,
@@ -71,6 +72,7 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
     entry,
     contentDir,
     siteTitle: navTitle ?? "Documentation",
+    baseUrl: loadedConfig ? resolveDocsMetadataBaseUrl(loadedConfig) : undefined,
   });
 
   const resolvedMcp = resolveDocsMcpConfig(mcp ?? true, {
