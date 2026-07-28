@@ -79,6 +79,65 @@ For a framework-owned docs app:
 `runtime` tells you which docs runtime is responsible for rendering it, and it is meant to stay an
 explicit choice in the contract rather than being implied.
 
+## OpenAPI entries
+
+Each entry in `content.openapi[]` describes one API reference. Fields:
+
+| Field             | Type       | Description                                                                                                      |
+| ----------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| `name`            | `string`   | Display name for this API reference.                                                                             |
+| `path`            | `string`   | Path or URL of the OpenAPI document. Relative paths resolve from the project root; absolute URLs load remotely. |
+| `route`           | `string`   | Public route where the API reference is rendered (e.g. `"/api-reference"`).                                     |
+| `catalogTargets`  | `string[]` | Product API base URLs described by this OpenAPI document. See below.                                             |
+| `navigationLabel` | `string`   | Optional label for the sidebar navigation entry.                                                                 |
+
+### `catalogTargets` — when to set it
+
+`catalogTargets` declares which product API base URLs the OpenAPI document describes. The runtime
+uses these to populate the RFC 9727 `/.well-known/api-catalog` endpoint, associating the OpenAPI
+document with each URL via `service-desc`.
+
+**You only need `catalogTargets` when `path` is an absolute remote URL.** For remotely hosted
+schemas, the schema URL is not the same as the API URL, so the runtime has no way to infer a target
+automatically.
+
+- Same-origin or relative `path` values default to `["/"]` — no extra configuration needed.
+- Absolute remote `path` values (e.g. `https://schemas.example.com/product.json`) have no default. Set `catalogTargets` explicitly.
+- An explicit empty array `[]` disables catalog association entirely.
+
+```json title="docs.json — remote schema with catalog target"
+{
+  "content": {
+    "openapi": [
+      {
+        "name": "Core API",
+        "path": "https://schemas.example.com/product.openapi.json",
+        "route": "/api-reference",
+        "catalogTargets": [
+          "https://api.acme.dev/v1"
+        ]
+      }
+    ]
+  }
+}
+```
+
+For a local schema file, omit `catalogTargets`:
+
+```json title="docs.json — local schema (no catalogTargets needed)"
+{
+  "content": {
+    "openapi": [
+      {
+        "name": "Core API",
+        "path": "api/openapi.json",
+        "route": "/api-reference"
+      }
+    ]
+  }
+}
+```
+
 ## Cloud Services
 
 Hosted features live under `cloud`:
