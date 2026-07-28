@@ -287,6 +287,21 @@ Once `agent.md` exists, it becomes the source for:
 - `{page}` with a known AI `User-Agent` in Next.js
 - MCP `read_page`
 
+### Control retrieval freshness with `lastmod`
+
+By default, the framework derives a page's last-modified date from the source file's filesystem mtime. You can override this with the `lastmod` frontmatter key:
+
+```md title="page.mdx"
+---
+title: "Installation"
+lastmod: 2026-07-17
+---
+```
+
+Accepts a YAML date (`2026-07-17`) or a quoted ISO-8601 string. The declared date is used as the canonical last-modified timestamp for retrieval provenance — the value that appears in structured search documents and MCP source metadata. It does **not** affect the filesystem mtime or git history.
+
+When a page folder also contains a sibling `agent.md`, that file tracks its own separate modification time (`agentLastModified`). Retrieval consumers can use this to detect when the machine-readable override has drifted from the human page's `lastmod`.
+
 So use it when that stronger machine contract is genuinely worth owning.
 
 ## Ship The Discovery Layer Too
