@@ -175,6 +175,10 @@ Three functions are exported from `@farming-labs/docs` for working with these ty
 
 The constant `DOCS_MARKDOWN_SECTION_MAX_BUDGET = 1_000_000` is the hard upper limit accepted for `tokenBudget` and `byteBudget`.
 
+### `DocsMcpPageSectionIndex`
+
+`DocsMcpPageSectionIndex` is the body-free section discovery metadata returned by the `list_page_sections` MCP tool. It is exported from `@farming-labs/docs` as a type alias for `DocsMarkdownSectionIndex`.
+
 ### `DocsMarkdownSectionIndex`
 
 The `docs-markdown-sections.v1` JSON payload returned by the `?sections` endpoint.
@@ -708,6 +712,7 @@ spread, or shorthand.
 | ------------------- | --------- | ----------- |
 | `listDocs`          | `boolean` | Expose the `list_docs` tool |
 | `listPages`         | `boolean` | Expose the `list_pages` tool |
+| `listPageSections`  | `boolean` | Expose the `list_page_sections` tool that returns body-free section discovery metadata for a page (default: `true`) |
 | `listTasks`         | `boolean` | Expose the `list_tasks` tool for concise actionable-task discovery |
 | `readTask`          | `boolean` | Expose the `read_task` tool for full structured contracts |
 | `getNavigation`     | `boolean` | Expose the `get_navigation` tool |
