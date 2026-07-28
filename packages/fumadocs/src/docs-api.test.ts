@@ -567,6 +567,50 @@ Welcome to the docs.
     ]);
   });
 
+  it("does not invoke configured providers for blank structured search metadata", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-blank-structured-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+
+    process.chdir(rootDir);
+    const search = vi.fn(async () => {
+      throw new Error("blank structured search must not invoke its provider");
+    });
+    const { GET } = createDocsAPI({
+      entry: "docs",
+      search: {
+        provider: "custom",
+        adapter: { name: "must-not-run", search },
+      },
+    });
+
+    const response = await GET(
+      new Request("https://docs.example.com/api/docs?query=%20&response=structured"),
+    );
+    const payload = await response.json();
+
+    expect(search).not.toHaveBeenCalled();
+    expect(payload).toMatchObject({
+      format: "docs-search.v1",
+      query: "",
+      resultCount: 0,
+      results: [],
+    });
+    expect(payload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
   it("uses built-in simple search when no search config is provided", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-default-search-route-"));
     tempDirs.push(rootDir);
@@ -693,8 +737,16 @@ Scoped adapter token without metadata.
     const structuredPayload = (await structuredResponse.json()) as {
       format: string;
       filters: Record<string, string[]>;
+      indexGeneration: string;
       resultCount: number;
-      results: Array<{ url: string }>;
+      results: Array<{
+        url: string;
+        source?: {
+          canonicalUrl: string;
+          digest: string;
+          indexGeneration: string;
+        };
+      }>;
       warnings: Array<{ code: string; field: string }>;
     };
     expect(structuredPayload).toMatchObject({
@@ -707,8 +759,17 @@ Scoped adapter token without metadata.
       },
     });
     expect(structuredPayload.resultCount).toBe(structuredPayload.results.length);
+    expect(structuredPayload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(
       structuredPayload.results.every((result) => result.url.split("#", 1)[0] === "/docs/next"),
+    ).toBe(true);
+    expect(
+      structuredPayload.results.every(
+        (result) =>
+          result.source?.canonicalUrl.startsWith("http://localhost/docs/next") &&
+          result.source.digest.match(/^sha256:[a-f0-9]{64}$/) &&
+          result.source.indexGeneration === structuredPayload.indexGeneration,
+      ),
     ).toBe(true);
     expect(
       structuredPayload.warnings.some(
@@ -742,7 +803,11 @@ Scoped adapter token without metadata.
 
     requestUrl.searchParams.set("response", "structured");
     const blankStructuredResponse = await GET(new Request(requestUrl));
-    await expect(blankStructuredResponse.json()).resolves.toEqual({
+    const blankStructuredPayload = (await blankStructuredResponse.json()) as {
+      indexGeneration: string;
+      warnings: Array<{ code: string; field: string }>;
+    };
+    expect(blankStructuredPayload).toMatchObject({
       format: "docs-search.v1",
       query: "",
       audience: "agent",
@@ -751,8 +816,16 @@ Scoped adapter token without metadata.
       },
       resultCount: 0,
       results: [],
-      warnings: [],
     });
+    expect(blankStructuredPayload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(blankStructuredPayload.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unknown_filter_value",
+          field: "framework",
+        }),
+      ]),
+    );
   });
 
   it("omits hidden folder index pages from search and markdown lookups", async () => {
@@ -2062,6 +2135,7 @@ Search should not return this hidden agent-only zebra token.
       `---
 title: "Quickstart"
 description: "Start fast"
+lastmod: 2026-07-17
 related:
   - /docs/overview
   - /docs/configuration
@@ -2115,13 +2189,16 @@ This embedded agent block should be ignored because agent.md overrides the page.
 </Agent>
 `,
     );
+    const overviewAgentPath = join(rootDir, "app", "docs", "overview", "agent.md");
     writeFileSync(
-      join(rootDir, "app", "docs", "overview", "agent.md"),
+      overviewAgentPath,
       `<Human>Open the overview dashboard.</Human>
 
 <Audience only="agent">Use this page as the implementation map.</Audience>
 `,
     );
+    const overviewAgentLastModified = new Date("2026-07-19T09:30:00.000Z");
+    utimesSync(overviewAgentPath, overviewAgentLastModified, overviewAgentLastModified);
     writeFileSync(
       join(rootDir, "app", "docs", "configuration", "page.mdx"),
       `---
@@ -2150,7 +2227,7 @@ Config content.
     expect(fallbackResponse.headers.get("link")).toBe(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
-    expect(fallbackResponse.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 14:23:45 GMT");
+    expect(fallbackResponse.headers.get("last-modified")).toBe("Fri, 17 Jul 2026 00:00:00 GMT");
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toMatch(/^---\ntitle: "Quickstart"/);
@@ -2211,7 +2288,7 @@ Config content.
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
     expect(agentResponse.status).toBe(200);
-    expect(agentResponse.headers.get("last-modified")).toBeNull();
+    expect(agentResponse.headers.get("last-modified")).toBe("Sun, 19 Jul 2026 09:30:00 GMT");
     const agentDocument = await agentResponse.text();
     expect(agentDocument).toMatch(/^---\ntitle: "Overview"/);
     expect(agentDocument).toContain('description: "Human overview"');
@@ -2220,6 +2297,18 @@ Config content.
     expect(agentDocument).toContain("Use this page as the implementation map.");
     expect(agentDocument).not.toContain("Open the overview dashboard.");
     expect(agentDocument).toContain("## Sitemap");
+
+    const agentSearchResponse = await GET(
+      new Request(
+        "http://localhost/api/docs?query=implementation%20map&audience=agent&response=structured",
+      ),
+    );
+    const agentSearchPayload = (await agentSearchResponse.json()) as {
+      results: Array<{ source?: { lastModified?: string } }>;
+    };
+    expect(agentSearchPayload.results[0]?.source?.lastModified).toBe(
+      overviewAgentLastModified.toISOString(),
+    );
 
     const rewrittenFallbackResponse = await GET(
       new Request("http://localhost/docs/getting-started/quickstart.md"),
@@ -2234,7 +2323,7 @@ Config content.
     );
     expect(rewrittenFallbackResponse.headers.get("etag")).toMatch(/^W\/"/);
     expect(rewrittenFallbackResponse.headers.get("last-modified")).toBe(
-      "Sat, 18 Jul 2026 14:23:45 GMT",
+      "Fri, 17 Jul 2026 00:00:00 GMT",
     );
     expect(rewrittenFallbackResponse.headers.get("vary")).toBeNull();
     expect(await rewrittenFallbackResponse.text()).toContain(
@@ -2250,7 +2339,7 @@ Config content.
 
     const dateConditionalResponse = await GET(
       new Request("http://localhost/docs/getting-started/quickstart.md", {
-        headers: { "If-Modified-Since": "Sat, 18 Jul 2026 14:23:45 GMT" },
+        headers: { "If-Modified-Since": "Fri, 17 Jul 2026 00:00:00 GMT" },
       }),
     );
     expect(dateConditionalResponse.status).toBe(304);
@@ -4525,8 +4614,9 @@ description: "Start here"
 Welcome to the docs.
 `,
     );
+    const changelogPagePath = join(rootDir, "app", "docs", "changelog", "2026-04-15", "page.mdx");
     writeFileSync(
-      join(rootDir, "app", "docs", "changelog", "2026-04-15", "page.mdx"),
+      changelogPagePath,
       `---
 title: "OpenAPI mode is now default"
 description: "A changelog entry"
@@ -4537,6 +4627,8 @@ description: "A changelog entry"
 The changelog now has its own dedicated route.
 `,
     );
+    const changelogModified = new Date("2026-04-15T12:00:00.000Z");
+    utimesSync(changelogPagePath, changelogModified, changelogModified);
 
     process.chdir(rootDir);
 
@@ -4559,6 +4651,17 @@ The changelog now has its own dedicated route.
 
     expect(payload.some((result) => result.url === "/docs/changelogs/2026-04-15")).toBe(true);
     expect(payload.some((result) => result.url.startsWith("/docs/changelog/"))).toBe(false);
+
+    const structuredResponse = await GET(
+      new Request("http://localhost/api/docs?query=OpenAPI&response=structured"),
+    );
+    const structuredPayload = (await structuredResponse.json()) as {
+      results: Array<{ url: string; source?: { lastModified?: string } }>;
+    };
+    expect(
+      structuredPayload.results.find((result) => result.url === "/docs/changelogs/2026-04-15")
+        ?.source?.lastModified,
+    ).toBe(changelogModified.toISOString());
   });
 
   it("serves changelog markdown with the public docsPath in lookups and canonical links", async () => {

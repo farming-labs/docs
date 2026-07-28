@@ -177,6 +177,43 @@ describe("runDocsGoldenTasks", () => {
     expect(result.score).toBe(100);
   });
 
+  it("uses the configured canonical base URL for MCP evaluation provenance", async () => {
+    const canonicalBasePage = page({
+      slug: "mcp-canonical-base",
+      url: "/docs/mcp-canonical-base",
+      title: "MCP canonical base",
+      rawContent:
+        "# MCP canonical base\n\n## Verify source\n\nVerify the canonical MCP source URL.",
+    });
+    const report = await runDocsGoldenTasks(
+      [canonicalBasePage],
+      [
+        {
+          id: "mcp-canonical-base",
+          query: "canonical MCP source URL",
+          surface: "mcp-context",
+          topK: 1,
+          tokenBudget: 2_000,
+          expect: {
+            relevantSources: ["/docs/mcp-canonical-base#verify-source"],
+            requiredCitations: ["/docs/mcp-canonical-base#verify-source"],
+          },
+        },
+      ],
+      { baseUrl: "https://docs.example.com" },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].context).toContain(
+      "Source: https://docs.example.com/docs/mcp-canonical-base#verify-source",
+    );
+    expect(report.tasks[0].citations).toMatchObject({
+      actual: ["https://docs.example.com/docs/mcp-canonical-base#verify-source"],
+      integrity: true,
+      passed: true,
+    });
+  });
+
   it("fails explicit version selection when the retrieved page is version-ambiguous", async () => {
     const ambiguousPage = page({
       slug: "install",
@@ -378,6 +415,50 @@ ${"Useful café guidance 🚜. ".repeat(60)}
     }
   });
 
+  it("prefers Ask AI canonical provenance over the transport URL for citations", async () => {
+    const canonicalOverridePage = Object.assign(
+      page({
+        slug: "ask-ai-canonical-override",
+        url: "/docs/ask-ai-canonical-override",
+        title: "Ask AI canonical override",
+        rawContent:
+          "# Ask AI canonical override\n\n## Verify canonical source\n\nUse the stable canonical source.",
+      }),
+      { canonicalUrl: "/guides/stable-canonical-source" },
+    );
+    const canonicalSource = "/guides/stable-canonical-source#verify-canonical-source";
+    const report = await runDocsGoldenTasks(
+      [canonicalOverridePage],
+      [
+        {
+          id: "ask-ai-canonical-override",
+          query: "stable canonical source",
+          surface: "ask-ai-context",
+          topK: 1,
+          tokenBudget: 2_000,
+          expect: {
+            relevantSources: [canonicalSource],
+            requiredCitations: [canonicalSource],
+          },
+        },
+      ],
+      { baseUrl: "https://docs.example.com" },
+    );
+
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0].context).toContain(
+      "URL: https://docs.example.com/docs/ask-ai-canonical-override#verify-canonical-source",
+    );
+    expect(report.tasks[0].context).toContain(
+      "Canonical URL: https://docs.example.com/guides/stable-canonical-source#verify-canonical-source",
+    );
+    expect(report.tasks[0].citations).toMatchObject({
+      actual: [canonicalSource],
+      integrity: true,
+      passed: true,
+    });
+  });
+
   it("hydrates authored DOM anchors ahead of generated contracts on the Ask AI surface", async () => {
     const collisionPage = page({
       slug: "contract-collision-evaluation",
@@ -519,6 +600,83 @@ ${"Useful café guidance 🚜. ".repeat(60)}
 
     expect(generatedSource?.content).toContain("## Agent Contract");
     expect(generatedSource?.content).not.toContain("farming-labs:agent-contract");
+  });
+
+  it("retains retrieval source provenance while hydrating evaluation context", () => {
+    const provenancePage = page({
+      slug: "hydrated-provenance",
+      url: "/docs/hydrated-provenance",
+      title: "Hydrated provenance",
+      lastModified: "2026-07-18T08:00:00.000Z",
+      rawContent: "## Verify provenance\n\nRun the verification command.",
+    });
+    const provenance = {
+      canonicalUrl: "https://docs.example.com/guides/hydrated-provenance#verify-provenance",
+      scope: {
+        audience: "agent" as const,
+        framework: ["nextjs"],
+        version: ["16"],
+        tags: ["retrieval"],
+      },
+      lastModified: "2026-07-19T09:30:00.000Z",
+      digest: `sha256:${"a".repeat(64)}`,
+      indexGeneration: `sha256:${"b".repeat(64)}`,
+    };
+
+    const source = hydrateDocsEvaluationSearchSource(
+      {
+        id: "hydrated-provenance",
+        url: "/docs/hydrated-provenance#verify-provenance",
+        content: "Provider snippet.",
+        type: "heading",
+        source: provenance,
+      },
+      0,
+      new Map([[provenancePage.url, provenancePage]]),
+      "page-section",
+      "https://docs.example.com",
+    );
+
+    expect(source).toMatchObject({
+      url: "/guides/hydrated-provenance#verify-provenance",
+      pageUrl: "/guides/hydrated-provenance",
+      anchor: "verify-provenance",
+      lastModified: provenance.lastModified,
+      source: provenance,
+    });
+    expect(source?.source).toBe(provenance);
+
+    const providerOnlySource = hydrateDocsEvaluationSearchSource(
+      {
+        id: "provider-only-provenance",
+        url: "https://remote.example/docs/install?transport=preview",
+        content: "Provider-only installation.",
+        type: "page",
+        source: {
+          ...provenance,
+          canonicalUrl: "https://remote.example/docs/install?lang=fr",
+          scope: {
+            audience: "agent",
+            locale: ["fr"],
+            framework: ["astro"],
+            version: ["5"],
+            package: ["@farming-labs/astro"],
+            tags: ["retrieval"],
+          },
+        },
+      },
+      1,
+      new Map(),
+      "result",
+    );
+    expect(providerOnlySource).toMatchObject({
+      url: "https://remote.example/docs/install?lang=fr",
+      locale: "fr",
+      framework: "astro",
+      version: "5",
+      package: ["@farming-labs/astro"],
+      tags: ["retrieval"],
+    });
   });
 
   it("does not count a source when the budget can render only its header", async () => {

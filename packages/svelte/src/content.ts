@@ -53,6 +53,7 @@ export interface ContentPage {
   agent?: PageAgentFrontmatter;
   icon?: string;
   sourcePath?: string;
+  lastmod?: string;
   lastModified?: string;
   locale?: string;
   framework?: string;
@@ -62,8 +63,15 @@ export interface ContentPage {
   rawContent: string;
   agentContent?: string;
   agentRawContent?: string;
+  agentLastModified?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
+}
+
+export function normalizeDocsFrontmatterLastmod(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  return undefined;
 }
 
 /**
@@ -120,6 +128,7 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         agent: normalizePageAgentFrontmatter(data.agent),
         icon: data.icon as string | undefined,
         sourcePath: full.replace(/\\/g, "/"),
+        lastmod: normalizeDocsFrontmatterLastmod(data.lastmod),
         lastModified: stat.mtime.toISOString(),
         locale: typeof data.locale === "string" ? data.locale : undefined,
         framework: typeof data.framework === "string" ? data.framework : undefined,
@@ -154,6 +163,7 @@ function readAgentDoc(dir: string) {
   return {
     agentContent: stripMarkdown(agentRawContent),
     agentRawContent,
+    agentLastModified: fs.statSync(agentPath).mtime.toISOString(),
   };
 }
 

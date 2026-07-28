@@ -108,6 +108,7 @@ async function main() {
     typesense: typeof flags.typesense === "boolean" ? flags.typesense : undefined,
     algolia: typeof flags.algolia === "boolean" ? flags.algolia : undefined,
     baseUrl: typeof flags["base-url"] === "string" ? flags["base-url"] : undefined,
+    siteUrl: typeof flags["site-url"] === "string" ? flags["site-url"] : undefined,
     collection: typeof flags.collection === "string" ? flags.collection : undefined,
     apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
     adminApiKey: typeof flags["admin-api-key"] === "string" ? flags["admin-api-key"] : undefined,
@@ -118,6 +119,8 @@ async function main() {
     appId: typeof flags["app-id"] === "string" ? flags["app-id"] : undefined,
     indexName: typeof flags["index-name"] === "string" ? flags["index-name"] : undefined,
     searchApiKey: typeof flags["search-api-key"] === "string" ? flags["search-api-key"] : undefined,
+    syncNamespace:
+      typeof flags["sync-namespace"] === "string" ? flags["sync-namespace"] : undefined,
   };
   const cloudOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
@@ -450,6 +453,8 @@ ${pc.dim("Options for search sync:")}
   ${pc.cyan("--typesense")}                        Shortcut for ${pc.cyan("--provider typesense")}
   ${pc.cyan("--algolia")}                          Shortcut for ${pc.cyan("--provider algolia")}
   ${pc.cyan("--base-url <url>")}                   Typesense base URL (or use ${pc.dim("TYPESENSE_URL")})
+  ${pc.cyan("--site-url <url>")}                   Canonical public docs URL for source provenance
+  ${pc.cyan("--sync-namespace <name>")}            Stable ownership namespace for a shared hosted index
   ${pc.cyan("--collection <name>")}                Typesense collection name (default ${pc.dim("docs")})
   ${pc.cyan("--api-key <key>")}                    Typesense search/api key (or use ${pc.dim("TYPESENSE_API_KEY")})
   ${pc.cyan("--admin-api-key <key>")}              Admin-capable sync key for Typesense/Algolia

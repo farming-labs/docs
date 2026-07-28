@@ -547,7 +547,10 @@ Scoped Setup Token for Astro.`,
       request: new Request(blankUrl),
       url: blankUrl,
     });
-    await expect(blankStructuredResponse.json()).resolves.toEqual({
+    const blankStructuredPayload = (await blankStructuredResponse.json()) as {
+      indexGeneration: string;
+    };
+    expect(blankStructuredPayload).toMatchObject({
       format: "docs-search.v1",
       query: "",
       audience: "agent",
@@ -559,6 +562,7 @@ Scoped Setup Token for Astro.`,
       results: [],
       warnings: [],
     });
+    expect(blankStructuredPayload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
   it("uses a build-time skill snapshot without touching unavailable source paths", async () => {

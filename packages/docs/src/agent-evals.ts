@@ -1,6 +1,7 @@
 import { createJiti } from "jiti";
 import {
   agentVersionConstraintMatches,
+  agentVersionConstraintGroupsOverlap,
   agentVersionConstraintsOverlap,
   normalizeAgentFramework,
   normalizeAgentLocale,
@@ -225,11 +226,14 @@ export interface DocsGoldenTasksReport {
 interface NormalizedScope {
   framework: string[];
   version: string[];
+  versionGroups?: string[][];
   package: string[];
   tags: string[];
   locale: string[];
   frameworkAmbiguous: boolean;
   versionAmbiguous: boolean;
+  packageAmbiguous?: boolean;
+  tagsAmbiguous?: boolean;
 }
 
 interface ContextCandidate {
@@ -654,6 +658,7 @@ function safeDecode(value: string): string {
 function canonicalizeSource(value: string, baseUrl?: string): string {
   const rawValue = value.trim();
   let pathname: string;
+  let search: string;
   let hash: string;
   let origin = "";
 
@@ -673,6 +678,7 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
     const base = configuredBase ?? new URL("https://docs.local");
     const parsed = new URL(rawValue, base);
     pathname = parsed.pathname;
+    search = parsed.search;
     hash = parsed.hash;
     const explicitlySchemed = /^[a-z][a-z\d+.-]*:/iu.test(rawValue);
     const explicitlyHosted =
@@ -690,7 +696,9 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
     const hashIndex = rawValue.indexOf("#");
     const pathAndQuery = hashIndex >= 0 ? rawValue.slice(0, hashIndex) : rawValue || "/";
     const fragment = hashIndex >= 0 ? rawValue.slice(hashIndex + 1) : "";
-    pathname = pathAndQuery.split("?", 1)[0] || "/";
+    const queryIndex = pathAndQuery.indexOf("?");
+    pathname = (queryIndex >= 0 ? pathAndQuery.slice(0, queryIndex) : pathAndQuery) || "/";
+    search = queryIndex >= 0 ? pathAndQuery.slice(queryIndex) : "";
     hash = fragment ? `#${fragment}` : "";
   }
 
@@ -703,7 +711,7 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
   // later canonicalization pass to reinterpret it as the distinct `foo#bar` identifier.
   const decodedHash = hash ? safeDecode(hash.slice(1)).trim() : "";
   const normalizedHash = decodedHash ? `#${encodeURIComponent(decodedHash)}` : "";
-  return `${origin}${pathname || "/"}${normalizedHash === "#" ? "" : normalizedHash}`;
+  return `${origin}${pathname || "/"}${search}${normalizedHash === "#" ? "" : normalizedHash}`;
 }
 
 function sourcePage(value: string): string {
@@ -711,8 +719,15 @@ function sourcePage(value: string): string {
 }
 
 function sourceMatches(actual: string, expected: string, baseUrl?: string): boolean {
-  const canonicalActual = canonicalizeSource(actual, baseUrl);
+  let canonicalActual = canonicalizeSource(actual, baseUrl);
   const canonicalExpected = canonicalizeSource(expected, baseUrl);
+  const expectedPage = canonicalExpected.split("#", 1)[0] ?? canonicalExpected;
+  if (!expectedPage.includes("?")) {
+    const hashIndex = canonicalActual.indexOf("#");
+    const hash = hashIndex >= 0 ? canonicalActual.slice(hashIndex) : "";
+    const page = hashIndex >= 0 ? canonicalActual.slice(0, hashIndex) : canonicalActual;
+    canonicalActual = `${page.split("?", 1)[0]}${hash}`;
+  }
   return canonicalExpected.includes("#")
     ? canonicalActual === canonicalExpected
     : sourcePage(canonicalActual) === sourcePage(canonicalExpected);
@@ -747,6 +762,7 @@ function getPageScope(page: DocsMcpPage): NormalizedScope {
   return {
     framework: Array.from(new Set([...topFramework, ...contractFramework])),
     version: Array.from(new Set([...topVersion, ...contractVersion])),
+    versionGroups: [topVersion, contractVersion].filter((group) => group.length > 0),
     package: packageValues,
     tags,
     locale,
@@ -758,6 +774,8 @@ function getPageScope(page: DocsMcpPage): NormalizedScope {
       topVersion.length > 0 &&
       contractVersion.length > 0 &&
       !valuesOverlap(topVersion, contractVersion, agentVersionConstraintsOverlap),
+    packageAmbiguous: false,
+    tagsAmbiguous: false,
   };
 }
 
@@ -790,7 +808,7 @@ function toContextCandidates(
   pagesByUrl: ReadonlyMap<string, DocsMcpPage>,
 ): ContextCandidate[] {
   return sources.flatMap((source): ContextCandidate[] => {
-    const page = pagesByUrl.get(sourcePage(source.pageUrl));
+    const page = findPageForSource(pagesByUrl, source.pageUrl);
     if (!page) return [];
     return [
       {
@@ -872,7 +890,8 @@ function findPageForSource(
   pagesByUrl: ReadonlyMap<string, DocsMcpPage>,
   value: string,
 ): DocsMcpPage | undefined {
-  return pagesByUrl.get(sourcePage(value));
+  const canonicalPage = sourcePage(value);
+  return pagesByUrl.get(canonicalPage) ?? pagesByUrl.get(canonicalPage.split("?", 1)[0] ?? "/");
 }
 
 function getResultAnchor(value: string): string | undefined {
@@ -890,9 +909,15 @@ export function hydrateDocsEvaluationSearchSource(
   contentMode: "result" | "page-section",
   baseUrl?: string,
 ): DocsMcpContextSource | undefined {
-  const normalizedResultUrl = canonicalizeSource(result.url, baseUrl);
-  const page = findPageForSource(pagesByUrl, normalizedResultUrl);
-  const anchor = getResultAnchor(result.url);
+  const normalizedTransportUrl = canonicalizeSource(result.url, baseUrl);
+  const normalizedResultUrl = canonicalizeSource(
+    result.source?.canonicalUrl ?? result.url,
+    baseUrl,
+  );
+  const page =
+    findPageForSource(pagesByUrl, normalizedResultUrl) ??
+    findPageForSource(pagesByUrl, normalizedTransportUrl);
+  const anchor = getResultAnchor(result.source?.canonicalUrl ?? result.url);
   const section = anchor ?? result.section;
   const sectionMarkdown = page ? getPageAgentSectionMarkdown(page) : undefined;
   const pageSection =
@@ -907,6 +932,7 @@ export function hydrateDocsEvaluationSearchSource(
         ).trim()
       : [result.content, result.description].filter(Boolean).join("\n\n").trim();
   const scope = page ? getPageScope(page) : undefined;
+  const provenanceScope = result.source?.scope;
   const url = normalizedResultUrl;
 
   return {
@@ -917,12 +943,21 @@ export function hydrateDocsEvaluationSearchSource(
     section: pageSection?.title ?? result.section,
     anchor: pageSection?.anchor ?? anchor,
     sourcePath: page?.sourcePath,
-    lastModified: page?.lastModified,
-    locale: scope?.locale[0],
-    framework: scope?.framework[0],
-    version: scope?.version[0],
-    package: scope?.package.length ? [...scope.package] : undefined,
-    tags: scope?.tags.length ? [...scope.tags] : undefined,
+    lastModified: result.source?.lastModified ?? page?.lastModified,
+    locale: scope?.locale[0] ?? provenanceScope?.locale?.[0],
+    framework: scope?.framework[0] ?? provenanceScope?.framework?.[0],
+    version: scope?.version[0] ?? provenanceScope?.version?.[0],
+    package: scope?.package.length
+      ? [...scope.package]
+      : provenanceScope?.package?.length
+        ? [...provenanceScope.package]
+        : undefined,
+    tags: scope?.tags.length
+      ? [...scope.tags]
+      : provenanceScope?.tags?.length
+        ? [...provenanceScope.tags]
+        : undefined,
+    source: result.source,
     score: result.score,
     content,
     chars: content.length,
@@ -1199,12 +1234,16 @@ function parseAskAIContextSources(options: {
       continue;
     }
     const header = block.slice(0, contentStart);
-    const urlLines = header
-      .split(/\r?\n/u)
+    const headerLines = header.split(/\r?\n/u);
+    const urlLines = headerLines
       .map((line) => line.match(/^URL:\s+(.+)$/u)?.[1]?.trim())
       .filter((value): value is string => Boolean(value));
+    const canonicalUrlLines = headerLines
+      .map((line) => line.match(/^Canonical URL:\s+(.+)$/u)?.[1]?.trim())
+      .filter((value): value is string => Boolean(value));
     if (urlLines.length !== 1) integrity = false;
-    const url = canonicalizeSource(urlLines[0] ?? "/", options.baseUrl);
+    if (canonicalUrlLines.length > 1) integrity = false;
+    const url = canonicalizeSource(canonicalUrlLines[0] ?? urlLines[0] ?? "/", options.baseUrl);
     const expected = options.results[index];
     if (
       !expected ||
@@ -1263,6 +1302,7 @@ async function buildGoldenSurface(options: {
       tags: options.task.filters?.tags,
       locale: options.task.filters?.locale,
       maxResults: options.topK,
+      baseUrl: options.runOptions.baseUrl,
     };
     const [rankedContext, budgetedContext] = await Promise.all([
       buildDocsMcpContext({ ...contextOptions, tokenBudget: Number.MAX_SAFE_INTEGER }),
@@ -1364,7 +1404,10 @@ async function buildGoldenSurface(options: {
         integrity: rankedSources.every(
           (source, index) =>
             source.url ===
-            canonicalizeSource(results[index]?.url ?? "", options.runOptions.baseUrl),
+            canonicalizeSource(
+              results[index]?.source?.canonicalUrl ?? results[index]?.url ?? "",
+              options.runOptions.baseUrl,
+            ),
         ),
       },
     };
@@ -2324,16 +2367,49 @@ function buildSelectionMetrics(
   const locale = expectedLocale ? normalizeAgentLocale(expectedLocale) : undefined;
   const candidates = sources.map((source) => {
     const page = findPageForSource(pagesByUrl, source.pageUrl || source.url);
+    const provenance = source.source?.scope;
+    const conflicts = new Set(provenance?.conflicts ?? []);
+    const truncated = new Set(provenance?.truncated ?? []);
     const scope = page
       ? getPageScope(page)
       : {
-          framework: normalizeAgentScopeValues(source.framework).map(normalizeAgentFramework),
-          version: normalizeAgentScopeValues(source.version).map(normalizeAgentVersion),
-          package: normalizeDocsSearchFilters({ package: source.package }).package ?? [],
-          tags: normalizeDocsSearchFilters({ tags: source.tags }).tags ?? [],
-          locale: normalizeAgentScopeValues(source.locale).map(normalizeAgentLocale),
-          frameworkAmbiguous: false,
-          versionAmbiguous: false,
+          framework: Array.from(
+            new Set(
+              [
+                ...normalizeAgentScopeValues(source.framework),
+                ...(provenance?.framework ?? []),
+              ].map(normalizeAgentFramework),
+            ),
+          ),
+          version: Array.from(
+            new Set(
+              [...normalizeAgentScopeValues(source.version), ...(provenance?.version ?? [])].map(
+                normalizeAgentVersion,
+              ),
+            ),
+          ),
+          versionGroups: provenance?.versionGroups?.map((group) =>
+            group.map(normalizeAgentVersion),
+          ),
+          package:
+            normalizeDocsSearchFilters({
+              package: provenance?.package?.length ? provenance.package : source.package,
+            }).package ?? [],
+          tags:
+            normalizeDocsSearchFilters({
+              tags: provenance?.tags?.length ? provenance.tags : source.tags,
+            }).tags ?? [],
+          locale: Array.from(
+            new Set(
+              [...normalizeAgentScopeValues(source.locale), ...(provenance?.locale ?? [])].map(
+                normalizeAgentLocale,
+              ),
+            ),
+          ),
+          frameworkAmbiguous: conflicts.has("framework") || truncated.has("framework"),
+          versionAmbiguous: conflicts.has("version") || truncated.has("version"),
+          packageAmbiguous: conflicts.has("package") || truncated.has("package"),
+          tagsAmbiguous: conflicts.has("tags") || truncated.has("tags"),
         };
     return { source: canonicalizeSource(source.url), scope };
   });
@@ -2342,9 +2418,14 @@ function buildSelectionMetrics(
     : null;
   const firstVersionMatchRank = expectedVersion
     ? candidates.findIndex((candidate) =>
-        candidate.scope.version.some((version) =>
-          agentVersionConstraintMatches(expectedVersion, version),
-        ),
+        candidate.scope.versionGroups?.length
+          ? agentVersionConstraintGroupsOverlap([
+              [normalizeAgentVersion(expectedVersion)],
+              ...candidate.scope.versionGroups,
+            ])
+          : candidate.scope.version.some((version) =>
+              agentVersionConstraintMatches(expectedVersion, version),
+            ),
       ) + 1 || null
     : null;
   const firstPackageMatchRank = expectedSearchScope.package
@@ -2376,9 +2457,14 @@ function buildSelectionMetrics(
           !candidate.scope.framework.includes(framework)) ||
         (expectedVersion &&
           candidate.scope.version.length > 0 &&
-          !candidate.scope.version.some((version) =>
-            agentVersionConstraintMatches(expectedVersion, version),
-          )) ||
+          !(candidate.scope.versionGroups?.length
+            ? agentVersionConstraintGroupsOverlap([
+                [normalizeAgentVersion(expectedVersion)],
+                ...candidate.scope.versionGroups,
+              ])
+            : candidate.scope.version.some((version) =>
+                agentVersionConstraintMatches(expectedVersion, version),
+              ))) ||
         (expectedSearchScope.package &&
           candidate.scope.package.length > 0 &&
           !valuesOverlap(
@@ -2401,6 +2487,8 @@ function buildSelectionMetrics(
       (candidate) =>
         candidate.scope.frameworkAmbiguous ||
         candidate.scope.versionAmbiguous ||
+        Boolean(expectedSearchScope.package && candidate.scope.packageAmbiguous) ||
+        Boolean(expectedSearchScope.tags && candidate.scope.tagsAmbiguous) ||
         Boolean(framework && candidate.scope.framework.length === 0) ||
         Boolean(expectedVersion && candidate.scope.version.length === 0) ||
         Boolean(expectedSearchScope.package && candidate.scope.package.length === 0) ||

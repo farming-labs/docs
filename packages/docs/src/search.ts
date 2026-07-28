@@ -17,9 +17,12 @@ import type {
   DocsSearchSourcePage,
   DocsSearchWarning,
   DocsSearchChunkingConfig,
+  DocsRetrievalSourceProvenance,
+  DocsRetrievalSourceScope,
   McpDocsSearchConfig,
   TypesenseDocsSearchConfig,
 } from "./types.js";
+import { digestDocsRetrievalContent, isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 import {
   PAGE_AGENT_CONTRACT_END_MARKER,
   PAGE_AGENT_CONTRACT_START_MARKER,
@@ -30,6 +33,7 @@ import {
   agentVersionConstraintGroupsOverlap,
   agentVersionConstraintsOverlap,
   normalizeAgentFramework,
+  normalizeAgentLocale,
   normalizeAgentScopeValues,
   normalizeAgentVersion,
 } from "./agent-scope.js";
@@ -45,7 +49,8 @@ const DEFAULT_SEARCH_LIMIT = 10;
 const MAX_SEARCH_SNIPPET_CHARS = 160;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
 const MCP_SESSION_CLEANUP_TIMEOUT_MS = 1_000;
-const syncedIndexes = new Set<string>();
+const syncedIndexes = new Map<string, string>();
+const syncingIndexes = new Map<string, { fingerprint: string; promise: Promise<void> }>();
 const ALGOLIA_MAX_RECORD_BYTES = 9_500;
 const DEFAULT_ASK_AI_CONTEXT_CHARS = 24_000;
 const DEFAULT_ASK_AI_RESULT_CHARS = 6_000;
@@ -55,9 +60,13 @@ const MAX_SEARCH_FILTER_RAW_CHARS = 4_096;
 const MAX_SEARCH_FILTER_SEGMENTS = 64;
 const MAX_PROVIDER_SCOPE_FILTER_IDS = 1_000;
 const MAX_PROVIDER_SCOPE_FILTER_CHARS = 16_000;
+const ALGOLIA_BATCH_OPERATIONS = 1_000;
 const MAX_SEARCH_WARNINGS = 16;
 const MAX_SEARCH_WARNING_VALUES = 16;
 const MAX_SEARCH_WARNING_PAGE_URLS = 8;
+const RETRIEVAL_INDEX_FORMAT = "docs-retrieval-index.v1";
+const MAX_RETRIEVAL_SOURCE_URL_CHARS = 4_096;
+const MAX_RETRIEVAL_SOURCE_VALUE_CHARS = 256;
 const SEARCH_FILTER_FIELDS = ["framework", "version", "package", "tags"] as const;
 const SEARCH_AMBIGUITY_FIELDS = ["framework", "version", "package"] as const;
 const SEARCH_STOP_WORDS = new Set([
@@ -204,10 +213,20 @@ function hasDocsSearchFilters(filters: DocsSearchFilters): boolean {
 function resolveProviderScopeDocumentIds(
   query: DocsSearchQuery,
   context: DocsSearchAdapterContext,
+  corpusId?: string,
 ): string[] | undefined {
   if (!hasDocsSearchFilters(query.filters ?? {})) return undefined;
 
-  const ids = Array.from(new Set(context.documents.map((document) => document.id)));
+  const documents = corpusId
+    ? buildDocsSearchDocuments(context.pages, context.chunking ?? { strategy: "section" }, "human")
+    : context.documents;
+  const ids = Array.from(
+    new Set(
+      documents.map((document) =>
+        corpusId ? makeHostedProviderDocumentId(corpusId, document.id) : document.id,
+      ),
+    ),
+  );
   return ids.length <= MAX_PROVIDER_SCOPE_FILTER_IDS ? ids : [];
 }
 
@@ -457,12 +476,59 @@ function tokenizeSearchQuery(query: string): string[] {
   );
 }
 
-function normalizeUrlPathname(value: string): string {
+function normalizeUrlRouteKey(value: string): string {
   try {
-    return new URL(value, "https://docs.local").pathname.replace(/\/+$/, "") || "/";
+    const url = new URL(value, "https://docs.local");
+    return `${url.pathname || "/"}${url.search}`;
   } catch {
-    return value.split(/[?#]/)[0]?.replace(/\/+$/, "") || "/";
+    return value.split("#", 1)[0] || "/";
   }
+}
+
+function normalizeAuthoredUrlIdentity(value: string): string {
+  const trimmed = value.trim();
+  const explicitScheme = trimmed.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
+  if (explicitScheme && explicitScheme !== "http" && explicitScheme !== "https") {
+    return normalizeUrlRouteKey("/");
+  }
+
+  try {
+    const url = new URL(trimmed, "https://docs.local");
+    const route = `${url.pathname || "/"}${url.search}`;
+    if (explicitScheme) return `${url.origin}${route}`;
+    if (trimmed.startsWith("//")) return `//${url.host}${route}`;
+    return route;
+  } catch {
+    return normalizeUrlRouteKey(trimmed);
+  }
+}
+
+function appendDocsLocaleQuery(value: string, locale: string): string {
+  const hashIndex = value.indexOf("#");
+  const withoutHash = hashIndex >= 0 ? value.slice(0, hashIndex) : value;
+  const hash = hashIndex >= 0 ? value.slice(hashIndex) : "";
+  const queryIndex = withoutHash.indexOf("?");
+  const rawQuery = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : "";
+  if (new URLSearchParams(rawQuery).has("lang")) return value;
+  return `${withoutHash}${queryIndex >= 0 ? "&" : "?"}lang=${encodeURIComponent(locale)}${hash}`;
+}
+
+function localizeDocsSearchPage(
+  page: DocsSearchSourcePage,
+  localeFallback?: string,
+): DocsSearchSourcePage {
+  const rawLocale = (page.locale ?? localeFallback)?.trim();
+  if (!rawLocale) return page;
+  const locale = rawLocale;
+  const url = appendDocsLocaleQuery(page.url, locale);
+  if (url === page.url && page.locale === locale) {
+    return page;
+  }
+  return {
+    ...page,
+    url,
+    locale,
+  };
 }
 
 function safeDecodeUrlSegment(value: string): string {
@@ -681,16 +747,18 @@ function clampText(value: string, maxChars: number): string {
 }
 
 function findPageForSearchResult(
-  pages: DocsSearchSourcePage[],
+  pages: readonly DocsSearchSourcePage[],
   result: DocsSearchResult,
   baseUrl?: string,
-  strictExternalOrigins = false,
+  pagesByRoute?: ReadonlyMap<string, DocsSearchSourcePage>,
 ): DocsSearchSourcePage | undefined {
   const rawUrl = result.url.trim();
   const explicitlySchemed = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl);
   const explicitlyHosted = explicitlySchemed || /^[\\/]{2}/u.test(rawUrl);
   if (explicitlySchemed && !/^https?:/iu.test(rawUrl)) return undefined;
-  if (explicitlyHosted && !baseUrl && strictExternalOrigins) return undefined;
+  // Without a trusted origin, a hosted result cannot safely inherit local provenance
+  // merely because its pathname matches a local page.
+  if (explicitlyHosted && !baseUrl) return undefined;
   if (explicitlyHosted && baseUrl) {
     try {
       if (new URL(result.url, baseUrl).origin !== new URL(baseUrl).origin) return undefined;
@@ -698,8 +766,11 @@ function findPageForSearchResult(
       return undefined;
     }
   }
-  const resultPath = normalizeUrlPathname(result.url);
-  return pages.find((page) => normalizeUrlPathname(page.url) === resultPath);
+  const resultPath = normalizeUrlRouteKey(result.url);
+  return (
+    pagesByRoute?.get(resultPath) ??
+    pages.find((page) => normalizeUrlRouteKey(page.url) === resultPath)
+  );
 }
 
 function inferResultTitle(result: DocsSearchResult, page?: DocsSearchSourcePage): string {
@@ -741,7 +812,7 @@ function formatAskAIContextResult(options: {
 function getSearchResultKey(result: DocsSearchResult): string {
   const anchor = getSearchResultAnchor(result.url);
   const sectionFallback = normalizeWhitespace(result.section ?? "").toLowerCase();
-  return `${normalizeUrlPathname(result.url)}#${anchor ?? sectionFallback}`;
+  return `${normalizeUrlRouteKey(result.url)}#${anchor ?? sectionFallback}`;
 }
 
 function getSearchResultAnchor(value: string): string | undefined {
@@ -767,7 +838,7 @@ function getAskAIResultPageKey(
   baseUrl?: string,
   strictExternalOrigins = false,
 ): string {
-  const path = normalizeUrlPathname(value);
+  const path = normalizeUrlRouteKey(value);
   const rawValue = value.trim();
   const explicitlyHosted = /^[a-z][a-z\d+.-]*:/iu.test(rawValue) || /^[\\/]{2}/u.test(rawValue);
   if (!explicitlyHosted || (!baseUrl && !strictExternalOrigins)) return path;
@@ -837,8 +908,8 @@ function sanitizeExternalAudienceSearchResults(
   results: DocsSearchResult[],
   localAudienceResults: DocsSearchResult[],
   baseUrl?: string,
-  strictExternalOrigins = false,
   preserveUnmatched?: (result: DocsSearchResult) => boolean,
+  fallbackSectionToLocalPage = false,
 ): DocsSearchResult[] {
   const localByKey = new Map(
     localAudienceResults.map((result) => [getSearchResultKey(result), result] as const),
@@ -846,7 +917,7 @@ function sanitizeExternalAudienceSearchResults(
   const localPageResults = new Map<string, DocsSearchResult>();
 
   for (const result of localAudienceResults) {
-    const pageUrl = normalizeUrlPathname(result.url);
+    const pageUrl = normalizeUrlRouteKey(result.url);
     const existing = localPageResults.get(pageUrl);
     if (!existing || result.type === "page") localPageResults.set(pageUrl, result);
   }
@@ -857,7 +928,7 @@ function sanitizeExternalAudienceSearchResults(
     const externallyHosted =
       (explicitlySchemed && /^https?:/iu.test(rawUrl)) || /^[\\/]{2}/u.test(rawUrl);
     const unsupportedScheme = explicitlySchemed && !/^https?:/iu.test(rawUrl);
-    let sameOriginOrUnknown = !externallyHosted || (!baseUrl && !strictExternalOrigins);
+    let sameOriginOrUnknown = !externallyHosted;
     if (unsupportedScheme) sameOriginOrUnknown = false;
     if (externallyHosted && baseUrl) {
       try {
@@ -869,7 +940,9 @@ function sanitizeExternalAudienceSearchResults(
     const hasSection = Boolean(getSearchResultAnchor(result.url) || result.section);
     const local = sameOriginOrUnknown
       ? (localByKey.get(getSearchResultKey(result)) ??
-        (hasSection ? undefined : localPageResults.get(normalizeUrlPathname(result.url))))
+        (hasSection && !fallbackSectionToLocalPage
+          ? undefined
+          : localPageResults.get(normalizeUrlRouteKey(result.url))))
       : undefined;
     if (!local) return preserveUnmatched?.(result) ? [result] : [];
 
@@ -889,14 +962,14 @@ function shouldPreserveUnmatchedExternalResult(options: {
   baseUrl?: string;
 }): boolean {
   const { result, localPagePaths, baseUrl } = options;
-  const path = normalizeUrlPathname(result.url);
+  const path = normalizeUrlRouteKey(result.url);
   const rawUrl = result.url.trim();
   const explicitScheme = rawUrl.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
   if (explicitScheme && explicitScheme !== "http" && explicitScheme !== "https") return false;
   const explicitlyHosted = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl) || /^[\\/]{2}/u.test(rawUrl);
   const knownLocalPath = localPagePaths.has(path);
   if (!explicitlyHosted) return !knownLocalPath;
-  if (!baseUrl) return !knownLocalPath;
+  if (!baseUrl) return true;
   try {
     if (new URL(result.url, baseUrl).origin !== new URL(baseUrl).origin) return true;
   } catch {
@@ -905,21 +978,22 @@ function shouldPreserveUnmatchedExternalResult(options: {
   return !knownLocalPath;
 }
 
-function getPageAudienceRawContent(
-  page: DocsSearchSourcePage,
-  audience: DocsContentAudience,
-): string {
-  const source =
-    audience === "agent"
-      ? (page.agentRawContent ??
+function getPageAudienceSource(page: DocsSearchSourcePage, audience: DocsContentAudience): string {
+  return audience === "agent"
+    ? (page.agentRawContent ??
         page.agentFallbackRawContent ??
         page.agentContent ??
         page.agentFallbackContent ??
         page.rawContent ??
         page.content)
-      : (page.rawContent ?? page.content);
+    : (page.rawContent ?? page.content);
+}
 
-  return resolveDocsAudienceMdxContent(source, audience);
+function getPageAudienceRawContent(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+): string {
+  return resolveDocsAudienceMdxContent(getPageAudienceSource(page, audience), audience);
 }
 
 function getPageAudienceSectionContent(
@@ -930,6 +1004,20 @@ function getPageAudienceSectionContent(
   return audience === "agent" ? upsertPageAgentContractMarkdown(content, page.agent) : content;
 }
 
+/**
+ * Build the exact normalized-input projection represented by a retrieval source digest.
+ * This is public so consumers can independently reproduce `source.digest`.
+ */
+export function buildDocsRetrievalDigestProjection(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience = "human",
+): string {
+  const audienceContent = getPageAudienceRawContent(page, audience);
+  return audience === "agent"
+    ? upsertPageAgentContractMarkdown(audienceContent, page.agent)
+    : [audienceContent, renderPageAgentContractMarkdown(page.agent)].filter(Boolean).join("\n\n");
+}
+
 function getPageAudienceSearchText(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience,
@@ -937,17 +1025,863 @@ function getPageAudienceSearchText(
   return stripMarkdownText(getPageAudienceRawContent(page, audience));
 }
 
-function isLocalProviderResult(
-  result: DocsSearchResult,
+function getPageAudienceIndexContent(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+): string {
+  return normalizeWhitespace(
+    [getPageAudienceSearchText(page, audience), getPageAgentContractSearchText(page)].join(" "),
+  );
+}
+
+function sortRetrievalSourceValues(values: readonly string[]): string[] | undefined {
+  const sorted = Array.from(new Set(values))
+    .sort(compareSearchMetadataValues)
+    .slice(0, MAX_SEARCH_FILTER_VALUES);
+  return sorted.length > 0 ? sorted : undefined;
+}
+
+function buildDocsRetrievalSourceScope(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+  localeFallback?: string,
+): DocsRetrievalSourceScope {
+  const resolved = resolveDocsSearchPageScope(page);
+  const rawLocale = (page.locale ?? localeFallback)?.trim();
+  const locale = rawLocale
+    ? normalizeAgentLocale(rawLocale).slice(0, MAX_SEARCH_FILTER_VALUE_CHARS)
+    : undefined;
+  const framework = sortRetrievalSourceValues(resolved.framework);
+  const version = sortRetrievalSourceValues(resolved.version);
+  const versionGroups = resolved.declarations.version
+    .map((group) => sortRetrievalSourceValues(group))
+    .filter((group): group is string[] => Boolean(group))
+    .slice(0, MAX_SEARCH_FILTER_VALUES);
+  const packageNames = sortRetrievalSourceValues(resolved.package);
+  const tags = sortRetrievalSourceValues(resolved.tags);
+  const truncated = SEARCH_FILTER_FIELDS.filter((field) => {
+    if (field === "version") {
+      return (
+        resolved.version.length > MAX_SEARCH_FILTER_VALUES ||
+        resolved.declarations.version.length > MAX_SEARCH_FILTER_VALUES ||
+        resolved.declarations.version.some((group) => group.length > MAX_SEARCH_FILTER_VALUES)
+      );
+    }
+    return resolved[field].length > MAX_SEARCH_FILTER_VALUES;
+  });
+
+  return {
+    audience,
+    ...(locale ? { locale: [locale] } : {}),
+    ...(framework ? { framework } : {}),
+    ...(version ? { version } : {}),
+    ...(versionGroups.length > 1 ? { versionGroups } : {}),
+    ...(packageNames ? { package: packageNames } : {}),
+    ...(tags ? { tags } : {}),
+    ...(truncated.length > 0 ? { truncated } : {}),
+    ...(resolved.conflicts.length > 0
+      ? {
+          conflicts: [...resolved.conflicts].sort(
+            (left, right) =>
+              SEARCH_FILTER_FIELDS.indexOf(left) - SEARCH_FILTER_FIELDS.indexOf(right),
+          ),
+        }
+      : {}),
+  };
+}
+
+function buildDocsRetrievalScopeIdentity(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+  localeFallback?: string,
+): string {
+  const resolved = resolveDocsSearchPageScope(page);
+  const sortValues = (values: readonly string[]) =>
+    Array.from(new Set(values)).sort(compareSearchMetadataValues);
+  const declarations = Object.fromEntries(
+    SEARCH_FILTER_FIELDS.map((field) => [
+      field,
+      resolved.declarations[field]
+        .map(sortValues)
+        .sort((left, right) =>
+          compareSearchMetadataValues(JSON.stringify(left), JSON.stringify(right)),
+        ),
+    ]),
+  );
+  return hashDocsRetrievalValue(
+    JSON.stringify({
+      audience,
+      locale: (page.locale ?? localeFallback)?.trim(),
+      declarations,
+      conflicts: [...resolved.conflicts].sort(
+        (left, right) => SEARCH_FILTER_FIELDS.indexOf(left) - SEARCH_FILTER_FIELDS.indexOf(right),
+      ),
+    }),
+  );
+}
+
+function getUrlHash(value: string): string {
+  const hashIndex = value.indexOf("#");
+  return hashIndex >= 0 ? value.slice(hashIndex) : "";
+}
+
+function resolveDocsRetrievalCanonicalUrl(
+  page: DocsSearchSourcePage,
+  resultUrl: string,
   baseUrl?: string,
-  strictExternalOrigins = false,
+): string {
+  const requestedCanonical = page.canonicalUrl?.trim();
+  const requested =
+    requestedCanonical && requestedCanonical.length <= MAX_RETRIEVAL_SOURCE_URL_CHARS
+      ? requestedCanonical
+      : page.url;
+  const explicitScheme = requested.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
+  const pageScheme = page.url.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
+  const safePageUrl =
+    pageScheme && pageScheme !== "http" && pageScheme !== "https" ? "/" : page.url;
+  const configured =
+    explicitScheme && explicitScheme !== "http" && explicitScheme !== "https"
+      ? safePageUrl
+      : requested;
+  let canonical = configured;
+
+  if (baseUrl) {
+    try {
+      canonical = new URL(configured, baseUrl).toString();
+    } catch {
+      canonical = configured;
+    }
+  } else if (configured.startsWith("//")) {
+    canonical = `https:${configured}`;
+  }
+
+  const withSection = `${canonical.split("#", 1)[0]}${getUrlHash(resultUrl)}`;
+  if (
+    withSection.length <= MAX_RETRIEVAL_SOURCE_URL_CHARS &&
+    isDocsRetrievalCanonicalUrl(withSection)
+  ) {
+    return withSection;
+  }
+
+  const fallback = (
+    baseUrl
+      ? (() => {
+          try {
+            return new URL(safePageUrl, baseUrl).toString();
+          } catch {
+            return safePageUrl;
+          }
+        })()
+      : safePageUrl
+  ).split("#", 1)[0];
+  if (fallback.length <= MAX_RETRIEVAL_SOURCE_URL_CHARS && isDocsRetrievalCanonicalUrl(fallback)) {
+    return fallback;
+  }
+
+  if (baseUrl) {
+    try {
+      const root = new URL("/", baseUrl).toString();
+      if (root.length <= MAX_RETRIEVAL_SOURCE_URL_CHARS && isDocsRetrievalCanonicalUrl(root)) {
+        return root;
+      }
+    } catch {
+      // Fall through to a bounded relative canonical URL.
+    }
+  }
+  return "/";
+}
+
+function hashDocsRetrievalValue(value: string): string {
+  return digestDocsRetrievalContent(value);
+}
+
+type DocsRetrievalDigestCache = Map<DocsSearchSourcePage, string>;
+interface DocsRetrievalDigestMemo {
+  source: string;
+  agentContractKey: string;
+  digest: string;
+}
+const docsRetrievalDigestMemo = new WeakMap<
+  DocsSearchSourcePage,
+  Partial<Record<DocsContentAudience, DocsRetrievalDigestMemo>>
+>();
+
+function getDocsRetrievalSourceDigest(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+  cache?: DocsRetrievalDigestCache,
+): string {
+  const cached = cache?.get(page);
+  if (cached) return cached;
+  const source = getPageAudienceSource(page, audience);
+  let agentContractKey = "";
+  let cacheable = true;
+  try {
+    agentContractKey = JSON.stringify(page.agent ?? null);
+  } catch {
+    // Cyclic custom metadata remains supported; it simply bypasses cross-request memoization.
+    cacheable = false;
+  }
+  const memo = docsRetrievalDigestMemo.get(page)?.[audience];
+  if (cacheable && memo && memo.source === source && memo.agentContractKey === agentContractKey) {
+    cache?.set(page, memo.digest);
+    return memo.digest;
+  }
+
+  const digest = hashDocsRetrievalValue(buildDocsRetrievalDigestProjection(page, audience));
+  if (cacheable) {
+    const pageMemo = docsRetrievalDigestMemo.get(page) ?? {};
+    pageMemo[audience] = { source, agentContractKey, digest };
+    docsRetrievalDigestMemo.set(page, pageMemo);
+  }
+  cache?.set(page, digest);
+  return digest;
+}
+
+export function resolveDocsRetrievalLastModified(
+  page: DocsSearchSourcePage,
+  audience: DocsContentAudience,
+): string | undefined {
+  const parseCandidate = (value: string | undefined) => {
+    const normalized = value?.trim();
+    if (!normalized) return undefined;
+    const timestamp = Date.parse(normalized);
+    return Number.isFinite(timestamp) ? { value: normalized, timestamp } : undefined;
+  };
+  // Authored lastmod is the explicit public freshness value; filesystem mtime is
+  // only a fallback when the page does not declare one.
+  const pageModified = parseCandidate(page.lastmod) ?? parseCandidate(page.lastModified);
+  const explicitAgentSource =
+    audience === "agent" && (page.agentRawContent !== undefined || page.agentContent !== undefined);
+  if (!explicitAgentSource) return pageModified?.value;
+
+  // An explicit agent source is the selected retrieval document, so report its
+  // freshness when available. Page freshness remains the fallback for generated
+  // agent projections and sources without an independently tracked timestamp.
+  const agentModified = parseCandidate(page.agentLastModified);
+  if (!renderPageAgentContractMarkdown(page.agent)) {
+    return agentModified?.value ?? pageModified?.value;
+  }
+  // Structured page metadata is inserted into an explicit agent source. When it
+  // contributes to the selected projection, freshness must cover both inputs.
+  if (!agentModified) return pageModified?.value;
+  if (!pageModified) return agentModified.value;
+  return agentModified.timestamp >= pageModified.timestamp
+    ? agentModified.value
+    : pageModified.value;
+}
+
+interface DocsSearchProvenanceOptions {
+  audience: DocsContentAudience;
+  chunking: DocsSearchChunkingConfig;
+  locale?: string;
+  baseUrl?: string;
+  indexGeneration: string;
+  digestCache?: DocsRetrievalDigestCache;
+}
+
+async function buildDocsSearchIndexGeneration(
+  pages: readonly DocsSearchSourcePage[],
+  options: Omit<DocsSearchProvenanceOptions, "indexGeneration">,
+): Promise<string> {
+  const sources = (
+    await Promise.all(
+      pages.map(async (rawPage) => {
+        const page = localizeDocsSearchPage(rawPage, options.locale);
+        const authoredLastModified = page.lastmod?.trim();
+        return {
+          canonicalIdentity: normalizeAuthoredUrlIdentity(page.canonicalUrl?.trim() || page.url),
+          url: normalizeAuthoredUrlIdentity(page.url),
+          indexedUrl: page.url,
+          title: page.title,
+          description: page.description,
+          type: page.type,
+          scope: buildDocsRetrievalSourceScope(page, options.audience, options.locale),
+          scopeIdentity: buildDocsRetrievalScopeIdentity(page, options.audience, options.locale),
+          // Filesystem mtimes differ between checkout/build/deployment for identical
+          // content. Only an authored timestamp participates in generation identity;
+          // the effective runtime modified time is still returned on each source.
+          lastModified:
+            authoredLastModified && Number.isFinite(Date.parse(authoredLastModified))
+              ? authoredLastModified
+              : undefined,
+          digest: getDocsRetrievalSourceDigest(rawPage, options.audience, options.digestCache),
+          agentContract: getPageAgentContractSearchText(rawPage),
+        };
+      }),
+    )
+  ).sort((left, right) => {
+    const canonical = compareSearchMetadataValues(left.canonicalIdentity, right.canonicalIdentity);
+    if (canonical !== 0) return canonical;
+    const url = compareSearchMetadataValues(left.url, right.url);
+    if (url !== 0) return url;
+    const digest = compareSearchMetadataValues(left.digest, right.digest);
+    if (digest !== 0) return digest;
+    const title = compareSearchMetadataValues(left.title, right.title);
+    return title !== 0
+      ? title
+      : compareSearchMetadataValues(JSON.stringify(left), JSON.stringify(right));
+  });
+
+  return hashDocsRetrievalValue(
+    JSON.stringify({
+      format: RETRIEVAL_INDEX_FORMAT,
+      audience: options.audience,
+      chunking: options.chunking.strategy ?? "section",
+      sources,
+    }),
+  );
+}
+
+async function buildDocsRetrievalSource(
+  rawPage: DocsSearchSourcePage,
+  resultUrl: string,
+  options: DocsSearchProvenanceOptions,
+): Promise<DocsRetrievalSourceProvenance> {
+  const page = localizeDocsSearchPage(rawPage, options.locale);
+  const lastModified = resolveDocsRetrievalLastModified(rawPage, options.audience);
+  return {
+    canonicalUrl: resolveDocsRetrievalCanonicalUrl(page, resultUrl, options.baseUrl),
+    scope: buildDocsRetrievalSourceScope(page, options.audience, options.locale),
+    ...(lastModified ? { lastModified } : {}),
+    digest: getDocsRetrievalSourceDigest(rawPage, options.audience, options.digestCache),
+    indexGeneration: options.indexGeneration,
+  };
+}
+
+function parseRetrievalSourceString(
+  value: unknown,
+  maxChars = MAX_RETRIEVAL_SOURCE_VALUE_CHARS,
+): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxChars) return undefined;
+  const hasControlCharacter = Array.from(normalized).some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || codePoint === 0x7f;
+  });
+  if (hasControlCharacter) return undefined;
+  return normalized;
+}
+
+function parseRetrievalSourceValues(
+  field: DocsSearchFilterField | "locale",
+  value: unknown,
+): { valid: boolean; values?: string[] } {
+  if (!Array.isArray(value) || value.length > MAX_SEARCH_FILTER_VALUES) {
+    return { valid: false };
+  }
+  const parsed: string[] = [];
+  for (const item of value) {
+    const stringValue = parseRetrievalSourceString(item, MAX_SEARCH_FILTER_VALUE_CHARS);
+    if (!stringValue) return { valid: false };
+    if (field === "locale") {
+      const normalizedLocale = normalizeAgentLocale(stringValue);
+      if (!normalizedLocale) return { valid: false };
+      parsed.push(normalizedLocale);
+      continue;
+    }
+    const normalized = normalizeDocsSearchFilterValue(field, stringValue);
+    if (!normalized) return { valid: false };
+    parsed.push(normalized);
+  }
+  return { valid: true, values: sortRetrievalSourceValues(parsed) };
+}
+
+function parseRetrievalSourceVersionGroups(value: unknown): {
+  valid: boolean;
+  groups?: string[][];
+} {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_SEARCH_FILTER_VALUES) {
+    return { valid: false };
+  }
+  const groups = value.map((group) => parseRetrievalSourceValues("version", group));
+  if (groups.some((group) => !group.valid || !group.values || group.values.length === 0)) {
+    return { valid: false };
+  }
+  return {
+    valid: true,
+    groups: groups.map((group) => group.values!),
+  };
+}
+
+function parseDocsRetrievalSource(
+  value: unknown,
+  options: { allowRootRelativeCanonical?: boolean } = {},
+): DocsRetrievalSourceProvenance | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const canonicalUrl = parseRetrievalSourceString(
+    record.canonicalUrl,
+    MAX_RETRIEVAL_SOURCE_URL_CHARS,
+  );
+  const digest = parseRetrievalSourceString(record.digest);
+  const indexGeneration = parseRetrievalSourceString(record.indexGeneration);
+  if (!canonicalUrl || !digest || !indexGeneration) return undefined;
+  const digestPattern = /^sha256:[a-f\d]{64}$/iu;
+  if (!digestPattern.test(digest) || !digestPattern.test(indexGeneration)) return undefined;
+  if (
+    !isDocsRetrievalCanonicalUrl(canonicalUrl) ||
+    (/^\/(?!\/)/u.test(canonicalUrl) && !options.allowRootRelativeCanonical)
+  ) {
+    return undefined;
+  }
+
+  if (!record.scope || typeof record.scope !== "object" || Array.isArray(record.scope)) {
+    return undefined;
+  }
+  const rawScope = record.scope as Record<string, unknown>;
+  const audience =
+    rawScope.audience === "human" || rawScope.audience === "agent" ? rawScope.audience : undefined;
+  if (!audience) return undefined;
+  const parseScopeFields = (
+    value: unknown,
+  ): { valid: boolean; values?: DocsSearchFilterField[] } => {
+    if (
+      !Array.isArray(value) ||
+      value.length > SEARCH_FILTER_FIELDS.length ||
+      value.some(
+        (field) =>
+          typeof field !== "string" ||
+          !SEARCH_FILTER_FIELDS.includes(field as DocsSearchFilterField),
+      )
+    ) {
+      return { valid: false };
+    }
+    return {
+      valid: true,
+      values: Array.from(new Set(value as DocsSearchFilterField[])).sort(
+        (left, right) => SEARCH_FILTER_FIELDS.indexOf(left) - SEARCH_FILTER_FIELDS.indexOf(right),
+      ),
+    };
+  };
+  const parseOptionalValues = (
+    field: DocsSearchFilterField | "locale",
+    value: unknown,
+  ): { valid: boolean; values?: string[] } =>
+    value === undefined ? { valid: true } : parseRetrievalSourceValues(field, value);
+  const parseOptionalScopeFields = (
+    value: unknown,
+  ): { valid: boolean; values?: DocsSearchFilterField[] } =>
+    value === undefined ? { valid: true } : parseScopeFields(value);
+  const conflicts = parseOptionalScopeFields(rawScope.conflicts);
+  const truncated = parseOptionalScopeFields(rawScope.truncated);
+  const locale = parseOptionalValues("locale", rawScope.locale);
+  const framework = parseOptionalValues("framework", rawScope.framework);
+  const version = parseOptionalValues("version", rawScope.version);
+  const versionGroups =
+    rawScope.versionGroups === undefined
+      ? { valid: true, groups: undefined }
+      : parseRetrievalSourceVersionGroups(rawScope.versionGroups);
+  const packageNames = parseOptionalValues("package", rawScope.package);
+  const tags = parseOptionalValues("tags", rawScope.tags);
+  if (
+    !conflicts.valid ||
+    !truncated.valid ||
+    !locale.valid ||
+    !framework.valid ||
+    !version.valid ||
+    !versionGroups.valid ||
+    !packageNames.valid ||
+    !tags.valid
+  ) {
+    return undefined;
+  }
+  const scope: DocsRetrievalSourceScope = {
+    audience,
+    ...(locale.values ? { locale: locale.values } : {}),
+    ...(framework.values ? { framework: framework.values } : {}),
+    ...(version.values ? { version: version.values } : {}),
+    ...(versionGroups.groups ? { versionGroups: versionGroups.groups } : {}),
+    ...(packageNames.values ? { package: packageNames.values } : {}),
+    ...(tags.values ? { tags: tags.values } : {}),
+    ...(truncated.values && truncated.values.length > 0 ? { truncated: truncated.values } : {}),
+    ...(conflicts.values && conflicts.values.length > 0 ? { conflicts: conflicts.values } : {}),
+  };
+  const rawLastModified = parseRetrievalSourceString(record.lastModified);
+  if (
+    record.lastModified !== undefined &&
+    (!rawLastModified || !Number.isFinite(Date.parse(rawLastModified)))
+  ) {
+    return undefined;
+  }
+  const lastModified =
+    rawLastModified && Number.isFinite(Date.parse(rawLastModified)) ? rawLastModified : undefined;
+
+  return {
+    canonicalUrl,
+    scope,
+    ...(lastModified ? { lastModified } : {}),
+    digest,
+    indexGeneration,
+  };
+}
+
+function docsRetrievalSourceMatchesRequest(
+  source: DocsRetrievalSourceProvenance,
+  audience: DocsContentAudience,
+  filters?: DocsSearchFilters,
+  locale?: string,
 ): boolean {
+  if (source.scope.audience !== audience) return false;
+
+  for (const field of SEARCH_FILTER_FIELDS) {
+    const requested = filters?.[field];
+    if (!requested?.length) continue;
+    if (source.scope.conflicts?.includes(field)) return false;
+    if (source.scope.truncated?.includes(field)) return false;
+    if (field === "version" && source.scope.versionGroups?.length) {
+      if (!agentVersionConstraintGroupsOverlap([requested, ...source.scope.versionGroups])) {
+        return false;
+      }
+      continue;
+    }
+    const candidates = source.scope[field];
+    if (!candidates?.length) return false;
+    if (
+      !requested.some((requestedValue) =>
+        candidates.some((candidate) =>
+          docsSearchScopeValueMatches(field, requestedValue, candidate),
+        ),
+      )
+    ) {
+      return false;
+    }
+  }
+
+  const requestedLocale = locale ? normalizeAgentLocale(locale) : undefined;
+  if (
+    requestedLocale &&
+    (!source.scope.locale?.length ||
+      !source.scope.locale.some((candidate) => normalizeAgentLocale(candidate) === requestedLocale))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+const HOSTED_RETRIEVAL_SOURCE_FIELDS = [
+  "source_canonical_url",
+  "source_scope_audience",
+  "source_scope_locale",
+  "source_scope_framework",
+  "source_scope_version",
+  "source_scope_version_groups",
+  "source_scope_package",
+  "source_scope_tags",
+  "source_scope_truncated",
+  "source_scope_conflicts",
+  "source_last_modified",
+  "source_digest",
+  "source_index_generation",
+] as const;
+
+function readFlattenedHostedRetrievalSource(record: Record<string, unknown>) {
+  return parseDocsRetrievalSource(
+    {
+      canonicalUrl: record.source_canonical_url,
+      scope: {
+        audience: record.source_scope_audience,
+        locale: record.source_scope_locale,
+        framework: record.source_scope_framework,
+        version: record.source_scope_version,
+        versionGroups: (() => {
+          const value = record.source_scope_version_groups;
+          if (typeof value !== "string") return value;
+          try {
+            return JSON.parse(value) as unknown;
+          } catch {
+            return null;
+          }
+        })(),
+        package: record.source_scope_package,
+        tags: record.source_scope_tags,
+        truncated: record.source_scope_truncated,
+        conflicts: record.source_scope_conflicts,
+      },
+      lastModified: record.source_last_modified,
+      digest: record.source_digest,
+      indexGeneration: record.source_index_generation,
+    },
+    { allowRootRelativeCanonical: true },
+  );
+}
+
+function readHostedRetrievalSource(record: Record<string, unknown>) {
+  const hasNested = record.source !== undefined;
+  const hasFlattened = HOSTED_RETRIEVAL_SOURCE_FIELDS.some((key) => key in record);
+  if (hasNested) {
+    const nested = parseDocsRetrievalSource(record.source, {
+      allowRootRelativeCanonical: true,
+    });
+    if (!nested) return undefined;
+    if (!hasFlattened) return nested;
+
+    const flattened = readFlattenedHostedRetrievalSource(record);
+    return flattened && JSON.stringify(flattened) === JSON.stringify(nested) ? nested : undefined;
+  }
+
+  return readFlattenedHostedRetrievalSource(record);
+}
+
+function hasHostedRetrievalSource(record: Record<string, unknown>): boolean {
+  return (
+    record.source !== undefined ||
+    ["source_corpus_id", "source_document_id", ...HOSTED_RETRIEVAL_SOURCE_FIELDS].some(
+      (key) => key in record,
+    )
+  );
+}
+
+function serializeHostedRetrievalSource(
+  source: DocsRetrievalSourceProvenance | undefined,
+  corpusId?: string,
+  sourceDocumentId?: string,
+): Record<string, unknown> {
+  if (!source) return {};
+  return {
+    source_corpus_id: corpusId,
+    source_document_id: sourceDocumentId,
+    source_canonical_url: source.canonicalUrl,
+    source_scope_audience: source.scope.audience,
+    source_scope_locale: source.scope.locale,
+    source_scope_framework: source.scope.framework,
+    source_scope_version: source.scope.version,
+    source_scope_version_groups: source.scope.versionGroups
+      ? JSON.stringify(source.scope.versionGroups)
+      : undefined,
+    source_scope_package: source.scope.package,
+    source_scope_tags: source.scope.tags,
+    source_scope_truncated: source.scope.truncated,
+    source_scope_conflicts: source.scope.conflicts,
+    source_last_modified: source.lastModified,
+    source_digest: source.digest,
+    source_index_generation: source.indexGeneration,
+  };
+}
+
+function resolveHostedCorpusId(
+  syncNamespace: string | undefined,
+  context: Pick<DocsSearchAdapterContext, "audience" | "locale" | "baseUrl" | "indexBaseUrl">,
+): string | undefined {
+  const explicitNamespace = syncNamespace?.trim();
+  if (explicitNamespace && explicitNamespace.length > 1_024) {
+    throw new Error("Search syncNamespace must be 1024 characters or fewer.");
+  }
+  let canonicalIdentity: string | undefined;
+  const indexBaseUrl = context.indexBaseUrl;
+  if (!explicitNamespace && indexBaseUrl) {
+    try {
+      const url = new URL(indexBaseUrl);
+      if (
+        (url.protocol === "http:" || url.protocol === "https:") &&
+        !url.username &&
+        !url.password
+      ) {
+        canonicalIdentity = `${url.origin}${url.pathname.replace(/\/+$/u, "") || "/"}`;
+      }
+    } catch {
+      // Relative/request-derived origins do not establish safe hosted-record ownership.
+    }
+  }
+  const identity = explicitNamespace
+    ? `namespace:${explicitNamespace}`
+    : canonicalIdentity
+      ? `canonical:${canonicalIdentity}`
+      : undefined;
+  if (!identity) return undefined;
+
+  return hashDocsRetrievalValue(
+    JSON.stringify({
+      format: "docs-hosted-corpus.v1",
+      identity,
+      audience: resolveDocsSearchAudience(context.audience),
+      locale: context.locale ? normalizeAgentLocale(context.locale) : "__all__",
+    }),
+  );
+}
+
+function resolveHostedHumanCorpusId(
+  syncNamespace: string | undefined,
+  context: DocsSearchAdapterContext,
+): string | undefined {
+  return resolveHostedCorpusId(syncNamespace, {
+    audience: "human",
+    locale: context.locale,
+    baseUrl: context.baseUrl,
+    indexBaseUrl: context.indexBaseUrl,
+  });
+}
+
+function makeHostedProviderDocumentId(corpusId: string, sourceDocumentId: string): string {
+  const digest = hashDocsRetrievalValue(
+    JSON.stringify({
+      format: "docs-hosted-document.v1",
+      corpusId,
+      sourceDocumentId,
+    }),
+  );
+  return `docs_${digest.slice("sha256:".length)}`;
+}
+
+function readHostedSourceDocumentId(record: Record<string, unknown>): string | undefined {
+  return parseRetrievalSourceString(record.source_document_id, MAX_RETRIEVAL_SOURCE_URL_CHARS);
+}
+
+function hostedRecordMatchesCorpus(
+  record: Record<string, unknown>,
+  corpusId: string | undefined,
+): boolean {
+  if (!corpusId) return true;
+  if (record.source_corpus_id === corpusId) return true;
+  return record.source_corpus_id === undefined && !hasHostedRetrievalSource(record);
+}
+
+async function enrichDocsSearchResultsWithSources(options: {
+  results: readonly DocsSearchResult[];
+  pages: readonly DocsSearchSourcePage[];
+  generationPages?: readonly DocsSearchSourcePage[];
+  audience: DocsContentAudience;
+  chunking: DocsSearchChunkingConfig;
+  baseUrl?: string;
+  indexGeneration?: string;
+  strictExternalOrigins?: boolean;
+  filters?: DocsSearchFilters;
+  locale?: string;
+  requireCurrentIndexGeneration?: boolean;
+}): Promise<DocsSearchResult[]> {
+  const digestCache = new Map<DocsSearchSourcePage, string>();
+  const localizedPages = options.pages.map((page) => localizeDocsSearchPage(page, options.locale));
+  const pagesByRoute = new Map<string, DocsSearchSourcePage>();
+  for (const page of localizedPages) {
+    const route = normalizeUrlRouteKey(page.url);
+    if (!pagesByRoute.has(route)) pagesByRoute.set(route, page);
+  }
+  let resolvedIndexGeneration: Promise<string> | undefined;
+  const getIndexGeneration = () => {
+    resolvedIndexGeneration ??= options.indexGeneration
+      ? Promise.resolve(options.indexGeneration)
+      : buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
+          audience: options.audience,
+          chunking: options.chunking,
+          locale: options.locale,
+          baseUrl: options.baseUrl,
+          digestCache,
+        });
+    return resolvedIndexGeneration;
+  };
+
+  const results = await Promise.all(
+    options.results.map(async (result) => {
+      const { source: rawSource, ...resultWithoutSource } = result;
+      const page = findPageForSearchResult(localizedPages, result, options.baseUrl, pagesByRoute);
+      if (page) {
+        return {
+          ...resultWithoutSource,
+          source: await buildDocsRetrievalSource(page, result.url, {
+            audience: options.audience,
+            chunking: options.chunking,
+            locale: options.locale,
+            baseUrl: options.baseUrl,
+            indexGeneration: await getIndexGeneration(),
+            digestCache,
+          }),
+        };
+      }
+
+      if (rawSource === undefined) return resultWithoutSource;
+      const source = parseDocsRetrievalSource(rawSource, {
+        allowRootRelativeCanonical: options.requireCurrentIndexGeneration,
+      });
+      if (!source) return null;
+      if (
+        !docsRetrievalSourceMatchesRequest(
+          source,
+          options.audience,
+          options.filters,
+          options.locale,
+        )
+      ) {
+        return null;
+      }
+      if (
+        options.requireCurrentIndexGeneration &&
+        source.indexGeneration !== (await getIndexGeneration())
+      ) {
+        return null;
+      }
+      return { ...resultWithoutSource, source };
+    }),
+  );
+  return results.filter((result): result is DocsSearchResult => Boolean(result));
+}
+
+async function enrichDocsSearchDocumentsWithSources(options: {
+  documents: readonly DocsSearchDocument[];
+  pages: readonly DocsSearchSourcePage[];
+  audience: DocsContentAudience;
+  chunking: DocsSearchChunkingConfig;
+  locale?: string;
+  baseUrl?: string;
+  indexGeneration?: string;
+}): Promise<DocsSearchDocument[]> {
+  const results = await enrichDocsSearchResultsWithSources({
+    results: options.documents.map((document) => ({
+      id: document.id,
+      url: document.url,
+      content: document.title,
+      description: document.description,
+      type: document.type,
+      section: document.section,
+      source: document.source,
+    })),
+    pages: options.pages,
+    audience: options.audience,
+    chunking: options.chunking,
+    locale: options.locale,
+    baseUrl: options.baseUrl,
+    indexGeneration: options.indexGeneration,
+  });
+  const sources = new Map(results.map((result) => [result.id, result.source] as const));
+
+  return options.documents.map((document) => {
+    const source = sources.get(document.id);
+    return source ? { ...document, source } : document;
+  });
+}
+
+export interface EnrichDocsSearchDocumentsWithProvenanceOptions {
+  documents: readonly DocsSearchDocument[];
+  pages: readonly DocsSearchSourcePage[];
+  audience?: DocsContentAudience;
+  chunking?: DocsSearchChunkingConfig;
+  locale?: string;
+  baseUrl?: string;
+  indexGeneration?: string;
+}
+
+/**
+ * Attach the same canonical provenance used by built-in search providers.
+ * Custom adapters can call this before persisting their own hosted records.
+ */
+export function enrichDocsSearchDocumentsWithProvenance(
+  options: EnrichDocsSearchDocumentsWithProvenanceOptions,
+): Promise<DocsSearchDocument[]> {
+  return enrichDocsSearchDocumentsWithSources({
+    ...options,
+    audience: resolveDocsSearchAudience(options.audience),
+    chunking: options.chunking ?? { strategy: "section" },
+  });
+}
+
+function isLocalProviderResult(result: DocsSearchResult, baseUrl?: string): boolean {
   const rawUrl = result.url.trim();
   const explicitScheme = rawUrl.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
   if (explicitScheme && explicitScheme !== "http" && explicitScheme !== "https") return false;
   const explicitlyHosted = /^[a-z][a-z\d+.-]*:/iu.test(rawUrl) || /^[\\/]{2}/u.test(rawUrl);
   if (!explicitlyHosted) return true;
-  if (!baseUrl) return !strictExternalOrigins;
+  if (!baseUrl) return false;
 
   try {
     return new URL(result.url, baseUrl).origin === new URL(baseUrl).origin;
@@ -962,13 +1896,12 @@ function hasOppositeAudienceEvidence(options: {
   query: string;
   audience: DocsContentAudience;
   baseUrl?: string;
-  strictExternalOrigins?: boolean;
 }): boolean {
-  const { result, pages, query, audience, baseUrl, strictExternalOrigins } = options;
-  if (!isLocalProviderResult(result, baseUrl, strictExternalOrigins)) return false;
+  const { result, pages, query, audience, baseUrl } = options;
+  if (!isLocalProviderResult(result, baseUrl)) return false;
 
-  const pagePath = normalizeUrlPathname(result.url);
-  const page = pages.find((candidate) => normalizeUrlPathname(candidate.url) === pagePath);
+  const pagePath = normalizeUrlRouteKey(result.url);
+  const page = pages.find((candidate) => normalizeUrlRouteKey(candidate.url) === pagePath);
   if (!page) return false;
   if (scoreDocument(query, pageToSearchDocument(page, audience)) > 0) return false;
 
@@ -996,17 +1929,16 @@ function hasOppositeAudienceEvidence(options: {
 }
 
 function pageToSearchDocument(
-  page: DocsSearchSourcePage,
+  rawPage: DocsSearchSourcePage,
   audience: DocsContentAudience = "human",
 ): DocsSearchDocument {
+  const page = localizeDocsSearchPage(rawPage, rawPage.locale);
   const scope = resolveDocsSearchPageScope(page);
   return {
     id: makeDocumentId(page.url, "page"),
     url: page.url,
     title: page.title,
-    content: normalizeWhitespace(
-      [getPageAudienceSearchText(page, audience), getPageAgentContractSearchText(page)].join(" "),
-    ),
+    content: getPageAudienceIndexContent(page, audience),
     description: page.description,
     type: "page",
     locale: page.locale,
@@ -1097,6 +2029,25 @@ function buildAskAIContextBlock(result: DocsAskAIContextResult): string {
   const lines = [`## ${result.title}`, `URL: ${result.url}`];
   if (result.section) lines.push(`Section: ${result.section}`);
   if (result.description) lines.push(`Search snippet: ${result.description}`);
+  if (result.source) {
+    const scope = result.source.scope;
+    const scopeEntries = [
+      `audience=${scope.audience}`,
+      scope.locale?.length ? `locale=${scope.locale.join(",")}` : undefined,
+      scope.framework?.length ? `framework=${scope.framework.join(",")}` : undefined,
+      scope.version?.length ? `version=${scope.version.join(",")}` : undefined,
+      scope.package?.length ? `package=${scope.package.join(",")}` : undefined,
+      scope.tags?.length ? `tags=${scope.tags.join(",")}` : undefined,
+      scope.conflicts?.length ? `conflicts=${scope.conflicts.join(",")}` : undefined,
+    ].filter((value): value is string => Boolean(value));
+    lines.push(`Canonical URL: ${result.source.canonicalUrl}`);
+    lines.push(`Source scope: ${scopeEntries.join("; ")}`);
+    if (result.source.lastModified) {
+      lines.push(`Source modified: ${result.source.lastModified}`);
+    }
+    lines.push(`Source digest: ${result.source.digest}`);
+    lines.push(`Index generation: ${result.source.indexGeneration}`);
+  }
   lines.push("", result.contextContent);
   return lines.join("\n").trim();
 }
@@ -1157,7 +2108,8 @@ export function buildDocsSearchDocuments(
 ): DocsSearchDocument[] {
   const strategy = chunking.strategy ?? "section";
 
-  return pages.flatMap((page) => {
+  return pages.flatMap((rawPage) => {
+    const page = localizeDocsSearchPage(rawPage, rawPage.locale);
     const base = pageToSearchDocument(page, audience);
 
     if (strategy === "page") return [base];
@@ -1321,45 +2273,26 @@ function cleanSearchResultText(value?: string): string | undefined {
   return cleaned || undefined;
 }
 
-function trimTextToBytes(value: string, maxBytes: number): string {
-  if (maxBytes <= 0) return "";
-
-  const encoder = new TextEncoder();
-  if (encoder.encode(value).length <= maxBytes) return value;
-
-  let low = 0;
-  let high = value.length;
-  let best = "";
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const next = `${value.slice(0, mid).trimEnd()}...`;
-    if (encoder.encode(next).length <= maxBytes) {
-      best = next;
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
-  }
-
-  return best;
-}
-
-function buildAlgoliaRecord(document: DocsSearchDocument) {
+function buildAlgoliaRecord(document: DocsSearchDocument, corpusId?: string) {
+  const providerDocumentId = corpusId
+    ? makeHostedProviderDocumentId(corpusId, document.id)
+    : document.id;
   const record: Record<string, unknown> = {
-    objectID: document.id,
-    id: document.id,
+    objectID: providerDocumentId,
+    id: providerDocumentId,
     url: document.url,
     title: document.title,
     section: document.section,
     content: document.content,
     description: document.description,
     type: document.type,
-    locale: document.locale,
+    locale: document.locale ?? document.source?.scope.locale?.[0],
     framework: document.framework,
     version: document.version,
     package: document.package,
     tags: document.tags,
+    _tags: corpusId ? [corpusId] : undefined,
+    ...serializeHostedRetrievalSource(document.source, corpusId, document.id),
   };
 
   const encoder = new TextEncoder();
@@ -1369,10 +2302,46 @@ function buildAlgoliaRecord(document: DocsSearchDocument) {
   delete record.description;
   if (sizeOf(record) <= ALGOLIA_MAX_RECORD_BYTES) return record;
 
-  const baseRecord = { ...record, content: "" };
-  const fixedBytes = sizeOf(baseRecord);
-  const remainingBytes = Math.max(ALGOLIA_MAX_RECORD_BYTES - fixedBytes - 32, 0);
-  record.content = trimTextToBytes(document.content, remainingBytes);
+  record.content = "";
+  for (const field of ["package", "tags", "framework", "version"]) {
+    if (sizeOf(record) <= ALGOLIA_MAX_RECORD_BYTES) break;
+    delete record[field];
+  }
+
+  const trimFieldToFit = (field: "section" | "title" | "content", value: string) => {
+    let low = 0;
+    let high = value.length;
+    let best = "";
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      const candidate = middle < value.length ? `${value.slice(0, middle).trimEnd()}...` : value;
+      record[field] = candidate;
+      if (sizeOf(record) <= ALGOLIA_MAX_RECORD_BYTES) {
+        best = candidate;
+        low = middle + 1;
+      } else {
+        high = middle - 1;
+      }
+    }
+    record[field] = best;
+  };
+
+  if (sizeOf(record) > ALGOLIA_MAX_RECORD_BYTES && typeof record.section === "string") {
+    trimFieldToFit("section", record.section);
+  }
+  if (sizeOf(record) > ALGOLIA_MAX_RECORD_BYTES && typeof record.title === "string") {
+    trimFieldToFit("title", record.title);
+  }
+  if (sizeOf(record) > ALGOLIA_MAX_RECORD_BYTES) {
+    throw new Error(
+      `Algolia record ${document.id} exceeds the record limit with required provenance.`,
+    );
+  }
+
+  trimFieldToFit("content", document.content);
+  if (sizeOf(record) > ALGOLIA_MAX_RECORD_BYTES) {
+    throw new Error(`Algolia record ${document.id} still exceeds the record limit after trimming.`);
+  }
 
   return record;
 }
@@ -1382,8 +2351,7 @@ export function createSimpleSearchAdapter(): DocsSearchAdapter {
     name: "simple",
     async search(query, context) {
       const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
-
-      return context.documents
+      const results = context.documents
         .map((document) => ({
           document,
           score: scoreDocument(query.query, document),
@@ -1407,7 +2375,20 @@ export function createSimpleSearchAdapter(): DocsSearchAdapter {
           type: document.type,
           score,
           section: document.section,
+          source: document.source,
         }));
+
+      if (context.deferSourceProvenance) return results;
+      return enrichDocsSearchResultsWithSources({
+        results,
+        pages: context.pages,
+        audience: resolveDocsSearchAudience(context.audience),
+        chunking: context.chunking ?? { strategy: "section" },
+        locale: query.locale ?? context.locale,
+        baseUrl: context.baseUrl,
+        indexGeneration: context.indexGeneration,
+        filters: query.filters,
+      });
     },
   };
 }
@@ -1491,7 +2472,7 @@ function isDocsSearchResultType(value: unknown): value is DocsSearchResult["type
   return value === "page" || value === "heading" || value === "text";
 }
 
-function mapMcpSearchResult(value: unknown): DocsSearchResult | null {
+function mapMcpSearchResult(value: unknown, sourceBaseUrl?: string): DocsSearchResult | null {
   if (!value || typeof value !== "object") return null;
 
   const item = value as Record<string, unknown>;
@@ -1508,6 +2489,32 @@ function mapMcpSearchResult(value: unknown): DocsSearchResult | null {
   const url = typeof item.url === "string" ? item.url : undefined;
 
   if (!content || !url) return null;
+  const hasSource = item.source !== undefined;
+  let sourceValue = item.source;
+  if (
+    hasSource &&
+    sourceBaseUrl &&
+    sourceValue &&
+    typeof sourceValue === "object" &&
+    !Array.isArray(sourceValue)
+  ) {
+    const sourceRecord = sourceValue as Record<string, unknown>;
+    if (
+      typeof sourceRecord.canonicalUrl === "string" &&
+      /^\/(?!\/)/u.test(sourceRecord.canonicalUrl)
+    ) {
+      try {
+        sourceValue = {
+          ...sourceRecord,
+          canonicalUrl: new URL(sourceRecord.canonicalUrl, sourceBaseUrl).toString(),
+        };
+      } catch {
+        // The strict parser below will reject the unresolved relative source.
+      }
+    }
+  }
+  const source = hasSource ? parseDocsRetrievalSource(sourceValue) : undefined;
+  if (hasSource && !source) return null;
 
   return {
     id: typeof item.id === "string" ? item.id : typeof item.slug === "string" ? item.slug : url,
@@ -1524,6 +2531,7 @@ function mapMcpSearchResult(value: unknown): DocsSearchResult | null {
     type: isDocsSearchResultType(item.type) ? item.type : section ? "heading" : "page",
     score: typeof item.score === "number" ? item.score : undefined,
     section,
+    ...(source ? { source } : {}),
   };
 }
 
@@ -1602,10 +2610,30 @@ function quoteTypesenseFilterValue(value: string): string {
   return `\`${value.replace(/\\/gu, "\\\\").replace(/`/gu, "\\`")}\``;
 }
 
+const TYPESENSE_RETRIEVAL_SOURCE_FIELDS: Array<Record<string, unknown>> = [
+  { name: "source_corpus_id", type: "string", optional: true },
+  { name: "source_document_id", type: "string", optional: true },
+  { name: "source_canonical_url", type: "string", optional: true },
+  { name: "source_scope_audience", type: "string", optional: true },
+  { name: "source_scope_locale", type: "string[]", optional: true },
+  { name: "source_scope_framework", type: "string[]", optional: true },
+  { name: "source_scope_version", type: "string[]", optional: true },
+  { name: "source_scope_version_groups", type: "string", optional: true },
+  { name: "source_scope_package", type: "string[]", optional: true },
+  { name: "source_scope_tags", type: "string[]", optional: true },
+  { name: "source_scope_truncated", type: "string[]", optional: true },
+  { name: "source_scope_conflicts", type: "string[]", optional: true },
+  { name: "source_last_modified", type: "string", optional: true },
+  { name: "source_digest", type: "string", optional: true },
+  { name: "source_index_generation", type: "string", optional: true },
+];
+
 async function ensureTypesenseCollection(
   config: TypesenseDocsSearchConfig,
   dimensions?: number,
   signal?: AbortSignal,
+  retryAfterCreateConflict = true,
+  retryAfterAlterFailure = true,
 ) {
   const baseUrl = getTypesenseSearchBase(config);
   const headers = {
@@ -1618,7 +2646,84 @@ async function ensureTypesenseCollection(
     signal,
   });
 
-  if (existing.ok) return;
+  if (existing.ok) {
+    const existingPayload = (await readResponseJson(existing)) as {
+      fields?: Array<{ name?: unknown; type?: unknown; optional?: unknown; num_dim?: unknown }>;
+    } | null;
+    if (!Array.isArray(existingPayload?.fields)) {
+      throw new Error("Typesense collection response did not include a fields array.");
+    }
+    const existingFields = new Map(
+      existingPayload.fields.flatMap((field) =>
+        typeof field.name === "string" ? [[field.name, field] as const] : [],
+      ),
+    );
+    const incompatibleFields = TYPESENSE_RETRIEVAL_SOURCE_FIELDS.flatMap((expected) => {
+      const name = typeof expected.name === "string" ? expected.name : undefined;
+      const existingField = name ? existingFields.get(name) : undefined;
+      if (!name || !existingField) return [];
+      return existingField.type === expected.type && existingField.optional === true ? [] : [name];
+    });
+    if (incompatibleFields.length > 0) {
+      throw new Error(
+        `Typesense collection has incompatible provenance fields: ${incompatibleFields.join(", ")}.`,
+      );
+    }
+    const missingFields = TYPESENSE_RETRIEVAL_SOURCE_FIELDS.filter(
+      (field) => typeof field.name === "string" && !existingFields.has(field.name),
+    );
+    const embeddingField = existingPayload.fields.find((field) => field.name === "embedding");
+    const expectedEmbeddingField =
+      config.embeddings && dimensions
+        ? {
+            name: "embedding",
+            type: "float[]",
+            num_dim: dimensions,
+            optional: true,
+          }
+        : undefined;
+    const replaceEmbedding = Boolean(
+      expectedEmbeddingField &&
+      embeddingField &&
+      (embeddingField.type !== "float[]" || embeddingField.num_dim !== dimensions),
+    );
+
+    if (replaceEmbedding) {
+      const dropped = await fetch(
+        `${baseUrl}/collections/${encodeURIComponent(config.collection)}`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ fields: [{ name: "embedding", drop: true }] }),
+          signal,
+        },
+      );
+      ensureOk(dropped, "Failed to replace an incompatible Typesense embedding field");
+    }
+
+    const fieldsToAdd = [
+      ...missingFields,
+      ...(expectedEmbeddingField && (!embeddingField || replaceEmbedding)
+        ? [expectedEmbeddingField]
+        : []),
+    ];
+    if (fieldsToAdd.length === 0) return;
+
+    const altered = await fetch(`${baseUrl}/collections/${encodeURIComponent(config.collection)}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ fields: fieldsToAdd }),
+      signal,
+    });
+    if (!altered.ok && retryAfterAlterFailure) {
+      // Another instance may have added the same fields after our inspection.
+      // Re-read and validate the complete schema before accepting that race.
+      await ensureTypesenseCollection(config, dimensions, signal, retryAfterCreateConflict, false);
+      return;
+    }
+    ensureOk(altered, "Failed to update the Typesense search schema");
+    return;
+  }
   if (existing.status !== 404) {
     ensureOk(existing, "Failed to inspect Typesense collection");
   }
@@ -1636,6 +2741,7 @@ async function ensureTypesenseCollection(
     { name: "version", type: "string", optional: true },
     { name: "package", type: "string[]", optional: true },
     { name: "tags", type: "string[]", optional: true },
+    ...TYPESENSE_RETRIEVAL_SOURCE_FIELDS,
   ];
 
   if (config.embeddings && dimensions) {
@@ -1657,7 +2763,38 @@ async function ensureTypesenseCollection(
     signal,
   });
 
+  if (response.status === 409 && retryAfterCreateConflict) {
+    await ensureTypesenseCollection(config, dimensions, signal, false, retryAfterAlterFailure);
+    return;
+  }
   ensureOk(response, "Failed to create Typesense collection");
+}
+
+async function ensureTypesenseImportSucceeded(
+  response: Response,
+  expectedRecords: number,
+): Promise<void> {
+  ensureOk(response, "Failed to sync documents to Typesense");
+  const payload = await response.text();
+  const lines = payload.split(/\r?\n/u).filter((line) => line.trim());
+  if (lines.length !== expectedRecords) {
+    throw new Error(
+      `Typesense acknowledged ${lines.length} of ${expectedRecords} imported records.`,
+    );
+  }
+
+  for (const [index, line] of lines.entries()) {
+    let result: { success?: unknown; error?: unknown };
+    try {
+      result = JSON.parse(line) as { success?: unknown; error?: unknown };
+    } catch {
+      throw new Error(`Typesense import returned invalid JSON on record ${index + 1}.`);
+    }
+    if (result.success !== true) {
+      const detail = typeof result.error === "string" ? `: ${result.error}` : "";
+      throw new Error(`Typesense failed to import record ${index + 1}${detail}`);
+    }
+  }
 }
 
 export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig): DocsSearchAdapter {
@@ -1665,21 +2802,35 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
     name: "typesense",
     async index(context) {
       const adminApiKey = config.adminApiKey ?? config.apiKey;
+      const corpusId = resolveHostedHumanCorpusId(config.syncNamespace, context);
+      const documents = await enrichDocsSearchDocumentsWithSources({
+        documents: context.documents,
+        pages: context.pages,
+        audience: resolveDocsSearchAudience(context.audience),
+        chunking: context.chunking ?? { strategy: "section" },
+        locale: context.locale,
+        baseUrl: context.baseUrl,
+        indexGeneration: context.indexGeneration,
+      });
       const docsForImport = await Promise.all(
-        context.documents.map(async (document) => {
+        documents.map(async (document) => {
+          const providerDocumentId = corpusId
+            ? makeHostedProviderDocumentId(corpusId, document.id)
+            : document.id;
           const next: Record<string, unknown> = {
-            id: document.id,
+            id: providerDocumentId,
             url: document.url,
             title: document.title,
             section: document.section,
             content: document.content,
             description: document.description,
             type: document.type,
-            locale: document.locale,
+            locale: document.locale ?? document.source?.scope.locale?.[0],
             framework: document.framework,
             version: document.version,
             package: document.package,
             tags: document.tags,
+            ...serializeHostedRetrievalSource(document.source, corpusId, document.id),
           };
 
           if (config.mode === "hybrid" && config.embeddings) {
@@ -1694,31 +2845,30 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
         }),
       );
 
-      if (docsForImport.length === 0) return;
-
       const embeddingDimensions = Array.isArray(docsForImport[0]?.embedding)
         ? (docsForImport[0].embedding as number[]).length
         : undefined;
 
       await ensureTypesenseCollection(config, embeddingDimensions, context.signal);
-
-      const response = await fetch(
-        `${getTypesenseSearchBase(config)}/collections/${encodeURIComponent(config.collection)}/documents/import?action=upsert`,
-        {
-          method: "POST",
-          headers: {
-            "X-TYPESENSE-API-KEY": adminApiKey,
-            "Content-Type": "text/plain",
+      if (docsForImport.length > 0) {
+        const response = await fetch(
+          `${getTypesenseSearchBase(config)}/collections/${encodeURIComponent(config.collection)}/documents/import?action=upsert`,
+          {
+            method: "POST",
+            headers: {
+              "X-TYPESENSE-API-KEY": adminApiKey,
+              "Content-Type": "text/plain",
+            },
+            body: docsForImport.map((document) => JSON.stringify(document)).join("\n"),
+            signal: context.signal,
           },
-          body: docsForImport.map((document) => JSON.stringify(document)).join("\n"),
-          signal: context.signal,
-        },
-      );
-
-      ensureOk(response, "Failed to sync documents to Typesense");
+        );
+        await ensureTypesenseImportSucceeded(response, docsForImport.length);
+      }
     },
     async search(query, context) {
-      const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context);
+      const corpusId = resolveHostedHumanCorpusId(config.syncNamespace, context);
+      const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context, corpusId);
       if (scopedDocumentIds?.length === 0) return [];
 
       const params = new URLSearchParams({
@@ -1738,9 +2888,13 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
         );
       }
 
-      const filterBy = scopedDocumentIds
-        ? `id:=[${scopedDocumentIds.map(quoteTypesenseFilterValue).join(",")}]`
-        : undefined;
+      const filterClauses = [
+        corpusId ? `source_corpus_id:=${quoteTypesenseFilterValue(corpusId)}` : undefined,
+        scopedDocumentIds
+          ? `id:=[${scopedDocumentIds.map(quoteTypesenseFilterValue).join(",")}]`
+          : undefined,
+      ].filter((value): value is string => Boolean(value));
+      const filterBy = filterClauses.length > 0 ? filterClauses.join(" && ") : undefined;
       if (filterBy && filterBy.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) return [];
 
       const response = filterBy
@@ -1788,8 +2942,9 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
       };
       const payload = filterBy ? (rawPayload.results?.[0] ?? {}) : rawPayload;
 
-      return (payload.hits ?? []).map((hit) => {
+      return (payload.hits ?? []).flatMap((hit): DocsSearchResult[] => {
         const document = hit.document ?? {};
+        if (!hostedRecordMatchesCorpus(document, corpusId)) return [];
         const section = typeof document.section === "string" ? document.section : undefined;
         const content =
           typeof document.title === "string"
@@ -1803,21 +2958,29 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
           hit.highlights?.find((item) => item.field === "content")?.snippet ??
           hit.highlights?.find((item) => item.field === "description")?.snippet ??
           (typeof document.description === "string" ? document.description : undefined);
+        const source = readHostedRetrievalSource(document);
+        if (hasHostedRetrievalSource(document) && !source) return [];
 
-        return {
-          id: typeof document.id === "string" ? document.id : String(document.url ?? content),
-          url: typeof document.url === "string" ? document.url : "/docs",
-          content: cleanSearchResultText(content) ?? content,
-          description: cleanSearchResultText(description),
-          type:
-            typeof document.type === "string" && ["page", "heading", "text"].includes(document.type)
-              ? (document.type as DocsSearchResult["type"])
-              : section
-                ? "heading"
-                : "page",
-          score: hit.text_match,
-          section,
-        } satisfies DocsSearchResult;
+        return [
+          {
+            id:
+              readHostedSourceDocumentId(document) ??
+              (typeof document.id === "string" ? document.id : String(document.url ?? content)),
+            url: typeof document.url === "string" ? document.url : "/docs",
+            content: cleanSearchResultText(content) ?? content,
+            description: cleanSearchResultText(description),
+            type:
+              typeof document.type === "string" &&
+              ["page", "heading", "text"].includes(document.type)
+                ? (document.type as DocsSearchResult["type"])
+                : section
+                  ? "heading"
+                  : "page",
+            score: hit.text_match,
+            section,
+            ...(source ? { source } : {}),
+          } satisfies DocsSearchResult,
+        ];
       });
     },
   };
@@ -1997,7 +3160,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
               : [];
 
         return rawResults
-          .map(mapMcpSearchResult)
+          .map((result) => mapMcpSearchResult(result, endpoint))
           .filter((result): result is DocsSearchResult => Boolean(result));
       } finally {
         if (sessionId) {
@@ -2027,8 +3190,93 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
   };
 }
 
-function getAlgoliaBase(config: AlgoliaDocsSearchConfig): string {
+function getAlgoliaSearchBase(config: AlgoliaDocsSearchConfig): string {
   return `https://${config.appId}-dsn.algolia.net`;
+}
+
+function getAlgoliaAdminBase(config: AlgoliaDocsSearchConfig): string {
+  return `https://${config.appId}.algolia.net`;
+}
+
+function getAlgoliaAdminHeaders(config: AlgoliaDocsSearchConfig): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "X-Algolia-Application-Id": config.appId,
+    "X-Algolia-API-Key": config.adminApiKey ?? config.searchApiKey,
+  };
+}
+
+async function waitForAlgoliaTask(
+  config: AlgoliaDocsSearchConfig,
+  taskId: string | number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const deadline = Date.now() + 60_000;
+  for (let attempt = 0; Date.now() < deadline; attempt += 1) {
+    const response = await fetch(
+      `${getAlgoliaAdminBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/task/${encodeURIComponent(String(taskId))}`,
+      {
+        headers: getAlgoliaAdminHeaders(config),
+        signal,
+      },
+    );
+    ensureOk(response, "Failed to inspect Algolia sync task");
+    const payload = (await readResponseJson(response)) as { status?: unknown } | null;
+    if (payload?.status === "published") return;
+    if (payload?.status !== "notPublished") {
+      throw new Error("Algolia sync task returned an unknown status.");
+    }
+    const delay = Math.min(100 * 2 ** Math.min(attempt, 4), 2_000);
+    await new Promise<void>((resolve, reject) => {
+      let timer: ReturnType<typeof setTimeout>;
+      const onAbort = () => {
+        clearTimeout(timer);
+        reject(signal?.reason ?? new Error("Algolia sync was aborted."));
+      };
+      timer = setTimeout(
+        () => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        },
+        Math.min(delay, Math.max(1, deadline - Date.now())),
+      );
+      if (signal?.aborted) onAbort();
+      else signal?.addEventListener("abort", onAbort, { once: true });
+    });
+  }
+
+  throw new Error("Timed out waiting for Algolia to publish the synced index.");
+}
+
+interface AlgoliaBatchRequest {
+  action: "addObject";
+  body: Record<string, unknown>;
+}
+
+async function executeAlgoliaBatch(
+  config: AlgoliaDocsSearchConfig,
+  requests: readonly AlgoliaBatchRequest[],
+  message: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  for (let offset = 0; offset < requests.length; offset += ALGOLIA_BATCH_OPERATIONS) {
+    const batch = requests.slice(offset, offset + ALGOLIA_BATCH_OPERATIONS);
+    const response = await fetch(
+      `${getAlgoliaAdminBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/batch`,
+      {
+        method: "POST",
+        headers: getAlgoliaAdminHeaders(config),
+        body: JSON.stringify({ requests: batch }),
+        signal,
+      },
+    );
+    ensureOk(response, message);
+    const payload = (await readResponseJson(response)) as { taskID?: unknown } | null;
+    if (typeof payload?.taskID !== "string" && typeof payload?.taskID !== "number") {
+      throw new Error("Algolia sync response did not include a task ID.");
+    }
+    await waitForAlgoliaTask(config, payload.taskID, signal);
+  }
 }
 
 function quoteAlgoliaFilterValue(value: string): string {
@@ -2040,38 +3288,43 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
     name: "algolia",
     async index(context) {
       if (!config.adminApiKey) return;
-
-      const response = await fetch(
-        `${getAlgoliaBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/batch`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Algolia-Application-Id": config.appId,
-            "X-Algolia-API-Key": config.adminApiKey,
-          },
-          body: JSON.stringify({
-            requests: context.documents.map((document) => ({
-              action: "addObject",
-              body: buildAlgoliaRecord(document),
-            })),
-          }),
-          signal: context.signal,
-        },
+      const corpusId = resolveHostedHumanCorpusId(config.syncNamespace, context);
+      const documents = await enrichDocsSearchDocumentsWithSources({
+        documents: context.documents,
+        pages: context.pages,
+        audience: resolveDocsSearchAudience(context.audience),
+        chunking: context.chunking ?? { strategy: "section" },
+        locale: context.locale,
+        baseUrl: context.baseUrl,
+        indexGeneration: context.indexGeneration,
+      });
+      const requests = documents.map((document) => ({
+        action: "addObject" as const,
+        body: buildAlgoliaRecord(document, corpusId),
+      }));
+      await executeAlgoliaBatch(
+        config,
+        requests,
+        "Failed to sync documents to Algolia",
+        context.signal,
       );
-
-      ensureOk(response, "Failed to sync documents to Algolia");
     },
     async search(query, context) {
-      const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context);
+      const corpusId = resolveHostedHumanCorpusId(config.syncNamespace, context);
+      const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context, corpusId);
       if (scopedDocumentIds?.length === 0) return [];
-      const filters = scopedDocumentIds
+      const scopedIdsFilter = scopedDocumentIds
         ?.map((id) => `objectID:${quoteAlgoliaFilterValue(id)}`)
         .join(" OR ");
+      const filterClauses = [
+        corpusId ? `_tags:${quoteAlgoliaFilterValue(corpusId)}` : undefined,
+        scopedIdsFilter ? (corpusId ? `(${scopedIdsFilter})` : scopedIdsFilter) : undefined,
+      ].filter((value): value is string => Boolean(value));
+      const filters = filterClauses.length > 0 ? filterClauses.join(" AND ") : undefined;
       if (filters && filters.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) return [];
 
       const response = await fetch(
-        `${getAlgoliaBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/query`,
+        `${getAlgoliaSearchBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/query`,
         {
           method: "POST",
           headers: {
@@ -2082,6 +3335,7 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
           body: JSON.stringify({
             query: query.query,
             hitsPerPage: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
+            restrictSearchableAttributes: ["title", "section", "content", "description"],
             attributesToSnippet: ["content:20"],
             ...(filters ? { filters } : {}),
           }),
@@ -2103,27 +3357,33 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
         >;
       };
 
-      return (payload.hits ?? []).map((hit) => {
+      return (payload.hits ?? []).flatMap((hit): DocsSearchResult[] => {
+        if (!hostedRecordMatchesCorpus(hit, corpusId)) return [];
         const title = typeof hit.title === "string" ? hit.title : "Untitled result";
         const section = typeof hit.section === "string" ? hit.section : undefined;
-        return {
-          id: hit.objectID ?? String(hit.url ?? title),
-          url: typeof hit.url === "string" ? hit.url : "/docs",
-          content: cleanSearchResultText(section ? `${title} — ${section}` : title) ?? title,
-          description: cleanSearchResultText(
-            hit._snippetResult?.content?.value ??
-              hit._snippetResult?.description?.value ??
-              (typeof hit.description === "string" ? hit.description : undefined),
-          ),
-          type:
-            typeof hit.type === "string" && ["page", "heading", "text"].includes(hit.type)
-              ? (hit.type as DocsSearchResult["type"])
-              : section
-                ? "heading"
-                : "page",
-          score: hit._rankingInfo?.nbTypos != null ? 100 - hit._rankingInfo.nbTypos : undefined,
-          section,
-        } satisfies DocsSearchResult;
+        const source = readHostedRetrievalSource(hit);
+        if (hasHostedRetrievalSource(hit) && !source) return [];
+        return [
+          {
+            id: readHostedSourceDocumentId(hit) ?? hit.objectID ?? String(hit.url ?? title),
+            url: typeof hit.url === "string" ? hit.url : "/docs",
+            content: cleanSearchResultText(section ? `${title} — ${section}` : title) ?? title,
+            description: cleanSearchResultText(
+              hit._snippetResult?.content?.value ??
+                hit._snippetResult?.description?.value ??
+                (typeof hit.description === "string" ? hit.description : undefined),
+            ),
+            type:
+              typeof hit.type === "string" && ["page", "heading", "text"].includes(hit.type)
+                ? (hit.type as DocsSearchResult["type"])
+                : section
+                  ? "heading"
+                  : "page",
+            score: hit._rankingInfo?.nbTypos != null ? 100 - hit._rankingInfo.nbTypos : undefined,
+            section,
+            ...(source ? { source } : {}),
+          } satisfies DocsSearchResult,
+        ];
       });
     },
   };
@@ -2175,11 +3435,13 @@ function getSyncKey(search: ResolvedDocsSearchConfig, context: DocsSearchAdapter
   const raw = search.raw;
 
   if (search.provider === "algolia" && raw?.provider === "algolia") {
-    return `algolia:${raw.appId}:${raw.indexName}:${context.locale ?? "__default__"}`;
+    const corpusId = resolveHostedHumanCorpusId(raw.syncNamespace, context) ?? "__unowned__";
+    return `algolia:${raw.appId}:${raw.indexName}:${corpusId}:${context.locale ?? "__default__"}`;
   }
 
   if (search.provider === "typesense" && raw?.provider === "typesense") {
-    return `typesense:${raw.baseUrl}:${raw.collection}:${context.locale ?? "__default__"}`;
+    const corpusId = resolveHostedHumanCorpusId(raw.syncNamespace, context) ?? "__unowned__";
+    return `typesense:${raw.baseUrl}:${raw.collection}:${corpusId}:${context.locale ?? "__default__"}`;
   }
 
   if (search.provider === "mcp" && raw?.provider === "mcp") {
@@ -2187,6 +3449,42 @@ function getSyncKey(search: ResolvedDocsSearchConfig, context: DocsSearchAdapter
   }
 
   return `${search.provider}:${context.locale ?? "__default__"}`;
+}
+
+function getSearchSyncFingerprint(
+  search: ResolvedDocsSearchConfig,
+  context: DocsSearchAdapterContext,
+  indexGeneration: string,
+): string {
+  const raw = search.raw;
+  const providerConfig =
+    search.provider === "typesense" && raw?.provider === "typesense"
+      ? {
+          syncNamespace: raw.syncNamespace?.trim() || undefined,
+          mode: raw.mode ?? "keyword",
+          embeddings: raw.embeddings
+            ? {
+                provider: raw.embeddings.provider,
+                model: raw.embeddings.model,
+                baseUrl: raw.embeddings.baseUrl,
+              }
+            : undefined,
+        }
+      : search.provider === "algolia" && raw?.provider === "algolia"
+        ? {
+            syncNamespace: raw.syncNamespace?.trim() || undefined,
+          }
+        : undefined;
+
+  return hashDocsRetrievalValue(
+    JSON.stringify({
+      format: "docs-search-sync.v1",
+      indexGeneration,
+      canonicalBaseUrl: context.baseUrl,
+      provider: search.provider,
+      providerConfig,
+    }),
+  );
 }
 
 async function maybeSyncSearchIndex(
@@ -2197,14 +3495,48 @@ async function maybeSyncSearchIndex(
   if (!shouldSyncOnSearch(search) || typeof adapter.index !== "function") return;
 
   const syncKey = getSyncKey(search, context);
-  if (syncedIndexes.has(syncKey)) return;
+  const indexGeneration =
+    context.indexGeneration ??
+    (await buildDocsSearchIndexGeneration(context.pages, {
+      audience: resolveDocsSearchAudience(context.audience),
+      chunking: context.chunking ?? search.chunking,
+      locale: context.locale,
+      baseUrl: context.baseUrl,
+    }));
+  context.indexGeneration = indexGeneration;
+  const syncFingerprint = getSearchSyncFingerprint(search, context, indexGeneration);
+  while (true) {
+    const inFlight = syncingIndexes.get(syncKey);
+    if (inFlight) {
+      try {
+        await inFlight.promise;
+      } catch (error) {
+        if (inFlight.fingerprint === syncFingerprint) throw error;
+      }
+      continue;
+    }
+    if (syncedIndexes.get(syncKey) === syncFingerprint) return;
 
-  await adapter.index(context);
-  syncedIndexes.add(syncKey);
+    const sync = adapter.index(context).then(() => {
+      syncedIndexes.set(syncKey, syncFingerprint);
+    });
+    syncingIndexes.set(syncKey, { fingerprint: syncFingerprint, promise: sync });
+    try {
+      await sync;
+    } finally {
+      if (syncingIndexes.get(syncKey)?.promise === sync) {
+        syncingIndexes.delete(syncKey);
+      }
+    }
+  }
 }
 
 export interface PerformDocsSearchOptions {
   pages: DocsSearchSourcePage[];
+  /** @internal Complete corpus used for generation when `pages` is pre-scoped by a caller. */
+  generationPages?: DocsSearchSourcePage[];
+  /** @internal Precomputed complete-corpus generation for structured callers. */
+  indexGeneration?: string;
   query: string;
   search?: boolean | DocsSearchConfig;
   /** Selects which audience projection is searchable. Public site search defaults to human. */
@@ -2214,6 +3546,12 @@ export interface PerformDocsSearchOptions {
   siteTitle?: string;
   /** Canonical docs URL used to distinguish same-site absolute hits from foreign MCP results. */
   baseUrl?: string;
+  /**
+   * Canonical origin safe to persist in a hosted index. Pass `null` when `baseUrl`
+   * came from the current request rather than trusted configuration.
+   * @internal
+   */
+  syncBaseUrl?: string | null;
   limit?: number;
   /** Optional framework, version, package, and tag constraints. */
   filters?: DocsSearchFilterInput;
@@ -2228,7 +3566,7 @@ export interface PerformDocsSearchOptions {
    * Runtime search defaults to true; provider diagnostics can disable supplementation.
    */
   supplementExternalResults?: boolean;
-  /** Fail closed on absolute provider hits when no canonical docs origin is available. */
+  /** Keep absolute provider origins distinct when no canonical docs origin is available. */
   strictExternalOrigins?: boolean;
   /** Optional cancellation signal forwarded to adapters and their managed requests. */
   signal?: AbortSignal;
@@ -2243,11 +3581,14 @@ export async function performDocsSearch(
   const audience = resolveDocsSearchAudience(options.audience);
   const filters = normalizeDocsSearchFilters(options.filters);
   const hasFilters = hasDocsSearchFilters(filters);
+  const corpusPages = options.pages.map((page) => localizeDocsSearchPage(page, options.locale));
+  const indexBaseUrl =
+    options.syncBaseUrl === null ? undefined : (options.syncBaseUrl ?? options.baseUrl);
   const scopedPages = hasFilters
-    ? options.pages.filter((page) =>
+    ? corpusPages.filter((page) =>
         docsSearchPageMatchesFilters(resolveDocsSearchPageScope(page), filters),
       )
-    : options.pages;
+    : corpusPages;
   let resolvedDocuments: DocsSearchDocument[] | undefined;
   const getDocuments = (): DocsSearchDocument[] => {
     if (!resolvedDocuments) {
@@ -2269,6 +3610,10 @@ export async function performDocsSearch(
     locale: options.locale,
     pathname: options.pathname,
     siteTitle: options.siteTitle,
+    baseUrl: options.baseUrl,
+    indexBaseUrl,
+    chunking: search.chunking,
+    deferSourceProvenance: true,
     signal: options.signal,
   };
 
@@ -2280,22 +3625,51 @@ export async function performDocsSearch(
     audience,
     ...(hasFilters ? { filters } : {}),
   };
+  let currentIndexGeneration: Promise<string> | undefined;
+  const getCurrentIndexGeneration = () => {
+    currentIndexGeneration ??= options.indexGeneration
+      ? Promise.resolve(options.indexGeneration)
+      : buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
+          audience,
+          chunking: search.chunking,
+          locale: options.locale,
+          baseUrl: options.baseUrl,
+        });
+    return currentIndexGeneration;
+  };
+  const requireCurrentIndexGeneration =
+    search.provider === "algolia" || search.provider === "typesense";
+  const finalizeResults = async (results: readonly DocsSearchResult[]) =>
+    enrichDocsSearchResultsWithSources({
+      results,
+      pages: scopedPages,
+      generationPages: options.generationPages ?? options.pages,
+      audience,
+      chunking: search.chunking,
+      locale: options.locale,
+      baseUrl: options.baseUrl,
+      indexGeneration: options.indexGeneration,
+      strictExternalOrigins: options.strictExternalOrigins,
+      filters,
+      requireCurrentIndexGeneration,
+    });
 
   try {
     const adapter = await resolveSearchAdapter(search, context);
     if (shouldSyncOnSearch(search) && typeof adapter.index === "function") {
-      const syncContext: DocsSearchAdapterContext =
-        audience === "agent" || hasFilters
-          ? {
-              pages: options.pages,
-              documents: buildDocsSearchDocuments(options.pages, search.chunking, "human"),
-              audience: "human",
-              locale: options.locale,
-              pathname: options.pathname,
-              siteTitle: options.siteTitle,
-              signal: options.signal,
-            }
-          : context;
+      const syncPages = audience === "agent" || hasFilters ? corpusPages : scopedPages;
+      const syncContext: DocsSearchAdapterContext = {
+        pages: syncPages,
+        documents: buildDocsSearchDocuments(syncPages, search.chunking, "human"),
+        audience: "human",
+        locale: options.locale,
+        pathname: options.pathname,
+        siteTitle: options.siteTitle,
+        baseUrl: indexBaseUrl,
+        indexBaseUrl,
+        chunking: search.chunking,
+        signal: options.signal,
+      };
       await maybeSyncSearchIndex(adapter, search, syncContext);
     }
 
@@ -2313,16 +3687,16 @@ export async function performDocsSearch(
       throw error;
     }
     const results = await adapterSearch;
-    if (search.provider === "simple") return results;
+    if (search.provider === "simple") return finalizeResults(results);
 
     const localAudienceProjectionResults = buildAudienceProjectionSearchResults(
       documents,
       options.query,
     );
-    const localPagePaths = new Set(scopedPages.map((page) => normalizeUrlPathname(page.url)));
+    const localPagePaths = new Set(scopedPages.map((page) => normalizeUrlRouteKey(page.url)));
     const allLocalPagePaths =
       hasFilters && search.provider === "mcp"
-        ? new Set(options.pages.map((page) => normalizeUrlPathname(page.url)))
+        ? new Set(options.pages.map((page) => normalizeUrlRouteKey(page.url)))
         : localPagePaths;
     // External indexes can be stale or built for a different audience. Replace
     // every local-page hit with the selected local projection before returning it.
@@ -2338,30 +3712,70 @@ export async function performDocsSearch(
               baseUrl: options.baseUrl,
             })
         : undefined;
+    const isKnownLocalProviderResult = (result: DocsSearchResult) =>
+      isLocalProviderResult(result, options.baseUrl) &&
+      localPagePaths.has(normalizeUrlRouteKey(result.url));
+    const expectedProviderGeneration = requireCurrentIndexGeneration
+      ? audience === "human"
+        ? await getCurrentIndexGeneration()
+        : await buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
+            audience: "human",
+            chunking: search.chunking,
+            locale: options.locale,
+            baseUrl: indexBaseUrl,
+          })
+      : undefined;
+    const providerAudience: DocsContentAudience = requireCurrentIndexGeneration
+      ? "human"
+      : audience;
+    // Validate provenance before replacing a hosted hit with the local projection.
+    // Otherwise a stale hit could inherit a fresh digest and generation after ranking.
+    const provenanceSafeProviderResults = results.filter((result) => {
+      if (result.source === undefined) {
+        return !requireCurrentIndexGeneration || isKnownLocalProviderResult(result);
+      }
+      const source = parseDocsRetrievalSource(result.source, {
+        allowRootRelativeCanonical:
+          requireCurrentIndexGeneration || isKnownLocalProviderResult(result),
+      });
+      const knownLocal = isKnownLocalProviderResult(result);
+      return Boolean(
+        source &&
+        docsRetrievalSourceMatchesRequest(
+          source,
+          providerAudience,
+          knownLocal ? undefined : filters,
+          options.locale,
+        ) &&
+        (!expectedProviderGeneration || source.indexGeneration === expectedProviderGeneration),
+      );
+    });
     // Provider ranking may be semantic, so lexical query overlap is not required.
     // Fail closed only when a local snippet contains distinctive evidence from
     // the opposite projection and none from the selected one.
-    const audienceSafeAdapterResults = results.filter(
+    const audienceSafeAdapterResults = provenanceSafeProviderResults.filter(
       (result) =>
+        (requireCurrentIndexGeneration && isKnownLocalProviderResult(result)) ||
         !hasOppositeAudienceEvidence({
           result,
           pages: scopedPages,
           query: options.query,
           audience,
           baseUrl: options.baseUrl,
-          strictExternalOrigins: options.strictExternalOrigins,
         }),
     );
     const safeAdapterResults = sanitizeExternalAudienceSearchResults(
       audienceSafeAdapterResults,
       localAudienceProjectionResults,
       options.baseUrl,
-      options.strictExternalOrigins,
       preserveUnmatched,
+      requireCurrentIndexGeneration && audience === "agent",
     );
 
     if (options.supplementExternalResults === false) {
-      return safeAdapterResults.slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT);
+      return finalizeResults(
+        safeAdapterResults.slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT),
+      );
     }
     const shouldSupplementWithLocalSearch =
       audience === "agent" || results.length === 0 || safeAdapterResults.length < results.length;
@@ -2378,13 +3792,15 @@ export async function performDocsSearch(
         ? (result) => getAskAIResultKey(result, options.baseUrl, options.strictExternalOrigins)
         : undefined,
     );
-    return prioritizeLiteralInsideResults(options.query, combinedResults).slice(
-      0,
-      query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
+    return finalizeResults(
+      prioritizeLiteralInsideResults(options.query, combinedResults).slice(
+        0,
+        query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
+      ),
     );
   } catch (error) {
     if (options.failureMode === "throw") throw error;
-    return createSimpleSearchAdapter().search(query, context);
+    return finalizeResults(await createSimpleSearchAdapter().search(query, context));
   }
 }
 
@@ -2414,12 +3830,12 @@ function findSearchResultPages(
   results: readonly DocsSearchResult[],
   baseUrl?: string,
 ): DocsSearchSourcePage[] {
-  const pagesByPath = new Map(pages.map((page) => [normalizeUrlPathname(page.url), page] as const));
+  const pagesByPath = new Map(pages.map((page) => [normalizeUrlRouteKey(page.url), page] as const));
   const found = new Map<string, DocsSearchSourcePage>();
 
   for (const result of results) {
-    if (!isLocalProviderResult(result, baseUrl, true)) continue;
-    const page = pagesByPath.get(normalizeUrlPathname(result.url));
+    if (!isLocalProviderResult(result, baseUrl)) continue;
+    const page = pagesByPath.get(normalizeUrlRouteKey(result.url));
     if (page) found.set(page.url, page);
   }
 
@@ -2547,17 +3963,30 @@ export async function performDocsSearchWithMetadata(
 ): Promise<DocsSearchResponse> {
   const audience = resolveDocsSearchAudience(options.audience);
   const filters = normalizeDocsSearchFilters(options.filters);
-  const results = await performDocsSearch({
-    ...options,
-    audience,
-    filters,
-  });
+  const search = normalizeDocsSearchConfig(options.search);
+  const indexGeneration =
+    options.indexGeneration ??
+    (await buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
+      audience,
+      chunking: search.chunking,
+      locale: options.locale,
+      baseUrl: options.baseUrl,
+    }));
+  const results = options.query.trim()
+    ? await performDocsSearch({
+        ...options,
+        audience,
+        filters,
+        indexGeneration,
+      })
+    : [];
 
   return {
     format: "docs-search.v1",
     query: options.query,
     audience,
     filters,
+    indexGeneration,
     resultCount: results.length,
     results,
     warnings: buildDocsSearchWarnings({
@@ -2579,6 +4008,8 @@ export async function buildDocsAskAIContext(options: {
   pathname?: string;
   siteTitle?: string;
   baseUrl?: string;
+  /** See `performDocsSearch.syncBaseUrl`. */
+  syncBaseUrl?: string | null;
   limit?: number;
   filters?: DocsSearchFilterInput;
   maxContextChars?: number;
@@ -2604,6 +4035,7 @@ export async function buildDocsAskAIContext(options: {
     pathname: options.pathname,
     siteTitle: options.siteTitle,
     baseUrl: options.baseUrl,
+    syncBaseUrl: options.syncBaseUrl,
     limit: searchLimit,
     filters: options.filters,
     failureMode: options.searchFailureMode,
@@ -2615,12 +4047,7 @@ export async function buildDocsAskAIContext(options: {
   const maxResultChars = options.maxResultChars ?? DEFAULT_ASK_AI_RESULT_CHARS;
   const rankedResults = searchResults
     .map((result, index) => {
-      const page = findPageForSearchResult(
-        options.pages,
-        result,
-        options.baseUrl,
-        options.strictExternalOrigins,
-      );
+      const page = findPageForSearchResult(options.pages, result, options.baseUrl);
       const formatted = formatAskAIContextResult({
         result,
         page,

@@ -66,6 +66,7 @@ import {
   resolveDocsLlmsTxtSections,
   resolveDocsLocale,
   resolveDocsRequestApiRoute,
+  resolveDocsRetrievalLastModified,
   resolveDocsStandardsDiscoveryRequest,
   resolveDocsPublishedAgentSkill,
   resolveDocsAgentContractMcpTools,
@@ -218,6 +219,8 @@ interface DocsMCPAPIOptions {
   rootDir?: string;
   entry?: string;
   contentDir?: string;
+  /** Canonical public docs origin used in retrieval provenance. */
+  baseUrl?: string;
   nav?: { title?: unknown };
   ordering?: "alphabetical" | "numeric" | OrderingItem[];
   mcp?: boolean | DocsMcpConfig;
@@ -1542,10 +1545,18 @@ function readAudienceAgentDoc(dir: string) {
     return {
       agentContent: stripMdx(agentRawContent),
       agentRawContent,
+      agentLastModified: fs.statSync(agentPath).mtime.toISOString(),
     };
   } catch {
     return undefined;
   }
+}
+
+function normalizeFrontmatterLastmod(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  return value instanceof Date && Number.isFinite(value.getTime())
+    ? value.toISOString()
+    : undefined;
 }
 
 function scanDocsDir(
@@ -1609,6 +1620,7 @@ function scanDocsDir(
             agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
             url,
             sourcePath: pageSource.replace(/\\/g, "/"),
+            lastmod: normalizeFrontmatterLastmod(data.lastmod),
             lastModified: fs.statSync(pageSource).mtime.toISOString(),
             locale,
             framework,
@@ -1704,6 +1716,9 @@ function scanChangelogDir(
         rawContent,
         agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
         url,
+        sourcePath: pagePath.replace(/\\/g, "/"),
+        lastmod: normalizeFrontmatterLastmod(data.lastmod),
+        lastModified: fs.statSync(pagePath).mtime.toISOString(),
         locale,
         type: "changelog",
         version: typeof data.version === "string" ? data.version : undefined,
@@ -2723,7 +2738,7 @@ async function handleAskAI(
   search: boolean | DocsSearchConfig | undefined,
   analytics?: boolean | DocsAnalyticsConfig,
   observability?: boolean | DocsObservabilityConfig,
-  analyticsContext: { locale?: string } = {},
+  analyticsContext: { locale?: string; syncBaseUrl?: string | null } = {},
 ): Promise<Response> {
   const url = new URL(request.url);
   const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
@@ -3222,7 +3237,8 @@ async function handleAskAI(
     locale: analyticsContext.locale,
     pathname: url.searchParams.get("pathname") ?? undefined,
     siteTitle: "Documentation",
-    baseUrl: url.origin,
+    baseUrl: analyticsContext.syncBaseUrl || url.origin,
+    syncBaseUrl: analyticsContext.syncBaseUrl,
     limit: maxResults,
   });
   const scored = retrieval.results;
@@ -4100,7 +4116,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             origin,
             sitemap: sitemapConfig,
           }),
-          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+          lastModified: resolveDocsRetrievalLastModified(page, "agent"),
         };
       }
     }
@@ -4116,8 +4132,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           origin,
           sitemap: sitemapConfig,
         }),
-        lastModified:
-          fallbackPage.agentRawContent === undefined ? fallbackPage.lastModified : undefined,
+        lastModified: resolveDocsRetrievalLastModified(fallbackPage, "agent"),
       };
     }
 
@@ -4131,7 +4146,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             origin,
             sitemap: sitemapConfig,
           }),
-          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+          lastModified: resolveDocsRetrievalLastModified(page, "agent"),
         };
       }
     }
@@ -4670,27 +4685,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const audience = resolveDocsSearchAudience(url.searchParams.get("audience"));
       const filters = resolveDocsSearchFilters(url.searchParams);
       const structured = url.searchParams.get("response") === "structured";
-      if (!query) {
-        const searchResponse = structured
-          ? {
-              format: "docs-search.v1",
-              query: "",
-              audience,
-              filters,
-              resultCount: 0,
-              results: [],
-              warnings: [],
-            }
-          : [];
-        return new Response(JSON.stringify(searchResponse), {
+      if (!query && !structured) {
+        return new Response("[]", {
           headers: { "Content-Type": "application/json" },
         });
       }
-
-      const searchStartedAt = Date.now();
       const searchOptions = {
         pages: getIndexes(ctx),
-        query,
+        query: query ?? "",
         search: resolveSearchRequestConfig(searchConfig, request.url),
         audience,
         filters,
@@ -4698,7 +4700,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         pathname: url.searchParams.get("pathname") ?? undefined,
         siteTitle: llmsConfig.siteTitle ?? "Documentation",
         baseUrl: markdownMetadataBaseUrl || url.origin,
+        syncBaseUrl: markdownMetadataBaseUrl ?? null,
       };
+      if (!query) {
+        const searchResponse = structured ? await performDocsSearchWithMetadata(searchOptions) : [];
+        return new Response(JSON.stringify(searchResponse), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const searchStartedAt = Date.now();
       const searchResponse = structured
         ? await performDocsSearchWithMetadata(searchOptions)
         : await performDocsSearch(searchOptions);
@@ -4858,6 +4869,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         observability,
         {
           locale: ctx.locale,
+          syncBaseUrl: markdownMetadataBaseUrl ?? null,
         },
       );
     },
@@ -4910,6 +4922,8 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     entry,
     contentDir,
     siteTitle: navTitle,
+    baseUrl:
+      options.baseUrl?.trim() || resolveDocsMetadataBaseUrl(options as DocsConfig) || undefined,
     ordering: options.ordering,
   });
   const source = {

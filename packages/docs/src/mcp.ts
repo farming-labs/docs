@@ -26,6 +26,7 @@ import {
   performDocsSearch,
   performDocsSearchWithMetadata,
 } from "./search.js";
+import { isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
@@ -59,6 +60,7 @@ import type {
   DocsMcpCorsConfig,
   DocsMcpProtectedResourceConfig,
   DocsObservabilityConfig,
+  DocsRetrievalSourceProvenance,
   DocsSearchConfig,
   DocsSearchSourcePage,
   DocsTelemetryConfig,
@@ -77,6 +79,7 @@ export interface DocsMcpPage {
   agent?: PageAgentFrontmatter;
   icon?: string;
   sourcePath?: string;
+  lastmod?: string;
   lastModified?: string;
   locale?: string;
   framework?: string;
@@ -86,6 +89,7 @@ export interface DocsMcpPage {
   rawContent?: string;
   agentContent?: string;
   agentRawContent?: string;
+  agentLastModified?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
 }
@@ -200,6 +204,8 @@ export interface DocsMcpContextSource {
   version?: string;
   package?: string[];
   tags?: string[];
+  /** Canonical, scope-aware provenance for this retrieved source. */
+  source?: DocsRetrievalSourceProvenance;
   score?: number;
   content: string;
   /** JavaScript string length for this source's content only. */
@@ -249,6 +255,8 @@ export interface DocsMcpContextOptions {
   tokenBudget: number;
   entry?: string;
   siteTitle?: string;
+  /** Public docs origin used to resolve canonical source URLs. */
+  baseUrl?: string;
   /** Maximum number of ranked, deduplicated candidates to render. Defaults to 50. */
   maxResults?: number;
 }
@@ -279,6 +287,10 @@ export interface DocsMcpNavigationTree {
 export interface DocsMcpSource {
   entry?: string;
   siteTitle?: string;
+  /** Canonical public docs origin used for retrieval source URLs. */
+  baseUrl?: string;
+  /** Resolve a requested locale to the locale whose pages will actually be returned. */
+  resolveLocale?(locale?: string, context?: DocsMcpRequestContext): string | undefined;
   getPages(
     locale?: string,
     context?: DocsMcpRequestContext,
@@ -371,6 +383,7 @@ interface CreateFilesystemDocsMcpSourceOptions {
   entry?: string;
   contentDir?: string;
   siteTitle?: string;
+  baseUrl?: string;
   ordering?: "alphabetical" | "numeric" | OrderingItem[];
 }
 
@@ -1690,6 +1703,13 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         type: "number",
         description: "Maximum result count returned by search requests.",
       },
+      {
+        path: "search.syncNamespace",
+        name: "syncNamespace",
+        type: "string",
+        description:
+          "Stable ownership namespace used to isolate and safely prune this corpus in a shared hosted index.",
+      },
     ],
   },
   {
@@ -2150,7 +2170,7 @@ const searchFilterValueSchema = z.union([
 const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
-  locale: z.string().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
   audience: z.enum(["human", "agent"]).optional(),
   framework: searchFilterValueSchema.optional(),
   version: searchFilterValueSchema.optional(),
@@ -2160,7 +2180,7 @@ const searchDocsInputSchema = z.object({
 
 const readPageInputSchema = z.object({
   path: z.string().min(1),
-  locale: z.string().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
   section: z.string().trim().min(1).optional(),
   maxChars: z.number().int().min(256).max(1_000_000).optional(),
 });
@@ -2170,7 +2190,7 @@ const listTasksInputSchema = z.object({
   framework: z.string().trim().min(1).optional(),
   version: z.string().trim().min(1).optional(),
   package: z.string().trim().min(1).optional(),
-  locale: z.string().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
 });
 
 const readTaskInputSchema = readPageInputSchema;
@@ -2249,16 +2269,16 @@ const readTaskOutputSchema = z.object({
 });
 
 const listPagesInputSchema = z.object({
-  locale: z.string().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
 });
 
 const listDocsInputSchema = z.object({
   section: z.string().trim().min(1).optional(),
-  locale: z.string().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
 });
 
 const getNavigationInputSchema = z.object({
-  locale: z.string().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
 });
 
 const getConfigSchemaInputSchema = z.object({
@@ -2274,7 +2294,7 @@ const getCodeExamplesInputSchema = z.object({
   language: z.string().trim().min(1).optional(),
   runnable: z.boolean().optional(),
   limit: z.number().int().min(1).max(50).optional(),
-  locale: z.string().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
 });
 
 const getContextInputSchema = z.object({
@@ -2283,7 +2303,7 @@ const getContextInputSchema = z.object({
   version: z.string().trim().min(1).optional(),
   package: searchFilterValueSchema.optional(),
   tags: searchFilterValueSchema.optional(),
-  locale: z.string().trim().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
   tokenBudget: z
     .number()
     .int()
@@ -2356,6 +2376,40 @@ const navigationOutputSchema = z.object({
   }),
   markdown: z.string(),
 });
+const retrievalSourceValueOutputSchema = z.string().max(128);
+const retrievalSourceValuesOutputSchema = z.array(retrievalSourceValueOutputSchema).max(16);
+const retrievalSourceScopeOutputSchema = z.object({
+  audience: z.enum(["human", "agent"]),
+  locale: retrievalSourceValuesOutputSchema.optional(),
+  framework: retrievalSourceValuesOutputSchema.optional(),
+  version: retrievalSourceValuesOutputSchema.optional(),
+  versionGroups: z.array(retrievalSourceValuesOutputSchema).max(16).optional(),
+  package: retrievalSourceValuesOutputSchema.optional(),
+  tags: retrievalSourceValuesOutputSchema.optional(),
+  truncated: z
+    .array(z.enum(["framework", "version", "package", "tags"]))
+    .max(4)
+    .optional(),
+  conflicts: z
+    .array(z.enum(["framework", "version", "package", "tags"]))
+    .max(4)
+    .optional(),
+});
+const retrievalSourceDigestOutputSchema = z.string().regex(/^sha256:[a-f\d]{64}$/iu);
+const retrievalSourceOutputSchema = z.object({
+  canonicalUrl: z
+    .string()
+    .max(4_096)
+    .refine(isDocsRetrievalCanonicalUrl, "Expected a safe HTTP(S) URL or root-relative path"),
+  scope: retrievalSourceScopeOutputSchema,
+  lastModified: z
+    .string()
+    .max(256)
+    .refine((value) => Number.isFinite(Date.parse(value)), "Expected a parseable modified time")
+    .optional(),
+  digest: retrievalSourceDigestOutputSchema,
+  indexGeneration: retrievalSourceDigestOutputSchema,
+});
 const searchResultOutputSchema = z.object({
   id: z.string(),
   url: z.string(),
@@ -2364,6 +2418,7 @@ const searchResultOutputSchema = z.object({
   type: z.enum(["page", "heading", "text"]),
   score: z.number().optional(),
   section: z.string().optional(),
+  source: retrievalSourceOutputSchema.optional(),
 });
 const searchFiltersOutputSchema = z.object({
   framework: z.array(z.string()).optional(),
@@ -2389,6 +2444,7 @@ const searchDocsOutputSchema = z.object({
   query: z.string(),
   audience: z.enum(["human", "agent"]),
   filters: searchFiltersOutputSchema,
+  indexGeneration: retrievalSourceDigestOutputSchema,
   resultCount: z.number().int().nonnegative(),
   results: z.array(searchResultOutputSchema),
   warnings: z.array(searchWarningOutputSchema),
@@ -2474,6 +2530,7 @@ const contextSourceOutputSchema = z.object({
   version: z.string().optional(),
   package: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
+  source: retrievalSourceOutputSchema.optional(),
   score: z.number().optional(),
   content: z.string(),
   chars: z.number().int().nonnegative(),
@@ -2746,6 +2803,10 @@ export function createFilesystemDocsMcpSource(
   return {
     entry,
     siteTitle: options.siteTitle ?? "Documentation",
+    baseUrl: options.baseUrl,
+    // Filesystem sources are locale-agnostic. Returning undefined prevents
+    // request-controlled locale strings from creating synthetic index variants.
+    resolveLocale: () => undefined,
     getPages,
     getNavigation,
   };
@@ -2790,11 +2851,17 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   const telemetryFramework = options.telemetryFramework ?? "mcp";
 
   function getSourcePages(locale?: string) {
-    return options.source.getPages(locale, options.requestContext);
+    return options.source.getPages(resolveSourceLocale(locale), options.requestContext);
   }
 
   function getSourceNavigation(locale?: string) {
-    return options.source.getNavigation(locale, options.requestContext);
+    return options.source.getNavigation(resolveSourceLocale(locale), options.requestContext);
+  }
+
+  function resolveSourceLocale(locale?: string) {
+    return options.source.resolveLocale
+      ? options.source.resolveLocale(locale, options.requestContext)
+      : locale;
   }
 
   function getSourceSkills() {
@@ -3463,6 +3530,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         const startedAt = nowMs();
         const resolvedLimit = limit ?? 10;
         const resolvedAudience = audience ?? "agent";
+        const resolvedLocale = resolveSourceLocale(locale);
         const filters = {
           framework,
           version,
@@ -3493,15 +3561,25 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(await getSourcePages(locale));
+          const pages = dedupePages(
+            await options.source.getPages(resolvedLocale, options.requestContext),
+          );
           const searchResponse = await performDocsSearchWithMetadata({
             pages: toSearchSourcePages(pages),
             query,
             search: toolSearchConfig ?? true,
             audience: resolvedAudience,
             filters,
-            locale,
+            locale: resolvedLocale,
             siteTitle: options.source.siteTitle,
+            baseUrl:
+              options.source.baseUrl ??
+              (options.requestContext?.request
+                ? new URL(options.requestContext.request.url).origin
+                : undefined),
+            // The request origin is safe for response links, but must never become
+            // hosted-index ownership. Only an explicitly configured source base is trusted.
+            syncBaseUrl: options.source.baseUrl ?? null,
             limit: resolvedLimit,
           });
           const elapsed = durationMs(startedAt);
@@ -3697,6 +3775,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       },
       async ({ query, framework, version, package: packageName, tags, locale, tokenBudget }) => {
         const startedAt = nowMs();
+        const resolvedLocale = resolveSourceLocale(locale);
         const trace = createDocsAgentTraceContext("mcp.tool.get_context");
         const callSpanId = createDocsAgentTraceId("span");
         await emitDocsAgentTraceEvent(options.observability, {
@@ -3721,7 +3800,9 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(await getSourcePages(locale));
+          const pages = dedupePages(
+            await options.source.getPages(resolvedLocale, options.requestContext),
+          );
           const result = await buildDocsMcpContext({
             pages,
             query,
@@ -3729,10 +3810,15 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             version,
             package: packageName,
             tags,
-            locale,
+            locale: resolvedLocale,
             tokenBudget,
             entry: options.source.entry,
             siteTitle: options.source.siteTitle,
+            baseUrl:
+              options.source.baseUrl ??
+              (options.requestContext?.request
+                ? new URL(options.requestContext.request.url).origin
+                : undefined),
           });
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {
@@ -4806,6 +4892,13 @@ function hasVisibleDescendantFilesystemDocsPage(dir: string): boolean {
   return false;
 }
 
+function normalizeFrontmatterLastmod(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  return value instanceof Date && Number.isFinite(value.getTime())
+    ? value.toISOString()
+    : undefined;
+}
+
 function scanFilesystemDocsPages(
   contentDirAbs: string,
   entry: string,
@@ -4866,6 +4959,7 @@ function scanFilesystemDocsPages(
         agent: normalizePageAgentFrontmatter(data.agent),
         icon: data.icon as string | undefined,
         sourcePath: path.relative(rootDir, full).replace(/\\/g, "/"),
+        lastmod: normalizeFrontmatterLastmod(data.lastmod),
         lastModified: stat.mtime.toISOString(),
         locale: typeof data.locale === "string" ? data.locale : undefined,
         framework: typeof data.framework === "string" ? data.framework : undefined,
@@ -4898,6 +4992,7 @@ function readFilesystemAgentDoc(dir: string) {
   return {
     agentContent: stripMarkdownForMcp(agentContent),
     agentRawContent: agentContent,
+    agentLastModified: fs.statSync(agentPath).mtime.toISOString(),
   };
 }
 
@@ -5048,25 +5143,7 @@ function dedupePages(pages: DocsMcpPage[]): DocsMcpPage[] {
 }
 
 function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
-  return pages.map((page) => ({
-    title: page.title,
-    url: page.url,
-    content: page.content,
-    rawContent: page.rawContent,
-    sourcePath: page.sourcePath,
-    lastModified: page.lastModified,
-    locale: page.locale,
-    framework: page.framework,
-    version: page.version,
-    tags: page.tags,
-    agentContent: page.agentContent,
-    agentRawContent: page.agentRawContent,
-    agentFallbackContent: page.agentFallbackContent,
-    agentFallbackRawContent: page.agentFallbackRawContent,
-    description: page.description,
-    related: page.related,
-    agent: page.agent,
-  }));
+  return pages;
 }
 
 export function getDocsConfigSchema(
@@ -5969,13 +6046,18 @@ export async function buildDocsMcpContext(
     return scope.matches && !scope.conflict ? [{ page, scope }] : [];
   });
   const scopedPages = scopedPageEntries.map(({ page }) => page);
+  const allSearchPages = toSearchSourcePages([...options.pages]);
+  const searchPageBySource = new Map(
+    options.pages.map((page, index) => [page, allSearchPages[index]!] as const),
+  );
   const scopeByPage = new Map(scopedPageEntries.map(({ page, scope }) => [page, scope]));
   const maxResults =
     typeof options.maxResults === "number" && Number.isFinite(options.maxResults)
       ? Math.max(1, Math.min(50, Math.floor(options.maxResults)))
       : 50;
   const searchResults = await performDocsSearch({
-    pages: toSearchSourcePages(scopedPages),
+    pages: scopedPages.map((page) => searchPageBySource.get(page)!),
+    generationPages: allSearchPages,
     query: options.query,
     search: {
       enabled: true,
@@ -5986,6 +6068,7 @@ export async function buildDocsMcpContext(
     audience: "agent",
     locale: options.locale,
     siteTitle: options.siteTitle,
+    baseUrl: options.baseUrl,
     limit: 50,
   });
   const orderedResults = [...searchResults].sort((left, right) => {
@@ -6049,9 +6132,9 @@ export async function buildDocsMcpContext(
 
   for (const { result, page, scope, selectedSection, rawContent } of resolvedCandidates) {
     const anchor = selectedSection?.anchor;
-    const sourceUrl = anchor
-      ? `${page.url.split("#", 1)[0]}#${encodeURIComponent(anchor)}`
-      : page.url;
+    const sourceUrl =
+      result.source?.canonicalUrl ??
+      (anchor ? `${page.url.split("#", 1)[0]}#${encodeURIComponent(anchor)}` : page.url);
     const headerLines = [`## ${page.title}`, `Source: ${sourceUrl}`];
     if (selectedSection?.title) headerLines.push(`Section: ${selectedSection.title}`);
     if (scope.framework) headerLines.push(`Framework: ${scope.framework}`);
@@ -6079,12 +6162,13 @@ export async function buildDocsMcpContext(
       section: selectedSection?.title,
       anchor,
       sourcePath: page.sourcePath,
-      lastModified: page.lastModified,
+      lastModified: result.source?.lastModified ?? page.lastModified,
       locale: scope.locale,
       framework: scope.framework,
       version: scope.version,
       package: scope.package.length > 0 ? [...scope.package] : undefined,
       tags: scope.tags.length > 0 ? [...scope.tags] : undefined,
+      source: result.source,
       score: result.score,
       content: limited.text,
       chars: limited.text.length,
@@ -6136,10 +6220,19 @@ function findDocsPage(
   entry?: string,
 ): DocsMcpPage | null {
   const normalizedRequest = normalizeRequestedPath(requestedPath, entry);
+  const normalizedRequestWithoutLocale = normalizeRequestedPath(
+    removeDocsLocaleQuery(requestedPath),
+    entry,
+  );
 
   for (const page of pages) {
     const normalizedPageUrl = normalizeUrlPath(page.url);
-    if (normalizedPageUrl === normalizedRequest) return page;
+    if (
+      normalizedPageUrl === normalizedRequest ||
+      normalizedPageUrl === normalizedRequestWithoutLocale
+    ) {
+      return page;
+    }
   }
 
   const normalizedSlug = normalizePathSegment(requestedPath.replace(/^\//, ""));
@@ -6148,6 +6241,17 @@ function findDocsPage(
   }
 
   return null;
+}
+
+function removeDocsLocaleQuery(value: string): string {
+  try {
+    const absolute = /^[a-z][a-z\d+.-]*:/iu.test(value);
+    const url = new URL(value, "https://docs.local");
+    url.searchParams.delete("lang");
+    return absolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return value;
+  }
 }
 
 function normalizeRequestedPath(requestedPath: string, entry?: string): string {

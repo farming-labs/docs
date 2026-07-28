@@ -82,6 +82,7 @@ import {
   resolveDocsMarkdownRequest,
   resolveDocsMetadataBaseUrl,
   resolveDocsRequestApiRoute,
+  resolveDocsRetrievalLastModified,
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
   resolveDocsPath,
@@ -109,7 +110,12 @@ import {
   serializeOpenDocsProviders,
 } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
-import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
+import {
+  loadDocsNavTree,
+  loadDocsContent,
+  flattenNavTree,
+  normalizeDocsFrontmatterLastmod,
+} from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 export { createSvelteApiReference } from "./api-reference.js";
@@ -509,6 +515,8 @@ function searchIndexFromMap(
   contentMap: ContentFileMap,
   dirPrefix: string,
   entry: string,
+  locale?: string,
+  sitemapManifest?: ReturnType<typeof readDocsSitemapManifestFromContentMap>,
 ): ContentPage[] {
   const pages: ContentPage[] = [];
 
@@ -523,6 +531,13 @@ function searchIndexFromMap(
     const isIdx = base === "page" || base === "index" || base === "+page";
     const slug = isIdx ? segments.join("/") : [...segments, base].join("/");
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
+    const manifestLastmod =
+      (locale
+        ? resolveDocsSitemapPageLastmod(
+            sitemapManifest,
+            `${url}?lang=${encodeURIComponent(locale)}`,
+          )
+        : undefined) ?? resolveDocsSitemapPageLastmod(sitemapManifest, url);
 
     const { data, content } = matter(raw);
     const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
@@ -540,6 +555,7 @@ function searchIndexFromMap(
       ...(related.length > 0 ? { related } : {}),
       agent: normalizePageAgentFrontmatter(data.agent),
       icon: data.icon as string | undefined,
+      lastmod: normalizeDocsFrontmatterLastmod(data.lastmod),
       locale: typeof data.locale === "string" ? data.locale : undefined,
       framework: typeof data.framework === "string" ? data.framework : undefined,
       version: typeof data.version === "string" ? data.version : undefined,
@@ -548,6 +564,7 @@ function searchIndexFromMap(
         : undefined,
       content: stripMarkdownText(humanRawContent),
       rawContent: humanRawContent,
+      ...(manifestLastmod ? { lastModified: `${manifestLastmod}T00:00:00.000Z` } : {}),
       ...(pageAgentRawContent !== humanRawContent
         ? {
             agentFallbackContent: stripMarkdownText(pageAgentRawContent),
@@ -879,7 +896,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const cached = searchIndexByEntry.get(key);
     if (cached) return cached;
     const index = preloaded
-      ? searchIndexFromMap(preloaded, ctx.dirPrefix, entry)
+      ? searchIndexFromMap(preloaded, ctx.dirPrefix, entry, ctx.locale, preloadedSitemapManifest)
       : loadDocsContent(ctx.contentDirAbs, entry);
     searchIndexByEntry.set(key, index);
     return index;
@@ -1005,7 +1022,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return page
       ? {
           document: renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }),
-          lastModified: page.agentRawContent === undefined ? page.lastModified : undefined,
+          lastModified: resolveDocsRetrievalLastModified(page, "agent"),
         }
       : null;
   }
@@ -1344,27 +1361,14 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const audience = resolveDocsSearchAudience(event.url.searchParams.get("audience"));
     const filters = resolveDocsSearchFilters(event.url.searchParams);
     const structured = event.url.searchParams.get("response") === "structured";
-    if (!query) {
-      const searchResponse = structured
-        ? {
-            format: "docs-search.v1",
-            query: "",
-            audience,
-            filters,
-            resultCount: 0,
-            results: [],
-            warnings: [],
-          }
-        : [];
-      return new Response(JSON.stringify(searchResponse), {
+    if (!query && !structured) {
+      return new Response("[]", {
         headers: { "Content-Type": "application/json" },
       });
     }
-
-    const searchStartedAt = Date.now();
     const searchOptions = {
       pages: getSearchIndex(ctx),
-      query,
+      query: query ?? "",
       search: resolveSearchRequestConfig(config.search, event.request.url),
       audience,
       filters,
@@ -1372,7 +1376,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       pathname: event.url.searchParams.get("pathname") ?? undefined,
       siteTitle: llmsTitle,
       baseUrl: markdownMetadataBaseUrl || event.url.origin,
+      syncBaseUrl: markdownMetadataBaseUrl ?? null,
     };
+    if (!query) {
+      const searchResponse = structured ? await performDocsSearchWithMetadata(searchOptions) : [];
+      return new Response(JSON.stringify(searchResponse), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const searchStartedAt = Date.now();
     const searchResponse = structured
       ? await performDocsSearchWithMetadata(searchOptions)
       : await performDocsSearch(searchOptions);
@@ -1711,7 +1724,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       locale: ctx.locale,
       pathname: requestUrl.searchParams.get("pathname") ?? undefined,
       siteTitle: llmsTitle,
-      baseUrl: requestUrl.origin,
+      baseUrl: markdownMetadataBaseUrl || requestUrl.origin,
+      syncBaseUrl: markdownMetadataBaseUrl ?? null,
       limit: maxResults,
     });
     const scored = retrieval.results;
@@ -2011,6 +2025,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     source: {
       entry,
       siteTitle: mcpSiteTitle,
+      baseUrl: markdownMetadataBaseUrl || undefined,
+      resolveLocale: resolveLocaleForMcp,
       getPages(locale) {
         const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
         return getSearchIndex(ctx);
