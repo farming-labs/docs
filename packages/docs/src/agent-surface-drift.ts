@@ -372,6 +372,8 @@ export function analyzeAgentSurfaceDrift(
     ],
     ["search.repeatedFilterParams", ["framework", "version", "package", "tags"]],
     ["search.warningsField", "warnings"],
+    ["search.facetParam", "facet"],
+    ["search.limitParam", "limit"],
     ["search.cursorParam", "cursor"],
     ["search.nextCursorField", "nextCursor"],
     ["search.hasMoreField", "hasMore"],

@@ -2277,6 +2277,9 @@ const searchDocsInputSchema = z.object({
 const searchFacetsInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
   audience: z.enum(["human", "agent"]).optional(),
+  facet: z.enum(["framework", "version", "package", "tags"]).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  cursor: paginationCursorInputSchema,
   framework: searchFilterValueSchema.optional(),
   version: searchFilterValueSchema.optional(),
   package: searchFilterValueSchema.optional(),
@@ -2580,6 +2583,9 @@ const searchDocsOutputSchema = z.object({
 });
 const searchFacetOutputSchema = z.object({
   valueCount: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+  nextCursor: z.string().optional(),
   truncated: z.boolean(),
   values: z.array(
     z.object({
@@ -3994,12 +4000,22 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       {
         title: "List documentation search facets",
         description:
-          "List valid framework, version, package, and tag filters with matching page counts before calling search_docs. Returns no document bodies.",
+          "List valid framework, version, package, and tag filters with matching page counts before calling search_docs. Use facet, limit, and cursor to continue a large facet without document bodies.",
         inputSchema: searchFacetsInputSchema,
         outputSchema: searchFacetsOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ locale, audience, framework, version, package: packageName, tags }) => {
+      async ({
+        locale,
+        audience,
+        facet,
+        limit,
+        cursor,
+        framework,
+        version,
+        package: packageName,
+        tags,
+      }) => {
         const startedAt = nowMs();
         const resolvedAudience = audience ?? "agent";
         const resolvedLocale = resolveSourceLocale(locale);
@@ -4023,6 +4039,9 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           inputPreview: {
             locale,
             audience: resolvedAudience,
+            facet,
+            limit,
+            hasCursor: cursor !== undefined,
             filterFields: Object.entries(filters)
               .filter(([, value]) => value !== undefined)
               .map(([field]) => field),
@@ -4039,6 +4058,9 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             search: toolSearchConfig ?? true,
             audience: resolvedAudience,
             filters,
+            facet,
+            limit,
+            cursor,
             locale: resolvedLocale,
             baseUrl:
               options.source.baseUrl ??

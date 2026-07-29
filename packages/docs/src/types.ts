@@ -1626,11 +1626,17 @@ export interface DocsSearchFacetValue {
   count: number;
 }
 
-/** Bounded values for one search-scope field. */
+/** Cursor-aware values for one search-scope field. */
 export interface DocsSearchFacet {
   /** Number of distinct values before the response limit is applied. */
   valueCount: number;
-  /** Whether additional values were omitted from this response. */
+  /** Total number of distinct values. Alias of `valueCount` for pagination clients. */
+  total: number;
+  /** Whether another page can be requested with `nextCursor`. */
+  hasMore: boolean;
+  /** Opaque cursor for the next page. Omitted when this is the final page. */
+  nextCursor?: string;
+  /** Whether this page omits any values from the complete facet. */
   truncated: boolean;
   values: DocsSearchFacetValue[];
 }
@@ -1711,9 +1717,11 @@ export interface DocsSearchRequest {
   structured: boolean;
   /** Whether the caller requested the body-free search facet response. */
   facets?: boolean;
-  /** Opaque cursor supplied by a previous structured response. */
+  /** Facet field selected for cursor continuation. */
+  facet?: DocsSearchFilterField;
+  /** Opaque cursor supplied by a previous structured or facet response. */
   cursor?: string;
-  /** Structured response page size. */
+  /** Structured result or facet value page size. */
   limit?: number;
 }
 

@@ -585,11 +585,102 @@ describe("performDocsSearch", () => {
     });
     expect(bounded.facets.tags).toMatchObject({
       valueCount: 105,
+      total: 105,
+      hasMore: true,
       truncated: true,
     });
     expect(bounded.facets.tags.values).toHaveLength(100);
     expect(bounded.facets.tags.values.at(0)).toEqual({ value: "tag-000", count: 1 });
     expect(bounded.facets.tags.values.at(-1)).toEqual({ value: "tag-099", count: 1 });
+
+    const firstTagPage = await buildDocsSearchFacets({
+      pages: Array.from({ length: 105 }, (_, index) => ({
+        title: `Tag ${index}`,
+        url: `/docs/tag-${index}`,
+        content: `Facet tag ${index}.`,
+        tags: [`tag-${String(index).padStart(3, "0")}`],
+      })),
+      facet: "tags",
+      limit: 50,
+    });
+    expect(firstTagPage.facets.tags).toMatchObject({
+      total: 105,
+      hasMore: true,
+      truncated: true,
+    });
+    expect(firstTagPage.facets.tags.values).toHaveLength(50);
+    expect(firstTagPage.facets.tags.values.at(0)?.value).toBe("tag-000");
+    expect(firstTagPage.facets.tags.values.at(-1)?.value).toBe("tag-049");
+    expect(firstTagPage.facets.tags.nextCursor).toEqual(expect.any(String));
+
+    const secondTagPage = await buildDocsSearchFacets({
+      pages: Array.from({ length: 105 }, (_, index) => ({
+        title: `Tag ${index}`,
+        url: `/docs/tag-${index}`,
+        content: `Facet tag ${index}.`,
+        tags: [`tag-${String(index).padStart(3, "0")}`],
+      })),
+      facet: "tags",
+      limit: 50,
+      cursor: firstTagPage.facets.tags.nextCursor,
+    });
+    expect(secondTagPage.facets.tags).toMatchObject({
+      total: 105,
+      hasMore: true,
+    });
+    expect(secondTagPage.facets.tags.values.at(0)?.value).toBe("tag-050");
+    expect(secondTagPage.facets.tags.values.at(-1)?.value).toBe("tag-099");
+
+    const finalTagPage = await buildDocsSearchFacets({
+      pages: Array.from({ length: 105 }, (_, index) => ({
+        title: `Tag ${index}`,
+        url: `/docs/tag-${index}`,
+        content: `Facet tag ${index}.`,
+        tags: [`tag-${String(index).padStart(3, "0")}`],
+      })),
+      facet: "tags",
+      limit: 50,
+      cursor: secondTagPage.facets.tags.nextCursor,
+    });
+    expect(finalTagPage.facets.tags).toMatchObject({
+      total: 105,
+      hasMore: false,
+      truncated: true,
+    });
+    expect(finalTagPage.facets.tags.nextCursor).toBeUndefined();
+    expect(finalTagPage.facets.tags.values.map(({ value }) => value)).toEqual([
+      "tag-100",
+      "tag-101",
+      "tag-102",
+      "tag-103",
+      "tag-104",
+    ]);
+    await expect(
+      buildDocsSearchFacets({
+        pages: Array.from({ length: 105 }, (_, index) => ({
+          title: `Tag ${index}`,
+          url: `/docs/tag-${index}`,
+          content: `Facet tag ${index}.`,
+          tags: [`tag-${String(index).padStart(3, "0")}`],
+        })),
+        facet: "framework",
+        limit: 50,
+        cursor: firstTagPage.facets.tags.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+    await expect(
+      buildDocsSearchFacets({
+        pages: Array.from({ length: 106 }, (_, index) => ({
+          title: `Tag ${index}`,
+          url: `/docs/tag-${index}`,
+          content: `Facet tag ${index}.`,
+          tags: [`tag-${String(index).padStart(3, "0")}`],
+        })),
+        facet: "tags",
+        limit: 50,
+        cursor: firstTagPage.facets.tags.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
   });
 
   it("parses structured pagination inputs and requires structured mode for cursors", () => {
@@ -610,21 +701,41 @@ describe("performDocsSearch", () => {
       filters: {},
     });
     expect(
-      resolveDocsSearchRequest(new URLSearchParams("response=facets&framework=Astro&tags=setup")),
+      resolveDocsSearchRequest(
+        new URLSearchParams("response=facets&facet=tags&limit=50&framework=Astro&tags=setup"),
+      ),
     ).toEqual({
       structured: false,
       facets: true,
+      facet: "tags",
+      limit: 50,
       filters: { framework: ["astro"], tags: ["setup"] },
     });
     expect(() =>
       resolveDocsSearchRequest(new URLSearchParams("cursor=opaque-continuation-token")),
-    ).toThrow("Search cursors require the structured response format");
+    ).toThrow("Search cursors require `response=structured` or `response=facets`");
 
     for (const limit of ["0", "26", "1.5", "not-a-number", "+2", " 2"]) {
       expect(() =>
         resolveDocsSearchRequest(new URLSearchParams({ response: "structured", limit })),
       ).toThrow("Search limit must be an integer between 1 and 25");
     }
+    for (const limit of ["0", "101", "1.5", "not-a-number", "+2", " 2"]) {
+      expect(() =>
+        resolveDocsSearchRequest(new URLSearchParams({ response: "facets", limit })),
+      ).toThrow("Search limit must be an integer between 1 and 100");
+    }
+    expect(() =>
+      resolveDocsSearchRequest(new URLSearchParams("response=facets&facet=unknown")),
+    ).toThrow("Search facet must be one of");
+    expect(() =>
+      resolveDocsSearchRequest(new URLSearchParams("response=structured&facet=tags")),
+    ).toThrow("requires `response=facets`");
+    expect(() =>
+      resolveDocsSearchRequest(
+        new URLSearchParams("response=facets&cursor=opaque-continuation-token"),
+      ),
+    ).toThrow("require a `facet` field");
   });
 
   it("keeps pre-pagination docs-search.v1 producers source-compatible", () => {
