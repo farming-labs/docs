@@ -383,7 +383,9 @@ SvelteKit's `static/` directory:
 
 The exported artifact is static by definition. Its discovery document disables server-only search,
 MCP, feedback, API reference, and OpenAPI capabilities even when the application config is otherwise
-server-rendered. Page freshness uses tracked git commit dates; untracked pages omit `last_updated`
+server-rendered.
+
+The static bundle also always advertises `capabilities.contentChanges: false` and omits the `contentChanges` API endpoint, because the runtime change feed requires a live server and is unavailable in static exports. Page freshness uses tracked git commit dates; untracked pages omit `last_updated`
 instead of hashing checkout-specific filesystem mtimes.
 
 Add the read-only check to CI when generated files are committed:
