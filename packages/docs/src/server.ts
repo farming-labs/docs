@@ -124,6 +124,21 @@ export type {
   DocsResolvedContentChangesConfig,
   ResolveDocsContentChangesOptions,
 } from "./content-changes.js";
+export {
+  DEFAULT_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  DOCS_CONTENT_CHANGE_HYDRATION_FORMAT,
+  hydrateDocsContentChanges,
+  MAX_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  MIN_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+} from "./content-change-hydration.js";
+export type {
+  DocsContentChangeHydrationBudget,
+  DocsContentChangeHydrationContent,
+  DocsContentChangeHydrationResponse,
+  DocsContentChangeHydrationSection,
+  DocsContentChangeHydrationTombstone,
+  HydrateDocsContentChangesOptions,
+} from "./content-change-hydration.js";
 export { runDocsGoldenTasks } from "./agent-evals.js";
 export {
   resolveConfiguredAgentSkills,

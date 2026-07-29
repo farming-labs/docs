@@ -1382,6 +1382,11 @@ export interface DocsMcpToolsConfig {
   searchFacets?: boolean;
   /** Expose body-free document changes with polling through `list_content_changes`. */
   listContentChanges?: boolean;
+  /**
+   * Expose `hydrate_content_changes` for budget-aware section bodies and deletion
+   * tombstones after polling `list_content_changes`.
+   */
+  hydrateContentChanges?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */
   getNavigation?: boolean;
   /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
