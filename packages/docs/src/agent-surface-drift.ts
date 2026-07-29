@@ -346,11 +346,21 @@ export function analyzeAgentSurfaceDrift(
     expectedAgentSearchEndpoint === null
       ? null
       : `${expectedAgentSearchEndpoint}&response=structured`;
+  const expectedSearchFacetsEndpoint =
+    expectedAgentSearchEndpoint === null
+      ? null
+      : expectedAgentSearchEndpoint.replace(
+          "query={query}&audience=agent",
+          "audience=agent&response=facets",
+        );
   for (const [path, expected] of [
     ["search.structuredAgentEndpoint", expectedStructuredAgentSearchEndpoint],
+    ["search.facetsEndpoint", expectedSearchFacetsEndpoint],
     ["search.responseParam", "response"],
     ["search.structuredResponseValue", "structured"],
+    ["search.facetsResponseValue", "facets"],
     ["search.responseFormat", "docs-search.v1"],
+    ["search.facetsResponseFormat", "docs-search-facets.v1"],
     [
       "search.filterParams",
       {

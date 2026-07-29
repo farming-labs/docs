@@ -1373,6 +1373,11 @@ export interface DocsMcpToolsConfig {
   readTask?: boolean;
   /** Expose a `search_docs` tool for keyword search over page content. */
   searchDocs?: boolean;
+  /**
+   * Expose a `list_search_facets` tool that returns valid framework, version,
+   * package, and tag values before an agent runs a scoped search.
+   */
+  searchFacets?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */
   getNavigation?: boolean;
   /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
@@ -1615,6 +1620,37 @@ export interface DocsSearchFilters {
   tags?: string[];
 }
 
+/** One selectable search-scope value and the number of matching source pages. */
+export interface DocsSearchFacetValue {
+  value: string;
+  count: number;
+}
+
+/** Bounded values for one search-scope field. */
+export interface DocsSearchFacet {
+  /** Number of distinct values before the response limit is applied. */
+  valueCount: number;
+  /** Whether additional values were omitted from this response. */
+  truncated: boolean;
+  values: DocsSearchFacetValue[];
+}
+
+/**
+ * Cheap, body-free discovery response for the search scopes available in an index.
+ *
+ * Counts for each facet apply the other selected filters but intentionally ignore
+ * the selected values for that same field, so agents can discover alternatives.
+ */
+export interface DocsSearchFacetsResponse {
+  format: "docs-search-facets.v1";
+  audience: "human" | "agent";
+  filters: DocsSearchFilters;
+  indexGeneration: string;
+  /** Number of source pages matching every selected filter. */
+  matchedPageCount: number;
+  facets: Record<DocsSearchFilterField, DocsSearchFacet>;
+}
+
 export type DocsSearchWarningCode =
   | "ambiguous_scope"
   | "unknown_filter_value"
@@ -1673,6 +1709,8 @@ export interface DocsPaginatedSearchResponse extends DocsSearchResponse {
 export interface DocsSearchRequest {
   filters: DocsSearchFilters;
   structured: boolean;
+  /** Whether the caller requested the body-free search facet response. */
+  facets?: boolean;
   /** Opaque cursor supplied by a previous structured response. */
   cursor?: string;
   /** Structured response page size. */

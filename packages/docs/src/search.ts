@@ -9,9 +9,11 @@ import type {
   DocsSearchAdapterPage,
   DocsSearchConfig,
   DocsSearchDocument,
+  DocsSearchFacet,
   DocsSearchFilterField,
   DocsSearchFilterInput,
   DocsSearchFilters,
+  DocsSearchFacetsResponse,
   DocsSearchQuery,
   DocsSearchRequest,
   DocsSearchResult,
@@ -80,6 +82,7 @@ const ALGOLIA_BATCH_OPERATIONS = 1_000;
 const MAX_SEARCH_WARNINGS = 16;
 const MAX_SEARCH_WARNING_VALUES = 16;
 const MAX_SEARCH_WARNING_PAGE_URLS = 8;
+const MAX_SEARCH_FACET_VALUES = 100;
 const RETRIEVAL_INDEX_FORMAT = "docs-retrieval-index.v1";
 const MAX_RETRIEVAL_SOURCE_URL_CHARS = 4_096;
 const MAX_RETRIEVAL_SOURCE_VALUE_CHARS = 256;
@@ -237,7 +240,9 @@ export function resolveDocsSearchError(
 
 /** Resolve search filters and the backwards-compatible structured response opt-in. */
 export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSearchRequest {
-  const structured = searchParams.get("response") === "structured";
+  const response = searchParams.get("response");
+  const structured = response === "structured";
+  const facets = response === "facets";
   const cursor = searchParams.get("cursor") ?? undefined;
   if (cursor !== undefined && !structured) {
     throw new DocsSearchRequestError(
@@ -266,6 +271,7 @@ export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSea
   return {
     filters: resolveDocsSearchFilters(searchParams),
     structured,
+    ...(facets ? { facets: true } : {}),
     ...(cursor !== undefined ? { cursor } : {}),
     ...(limit !== undefined ? { limit } : {}),
   };
@@ -4372,6 +4378,93 @@ export async function performDocsSearch(
 function compareSearchMetadataValues(left: string, right: string): number {
   if (left === right) return 0;
   return left < right ? -1 : 1;
+}
+
+export interface BuildDocsSearchFacetsOptions {
+  pages: DocsSearchSourcePage[];
+  search?: boolean | DocsSearchConfig;
+  audience?: DocsContentAudience;
+  locale?: string;
+  baseUrl?: string;
+  filters?: DocsSearchFilterInput;
+  /** @internal Precomputed complete-corpus generation for composed callers. */
+  indexGeneration?: string;
+}
+
+function docsSearchPageMatchesFacetFilters(
+  scope: ResolvedDocsSearchPageScope,
+  filters: DocsSearchFilters,
+  omittedField?: DocsSearchFilterField,
+): boolean {
+  if (scope.conflicts.length > 0) return false;
+  return SEARCH_FILTER_FIELDS.every((field) => {
+    if (field === omittedField) return true;
+    const requested = filters[field];
+    return !requested?.length || docsSearchScopeFieldMatches(scope, field, requested);
+  });
+}
+
+function buildDocsSearchFacet(
+  pages: readonly { scope: ResolvedDocsSearchPageScope }[],
+  field: DocsSearchFilterField,
+  filters: DocsSearchFilters,
+): DocsSearchFacet {
+  const counts = new Map<string, number>();
+
+  for (const { scope } of pages) {
+    if (!docsSearchPageMatchesFacetFilters(scope, filters, field)) continue;
+    for (const value of new Set(scope[field])) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+  }
+
+  const values = [...counts]
+    .sort(([left], [right]) => compareSearchMetadataValues(left, right))
+    .map(([value, count]) => ({ value, count }));
+
+  return {
+    valueCount: values.length,
+    truncated: values.length > MAX_SEARCH_FACET_VALUES,
+    values: values.slice(0, MAX_SEARCH_FACET_VALUES),
+  };
+}
+
+/**
+ * Build a body-free index of valid search filter values and page counts.
+ *
+ * Each facet applies filters from the other fields while ignoring its own selected
+ * values. This is the conventional faceted-search behavior and lets an agent discover
+ * safe alternatives without guessing or fetching document bodies.
+ */
+export async function buildDocsSearchFacets(
+  options: BuildDocsSearchFacetsOptions,
+): Promise<DocsSearchFacetsResponse> {
+  const audience = resolveDocsSearchAudience(options.audience);
+  const filters = normalizeDocsSearchFilters(options.filters);
+  const search = normalizeDocsSearchConfig(options.search);
+  const pages = options.pages
+    .map((page) => localizeDocsSearchPage(page, options.locale))
+    .map((page) => ({ scope: resolveDocsSearchPageScope(page) }));
+  const indexGeneration =
+    options.indexGeneration ??
+    (await buildDocsSearchIndexGeneration(options.pages, {
+      audience,
+      chunking: search.chunking,
+      locale: options.locale,
+      baseUrl: options.baseUrl,
+    }));
+
+  return {
+    format: "docs-search-facets.v1",
+    audience,
+    filters,
+    indexGeneration,
+    matchedPageCount: pages.filter(({ scope }) => docsSearchPageMatchesFacetFilters(scope, filters))
+      .length,
+    facets: Object.fromEntries(
+      SEARCH_FILTER_FIELDS.map((field) => [field, buildDocsSearchFacet(pages, field, filters)]),
+    ) as Record<DocsSearchFilterField, DocsSearchFacet>,
+  };
 }
 
 function boundedSearchWarningValues(values: readonly string[]): string[] | undefined {

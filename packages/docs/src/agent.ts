@@ -452,6 +452,7 @@ export interface DocsDiagnosticsFeature {
   routes?: Record<string, string | null>;
   agentEndpoint?: string | null;
   structuredAgentEndpoint?: string | null;
+  facetsEndpoint?: string | null;
   audienceParam?: string;
   defaultAudience?: "human" | "agent";
   supportedAudiences?: Array<"human" | "agent">;
@@ -462,6 +463,7 @@ export interface DocsDiagnosticsFeature {
     tags: "tags";
   };
   responseFormat?: "docs-search.v1";
+  facetsResponseFormat?: "docs-search-facets.v1";
   warningsField?: "warnings";
   /** Opaque continuation token accepted by structured search. */
   cursorParam?: "cursor";
@@ -1060,11 +1062,13 @@ export function buildDocsDiagnostics(
           structuredAgent: search.enabled
             ? apiQueryRoute("query={query}&audience=agent&response=structured")
             : null,
+          facets: search.enabled ? apiQueryRoute("audience=agent&response=facets") : null,
         },
         agentEndpoint: search.enabled ? apiQueryRoute("query={query}&audience=agent") : null,
         structuredAgentEndpoint: search.enabled
           ? apiQueryRoute("query={query}&audience=agent&response=structured")
           : null,
+        facetsEndpoint: search.enabled ? apiQueryRoute("audience=agent&response=facets") : null,
         audienceParam: "audience",
         defaultAudience: "human",
         supportedAudiences: ["human", "agent"],
@@ -1075,6 +1079,7 @@ export function buildDocsDiagnostics(
           tags: "tags",
         },
         responseFormat: "docs-search.v1",
+        facetsResponseFormat: "docs-search-facets.v1",
         warningsField: "warnings",
         cursorParam: "cursor",
         nextCursorField: "nextCursor",
@@ -3390,6 +3395,7 @@ export function renderDocsMarkdownNotFound({
     `- API catalog: \`${DEFAULT_API_CATALOG_ROUTE}\``,
     `- Agent Skills index: \`${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}\``,
     `- Agent instructions: \`${DEFAULT_AGENTS_MD_ROUTE}\``,
+    `- Search scope facets: \`${resolvedApiRoute}?audience=agent&response=facets\` (discover valid \`framework\`, \`version\`, \`package\`, and \`tags\` values without page bodies).`,
     `- Structured agent search: \`${resolvedApiRoute}?query={query}&audience=agent&response=structured\` (optionally repeat \`framework\`, \`version\`, \`package\`, or \`tags\`).`,
     `- Docs index markdown: \`/${normalizedEntry}.md\``,
     `- Requested markdown API route: \`${requestedApiRoute}\``,
@@ -3818,6 +3824,7 @@ function appendDocsSearchStartLine(
 ): void {
   if (!context.searchEnabled) return;
   lines.push(
+    `- Discover valid search filters with ${context.apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tags values.`,
     variant === "skill"
       ? `- Search with ${context.apiRoute}?query={query}&audience=agent&response=structured when you do not know the page; optionally repeat framework, version, package, or tags filters.`
       : `- Search with ${context.apiRoute}?query={query}&audience=agent&response=structured when the route is unknown; optionally repeat framework, version, package, or tags filters.`,
@@ -4471,6 +4478,7 @@ export function buildDocsAgentDiscoverySpec({
       endpoint: apiQueryRoute("query={query}"),
       agentEndpoint: apiQueryRoute("query={query}&audience=agent"),
       structuredAgentEndpoint: apiQueryRoute("query={query}&audience=agent&response=structured"),
+      facetsEndpoint: apiQueryRoute("audience=agent&response=facets"),
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
@@ -4479,7 +4487,9 @@ export function buildDocsAgentDiscoverySpec({
       supportedAudiences: ["human", "agent"],
       responseParam: "response",
       structuredResponseValue: "structured",
+      facetsResponseValue: "facets",
       responseFormat: "docs-search.v1",
+      facetsResponseFormat: "docs-search-facets.v1",
       filterParams: {
         framework: "framework",
         version: "version",

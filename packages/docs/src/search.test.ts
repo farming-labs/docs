@@ -10,6 +10,7 @@ import {
   buildDocsAskAIContext,
   buildDocsRetrievalDigestProjection,
   buildDocsSearchDocuments,
+  buildDocsSearchFacets,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
   createMcpSearchAdapter,
@@ -464,6 +465,133 @@ describe("performDocsSearch", () => {
     ).toEqual({ framework: ["nextjs"] });
   });
 
+  it("discovers normalized search facets without fetching result bodies", async () => {
+    const facetPages = [
+      {
+        title: "Next setup",
+        url: "/docs/next-setup",
+        content: "Large body that is not returned by facet discovery.",
+        rawContent: "# Next setup",
+        framework: "Next.js",
+        version: "v16",
+        tags: ["Setup", "Routing"],
+        agent: { appliesTo: { package: "@FARMING-LABS/NEXT" } },
+      },
+      {
+        title: "Next routing",
+        url: "/docs/next-routing",
+        content: "Next routing details.",
+        rawContent: "# Next routing",
+        framework: "next",
+        version: "15",
+        tags: ["routing"],
+        agent: { appliesTo: { package: "@farming-labs/next" } },
+      },
+      {
+        title: "Astro setup",
+        url: "/docs/astro-setup",
+        content: "Astro setup details.",
+        rawContent: "# Astro setup",
+        framework: "Astro",
+        version: "5",
+        tags: ["setup"],
+        agent: { appliesTo: { package: "@farming-labs/astro" } },
+      },
+      {
+        title: "Conflicting scope",
+        url: "/docs/conflicting",
+        content: "Conflicting metadata must not become a selectable facet.",
+        rawContent: "# Conflicting",
+        framework: "Next.js",
+        tags: ["setup"],
+        agent: { appliesTo: { framework: "Astro", package: "@example/conflict" } },
+      },
+    ];
+
+    const all = await buildDocsSearchFacets({
+      pages: facetPages,
+      audience: "agent",
+      search: { provider: "simple", chunking: { strategy: "page" } },
+    });
+
+    expect(all).toMatchObject({
+      format: "docs-search-facets.v1",
+      audience: "agent",
+      filters: {},
+      matchedPageCount: 3,
+      facets: {
+        framework: {
+          valueCount: 2,
+          truncated: false,
+          values: [
+            { value: "astro", count: 1 },
+            { value: "nextjs", count: 2 },
+          ],
+        },
+        package: {
+          valueCount: 2,
+          values: [
+            { value: "@farming-labs/astro", count: 1 },
+            { value: "@farming-labs/next", count: 2 },
+          ],
+        },
+        tags: {
+          valueCount: 2,
+          values: [
+            { value: "routing", count: 2 },
+            { value: "setup", count: 2 },
+          ],
+        },
+      },
+    });
+    expect(all.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(JSON.stringify(all)).not.toContain("Large body");
+
+    const scoped = await buildDocsSearchFacets({
+      pages: facetPages,
+      audience: "agent",
+      filters: { framework: "next", tags: "setup" },
+      search: { provider: "simple", chunking: { strategy: "page" } },
+    });
+
+    expect(scoped).toMatchObject({
+      filters: { framework: ["nextjs"], tags: ["setup"] },
+      matchedPageCount: 1,
+      facets: {
+        framework: {
+          values: [
+            { value: "astro", count: 1 },
+            { value: "nextjs", count: 1 },
+          ],
+        },
+        version: { values: [{ value: "16", count: 1 }] },
+        package: { values: [{ value: "@farming-labs/next", count: 1 }] },
+        tags: {
+          values: [
+            { value: "routing", count: 2 },
+            { value: "setup", count: 1 },
+          ],
+        },
+      },
+    });
+
+    const bounded = await buildDocsSearchFacets({
+      pages: Array.from({ length: 105 }, (_, index) => ({
+        title: `Tag ${index}`,
+        url: `/docs/tag-${index}`,
+        content: `Facet tag ${index}.`,
+        tags: [`tag-${String(index).padStart(3, "0")}`],
+      })),
+    });
+    expect(bounded.facets.tags).toMatchObject({
+      valueCount: 105,
+      truncated: true,
+    });
+    expect(bounded.facets.tags.values).toHaveLength(100);
+    expect(bounded.facets.tags.values.at(0)).toEqual({ value: "tag-000", count: 1 });
+    expect(bounded.facets.tags.values.at(-1)).toEqual({ value: "tag-099", count: 1 });
+  });
+
   it("parses structured pagination inputs and requires structured mode for cursors", () => {
     expect(
       resolveDocsSearchRequest(
@@ -480,6 +608,13 @@ describe("performDocsSearch", () => {
     expect(resolveDocsSearchRequest(new URLSearchParams("limit=2"))).toEqual({
       structured: false,
       filters: {},
+    });
+    expect(
+      resolveDocsSearchRequest(new URLSearchParams("response=facets&framework=Astro&tags=setup")),
+    ).toEqual({
+      structured: false,
+      facets: true,
+      filters: { framework: ["astro"], tags: ["setup"] },
     });
     expect(() =>
       resolveDocsSearchRequest(new URLSearchParams("cursor=opaque-continuation-token")),

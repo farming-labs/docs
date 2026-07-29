@@ -890,6 +890,44 @@ Scoped adapter token without metadata.
       ),
     ).toBe(true);
 
+    const facetsUrl = new URL("http://localhost/api/docs");
+    facetsUrl.searchParams.set("response", "facets");
+    facetsUrl.searchParams.set("audience", "agent");
+    facetsUrl.searchParams.set("framework", "next");
+    const facetsResponse = await GET(new Request(facetsUrl));
+    const facetsPayload = (await facetsResponse.json()) as {
+      format: string;
+      matchedPageCount: number;
+      facets: Record<
+        string,
+        { valueCount: number; truncated: boolean; values: Array<{ value: string; count: number }> }
+      >;
+    };
+    expect(facetsResponse.headers.get("cache-control")).toContain("max-age=60");
+    expect(facetsPayload).toMatchObject({
+      format: "docs-search-facets.v1",
+      matchedPageCount: 1,
+      facets: {
+        framework: {
+          valueCount: 2,
+          truncated: false,
+          values: [
+            { value: "astro", count: 1 },
+            { value: "nextjs", count: 1 },
+          ],
+        },
+        version: { values: [{ value: "16", count: 1 }] },
+        package: { values: [{ value: "@farming-labs/next", count: 1 }] },
+        tags: {
+          values: [
+            { value: "routing", count: 1 },
+            { value: "setup", count: 1 },
+          ],
+        },
+      },
+    });
+    expect(JSON.stringify(facetsPayload)).not.toContain("Scoped adapter token");
+
     requestUrl.searchParams.set("framework", "remix");
     requestUrl.searchParams.delete("version");
     requestUrl.searchParams.delete("package");
@@ -3449,6 +3487,7 @@ description: "Start building quickly"
     expect(notFoundDocument).toContain("## Closest Matches");
     expect(notFoundDocument).toContain("[Quickstart](/docs/guides/quickstart.md)");
     expect(notFoundDocument).toContain("`/.well-known/agent.json`");
+    expect(notFoundDocument).toContain("`/api/docs?audience=agent&response=facets`");
     expect(notFoundDocument).toContain(
       "`/api/docs?query={query}&audience=agent&response=structured`",
     );
@@ -3700,13 +3739,16 @@ description: "Start building quickly"
       endpoint: "/api/docs?query={query}",
       agentEndpoint: "/api/docs?query={query}&audience=agent",
       structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
+      facetsEndpoint: "/api/docs?audience=agent&response=facets",
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
       audienceParam: "audience",
       responseParam: "response",
       structuredResponseValue: "structured",
+      facetsResponseValue: "facets",
       responseFormat: "docs-search.v1",
+      facetsResponseFormat: "docs-search-facets.v1",
       filterParams: {
         framework: "framework",
         version: "version",
@@ -3800,6 +3842,7 @@ description: "Start building quickly"
         listTasks: false,
         readTask: true,
         searchDocs: false,
+        searchFacets: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,

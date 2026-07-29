@@ -51,6 +51,7 @@ import {
 } from "./agent-scope.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import {
+  buildDocsSearchFacets,
   normalizeDocsSearchFilters,
   performDocsSearch,
   performDocsSearchWithMetadata,
@@ -408,6 +409,8 @@ export interface DocsMcpResolvedConfig {
     listTasks?: boolean;
     readTask?: boolean;
     searchDocs: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    searchFacets?: boolean;
     getNavigation: boolean;
     getCodeExamples: boolean;
     getConfigSchema: boolean;
@@ -2035,6 +2038,14 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Expose the search_docs tool.",
           },
           {
+            path: "mcp.tools.searchFacets",
+            name: "searchFacets",
+            type: "boolean",
+            default: true,
+            description:
+              "Expose the list_search_facets tool for body-free framework, version, package, and tag discovery.",
+          },
+          {
             path: "mcp.tools.readPage",
             name: "readPage",
             type: "boolean",
@@ -2255,6 +2266,15 @@ const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
   cursor: paginationCursorInputSchema,
+  locale: z.string().trim().min(1).max(128).optional(),
+  audience: z.enum(["human", "agent"]).optional(),
+  framework: searchFilterValueSchema.optional(),
+  version: searchFilterValueSchema.optional(),
+  package: searchFilterValueSchema.optional(),
+  tags: searchFilterValueSchema.optional(),
+});
+
+const searchFacetsInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
   audience: z.enum(["human", "agent"]).optional(),
   framework: searchFilterValueSchema.optional(),
@@ -2558,6 +2578,29 @@ const searchDocsOutputSchema = z.object({
   results: z.array(searchResultOutputSchema),
   warnings: z.array(searchWarningOutputSchema),
 });
+const searchFacetOutputSchema = z.object({
+  valueCount: z.number().int().nonnegative(),
+  truncated: z.boolean(),
+  values: z.array(
+    z.object({
+      value: z.string(),
+      count: z.number().int().nonnegative(),
+    }),
+  ),
+});
+const searchFacetsOutputSchema = z.object({
+  format: z.literal("docs-search-facets.v1"),
+  audience: z.enum(["human", "agent"]),
+  filters: searchFiltersOutputSchema,
+  indexGeneration: retrievalSourceDigestOutputSchema,
+  matchedPageCount: z.number().int().nonnegative(),
+  facets: z.object({
+    framework: searchFacetOutputSchema,
+    version: searchFacetOutputSchema,
+    package: searchFacetOutputSchema,
+    tags: searchFacetOutputSchema,
+  }),
+});
 const codeExampleOutputSchema = z.object({
   id: z.string(),
   page: z.object({
@@ -2727,6 +2770,7 @@ export function resolveDocsMcpConfig(
         listTasks: true,
         readTask: true,
         searchDocs: true,
+        searchFacets: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -2751,6 +2795,7 @@ export function resolveDocsMcpConfig(
       listTasks: config.tools?.listTasks ?? true,
       readTask: config.tools?.readTask ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
+      searchFacets: config.tools?.searchFacets ?? true,
       getNavigation: config.tools?.getNavigation ?? true,
       getCodeExamples: config.tools?.getCodeExamples ?? true,
       getConfigSchema: config.tools?.getConfigSchema ?? true,
@@ -3936,6 +3981,127 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             status: "error",
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "get_config_schema" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.searchFacets) {
+    registerTool(
+      "list_search_facets",
+      {
+        title: "List documentation search facets",
+        description:
+          "List valid framework, version, package, and tag filters with matching page counts before calling search_docs. Returns no document bodies.",
+        inputSchema: searchFacetsInputSchema,
+        outputSchema: searchFacetsOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ locale, audience, framework, version, package: packageName, tags }) => {
+        const startedAt = nowMs();
+        const resolvedAudience = audience ?? "agent";
+        const resolvedLocale = resolveSourceLocale(locale);
+        const filters = {
+          framework,
+          version,
+          package: packageName,
+          tags,
+        };
+        const trace = createDocsAgentTraceContext("mcp.tool.list_search_facets");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "list_search_facets",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: {
+            locale,
+            audience: resolvedAudience,
+            filterFields: Object.entries(filters)
+              .filter(([, value]) => value !== undefined)
+              .map(([field]) => field),
+          },
+          metadata: { tool: "list_search_facets" },
+        });
+
+        try {
+          const pages = dedupePages(
+            await options.source.getPages(resolvedLocale, options.requestContext),
+          );
+          const facets = await buildDocsSearchFacets({
+            pages: toSearchSourcePages(pages),
+            search: toolSearchConfig ?? true,
+            audience: resolvedAudience,
+            filters,
+            locale: resolvedLocale,
+            baseUrl:
+              options.source.baseUrl ??
+              (options.requestContext?.request
+                ? new URL(options.requestContext.request.url).origin
+                : undefined),
+          });
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            properties: {
+              tool: "list_search_facets",
+              audience: resolvedAudience,
+              matchedPageCount: facets.matchedPageCount,
+              frameworkCount: facets.facets.framework.valueCount,
+              versionCount: facets.facets.version.valueCount,
+              packageCount: facets.facets.package.valueCount,
+              tagCount: facets.facets.tags.valueCount,
+              durationMs: elapsed,
+            },
+          });
+          trackMcpTool("list_search_facets", {
+            locale,
+            resultCount: facets.matchedPageCount,
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_search_facets",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: {
+              matchedPageCount: facets.matchedPageCount,
+              facetValueCount: Object.values(facets.facets).reduce(
+                (total, facet) => total + facet.valueCount,
+                0,
+              ),
+            },
+            metadata: { tool: "list_search_facets" },
+          });
+          return createStructuredTextResult(facets);
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_search_facets",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "list_search_facets" },
           });
           throw error;
         }

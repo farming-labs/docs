@@ -167,6 +167,7 @@ describe("resolveDocsMcpConfig", () => {
         listTasks: true,
         readTask: true,
         searchDocs: true,
+        searchFacets: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -196,6 +197,7 @@ describe("resolveDocsMcpConfig", () => {
         listTasks: true,
         readTask: true,
         searchDocs: true,
+        searchFacets: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -229,6 +231,7 @@ describe("resolveDocsMcpConfig", () => {
         listTasks: true,
         readTask: true,
         searchDocs: true,
+        searchFacets: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -254,6 +257,21 @@ describe("resolveDocsMcpConfig", () => {
           type: "boolean",
           default: true,
           description: expect.stringContaining("list_page_sections"),
+        },
+      ],
+    });
+  });
+
+  it("publishes the list_search_facets tool toggle in the config schema", () => {
+    expect(getDocsConfigSchema({ option: "mcp.tools.searchFacets" })).toMatchObject({
+      resultCount: 1,
+      options: [
+        {
+          path: "mcp.tools.searchFacets",
+          name: "searchFacets",
+          type: "boolean",
+          default: true,
+          description: expect.stringContaining("list_search_facets"),
         },
       ],
     });
@@ -4674,6 +4692,36 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         (result) => result.url?.split("#", 1)[0] === "/docs/installation",
       ),
     ).toBe(true);
+
+    const facetsPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          format?: string;
+          matchedPageCount?: number;
+          facets?: Record<
+            string,
+            { values?: Array<{ value?: string; count?: number }>; valueCount?: number }
+          >;
+        };
+        content?: Array<{ text?: string }>;
+      };
+    }>(
+      await callMcpTool(handlers, "list_search_facets", {
+        framework: "Next.js",
+      }),
+    );
+    expect(facetsPayload.result?.structuredContent).toMatchObject({
+      format: "docs-search-facets.v1",
+      matchedPageCount: 2,
+      facets: {
+        framework: { values: [{ value: "nextjs", count: 2 }] },
+        version: { values: [{ value: "16", count: 1 }] },
+        package: { values: [{ value: "@farming-labs/next", count: 1 }] },
+        tags: { values: [{ value: "setup", count: 1 }] },
+      },
+    });
+    expect(facetsPayload.result?.content?.[0]?.text).not.toContain("Run pnpm install");
+
     expect(seenAudiences).toEqual(["agent:agent", "human:human", "agent:agent"]);
     expect(seenFilters).toEqual([
       undefined,
@@ -4825,6 +4873,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
           listTasks: false,
           readTask: false,
           searchDocs: false,
+          searchFacets: false,
           listPageSections: false,
           readPage: false,
           getConfigSchema: false,
@@ -4891,6 +4940,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         "list_tasks",
         "read_task",
         "search_docs",
+        "list_search_facets",
         "list_page_sections",
         "read_page",
         "get_config_schema",

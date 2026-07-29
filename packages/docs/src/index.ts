@@ -346,6 +346,7 @@ export type {
 } from "./robots.js";
 export {
   buildDocsSearchDocuments,
+  buildDocsSearchFacets,
   buildDocsRetrievalDigestProjection,
   buildDocsAskAIContext,
   createAlgoliaSearchAdapter,
@@ -370,6 +371,7 @@ export {
 } from "./search.js";
 export { DocsPaginationCursorError } from "./pagination.js";
 export type {
+  BuildDocsSearchFacetsOptions,
   EnrichDocsSearchDocumentsWithProvenanceOptions,
   PerformDocsSearchOptions,
 } from "./search.js";
@@ -507,6 +509,9 @@ export type {
   DocsSearchChunkingConfig,
   DocsSearchConfig,
   DocsSearchDocument,
+  DocsSearchFacet,
+  DocsSearchFacetsResponse,
+  DocsSearchFacetValue,
   DocsSearchFilterField,
   DocsSearchFilterInput,
   DocsSearchFilters,

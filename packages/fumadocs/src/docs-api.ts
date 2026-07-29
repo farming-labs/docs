@@ -106,6 +106,7 @@ import {
 } from "@farming-labs/docs/server";
 import {
   buildDocsAskAIContext,
+  buildDocsSearchFacets,
   formatDocsAskAIPackageHints,
   performDocsSearch,
   performDocsSearchWithMetadata,
@@ -700,13 +701,16 @@ function buildAgentSpec({
       endpoint: `${apiRoute}?query={query}`,
       agentEndpoint: `${apiRoute}?query={query}&audience=agent`,
       structuredAgentEndpoint: `${apiRoute}?query={query}&audience=agent&response=structured`,
+      facetsEndpoint: `${apiRoute}?audience=agent&response=facets`,
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
       audienceParam: "audience",
       responseParam: "response",
       structuredResponseValue: "structured",
+      facetsResponseValue: "facets",
       responseFormat: "docs-search.v1",
+      facetsResponseFormat: "docs-search-facets.v1",
       filterParams: {
         framework: "framework",
         version: "version",
@@ -2114,6 +2118,7 @@ function renderSkillDocument({
 
   if (searchEnabled) {
     lines.push(
+      `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values.`,
       `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when you do not know the page; add framework, version, package, or repeated tags filters when scope matters.`,
     );
   }
@@ -2312,6 +2317,7 @@ function renderAgentsDocument({
 
   if (searchEnabled) {
     lines.push(
+      `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values.`,
       `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when the route is unknown; add framework, version, package, or repeated tags filters when scope matters.`,
     );
   }
@@ -4684,8 +4690,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         if (!searchError) throw error;
         return Response.json({ error: searchError }, { status: 400 });
       }
-      const { filters, structured, cursor, limit } = searchRequest;
-      if (!query && !structured) {
+      const { filters, structured, facets, cursor, limit } = searchRequest;
+      if (!query && !structured && !facets) {
         return new Response("[]", {
           headers: { "Content-Type": "application/json" },
         });
@@ -4707,15 +4713,22 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const searchStartedAt = Date.now();
       let searchResponse;
       try {
-        searchResponse = structured
-          ? await performDocsSearchWithMetadata(searchOptions)
-          : query
-            ? await performDocsSearch(searchOptions)
-            : [];
+        searchResponse = facets
+          ? await buildDocsSearchFacets(searchOptions)
+          : structured
+            ? await performDocsSearchWithMetadata(searchOptions)
+            : query
+              ? await performDocsSearch(searchOptions)
+              : [];
       } catch (error) {
         const searchError = resolveDocsSearchError(error);
         if (!searchError) throw error;
         return Response.json({ error: searchError }, { status: 400 });
+      }
+      if (facets) {
+        return Response.json(searchResponse, {
+          headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" },
+        });
       }
       if (!query) {
         return Response.json(searchResponse);
@@ -4723,7 +4736,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       const resultCount = Array.isArray(searchResponse)
         ? searchResponse.length
-        : searchResponse.resultCount;
+        : "resultCount" in searchResponse
+          ? searchResponse.resultCount
+          : searchResponse.matchedPageCount;
       await emitDocsAnalyticsEvent(analytics, {
         type: "api_search",
         source: "server",
