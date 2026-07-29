@@ -963,7 +963,7 @@ function MigrationCalloutSection() {
 
               <ul
                 aria-label="Supported migration sources"
-                className="mt-4 grid grid-cols-2 gap-px border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10"
+                className="mt-4 grid grid-cols-2 gap-px border border-black/[0.06] bg-black/[0.06] dark:border-white/[0.06] dark:bg-white/[0.06]"
               >
                 {migrationSources.map((source) => (
                   <li key={source.slug} className="bg-white dark:bg-black">
