@@ -1324,6 +1324,7 @@ Use MCP and markdown routes.
     let serveInvalidSkillFrontmatter = false;
     let serveInvalidSkillUtf8 = false;
     let serveArchiveSkill = false;
+    let initializedNotifications = 0;
 
     const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -1597,6 +1598,7 @@ Use MCP and markdown routes.
         const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as {
           id?: string | number;
           method?: string;
+          params?: { cursor?: string };
         };
         const writeMcpPayload = (
           value: unknown,
@@ -1633,27 +1635,35 @@ Use MCP and markdown routes.
         }
 
         if (payload.method === "notifications/initialized") {
+          initializedNotifications += 1;
           res.writeHead(202);
           res.end();
           return;
         }
 
         if (payload.method === "tools/list") {
+          const continued =
+            payload.params !== undefined &&
+            Object.prototype.hasOwnProperty.call(payload.params, "cursor");
+          const firstPage = [
+            { name: "list_docs" },
+            { name: "list_pages" },
+            { name: "list_page_sections" },
+            { name: "get_navigation" },
+          ];
+          const secondPage = [
+            { name: "search_docs" },
+            { name: "read_page" },
+            { name: "get_code_examples" },
+            { name: "get_config_schema" },
+            { name: "get_context" },
+          ];
           writeMcpPayload({
             jsonrpc: "2.0",
             id: payload.id,
             result: {
-              tools: [
-                { name: "list_docs" },
-                { name: "list_pages" },
-                { name: "list_page_sections" },
-                { name: "get_navigation" },
-                { name: "search_docs" },
-                { name: "read_page" },
-                { name: "get_code_examples" },
-                { name: "get_config_schema" },
-                { name: "get_context" },
-              ],
+              tools: continued ? secondPage : firstPage,
+              ...(continued ? {} : { nextCursor: "" }),
             },
           });
           return;
@@ -1706,6 +1716,7 @@ Use MCP and markdown routes.
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
         "/.well-known/mcp initialized statelessly",
       );
+      expect(initializedNotifications).toBeGreaterThanOrEqual(2);
 
       serveStaleRobots = true;
       const staleReport = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });

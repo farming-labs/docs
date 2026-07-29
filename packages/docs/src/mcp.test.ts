@@ -2,15 +2,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
 import type {
   DocsAnalyticsEvent,
   DocsMcpAuthenticateContext,
   DocsObservabilityEvent,
+  DocsSearchAdapter,
   DocsSearchAdapterContext,
 } from "./types.js";
 import type {
   DocsMcpConfigSchemaOption,
+  DocsMcpDocsList,
   DocsMcpDocsPageSummary,
   DocsMcpPage,
   DocsMcpResolvedConfig,
@@ -19,6 +24,7 @@ import {
   DOCS_CONFIG_SCHEMA_OPTIONS,
   buildDocsMcpContext,
   createDocsMcpHttpHandler,
+  createDocsMcpServer,
   createFilesystemDocsMcpSource,
   getDocsConfigSchema,
   normalizeDocsMcpRoute,
@@ -371,6 +377,584 @@ describe("resolveDocsMcpConfig", () => {
     );
     expect(buildDocsMcpProtectedResourceMetadataRoute("/mcp/")).toBe(
       "/.well-known/oauth-protected-resource/mcp/",
+    );
+  });
+});
+
+describe("MCP cursor pagination", () => {
+  it("keeps legacy DocsMcpDocsList object producers source-compatible", () => {
+    const legacyList: DocsMcpDocsList = {
+      resultCount: 0,
+      sectionCount: 0,
+      pages: [],
+      rootPages: [],
+      sections: [],
+    };
+
+    expect(legacyList.total).toBeUndefined();
+    expect(legacyList.hasMore).toBeUndefined();
+  });
+
+  type ProtocolPaginationMeta = {
+    "dev.farming-labs/pagination"?: {
+      hasMore?: boolean;
+      total?: number;
+    };
+  };
+
+  type ProtocolListResult<T, K extends string> = {
+    [Key in K]?: T[];
+  } & {
+    nextCursor?: string;
+    _meta?: ProtocolPaginationMeta;
+  };
+
+  type ToolPaginationResult<T, K extends string> = {
+    [Key in K]?: T[];
+  } & {
+    resultCount?: number;
+    total?: number;
+    hasMore?: boolean;
+    nextCursor?: string;
+  };
+
+  async function readStructuredToolResult<T>(response: Response): Promise<{
+    result?: {
+      structuredContent?: T;
+      content?: Array<{ text?: string }>;
+      isError?: boolean;
+    };
+  }> {
+    return parseMcpPayload(response);
+  }
+
+  function createPaginationPages(count: number): DocsMcpPage[] {
+    return Array.from({ length: count }, (_, index) => {
+      const number = String(index + 1).padStart(3, "0");
+      const rawContent = `# MCP pagination page ${number}
+
+Shared MCP cursor marker ${number}.
+`;
+      return {
+        slug: `guides/page-${number}`,
+        url: `/docs/guides/page-${number}`,
+        title: `MCP pagination page ${number}`,
+        description: `Cursor pagination fixture ${number}.`,
+        content: `Shared MCP cursor marker ${number}.`,
+        rawContent,
+        framework: "nextjs",
+        tags: ["pagination"],
+        agent: {
+          task: `Run pagination contract ${number}`,
+          outcome: `Pagination contract ${number} is complete.`,
+          appliesTo: {
+            framework: ["nextjs"],
+            package: ["@farming-labs/docs"],
+          },
+        },
+      };
+    });
+  }
+
+  it("paginates MCP protocol resources and tools with stable standard cursors", async () => {
+    const pages = createPaginationPages(105);
+    const source = {
+      getPages: () => pages,
+      getNavigation: () => ({ name: "Docs", children: [] }),
+    };
+    const handlers = createDocsMcpHttpHandler({ source });
+
+    async function listResources(cursor?: string) {
+      return parseMcpPayload<{
+        result?: ProtocolListResult<{ uri: string }, "resources">;
+        error?: { code?: number; message?: string };
+      }>(await callMcpMethod(handlers, "resources/list", cursor ? { cursor } : {}));
+    }
+
+    const firstResources = await listResources();
+    const repeatedResources = await listResources();
+    expect(firstResources.result?.resources).toHaveLength(10);
+    expect(firstResources.result?.nextCursor).toEqual(expect.any(String));
+    expect(repeatedResources.result?.nextCursor).toBe(firstResources.result?.nextCursor);
+    expect(repeatedResources.result?.resources).toEqual(firstResources.result?.resources);
+    expect(firstResources.result?._meta).toEqual({
+      "dev.farming-labs/pagination": {
+        hasMore: true,
+        total: 106,
+      },
+    });
+
+    const resourcePages = [firstResources.result];
+    while (resourcePages.at(-1)?.nextCursor) {
+      const response = await listResources(resourcePages.at(-1)?.nextCursor);
+      expect(response.error).toBeUndefined();
+      resourcePages.push(response.result);
+    }
+    const resourceUris = resourcePages.flatMap(
+      (page) => page?.resources?.map((resource) => resource.uri) ?? [],
+    );
+    expect(resourcePages.map((page) => page?.resources?.length)).toEqual([
+      10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 6,
+    ]);
+    expect(resourcePages.at(-1)?._meta).toEqual({
+      "dev.farming-labs/pagination": {
+        hasMore: false,
+        total: 106,
+      },
+    });
+    expect(new Set(resourceUris).size).toBe(resourceUris.length);
+    expect(resourceUris).toHaveLength(106);
+    expect(resourceUris).toEqual(
+      [...resourceUris].sort((left, right) => left.localeCompare(right)),
+    );
+
+    async function listTools(cursor?: string) {
+      return parseMcpPayload<{
+        result?: ProtocolListResult<{ name: string }, "tools">;
+        error?: { code?: number; message?: string };
+      }>(await callMcpMethod(handlers, "tools/list", cursor ? { cursor } : {}));
+    }
+
+    const firstTools = await listTools();
+    const repeatedTools = await listTools();
+    expect(firstTools.result?.nextCursor).toEqual(expect.any(String));
+    expect(repeatedTools.result?.nextCursor).toBe(firstTools.result?.nextCursor);
+    expect(repeatedTools.result?.tools).toEqual(firstTools.result?.tools);
+
+    const toolPages = [firstTools.result];
+    while (toolPages.at(-1)?.nextCursor) {
+      const response = await listTools(toolPages.at(-1)?.nextCursor);
+      expect(response.error).toBeUndefined();
+      toolPages.push(response.result);
+    }
+    const toolNames = toolPages.flatMap((page) => page?.tools?.map((tool) => tool.name) ?? []);
+    const toolMeta = toolPages.at(-1)?._meta?.["dev.farming-labs/pagination"];
+    expect(toolPages.length).toBeGreaterThan(1);
+    expect(toolMeta).toEqual({
+      hasMore: false,
+      total: toolNames.length,
+    });
+    expect(new Set(toolNames).size).toBe(toolNames.length);
+    expect(toolNames).toEqual([...toolNames].sort((left, right) => left.localeCompare(right)));
+    expect(toolNames).toEqual(
+      expect.arrayContaining([
+        "list_docs",
+        "list_pages",
+        "list_page_sections",
+        "list_tasks",
+        "search_docs",
+      ]),
+    );
+
+    const malformed = await parseMcpPayload<{
+      error?: { code?: number; message?: string };
+    }>(await callMcpMethod(handlers, "resources/list", { cursor: "not-a-valid-cursor" }));
+    expect(malformed.error).toMatchObject({
+      code: -32602,
+      message: expect.stringContaining("Invalid or stale pagination cursor"),
+    });
+
+    const wrongOperation = await parseMcpPayload<{
+      error?: { code?: number; message?: string };
+    }>(
+      await callMcpMethod(handlers, "tools/list", {
+        cursor: firstResources.result?.nextCursor,
+      }),
+    );
+    expect(wrongOperation.error).toMatchObject({
+      code: -32602,
+      message: expect.stringContaining("Invalid or stale pagination cursor"),
+    });
+
+    pages.push(...createPaginationPages(1).map((page) => ({ ...page, url: "/docs/new-page" })));
+    const stale = await parseMcpPayload<{
+      error?: { code?: number; message?: string };
+    }>(
+      await callMcpMethod(handlers, "resources/list", {
+        cursor: firstResources.result?.nextCursor,
+      }),
+    );
+    expect(stale.error).toMatchObject({
+      code: -32602,
+      message: expect.stringContaining("Invalid or stale pagination cursor"),
+    });
+  });
+
+  it("returns terminal pagination metadata for the empty resource-template list", async () => {
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        getPages: () => [],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const response = await parseMcpPayload<{
+      result?: ProtocolListResult<{ name: string }, "resourceTemplates">;
+    }>(await callMcpMethod(handlers, "resources/templates/list"));
+
+    expect(response.result).toEqual({
+      resourceTemplates: [],
+      _meta: {
+        "dev.farming-labs/pagination": {
+          hasMore: false,
+          total: 0,
+        },
+      },
+    });
+  });
+
+  it("paginates the SDK live registries, including late tools, resources, and prompts", async () => {
+    const server = await createDocsMcpServer({
+      source: {
+        getPages: () => [],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+    const lateTool = server.registerTool(
+      "late_tool",
+      { description: "Registered after the docs MCP server was created." },
+      async () => ({ content: [{ type: "text", text: "late tool" }] }),
+    );
+    const removableTool = server.registerTool(
+      "removable_late_tool",
+      { description: "Removed after the docs MCP server was created." },
+      async () => ({ content: [{ type: "text", text: "removable late tool" }] }),
+    );
+    const lateResource = server.registerResource(
+      "late-resource",
+      "docs://late/resource",
+      { description: "Late fixed resource" },
+      async (uri) => ({ contents: [{ uri: uri.href, text: "late resource" }] }),
+    );
+    for (let index = 0; index < 11; index += 1) {
+      const number = String(index + 1).padStart(2, "0");
+      server.registerResource(
+        `late-template-${number}`,
+        new ResourceTemplate(`docs://late/${number}/{id}`, {
+          list: async () => ({
+            resources: [
+              {
+                uri: `docs://late/${number}/generated`,
+                name: `Late generated resource ${number}`,
+              },
+            ],
+          }),
+        }),
+        { description: `Late dynamic resource template ${number}` },
+        async (uri) => ({ contents: [{ uri: uri.href, text: `late template ${number}` }] }),
+      );
+    }
+    for (let index = 0; index < 11; index += 1) {
+      const number = String(index + 1).padStart(2, "0");
+      server.registerPrompt(
+        `late_prompt_${number}`,
+        { description: `Late prompt ${number}` },
+        async () => ({
+          messages: [
+            {
+              role: "user",
+              content: { type: "text", text: `Late prompt ${number}` },
+            },
+          ],
+        }),
+      );
+    }
+
+    const client = new Client({ name: "pagination-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    async function listAllTools() {
+      const tools = [];
+      let cursor: string | undefined;
+      do {
+        const page = await client.listTools(cursor !== undefined ? { cursor } : undefined);
+        tools.push(...page.tools);
+        cursor = page.nextCursor;
+      } while (cursor !== undefined);
+      return tools;
+    }
+
+    async function listAllResources() {
+      const resources = [];
+      let cursor: string | undefined;
+      do {
+        const page = await client.listResources(cursor !== undefined ? { cursor } : undefined);
+        resources.push(...page.resources);
+        cursor = page.nextCursor;
+      } while (cursor !== undefined);
+      return resources;
+    }
+
+    async function listAllPrompts() {
+      const prompts = [];
+      let cursor: string | undefined;
+      do {
+        const page = await client.listPrompts(cursor !== undefined ? { cursor } : undefined);
+        prompts.push(...page.prompts);
+        cursor = page.nextCursor;
+      } while (cursor !== undefined);
+      return prompts;
+    }
+
+    async function listAllResourceTemplates() {
+      const templates = [];
+      let cursor: string | undefined;
+      do {
+        const page = await client.listResourceTemplates(
+          cursor !== undefined ? { cursor } : undefined,
+        );
+        templates.push(...page.resourceTemplates);
+        cursor = page.nextCursor;
+      } while (cursor !== undefined);
+      return templates;
+    }
+
+    try {
+      const tools = await listAllTools();
+      expect(tools.find((tool) => tool.name === "late_tool")).toMatchObject({
+        execution: { taskSupport: "forbidden" },
+      });
+      expect((await listAllResources()).map((resource) => resource.uri)).toEqual(
+        expect.arrayContaining(["docs://late/resource", "docs://late/01/generated"]),
+      );
+      const resourceTemplates = await listAllResourceTemplates();
+      expect(resourceTemplates).toHaveLength(11);
+      expect(resourceTemplates).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "late-template-01",
+            uriTemplate: "docs://late/01/{id}",
+          }),
+        ]),
+      );
+      expect((await listAllPrompts()).map((prompt) => prompt.name)).toHaveLength(11);
+
+      lateTool.disable();
+      lateResource.disable();
+      expect((await listAllTools()).some((tool) => tool.name === "late_tool")).toBe(false);
+      expect(
+        (await listAllResources()).some((resource) => resource.uri === "docs://late/resource"),
+      ).toBe(false);
+
+      lateTool.enable();
+      lateTool.update({ name: "renamed_late_tool" });
+      expect((await listAllTools()).some((tool) => tool.name === "renamed_late_tool")).toBe(true);
+
+      removableTool.remove();
+      lateResource.remove();
+      expect((await listAllTools()).some((tool) => tool.name === "removable_late_tool")).toBe(
+        false,
+      );
+      expect(
+        (await listAllResources()).some((resource) => resource.uri === "docs://late/resource"),
+      ).toBe(false);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("paginates custom list tools, prunes list_docs trees, and continues search_docs", async () => {
+    const pages = createPaginationPages(55);
+    const sectionHeadings = Array.from(
+      { length: 55 },
+      (_, index) => `## Section ${String(index + 1).padStart(3, "0")}
+
+Section pagination body ${index + 1}.`,
+    ).join("\n\n");
+    pages.push({
+      slug: "section-index",
+      url: "/docs/section-index",
+      title: "Section pagination index",
+      description: "A page with enough headings to require MCP pagination.",
+      content: "Shared MCP cursor marker section index.",
+      rawContent: `# Section pagination index
+
+Shared MCP cursor marker section index.
+
+${sectionHeadings}
+`,
+      framework: "nextjs",
+      tags: ["pagination"],
+      agent: {
+        task: "Run pagination contract for section discovery",
+        outcome: "Every section is discoverable exactly once.",
+        appliesTo: {
+          framework: ["nextjs"],
+          package: ["@farming-labs/docs"],
+        },
+      },
+    });
+    const source = {
+      entry: "docs",
+      getPages: () => pages,
+      getNavigation: () => ({ name: "Docs", children: [] }),
+    };
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      search: { provider: "simple", chunking: { strategy: "page" } },
+    });
+
+    async function traverseTool<T extends Record<string, unknown>, K extends keyof T & string>(
+      name: string,
+      key: K,
+      args: Record<string, unknown> = {},
+    ): Promise<Array<ToolPaginationResult<T[K] extends Array<infer I> ? I : never, K>>> {
+      const resultPages: Array<ToolPaginationResult<T[K] extends Array<infer I> ? I : never, K>> =
+        [];
+      let cursor: string | undefined;
+
+      do {
+        const payload = await readStructuredToolResult<
+          ToolPaginationResult<T[K] extends Array<infer I> ? I : never, K>
+        >(
+          await callMcpTool(handlers, name, {
+            ...args,
+            ...(cursor ? { cursor } : {}),
+          }),
+        );
+        expect(payload.result?.isError).not.toBe(true);
+        const page = payload.result?.structuredContent;
+        expect(page).toEqual(expect.any(Object));
+        expect(page?.resultCount).toBe(page?.[key]?.length);
+        expect(page?.hasMore).toBe(Boolean(page?.nextCursor));
+        resultPages.push(page!);
+        cursor = page?.nextCursor;
+      } while (cursor);
+
+      return resultPages;
+    }
+
+    const listPagePages = await traverseTool<{ pages: Array<{ url: string }> }, "pages">(
+      "list_pages",
+      "pages",
+    );
+    expect(listPagePages.map((page) => page.resultCount)).toEqual([25, 25, 6]);
+    expect(listPagePages.map((page) => page.total)).toEqual([56, 56, 56]);
+    const listedPageUrls = listPagePages.flatMap(
+      (page) => page.pages?.map((item) => item.url) ?? [],
+    );
+    expect(new Set(listedPageUrls).size).toBe(56);
+
+    const listTaskPages = await traverseTool<{ tasks: Array<{ url: string }> }, "tasks">(
+      "list_tasks",
+      "tasks",
+      { query: "pagination contract", framework: "NEXTJS" },
+    );
+    expect(listTaskPages.map((page) => page.resultCount)).toEqual([25, 25, 6]);
+    expect(listTaskPages.map((page) => page.total)).toEqual([56, 56, 56]);
+    const listedTaskUrls = listTaskPages.flatMap(
+      (page) => page.tasks?.map((item) => item.url) ?? [],
+    );
+    expect(new Set(listedTaskUrls).size).toBe(56);
+
+    type DocsListPage = ToolPaginationResult<{ url: string }, "pages"> & {
+      sectionCount?: number;
+      rootPages?: Array<{ url: string }>;
+      sections?: Array<{
+        slug?: string;
+        pageCount?: number;
+        pages?: Array<{ url: string }>;
+        sections?: DocsListPage["sections"];
+      }>;
+    };
+    const listDocsPages = (await traverseTool<{ pages: Array<{ url: string }> }, "pages">(
+      "list_docs",
+      "pages",
+    )) as DocsListPage[];
+    expect(listDocsPages.map((page) => page.resultCount)).toEqual([25, 25, 6]);
+    expect(listDocsPages.map((page) => page.total)).toEqual([56, 56, 56]);
+    expect(listDocsPages.map((page) => page.sectionCount)).toEqual([1, 1, 1]);
+    expect(
+      listDocsPages.map(
+        (page) => page.sections?.find((section) => section.slug === "guides")?.pageCount,
+      ),
+    ).toEqual([55, 55, 55]);
+
+    function flattenSectionPageUrls(sections: NonNullable<DocsListPage["sections"]>): string[] {
+      return sections.flatMap((section) => [
+        ...(section.pages?.map((page) => page.url) ?? []),
+        ...flattenSectionPageUrls(section.sections ?? []),
+      ]);
+    }
+
+    for (const page of listDocsPages) {
+      const responsePageUrls = page.pages?.map((item) => item.url) ?? [];
+      const representedPageUrls = [
+        ...(page.rootPages?.map((item) => item.url) ?? []),
+        ...flattenSectionPageUrls(page.sections ?? []),
+      ];
+      expect(representedPageUrls).toHaveLength(responsePageUrls.length);
+      expect([...representedPageUrls].sort()).toEqual([...responsePageUrls].sort());
+    }
+    const allDocsUrls = listDocsPages.flatMap((page) => page.pages?.map((item) => item.url) ?? []);
+    expect(new Set(allDocsUrls).size).toBe(56);
+
+    const sectionPages = await traverseTool<{ sections: Array<{ id: string }> }, "sections">(
+      "list_page_sections",
+      "sections",
+      { path: "section-index" },
+    );
+    expect(sectionPages.map((page) => page.resultCount)).toEqual([25, 25, 8]);
+    expect(sectionPages.map((page) => page.total)).toEqual([58, 58, 58]);
+    const sectionIds = sectionPages.flatMap(
+      (page) => page.sections?.map((section) => section.id) ?? [],
+    );
+    expect(new Set(sectionIds).size).toBe(58);
+
+    const firstSearch = await readStructuredToolResult<{
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{ id: string }>;
+    }>(
+      await callMcpTool(handlers, "search_docs", {
+        query: "shared MCP cursor marker",
+        limit: 2,
+      }),
+    );
+    expect(firstSearch.result?.structuredContent).toMatchObject({
+      resultCount: 2,
+      total: 56,
+      hasMore: true,
+      nextCursor: expect.any(String),
+    });
+    const secondSearch = await readStructuredToolResult<{
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{ id: string }>;
+    }>(
+      await callMcpTool(handlers, "search_docs", {
+        query: "shared MCP cursor marker",
+        limit: 2,
+        cursor: firstSearch.result?.structuredContent?.nextCursor,
+      }),
+    );
+    expect(secondSearch.result?.structuredContent).toMatchObject({
+      resultCount: 2,
+      total: 56,
+      hasMore: true,
+    });
+    const firstSearchIds =
+      firstSearch.result?.structuredContent?.results.map((result) => result.id) ?? [];
+    const secondSearchIds =
+      secondSearch.result?.structuredContent?.results.map((result) => result.id) ?? [];
+    expect(new Set([...firstSearchIds, ...secondSearchIds]).size).toBe(4);
+
+    const invalidSearch = await readStructuredToolResult<Record<string, unknown>>(
+      await callMcpTool(handlers, "search_docs", {
+        query: "shared MCP cursor marker",
+        limit: 2,
+        cursor: "not-a-valid-cursor",
+      }),
+    );
+    expect(invalidSearch.result?.isError).toBe(true);
+    expect(invalidSearch.result?.content?.[0]?.text).toContain(
+      "Invalid or stale pagination cursor",
     );
   });
 });
@@ -1132,6 +1716,13 @@ Unrelated corpus content still belongs to the complete index generation.
 
   it("does not trust the request origin for hosted-index ownership", async () => {
     let observedContext: Pick<DocsSearchAdapterContext, "baseUrl" | "indexBaseUrl"> | undefined;
+    const search: DocsSearchAdapter["search"] = async (_query, context) => {
+      observedContext = {
+        baseUrl: context.baseUrl,
+        indexBaseUrl: context.indexBaseUrl,
+      };
+      return [];
+    };
     const handlers = createDocsMcpHttpHandler({
       source: {
         entry: "docs",
@@ -1148,14 +1739,13 @@ Unrelated corpus content still belongs to the complete index generation.
       },
       search: {
         provider: "custom",
+        paginationRevision: "capture-index-origin.v1",
         adapter: {
           name: "capture-index-origin",
-          async search(_query, context) {
-            observedContext = {
-              baseUrl: context.baseUrl,
-              indexBaseUrl: context.indexBaseUrl,
-            };
-            return [];
+          search,
+          async searchPage(query, context) {
+            await search(query, context);
+            throw new Error("force exact local fallback");
           },
         },
       },
@@ -1193,16 +1783,22 @@ Unrelated corpus content still belongs to the complete index generation.
     );
     let observedLocale: string | undefined = "not-called";
     let observedUrls: string[] = [];
+    const search: DocsSearchAdapter["search"] = async (query, context) => {
+      observedLocale = query.locale;
+      observedUrls = context.pages.map((page) => page.url);
+      return [];
+    };
     const handlers = createDocsMcpHttpHandler({
       source: createFilesystemDocsMcpSource({ rootDir, entry: "docs", contentDir: "docs" }),
       search: {
         provider: "custom",
+        paginationRevision: "capture-filesystem-locale.v1",
         adapter: {
           name: "capture-filesystem-locale",
-          async search(query, context) {
-            observedLocale = query.locale;
-            observedUrls = context.pages.map((page) => page.url);
-            return [];
+          search,
+          async searchPage(query, context) {
+            await search(query, context);
+            throw new Error("force exact local fallback");
           },
         },
       },
@@ -1413,7 +2009,6 @@ sidebar:
       contentDir: "docs",
       siteTitle: "Example Docs",
     });
-
     const handlers = createDocsMcpHttpHandler({
       source,
       mcp: { enabled: true, name: "Example Docs" },
@@ -1466,10 +2061,26 @@ sidebar:
     });
 
     const toolsList = await parseMcpPayload<{
-      result?: { tools?: Array<{ name: string; outputSchema?: { type?: string } }> };
+      result?: {
+        tools?: Array<{ name: string; outputSchema?: { type?: string } }>;
+        nextCursor?: string;
+      };
     }>(toolsListResponse);
+    const nextToolsList = await parseMcpPayload<{
+      result?: {
+        tools?: Array<{ name: string; outputSchema?: { type?: string } }>;
+      };
+    }>(
+      await callMcpMethod(handlers, "tools/list", {
+        cursor: toolsList.result?.nextCursor,
+      }),
+    );
+    const listedTools = [
+      ...(toolsList.result?.tools ?? []),
+      ...(nextToolsList.result?.tools ?? []),
+    ];
 
-    expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
+    expect(listedTools.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
         "list_docs",
         "list_pages",
@@ -1484,7 +2095,7 @@ sidebar:
         "get_context",
       ]),
     );
-    expect(toolsList.result?.tools).toEqual(
+    expect(listedTools).toEqual(
       expect.arrayContaining(
         [
           "list_docs",
@@ -1507,9 +2118,7 @@ sidebar:
       ),
     );
     for (const toolName of ["list_pages", "list_docs"]) {
-      expect(
-        toolsList.result?.tools?.find((tool) => tool.name === toolName)?.outputSchema,
-      ).toMatchObject({
+      expect(listedTools.find((tool) => tool.name === toolName)?.outputSchema).toMatchObject({
         properties: {
           pages: {
             type: "array",
@@ -3713,9 +4322,20 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
 
     expect(missingSessionResponse.status).toBe(200);
     const missingSessionPayload = await parseMcpPayload<{
-      result?: { tools?: Array<{ name: string }> };
+      result?: { tools?: Array<{ name: string }>; nextCursor?: string };
     }>(missingSessionResponse);
-    expect(missingSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
+    const missingSessionNextPayload = await parseMcpPayload<{
+      result?: { tools?: Array<{ name: string }> };
+    }>(
+      await callMcpMethod(handlers, "tools/list", {
+        cursor: missingSessionPayload.result?.nextCursor,
+      }),
+    );
+    const missingSessionToolNames = [
+      ...(missingSessionPayload.result?.tools ?? []),
+      ...(missingSessionNextPayload.result?.tools ?? []),
+    ].map((tool) => tool.name);
+    expect(missingSessionToolNames).toEqual(
       expect.arrayContaining([
         "list_docs",
         "list_pages",
@@ -3749,21 +4369,9 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
 
     expect(expiredSessionResponse.status).toBe(200);
     const expiredSessionPayload = await parseMcpPayload<{
-      result?: { tools?: Array<{ name: string }> };
+      result?: { tools?: Array<{ name: string }>; nextCursor?: string };
     }>(expiredSessionResponse);
-    expect(expiredSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining([
-        "list_docs",
-        "list_pages",
-        "list_page_sections",
-        "get_navigation",
-        "search_docs",
-        "read_page",
-        "get_code_examples",
-        "get_config_schema",
-        "get_context",
-      ]),
-    );
+    expect(expiredSessionPayload.result).toEqual(missingSessionPayload.result);
   });
 
   it("emits analytics and observability separately for MCP requests, tools, and agent page reads", async () => {
@@ -3931,39 +4539,41 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
       contentDir: "docs",
       siteTitle: "Example Docs",
     });
+    const search: DocsSearchAdapter["search"] = async (query, context) => {
+      seenAudiences.push(`${query.audience}:${context.audience}`);
+      seenFilters.push(query.filters);
+      const installationPage = context.pages.find((page) => page.url === "/docs/installation");
+      expect(installationPage?.content).toContain("Run pnpm install.");
+      expect(installationPage?.content).not.toContain("--frozen-lockfile");
+      const searchableContent = context.documents.map((document) => document.content).join(" ");
+      if (query.audience === "agent") {
+        expect(searchableContent).toContain("--frozen-lockfile");
+      } else {
+        expect(searchableContent).toContain("Run pnpm install");
+      }
+      return [
+        {
+          id: "custom-hit",
+          url: "/docs/installation",
+          content: "Custom search result",
+          description: "Resolved through the shared adapter pipeline.",
+          type: "page",
+        },
+      ];
+    };
 
     const handlers = createDocsMcpHttpHandler({
       source,
       mcp: { enabled: true, name: "Example Docs" },
       search: {
         provider: "custom",
+        paginationRevision: "custom-search.v1",
         adapter: {
           name: "custom-search",
-          async search(query, context) {
-            seenAudiences.push(`${query.audience}:${context.audience}`);
-            seenFilters.push(query.filters);
-            const installationPage = context.pages.find(
-              (page) => page.url === "/docs/installation",
-            );
-            expect(installationPage?.content).toContain("Run pnpm install.");
-            expect(installationPage?.content).not.toContain("--frozen-lockfile");
-            const searchableContent = context.documents
-              .map((document) => document.content)
-              .join(" ");
-            if (query.audience === "agent") {
-              expect(searchableContent).toContain("--frozen-lockfile");
-            } else {
-              expect(searchableContent).toContain("Run pnpm install");
-            }
-            return [
-              {
-                id: "custom-hit",
-                url: "/docs/installation",
-                content: "Custom search result",
-                description: "Resolved through the shared adapter pipeline.",
-                type: "page",
-              },
-            ];
+          search,
+          async searchPage(query, context) {
+            const results = await search(query, context);
+            return { results, total: results.length };
           },
         },
       },

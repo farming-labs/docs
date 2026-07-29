@@ -118,11 +118,16 @@ describe("Farming Labs agent manifest schema", () => {
     });
 
     const current = buildManifest();
+    const legacySearch: Record<string, unknown> = { ...current.search };
+    for (const field of ["cursorParam", "nextCursorField", "hasMoreField", "totalField"]) {
+      delete legacySearch[field];
+    }
     const legacy = {
       ...current,
       $schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
       format: "farming-labs-agent-manifest.v1",
       version: "1",
+      search: legacySearch,
       markdown: {
         ...current.markdown,
         sectionDiscovery: {
@@ -206,8 +211,18 @@ describe("Farming Labs agent manifest schema", () => {
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
     });
     expectValid(manifest);
+
+    const prePaginationSearch: Record<string, unknown> = { ...manifest.search };
+    for (const field of ["cursorParam", "nextCursorField", "hasMoreField", "totalField"]) {
+      delete prePaginationSearch[field];
+    }
+    expectValid({ ...manifest, search: prePaginationSearch });
 
     const legacySearch: Record<string, unknown> = { ...manifest.search };
     for (const field of [
@@ -218,6 +233,10 @@ describe("Farming Labs agent manifest schema", () => {
       "filterParams",
       "repeatedFilterParams",
       "warningsField",
+      "cursorParam",
+      "nextCursorField",
+      "hasMoreField",
+      "totalField",
     ]) {
       delete legacySearch[field];
     }
@@ -236,6 +255,27 @@ describe("Farming Labs agent manifest schema", () => {
     const partialSearch: Record<string, unknown> = { ...manifest.search };
     delete partialSearch.warningsField;
     expect(validate({ ...manifest, search: partialSearch })).toBe(false);
+
+    const partialPagination: Record<string, unknown> = { ...manifest.search };
+    delete partialPagination.nextCursorField;
+    expect(validate({ ...manifest, search: partialPagination })).toBe(false);
+
+    const detachedPagination = {
+      enabled: true,
+      endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
+      method: "GET",
+      queryParam: "query",
+      localeParam: "locale",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
+    };
+    expect(validate({ ...manifest, search: detachedPagination })).toBe(false);
   });
 
   it("keeps Markdown section-discovery declarations synchronized", () => {

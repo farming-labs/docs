@@ -2376,6 +2376,7 @@ Use the scoped integration.
         }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
+    const initialized = () => new Response(null, { status: 202 });
     const searchResponse = (url: string) =>
       new Response(
         JSON.stringify({
@@ -2397,6 +2398,7 @@ Use the scoped integration.
     try {
       fetchMock
         .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(initialized())
         .mockResolvedValueOnce(searchResponse("https://evil.example/docs/remote"));
       const noBaseCollision = await runDocsGoldenTasks(
         pages,
@@ -2419,6 +2421,7 @@ Use the scoped integration.
 
       fetchMock
         .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(initialized())
         .mockResolvedValueOnce(searchResponse("https://evil.example/docs/remote"));
       const noBaseAskAI = await runDocsGoldenTasks(
         pages,
@@ -2441,6 +2444,7 @@ Use the scoped integration.
 
       fetchMock
         .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(initialized())
         .mockResolvedValueOnce(searchResponse(String.raw`https:\\evil.example\docs\remote`));
       const backslashCollision = await runDocsGoldenTasks(
         pages,
@@ -2464,6 +2468,7 @@ Use the scoped integration.
 
       fetchMock
         .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(initialized())
         .mockResolvedValueOnce(searchResponse("javascript:/docs/remote"));
       const unsupportedProtocol = await runDocsGoldenTasks(
         pages,
@@ -2487,6 +2492,7 @@ Use the scoped integration.
 
       fetchMock
         .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(initialized())
         .mockResolvedValueOnce(searchResponse("https://evil.example/docs/remote"));
       const collision = await runDocsGoldenTasks(
         pages,
@@ -2511,6 +2517,7 @@ Use the scoped integration.
 
       fetchMock
         .mockResolvedValueOnce(initialize())
+        .mockResolvedValueOnce(initialized())
         .mockResolvedValueOnce(searchResponse("https://trusted.example/docs/remote"));
       const sameOrigin = await runDocsGoldenTasks(
         pages,

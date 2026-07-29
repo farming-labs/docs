@@ -362,6 +362,10 @@ export function analyzeAgentSurfaceDrift(
     ],
     ["search.repeatedFilterParams", ["framework", "version", "package", "tags"]],
     ["search.warningsField", "warnings"],
+    ["search.cursorParam", "cursor"],
+    ["search.nextCursorField", "nextCursor"],
+    ["search.hasMoreField", "hasMore"],
+    ["search.totalField", "total"],
   ] as const) {
     compareExpectedValue(
       issues,

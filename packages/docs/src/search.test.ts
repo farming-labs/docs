@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DocsSearchAdapterContext, DocsSearchResult } from "./types.js";
+import type {
+  DocsSearchAdapter,
+  DocsSearchAdapterContext,
+  DocsSearchAdapterPage,
+  DocsSearchResponse,
+  DocsSearchResult,
+} from "./types.js";
 import {
   buildDocsAskAIContext,
   buildDocsRetrievalDigestProjection,
@@ -456,6 +462,506 @@ describe("performDocsSearch", () => {
         framework: `${"next,".repeat(10_000)}astro`,
       }),
     ).toEqual({ framework: ["nextjs"] });
+  });
+
+  it("parses structured pagination inputs and requires structured mode for cursors", () => {
+    expect(
+      resolveDocsSearchRequest(
+        new URLSearchParams(
+          "response=structured&cursor=opaque-continuation-token&limit=2&framework=Next.js",
+        ),
+      ),
+    ).toEqual({
+      structured: true,
+      cursor: "opaque-continuation-token",
+      limit: 2,
+      filters: { framework: ["nextjs"] },
+    });
+    expect(resolveDocsSearchRequest(new URLSearchParams("limit=2"))).toEqual({
+      structured: false,
+      filters: {},
+    });
+    expect(() =>
+      resolveDocsSearchRequest(new URLSearchParams("cursor=opaque-continuation-token")),
+    ).toThrow("Search cursors require the structured response format");
+
+    for (const limit of ["0", "26", "1.5", "not-a-number", "+2", " 2"]) {
+      expect(() =>
+        resolveDocsSearchRequest(new URLSearchParams({ response: "structured", limit })),
+      ).toThrow("Search limit must be an integer between 1 and 25");
+    }
+  });
+
+  it("keeps pre-pagination docs-search.v1 producers source-compatible", () => {
+    const legacyResponse: DocsSearchResponse = {
+      format: "docs-search.v1",
+      query: "install",
+      audience: "agent",
+      filters: {},
+      resultCount: 0,
+      results: [],
+      warnings: [],
+    };
+
+    expect(legacyResponse.total).toBeUndefined();
+    expect(legacyResponse.hasMore).toBeUndefined();
+  });
+
+  it("paginates simple structured search with stable opaque cursors and exact totals", async () => {
+    const paginationPages = Array.from({ length: 5 }, (_, index) => ({
+      title: `Pagination guide ${index + 1}`,
+      url: `/docs/pagination-${index + 1}`,
+      content: `Shared cursor traversal marker ${index + 1}.`,
+      rawContent: `# Pagination guide ${index + 1}\n\nShared cursor traversal marker ${index + 1}.`,
+    }));
+    const options = {
+      pages: paginationPages,
+      query: "shared cursor traversal marker",
+      limit: 2,
+      search: { provider: "simple" as const, chunking: { strategy: "page" as const } },
+    };
+
+    const baseline = await performDocsSearch({ ...options, limit: 25 });
+    const first = await performDocsSearchWithMetadata(options);
+    const repeatedFirst = await performDocsSearchWithMetadata(options);
+
+    expect(first).toMatchObject({
+      format: "docs-search.v1",
+      resultCount: 2,
+      total: 5,
+      hasMore: true,
+    });
+    expect(first.results).toHaveLength(first.resultCount);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(first.nextCursor).toBe(repeatedFirst.nextCursor);
+    expect(repeatedFirst.results).toEqual(first.results);
+    expect(first.nextCursor).not.toContain(options.query);
+    for (const page of paginationPages) {
+      expect(first.nextCursor).not.toContain(page.url);
+    }
+
+    const pages = [first];
+    while (pages.at(-1)?.hasMore) {
+      const cursor = pages.at(-1)?.nextCursor;
+      expect(cursor).toEqual(expect.any(String));
+      pages.push(
+        await performDocsSearchWithMetadata({
+          ...options,
+          cursor,
+        }),
+      );
+    }
+
+    expect(pages.map((page) => page.resultCount)).toEqual([2, 2, 1]);
+    expect(pages.map((page) => page.total)).toEqual([5, 5, 5]);
+    expect(pages.map((page) => page.hasMore)).toEqual([true, true, false]);
+    expect(pages.at(-1)?.nextCursor).toBeUndefined();
+    for (const page of pages) {
+      expect(page.resultCount).toBe(page.results.length);
+      expect(page.hasMore).toBe(Boolean(page.nextCursor));
+    }
+
+    const traversedIds = pages.flatMap((page) => page.results.map((result) => result.id));
+    expect(new Set(traversedIds).size).toBe(traversedIds.length);
+    expect(traversedIds).toEqual(baseline.map((result) => result.id));
+  });
+
+  it("binds structured cursors to the exact query, normalized filters, and index snapshot", async () => {
+    const paginationPages = Array.from({ length: 4 }, (_, index) => ({
+      title: `Bound cursor guide ${index + 1}`,
+      url: `/docs/bound-cursor-${index + 1}`,
+      content: `Bound cursor marker ${index + 1}.`,
+      rawContent: `# Bound cursor guide ${index + 1}\n\nBound cursor marker ${index + 1}.`,
+      framework: index < 3 ? "Next.js" : "Astro",
+      tags: ["setup", "auth"],
+    }));
+    const options = {
+      pages: paginationPages,
+      query: "bound cursor marker",
+      filters: { framework: "Next.js", tags: ["setup", "auth"] },
+      limit: 2,
+      search: { provider: "simple" as const, chunking: { strategy: "page" as const } },
+    };
+    const first = await performDocsSearchWithMetadata(options);
+    expect(first.nextCursor).toEqual(expect.any(String));
+
+    await expect(
+      performDocsSearchWithMetadata({
+        ...options,
+        query: "different query",
+        cursor: first.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+    await expect(
+      performDocsSearchWithMetadata({
+        ...options,
+        filters: { framework: "Astro", tags: ["setup", "auth"] },
+        cursor: first.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+    await expect(
+      performDocsSearchWithMetadata({
+        ...options,
+        limit: 3,
+        cursor: first.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+    await expect(
+      performDocsSearchWithMetadata({
+        ...options,
+        pages: [
+          ...paginationPages,
+          {
+            title: "Changed snapshot",
+            url: "/docs/changed-snapshot",
+            content: "Bound cursor marker changed the complete index.",
+            rawContent: "# Changed snapshot\n\nBound cursor marker changed the complete index.",
+            framework: "Next.js",
+            tags: ["setup", "auth"],
+          },
+        ],
+        cursor: first.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+    await expect(
+      performDocsSearchWithMetadata({
+        ...options,
+        cursor: "not-a-valid-cursor",
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+
+    await expect(
+      performDocsSearchWithMetadata({
+        ...options,
+        query: "  BOUND   CURSOR marker ",
+        filters: { framework: "next", tags: ["auth", "setup"] },
+        cursor: first.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+
+    await expect(
+      performDocsSearchWithMetadata({
+        ...options,
+        filters: { framework: "next", tags: ["auth", "setup"] },
+        cursor: first.nextCursor,
+      }),
+    ).resolves.toMatchObject({
+      resultCount: 1,
+      total: 3,
+      hasMore: false,
+    });
+  });
+
+  it("returns terminal pagination metadata for blank and unmatched structured searches", async () => {
+    const options = {
+      pages: [
+        {
+          title: "Pagination blank query",
+          url: "/docs/pagination-blank",
+          content: "Known pagination marker.",
+        },
+      ],
+      limit: 2,
+    };
+
+    for (const query of [" \n ", "unfindable zyzzyva quartz"]) {
+      const response = await performDocsSearchWithMetadata({ ...options, query });
+      expect(response).toMatchObject({
+        resultCount: 0,
+        total: 0,
+        hasMore: false,
+        results: [],
+      });
+      expect(response.nextCursor).toBeUndefined();
+    }
+  });
+
+  it("uses exact local pagination when a legacy custom adapter cannot report totals", async () => {
+    const customPages = Array.from({ length: 5 }, (_, index) => ({
+      title: `Legacy custom result ${index + 1}`,
+      url: `/docs/legacy-custom-${index + 1}`,
+      content: `Legacy adapter pagination marker ${index + 1}.`,
+    }));
+    const legacyResults = customPages.map((page, index) => ({
+      id: `legacy-${index + 1}`,
+      url: page.url,
+      content: page.title,
+      description: page.content,
+      type: "page" as const,
+      score: customPages.length - index,
+    }));
+    // A short response is not proof that the backend has no more matches: legacy
+    // adapters may impose an internal cap below the requested limit.
+    const legacySearch = vi.fn(async () => legacyResults.slice(0, 1));
+    const search = createCustomSearchAdapter({
+      name: "legacy-array-pagination",
+      search: legacySearch,
+    });
+    const first = await performDocsSearchWithMetadata({
+      pages: customPages,
+      query: "legacy adapter pagination marker",
+      search,
+      limit: 2,
+    });
+    const second = await performDocsSearchWithMetadata({
+      pages: customPages,
+      query: "legacy adapter pagination marker",
+      search,
+      limit: 2,
+      cursor: first.nextCursor,
+    });
+
+    expect(first).toMatchObject({ resultCount: 2, total: 5, hasMore: true });
+    expect(second).toMatchObject({ resultCount: 2, total: 5, hasMore: true });
+    expect(first.results.map((result) => result.url)).toEqual([
+      "/docs/legacy-custom-1",
+      "/docs/legacy-custom-2",
+    ]);
+    expect(second.results.map((result) => result.url)).toEqual([
+      "/docs/legacy-custom-3",
+      "/docs/legacy-custom-4",
+    ]);
+    expect(legacySearch).not.toHaveBeenCalled();
+  });
+
+  it("advances custom cursor pages by the actual short-page result count", async () => {
+    const searchPage = vi.fn(
+      async (query: { offset?: number; cursor?: string }): Promise<DocsSearchAdapterPage> => {
+        const offset = query.offset ?? 0;
+        return {
+          results: [
+            {
+              id: `remote-${offset + 1}`,
+              url: `https://remote.example/docs/${offset + 1}`,
+              content: `Remote result ${offset + 1}`,
+              type: "page",
+            },
+          ],
+          total: 3,
+          ...(offset < 2 ? { nextCursor: `native-${offset + 1}` } : {}),
+        };
+      },
+    );
+    const search = {
+      provider: "custom" as const,
+      paginationRevision: "short-pages.v1",
+      adapter: {
+        name: "short-page-adapter",
+        async search() {
+          return [];
+        },
+        searchPage,
+      },
+    };
+
+    const responses = [];
+    let cursor: string | undefined;
+    do {
+      const response = await performDocsSearchWithMetadata({
+        pages: [],
+        query: "remote result",
+        search,
+        limit: 2,
+        cursor,
+      });
+      responses.push(response);
+      cursor = response.nextCursor;
+    } while (cursor);
+
+    expect(responses.map((response) => response.resultCount)).toEqual([1, 1, 1]);
+    expect(responses.map((response) => response.total)).toEqual([3, 3, 3]);
+    expect(responses.flatMap((response) => response.results.map((result) => result.id))).toEqual([
+      "remote-1",
+      "remote-2",
+      "remote-3",
+    ]);
+    expect(searchPage.mock.calls.map(([query]) => [query.offset, query.cursor])).toEqual([
+      [0, undefined],
+      [1, "native-1"],
+      [2, "native-2"],
+    ]);
+  });
+
+  it("rejects empty and oversized serialized custom provider cursors", async () => {
+    const run = (nextCursor: string) =>
+      performDocsSearchWithMetadata({
+        pages: [],
+        query: "invalid provider cursor",
+        limit: 1,
+        failureMode: "throw",
+        search: {
+          provider: "custom",
+          paginationRevision: "invalid-provider-cursor.v1",
+          adapter: {
+            name: "invalid-provider-cursor",
+            async search() {
+              return [];
+            },
+            async searchPage() {
+              return {
+                results: [
+                  {
+                    id: "invalid-provider-cursor",
+                    url: "https://remote.example/invalid-provider-cursor",
+                    content: "Invalid provider cursor",
+                    type: "page" as const,
+                  },
+                ],
+                total: 2,
+                nextCursor,
+              };
+            },
+          },
+        },
+      });
+
+    await expect(run("")).rejects.toThrow("invalid pagination metadata");
+    await expect(run('"'.repeat(700))).rejects.toThrow("invalid pagination metadata");
+  });
+
+  it("fails a continuation closed when a custom provider repeats its cursor", async () => {
+    const search = {
+      provider: "custom" as const,
+      paginationRevision: "repeated-provider-cursor.v1",
+      adapter: {
+        name: "repeated-provider-cursor",
+        async search() {
+          return [];
+        },
+        async searchPage(query: { offset?: number }) {
+          const offset = query.offset ?? 0;
+          return {
+            results: [
+              {
+                id: `repeated-provider-${offset + 1}`,
+                url: `https://remote.example/repeated-provider-${offset + 1}`,
+                content: `Repeated provider result ${offset + 1}`,
+                type: "page" as const,
+              },
+            ],
+            total: 3,
+            nextCursor: "same-provider-cursor",
+          };
+        },
+      },
+    };
+    const first = await performDocsSearchWithMetadata({
+      pages: [],
+      query: "repeated provider result",
+      limit: 1,
+      search,
+    });
+
+    await expect(
+      performDocsSearchWithMetadata({
+        pages: [],
+        query: "repeated provider result",
+        limit: 1,
+        search,
+        cursor: first.nextCursor,
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
+  });
+
+  it("pins local fallback mode for every continuation page", async () => {
+    const fallbackPages = Array.from({ length: 3 }, (_, index) => ({
+      title: `Fallback mode ${index + 1}`,
+      url: `/docs/fallback-mode-${index + 1}`,
+      content: `Stable fallback traversal marker ${index + 1}.`,
+    }));
+    const searchPage = vi
+      .fn<NonNullable<DocsSearchAdapter["searchPage"]>>()
+      .mockRejectedValueOnce(new Error("transient provider failure"))
+      .mockResolvedValue({
+        results: [
+          {
+            id: "recovered-provider",
+            url: "https://remote.example/recovered",
+            content: "Recovered provider result",
+            type: "page",
+          },
+        ],
+        total: 1,
+      });
+    const search = {
+      provider: "custom" as const,
+      paginationRevision: "fallback-mode.v1",
+      adapter: {
+        name: "fallback-mode-adapter",
+        async search() {
+          return [];
+        },
+        searchPage,
+      },
+    };
+
+    const first = await performDocsSearchWithMetadata({
+      pages: fallbackPages,
+      query: "stable fallback traversal marker",
+      search,
+      limit: 2,
+    });
+    const second = await performDocsSearchWithMetadata({
+      pages: fallbackPages,
+      query: "stable fallback traversal marker",
+      search,
+      limit: 2,
+      cursor: first.nextCursor,
+    });
+
+    expect(first.results.map((result) => result.url)).toEqual([
+      "/docs/fallback-mode-1",
+      "/docs/fallback-mode-2",
+    ]);
+    expect(second.results.map((result) => result.url)).toEqual(["/docs/fallback-mode-3"]);
+    expect(searchPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates custom-provider cursors when the ranking revision changes", async () => {
+    const adapter: DocsSearchAdapter = {
+      name: "revisioned-adapter",
+      async search() {
+        return [];
+      },
+      async searchPage(query) {
+        const offset = query.offset ?? 0;
+        return {
+          results: [
+            {
+              id: `revisioned-${offset + 1}`,
+              url: `https://remote.example/revisioned-${offset + 1}`,
+              content: `Revisioned result ${offset + 1}`,
+              type: "page",
+            },
+          ],
+          total: 2,
+        };
+      },
+    };
+    const first = await performDocsSearchWithMetadata({
+      pages: [],
+      query: "revisioned result",
+      limit: 1,
+      search: {
+        provider: "custom",
+        adapter,
+        paginationRevision: "ranking-v1",
+      },
+    });
+
+    await expect(
+      performDocsSearchWithMetadata({
+        pages: [],
+        query: "revisioned result",
+        limit: 1,
+        cursor: first.nextCursor,
+        search: {
+          provider: "custom",
+          adapter,
+          paginationRevision: "ranking-v2",
+        },
+      }),
+    ).rejects.toThrow("Invalid or stale pagination cursor");
   });
 
   it("applies OR within scope fields and AND across fields", async () => {
@@ -1815,6 +2321,7 @@ Customize the loading UI.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -1875,8 +2382,8 @@ Customize the loading UI.
           section: "Procedure",
         },
       ]);
-      expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(2);
-      const searchCall = vi.mocked(globalThis.fetch).mock.calls[1]?.[1];
+      expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(3);
+      const searchCall = vi.mocked(globalThis.fetch).mock.calls[2]?.[1];
       expect(searchCall?.headers).toBeDefined();
       expect(searchCall?.headers).not.toHaveProperty("mcp-session-id");
       expect(JSON.parse(String(searchCall?.body))).toMatchObject({
@@ -2215,6 +2722,7 @@ pnpm add @farming-labs/docs
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -2296,6 +2804,7 @@ pnpm add @farming-labs/docs
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -2369,6 +2878,7 @@ pnpm add @farming-labs/docs
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -2883,8 +3393,11 @@ describe("remote search adapters", () => {
     expect(indexedRecord).toMatchObject({
       id: indexedRecord?.objectID,
       source_document_id: "/docs/installation#page",
-      _tags: [indexedRecord?.source_corpus_id],
     });
+    expect(indexedRecord?._tags).toEqual([
+      indexedRecord?.source_corpus_id,
+      `docs-generation:${String(indexedRecord?.source_index_generation)}`,
+    ]);
     expect(indexedRecord?.source_corpus_id).toMatch(/^sha256:[a-f0-9]{64}$/u);
     expect(operations).toEqual(["addObject"]);
     expect(
@@ -3877,6 +4390,7 @@ Agent-safe indigo procedure.
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -3948,6 +4462,7 @@ Agent-safe indigo procedure.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -4032,7 +4547,7 @@ Agent-safe indigo procedure.
         section: undefined,
       },
     ]);
-    const requestPayload = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body));
+    const requestPayload = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[2]?.[1]?.body));
     expect(requestPayload).not.toHaveProperty("params.arguments.audience");
     expect(requestPayload).not.toHaveProperty("params.arguments.framework");
   });
@@ -4059,6 +4574,7 @@ Agent-safe indigo procedure.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -4128,7 +4644,7 @@ Agent-safe indigo procedure.
 
     expect(results.map((result) => result.id)).toContain("foreign-next");
     expect(results.map((result) => result.id)).not.toContain("known-local-astro");
-    const requestPayload = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body));
+    const requestPayload = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[2]?.[1]?.body));
     expect(requestPayload).toHaveProperty("params.arguments.framework", ["nextjs"]);
   });
 
@@ -4154,6 +4670,7 @@ Agent-safe indigo procedure.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -4234,6 +4751,7 @@ Agent-safe indigo procedure.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -4259,9 +4777,997 @@ Agent-safe indigo procedure.
       documents: [],
     } as DocsSearchAdapterContext);
 
-    expect(JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body))).toMatchObject({
+    expect(JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[2]?.[1]?.body))).toMatchObject({
       params: { arguments: { audience: "human" } },
     });
+  });
+
+  it("maps Algolia and Typesense exact pagination metadata", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nbHits: 3,
+            nbPages: 3,
+            hits: [
+              {
+                objectID: "alg-page-2",
+                url: "/docs/algolia-page-2",
+                title: "Algolia page two",
+                type: "page",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            found: 3,
+            hits: [
+              {
+                document: {
+                  id: "typesense-page-2",
+                  url: "/docs/typesense-page-2",
+                  title: "Typesense page two",
+                  type: "page",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    const context = { pages: [], documents: [] } as DocsSearchAdapterContext;
+    const algolia = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+    const algoliaPage = await algolia.searchPage!(
+      { query: "install", limit: 1, offset: 1 },
+      context,
+    );
+    const algoliaBody = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[0]?.[1]?.body));
+    expect(algoliaBody).toMatchObject({ hitsPerPage: 1, page: 1 });
+    expect(algoliaPage).toMatchObject({
+      total: 3,
+      results: [{ id: "alg-page-2" }],
+    });
+
+    const typesense = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+    });
+    const typesensePage = await typesense.searchPage!(
+      { query: "install", limit: 1, offset: 1 },
+      context,
+    );
+    const typesenseUrl = new URL(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]));
+    expect(typesenseUrl.searchParams.get("per_page")).toBe("1");
+    expect(typesenseUrl.searchParams.get("page")).toBe("2");
+    expect(typesensePage).toMatchObject({
+      total: 3,
+      results: [{ id: "typesense-page-2" }],
+    });
+  });
+
+  it("traverses a generation-scoped hosted search through two structured pages", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nbHits: 2,
+            nbPages: 2,
+            hits: [
+              {
+                objectID: "hosted-first",
+                url: "/docs/hosted-first",
+                title: "Hosted first",
+                type: "page",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nbHits: 2,
+            nbPages: 2,
+            hits: [
+              {
+                objectID: "hosted-second",
+                url: "/docs/hosted-second",
+                title: "Hosted second",
+                type: "page",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    const options = {
+      pages: [
+        {
+          title: "Hosted first",
+          url: "/docs/hosted-first",
+          content: "Shared hosted traversal marker one.",
+        },
+        {
+          title: "Hosted second",
+          url: "/docs/hosted-second",
+          content: "Shared hosted traversal marker two.",
+        },
+      ],
+      query: "shared hosted traversal marker",
+      limit: 1,
+      search: {
+        provider: "algolia" as const,
+        appId: "app-id",
+        indexName: "docs",
+        searchApiKey: "search-key",
+        chunking: { strategy: "page" as const },
+      },
+    };
+
+    const first = await performDocsSearchWithMetadata(options);
+    const second = await performDocsSearchWithMetadata({
+      ...options,
+      cursor: first.nextCursor,
+    });
+
+    expect(first).toMatchObject({
+      resultCount: 1,
+      total: 2,
+      hasMore: true,
+      results: [{ url: "/docs/hosted-first" }],
+    });
+    expect(second).toMatchObject({
+      resultCount: 1,
+      total: 2,
+      hasMore: false,
+      results: [{ url: "/docs/hosted-second" }],
+    });
+    const requestPages = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as { page?: number });
+    expect(requestPages.map((request) => request.page)).toEqual([0, 1]);
+  });
+
+  it("scopes hosted cursor queries to the exact indexed generation", async () => {
+    const generation = `sha256:${"c".repeat(64)}`;
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ nbHits: 0, nbPages: 0, hits: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ results: [{ found: 0, hits: [] }] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const context = {
+      pages: [],
+      documents: [],
+      indexGeneration: generation,
+    } as DocsSearchAdapterContext;
+
+    const algolia = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+    await algolia.searchPage!({ query: "install", limit: 2, offset: 0 }, context);
+
+    const typesense = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+    });
+    await typesense.searchPage!({ query: "install", limit: 2, offset: 0 }, context);
+
+    const algoliaBody = JSON.parse(
+      String(vi.mocked(globalThis.fetch).mock.calls[0]?.[1]?.body),
+    ) as { filters?: string };
+    expect(algoliaBody.filters).toBe(`_tags:"docs-generation:${generation}"`);
+    const typesenseBody = JSON.parse(
+      String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body),
+    ) as { searches: Array<{ filter_by?: string }> };
+    expect(typesenseBody.searches[0]?.filter_by).toBe(`source_index_generation:=\`${generation}\``);
+  });
+
+  it("rejects malformed hosted count metadata for exact cursor pages", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ hits: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ hits: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const context = { pages: [], documents: [] } as DocsSearchAdapterContext;
+
+    const algolia = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+    await expect(
+      algolia.searchPage!({ query: "install", limit: 2, offset: 0 }, context),
+    ).rejects.toThrow("exact reachable pagination metadata");
+
+    const typesense = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+    });
+    await expect(
+      typesense.searchPage!({ query: "install", limit: 2, offset: 0 }, context),
+    ).rejects.toThrow("exact result total");
+  });
+
+  it("rejects cut-off Typesense results for direct and multi-search cursor pages", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ found: 1, search_cutoff: true, hits: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [{ found: 1, search_cutoff: true, hits: [] }],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+    const typesense = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+    });
+
+    await expect(
+      typesense.searchPage!({ query: "install", limit: 1, offset: 0 }, {
+        pages: [],
+        documents: [],
+      } as DocsSearchAdapterContext),
+    ).rejects.toThrow("cut off");
+    await expect(
+      typesense.searchPage!({ query: "install", limit: 1, offset: 0 }, {
+        pages: [],
+        documents: [],
+        indexGeneration: `sha256:${"d".repeat(64)}`,
+      } as DocsSearchAdapterContext),
+    ).rejects.toThrow("cut off");
+  });
+
+  it("rejects Algolia totals beyond the provider's reachable page count", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          nbHits: 3,
+          nbPages: 1,
+          hits: [{ objectID: "alg-1", url: "/docs/alg-1", title: "Algolia", type: "page" }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const algolia = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+
+    await expect(
+      algolia.searchPage!({ query: "install", limit: 1, offset: 0 }, {
+        pages: [],
+        documents: [],
+      } as DocsSearchAdapterContext),
+    ).rejects.toThrow("reachable pagination window");
+  });
+
+  it("rejects approximate and incomplete non-final hosted cursor pages", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nbHits: 1,
+            nbPages: 1,
+            exhaustiveNbHits: false,
+            hits: [{ objectID: "approximate", url: "/docs/approximate", title: "Approximate" }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nbHits: 3,
+            nbPages: 2,
+            hits: [{ objectID: "short", url: "/docs/short", title: "Short" }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            found: 3,
+            hits: [
+              {
+                document: { id: "short", url: "/docs/short", title: "Short", type: "page" },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    const context = { pages: [], documents: [] } as DocsSearchAdapterContext;
+    const algolia = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+    await expect(
+      algolia.searchPage!({ query: "install", limit: 2, offset: 0 }, context),
+    ).rejects.toThrow("approximate result total");
+    await expect(
+      algolia.searchPage!({ query: "install", limit: 2, offset: 0 }, context),
+    ).rejects.toThrow("incomplete non-final page");
+
+    const typesense = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+    });
+    await expect(
+      typesense.searchPage!({ query: "install", limit: 2, offset: 0 }, context),
+    ).rejects.toThrow("incomplete non-final page");
+  });
+
+  it("rejects hosted totals outside the bounded exact cursor window", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nbHits: 1_001,
+            nbPages: 1_001,
+            hits: [{ objectID: "alg-1", url: "/docs/alg-1", title: "Algolia", type: "page" }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            found: 1_001,
+            hits: [
+              {
+                document: {
+                  id: "typesense-1",
+                  url: "/docs/typesense-1",
+                  title: "Typesense",
+                  type: "page",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    const context = { pages: [], documents: [] } as DocsSearchAdapterContext;
+
+    const algolia = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+    });
+    await expect(
+      algolia.searchPage!({ query: "install", limit: 1, offset: 0 }, context),
+    ).rejects.toThrow("exact cursor pagination window");
+
+    const typesense = createTypesenseSearchAdapter({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
+    });
+    await expect(
+      typesense.searchPage!({ query: "install", limit: 1, offset: 0 }, context),
+    ).rejects.toThrow("exact cursor pagination window");
+  });
+
+  it("uses exact local totals when a generation-scoped hosted index has no current hits", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ nbHits: 0, nbPages: 0, hits: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const response = await performDocsSearchWithMetadata({
+      pages: [
+        {
+          title: "Current generation install",
+          url: "/docs/current-generation-install",
+          content: "Current generation hosted fallback marker.",
+        },
+      ],
+      query: "current generation hosted fallback marker",
+      limit: 2,
+      search: {
+        provider: "algolia",
+        appId: "app-id",
+        indexName: "docs",
+        searchApiKey: "search-key",
+        chunking: { strategy: "page" },
+      },
+    });
+
+    expect(response).toMatchObject({
+      resultCount: 1,
+      total: 1,
+      hasMore: false,
+      results: [{ url: "/docs/current-generation-install" }],
+    });
+    const queryBody = JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[0]?.[1]?.body)) as {
+      filters?: string;
+    };
+    expect(queryBody.filters).toMatch(/^_tags:"docs-generation:sha256:[a-f0-9]{64}"$/u);
+  });
+
+  it("falls back to exact local totals when provider scope filters exceed safe limits", async () => {
+    const scopedPages = Array.from({ length: 1_001 }, (_, index) => ({
+      title: `Large scoped corpus ${index + 1}`,
+      url: `/docs/large-scoped-corpus-${index + 1}`,
+      content: `Large scoped pagination marker ${index + 1}.`,
+      framework: "nextjs",
+    }));
+
+    const response = await performDocsSearchWithMetadata({
+      pages: scopedPages,
+      query: "large scoped pagination marker",
+      filters: { framework: "nextjs" },
+      limit: 2,
+      search: {
+        provider: "algolia",
+        appId: "app-id",
+        indexName: "docs",
+        searchApiKey: "search-key",
+        chunking: { strategy: "page" },
+      },
+    });
+
+    expect(response).toMatchObject({
+      resultCount: 2,
+      total: 1_001,
+      hasMore: true,
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("replays MCP pages in a fresh session before returning a continuation", async () => {
+    const mcpToolPage = (
+      id: number,
+      resultId: string,
+      options: { hasMore: boolean; nextCursor?: string },
+    ): Response =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id,
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  format: "docs-search.v1",
+                  filters: {},
+                  resultCount: 1,
+                  total: 3,
+                  hasMore: options.hasMore,
+                  ...(options.nextCursor ? { nextCursor: options.nextCursor } : {}),
+                  results: [
+                    {
+                      id: resultId,
+                      url: `https://remote.example/docs/${resultId}`,
+                      content: resultId,
+                      type: "page",
+                    },
+                  ],
+                  warnings: [],
+                }),
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    const initialize = (sessionId: string) =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            serverInfo: { name: "docs-mcp", version: "1.0.0" },
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "mcp-session-id": sessionId,
+          },
+        },
+      );
+
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(initialize("pagination-session-1"))
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(
+        mcpToolPage(2, "remote-page-1", {
+          hasMore: true,
+          nextCursor: "session-1-cursor-2",
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(initialize("pagination-session-2"))
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(
+        mcpToolPage(2, "remote-page-1", {
+          hasMore: true,
+          nextCursor: "session-2-cursor-2",
+        }),
+      )
+      .mockResolvedValueOnce(
+        mcpToolPage(3, "remote-page-2", {
+          hasMore: true,
+          nextCursor: "session-2-cursor-3",
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const adapter = createMcpSearchAdapter({
+      provider: "mcp",
+      endpoint: "https://remote.example/mcp",
+    });
+    const first = await adapter.searchPage!(
+      {
+        query: "install",
+        limit: 1,
+        offset: 0,
+        audience: "agent",
+      },
+      { pages: [], documents: [] } as DocsSearchAdapterContext,
+    );
+    const page = await adapter.searchPage!(
+      {
+        query: "install",
+        limit: 1,
+        offset: 1,
+        cursor: first.nextCursor,
+        audience: "agent",
+      },
+      { pages: [], documents: [] } as DocsSearchAdapterContext,
+    );
+
+    expect(page).toMatchObject({
+      total: 3,
+      results: [{ id: "remote-page-2" }],
+    });
+    expect(first.nextCursor).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(page.nextCursor).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    for (const callIndex of [1, 5]) {
+      expect(
+        JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[callIndex]?.[1]?.body)),
+      ).toMatchObject({
+        method: "notifications/initialized",
+        params: {},
+      });
+    }
+    const replayFirstCall = JSON.parse(
+      String(vi.mocked(globalThis.fetch).mock.calls[6]?.[1]?.body),
+    );
+    const replaySecondCall = JSON.parse(
+      String(vi.mocked(globalThis.fetch).mock.calls[7]?.[1]?.body),
+    );
+    expect(replayFirstCall.params.arguments.cursor).toBeUndefined();
+    expect(replaySecondCall.params.arguments.cursor).toBe("session-2-cursor-2");
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(9);
+  });
+
+  it("replays variable-sized MCP pages by their actual result counts", async () => {
+    let session = 0;
+    vi.mocked(globalThis.fetch).mockImplementation(async (_input, init) => {
+      const body =
+        init?.method === "POST" && typeof init.body === "string"
+          ? (JSON.parse(init.body) as {
+              id?: number;
+              method?: string;
+              params?: { arguments?: { cursor?: string } };
+            })
+          : undefined;
+      if (body?.method === "initialize") {
+        session += 1;
+        return new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "mcp-session-id": `variable-session-${session}`,
+            },
+          },
+        );
+      }
+      if (body?.method === "notifications/initialized") {
+        return new Response(null, { status: 202 });
+      }
+      if (body?.method === "tools/call") {
+        const cursor = body.params?.arguments?.cursor;
+        const page =
+          cursor === undefined
+            ? {
+                results: [{ id: "variable-1", url: "/docs/variable-1" }],
+                nextCursor: `session-${session}-page-2`,
+              }
+            : cursor.endsWith("page-2")
+              ? {
+                  results: [
+                    { id: "variable-2", url: "/docs/variable-2" },
+                    { id: "variable-3", url: "/docs/variable-3" },
+                  ],
+                  nextCursor: `session-${session}-page-3`,
+                }
+              : {
+                  results: [{ id: "variable-4", url: "/docs/variable-4" }],
+                  nextCursor: undefined,
+                };
+        return new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: body.id,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    format: "docs-search.v1",
+                    filters: {},
+                    resultCount: page.results.length,
+                    total: 4,
+                    hasMore: page.nextCursor !== undefined,
+                    ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+                    results: page.results.map((result) => ({
+                      ...result,
+                      content: result.id,
+                      type: "page",
+                    })),
+                    warnings: [],
+                  }),
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (init?.method === "DELETE") return new Response(null, { status: 200 });
+      throw new Error("Unexpected MCP replay request.");
+    });
+
+    const adapter = createMcpSearchAdapter({
+      provider: "mcp",
+      endpoint: "https://remote.example/mcp",
+    });
+    const context = { pages: [], documents: [] } as DocsSearchAdapterContext;
+    const first = await adapter.searchPage!(
+      { query: "variable", limit: 2, offset: 0, audience: "agent" },
+      context,
+    );
+    const second = await adapter.searchPage!(
+      {
+        query: "variable",
+        limit: 2,
+        offset: 1,
+        cursor: first.nextCursor,
+        audience: "agent",
+      },
+      context,
+    );
+    const third = await adapter.searchPage!(
+      {
+        query: "variable",
+        limit: 2,
+        offset: 3,
+        cursor: second.nextCursor,
+        audience: "agent",
+      },
+      context,
+    );
+
+    expect(first.results.map((result) => result.id)).toEqual(["variable-1"]);
+    expect(second.results.map((result) => result.id)).toEqual(["variable-2", "variable-3"]);
+    expect(third).toMatchObject({
+      total: 4,
+      results: [{ id: "variable-4" }],
+    });
+    expect(third.nextCursor).toBeUndefined();
+  });
+
+  it("rejects an MCP continuation when the replayed prefix changes", async () => {
+    const initialize = (sessionId: string) =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            serverInfo: { name: "docs-mcp", version: "1.0.0" },
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "mcp-session-id": sessionId,
+          },
+        },
+      );
+    const firstPage = (content: string, cursor: string) =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  format: "docs-search.v1",
+                  filters: {},
+                  resultCount: 1,
+                  total: 2,
+                  hasMore: true,
+                  nextCursor: cursor,
+                  results: [
+                    {
+                      id: "replayed-prefix",
+                      url: "/docs/replayed-prefix",
+                      content,
+                      type: "page",
+                    },
+                  ],
+                  warnings: [],
+                }),
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(initialize("stale-replay-1"))
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(firstPage("Original replay prefix", "session-1-page-2"))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(initialize("stale-replay-2"))
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(firstPage("Changed replay prefix", "session-2-page-2"))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const adapter = createMcpSearchAdapter({
+      provider: "mcp",
+      endpoint: "https://remote.example/mcp",
+    });
+    const context = { pages: [], documents: [] } as DocsSearchAdapterContext;
+    const first = await adapter.searchPage!(
+      { query: "replay prefix", limit: 1, offset: 0, audience: "agent" },
+      context,
+    );
+
+    await expect(
+      adapter.searchPage!(
+        {
+          query: "replay prefix",
+          limit: 1,
+          offset: 1,
+          cursor: first.nextCursor,
+          audience: "agent",
+        },
+        context,
+      ),
+    ).rejects.toThrow("continuation cursor is stale");
+  });
+
+  it("rejects MCP totals that cannot fit the bounded replay result window", async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "mcp-session-id": "bounded-session",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    format: "docs-search.v1",
+                    filters: {},
+                    resultCount: 1,
+                    total: 65,
+                    hasMore: true,
+                    nextCursor: "remote-page-2",
+                    results: [
+                      {
+                        id: "bounded-1",
+                        url: "/docs/bounded-1",
+                        content: "Bounded result",
+                        type: "page",
+                      },
+                    ],
+                    warnings: [],
+                  }),
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const adapter = createMcpSearchAdapter({
+      provider: "mcp",
+      endpoint: "https://remote.example/mcp",
+    });
+    await expect(
+      adapter.searchPage!({ query: "bounded", limit: 1, offset: 0, audience: "agent" }, {
+        pages: [],
+        documents: [],
+      } as DocsSearchAdapterContext),
+    ).rejects.toThrow("bounded exact pagination window");
+  });
+
+  it("rejects malformed and inconsistent MCP pagination metadata", async () => {
+    const cases = [
+      { total: 0, hasMore: false, error: "malformed paginated results" },
+      { total: 2, hasMore: false, error: "inconsistent pagination metadata" },
+      { total: 2, hasMore: true, error: "inconsistent pagination metadata" },
+    ];
+
+    for (const [index, fixture] of cases.entries()) {
+      vi.mocked(globalThis.fetch)
+        .mockReset()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              result: {
+                protocolVersion: "2025-11-25",
+                capabilities: {},
+                serverInfo: { name: "docs-mcp", version: "1.0.0" },
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "mcp-session-id": `malformed-session-${index}`,
+              },
+            },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 202 }))
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: 2,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify({
+                      format: "docs-search.v1",
+                      filters: {},
+                      resultCount: 1,
+                      total: fixture.total,
+                      hasMore: fixture.hasMore,
+                      results: [
+                        {
+                          id: "malformed-mcp-page",
+                          url: "/docs/malformed-mcp-page",
+                          content: "Malformed MCP page",
+                          type: "page",
+                        },
+                      ],
+                      warnings: [],
+                    }),
+                  },
+                ],
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+      const adapter = createMcpSearchAdapter({
+        provider: "mcp",
+        endpoint: "https://remote.example/mcp",
+      });
+      await expect(
+        adapter.searchPage!({ query: "malformed", limit: 1, offset: 0, audience: "agent" }, {
+          pages: [],
+          documents: [],
+        } as DocsSearchAdapterContext),
+      ).rejects.toThrow(fixture.error);
+    }
   });
 
   it("attempts independently bounded MCP session cleanup after caller abort", async () => {
@@ -4295,6 +5801,7 @@ Agent-safe indigo procedure.
             },
           ),
         )
+        .mockResolvedValueOnce(new Response(null, { status: 202 }))
         .mockImplementationOnce(async (_input, init) => {
           expect(init?.signal).toBe(callerController.signal);
           callerController.abort(new Error("search timed out"));
@@ -4322,7 +5829,7 @@ Agent-safe indigo procedure.
       const rejection = expect(request).rejects.toThrow("search timed out");
 
       await cleanupStarted;
-      const cleanupCall = vi.mocked(globalThis.fetch).mock.calls[2];
+      const cleanupCall = vi.mocked(globalThis.fetch).mock.calls[3];
       expect(cleanupCall?.[1]?.method).toBe("DELETE");
       expect(cleanupSignal).not.toBe(callerController.signal);
       expect(cleanupSignal?.aborted).toBe(false);

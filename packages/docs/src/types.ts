@@ -1644,19 +1644,48 @@ export interface DocsSearchResponse {
    * for callers that construct the versioned response object themselves.
    */
   indexGeneration?: string;
+  /** Number of results in this response page. */
   resultCount: number;
+  /**
+   * Exact number of results available for the cursor-bound query.
+   * Built-in structured endpoints always emit this; optionality preserves the v1
+   * producer contract for existing integrations.
+   */
+  total?: number;
+  /**
+   * Whether another page can be requested with `nextCursor`.
+   * Built-in structured endpoints always emit this; optionality preserves the v1
+   * producer contract for existing integrations.
+   */
+  hasMore?: boolean;
+  /** Opaque cursor for the next page. Omitted when this is the final page. */
+  nextCursor?: string;
   results: DocsSearchResult[];
   warnings: DocsSearchWarning[];
+}
+
+/** Structured search response emitted by built-in cursor-aware endpoints. */
+export interface DocsPaginatedSearchResponse extends DocsSearchResponse {
+  total: number;
+  hasMore: boolean;
 }
 
 export interface DocsSearchRequest {
   filters: DocsSearchFilters;
   structured: boolean;
+  /** Opaque cursor supplied by a previous structured response. */
+  cursor?: string;
+  /** Structured response page size. */
+  limit?: number;
 }
 
 export interface DocsSearchQuery {
   query: string;
   limit?: number;
+  /** Zero-based provider offset used by the shared structured-search pipeline. */
+  offset?: number;
+  /** Provider cursor used by cursor-native remote adapters. */
+  cursor?: string;
   locale?: string;
   pathname?: string;
   /** Requested content projection. Omitted callers retain the human-search default. */
@@ -1691,6 +1720,28 @@ export interface DocsSearchAdapter {
   name: string;
   index?(context: DocsSearchAdapterContext): Promise<void>;
   search(query: DocsSearchQuery, context: DocsSearchAdapterContext): Promise<DocsSearchResult[]>;
+  /**
+   * Optional exact pagination contract. Built-in adapters implement this while legacy custom
+   * adapters can continue exposing only `search`.
+   */
+  searchPage?(
+    query: DocsSearchQuery,
+    context: DocsSearchAdapterContext,
+  ): Promise<DocsSearchAdapterPage>;
+}
+
+/**
+ * Exact page metadata returned by pagination-aware search adapters.
+ *
+ * Legacy custom adapters may continue implementing only `search` for unpaginated callers.
+ * Cursor-aware structured search uses the exact local fallback unless the custom adapter
+ * also implements `searchPage` and declares a stable `paginationRevision`.
+ */
+export interface DocsSearchAdapterPage {
+  results: DocsSearchResult[];
+  total: number;
+  /** Cursor-native providers can supply their own continuation token. */
+  nextCursor?: string;
 }
 
 export type DocsSearchAdapterFactory = (
@@ -1797,6 +1848,13 @@ export interface CustomDocsSearchConfig {
   provider: "custom";
   enabled?: boolean;
   adapter: DocsSearchAdapter | DocsSearchAdapterFactory;
+  /**
+   * Stable revision for the adapter's result ordering.
+   *
+   * Custom adapters must set this and implement `searchPage` to participate in cursor
+   * pagination. Change it whenever ranking behavior changes so old cursors fail closed.
+   */
+  paginationRevision?: string;
   maxResults?: number;
   chunking?: DocsSearchChunkingConfig;
 }

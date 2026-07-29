@@ -1642,31 +1642,72 @@ async function probeMcpRoute(
 
     const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
 
-    if (sessionId) {
-      await postMcpJson(
-        baseUrl,
-        route,
-        {
-          jsonrpc: "2.0",
-          method: "notifications/initialized",
-          params: {},
-        },
-        sessionId,
-      ).catch(() => undefined);
-    }
-
-    const toolsResponse = await postMcpJson(
+    await postMcpJson(
       baseUrl,
       route,
       {
         jsonrpc: "2.0",
-        id: "doctor-tools-list",
-        method: "tools/list",
+        method: "notifications/initialized",
         params: {},
       },
       sessionId,
-    );
-    const toolsPayload = await parseMcpResponse(toolsResponse);
+    ).catch(() => undefined);
+
+    const toolNames = new Set<string>();
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    let toolsListError: { status: number; message: string } | undefined;
+    let completedToolsList = false;
+
+    for (let page = 0; page < 20; page += 1) {
+      const toolsResponse = await postMcpJson(
+        baseUrl,
+        route,
+        {
+          jsonrpc: "2.0",
+          id: `doctor-tools-list-${page + 1}`,
+          method: "tools/list",
+          params: cursor !== undefined ? { cursor } : {},
+        },
+        sessionId,
+      );
+      const toolsPayload = await parseMcpResponse(toolsResponse);
+      if (!toolsResponse.ok || toolsPayload.error) {
+        toolsListError = {
+          status: toolsResponse.status,
+          message: String(toolsPayload.error?.message ?? "unknown MCP error"),
+        };
+        break;
+      }
+
+      const result = toolsPayload.result as
+        | { tools?: Array<{ name?: unknown }>; nextCursor?: unknown }
+        | undefined;
+      for (const tool of result?.tools ?? []) {
+        if (typeof tool.name === "string") toolNames.add(tool.name);
+      }
+
+      const nextCursor = result?.nextCursor;
+      if (nextCursor === undefined) {
+        completedToolsList = true;
+        break;
+      }
+      if (typeof nextCursor !== "string" || seenCursors.has(nextCursor)) {
+        toolsListError = {
+          status: toolsResponse.status,
+          message: "server returned an invalid or repeated pagination cursor",
+        };
+        break;
+      }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    }
+    if (!completedToolsList && !toolsListError) {
+      toolsListError = {
+        status: 200,
+        message: "server exceeded the 20-page tools/list safety limit",
+      };
+    }
 
     if (sessionId) {
       await fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
@@ -1678,18 +1719,14 @@ async function probeMcpRoute(
       }).catch(() => undefined);
     }
 
-    if (!toolsResponse.ok || toolsPayload.error) {
+    if (toolsListError) {
       return {
         ok: false,
-        detail: `${route} tools/list returned HTTP ${toolsResponse.status}: ${String(toolsPayload.error?.message ?? "unknown MCP error")}.`,
+        detail: `${route} tools/list returned HTTP ${toolsListError.status}: ${toolsListError.message}.`,
       };
     }
 
-    const tools = (toolsPayload.result as { tools?: Array<{ name?: unknown }> } | undefined)?.tools;
-    const toolNames = Array.isArray(tools)
-      ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
-      : [];
-    const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
+    const missingTools = expectedTools.filter((tool) => !toolNames.has(tool));
 
     if (missingTools.length > 0) {
       return {
@@ -1700,7 +1737,7 @@ async function probeMcpRoute(
 
     return {
       ok: true,
-      detail: `${route} initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${toolNames.length} MCP tool${toolNames.length === 1 ? "" : "s"}.`,
+      detail: `${route} initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${toolNames.size} MCP tool${toolNames.size === 1 ? "" : "s"}.`,
     };
   } catch (error) {
     return {

@@ -438,6 +438,7 @@ Updated overview.
           { status: 200, headers: { "content-type": "application/json" } },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({

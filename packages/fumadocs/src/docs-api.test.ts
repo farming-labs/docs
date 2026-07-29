@@ -568,6 +568,118 @@ Welcome to the docs.
     ]);
   });
 
+  it("paginates structured search with opaque cursors without changing legacy arrays", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-cursor-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "cursor-alpha"), { recursive: true });
+    mkdirSync(join(rootDir, "app", "docs", "cursor-beta"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n\nWelcome.\n");
+    writeFileSync(
+      join(rootDir, "app", "docs", "cursor-alpha", "page.mdx"),
+      `---
+title: "Cursor alpha"
+---
+
+# Cursor alpha
+
+Shared cursor pagination marker for alpha.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "cursor-beta", "page.mdx"),
+      `---
+title: "Cursor beta"
+---
+
+# Cursor beta
+
+Shared cursor pagination marker for beta.
+`,
+    );
+
+    process.chdir(rootDir);
+    const analyticsEvents: DocsAnalyticsEvent[] = [];
+    const { GET } = createDocsAPI({
+      entry: "docs",
+      analytics: {
+        console: false,
+        onEvent(event) {
+          analyticsEvents.push(event);
+        },
+      },
+      search: {
+        provider: "simple",
+        maxResults: 10,
+        chunking: { strategy: "page" },
+      },
+    });
+
+    const legacyUrl = new URL("https://docs.example.com/api/docs");
+    legacyUrl.searchParams.set("query", "shared cursor pagination marker");
+    legacyUrl.searchParams.set("limit", "1");
+    const legacyResponse = await GET(new Request(legacyUrl));
+    const legacyPayload = (await legacyResponse.json()) as Array<{ id: string }>;
+    expect(legacyResponse.status).toBe(200);
+    expect(Array.isArray(legacyPayload)).toBe(true);
+    expect(legacyPayload).toHaveLength(2);
+
+    const firstUrl = new URL(legacyUrl);
+    firstUrl.searchParams.set("response", "structured");
+    const firstResponse = await GET(new Request(firstUrl));
+    const first = (await firstResponse.json()) as {
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{ id: string }>;
+    };
+    expect(firstResponse.status).toBe(200);
+    expect(first).toMatchObject({
+      resultCount: 1,
+      total: 2,
+      hasMore: true,
+      results: [expect.objectContaining({ id: expect.any(String) })],
+    });
+    expect(first.nextCursor).toEqual(expect.any(String));
+
+    const nextUrl = new URL(firstUrl);
+    nextUrl.searchParams.set("cursor", first.nextCursor!);
+    const nextResponse = await GET(new Request(nextUrl));
+    const next = (await nextResponse.json()) as {
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{ id: string }>;
+    };
+    expect(nextResponse.status).toBe(200);
+    expect(next).toMatchObject({
+      resultCount: 1,
+      total: first.total,
+      hasMore: false,
+      results: [expect.objectContaining({ id: expect.any(String) })],
+    });
+    expect(next.nextCursor).toBeUndefined();
+    expect(next.results[0]?.id).not.toBe(first.results[0]?.id);
+    expect(
+      analyticsEvents
+        .filter((event) => event.type === "api_search")
+        .every((event) => event.url === "https://docs.example.com/api/docs"),
+    ).toBe(true);
+
+    const invalidUrl = new URL(firstUrl);
+    invalidUrl.searchParams.set("cursor", "not-an-opaque-docs-cursor");
+    const invalidResponse = await GET(new Request(invalidUrl));
+    expect(invalidResponse.status).toBe(400);
+    await expect(invalidResponse.json()).resolves.toMatchObject({
+      error: {
+        code: "invalid_cursor",
+        message: expect.any(String),
+      },
+    });
+  });
+
   it("does not invoke configured providers for blank structured search metadata", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-blank-structured-search-route-"));
     tempDirs.push(rootDir);
@@ -3603,6 +3715,10 @@ description: "Start building quickly"
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
       defaultAudience: "human",
       supportedAudiences: ["human", "agent"],
     });
@@ -5074,6 +5190,7 @@ Welcome to the docs.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -5140,9 +5257,9 @@ Welcome to the docs.
       ]);
 
       expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("http://localhost/api/docs/mcp");
-      expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe("http://localhost/api/docs/mcp");
+      expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe("http://localhost/api/docs/mcp");
       expect(
-        JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[1]?.[1]?.body)),
+        JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[2]?.[1]?.body)),
       ).toMatchObject({
         params: { arguments: { audience: "human" } },
       });
@@ -5205,6 +5322,7 @@ Welcome to the docs.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -5277,11 +5395,12 @@ Welcome to the docs.
       expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(scenario.endpoint);
       expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe(scenario.endpoint);
       expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe(scenario.endpoint);
-      expect(vi.mocked(globalThis.fetch).mock.calls[3]?.[0]).toBe(
+      expect(vi.mocked(globalThis.fetch).mock.calls[3]?.[0]).toBe(scenario.endpoint);
+      expect(vi.mocked(globalThis.fetch).mock.calls[4]?.[0]).toBe(
         "https://llm.example/v1/chat/completions",
       );
 
-      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[3]?.[1];
+      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[4]?.[1];
       const upstreamBody = JSON.parse(String(upstreamInit?.body)) as {
         messages?: Array<{ role?: string; content?: string }>;
       };
@@ -5335,6 +5454,7 @@ Welcome to the docs.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -5410,13 +5530,14 @@ Welcome to the docs.
       expect(response.status).toBe(200);
       expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("https://docs.example.com/mcp");
       expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe("https://docs.example.com/mcp");
+      expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe("https://docs.example.com/mcp");
 
       const initializeInit = vi.mocked(globalThis.fetch).mock.calls[0]?.[1];
       expect(initializeInit?.headers).toMatchObject({
         Authorization: "Bearer docs-mcp-token",
       });
 
-      const toolInit = vi.mocked(globalThis.fetch).mock.calls[1]?.[1];
+      const toolInit = vi.mocked(globalThis.fetch).mock.calls[2]?.[1];
       expect(toolInit?.headers).toMatchObject({
         Authorization: "Bearer docs-mcp-token",
         "mcp-session-id": "remote-session-1",
@@ -5430,7 +5551,7 @@ Welcome to the docs.
       });
       expect(toolBody).not.toHaveProperty("params.arguments.audience");
 
-      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[3]?.[1];
+      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[4]?.[1];
       const upstreamBody = JSON.parse(String(upstreamInit?.body)) as {
         messages?: Array<{ role?: string; content?: string }>;
       };
@@ -5528,12 +5649,16 @@ Ask AI should retrieve this exact MCP Actual Retrieval Token from the real MCP h
       const mcpCalls = calls.filter(
         ({ request }) => request.url === "https://docs.example.com/mcp",
       );
-      expect(mcpCalls.map(({ request }) => request.method)).toEqual(["POST", "POST"]);
+      expect(mcpCalls.map(({ request }) => request.method)).toEqual(["POST", "POST", "POST"]);
       expect(new Headers(mcpCalls[0]?.init?.headers).get("authorization")).toBe(
         "Bearer docs-mcp-token",
       );
       expect(new Headers(mcpCalls[1]?.init?.headers).get("mcp-session-id")).toBeNull();
       expect(JSON.parse(String(mcpCalls[1]?.init?.body))).toMatchObject({
+        method: "notifications/initialized",
+      });
+      expect(new Headers(mcpCalls[2]?.init?.headers).get("mcp-session-id")).toBeNull();
+      expect(JSON.parse(String(mcpCalls[2]?.init?.body))).toMatchObject({
         method: "tools/call",
         params: {
           name: "search_docs",

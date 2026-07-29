@@ -2,9 +2,32 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {
+  ReadResourceCallback,
+  ResourceMetadata,
+  ToolCallback,
+} from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import {
+  ErrorCode,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListToolsRequestSchema,
+  McpError,
+  isInitializeRequest,
+  type ListPromptsResult,
+  type ListResourcesResult,
+  type ListResourceTemplatesResult,
+  type ListToolsResult,
+  type Prompt,
+  type Resource,
+  type ResourceTemplate as McpResourceTemplate,
+  type Tool,
+  type ToolAnnotations,
+} from "@modelcontextprotocol/sdk/types.js";
+import type { AnySchema, ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { resolveDocsAudienceMdxContent } from "./audience.js";
@@ -34,6 +57,7 @@ import {
 } from "./search.js";
 import { isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
+import { DocsPaginationCursorError, paginateDocsItems } from "./pagination.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
@@ -103,6 +127,21 @@ export interface DocsMcpPage {
 /** Body-free section discovery metadata returned by the `list_page_sections` MCP tool. */
 export type DocsMcpPageSectionIndex = DocsMarkdownSectionIndex;
 
+export interface DocsMcpPagination {
+  /** Number of items returned in this page. */
+  resultCount: number;
+  /** Number of items in the complete filtered result set. */
+  total: number;
+  hasMore: boolean;
+  nextCursor?: string;
+}
+
+export interface DocsMcpPageSectionList
+  extends Omit<DocsMcpPageSectionIndex, "sectionCount" | "sections">, DocsMcpPagination {
+  sectionCount: number;
+  sections: DocsMcpPageSectionIndex["sections"];
+}
+
 export interface DocsMcpCodeExample {
   id: string;
   page: {
@@ -162,12 +201,22 @@ export interface DocsMcpDocsSection {
 }
 
 export interface DocsMcpDocsList {
-  section?: string;
   resultCount: number;
+  /** Built-in cursor-aware tools always emit this; optional for legacy object producers. */
+  total?: number;
+  /** Built-in cursor-aware tools always emit this; optional for legacy object producers. */
+  hasMore?: boolean;
+  nextCursor?: string;
+  section?: string;
   sectionCount: number;
   pages: DocsMcpDocsPageSummary[];
   rootPages: DocsMcpDocsPageSummary[];
   sections: DocsMcpDocsSection[];
+}
+
+export interface DocsMcpPaginatedDocsList extends DocsMcpDocsList {
+  total: number;
+  hasMore: boolean;
 }
 
 export interface DocsMcpConfigSchemaOption {
@@ -407,6 +456,9 @@ const DEFAULT_MCP_NAME = "@farming-labs/docs";
 const DEFAULT_MCP_CONTEXT_TOKEN_BUDGET = 4_000;
 const MIN_MCP_CONTEXT_TOKEN_BUDGET = 256;
 const MAX_MCP_CONTEXT_TOKEN_BUDGET = 32_000;
+const DOCS_MCP_PROTOCOL_LIST_PAGE_SIZE = 10;
+const DOCS_MCP_TOOL_LIST_PAGE_SIZE = 25;
+const DOCS_MCP_PAGINATION_META_KEY = "dev.farming-labs/pagination";
 const UTF8_ENCODER = new TextEncoder();
 export const DEFAULT_DOCS_MCP_MAX_BODY_BYTES = 1024 * 1024;
 export const DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS = 600;
@@ -2192,10 +2244,17 @@ const searchFilterValueSchema = z.union([
   z.string().trim().min(1).max(128),
   z.array(z.string().trim().min(1).max(128)).min(1).max(16),
 ]);
+const paginationCursorInputSchema = z
+  .string()
+  .min(1)
+  .max(4_096)
+  .describe("Opaque nextCursor from the preceding response page.")
+  .optional();
 
 const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
+  cursor: paginationCursorInputSchema,
   locale: z.string().trim().min(1).max(128).optional(),
   audience: z.enum(["human", "agent"]).optional(),
   framework: searchFilterValueSchema.optional(),
@@ -2216,6 +2275,7 @@ const listPageSectionsInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
   tokenBudget: z.number().int().min(1).max(1_000_000).optional(),
   byteBudget: z.number().int().min(1).max(1_000_000).optional(),
+  cursor: paginationCursorInputSchema,
 });
 
 const listTasksInputSchema = z.object({
@@ -2224,6 +2284,7 @@ const listTasksInputSchema = z.object({
   version: z.string().trim().min(1).optional(),
   package: z.string().trim().min(1).optional(),
   locale: z.string().trim().min(1).max(128).optional(),
+  cursor: paginationCursorInputSchema,
 });
 
 const readTaskInputSchema = readPageInputSchema;
@@ -2284,8 +2345,18 @@ const taskSummaryOutputSchema = z.object({
   appliesTo: pageAgentAppliesToOutputSchema.optional(),
 });
 
+const paginationOutputShape = {
+  resultCount: z.number().int().nonnegative().describe("Items returned in this response page."),
+  total: z.number().int().nonnegative().describe("Items in the complete filtered result set."),
+  hasMore: z.boolean().describe("Whether another response page is available."),
+  nextCursor: z
+    .string()
+    .describe("Opaque cursor to pass as cursor on the next request.")
+    .optional(),
+};
+
 const listTasksOutputSchema = z.object({
-  resultCount: z.number().int().nonnegative(),
+  ...paginationOutputShape,
   tasks: z.array(taskSummaryOutputSchema),
 });
 
@@ -2303,11 +2374,13 @@ const readTaskOutputSchema = z.object({
 
 const listPagesInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
+  cursor: paginationCursorInputSchema,
 });
 
 const listDocsInputSchema = z.object({
   section: z.string().trim().min(1).optional(),
   locale: z.string().trim().min(1).max(128).optional(),
+  cursor: paginationCursorInputSchema,
 });
 
 const getNavigationInputSchema = z.object({
@@ -2374,10 +2447,13 @@ const docsSectionOutputSchema: z.ZodType<DocsMcpDocsSection> = z.lazy(() =>
     sections: z.array(docsSectionOutputSchema),
   }),
 );
-const listPagesOutputSchema = z.object({ pages: z.array(pageSummaryOutputSchema) });
+const listPagesOutputSchema = z.object({
+  ...paginationOutputShape,
+  pages: z.array(pageSummaryOutputSchema),
+});
 const listDocsOutputSchema = z.object({
+  ...paginationOutputShape,
   section: z.string().optional(),
-  resultCount: z.number().int().nonnegative(),
   sectionCount: z.number().int().nonnegative(),
   pages: z.array(pageSummaryOutputSchema),
   rootPages: z.array(pageSummaryOutputSchema),
@@ -2478,7 +2554,7 @@ const searchDocsOutputSchema = z.object({
   audience: z.enum(["human", "agent"]),
   filters: searchFiltersOutputSchema,
   indexGeneration: retrievalSourceDigestOutputSchema,
-  resultCount: z.number().int().nonnegative(),
+  ...paginationOutputShape,
   results: z.array(searchResultOutputSchema),
   warnings: z.array(searchWarningOutputSchema),
 });
@@ -2569,6 +2645,7 @@ const pageSectionIndexOutputSchema = z.object({
   sectionIndexUrl: z.string(),
   lineNumbering: z.literal("body"),
   sectionCount: z.number().int().nonnegative(),
+  ...paginationOutputShape,
   estimatedTokens: z.number().int().nonnegative(),
   utf8Bytes: z.number().int().nonnegative(),
   fetchBudget: z
@@ -2897,17 +2974,240 @@ function createStructuredTextResult<T extends object>(structuredContent: T, text
   };
 }
 
+type DocsMcpToolRegistrationConfig<
+  OutputArgs extends ZodRawShapeCompat | AnySchema,
+  InputArgs extends undefined | ZodRawShapeCompat | AnySchema = undefined,
+> = {
+  title?: string;
+  description?: string;
+  inputSchema?: InputArgs;
+  outputSchema?: OutputArgs;
+  annotations?: ToolAnnotations;
+  _meta?: Record<string, unknown>;
+};
+
+function stableDocsMcpPaginationScope(values: Record<string, unknown>): string {
+  return JSON.stringify(values);
+}
+
+function docsMcpPaginationSnapshot(values: readonly unknown[]): string {
+  return JSON.stringify(values);
+}
+
+function paginateDocsMcpItems<T>(
+  items: readonly T[],
+  options: {
+    kind: string;
+    scope: string;
+    cursor?: string;
+    pageSize?: number;
+  },
+) {
+  return paginateDocsItems(items, {
+    kind: options.kind,
+    scope: options.scope,
+    snapshot: docsMcpPaginationSnapshot(items),
+    cursor: options.cursor,
+    pageSize: options.pageSize ?? DOCS_MCP_TOOL_LIST_PAGE_SIZE,
+  });
+}
+
+function paginateDocsMcpProtocolItems<T>(
+  items: readonly T[],
+  options: {
+    kind: string;
+    scope: string;
+    cursor?: string;
+  },
+) {
+  try {
+    return paginateDocsMcpItems(items, {
+      ...options,
+      pageSize: DOCS_MCP_PROTOCOL_LIST_PAGE_SIZE,
+    });
+  } catch (error) {
+    if (error instanceof DocsPaginationCursorError) {
+      throw new McpError(ErrorCode.InvalidParams, error.message);
+    }
+    throw error;
+  }
+}
+
+function toDocsMcpProtocolPaginationMeta(result: { hasMore: boolean; total: number }) {
+  return {
+    [DOCS_MCP_PAGINATION_META_KEY]: {
+      hasMore: result.hasMore,
+      total: result.total,
+    },
+  };
+}
+
+type DocsMcpSdkListHandler = (request: unknown, extra: unknown) => unknown;
+
+function paginateDocsMcpSdkListResult<K extends string, T>(
+  result: Record<K, T[]> & {
+    _meta?: Record<string, unknown>;
+    nextCursor?: string;
+  },
+  field: K,
+  options: {
+    kind: string;
+    scope: string;
+    cursor?: string;
+    compare: (left: T, right: T) => number;
+  },
+) {
+  const items = [...result[field]].sort(options.compare);
+  const page = paginateDocsMcpProtocolItems(items, options);
+  return {
+    ...result,
+    [field]: page.items,
+    nextCursor: page.nextCursor,
+    _meta: {
+      ...result._meta,
+      ...toDocsMcpProtocolPaginationMeta(page),
+    },
+  };
+}
+
+/**
+ * The MCP SDK owns the live registries and descriptor serialization. Intercepting the
+ * handlers it installs lets pagination operate on that live output without copying private
+ * registry state or drifting from SDK behavior when callers register, update, or disable
+ * tools/resources after this factory returns.
+ */
+function installDocsMcpSdkListPaginationInterceptor(server: McpServer, scope: string): () => void {
+  const originalSetRequestHandler = server.server.setRequestHandler;
+  const setRequestHandler = originalSetRequestHandler.bind(server.server);
+  const interceptedSetRequestHandler = ((requestSchema, handler) => {
+    const sdkHandler = handler as unknown as DocsMcpSdkListHandler;
+
+    if (Object.is(requestSchema, ListResourcesRequestSchema)) {
+      setRequestHandler(ListResourcesRequestSchema, async (request, extra) => {
+        const result = (await sdkHandler(request, extra)) as ListResourcesResult;
+        return paginateDocsMcpSdkListResult(result, "resources", {
+          kind: "mcp.protocol/resources-list",
+          scope,
+          cursor: request.params?.cursor,
+          compare: (left: Resource, right: Resource) => {
+            const uriOrder = left.uri.localeCompare(right.uri);
+            return uriOrder !== 0 ? uriOrder : left.name.localeCompare(right.name);
+          },
+        });
+      });
+      return;
+    }
+
+    if (Object.is(requestSchema, ListResourceTemplatesRequestSchema)) {
+      setRequestHandler(ListResourceTemplatesRequestSchema, async (request, extra) => {
+        const result = (await sdkHandler(request, extra)) as ListResourceTemplatesResult;
+        return paginateDocsMcpSdkListResult(result, "resourceTemplates", {
+          kind: "mcp.protocol/resource-templates-list",
+          scope,
+          cursor: request.params?.cursor,
+          compare: (left: McpResourceTemplate, right: McpResourceTemplate) => {
+            const uriOrder = left.uriTemplate.localeCompare(right.uriTemplate);
+            return uriOrder !== 0 ? uriOrder : left.name.localeCompare(right.name);
+          },
+        });
+      });
+      return;
+    }
+
+    if (Object.is(requestSchema, ListToolsRequestSchema)) {
+      setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
+        const result = (await sdkHandler(request, extra)) as ListToolsResult;
+        return paginateDocsMcpSdkListResult(result, "tools", {
+          kind: "mcp.protocol/tools-list",
+          scope,
+          cursor: request.params?.cursor,
+          compare: (left: Tool, right: Tool) => left.name.localeCompare(right.name),
+        });
+      });
+      return;
+    }
+
+    if (Object.is(requestSchema, ListPromptsRequestSchema)) {
+      setRequestHandler(ListPromptsRequestSchema, async (request, extra) => {
+        const result = (await sdkHandler(request, extra)) as ListPromptsResult;
+        return paginateDocsMcpSdkListResult(result, "prompts", {
+          kind: "mcp.protocol/prompts-list",
+          scope,
+          cursor: request.params?.cursor,
+          compare: (left: Prompt, right: Prompt) => left.name.localeCompare(right.name),
+        });
+      });
+      return;
+    }
+
+    setRequestHandler(requestSchema, handler);
+  }) as typeof server.server.setRequestHandler;
+
+  server.server.setRequestHandler = interceptedSetRequestHandler;
+  return () => {
+    if (server.server.setRequestHandler === interceptedSetRequestHandler) {
+      server.server.setRequestHandler = originalSetRequestHandler;
+    }
+  };
+}
+
+function installDocsMcpSdkRegistrationPagination(server: McpServer, scope: string): void {
+  const wrapRegistration = <Registration extends object>(
+    registration: Registration,
+  ): Registration =>
+    new Proxy(registration, {
+      apply(target, thisArg, argArray) {
+        const restore = installDocsMcpSdkListPaginationInterceptor(server, scope);
+        try {
+          return Reflect.apply(target as CallableFunction, thisArg, argArray);
+        } finally {
+          restore();
+        }
+      },
+    });
+
+  server.registerTool = wrapRegistration(server.registerTool);
+  server.tool = wrapRegistration(server.tool);
+  server.registerResource = wrapRegistration(server.registerResource);
+  server.resource = wrapRegistration(server.resource);
+  server.registerPrompt = wrapRegistration(server.registerPrompt);
+  server.prompt = wrapRegistration(server.prompt);
+}
+
 export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): Promise<McpServer> {
   const resolved = resolveDocsMcpConfig(options.mcp, {
     defaultName: options.defaultName ?? options.source.siteTitle ?? DEFAULT_MCP_NAME,
     defaultVersion: options.defaultVersion,
   });
   const toolSearchConfig = resolveMcpToolSearchConfig(options.search, resolved.route);
+  const protocolScope = stableDocsMcpPaginationScope({
+    name: resolved.name,
+    version: resolved.version,
+  });
 
   const server = new McpServer({
     name: resolved.name,
     version: resolved.version,
   });
+  installDocsMcpSdkRegistrationPagination(server, protocolScope);
+  const registerResource = (
+    name: string,
+    uri: string,
+    metadata: ResourceMetadata,
+    callback: ReadResourceCallback,
+  ) => {
+    return server.registerResource(name, uri, metadata, callback);
+  };
+  const registerTool = <
+    OutputArgs extends ZodRawShapeCompat | AnySchema,
+    InputArgs extends undefined | ZodRawShapeCompat | AnySchema = undefined,
+  >(
+    name: string,
+    config: DocsMcpToolRegistrationConfig<OutputArgs, InputArgs>,
+    callback: ToolCallback<InputArgs>,
+  ) => {
+    return server.registerTool(name, config, callback);
+  };
   const telemetryConfig = {
     telemetry: options.telemetry,
     mcp: options.mcp,
@@ -2947,7 +3247,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   const defaultTree = await getSourceNavigation();
   const defaultSkills = await getSourceSkills();
 
-  server.registerResource(
+  registerResource(
     "docs-navigation",
     "docs://navigation",
     {
@@ -2968,7 +3268,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
 
   for (const page of defaultPages) {
     const resourceUri = toPageResourceUri(page.url);
-    server.registerResource(
+    registerResource(
       `page-${slugToKey(page.slug)}`,
       resourceUri,
       {
@@ -2995,7 +3295,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         .map((segment) => encodeURIComponent(segment))
         .join("/");
       const resourceUri = `docs://skills/${encodeURIComponent(skill.name)}/${encodedPath}`;
-      server.registerResource(
+      registerResource(
         `skill-${encodeURIComponent(skill.name)}-${Buffer.from(file.path).toString("base64url")}`,
         resourceUri,
         {
@@ -3023,7 +3323,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.listPages) {
-    server.registerTool(
+    registerTool(
       "list_pages",
       {
         title: "List docs pages",
@@ -3032,8 +3332,9 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         outputSchema: listPagesOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ locale }) => {
+      async ({ locale, cursor }) => {
         const startedAt = nowMs();
+        const resolvedLocale = resolveSourceLocale(locale);
         const trace = createDocsAgentTraceContext("mcp.tool.list_pages");
         const callSpanId = createDocsAgentTraceId("span");
         await emitDocsAgentTraceEvent(options.observability, {
@@ -3045,12 +3346,26 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           startedAt: trace.startedAt,
           status: "started",
           locale,
-          inputPreview: { locale },
+          inputPreview: { locale, hasCursor: cursor !== undefined },
           metadata: { tool: "list_pages" },
         });
 
         try {
-          const pages = toPageSummaries(dedupePages(await getSourcePages(locale)));
+          const allPages = toPageSummaries(
+            dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
+          ).sort(compareDocsMcpPageSummaries);
+          const page = paginateDocsMcpItems(allPages, {
+            kind: "mcp.tool/list_pages",
+            scope: stableDocsMcpPaginationScope({ locale: resolvedLocale ?? null }),
+            cursor,
+          });
+          const result = {
+            resultCount: page.resultCount,
+            total: page.total,
+            hasMore: page.hasMore,
+            ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+            pages: page.items,
+          };
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {
             type: "mcp_tool",
@@ -3058,11 +3373,13 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             properties: {
               tool: "list_pages",
-              resultCount: pages.length,
+              resultCount: page.resultCount,
+              total: page.total,
+              hasMore: page.hasMore,
               durationMs: elapsed,
             },
           });
-          trackMcpTool("list_pages", { locale, resultCount: pages.length });
+          trackMcpTool("list_pages", { locale, resultCount: page.resultCount });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -3074,10 +3391,14 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             durationMs: elapsed,
             status: "success",
             locale,
-            outputPreview: { resultCount: pages.length },
+            outputPreview: {
+              resultCount: page.resultCount,
+              total: page.total,
+              hasMore: page.hasMore,
+            },
             metadata: { tool: "list_pages" },
           });
-          return createStructuredTextResult({ pages });
+          return createStructuredTextResult(result);
         } catch (error) {
           const elapsed = durationMs(startedAt);
           await emitDocsAgentTraceEvent(options.observability, {
@@ -3101,7 +3422,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.listDocs) {
-    server.registerTool(
+    registerTool(
       "list_docs",
       {
         title: "List docs by section",
@@ -3111,8 +3432,9 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         outputSchema: listDocsOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ section, locale }) => {
+      async ({ section, locale, cursor }) => {
         const startedAt = nowMs();
+        const resolvedLocale = resolveSourceLocale(locale);
         const trace = createDocsAgentTraceContext("mcp.tool.list_docs");
         const callSpanId = createDocsAgentTraceId("span");
         await emitDocsAgentTraceEvent(options.observability, {
@@ -3124,14 +3446,24 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           startedAt: trace.startedAt,
           status: "started",
           locale,
-          inputPreview: { section, locale },
+          inputPreview: { section, locale, hasCursor: cursor !== undefined },
           metadata: { tool: "list_docs" },
         });
 
         try {
-          const docs = listDocsBySection(dedupePages(await getSourcePages(locale)), {
-            section,
-            entry: options.source.entry,
+          const allDocs = listDocsBySection(
+            dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
+            {
+              section,
+              entry: options.source.entry,
+            },
+          );
+          const docs = paginateDocsMcpDocsList(allDocs, {
+            cursor,
+            scope: stableDocsMcpPaginationScope({
+              locale: resolvedLocale ?? null,
+              section: normalizeDocsListMatchValue(section ?? ""),
+            }),
           });
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {
@@ -3142,6 +3474,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               tool: "list_docs",
               section,
               resultCount: docs.resultCount,
+              total: docs.total,
+              hasMore: docs.hasMore,
               sectionCount: docs.sectionCount,
               durationMs: elapsed,
             },
@@ -3158,7 +3492,12 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             durationMs: elapsed,
             status: "success",
             locale,
-            outputPreview: { resultCount: docs.resultCount, sectionCount: docs.sectionCount },
+            outputPreview: {
+              resultCount: docs.resultCount,
+              total: docs.total,
+              hasMore: docs.hasMore,
+              sectionCount: docs.sectionCount,
+            },
             metadata: { tool: "list_docs" },
           });
           return createStructuredTextResult(docs);
@@ -3185,7 +3524,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.listTasks) {
-    server.registerTool(
+    registerTool(
       "list_tasks",
       {
         title: "List documented tasks",
@@ -3195,8 +3534,9 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         outputSchema: listTasksOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ query, framework, version, package: packageName, locale }) => {
+      async ({ query, framework, version, package: packageName, locale, cursor }) => {
         const startedAt = nowMs();
+        const resolvedLocale = resolveSourceLocale(locale);
         const trace = createDocsAgentTraceContext("mcp.tool.list_tasks");
         const callSpanId = createDocsAgentTraceId("span");
         await emitDocsAgentTraceEvent(options.observability, {
@@ -3208,18 +3548,44 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           startedAt: trace.startedAt,
           status: "started",
           locale,
-          inputPreview: { queryLength: query?.length, framework, version, package: packageName },
+          inputPreview: {
+            queryLength: query?.length,
+            framework,
+            version,
+            package: packageName,
+            hasCursor: cursor !== undefined,
+          },
           metadata: { tool: "list_tasks" },
         });
 
         try {
-          const tasks = listDocsTasks(dedupePages(await getSourcePages(locale)), {
-            query,
-            framework,
-            version,
-            package: packageName,
+          const allTasks = listDocsTasks(
+            dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
+            {
+              query,
+              framework,
+              version,
+              package: packageName,
+            },
+          ).sort(compareDocsMcpTaskSummaries);
+          const page = paginateDocsMcpItems(allTasks, {
+            kind: "mcp.tool/list_tasks",
+            scope: stableDocsMcpPaginationScope({
+              locale: resolvedLocale ?? null,
+              query: query?.trim().toLowerCase() ?? null,
+              framework: framework?.trim().toLowerCase() ?? null,
+              version: version?.trim().toLowerCase() ?? null,
+              package: packageName?.trim().toLowerCase() ?? null,
+            }),
+            cursor,
           });
-          const result = { resultCount: tasks.length, tasks };
+          const result = {
+            resultCount: page.resultCount,
+            total: page.total,
+            hasMore: page.hasMore,
+            ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+            tasks: page.items,
+          };
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {
             type: "mcp_tool",
@@ -3231,11 +3597,13 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               framework,
               version,
               package: packageName,
-              resultCount: tasks.length,
+              resultCount: page.resultCount,
+              total: page.total,
+              hasMore: page.hasMore,
               durationMs: elapsed,
             },
           });
-          trackMcpTool("list_tasks", { locale, resultCount: tasks.length });
+          trackMcpTool("list_tasks", { locale, resultCount: page.resultCount });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -3247,7 +3615,11 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             durationMs: elapsed,
             status: "success",
             locale,
-            outputPreview: { resultCount: tasks.length },
+            outputPreview: {
+              resultCount: page.resultCount,
+              total: page.total,
+              hasMore: page.hasMore,
+            },
             metadata: { tool: "list_tasks" },
           });
           return {
@@ -3277,7 +3649,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.readTask) {
-    server.registerTool(
+    registerTool(
       "read_task",
       {
         title: "Read a documented task",
@@ -3416,7 +3788,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.getNavigation) {
-    server.registerTool(
+    registerTool(
       "get_navigation",
       {
         title: "Get docs navigation",
@@ -3494,7 +3866,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.getConfigSchema) {
-    server.registerTool(
+    registerTool(
       "get_config_schema",
       {
         title: "Get docs config schema",
@@ -3572,7 +3944,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.searchDocs) {
-    server.registerTool(
+    registerTool(
       "search_docs",
       {
         title: "Search documentation",
@@ -3585,6 +3957,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       async ({
         query,
         limit,
+        cursor,
         locale,
         audience,
         framework,
@@ -3616,6 +3989,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           inputPreview: {
             queryLength: query.length,
             limit: resolvedLimit,
+            hasCursor: cursor !== undefined,
             locale,
             audience: resolvedAudience,
             filterFields: Object.entries(filters)
@@ -3646,6 +4020,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             // hosted-index ownership. Only an explicitly configured source base is trusted.
             syncBaseUrl: options.source.baseUrl ?? null,
             limit: resolvedLimit,
+            cursor,
           });
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {
@@ -3659,6 +4034,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               limit: resolvedLimit,
               audience: resolvedAudience,
               resultCount: searchResponse.resultCount,
+              total: searchResponse.total,
+              hasMore: searchResponse.hasMore,
               warningCount: searchResponse.warnings.length,
               durationMs: elapsed,
             },
@@ -3680,6 +4057,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: {
               resultCount: searchResponse.resultCount,
+              total: searchResponse.total,
+              hasMore: searchResponse.hasMore,
               warningCount: searchResponse.warnings.length,
             },
             metadata: { tool: "search_docs" },
@@ -3708,7 +4087,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.getCodeExamples) {
-    server.registerTool(
+    registerTool(
       "get_code_examples",
       {
         title: "Get docs code examples",
@@ -3828,7 +4207,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.getContext) {
-    server.registerTool(
+    registerTool(
       "get_context",
       {
         title: "Get budgeted docs context",
@@ -3955,7 +4334,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.listPageSections !== false) {
-    server.registerTool(
+    registerTool(
       "list_page_sections",
       {
         title: "List sections in a docs page",
@@ -3965,7 +4344,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         outputSchema: pageSectionIndexOutputSchema,
         annotations: { readOnlyHint: true },
       },
-      async ({ path: requestedPath, locale, tokenBudget, byteBudget }) => {
+      async ({ path: requestedPath, locale, tokenBudget, byteBudget, cursor }) => {
         const startedAt = nowMs();
         const resolvedLocale = resolveSourceLocale(locale);
         const trace = createDocsAgentTraceContext("mcp.tool.list_page_sections");
@@ -3985,6 +4364,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             resolvedLocale,
             tokenBudget,
             byteBudget,
+            hasCursor: cursor !== undefined,
           },
           metadata: { tool: "list_page_sections" },
         });
@@ -4060,12 +4440,36 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             toDocsMcpPageMarkdownUrl(page.url, resolvedLocale),
             publicBaseUrl,
           );
-          const sectionIndex: DocsMcpPageSectionIndex = buildDocsMarkdownSectionIndex(document, {
-            canonicalUrl,
-            markdownUrl,
-            tokenBudget,
-            byteBudget,
+          const completeSectionIndex: DocsMcpPageSectionIndex = buildDocsMarkdownSectionIndex(
+            document,
+            {
+              canonicalUrl,
+              markdownUrl,
+              tokenBudget,
+              byteBudget,
+            },
+          );
+          const sectionPage = paginateDocsMcpItems(completeSectionIndex.sections, {
+            kind: "mcp.tool/list_page_sections",
+            scope: stableDocsMcpPaginationScope({
+              path: page.url,
+              locale: resolvedLocale ?? null,
+              tokenBudget: tokenBudget ?? null,
+              byteBudget: byteBudget ?? null,
+            }),
+            cursor,
           });
+          const sectionIndex: DocsMcpPageSectionList = {
+            ...completeSectionIndex,
+            // Preserve the established meaning: sectionCount describes the complete page.
+            // resultCount is the number of section records in this cursor page.
+            sectionCount: completeSectionIndex.sectionCount,
+            resultCount: sectionPage.resultCount,
+            total: sectionPage.total,
+            hasMore: sectionPage.hasMore,
+            ...(sectionPage.nextCursor ? { nextCursor: sectionPage.nextCursor } : {}),
+            sections: sectionPage.items,
+          };
           const elapsed = durationMs(startedAt);
 
           await emitDocsAnalyticsEvent(options.analytics, {
@@ -4079,6 +4483,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               slug: page.slug,
               found: true,
               sectionCount: sectionIndex.sectionCount,
+              total: sectionIndex.total,
+              hasMore: sectionIndex.hasMore,
               estimatedTokens: sectionIndex.estimatedTokens,
               utf8Bytes: sectionIndex.utf8Bytes,
               tokenBudget,
@@ -4088,7 +4494,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           });
           trackMcpTool("list_page_sections", {
             locale: resolvedLocale,
-            resultCount: sectionIndex.sectionCount,
+            resultCount: sectionIndex.resultCount,
           });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
@@ -4106,6 +4512,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               found: true,
               slug: page.slug,
               sectionCount: sectionIndex.sectionCount,
+              total: sectionIndex.total,
+              hasMore: sectionIndex.hasMore,
               estimatedTokens: sectionIndex.estimatedTokens,
               utf8Bytes: sectionIndex.utf8Bytes,
             },
@@ -4136,7 +4544,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   if (resolved.tools.readPage) {
-    server.registerTool(
+    registerTool(
       "read_page",
       {
         title: "Read a docs page",
@@ -5572,6 +5980,23 @@ function toDocsListPageSummary(page: DocsMcpPage): DocsMcpDocsPageSummary {
   };
 }
 
+function compareDocsMcpPageSummaries(
+  left: DocsMcpDocsPageSummary,
+  right: DocsMcpDocsPageSummary,
+): number {
+  const urlOrder = left.url.localeCompare(right.url);
+  if (urlOrder !== 0) return urlOrder;
+  const slugOrder = left.slug.localeCompare(right.slug);
+  return slugOrder !== 0 ? slugOrder : left.title.localeCompare(right.title);
+}
+
+function compareDocsMcpTaskSummaries(left: DocsMcpTaskSummary, right: DocsMcpTaskSummary): number {
+  const urlOrder = left.url.localeCompare(right.url);
+  if (urlOrder !== 0) return urlOrder;
+  const slugOrder = left.slug.localeCompare(right.slug);
+  return slugOrder !== 0 ? slugOrder : left.title.localeCompare(right.title);
+}
+
 function listDocsTasks(
   pages: DocsMcpPage[],
   filters: { query?: string; framework?: string; version?: string; package?: string },
@@ -5619,7 +6044,7 @@ function listDocsTasks(
 function listDocsBySection(
   pages: DocsMcpPage[],
   filters: { section?: string; entry?: string },
-): DocsMcpDocsList {
+): DocsMcpPaginatedDocsList {
   const allPages = pages.map(toDocsListPageSummary);
   const tree = buildDocsSectionTree(pages);
   const requestedSection = filters.section?.trim();
@@ -5627,6 +6052,8 @@ function listDocsBySection(
   if (!requestedSection) {
     return {
       resultCount: allPages.length,
+      total: allPages.length,
+      hasMore: false,
       sectionCount: countDocsSections(tree.sections),
       pages: allPages,
       rootPages: tree.rootPages,
@@ -5641,6 +6068,8 @@ function listDocsBySection(
     return {
       section: requestedSection,
       resultCount: matchedPages.length,
+      total: matchedPages.length,
+      hasMore: false,
       sectionCount: countDocsSections(sections),
       pages: matchedPages,
       rootPages: [],
@@ -5655,6 +6084,8 @@ function listDocsBySection(
     return {
       section: requestedSection,
       resultCount: 1,
+      total: 1,
+      hasMore: false,
       sectionCount: 0,
       pages: [page],
       rootPages: [page],
@@ -5665,11 +6096,58 @@ function listDocsBySection(
   return {
     section: requestedSection,
     resultCount: 0,
+    total: 0,
+    hasMore: false,
     sectionCount: 0,
     pages: [],
     rootPages: [],
     sections: [],
   };
+}
+
+function paginateDocsMcpDocsList(
+  docs: DocsMcpPaginatedDocsList,
+  options: { scope: string; cursor?: string },
+): DocsMcpPaginatedDocsList {
+  const allPages = [...docs.pages].sort(compareDocsMcpPageSummaries);
+  const page = paginateDocsMcpItems(allPages, {
+    kind: "mcp.tool/list_docs",
+    scope: options.scope,
+    cursor: options.cursor,
+  });
+  const pageUrls = new Set(page.items.map((item) => item.url));
+  const sections = pruneDocsMcpSections(docs.sections, pageUrls);
+
+  return {
+    ...docs,
+    resultCount: page.resultCount,
+    total: page.total,
+    hasMore: page.hasMore,
+    ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+    pages: page.items,
+    rootPages: docs.rootPages.filter((item) => pageUrls.has(item.url)),
+    sections,
+    sectionCount: docs.sectionCount,
+  };
+}
+
+function pruneDocsMcpSections(
+  sections: readonly DocsMcpDocsSection[],
+  pageUrls: ReadonlySet<string>,
+): DocsMcpDocsSection[] {
+  return sections.flatMap((section): DocsMcpDocsSection[] => {
+    const pages = section.pages.filter((page) => pageUrls.has(page.url));
+    const childSections = pruneDocsMcpSections(section.sections, pageUrls);
+    if (pages.length === 0 && childSections.length === 0) return [];
+
+    return [
+      {
+        ...section,
+        pages,
+        sections: childSections,
+      },
+    ];
+  });
 }
 
 function buildDocsSectionTree(pages: DocsMcpPage[]): {

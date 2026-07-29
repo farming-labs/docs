@@ -74,7 +74,8 @@ import {
   resolvePageSidebarFolderIndexBehavior,
   resolveAskAISearchRequestConfig,
   resolveDocsSearchAudience,
-  resolveDocsSearchFilters,
+  resolveDocsSearchError,
+  resolveDocsSearchRequest,
   resolveSearchRequestConfig,
   resolveDocsI18n,
   resolveDocsLlmsTxtRequest,
@@ -1345,8 +1346,15 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const query = event.url.searchParams.get("query")?.trim();
     const audience = resolveDocsSearchAudience(event.url.searchParams.get("audience"));
-    const filters = resolveDocsSearchFilters(event.url.searchParams);
-    const structured = event.url.searchParams.get("response") === "structured";
+    let searchRequest;
+    try {
+      searchRequest = resolveDocsSearchRequest(event.url.searchParams);
+    } catch (error) {
+      const searchError = resolveDocsSearchError(error);
+      if (!searchError) throw error;
+      return Response.json({ error: searchError }, { status: 400 });
+    }
+    const { filters, structured, cursor, limit } = searchRequest;
     if (!query && !structured) {
       return new Response("[]", {
         headers: { "Content-Type": "application/json" },
@@ -1363,25 +1371,33 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       siteTitle: llmsTitle,
       baseUrl: markdownMetadataBaseUrl || event.url.origin,
       syncBaseUrl: markdownMetadataBaseUrl ?? null,
+      cursor,
+      limit,
     };
+    const searchStartedAt = Date.now();
+    let searchResponse;
+    try {
+      searchResponse = structured
+        ? await performDocsSearchWithMetadata(searchOptions)
+        : query
+          ? await performDocsSearch(searchOptions)
+          : [];
+    } catch (error) {
+      const searchError = resolveDocsSearchError(error);
+      if (!searchError) throw error;
+      return Response.json({ error: searchError }, { status: 400 });
+    }
     if (!query) {
-      const searchResponse = structured ? await performDocsSearchWithMetadata(searchOptions) : [];
-      return new Response(JSON.stringify(searchResponse), {
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(searchResponse);
     }
 
-    const searchStartedAt = Date.now();
-    const searchResponse = structured
-      ? await performDocsSearchWithMetadata(searchOptions)
-      : await performDocsSearch(searchOptions);
     const resultCount = Array.isArray(searchResponse)
       ? searchResponse.length
       : searchResponse.resultCount;
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_search",
       source: "server",
-      url: event.request.url,
+      url: `${event.url.origin}${event.url.pathname}`,
       path: event.url.pathname,
       locale: ctx.locale,
       input: { query },

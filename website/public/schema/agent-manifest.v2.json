@@ -810,6 +810,18 @@
         },
         "warningsField": {
           "const": "warnings"
+        },
+        "cursorParam": {
+          "const": "cursor"
+        },
+        "nextCursorField": {
+          "const": "nextCursor"
+        },
+        "hasMoreField": {
+          "const": "hasMore"
+        },
+        "totalField": {
+          "const": "total"
         }
       },
       "dependentRequired": {
@@ -868,6 +880,54 @@
           "responseFormat",
           "filterParams",
           "repeatedFilterParams"
+        ],
+        "cursorParam": [
+          "nextCursorField",
+          "hasMoreField",
+          "totalField",
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "nextCursorField": [
+          "cursorParam",
+          "hasMoreField",
+          "totalField",
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "hasMoreField": [
+          "cursorParam",
+          "nextCursorField",
+          "totalField",
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
+        ],
+        "totalField": [
+          "cursorParam",
+          "nextCursorField",
+          "hasMoreField",
+          "structuredAgentEndpoint",
+          "responseParam",
+          "structuredResponseValue",
+          "responseFormat",
+          "filterParams",
+          "repeatedFilterParams",
+          "warningsField"
         ]
       },
       "required": [

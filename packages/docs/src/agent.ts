@@ -463,6 +463,14 @@ export interface DocsDiagnosticsFeature {
   };
   responseFormat?: "docs-search.v1";
   warningsField?: "warnings";
+  /** Opaque continuation token accepted by structured search. */
+  cursorParam?: "cursor";
+  /** Optional continuation token returned when another result page is available. */
+  nextCursorField?: "nextCursor";
+  /** Boolean structured-response field indicating whether another page is available. */
+  hasMoreField?: "hasMore";
+  /** Structured-response field containing the total matches across all pages. */
+  totalField?: "total";
   provider?: string;
   mode?: string;
   transport?: "GET" | "POST" | "GET/HEAD" | "GET/POST";
@@ -1068,6 +1076,10 @@ export function buildDocsDiagnostics(
         },
         responseFormat: "docs-search.v1",
         warningsField: "warnings",
+        cursorParam: "cursor",
+        nextCursorField: "nextCursor",
+        hasMoreField: "hasMore",
+        totalField: "total",
         provider: search.provider,
         transport: "GET",
       },
@@ -4476,6 +4488,10 @@ export function buildDocsAgentDiscoverySpec({
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
     },
     agents: {
       enabled: true,
