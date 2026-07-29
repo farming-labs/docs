@@ -177,6 +177,9 @@ pnpm add example
     expect(discovery.staticBundle.manifest).toBe("/.well-known/agent-bundle.json");
     expect(discovery.capabilities.mcp).toBe(false);
     expect(discovery.capabilities.search).toBe(false);
+    expect(discovery.capabilities.contentChanges).toBe(false);
+    expect(discovery.contentChanges).toMatchObject({ enabled: false, endpoint: null });
+    expect(discovery.api).not.toHaveProperty("contentChanges");
     expect(discovery.capabilities.apiCatalog).toBe(false);
     expect(discovery.capabilities.markdownSectionDiscovery).toBe(false);
     expect(discovery.markdown.sectionDiscovery).toEqual({ enabled: false });

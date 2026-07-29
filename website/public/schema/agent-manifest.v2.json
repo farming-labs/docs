@@ -206,6 +206,9 @@
         "search": {
           "type": "boolean"
         },
+        "contentChanges": {
+          "type": "boolean"
+        },
         "sitemap": {
           "type": "boolean"
         },
@@ -299,6 +302,9 @@
           "$ref": "#/$defs/route"
         },
         "openapi": {
+          "$ref": "#/$defs/route"
+        },
+        "contentChanges": {
           "$ref": "#/$defs/route"
         }
       },
@@ -976,6 +982,81 @@
         "audienceParam",
         "defaultAudience",
         "supportedAudiences"
+      ]
+    },
+    "contentChanges": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "method": {
+          "const": "GET"
+        },
+        "audienceParam": {
+          "const": "audience"
+        },
+        "defaultAudience": {
+          "const": "agent"
+        },
+        "supportedAudiences": {
+          "const": [
+            "human",
+            "agent"
+          ]
+        },
+        "responseParam": {
+          "const": "response"
+        },
+        "responseValue": {
+          "const": "changes"
+        },
+        "sinceParam": {
+          "const": "since"
+        },
+        "format": {
+          "const": "docs-content-changes.v1"
+        },
+        "generationField": {
+          "const": "indexGeneration"
+        },
+        "resetRequiredField": {
+          "const": "resetRequired"
+        },
+        "modes": {
+          "const": [
+            "snapshot",
+            "delta",
+            "reset"
+          ]
+        },
+        "bodyFree": {
+          "const": true
+        },
+        "etag": {
+          "const": true
+        }
+      },
+      "required": [
+        "enabled",
+        "endpoint",
+        "method",
+        "audienceParam",
+        "defaultAudience",
+        "supportedAudiences",
+        "responseParam",
+        "responseValue",
+        "sinceParam",
+        "format",
+        "generationField",
+        "resetRequiredField",
+        "modes",
+        "bodyFree",
+        "etag"
       ]
     },
     "agents": {

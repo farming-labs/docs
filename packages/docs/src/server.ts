@@ -69,6 +69,7 @@ export type {
 } from "./docs-cloud-server.js";
 export type { DocsCloudAskAIConfig, DocsCloudAskAIResponseOptions } from "./cloud-ask-ai.js";
 export {
+  buildDocsContentSnapshot,
   buildDocsSearchDocuments,
   buildDocsRetrievalDigestProjection,
   buildDocsAskAIContext,
@@ -94,9 +95,27 @@ export {
 } from "./search.js";
 export { DocsPaginationCursorError } from "./pagination.js";
 export type {
+  BuildDocsContentSnapshotOptions,
   EnrichDocsSearchDocumentsWithProvenanceOptions,
   PerformDocsSearchOptions,
 } from "./search.js";
+export {
+  createDocsContentChangeFeed,
+  createDocsContentChangesHttpResponse,
+  DOCS_CONTENT_CHANGES_FORMAT,
+  DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
+  DOCS_CONTENT_SNAPSHOT_FORMAT,
+  isDocsContentChangesRequest,
+  resolveDocsContentChangesConfig,
+  resolveDocsContentChangesRequest,
+  DocsContentChangesRequestError,
+} from "./content-changes.js";
+export type {
+  DocsContentChangeFeed,
+  DocsContentChangesRequest,
+  DocsResolvedContentChangesConfig,
+  ResolveDocsContentChangesOptions,
+} from "./content-changes.js";
 export { runDocsGoldenTasks } from "./agent-evals.js";
 export {
   resolveConfiguredAgentSkills,
@@ -219,6 +238,15 @@ export type {
   DocsSearchQuery,
   DocsSearchRequest,
   DocsPaginatedSearchResponse,
+  DocsContentChangeDocument,
+  DocsAgentContentChangesConfig,
+  DocsContentChangedDocument,
+  DocsContentChangesResponse,
+  DocsContentChangeSnapshotContext,
+  DocsContentChangeSnapshotLoader,
+  DocsContentChangeSnapshotSaver,
+  DocsContentSnapshot,
+  DocsContentSnapshotDocument,
   DocsRetrievalSourceProvenance,
   DocsRetrievalSourceScope,
   DocsSearchResult,

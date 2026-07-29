@@ -1,5 +1,6 @@
 import type {
   DocsConfig,
+  DocsAgentContentChangesConfig,
   DocsRobotsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
@@ -29,6 +30,11 @@ import {
 } from "./agent-contract.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
+import {
+  DOCS_CONTENT_CHANGES_FORMAT,
+  DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
+  resolveDocsContentChangesConfig,
+} from "./content-changes.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   DEFAULT_SITEMAP_MD_ROUTE,
@@ -464,6 +470,10 @@ export interface DocsDiagnosticsFeature {
   };
   responseFormat?: "docs-search.v1";
   facetsResponseFormat?: "docs-search-facets.v1";
+  format?: string;
+  sinceParam?: string;
+  generationField?: string;
+  resetRequiredField?: string;
   warningsField?: "warnings";
   /** Facet field selected for facet-value continuation. */
   facetParam?: "facet";
@@ -503,6 +513,7 @@ export interface DocsDiagnostics {
     skill: string;
     search: string | null;
     agentSearch: string | null;
+    contentChanges: string | null;
     askAi: string | null;
     mcp: string | null;
     llmsTxt: string | null;
@@ -519,6 +530,7 @@ export interface DocsDiagnostics {
     diagnostics: DocsDiagnosticsFeature;
     apiCatalog: DocsDiagnosticsFeature;
     search: DocsDiagnosticsFeature;
+    contentChanges: DocsDiagnosticsFeature;
     ai: DocsDiagnosticsFeature;
     mcp: DocsDiagnosticsFeature;
     feedback: DocsDiagnosticsFeature;
@@ -652,6 +664,8 @@ export interface DocsAgentDiscoverySpecOptions extends DocsDiscoveryApiRouteOpti
   apiCatalog?: boolean;
   i18n?: ResolvedDocsI18n | null;
   search?: boolean | DocsSearchConfig;
+  /** Runtime metadata-only document synchronization feed. Defaults to enabled. */
+  contentChanges?: boolean | DocsAgentContentChangesConfig;
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
   llms?: DocsLlmsDiscoveryConfig;
@@ -678,6 +692,8 @@ export interface DocsSkillDocumentOptions extends DocsDiscoveryApiRouteOptions {
   /** Whether this deployment actually serves the RFC 9727 API catalog. Defaults to true. */
   apiCatalog?: boolean;
   search?: boolean | DocsSearchConfig;
+  /** Runtime metadata-only document synchronization feed. Defaults to enabled. */
+  contentChanges?: boolean | DocsAgentContentChangesConfig;
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
   llms?: DocsLlmsDiscoveryConfig;
@@ -929,6 +945,11 @@ export function buildDocsDiagnostics(
   const i18n = options.i18n ?? null;
   const localesEnabled = Boolean(i18n?.locales.length);
   const search = resolveDocsDiagnosticsSearch(input.search, staticExport);
+  const agent = isPlainObject(input.agent) ? input.agent : undefined;
+  const contentChanges = resolveDocsContentChangesConfig(
+    agent?.contentChanges as boolean | DocsAgentContentChangesConfig | undefined,
+    { staticExport },
+  );
   const ai = resolveDocsDiagnosticsAi(input.ai, staticExport);
   const llms = resolveDocsDiagnosticsLlms(input.llmsTxt);
   const apiCatalog = resolveDocsDiagnosticsApiCatalog(
@@ -1024,6 +1045,9 @@ export function buildDocsDiagnostics(
       skill: apiQueryRoute("format=skill"),
       search: search.enabled ? apiQueryRoute("query={query}") : null,
       agentSearch: search.enabled ? apiQueryRoute("query={query}&audience=agent") : null,
+      contentChanges: contentChanges.enabled
+        ? apiQueryRoute(`audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`)
+        : null,
       askAi: ai.enabled ? apiRoute : null,
       mcp: mcp.enabled ? mcp.route : null,
       llmsTxt: llms.enabled ? DEFAULT_LLMS_TXT_ROUTE : null,
@@ -1093,6 +1117,25 @@ export function buildDocsDiagnostics(
         totalField: "total",
         provider: search.provider,
         transport: "GET",
+      },
+      contentChanges: {
+        status: contentChanges.enabled ? "enabled" : "disabled",
+        reason: staticExport
+          ? "Runtime content-change feeds are unavailable in static exports."
+          : contentChanges.enabled
+            ? undefined
+            : "configured-disabled",
+        route: contentChanges.enabled
+          ? apiQueryRoute(`audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`)
+          : null,
+        transport: "GET",
+        format: DOCS_CONTENT_CHANGES_FORMAT,
+        audienceParam: "audience",
+        defaultAudience: "agent",
+        supportedAudiences: ["human", "agent"],
+        sinceParam: "since",
+        generationField: "indexGeneration",
+        resetRequiredField: "resetRequired",
       },
       ai: {
         status: ai.enabled ? "enabled" : "disabled",
@@ -3742,6 +3785,7 @@ interface DocsAgentDocumentContext {
   siteDescription?: string;
   llmsEnabled: boolean;
   searchEnabled: boolean;
+  contentChangesEnabled: boolean;
   mcpEnabled: boolean;
   feedbackEnabled: boolean;
   sitemapConfig: ReturnType<typeof resolveDocsSitemapConfig>;
@@ -3763,6 +3807,7 @@ function resolveDocsAgentDocumentContext({
   apiRoute,
   apiCatalog: explicitApiCatalog,
   search,
+  contentChanges,
   mcp,
   feedback,
   llms,
@@ -3782,6 +3827,7 @@ function resolveDocsAgentDocumentContext({
     siteDescription: llms?.siteDescription ? compactSkillText(llms.siteDescription) : undefined,
     llmsEnabled: llms?.enabled ?? true,
     searchEnabled: isSearchEnabled(search),
+    contentChangesEnabled: resolveDocsContentChangesConfig(contentChanges).enabled,
     mcpEnabled: mcp.enabled,
     feedbackEnabled: feedback?.enabled ?? false,
     sitemapConfig: resolveDocsSitemapConfig(sitemap),
@@ -3834,6 +3880,16 @@ function appendDocsSearchStartLine(
     variant === "skill"
       ? `- Search with ${context.apiRoute}?query={query}&audience=agent&response=structured when you do not know the page; optionally repeat framework, version, package, or tags filters.`
       : `- Search with ${context.apiRoute}?query={query}&audience=agent&response=structured when the route is unknown; optionally repeat framework, version, package, or tags filters.`,
+  );
+}
+
+function appendDocsContentChangesStartLine(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+): void {
+  if (!context.contentChangesEnabled) return;
+  lines.push(
+    `- Synchronize changed documents with ${context.apiRoute}?audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}; pass the returned indexGeneration as since on the next request and clear stale state when resetRequired is true.`,
   );
 }
 
@@ -3985,6 +4041,7 @@ function appendDocsAgentStartHereLines(
   if (variant === "skill") {
     appendDocsMarkdownNegotiationStartLines(lines, context, variant);
     appendDocsSearchStartLine(lines, context, variant);
+    appendDocsContentChangesStartLine(lines, context);
     appendDocsOpenApiStartLine(lines, context, variant);
     appendDocsLlmsStartLines(lines, context, variant);
     appendDocsSitemapStartLines(lines, context, variant);
@@ -3998,6 +4055,7 @@ function appendDocsAgentStartHereLines(
   appendDocsSitemapStartLines(lines, context, variant);
   appendDocsRobotsStartLine(lines, context, variant);
   appendDocsSearchStartLine(lines, context, variant);
+  appendDocsContentChangesStartLine(lines, context);
   appendDocsOpenApiStartLine(lines, context, variant);
   appendDocsMcpStartLine(lines, context, variant);
   appendDocsFeedbackStartLine(lines, context, variant);
@@ -4084,6 +4142,11 @@ function appendDocsAgentPublicRouteLines(
     appendDocsOpenApiRouteLines(lines, context);
     appendDocsSitemapRouteLines(lines, context);
     appendDocsMcpRouteLines(lines, context);
+    if (context.contentChangesEnabled) {
+      lines.push(
+        `- Content changes: ${context.apiRoute}?audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`,
+      );
+    }
     return;
   }
 
@@ -4121,6 +4184,11 @@ function appendDocsAgentPublicRouteLines(
   appendDocsSitemapRouteLines(lines, context);
   appendDocsOpenApiRouteLines(lines, context);
   appendDocsMcpRouteLines(lines, context);
+  if (context.contentChangesEnabled) {
+    lines.push(
+      `- Content changes: ${context.apiRoute}?audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`,
+    );
+  }
 }
 
 export function renderDocsMarkdownDocument(
@@ -4274,6 +4342,7 @@ export function buildDocsAgentDiscoverySpec({
   apiCatalog: explicitApiCatalog,
   i18n = null,
   search,
+  contentChanges,
   mcp,
   feedback,
   llms,
@@ -4289,6 +4358,7 @@ export function buildDocsAgentDiscoverySpec({
   const apiQueryRoute = (query: string) => `${resolvedApiRoute}?${query}`;
   const localesEnabled = i18n !== null;
   const searchEnabled = isSearchEnabled(search);
+  const contentChangesEnabled = resolveDocsContentChangesConfig(contentChanges).enabled;
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
   const llmsEnabled = llms?.enabled ?? true;
@@ -4339,6 +4409,7 @@ export function buildDocsAgentDiscoverySpec({
       agentSkillsDiscovery: true,
       mcp: mcp.enabled,
       search: searchEnabled,
+      contentChanges: contentChangesEnabled,
       sitemap: sitemapConfig.enabled,
       robots: robotsEnabled,
       structuredData: true,
@@ -4371,6 +4442,13 @@ export function buildDocsAgentDiscoverySpec({
       legacySkillsIndex: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
       ...(agentCard ? { agentCard: DEFAULT_A2A_AGENT_CARD_ROUTE } : {}),
       openapi: defaultOpenapiRoute,
+      ...(contentChangesEnabled
+        ? {
+            contentChanges: apiQueryRoute(
+              `audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`,
+            ),
+          }
+        : {}),
     },
     apiCatalog: {
       enabled: apiCatalogEnabled,
@@ -4510,6 +4588,25 @@ export function buildDocsAgentDiscoverySpec({
       nextCursorField: "nextCursor",
       hasMoreField: "hasMore",
       totalField: "total",
+    },
+    contentChanges: {
+      enabled: contentChangesEnabled,
+      endpoint: contentChangesEnabled
+        ? apiQueryRoute(`audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`)
+        : null,
+      method: "GET",
+      audienceParam: "audience",
+      defaultAudience: "agent",
+      supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      responseValue: DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
+      sinceParam: "since",
+      format: DOCS_CONTENT_CHANGES_FORMAT,
+      generationField: "indexGeneration",
+      resetRequiredField: "resetRequired",
+      modes: ["snapshot", "delta", "reset"],
+      bodyFree: true,
+      etag: true,
     },
     agents: {
       enabled: true,

@@ -8,6 +8,8 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
+  createDocsContentChangeFeed,
+  createDocsContentChangesHttpResponse,
   createDocsStandardsDiscoveryResponse,
   createDocsMarkdownResponse,
   createDocsRobotsResponse,
@@ -24,6 +26,7 @@ import {
   getDocsAgentManifestLinkHeader,
   getDocsDiscoveryLinkHeader,
   isDocsAgentDiscoveryRequest,
+  isDocsContentChangesRequest,
   isDocsAgentsRequest,
   isDocsConfigRequest,
   isDocsDiagnosticsRequest,
@@ -53,6 +56,7 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsMetadataBaseUrl,
+  resolveDocsContentChangesConfig,
   resolveDocsRequestApiRoute,
   resolveDocsRetrievalLastModified,
   resolveDocsPublishedAgentSkill,
@@ -872,6 +876,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
   const llmsBaseUrl = typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
   const markdownMetadataBaseUrl = resolveDocsMetadataBaseUrl(config as any);
+  const contentChangesConfig = resolveDocsContentChangesConfig(config.agent?.contentChanges, {
+    staticExport: config.staticExport === true,
+  });
+  const contentChangeFeed = createDocsContentChangeFeed(config.agent?.contentChanges);
   const llmsTitle =
     typeof llmsTxtConfig === "object" ? (llmsTxtConfig.siteTitle ?? llmsSiteTitle) : llmsSiteTitle;
   const llmsDesc = typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
@@ -972,6 +980,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       apiCatalog: apiCatalogEnabled,
       i18n,
       search: config.search,
+      contentChanges: contentChangesConfig.enabled,
       mcp: mcpConfig,
       feedback: agentFeedbackDiscovery,
       llms: {
@@ -1093,6 +1102,23 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           },
         },
       );
+    }
+
+    if (isDocsContentChangesRequest(url)) {
+      if (!contentChangesConfig.enabled) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": "noindex" },
+        });
+      }
+      return createDocsContentChangesHttpResponse({
+        request: event.request,
+        feed: contentChangeFeed,
+        pages: getSearchIndex(ctx),
+        search: config.search,
+        locale: ctx.locale,
+        baseUrl: markdownMetadataBaseUrl || url.origin,
+      });
     }
 
     if (isApiReferenceOpenApiRequest(url)) {

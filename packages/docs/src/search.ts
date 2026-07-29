@@ -20,6 +20,7 @@ import type {
   DocsSearchSourcePage,
   DocsSearchWarning,
   DocsSearchChunkingConfig,
+  DocsContentSnapshot,
   DocsRetrievalSourceProvenance,
   DocsRetrievalSourceScope,
   McpDocsSearchConfig,
@@ -1418,6 +1419,93 @@ async function buildDocsSearchIndexGeneration(
       sources,
     }),
   );
+}
+
+export interface BuildDocsContentSnapshotOptions {
+  pages: readonly DocsSearchSourcePage[];
+  search?: boolean | DocsSearchConfig;
+  audience?: DocsContentAudience;
+  locale?: string;
+  baseUrl?: string;
+  /** @internal Precomputed complete-corpus generation for composed callers. */
+  indexGeneration?: string;
+}
+
+/**
+ * Build a deterministic, body-free inventory for content-change synchronization.
+ *
+ * Its generation is identical to structured search for the same pages, audience,
+ * locale, base URL, and chunking policy.
+ */
+export async function buildDocsContentSnapshot(
+  options: BuildDocsContentSnapshotOptions,
+): Promise<DocsContentSnapshot> {
+  const audience = resolveDocsSearchAudience(options.audience);
+  const search = normalizeDocsSearchConfig(options.search);
+  const digestCache = new Map<DocsSearchSourcePage, string>();
+  const indexGeneration =
+    options.indexGeneration ??
+    (await buildDocsSearchIndexGeneration(options.pages, {
+      audience,
+      chunking: search.chunking,
+      locale: options.locale,
+      baseUrl: options.baseUrl,
+      digestCache,
+    }));
+  const documents = await Promise.all(
+    options.pages.map(async (page) => {
+      const localizedPage = localizeDocsSearchPage(page, options.locale);
+      const source = await buildDocsRetrievalSource(page, localizedPage.url, {
+        audience,
+        chunking: search.chunking,
+        locale: options.locale,
+        baseUrl: options.baseUrl,
+        indexGeneration,
+        digestCache,
+      });
+      const canonicalUrl = source.canonicalUrl.split("#", 1)[0]!;
+      return {
+        url: localizedPage.url,
+        canonicalUrl,
+        // Cover every page-level input that can change a fetched document.
+        // source.digest remains the independently verifiable body projection.
+        digest: hashDocsRetrievalValue(
+          JSON.stringify({
+            format: "docs-content-document.v1",
+            url: localizedPage.url,
+            canonicalUrl,
+            title: localizedPage.title,
+            description: localizedPage.description,
+            type: localizedPage.type,
+            scope: source.scope,
+            lastModified: source.lastModified,
+            sourceDigest: source.digest,
+          }),
+        ),
+        ...(source.lastModified ? { lastModified: source.lastModified } : {}),
+      };
+    }),
+  );
+  documents.sort((left, right) => {
+    const canonical = compareSearchMetadataValues(left.canonicalUrl, right.canonicalUrl);
+    return canonical !== 0 ? canonical : compareSearchMetadataValues(left.url, right.url);
+  });
+  for (let index = 1; index < documents.length; index += 1) {
+    if (documents[index - 1]?.canonicalUrl === documents[index]?.canonicalUrl) {
+      throw new DocsSearchRequestError(
+        `Content-change snapshots require unique canonical URLs; duplicate: ${documents[index]!.canonicalUrl}`,
+      );
+    }
+  }
+
+  return {
+    format: "docs-content-snapshot.v1",
+    audience,
+    ...(options.locale ? { locale: normalizeAgentLocale(options.locale) } : {}),
+    ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
+    indexGeneration,
+    documents,
+  };
 }
 
 async function buildDocsRetrievalSource(

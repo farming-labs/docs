@@ -1152,6 +1152,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     // `agent export` publishes files only. Never advertise runtime endpoints that the bundle does
     // not contain, even when the application's server-rendered config enables them.
     search: false,
+    contentChanges: false,
     mcp,
     feedback,
     llms,
