@@ -1190,6 +1190,7 @@ The current built-in MCP surface includes:
 returns structured `docs.config.ts` option metadata. `get_context` returns deterministic,
 token-budgeted section context with source anchors.
 
+When `agent.contentChanges` is configured in `docs.config`, the stdio server also registers the `list_content_changes` tool and its associated polling resources for body-free document-change detection.
 For the HTTP endpoint version, see [MCP Server](/docs/customization/mcp).
 
 ### Print hosted MCP client config with `mcp setup`
