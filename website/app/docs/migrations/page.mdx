@@ -1,0 +1,214 @@
+---
+title: "Migrations"
+description: "Move documentation from Docusaurus, Mintlify, Nextra, Fumadocs, VitePress, Starlight, GitBook, or Material for MkDocs"
+icon: "route"
+order: 2.5
+related:
+  - /docs/installation
+  - /docs/cli
+  - /docs/configuration
+  - /docs/migrations/docusaurus
+  - /docs/migrations/mintlify
+  - /docs/migrations/nextra
+  - /docs/migrations/fumadocs
+  - /docs/migrations/vitepress
+  - /docs/migrations/starlight
+  - /docs/migrations/gitbook
+  - /docs/migrations/mkdocs
+agent:
+  tokenBudget: 1400
+  task: Select and execute the correct source-specific migration into a Farming Labs Docs project.
+  outcome: The source content, navigation, assets, and supported components are represented in a buildable Farming Labs Docs site, with unsupported behavior listed for review.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Identify the current documentation platform and its content root.
+    - Choose the target application runtime before moving files.
+    - Preserve the source project or create a migration branch before editing.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: npx @farming-labs/docs init
+      description: Scaffold the target docs runtime from the target application root.
+  sideEffects:
+    - Initialization installs framework packages and creates the target docs configuration and routes.
+    - Migration copies or rewrites documentation content, navigation metadata, and assets.
+  verification:
+    - description: Run the target application's production build and inspect navigation, links, assets, code blocks, search, and Markdown page actions.
+      expect: The build succeeds and the migrated content is reachable from both its HTML route and matching .md route.
+  rollback:
+    - Restore the migration branch or remove the new target directory; do not delete the preserved source project.
+  failureModes:
+    - symptom: A source-specific component prevents MDX compilation.
+      resolution: Replace it with the closest built-in component or plain Markdown, and record the visual behavior that still needs review.
+    - symptom: Migrated URLs differ from published URLs.
+      resolution: Preserve the original slug in the target file layout or add host-level redirects before switching traffic.
+---
+
+# Migrate to Farming Labs Docs
+
+Move an existing documentation site without treating the migration as a rewrite. Start with the
+guide for your current platform, preserve the source URLs where possible, and validate the new site
+before changing production traffic.
+
+<Callout type="tip" title="Share one Markdown entry point">
+  Send [`/docs/migrations.md`](/docs/migrations.md) to an agent. It contains this migration map and
+  direct links to every source-specific `.md` guide, so the agent can fetch only the framework it
+  needs.
+</Callout>
+
+<Agent>
+Use this page only to select a source guide. Do not combine conversion rules from multiple source
+platforms unless the repository actually contains more than one docs system. After selecting a
+guide, read its `.md` route and preserve its source inventory, URL, navigation, component, asset,
+integration, verification, and recovery steps.
+
+The target runtime is independent from the source platform. Detect whether the destination is
+Next.js, TanStack Start, SvelteKit, Astro, or Nuxt before choosing file locations. Never remove the
+source project until the target production build and route comparison pass.
+</Agent>
+
+## Choose your current platform
+
+<div className="not-prose my-7 grid gap-3 sm:grid-cols-2">
+  <MigrationCard
+    href="/docs/migrations/docusaurus"
+    name="Docusaurus"
+    description="Translate docs/, sidebars, versioned content, admonitions, tabs, and static assets."
+    sourceType="Git-based"
+    effort="Medium"
+    preserves={["MDX", "Sidebars", "Versions"]}
+  />
+  <MigrationCard
+    href="/docs/migrations/mintlify"
+    name="Mintlify"
+    description="Move MDX pages and turn docs.json navigation and hosted integrations into local config."
+    sourceType="Git-based"
+    effort="Low"
+    preserves={["MDX", "Navigation", "OpenAPI"]}
+  />
+  <MigrationCard
+    href="/docs/migrations/nextra"
+    name="Nextra"
+    description="Reuse Next.js and MDX content while replacing _meta files, layout wiring, and theme config."
+    sourceType="Git-based"
+    effort="Low"
+    preserves={["Next.js", "MDX", "Routes"]}
+  />
+  <MigrationCard
+    href="/docs/migrations/fumadocs"
+    name="Fumadocs"
+    description="Keep the existing content model and simplify source, layout, search, and theme wiring."
+    sourceType="Git-based"
+    effort="Low"
+    preserves={["Content", "Meta files", "Components"]}
+  />
+  <MigrationCard
+    href="/docs/migrations/vitepress"
+    name="VitePress"
+    description="Convert Markdown-It and Vue conventions into portable MDX and Farming Labs navigation."
+    sourceType="Git-based"
+    effort="Medium"
+    preserves={["Markdown", "Sidebar", "Assets"]}
+  />
+  <MigrationCard
+    href="/docs/migrations/starlight"
+    name="Starlight"
+    description="Move Astro content collections, sidebar groups, frontmatter, and expressive Markdown."
+    sourceType="Git-based"
+    effort="Low"
+    preserves={["Markdown", "Frontmatter", "Astro"]}
+  />
+  <MigrationCard
+    href="/docs/migrations/gitbook"
+    name="GitBook"
+    description="Export through Git Sync, preserve the page hierarchy, and replace hosted-only blocks."
+    sourceType="Hosted"
+    effort="Medium"
+    preserves={["Markdown", "Hierarchy", "Assets"]}
+  />
+  <MigrationCard
+    href="/docs/migrations/mkdocs"
+    name="Material for MkDocs"
+    description="Translate mkdocs.yml navigation and Python Markdown extensions into MDX components."
+    sourceType="Git-based"
+    effort="Medium"
+    preserves={["Markdown", "Navigation", "Code"]}
+  />
+</div>
+
+## Choose the target runtime
+
+The migration guide explains the source format. The Farming Labs initializer determines the target
+file layout:
+
+| Target runtime | Content location | Configuration |
+| --- | --- | --- |
+| Next.js | `app/docs/**/page.mdx` or `src/app/docs/**/page.mdx` | `docs.config.ts` at the project root |
+| TanStack Start | `docs/**/*.mdx` | `docs.config.ts` at the project root |
+| SvelteKit | `docs/**/*.md` or `docs/**/*.mdx` | `src/lib/docs.config.ts` |
+| Astro | `docs/**/*.md` or `docs/**/*.mdx` | `src/lib/docs.config.ts` |
+| Nuxt | `docs/**/*.md` or `docs/**/*.mdx` | `docs.config.ts` at the project root |
+
+Run the initializer from the target application root:
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash title="terminal"
+    npx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash title="terminal"
+    pnpm dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash title="terminal"
+    yarn dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash title="terminal"
+    bunx @farming-labs/docs init
+    ```
+  </Tab>
+</Tabs>
+
+## The migration sequence
+
+1. **Freeze a source snapshot.** Record the published URL, active version, locale, and build command.
+2. **Initialize the target separately.** Use a migration branch or a new directory so rollback stays simple.
+3. **Move plain content first.** Copy Markdown, images, and downloadable files before translating components.
+4. **Rebuild navigation.** Preserve page order, nesting, labels, hidden pages, and external links.
+5. **Translate source components.** Prefer built-in `Callout`, `Tabs`, `Cards`, and standard Markdown.
+6. **Recreate integrations intentionally.** Search, analytics, authentication, OpenAPI, redirects, and custom scripts are configuration work—not content.
+7. **Validate before cutover.** Build the site, compare important routes, inspect mobile navigation, and test `.md` delivery.
+
+## Definition of done
+
+- Every published source page is migrated, redirected, or intentionally retired.
+- The target production build succeeds without placeholder imports.
+- Sidebar order and nesting match the approved information architecture.
+- Internal links, headings, images, downloads, and code blocks work.
+- Search and API reference behavior are verified separately.
+- `/docs/migrations.md`-style Markdown delivery works for migrated pages.
+- Custom components and hosted integrations have an owner and a documented decision.
+- The source deployment remains available until the target site passes the final route comparison.
+
+## Markdown guide index
+
+Give an agent the smallest guide that matches the source:
+
+- [Docusaurus Markdown guide](/docs/migrations/docusaurus.md)
+- [Mintlify Markdown guide](/docs/migrations/mintlify.md)
+- [Nextra Markdown guide](/docs/migrations/nextra.md)
+- [Fumadocs Markdown guide](/docs/migrations/fumadocs.md)
+- [VitePress Markdown guide](/docs/migrations/vitepress.md)
+- [Starlight Markdown guide](/docs/migrations/starlight.md)
+- [GitBook Markdown guide](/docs/migrations/gitbook.md)
+- [Material for MkDocs Markdown guide](/docs/migrations/mkdocs.md)

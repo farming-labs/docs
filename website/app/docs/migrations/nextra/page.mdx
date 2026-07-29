@@ -1,0 +1,169 @@
+---
+title: "From Nextra"
+description: "Migrate Nextra content, _meta navigation, layouts, and MDX components to Farming Labs Docs"
+icon: "file"
+order: 3
+related:
+  - /docs/migrations
+  - /docs/installation
+  - /docs/customization/sidebar
+  - /docs/customization/components
+  - /docs/themes
+agent:
+  tokenBudget: 1500
+  task: Migrate a Nextra documentation site into Farming Labs Docs.
+  outcome: Nextra MDX, routes, navigation order, and supported components run through the Farming Labs Next.js adapter or another selected target runtime.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Identify whether Nextra content uses content, pages, app page.mdx files, or a mixed layout.
+    - Preserve _meta files, next.config, theme config, mdx-components, public assets, and custom components.
+    - Initialize the target runtime in a migration branch.
+  files:
+    - next.config.js
+    - next.config.mjs
+    - theme.config.tsx
+    - mdx-components.tsx
+    - docs.config.ts
+    - docs.config.tsx
+  commands:
+    - run: npx @farming-labs/docs init
+      description: Configure Farming Labs Docs in the target application.
+  sideEffects:
+    - Nextra routing and layout wiring are replaced by the Farming Labs adapter and docs configuration.
+  verification:
+    - description: Build the target and compare Nextra routes, sidebar order, imported components, assets, and metadata.
+      expect: The production build passes and required routes resolve as HTML and Markdown.
+  rollback:
+    - Restore the previous Next.js configuration and Nextra route files from the migration branch.
+  failureModes:
+    - symptom: The same content is discovered twice.
+      resolution: Choose one Nextra source layout, move it once, and remove duplicate catch-all routes only after the target works.
+    - symptom: Nextra theme components fail to resolve.
+      resolution: Replace them with Farming Labs MDX components or register a local equivalent.
+---
+
+# Migrate from Nextra
+
+Nextra and the Farming Labs Next.js adapter both use Next.js and MDX, making this one of the most
+direct migrations. Most effort goes into replacing Nextra route/layout wiring, `_meta` navigation,
+and theme-specific components.
+
+<Callout type="info" title="Keep the Next.js application">
+  When the existing Next.js application should remain, initialize Farming Labs Docs inside it and
+  migrate only the docs surface. You do not need to recreate the entire app.
+</Callout>
+
+<Agent>
+Detect the Nextra content convention before changing routes: root or src content directory, Pages
+Router files, App Router page.mdx files, or a mixed setup. Snapshot the page map and published
+routes. Never keep both the old Nextra catch-all and the new Farming Labs route active at the same
+URL.
+</Agent>
+
+## 1. Inventory the source
+
+Locate:
+
+- `content/` or `src/content/`
+- `pages/` MDX content
+- `app/**/page.mdx` content
+- `_meta.js`, `_meta.ts`, `_meta.jsx`, `_meta.tsx`, or `_meta.global.*`
+- `next.config.*` and the `nextra(...)` wrapper
+- `theme.config.*`, `mdx-components.*`, and layout files
+- custom React components, CSS, and `public/`
+- search, i18n, redirects, and custom Next.js middleware
+
+## 2. Choose the target shape
+
+For the shortest migration, keep Next.js and use the Farming Labs Next.js adapter:
+
+| Nextra | Farming Labs Next.js |
+| --- | --- |
+| `content/foo.mdx` | `app/docs/foo/page.mdx` |
+| `app/foo/page.mdx` | `app/docs/foo/page.mdx`, adjusted for the chosen docs base |
+| `_meta.*` | File hierarchy and `order` frontmatter |
+| Nextra catch-all page | Generated Farming Labs docs route |
+| `theme.config.*` | `docs.config.ts` theme, navigation, and page actions |
+| `mdx-components.*` | `docs.config.ts` `components` registry |
+| `public/**` | Existing `public/**` |
+
+If you are also changing runtime, move the MDX into that adapter's configured `contentDir` after
+first making the content portable.
+
+## 3. Convert `_meta` navigation
+
+Nextra `_meta` files can define order, titles, hidden items, separators, external links, and navbar
+pages. For each directory:
+
+1. Preserve the object key order.
+2. Rename or position the matching page.
+3. Add numeric `order` frontmatter.
+4. Use the configured title as page `title` when appropriate.
+5. Move `display: "hidden"` pages outside normal navigation or use supported hidden behavior.
+6. Recreate separators and external links with folder structure or custom sidebar/navigation.
+
+JSX labels and functions inside `_meta` are application code. Replace them with stable text and
+registered icons instead of trying to serialize them into frontmatter.
+
+## 4. Preserve content and routes
+
+Keep portable frontmatter such as `title`, `description`, and date fields. Review Nextra-specific
+fields including `asIndexPage`, `type`, `display`, theme overrides, and layout flags.
+
+When moving from `content/foo.mdx` to Next.js, the destination is normally:
+
+```text
+app/docs/foo/page.mdx
+```
+
+Use a folder `page.mdx` for section landing pages. Compare the final route with the source before
+moving on.
+
+## 5. Convert components
+
+| Nextra pattern | Target |
+| --- | --- |
+| Nextra `<Callout>` | Farming Labs `<Callout>` |
+| Nextra `<Tabs>` | Built-in `<Tabs>` and `<Tab>` |
+| `nextra/components` imports | Built-in or registered local components |
+| `useConfig()` | Static frontmatter or target runtime data |
+| Nextra `Cards` | Built-in cards or a local registered component |
+| custom `mdx-components` mapping | `docs.config.ts` `components` |
+
+Component names can match while props differ. Remove Nextra imports only after translating their
+uses and verifying the page.
+
+## 6. Replace framework wiring
+
+After the migrated docs route builds:
+
+- remove the Nextra wrapper from `next.config.*`
+- remove the Nextra catch-all route if it overlaps
+- replace Nextra layout and theme configuration
+- keep unrelated Next.js routes, middleware, fonts, and application providers
+- remove Nextra dependencies only after no imports remain
+
+This order keeps the migration reversible and avoids breaking non-doc pages.
+
+## 7. Validate and recover
+
+1. Run the Next.js production build.
+2. Compare the Nextra page map with the Farming Labs sidebar.
+3. Test index pages, hidden pages, external links, imported components, and images.
+4. Verify application routes outside `/docs`.
+5. Fetch migrated pages with `.md`.
+6. Remove Nextra dependencies only after all checks pass.
+
+If a route is duplicated, disable one catch-all and retry. If navigation differs, return to the
+nearest `_meta` file and translate its key order and special item types explicitly.
+
+## Source references
+
+- [Nextra content directory](https://nextra.site/docs/file-conventions/content-directory)
+- [Nextra `_meta` files](https://nextra.site/docs/file-conventions/meta-file)
+- [Farming Labs sidebar](/docs/customization/sidebar)
+- [Farming Labs components](/docs/customization/components)
+- [Farming Labs themes](/docs/themes)
