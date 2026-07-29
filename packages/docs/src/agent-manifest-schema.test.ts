@@ -200,9 +200,12 @@ describe("Farming Labs agent manifest schema", () => {
       endpoint: "/api/docs?query={query}",
       agentEndpoint: "/api/docs?query={query}&audience=agent",
       structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
+      facetsEndpoint: "/api/docs?audience=agent&response=facets",
       responseParam: "response",
       structuredResponseValue: "structured",
+      facetsResponseValue: "facets",
       responseFormat: "docs-search.v1",
+      facetsResponseFormat: "docs-search-facets.v1",
       filterParams: {
         framework: "framework",
         version: "version",
@@ -227,9 +230,12 @@ describe("Farming Labs agent manifest schema", () => {
     const legacySearch: Record<string, unknown> = { ...manifest.search };
     for (const field of [
       "structuredAgentEndpoint",
+      "facetsEndpoint",
       "responseParam",
       "structuredResponseValue",
+      "facetsResponseValue",
       "responseFormat",
+      "facetsResponseFormat",
       "filterParams",
       "repeatedFilterParams",
       "warningsField",
@@ -255,6 +261,10 @@ describe("Farming Labs agent manifest schema", () => {
     const partialSearch: Record<string, unknown> = { ...manifest.search };
     delete partialSearch.warningsField;
     expect(validate({ ...manifest, search: partialSearch })).toBe(false);
+
+    const partialFacets: Record<string, unknown> = { ...manifest.search };
+    delete partialFacets.facetsResponseFormat;
+    expect(validate({ ...manifest, search: partialFacets })).toBe(false);
 
     const partialPagination: Record<string, unknown> = { ...manifest.search };
     delete partialPagination.nextCursorField;

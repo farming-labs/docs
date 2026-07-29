@@ -754,6 +754,9 @@
         "structuredAgentEndpoint": {
           "$ref": "#/$defs/route"
         },
+        "facetsEndpoint": {
+          "$ref": "#/$defs/route"
+        },
         "method": {
           "const": "GET"
         },
@@ -789,8 +792,14 @@
         "structuredResponseValue": {
           "const": "structured"
         },
+        "facetsResponseValue": {
+          "const": "facets"
+        },
         "responseFormat": {
           "const": "docs-search.v1"
+        },
+        "facetsResponseFormat": {
+          "const": "docs-search-facets.v1"
         },
         "filterParams": {
           "const": {
@@ -825,6 +834,27 @@
         }
       },
       "dependentRequired": {
+        "facetsEndpoint": [
+          "responseParam",
+          "facetsResponseValue",
+          "facetsResponseFormat",
+          "filterParams",
+          "repeatedFilterParams"
+        ],
+        "facetsResponseValue": [
+          "facetsEndpoint",
+          "responseParam",
+          "facetsResponseFormat",
+          "filterParams",
+          "repeatedFilterParams"
+        ],
+        "facetsResponseFormat": [
+          "facetsEndpoint",
+          "responseParam",
+          "facetsResponseValue",
+          "filterParams",
+          "repeatedFilterParams"
+        ],
         "structuredAgentEndpoint": [
           "responseParam",
           "structuredResponseValue",

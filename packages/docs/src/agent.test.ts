@@ -2091,6 +2091,7 @@ describe("agent route helpers", () => {
     expect(document).toContain("[Missing Pages](/docs/missing-pages.md)");
     expect(document).toContain("`/docs/missing/page.md`");
     expect(document).toContain("`/.well-known/agent.json`");
+    expect(document).toContain("`/api/docs?audience=agent&response=facets`");
     expect(document).toContain("`/api/docs?query={query}&audience=agent&response=structured`");
     expect(document).toContain("`framework`, `version`, `package`, or `tags`");
     expect(document).toContain("`/api/docs?format=markdown&path=missing/page`");
@@ -2107,6 +2108,7 @@ describe("agent route helpers", () => {
       pages: [],
     });
     expect(customRouteDocument).toContain("`/api/internal/docs?agent=spec`");
+    expect(customRouteDocument).toContain("`/api/internal/docs?audience=agent&response=facets`");
     expect(customRouteDocument).toContain(
       "`/api/internal/docs?query={query}&audience=agent&response=structured`",
     );
@@ -3024,6 +3026,7 @@ After`;
       endpoint: "/api/docs?query={query}",
       agentEndpoint: "/api/docs?query={query}&audience=agent",
       structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
+      facetsEndpoint: "/api/docs?audience=agent&response=facets",
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
@@ -3032,7 +3035,9 @@ After`;
       supportedAudiences: ["human", "agent"],
       responseParam: "response",
       structuredResponseValue: "structured",
+      facetsResponseValue: "facets",
       responseFormat: "docs-search.v1",
+      facetsResponseFormat: "docs-search-facets.v1",
       filterParams: {
         framework: "framework",
         version: "version",

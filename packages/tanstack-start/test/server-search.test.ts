@@ -120,6 +120,23 @@ describe("createDocsServer structured search provenance", () => {
       results: [],
     });
     expect(blankPayload.indexGeneration).toMatch(digestPattern);
+
+    const facets = await server.GET({
+      request: new Request(
+        "https://preview.example/api/docs?response=facets&framework=TanStack%20Start",
+      ),
+    });
+    expect(facets.headers.get("cache-control")).toContain("max-age=60");
+    await expect(facets.json()).resolves.toMatchObject({
+      format: "docs-search-facets.v1",
+      filters: { framework: ["tanstackstart"] },
+      matchedPageCount: 1,
+      facets: {
+        framework: { values: [{ value: "tanstackstart", count: 1 }] },
+        version: { values: [{ value: "1", count: 1 }] },
+        tags: { values: [{ value: "retrieval", count: 1 }] },
+      },
+    });
   });
 
   it("prefers locale-qualified manifest freshness and falls back to the base page URL", async () => {

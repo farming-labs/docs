@@ -21,6 +21,7 @@ import { eventHandler, getRequestURL, toWebRequest } from "h3";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
+  buildDocsSearchFacets,
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
@@ -1332,8 +1333,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       if (!searchError) throw error;
       return Response.json({ error: searchError }, { status: 400 });
     }
-    const { filters, structured, cursor, limit } = searchRequest;
-    if (!query && !structured) {
+    const { filters, structured, facets, cursor, limit } = searchRequest;
+    if (!query && !structured && !facets) {
       return new Response("[]", {
         headers: { "Content-Type": "application/json" },
       });
@@ -1355,15 +1356,22 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const searchStartedAt = Date.now();
     let searchResponse;
     try {
-      searchResponse = structured
-        ? await performDocsSearchWithMetadata(searchOptions)
-        : query
-          ? await performDocsSearch(searchOptions)
-          : [];
+      searchResponse = facets
+        ? await buildDocsSearchFacets(searchOptions)
+        : structured
+          ? await performDocsSearchWithMetadata(searchOptions)
+          : query
+            ? await performDocsSearch(searchOptions)
+            : [];
     } catch (error) {
       const searchError = resolveDocsSearchError(error);
       if (!searchError) throw error;
       return Response.json({ error: searchError }, { status: 400 });
+    }
+    if (facets) {
+      return Response.json(searchResponse, {
+        headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" },
+      });
     }
     if (!query) {
       return Response.json(searchResponse);
@@ -1371,7 +1379,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const resultCount = Array.isArray(searchResponse)
       ? searchResponse.length
-      : searchResponse.resultCount;
+      : "resultCount" in searchResponse
+        ? searchResponse.resultCount
+        : searchResponse.matchedPageCount;
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_search",
       source: "server",
