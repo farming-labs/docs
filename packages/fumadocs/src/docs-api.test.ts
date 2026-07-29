@@ -5287,7 +5287,7 @@ Search from process cwd docs files.
     expect(payload.some((result) => result.content.includes("Overview"))).toBe(true);
   });
 
-  it("routes GET search through an MCP search provider with a relative endpoint", async () => {
+  it("routes GET search through a non-local MCP search provider with a relative endpoint", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-search-route-"));
     tempDirs.push(rootDir);
 
@@ -5370,7 +5370,7 @@ Welcome to the docs.
         entry: "docs",
         search: {
           provider: "mcp",
-          endpoint: "/api/docs/mcp",
+          endpoint: "/external/search/mcp",
         },
       });
 
@@ -5395,8 +5395,12 @@ Welcome to the docs.
         },
       ]);
 
-      expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("http://localhost/api/docs/mcp");
-      expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe("http://localhost/api/docs/mcp");
+      expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(
+        "http://localhost/external/search/mcp",
+      );
+      expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe(
+        "http://localhost/external/search/mcp",
+      );
       expect(
         JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[2]?.[1]?.body)),
       ).toMatchObject({
@@ -5407,6 +5411,66 @@ Welcome to the docs.
       vi.restoreAllMocks();
     }
   });
+
+  it.each([
+    { endpoint: "/api/docs/mcp", mcp: undefined },
+    { endpoint: "/mcp", mcp: undefined },
+    { endpoint: "/.well-known/mcp", mcp: undefined },
+    { endpoint: "/internal/docs/mcp", mcp: { route: "/internal/docs/mcp" } },
+  ])(
+    "keeps GET search in-process for the local MCP endpoint $endpoint",
+    async ({ endpoint, mcp }) => {
+      const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-local-mcp-search-route-"));
+      tempDirs.push(rootDir);
+
+      mkdirSync(join(rootDir, "app", "docs", "installation"), { recursive: true });
+      writeFileSync(
+        join(rootDir, "app", "docs", "installation", "page.mdx"),
+        `---
+title: "Installation"
+---
+
+# Installation
+
+Install the framework with the local MCP search alias.
+`,
+      );
+
+      process.chdir(rootDir);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new Error("Unexpected loopback MCP request"));
+
+      try {
+        const { GET } = createDocsAPI({
+          entry: "docs",
+          mcp,
+          search: {
+            provider: "mcp",
+            endpoint,
+          },
+        });
+
+        const response = await GET(new Request("http://localhost/api/docs?query=framework"));
+        const payload = (await response.json()) as Array<{
+          url: string;
+          content: string;
+        }>;
+
+        expect(payload).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              url: expect.stringContaining("/docs/installation"),
+              content: expect.stringContaining("Installation"),
+            }),
+          ]),
+        );
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    },
+  );
 
   it.each([
     {

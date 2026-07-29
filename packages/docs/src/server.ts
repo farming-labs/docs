@@ -94,11 +94,15 @@ export {
   resolveDocsSearchRequest,
   resolveDocsRetrievalLastModified,
   resolveAskAISearchRequestConfig,
+  resolveLocalDocsMcpSearchConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
 export { DocsPaginationCursorError } from "./pagination.js";
 export type {
   BuildDocsContentSnapshotOptions,
+  DocsLocalMcpSearchRuntimeConfig,
+  DocsLocalMcpSearchRuntimeInput,
+  DocsSearchRequestResolutionOptions,
   EnrichDocsSearchDocumentsWithProvenanceOptions,
   PerformDocsSearchOptions,
 } from "./search.js";
