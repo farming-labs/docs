@@ -3937,6 +3937,7 @@ description: "Start building quickly"
         readTask: true,
         searchDocs: false,
         searchFacets: true,
+        listContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,

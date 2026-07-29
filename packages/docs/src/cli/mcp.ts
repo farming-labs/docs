@@ -100,6 +100,7 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
   await runDocsMcpStdio({
     source,
     mcp: resolvedMcp,
+    contentChanges: loadedConfig?.agent?.contentChanges,
     defaultName: navTitle ?? "@farming-labs/docs",
   });
 }

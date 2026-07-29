@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
+import {
+  InMemoryTransport,
+  ResourceTemplate,
+  LATEST_PROTOCOL_VERSION,
+} from "@modelcontextprotocol/server";
+import { Client } from "@modelcontextprotocol/client";
 import type {
   DocsAnalyticsEvent,
   DocsMcpAuthenticateContext,
@@ -22,6 +24,7 @@ import type {
 } from "./mcp.js";
 import {
   DOCS_CONFIG_SCHEMA_OPTIONS,
+  DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
   buildDocsMcpContext,
   createDocsMcpHttpHandler,
   createDocsMcpServer,
@@ -116,6 +119,8 @@ const DEFAULT_RESOLVED_MCP_CORS = {
     "Authorization",
     "Content-Type",
     "Last-Event-ID",
+    "MCP-Method",
+    "MCP-Name",
     "MCP-Protocol-Version",
     "MCP-Session-Id",
   ],
@@ -168,6 +173,7 @@ describe("resolveDocsMcpConfig", () => {
         readTask: true,
         searchDocs: true,
         searchFacets: true,
+        listContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -198,6 +204,7 @@ describe("resolveDocsMcpConfig", () => {
         readTask: true,
         searchDocs: true,
         searchFacets: true,
+        listContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -232,6 +239,7 @@ describe("resolveDocsMcpConfig", () => {
         readTask: true,
         searchDocs: true,
         searchFacets: true,
+        listContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -272,6 +280,21 @@ describe("resolveDocsMcpConfig", () => {
           type: "boolean",
           default: true,
           description: expect.stringContaining("list_search_facets"),
+        },
+      ],
+    });
+  });
+
+  it("publishes the list_content_changes tool toggle in the config schema", () => {
+    expect(getDocsConfigSchema({ option: "mcp.tools.listContentChanges" })).toMatchObject({
+      resultCount: 1,
+      options: [
+        {
+          path: "mcp.tools.listContentChanges",
+          name: "listContentChanges",
+          type: "boolean",
+          default: true,
+          description: expect.stringContaining("list_content_changes"),
         },
       ],
     });
@@ -498,7 +521,7 @@ Shared MCP cursor marker ${number}.
     expect(firstResources.result?._meta).toEqual({
       "dev.farming-labs/pagination": {
         hasMore: true,
-        total: 106,
+        total: 108,
       },
     });
 
@@ -512,16 +535,16 @@ Shared MCP cursor marker ${number}.
       (page) => page?.resources?.map((resource) => resource.uri) ?? [],
     );
     expect(resourcePages.map((page) => page?.resources?.length)).toEqual([
-      10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 6,
+      10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 8,
     ]);
     expect(resourcePages.at(-1)?._meta).toEqual({
       "dev.farming-labs/pagination": {
         hasMore: false,
-        total: 106,
+        total: 108,
       },
     });
     expect(new Set(resourceUris).size).toBe(resourceUris.length);
-    expect(resourceUris).toHaveLength(106);
+    expect(resourceUris).toHaveLength(108);
     expect(resourceUris).toEqual(
       [...resourceUris].sort((left, right) => left.localeCompare(right)),
     );
@@ -598,7 +621,7 @@ Shared MCP cursor marker ${number}.
     });
   });
 
-  it("returns terminal pagination metadata for the empty resource-template list", async () => {
+  it("returns terminal pagination metadata for the content-change resource template", async () => {
     const handlers = createDocsMcpHttpHandler({
       source: {
         getPages: () => [],
@@ -610,11 +633,16 @@ Shared MCP cursor marker ${number}.
     }>(await callMcpMethod(handlers, "resources/templates/list"));
 
     expect(response.result).toEqual({
-      resourceTemplates: [],
+      resourceTemplates: [
+        expect.objectContaining({
+          name: "docs-content-changes-by-generation",
+          uriTemplate: "docs://changes/{generation}",
+        }),
+      ],
       _meta: {
         "dev.farming-labs/pagination": {
           hasMore: false,
-          total: 0,
+          total: 1,
         },
       },
     });
@@ -731,13 +759,13 @@ Shared MCP cursor marker ${number}.
     try {
       const tools = await listAllTools();
       expect(tools.find((tool) => tool.name === "late_tool")).toMatchObject({
-        execution: { taskSupport: "forbidden" },
+        name: "late_tool",
       });
       expect((await listAllResources()).map((resource) => resource.uri)).toEqual(
         expect.arrayContaining(["docs://late/resource", "docs://late/01/generated"]),
       );
       const resourceTemplates = await listAllResourceTemplates();
-      expect(resourceTemplates).toHaveLength(11);
+      expect(resourceTemplates).toHaveLength(12);
       expect(resourceTemplates).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -974,6 +1002,227 @@ ${sectionHeadings}
     expect(invalidSearch.result?.content?.[0]?.text).toContain(
       "Invalid or stale pagination cursor",
     );
+  });
+});
+
+describe("MCP content-change synchronization", () => {
+  it("omits content synchronization when agent content changes are disabled", async () => {
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        getPages: () => [],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+      contentChanges: false,
+    });
+
+    try {
+      const toolPayload = await parseMcpPayload<{
+        error?: { code?: number; message?: string };
+      }>(await callMcpTool(handlers, "list_content_changes", {}));
+      expect(toolPayload.error).toMatchObject({
+        code: -32602,
+        message: expect.stringContaining("not found"),
+      });
+
+      const resourcePayload = await parseMcpPayload<{
+        error?: { code?: number; message?: string };
+      }>(
+        await callMcpMethod(handlers, "resources/read", {
+          uri: DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+        }),
+      );
+      expect(resourcePayload.error).toMatchObject({
+        message: expect.stringContaining("not found"),
+      });
+    } finally {
+      await handlers.close?.();
+    }
+  });
+
+  it("polls changes with since and reads generation-addressed resources", async () => {
+    const pages: DocsMcpPage[] = [
+      {
+        slug: "install",
+        url: "/docs/install",
+        title: "Install",
+        content: "# Install\n\nRun the installer.",
+      },
+    ];
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        baseUrl: "https://docs.example.com",
+        getPages: () => pages,
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+
+    try {
+      const firstPayload = await parseMcpPayload<{
+        result?: { structuredContent?: Record<string, unknown> };
+      }>(await callMcpTool(handlers, "list_content_changes", {}));
+      const first = firstPayload.result?.structuredContent as
+        | {
+            mode: string;
+            indexGeneration: string;
+            counts: { added: number; changed: number; deleted: number };
+          }
+        | undefined;
+      expect(first).toMatchObject({
+        mode: "snapshot",
+        counts: { added: 1, changed: 0, deleted: 0 },
+      });
+
+      pages[0] = {
+        ...pages[0]!,
+        content: "# Install\n\nRun the installer, then verify the generated files.",
+      };
+      const secondPayload = await parseMcpPayload<{
+        result?: { structuredContent?: Record<string, unknown> };
+      }>(
+        await callMcpTool(handlers, "list_content_changes", {
+          since: first?.indexGeneration,
+        }),
+      );
+      const second = secondPayload.result?.structuredContent as
+        | {
+            mode: string;
+            since: string;
+            indexGeneration: string;
+            changed: Array<{ canonicalUrl: string; previousDigest: string }>;
+          }
+        | undefined;
+      expect(second).toMatchObject({
+        mode: "delta",
+        since: first?.indexGeneration,
+        changed: [
+          {
+            canonicalUrl: "https://docs.example.com/docs/install",
+            previousDigest: expect.stringMatching(/^sha256:/u),
+          },
+        ],
+      });
+      expect(second?.indexGeneration).not.toBe(first?.indexGeneration);
+
+      const resourcePayload = await parseMcpPayload<{
+        result?: { contents?: Array<{ uri?: string; text?: string }> };
+      }>(
+        await callMcpMethod(handlers, "resources/read", {
+          uri: `docs://changes/${first?.indexGeneration}`,
+        }),
+      );
+      expect(resourcePayload.result?.contents?.[0]?.uri).toBe(
+        `docs://changes/${first?.indexGeneration}`,
+      );
+      expect(JSON.parse(resourcePayload.result?.contents?.[0]?.text ?? "{}")).toMatchObject({
+        mode: "delta",
+        since: first?.indexGeneration,
+        indexGeneration: second?.indexGeneration,
+      });
+
+      const currentPayload = await parseMcpPayload<{
+        result?: { contents?: Array<{ uri?: string; text?: string }> };
+      }>(
+        await callMcpMethod(handlers, "resources/read", {
+          uri: DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+        }),
+      );
+      expect(currentPayload.result?.contents?.[0]?.uri).toBe(DOCS_MCP_CONTENT_CHANGES_CURRENT_URI);
+      expect(JSON.parse(currentPayload.result?.contents?.[0]?.text ?? "{}")).toMatchObject({
+        mode: "snapshot",
+        since: null,
+        indexGeneration: second?.indexGeneration,
+      });
+    } finally {
+      await handlers.close?.();
+    }
+  });
+
+  it("notifies 2026-07-28 subscriptions when the default agent corpus changes", async () => {
+    const pages: DocsMcpPage[] = [
+      {
+        slug: "overview",
+        url: "/docs/overview",
+        title: "Overview",
+        content: "# Overview\n\nInitial content.",
+      },
+    ];
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        baseUrl: "https://docs.example.com",
+        getPages: () => pages,
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+      contentChangePollIntervalMs: 10,
+    });
+    const abortController = new AbortController();
+
+    try {
+      const response = await handlers.POST({
+        request: new Request("https://docs.example.com/api/docs/mcp", {
+          method: "POST",
+          headers: {
+            accept: "text/event-stream",
+            "content-type": "application/json",
+            "mcp-method": "subscriptions/listen",
+            "mcp-protocol-version": "2026-07-28",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: "content-sync-listener",
+            method: "subscriptions/listen",
+            params: {
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientInfo": {
+                  name: "content-sync-test",
+                  version: "1.0.0",
+                },
+                "io.modelcontextprotocol/clientCapabilities": {},
+              },
+              notifications: {
+                resourceSubscriptions: [DOCS_MCP_CONTENT_CHANGES_CURRENT_URI],
+              },
+            },
+          }),
+          signal: abortController.signal,
+        }),
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/event-stream");
+
+      const reader = response.body?.getReader();
+      expect(reader).toBeDefined();
+      const decoder = new TextDecoder();
+      let received = "";
+      const readUntil = async (pattern: string) => {
+        while (!received.includes(pattern)) {
+          const next = await Promise.race([
+            reader!.read(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error(`Timed out waiting for ${pattern}`)), 1_500),
+            ),
+          ]);
+          if (next.done) throw new Error(`Subscription ended before ${pattern}`);
+          received += decoder.decode(next.value, { stream: true });
+        }
+      };
+
+      await readUntil("notifications/subscriptions/acknowledged");
+      expect(received).toContain(DOCS_MCP_CONTENT_CHANGES_CURRENT_URI);
+
+      pages[0] = {
+        ...pages[0]!,
+        content: "# Overview\n\nUpdated content.",
+      };
+      await readUntil("notifications/resources/updated");
+      expect(received).toContain(`"uri":"${DOCS_MCP_CONTENT_CHANGES_CURRENT_URI}"`);
+
+      abortController.abort();
+      await reader?.cancel().catch(() => {});
+    } finally {
+      abortController.abort();
+      await handlers.close?.();
+    }
   });
 });
 
@@ -2111,6 +2360,7 @@ sidebar:
         "get_code_examples",
         "get_config_schema",
         "get_context",
+        "list_content_changes",
       ]),
     );
     expect(listedTools).toEqual(
@@ -2127,6 +2377,7 @@ sidebar:
           "get_code_examples",
           "get_config_schema",
           "get_context",
+          "list_content_changes",
         ].map((name) =>
           expect.objectContaining({
             name,
@@ -2834,7 +3085,7 @@ sidebar:
       }),
     });
 
-    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.status).toBe(405);
   });
 
   it("keeps general docs in scoped context, excludes mismatches, and orders sources deterministically within hard budgets", async () => {
