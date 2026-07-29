@@ -174,6 +174,7 @@ describe("resolveDocsMcpConfig", () => {
         searchDocs: true,
         searchFacets: true,
         listContentChanges: true,
+        hydrateContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -205,6 +206,7 @@ describe("resolveDocsMcpConfig", () => {
         searchDocs: true,
         searchFacets: true,
         listContentChanges: true,
+        hydrateContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -240,6 +242,7 @@ describe("resolveDocsMcpConfig", () => {
         searchDocs: true,
         searchFacets: true,
         listContentChanges: true,
+        hydrateContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -298,6 +301,24 @@ describe("resolveDocsMcpConfig", () => {
         },
       ],
     });
+  });
+
+  it("publishes and resolves the hydrate_content_changes tool toggle", () => {
+    expect(getDocsConfigSchema({ option: "mcp.tools.hydrateContentChanges" })).toMatchObject({
+      resultCount: 1,
+      options: [
+        {
+          path: "mcp.tools.hydrateContentChanges",
+          name: "hydrateContentChanges",
+          type: "boolean",
+          default: true,
+          description: expect.stringContaining("hydrate_content_changes"),
+        },
+      ],
+    });
+    expect(
+      resolveDocsMcpConfig({ tools: { hydrateContentChanges: false } }).tools.hydrateContentChanges,
+    ).toBe(false);
   });
 
   it("resolves custom HTTP security without enabling authentication by default", () => {
@@ -1023,6 +1044,18 @@ describe("MCP content-change synchronization", () => {
         code: -32602,
         message: expect.stringContaining("not found"),
       });
+      const hydrationPayload = await parseMcpPayload<{
+        error?: { code?: number; message?: string };
+      }>(
+        await callMcpTool(handlers, "hydrate_content_changes", {
+          since: `sha256:${"a".repeat(64)}`,
+          tokenBudget: 5_000,
+        }),
+      );
+      expect(hydrationPayload.error).toMatchObject({
+        code: -32602,
+        message: expect.stringContaining("not found"),
+      });
 
       const resourcePayload = await parseMcpPayload<{
         error?: { code?: number; message?: string };
@@ -1132,6 +1165,149 @@ describe("MCP content-change synchronization", () => {
         since: null,
         indexGeneration: second?.indexGeneration,
       });
+    } finally {
+      await handlers.close?.();
+    }
+  });
+
+  it("hydrates changed sections and deletion tombstones with budget cursors", async () => {
+    const pages: DocsMcpPage[] = [
+      {
+        slug: "stable",
+        url: "/docs/stable",
+        title: "Stable",
+        content: "# Stable\n\nStable content.",
+      },
+      {
+        slug: "install",
+        url: "/docs/install",
+        title: "Install",
+        content: "# Install\n\nOld content.",
+      },
+      {
+        slug: "removed",
+        url: "/docs/removed",
+        title: "Removed",
+        content: "# Removed\n\nThis page will be removed.",
+      },
+    ];
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        baseUrl: "https://docs.example.com",
+        getPages: () => pages,
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+
+    try {
+      const firstPayload = await parseMcpPayload<{
+        result?: { structuredContent?: { indexGeneration?: string } };
+      }>(await callMcpTool(handlers, "list_content_changes", {}));
+      const since = firstPayload.result?.structuredContent?.indexGeneration;
+      expect(since).toMatch(/^sha256:/u);
+
+      pages.splice(
+        1,
+        2,
+        {
+          slug: "install",
+          url: "/docs/install",
+          title: "Install",
+          content: [
+            "# Install",
+            "",
+            "Run the updated installer and inspect every generated file before continuing.",
+            "",
+            "## Verify",
+            "",
+            "Start the development server and verify that the documentation route responds.",
+          ].join("\n"),
+        },
+        {
+          slug: "added",
+          url: "/docs/added",
+          title: "Added",
+          content: "# Added\n\nThis page was added.",
+        },
+      );
+
+      const responses: Array<{
+        result?: {
+          isError?: boolean;
+          structuredContent?: {
+            indexGeneration: string;
+            resultCount: number;
+            total: number;
+            hasMore: boolean;
+            nextCursor?: string;
+            budget: { usedUtf8Bytes: number };
+            content: Array<{
+              canonicalUrl: string;
+              digest: string;
+              sectionDigest: string;
+              chunkDigest: string;
+            }>;
+            tombstones: Array<{ canonicalUrl: string; digest: string }>;
+          };
+        };
+      }> = [];
+      let cursor: string | undefined;
+      do {
+        const payload = await parseMcpPayload<(typeof responses)[number]>(
+          await callMcpTool(handlers, "hydrate_content_changes", {
+            since,
+            tokenBudget: 48,
+            ...(cursor ? { cursor } : {}),
+          }),
+        );
+        expect(payload.result?.isError).not.toBe(true);
+        responses.push(payload);
+        cursor = payload.result?.structuredContent?.nextCursor;
+      } while (cursor);
+
+      const results = responses.map((response) => response.result!.structuredContent!);
+      expect(results.length).toBeGreaterThan(1);
+      expect(results.every((result) => result.budget.usedUtf8Bytes <= 48)).toBe(true);
+      expect(results.at(-1)).toMatchObject({ hasMore: false });
+      expect(
+        results.flatMap((result) => result.content).map((item) => item.canonicalUrl),
+      ).not.toContain("https://docs.example.com/docs/stable");
+      expect(
+        new Set(results.flatMap((result) => result.content).map((item) => item.canonicalUrl)),
+      ).toEqual(
+        new Set(["https://docs.example.com/docs/added", "https://docs.example.com/docs/install"]),
+      );
+      expect(results.flatMap((result) => result.tombstones)).toEqual([
+        expect.objectContaining({
+          canonicalUrl: "https://docs.example.com/docs/removed",
+          digest: expect.stringMatching(/^sha256:/u),
+        }),
+      ]);
+      expect(
+        results
+          .flatMap((result) => result.content)
+          .every(
+            (item) =>
+              item.digest.startsWith("sha256:") &&
+              item.sectionDigest.startsWith("sha256:") &&
+              item.chunkDigest.startsWith("sha256:"),
+          ),
+      ).toBe(true);
+
+      const invalidCursor = responses[0]?.result?.structuredContent?.nextCursor;
+      const invalidPayload = await parseMcpPayload<{
+        result?: { isError?: boolean; content?: Array<{ text?: string }> };
+      }>(
+        await callMcpTool(handlers, "hydrate_content_changes", {
+          since,
+          tokenBudget: 49,
+          cursor: invalidCursor,
+        }),
+      );
+      expect(invalidPayload.result?.isError).toBe(true);
+      expect(invalidPayload.result?.content?.[0]?.text).toContain(
+        "Invalid or stale pagination cursor",
+      );
     } finally {
       await handlers.close?.();
     }
@@ -2361,6 +2537,7 @@ sidebar:
         "get_config_schema",
         "get_context",
         "list_content_changes",
+        "hydrate_content_changes",
       ]),
     );
     expect(listedTools).toEqual(
@@ -2378,6 +2555,7 @@ sidebar:
           "get_config_schema",
           "get_context",
           "list_content_changes",
+          "hydrate_content_changes",
         ].map((name) =>
           expect.objectContaining({
             name,

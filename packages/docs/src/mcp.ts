@@ -67,6 +67,28 @@ import {
   resolveDocsContentChangesConfig,
   type DocsContentChangeFeed,
 } from "./content-changes.js";
+import {
+  DOCS_CONTENT_CHANGE_HYDRATION_FORMAT,
+  DEFAULT_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  hydrateDocsContentChanges,
+  MAX_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  MIN_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+} from "./content-change-hydration.js";
+export {
+  DEFAULT_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  DOCS_CONTENT_CHANGE_HYDRATION_FORMAT,
+  hydrateDocsContentChanges,
+  MAX_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  MIN_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+} from "./content-change-hydration.js";
+export type {
+  DocsContentChangeHydrationBudget,
+  DocsContentChangeHydrationContent,
+  DocsContentChangeHydrationResponse,
+  DocsContentChangeHydrationSection,
+  DocsContentChangeHydrationTombstone,
+  HydrateDocsContentChangesOptions,
+} from "./content-change-hydration.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
@@ -422,6 +444,8 @@ export interface DocsMcpResolvedConfig {
     searchFacets?: boolean;
     /** Optional so manually constructed resolved configs from older releases remain assignable. */
     listContentChanges?: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    hydrateContentChanges?: boolean;
     getNavigation: boolean;
     getCodeExamples: boolean;
     getConfigSchema: boolean;
@@ -2118,6 +2142,14 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
               "Expose list_content_changes polling and docs://changes resources when agent.contentChanges is enabled.",
           },
           {
+            path: "mcp.tools.hydrateContentChanges",
+            name: "hydrateContentChanges",
+            type: "boolean",
+            default: true,
+            description:
+              "Expose hydrate_content_changes for budget-aware changed section bodies, deletion tombstones, digests, and continuation cursors.",
+          },
+          {
             path: "mcp.tools.readPage",
             name: "readPage",
             type: "boolean",
@@ -2490,6 +2522,18 @@ const listContentChangesInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
 });
 
+const hydrateContentChangesInputSchema = z.object({
+  since: z.string().refine(isDocsContentChangeGeneration, "Expected a SHA-256 index generation"),
+  tokenBudget: z
+    .number()
+    .int()
+    .min(MIN_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET)
+    .max(MAX_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET)
+    .default(DEFAULT_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET),
+  cursor: paginationCursorInputSchema,
+  locale: z.string().trim().min(1).max(128).optional(),
+});
+
 const getConfigSchemaInputSchema = z.object({
   option: z.string().trim().min(1).optional(),
   query: z.string().trim().min(1).optional(),
@@ -2639,6 +2683,55 @@ const contentChangesOutputSchema = z.object({
     }),
   ),
   deleted: z.array(contentChangeDocumentOutputSchema),
+});
+const contentChangeHydrationContentOutputSchema = contentChangeDocumentOutputSchema.extend({
+  type: z.literal("content"),
+  change: z.enum(["added", "changed"]),
+  previousDigest: retrievalSourceDigestOutputSchema.optional(),
+  previousLastModified: z.string().optional(),
+  section: z.object({
+    id: z.string(),
+    heading: z.string(),
+    level: z.number().int().positive(),
+  }),
+  sectionDigest: retrievalSourceDigestOutputSchema,
+  chunkDigest: retrievalSourceDigestOutputSchema,
+  chunk: z.object({
+    index: z.number().int().nonnegative(),
+    count: z.number().int().positive(),
+  }),
+  content: z.string(),
+  utf8Bytes: z.number().int().nonnegative(),
+});
+const contentChangeHydrationTombstoneOutputSchema = contentChangeDocumentOutputSchema.extend({
+  type: z.literal("tombstone"),
+  change: z.literal("deleted"),
+});
+const contentChangeHydrationOutputSchema = z.object({
+  format: z.literal(DOCS_CONTENT_CHANGE_HYDRATION_FORMAT),
+  audience: z.literal("agent"),
+  locale: z.string().optional(),
+  since: retrievalSourceDigestOutputSchema,
+  indexGeneration: retrievalSourceDigestOutputSchema,
+  mode: z.enum(["snapshot", "delta", "reset"]),
+  resetRequired: z.boolean(),
+  documentCount: z.number().int().nonnegative(),
+  counts: z.object({
+    added: z.number().int().nonnegative(),
+    changed: z.number().int().nonnegative(),
+    deleted: z.number().int().nonnegative(),
+  }),
+  budget: z.object({
+    requestedTokens: z.number().int().positive(),
+    strategy: z.literal("utf8-bytes"),
+    maxUtf8Bytes: z.number().int().positive(),
+    usedUtf8Bytes: z.number().int().nonnegative(),
+    conservativeTokenUpperBound: z.number().int().nonnegative(),
+    remainingUtf8Bytes: z.number().int().nonnegative(),
+  }),
+  ...paginationOutputShape,
+  content: z.array(contentChangeHydrationContentOutputSchema),
+  tombstones: z.array(contentChangeHydrationTombstoneOutputSchema),
 });
 const retrievalSourceOutputSchema = z.object({
   canonicalUrl: z
@@ -2890,6 +2983,7 @@ export function resolveDocsMcpConfig(
         searchDocs: true,
         searchFacets: true,
         listContentChanges: true,
+        hydrateContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -2916,6 +3010,7 @@ export function resolveDocsMcpConfig(
       searchDocs: config.tools?.searchDocs ?? true,
       searchFacets: config.tools?.searchFacets ?? true,
       listContentChanges: config.tools?.listContentChanges ?? true,
+      hydrateContentChanges: config.tools?.hydrateContentChanges ?? true,
       getNavigation: config.tools?.getNavigation ?? true,
       getCodeExamples: config.tools?.getCodeExamples ?? true,
       getConfigSchema: config.tools?.getConfigSchema ?? true,
@@ -3430,6 +3525,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   const contentChangesConfig = resolveDocsContentChangesConfig(options.contentChanges);
   const contentChangesEnabled =
     contentChangesConfig.enabled && resolved.tools.listContentChanges !== false;
+  const contentChangeHydrationEnabled =
+    contentChangesEnabled && resolved.tools.hydrateContentChanges !== false;
   const server = new McpServer({
     name: resolved.name,
     version: resolved.version,
@@ -3501,10 +3598,14 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   const contentChangeFeed =
     options.contentChangeFeed ?? createDocsContentChangeFeed(options.contentChanges);
 
-  async function resolveContentChanges(
+  async function resolveContentChangeState(
     since?: string,
     locale?: string,
-  ): Promise<DocsContentChangesResponse> {
+  ): Promise<{
+    result: DocsContentChangesResponse;
+    pages: DocsMcpPage[];
+    resolvedLocale?: string;
+  }> {
     if (!contentChangesEnabled) {
       throw new ProtocolError(ProtocolErrorCode.MethodNotFound, "Content changes are disabled.");
     }
@@ -3515,11 +3616,12 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       );
     }
     const resolvedLocale = resolveSourceLocale(locale);
+    const pages = dedupePages(
+      await options.source.getPages(resolvedLocale, options.requestContext),
+    );
     try {
-      return await contentChangeFeed.resolve({
-        pages: toSearchSourcePages(
-          dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
-        ),
+      const result = await contentChangeFeed.resolve({
+        pages: toSearchSourcePages(pages),
         search: options.search,
         audience: "agent",
         locale: resolvedLocale,
@@ -3533,12 +3635,24 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           ? { request: options.requestContext.request.clone() }
           : {}),
       });
+      return {
+        result,
+        pages,
+        ...(resolvedLocale ? { resolvedLocale } : {}),
+      };
     } catch (error) {
       if (error instanceof DocsContentChangesRequestError) {
         throw new ProtocolError(ProtocolErrorCode.InvalidParams, error.message);
       }
       throw error;
     }
+  }
+
+  async function resolveContentChanges(
+    since?: string,
+    locale?: string,
+  ): Promise<DocsContentChangesResponse> {
+    return (await resolveContentChangeState(since, locale)).result;
   }
 
   registerResource(
@@ -3658,6 +3772,61 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         return createStructuredTextResult(result);
       },
     );
+
+    if (contentChangeHydrationEnabled) {
+      registerTool(
+        "hydrate_content_changes",
+        {
+          title: "Hydrate docs content changes",
+          description:
+            "Fetch only added and changed agent-facing sections after list_content_changes. Returns deletion tombstones and digest-bound continuation cursors under a conservative token budget.",
+          inputSchema: hydrateContentChangesInputSchema,
+          outputSchema: contentChangeHydrationOutputSchema,
+          annotations: { readOnlyHint: true },
+        },
+        async ({ since, tokenBudget, cursor, locale }) => {
+          const startedAt = nowMs();
+          const state = await resolveContentChangeState(since, locale);
+          let result;
+          try {
+            result = hydrateDocsContentChanges({
+              changes: state.result,
+              pages: state.pages,
+              since,
+              tokenBudget,
+              cursor,
+              cursorScope: protocolScope,
+            });
+          } catch (error) {
+            if (error instanceof DocsPaginationCursorError) {
+              throw new ProtocolError(ProtocolErrorCode.InvalidParams, error.message);
+            }
+            throw error;
+          }
+          trackMcpTool("hydrate_content_changes", {
+            locale: state.resolvedLocale,
+            resultCount: result.resultCount,
+          });
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale: state.resolvedLocale,
+            properties: {
+              tool: "hydrate_content_changes",
+              mode: result.mode,
+              resetRequired: result.resetRequired,
+              resultCount: result.resultCount,
+              total: result.total,
+              hasMore: result.hasMore,
+              tokenBudget,
+              usedUtf8Bytes: result.budget.usedUtf8Bytes,
+              durationMs: durationMs(startedAt),
+            },
+          });
+          return createStructuredTextResult(result);
+        },
+      );
+    }
   }
 
   for (const page of defaultPages) {
