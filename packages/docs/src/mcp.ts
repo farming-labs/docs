@@ -55,6 +55,7 @@ import {
   normalizeDocsSearchFilters,
   performDocsSearch,
   performDocsSearchWithMetadata,
+  resolveLocalDocsMcpSearchConfig,
 } from "./search.js";
 import { isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
@@ -105,7 +106,6 @@ import type {
   DocsSearchSourcePage,
   DocsTelemetryConfig,
   DocsTelemetryFramework,
-  McpDocsSearchConfig,
   OrderingItem,
   PageAgentFrontmatter,
 } from "./types.js";
@@ -3417,7 +3417,11 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     defaultName: options.defaultName ?? options.source.siteTitle ?? DEFAULT_MCP_NAME,
     defaultVersion: options.defaultVersion,
   });
-  const toolSearchConfig = resolveMcpToolSearchConfig(options.search, resolved.route);
+  const toolSearchConfig = resolveLocalDocsMcpSearchConfig(
+    options.search,
+    options.mcp,
+    options.requestContext?.request?.url,
+  );
   const protocolScope = stableDocsMcpPaginationScope({
     name: resolved.name,
     version: resolved.version,
@@ -6564,32 +6568,6 @@ function normalizeConfigSchemaToken(value: string): string {
     .replace(/^docs\.config\.?/, "")
     .replace(/[`'"]/g, "")
     .replace(/[_\-\s]+/g, "");
-}
-
-function isSelfMcpSearchEndpoint(search?: boolean | DocsSearchConfig, route?: string): boolean {
-  if (!search || search === true || typeof search !== "object" || search.provider !== "mcp") {
-    return false;
-  }
-
-  const endpoint = (search as McpDocsSearchConfig).endpoint.trim();
-  if (!endpoint.startsWith("/")) return false;
-
-  return normalizeDocsMcpRoute(endpoint) === normalizeDocsMcpRoute(route);
-}
-
-function resolveMcpToolSearchConfig(
-  search: boolean | DocsSearchConfig | undefined,
-  route: string,
-): boolean | DocsSearchConfig | undefined {
-  if (!isSelfMcpSearchEndpoint(search, route)) return search;
-
-  const config = search as McpDocsSearchConfig;
-  return {
-    provider: "simple",
-    enabled: config.enabled,
-    maxResults: config.maxResults,
-    chunking: config.chunking,
-  };
 }
 
 function toAgentContractSummary(value: unknown): DocsMcpAgentContractSummary {

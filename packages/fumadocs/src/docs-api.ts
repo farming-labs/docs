@@ -4781,7 +4781,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const searchOptions = {
         pages: getIndexes(ctx),
         query: query ?? "",
-        search: resolveSearchRequestConfig(searchConfig, request.url),
+        search: resolveSearchRequestConfig(searchConfig, request.url, {
+          localMcp: rawMcpConfig,
+        }),
         audience,
         filters,
         locale: ctx.locale,

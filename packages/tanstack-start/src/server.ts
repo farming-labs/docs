@@ -1338,7 +1338,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const searchOptions = {
       pages: getSearchIndex(ctx),
       query: query ?? "",
-      search: resolveSearchRequestConfig(config.search, event.request.url),
+      search: resolveSearchRequestConfig(config.search, event.request.url, {
+        localMcp: config.mcp,
+      }),
       audience,
       filters,
       locale: ctx.locale,

@@ -21,6 +21,7 @@ import {
   performDocsSearchWithMetadata,
   resolveDocsSearchAudience,
   resolveDocsSearchRequest,
+  resolveLocalDocsMcpSearchConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
 import { digestDocsRetrievalContent } from "./retrieval-digest.js";
@@ -1880,6 +1881,79 @@ Run the cobalt provenance marker.
         "https://docs.example.com/api/docs",
       ),
     ).toMatchObject({ forwardAudience: false });
+  });
+
+  it.each([
+    ["/api/docs/mcp", undefined],
+    ["/mcp", undefined],
+    ["/mcp", null],
+    ["/.well-known/mcp", undefined],
+    ["https://docs.example.com/api/docs/mcp", undefined],
+    ["/internal/docs/mcp", { route: "/internal/docs/mcp" }],
+    ["/mcp", { route: "/internal/docs/mcp" }],
+    ["/.well-known/mcp", { route: "/internal/docs/mcp" }],
+  ])("resolves the local MCP search endpoint %s to direct simple search", (endpoint, localMcp) => {
+    const search = {
+      provider: "mcp" as const,
+      endpoint,
+      maxResults: 7,
+      chunking: { strategy: "page" as const },
+    };
+
+    expect(
+      resolveLocalDocsMcpSearchConfig(
+        search,
+        localMcp,
+        "https://docs.example.com/api/docs?query=install",
+      ),
+    ).toEqual({
+      provider: "simple",
+      enabled: undefined,
+      maxResults: 7,
+      chunking: { strategy: "page" },
+    });
+    expect(
+      resolveSearchRequestConfig(search, "https://docs.example.com/api/docs?query=install", {
+        localMcp,
+      }),
+    ).toEqual({
+      provider: "simple",
+      enabled: undefined,
+      maxResults: 7,
+      chunking: { strategy: "page" },
+    });
+  });
+
+  it("preserves remote, disabled, and custom-tool MCP search providers", () => {
+    const requestUrl = "https://docs.example.com/api/docs?query=install";
+    const remote = {
+      provider: "mcp" as const,
+      endpoint: "https://search.example.com/mcp",
+    };
+    const customTool = {
+      provider: "mcp" as const,
+      endpoint: "/mcp",
+      toolName: "custom_search",
+    };
+
+    expect(resolveSearchRequestConfig(remote, requestUrl, { localMcp: undefined })).toMatchObject({
+      endpoint: "https://search.example.com/mcp",
+      forwardAudience: false,
+    });
+    expect(
+      resolveSearchRequestConfig(customTool, requestUrl, { localMcp: undefined }),
+    ).toMatchObject({
+      endpoint: "https://docs.example.com/mcp",
+      toolName: "custom_search",
+      forwardAudience: false,
+    });
+    expect(
+      resolveSearchRequestConfig({ provider: "mcp", endpoint: "/mcp" }, requestUrl, {
+        localMcp: false,
+      }),
+    ).toMatchObject({
+      endpoint: "https://docs.example.com/mcp",
+    });
   });
 
   it("keeps public search human-only while allowing explicit agent retrieval", async () => {

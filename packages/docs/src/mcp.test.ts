@@ -5067,7 +5067,38 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     expect(wrongFacet.result?.content?.[0]?.text).toContain("Invalid or stale pagination cursor");
   });
 
-  it("falls back to simple search for self-referential MCP search configs", async () => {
+  it.each([
+    {
+      label: "canonical route",
+      endpoint: "/api/docs/mcp",
+      route: "/api/docs/mcp",
+      requestUrl: "http://localhost/api/docs/mcp",
+    },
+    {
+      label: "public alias",
+      endpoint: "/mcp",
+      route: "/api/docs/mcp",
+      requestUrl: "http://localhost/mcp",
+    },
+    {
+      label: "well-known alias",
+      endpoint: "/.well-known/mcp",
+      route: "/api/docs/mcp",
+      requestUrl: "http://localhost/.well-known/mcp",
+    },
+    {
+      label: "custom route",
+      endpoint: "/internal/docs/mcp",
+      route: "/internal/docs/mcp",
+      requestUrl: "http://localhost/internal/docs/mcp",
+    },
+    {
+      label: "absolute same-origin alias",
+      endpoint: "http://localhost/mcp",
+      route: "/api/docs/mcp",
+      requestUrl: "http://localhost/api/docs/mcp",
+    },
+  ])("uses direct simple search for a self-referential MCP $label", async (scenario) => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({
       rootDir,
@@ -5075,13 +5106,16 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
       contentDir: "docs",
       siteTitle: "Example Docs",
     });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("Unexpected loopback MCP request"));
 
     const handlers = createDocsMcpHttpHandler({
       source,
-      mcp: { enabled: true, name: "Example Docs", route: "/api/docs/mcp" },
+      mcp: { enabled: true, name: "Example Docs", route: scenario.route },
       search: {
         provider: "mcp",
-        endpoint: "/api/docs/mcp",
+        endpoint: scenario.endpoint,
         chunking: {
           strategy: "page",
         },
@@ -5089,7 +5123,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     });
 
     const initializeResponse = await handlers.POST({
-      request: new Request("http://localhost/api/docs/mcp", {
+      request: new Request(scenario.requestUrl, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -5116,7 +5150,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     expect(sessionId).toBeNull();
 
     const searchResponse = await handlers.POST({
-      request: new Request("http://localhost/api/docs/mcp", {
+      request: new Request(scenario.requestUrl, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -5144,6 +5178,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
 
     expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
     expect(searchPayload.result?.content?.[0]?.text).not.toContain("#quickstart");
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("returns JSON-RPC 404 responses when MCP is disabled", async () => {

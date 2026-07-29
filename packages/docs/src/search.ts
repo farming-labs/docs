@@ -54,6 +54,7 @@ import {
   parseDocsMarkdownSections,
   stripDocsGeneratedAgentContractMarkers,
 } from "./markdown-sections.js";
+import { isDocsMcpResourcePath } from "./mcp-auth.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const MAX_STRUCTURED_SEARCH_LIMIT = 25;
@@ -3294,9 +3295,15 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
 export function resolveSearchRequestConfig(
   search: boolean | DocsSearchConfig | undefined,
   requestUrl?: string,
+  options?: DocsSearchRequestResolutionOptions,
 ): boolean | DocsSearchConfig | undefined {
   if (!search || search === true || typeof search !== "object" || search.provider !== "mcp") {
     return search;
+  }
+
+  if (options) {
+    const localSearch = resolveLocalDocsMcpSearchConfig(search, options.localMcp, requestUrl);
+    if (localSearch !== search) return localSearch;
   }
 
   if (!requestUrl) return search;
@@ -3309,6 +3316,96 @@ export function resolveSearchRequestConfig(
     ...search,
     endpoint: resolvedEndpoint.toString(),
     forwardAudience: search.forwardAudience ?? (usesDefaultSearchTool && isSameOrigin),
+  };
+}
+
+export interface DocsLocalMcpSearchRuntimeConfig {
+  enabled?: boolean;
+  route?: string;
+  tools?: {
+    searchDocs?: boolean;
+  };
+}
+
+export type DocsLocalMcpSearchRuntimeInput =
+  | boolean
+  | DocsLocalMcpSearchRuntimeConfig
+  | null
+  | undefined;
+
+export interface DocsSearchRequestResolutionOptions {
+  /**
+   * The built-in MCP server colocated with this search handler. When the configured
+   * provider points at one of its local aliases, search runs directly instead of
+   * performing a loopback MCP handshake.
+   */
+  localMcp?: DocsLocalMcpSearchRuntimeInput;
+}
+
+function isLocalDocsMcpSearchEndpoint(
+  search: McpDocsSearchConfig,
+  localMcp: DocsLocalMcpSearchRuntimeInput,
+  requestUrl?: string,
+): boolean {
+  if (
+    localMcp === false ||
+    (localMcp !== null &&
+      typeof localMcp === "object" &&
+      (localMcp.enabled === false || localMcp.tools?.searchDocs === false)) ||
+    (search.toolName ?? "search_docs") !== "search_docs"
+  ) {
+    return false;
+  }
+
+  const endpoint = search.endpoint.trim();
+  if (!endpoint) return false;
+
+  const route = localMcp !== null && typeof localMcp === "object" ? localMcp.route : undefined;
+  let endpointPath: string;
+
+  try {
+    if (endpoint.startsWith("/") && !endpoint.startsWith("//")) {
+      endpointPath = new URL(endpoint, "https://local.docs.invalid").pathname;
+    } else {
+      if (!requestUrl) return false;
+      const request = new URL(requestUrl);
+      const resolvedEndpoint = new URL(endpoint, request);
+      if (
+        resolvedEndpoint.origin !== request.origin ||
+        resolvedEndpoint.username ||
+        resolvedEndpoint.password
+      ) {
+        return false;
+      }
+      endpointPath = resolvedEndpoint.pathname;
+    }
+  } catch {
+    return false;
+  }
+
+  return isDocsMcpResourcePath(endpointPath, route);
+}
+
+export function resolveLocalDocsMcpSearchConfig(
+  search: boolean | DocsSearchConfig | undefined,
+  localMcp: DocsLocalMcpSearchRuntimeInput,
+  requestUrl?: string,
+): boolean | DocsSearchConfig | undefined {
+  if (
+    !search ||
+    search === true ||
+    typeof search !== "object" ||
+    search.provider !== "mcp" ||
+    !isLocalDocsMcpSearchEndpoint(search, localMcp, requestUrl)
+  ) {
+    return search;
+  }
+
+  return {
+    provider: "simple",
+    enabled: search.enabled,
+    maxResults: search.maxResults,
+    chunking: search.chunking,
   };
 }
 
