@@ -1263,11 +1263,23 @@ Bounded values for one search-scope field.
 | `valueCount` | `number` | Number of distinct values before the response limit is applied |
 | `truncated` | `boolean` | Whether additional values were omitted from this response |
 | `values` | `DocsSearchFacetValue[]` | Ordered list of values and counts |
+| `total` | `number` | Total number of distinct values. Alias of `valueCount` for pagination clients |
+| `hasMore` | `boolean` | Whether another page of values can be requested using `nextCursor` |
+| `nextCursor` | `string \| undefined` | Opaque cursor for the next page. Omitted when this is the final page |
 
 ### `DocsSearchFacetsResponse`
 
 Cheap, body-free discovery response for the search scopes available in an index. Returned by `GET /api/docs?audience=agent&response=facets` with `Cache-Control: public, max-age=60`.
 
+Two optional query parameters refine the `?response=facets` request:
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `facet` | `framework \| version \| package \| tags` | Pin the response to a single field and enable cursor-based pagination for that field. Requires `response=facets`. |
+| `limit` | `integer 1–100` | Maximum number of facet values to return per page. Defaults to the built-in cap when omitted. |
+| `cursor` | `string` | Opaque continuation token returned as `nextCursor` in a previous response. Accepted alongside `response=facets` (and the existing `response=structured`) when `facet` is set. |
+
+When `facet` is present, only the named field is computed and returned. Check `hasMore` in the response to determine whether another page is available, then pass the returned `nextCursor` value as `cursor` in the next request to retrieve it.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `format` | `"docs-search-facets.v1"` | Fixed format identifier |
@@ -1279,6 +1291,19 @@ Cheap, body-free discovery response for the search scopes available in an index.
 
 Options accepted by `buildDocsSearchFacets`. Exported from `@farming-labs/docs`.
 
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `pages` | `DocsSearchSourcePage[]` | Source pages to compute facets over |
+| `search` | `DocsSearchConfig` | Active search config |
+| `audience` | `"human" \| "agent"` | Content projection used when filtering pages |
+| `locale` | `string` | Active locale |
+| `baseUrl` | `string` | Public base URL for provenance |
+| `filters` | `DocsSearchFilters` | Optional filters to apply before computing facets |
+| `indexGeneration` | `string` | Digest of the current index for cache freshness |
+| `scope` | `object` | Optional audience/locale scope |
+| `facet` | `DocsSearchFilterField` | Optional single field to compute and paginate (`framework`, `version`, `package`, or `tags`) |
+| `limit` | `number` | Maximum number of facet values to return (1–100) |
+| `cursor` | `string` | Opaque continuation cursor from a previous response |
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `pages` | `DocsSearchSourcePage[]` | Source pages to compute facets over |
