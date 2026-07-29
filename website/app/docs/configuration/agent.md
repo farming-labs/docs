@@ -13,6 +13,8 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `components`
    - `pageActions`
    - `agent`
+
+| `contentChanges`   | `/api/docs?audience=agent&response=changes` | Body-free content synchronization feed (`docs-content-changes.v1`) |
    - `codeBlocks`
    - `search`
    - `ai`
@@ -35,6 +37,9 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they want to change default props for a built-in component like `HoverLink`, point them to `theme.ui.components`.
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat
+
+  - `agent.contentChanges` for the body-free runtime document synchronization feed (`GET /api/docs?audience=agent&response=changes`)
+
   - `agent.compact` for defaults used by `docs agent compact`
   - `agent.evaluations` for golden tasks that measure retrieval, context, answers, examples, and
     budgets in `docs doctor` and `docs review`
@@ -46,6 +51,9 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`.
+
+- When the user asks about runtime document synchronization or incremental content updates, point to `agent.contentChanges`. Enabled by default on server-rendered adapters; always `false` in static bundles produced by `docs agent export`. The endpoint is `GET /api/docs?audience=agent&response=changes` and returns a `docs-content-changes.v1` payload with `indexGeneration`, `mode` (`snapshot`, `delta`, or `reset`), `resetRequired`, `documentCount`, and `added`/`modified`/`removed` arrays. Supply `since=<indexGeneration>` from a previous response to receive a delta. ETag and `If-None-Match` conditional requests are supported.
+
 - When they ask about static hosting, mention `staticExport: true`. Note that setting `staticExport: true` also signals to the diagnostics endpoint (`GET /api/docs?format=diagnostics`) that server-side features such as search and AI are unavailable, so diagnostics tooling can skip those checks.
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
