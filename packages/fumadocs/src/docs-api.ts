@@ -719,6 +719,8 @@ function buildAgentSpec({
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      facetParam: "facet",
+      limitParam: "limit",
       cursorParam: "cursor",
       nextCursorField: "nextCursor",
       hasMoreField: "hasMore",
@@ -2118,7 +2120,7 @@ function renderSkillDocument({
 
   if (searchEnabled) {
     lines.push(
-      `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values.`,
+      `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values; continue a large field with facet={field}, limit={limit}, and its nextCursor.`,
       `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when you do not know the page; add framework, version, package, or repeated tags filters when scope matters.`,
     );
   }
@@ -2317,7 +2319,7 @@ function renderAgentsDocument({
 
   if (searchEnabled) {
     lines.push(
-      `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values.`,
+      `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values; continue a large field with facet={field}, limit={limit}, and its nextCursor.`,
       `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when the route is unknown; add framework, version, package, or repeated tags filters when scope matters.`,
     );
   }
@@ -4690,7 +4692,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         if (!searchError) throw error;
         return Response.json({ error: searchError }, { status: 400 });
       }
-      const { filters, structured, facets, cursor, limit } = searchRequest;
+      const { filters, structured, facets, facet, cursor, limit } = searchRequest;
       if (!query && !structured && !facets) {
         return new Response("[]", {
           headers: { "Content-Type": "application/json" },
@@ -4707,6 +4709,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         siteTitle: llmsConfig.siteTitle ?? "Documentation",
         baseUrl: markdownMetadataBaseUrl || url.origin,
         syncBaseUrl: markdownMetadataBaseUrl ?? null,
+        facet,
         cursor,
         limit,
       };

@@ -465,7 +465,11 @@ export interface DocsDiagnosticsFeature {
   responseFormat?: "docs-search.v1";
   facetsResponseFormat?: "docs-search-facets.v1";
   warningsField?: "warnings";
-  /** Opaque continuation token accepted by structured search. */
+  /** Facet field selected for facet-value continuation. */
+  facetParam?: "facet";
+  /** Page-size parameter accepted by structured search and facet discovery. */
+  limitParam?: "limit";
+  /** Opaque continuation token accepted by structured search and facet discovery. */
   cursorParam?: "cursor";
   /** Optional continuation token returned when another result page is available. */
   nextCursorField?: "nextCursor";
@@ -1081,6 +1085,8 @@ export function buildDocsDiagnostics(
         responseFormat: "docs-search.v1",
         facetsResponseFormat: "docs-search-facets.v1",
         warningsField: "warnings",
+        facetParam: "facet",
+        limitParam: "limit",
         cursorParam: "cursor",
         nextCursorField: "nextCursor",
         hasMoreField: "hasMore",
@@ -3395,7 +3401,7 @@ export function renderDocsMarkdownNotFound({
     `- API catalog: \`${DEFAULT_API_CATALOG_ROUTE}\``,
     `- Agent Skills index: \`${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}\``,
     `- Agent instructions: \`${DEFAULT_AGENTS_MD_ROUTE}\``,
-    `- Search scope facets: \`${resolvedApiRoute}?audience=agent&response=facets\` (discover valid \`framework\`, \`version\`, \`package\`, and \`tags\` values without page bodies).`,
+    `- Search scope facets: \`${resolvedApiRoute}?audience=agent&response=facets\` (discover valid \`framework\`, \`version\`, \`package\`, and \`tags\` values without page bodies; continue large fields with \`facet={field}&limit={limit}&cursor={nextCursor}\`).`,
     `- Structured agent search: \`${resolvedApiRoute}?query={query}&audience=agent&response=structured\` (optionally repeat \`framework\`, \`version\`, \`package\`, or \`tags\`).`,
     `- Docs index markdown: \`/${normalizedEntry}.md\``,
     `- Requested markdown API route: \`${requestedApiRoute}\``,
@@ -3824,7 +3830,7 @@ function appendDocsSearchStartLine(
 ): void {
   if (!context.searchEnabled) return;
   lines.push(
-    `- Discover valid search filters with ${context.apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tags values.`,
+    `- Discover valid search filters with ${context.apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tags values; continue a large field with facet={field}, limit={limit}, and its nextCursor.`,
     variant === "skill"
       ? `- Search with ${context.apiRoute}?query={query}&audience=agent&response=structured when you do not know the page; optionally repeat framework, version, package, or tags filters.`
       : `- Search with ${context.apiRoute}?query={query}&audience=agent&response=structured when the route is unknown; optionally repeat framework, version, package, or tags filters.`,
@@ -4498,6 +4504,8 @@ export function buildDocsAgentDiscoverySpec({
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      facetParam: "facet",
+      limitParam: "limit",
       cursorParam: "cursor",
       nextCursorField: "nextCursor",
       hasMoreField: "hasMore",

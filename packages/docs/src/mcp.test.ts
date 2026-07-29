@@ -4733,6 +4733,89 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     ]);
   });
 
+  it("continues large search facets with an opaque field-bound cursor", async () => {
+    const pages = Array.from({ length: 105 }, (_, index) => ({
+      slug: `tag-${index}`,
+      url: `/docs/tag-${index}`,
+      title: `Tag ${index}`,
+      content: `Facet tag ${index}.`,
+      tags: [`tag-${String(index).padStart(3, "0")}`],
+    }));
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        getPages: () => pages,
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+
+    const first = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          facets?: Record<
+            string,
+            {
+              total?: number;
+              hasMore?: boolean;
+              nextCursor?: string;
+              values?: Array<{ value?: string }>;
+            }
+          >;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "list_search_facets", {
+        facet: "tags",
+        limit: 50,
+      }),
+    );
+    expect(first.result?.structuredContent?.facets?.tags).toMatchObject({
+      total: 105,
+      hasMore: true,
+    });
+    expect(first.result?.structuredContent?.facets?.tags?.values?.at(0)?.value).toBe("tag-000");
+    expect(first.result?.structuredContent?.facets?.tags?.values?.at(-1)?.value).toBe("tag-049");
+
+    const second = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          facets?: Record<
+            string,
+            {
+              total?: number;
+              hasMore?: boolean;
+              nextCursor?: string;
+              values?: Array<{ value?: string }>;
+            }
+          >;
+        };
+      };
+    }>(
+      await callMcpTool(handlers, "list_search_facets", {
+        facet: "tags",
+        limit: 50,
+        cursor: first.result?.structuredContent?.facets?.tags?.nextCursor,
+      }),
+    );
+    expect(second.result?.structuredContent?.facets?.tags).toMatchObject({
+      total: 105,
+      hasMore: true,
+    });
+    expect(second.result?.structuredContent?.facets?.tags?.values?.at(0)?.value).toBe("tag-050");
+    expect(second.result?.structuredContent?.facets?.tags?.values?.at(-1)?.value).toBe("tag-099");
+
+    const wrongFacet = await parseMcpPayload<{
+      result?: { isError?: boolean; content?: Array<{ text?: string }> };
+    }>(
+      await callMcpTool(handlers, "list_search_facets", {
+        facet: "framework",
+        limit: 50,
+        cursor: first.result?.structuredContent?.facets?.tags?.nextCursor,
+      }),
+    );
+    expect(wrongFacet.result?.isError).toBe(true);
+    expect(wrongFacet.result?.content?.[0]?.text).toContain("Invalid or stale pagination cursor");
+  });
+
   it("falls back to simple search for self-referential MCP search configs", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({

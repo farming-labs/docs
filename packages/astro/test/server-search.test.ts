@@ -127,11 +127,60 @@ describe("createDocsServer structured search provenance", () => {
       filters: { framework: ["astro"] },
       matchedPageCount: 1,
       facets: {
-        framework: { values: [{ value: "astro", count: 1 }] },
-        version: { values: [{ value: "5", count: 1 }] },
-        tags: { values: [{ value: "retrieval", count: 1 }] },
+        framework: { total: 1, hasMore: false, values: [{ value: "astro", count: 1 }] },
+        version: { total: 1, hasMore: false, values: [{ value: "5", count: 1 }] },
+        tags: { total: 1, hasMore: false, values: [{ value: "retrieval", count: 1 }] },
       },
     });
+  });
+
+  it("continues a selected facet without returning document bodies", async () => {
+    const server = createDocsServer({
+      entry: "docs",
+      _preloadedContent: Object.fromEntries(
+        Array.from({ length: 105 }, (_, index) => {
+          const tag = `tag-${String(index).padStart(3, "0")}`;
+          return [
+            `/docs/tag-${index}/page.md`,
+            `---
+title: "Tag ${index}"
+tags:
+  - ${tag}
+---
+
+# Tag ${index}
+
+Large body ${index} that must not appear in facet discovery.
+`,
+          ];
+        }),
+      ),
+    });
+
+    const first = await server.GET({
+      request: new Request("https://preview.example/api/docs?response=facets&facet=tags&limit=50"),
+    });
+    const firstPayload = await first.json();
+    expect(firstPayload.facets.tags).toMatchObject({
+      total: 105,
+      hasMore: true,
+      values: expect.arrayContaining([{ value: "tag-000", count: 1 }]),
+    });
+    expect(firstPayload.facets.tags.values).toHaveLength(50);
+    expect(JSON.stringify(firstPayload)).not.toContain("Large body");
+
+    const second = await server.GET({
+      request: new Request(
+        `https://preview.example/api/docs?response=facets&facet=tags&limit=50&cursor=${firstPayload.facets.tags.nextCursor}`,
+      ),
+    });
+    const secondPayload = await second.json();
+    expect(secondPayload.facets.tags).toMatchObject({
+      total: 105,
+      hasMore: true,
+    });
+    expect(secondPayload.facets.tags.values.at(0)?.value).toBe("tag-050");
+    expect(secondPayload.facets.tags.values.at(-1)?.value).toBe("tag-099");
   });
 
   it("prefers locale-qualified manifest freshness and falls back to the base page URL", async () => {

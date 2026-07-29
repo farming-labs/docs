@@ -820,6 +820,12 @@
         "warningsField": {
           "const": "warnings"
         },
+        "facetParam": {
+          "const": "facet"
+        },
+        "limitParam": {
+          "const": "limit"
+        },
         "cursorParam": {
           "const": "cursor"
         },

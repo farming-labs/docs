@@ -29,6 +29,7 @@ import { digestDocsRetrievalContent, isDocsRetrievalCanonicalUrl } from "./retri
 import {
   createDocsPaginationCursor,
   DocsPaginationCursorError,
+  paginateDocsItems,
   resolveDocsPaginationCursor,
 } from "./pagination.js";
 import {
@@ -243,11 +244,24 @@ export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSea
   const response = searchParams.get("response");
   const structured = response === "structured";
   const facets = response === "facets";
+  const rawFacet = searchParams.get("facet");
+  let facet: DocsSearchFilterField | undefined;
+  if (rawFacet !== null) {
+    if (!facets || !SEARCH_FILTER_FIELDS.includes(rawFacet as DocsSearchFilterField)) {
+      throw new DocsSearchRequestError(
+        "Search facet must be one of framework, version, package, or tags and requires `response=facets`.",
+      );
+    }
+    facet = rawFacet as DocsSearchFilterField;
+  }
   const cursor = searchParams.get("cursor") ?? undefined;
-  if (cursor !== undefined && !structured) {
+  if (cursor !== undefined && !structured && !facets) {
     throw new DocsSearchRequestError(
-      "Search cursors require the structured response format (`response=structured`).",
+      "Search cursors require `response=structured` or `response=facets`.",
     );
+  }
+  if (cursor !== undefined && facets && facet === undefined) {
+    throw new DocsSearchRequestError("Facet continuation cursors require a `facet` field.");
   }
   if (
     cursor !== undefined &&
@@ -258,13 +272,14 @@ export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSea
 
   const rawLimit = searchParams.get("limit");
   let limit: number | undefined;
-  if (rawLimit !== null && structured) {
+  if (rawLimit !== null && (structured || facets)) {
+    const maximum = facets ? MAX_SEARCH_FACET_VALUES : MAX_STRUCTURED_SEARCH_LIMIT;
     if (!/^\d+$/u.test(rawLimit)) {
-      throw new DocsSearchRequestError("Search limit must be an integer between 1 and 25.");
+      throw new DocsSearchRequestError(`Search limit must be an integer between 1 and ${maximum}.`);
     }
     limit = Number(rawLimit);
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_STRUCTURED_SEARCH_LIMIT) {
-      throw new DocsSearchRequestError("Search limit must be an integer between 1 and 25.");
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > maximum) {
+      throw new DocsSearchRequestError(`Search limit must be an integer between 1 and ${maximum}.`);
     }
   }
 
@@ -272,6 +287,7 @@ export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSea
     filters: resolveDocsSearchFilters(searchParams),
     structured,
     ...(facets ? { facets: true } : {}),
+    ...(facet !== undefined ? { facet } : {}),
     ...(cursor !== undefined ? { cursor } : {}),
     ...(limit !== undefined ? { limit } : {}),
   };
@@ -4387,6 +4403,12 @@ export interface BuildDocsSearchFacetsOptions {
   locale?: string;
   baseUrl?: string;
   filters?: DocsSearchFilterInput;
+  /** Facet field selected for cursor continuation. */
+  facet?: DocsSearchFilterField;
+  /** Opaque `nextCursor` returned for the selected facet. */
+  cursor?: string;
+  /** Maximum facet values returned per page. Defaults to 100. */
+  limit?: number;
   /** @internal Precomputed complete-corpus generation for composed callers. */
   indexGeneration?: string;
 }
@@ -4408,6 +4430,13 @@ function buildDocsSearchFacet(
   pages: readonly { scope: ResolvedDocsSearchPageScope }[],
   field: DocsSearchFilterField,
   filters: DocsSearchFilters,
+  options: {
+    audience: DocsContentAudience;
+    cursor?: string;
+    indexGeneration: string;
+    limit: number;
+    locale?: string;
+  },
 ): DocsSearchFacet {
   const counts = new Map<string, number>();
 
@@ -4421,11 +4450,35 @@ function buildDocsSearchFacet(
   const values = [...counts]
     .sort(([left], [right]) => compareSearchMetadataValues(left, right))
     .map(([value, count]) => ({ value, count }));
+  const normalizedFilters = Object.fromEntries(
+    SEARCH_FILTER_FIELDS.flatMap((filterField) => {
+      const filterValues = filters[filterField];
+      return filterValues?.length
+        ? [[filterField, [...filterValues].sort(compareSearchMetadataValues)]]
+        : [];
+    }),
+  );
+  const page = paginateDocsItems(values, {
+    kind: "docs-search-facet",
+    scope: JSON.stringify({
+      format: "docs-search-facet-pagination.v1",
+      field,
+      audience: options.audience,
+      filters: normalizedFilters,
+      locale: options.locale ? normalizeAgentLocale(options.locale) : undefined,
+    }),
+    snapshot: options.indexGeneration,
+    cursor: options.cursor,
+    pageSize: options.limit,
+  });
 
   return {
-    valueCount: values.length,
-    truncated: values.length > MAX_SEARCH_FACET_VALUES,
-    values: values.slice(0, MAX_SEARCH_FACET_VALUES),
+    valueCount: page.total,
+    total: page.total,
+    hasMore: page.hasMore,
+    ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+    truncated: page.items.length < page.total,
+    values: page.items,
   };
 }
 
@@ -4442,6 +4495,17 @@ export async function buildDocsSearchFacets(
   const audience = resolveDocsSearchAudience(options.audience);
   const filters = normalizeDocsSearchFilters(options.filters);
   const search = normalizeDocsSearchConfig(options.search);
+  const requestedLimit = options.limit ?? MAX_SEARCH_FACET_VALUES;
+  if (
+    !Number.isSafeInteger(requestedLimit) ||
+    requestedLimit < 1 ||
+    requestedLimit > MAX_SEARCH_FACET_VALUES
+  ) {
+    throw new DocsSearchRequestError("Search limit must be an integer between 1 and 100.");
+  }
+  if (options.cursor !== undefined && options.facet === undefined) {
+    throw new DocsSearchRequestError("Facet continuation cursors require a `facet` field.");
+  }
   const pages = options.pages
     .map((page) => localizeDocsSearchPage(page, options.locale))
     .map((page) => ({ scope: resolveDocsSearchPageScope(page) }));
@@ -4462,7 +4526,19 @@ export async function buildDocsSearchFacets(
     matchedPageCount: pages.filter(({ scope }) => docsSearchPageMatchesFacetFilters(scope, filters))
       .length,
     facets: Object.fromEntries(
-      SEARCH_FILTER_FIELDS.map((field) => [field, buildDocsSearchFacet(pages, field, filters)]),
+      SEARCH_FILTER_FIELDS.map((field) => [
+        field,
+        buildDocsSearchFacet(pages, field, filters, {
+          audience,
+          cursor: field === options.facet ? options.cursor : undefined,
+          indexGeneration,
+          limit:
+            options.facet === undefined || field === options.facet
+              ? requestedLimit
+              : MAX_SEARCH_FACET_VALUES,
+          locale: options.locale,
+        }),
+      ]),
     ) as Record<DocsSearchFilterField, DocsSearchFacet>,
   };
 }

@@ -3757,6 +3757,8 @@ description: "Start building quickly"
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      facetParam: "facet",
+      limitParam: "limit",
       cursorParam: "cursor",
       nextCursorField: "nextCursor",
       hasMoreField: "hasMore",
