@@ -923,7 +923,7 @@ function MigrationCalloutSection() {
             <div className="px-4 py-9 sm:px-0 sm:py-12 lg:pr-12">
               <span className="mb-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-black/35 dark:text-white/35">
                 <Route aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.8} />
-                Migrations / 08 source guides
+                Migrations
               </span>
 
               <h2 className="max-w-2xl text-2xl font-semibold tracking-tighter text-black dark:text-white sm:text-4xl">
@@ -972,7 +972,7 @@ function MigrationCalloutSection() {
                       aria-label={`Migrate from ${source.name}`}
                       className="group flex min-h-12 items-center gap-2.5 px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-black/58 transition-colors duration-150 hover:bg-black/[0.04] hover:text-black hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/40 dark:text-white/52 dark:hover:bg-white/[0.06] dark:hover:text-white dark:focus-visible:ring-white/50"
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-black/12 text-black/55 transition-colors duration-150 group-hover:border-black/25 group-hover:text-black dark:border-white/12 dark:text-white/55 dark:group-hover:border-white/25 dark:group-hover:text-white">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center text-black/55 transition-colors duration-150 group-hover:text-black dark:text-white/55 dark:group-hover:text-white">
                         <MigrationSourceIcon source={source} />
                       </span>
                       <span>{source.name}</span>
