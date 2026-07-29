@@ -81,6 +81,9 @@ The current built-in surface includes:
 - **Facets tool:** `list_search_facets` is also enabled by default. Disable it with `mcp.tools.searchFacets: false`.
 
 - `list_docs`
+
+- `list_content_changes`
+- `hydrate_content_changes`
 - `list_pages`
 - `get_navigation`
 
@@ -844,6 +847,8 @@ The built-in HTTP route exposes the full MCP surface:
 - `get_config_schema`
 - `get_context`
 
+- `list_content_changes`
+- `hydrate_content_changes`
 ## What to ask it
 
 - `list_page_sections`
@@ -880,6 +885,7 @@ In Cursor or VS Code, natural prompts like these work well too:
 - `get_config_schema` returns `docs.config.ts` option metadata with paths, types, defaults, descriptions, and examples
 - `get_context` deterministically selects matching sections, applies optional `framework`, `version`, and `locale` scopes, and reports source anchors plus conservative UTF-8 byte accounting
 
+- `hydrate_content_changes` is called after `list_content_changes` to retrieve the full section bodies and deletion tombstones for a batch of changed documents; it accepts a `tokenBudget` parameter (default `5000`; min `4`; max `32000`) that caps the total hydrated content returned. Enable it with `mcp.tools.hydrateContentChanges: true` in `docs.config.ts`.
 For `framework`, `version`, and `locale`, a page that declares a different value is excluded. A page
 that omits a scope field is treated as general documentation and remains eligible for that scope.
 Results are ranked deterministically, with source URLs resolving equal-score ties.
