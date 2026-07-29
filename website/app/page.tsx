@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { Activity, ArrowRight, ArrowUpRight, Bot, FileText, Github, Search } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  Bot,
+  FileText,
+  Github,
+  Route,
+  Search,
+} from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import CodeBlock from "@/components/ui/code-block";
 import { FeatureGridCard } from "@/components/ui/feature-grid-card";
@@ -52,6 +61,17 @@ const landingFeatureCards = [
     label: "Agent optimized",
     chips: ["MCP", "llms.txt", "API reference", "Changelog", "Docs API", "Open runtime"],
   },
+] as const;
+
+const migrationSources = [
+  "Docusaurus",
+  "Mintlify",
+  "Nextra",
+  "Fumadocs",
+  "VitePress",
+  "Starlight",
+  "GitBook",
+  "Material for MkDocs",
 ] as const;
 
 function HeroSection() {
@@ -821,6 +841,105 @@ function InstallSection() {
   );
 }
 
+function MigrationCalloutSection() {
+  return (
+    <section
+      id="migrations"
+      className="relative z-10 border-t border-black/[8%] bg-white dark:border-white/[8%] dark:bg-black"
+    >
+      <div className="w-full py-10 sm:py-14">
+        <div className="relative overflow-hidden border-y border-black/10 bg-black/[0.012] dark:border-white/10 dark:bg-white/[0.012]">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-70"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(-45deg, transparent, transparent 8px, color-mix(in srgb, currentColor 2.5%, transparent) 8px, color-mix(in srgb, currentColor 2.5%, transparent) 9px)",
+            }}
+          />
+
+          <div className="relative grid lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+            <div className="px-4 py-9 sm:px-0 sm:py-12 lg:pr-12">
+              <span className="mb-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-black/35 dark:text-white/35">
+                <Route aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.8} />
+                Migrations / 08 source guides
+              </span>
+
+              <h2 className="max-w-2xl text-2xl font-semibold tracking-tighter text-black dark:text-white sm:text-4xl">
+                Already have docs? Bring them with you.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/48 dark:text-white/42 sm:text-base">
+                Move your content, navigation, assets, and existing URLs without starting over. Pick
+                your current platform and follow a source-specific migration path.
+              </p>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Link
+                  href="/docs/migrations"
+                  className="group inline-flex min-h-11 w-full items-center justify-center gap-2 bg-black px-5 py-3 font-mono text-xs uppercase tracking-wider text-white transition-colors duration-150 hover:bg-black/88 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/45 focus-visible:ring-offset-2 sm:w-auto dark:bg-white dark:text-black dark:hover:bg-white/88 dark:focus-visible:ring-white/60 dark:focus-visible:ring-offset-black"
+                >
+                  Explore migration guides
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 -rotate-45 transition-transform duration-150 group-hover:rotate-0"
+                  />
+                </Link>
+                <Link
+                  href="/docs/migrations.md"
+                  className="group inline-flex min-h-11 w-full items-center justify-center gap-2 border border-black/12 bg-white/70 px-5 py-3 font-mono text-xs uppercase tracking-wider text-black/72 transition-colors duration-150 hover:border-black/20 hover:bg-black/[0.04] hover:text-black hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 focus-visible:ring-offset-2 sm:w-auto dark:border-white/12 dark:bg-black/50 dark:text-white/70 dark:hover:border-white/20 dark:hover:bg-white/[0.05] dark:hover:text-white dark:focus-visible:ring-white/50 dark:focus-visible:ring-offset-black"
+                >
+                  <FileText aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  Share migrations.md
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative border-t border-black/10 px-4 py-7 dark:border-white/10 sm:px-0 lg:border-l lg:border-t-0 lg:px-8 lg:py-10">
+              <div className="flex items-center justify-between gap-4 border-b border-black/10 pb-4 font-mono text-[10px] uppercase tracking-[0.16em] text-black/35 dark:border-white/10 dark:text-white/35">
+                <span>Supported sources</span>
+                <span aria-label="Eight migration sources">08 / ready</span>
+              </div>
+
+              <ul
+                aria-label="Supported migration sources"
+                className="mt-4 grid grid-cols-2 gap-px border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10"
+              >
+                {migrationSources.map((source) => (
+                  <li
+                    key={source}
+                    className="flex min-h-11 items-center gap-2 bg-white px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-black/58 dark:bg-black dark:text-white/52"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="block h-1.5 w-1.5 shrink-0 border border-black/35 dark:border-white/35"
+                    />
+                    {source}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-black/30 dark:text-white/30">
+                <span>Current docs</span>
+                <ArrowRight aria-hidden="true" className="h-3 w-3" />
+                <span className="text-black/60 dark:text-white/58">Farming Labs Docs</span>
+              </div>
+            </div>
+          </div>
+
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-0 block h-2 w-2 border-l-2 border-t-2 border-black dark:border-white"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute bottom-0 right-0 block h-2 w-2 border-b-2 border-r-2 border-black dark:border-white"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ThemesSection() {
   const themes = [
     {
@@ -1185,6 +1304,7 @@ export default function Home() {
       <div className="max-w-[90%] mx-auto">
         <HeroSection />
         <InstallSection />
+        <MigrationCalloutSection />
         <AgentFeaturesSection />
         <AgentScoreCalloutSection />
         <ThemesSection />
