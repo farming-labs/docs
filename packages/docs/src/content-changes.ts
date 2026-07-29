@@ -19,6 +19,11 @@ export const DEFAULT_DOCS_CONTENT_CHANGE_SNAPSHOTS = 8;
 const MAX_DOCS_CONTENT_CHANGE_SNAPSHOTS = 64;
 const DOCS_RETRIEVAL_DIGEST_PATTERN = /^sha256:[a-f\d]{64}$/u;
 
+/** Whether a value is a valid content-index generation identifier. */
+export function isDocsContentChangeGeneration(value: string): boolean {
+  return DOCS_RETRIEVAL_DIGEST_PATTERN.test(value);
+}
+
 export interface DocsContentChangesRequest {
   audience: "human" | "agent";
   since?: string;
@@ -87,7 +92,7 @@ export function resolveDocsContentChangesRequest(url: URL): DocsContentChangesRe
     throw new DocsContentChangesRequestError("Content-change audience must be `human` or `agent`.");
   }
   const since = url.searchParams.get("since") ?? undefined;
-  if (since !== undefined && !DOCS_RETRIEVAL_DIGEST_PATTERN.test(since)) {
+  if (since !== undefined && !isDocsContentChangeGeneration(since)) {
     throw new DocsContentChangesRequestError(
       "Content-change `since` must be a SHA-256 index generation.",
     );

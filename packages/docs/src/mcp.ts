@@ -1,33 +1,33 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type {
-  ReadResourceCallback,
-  ResourceMetadata,
-  ToolCallback,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import {
-  ErrorCode,
-  ListPromptsRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ListToolsRequestSchema,
-  McpError,
+  createMcpHandler,
+  InMemoryServerEventBus,
   isInitializeRequest,
-  type ListPromptsResult,
-  type ListResourcesResult,
-  type ListResourceTemplatesResult,
-  type ListToolsResult,
-  type Prompt,
-  type Resource,
-  type ResourceTemplate as McpResourceTemplate,
-  type Tool,
-  type ToolAnnotations,
-} from "@modelcontextprotocol/sdk/types.js";
-import type { AnySchema, ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-compat.js";
+  McpServer,
+  ProtocolError,
+  ProtocolErrorCode,
+  ResourceTemplate,
+} from "@modelcontextprotocol/server";
+import type {
+  AuthInfo,
+  ListPromptsResult,
+  ListResourcesResult,
+  ListResourceTemplatesResult,
+  ListToolsResult,
+  McpHttpHandler,
+  Prompt,
+  ReadResourceCallback,
+  Resource,
+  ResourceMetadata,
+  ResourceTemplateType as McpResourceTemplate,
+  StandardSchemaWithJSON,
+  Tool,
+  ToolAnnotations,
+  ToolCallback,
+} from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { resolveDocsAudienceMdxContent } from "./audience.js";
@@ -59,6 +59,13 @@ import {
 import { isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 import { findDocsMarkdownSection, parseDocsMarkdownSections } from "./markdown-sections.js";
 import { DocsPaginationCursorError, paginateDocsItems } from "./pagination.js";
+import {
+  createDocsContentChangeFeed,
+  DocsContentChangesRequestError,
+  isDocsContentChangeGeneration,
+  resolveDocsContentChangesConfig,
+  type DocsContentChangeFeed,
+} from "./content-changes.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
@@ -84,6 +91,8 @@ import {
 } from "./telemetry.js";
 import type {
   DocsAnalyticsConfig,
+  DocsAgentContentChangesConfig,
+  DocsContentChangesResponse,
   DocsMcpAllowedOrigins,
   DocsMcpAuthPrincipal,
   DocsMcpAuthenticate,
@@ -411,6 +420,8 @@ export interface DocsMcpResolvedConfig {
     searchDocs: boolean;
     /** Optional so manually constructed resolved configs from older releases remain assignable. */
     searchFacets?: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    listContentChanges?: boolean;
     getNavigation: boolean;
     getCodeExamples: boolean;
     getConfigSchema: boolean;
@@ -425,6 +436,8 @@ export interface DocsMcpHttpHandlers {
   POST: (context: { request: Request }) => Promise<Response>;
   DELETE: (context: { request: Request }) => Promise<Response>;
   OPTIONS: (context: { request: Request }) => Promise<Response>;
+  /** Stop open MCP 2026 subscription streams and the content-change monitor. */
+  close?: () => Promise<void>;
 }
 
 export interface CreateDocsMcpServerOptions {
@@ -437,6 +450,12 @@ export interface CreateDocsMcpServerOptions {
   observability?: boolean | DocsObservabilityConfig;
   defaultName?: string;
   defaultVersion?: string;
+  /** Reuse the configured HTTP content-change feed for MCP polling and resources. */
+  contentChanges?: boolean | DocsAgentContentChangesConfig;
+  /** @internal Shared feed instance keeps HTTP and MCP snapshot history aligned. */
+  contentChangeFeed?: DocsContentChangeFeed;
+  /** @internal Check interval while at least one 2026 content subscription is open. */
+  contentChangePollIntervalMs?: number;
   /** Internal request context used to expose an authenticated principal to custom sources. */
   requestContext?: DocsMcpRequestContext;
 }
@@ -462,6 +481,9 @@ const MAX_MCP_CONTEXT_TOKEN_BUDGET = 32_000;
 const DOCS_MCP_PROTOCOL_LIST_PAGE_SIZE = 10;
 const DOCS_MCP_TOOL_LIST_PAGE_SIZE = 25;
 const DOCS_MCP_PAGINATION_META_KEY = "dev.farming-labs/pagination";
+export const DOCS_MCP_CONTENT_CHANGES_CURRENT_URI = "docs://changes/current";
+export const DOCS_MCP_CONTENT_CHANGES_URI_TEMPLATE = "docs://changes/{generation}";
+export const DEFAULT_DOCS_MCP_CONTENT_CHANGE_POLL_INTERVAL_MS = 30_000;
 const UTF8_ENCODER = new TextEncoder();
 export const DEFAULT_DOCS_MCP_MAX_BODY_BYTES = 1024 * 1024;
 export const DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS = 600;
@@ -470,6 +492,8 @@ export const DEFAULT_DOCS_MCP_CORS_ALLOWED_HEADERS: readonly string[] = Object.f
   "Authorization",
   "Content-Type",
   "Last-Event-ID",
+  "MCP-Method",
+  "MCP-Name",
   "MCP-Protocol-Version",
   "MCP-Session-Id",
 ]);
@@ -2086,6 +2110,14 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
               "Expose the list_search_facets tool for body-free framework, version, package, and tag discovery.",
           },
           {
+            path: "mcp.tools.listContentChanges",
+            name: "listContentChanges",
+            type: "boolean",
+            default: true,
+            description:
+              "Expose list_content_changes polling and docs://changes resources when agent.contentChanges is enabled.",
+          },
+          {
             path: "mcp.tools.readPage",
             name: "readPage",
             type: "boolean",
@@ -2450,6 +2482,14 @@ const getNavigationInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
 });
 
+const listContentChangesInputSchema = z.object({
+  since: z
+    .string()
+    .refine(isDocsContentChangeGeneration, "Expected a SHA-256 index generation")
+    .optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
+});
+
 const getConfigSchemaInputSchema = z.object({
   option: z.string().trim().min(1).optional(),
   query: z.string().trim().min(1).optional(),
@@ -2568,6 +2608,38 @@ const retrievalSourceScopeOutputSchema = z.object({
     .optional(),
 });
 const retrievalSourceDigestOutputSchema = z.string().regex(/^sha256:[a-f\d]{64}$/iu);
+const contentChangeDocumentOutputSchema = z.object({
+  url: z.string(),
+  canonicalUrl: z
+    .string()
+    .max(4_096)
+    .refine(isDocsRetrievalCanonicalUrl, "Expected a safe HTTP(S) URL or root-relative path"),
+  digest: retrievalSourceDigestOutputSchema,
+  lastModified: z.string().optional(),
+});
+const contentChangesOutputSchema = z.object({
+  format: z.literal("docs-content-changes.v1"),
+  audience: z.enum(["human", "agent"]),
+  locale: z.string().optional(),
+  since: retrievalSourceDigestOutputSchema.nullable(),
+  indexGeneration: retrievalSourceDigestOutputSchema,
+  mode: z.enum(["snapshot", "delta", "reset"]),
+  resetRequired: z.boolean(),
+  documentCount: z.number().int().nonnegative(),
+  counts: z.object({
+    added: z.number().int().nonnegative(),
+    changed: z.number().int().nonnegative(),
+    deleted: z.number().int().nonnegative(),
+  }),
+  added: z.array(contentChangeDocumentOutputSchema),
+  changed: z.array(
+    contentChangeDocumentOutputSchema.extend({
+      previousDigest: retrievalSourceDigestOutputSchema,
+      previousLastModified: z.string().optional(),
+    }),
+  ),
+  deleted: z.array(contentChangeDocumentOutputSchema),
+});
 const retrievalSourceOutputSchema = z.object({
   canonicalUrl: z
     .string()
@@ -2817,6 +2889,7 @@ export function resolveDocsMcpConfig(
         readTask: true,
         searchDocs: true,
         searchFacets: true,
+        listContentChanges: true,
         getNavigation: true,
         getCodeExamples: true,
         getConfigSchema: true,
@@ -2842,6 +2915,7 @@ export function resolveDocsMcpConfig(
       readTask: config.tools?.readTask ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
       searchFacets: config.tools?.searchFacets ?? true,
+      listContentChanges: config.tools?.listContentChanges ?? true,
       getNavigation: config.tools?.getNavigation ?? true,
       getCodeExamples: config.tools?.getCodeExamples ?? true,
       getConfigSchema: config.tools?.getConfigSchema ?? true,
@@ -3053,6 +3127,78 @@ function durationMs(startedAt: number) {
   return Math.max(0, Date.now() - startedAt);
 }
 
+interface DocsMcpContentChangeMonitor<Context> {
+  start(context: Context): Promise<void>;
+  close(): void;
+}
+
+function createDocsMcpContentChangeMonitor<Context>(options: {
+  pollIntervalMs: number;
+  readGeneration: (context: Context) => Promise<string>;
+  notify: () => void | Promise<void>;
+  isActive?: () => boolean;
+  unrefTimer?: boolean;
+}): DocsMcpContentChangeMonitor<Context> {
+  let context: Context | undefined;
+  let generation: string | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let running = false;
+  let closed = false;
+
+  const schedule = () => {
+    if (closed || timer || running || options.isActive?.() === false) return;
+    timer = setTimeout(async () => {
+      timer = undefined;
+      if (closed || context === undefined || options.isActive?.() === false) return;
+      running = true;
+      try {
+        const nextGeneration = await options.readGeneration(context);
+        if (generation && nextGeneration !== generation) {
+          generation = nextGeneration;
+          await options.notify();
+        } else {
+          generation = nextGeneration;
+        }
+      } catch {
+        // A transient source or durable-store failure must not terminate a
+        // long-lived subscription. Polling resumes on the next interval.
+      } finally {
+        running = false;
+        schedule();
+      }
+    }, options.pollIntervalMs);
+    if (options.unrefTimer) {
+      const nodeTimer = timer as ReturnType<typeof setTimeout> & {
+        unref?: () => void;
+      };
+      nodeTimer.unref?.();
+    }
+  };
+
+  return {
+    async start(nextContext) {
+      if (closed) return;
+      context = nextContext;
+      if (timer) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
+      try {
+        generation = await options.readGeneration(nextContext);
+      } catch {
+        generation = undefined;
+      }
+      schedule();
+    },
+    close() {
+      closed = true;
+      context = undefined;
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+    },
+  };
+}
+
 function createStructuredTextResult<T extends object>(structuredContent: T, text?: string) {
   return {
     content: [
@@ -3066,8 +3212,8 @@ function createStructuredTextResult<T extends object>(structuredContent: T, text
 }
 
 type DocsMcpToolRegistrationConfig<
-  OutputArgs extends ZodRawShapeCompat | AnySchema,
-  InputArgs extends undefined | ZodRawShapeCompat | AnySchema = undefined,
+  OutputArgs extends StandardSchemaWithJSON,
+  InputArgs extends StandardSchemaWithJSON | undefined = undefined,
 > = {
   title?: string;
   description?: string;
@@ -3118,7 +3264,7 @@ function paginateDocsMcpProtocolItems<T>(
     });
   } catch (error) {
     if (error instanceof DocsPaginationCursorError) {
-      throw new McpError(ErrorCode.InvalidParams, error.message);
+      throw new ProtocolError(ProtocolErrorCode.InvalidParams, error.message);
     }
     throw error;
   }
@@ -3133,7 +3279,8 @@ function toDocsMcpProtocolPaginationMeta(result: { hasMore: boolean; total: numb
   };
 }
 
-type DocsMcpSdkListHandler = (request: unknown, extra: unknown) => unknown;
+type DocsMcpSdkListRequest = { params?: { cursor?: string } };
+type DocsMcpSdkListHandler = (request: DocsMcpSdkListRequest, extra: unknown) => unknown;
 
 function paginateDocsMcpSdkListResult<K extends string, T>(
   result: Record<K, T[]> & {
@@ -3169,12 +3316,15 @@ function paginateDocsMcpSdkListResult<K extends string, T>(
  */
 function installDocsMcpSdkListPaginationInterceptor(server: McpServer, scope: string): () => void {
   const originalSetRequestHandler = server.server.setRequestHandler;
-  const setRequestHandler = originalSetRequestHandler.bind(server.server);
-  const interceptedSetRequestHandler = ((requestSchema, handler) => {
-    const sdkHandler = handler as unknown as DocsMcpSdkListHandler;
+  const setRequestHandler = originalSetRequestHandler.bind(server.server) as unknown as (
+    method: string,
+    handler: DocsMcpSdkListHandler,
+  ) => void;
+  const interceptedSetRequestHandler = ((method: string, handler: DocsMcpSdkListHandler) => {
+    const sdkHandler = handler;
 
-    if (Object.is(requestSchema, ListResourcesRequestSchema)) {
-      setRequestHandler(ListResourcesRequestSchema, async (request, extra) => {
+    if (method === "resources/list") {
+      setRequestHandler("resources/list", async (request, extra) => {
         const result = (await sdkHandler(request, extra)) as ListResourcesResult;
         return paginateDocsMcpSdkListResult(result, "resources", {
           kind: "mcp.protocol/resources-list",
@@ -3189,8 +3339,8 @@ function installDocsMcpSdkListPaginationInterceptor(server: McpServer, scope: st
       return;
     }
 
-    if (Object.is(requestSchema, ListResourceTemplatesRequestSchema)) {
-      setRequestHandler(ListResourceTemplatesRequestSchema, async (request, extra) => {
+    if (method === "resources/templates/list") {
+      setRequestHandler("resources/templates/list", async (request, extra) => {
         const result = (await sdkHandler(request, extra)) as ListResourceTemplatesResult;
         return paginateDocsMcpSdkListResult(result, "resourceTemplates", {
           kind: "mcp.protocol/resource-templates-list",
@@ -3205,8 +3355,8 @@ function installDocsMcpSdkListPaginationInterceptor(server: McpServer, scope: st
       return;
     }
 
-    if (Object.is(requestSchema, ListToolsRequestSchema)) {
-      setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
+    if (method === "tools/list") {
+      setRequestHandler("tools/list", async (request, extra) => {
         const result = (await sdkHandler(request, extra)) as ListToolsResult;
         return paginateDocsMcpSdkListResult(result, "tools", {
           kind: "mcp.protocol/tools-list",
@@ -3218,8 +3368,8 @@ function installDocsMcpSdkListPaginationInterceptor(server: McpServer, scope: st
       return;
     }
 
-    if (Object.is(requestSchema, ListPromptsRequestSchema)) {
-      setRequestHandler(ListPromptsRequestSchema, async (request, extra) => {
+    if (method === "prompts/list") {
+      setRequestHandler("prompts/list", async (request, extra) => {
         const result = (await sdkHandler(request, extra)) as ListPromptsResult;
         return paginateDocsMcpSdkListResult(result, "prompts", {
           kind: "mcp.protocol/prompts-list",
@@ -3231,7 +3381,7 @@ function installDocsMcpSdkListPaginationInterceptor(server: McpServer, scope: st
       return;
     }
 
-    setRequestHandler(requestSchema, handler);
+    setRequestHandler(method, handler);
   }) as typeof server.server.setRequestHandler;
 
   server.server.setRequestHandler = interceptedSetRequestHandler;
@@ -3258,11 +3408,8 @@ function installDocsMcpSdkRegistrationPagination(server: McpServer, scope: strin
     });
 
   server.registerTool = wrapRegistration(server.registerTool);
-  server.tool = wrapRegistration(server.tool);
   server.registerResource = wrapRegistration(server.registerResource);
-  server.resource = wrapRegistration(server.resource);
   server.registerPrompt = wrapRegistration(server.registerPrompt);
-  server.prompt = wrapRegistration(server.prompt);
 }
 
 export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): Promise<McpServer> {
@@ -3276,11 +3423,21 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     version: resolved.version,
   });
 
+  const contentChangesConfig = resolveDocsContentChangesConfig(options.contentChanges);
+  const contentChangesEnabled =
+    contentChangesConfig.enabled && resolved.tools.listContentChanges !== false;
   const server = new McpServer({
     name: resolved.name,
     version: resolved.version,
   });
   installDocsMcpSdkRegistrationPagination(server, protocolScope);
+  if (contentChangesEnabled) {
+    server.server.registerCapabilities({
+      resources: {
+        subscribe: true,
+      },
+    });
+  }
   const registerResource = (
     name: string,
     uri: string,
@@ -3290,8 +3447,8 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     return server.registerResource(name, uri, metadata, callback);
   };
   const registerTool = <
-    OutputArgs extends ZodRawShapeCompat | AnySchema,
-    InputArgs extends undefined | ZodRawShapeCompat | AnySchema = undefined,
+    OutputArgs extends StandardSchemaWithJSON,
+    InputArgs extends StandardSchemaWithJSON | undefined = undefined,
   >(
     name: string,
     config: DocsMcpToolRegistrationConfig<OutputArgs, InputArgs>,
@@ -3337,6 +3494,48 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   const defaultPages = dedupePages(await getSourcePages());
   const defaultTree = await getSourceNavigation();
   const defaultSkills = await getSourceSkills();
+  const contentChangeFeed =
+    options.contentChangeFeed ?? createDocsContentChangeFeed(options.contentChanges);
+
+  async function resolveContentChanges(
+    since?: string,
+    locale?: string,
+  ): Promise<DocsContentChangesResponse> {
+    if (!contentChangesEnabled) {
+      throw new ProtocolError(ProtocolErrorCode.MethodNotFound, "Content changes are disabled.");
+    }
+    if (since && !isDocsContentChangeGeneration(since)) {
+      throw new ProtocolError(
+        ProtocolErrorCode.InvalidParams,
+        "Content-change `since` must be a SHA-256 index generation.",
+      );
+    }
+    const resolvedLocale = resolveSourceLocale(locale);
+    try {
+      return await contentChangeFeed.resolve({
+        pages: toSearchSourcePages(
+          dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
+        ),
+        search: options.search,
+        audience: "agent",
+        locale: resolvedLocale,
+        baseUrl:
+          options.source.baseUrl ??
+          (options.requestContext?.request
+            ? new URL(options.requestContext.request.url).origin
+            : undefined),
+        ...(since ? { since } : {}),
+        ...(options.requestContext?.request
+          ? { request: options.requestContext.request.clone() }
+          : {}),
+      });
+    } catch (error) {
+      if (error instanceof DocsContentChangesRequestError) {
+        throw new ProtocolError(ProtocolErrorCode.InvalidParams, error.message);
+      }
+      throw error;
+    }
+  }
 
   registerResource(
     "docs-navigation",
@@ -3356,6 +3555,106 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       ],
     }),
   );
+
+  if (contentChangesEnabled) {
+    const readChanges = async (generation?: string) => {
+      const result = await resolveContentChanges(
+        generation && generation !== "current" ? generation : undefined,
+      );
+      return {
+        contents: [
+          {
+            uri:
+              generation && generation !== "current"
+                ? `docs://changes/${generation}`
+                : DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+            mimeType: "application/json",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    };
+
+    registerResource(
+      "docs-content-changes-current",
+      DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+      {
+        title: "Current docs content changes",
+        description: "Stable subscription target for body-free documentation change notifications.",
+        mimeType: "application/json",
+      },
+      async () => readChanges(),
+    );
+
+    server.registerResource(
+      "docs-content-changes-by-generation",
+      new ResourceTemplate(DOCS_MCP_CONTENT_CHANGES_URI_TEMPLATE, {
+        list: async () => {
+          const currentChanges = await resolveContentChanges();
+          return {
+            resources: [
+              {
+                uri: `docs://changes/${currentChanges.indexGeneration}`,
+                name: "Docs changes from current generation",
+                title: "Docs changes from current generation",
+                description: "Read this URI later to retrieve changes since the listed generation.",
+                mimeType: "application/json",
+              },
+            ],
+          };
+        },
+      }),
+      {
+        title: "Docs content changes by generation",
+        description:
+          "Body-free documentation changes from a SHA-256 index generation to the current generation.",
+        mimeType: "application/json",
+      },
+      async (_uri, variables) => {
+        const generation = variables.generation;
+        if (typeof generation !== "string" || !isDocsContentChangeGeneration(generation)) {
+          throw new ProtocolError(
+            ProtocolErrorCode.InvalidParams,
+            "Change resource generation must be a SHA-256 index generation.",
+          );
+        }
+        return readChanges(generation);
+      },
+    );
+
+    registerTool(
+      "list_content_changes",
+      {
+        title: "List docs content changes",
+        description:
+          "Synchronize body-free document metadata. Save indexGeneration and pass it as since on the next poll. A reset response means the named snapshot is no longer available.",
+        inputSchema: listContentChangesInputSchema,
+        outputSchema: contentChangesOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ since, locale }) => {
+        const startedAt = nowMs();
+        const result = await resolveContentChanges(since, locale);
+        trackMcpTool("list_content_changes", {
+          locale,
+          resultCount: result.counts.added + result.counts.changed + result.counts.deleted,
+        });
+        await emitDocsAnalyticsEvent(options.analytics, {
+          type: "mcp_tool",
+          source: "mcp",
+          locale,
+          properties: {
+            tool: "list_content_changes",
+            mode: result.mode,
+            resetRequired: result.resetRequired,
+            resultCount: result.counts.added + result.counts.changed + result.counts.deleted,
+            durationMs: durationMs(startedAt),
+          },
+        });
+        return createStructuredTextResult(result);
+      },
+    );
+  }
 
   for (const page of defaultPages) {
     const resourceUri = toPageResourceUri(page.url);
@@ -5037,18 +5336,67 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
         }),
       DELETE: async () => createJsonErrorResponse(404, disabledMessage),
       OPTIONS: async () => createJsonErrorResponse(404, disabledMessage),
+      close: async () => {},
     };
   }
 
-  async function createStatelessTransport(requestContext: DocsMcpRequestContext) {
-    const server = await createDocsMcpServer({ ...options, requestContext });
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-    });
+  type DocsMcpInternalAuthInfo = AuthInfo & { principal: DocsMcpAuthPrincipal };
+  const contentChangesConfig = resolveDocsContentChangesConfig(options.contentChanges);
+  const contentChangesEnabled =
+    contentChangesConfig.enabled && resolved.tools.listContentChanges !== false;
+  const contentChangeFeed =
+    options.contentChangeFeed ?? createDocsContentChangeFeed(options.contentChanges);
+  const eventBus = new InMemoryServerEventBus();
+  const mcpHandler: McpHttpHandler = createMcpHandler(
+    async (context) => {
+      const internalAuth = context.authInfo as DocsMcpInternalAuthInfo | undefined;
+      return createDocsMcpServer({
+        ...options,
+        contentChangeFeed,
+        requestContext: {
+          transport: "http",
+          ...(context.requestInfo ? { request: context.requestInfo.clone() } : {}),
+          ...(internalAuth?.principal ? { auth: internalAuth.principal } : {}),
+        },
+      });
+    },
+    {
+      legacy: "stateless",
+      bus: eventBus,
+    },
+  );
 
-    await server.connect(transport);
-    return { server, transport };
+  const configuredPollInterval = options.contentChangePollIntervalMs;
+  const contentChangePollIntervalMs =
+    typeof configuredPollInterval === "number" &&
+    Number.isFinite(configuredPollInterval) &&
+    configuredPollInterval >= 10
+      ? Math.floor(configuredPollInterval)
+      : DEFAULT_DOCS_MCP_CONTENT_CHANGE_POLL_INTERVAL_MS;
+
+  async function readMonitoredGeneration(context: DocsMcpRequestContext): Promise<string> {
+    const locale = options.source.resolveLocale?.(undefined, context);
+    const pages = dedupePages(await options.source.getPages(locale, context));
+    const result = await contentChangeFeed.resolve({
+      pages: toSearchSourcePages(pages),
+      search: options.search,
+      audience: "agent",
+      locale,
+      baseUrl:
+        options.source.baseUrl ??
+        (context.request ? new URL(context.request.url).origin : undefined),
+      ...(context.request ? { request: context.request.clone() } : {}),
+    });
+    return result.indexGeneration;
   }
+
+  const contentChangeMonitor = createDocsMcpContentChangeMonitor({
+    pollIntervalMs: contentChangePollIntervalMs,
+    readGeneration: readMonitoredGeneration,
+    notify: () => mcpHandler.notify.resourceUpdated(DOCS_MCP_CONTENT_CHANGES_CURRENT_URI),
+    isActive: () => eventBus.listenerCount > 0,
+    unrefTimer: true,
+  });
 
   async function handle(request: Request): Promise<Response> {
     const originalUrl = new URL(request.url);
@@ -5205,15 +5553,33 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       );
     }
 
-    const created = await createStatelessTransport({
+    const requestContext: DocsMcpRequestContext = {
       transport: "http",
       request: request.clone(),
       auth,
+    };
+    const isContentChangeSubscription =
+      contentChangesEnabled &&
+      method === "POST" &&
+      typeof parsedBody === "object" &&
+      parsedBody !== null &&
+      !Array.isArray(parsedBody) &&
+      (parsedBody as { method?: unknown }).method === "subscriptions/listen";
+    const authInfo: DocsMcpInternalAuthInfo | undefined = auth
+      ? {
+          token: "",
+          clientId: auth.id,
+          scopes: auth.scopes ?? [],
+          principal: auth,
+        }
+      : undefined;
+    const response = await mcpHandler.fetch(request, {
+      ...(parsedBody === undefined ? {} : { parsedBody }),
+      ...(authInfo ? { authInfo } : {}),
     });
-    const response = await created.transport.handleRequest(
-      request,
-      parsedBody === undefined ? undefined : { parsedBody },
-    );
+    if (isContentChangeSubscription) {
+      await contentChangeMonitor.start(requestContext);
+    }
     return withCors(response);
   }
 
@@ -5222,16 +5588,69 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     POST: async ({ request }) => handle(request),
     DELETE: async ({ request }) => handle(request),
     OPTIONS: async ({ request }) => handle(request),
+    close: async () => {
+      contentChangeMonitor.close();
+      await mcpHandler.close();
+    },
   };
 }
 
 export async function runDocsMcpStdio(options: CreateDocsMcpServerOptions): Promise<void> {
-  const server = await createDocsMcpServer({
-    ...options,
-    requestContext: { transport: "stdio" },
+  const resolved = resolveDocsMcpConfig(options.mcp, {
+    defaultName: options.defaultName ?? options.source.siteTitle ?? DEFAULT_MCP_NAME,
+    defaultVersion: options.defaultVersion,
   });
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const contentChangesEnabled =
+    resolveDocsContentChangesConfig(options.contentChanges).enabled &&
+    resolved.tools.listContentChanges !== false;
+  const contentChangeFeed =
+    options.contentChangeFeed ?? createDocsContentChangeFeed(options.contentChanges);
+  const configuredPollInterval = options.contentChangePollIntervalMs;
+  const pollIntervalMs =
+    typeof configuredPollInterval === "number" &&
+    Number.isFinite(configuredPollInterval) &&
+    configuredPollInterval >= 10
+      ? Math.floor(configuredPollInterval)
+      : DEFAULT_DOCS_MCP_CONTENT_CHANGE_POLL_INTERVAL_MS;
+
+  serveStdio(async () => {
+    const requestContext: DocsMcpRequestContext = { transport: "stdio" };
+    const server = await createDocsMcpServer({
+      ...options,
+      contentChangeFeed,
+      requestContext,
+    });
+    if (!contentChangesEnabled) return server;
+
+    const readGeneration = async () => {
+      const locale = options.source.resolveLocale?.(undefined, requestContext);
+      const pages = dedupePages(await options.source.getPages(locale, requestContext));
+      const result = await contentChangeFeed.resolve({
+        pages: toSearchSourcePages(pages),
+        search: options.search,
+        audience: "agent",
+        locale,
+        baseUrl: options.source.baseUrl,
+      });
+      return result.indexGeneration;
+    };
+    const monitor = createDocsMcpContentChangeMonitor({
+      pollIntervalMs,
+      readGeneration: () => readGeneration(),
+      notify: () =>
+        server.server.sendResourceUpdated({
+          uri: DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+        }),
+    });
+    await monitor.start(requestContext);
+
+    const closeServer = server.close.bind(server);
+    server.close = async () => {
+      monitor.close();
+      await closeServer();
+    };
+    return server;
+  });
 }
 
 async function isDocsMcpOriginAllowed(

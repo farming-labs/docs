@@ -5009,6 +5009,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const appDir = getNextAppDir(rootDir);
   const contentDir = options.contentDir ?? path.join(appDir, entry);
   const mcpConfig = options.mcp ?? readMcpConfig(rootDir, { rejectRuntimeSecurity: true });
+  const contentChangeFeed = createDocsContentChangeFeed(options.agent?.contentChanges);
   const navTitle =
     typeof options.nav?.title === "string" && options.nav.title.trim().length > 0
       ? options.nav.title
@@ -5049,6 +5050,8 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const handlers = createDocsMcpHttpHandler({
     source,
     mcp: mcpConfig,
+    contentChanges: options.agent?.contentChanges,
+    contentChangeFeed,
     search: options.search,
     analytics: options.analytics,
     telemetry: options.telemetry,

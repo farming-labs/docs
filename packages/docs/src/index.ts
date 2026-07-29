@@ -383,6 +383,7 @@ export {
   DOCS_CONTENT_CHANGES_FORMAT,
   DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
   DOCS_CONTENT_SNAPSHOT_FORMAT,
+  isDocsContentChangeGeneration,
   isDocsContentChangesRequest,
   resolveDocsContentChangesConfig,
   resolveDocsContentChangesRequest,

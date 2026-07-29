@@ -1380,6 +1380,8 @@ export interface DocsMcpToolsConfig {
    * package, and tag values before an agent runs a scoped search.
    */
   searchFacets?: boolean;
+  /** Expose body-free document changes with polling through `list_content_changes`. */
+  listContentChanges?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */
   getNavigation?: boolean;
   /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
