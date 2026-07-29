@@ -78,9 +78,13 @@ clients can avoid HTTP routing with `pnpm exec docs mcp`.
 
 The current built-in surface includes:
 
+- **Facets tool:** `list_search_facets` is also enabled by default. Disable it with `mcp.tools.searchFacets: false`.
+
 - `list_docs`
 - `list_pages`
 - `get_navigation`
+
+- `list_search_facets`
 
 - `list_page_sections`
 - `search_docs`
@@ -827,6 +831,8 @@ http://127.0.0.1:3000/.well-known/mcp
 ```
 
 The built-in HTTP route exposes the full MCP surface:
+
+- `list_search_facets`
 
 - `list_docs`
 - `list_pages`

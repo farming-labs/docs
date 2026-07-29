@@ -716,6 +716,7 @@ spread, or shorthand.
 | `listTasks`         | `boolean` | Expose the `list_tasks` tool for concise actionable-task discovery |
 | `readTask`          | `boolean` | Expose the `read_task` tool for full structured contracts |
 | `getNavigation`     | `boolean` | Expose the `get_navigation` tool |
+| `searchFacets`      | `boolean` | Expose the `list_search_facets` tool for body-free framework, version, package, and tag discovery (default: `true`) |
 | `searchDocs`        | `boolean` | Expose the `search_docs` tool |
 | `readPage`          | `boolean` | Expose the `read_page` tool |
 | `getCodeExamples`   | `boolean` | Expose the `get_code_examples` tool |
@@ -1243,6 +1244,63 @@ The following are exported from `@farming-labs/docs` and `@farming-labs/docs/ser
 | `DocsRetrievalSourceProvenance` | type | Normalized provenance metadata attached to a retrieved source, including `canonicalUrl`, `lastModified`, `digest`, and scope fields. |
 | `DocsRetrievalSourceScope` | type | Applicability metadata for a retrieved source: `audience`, `locale`, `framework`, `version`, `versionGroups`, and `package`. |
 | `EnrichDocsSearchDocumentsWithProvenanceOptions` | type | Options accepted by `enrichDocsSearchDocumentsWithProvenance`. |
+
+### `DocsSearchFacetValue`
+
+One selectable search-scope value and the number of matching source pages.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `value` | `string` | Normalized filter value |
+| `count` | `number` | Number of source pages that carry this value |
+
+### `DocsSearchFacet`
+
+Bounded values for one search-scope field.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `valueCount` | `number` | Number of distinct values before the response limit is applied |
+| `truncated` | `boolean` | Whether additional values were omitted from this response |
+| `values` | `DocsSearchFacetValue[]` | Ordered list of values and counts |
+
+### `DocsSearchFacetsResponse`
+
+Cheap, body-free discovery response for the search scopes available in an index. Returned by `GET /api/docs?audience=agent&response=facets` with `Cache-Control: public, max-age=60`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `format` | `"docs-search-facets.v1"` | Fixed format identifier |
+| `filters` | `DocsSearchFilters` | Active filters applied to the facet computation |
+| `matchedPageCount` | `number` | Number of source pages matched after filters |
+| `facets` | `Record<string, DocsSearchFacet>` | Facet values keyed by field name (`framework`, `version`, `package`, `tags`) |
+
+### `BuildDocsSearchFacetsOptions`
+
+Options accepted by `buildDocsSearchFacets`. Exported from `@farming-labs/docs`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `pages` | `DocsSearchSourcePage[]` | Source pages to compute facets over |
+| `search` | `DocsSearchConfig` | Active search config |
+| `audience` | `"human" \| "agent"` | Content projection used when filtering pages |
+| `locale` | `string` | Active locale |
+| `baseUrl` | `string` | Public base URL for provenance |
+| `filters` | `DocsSearchFilters` | Optional filters to apply before computing facets |
+| `indexGeneration` | `string` | Digest of the current index for cache freshness |
+| `scope` | `object` | Optional audience/locale scope |
+
+### `buildDocsSearchFacets`
+
+Builds a `DocsSearchFacetsResponse` from source pages without fetching page content. Exported from `@farming-labs/docs`.
+
+```ts
+import { buildDocsSearchFacets } from "@farming-labs/docs";
+
+const response = await buildDocsSearchFacets(options);
+// response.format === "docs-search-facets.v1"
+```
+
 ### `DocsSearchEmbeddingsConfig`
 
 | Property   | Type        | Default                   | Description |

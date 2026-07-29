@@ -77,6 +77,12 @@ The same page model also powers the built-in machine-readable routes:
 - agents can fetch a machine-readable map of the active docs config with
   `GET /api/docs?format=config` (returns `docs-config-map.v1` JSON, `X-Robots-Tag: noindex`,
   CDN-cached at `s-maxage=3600`)
+
+- agents can discover valid filter values (framework, version, package, tags) without a text query
+  using `GET /api/docs?audience=agent&response=facets` (returns `DocsSearchFacetsResponse` with
+  `format: "docs-search-facets.v1"`, cached `max-age=60`); the agent discovery spec advertises this
+  as `search.facetsEndpoint`, `search.facetsResponseValue: "facets"`, and
+  `search.facetsResponseFormat: "docs-search-facets.v1"`
 <Callout type="info" title="Same URL, different representation">
   `/docs/installation` stays the human HTML page by default. In Next.js, send an unambiguous
   `Accept: text/markdown`, send `Signature-Agent`, or identify with a known AI user agent on that
