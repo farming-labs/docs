@@ -724,6 +724,7 @@ supported. The canonical `/api/docs/mcp` route remains available too. The built-
 tool automatically falls back to simple search internally when it detects that same-route loop, so
 the route stays usable for testing and local examples.
 
+The fallback is triggered whenever the configured `search.endpoint` resolves to the same server as the incoming request **and** the endpoint path matches one of the built-in MCP aliases (`/mcp`, `/.well-known/mcp`, `/api/docs/mcp`) or the custom `mcp.route` value set in `docs.config`. When the match is detected, `search_docs` performs direct simple search instead of issuing a loopback HTTP call to itself. External MCP search endpoints — for example `https://other-service.example.com/mcp` or a path like `/external/search/mcp` that does not match any configured MCP route — are not affected and continue to proxy normally.
 ## Stdio transport
 
 The same docs graph is available locally over stdio:
