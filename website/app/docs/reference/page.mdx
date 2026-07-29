@@ -79,6 +79,43 @@ export default defineDocs({
 
 ## `DocsConfig`
 
+### `DocsLocalMcpSearchRuntimeConfig`
+
+Runtime shape that describes whether the local MCP server should be treated as the search target. Exported from `@farming-labs/docs` and `@farming-labs/docs/server`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `enabled` | `boolean` | Whether the local MCP server is enabled |
+| `route` | `string` | Canonical HTTP route for the local MCP endpoint (e.g. `"/api/docs/mcp"`) |
+| `tools` | `{ searchDocs?: boolean }` | Tool-level toggle; `searchDocs` controls whether `search_docs` is exposed |
+
+### `DocsLocalMcpSearchRuntimeInput`
+
+Accepted input shape for `resolveLocalDocsMcpSearchConfig`. A partial form of `DocsLocalMcpSearchRuntimeConfig` — all fields are optional. Exported from `@farming-labs/docs` and `@farming-labs/docs/server`.
+
+### `DocsSearchRequestResolutionOptions`
+
+Options accepted by the third parameter of `resolveSearchRequestConfig`. Exported from `@farming-labs/docs` and `@farming-labs/docs/server`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `localMcp` | `DocsLocalMcpSearchRuntimeInput \| null \| undefined` | When present, `resolveSearchRequestConfig` calls `resolveLocalDocsMcpSearchConfig` before the self-referential URL check to detect whether the MCP endpoint resolves to the local server |
+
+### `resolveLocalDocsMcpSearchConfig`
+
+Public function exported from `@farming-labs/docs` and `@farming-labs/docs/server`. Given a `McpDocsSearchConfig`, an optional `DocsLocalMcpSearchRuntimeInput`, and an optional request URL, returns a modified search config that uses direct simple search when the configured MCP endpoint resolves to the local server. Returns the original config unchanged for external endpoints.
+
+```ts
+import { resolveLocalDocsMcpSearchConfig } from "@farming-labs/docs";
+
+const resolved = resolveLocalDocsMcpSearchConfig(
+  search,           // McpDocsSearchConfig
+  mcp,              // DocsLocalMcpSearchRuntimeInput | null | undefined
+  requestUrl,       // string | undefined
+);
+```
+
+`resolveSearchRequestConfig` now accepts an optional third `options: DocsSearchRequestResolutionOptions` argument. Pass `{ localMcp: config.mcp }` to enable local-MCP detection in custom server adapters.
 Top-level configuration object passed to `defineDocs()`.
 
 | Property       | Type                                            | Default          | Description                                                                          |
