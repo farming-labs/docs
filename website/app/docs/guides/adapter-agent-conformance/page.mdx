@@ -66,6 +66,7 @@ The versioned contract (`DOCS_AGENT_CONTRACT_VERSION` `1.3`) verifies:
   an incorrect `allowed-tools` type are reported as conformance failures
 - cursor-based structured search pagination (see below)
 
+- `capabilities.contentChanges` flag and a live `GET /api/docs?audience=agent&response=changes` endpoint returning a valid `docs-content-changes.v1` JSON payload with `indexGeneration`, `mode`, `resetRequired`, `documentCount`, and array fields; ETag and body-free delivery are also verified
 The first-party Next.js, TanStack Start, SvelteKit, Astro, and Nuxt adapters run this same contract
 in their package tests.
 

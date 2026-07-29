@@ -753,6 +753,44 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 | `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Offline-by-default golden tasks used by `docs doctor` and `docs review` |
 | `skills` | `DocsAgentSkillsInput` | Project or workspace skills published by the runtime, Static Agent Bundle, and MCP |
 | `a2a` | `DocsAgentA2AConfig` | Opt-in Agent Card metadata for a real A2A interface |
+### `agent.contentChanges` and `DocsAgentContentChangesConfig`
+
+Body-free runtime document synchronization feed. Enabled by default on server-rendered adapters; always disabled (`false`) in static bundles produced by `docs agent export`.
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `contentChanges` | `boolean \| DocsAgentContentChangesConfig` | `true` | Enable or configure the content-change feed. Set `false` to opt out. |
+| `contentChanges.enabled` | `boolean` | `true` | Whether runtime adapters serve `response=changes`. |
+| `contentChanges.maxSnapshots` | `number` | `8` | Maximum number of content snapshots retained for delta computation. Capped at `64`. |
+| `contentChanges.loadSnapshot` | `(key: string) => Promise<DocsContentSnapshot \| null>` | — | Optional callback to load a previously saved snapshot from durable storage. |
+| `contentChanges.saveSnapshot` | `(key: string, snapshot: DocsContentSnapshot) => Promise<void>` | — | Optional callback to persist a snapshot for future delta requests. |
+
+#### Content-change feed endpoint
+
+All five framework adapters handle `GET /api/docs?audience=agent&response=changes`. The response carries `Content-Type: application/json`, an `ETag` derived from the `indexGeneration` digest, and standard `Cache-Control` headers. Conditional `GET` with `If-None-Match` returns `304` when the index has not changed.
+
+The response format is `docs-content-changes.v1`:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `format` | `"docs-content-changes.v1"` | Fixed format identifier |
+| `indexGeneration` | `string` | SHA-256 digest of the current content index |
+| `mode` | `"snapshot" \| "delta" \| "reset"` | Feed mode selected for this response |
+| `resetRequired` | `boolean` | `true` when the caller must discard its local state and re-index |
+| `documentCount` | `number` | Total number of documents in the current index |
+| `added` | `Array<{ canonicalUrl, digest, content? }>` | Documents added since the `since` generation |
+| `modified` | `Array<{ canonicalUrl, digest, content? }>` | Documents whose digest changed since the `since` generation |
+| `removed` | `Array<{ canonicalUrl }>` | Documents removed since the `since` generation |
+
+Query parameters:
+
+| Parameter | Description |
+| --------- | ----------- |
+| `audience` | Must be `agent` to select the content-changes response |
+| `response` | Must be `changes` |
+| `since` | Optional `indexGeneration` value from a previous response; omit for a full snapshot |
+
+The agent discovery manifest gains `capabilities.contentChanges: boolean` and a top-level `contentChanges` block describing the endpoint, supported modes, query parameters, and HTTP validators (`etag: true`, `bodyFree: true`).
 
 ### `DocsAgentSkillsInput` and `DocsAgentSkillsConfig`
 
