@@ -602,6 +602,109 @@ Scoped Setup Token for Astro.`,
     expect(blankStructuredPayload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it("paginates structured search with opaque cursors without changing legacy arrays", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const analyticsUrls: string[] = [];
+    const server = createDocsServer({
+      entry: "docs",
+      nav: { title: "Cursor Search Docs" },
+      analytics: {
+        console: false,
+        onEvent(event: { type: string; url?: string }) {
+          if (event.type === "api_search" && event.url) analyticsUrls.push(event.url);
+        },
+      },
+      search: {
+        provider: "simple",
+        maxResults: 10,
+        chunking: { strategy: "page" },
+      },
+      _preloadedContent: {
+        "/docs/cursor-alpha.md": `---
+title: Cursor alpha
+---
+
+# Cursor alpha
+
+Shared cursor pagination marker for alpha.`,
+        "/docs/cursor-beta.md": `---
+title: Cursor beta
+---
+
+# Cursor beta
+
+Shared cursor pagination marker for beta.`,
+      },
+    });
+
+    async function get(url: URL) {
+      return server.GET({ request: new Request(url), url });
+    }
+
+    const legacyUrl = new URL("/api/docs", "https://docs.example.com");
+    legacyUrl.searchParams.set("query", "shared cursor pagination marker");
+    legacyUrl.searchParams.set("limit", "1");
+    const legacyResponse = await get(legacyUrl);
+    const legacyPayload = (await legacyResponse.json()) as Array<{ id: string }>;
+    expect(legacyResponse.status).toBe(200);
+    expect(Array.isArray(legacyPayload)).toBe(true);
+    expect(legacyPayload).toHaveLength(2);
+
+    const firstUrl = new URL(legacyUrl);
+    firstUrl.searchParams.set("response", "structured");
+    const firstResponse = await get(firstUrl);
+    const first = (await firstResponse.json()) as {
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{ id: string }>;
+    };
+    expect(firstResponse.status).toBe(200);
+    expect(first).toMatchObject({
+      resultCount: 1,
+      total: 2,
+      hasMore: true,
+      results: [expect.objectContaining({ id: expect.any(String) })],
+    });
+    expect(first.nextCursor).toEqual(expect.any(String));
+
+    const nextUrl = new URL(firstUrl);
+    nextUrl.searchParams.set("cursor", first.nextCursor!);
+    const nextResponse = await get(nextUrl);
+    const next = (await nextResponse.json()) as {
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{ id: string }>;
+    };
+    expect(nextResponse.status).toBe(200);
+    expect(next).toMatchObject({
+      resultCount: 1,
+      total: first.total,
+      hasMore: false,
+      results: [expect.objectContaining({ id: expect.any(String) })],
+    });
+    expect(next.nextCursor).toBeUndefined();
+    expect(next.results[0]?.id).not.toBe(first.results[0]?.id);
+    expect(analyticsUrls).not.toHaveLength(0);
+    expect(analyticsUrls.every((value) => value === "https://docs.example.com/api/docs")).toBe(
+      true,
+    );
+
+    const invalidUrl = new URL(firstUrl);
+    invalidUrl.searchParams.set("cursor", "not-an-opaque-docs-cursor");
+    const invalidResponse = await get(invalidUrl);
+    expect(invalidResponse.status).toBe(400);
+    await expect(invalidResponse.json()).resolves.toMatchObject({
+      error: {
+        code: "invalid_cursor",
+        message: expect.any(String),
+      },
+    });
+  });
+
   it("uses a build-time skill snapshot without touching unavailable source paths", async () => {
     const { createDocsServer } = await loadCreateDocsServer();
     const bundledSkill = await resolveDocsPublishedAgentSkill({

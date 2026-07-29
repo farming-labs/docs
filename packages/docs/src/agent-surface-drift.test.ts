@@ -75,6 +75,10 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
         },
         repeatedFilterParams: ["framework", "version", "package", "tags"],
         warningsField: "warnings",
+        cursorParam: "cursor",
+        nextCursorField: "nextCursor",
+        hasMoreField: "hasMore",
+        totalField: "total",
       },
       mcp: {
         enabled: true,
@@ -237,6 +241,10 @@ describe("agent surface drift", () => {
         },
         repeatedFilterParams: ["tags"],
         warningsField: "notices",
+        cursorParam: "page",
+        nextCursorField: "continuation",
+        hasMoreField: "more",
+        totalField: "count",
       },
       mcp: {
         enabled: false,
@@ -312,12 +320,16 @@ describe("agent surface drift", () => {
     expect(
       issues.filter((issue) => issue.code === "search-scope-mismatch").map((issue) => issue.path),
     ).toEqual([
+      "search.cursorParam",
       "search.filterParams",
+      "search.hasMoreField",
+      "search.nextCursorField",
       "search.repeatedFilterParams",
       "search.responseFormat",
       "search.responseParam",
       "search.structuredAgentEndpoint",
       "search.structuredResponseValue",
+      "search.totalField",
       "search.warningsField",
     ]);
     expect(issues.find((issue) => issue.path === "agentContract.fields.rollback")).toMatchObject({

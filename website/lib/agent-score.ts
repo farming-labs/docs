@@ -638,22 +638,67 @@ async function probeMcpRouteOnce(baseUrl: string, route: string): Promise<McpPro
 
     const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
 
-    if (sessionId) {
-      await postMcpJson(
-        baseUrl,
-        route,
-        { jsonrpc: "2.0", method: "notifications/initialized", params: {} },
-        sessionId,
-      ).catch(() => undefined);
-    }
-
-    const toolsResponse = await postMcpJson(
+    await postMcpJson(
       baseUrl,
       route,
-      { jsonrpc: "2.0", id: "agent-score-tools", method: "tools/list", params: {} },
+      { jsonrpc: "2.0", method: "notifications/initialized", params: {} },
       sessionId,
-    );
-    const toolsPayload = await parseMcpResponse(toolsResponse);
+    ).catch(() => undefined);
+
+    const names = new Set<string>();
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    let toolsListError: { status: number; message?: string } | undefined;
+    let completedToolsList = false;
+
+    for (let page = 0; page < 20; page += 1) {
+      const toolsResponse = await postMcpJson(
+        baseUrl,
+        route,
+        {
+          jsonrpc: "2.0",
+          id: `agent-score-tools-${page + 1}`,
+          method: "tools/list",
+          params: cursor !== undefined ? { cursor } : {},
+        },
+        sessionId,
+      );
+      const toolsPayload = await parseMcpResponse(toolsResponse);
+      if (!toolsResponse.ok || toolsPayload.error) {
+        toolsListError = {
+          status: toolsResponse.status,
+          message: toolsPayload.error?.message ? String(toolsPayload.error.message) : undefined,
+        };
+        break;
+      }
+
+      const result = toolsPayload.result as
+        | { tools?: Array<{ name?: unknown }>; nextCursor?: unknown }
+        | undefined;
+      for (const tool of result?.tools ?? []) {
+        if (typeof tool.name === "string") names.add(tool.name);
+      }
+      const nextCursor = result?.nextCursor;
+      if (nextCursor === undefined) {
+        completedToolsList = true;
+        break;
+      }
+      if (typeof nextCursor !== "string" || seenCursors.has(nextCursor)) {
+        toolsListError = {
+          status: toolsResponse.status,
+          message: "server returned an invalid or repeated pagination cursor",
+        };
+        break;
+      }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    }
+    if (!completedToolsList && !toolsListError) {
+      toolsListError = {
+        status: 200,
+        message: "server exceeded the 20-page tools/list safety limit",
+      };
+    }
 
     if (sessionId) {
       void fetchWithTimeout(joinUrl(baseUrl, route), {
@@ -665,35 +710,31 @@ async function probeMcpRouteOnce(baseUrl: string, route: string): Promise<McpPro
       }).catch(() => undefined);
     }
 
-    if (!toolsResponse.ok || toolsPayload.error) {
+    if (toolsListError) {
       return {
         ok: false,
-        detail: `${route} tools/list returned HTTP ${toolsResponse.status}${
-          toolsPayload.error?.message ? `: ${String(toolsPayload.error.message)}` : ""
+        detail: `${route} tools/list returned HTTP ${toolsListError.status}${
+          toolsListError.message ? `: ${toolsListError.message}` : ""
         }.`,
       };
     }
 
-    const tools =
-      (toolsPayload.result as { tools?: Array<{ name?: unknown }> } | undefined)?.tools ?? [];
-    const names = Array.isArray(tools)
-      ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
-      : [];
     const expectedTools = ["list_pages", "get_navigation", "search_docs", "read_page"];
-    const missingTools = expectedTools.filter((tool) => !names.includes(tool));
+    const missingTools = expectedTools.filter((tool) => !names.has(tool));
+    const toolNames = [...names];
 
     if (missingTools.length > 0) {
       return {
         ok: false,
         detail: `${route} connected but is missing tools: ${missingTools.join(", ")}.`,
-        tools: names,
+        tools: toolNames,
       };
     }
 
     return {
       ok: true,
-      detail: `MCP endpoint initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${names.length} tool${names.length === 1 ? "" : "s"}.`,
-      tools: names,
+      detail: `MCP endpoint initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${toolNames.length} tool${toolNames.length === 1 ? "" : "s"}.`,
+      tools: toolNames,
     };
   } catch (error) {
     return {

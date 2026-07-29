@@ -2,9 +2,11 @@ import type {
   AlgoliaDocsSearchConfig,
   CustomDocsSearchConfig,
   DocsAskAIMcpConfig,
+  DocsPaginatedSearchResponse,
   DocsSearchAdapter,
   DocsSearchAdapterFactory,
   DocsSearchAdapterContext,
+  DocsSearchAdapterPage,
   DocsSearchConfig,
   DocsSearchDocument,
   DocsSearchFilterField,
@@ -13,7 +15,6 @@ import type {
   DocsSearchQuery,
   DocsSearchRequest,
   DocsSearchResult,
-  DocsSearchResponse,
   DocsSearchSourcePage,
   DocsSearchWarning,
   DocsSearchChunkingConfig,
@@ -23,6 +24,11 @@ import type {
   TypesenseDocsSearchConfig,
 } from "./types.js";
 import { digestDocsRetrievalContent, isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
+import {
+  createDocsPaginationCursor,
+  DocsPaginationCursorError,
+  resolveDocsPaginationCursor,
+} from "./pagination.js";
 import {
   PAGE_AGENT_CONTRACT_END_MARKER,
   PAGE_AGENT_CONTRACT_START_MARKER,
@@ -46,6 +52,7 @@ import {
 } from "./markdown-sections.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
+const MAX_STRUCTURED_SEARCH_LIMIT = 25;
 const MAX_SEARCH_SNIPPET_CHARS = 160;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
 const MCP_SESSION_CLEANUP_TIMEOUT_MS = 1_000;
@@ -58,8 +65,17 @@ const MAX_SEARCH_FILTER_VALUES = 16;
 const MAX_SEARCH_FILTER_VALUE_CHARS = 128;
 const MAX_SEARCH_FILTER_RAW_CHARS = 4_096;
 const MAX_SEARCH_FILTER_SEGMENTS = 64;
+const MAX_SEARCH_PROVIDER_CURSOR_STATE_CHARS = 1_024;
 const MAX_PROVIDER_SCOPE_FILTER_IDS = 1_000;
 const MAX_PROVIDER_SCOPE_FILTER_CHARS = 16_000;
+const MAX_HOSTED_PROVIDER_CURSOR_RESULTS = 1_000;
+const MAX_MCP_SEARCH_CURSOR_REPLAY_PAGES = 64;
+const MAX_MCP_SEARCH_CURSOR_RESULTS = MAX_MCP_SEARCH_CURSOR_REPLAY_PAGES;
+const DOCS_UNPAGINATED_PROVIDER_QUERY = Symbol("docs-unpaginated-provider-query");
+type InternalDocsSearchQuery = DocsSearchQuery & {
+  [DOCS_UNPAGINATED_PROVIDER_QUERY]?: true;
+};
+const DOCS_PROVIDER_SCOPE_FILTER_OVERFLOW = Symbol("docs-provider-scope-filter-overflow");
 const ALGOLIA_BATCH_OPERATIONS = 1_000;
 const MAX_SEARCH_WARNINGS = 16;
 const MAX_SEARCH_WARNING_VALUES = 16;
@@ -198,11 +214,60 @@ export function resolveDocsSearchFilters(searchParams: URLSearchParams): DocsSea
   });
 }
 
+export class DocsSearchRequestError extends Error {
+  readonly code = "invalid_search_request";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "DocsSearchRequestError";
+  }
+}
+
+export function resolveDocsSearchError(
+  error: unknown,
+): { code: "invalid_cursor" | "invalid_search_request"; message: string } | undefined {
+  if (error instanceof DocsPaginationCursorError) {
+    return { code: error.code, message: error.message };
+  }
+  if (error instanceof DocsSearchRequestError) {
+    return { code: error.code, message: error.message };
+  }
+  return undefined;
+}
+
 /** Resolve search filters and the backwards-compatible structured response opt-in. */
 export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSearchRequest {
+  const structured = searchParams.get("response") === "structured";
+  const cursor = searchParams.get("cursor") ?? undefined;
+  if (cursor !== undefined && !structured) {
+    throw new DocsSearchRequestError(
+      "Search cursors require the structured response format (`response=structured`).",
+    );
+  }
+  if (
+    cursor !== undefined &&
+    (cursor.length === 0 || cursor.length > 4_096 || !/^[A-Za-z\d_-]+$/u.test(cursor))
+  ) {
+    throw new DocsPaginationCursorError();
+  }
+
+  const rawLimit = searchParams.get("limit");
+  let limit: number | undefined;
+  if (rawLimit !== null && structured) {
+    if (!/^\d+$/u.test(rawLimit)) {
+      throw new DocsSearchRequestError("Search limit must be an integer between 1 and 25.");
+    }
+    limit = Number(rawLimit);
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_STRUCTURED_SEARCH_LIMIT) {
+      throw new DocsSearchRequestError("Search limit must be an integer between 1 and 25.");
+    }
+  }
+
   return {
     filters: resolveDocsSearchFilters(searchParams),
-    structured: searchParams.get("response") === "structured",
+    structured,
+    ...(cursor !== undefined ? { cursor } : {}),
+    ...(limit !== undefined ? { limit } : {}),
   };
 }
 
@@ -214,7 +279,7 @@ function resolveProviderScopeDocumentIds(
   query: DocsSearchQuery,
   context: DocsSearchAdapterContext,
   corpusId?: string,
-): string[] | undefined {
+): string[] | typeof DOCS_PROVIDER_SCOPE_FILTER_OVERFLOW | undefined {
   if (!hasDocsSearchFilters(query.filters ?? {})) return undefined;
 
   const documents = corpusId
@@ -227,7 +292,7 @@ function resolveProviderScopeDocumentIds(
       ),
     ),
   );
-  return ids.length <= MAX_PROVIDER_SCOPE_FILTER_IDS ? ids : [];
+  return ids.length <= MAX_PROVIDER_SCOPE_FILTER_IDS ? ids : DOCS_PROVIDER_SCOPE_FILTER_OVERFLOW;
 }
 
 function docsSearchFiltersMatch(expected: DocsSearchFilters, actual: DocsSearchFilters): boolean {
@@ -2273,10 +2338,17 @@ function cleanSearchResultText(value?: string): string | undefined {
   return cleaned || undefined;
 }
 
+function getHostedIndexGenerationTag(indexGeneration: string): string {
+  return `docs-generation:${indexGeneration}`;
+}
+
 function buildAlgoliaRecord(document: DocsSearchDocument, corpusId?: string) {
   const providerDocumentId = corpusId
     ? makeHostedProviderDocumentId(corpusId, document.id)
     : document.id;
+  const generationTag = document.source?.indexGeneration
+    ? getHostedIndexGenerationTag(document.source.indexGeneration)
+    : undefined;
   const record: Record<string, unknown> = {
     objectID: providerDocumentId,
     id: providerDocumentId,
@@ -2291,7 +2363,10 @@ function buildAlgoliaRecord(document: DocsSearchDocument, corpusId?: string) {
     version: document.version,
     package: document.package,
     tags: document.tags,
-    _tags: corpusId ? [corpusId] : undefined,
+    _tags:
+      corpusId || generationTag
+        ? [corpusId, generationTag].filter((value): value is string => Boolean(value))
+        : undefined,
     ...serializeHostedRetrievalSource(document.source, corpusId, document.id),
   };
 
@@ -2346,40 +2421,39 @@ function buildAlgoliaRecord(document: DocsSearchDocument, corpusId?: string) {
   return record;
 }
 
-export function createSimpleSearchAdapter(): DocsSearchAdapter {
-  return {
-    name: "simple",
-    async search(query, context) {
-      const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
-      const results = context.documents
-        .map((document) => ({
-          document,
-          score: scoreDocument(query.query, document),
-        }))
-        .filter((item) => item.score > 0)
-        .sort((a, b) => {
-          if (b.score !== a.score) return b.score - a.score;
-          return a.document.url.localeCompare(b.document.url);
-        })
-        .slice(0, limit)
-        .map(({ document, score }) => ({
-          id: document.id,
-          url: document.url,
-          content:
-            cleanSearchResultText(
-              document.section ? `${document.title} — ${document.section}` : document.title,
-            ) ?? (document.section ? `${document.title} — ${document.section}` : document.title),
-          description: cleanSearchResultText(
-            buildSnippet(document, query.query) ?? document.description,
-          ),
-          type: document.type,
-          score,
-          section: document.section,
-          source: document.source,
-        }));
+async function searchSimpleDocsPage(
+  query: DocsSearchQuery,
+  context: DocsSearchAdapterContext,
+): Promise<DocsSearchAdapterPage> {
+  const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
+  const offset = query.offset ?? 0;
+  const matches = context.documents
+    .map((document) => ({
+      document,
+      score: scoreDocument(query.query, document),
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.document.url.localeCompare(b.document.url);
+    });
+  const results = matches.slice(offset, offset + limit).map(({ document, score }) => ({
+    id: document.id,
+    url: document.url,
+    content:
+      cleanSearchResultText(
+        document.section ? `${document.title} — ${document.section}` : document.title,
+      ) ?? (document.section ? `${document.title} — ${document.section}` : document.title),
+    description: cleanSearchResultText(buildSnippet(document, query.query) ?? document.description),
+    type: document.type,
+    score,
+    section: document.section,
+    source: document.source,
+  }));
 
-      if (context.deferSourceProvenance) return results;
-      return enrichDocsSearchResultsWithSources({
+  const enriched = context.deferSourceProvenance
+    ? results
+    : await enrichDocsSearchResultsWithSources({
         results,
         pages: context.pages,
         audience: resolveDocsSearchAudience(context.audience),
@@ -2389,7 +2463,19 @@ export function createSimpleSearchAdapter(): DocsSearchAdapter {
         indexGeneration: context.indexGeneration,
         filters: query.filters,
       });
+  return {
+    results: enriched,
+    total: matches.length,
+  };
+}
+
+export function createSimpleSearchAdapter(): DocsSearchAdapter {
+  return {
+    name: "simple",
+    async search(query, context) {
+      return (await searchSimpleDocsPage({ ...query, offset: 0 }, context)).results;
     },
+    searchPage: searchSimpleDocsPage,
   };
 }
 
@@ -2424,6 +2510,54 @@ function normalizeDocsSearchConfig(search?: boolean | DocsSearchConfig): Resolve
     chunking,
     raw: search,
   };
+}
+
+function getDocsSearchPaginationProviderIdentity(
+  search: ResolvedDocsSearchConfig,
+): Record<string, unknown> {
+  const raw = search.raw;
+  if (raw?.provider === "algolia") {
+    return {
+      provider: "algolia",
+      appId: raw.appId,
+      indexName: raw.indexName,
+      syncNamespace: raw.syncNamespace?.trim() || undefined,
+    };
+  }
+  if (raw?.provider === "typesense") {
+    return {
+      provider: "typesense",
+      baseUrl: raw.baseUrl,
+      collection: raw.collection,
+      mode: raw.mode ?? "keyword",
+      queryBy: raw.queryBy ?? ["title", "section", "content", "description"],
+      embeddings: raw.embeddings
+        ? {
+            provider: raw.embeddings.provider,
+            model: raw.embeddings.model,
+            baseUrl: raw.embeddings.baseUrl ?? "http://127.0.0.1:11434",
+          }
+        : undefined,
+      syncNamespace: raw.syncNamespace?.trim() || undefined,
+    };
+  }
+  if (raw?.provider === "mcp") {
+    return {
+      provider: "mcp",
+      endpoint: raw.endpoint,
+      toolName: raw.toolName ?? "search_docs",
+      protocolVersion: raw.protocolVersion ?? DEFAULT_MCP_PROTOCOL_VERSION,
+      forwardAudience: raw.forwardAudience === true,
+    };
+  }
+  if (raw?.provider === "custom") {
+    return {
+      provider: "custom",
+      adapterName: typeof raw.adapter === "object" && raw.adapter ? raw.adapter.name : undefined,
+      paginationRevision: raw.paginationRevision?.trim() || undefined,
+    };
+  }
+  return { provider: search.provider };
 }
 
 async function readResponseJson(response: Response) {
@@ -2798,7 +2932,7 @@ async function ensureTypesenseImportSucceeded(
 }
 
 export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig): DocsSearchAdapter {
-  return {
+  const adapter: DocsSearchAdapter = {
     name: "typesense",
     async index(context) {
       const adminApiKey = config.adminApiKey ?? config.apiKey;
@@ -2867,17 +3001,40 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
       }
     },
     async search(query, context) {
+      return (
+        await adapter.searchPage!(
+          {
+            ...query,
+            offset: 0,
+            [DOCS_UNPAGINATED_PROVIDER_QUERY]: true,
+          } as InternalDocsSearchQuery,
+          context,
+        )
+      ).results;
+    },
+    async searchPage(query, context) {
+      const exactPagination = !(query as InternalDocsSearchQuery)[DOCS_UNPAGINATED_PROVIDER_QUERY];
       const corpusId = resolveHostedHumanCorpusId(config.syncNamespace, context);
       const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context, corpusId);
-      if (scopedDocumentIds?.length === 0) return [];
+      if (scopedDocumentIds === DOCS_PROVIDER_SCOPE_FILTER_OVERFLOW) {
+        throw new Error("Typesense scope filters exceed the provider pagination limit.");
+      }
+      if (scopedDocumentIds?.length === 0) {
+        return { results: [], total: 0 };
+      }
 
+      const pageSize = query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT;
+      if ((query.offset ?? 0) % pageSize !== 0) {
+        throw new Error("Typesense search offset does not match its page boundary.");
+      }
       const params = new URLSearchParams({
         q: query.query,
         query_by: (config.queryBy ?? ["title", "section", "content", "description"]).join(","),
-        per_page: String(query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT),
+        per_page: String(pageSize),
         prioritize_exact_match: "true",
         num_typos: "2",
         highlight_fields: "content,title,section,description",
+        page: String(Math.floor((query.offset ?? 0) / pageSize) + 1),
       });
 
       if (config.mode === "hybrid" && config.embeddings) {
@@ -2890,12 +3047,17 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
 
       const filterClauses = [
         corpusId ? `source_corpus_id:=${quoteTypesenseFilterValue(corpusId)}` : undefined,
+        context.indexGeneration
+          ? `source_index_generation:=${quoteTypesenseFilterValue(context.indexGeneration)}`
+          : undefined,
         scopedDocumentIds
           ? `id:=[${scopedDocumentIds.map(quoteTypesenseFilterValue).join(",")}]`
           : undefined,
       ].filter((value): value is string => Boolean(value));
       const filterBy = filterClauses.length > 0 ? filterClauses.join(" && ") : undefined;
-      if (filterBy && filterBy.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) return [];
+      if (filterBy && filterBy.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) {
+        throw new Error("Typesense scope filters exceed the provider pagination limit.");
+      }
 
       const response = filterBy
         ? await fetch(`${getTypesenseSearchBase(config)}/multi_search`, {
@@ -2927,12 +3089,16 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
 
       ensureOk(response, "Typesense search failed");
       const rawPayload = (await readResponseJson(response)) as {
+        found?: number;
+        search_cutoff?: boolean;
         hits?: Array<{
           document?: Record<string, unknown>;
           text_match?: number;
           highlights?: Array<{ field?: string; snippet?: string }>;
         }>;
         results?: Array<{
+          found?: number;
+          search_cutoff?: boolean;
           hits?: Array<{
             document?: Record<string, unknown>;
             text_match?: number;
@@ -2941,8 +3107,15 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
         }>;
       };
       const payload = filterBy ? (rawPayload.results?.[0] ?? {}) : rawPayload;
+      if (
+        exactPagination &&
+        payload.search_cutoff !== undefined &&
+        payload.search_cutoff !== false
+      ) {
+        throw new Error("Typesense search was cut off before exact pagination completed.");
+      }
 
-      return (payload.hits ?? []).flatMap((hit): DocsSearchResult[] => {
+      const results = (payload.hits ?? []).flatMap((hit): DocsSearchResult[] => {
         const document = hit.document ?? {};
         if (!hostedRecordMatchesCorpus(document, corpusId)) return [];
         const section = typeof document.section === "string" ? document.section : undefined;
@@ -2982,8 +3155,30 @@ export function createTypesenseSearchAdapter(config: TypesenseDocsSearchConfig):
           } satisfies DocsSearchResult,
         ];
       });
+      const exactTotal =
+        typeof payload.found === "number" &&
+        Number.isSafeInteger(payload.found) &&
+        payload.found >= 0
+          ? payload.found
+          : undefined;
+      if (exactPagination && exactTotal === undefined) {
+        throw new Error("Typesense search did not return an exact result total.");
+      }
+      const total = exactTotal ?? results.length;
+      if (exactPagination && total > MAX_HOSTED_PROVIDER_CURSOR_RESULTS) {
+        throw new Error("Typesense search exceeds the exact cursor pagination window.");
+      }
+      if (
+        exactPagination &&
+        (query.offset ?? 0) + results.length < total &&
+        results.length !== pageSize
+      ) {
+        throw new Error("Typesense search returned an incomplete non-final page.");
+      }
+      return { results, total };
     },
   };
+  return adapter;
 }
 
 export function resolveSearchRequestConfig(
@@ -3051,53 +3246,88 @@ export function resolveAskAISearchRequestConfig(options: {
 }
 
 export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchAdapter {
-  return {
-    name: "mcp",
-    async search(query, context) {
-      const endpoint = resolveMcpEndpoint(config.endpoint);
-      const protocolVersion = config.protocolVersion ?? DEFAULT_MCP_PROTOCOL_VERSION;
-      const toolName = config.toolName ?? "search_docs";
-      const forwardAudience = config.forwardAudience === true;
-      const audience = resolveDocsSearchAudience(query.audience);
-      const baseHeaders = config.headers ?? {};
+  async function runMcpSearch(
+    query: DocsSearchQuery,
+    context: DocsSearchAdapterContext,
+    paginated: boolean,
+  ): Promise<DocsSearchResult[] | DocsSearchAdapterPage> {
+    const endpoint = resolveMcpEndpoint(config.endpoint);
+    const protocolVersion = config.protocolVersion ?? DEFAULT_MCP_PROTOCOL_VERSION;
+    const toolName = config.toolName ?? "search_docs";
+    const forwardAudience = config.forwardAudience === true;
+    const audience = resolveDocsSearchAudience(query.audience);
+    const baseHeaders = config.headers ?? {};
 
-      if (audience === "human" && !forwardAudience) {
-        throw new Error(
-          "MCP human-projection search requires forwardAudience: true on an audience-aware tool.",
-        );
-      }
+    if (audience === "human" && !forwardAudience) {
+      throw new Error(
+        "MCP human-projection search requires forwardAudience: true on an audience-aware tool.",
+      );
+    }
 
-      const initializeResponse = await fetch(endpoint, {
+    const initializeResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "Content-Type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-protocol-version": protocolVersion,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion,
+          capabilities: {},
+          clientInfo: {
+            name: "@farming-labs/docs-search",
+            version: "0.1.2",
+          },
+        },
+      }),
+      signal: context.signal,
+    });
+
+    const initializePayload = await readMcpResponsePayload(initializeResponse);
+    ensureOk(initializeResponse, "MCP search initialization failed");
+    ensureJsonRpcOk(initializePayload, "MCP search initialization failed");
+
+    const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
+    try {
+      const initializedResponse = await fetch(endpoint, {
         method: "POST",
         headers: {
           ...baseHeaders,
           "Content-Type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": protocolVersion,
+          ...(sessionId ? { "mcp-session-id": sessionId } : {}),
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion,
-            capabilities: {},
-            clientInfo: {
-              name: "@farming-labs/docs-search",
-              version: "0.1.2",
-            },
-          },
+          method: "notifications/initialized",
+          params: {},
         }),
         signal: context.signal,
       });
+      ensureOk(initializedResponse, "MCP initialized notification failed");
 
-      const initializePayload = await readMcpResponsePayload(initializeResponse);
-      ensureOk(initializeResponse, "MCP search initialization failed");
-      ensureJsonRpcOk(initializePayload, "MCP search initialization failed");
+      type McpSearchToolData =
+        | {
+            format?: unknown;
+            filters?: unknown;
+            resultCount?: unknown;
+            results?: unknown[];
+            pages?: unknown[];
+            total?: unknown;
+            hasMore?: unknown;
+            nextCursor?: unknown;
+          }
+        | unknown[]
+        | null;
 
-      const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
-
-      try {
+      const pageSize = query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT;
+      const callRemoteSearchPage = async (providerCursor: string | undefined, id: number) => {
         const searchResponse = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -3109,14 +3339,15 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
           },
           body: JSON.stringify({
             jsonrpc: "2.0",
-            id: 2,
+            id,
             method: "tools/call",
             params: {
               name: toolName,
               arguments: {
                 query: query.query,
-                limit: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
+                limit: pageSize,
                 locale: query.locale,
+                ...(providerCursor !== undefined ? { cursor: providerCursor } : {}),
                 ...(forwardAudience ? { audience } : {}),
                 ...(query.filters?.framework ? { framework: query.filters.framework } : {}),
                 ...(query.filters?.version ? { version: query.filters.version } : {}),
@@ -3132,22 +3363,18 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
         ensureOk(searchResponse, "MCP search request failed");
         ensureJsonRpcOk(payload, "MCP search request failed");
 
-        const parsed = readMcpSearchToolPayload(payload) as
-          | {
-              format?: unknown;
-              filters?: unknown;
-              results?: unknown[];
-              pages?: unknown[];
-            }
-          | unknown[]
-          | null;
-        if (!parsed) return [];
+        const parsed = readMcpSearchToolPayload(payload) as McpSearchToolData;
+        if (!parsed) return { parsed, rawResults: [] as unknown[], results: [] };
 
         if (hasDocsSearchFilters(query.filters ?? {})) {
-          if (Array.isArray(parsed) || parsed.format !== "docs-search.v1") return [];
+          if (Array.isArray(parsed) || parsed.format !== "docs-search.v1") {
+            if (paginated) throw new Error("MCP search returned unverifiable pagination data.");
+            return { parsed, rawResults: [] as unknown[], results: [] };
+          }
           const echoedFilters = parseVerifiedMcpSearchFilters(parsed.filters);
           if (!echoedFilters || !docsSearchFiltersMatch(query.filters ?? {}, echoedFilters)) {
-            return [];
+            if (paginated) throw new Error("MCP search returned mismatched scope filters.");
+            return { parsed, rawResults: [] as unknown[], results: [] };
           }
         }
 
@@ -3158,34 +3385,136 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
             : Array.isArray(parsed.pages)
               ? parsed.pages
               : [];
-
-        return rawResults
+        const results = rawResults
           .map((result) => mapMcpSearchResult(result, endpoint))
           .filter((result): result is DocsSearchResult => Boolean(result));
-      } finally {
-        if (sessionId) {
-          const cleanupController = new AbortController();
-          const cleanupTimeout = setTimeout(
-            () => cleanupController.abort(),
-            MCP_SESSION_CLEANUP_TIMEOUT_MS,
-          );
-          try {
-            await fetch(endpoint, {
-              method: "DELETE",
-              headers: {
-                ...baseHeaders,
-                "mcp-protocol-version": protocolVersion,
-                "mcp-session-id": sessionId,
-              },
-              signal: cleanupController.signal,
-            });
-          } catch {
-            // Session cleanup is best-effort and must not replace the search result or error.
-          } finally {
-            clearTimeout(cleanupTimeout);
-          }
+        return { parsed, rawResults, results };
+      };
+
+      if (!paginated) {
+        return (await callRemoteSearchPage(undefined, 2)).results;
+      }
+
+      const targetOffset = query.offset ?? 0;
+      if (
+        (targetOffset === 0 && query.cursor !== undefined) ||
+        (targetOffset > 0 && query.cursor === undefined)
+      ) {
+        throw new Error("MCP search continuation is missing or misplaced its provider cursor.");
+      }
+
+      let consumed = 0;
+      let remoteCursor: string | undefined;
+      let expectedTotal: number | undefined;
+      const replayResultDigests: string[] = [];
+      for (let pageIndex = 0; pageIndex < MAX_MCP_SEARCH_CURSOR_REPLAY_PAGES; pageIndex += 1) {
+        const { parsed, rawResults, results } = await callRemoteSearchPage(
+          remoteCursor,
+          pageIndex + 2,
+        );
+        if (!parsed) {
+          if (targetOffset === 0) return { results: [], total: 0 };
+          throw new Error("MCP search continuation ended before the requested page.");
+        }
+        if (
+          Array.isArray(parsed) ||
+          parsed.format !== "docs-search.v1" ||
+          results.length !== rawResults.length ||
+          (parsed.resultCount !== undefined && parsed.resultCount !== results.length) ||
+          typeof parsed.total !== "number" ||
+          !Number.isSafeInteger(parsed.total) ||
+          parsed.total < consumed + results.length ||
+          typeof parsed.hasMore !== "boolean" ||
+          (parsed.nextCursor !== undefined &&
+            (typeof parsed.nextCursor !== "string" || parsed.nextCursor.length > 768))
+        ) {
+          throw new Error("MCP search returned malformed paginated results.");
+        }
+
+        const total = parsed.total;
+        const nextCursor = typeof parsed.nextCursor === "string" ? parsed.nextCursor : undefined;
+        const hasMore = consumed + results.length < total;
+        if (
+          (expectedTotal !== undefined && total !== expectedTotal) ||
+          parsed.hasMore !== hasMore ||
+          (nextCursor !== undefined) !== hasMore ||
+          (hasMore && results.length === 0)
+        ) {
+          throw new Error("MCP search returned inconsistent pagination metadata.");
+        }
+        expectedTotal ??= total;
+        if (total > MAX_MCP_SEARCH_CURSOR_RESULTS) {
+          throw new Error("MCP search exceeds its bounded exact pagination window.");
+        }
+
+        replayResultDigests.push(
+          ...results.map((result) => hashDocsRetrievalValue(JSON.stringify(result))),
+        );
+        const nextOffset = consumed + results.length;
+        const nextCheckpoint = hasMore
+          ? hashDocsRetrievalValue(
+              JSON.stringify({
+                format: "docs-mcp-search-replay.v1",
+                total,
+                nextOffset,
+                resultDigests: replayResultDigests,
+              }),
+            )
+          : undefined;
+        if (nextOffset === targetOffset && nextCheckpoint !== query.cursor) {
+          throw new Error("MCP search continuation cursor is stale.");
+        }
+        if (consumed === targetOffset) {
+          return {
+            results,
+            total,
+            ...(nextCheckpoint !== undefined ? { nextCursor: nextCheckpoint } : {}),
+          };
+        }
+        if (!hasMore || nextCursor === undefined) {
+          throw new Error("MCP search continuation ended before the requested page.");
+        }
+        consumed = nextOffset;
+        if (consumed > targetOffset) {
+          throw new Error("MCP search continuation offset does not match a page boundary.");
+        }
+        remoteCursor = nextCursor;
+      }
+
+      throw new Error("MCP search exceeds its bounded cursor replay limit.");
+    } finally {
+      if (sessionId) {
+        const cleanupController = new AbortController();
+        const cleanupTimeout = setTimeout(
+          () => cleanupController.abort(),
+          MCP_SESSION_CLEANUP_TIMEOUT_MS,
+        );
+        try {
+          await fetch(endpoint, {
+            method: "DELETE",
+            headers: {
+              ...baseHeaders,
+              "mcp-protocol-version": protocolVersion,
+              "mcp-session-id": sessionId,
+            },
+            signal: cleanupController.signal,
+          });
+        } catch {
+          // Session cleanup is best-effort and must not replace the search result or error.
+        } finally {
+          clearTimeout(cleanupTimeout);
         }
       }
+    }
+  }
+
+  return {
+    name: "mcp",
+    async search(query, context) {
+      return (await runMcpSearch(query, context, false)) as DocsSearchResult[];
+    },
+    async searchPage(query, context) {
+      return (await runMcpSearch(query, context, true)) as DocsSearchAdapterPage;
     },
   };
 }
@@ -3284,7 +3613,7 @@ function quoteAlgoliaFilterValue(value: string): string {
 }
 
 export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): DocsSearchAdapter {
-  return {
+  const adapter: DocsSearchAdapter = {
     name: "algolia",
     async index(context) {
       if (!config.adminApiKey) return;
@@ -3310,19 +3639,50 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
       );
     },
     async search(query, context) {
+      return (
+        await adapter.searchPage!(
+          {
+            ...query,
+            offset: 0,
+            [DOCS_UNPAGINATED_PROVIDER_QUERY]: true,
+          } as InternalDocsSearchQuery,
+          context,
+        )
+      ).results;
+    },
+    async searchPage(query, context) {
+      const exactPagination = !(query as InternalDocsSearchQuery)[DOCS_UNPAGINATED_PROVIDER_QUERY];
       const corpusId = resolveHostedHumanCorpusId(config.syncNamespace, context);
       const scopedDocumentIds = resolveProviderScopeDocumentIds(query, context, corpusId);
-      if (scopedDocumentIds?.length === 0) return [];
+      if (scopedDocumentIds === DOCS_PROVIDER_SCOPE_FILTER_OVERFLOW) {
+        throw new Error("Algolia scope filters exceed the provider pagination limit.");
+      }
+      if (scopedDocumentIds?.length === 0) {
+        return { results: [], total: 0 };
+      }
       const scopedIdsFilter = scopedDocumentIds
         ?.map((id) => `objectID:${quoteAlgoliaFilterValue(id)}`)
         .join(" OR ");
       const filterClauses = [
         corpusId ? `_tags:${quoteAlgoliaFilterValue(corpusId)}` : undefined,
-        scopedIdsFilter ? (corpusId ? `(${scopedIdsFilter})` : scopedIdsFilter) : undefined,
+        context.indexGeneration
+          ? `_tags:${quoteAlgoliaFilterValue(getHostedIndexGenerationTag(context.indexGeneration))}`
+          : undefined,
+        scopedIdsFilter
+          ? corpusId || context.indexGeneration
+            ? `(${scopedIdsFilter})`
+            : scopedIdsFilter
+          : undefined,
       ].filter((value): value is string => Boolean(value));
       const filters = filterClauses.length > 0 ? filterClauses.join(" AND ") : undefined;
-      if (filters && filters.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) return [];
+      if (filters && filters.length > MAX_PROVIDER_SCOPE_FILTER_CHARS) {
+        throw new Error("Algolia scope filters exceed the provider pagination limit.");
+      }
 
+      const pageSize = query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT;
+      if ((query.offset ?? 0) % pageSize !== 0) {
+        throw new Error("Algolia search offset does not match its page boundary.");
+      }
       const response = await fetch(
         `${getAlgoliaSearchBase(config)}/1/indexes/${encodeURIComponent(config.indexName)}/query`,
         {
@@ -3334,7 +3694,8 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
           },
           body: JSON.stringify({
             query: query.query,
-            hitsPerPage: query.limit ?? config.maxResults ?? DEFAULT_SEARCH_LIMIT,
+            hitsPerPage: pageSize,
+            page: Math.floor((query.offset ?? 0) / pageSize),
             restrictSearchableAttributes: ["title", "section", "content", "description"],
             attributesToSnippet: ["content:20"],
             ...(filters ? { filters } : {}),
@@ -3345,6 +3706,9 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
 
       ensureOk(response, "Algolia search failed");
       const payload = (await readResponseJson(response)) as {
+        nbHits?: number;
+        nbPages?: number;
+        exhaustiveNbHits?: boolean;
         hits?: Array<
           Record<string, unknown> & {
             objectID?: string;
@@ -3357,7 +3721,7 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
         >;
       };
 
-      return (payload.hits ?? []).flatMap((hit): DocsSearchResult[] => {
+      const results = (payload.hits ?? []).flatMap((hit): DocsSearchResult[] => {
         if (!hostedRecordMatchesCorpus(hit, corpusId)) return [];
         const title = typeof hit.title === "string" ? hit.title : "Untitled result";
         const section = typeof hit.section === "string" ? hit.section : undefined;
@@ -3385,8 +3749,42 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
           } satisfies DocsSearchResult,
         ];
       });
+      const exactTotal =
+        typeof payload.nbHits === "number" &&
+        Number.isSafeInteger(payload.nbHits) &&
+        payload.nbHits >= 0
+          ? payload.nbHits
+          : undefined;
+      const exactPageCount =
+        typeof payload.nbPages === "number" &&
+        Number.isSafeInteger(payload.nbPages) &&
+        payload.nbPages >= 0
+          ? payload.nbPages
+          : undefined;
+      if (exactPagination && (exactTotal === undefined || exactPageCount === undefined)) {
+        throw new Error("Algolia search did not return exact reachable pagination metadata.");
+      }
+      const total = exactTotal ?? results.length;
+      if (exactPagination && total > MAX_HOSTED_PROVIDER_CURSOR_RESULTS) {
+        throw new Error("Algolia search exceeds the exact cursor pagination window.");
+      }
+      if (exactPagination && payload.exhaustiveNbHits === false) {
+        throw new Error("Algolia search returned an approximate result total.");
+      }
+      if (exactPagination && exactPageCount !== undefined && total > exactPageCount * pageSize) {
+        throw new Error("Algolia search total exceeds its reachable pagination window.");
+      }
+      if (
+        exactPagination &&
+        (query.offset ?? 0) + results.length < total &&
+        results.length !== pageSize
+      ) {
+        throw new Error("Algolia search returned an incomplete non-final page.");
+      }
+      return { results, total };
     },
   };
+  return adapter;
 }
 
 async function resolveSearchAdapter(
@@ -3553,6 +3951,8 @@ export interface PerformDocsSearchOptions {
    */
   syncBaseUrl?: string | null;
   limit?: number;
+  /** Opaque continuation cursor used by structured search responses. */
+  cursor?: string;
   /** Optional framework, version, package, and tag constraints. */
   filters?: DocsSearchFilterInput;
   /**
@@ -3572,11 +3972,56 @@ export interface PerformDocsSearchOptions {
   signal?: AbortSignal;
 }
 
-export async function performDocsSearch(
-  options: PerformDocsSearchOptions,
-): Promise<DocsSearchResult[]> {
+interface PerformDocsSearchInternalOptions extends PerformDocsSearchOptions {
+  offset?: number;
+  paginated?: boolean;
+  providerCursor?: string;
+  paginationMode?: DocsSearchPaginationMode;
+  expectedTotal?: number;
+}
+
+type DocsSearchPaginationMode = "local" | "provider";
+
+interface DocsSearchInternalPage extends DocsSearchAdapterPage {
+  paginationMode: DocsSearchPaginationMode;
+}
+
+function normalizeDocsSearchAdapterPage(
+  value: DocsSearchResult[] | DocsSearchAdapterPage,
+): DocsSearchAdapterPage {
+  if (Array.isArray(value)) {
+    return { results: value, total: value.length };
+  }
+  if (
+    !value ||
+    !Array.isArray(value.results) ||
+    !Number.isSafeInteger(value.total) ||
+    value.total < 0 ||
+    value.results.length > value.total ||
+    (value.nextCursor !== undefined &&
+      (typeof value.nextCursor !== "string" ||
+        value.nextCursor.length === 0 ||
+        JSON.stringify([1, "provider", value.total, value.nextCursor]).length >
+          MAX_SEARCH_PROVIDER_CURSOR_STATE_CHARS))
+  ) {
+    throw new Error("Search adapter returned invalid pagination metadata.");
+  }
+  return value;
+}
+
+async function performDocsSearchInternal(
+  options: PerformDocsSearchInternalOptions,
+): Promise<DocsSearchInternalPage> {
   const search = normalizeDocsSearchConfig(options.search);
-  if (!search.enabled) return [];
+  if (!search.enabled) {
+    if (
+      options.paginationMode === "provider" ||
+      (options.expectedTotal !== undefined && options.expectedTotal !== 0)
+    ) {
+      throw new DocsPaginationCursorError();
+    }
+    return { results: [], total: 0, paginationMode: "local" };
+  }
 
   const audience = resolveDocsSearchAudience(options.audience);
   const filters = normalizeDocsSearchFilters(options.filters);
@@ -3620,6 +4065,8 @@ export async function performDocsSearch(
   const query: DocsSearchQuery = {
     query: options.query,
     limit: options.limit ?? search.maxResults,
+    ...(options.paginated ? { offset: options.offset ?? 0 } : {}),
+    ...(options.providerCursor !== undefined ? { cursor: options.providerCursor } : {}),
     locale: options.locale,
     pathname: options.pathname,
     audience,
@@ -3639,6 +4086,19 @@ export async function performDocsSearch(
   };
   const requireCurrentIndexGeneration =
     search.provider === "algolia" || search.provider === "typesense";
+  let hostedIndexGeneration: Promise<string> | undefined;
+  const getHostedIndexGeneration = () => {
+    hostedIndexGeneration ??=
+      audience === "human"
+        ? getCurrentIndexGeneration()
+        : buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
+            audience: "human",
+            chunking: search.chunking,
+            locale: options.locale,
+            baseUrl: indexBaseUrl,
+          });
+    return hostedIndexGeneration;
+  };
   const finalizeResults = async (results: readonly DocsSearchResult[]) =>
     enrichDocsSearchResultsWithSources({
       results,
@@ -3653,6 +4113,29 @@ export async function performDocsSearch(
       filters,
       requireCurrentIndexGeneration,
     });
+  const createLocalPage = async (): Promise<DocsSearchInternalPage> => {
+    const fallback = options.paginated
+      ? await createSimpleSearchAdapter().searchPage!(query, context)
+      : normalizeDocsSearchAdapterPage(await createSimpleSearchAdapter().search(query, context));
+    if (options.expectedTotal !== undefined && fallback.total !== options.expectedTotal) {
+      throw new DocsPaginationCursorError();
+    }
+    return {
+      results: await finalizeResults(fallback.results),
+      total: options.paginated ? fallback.total : fallback.results.length,
+      paginationMode: "local",
+    };
+  };
+  const fallBackFromProvider = (): Promise<DocsSearchInternalPage> => {
+    if (options.paginationMode === "provider") {
+      throw new DocsPaginationCursorError();
+    }
+    return createLocalPage();
+  };
+
+  if (options.paginated && options.paginationMode === "local") {
+    return createLocalPage();
+  }
 
   try {
     const adapter = await resolveSearchAdapter(search, context);
@@ -3667,16 +4150,39 @@ export async function performDocsSearch(
         siteTitle: options.siteTitle,
         baseUrl: indexBaseUrl,
         indexBaseUrl,
+        ...(options.paginated && requireCurrentIndexGeneration
+          ? { indexGeneration: await getHostedIndexGeneration() }
+          : {}),
         chunking: search.chunking,
         signal: options.signal,
       };
       await maybeSyncSearchIndex(adapter, search, syncContext);
     }
 
+    if (options.paginated && requireCurrentIndexGeneration) {
+      context.indexGeneration = await getHostedIndexGeneration();
+    }
+
+    if (
+      options.paginated &&
+      search.provider === "custom" &&
+      (!adapter.searchPage ||
+        search.raw?.provider !== "custom" ||
+        !search.raw.paginationRevision?.trim())
+    ) {
+      if (options.paginationMode === "provider") {
+        throw new DocsPaginationCursorError();
+      }
+      return createLocalPage();
+    }
+
     // Async adapters execute through their first await immediately, which starts remote
     // provider work before the CPU-heavy local projection below. Filtered providers that
     // require local document IDs still materialize the getter synchronously as before.
-    const adapterSearch = adapter.search(query, context);
+    const adapterSearch =
+      options.paginated && adapter.searchPage
+        ? adapter.searchPage(query, context)
+        : adapter.search(query, context);
     let documents: DocsSearchDocument[];
     try {
       documents = getDocuments();
@@ -3686,8 +4192,28 @@ export async function performDocsSearch(
       void adapterSearch.catch(() => undefined);
       throw error;
     }
-    const results = await adapterSearch;
-    if (search.provider === "simple") return finalizeResults(results);
+    const rawAdapterResult = await adapterSearch;
+    const adapterPage =
+      options.paginated && !adapter.searchPage && Array.isArray(rawAdapterResult)
+        ? {
+            results: rawAdapterResult.slice(
+              options.offset ?? 0,
+              (options.offset ?? 0) + (query.limit ?? search.maxResults),
+            ),
+            total: rawAdapterResult.length,
+          }
+        : normalizeDocsSearchAdapterPage(rawAdapterResult);
+    const results = adapterPage.results;
+    if (search.provider === "simple") {
+      if (options.expectedTotal !== undefined && adapterPage.total !== options.expectedTotal) {
+        throw new DocsPaginationCursorError();
+      }
+      return {
+        results: await finalizeResults(results),
+        total: options.paginated ? adapterPage.total : results.length,
+        paginationMode: "local",
+      };
+    }
 
     const localAudienceProjectionResults = buildAudienceProjectionSearchResults(
       documents,
@@ -3716,14 +4242,7 @@ export async function performDocsSearch(
       isLocalProviderResult(result, options.baseUrl) &&
       localPagePaths.has(normalizeUrlRouteKey(result.url));
     const expectedProviderGeneration = requireCurrentIndexGeneration
-      ? audience === "human"
-        ? await getCurrentIndexGeneration()
-        : await buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
-            audience: "human",
-            chunking: search.chunking,
-            locale: options.locale,
-            baseUrl: indexBaseUrl,
-          })
+      ? await getHostedIndexGeneration()
       : undefined;
     const providerAudience: DocsContentAudience = requireCurrentIndexGeneration
       ? "human"
@@ -3772,10 +4291,46 @@ export async function performDocsSearch(
       requireCurrentIndexGeneration && audience === "agent",
     );
 
+    if (options.paginated) {
+      // Pagination totals must describe the exact safe result set. If a hosted or remote
+      // page fails provenance/audience validation, fall back to the complete local index
+      // instead of claiming the provider's larger raw total.
+      const offset = query.offset ?? 0;
+      const endOffset = offset + safeAdapterResults.length;
+      if (
+        safeAdapterResults.length !== results.length ||
+        safeAdapterResults.length > (query.limit ?? search.maxResults) ||
+        endOffset > adapterPage.total ||
+        (requireCurrentIndexGeneration &&
+          adapterPage.total === 0 &&
+          localAudienceProjectionResults.length > 0) ||
+        (endOffset < adapterPage.total && safeAdapterResults.length === 0) ||
+        (adapterPage.nextCursor !== undefined &&
+          options.providerCursor !== undefined &&
+          adapterPage.nextCursor === options.providerCursor) ||
+        (adapterPage.nextCursor !== undefined && endOffset >= adapterPage.total) ||
+        (options.expectedTotal !== undefined && adapterPage.total !== options.expectedTotal)
+      ) {
+        return fallBackFromProvider();
+      }
+      return {
+        results: await finalizeResults(safeAdapterResults),
+        total: adapterPage.total,
+        ...(adapterPage.nextCursor !== undefined ? { nextCursor: adapterPage.nextCursor } : {}),
+        paginationMode: "provider",
+      };
+    }
+
     if (options.supplementExternalResults === false) {
-      return finalizeResults(
-        safeAdapterResults.slice(0, query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT),
+      const bounded = safeAdapterResults.slice(
+        0,
+        query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
       );
+      return {
+        results: await finalizeResults(bounded),
+        total: bounded.length,
+        paginationMode: "provider",
+      };
     }
     const shouldSupplementWithLocalSearch =
       audience === "agent" || results.length === 0 || safeAdapterResults.length < results.length;
@@ -3792,16 +4347,26 @@ export async function performDocsSearch(
         ? (result) => getAskAIResultKey(result, options.baseUrl, options.strictExternalOrigins)
         : undefined,
     );
-    return finalizeResults(
-      prioritizeLiteralInsideResults(options.query, combinedResults).slice(
-        0,
-        query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
-      ),
+    const bounded = prioritizeLiteralInsideResults(options.query, combinedResults).slice(
+      0,
+      query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
     );
+    return {
+      results: await finalizeResults(bounded),
+      total: bounded.length,
+      paginationMode: "provider",
+    };
   } catch (error) {
+    if (error instanceof DocsPaginationCursorError) throw error;
     if (options.failureMode === "throw") throw error;
-    return finalizeResults(await createSimpleSearchAdapter().search(query, context));
+    return fallBackFromProvider();
   }
+}
+
+export async function performDocsSearch(
+  options: PerformDocsSearchOptions,
+): Promise<DocsSearchResult[]> {
+  return (await performDocsSearchInternal(options)).results;
 }
 
 function compareSearchMetadataValues(left: string, right: string): number {
@@ -3863,6 +4428,7 @@ function buildDocsSearchWarnings(options: {
   query: string;
   audience: DocsContentAudience;
   baseUrl?: string;
+  completeResultSet?: boolean;
 }): DocsSearchWarning[] {
   const pageScopes = options.pages.map((page) => ({
     page,
@@ -3919,7 +4485,12 @@ function buildDocsSearchWarnings(options: {
     }
   }
 
-  const resultPages = findSearchResultPages(options.pages, options.results, options.baseUrl);
+  const resultPages = options.completeResultSet
+    ? relevantPageScopes
+        .filter(({ scope }) => docsSearchPageMatchesFilters(scope, options.filters))
+        .map(({ page }) => page)
+        .sort((left, right) => compareSearchMetadataValues(left.url, right.url))
+    : findSearchResultPages(options.pages, options.results, options.baseUrl);
   for (const field of SEARCH_AMBIGUITY_FIELDS) {
     if ((options.filters[field]?.length ?? 0) > 0) continue;
     const values = resultPages.flatMap((page) => {
@@ -3958,12 +4529,71 @@ function buildDocsSearchWarnings(options: {
     .slice(0, MAX_SEARCH_WARNINGS);
 }
 
+interface DocsSearchCursorState {
+  mode: DocsSearchPaginationMode;
+  total: number;
+  providerCursor?: string;
+}
+
+function parseDocsSearchCursorState(
+  state: string | undefined,
+  offset: number,
+): DocsSearchCursorState | undefined {
+  if (offset === 0 && state === undefined) return undefined;
+  if (state === undefined) throw new DocsPaginationCursorError();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(state);
+  } catch {
+    throw new DocsPaginationCursorError();
+  }
+  if (!Array.isArray(parsed) || parsed.length !== 4 || JSON.stringify(parsed) !== state) {
+    throw new DocsPaginationCursorError();
+  }
+
+  const [version, mode, total, providerCursor] = parsed;
+  if (
+    version !== 1 ||
+    (mode !== "local" && mode !== "provider") ||
+    !Number.isSafeInteger(total) ||
+    (total as number) < offset ||
+    !(
+      providerCursor === null ||
+      (typeof providerCursor === "string" && providerCursor.length <= 768)
+    ) ||
+    (mode === "local" && providerCursor !== null)
+  ) {
+    throw new DocsPaginationCursorError();
+  }
+
+  return {
+    mode,
+    total: total as number,
+    ...(typeof providerCursor === "string" ? { providerCursor } : {}),
+  };
+}
+
+function createDocsSearchCursorState(page: DocsSearchInternalPage): string {
+  return JSON.stringify([
+    1,
+    page.paginationMode,
+    page.total,
+    page.paginationMode === "provider" ? (page.nextCursor ?? null) : null,
+  ]);
+}
+
 export async function performDocsSearchWithMetadata(
   options: PerformDocsSearchOptions,
-): Promise<DocsSearchResponse> {
+): Promise<DocsPaginatedSearchResponse> {
   const audience = resolveDocsSearchAudience(options.audience);
   const filters = normalizeDocsSearchFilters(options.filters);
   const search = normalizeDocsSearchConfig(options.search);
+  const requestedLimit = options.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT;
+  const limit =
+    Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.max(1, Math.floor(requestedLimit))
+      : DEFAULT_SEARCH_LIMIT;
   const indexGeneration =
     options.indexGeneration ??
     (await buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
@@ -3972,14 +4602,61 @@ export async function performDocsSearchWithMetadata(
       locale: options.locale,
       baseUrl: options.baseUrl,
     }));
-  const results = options.query.trim()
-    ? await performDocsSearch({
+  const normalizedFilters = Object.fromEntries(
+    SEARCH_FILTER_FIELDS.flatMap((field) => {
+      const values = filters[field];
+      return values?.length ? [[field, [...values].sort(compareSearchMetadataValues)]] : [];
+    }),
+  );
+  const provider = getDocsSearchPaginationProviderIdentity(search);
+  const cursorOptions = {
+    kind: "docs-search",
+    scope: JSON.stringify({
+      format: "docs-search-pagination.v2",
+      // Bind the exact value forwarded to external/custom adapters. Canonicalizing only
+      // the cursor scope would let a case- or whitespace-sensitive adapter reorder pages.
+      query: options.query,
+      audience,
+      filters: normalizedFilters,
+      locale: options.locale ? normalizeAgentLocale(options.locale) : undefined,
+      pathname: options.pathname?.trim() || undefined,
+      provider,
+      limit,
+    }),
+    snapshot: indexGeneration,
+  };
+  const cursorPosition = resolveDocsPaginationCursor(options.cursor, cursorOptions);
+  const offset = cursorPosition.offset;
+  const cursorState = parseDocsSearchCursorState(cursorPosition.state, offset);
+  const page = options.query.trim()
+    ? await performDocsSearchInternal({
         ...options,
         audience,
         filters,
         indexGeneration,
+        limit,
+        offset,
+        paginated: true,
+        providerCursor: cursorState?.providerCursor,
+        paginationMode: cursorState?.mode,
+        expectedTotal: cursorState?.total,
       })
-    : [];
+    : { results: [], total: 0, paginationMode: "local" as const };
+  if (
+    (options.cursor !== undefined && offset >= page.total) ||
+    page.results.length > Math.min(limit, Math.max(0, page.total - offset)) ||
+    (offset < page.total && page.results.length === 0)
+  ) {
+    throw new DocsPaginationCursorError();
+  }
+  const nextOffset = Math.min(page.total, offset + page.results.length);
+  const hasMore = nextOffset < page.total;
+  const nextCursor = hasMore
+    ? createDocsPaginationCursor(nextOffset, {
+        ...cursorOptions,
+        state: createDocsSearchCursorState(page),
+      })
+    : undefined;
 
   return {
     format: "docs-search.v1",
@@ -3987,15 +4664,19 @@ export async function performDocsSearchWithMetadata(
     audience,
     filters,
     indexGeneration,
-    resultCount: results.length,
-    results,
+    resultCount: page.results.length,
+    total: page.total,
+    hasMore,
+    ...(nextCursor ? { nextCursor } : {}),
+    results: page.results,
     warnings: buildDocsSearchWarnings({
       pages: options.pages,
-      results,
+      results: page.results,
       filters,
       query: options.query,
       audience,
       baseUrl: options.baseUrl,
+      completeResultSet: true,
     }),
   };
 }
@@ -4119,9 +4800,11 @@ export async function buildDocsAskAIContext(options: {
 
 export function createCustomSearchAdapter(
   adapter: DocsSearchAdapter | DocsSearchAdapterFactory,
+  options: { paginationRevision?: string } = {},
 ): CustomDocsSearchConfig {
   return {
     provider: "custom",
     adapter,
+    ...(options.paginationRevision ? { paginationRevision: options.paginationRevision } : {}),
   };
 }

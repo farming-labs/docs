@@ -410,6 +410,10 @@ describe("agent route helpers", () => {
           },
           responseFormat: "docs-search.v1",
           warningsField: "warnings",
+          cursorParam: "cursor",
+          nextCursorField: "nextCursor",
+          hasMoreField: "hasMore",
+          totalField: "total",
         },
         ai: {
           status: "disabled",
@@ -516,6 +520,10 @@ describe("agent route helpers", () => {
         },
         responseFormat: "docs-search.v1",
         warningsField: "warnings",
+        cursorParam: "cursor",
+        nextCursorField: "nextCursor",
+        hasMoreField: "hasMore",
+        totalField: "total",
       },
       ai: { route: "/api/internal/docs" },
       apiReference: { routes: { openapi: "/api/internal/docs?format=openapi" } },
@@ -3033,6 +3041,10 @@ After`;
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
     });
     expect(spec.agents).toEqual({
       enabled: true,
@@ -3183,6 +3195,10 @@ After`;
       },
       repeatedFilterParams: ["framework", "version", "package", "tags"],
       warningsField: "warnings",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
     });
     expect(spec.agents.api).toBe("/api/internal/docs?format=agents");
     expect(spec.skills.api).toBe("/api/internal/docs?format=skill");
