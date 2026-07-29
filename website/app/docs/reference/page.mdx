@@ -756,6 +756,7 @@ The default `allowedHeaders` set includes `Authorization`, `Content-Type`, `Last
 | `getNavigation`     | `boolean` | Expose the `get_navigation` tool |
 | `searchFacets`      | `boolean` | Expose the `list_search_facets` tool for body-free framework, version, package, and tag discovery (default: `true`) |
 | `listContentChanges` | `boolean` | Expose the `list_content_changes` tool, which returns body-free document change metadata with polling support via `DOCS_MCP_CONTENT_CHANGES_CURRENT_URI` and `DOCS_MCP_CONTENT_CHANGES_URI_TEMPLATE` resources (default: `false`) |
+| `hydrateContentChanges` | `boolean` | Expose `hydrate_content_changes` for budget-aware section bodies and deletion tombstones after polling `list_content_changes`. Accepts a `tokenBudget` parameter (default `5000`; min `4`; max `32000`) (default: `true`) |
 | `searchDocs`        | `boolean` | Expose the `search_docs` tool |
 | `readPage`          | `boolean` | Expose the `read_page` tool |
 | `getCodeExamples`   | `boolean` | Expose the `get_code_examples` tool |
