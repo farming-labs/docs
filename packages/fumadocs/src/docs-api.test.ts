@@ -724,6 +724,85 @@ Welcome to the docs.
     expect(payload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it("serves a body-free content change feed with generations and HTTP validators", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-content-changes-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+
+    process.chdir(rootDir);
+    const { GET, HEAD } = createDocsAPI({ entry: "docs" });
+    const url = "https://docs.example.com/api/docs?audience=agent&response=changes";
+    const firstResponse = await GET(new Request(url));
+    const first = (await firstResponse.json()) as {
+      format: string;
+      mode: string;
+      resetRequired: boolean;
+      indexGeneration: string;
+      documentCount: number;
+      added: Array<{ canonicalUrl: string; digest: string; content?: string }>;
+    };
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.headers.get("etag")).toMatch(/^"sha256:[a-f0-9]{64}"$/);
+    expect(first).toMatchObject({
+      format: "docs-content-changes.v1",
+      mode: "snapshot",
+      resetRequired: false,
+      documentCount: 1,
+      added: [
+        {
+          canonicalUrl: "https://docs.example.com/docs",
+          digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        },
+      ],
+    });
+    expect(first.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(first.added[0]).not.toHaveProperty("content");
+
+    const nextResponse = await GET(new Request(`${url}&since=${first.indexGeneration}`));
+    await expect(nextResponse.json()).resolves.toMatchObject({
+      mode: "delta",
+      resetRequired: false,
+      counts: { added: 0, changed: 0, deleted: 0 },
+    });
+
+    const headResponse = await HEAD(new Request(url, { method: "HEAD" }));
+    expect(headResponse.status).toBe(200);
+    expect(await headResponse.text()).toBe("");
+    expect(headResponse.headers.get("x-docs-index-generation")).toBe(first.indexGeneration);
+
+    const notModified = await GET(
+      new Request(url, {
+        headers: { "If-None-Match": firstResponse.headers.get("etag")! },
+      }),
+    );
+    expect(notModified.status).toBe(304);
+    expect(await notModified.text()).toBe("");
+
+    const staticHandlers = createDocsAPI({ entry: "docs", staticExport: true });
+    const disabled = await staticHandlers.GET(new Request(url));
+    expect(disabled.status).toBe(404);
+    const staticDiscovery = await staticHandlers.GET(
+      new Request("https://docs.example.com/.well-known/agent.json"),
+    );
+    await expect(staticDiscovery.json()).resolves.toMatchObject({
+      capabilities: { contentChanges: false },
+      contentChanges: { enabled: false, endpoint: null },
+    });
+  });
+
   it("uses built-in simple search when no search config is provided", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-default-search-route-"));
     tempDirs.push(rootDir);
@@ -3595,6 +3674,7 @@ description: "Start building quickly"
         queryParam: string;
         localeParam: string;
       };
+      contentChanges: Record<string, unknown>;
       robots: { enabled: boolean; route: string; defaultRoute: string };
       structuredData: Record<string, unknown>;
       skills: {
@@ -3657,6 +3737,7 @@ description: "Start building quickly"
       agentSkillsDiscovery: true,
       mcp: true,
       search: true,
+      contentChanges: true,
       sitemap: true,
       robots: true,
       structuredData: true,
@@ -3680,6 +3761,7 @@ description: "Start building quickly"
       apiCatalogQuery: "/api/docs?format=api-catalog",
       agentSkillsIndex: "/.well-known/agent-skills/index.json",
       openapi: "/api/docs?format=openapi",
+      contentChanges: "/api/docs?audience=agent&response=changes",
     });
     expect(spec.apiCatalog).toEqual({
       enabled: true,
@@ -3691,6 +3773,16 @@ description: "Start building quickly"
     expect(spec.config).toMatchObject({
       format: "docs-config-map.v1",
       endpoint: "/api/docs?format=config",
+    });
+    expect(spec.contentChanges).toMatchObject({
+      enabled: true,
+      endpoint: "/api/docs?audience=agent&response=changes",
+      format: "docs-content-changes.v1",
+      sinceParam: "since",
+      generationField: "indexGeneration",
+      resetRequiredField: "resetRequired",
+      bodyFree: true,
+      etag: true,
     });
     expect(spec.agentContract).toMatchObject({
       enabled: true,
@@ -4168,6 +4260,7 @@ description: "Start building quickly"
       agentSkillsDiscovery: true,
       mcp: false,
       search: false,
+      contentChanges: true,
       sitemap: true,
       robots: true,
       structuredData: true,

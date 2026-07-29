@@ -35,6 +35,8 @@ import {
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
   DOCS_AGENT_MANIFEST_VERSION,
+  DOCS_CONTENT_CHANGES_FORMAT,
+  DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
   getDocsMcpProtectedResourceMetadataRoutes,
   acceptsDocsMarkdown,
   normalizeDocsRelated,
@@ -44,6 +46,8 @@ import {
   resolveChangelogConfig,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
+  createDocsContentChangeFeed,
+  createDocsContentChangesHttpResponse,
   createDocsStandardsDiscoveryResponse,
   createDocsRobotsResponse,
   createDocsMarkdownResponse,
@@ -76,7 +80,9 @@ import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   resolveDocsSitemapConfig,
   isDocsConfigRequest,
+  isDocsContentChangesRequest,
   isDocsDiagnosticsRequest,
+  resolveDocsContentChangesConfig,
   stripGeneratedAgentProvenance,
 } from "@farming-labs/docs";
 import type {
@@ -323,6 +329,7 @@ interface AgentSpecOptions {
   apiCatalog: boolean;
   i18n: ReturnType<typeof resolveDocsI18n>;
   search?: boolean | DocsSearchConfig;
+  contentChanges?: boolean;
   mcp: ReturnType<typeof resolveDocsMcpConfig>;
   feedback: ResolvedAgentFeedbackConfig;
   llms: LlmsTxtOptions & { enabled: boolean };
@@ -493,6 +500,7 @@ function buildAgentSpec({
   apiCatalog,
   i18n,
   search,
+  contentChanges,
   mcp,
   feedback,
   llms,
@@ -505,6 +513,7 @@ function buildAgentSpec({
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const localesEnabled = i18n !== null;
   const searchEnabled = isSearchEnabled(search);
+  const contentChangesEnabled = resolveDocsContentChangesConfig(contentChanges).enabled;
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const llmsSections = resolveDocsLlmsTxtSections(llms);
@@ -547,6 +556,7 @@ function buildAgentSpec({
       skills: true,
       mcp: mcp.enabled,
       search: searchEnabled,
+      contentChanges: contentChangesEnabled,
       sitemap: sitemapConfig.enabled,
       robots: robotsEnabled,
       structuredData: true,
@@ -569,6 +579,11 @@ function buildAgentSpec({
       agentSpecQuery: `${apiRoute}?agent=spec`,
       agents: `${apiRoute}?format=agents`,
       openapi: `${apiRoute}?format=openapi`,
+      ...(contentChangesEnabled
+        ? {
+            contentChanges: `${apiRoute}?audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`,
+          }
+        : {}),
       ...(apiCatalog
         ? {
             apiCatalog: DEFAULT_API_CATALOG_ROUTE,
@@ -727,6 +742,25 @@ function buildAgentSpec({
       totalField: "total",
       defaultAudience: "human",
       supportedAudiences: ["human", "agent"],
+    },
+    contentChanges: {
+      enabled: contentChangesEnabled,
+      endpoint: contentChangesEnabled
+        ? `${apiRoute}?audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}`
+        : null,
+      method: "GET",
+      audienceParam: "audience",
+      defaultAudience: "agent",
+      supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      responseValue: DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
+      sinceParam: "since",
+      format: DOCS_CONTENT_CHANGES_FORMAT,
+      generationField: "indexGeneration",
+      resetRequiredField: "resetRequired",
+      modes: ["snapshot", "delta", "reset"],
+      bodyFree: true,
+      etag: true,
     },
     agents: {
       enabled: true,
@@ -2059,6 +2093,7 @@ function renderSkillDocument({
   apiRoute,
   apiCatalog,
   search,
+  contentChanges,
   mcp,
   feedback,
   llms,
@@ -2122,6 +2157,12 @@ function renderSkillDocument({
     lines.push(
       `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values; continue a large field with facet={field}, limit={limit}, and its nextCursor.`,
       `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when you do not know the page; add framework, version, package, or repeated tags filters when scope matters.`,
+    );
+  }
+
+  if (resolveDocsContentChangesConfig(contentChanges).enabled) {
+    lines.push(
+      `- Synchronize changed documents with ${apiRoute}?audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}; pass indexGeneration as since on the next request and clear stale state when resetRequired is true.`,
     );
   }
 
@@ -2251,6 +2292,7 @@ function renderAgentsDocument({
   apiRoute,
   apiCatalog,
   search,
+  contentChanges,
   mcp,
   feedback,
   llms,
@@ -2321,6 +2363,12 @@ function renderAgentsDocument({
     lines.push(
       `- Discover valid search filters with ${apiRoute}?audience=agent&response=facets before choosing framework, version, package, or tag values; continue a large field with facet={field}, limit={limit}, and its nextCursor.`,
       `- Search with ${apiRoute}?query={query}&audience=agent&response=structured when the route is unknown; add framework, version, package, or repeated tags filters when scope matters.`,
+    );
+  }
+
+  if (resolveDocsContentChangesConfig(contentChanges).enabled) {
+    lines.push(
+      `- Synchronize changed documents with ${apiRoute}?audience=agent&response=${DOCS_CONTENT_CHANGES_RESPONSE_VALUE}; pass indexGeneration as since on the next request and clear stale state when resetRequired is true.`,
     );
   }
 
@@ -3842,6 +3890,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       ? { ...cloudConfig, apiRoute: configuredApiRoute }
       : cloudConfig;
   const searchConfig = options?.search;
+  const contentChangesConfig = resolveDocsContentChangesConfig(options?.agent?.contentChanges, {
+    staticExport: options?.staticExport === true,
+  });
+  const contentChangeFeed = createDocsContentChangeFeed(options?.agent?.contentChanges);
 
   // Read llms.txt config
   const llmsConfig = resolveLlmsTxtConfig(options?.llmsTxt, readLlmsTxtConfig(root));
@@ -3878,6 +3930,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     contentDir,
     telemetry: options?.telemetry,
     search: searchConfig,
+    agent: options?.agent,
     ai: aiConfig as DocsConfig["ai"],
     cloud: effectiveCloudConfig,
     i18n: i18nConfig ?? undefined,
@@ -3909,6 +3962,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   setConfigMapFallback("entry", entry);
   setConfigMapFallback("ai", Object.keys(aiConfig).length > 0 ? aiConfig : undefined);
   setConfigMapFallback("search", searchConfig);
+  setConfigMapFallback("agent", options?.agent);
   setConfigMapFallback("i18n", i18nConfig ?? undefined);
   setConfigMapFallback("mcp", rawMcpConfig);
   setConfigMapFallback("apiReference", apiReferenceConfig);
@@ -4187,6 +4241,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           apiCatalog: apiCatalogEnabled,
           i18n,
           search: searchConfig,
+          contentChanges: contentChangesConfig.enabled,
           mcp: mcpConfig,
           feedback: agentFeedbackConfig,
           llms: llmsConfig,
@@ -4209,6 +4264,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       apiRoute,
       i18n,
       search: searchConfig,
+      contentChanges: contentChangesConfig.enabled,
       mcp: mcpConfig,
       feedback: agentFeedbackConfig,
       llms: llmsConfig,
@@ -4297,6 +4353,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             apiCatalog: apiCatalogEnabled,
             i18n,
             search: searchConfig,
+            contentChanges: contentChangesConfig.enabled,
             mcp: mcpConfig,
             feedback: agentFeedbackConfig,
             llms: llmsConfig,
@@ -4313,6 +4370,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
                   apiCatalog: apiCatalogEnabled,
                   i18n,
                   search: searchConfig,
+                  contentChanges: contentChangesConfig.enabled,
                   mcp: mcpConfig,
                   feedback: agentFeedbackConfig,
                   llms: llmsConfig,
@@ -4333,6 +4391,26 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             },
           },
         );
+      }
+
+      if (isDocsContentChangesRequest(url)) {
+        if (!contentChangesConfig.enabled) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+        return createDocsContentChangesHttpResponse({
+          request,
+          feed: contentChangeFeed,
+          pages: getIndexes(ctx),
+          search: searchConfig,
+          locale: ctx.locale,
+          baseUrl: markdownMetadataBaseUrl || url.origin,
+        });
       }
 
       if (isApiReferenceOpenApiRequest(url)) {
@@ -4431,6 +4509,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
                   apiRoute: requestApiRoute,
                   apiCatalog: apiCatalogEnabled,
                   search: searchConfig,
+                  contentChanges: contentChangesConfig.enabled,
                   mcp: mcpConfig,
                   feedback: agentFeedbackConfig,
                   llms: llmsConfig,
@@ -4472,6 +4551,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
                   apiCatalog: apiCatalogEnabled,
                   i18n,
                   search: searchConfig,
+                  contentChanges: contentChangesConfig.enabled,
                   mcp: mcpConfig,
                   feedback: agentFeedbackConfig,
                   llms: llmsConfig,

@@ -976,6 +976,7 @@ export type DocsTelemetryAgentSurface =
   | "llms"
   | "agent_feedback_schema"
   | "agent_feedback_submit"
+  | "content_changes"
   | "ask_ai"
   | "mcp";
 
@@ -999,6 +1000,7 @@ export interface DocsTelemetryConfig {
 
 export interface DocsTelemetryFeatures {
   search: boolean;
+  contentChanges: boolean;
   ai: boolean;
   mcp: boolean;
   llmsTxt: boolean;
@@ -1573,6 +1575,81 @@ export interface DocsRetrievalSourceProvenance {
   digest: string;
   indexGeneration: string;
 }
+
+/** One canonical document in a content-change snapshot. */
+export interface DocsContentSnapshotDocument {
+  /** Framework route that produced this canonical document. */
+  url: string;
+  canonicalUrl: string;
+  /** SHA-256 of the body digest plus fetch-relevant page metadata. */
+  digest: string;
+  lastModified?: string;
+}
+
+/**
+ * Serializable content inventory stored by the optional durable change-feed callbacks.
+ *
+ * The snapshot contains metadata only, never document bodies.
+ */
+export interface DocsContentSnapshot {
+  format: "docs-content-snapshot.v1";
+  audience: "human" | "agent";
+  locale?: string;
+  baseUrl?: string;
+  indexGeneration: string;
+  documents: DocsContentSnapshotDocument[];
+}
+
+/** Added or removed document metadata in a content-change response. */
+export type DocsContentChangeDocument = DocsContentSnapshotDocument;
+
+/** Changed document metadata, including the immediately compared prior digest. */
+export interface DocsContentChangedDocument extends DocsContentChangeDocument {
+  previousDigest: string;
+  previousLastModified?: string;
+}
+
+/**
+ * Body-free synchronization response for documentation agents.
+ *
+ * `resetRequired` is explicit because a bare SHA-256 generation cannot reconstruct
+ * history that was never retained by this process or a configured durable store.
+ */
+export interface DocsContentChangesResponse {
+  format: "docs-content-changes.v1";
+  audience: "human" | "agent";
+  locale?: string;
+  since: string | null;
+  indexGeneration: string;
+  mode: "snapshot" | "delta" | "reset";
+  resetRequired: boolean;
+  documentCount: number;
+  counts: {
+    added: number;
+    changed: number;
+    deleted: number;
+  };
+  added: DocsContentChangeDocument[];
+  changed: DocsContentChangedDocument[];
+  deleted: DocsContentChangeDocument[];
+}
+
+export interface DocsContentChangeSnapshotContext {
+  audience: "human" | "agent";
+  locale?: string;
+  baseUrl?: string;
+  request?: Request;
+}
+
+export type DocsContentChangeSnapshotLoader = (
+  generation: string,
+  context: DocsContentChangeSnapshotContext,
+) => DocsContentSnapshot | null | undefined | Promise<DocsContentSnapshot | null | undefined>;
+
+export type DocsContentChangeSnapshotSaver = (
+  snapshot: DocsContentSnapshot,
+  context: DocsContentChangeSnapshotContext,
+) => void | Promise<void>;
 
 export interface DocsSearchDocument {
   id: string;
@@ -3336,8 +3413,25 @@ export interface DocsAgentConfig {
   evaluations?: boolean | DocsAgentEvaluationsConfig;
   /** Publish reusable Agent Skills through standards discovery, static exports, and MCP. */
   skills?: DocsAgentSkillsInput;
+  /**
+   * Body-free document synchronization feed. Enabled for runtime adapters by default.
+   *
+   * Configure snapshot callbacks when exact deltas must survive server restarts or deployments.
+   */
+  contentChanges?: boolean | DocsAgentContentChangesConfig;
   /** Opt in to an A2A Agent Card for a separately implemented A2A service. */
   a2a?: DocsAgentA2AConfig;
+}
+
+export interface DocsAgentContentChangesConfig {
+  /** Disable the runtime content-change endpoint. @default true */
+  enabled?: boolean;
+  /** Number of metadata-only snapshots retained in this server process. @default 8 */
+  maxSnapshots?: number;
+  /** Load an older snapshot from a durable store for exact cross-deployment deltas. */
+  loadSnapshot?: DocsContentChangeSnapshotLoader;
+  /** Persist the current snapshot to a durable store. */
+  saveSnapshot?: DocsContentChangeSnapshotSaver;
 }
 
 export type DocsReviewSeverity = "off" | "suggestion" | "warn" | "error";

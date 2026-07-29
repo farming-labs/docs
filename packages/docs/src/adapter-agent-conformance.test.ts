@@ -104,11 +104,83 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       url: discoveryUrl,
     });
     await expect(discoveryResponse.json()).resolves.toMatchObject({
+      capabilities: {
+        contentChanges: true,
+      },
+      contentChanges: {
+        enabled: true,
+        endpoint: "/api/docs?audience=agent&response=changes",
+        format: "docs-content-changes.v1",
+        bodyFree: true,
+        etag: true,
+      },
       markdown: {
         enabled: true,
         acceptHeader: "text/markdown",
       },
     });
+
+    const changesUrl = new URL(
+      "/api/docs?audience=agent&response=changes",
+      "https://docs.example.com",
+    );
+    const changesResponse = await server.GET({
+      request: new Request(changesUrl),
+      url: changesUrl,
+    });
+    const changesEtag = changesResponse.headers.get("etag");
+    const changes = (await changesResponse.json()) as {
+      format: string;
+      indexGeneration: string;
+      mode: string;
+      resetRequired: boolean;
+      documentCount: number;
+      added: Array<{ canonicalUrl: string; digest: string; content?: string }>;
+    };
+    expect(changesResponse.status).toBe(200);
+    expect(changesEtag).toMatch(/^"sha256:[a-f0-9]{64}"$/);
+    expect(changes).toMatchObject({
+      format: "docs-content-changes.v1",
+      mode: "snapshot",
+      resetRequired: false,
+      documentCount: 1,
+      added: [
+        {
+          canonicalUrl: "https://docs.example.com/docs?lang=en",
+          digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        },
+      ],
+    });
+    expect(changes.added[0]).not.toHaveProperty("content");
+
+    const deltaUrl = new URL(changesUrl);
+    deltaUrl.searchParams.set("since", changes.indexGeneration);
+    const deltaResponse = await server.GET({
+      request: new Request(deltaUrl),
+      url: deltaUrl,
+    });
+    await expect(deltaResponse.json()).resolves.toMatchObject({
+      mode: "delta",
+      resetRequired: false,
+      counts: { added: 0, changed: 0, deleted: 0 },
+    });
+
+    const changesHead = await server.HEAD({
+      request: new Request(changesUrl, { method: "HEAD" }),
+      url: changesUrl,
+    });
+    expect(changesHead.status).toBe(200);
+    expect(changesHead.headers.get("x-docs-index-generation")).toBe(changes.indexGeneration);
+    expect(await changesHead.text()).toBe("");
+
+    const notModified = await server.GET({
+      request: new Request(changesUrl, {
+        headers: { "If-None-Match": changesEtag! },
+      }),
+      url: changesUrl,
+    });
+    expect(notModified.status).toBe(304);
+    expect(await notModified.text()).toBe("");
 
     const indexUrl = new URL("/.well-known/agent-skills/index.json", "https://docs.example.com");
     const indexResponse = await server.GET({
@@ -297,6 +369,40 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     expect(headResponse.status).toBe(200);
     expect(Object.fromEntries(headResponse.headers)).toEqual(getHeaders);
     expect(await headResponse.text()).toBe("");
+  });
+
+  it("does not advertise or serve the runtime feed from static exports", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const server = createDocsServer({
+      entry: "docs",
+      staticExport: true,
+      _preloadedContent: {
+        "/docs/page.md": "# Home\n",
+      },
+    });
+    const discoveryUrl = new URL("/.well-known/agent.json", "https://docs.example.com");
+    const discoveryResponse = await server.GET({
+      request: new Request(discoveryUrl),
+      url: discoveryUrl,
+    });
+    const discovery = (await discoveryResponse.json()) as {
+      capabilities: { contentChanges: boolean };
+      api: Record<string, string>;
+      contentChanges: { enabled: boolean; endpoint: string | null };
+    };
+    expect(discovery.capabilities.contentChanges).toBe(false);
+    expect(discovery.api).not.toHaveProperty("contentChanges");
+    expect(discovery.contentChanges).toMatchObject({ enabled: false, endpoint: null });
+
+    const changesUrl = new URL(
+      "/api/docs?audience=agent&response=changes",
+      "https://docs.example.com",
+    );
+    const changesResponse = await server.GET({
+      request: new Request(changesUrl),
+      url: changesUrl,
+    });
+    expect(changesResponse.status).toBe(404);
   });
 
   it("keeps discovery HEAD requests metadata-only", async () => {

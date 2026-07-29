@@ -9,6 +9,7 @@ import {
   resolveDocsMarkdownRequest,
   resolveDocsSkillFormat,
 } from "./agent.js";
+import { isDocsContentChangesRequest, resolveDocsContentChangesConfig } from "./content-changes.js";
 import type {
   DocsConfig,
   DocsTelemetryAgentSurface,
@@ -312,6 +313,9 @@ export function getDocsTelemetryFeatures(config: Partial<DocsConfig>): DocsTelem
 
   return {
     search: isObjectConfigEnabled(config.search, true),
+    contentChanges: resolveDocsContentChangesConfig(config.agent?.contentChanges, {
+      staticExport: config.staticExport === true,
+    }).enabled,
     ai: isObjectConfigEnabled(config.ai, false),
     mcp: isObjectConfigEnabled(config.mcp, true),
     llmsTxt: isObjectConfigEnabled(config.llmsTxt, true),
@@ -553,6 +557,10 @@ export function inferDocsTelemetryAgentSurface(
   }
 
   if (method === "GET" || method === "HEAD") {
+    if (isDocsContentChangesRequest(url)) {
+      return "content_changes";
+    }
+
     if (isDocsAgentsRequest(url) || resolveDocsAgentsFormat(url) === "agents") {
       return "agents";
     }

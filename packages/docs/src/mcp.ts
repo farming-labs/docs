@@ -683,9 +683,49 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
     path: "agent",
     name: "agent",
     type: "DocsAgentConfig",
-    description: "Agent compaction defaults and offline-by-default usefulness evaluations.",
+    description:
+      "Agent synchronization, reusable skills, compaction defaults, and offline-by-default usefulness evaluations.",
     docs: "/docs/getting-started/agent-ready-docs",
     children: [
+      {
+        path: "agent.contentChanges",
+        name: "contentChanges",
+        type: "boolean | DocsAgentContentChangesConfig",
+        default: true,
+        description:
+          "Body-free runtime document synchronization feed. Disable it with false, or configure bounded and durable snapshot history.",
+        children: [
+          {
+            path: "agent.contentChanges.enabled",
+            name: "enabled",
+            type: "boolean",
+            default: true,
+            description: "Whether runtime adapters serve response=changes.",
+          },
+          {
+            path: "agent.contentChanges.maxSnapshots",
+            name: "maxSnapshots",
+            type: "number",
+            default: 8,
+            description:
+              "Metadata-only snapshots retained in this server process; accepted range is 1 through 64.",
+          },
+          {
+            path: "agent.contentChanges.loadSnapshot",
+            name: "loadSnapshot",
+            type: "DocsContentChangeSnapshotLoader",
+            description:
+              "Optional callback that loads a prior generation from durable storage for exact cross-deployment deltas.",
+          },
+          {
+            path: "agent.contentChanges.saveSnapshot",
+            name: "saveSnapshot",
+            type: "DocsContentChangeSnapshotSaver",
+            description:
+              "Optional callback that persists each current metadata snapshot to durable storage.",
+          },
+        ],
+      },
       {
         path: "agent.skills",
         name: "skills",

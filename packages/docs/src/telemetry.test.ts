@@ -337,6 +337,7 @@ describe("telemetry", () => {
       }),
     ).toMatchObject({
       search: true,
+      contentChanges: false,
       ai: true,
       mcp: true,
       pageActions: true,
@@ -348,6 +349,13 @@ describe("telemetry", () => {
   });
 
   it("classifies agent-facing request surfaces", () => {
+    expect(
+      inferDocsTelemetryAgentSurface(
+        new Request("https://example.com/api/docs?audience=agent&response=changes"),
+        { entry: "docs" },
+      ),
+    ).toBe("content_changes");
+
     expect(
       inferDocsTelemetryAgentSurface(new Request("https://example.com/api/docs?format=skill"), {
         entry: "docs",

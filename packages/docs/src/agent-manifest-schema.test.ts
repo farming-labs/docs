@@ -290,6 +290,59 @@ describe("Farming Labs agent manifest schema", () => {
     expect(validate({ ...manifest, search: detachedPagination })).toBe(false);
   });
 
+  it("advertises the body-free content synchronization contract", () => {
+    const manifest = buildManifest();
+
+    expect(manifest.capabilities.contentChanges).toBe(true);
+    expect(manifest.api.contentChanges).toBe("/api/docs?audience=agent&response=changes");
+    expect(manifest.contentChanges).toEqual({
+      enabled: true,
+      endpoint: "/api/docs?audience=agent&response=changes",
+      method: "GET",
+      audienceParam: "audience",
+      defaultAudience: "agent",
+      supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      responseValue: "changes",
+      sinceParam: "since",
+      format: "docs-content-changes.v1",
+      generationField: "indexGeneration",
+      resetRequiredField: "resetRequired",
+      modes: ["snapshot", "delta", "reset"],
+      bodyFree: true,
+      etag: true,
+    });
+    expectValid(manifest);
+
+    expect(
+      validate({
+        ...manifest,
+        contentChanges: {
+          ...manifest.contentChanges,
+          format: "docs-content-changes.v2",
+        },
+      }),
+    ).toBe(false);
+
+    const disabled = buildManifest({ contentChanges: false });
+    expect(disabled.capabilities.contentChanges).toBe(false);
+    expect(disabled.api).not.toHaveProperty("contentChanges");
+    expect(disabled.contentChanges).toMatchObject({ enabled: false, endpoint: null });
+    expectValid(disabled);
+
+    const legacyCapabilities: Record<string, boolean> = { ...manifest.capabilities };
+    const legacyApi: Record<string, string> = { ...manifest.api };
+    const preChangeFeed: Record<string, unknown> = {
+      ...manifest,
+      capabilities: legacyCapabilities,
+      api: legacyApi,
+    };
+    delete preChangeFeed.contentChanges;
+    delete legacyCapabilities.contentChanges;
+    delete legacyApi.contentChanges;
+    expectValid(preChangeFeed);
+  });
+
   it("keeps Markdown section-discovery declarations synchronized", () => {
     const enabledManifest = buildManifest();
     const disabledManifest = buildManifest({

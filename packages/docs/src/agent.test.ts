@@ -378,6 +378,7 @@ describe("agent route helpers", () => {
         agentSkillsArtifact: "/.well-known/agent-skills/{name}/SKILL.md",
         search: null,
         agentSearch: null,
+        contentChanges: null,
         askAi: null,
         llmsTxt: null,
         robots: null,
@@ -416,6 +417,12 @@ describe("agent route helpers", () => {
           nextCursorField: "nextCursor",
           hasMoreField: "hasMore",
           totalField: "total",
+        },
+        contentChanges: {
+          status: "disabled",
+          reason: "Runtime content-change feeds are unavailable in static exports.",
+          route: null,
+          format: "docs-content-changes.v1",
         },
         ai: {
           status: "disabled",
@@ -495,6 +502,7 @@ describe("agent route helpers", () => {
       skill: "/api/internal/docs?format=skill",
       search: "/api/internal/docs?query={query}",
       agentSearch: "/api/internal/docs?query={query}&audience=agent",
+      contentChanges: "/api/internal/docs?audience=agent&response=changes",
       askAi: "/api/internal/docs",
       openapi: "/api/internal/docs?format=openapi",
     });
@@ -528,6 +536,15 @@ describe("agent route helpers", () => {
         nextCursorField: "nextCursor",
         hasMoreField: "hasMore",
         totalField: "total",
+      },
+      contentChanges: {
+        status: "enabled",
+        route: "/api/internal/docs?audience=agent&response=changes",
+        format: "docs-content-changes.v1",
+        defaultAudience: "agent",
+        sinceParam: "since",
+        generationField: "indexGeneration",
+        resetRequiredField: "resetRequired",
       },
       ai: { route: "/api/internal/docs" },
       apiReference: { routes: { openapi: "/api/internal/docs?format=openapi" } },
@@ -3004,6 +3021,7 @@ After`;
     expect(spec.api.apiCatalogQuery).toBe("/api/docs?format=api-catalog");
     expect(spec.api.agentSkillsIndex).toBe("/.well-known/agent-skills/index.json");
     expect(spec.api.openapi).toBe("/api/docs?format=openapi");
+    expect(spec.api.contentChanges).toBe("/api/docs?audience=agent&response=changes");
     expect(spec.config).toMatchObject({
       format: "docs-config-map.v1",
       endpoint: "/api/docs?format=config",
@@ -3056,6 +3074,23 @@ After`;
       nextCursorField: "nextCursor",
       hasMoreField: "hasMore",
       totalField: "total",
+    });
+    expect(spec.contentChanges).toEqual({
+      enabled: true,
+      endpoint: "/api/docs?audience=agent&response=changes",
+      method: "GET",
+      audienceParam: "audience",
+      defaultAudience: "agent",
+      supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      responseValue: "changes",
+      sinceParam: "since",
+      format: "docs-content-changes.v1",
+      generationField: "indexGeneration",
+      resetRequiredField: "resetRequired",
+      modes: ["snapshot", "delta", "reset"],
+      bodyFree: true,
+      etag: true,
     });
     expect(spec.agents).toEqual({
       enabled: true,
