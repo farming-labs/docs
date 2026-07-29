@@ -1,0 +1,192 @@
+---
+title: "From Fumadocs"
+description: "Migrate Fumadocs content, meta files, source loaders, layouts, and components"
+icon: "file"
+order: 4
+related:
+  - /docs/migrations
+  - /docs/installation
+  - /docs/configuration
+  - /docs/customization/components
+  - /docs/themes
+agent:
+  tokenBudget: 1450
+  task: Simplify a Fumadocs project into a Farming Labs Docs configuration while preserving its content and routes.
+  outcome: Existing Fumadocs Markdown or MDX content and navigation run through the selected Farming Labs adapter with equivalent routes and components.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Preserve source.config, content collections, meta files, source loaders, layouts, search routes, and MDX components.
+    - Record the existing loader baseUrl and published route tree.
+    - Initialize the target runtime in a migration branch.
+  files:
+    - source.config.ts
+    - lib/source.ts
+    - mdx-components.tsx
+    - docs.config.ts
+    - docs.config.tsx
+  commands:
+    - run: npx @farming-labs/docs init
+      description: Scaffold Farming Labs Docs around the selected target runtime.
+  sideEffects:
+    - Custom Fumadocs source and layout wiring may be replaced by a single docs configuration.
+  verification:
+    - description: Build the target and compare the source page tree, base URL, meta ordering, components, search, and API routes.
+      expect: Existing content routes build and render without duplicated source loaders or catch-all routes.
+  rollback:
+    - Restore source.config, source loader, layout, and route files from version control.
+  failureModes:
+    - symptom: Pages are duplicated or route generation conflicts.
+      resolution: Remove overlapping Fumadocs loaders or catch-all routes only after the Farming Labs route works.
+    - symptom: A custom collection is missing.
+      resolution: Keep that collection on its existing loader or migrate it separately instead of treating it as docs content.
+---
+
+# Migrate from Fumadocs
+
+Farming Labs Docs builds on the Fumadocs content and UI ecosystem for its Next.js experience, so
+standard Markdown, MDX, `meta.json`, and many familiar components can be preserved. The migration
+primarily removes repeated source, layout, route, and feature wiring.
+
+<Callout type="tip" title="Simplify incrementally">
+  First make the existing content render through Farming Labs Docs. Remove old loaders, routes, and
+  packages only after the new production build passes.
+</Callout>
+
+<Agent>
+Read source.config.ts, every collection definition, lib/source loader options, meta files, and the
+docs catch-all route before editing. Migrate only the documentation collection. Blog, changelog, or
+custom collections may need to remain on their current Fumadocs source.
+</Agent>
+
+## 1. Inventory the source
+
+Record:
+
+- `source.config.ts` collections and their directories
+- the docs collection root, commonly `content/docs`
+- `meta.json` or equivalent meta files
+- `lib/source.ts` loader options and `baseUrl`
+- docs layout and catch-all route files
+- `mdx-components.tsx`
+- search, OpenAPI, i18n, last-modified, and custom source adapters
+- custom collections such as blog or changelog
+
+## 2. Decide what to keep
+
+| Existing Fumadocs layer | Migration decision |
+| --- | --- |
+| Markdown and MDX content | Keep |
+| Page frontmatter | Keep portable fields and review schema extensions |
+| `meta.json` ordering | Keep where supported or translate to file `order` |
+| Fumadocs UI components | Keep compatible components or use Farming Labs defaults |
+| Custom source loader | Replace for standard docs; preserve for custom collections |
+| Catch-all route and layout | Replace with generated adapter route/layout |
+| Search route | Replace with Farming Labs `search` configuration |
+| OpenAPI integration | Reconfigure through `apiReference` |
+
+Avoid rewriting working content just to change the framework wrapper.
+
+## 3. Preserve the base route
+
+Read `baseUrl` in the existing loader:
+
+```ts title="existing lib/source.ts"
+export const source = loader({
+  baseUrl: "/docs",
+  source: docs.toFumadocsSource(),
+});
+```
+
+Use the same value as the Farming Labs `entry` whenever the public route should remain unchanged:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+});
+```
+
+If the old base URL changes, create and test redirects before cutover.
+
+## 4. Move or reuse content
+
+For Next.js, move each content route into the generated `app/docs/**/page.mdx` structure when the
+adapter expects route-local pages. For TanStack Start, SvelteKit, Astro, and Nuxt, point
+`contentDir` at the migrated Markdown tree.
+
+Preserve:
+
+- title and description
+- slug implied by the file path
+- `meta.json` order and labels
+- links, headings, images, and code fence metadata
+- supported Fumadocs MDX components
+
+Review custom Zod frontmatter fields from `source.config.ts`; unsupported fields can remain content
+metadata only when the target loader preserves them.
+
+## 5. Replace source and layout wiring
+
+Once content renders:
+
+1. Use generated Farming Labs docs routes and layout.
+2. Move theme and feature options into `docs.config.ts`.
+3. Register local MDX components through `components`.
+4. Configure search, page actions, MCP, sitemaps, and API reference from the same config.
+5. Remove the old docs loader and route only when nothing else imports them.
+
+Keep custom non-doc collections and their generated source files until they receive a separate
+migration decision.
+
+## 6. Check component compatibility
+
+Many Fumadocs UI components can remain in a Next.js target, but Farming Labs provides defaults for
+common docs primitives. Verify:
+
+- callouts
+- tabs
+- cards
+- steps
+- accordions
+- type tables
+- code blocks
+- custom imports and interactive client components
+
+For another target runtime, convert React-only MDX components to portable Markdown or native
+components for that adapter.
+
+## 7. Recreate advanced features
+
+Translate these intentionally:
+
+- `fumadocs-core/search` routes → `search`
+- OpenAPI source and pages → `apiReference`
+- custom page tree transforms → file structure or custom sidebar
+- i18n sources → Farming Labs locale configuration
+- last-modified logic → source timestamps and metadata
+- custom remark/rehype plugins → adapter-supported MDX configuration or content conversion
+
+## 8. Validate and recover
+
+Run the production build and compare:
+
+- loader `baseUrl` and every published docs route
+- page tree order and `meta.json` behavior
+- custom collections outside docs
+- imported components and client boundaries
+- search and OpenAPI endpoints
+- `.md` page delivery and page actions
+
+If source generation conflicts, remove only the overlapping docs loader or route. If a custom
+collection disappears, restore its Fumadocs source and migrate it separately.
+
+## Source references
+
+- [Fumadocs MDX collections](https://www.fumadocs.dev/docs/mdx)
+- [Fumadocs source loader](https://www.fumadocs.dev/docs/headless/source-api)
+- [Farming Labs configuration](/docs/configuration)
+- [Farming Labs components](/docs/customization/components)
+- [Farming Labs themes](/docs/themes)

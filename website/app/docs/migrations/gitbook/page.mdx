@@ -1,0 +1,187 @@
+---
+title: "From GitBook"
+description: "Export GitBook through Git Sync and migrate Markdown, SUMMARY navigation, assets, spaces, and hosted behavior"
+icon: "file"
+order: 7
+related:
+  - /docs/migrations
+  - /docs/installation
+  - /docs/customization/sidebar
+  - /docs/customization/components
+  - /docs/configuration
+agent:
+  tokenBudget: 1650
+  task: Export a GitBook site through Git Sync and migrate it into Farming Labs Docs.
+  outcome: GitBook pages, table of contents, assets, and representable blocks render in a buildable Farming Labs Docs project, with hosted-only behavior tracked.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Create or obtain a complete GitHub or GitLab Git Sync export for every published GitBook space.
+    - Preserve .gitbook.yaml, SUMMARY.md, README files, assets, redirects, and site structure.
+    - Record dashboard-only domains, authentication, variants, search, analytics, and OpenAPI blocks.
+  files:
+    - .gitbook.yaml
+    - SUMMARY.md
+    - README.md
+    - docs.config.ts
+    - docs.config.tsx
+  sideEffects:
+    - GitBook space hierarchy and hosted blocks are converted into repository content and application configuration.
+  verification:
+    - description: Build the target and compare every GitBook space, SUMMARY entry, redirect, asset, custom block, and access boundary.
+      expect: The build passes and every required public page is migrated or redirected.
+  rollback:
+    - Keep GitBook published and Git Sync connected until the new site and redirects pass verification.
+  failureModes:
+    - symptom: Git Sync export is missing pages or spaces.
+      resolution: Export each published space separately and verify its SUMMARY before migrating.
+    - symptom: Exported Markdown contains opaque HTML for a GitBook block.
+      resolution: Replace that block with portable Markdown, a Farming Labs component, or a registered custom component.
+---
+
+# Migrate from GitBook
+
+GitBook is hosted, so the first migration step is obtaining a complete Markdown repository through
+GitHub or GitLab Git Sync. Once exported, `SUMMARY.md` provides the page hierarchy and
+`.gitbook.yaml` describes the content root, entry page, redirects, and summary location.
+
+<Callout type="warning" title="Do not migrate from copied HTML">
+  Enable Git Sync and migrate the exported repository. GitBook notes that some custom blocks export
+  as HTML, so keep a visual inventory of those pages for manual conversion.
+</Callout>
+
+<Agent>
+Require a Git Sync export for every published space. Read .gitbook.yaml to resolve root, readme,
+summary, and redirects, then parse SUMMARY.md as the navigation source of truth. Site sections,
+variants, permissions, domains, analytics, and other dashboard settings require a separate
+inventory because they may not exist in Git.
+</Agent>
+
+## 1. Export through Git Sync
+
+For each published GitBook space:
+
+1. Connect an empty GitHub or GitLab repository.
+2. Select the GitBook-to-Git initial sync direction.
+3. Wait for Markdown, `SUMMARY.md`, and assets to appear.
+4. Clone the repository and preserve the export commit.
+5. Verify the number of pages against the published table of contents.
+
+If a site publishes multiple spaces, sections, or variants, repeat this process for each content
+source and record how GitBook combines them.
+
+## 2. Inventory the export and dashboard
+
+Repository inputs:
+
+- `.gitbook.yaml`
+- `SUMMARY.md`
+- configured `README.md` entry page
+- Markdown pages and HTML blocks
+- `.gitbook/assets/` or other asset directories
+- redirects declared in `.gitbook.yaml`
+
+Dashboard inputs:
+
+- site sections and variants
+- custom domain
+- authentication and protected content
+- search and AI
+- analytics
+- OpenAPI blocks and API authentication
+- redirects managed at the site level
+
+## 3. Resolve the content root
+
+Read `.gitbook.yaml` before copying:
+
+```yaml title=".gitbook.yaml"
+root: ./docs/
+structure:
+  readme: README.md
+  summary: SUMMARY.md
+redirects:
+  previous/page: new-folder/page.md
+```
+
+All content paths are relative to `root`. Use the configured `readme` as the section landing page
+and the configured `summary` as the navigation source.
+
+## 4. Translate `SUMMARY.md`
+
+GitBook uses Markdown headings as groups and nested list links as pages:
+
+```md title="SUMMARY.md"
+## Getting started
+
+- [Overview](README.md)
+- [Installation](getting-started/installation.md)
+  - [Configuration](getting-started/configuration.md)
+```
+
+Create matching directories, use landing pages for groups where needed, and add numeric `order`
+frontmatter following list order. Preserve alternate sidebar link titles when they differ from page
+headings.
+
+Every summary link should become a target route, redirect, or explicit retirement decision.
+
+## 5. Convert GitBook content
+
+Standard Markdown usually moves directly. Review:
+
+- GitBook hint and callout blocks
+- tabs
+- expandable sections
+- cards
+- stepper blocks
+- embedded files, videos, and iframes
+- OpenAPI and request blocks
+- exported HTML for custom blocks
+
+Prefer built-in Farming Labs MDX components or plain Markdown. Preserve HTML only when the target
+runtime safely supports it and the behavior is verified.
+
+## 6. Move assets and redirects
+
+Copy exported assets into the target public/static directory or keep them beside content when
+supported. Update encoded filenames and relative URLs carefully.
+
+Translate both `.gitbook.yaml` redirects and site-level dashboard redirects into the target
+application or hosting platform. Test old public URLs—not only repository paths.
+
+## 7. Recreate hosted behavior
+
+Implement these separately:
+
+- sections and variants → explicit route trees, versions, or locales
+- authentication → application middleware and authorization
+- custom domain → hosting and DNS
+- search and AI → `search` and `ai`
+- analytics → `analytics`
+- OpenAPI → `apiReference`
+- page feedback and edit links → Farming Labs feature configuration
+
+Comments, revision history, and GitBook workflow state are not page content and do not migrate
+through Markdown.
+
+## 8. Validate and recover
+
+1. Compare every `SUMMARY.md` link with a target route.
+2. Build the target.
+3. Test exported HTML blocks, assets, downloads, and embeds.
+4. Verify redirects from published GitBook URLs.
+5. Test each section, variant, locale, and access boundary.
+6. Fetch representative pages through `.md`.
+
+If pages are missing, stop and correct the Git Sync export before converting content. If a custom
+block renders incorrectly, replace that block family and verify all pages that use it.
+
+## Source references
+
+- [GitBook migration and export](https://gitbook.com/docs/getting-started/import)
+- [GitBook Git Sync content configuration](https://gitbook.com/docs/getting-started/git-sync/content-configuration)
+- [GitBook site structure](https://gitbook.com/docs/publishing-documentation/site-structure)
+- [Farming Labs sidebar](/docs/customization/sidebar)
+- [Farming Labs configuration](/docs/configuration)

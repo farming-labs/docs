@@ -35,11 +35,13 @@ import {
   DollarSign,
   Activity,
   Building2,
+  Route,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
 import { DocsMcpAccess } from "@/components/ui/docs-mcp-access";
 import { GuideCard } from "@/components/ui/guide-card";
+import { MigrationCard } from "@/components/ui/migration-card";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 
 const algoliaAppId = process.env.ALGOLIA_APP_ID;
@@ -170,6 +172,7 @@ export default defineDocs({
     activity: <Activity size={16} />,
     infrastructure: <Building2 size={16} />,
     dollarSign: <DollarSign size={16} />,
+    route: <Route size={16} />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
@@ -665,6 +668,12 @@ export default defineDocs({
     },
     sections: [
       {
+        title: "Migrations",
+        description:
+          "Source-specific migration guides for moving existing documentation into Farming Labs Docs.",
+        match: "/docs/migrations/**",
+      },
+      {
         title: "Guides",
         description: "Task-based guides for agent-friendly docs and discovery surfaces.",
         match: "/docs/guides/**",
@@ -853,6 +862,7 @@ export default defineDocs({
     Callout,
     DocsMcpAccess,
     GuideCard,
+    MigrationCard,
   },
   cloud: {
     apiKey: { env: "DOCS_CLOUD_API_KEY" },
