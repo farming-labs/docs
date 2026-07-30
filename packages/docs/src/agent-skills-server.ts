@@ -70,7 +70,9 @@ async function findWorkspaceRootAsync(rootDir: string): Promise<string> {
   }
 }
 
-function normalizeConfiguredPaths(input: DocsAgentSkillsInput | undefined): string[] {
+export function getDocsAgentSkillsConfiguredPaths(
+  input: DocsAgentSkillsInput | undefined,
+): string[] {
   if (!input) return [];
   const value =
     typeof input === "string" || Array.isArray(input)
@@ -576,12 +578,17 @@ function validateAndSortSkills(published: DocsPublishedAgentSkill[]): DocsPublis
   return published.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-/** Resolve and safely package all project skills configured through `agent.skills` synchronously. */
-export function resolveConfiguredAgentSkillsSync(
+/**
+ * Resolve configured SKILL.md files without parsing or packaging their contents.
+ *
+ * Diagnostics use this path-only form so broken references and invalid frontmatter
+ * can be reported independently instead of publication failing at the first skill.
+ */
+export function resolveConfiguredAgentSkillPathsSync(
   input: DocsAgentSkillsInput | undefined,
   options: ResolveConfiguredAgentSkillsOptions = {},
-): DocsPublishedAgentSkill[] {
-  const configuredPaths = normalizeConfiguredPaths(input);
+): string[] {
+  const configuredPaths = getDocsAgentSkillsConfiguredPaths(input);
   if (configuredPaths.length === 0) return [];
 
   const rootDir = realpathSync(options.rootDir ?? process.cwd());
@@ -600,8 +607,17 @@ export function resolveConfiguredAgentSkillsSync(
       visited,
     );
   }
+  return [...documents].sort();
+}
 
-  const published = [...documents].sort().map(publishSkillDocumentSync);
+/** Resolve and safely package all project skills configured through `agent.skills` synchronously. */
+export function resolveConfiguredAgentSkillsSync(
+  input: DocsAgentSkillsInput | undefined,
+  options: ResolveConfiguredAgentSkillsOptions = {},
+): DocsPublishedAgentSkill[] {
+  const published = resolveConfiguredAgentSkillPathsSync(input, options).map(
+    publishSkillDocumentSync,
+  );
   return validateAndSortSkills(published);
 }
 
@@ -610,7 +626,7 @@ export async function resolveConfiguredAgentSkills(
   input: DocsAgentSkillsInput | undefined,
   options: ResolveConfiguredAgentSkillsOptions = {},
 ): Promise<DocsPublishedAgentSkill[]> {
-  const configuredPaths = normalizeConfiguredPaths(input);
+  const configuredPaths = getDocsAgentSkillsConfiguredPaths(input);
   if (configuredPaths.length === 0) return [];
 
   const rootDir = await realpath(options.rootDir ?? process.cwd());

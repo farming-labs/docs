@@ -84,6 +84,84 @@ description: Docs page
     });
   });
 
+  it("reviews changed Agent Skills and reports progressive-disclosure findings", async () => {
+    mkdirSync(join(tmpDir, "skills", "migration"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    skills: {
+      paths: "skills/migration",
+      progressiveDisclosure: {
+        maxSkillLines: 100,
+        instructionTokenBudget: 5000,
+      },
+    },
+  },
+  review: { rules: { agentSkills: "error" } },
+};
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "skills", "migration", "SKILL.md"),
+      `---
+name: migration
+description: Migrate an existing documentation project.
+compatibility: Requires Node.js 20 or newer.
+---
+
+# Workflow
+
+Inventory the source project.
+`,
+      "utf-8",
+    );
+
+    git(["init"]);
+    git(["config", "user.email", "docs@example.com"]);
+    git(["config", "user.name", "Docs Test"]);
+    git(["add", "."]);
+    git(["commit", "-m", "initial skill"]);
+
+    writeFileSync(
+      join(tmpDir, "skills", "migration", "SKILL.md"),
+      `---
+name: migration
+description: Migrate an existing documentation project.
+compatibility: Requires Node.js 20 or newer.
+---
+
+# Workflow
+
+Read [the migration inventory](references/missing.md).
+`,
+      "utf-8",
+    );
+    git(["add", "."]);
+    git(["commit", "-m", "break skill reference"]);
+    process.chdir(tmpDir);
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    const report = await runReview({ ci: true });
+
+    expect(report).toMatchObject({
+      status: "measured",
+      score: 80,
+      reviewedFiles: ["skills/migration/SKILL.md"],
+      findings: [
+        expect.objectContaining({
+          rule: "agentSkills",
+          code: "skill-reference-broken",
+          severity: "error",
+          file: "skills/migration/SKILL.md",
+          line: 9,
+        }),
+      ],
+    });
+  });
+
   it("reports disabled review as unmeasured instead of a perfect score", async () => {
     writeFileSync(
       join(tmpDir, "docs.config.ts"),

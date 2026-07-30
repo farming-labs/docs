@@ -1767,6 +1767,22 @@ describe("MCP context and schema APIs", () => {
     ).toContain("Deprecated");
   });
 
+  it("publishes Agent Skill progressive-disclosure schema paths and defaults", () => {
+    const schema = getDocsConfigSchema();
+    expect(
+      findSchemaOption(schema.options, "agent.skills.progressiveDisclosure.instructionTokenBudget")
+        ?.default,
+    ).toBe(5_000);
+    expect(
+      findSchemaOption(schema.options, "agent.skills.progressiveDisclosure.maxReferenceDepth")
+        ?.default,
+    ).toBe(1);
+    expect(
+      findSchemaOption(schema.options, "agent.skills.progressiveDisclosure.compatibility")?.values,
+    ).toEqual(["when-needed", "always", "off"]);
+    expect(findSchemaOption(schema.options, "review.rules.agentSkills")?.default).toBe("warn");
+  });
+
   it("publishes package and tag golden-task filter and scope schema paths", () => {
     const schema = getDocsConfigSchema();
     for (const path of [

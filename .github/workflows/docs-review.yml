@@ -11,6 +11,7 @@ on:
       - "website/content/docs/**"
       - "website/src/content/docs/**"
       - "website/src/lib/docs.config.*"
+      - "skills/farming-labs/**"
       - ".github/workflows/docs-review.yml"
       - ".github/workflows/docs-review-reusable.yml"
 

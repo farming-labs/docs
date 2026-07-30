@@ -47,6 +47,10 @@ import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.j
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
 import { resolveConfiguredAgentSkills } from "../agent-skills-server.js";
 import {
+  analyzeConfiguredAgentSkillsProgressiveDisclosure,
+  type DocsAgentSkillsProgressiveDisclosureReport,
+} from "../agent-skills-progressive-disclosure.js";
+import {
   AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
   readAgentSkillDocumentFromTar,
 } from "../agent-skills-archive.js";
@@ -967,6 +971,7 @@ function navigationScore(navigationCoverage: number): { status: DoctorStatus; sc
 const AGENT_OPTIMIZATION_BLOCKING_CHECKS = new Set([
   "surface-drift",
   "agent-skills-frontmatter",
+  "agent-skills-progressive-disclosure",
   "agent-context-quality",
   "agent-task-completeness",
   "agent-applicability",
@@ -2952,6 +2957,8 @@ export async function inspectAgentReadiness(
   const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
   let configuredAgentSkillNames: string[] | undefined;
   let configuredAgentSkillsError: string | undefined;
+  let configuredAgentSkillsDisclosure: DocsAgentSkillsProgressiveDisclosureReport | undefined;
+  let configuredAgentSkillsDisclosureError: string | undefined;
   const configuredAgentSkills = config?.agent?.skills;
   if (configuredAgentSkills) {
     try {
@@ -2960,6 +2967,14 @@ export async function inspectAgentReadiness(
       ).map((skill) => skill.name);
     } catch (error) {
       configuredAgentSkillsError = error instanceof Error ? error.message : String(error);
+    }
+    try {
+      configuredAgentSkillsDisclosure = analyzeConfiguredAgentSkillsProgressiveDisclosure(
+        configuredAgentSkills,
+        { rootDir },
+      );
+    } catch (error) {
+      configuredAgentSkillsDisclosureError = error instanceof Error ? error.message : String(error);
     }
   }
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
@@ -3201,6 +3216,52 @@ export async function inspectAgentReadiness(
       configuredAgentSkillsError
         ? "Fix every configured SKILL.md field reported here before building or publishing the docs site."
         : undefined,
+    ),
+  );
+
+  const skillDisclosureIssues = configuredAgentSkillsDisclosure?.issues ?? [];
+  const skillDisclosureHasErrors = skillDisclosureIssues.some(
+    (issue) => issue.severity === "error",
+  );
+  const skillDisclosureStatus: DoctorStatus =
+    configLoad.status !== "evaluated"
+      ? "warn"
+      : configuredAgentSkillsDisclosureError
+        ? "fail"
+        : skillDisclosureHasErrors
+          ? "fail"
+          : skillDisclosureIssues.length > 0
+            ? "warn"
+            : "pass";
+  const skillDisclosureDetail =
+    configLoad.status !== "evaluated"
+      ? "Not verified because docs.config could not be evaluated."
+      : configuredAgentSkillsDisclosureError
+        ? configuredAgentSkillsDisclosureError
+        : configuredAgentSkillsDisclosure
+          ? skillDisclosureIssues.length === 0
+            ? `${configuredAgentSkillsDisclosure.skills.length} configured Agent Skill${configuredAgentSkillsDisclosure.skills.length === 1 ? "" : "s"} stay within line/token budgets, use resolvable shallow references, declare required compatibility, and document bundled scripts.`
+            : `${skillDisclosureIssues.length} progressive-disclosure issue${skillDisclosureIssues.length === 1 ? "" : "s"} across ${configuredAgentSkillsDisclosure.skills.length} configured skill${configuredAgentSkillsDisclosure.skills.length === 1 ? "" : "s"}: ${skillDisclosureIssues
+                .slice(0, 4)
+                .map((issue) => {
+                  const file = path.relative(rootDir, issue.filePath).replace(/\\/g, "/");
+                  return `${file}${issue.line ? `:${issue.line}` : ""} ${issue.message}`;
+                })
+                .join(
+                  " ",
+                )}${skillDisclosureIssues.length > 4 ? ` (+${skillDisclosureIssues.length - 4} more)` : ""}`
+          : "No configured Agent Skills require progressive-disclosure analysis.";
+  checks.push(
+    makeCheck(
+      "agent-skills-progressive-disclosure",
+      "Agent Skills progressive disclosure",
+      skillDisclosureStatus,
+      skillDisclosureStatus === "pass" ? 5 : skillDisclosureStatus === "warn" ? 2 : 0,
+      5,
+      skillDisclosureDetail,
+      skillDisclosureStatus === "pass"
+        ? undefined
+        : "Keep SKILL.md under its configured line and instruction-token budgets, repair local references, keep reference chains shallow, declare compatibility requirements, and document script dependencies and validation.",
     ),
   );
 

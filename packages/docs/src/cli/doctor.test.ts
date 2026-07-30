@@ -691,6 +691,63 @@ metadata:
     expect(report.grade).not.toBe("Agent-optimized");
   });
 
+  it("reports configured Agent Skill progressive-disclosure failures", async () => {
+    writePackageJson(tmpDir, "doctor-agent-skill-disclosure", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    skills: {
+      paths: "skills/large-skill",
+      progressiveDisclosure: {
+        maxSkillLines: 8,
+        instructionTokenBudget: 12,
+      },
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "skills", "large-skill"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "skills", "large-skill", "SKILL.md"),
+      `---
+name: large-skill
+description: Exercise doctor progressive-disclosure validation.
+---
+
+# Workflow
+
+Run pnpm install before following these deliberately long instructions.
+
+Read [the missing guide](references/missing.md).
+
+Continue configuring the project and verify the generated output.
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const check = report.checks.find(
+      (candidate) => candidate.id === "agent-skills-progressive-disclosure",
+    );
+
+    expect(check).toMatchObject({
+      status: "fail",
+      score: 0,
+      maxScore: 5,
+      detail: expect.stringContaining("progressive-disclosure issues"),
+    });
+    expect(check?.detail).toContain("exceeding the configured 8-line limit");
+    expect(check?.detail).toContain("does not resolve to a regular file");
+    expect(check?.recommendation).toContain("instruction-token budgets");
+    expect(report.grade).not.toBe("Agent-optimized");
+  });
+
   it("evaluates the configured Ask AI surface, answer callback, base URL, and runtime examples", async () => {
     writePackageJson(tmpDir, "doctor-real-evaluations", { next: "16.0.0" });
     writeFileSync(

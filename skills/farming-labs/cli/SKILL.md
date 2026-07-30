@@ -356,7 +356,9 @@ is a tiny wrapper around `farming-labs/docs/.github/workflows/docs-review-reusab
 
 Use `review.ci.mode: "block"` and `review.score.threshold` when the team wants CI to fail below a
 score threshold. Use `review.ci.name` to customize the GitHub Actions job/check name; it defaults
-to `docs-review`.
+to `docs-review`. Changes to configured `agent.skills` paths also trigger review. The `agentSkills`
+rule checks SKILL.md line/token budgets, local references, compatibility metadata, and bundled
+script dependency/validation guidance.
 
 ## Search Sync
 
@@ -706,6 +708,8 @@ What it checks:
 - static command health and related-page task coverage
 - config loading confidence and discovery/config/schema drift
 - configured golden tasks for retrieval, citations, version selection, answers, examples, and budgets
+- configured Agent Skills for progressive disclosure, reference integrity, compatibility
+  requirements, and documented script dependencies/validation
 - generated `agent.md` freshness and `agent.compact` defaults
 
 Command checks never execute arbitrary commands from docs or make network requests. They resolve

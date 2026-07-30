@@ -3162,6 +3162,44 @@ export interface DocsAgentEvaluationsConfig {
 export interface DocsAgentSkillsConfig {
   /** Project-relative skill file, skill directory, or collection directory paths. */
   paths: string | readonly string[];
+  /**
+   * Thresholds used by `docs doctor --agent` and `docs review` to keep skills
+   * progressively disclosed and executable without loading avoidable context.
+   */
+  progressiveDisclosure?: DocsAgentSkillsProgressiveDisclosureConfig;
+}
+
+export type DocsAgentSkillsCompatibilityPolicy = "when-needed" | "always" | "off";
+
+export interface DocsAgentSkillsProgressiveDisclosureConfig {
+  /** Recommended maximum size of the complete SKILL.md document. @default 500 */
+  maxSkillLines?: number;
+  /**
+   * Approximate token budget for the SKILL.md instructions after frontmatter.
+   * Detailed material should move to `references/` when this is exceeded.
+   *
+   * @default 5000
+   */
+  instructionTokenBudget?: number;
+  /**
+   * Maximum local Markdown reference hops from SKILL.md.
+   * `1` permits SKILL.md -> references/guide.md but flags deeper chains.
+   *
+   * @default 1
+   */
+  maxReferenceDepth?: number;
+  /**
+   * When compatibility frontmatter is expected.
+   *
+   * - `"when-needed"`: require it when scripts or environment/tool requirements are present
+   * - `"always"`: require it for every configured skill
+   * - `"off"`: do not diagnose missing compatibility metadata
+   *
+   * @default "when-needed"
+   */
+  compatibility?: DocsAgentSkillsCompatibilityPolicy;
+  /** Diagnose scripts without dependency and validation guidance. @default true */
+  checkScripts?: boolean;
 }
 
 /** Concise array shorthand for `agent.skills.paths`. */
@@ -3472,6 +3510,8 @@ export interface DocsReviewRulesConfig {
   agentSurfaceDrift?: DocsReviewSeverity;
   /** Run configured agent golden tasks and report failed or unmeasured behavior. */
   goldenTasks?: DocsReviewSeverity;
+  /** Check configured Agent Skills for progressive disclosure and executable guidance. */
+  agentSkills?: DocsReviewSeverity;
 }
 
 export interface DocsReviewScoreConfig {

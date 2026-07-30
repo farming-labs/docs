@@ -29,6 +29,10 @@ import {
   extractAgentBlocks,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
+import {
+  analyzeConfiguredAgentSkillsProgressiveDisclosure,
+  type DocsAgentSkillsProgressiveDisclosureReport,
+} from "../agent-skills-progressive-disclosure.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { findDocsAudienceMdxIssues } from "../audience.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
@@ -261,6 +265,24 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
     rootDir,
     contentDir,
   });
+  let skillDisclosure: DocsAgentSkillsProgressiveDisclosureReport | undefined;
+  let skillDisclosureError: string | undefined;
+  if (config?.agent?.skills) {
+    try {
+      skillDisclosure = analyzeConfiguredAgentSkillsProgressiveDisclosure(config.agent.skills, {
+        rootDir,
+      });
+    } catch (error) {
+      skillDisclosureError = error instanceof Error ? error.message : String(error);
+    }
+  }
+  const relevantSkillFiles = selectReviewSkillFiles({
+    rootDir,
+    configPath: path.relative(rootDir, configPath),
+    changedFiles,
+    report: skillDisclosure,
+  });
+  const reviewedFiles = [...new Set([...relevantFiles, ...relevantSkillFiles])].sort();
   const mcpSource = createFilesystemDocsMcpSource({
     rootDir,
     entry,
@@ -280,6 +302,37 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
     files: relevantFiles,
     review,
   });
+  if (skillDisclosureError) {
+    pushFinding(findings, review, {
+      rule: "agentSkills",
+      code: "agent-skills-analysis-failed",
+      severity: "error",
+      file: toPosixPath(path.relative(rootDir, configPath)),
+      line: 1,
+      message: `Configured Agent Skills could not be analyzed: ${skillDisclosureError}`,
+    });
+  }
+  if (skillDisclosure) {
+    const relevantSkillSet = new Set(relevantSkillFiles);
+    for (const issue of skillDisclosure.issues) {
+      const file = toPosixPath(path.relative(rootDir, issue.filePath));
+      const skillFile = toPosixPath(path.relative(rootDir, issue.skillPath));
+      if (!relevantSkillSet.has(file) && !relevantSkillSet.has(skillFile)) continue;
+      pushFinding(findings, review, {
+        rule: "agentSkills",
+        code: issue.code,
+        severity:
+          issue.severity === "error"
+            ? "error"
+            : issue.severity === "warning"
+              ? "warn"
+              : "suggestion",
+        file,
+        line: issue.line,
+        message: issue.message,
+      });
+    }
+  }
   const relevantSet = new Set(relevantFiles);
   for (const issue of usefulness.findings) {
     if (!relevantSet.has(issue.file)) continue;
@@ -442,7 +495,7 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
     score,
     threshold: review.score.threshold,
     mode,
-    reviewedFiles: relevantFiles,
+    reviewedFiles,
     changedFiles,
     findings,
     usefulness: usefulness.metrics,
@@ -796,7 +849,7 @@ function printReviewReport(report: DocsReviewMeasuredReport) {
   console.log(`Threshold: ${report.threshold}`);
   console.log(`Mode: ${modeLabel}`);
   console.log(`Changed files: ${report.changedFiles.length}`);
-  console.log(`Reviewed docs files: ${report.reviewedFiles.length}`);
+  console.log(`Reviewed docs and skill files: ${report.reviewedFiles.length}`);
   console.log(
     `Findings: ${counts.error} error${counts.error === 1 ? "" : "s"}, ${counts.warn} warning${counts.warn === 1 ? "" : "s"}, ${counts.suggestion} suggestion${counts.suggestion === 1 ? "" : "s"}`,
   );
@@ -902,6 +955,40 @@ function selectReviewFiles(options: {
   return Array.from(selected).sort();
 }
 
+function selectReviewSkillFiles(options: {
+  rootDir: string;
+  configPath: string;
+  changedFiles: string[];
+  report: DocsAgentSkillsProgressiveDisclosureReport | undefined;
+}): string[] {
+  if (!options.report) return [];
+  const normalizedConfigPath = toPosixPath(options.configPath);
+  const configChanged = options.changedFiles.includes(normalizedConfigPath);
+  const changed = new Set(options.changedFiles.map(toPosixPath));
+  const selected = new Set<string>();
+
+  for (const skill of options.report.skills) {
+    const skillPath = toPosixPath(path.relative(options.rootDir, skill.skillPath));
+    const skillDir = `${toPosixPath(path.dirname(skillPath)).replace(/\/+$/u, "")}/`;
+    const skillChanged =
+      configChanged ||
+      changed.has(skillPath) ||
+      [...changed].some((file) => file.startsWith(skillDir));
+    if (!skillChanged) continue;
+
+    selected.add(skillPath);
+    for (const file of changed) {
+      if (file.startsWith(skillDir)) selected.add(file);
+    }
+    for (const issue of options.report.issues) {
+      if (issue.skillPath !== skill.skillPath) continue;
+      selected.add(toPosixPath(path.relative(options.rootDir, issue.filePath)));
+    }
+  }
+
+  return [...selected].sort();
+}
+
 function getChangedFiles(rootDir: string, options: ReviewOptions): string[] {
   const explicitRange =
     options.base && options.head ? `${options.base}...${options.head}` : undefined;
@@ -915,14 +1002,18 @@ function getChangedFiles(rootDir: string, options: ReviewOptions): string[] {
 
   for (const range of ranges) {
     try {
-      const args = ["diff", "--relative", "--name-only", "--diff-filter=ACMRTUXB"];
+      const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+        cwd: rootDir,
+        encoding: "utf-8",
+      }).trim();
+      const args = ["diff", "--name-only", "--diff-filter=ACMRTUXB"];
       if (range) args.push(range);
-      const output = execFileSync("git", args, { cwd: rootDir, encoding: "utf-8" });
+      const output = execFileSync("git", args, { cwd: repoRoot, encoding: "utf-8" });
       const files = output
         .split(/\r?\n/)
         .map((file) => file.trim())
         .filter(Boolean)
-        .map(toPosixPath);
+        .map((file) => toPosixPath(path.relative(rootDir, path.resolve(repoRoot, file))));
       if (files.length > 0 || range === undefined) return files;
     } catch {
       // try the next range

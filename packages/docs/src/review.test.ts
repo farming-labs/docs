@@ -7,10 +7,12 @@ import {
   DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW_PATH,
   DEFAULT_DOCS_REVIEW_WORKFLOW_PATH,
   LOCAL_DOCS_REVIEW_REUSABLE_WORKFLOW,
+  buildDocsReviewWorkflowPathFilters,
   ensureDocsReviewWorkflow,
   readDocsReviewConfigFromSource,
   resolveDocsReviewConfig,
 } from "./review.js";
+import type { DocsConfig } from "./types.js";
 
 describe("docs review helpers", () => {
   let tmpDir: string;
@@ -37,6 +39,7 @@ describe("docs review helpers", () => {
     expect(review.score.threshold).toBe(80);
     expect(review.rules.brokenLinks).toBe("error");
     expect(review.rules.agentContext).toBe("warn");
+    expect(review.rules.agentSkills).toBe("warn");
   });
 
   it("reads review config from TSX source without evaluating the module", () => {
@@ -100,6 +103,25 @@ describe("docs review helpers", () => {
     expect(workflow).toContain('      pnpm-version: "10"');
     expect(workflow).toContain("\n    permissions:\n      contents: read");
     expect(workflow).not.toContain("\n      permissions:");
+  });
+
+  it("includes configured Agent Skill collections outside a nested docs app", () => {
+    mkdirSync(join(tmpDir, ".git"), { recursive: true });
+    mkdirSync(join(tmpDir, "website"), { recursive: true });
+    mkdirSync(join(tmpDir, "skills", "farming-labs"), { recursive: true });
+
+    const filters = buildDocsReviewWorkflowPathFilters({
+      rootDir: join(tmpDir, "website"),
+      repoRoot: tmpDir,
+      configPath: "docs.config.ts",
+      config: {
+        entry: "docs",
+        agent: { skills: "../skills/farming-labs" },
+      } as DocsConfig,
+      configContent: "export default { entry: 'docs' };\n",
+    });
+
+    expect(filters).toContain("skills/farming-labs/**");
   });
 
   it("builds the local docs CLI before review when the repo contains the workspace package", () => {
