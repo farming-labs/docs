@@ -1369,7 +1369,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       if (!searchError) throw error;
       return Response.json({ error: searchError }, { status: 400 });
     }
-    const { filters, structured, facets, facet, cursor, limit } = searchRequest;
+    const { filters, structured, explain, facets, facet, cursor, limit } = searchRequest;
     if (!query && !structured && !facets) {
       return new Response("[]", {
         headers: { "Content-Type": "application/json" },
@@ -1383,6 +1383,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       }),
       audience,
       filters,
+      explain,
       locale: ctx.locale,
       pathname: url.searchParams.get("pathname") ?? undefined,
       siteTitle: llmsTitle,

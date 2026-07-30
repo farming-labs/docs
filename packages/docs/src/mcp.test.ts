@@ -4996,6 +4996,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     const rootDir = createTempDocsProject();
     const seenAudiences: string[] = [];
     const seenFilters: unknown[] = [];
+    const seenExplanations: Array<boolean | undefined> = [];
     const source = createFilesystemDocsMcpSource({
       rootDir,
       entry: "docs",
@@ -5005,6 +5006,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
     const search: DocsSearchAdapter["search"] = async (query, context) => {
       seenAudiences.push(`${query.audience}:${context.audience}`);
       seenFilters.push(query.filters);
+      seenExplanations.push(query.explain);
       const installationPage = context.pages.find((page) => page.url === "/docs/installation");
       expect(installationPage?.content).toContain("Run pnpm install.");
       expect(installationPage?.content).not.toContain("--frozen-lockfile");
@@ -5111,13 +5113,22 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
           format?: string;
           filters?: Record<string, string[]>;
           resultCount?: number;
-          results?: Array<{ url?: string }>;
+          results?: Array<{
+            url?: string;
+            explanation?: {
+              format?: string;
+              rankingStrategy?: string;
+              selectedScope?: { framework?: string[] };
+              filterDecisions?: Array<{ field?: string; outcome?: string }>;
+            };
+          }>;
           warnings?: unknown[];
         };
       };
     }>(
       await callMcpTool(handlers, "search_docs", {
         query: "install",
+        explain: true,
         framework: "Next.js",
         package: ["@FARMING-LABS/NEXT"],
       }),
@@ -5137,6 +5148,14 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         (result) => result.url?.split("#", 1)[0] === "/docs/installation",
       ),
     ).toBe(true);
+    expect(scopedSearchPayload.result?.structuredContent?.results?.[0]?.explanation).toMatchObject({
+      format: "docs-search-explanation.v1",
+      rankingStrategy: "provider",
+      selectedScope: { framework: ["nextjs"] },
+      filterDecisions: expect.arrayContaining([
+        expect.objectContaining({ field: "framework", outcome: "matched" }),
+      ]),
+    });
 
     const facetsPayload = await parseMcpPayload<{
       result?: {
@@ -5176,6 +5195,7 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         package: ["@farming-labs/next"],
       },
     ]);
+    expect(seenExplanations).toEqual([undefined, undefined, true]);
   });
 
   it("continues large search facets with an opaque field-bound cursor", async () => {

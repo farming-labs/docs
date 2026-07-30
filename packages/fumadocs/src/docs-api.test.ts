@@ -632,7 +632,7 @@ Shared cursor pagination marker for beta.
       total: number;
       hasMore: boolean;
       nextCursor?: string;
-      results: Array<{ id: string }>;
+      results: Array<{ id: string; explanation?: unknown }>;
     };
     expect(firstResponse.status).toBe(200);
     expect(first).toMatchObject({
@@ -642,16 +642,21 @@ Shared cursor pagination marker for beta.
       results: [expect.objectContaining({ id: expect.any(String) })],
     });
     expect(first.nextCursor).toEqual(expect.any(String));
+    expect(first.results[0]?.explanation).toBeUndefined();
 
     const nextUrl = new URL(firstUrl);
     nextUrl.searchParams.set("cursor", first.nextCursor!);
+    nextUrl.searchParams.set("explain", "true");
     const nextResponse = await GET(new Request(nextUrl));
     const next = (await nextResponse.json()) as {
       resultCount: number;
       total: number;
       hasMore: boolean;
       nextCursor?: string;
-      results: Array<{ id: string }>;
+      results: Array<{
+        id: string;
+        explanation?: { format?: string; rank?: number; rankingStrategy?: string };
+      }>;
     };
     expect(nextResponse.status).toBe(200);
     expect(next).toMatchObject({
@@ -662,6 +667,11 @@ Shared cursor pagination marker for beta.
     });
     expect(next.nextCursor).toBeUndefined();
     expect(next.results[0]?.id).not.toBe(first.results[0]?.id);
+    expect(next.results[0]?.explanation).toMatchObject({
+      format: "docs-search-explanation.v1",
+      rank: 2,
+      rankingStrategy: "lexical",
+    });
     expect(
       analyticsEvents
         .filter((event) => event.type === "api_search")

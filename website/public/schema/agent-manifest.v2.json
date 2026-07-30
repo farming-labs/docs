@@ -760,6 +760,9 @@
         "structuredAgentEndpoint": {
           "$ref": "#/$defs/route"
         },
+        "explainedAgentEndpoint": {
+          "$ref": "#/$defs/route"
+        },
         "facetsEndpoint": {
           "$ref": "#/$defs/route"
         },
@@ -803,6 +806,18 @@
         },
         "responseFormat": {
           "const": "docs-search.v1"
+        },
+        "explainParam": {
+          "const": "explain"
+        },
+        "explainValue": {
+          "const": "true"
+        },
+        "explanationField": {
+          "const": "explanation"
+        },
+        "explanationFormat": {
+          "const": "docs-search-explanation.v1"
         },
         "facetsResponseFormat": {
           "const": "docs-search-facets.v1"
@@ -874,6 +889,37 @@
           "filterParams",
           "repeatedFilterParams",
           "warningsField"
+        ],
+        "explainedAgentEndpoint": [
+          "structuredAgentEndpoint",
+          "explainParam",
+          "explainValue",
+          "explanationField",
+          "explanationFormat"
+        ],
+        "explainParam": [
+          "explainedAgentEndpoint",
+          "explainValue",
+          "explanationField",
+          "explanationFormat"
+        ],
+        "explainValue": [
+          "explainedAgentEndpoint",
+          "explainParam",
+          "explanationField",
+          "explanationFormat"
+        ],
+        "explanationField": [
+          "explainedAgentEndpoint",
+          "explainParam",
+          "explainValue",
+          "explanationFormat"
+        ],
+        "explanationFormat": [
+          "explainedAgentEndpoint",
+          "explainParam",
+          "explainValue",
+          "explanationField"
         ],
         "responseParam": [
           "structuredAgentEndpoint",

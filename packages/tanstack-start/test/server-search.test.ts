@@ -78,7 +78,11 @@ describe("createDocsServer structured search provenance", () => {
     const legacy = await server.GET({
       request: new Request("https://preview.example/api/docs?query=provenance"),
     });
-    expect(await legacy.json()).toEqual(expect.any(Array));
+    const legacyPayload = await legacy.json();
+    expect(legacyPayload).toEqual(expect.any(Array));
+    expect(legacyPayload.every((result: { explanation?: unknown }) => !result.explanation)).toBe(
+      true,
+    );
 
     const structured = await server.GET({
       request: new Request("https://preview.example/api/docs?query=provenance&response=structured"),
@@ -103,6 +107,23 @@ describe("createDocsServer structured search provenance", () => {
         }),
       ]),
     );
+    expect(payload.results.every((result: { explanation?: unknown }) => !result.explanation)).toBe(
+      true,
+    );
+
+    const explained = await server.GET({
+      request: new Request(
+        "https://preview.example/api/docs?query=provenance&response=structured&explain=true",
+      ),
+    });
+    const explainedPayload = await explained.json();
+    expect(explainedPayload.results[0]?.explanation).toMatchObject({
+      format: "docs-search-explanation.v1",
+      rank: 1,
+      rankingStrategy: "lexical",
+      selectedScope: expect.objectContaining({ framework: ["tanstackstart"] }),
+      rankingReasons: expect.any(Array),
+    });
 
     const blankLegacy = await server.GET({
       request: new Request("https://preview.example/api/docs?query=%20"),

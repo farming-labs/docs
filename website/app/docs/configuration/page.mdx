@@ -617,6 +617,36 @@ default and searches shared plus human-only content. Use the exact lowercase
   the caller. Never place secrets or private data in audience-specific docs content.
 </Callout>
 
+### Explain retrieval decisions
+
+Use the exact lowercase `explain=true` opt-in when an agent needs to understand why a result was
+selected:
+
+```text title="HTTP"
+GET /api/docs?query=deploy&audience=agent&response=structured&explain=true
+```
+
+Each result then includes a bounded `explanation` with:
+
+- matched query terms and their title, section, description, content, or URL fields
+- the final provenance scope plus framework, version, package, and tag filter decisions
+- unresolved or unverifiable ambiguity, or the filter that resolved it
+- the one-based rank, ranking strategy, and concrete ranking reasons
+
+The default and `explain=false` omit this field, including from legacy array responses. For
+Typesense, Algolia, MCP, and custom adapters, the explanation identifies provider-owned ordering
+without claiming access to private provider ranking internals.
+
+The built-in MCP tool exposes the same behavior:
+
+```json title="search_docs arguments"
+{
+  "query": "deploy",
+  "audience": "agent",
+  "explain": true
+}
+```
+
 Use an object when you want to switch providers or tune indexing behavior:
 
 ### Simple search
