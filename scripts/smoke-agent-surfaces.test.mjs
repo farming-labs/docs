@@ -310,6 +310,8 @@ function createFixtureFetch(options = {}) {
       accept: requestHeaders.get("accept"),
       acceptEncoding: requestHeaders.get("accept-encoding"),
       ifNoneMatch: requestHeaders.get("if-none-match"),
+      mcpMethod: requestHeaders.get("mcp-method"),
+      mcpProtocolVersion: requestHeaders.get("mcp-protocol-version"),
       method,
       pathname: url.pathname,
       search: url.search,
@@ -456,11 +458,29 @@ function createFixtureFetch(options = {}) {
       url.pathname === "/.well-known/mcp" ||
       url.pathname === "/api/docs/mcp"
     ) {
+      const payload = JSON.parse(init.body);
+      if (payload.method === "server/discover") {
+        return jsonResponse(method, {
+          jsonrpc: "2.0",
+          id: payload.id,
+          result: {
+            supportedVersions: ["2026-07-28"],
+            capabilities: { resources: {}, tools: {} },
+            resultType: "complete",
+            _meta: {
+              "io.modelcontextprotocol/serverInfo": {
+                name: "Fixture docs",
+                version: "1.0.0",
+              },
+            },
+          },
+        });
+      }
       return jsonResponse(method, {
         jsonrpc: "2.0",
-        id: 1,
+        id: payload.id,
         result: {
-          protocolVersion: "2025-06-18",
+          protocolVersion: "2025-11-25",
           capabilities: {},
           serverInfo: { name: "Fixture docs", version: "1.0.0" },
         },
@@ -625,6 +645,22 @@ test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", asy
     fixture.calls.some((call) => call.method === "HEAD" && call.pathname === API_CATALOG_ROUTE),
   );
   assert(fixture.calls.some((call) => call.method === "POST" && call.pathname === "/mcp"));
+  assert(
+    fixture.calls.some(
+      (call) =>
+        call.pathname === "/mcp" &&
+        call.mcpProtocolVersion === "2025-11-25" &&
+        call.mcpMethod === null,
+    ),
+  );
+  assert(
+    fixture.calls.some(
+      (call) =>
+        call.pathname === "/mcp" &&
+        call.mcpProtocolVersion === "2026-07-28" &&
+        call.mcpMethod === "server/discover",
+    ),
+  );
   assert(
     fixture.calls.some((call) => call.pathname === "/.well-known/agent-skills/portable/SKILL.md"),
   );

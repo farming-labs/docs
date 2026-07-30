@@ -1,0 +1,122 @@
+name: MCP official conformance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/mcp-conformance.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "scripts/mcp-conformance-server.mjs"
+      - "scripts/mcp-conformance-expected-failures.yml"
+      - "scripts/mcp-conformance.test.mjs"
+      - "scripts/run-mcp-conformance.mjs"
+      - "packages/docs/**"
+      - "packages/fumadocs/**"
+      - "packages/next/**"
+      - "packages/tanstack-start/**"
+      - "packages/nuxt/**"
+      - "packages/astro/**"
+      - "packages/svelte/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/mcp-conformance.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "scripts/mcp-conformance-server.mjs"
+      - "scripts/mcp-conformance-expected-failures.yml"
+      - "scripts/mcp-conformance.test.mjs"
+      - "scripts/run-mcp-conformance.mjs"
+      - "packages/docs/**"
+      - "packages/fumadocs/**"
+      - "packages/next/**"
+      - "packages/tanstack-start/**"
+      - "packages/nuxt/**"
+      - "packages/astro/**"
+      - "packages/svelte/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: ${{ matrix.adapter }} / MCP ${{ matrix.protocol-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter:
+          - next
+          - tanstack-start
+          - nuxt
+          - astro
+          - svelte
+        protocol-version:
+          - "2025-11-25"
+          - "2026-07-28"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify the conformance matrix definition
+        run: pnpm test:mcp-conformance-runner
+
+      - name: Build MCP adapter dependencies
+        run: |
+          pnpm --filter @farming-labs/docs build
+          pnpm --filter @farming-labs/theme build
+          pnpm --filter "@farming-labs/${{ matrix.adapter }}" build
+
+      - name: Start ${{ matrix.adapter }} MCP fixture
+        env:
+          DOCS_MCP_CONFORMANCE_ADAPTER: ${{ matrix.adapter }}
+        run: |
+          pnpm start:mcp-conformance-server --adapter "$DOCS_MCP_CONFORMANCE_ADAPTER" --port 3100 > mcp-conformance-server.log 2>&1 &
+          echo "DOCS_MCP_CONFORMANCE_SERVER_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3100/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat mcp-conformance-server.log
+          exit 1
+
+      - name: Run official MCP conformance scenarios
+        env:
+          DOCS_MCP_CONFORMANCE_ADAPTER: ${{ matrix.adapter }}
+          DOCS_MCP_CONFORMANCE_PROTOCOL_VERSION: ${{ matrix.protocol-version }}
+          DOCS_MCP_CONFORMANCE_URL: http://127.0.0.1:3100/mcp
+        run: pnpm mcp:conformance
+
+      - name: Upload conformance results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-conformance-${{ matrix.adapter }}-${{ matrix.protocol-version }}
+          path: |
+            artifacts/mcp-conformance
+            mcp-conformance-server.log
+          if-no-files-found: warn
+
+      - name: Stop MCP fixture
+        if: always()
+        run: |
+          if [ -n "${DOCS_MCP_CONFORMANCE_SERVER_PID:-}" ]; then
+            kill "$DOCS_MCP_CONFORMANCE_SERVER_PID" || true
+          fi
