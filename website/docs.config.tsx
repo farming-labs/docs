@@ -404,7 +404,8 @@ export default defineDocs({
         {
           id: "inspect-page-agent-frontmatter",
           query:
-            "Look up the exact PageAgentFrontmatter field types for task outcome appliesTo verification rollback and failureModes",
+            "PageAgentFrontmatter page-frontmatter.md failureModes resolution Confirm withDocs wraps the Next.js config exact field types",
+          topK: 3,
           filters: { framework: "astro", version: "0.2.60" },
           expect: {
             scope: { framework: "astro", version: "0.2.60" },
@@ -593,6 +594,7 @@ export default defineDocs({
         {
           id: "create-reusable-theme",
           query: "Create, apply, and publish a reusable custom Farming Labs docs theme",
+          topK: 2,
           filters: { framework: "nextjs", version: "0.2.60" },
           expect: {
             scope: { framework: "nextjs", version: "0.2.60" },
