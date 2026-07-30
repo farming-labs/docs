@@ -353,13 +353,22 @@ export function analyzeAgentSurfaceDrift(
           "query={query}&audience=agent",
           "audience=agent&response=facets",
         );
+  const expectedExplainedAgentSearchEndpoint =
+    expectedStructuredAgentSearchEndpoint === null
+      ? null
+      : `${expectedStructuredAgentSearchEndpoint}&explain=true`;
   for (const [path, expected] of [
     ["search.structuredAgentEndpoint", expectedStructuredAgentSearchEndpoint],
+    ["search.explainedAgentEndpoint", expectedExplainedAgentSearchEndpoint],
     ["search.facetsEndpoint", expectedSearchFacetsEndpoint],
     ["search.responseParam", "response"],
     ["search.structuredResponseValue", "structured"],
     ["search.facetsResponseValue", "facets"],
     ["search.responseFormat", "docs-search.v1"],
+    ["search.explainParam", "explain"],
+    ["search.explainValue", "true"],
+    ["search.explanationField", "explanation"],
+    ["search.explanationFormat", "docs-search-explanation.v1"],
     ["search.facetsResponseFormat", "docs-search-facets.v1"],
     [
       "search.filterParams",

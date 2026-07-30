@@ -2419,6 +2419,10 @@ const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
   cursor: paginationCursorInputSchema,
+  explain: z
+    .boolean()
+    .describe("Include matched terms, scope decisions, ambiguity, and ranking reasons.")
+    .optional(),
   locale: z.string().trim().min(1).max(128).optional(),
   audience: z.enum(["human", "agent"]).optional(),
   framework: searchFilterValueSchema.optional(),
@@ -2825,6 +2829,70 @@ const searchWarningOutputSchema = z.object({
   pageUrls: z.array(z.string()).optional(),
   count: z.number().int().nonnegative().optional(),
 });
+const searchExplanationOutputSchema = z.object({
+  format: z.literal("docs-search-explanation.v1"),
+  rank: z.number().int().positive(),
+  rankingStrategy: z.enum(["lexical", "exact", "provider"]),
+  matchedTerms: z.array(
+    z.object({
+      term: z.string(),
+      fields: z.array(z.enum(["title", "section", "description", "content", "url"])),
+    }),
+  ),
+  matchedTermsTruncated: z.boolean(),
+  selectedScope: retrievalSourceScopeOutputSchema.nullable(),
+  filterDecisions: z.array(
+    z.object({
+      field: z.enum(["framework", "version", "package", "tags"]),
+      requestedValues: z.array(z.string()),
+      selectedValues: z.array(z.string()),
+      matchedValues: z.array(z.string()),
+      outcome: z.enum(["not_requested", "matched", "not_verifiable"]),
+    }),
+  ),
+  ambiguityResolution: z.object({
+    status: z.enum(["unambiguous", "resolved", "unresolved", "not_verifiable"]),
+    decisions: z.array(
+      z.object({
+        field: z.enum(["framework", "version", "package"]),
+        status: z.enum(["unambiguous", "resolved_by_filter", "requires_filter", "not_verifiable"]),
+        selectedValues: z.array(z.string()),
+        candidateValues: z.array(z.string()).optional(),
+        reason: z.string(),
+      }),
+    ),
+  }),
+  rankingReasons: z.array(
+    z.object({
+      code: z.enum([
+        "literal_match",
+        "title_phrase",
+        "section_phrase",
+        "title_section_phrase",
+        "url_phrase",
+        "description_phrase",
+        "content_phrase",
+        "title_terms",
+        "section_terms",
+        "description_terms",
+        "content_terms",
+        "all_terms_in_section",
+        "all_terms_in_title",
+        "all_query_terms",
+        "heading_boost",
+        "exact_page_boost",
+        "provider_order",
+        "literal_result_priority",
+        "stable_url_tiebreak",
+      ]),
+      description: z.string(),
+      contribution: z.number().optional(),
+    }),
+  ),
+});
+const explainedSearchResultOutputSchema = searchResultOutputSchema.extend({
+  explanation: searchExplanationOutputSchema.optional(),
+});
 const searchDocsOutputSchema = z.object({
   format: z.literal("docs-search.v1"),
   query: z.string(),
@@ -2832,7 +2900,7 @@ const searchDocsOutputSchema = z.object({
   filters: searchFiltersOutputSchema,
   indexGeneration: retrievalSourceDigestOutputSchema,
   ...paginationOutputShape,
-  results: z.array(searchResultOutputSchema),
+  results: z.array(explainedSearchResultOutputSchema),
   warnings: z.array(searchWarningOutputSchema),
 });
 const searchFacetOutputSchema = z.object({
@@ -4707,6 +4775,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         query,
         limit,
         cursor,
+        explain,
         locale,
         audience,
         framework,
@@ -4739,6 +4808,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             queryLength: query.length,
             limit: resolvedLimit,
             hasCursor: cursor !== undefined,
+            explain: explain === true,
             locale,
             audience: resolvedAudience,
             filterFields: Object.entries(filters)
@@ -4770,6 +4840,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             syncBaseUrl: options.source.baseUrl ?? null,
             limit: resolvedLimit,
             cursor,
+            explain,
           });
           const elapsed = durationMs(startedAt);
           await emitDocsAnalyticsEvent(options.analytics, {

@@ -4772,7 +4772,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         if (!searchError) throw error;
         return Response.json({ error: searchError }, { status: 400 });
       }
-      const { filters, structured, facets, facet, cursor, limit } = searchRequest;
+      const { filters, structured, explain, facets, facet, cursor, limit } = searchRequest;
       if (!query && !structured && !facets) {
         return new Response("[]", {
           headers: { "Content-Type": "application/json" },
@@ -4786,6 +4786,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         }),
         audience,
         filters,
+        explain,
         locale: ctx.locale,
         pathname: url.searchParams.get("pathname") ?? undefined,
         siteTitle: llmsConfig.siteTitle ?? "Documentation",

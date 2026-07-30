@@ -9,12 +9,15 @@ import type {
   DocsSearchAdapterPage,
   DocsSearchConfig,
   DocsSearchDocument,
+  DocsSearchExplanation,
   DocsSearchFacet,
   DocsSearchFilterField,
   DocsSearchFilterInput,
   DocsSearchFilters,
   DocsSearchFacetsResponse,
   DocsSearchQuery,
+  DocsSearchRankingReason,
+  DocsSearchRankingStrategy,
   DocsSearchRequest,
   DocsSearchResult,
   DocsSearchSourcePage,
@@ -86,6 +89,8 @@ const MAX_SEARCH_WARNINGS = 16;
 const MAX_SEARCH_WARNING_VALUES = 16;
 const MAX_SEARCH_WARNING_PAGE_URLS = 8;
 const MAX_SEARCH_FACET_VALUES = 100;
+const MAX_SEARCH_EXPLANATION_TERMS = 32;
+const MAX_SEARCH_EXPLANATION_TERM_CHARS = 128;
 const RETRIEVAL_INDEX_FORMAT = "docs-retrieval-index.v1";
 const MAX_RETRIEVAL_SOURCE_URL_CHARS = 4_096;
 const MAX_RETRIEVAL_SOURCE_VALUE_CHARS = 256;
@@ -246,6 +251,11 @@ export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSea
   const response = searchParams.get("response");
   const structured = response === "structured";
   const facets = response === "facets";
+  const rawExplain = searchParams.get("explain");
+  if (rawExplain !== null && rawExplain !== "true" && rawExplain !== "false") {
+    throw new DocsSearchRequestError("Search explain must be `true` or `false`.");
+  }
+  const explain = rawExplain === "true";
   const rawFacet = searchParams.get("facet");
   let facet: DocsSearchFilterField | undefined;
   if (rawFacet !== null) {
@@ -288,6 +298,7 @@ export function resolveDocsSearchRequest(searchParams: URLSearchParams): DocsSea
   return {
     filters: resolveDocsSearchFilters(searchParams),
     structured,
+    ...(explain ? { explain: true } : {}),
     ...(facets ? { facets: true } : {}),
     ...(facet !== undefined ? { facet } : {}),
     ...(cursor !== undefined ? { cursor } : {}),
@@ -2298,9 +2309,27 @@ export function buildDocsSearchDocuments(
   });
 }
 
-function scoreDocument(query: string, document: DocsSearchDocument): number {
+interface DocsSearchDocumentAnalysis {
+  score: number;
+  matchedTerms: DocsSearchExplanation["matchedTerms"];
+  matchedTermsTruncated: boolean;
+  rankingReasons: DocsSearchRankingReason[];
+}
+
+function analyzeDocsSearchDocument(
+  query: string,
+  document: DocsSearchDocument,
+  explain = false,
+): DocsSearchDocumentAnalysis {
   const q = normalizeSearchPhrase(query);
-  if (!q) return 0;
+  if (!q) {
+    return {
+      score: 0,
+      matchedTerms: [],
+      matchedTermsTruncated: false,
+      rankingReasons: [],
+    };
+  }
 
   const words = tokenizeSearchQuery(q);
   const title = normalizeSearchPhrase(document.title);
@@ -2317,6 +2346,22 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
   const sectionTokens = tokenizeSearchQuery(section);
 
   let score = 0;
+  const reasonContributions = explain
+    ? new Map<DocsSearchRankingReason["code"], { contribution: number; description: string }>()
+    : undefined;
+  const addScore = (
+    contribution: number,
+    code: DocsSearchRankingReason["code"],
+    description: string,
+  ) => {
+    score += contribution;
+    if (!reasonContributions) return;
+    const current = reasonContributions.get(code);
+    reasonContributions.set(code, {
+      contribution: (current?.contribution ?? 0) + contribution,
+      description: current?.description ?? description,
+    });
+  };
   const insideLiteralPriority =
     document.type !== "page" && hasDistinctSection && isLiteralLookupQuery(q)
       ? Math.max(
@@ -2327,27 +2372,63 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
       : 0;
 
   if (insideLiteralPriority > 0) {
-    score += insideLiteralPriority * 2_250;
+    addScore(
+      insideLiteralPriority * 2_250,
+      "literal_match",
+      "A short literal lookup matched this section or its searchable text.",
+    );
   }
 
-  if (title === q) score += 1_120;
-  else if (title.startsWith(q)) score += 70;
-  else if (title.includes(q)) score += 45;
+  if (title === q) {
+    addScore(1_120, "title_phrase", "The normalized query exactly matches the page title.");
+  } else if (title.startsWith(q)) {
+    addScore(70, "title_phrase", "The page title starts with the normalized query.");
+  } else if (title.includes(q)) {
+    addScore(45, "title_phrase", "The page title contains the normalized query.");
+  }
 
   if (hasDistinctSection) {
-    if (section === q) score += 1_080;
-    else if (section.startsWith(q)) score += 55;
-    else if (section.includes(q)) score += 30;
+    if (section === q) {
+      addScore(1_080, "section_phrase", "The normalized query exactly matches the section title.");
+    } else if (section.startsWith(q)) {
+      addScore(55, "section_phrase", "The section title starts with the normalized query.");
+    } else if (section.includes(q)) {
+      addScore(30, "section_phrase", "The section title contains the normalized query.");
+    }
 
-    if (titleSection === q) score += 1_000;
-    else if (titleSection.startsWith(q)) score += 50;
-    else if (titleSection.includes(q)) score += 28;
+    if (titleSection === q) {
+      addScore(
+        1_000,
+        "title_section_phrase",
+        "The normalized query exactly matches the combined page and section title.",
+      );
+    } else if (titleSection.startsWith(q)) {
+      addScore(
+        50,
+        "title_section_phrase",
+        "The combined page and section title starts with the normalized query.",
+      );
+    } else if (titleSection.includes(q)) {
+      addScore(
+        28,
+        "title_section_phrase",
+        "The combined page and section title contains the normalized query.",
+      );
+    }
   }
 
-  if (urlSegments.includes(q)) score += 950;
-  if (url.includes(q)) score += 12;
-  if (description.includes(q)) score += 18;
-  if (content.includes(q)) score += 12;
+  if (urlSegments.includes(q)) {
+    addScore(950, "url_phrase", "The normalized query exactly matches a URL segment.");
+  }
+  if (url.includes(q)) {
+    addScore(12, "url_phrase", "The result URL contains the normalized query.");
+  }
+  if (description.includes(q)) {
+    addScore(18, "description_phrase", "The page description contains the normalized query.");
+  }
+  if (content.includes(q)) {
+    addScore(12, "content_phrase", "The searchable content contains the normalized query.");
+  }
 
   let matchedWords = 0;
 
@@ -2355,36 +2436,36 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
     let matched = false;
 
     if (title === word) {
-      score += 28;
+      addScore(28, "title_terms", "Normalized query terms match the page title.");
       matched = true;
     } else if (title.startsWith(word)) {
-      score += 20;
+      addScore(20, "title_terms", "Normalized query terms match the page title.");
       matched = true;
     } else if (title.includes(word)) {
-      score += 12;
+      addScore(12, "title_terms", "Normalized query terms match the page title.");
       matched = true;
     }
 
     if (hasDistinctSection) {
       if (section === word) {
-        score += 22;
+        addScore(22, "section_terms", "Normalized query terms match the section title.");
         matched = true;
       } else if (section.startsWith(word)) {
-        score += 16;
+        addScore(16, "section_terms", "Normalized query terms match the section title.");
         matched = true;
       } else if (section.includes(word)) {
-        score += 10;
+        addScore(10, "section_terms", "Normalized query terms match the section title.");
         matched = true;
       }
     }
 
     if (description.includes(word)) {
-      score += 6;
+      addScore(6, "description_terms", "Normalized query terms match the page description.");
       matched = true;
     }
 
     if (content.includes(word)) {
-      score += 4;
+      addScore(4, "content_terms", "Normalized query terms match the searchable content.");
       matched = true;
     }
 
@@ -2397,21 +2478,304 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
       sectionTokens.length > 0 &&
       words.every((word) => sectionTokens.includes(word))
     ) {
-      score += 30;
+      addScore(
+        30,
+        "all_terms_in_section",
+        "Every normalized query term occurs in the section title.",
+      );
     }
     if (
       document.type === "page" &&
       titleTokens.length > 0 &&
       words.every((word) => titleTokens.includes(word))
     ) {
-      score += 24;
+      addScore(24, "all_terms_in_title", "Every normalized query term occurs in the page title.");
     }
   }
 
-  if (matchedWords === words.length && words.length > 1) score += 20;
-  if (score > 0 && document.type === "heading" && hasDistinctSection) score += 6;
+  if (matchedWords === words.length && words.length > 1) {
+    addScore(20, "all_query_terms", "Every normalized query term matched a searchable field.");
+  }
+  if (score > 0 && document.type === "heading" && hasDistinctSection) {
+    addScore(6, "heading_boost", "A distinct matching section is preferred over a page-only hit.");
+  }
 
-  return score;
+  const matchedTerms: DocsSearchExplanation["matchedTerms"] = [];
+  let matchedTermCount = 0;
+  let matchedTermCharactersTruncated = false;
+  if (explain) {
+    const candidateTerms = words.length > 0 ? words : [q];
+    const fields = [
+      ["title", title],
+      ["section", section],
+      ["description", description],
+      ["content", content],
+      ["url", url],
+    ] as const;
+    for (const term of candidateTerms) {
+      const matchingFields = fields.flatMap(([field, value]) =>
+        value.includes(term) ? [field] : [],
+      );
+      if (matchingFields.length === 0) continue;
+      matchedTermCount += 1;
+      if (matchedTerms.length < MAX_SEARCH_EXPLANATION_TERMS) {
+        matchedTermCharactersTruncated ||= term.length > MAX_SEARCH_EXPLANATION_TERM_CHARS;
+        matchedTerms.push({
+          term: term.slice(0, MAX_SEARCH_EXPLANATION_TERM_CHARS),
+          fields: matchingFields,
+        });
+      }
+    }
+  }
+
+  return {
+    score,
+    matchedTerms,
+    matchedTermsTruncated: matchedTermCount > matchedTerms.length || matchedTermCharactersTruncated,
+    rankingReasons: reasonContributions
+      ? [...reasonContributions.entries()]
+          .map(([code, value]) => ({ code, ...value }))
+          .sort(
+            (left, right) =>
+              right.contribution - left.contribution || left.code.localeCompare(right.code),
+          )
+      : [],
+  };
+}
+
+function scoreDocument(query: string, document: DocsSearchDocument): number {
+  return analyzeDocsSearchDocument(query, document).score;
+}
+
+function getDocsSearchExplanationResultIdentity(result: DocsSearchResult): string {
+  return JSON.stringify([result.id, result.url, result.section ?? null]);
+}
+
+function getDocsSearchExplanationDocumentIdentity(document: DocsSearchDocument): string {
+  return getSearchResultKey({
+    id: document.id,
+    url: document.url,
+    content: document.title,
+    type: document.type,
+    section: document.section,
+  });
+}
+
+function resolveDocsSearchExplanationDocument(
+  result: DocsSearchResult,
+  documentsById: ReadonlyMap<string, DocsSearchDocument>,
+  documentsByResultKey: ReadonlyMap<string, DocsSearchDocument>,
+): DocsSearchDocument {
+  const local =
+    documentsById.get(result.id) ?? documentsByResultKey.get(getSearchResultKey(result));
+  if (local) return local;
+
+  return {
+    id: result.id,
+    url: result.url,
+    title: inferResultTitle(result),
+    content: result.content,
+    description: result.description,
+    section: result.section,
+    type: result.type,
+  };
+}
+
+function buildDocsSearchFilterDecisions(
+  filters: DocsSearchFilters,
+  scope: DocsRetrievalSourceScope | undefined,
+): DocsSearchExplanation["filterDecisions"] {
+  return SEARCH_FILTER_FIELDS.map((field) => {
+    const requestedValues = filters[field] ?? [];
+    const selectedValues = scope?.[field] ?? [];
+    if (requestedValues.length === 0) {
+      return {
+        field,
+        requestedValues: [],
+        selectedValues: [...selectedValues],
+        matchedValues: [],
+        outcome: "not_requested" as const,
+      };
+    }
+
+    const matchedValues = requestedValues.filter((requested) =>
+      selectedValues.some((selected) => docsSearchScopeValueMatches(field, requested, selected)),
+    );
+    const versionGroupsMatch =
+      field !== "version" ||
+      !scope?.versionGroups?.length ||
+      agentVersionConstraintGroupsOverlap([requestedValues, ...scope.versionGroups]);
+    const verifiable =
+      Boolean(scope) &&
+      !scope?.conflicts?.includes(field) &&
+      !scope?.truncated?.includes(field) &&
+      selectedValues.length > 0;
+
+    return {
+      field,
+      requestedValues: [...requestedValues],
+      selectedValues: [...selectedValues],
+      matchedValues,
+      outcome:
+        verifiable && matchedValues.length > 0 && versionGroupsMatch
+          ? ("matched" as const)
+          : ("not_verifiable" as const),
+    };
+  });
+}
+
+function buildDocsSearchAmbiguityResolution(
+  filters: DocsSearchFilters,
+  scope: DocsRetrievalSourceScope | undefined,
+  warnings: readonly DocsSearchWarning[],
+  unverifiableFields: ReadonlySet<(typeof SEARCH_AMBIGUITY_FIELDS)[number]>,
+): DocsSearchExplanation["ambiguityResolution"] {
+  const decisions = SEARCH_AMBIGUITY_FIELDS.map((field) => {
+    const selectedValues = [...(scope?.[field] ?? [])];
+    const requestedValues = filters[field];
+    if (requestedValues?.length) {
+      return {
+        field,
+        status: "resolved_by_filter" as const,
+        selectedValues,
+        candidateValues: [...requestedValues],
+        reason: `The explicit ${field} filter constrained the result set.`,
+      };
+    }
+
+    const warning = warnings.find(
+      (candidate) => candidate.code === "ambiguous_scope" && candidate.field === field,
+    );
+    if (warning) {
+      return {
+        field,
+        status: "requires_filter" as const,
+        selectedValues,
+        ...(warning.values ? { candidateValues: [...warning.values] } : {}),
+        reason: `Results span multiple ${field} scopes; select a ${field} filter before acting on scope-specific guidance.`,
+      };
+    }
+    const hasConflictingMetadata = warnings.some(
+      (candidate) => candidate.code === "conflicting_scope_metadata" && candidate.field === field,
+    );
+    if (selectedValues.length === 0 || unverifiableFields.has(field) || hasConflictingMetadata) {
+      return {
+        field,
+        status: "not_verifiable" as const,
+        selectedValues,
+        reason: `No trusted ${field} scope is available for this result.`,
+      };
+    }
+
+    return {
+      field,
+      status: "unambiguous" as const,
+      selectedValues,
+      reason: `The matching result set does not contain conflicting ${field} choices.`,
+    };
+  });
+  const hasUnresolved = decisions.some((decision) => decision.status === "requires_filter");
+  const isNotVerifiable = decisions.some((decision) => decision.status === "not_verifiable");
+  const hasResolved = decisions.some((decision) => decision.status === "resolved_by_filter");
+
+  return {
+    status: hasUnresolved
+      ? "unresolved"
+      : isNotVerifiable
+        ? "not_verifiable"
+        : hasResolved
+          ? "resolved"
+          : "unambiguous",
+    decisions,
+  };
+}
+
+function explainDocsSearchResults(options: {
+  results: readonly DocsSearchResult[];
+  documents: readonly DocsSearchDocument[];
+  query: string;
+  filters: DocsSearchFilters;
+  warnings: readonly DocsSearchWarning[];
+  unverifiableAmbiguityFields: ReadonlySet<(typeof SEARCH_AMBIGUITY_FIELDS)[number]>;
+  provider: string;
+  rankOffset: number;
+  resolveRankingStrategy: (result: DocsSearchResult) => DocsSearchRankingStrategy;
+}): DocsSearchResult[] {
+  const documentsById = new Map(options.documents.map((document) => [document.id, document]));
+  const documentsByResultKey = new Map(
+    options.documents.map((document) => [
+      getDocsSearchExplanationDocumentIdentity(document),
+      document,
+    ]),
+  );
+
+  return options.results.map((result, index, results) => {
+    const document = resolveDocsSearchExplanationDocument(
+      result,
+      documentsById,
+      documentsByResultKey,
+    );
+    const analysis = analyzeDocsSearchDocument(options.query, document, true);
+    const rankingStrategy = options.resolveRankingStrategy(result);
+    const rankingReasons =
+      rankingStrategy === "provider"
+        ? [
+            {
+              code: "provider_order" as const,
+              description: `The ${options.provider} search adapter supplied this result order; provider-internal ranking details are not available to the shared pipeline.`,
+            },
+          ]
+        : [...analysis.rankingReasons];
+
+    if (rankingStrategy === "exact") {
+      rankingReasons.unshift({
+        code: "exact_page_boost",
+        contribution: 2_000,
+        description: "An exact normalized page-title or URL-segment match was promoted.",
+      });
+    }
+    if (rankingStrategy === "provider" && insideLiteralResultPriority(options.query, result) > 0) {
+      rankingReasons.push({
+        code: "literal_result_priority",
+        description:
+          "The shared pipeline promoted this distinct section because it matched a short literal lookup.",
+      });
+    }
+    const resultScore = result.score;
+    const previousScore = index > 0 ? results[index - 1]?.score : undefined;
+    const nextScore = index + 1 < results.length ? results[index + 1]?.score : undefined;
+    if (
+      rankingStrategy !== "provider" &&
+      resultScore !== undefined &&
+      (resultScore === previousScore || resultScore === nextScore)
+    ) {
+      rankingReasons.push({
+        code: "stable_url_tiebreak",
+        description: "A stable URL comparison resolved an equal lexical score.",
+      });
+    }
+
+    const selectedScope = result.source?.scope;
+    return {
+      ...result,
+      explanation: {
+        format: "docs-search-explanation.v1",
+        rank: options.rankOffset + index + 1,
+        rankingStrategy,
+        matchedTerms: analysis.matchedTerms,
+        matchedTermsTruncated: analysis.matchedTermsTruncated,
+        selectedScope: selectedScope ? { ...selectedScope } : null,
+        filterDecisions: buildDocsSearchFilterDecisions(options.filters, selectedScope),
+        ambiguityResolution: buildDocsSearchAmbiguityResolution(
+          options.filters,
+          selectedScope,
+          options.warnings,
+          options.unverifiableAmbiguityFields,
+        ),
+        rankingReasons,
+      },
+    };
+  });
 }
 
 function buildSnippet(document: DocsSearchDocument, query: string): string | undefined {
@@ -3554,6 +3918,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
                 query: query.query,
                 limit: pageSize,
                 locale: query.locale,
+                ...(query.explain ? { explain: true } : {}),
                 ...(providerCursor !== undefined ? { cursor: providerCursor } : {}),
                 ...(forwardAudience ? { audience } : {}),
                 ...(query.filters?.framework ? { framework: query.filters.framework } : {}),
@@ -4162,6 +4527,8 @@ export interface PerformDocsSearchOptions {
   cursor?: string;
   /** Optional framework, version, package, and tag constraints. */
   filters?: DocsSearchFilterInput;
+  /** Include bounded explanations for the final ranked results. Defaults to false. */
+  explain?: boolean;
   /**
    * Controls provider failures. Runtime search keeps the resilient `fallback` default;
    * diagnostics can request `throw` so a broken configured provider cannot be scored as
@@ -4278,6 +4645,7 @@ async function performDocsSearchInternal(
     pathname: options.pathname,
     audience,
     ...(hasFilters ? { filters } : {}),
+    ...(options.explain ? { explain: true } : {}),
   };
   let currentIndexGeneration: Promise<string> | undefined;
   const getCurrentIndexGeneration = () => {
@@ -4306,8 +4674,42 @@ async function performDocsSearchInternal(
           });
     return hostedIndexGeneration;
   };
-  const finalizeResults = async (results: readonly DocsSearchResult[]) =>
-    enrichDocsSearchResultsWithSources({
+  let explanationWarnings: DocsSearchWarning[] | undefined;
+  const getExplanationWarnings = () => {
+    explanationWarnings ??= buildDocsSearchWarnings({
+      pages: corpusPages,
+      results: [],
+      filters,
+      query: options.query,
+      audience,
+      baseUrl: options.baseUrl,
+      completeResultSet: true,
+    });
+    return explanationWarnings;
+  };
+  let explanationUnverifiableAmbiguityFields:
+    | Set<(typeof SEARCH_AMBIGUITY_FIELDS)[number]>
+    | undefined;
+  const getExplanationUnverifiableAmbiguityFields = () => {
+    explanationUnverifiableAmbiguityFields ??= new Set(
+      SEARCH_AMBIGUITY_FIELDS.filter((field) =>
+        corpusPages.some((page) => {
+          if (scoreDocument(options.query, pageToSearchDocument(page, audience)) <= 0) return false;
+          const scope = resolveDocsSearchPageScope(page);
+          if (hasFilters && !docsSearchPageMatchesFilters(scope, filters)) return false;
+          return scope.conflicts.includes(field) || scope.declarations[field].length === 0;
+        }),
+      ),
+    );
+    return explanationUnverifiableAmbiguityFields;
+  };
+  const finalizeResults = async (
+    results: readonly DocsSearchResult[],
+    ranking:
+      | DocsSearchRankingStrategy
+      | ((result: DocsSearchResult) => DocsSearchRankingStrategy) = "lexical",
+  ) => {
+    const enriched = await enrichDocsSearchResultsWithSources({
       results,
       pages: scopedPages,
       generationPages: options.generationPages ?? options.pages,
@@ -4320,6 +4722,25 @@ async function performDocsSearchInternal(
       filters,
       requireCurrentIndexGeneration,
     });
+    if (!options.explain) {
+      return enriched.map((result) => {
+        const { explanation: _explanation, ...resultWithoutExplanation } = result;
+        return resultWithoutExplanation;
+      });
+    }
+
+    return explainDocsSearchResults({
+      results: enriched,
+      documents: getDocuments(),
+      query: options.query,
+      filters,
+      warnings: getExplanationWarnings(),
+      unverifiableAmbiguityFields: getExplanationUnverifiableAmbiguityFields(),
+      provider: search.provider,
+      rankOffset: options.offset ?? 0,
+      resolveRankingStrategy: typeof ranking === "function" ? ranking : () => ranking,
+    });
+  };
   const createLocalPage = async (): Promise<DocsSearchInternalPage> => {
     const fallback = options.paginated
       ? await createSimpleSearchAdapter().searchPage!(query, context)
@@ -4328,7 +4749,7 @@ async function performDocsSearchInternal(
       throw new DocsPaginationCursorError();
     }
     return {
-      results: await finalizeResults(fallback.results),
+      results: await finalizeResults(fallback.results, "lexical"),
       total: options.paginated ? fallback.total : fallback.results.length,
       paginationMode: "local",
     };
@@ -4416,7 +4837,7 @@ async function performDocsSearchInternal(
         throw new DocsPaginationCursorError();
       }
       return {
-        results: await finalizeResults(results),
+        results: await finalizeResults(results, "lexical"),
         total: options.paginated ? adapterPage.total : results.length,
         paginationMode: "local",
       };
@@ -4521,7 +4942,7 @@ async function performDocsSearchInternal(
         return fallBackFromProvider();
       }
       return {
-        results: await finalizeResults(safeAdapterResults),
+        results: await finalizeResults(safeAdapterResults, "provider"),
         total: adapterPage.total,
         ...(adapterPage.nextCursor !== undefined ? { nextCursor: adapterPage.nextCursor } : {}),
         paginationMode: "provider",
@@ -4534,7 +4955,7 @@ async function performDocsSearchInternal(
         query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
       );
       return {
-        results: await finalizeResults(bounded),
+        results: await finalizeResults(bounded, "provider"),
         total: bounded.length,
         paginationMode: "provider",
       };
@@ -4544,12 +4965,22 @@ async function performDocsSearchInternal(
     const simpleAudienceResults = shouldSupplementWithLocalSearch
       ? await createSimpleSearchAdapter().search(query, context)
       : [];
+    const exactPageResults = buildExactPageSearchResults(options.query, scopedPages, audience);
+    const rankingStrategyByResult = new Map<string, DocsSearchRankingStrategy>();
+    for (const [group, strategy] of [
+      [exactPageResults, "exact"],
+      [safeAdapterResults, "provider"],
+      [simpleAudienceResults, "lexical"],
+    ] as const) {
+      for (const result of group) {
+        const identity = getDocsSearchExplanationResultIdentity(result);
+        if (!rankingStrategyByResult.has(identity)) {
+          rankingStrategyByResult.set(identity, strategy);
+        }
+      }
+    }
     const combinedResults = mergeSearchResults(
-      [
-        buildExactPageSearchResults(options.query, scopedPages, audience),
-        safeAdapterResults,
-        simpleAudienceResults,
-      ],
+      [exactPageResults, safeAdapterResults, simpleAudienceResults],
       audience === "agent"
         ? (result) => getAskAIResultKey(result, options.baseUrl, options.strictExternalOrigins)
         : undefined,
@@ -4559,7 +4990,11 @@ async function performDocsSearchInternal(
       query.limit ?? search.maxResults ?? DEFAULT_SEARCH_LIMIT,
     );
     return {
-      results: await finalizeResults(bounded),
+      results: await finalizeResults(
+        bounded,
+        (result) =>
+          rankingStrategyByResult.get(getDocsSearchExplanationResultIdentity(result)) ?? "provider",
+      ),
       total: bounded.length,
       paginationMode: "provider",
     };

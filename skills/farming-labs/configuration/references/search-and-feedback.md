@@ -28,6 +28,20 @@ The shared HTTP route is audience-aware:
 
 Audience selection is public representation shaping, not authorization.
 
+Opt into retrieval explanations when an agent needs to inspect why a result was selected:
+
+```text
+GET /api/docs?query=deploy&audience=agent&response=structured&explain=true
+```
+
+`explain=true` adds a bounded `explanation` to every result with matched terms and fields, the
+selected provenance scope, filter decisions, ambiguity resolution, one-based rank, and ranking
+reasons. The default and `explain=false` omit it. Provider-backed results identify provider-owned
+ordering explicitly; the shared pipeline does not invent unavailable provider internals.
+
+The built-in MCP `search_docs` tool accepts the same opt-in as `{ "query": "deploy", "explain":
+true }`.
+
 Providers:
 
 - `simple`: zero configuration

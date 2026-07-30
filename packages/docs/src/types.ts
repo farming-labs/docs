@@ -1675,6 +1675,99 @@ export interface DocsSearchDocument {
   source?: DocsRetrievalSourceProvenance;
 }
 
+/** Search fields that can contribute lexical evidence for one result. */
+export type DocsSearchMatchField = "title" | "section" | "description" | "content" | "url";
+
+/** One normalized query term and the result fields in which it was found. */
+export interface DocsSearchMatchedTerm {
+  term: string;
+  fields: DocsSearchMatchField[];
+}
+
+export type DocsSearchFilterDecisionOutcome = "not_requested" | "matched" | "not_verifiable";
+
+/** How one scope filter affected an included result. */
+export interface DocsSearchFilterDecision {
+  field: DocsSearchFilterField;
+  requestedValues: string[];
+  selectedValues: string[];
+  matchedValues: string[];
+  outcome: DocsSearchFilterDecisionOutcome;
+}
+
+export type DocsSearchAmbiguityDecisionStatus =
+  | "unambiguous"
+  | "resolved_by_filter"
+  | "requires_filter"
+  | "not_verifiable";
+
+/** How one ambiguity-prone scope field was resolved for the result set. */
+export interface DocsSearchAmbiguityDecision {
+  field: Exclude<DocsSearchFilterField, "tags">;
+  status: DocsSearchAmbiguityDecisionStatus;
+  selectedValues: string[];
+  candidateValues?: string[];
+  reason: string;
+}
+
+/** Summary of scope ambiguity after applying the requested filters. */
+export interface DocsSearchAmbiguityResolution {
+  status: "unambiguous" | "resolved" | "unresolved" | "not_verifiable";
+  decisions: DocsSearchAmbiguityDecision[];
+}
+
+export type DocsSearchRankingStrategy = "lexical" | "exact" | "provider";
+
+export type DocsSearchRankingReasonCode =
+  | "literal_match"
+  | "title_phrase"
+  | "section_phrase"
+  | "title_section_phrase"
+  | "url_phrase"
+  | "description_phrase"
+  | "content_phrase"
+  | "title_terms"
+  | "section_terms"
+  | "description_terms"
+  | "content_terms"
+  | "all_terms_in_section"
+  | "all_terms_in_title"
+  | "all_query_terms"
+  | "heading_boost"
+  | "exact_page_boost"
+  | "provider_order"
+  | "literal_result_priority"
+  | "stable_url_tiebreak";
+
+/** One deterministic reason that contributed to, or controlled, final result ordering. */
+export interface DocsSearchRankingReason {
+  code: DocsSearchRankingReasonCode;
+  description: string;
+  /** Numeric contribution to the built-in lexical score, when applicable. */
+  contribution?: number;
+}
+
+/**
+ * Optional, bounded explanation generated after final ranking and provenance validation.
+ *
+ * Explanations describe the result that was actually returned. Provider ordering is
+ * identified explicitly rather than being presented as a framework-computed lexical score.
+ */
+export interface DocsSearchExplanation {
+  format: "docs-search-explanation.v1";
+  /** One-based rank in the complete cursor-bound result set. */
+  rank: number;
+  rankingStrategy: DocsSearchRankingStrategy;
+  matchedTerms: DocsSearchMatchedTerm[];
+  /** Whether additional terms or term characters were omitted from this bounded payload. */
+  matchedTermsTruncated: boolean;
+  /** Final selected provenance scope, or null when a remote provider did not supply one. */
+  selectedScope: DocsRetrievalSourceScope | null;
+  filterDecisions: DocsSearchFilterDecision[];
+  ambiguityResolution: DocsSearchAmbiguityResolution;
+  rankingReasons: DocsSearchRankingReason[];
+}
+
 export interface DocsSearchResult {
   id: string;
   url: string;
@@ -1685,6 +1778,8 @@ export interface DocsSearchResult {
   section?: string;
   /** Canonical, scope-aware provenance when supplied or recoverable locally. */
   source?: DocsRetrievalSourceProvenance;
+  /** Present only when the caller opts into retrieval explanations. */
+  explanation?: DocsSearchExplanation;
 }
 
 export type DocsSearchFilterField = "framework" | "version" | "package" | "tags";
@@ -1799,6 +1894,8 @@ export interface DocsPaginatedSearchResponse extends DocsSearchResponse {
 export interface DocsSearchRequest {
   filters: DocsSearchFilters;
   structured: boolean;
+  /** Whether search results should include bounded retrieval explanations. */
+  explain?: boolean;
   /** Whether the caller requested the body-free search facet response. */
   facets?: boolean;
   /** Facet field selected for cursor continuation. */
@@ -1822,6 +1919,8 @@ export interface DocsSearchQuery {
   audience?: "human" | "agent";
   /** Normalized framework, version, package, and tag constraints. */
   filters?: DocsSearchFilters;
+  /** Whether the shared pipeline should explain the final ranked results. */
+  explain?: boolean;
 }
 
 export interface DocsSearchAdapterContext {

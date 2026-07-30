@@ -688,11 +688,12 @@ describe("performDocsSearch", () => {
     expect(
       resolveDocsSearchRequest(
         new URLSearchParams(
-          "response=structured&cursor=opaque-continuation-token&limit=2&framework=Next.js",
+          "response=structured&cursor=opaque-continuation-token&limit=2&framework=Next.js&explain=true",
         ),
       ),
     ).toEqual({
       structured: true,
+      explain: true,
       cursor: "opaque-continuation-token",
       limit: 2,
       filters: { framework: ["nextjs"] },
@@ -737,6 +738,12 @@ describe("performDocsSearch", () => {
         new URLSearchParams("response=facets&cursor=opaque-continuation-token"),
       ),
     ).toThrow("require a `facet` field");
+    expect(resolveDocsSearchRequest(new URLSearchParams("explain=false")).explain).toBeUndefined();
+    for (const explain of ["1", "TRUE", "yes", ""]) {
+      expect(() => resolveDocsSearchRequest(new URLSearchParams({ explain }))).toThrow(
+        "Search explain must be `true` or `false`",
+      );
+    }
   });
 
   it("keeps pre-pagination docs-search.v1 producers source-compatible", () => {
@@ -765,6 +772,7 @@ describe("performDocsSearch", () => {
       pages: paginationPages,
       query: "shared cursor traversal marker",
       limit: 2,
+      explain: true,
       search: { provider: "simple" as const, chunking: { strategy: "page" as const } },
     };
 
@@ -811,6 +819,9 @@ describe("performDocsSearch", () => {
     const traversedIds = pages.flatMap((page) => page.results.map((result) => result.id));
     expect(new Set(traversedIds).size).toBe(traversedIds.length);
     expect(traversedIds).toEqual(baseline.map((result) => result.id));
+    expect(pages.flatMap((page) => page.results.map((result) => result.explanation?.rank))).toEqual(
+      [1, 2, 3, 4, 5],
+    );
   });
 
   it("binds structured cursors to the exact query, normalized filters, and index snapshot", async () => {
@@ -1441,6 +1452,206 @@ describe("performDocsSearch", () => {
       );
       expect(warning?.pageUrls).not.toContain("/docs/aaa-missing-scope");
     }
+  });
+
+  it("explains matched terms, scope decisions, ambiguity, and lexical ranking only on opt-in", async () => {
+    const scopedPages = [
+      {
+        title: "Next deployment",
+        url: "/docs/next-deployment",
+        description: "Deploy a shared application.",
+        content: "Configure the shared deployment target.",
+        framework: "Next.js",
+        version: "16",
+        tags: ["deployment"],
+        agent: { appliesTo: { package: "@farming-labs/next" } },
+      },
+      {
+        title: "Astro deployment",
+        url: "/docs/astro-deployment",
+        description: "Deploy a shared application.",
+        content: "Configure the shared deployment target.",
+        framework: "Astro",
+        version: "5",
+        tags: ["deployment"],
+        agent: { appliesTo: { package: "@farming-labs/astro" } },
+      },
+    ];
+
+    const defaultResults = await performDocsSearch({
+      pages: scopedPages,
+      query: "shared deployment",
+    });
+    expect(defaultResults.length).toBeGreaterThan(0);
+    expect(defaultResults.every((result) => result.explanation === undefined)).toBe(true);
+
+    const ambiguous = await performDocsSearchWithMetadata({
+      pages: scopedPages,
+      query: "shared deployment",
+      explain: true,
+    });
+    expect(ambiguous.results[0]?.explanation).toMatchObject({
+      format: "docs-search-explanation.v1",
+      rank: 1,
+      rankingStrategy: "lexical",
+      matchedTerms: expect.arrayContaining([
+        expect.objectContaining({ term: "deployment", fields: expect.any(Array) }),
+      ]),
+      matchedTermsTruncated: false,
+      ambiguityResolution: {
+        status: "unresolved",
+        decisions: expect.arrayContaining([
+          expect.objectContaining({
+            field: "framework",
+            status: "requires_filter",
+            candidateValues: ["astro", "nextjs"],
+          }),
+        ]),
+      },
+      rankingReasons: expect.arrayContaining([
+        expect.objectContaining({ code: "content_phrase", contribution: expect.any(Number) }),
+      ]),
+    });
+
+    const scoped = await performDocsSearchWithMetadata({
+      pages: scopedPages,
+      query: "shared deployment",
+      filters: { framework: "Next.js", version: "16" },
+      explain: true,
+    });
+    expect(scoped.results).not.toHaveLength(0);
+    expect(scoped.results.every((result) => result.url.startsWith("/docs/next-deployment"))).toBe(
+      true,
+    );
+    expect(scoped.results[0]?.explanation).toMatchObject({
+      selectedScope: expect.objectContaining({
+        audience: "human",
+        framework: ["nextjs"],
+        version: ["16"],
+        package: ["@farming-labs/next"],
+      }),
+      filterDecisions: expect.arrayContaining([
+        {
+          field: "framework",
+          requestedValues: ["nextjs"],
+          selectedValues: ["nextjs"],
+          matchedValues: ["nextjs"],
+          outcome: "matched",
+        },
+        expect.objectContaining({ field: "tags", outcome: "not_requested" }),
+      ]),
+      ambiguityResolution: {
+        status: "resolved",
+        decisions: expect.arrayContaining([
+          expect.objectContaining({ field: "framework", status: "resolved_by_filter" }),
+          expect.objectContaining({ field: "version", status: "resolved_by_filter" }),
+          expect.objectContaining({ field: "package", status: "unambiguous" }),
+        ]),
+      },
+    });
+  });
+
+  it("identifies provider-controlled ordering without inventing provider ranking internals", async () => {
+    const results = await performDocsSearch({
+      pages: [],
+      query: "semantic deployment",
+      explain: true,
+      supplementExternalResults: false,
+      search: createCustomSearchAdapter({
+        name: "semantic-provider",
+        async search() {
+          return [
+            {
+              id: "remote-semantic-hit",
+              url: "https://remote.example/deploy",
+              content: "Remote deployment guide",
+              description: "A semantic match selected by the provider.",
+              type: "page",
+              score: 0.93,
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(results[0]?.explanation).toMatchObject({
+      rank: 1,
+      rankingStrategy: "provider",
+      selectedScope: null,
+      ambiguityResolution: {
+        status: "not_verifiable",
+        decisions: expect.arrayContaining([
+          expect.objectContaining({ field: "framework", status: "not_verifiable" }),
+        ]),
+      },
+      filterDecisions: expect.arrayContaining([
+        expect.objectContaining({ field: "framework", outcome: "not_requested" }),
+      ]),
+      rankingReasons: [
+        expect.objectContaining({
+          code: "provider_order",
+        }),
+      ],
+    });
+    expect(results[0]?.explanation?.rankingReasons.some((reason) => reason.contribution)).toBe(
+      false,
+    );
+  });
+
+  it("identifies the shared exact-page promotion ahead of provider supplementation", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "Deploy now",
+          url: "/docs/deploy-now",
+          content: "Deploy the application.",
+          framework: "Next.js",
+        },
+      ],
+      query: "Deploy now",
+      explain: true,
+      search: createCustomSearchAdapter({
+        name: "empty-provider",
+        async search() {
+          return [];
+        },
+      }),
+    });
+
+    expect(results[0]?.explanation).toMatchObject({
+      rank: 1,
+      rankingStrategy: "exact",
+      rankingReasons: expect.arrayContaining([
+        {
+          code: "exact_page_boost",
+          contribution: 2_000,
+          description: expect.any(String),
+        },
+      ]),
+    });
+  });
+
+  it("bounds matched explanation terms and reports truncation", async () => {
+    const longTerm = "x".repeat(200);
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: longTerm,
+          url: "/docs/bounded-explanation",
+          content: `Use ${longTerm}.`,
+        },
+      ],
+      query: longTerm,
+      explain: true,
+    });
+
+    expect(results[0]?.explanation?.matchedTerms).toEqual([
+      {
+        term: "x".repeat(128),
+        fields: expect.arrayContaining(["title", "content"]),
+      },
+    ]);
+    expect(results[0]?.explanation?.matchedTermsTruncated).toBe(true);
   });
 
   it("attaches canonical, scoped provenance to simple and structured search results", async () => {
