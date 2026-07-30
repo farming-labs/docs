@@ -246,6 +246,9 @@ Optional:
 TYPESENSE_COLLECTION=docs
 TYPESENSE_MODE=hybrid
 TYPESENSE_OLLAMA_MODEL=embeddinggemma
+TYPESENSE_OLLAMA_BASE_URL=http://127.0.0.1:11434
+```
+
 Optionally scope the synced corpus with a namespace (max 1024 characters). The CLI flag and the environment variable are equivalent:
 
 ```bash title="terminal"
@@ -260,8 +263,6 @@ Pass `--site-url` when you want the sync command to embed a canonical public URL
 
 ```bash title="terminal"
 pnpm dlx @farming-labs/docs search sync --typesense --site-url https://docs.example.com
-```
-TYPESENSE_OLLAMA_BASE_URL=http://127.0.0.1:11434
 ```
 
 Algolia example:
