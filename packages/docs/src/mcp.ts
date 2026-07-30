@@ -794,6 +794,54 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             type: "string",
             description: "One workspace-contained Agent Skill path.",
           },
+          {
+            path: "agent.skills.progressiveDisclosure",
+            name: "progressiveDisclosure",
+            type: "DocsAgentSkillsProgressiveDisclosureConfig",
+            description:
+              "Thresholds used by doctor and review to keep SKILL.md instructions compact, references shallow, and scripts documented.",
+            children: [
+              {
+                path: "agent.skills.progressiveDisclosure.maxSkillLines",
+                name: "maxSkillLines",
+                type: "number",
+                default: 500,
+                description: "Maximum recommended line count for the complete SKILL.md document.",
+              },
+              {
+                path: "agent.skills.progressiveDisclosure.instructionTokenBudget",
+                name: "instructionTokenBudget",
+                type: "number",
+                default: 5000,
+                description:
+                  "Approximate token budget for SKILL.md instructions after frontmatter.",
+              },
+              {
+                path: "agent.skills.progressiveDisclosure.maxReferenceDepth",
+                name: "maxReferenceDepth",
+                type: "number",
+                default: 1,
+                description:
+                  "Maximum local Markdown reference hops from SKILL.md before doctor and review warn.",
+              },
+              {
+                path: "agent.skills.progressiveDisclosure.compatibility",
+                name: "compatibility",
+                type: '"when-needed" | "always" | "off"',
+                default: "when-needed",
+                values: ["when-needed", "always", "off"],
+                description:
+                  "Whether compatibility frontmatter is expected only for environment-dependent skills, always, or never.",
+              },
+              {
+                path: "agent.skills.progressiveDisclosure.checkScripts",
+                name: "checkScripts",
+                type: "boolean",
+                default: true,
+                description: "Diagnose bundled scripts without dependency and validation guidance.",
+              },
+            ],
+          },
         ],
       },
       {
@@ -1742,6 +1790,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
           ["configConfidence", "warn"],
           ["agentSurfaceDrift", "error"],
           ["goldenTasks", "warn"],
+          ["agentSkills", "warn"],
         ].map(([name, defaultValue]) => ({
           path: `review.rules.${name}`,
           name,

@@ -838,7 +838,16 @@ The agent discovery manifest gains `capabilities.contentChanges: boolean` and a 
 type DocsAgentSkillsInput =
   | string
   | readonly string[]
-  | { paths: string | readonly string[] };
+  | {
+      paths: string | readonly string[];
+      progressiveDisclosure?: {
+        maxSkillLines?: number;
+        instructionTokenBudget?: number;
+        maxReferenceDepth?: number;
+        compatibility?: "when-needed" | "always" | "off";
+        checkScripts?: boolean;
+      };
+    };
 ```
 
 Each path is relative to the project root. It may name a `SKILL.md`, its containing skill
@@ -850,6 +859,13 @@ files below `references/`, `scripts/`, and `assets/`.
 The project-root `skill.md` remains the site-level compatibility skill. It is always published
 alongside `agent.skills`, using a generated fallback when that root file is absent. Duplicate skill
 names are rejected.
+
+`docs doctor --agent` analyzes every configured skill. `docs review` runs the same analysis when a
+configured skill, companion file, or docs config changes. Defaults follow the Agent Skills
+progressive-disclosure guidance: at most 500 lines, an approximately 5,000-token instruction body,
+and one local Markdown reference hop. The checks also report broken, escaping, or unpublished
+references; environment-dependent skills without `compatibility`; and bundled scripts without
+dependency and validation guidance. Override the thresholds with `progressiveDisclosure`.
 
 Discovery preserves both client generations:
 
@@ -1040,6 +1056,7 @@ export default defineDocs({
 | `configConfidence` | `"warn"` | Report partial static fallback when the config module cannot be evaluated |
 | `agentSurfaceDrift` | `"error"` | Detect discovery, resolved config, contract, route, MCP tool, and schema drift |
 | `goldenTasks` | `"warn"` | Report failed or unmeasured configured golden tasks |
+| `agentSkills` | `"warn"` | Check configured skills for progressive disclosure, reference integrity, compatibility, and script guidance |
 
 Rule severities accept `"off"`, `"suggestion"`, `"warn"`, or `"error"`.
 

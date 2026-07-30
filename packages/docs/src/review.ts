@@ -1,7 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
+import { getDocsAgentSkillsConfiguredPaths } from "./agent-skills-server.js";
 import type {
   DocsConfig,
+  DocsAgentSkillsInput,
   DocsReviewCiMode,
   DocsReviewConfig,
   DocsReviewRulesConfig,
@@ -79,6 +81,7 @@ const DEFAULT_REVIEW_RULES: Required<DocsReviewRulesConfig> = {
   configConfidence: "warn",
   agentSurfaceDrift: "error",
   goldenTasks: "warn",
+  agentSkills: "warn",
 };
 
 const DEFAULT_REVIEW_WEIGHTS = {
@@ -314,11 +317,35 @@ export function buildDocsReviewWorkflowPathFilters(options: {
     prefixPath(projectPrefix, "src/lib/docs.config.*"),
     DEFAULT_DOCS_REVIEW_WORKFLOW_PATH,
     DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW_PATH,
+    ...buildAgentSkillPathFilters({
+      rootDir: options.rootDir,
+      repoRoot,
+      skills: options.config?.agent?.skills,
+    }),
   ];
 
   return Array.from(
     new Set(candidates.filter((candidate): candidate is string => Boolean(candidate))),
   );
+}
+
+function buildAgentSkillPathFilters(options: {
+  rootDir: string;
+  repoRoot: string;
+  skills: DocsAgentSkillsInput | undefined;
+}): string[] {
+  return getDocsAgentSkillsConfiguredPaths(options.skills)
+    .map((configuredPath) => {
+      const absolutePath = isAbsolute(configuredPath)
+        ? configuredPath
+        : join(options.rootDir, configuredPath);
+      const repoRelative = toPosixPath(relative(options.repoRoot, absolutePath));
+      if (!repoRelative || repoRelative.startsWith("../")) return undefined;
+      return repoRelative.endsWith("/SKILL.md") || repoRelative === "SKILL.md"
+        ? repoRelative
+        : `${repoRelative.replace(/\/+$/u, "")}/**`;
+    })
+    .filter((candidate): candidate is string => Boolean(candidate));
 }
 
 function normalizeRules(rules?: DocsReviewRulesConfig): Partial<DocsReviewRulesConfig> {

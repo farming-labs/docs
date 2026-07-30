@@ -904,6 +904,7 @@ export default defineDocs({
       configConfidence: "warn",
       agentSurfaceDrift: "error",
       goldenTasks: "warn",
+      agentSkills: "warn",
     },
   },
   theme: fumadocs(),
@@ -918,7 +919,9 @@ built-ins, and supported Agent Skills or Claude MCP setup forms; unknown or comp
 unverified. `configConfidence` reports when `docs.config` could only be read through partial static
 parsing, while `agentSurfaceDrift` compares resolved configuration, discovery metadata, structured
 contracts, MCP tools, routes, and the public config schema. `goldenTasks` reports both failed
-evaluations and an unmeasured task suite.
+evaluations and an unmeasured task suite. `agentSkills` reports oversized skill instructions,
+broken or deep references, missing compatibility requirements, and scripts without dependency or
+validation guidance.
 
 Set `review: false` to opt out of review and workflow generation.
 
@@ -1830,6 +1833,13 @@ export default defineDocs({
         "./skills/product",
         "./skills/team-skills",
       ],
+      progressiveDisclosure: {
+        maxSkillLines: 500,
+        instructionTokenBudget: 5000,
+        maxReferenceDepth: 1,
+        compatibility: "when-needed",
+        checkScripts: true,
+      },
     },
   },
 });
@@ -1846,6 +1856,13 @@ deterministic `.tar.gz` archives, and the index digest covers the exact indexed 
 The original files stay directly available for progressive disclosure. The project-root
 `skill.md` remains the backwards-compatible site skill and is published alongside configured
 skills.
+
+`docs doctor --agent` checks every configured skill, and `docs review` checks the affected skill
+when `SKILL.md`, `references/`, `scripts/`, `assets/`, or the docs config changes. A local reference
+must stay inside the skill and resolve to content that publication exposes. Reference Markdown can
+be one hop away by default; move second-level detail into a directly linked focused reference.
+Token estimates use a dependency-free, code-conscious approximation and can be tuned with
+`instructionTokenBudget`.
 
 | Surface | Route or URI |
 | ------- | ------------ |
