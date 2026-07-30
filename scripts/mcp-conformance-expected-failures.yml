@@ -1,0 +1,12 @@
+# The official server-stateless scenario includes diagnostic probes intended for
+# an MCP "everything server". Farming Labs adapters expose production docs tools,
+# so those probes are not testable. The final entry records the optional dynamic
+# tool-list notification that production handlers do not emit. Keep every entry
+# at check granularity so all other SEP-2575 requirements remain enforced and the
+# runner detects stale entries.
+server:
+  - "server-stateless:sep-2575-server-rejects-undeclared-capability"
+  - "server-stateless:sep-2575-missing-capability-http-400"
+  - "server-stateless:sep-2575-http-server-no-independent-requests-on-stream"
+  - "server-stateless:sep-2575-server-no-log-without-loglevel"
+  - "server-stateless:sep-2575-server-sends-tools-list-changed-on-subscription"

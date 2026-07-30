@@ -18,7 +18,7 @@ const AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
 const LEGACY_SKILLS_INDEX_ROUTE = "/.well-known/skills/index.json";
 const AGENT_CARD_ROUTE = "/.well-known/agent-card.json";
 const MCP_ROUTES = ["/mcp", "/.well-known/mcp"];
-const MCP_PROTOCOL_VERSION = "2025-06-18";
+const MCP_PROTOCOL_VERSIONS = ["2025-11-25", "2026-07-28"];
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_ATTEMPTS = 3;
 const MAX_RESPONSE_BYTES = 20 * 1024 * 1024;
@@ -1414,19 +1414,19 @@ async function validateLegacySkillFile(request, file, expectedDigests) {
   }
 }
 
-function parseMcpResponse(response, bytes) {
+function parseMcpResponse(response, bytes, requestId, label) {
   const text = new TextDecoder().decode(bytes);
   if (mediaType(response) === "application/json") {
     try {
       return JSON.parse(text);
     } catch {
-      throw new Error("MCP initialize response did not contain valid JSON");
+      throw new Error(`${label} response did not contain valid JSON`);
     }
   }
 
   assert(
     mediaType(response) === "text/event-stream",
-    "MCP initialize returned an unsupported content-type",
+    `${label} returned an unsupported content-type`,
   );
   for (const event of text.split(/\r?\n\r?\n/u)) {
     const data = event
@@ -1437,34 +1437,34 @@ function parseMcpResponse(response, bytes) {
     if (!data) continue;
     try {
       const parsed = JSON.parse(data);
-      if (asRecord(parsed)?.id === 1) return parsed;
+      if (asRecord(parsed)?.id === requestId) return parsed;
     } catch {
-      // Ignore keepalives or non-JSON events while looking for the initialize response.
+      // Ignore keepalives or non-JSON events while looking for the JSON-RPC response.
     }
   }
-  throw new Error("MCP event stream did not contain the initialize response");
+  throw new Error(`MCP event stream did not contain the ${label} response`);
 }
 
-async function validateMcp(request, route) {
+async function validateLegacyMcp(request, route, protocolVersion) {
   const result = await request(route, {
     method: "POST",
     headers: {
       accept: "application/json, text/event-stream",
       "content-type": "application/json",
-      "mcp-protocol-version": MCP_PROTOCOL_VERSION,
+      "mcp-protocol-version": protocolVersion,
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
       method: "initialize",
       params: {
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion,
         capabilities: {},
         clientInfo: { name: "agent-surface-smoke", version: "1.0.0" },
       },
     }),
   });
-  const payload = asRecord(parseMcpResponse(result.response, result.bytes));
+  const payload = asRecord(parseMcpResponse(result.response, result.bytes, 1, "MCP initialize"));
   assert(
     payload?.jsonrpc === "2.0" && payload.id === 1,
     `${route} returned an invalid JSON-RPC response`,
@@ -1476,6 +1476,57 @@ async function validateMcp(request, route) {
     isNonEmptyString(initialized?.protocolVersion),
     `${route} initialize response omitted protocolVersion`,
   );
+}
+
+async function validateStatelessMcp(request, route, protocolVersion) {
+  const result = await request(route, {
+    method: "POST",
+    headers: {
+      accept: "application/json, text/event-stream",
+      "content-type": "application/json",
+      "mcp-method": "server/discover",
+      "mcp-protocol-version": protocolVersion,
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "server/discover",
+      params: {
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": protocolVersion,
+          "io.modelcontextprotocol/clientInfo": {
+            name: "agent-surface-smoke",
+            version: "1.0.0",
+          },
+          "io.modelcontextprotocol/clientCapabilities": {},
+        },
+      },
+    }),
+  });
+  const payload = asRecord(parseMcpResponse(result.response, result.bytes, 2, "MCP discover"));
+  assert(
+    payload?.jsonrpc === "2.0" && payload.id === 2,
+    `${route} returned an invalid stateless JSON-RPC response`,
+  );
+  assert(!payload.error, `${route} rejected MCP discover: ${JSON.stringify(payload.error)}`);
+  const discovery = asRecord(payload.result);
+  assert(
+    Array.isArray(discovery?.supportedVersions) &&
+      discovery.supportedVersions.includes(protocolVersion),
+    `${route} discover response omitted protocol ${protocolVersion}`,
+  );
+  assert(asRecord(discovery?.capabilities), `${route} discover response omitted capabilities`);
+  assert(
+    asRecord(asRecord(discovery?._meta)?.["io.modelcontextprotocol/serverInfo"]),
+    `${route} discover response omitted serverInfo metadata`,
+  );
+}
+
+async function validateMcp(request, route, protocolVersion) {
+  if (protocolVersion === "2026-07-28") {
+    return validateStatelessMcp(request, route, protocolVersion);
+  }
+  return validateLegacyMcp(request, route, protocolVersion);
 }
 
 async function validateWellKnownText(request, route, expectedType, requiredText) {
@@ -1819,20 +1870,29 @@ export async function runAgentSurfaceSmoke(options = {}) {
   });
 
   await Promise.all(
-    MCP_ROUTES.map((route) =>
-      recorder.check(`MCP initialize ${route}`, () => validateMcp(request, route)),
+    MCP_ROUTES.flatMap((route) =>
+      MCP_PROTOCOL_VERSIONS.map((protocolVersion) =>
+        recorder.check(`MCP ${protocolVersion} ${route}`, () =>
+          validateMcp(request, route, protocolVersion),
+        ),
+      ),
     ),
   );
   if (manifest) {
     const canonicalMcp = readAdvertisedValue(manifest, ["mcp", "canonicalEndpoint"]);
     if (!MCP_ROUTES.includes(canonicalMcp)) {
       const label = isNonEmptyString(canonicalMcp)
-        ? `MCP initialize ${canonicalMcp}`
+        ? `MCP ${canonicalMcp}`
         : "advertised canonical MCP endpoint";
-      await recorder.check(label, () =>
-        validateMcp(
-          request,
-          resolveSameOriginTarget(baseUrl, canonicalMcp, "canonical MCP endpoint"),
+      await recorder.check(label, async () =>
+        Promise.all(
+          MCP_PROTOCOL_VERSIONS.map((protocolVersion) =>
+            validateMcp(
+              request,
+              resolveSameOriginTarget(baseUrl, canonicalMcp, "canonical MCP endpoint"),
+              protocolVersion,
+            ),
+          ),
         ),
       );
     }
