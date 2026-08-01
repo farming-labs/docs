@@ -1,6 +1,16 @@
 import { sha256DocsContent } from "./retrieval-digest.js";
 
 const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const MAX_CACHED_TEXT_REPRESENTATIONS = 64;
+const MAX_CACHED_TEXT_CHARACTERS = 8 * 1024 * 1024;
+
+interface DocsContentValidators {
+  sha256: string;
+  contentDigest: string;
+}
+
+const textValidatorCache = new Map<string, DocsContentValidators>();
+let cachedTextCharacters = 0;
 
 export interface DocsCacheableResponseOptions {
   request: Request;
@@ -42,6 +52,46 @@ function sha256HexBytes(sha256: string): Uint8Array {
 /** Format an RFC 9530 Content-Digest field from a SHA-256 hex digest. */
 export function formatDocsContentDigest(sha256: string): string {
   return `sha-256=:${encodeBase64(sha256HexBytes(sha256))}:`;
+}
+
+function resolveDocsContentValidators(
+  content: string | Uint8Array,
+  suppliedSha256?: string,
+): DocsContentValidators {
+  if (suppliedSha256) {
+    return {
+      sha256: suppliedSha256,
+      contentDigest: formatDocsContentDigest(suppliedSha256),
+    };
+  }
+
+  const cached = typeof content === "string" ? textValidatorCache.get(content) : undefined;
+  if (cached) {
+    if (typeof content === "string") {
+      textValidatorCache.delete(content);
+      textValidatorCache.set(content, cached);
+    }
+    return cached;
+  }
+
+  const sha256 = sha256DocsContent(content);
+  const validators = { sha256, contentDigest: formatDocsContentDigest(sha256) };
+  if (typeof content !== "string") return validators;
+
+  if (content.length <= MAX_CACHED_TEXT_CHARACTERS) {
+    textValidatorCache.set(content, validators);
+    cachedTextCharacters += content.length;
+    while (
+      textValidatorCache.size > MAX_CACHED_TEXT_REPRESENTATIONS ||
+      cachedTextCharacters > MAX_CACHED_TEXT_CHARACTERS
+    ) {
+      const oldest = textValidatorCache.keys().next().value;
+      if (oldest === undefined) break;
+      textValidatorCache.delete(oldest);
+      cachedTextCharacters -= oldest.length;
+    }
+  }
+  return validators;
 }
 
 /** Normalize an exact source timestamp for Last-Modified. */
@@ -104,11 +154,11 @@ function exposeValidatorHeaders(headers: Headers): void {
 export function createDocsCacheableResponse(options: DocsCacheableResponseOptions): Response {
   const method = options.request.method.toUpperCase();
   const isSafeRetrieval = method === "GET" || method === "HEAD";
-  const sha256 = options.sha256 ?? sha256DocsContent(options.content);
+  const { sha256, contentDigest } = resolveDocsContentValidators(options.content, options.sha256);
   const etag = `"${sha256}"`;
   const lastModified = resolveDocsHttpDate(options.lastModified);
   const headers = new Headers(options.headers);
-  headers.set("Content-Digest", formatDocsContentDigest(sha256));
+  headers.set("Content-Digest", contentDigest);
   headers.set("ETag", etag);
   if (lastModified) headers.set("Last-Modified", lastModified);
   exposeValidatorHeaders(headers);
@@ -128,6 +178,8 @@ export function createDocsCacheableResponse(options: DocsCacheableResponseOption
       ? null
       : typeof options.content === "string"
         ? options.content
-        : new Uint8Array(options.content).buffer;
+        : // Fetch accepts BufferSource bodies at runtime. TypeScript's DOM declarations narrow
+          // Uint8Array to an ArrayBuffer-backed variant, so retain the bytes and bridge that gap.
+          (options.content as unknown as BodyInit);
   return new Response(body, { status: options.status ?? 200, headers });
 }

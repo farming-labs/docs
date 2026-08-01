@@ -44,7 +44,7 @@ import {
   type DocsLlmsDiscoveryConfig,
 } from "../agent.js";
 import { resolveConfiguredAgentSkills } from "../agent-skills-server.js";
-import { formatDocsContentDigest } from "../http-cache.js";
+import { formatDocsContentDigest, resolveDocsHttpDate } from "../http-cache.js";
 import { resolveDocsI18n } from "../i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "../mcp.js";
 import {
@@ -163,6 +163,8 @@ interface PlannedOutput {
   mediaType: string;
   content: string | Uint8Array;
   managed: boolean;
+  /** Exact modification time for this representation when one is known. */
+  lastModified?: string;
 }
 
 interface PlannedInternalOutput {
@@ -593,8 +595,8 @@ function pageGitLastmod(rootDir: string, page: DocsMcpPage) {
         encoding: "utf-8",
         stdio: ["ignore", "pipe", "ignore"],
       }).trim();
-      const lastmod = formatDateOnly(output);
-      if (lastmod) return lastmod;
+      const parsed = new Date(output);
+      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
     } catch {
       // Static Agent Bundles intentionally omit filesystem mtimes: they vary across checkouts.
     }
@@ -654,7 +656,7 @@ function addOutput(
   content: string | Uint8Array,
   managed = true,
   normalizeText = true,
-): void {
+): PlannedOutput {
   const absolutePath = publicFilePath(publicDir, route);
   const publicManifestPath = publicFilePath(publicDir, AGENT_BUNDLE_MANIFEST_ROUTE);
   if (absolutePath === publicManifestPath) {
@@ -668,7 +670,7 @@ function addOutput(
       `Agent Bundle output collision at ${route} (${collision.kind} and ${kind}). Change the conflicting docs slug or configured route.`,
     );
   }
-  outputs.push({
+  const output: PlannedOutput = {
     absolutePath,
     publicPath: publicRelativePath(publicDir, absolutePath),
     route,
@@ -676,7 +678,9 @@ function addOutput(
     mediaType,
     content: typeof content === "string" && normalizeText ? normalizeContent(content) : content,
     managed,
-  });
+  };
+  outputs.push(output);
+  return output;
 }
 
 function assertOutputPathsDoNotCollide(options: {
@@ -794,7 +798,7 @@ function resolveRobotsOutput(
   };
 }
 
-function toManifestFile(output: PlannedOutput, lastModified?: string): AgentBundleManifestFile {
+function toManifestFile(output: PlannedOutput): AgentBundleManifestFile {
   const digest = sha256(output.content);
   return {
     path: output.publicPath,
@@ -805,7 +809,7 @@ function toManifestFile(output: PlannedOutput, lastModified?: string): AgentBund
     sha256: digest,
     etag: `"${digest}"`,
     contentDigest: formatDocsContentDigest(digest),
-    lastModified,
+    lastModified: output.lastModified,
     managed: output.managed,
   };
 }
@@ -820,10 +824,9 @@ function buildAgentBundleManifest(options: {
   orphanedFiles: AgentBundleManifestFile[];
   orphanedInternalFiles: AgentBundleManifestInternalFile[];
   pages: LocalizedPage[];
-  lastModified?: string;
 }): AgentBundleManifest {
   const files = [
-    ...options.outputs.map((output) => toManifestFile(output, options.lastModified)),
+    ...options.outputs.map((output) => toManifestFile(output)),
     ...options.orphanedFiles,
   ].sort((left, right) => left.path.localeCompare(right.path));
   const internalFiles = [
@@ -859,15 +862,6 @@ function buildAgentBundleManifest(options: {
       }))
       .sort((left, right) => left.markdownRoute.localeCompare(right.markdownRoute)),
   };
-}
-
-function resolveAgentBundleLastModified(pages: LocalizedPage[]): string | undefined {
-  const latest = pages.reduce<number | undefined>((current, { page }) => {
-    const timestamp = Date.parse(page.lastModified ?? page.lastmod ?? "");
-    if (!Number.isFinite(timestamp)) return current;
-    return current === undefined || timestamp > current ? timestamp : current;
-  }, undefined);
-  return latest === undefined ? undefined : new Date(latest).toUTCString();
 }
 
 function readPreviousManifest(manifestPath: string): AgentBundleManifest | undefined {
@@ -1194,7 +1188,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const internalOutputs: PlannedInternalOutput[] = [];
 
   for (const { page } of localizedPages) {
-    addOutput(
+    const output = addOutput(
       outputs,
       publicDir,
       staticMarkdownRoute(page, sourceEntry, routeEntry),
@@ -1212,6 +1206,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
         },
       ),
     );
+    output.lastModified = resolveDocsHttpDate(page.lastModified);
   }
 
   if (llmsEnabled) {
@@ -1480,7 +1475,6 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   outputs.sort((left, right) => left.publicPath.localeCompare(right.publicPath));
   const stalePaths = staleManagedPaths(publicDir, previous, outputs);
   const staleInternal = staleInternalPaths(rootDir, previous, internalOutputs);
-  const bundleLastModified = resolveAgentBundleLastModified(localizedPages);
   const orphanedFiles = preservedStaleManifestFiles(publicDir, previous, outputs);
   const orphanedInternalFiles = preservedStaleInternalManifestFiles(
     rootDir,
@@ -1497,7 +1491,6 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     orphanedFiles,
     orphanedInternalFiles,
     pages: localizedPages,
-    lastModified: bundleLastModified,
   });
   const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
   const changed = changedOutputs(outputs);

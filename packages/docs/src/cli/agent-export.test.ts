@@ -644,7 +644,14 @@ pnpm add example
     expect(firstPage).toContain('last_updated: "2020-01-02"');
     const parsedManifest = JSON.parse(firstManifest) as AgentBundleManifest;
     expect(
-      parsedManifest.files.every((file) => file.lastModified === "Thu, 02 Jan 2020 00:00:00 GMT"),
+      parsedManifest.files
+        .filter((file) => file.kind === "page")
+        .every((file) => file.lastModified === "Thu, 02 Jan 2020 03:04:05 GMT"),
+    ).toBe(true);
+    expect(
+      parsedManifest.files
+        .filter((file) => file.kind !== "page")
+        .every((file) => file.lastModified === undefined),
     ).toBe(true);
 
     const future = new Date("2040-12-31T23:59:59Z");

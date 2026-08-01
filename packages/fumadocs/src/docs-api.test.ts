@@ -102,6 +102,7 @@ describe("createDocsMCPAPI", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     process.chdir(originalCwd);
     while (tempDirs.length > 0) {
       const dir = tempDirs.pop();
@@ -2329,6 +2330,8 @@ Use the product-specific coding workflow first.
       rootDir,
       entry: "docs",
     });
+    const agentsPath = join(rootDir, "AGENTS.md");
+    const readFileSpy = vi.spyOn(fs, "readFileSync");
 
     const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
     const agentsApiText = await agentsApi.text();
@@ -2350,6 +2353,24 @@ Use the product-specific coding workflow first.
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(agentsApiText);
     }
+
+    expect(
+      readFileSpy.mock.calls.filter(([candidate]) => String(candidate) === agentsPath),
+    ).toHaveLength(1);
+
+    writeFileSync(
+      agentsPath,
+      `# Updated Agent Instructions
+
+Use the newly revised product workflow.
+`,
+    );
+    const updated = await GET(new Request("http://localhost/AGENTS.md"));
+    expect(await updated.text()).toContain("newly revised product workflow");
+    expect(
+      readFileSpy.mock.calls.filter(([candidate]) => String(candidate) === agentsPath),
+    ).toHaveLength(2);
+    readFileSpy.mockRestore();
   });
 
   it("uses the human audience projection for normal search", async () => {

@@ -40,7 +40,7 @@ describe("agent surface HTTP cache integrity", () => {
     expect(notModified.headers.get("content-digest")).toBe(get.headers.get("content-digest"));
   });
 
-  it("honors If-None-Match precedence and formats binary SHA-256 digests", () => {
+  it("honors If-None-Match precedence and formats binary SHA-256 digests", async () => {
     const url = "https://docs.example.com/.well-known/agent-skills/example.tar.gz";
     const content = new Uint8Array([0, 1, 2, 254, 255]);
     const sha256 = createHash("sha256").update(content).digest("hex");
@@ -60,6 +60,7 @@ describe("agent surface HTTP cache integrity", () => {
       lastModified: "2026-07-31T12:00:00.000Z",
     });
     expect(response.status).toBe(200);
+    expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([...content]);
 
     const preconditionFailed = createDocsCacheableResponse({
       request: new Request(url, {
