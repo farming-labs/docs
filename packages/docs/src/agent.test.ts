@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { extractDocsMarkdownPromptBlocks, findDocsAudienceMdxTags } from "./audience.js";
 import {
@@ -1193,7 +1194,9 @@ describe("agent route helpers", () => {
     expect(response.headers.get("link")).toBe(
       '<https://example.com/docs/install?lang=en>; rel="canonical"',
     );
-    expect(response.headers.get("etag")).toMatch(/^W\/"[a-f0-9]+-[a-f0-9]{8}"$/);
+    const responseDigest = createHash("sha256").update(document, "utf8").digest("base64");
+    expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
+    expect(response.headers.get("content-digest")).toBe(`sha-256=:${responseDigest}:`);
     expect(response.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 14:23:45 GMT");
 
     const dateOnlyResponse = createDocsMarkdownResponse({
@@ -1629,7 +1632,8 @@ describe("agent route helpers", () => {
     );
     expect(response.headers.get("x-docs-markdown-section-count")).toBe("4");
     expect(response.headers.get("x-docs-markdown-token-budget")).toBe("80");
-    expect(response.headers.get("etag")).toMatch(/^W\/"/u);
+    expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(response.headers.get("content-digest")).toMatch(/^sha-256=:[A-Za-z0-9+/]{43}=:$/u);
     expect(response.headers.get("last-modified")).toBe("Sat, 25 Jul 2026 10:00:00 GMT");
     expect(index).toMatchObject({
       schemaVersion: 2,

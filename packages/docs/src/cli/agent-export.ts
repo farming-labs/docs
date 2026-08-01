@@ -44,6 +44,7 @@ import {
   type DocsLlmsDiscoveryConfig,
 } from "../agent.js";
 import { resolveConfiguredAgentSkills } from "../agent-skills-server.js";
+import { formatDocsContentDigest } from "../http-cache.js";
 import { resolveDocsI18n } from "../i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "../mcp.js";
 import {
@@ -110,6 +111,12 @@ export interface AgentBundleManifestFile {
   mediaType: string;
   bytes: number;
   sha256: string;
+  /** Strong HTTP entity tag derived from the exact exported bytes. */
+  etag: string;
+  /** RFC 9530 integrity field value derived from the exact exported bytes. */
+  contentDigest: string;
+  /** Stable source freshness when the bundle can derive one. */
+  lastModified?: string;
   managed: boolean;
   /** A previously managed output that was preserved because its contents were edited. */
   orphaned?: boolean;
@@ -787,14 +794,18 @@ function resolveRobotsOutput(
   };
 }
 
-function toManifestFile(output: PlannedOutput): AgentBundleManifestFile {
+function toManifestFile(output: PlannedOutput, lastModified?: string): AgentBundleManifestFile {
+  const digest = sha256(output.content);
   return {
     path: output.publicPath,
     route: output.route,
     kind: output.kind,
     mediaType: output.mediaType,
     bytes: byteLength(output.content),
-    sha256: sha256(output.content),
+    sha256: digest,
+    etag: `"${digest}"`,
+    contentDigest: formatDocsContentDigest(digest),
+    lastModified,
     managed: output.managed,
   };
 }
@@ -809,10 +820,12 @@ function buildAgentBundleManifest(options: {
   orphanedFiles: AgentBundleManifestFile[];
   orphanedInternalFiles: AgentBundleManifestInternalFile[];
   pages: LocalizedPage[];
+  lastModified?: string;
 }): AgentBundleManifest {
-  const files = [...options.outputs.map(toManifestFile), ...options.orphanedFiles].sort(
-    (left, right) => left.path.localeCompare(right.path),
-  );
+  const files = [
+    ...options.outputs.map((output) => toManifestFile(output, options.lastModified)),
+    ...options.orphanedFiles,
+  ].sort((left, right) => left.path.localeCompare(right.path));
   const internalFiles = [
     ...options.internalOutputs.map((output) => ({
       path: output.path,
@@ -846,6 +859,15 @@ function buildAgentBundleManifest(options: {
       }))
       .sort((left, right) => left.markdownRoute.localeCompare(right.markdownRoute)),
   };
+}
+
+function resolveAgentBundleLastModified(pages: LocalizedPage[]): string | undefined {
+  const latest = pages.reduce<number | undefined>((current, { page }) => {
+    const timestamp = Date.parse(page.lastModified ?? page.lastmod ?? "");
+    if (!Number.isFinite(timestamp)) return current;
+    return current === undefined || timestamp > current ? timestamp : current;
+  }, undefined);
+  return latest === undefined ? undefined : new Date(latest).toUTCString();
 }
 
 function readPreviousManifest(manifestPath: string): AgentBundleManifest | undefined {
@@ -923,6 +945,7 @@ function preservedStaleManifestFiles(
   publicDir: string,
   previous: AgentBundleManifest | undefined,
   outputs: PlannedOutput[],
+  lastModified?: string,
 ): AgentBundleManifestFile[] {
   if (!previous) return [];
   const expected = new Set(outputs.map((output) => output.publicPath));
@@ -932,11 +955,15 @@ function preservedStaleManifestFiles(
     if (!existsSync(filePath)) return [];
     const current = readFileSync(filePath);
     if (file.orphaned !== true && sha256(current) === file.sha256) return [];
+    const digest = sha256(current);
     return [
       {
         ...file,
         bytes: byteLength(current),
-        sha256: sha256(current),
+        sha256: digest,
+        etag: `"${digest}"`,
+        contentDigest: formatDocsContentDigest(digest),
+        lastModified: file.lastModified ?? lastModified,
         managed: false,
         orphaned: true,
       },
@@ -1454,7 +1481,13 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   outputs.sort((left, right) => left.publicPath.localeCompare(right.publicPath));
   const stalePaths = staleManagedPaths(publicDir, previous, outputs);
   const staleInternal = staleInternalPaths(rootDir, previous, internalOutputs);
-  const orphanedFiles = preservedStaleManifestFiles(publicDir, previous, outputs);
+  const bundleLastModified = resolveAgentBundleLastModified(localizedPages);
+  const orphanedFiles = preservedStaleManifestFiles(
+    publicDir,
+    previous,
+    outputs,
+    bundleLastModified,
+  );
   const orphanedInternalFiles = preservedStaleInternalManifestFiles(
     rootDir,
     previous,
@@ -1470,6 +1503,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     orphanedFiles,
     orphanedInternalFiles,
     pages: localizedPages,
+    lastModified: bundleLastModified,
   });
   const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
   const changed = changedOutputs(outputs);

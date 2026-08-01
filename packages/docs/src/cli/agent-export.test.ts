@@ -250,6 +250,13 @@ pnpm add example
     expect(manifest.format).toBe("farming-labs-agent-bundle.v1");
     expect(manifest.contentHash).toMatch(/^[a-f0-9]{64}$/);
     expect(manifest.files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256))).toBe(true);
+    expect(manifest.files.every((file) => file.etag === `"${file.sha256}"`)).toBe(true);
+    expect(
+      manifest.files.every(
+        (file) =>
+          file.contentDigest === `sha-256=:${Buffer.from(file.sha256, "hex").toString("base64")}:`,
+      ),
+    ).toBe(true);
     expect(manifest.pages).toHaveLength(2);
 
     await expect(exportAgentBundle({ check: true })).resolves.toBeUndefined();
@@ -635,6 +642,10 @@ pnpm add example
     const firstPage = readFileSync(pagePath, "utf-8");
     const firstManifest = readFileSync(manifestPath, "utf-8");
     expect(firstPage).toContain('last_updated: "2020-01-02"');
+    const parsedManifest = JSON.parse(firstManifest) as AgentBundleManifest;
+    expect(
+      parsedManifest.files.every((file) => file.lastModified === "Thu, 02 Jan 2020 00:00:00 GMT"),
+    ).toBe(true);
 
     const future = new Date("2040-12-31T23:59:59Z");
     utimesSync(path.join(tmpDir, "docs", "guides", "install", "page.mdx"), future, future);

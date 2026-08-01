@@ -258,6 +258,82 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     expect(await cardHead.text()).toBe("");
   });
 
+  it("applies cache validators and RFC 9530 integrity metadata across agent surfaces", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const server = createDocsServer({
+      entry: "docs",
+      nav: { title: "Cache Integrity Docs" },
+      mcp: true,
+      agent: {
+        a2a: {
+          name: "Cache integrity agent",
+          description: "Answers questions from the cache integrity documentation.",
+          supportedInterfaces: [{ url: "https://agent.example.com/a2a" }],
+          skills: [
+            {
+              id: "docs",
+              name: "Documentation",
+              description: "Answers questions from the cache integrity documentation.",
+              tags: ["documentation"],
+            },
+          ],
+        },
+      },
+      _preloadedContent: {
+        "/docs/page.md": `---\ntitle: Home\nlastmod: 2026-07-31T12:00:00.000Z\n---\n\n# Home\n\nWelcome.`,
+      },
+    });
+
+    for (const path of [
+      "/docs.md",
+      "/llms.txt",
+      "/.well-known/agent.json",
+      "/.well-known/agent-card.json",
+      "/.well-known/api-catalog",
+      "/.well-known/agent-skills/index.json",
+      "/skill.md",
+    ]) {
+      const url = new URL(path, "https://docs.example.com");
+      const response = await server.GET({ request: new Request(url), url });
+      const content = await response.text();
+      const etag = response.headers.get("etag");
+      const contentDigest = response.headers.get("content-digest");
+      const lastModified = response.headers.get("last-modified");
+
+      expect(response.status, path).toBe(200);
+      expect(etag, path).toMatch(/^"[a-f0-9]{64}"$/u);
+      expect(contentDigest, path).toBe(
+        `sha-256=:${createHash("sha256").update(content, "utf8").digest("base64")}:`,
+      );
+      expect(lastModified, path).toMatch(/ GMT$/u);
+
+      const head = await server.HEAD({
+        request: new Request(url, { method: "HEAD" }),
+        url,
+      });
+      expect(head.status, path).toBe(200);
+      expect(head.headers.get("etag"), path).toBe(etag);
+      expect(head.headers.get("content-digest"), path).toBe(contentDigest);
+      expect(head.headers.get("last-modified"), path).toBe(lastModified);
+      expect(await head.text(), path).toBe("");
+
+      const byEtag = await server.GET({
+        request: new Request(url, { headers: { "If-None-Match": etag! } }),
+        url,
+      });
+      expect(byEtag.status, path).toBe(304);
+      expect(byEtag.headers.get("content-digest"), path).toBe(contentDigest);
+      expect(await byEtag.text(), path).toBe("");
+
+      const byDate = await server.GET({
+        request: new Request(url, { headers: { "If-Modified-Since": lastModified! } }),
+        url,
+      });
+      expect(byDate.status, path).toBe(304);
+      expect(await byDate.text(), path).toBe("");
+    }
+  });
+
   it("matches the shared discovery method contract", async () => {
     const { createDocsServer } = await loadCreateDocsServer();
     const server = createDocsServer({
@@ -405,28 +481,33 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     expect(changesResponse.status).toBe(404);
   });
 
-  it("keeps discovery HEAD requests metadata-only", async () => {
+  it("keeps discovery HEAD requests bodyless with the GET validators", async () => {
     const { createDocsServer } = await loadCreateDocsServer();
     const config: Record<string, unknown> = {
       entry: "docs",
-      agent: { skills: "must-not-resolve-for-agent-manifest-head" },
       _preloadedContent: {
         "/docs/page.md": "# Home\n",
       },
     };
-    Object.defineProperty(config, "_preloadedAgentSkills", {
-      get() {
-        throw new Error("HEAD must not resolve configured skills");
-      },
-    });
 
     const server = createDocsServer(config);
     const agentManifestUrl = new URL("/.well-known/agent.json", "https://docs.example.com");
+    const getResponse = await server.GET({
+      request: new Request(agentManifestUrl),
+      url: agentManifestUrl,
+    });
     const agentManifestResponse = await server.HEAD({
       request: new Request(agentManifestUrl, { method: "HEAD" }),
       url: agentManifestUrl,
     });
     expect(agentManifestResponse.status).toBe(200);
+    expect(agentManifestResponse.headers.get("etag")).toBe(getResponse.headers.get("etag"));
+    expect(agentManifestResponse.headers.get("content-digest")).toBe(
+      getResponse.headers.get("content-digest"),
+    );
+    expect(agentManifestResponse.headers.get("last-modified")).toBe(
+      getResponse.headers.get("last-modified"),
+    );
     expect(await agentManifestResponse.text()).toBe("");
 
     const fetchSpy = vi

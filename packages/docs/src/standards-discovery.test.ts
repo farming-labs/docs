@@ -231,17 +231,27 @@ describe("RFC 9727 API catalog", () => {
   });
 
   it("serves GET and bodyless HEAD with the RFC media type and Link relation", async () => {
+    const lastModified = "2026-07-31T12:00:00.000Z";
     const get = await createDocsStandardsResponse({
       request: new Request(`https://docs.example.com${DEFAULT_API_CATALOG_ROUTE}`),
       apiCatalog: catalog(),
       fallbackSkillDocument: generatedSkill,
+      lastModified,
     });
     expect(get?.status).toBe(200);
     expect(get?.headers.get("content-type")).toBe(
       `${API_CATALOG_MEDIA_TYPE}; profile="${API_CATALOG_PROFILE_URI}"; charset=utf-8`,
     );
     expect(get?.headers.get("link")).toContain('rel="api-catalog"');
-    expect(await get?.json()).toEqual(catalog());
+    const getContent = await get?.text();
+    expect(JSON.parse(getContent ?? "null")).toEqual(catalog());
+    expect(get?.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(get?.headers.get("last-modified")).toBe("Fri, 31 Jul 2026 12:00:00 GMT");
+    expect(get?.headers.get("content-digest")).toBe(
+      `sha-256=:${createHash("sha256")
+        .update(getContent ?? "", "utf8")
+        .digest("base64")}:`,
+    );
 
     const head = await createDocsStandardsResponse({
       request: new Request(`https://docs.example.com${DEFAULT_API_CATALOG_ROUTE}`, {
@@ -249,10 +259,34 @@ describe("RFC 9727 API catalog", () => {
       }),
       apiCatalog: catalog(),
       fallbackSkillDocument: generatedSkill,
+      lastModified,
     });
     expect(head?.status).toBe(200);
     expect(head?.headers.get("content-type")).toContain(API_CATALOG_MEDIA_TYPE);
+    expect(head?.headers.get("etag")).toBe(get?.headers.get("etag"));
+    expect(head?.headers.get("content-digest")).toBe(get?.headers.get("content-digest"));
     expect(await head?.text()).toBe("");
+
+    const notModified = await createDocsStandardsResponse({
+      request: new Request(`https://docs.example.com${DEFAULT_API_CATALOG_ROUTE}`, {
+        headers: { "If-None-Match": get?.headers.get("etag") ?? "" },
+      }),
+      apiCatalog: catalog(),
+      fallbackSkillDocument: generatedSkill,
+      lastModified,
+    });
+    expect(notModified?.status).toBe(304);
+    expect(notModified?.headers.get("content-digest")).toBe(get?.headers.get("content-digest"));
+
+    const dateNotModified = await createDocsStandardsResponse({
+      request: new Request(`https://docs.example.com${DEFAULT_API_CATALOG_ROUTE}`, {
+        headers: { "If-Modified-Since": "Sat, 01 Aug 2026 00:00:00 GMT" },
+      }),
+      apiCatalog: catalog(),
+      fallbackSkillDocument: generatedSkill,
+      lastModified,
+    });
+    expect(dateNotModified?.status).toBe(304);
   });
 
   it("keeps the catalog unavailable without disabling Agent Skills discovery", async () => {

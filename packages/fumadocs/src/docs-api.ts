@@ -48,6 +48,7 @@ import {
   createDocsAgentTraceId,
   createDocsContentChangeFeed,
   createDocsContentChangesHttpResponse,
+  createDocsCacheableResponse,
   createDocsStandardsDiscoveryResponse,
   createDocsRobotsResponse,
   createDocsMarkdownResponse,
@@ -3924,6 +3925,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     includeAgentCard: Boolean(options?.agent?.a2a),
   });
   const agentManifestLinkHeader = getDocsAgentManifestLinkHeader(discoveryLinkHeader);
+  const agentSurfaceLastModified = new Date().toUTCString();
   const telemetryConfig: Partial<DocsConfig> = {
     entry,
     docsPath,
@@ -4257,6 +4259,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       fallbackSkillDocument,
       publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: options?.agent?.a2a,
+      lastModified: agentSurfaceLastModified,
       origin: url.origin,
       entry,
       docsPath,
@@ -4335,17 +4338,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
-        if (isHeadRequest) {
-          return new Response(null, {
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: agentManifestLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
-          });
-        }
-        return Response.json(
+        const content = `${JSON.stringify(
           buildAgentSpec({
             origin: url.origin,
             entry,
@@ -4383,14 +4376,20 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             ],
             agentCard: options?.agent?.a2a,
           }),
-          {
-            headers: {
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: agentManifestLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
+          null,
+          2,
+        )}\n`;
+        return createDocsCacheableResponse({
+          request,
+          content,
+          lastModified: agentSurfaceLastModified,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: agentManifestLinkHeader,
+            "X-Robots-Tag": "noindex",
           },
-        );
+        });
       }
 
       if (isDocsContentChangesRequest(url)) {
@@ -4499,33 +4498,33 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
-        return new Response(
-          isHeadRequest
-            ? null
-            : (readRootAgentsDocument(root) ??
-                renderAgentsDocument({
-                  origin: url.origin,
-                  entry,
-                  apiRoute: requestApiRoute,
-                  apiCatalog: apiCatalogEnabled,
-                  search: searchConfig,
-                  contentChanges: contentChangesConfig.enabled,
-                  mcp: mcpConfig,
-                  feedback: agentFeedbackConfig,
-                  llms: llmsConfig,
-                  sitemap: sitemapConfig,
-                  robots: robotsConfig,
-                  openapi: openapiDiscovery,
-                })),
-          {
-            headers: {
-              "Content-Type": "text/markdown; charset=utf-8",
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: discoveryLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
+        const content =
+          readRootAgentsDocument(root) ??
+          renderAgentsDocument({
+            origin: url.origin,
+            entry,
+            apiRoute: requestApiRoute,
+            apiCatalog: apiCatalogEnabled,
+            search: searchConfig,
+            contentChanges: contentChangesConfig.enabled,
+            mcp: mcpConfig,
+            feedback: agentFeedbackConfig,
+            llms: llmsConfig,
+            sitemap: sitemapConfig,
+            robots: robotsConfig,
+            openapi: openapiDiscovery,
+          });
+        return createDocsCacheableResponse({
+          request,
+          content,
+          lastModified: agentSurfaceLastModified,
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: discoveryLinkHeader,
+            "X-Robots-Tag": "noindex",
           },
-        );
+        });
       }
 
       if (resolveSkillRequest(url)) {
@@ -4540,34 +4539,34 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
-        return new Response(
-          isHeadRequest
-            ? null
-            : (readRootSkillDocument(root) ??
-                renderSkillDocument({
-                  origin: url.origin,
-                  entry,
-                  apiRoute: requestApiRoute,
-                  apiCatalog: apiCatalogEnabled,
-                  i18n,
-                  search: searchConfig,
-                  contentChanges: contentChangesConfig.enabled,
-                  mcp: mcpConfig,
-                  feedback: agentFeedbackConfig,
-                  llms: llmsConfig,
-                  sitemap: sitemapConfig,
-                  robots: robotsConfig,
-                  openapi: openapiDiscovery,
-                })),
-          {
-            headers: {
-              "Content-Type": "text/markdown; charset=utf-8",
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: discoveryLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
+        const content =
+          readRootSkillDocument(root) ??
+          renderSkillDocument({
+            origin: url.origin,
+            entry,
+            apiRoute: requestApiRoute,
+            apiCatalog: apiCatalogEnabled,
+            i18n,
+            search: searchConfig,
+            contentChanges: contentChangesConfig.enabled,
+            mcp: mcpConfig,
+            feedback: agentFeedbackConfig,
+            llms: llmsConfig,
+            sitemap: sitemapConfig,
+            robots: robotsConfig,
+            openapi: openapiDiscovery,
+          });
+        return createDocsCacheableResponse({
+          request,
+          content,
+          lastModified: agentSurfaceLastModified,
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: discoveryLinkHeader,
+            "X-Robots-Tag": "noindex",
           },
-        );
+        });
       }
 
       const robotsResponse = createDocsRobotsResponse({
@@ -4754,7 +4753,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             contentLength: selected.content.length,
           },
         });
-        return new Response(selected.content, {
+        return createDocsCacheableResponse({
+          request,
+          content: selected.content,
+          lastModified: agentSurfaceLastModified,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
