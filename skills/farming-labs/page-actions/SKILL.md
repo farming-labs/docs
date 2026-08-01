@@ -1,6 +1,7 @@
 ---
 name: page-actions
 description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, provider presets, target markdown/page/source/github, prompts, custom urlTemplate placeholders, alignment, or position (above-title, below-title).
+compatibility: Requires a JavaScript or TypeScript project using @farming-labs/docs. Open-in-LLM and source actions require browser access to their configured public URLs.
 ---
 
 # @farming-labs/docs — Page Actions
