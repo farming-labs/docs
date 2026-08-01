@@ -73,4 +73,21 @@ describe("agent surface HTTP cache integrity", () => {
     expect(preconditionFailed.status).toBe(412);
     expect(preconditionFailed.headers.get("content-digest")).toBe(formatDocsContentDigest(sha256));
   });
+
+  it("preserves an error response when its validator matches", async () => {
+    const content = "Section not found";
+    const sha256 = createHash("sha256").update(content, "utf8").digest("hex");
+    const response = createDocsCacheableResponse({
+      request: new Request("https://docs.example.com/docs/install.md?section=missing", {
+        headers: { "If-None-Match": `"${sha256}"` },
+      }),
+      content,
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("etag")).toBe(`"${sha256}"`);
+    expect(await response.text()).toBe(content);
+  });
 });

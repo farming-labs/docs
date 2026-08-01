@@ -1632,8 +1632,11 @@ describe("agent route helpers", () => {
     );
     expect(response.headers.get("x-docs-markdown-section-count")).toBe("4");
     expect(response.headers.get("x-docs-markdown-token-budget")).toBe("80");
-    expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/u);
-    expect(response.headers.get("content-digest")).toMatch(/^sha-256=:[A-Za-z0-9+/]{43}=:$/u);
+    const expectedSha256 = createHash("sha256").update(body, "utf8").digest("hex");
+    expect(response.headers.get("etag")).toBe(`"${expectedSha256}"`);
+    expect(response.headers.get("content-digest")).toBe(
+      `sha-256=:${createHash("sha256").update(body, "utf8").digest("base64")}:`,
+    );
     expect(response.headers.get("last-modified")).toBe("Sat, 25 Jul 2026 10:00:00 GMT");
     expect(index).toMatchObject({
       schemaVersion: 2,

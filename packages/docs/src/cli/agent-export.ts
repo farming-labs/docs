@@ -720,7 +720,12 @@ function resolveUserOwnedAgentsOutputs(outputs: PlannedOutput[]): PlannedOutput[
     if (output.kind !== "agents") return output;
     const current = readExisting(output.absolutePath);
     if (current === undefined || isManagedAgentsContent(current)) return output;
-    return { ...output, content: normalizeContent(current), managed: false };
+    return {
+      ...output,
+      content: normalizeContent(current),
+      managed: false,
+      lastModified: undefined,
+    };
   });
 }
 
@@ -745,7 +750,12 @@ function resolveUserOwnedOverrides(
     if (current === undefined || current === output.content) return output;
     const previousFile = previousByPath.get(output.publicPath);
     if (previousFile?.managed && sha256(current) === previousFile.sha256) return output;
-    return { ...output, content: normalizeContent(current), managed: false };
+    return {
+      ...output,
+      content: normalizeContent(current),
+      managed: false,
+      lastModified: undefined,
+    };
   });
 }
 

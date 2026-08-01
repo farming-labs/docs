@@ -542,6 +542,18 @@ pnpm add example
     mkdirSync(path.join(tmpDir, "public"), { recursive: true });
     writeFileSync(path.join(tmpDir, "public", "docs.md"), "# Custom static home\n", "utf-8");
     writeFileSync(path.join(tmpDir, "public", "llms.txt"), "# Custom llms index\n", "utf-8");
+    execFileSync("git", ["init", "-q"], { cwd: tmpDir });
+    execFileSync("git", ["config", "user.name", "Agent Export Test"], { cwd: tmpDir });
+    execFileSync("git", ["config", "user.email", "agent-export@example.com"], { cwd: tmpDir });
+    execFileSync("git", ["add", "docs.config.ts", "docs"], { cwd: tmpDir });
+    execFileSync("git", ["commit", "-q", "-m", "initial docs"], {
+      cwd: tmpDir,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_DATE: "2020-01-02T03:04:05Z",
+        GIT_COMMITTER_DATE: "2020-01-02T03:04:05Z",
+      },
+    });
     process.chdir(tmpDir);
 
     await exportAgentBundle({ public: true });
@@ -555,7 +567,14 @@ pnpm add example
     const manifest = JSON.parse(
       readFileSync(path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json"), "utf-8"),
     ) as AgentBundleManifest;
-    expect(manifest.files.find((file) => file.path === "docs.md")?.managed).toBe(false);
+    const overriddenPage = manifest.files.find((file) => file.path === "docs.md");
+    expect(overriddenPage?.managed).toBe(false);
+    expect(overriddenPage).not.toHaveProperty("lastModified");
+    expect(
+      manifest.files.some(
+        (file) => file.kind === "page" && file.managed && file.lastModified !== undefined,
+      ),
+    ).toBe(true);
     expect(manifest.files.find((file) => file.path === "llms.txt")?.managed).toBe(false);
   });
 

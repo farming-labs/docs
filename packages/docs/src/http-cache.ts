@@ -154,6 +154,8 @@ function exposeValidatorHeaders(headers: Headers): void {
 export function createDocsCacheableResponse(options: DocsCacheableResponseOptions): Response {
   const method = options.request.method.toUpperCase();
   const isSafeRetrieval = method === "GET" || method === "HEAD";
+  const status = options.status ?? 200;
+  const canApplyConditionalRequest = status === 200;
   const { sha256, contentDigest } = resolveDocsContentValidators(options.content, options.sha256);
   const etag = `"${sha256}"`;
   const lastModified = resolveDocsHttpDate(options.lastModified);
@@ -163,12 +165,16 @@ export function createDocsCacheableResponse(options: DocsCacheableResponseOption
   if (lastModified) headers.set("Last-Modified", lastModified);
   exposeValidatorHeaders(headers);
 
-  if (requestMatchesDocsEtag(options.request, etag)) {
+  if (canApplyConditionalRequest && requestMatchesDocsEtag(options.request, etag)) {
     headers.delete("Content-Type");
     return new Response(null, { status: isSafeRetrieval ? 304 : 412, headers });
   }
 
-  if (isSafeRetrieval && requestHasFreshDocsDate(options.request, lastModified)) {
+  if (
+    canApplyConditionalRequest &&
+    isSafeRetrieval &&
+    requestHasFreshDocsDate(options.request, lastModified)
+  ) {
     headers.delete("Content-Type");
     return new Response(null, { status: 304, headers });
   }
@@ -181,5 +187,5 @@ export function createDocsCacheableResponse(options: DocsCacheableResponseOption
         : // Fetch accepts BufferSource bodies at runtime. TypeScript's DOM declarations narrow
           // Uint8Array to an ArrayBuffer-backed variant, so retain the bytes and bridge that gap.
           (options.content as unknown as BodyInit);
-  return new Response(body, { status: options.status ?? 200, headers });
+  return new Response(body, { status, headers });
 }
