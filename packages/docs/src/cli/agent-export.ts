@@ -945,7 +945,6 @@ function preservedStaleManifestFiles(
   publicDir: string,
   previous: AgentBundleManifest | undefined,
   outputs: PlannedOutput[],
-  lastModified?: string,
 ): AgentBundleManifestFile[] {
   if (!previous) return [];
   const expected = new Set(outputs.map((output) => output.publicPath));
@@ -963,7 +962,7 @@ function preservedStaleManifestFiles(
         sha256: digest,
         etag: `"${digest}"`,
         contentDigest: formatDocsContentDigest(digest),
-        lastModified: file.lastModified ?? lastModified,
+        lastModified: undefined,
         managed: false,
         orphaned: true,
       },
@@ -1482,12 +1481,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   const stalePaths = staleManagedPaths(publicDir, previous, outputs);
   const staleInternal = staleInternalPaths(rootDir, previous, internalOutputs);
   const bundleLastModified = resolveAgentBundleLastModified(localizedPages);
-  const orphanedFiles = preservedStaleManifestFiles(
-    publicDir,
-    previous,
-    outputs,
-    bundleLastModified,
-  );
+  const orphanedFiles = preservedStaleManifestFiles(publicDir, previous, outputs);
   const orphanedInternalFiles = preservedStaleInternalManifestFiles(
     rootDir,
     previous,

@@ -305,7 +305,8 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       expect(contentDigest, path).toBe(
         `sha-256=:${createHash("sha256").update(content, "utf8").digest("base64")}:`,
       );
-      expect(lastModified, path).toMatch(/ GMT$/u);
+      if (path === "/docs.md") expect(lastModified, path).toMatch(/ GMT$/u);
+      else expect(lastModified, path).toBeNull();
 
       const head = await server.HEAD({
         request: new Request(url, { method: "HEAD" }),
@@ -326,11 +327,15 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       expect(await byEtag.text(), path).toBe("");
 
       const byDate = await server.GET({
-        request: new Request(url, { headers: { "If-Modified-Since": lastModified! } }),
+        request: new Request(url, {
+          headers: {
+            "If-Modified-Since": lastModified ?? "Sat, 01 Aug 2026 00:00:00 GMT",
+          },
+        }),
         url,
       });
-      expect(byDate.status, path).toBe(304);
-      expect(await byDate.text(), path).toBe("");
+      expect(byDate.status, path).toBe(lastModified ? 304 : 200);
+      if (lastModified) expect(await byDate.text(), path).toBe("");
     }
   });
 

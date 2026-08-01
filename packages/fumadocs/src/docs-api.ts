@@ -3925,7 +3925,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     includeAgentCard: Boolean(options?.agent?.a2a),
   });
   const agentManifestLinkHeader = getDocsAgentManifestLinkHeader(discoveryLinkHeader);
-  const agentSurfaceLastModified = new Date().toUTCString();
   const telemetryConfig: Partial<DocsConfig> = {
     entry,
     docsPath,
@@ -4259,7 +4258,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       fallbackSkillDocument,
       publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: options?.agent?.a2a,
-      lastModified: agentSurfaceLastModified,
       origin: url.origin,
       entry,
       docsPath,
@@ -4382,7 +4380,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         return createDocsCacheableResponse({
           request,
           content,
-          lastModified: agentSurfaceLastModified,
           headers: {
             "Content-Type": "application/json; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
@@ -4517,7 +4514,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         return createDocsCacheableResponse({
           request,
           content,
-          lastModified: agentSurfaceLastModified,
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
@@ -4559,7 +4555,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         return createDocsCacheableResponse({
           request,
           content,
-          lastModified: agentSurfaceLastModified,
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
@@ -4756,7 +4751,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         return createDocsCacheableResponse({
           request,
           content: selected.content,
-          lastModified: agentSurfaceLastModified,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",

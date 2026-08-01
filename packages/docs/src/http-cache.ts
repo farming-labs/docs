@@ -70,6 +70,8 @@ export function requestMatchesDocsEtag(request: Request, etag: string): boolean 
 
 /** Apply If-Modified-Since only when the stronger If-None-Match validator is absent. */
 export function requestHasFreshDocsDate(request: Request, lastModified?: string): boolean {
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return false;
   if (!lastModified || request.headers.has("if-none-match")) return false;
   const ifModifiedSince = request.headers.get("if-modified-since");
   if (!ifModifiedSince) return false;
@@ -100,6 +102,8 @@ function exposeValidatorHeaders(headers: Headers): void {
  * Build a byte-stable GET/HEAD response with HTTP validators and RFC 9530 integrity metadata.
  */
 export function createDocsCacheableResponse(options: DocsCacheableResponseOptions): Response {
+  const method = options.request.method.toUpperCase();
+  const isSafeRetrieval = method === "GET" || method === "HEAD";
   const sha256 = options.sha256 ?? sha256DocsContent(options.content);
   const etag = `"${sha256}"`;
   const lastModified = resolveDocsHttpDate(options.lastModified);
@@ -109,16 +113,18 @@ export function createDocsCacheableResponse(options: DocsCacheableResponseOption
   if (lastModified) headers.set("Last-Modified", lastModified);
   exposeValidatorHeaders(headers);
 
-  if (
-    requestMatchesDocsEtag(options.request, etag) ||
-    requestHasFreshDocsDate(options.request, lastModified)
-  ) {
+  if (requestMatchesDocsEtag(options.request, etag)) {
+    headers.delete("Content-Type");
+    return new Response(null, { status: isSafeRetrieval ? 304 : 412, headers });
+  }
+
+  if (isSafeRetrieval && requestHasFreshDocsDate(options.request, lastModified)) {
     headers.delete("Content-Type");
     return new Response(null, { status: 304, headers });
   }
 
   const body =
-    options.request.method.toUpperCase() === "HEAD"
+    method === "HEAD"
       ? null
       : typeof options.content === "string"
         ? options.content

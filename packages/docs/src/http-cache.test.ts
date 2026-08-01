@@ -50,6 +50,7 @@ describe("agent surface HTTP cache integrity", () => {
 
     const response = createDocsCacheableResponse({
       request: new Request(url, {
+        method: "POST",
         headers: {
           "If-None-Match": '"different"',
           "If-Modified-Since": "Sat, 01 Aug 2026 00:00:00 GMT",
@@ -59,5 +60,16 @@ describe("agent surface HTTP cache integrity", () => {
       lastModified: "2026-07-31T12:00:00.000Z",
     });
     expect(response.status).toBe(200);
+
+    const preconditionFailed = createDocsCacheableResponse({
+      request: new Request(url, {
+        method: "POST",
+        headers: { "If-None-Match": `"${sha256}"` },
+      }),
+      content,
+      lastModified: "2026-07-31T12:00:00.000Z",
+    });
+    expect(preconditionFailed.status).toBe(412);
+    expect(preconditionFailed.headers.get("content-digest")).toBe(formatDocsContentDigest(sha256));
   });
 });

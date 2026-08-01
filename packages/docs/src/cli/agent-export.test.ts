@@ -674,6 +674,9 @@ pnpm add example
       managed: false,
       orphaned: true,
     });
+    expect(manifest.files.find((file) => file.path === "llms.txt")).not.toHaveProperty(
+      "lastModified",
+    );
     await expect(exportAgentBundle({ check: true })).rejects.toThrow(
       "Static Agent Bundle is stale",
     );

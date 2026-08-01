@@ -942,7 +942,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     includeAgentCard: Boolean(config.agent?.a2a),
   });
   const agentManifestLinkHeader = getDocsAgentManifestLinkHeader(discoveryLinkHeader);
-  const agentSurfaceLastModified = new Date().toUTCString();
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(
     (config as Record<string, unknown>).apiReference as any,
   );
@@ -1074,7 +1073,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       fallbackSkillDocument: needsSkill ? renderDocsSkillDocument(discoveryOptions) : "",
       publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: config.agent?.a2a,
-      lastModified: agentSurfaceLastModified,
     });
   }
 
@@ -1148,7 +1146,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       return createDocsCacheableResponse({
         request: event.request,
         content,
-        lastModified: agentSurfaceLastModified,
         headers: {
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "public, max-age=0, s-maxage=3600",
@@ -1244,7 +1241,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       return createDocsCacheableResponse({
         request: event.request,
         content,
-        lastModified: agentSurfaceLastModified,
         headers: {
           "Content-Type": "text/markdown; charset=utf-8",
           "Cache-Control": "public, max-age=0, s-maxage=3600",
@@ -1263,7 +1259,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       return createDocsCacheableResponse({
         request: event.request,
         content,
-        lastModified: agentSurfaceLastModified,
         headers: {
           "Content-Type": "text/markdown; charset=utf-8",
           "Cache-Control": "public, max-age=0, s-maxage=3600",
@@ -1366,7 +1361,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       return createDocsCacheableResponse({
         request: event.request,
         content: selected.content,
-        lastModified: agentSurfaceLastModified,
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "public, max-age=3600",

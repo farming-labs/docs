@@ -1287,7 +1287,7 @@ export default defineDocs({
     expect(cacheResponse.headers.get("content-digest")).toBe(
       `sha-256=:${createHash("sha256").update(cacheContent, "utf8").digest("base64")}:`,
     );
-    expect(cacheResponse.headers.get("last-modified")).toMatch(/ GMT$/u);
+    expect(cacheResponse.headers.get("last-modified")).toBeNull();
     const cacheNotModified = await GET(
       new Request("http://localhost/llms.txt", {
         headers: { "If-None-Match": cacheEtag! },
@@ -1298,6 +1298,12 @@ export default defineDocs({
       cacheResponse.headers.get("content-digest"),
     );
     expect(await cacheNotModified.text()).toBe("");
+    const dateOnlyRevalidation = await GET(
+      new Request("http://localhost/llms.txt", {
+        headers: { "If-Modified-Since": "Sat, 01 Aug 2026 00:00:00 GMT" },
+      }),
+    );
+    expect(dateOnlyRevalidation.status).toBe(200);
 
     const customLlms = await GET(new Request("http://localhost/api/internal/docs?format=llms"));
     expect(customLlms.status).toBe(200);
