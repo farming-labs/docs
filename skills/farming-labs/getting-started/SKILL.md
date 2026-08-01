@@ -1,6 +1,7 @@
 ---
 name: getting-started
 description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, changelog, API reference, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, changelog, apiReference, entry, contentDir, and common gotchas.
+compatibility: Requires Node.js and npm, pnpm, Yarn, or Bun. Setup targets a supported Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project; scaffolding and package installation require network access.
 ---
 
 # @farming-labs/docs — Getting Started
@@ -119,114 +120,12 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 
 ---
 
-## API reference quick setup
+## Optional generated pages
 
-`apiReference` generates an API reference from your framework's route handlers or from a hosted
-OpenAPI JSON document.
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    routeRoot: "api",
-  },
-  theme: fumadocs(),
-});
-```
-
-Important framework behavior:
-
-- **Next.js**: `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled.
-- **TanStack Start, SvelteKit, Astro, Nuxt**: `docs.config` controls scanning and theming, but the app still needs the `/{path}` route handler.
-- **CLI**: `init --api-reference` writes the config and scaffolds those handler files for you.
-- **Agents**: `GET /api/docs?format=openapi` serves the machine-readable schema and is advertised through agent discovery, generated `llms.txt`, generated `AGENTS.md`, and generated `skill.md`.
-
-Remote OpenAPI JSON example:
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
-  },
-  theme: fumadocs(),
-});
-```
-
-When `specUrl` is set, local route scanning is skipped. On TanStack Start, SvelteKit, Astro, and
-Nuxt you still need the `/{path}` route handler because that route serves the generated API
-reference page.
-
-Minimal handler files for non-Next frameworks:
-
-- **TanStack Start**: `src/routes/api-reference.index.ts` and `src/routes/api-reference.$.ts` using `createTanstackApiReference(config)`
-- **SvelteKit**: `src/routes/api-reference/+server.ts` and `src/routes/api-reference/[...slug]/+server.ts` using `createSvelteApiReference(config)`
-- **Astro**: `src/pages/api-reference/index.ts` and `src/pages/api-reference/[...slug].ts` using `createAstroApiReference(config)`
-- **Nuxt**: `server/routes/api-reference/index.ts` and `server/routes/api-reference/[...slug].ts` using `defineApiReferenceHandler(config)`
-
-Route scan conventions:
-
-- **Next.js**: `app/api/**/route.ts` or `src/app/api/**/route.ts`
-- **TanStack Start**: `src/routes/api.*.ts` and nested route files under the configured route root
-- **SvelteKit**: `src/routes/api/**/+server.ts` or `+server.js`
-- **Astro**: `src/pages/api/**/*.ts` or `.js`
-- **Nuxt**: `server/api/**/*.ts` or `.js`
-
-For the full option surface (`path`, `specUrl`, `routeRoot`, `exclude`), use the
-`configuration` skill.
-
----
-
-## Changelog quick setup
-
-Today, the turn-key generated changelog route flow is available in **Next.js** with
-`@farming-labs/next/config`.
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  changelog: {
-    enabled: true,
-    path: "changelogs",
-    contentDir: "changelog",
-    title: "Changelog",
-    description: "Latest product updates and release notes.",
-    search: true,
-  },
-  theme: fumadocs(),
-});
-```
-
-Default content structure:
-
-```text
-app/docs/changelog/
-  2026-04-15/page.mdx
-  2026-04-03/page.mdx
-```
-
-That publishes:
-
-- `/docs/changelogs`
-- `/docs/changelogs/2026-04-15`
-
-Use entry frontmatter like:
-
-```mdx
----
-title: "OpenAPI mode is now the default"
-description: "The docs example now ships with the faster API reference experience."
-version: "v0.1.13"
-tags: ["api-reference", "next"]
----
-```
-
-When you use `withDocs()`, the route files are generated automatically. There is no separate
-`__changelog.generated.tsx` file to maintain.
+- **API reference:** Read [references/api-reference.md](references/api-reference.md) when enabling
+  local route scanning, a hosted OpenAPI document, or non-Next handler routes.
+- **Changelog:** Read [references/changelog.md](references/changelog.md) when adding the generated
+  Next.js release feed and dated entry pages.
 
 ---
 

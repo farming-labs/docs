@@ -1,6 +1,7 @@
 ---
 name: creating-themes
 description: Create and share a custom theme for @farming-labs/docs. Use when building a theme with createTheme(), extendTheme(), cherry-picking built-in defaults, publishing as npm package, or adding CSS overrides. Covers ui.colors, typography, layout, sidebar, radius, ui.components like HoverLink, and package layout for publishing.
+compatibility: Requires a JavaScript or TypeScript project using @farming-labs/docs and its framework theme package. Publishing a theme requires registry credentials and network access.
 ---
 
 # @farming-labs/docs — Creating and Sharing Themes
