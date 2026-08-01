@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:794d072d0a443798
+sourceHash=fnv1a64:627607fb4f5451f6
 settingsHash=fnv1a64:e50e89e221226fc3
 outputHash=fnv1a64:2612254b737d2c09
-generatedAt=2026-07-30T09:43:36.421Z
+generatedAt=2026-08-01T13:49:56.427Z
 -->
 # CLI
 

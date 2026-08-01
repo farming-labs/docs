@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:15d10d4a42682400
+sourceHash=fnv1a64:196e9e5dd8fb1f2f
 settingsHash=fnv1a64:aa433a28ef4afd1f
-outputHash=fnv1a64:d4876e8116ad0a3a
-generatedAt=2026-07-30T09:43:36.687Z
+outputHash=fnv1a64:99e9aed8b5d79935
+generatedAt=2026-08-01T13:49:56.427Z
 -->
 # API Reference
 
@@ -42,6 +42,16 @@ SvelteKit or Astro, append `--config src/lib/docs.config.ts`. If TypeScript reje
 shape, first align all `@farming-labs/*` package versions and rename the config to `.tsx` when it
 contains JSX. If diagnostics and public discovery disagree, restore the previous value and repair
 the adapter route or stale static export before enabling the capability again.
+
+## API Reference Agent Skills progressive disclosure
+
+`agent.skills` accepts a path, an array of paths, or an object with `paths` and an optional
+`progressiveDisclosure` policy. Use `maxSkillLines`, `instructionTokenBudget`, and
+`maxReferenceDepth` to bound activated context. Set `compatibility` to `"when-needed"` (default),
+`"always"`, or `"off"`; use `checkScripts` to verify that bundled scripts document dependencies
+and validation. `docs doctor --agent` checks every configured skill, while `docs review` runs the
+same checks when a configured skill, companion file, or docs config changes.
+
 ## API Reference PageAgentFrontmatter fields
 
 `PageAgentFrontmatter` defines `task`, `outcome`, `appliesTo`, `prerequisites`, `verification`, `rollback`, and `failureModes`; each failure mode pairs a `symptom` with its `resolution`.
