@@ -218,6 +218,21 @@ async function main() {
     const { printAgentsGenerateHelp } = await import("./agents.js");
     printAgentsGenerateHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "skills" && subcommand === "scaffold") {
+    const { parseSkillScaffoldArgs, printSkillScaffoldHelp, scaffoldSkillFromContracts } =
+      await import("./skills.js");
+    const skillOptions = parseSkillScaffoldArgs(args.slice(2));
+    if (skillOptions.help) {
+      printSkillScaffoldHelp();
+      return;
+    }
+    await scaffoldSkillFromContracts(skillOptions);
+  } else if (parsedCommand.command === "skills") {
+    console.error(pc.red(`Unknown skills subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printSkillScaffoldHelp } = await import("./skills.js");
+    printSkillScaffoldHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "doctor") {
     const { parseDoctorArgs, printDoctorHelp, runDoctor } = await import("./doctor.js");
     const doctorOptions = parseDoctorArgs(args.slice(1));
@@ -347,6 +362,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("check")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} page context, ${pc.dim("export")} static bundles)
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
+  ${pc.cyan("skills")}   Agent Skills utilities (${pc.dim("scaffold")} from structured page contracts)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
@@ -419,6 +435,15 @@ ${pc.dim("Options for agent compact:")}
 ${pc.dim("Options for agent export:")}
   ${pc.cyan("agent export --public")}               Export page Markdown, llms.txt, discovery, skills, AGENTS, sitemaps, robots, and a SHA-256 manifest
   ${pc.cyan("agent export --check")}                Fail when the static Agent Bundle is stale
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for skills scaffold:")}
+  ${pc.cyan("skills scaffold [name]")}              Compile page agent contracts into a compact ${pc.dim("SKILL.md")} router and focused references
+  ${pc.cyan("--output <directory>")}                Write to a full skill directory; defaults to ${pc.dim("skills/<name>")}
+  ${pc.cyan("--include <route>")}                   Include a route prefix; repeat for multiple focused sections
+  ${pc.cyan("--check")}                             Fail when generated skill files are missing or stale
+  ${pc.cyan("--dry-run")}                           Preview generated skill changes without writing files
+  ${pc.cyan("--force")}                             Replace colliding user-owned files in the selected directory
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for doctor:")}
