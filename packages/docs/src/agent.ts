@@ -35,6 +35,7 @@ import {
   DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
   resolveDocsContentChangesConfig,
 } from "./content-changes.js";
+import { createDocsCacheableResponse, resolveDocsHttpDate } from "./http-cache.js";
 import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   DEFAULT_SITEMAP_MD_ROUTE,
@@ -719,6 +720,8 @@ export interface DocsStandardsDiscoveryResponseOptions extends DocsAgentDiscover
   request: Request;
   preferredSkillDocument?: string | null;
   fallbackSkillDocument: string;
+  /** Stable representation generation or source modification time. */
+  lastModified?: string | Date | null;
 }
 
 export interface DocsAgentContractMcpTools {
@@ -2317,6 +2320,7 @@ export async function createDocsStandardsDiscoveryResponse({
   markdown: _markdown,
   publishedSkills,
   agentCard,
+  lastModified,
 }: DocsStandardsDiscoveryResponseOptions): Promise<Response | null> {
   const url = new URL(request.url);
   const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
@@ -2368,6 +2372,7 @@ export async function createDocsStandardsDiscoveryResponse({
     fallbackSkillDocument,
     publishedSkills,
     agentCard,
+    lastModified,
     apiCatalog: apiCatalogEnabled
       ? buildDocsApiCatalog({
           origin: catalogOrigin,
@@ -3500,41 +3505,6 @@ export function renderDocsMarkdownNotFound({
   return appendDocsMarkdownSitemapFooter(document, sitemap);
 }
 
-function hashDocsMarkdownRepresentation(value: string): string {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
-}
-
-function createDocsMarkdownEtag(document: string): string {
-  return `W/"${document.length.toString(16)}-${hashDocsMarkdownRepresentation(document)}"`;
-}
-
-function normalizeDocsMarkdownEtag(value: string): string {
-  return value.trim().replace(/^W\//i, "");
-}
-
-function requestMatchesDocsMarkdownEtag(request: Request, etag: string): boolean {
-  const header = request.headers.get("if-none-match");
-  if (!header) return false;
-  if (header.trim() === "*") return true;
-  const expected = normalizeDocsMarkdownEtag(etag);
-  return header.split(",").some((candidate) => normalizeDocsMarkdownEtag(candidate) === expected);
-}
-
-function resolveDocsMarkdownHttpDate(value?: string | Date | null): string | undefined {
-  if (!value) return undefined;
-  if (typeof value === "string" && !/(?:T|\s)\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.test(value.trim())) {
-    return undefined;
-  }
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date.toUTCString();
-}
-
 function extractDocsMarkdownLastModified(document: string): string | undefined {
   const frontmatter = document.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
   if (!frontmatter) return undefined;
@@ -3544,19 +3514,6 @@ function extractDocsMarkdownLastModified(document: string): string | undefined {
     return raw.slice(1, -1);
   }
   return raw;
-}
-
-function requestHasFreshDocsMarkdownDate(request: Request, lastModified?: string): boolean {
-  if (!lastModified || request.headers.has("if-none-match")) return false;
-  const ifModifiedSince = request.headers.get("if-modified-since");
-  if (!ifModifiedSince) return false;
-  const resourceTime = Date.parse(lastModified);
-  const requestTime = Date.parse(ifModifiedSince);
-  return (
-    Number.isFinite(resourceTime) &&
-    Number.isFinite(requestTime) &&
-    Math.floor(resourceTime / 1000) <= Math.floor(requestTime / 1000)
-  );
 }
 
 function resolveDocsMarkdownContentLocation(canonicalUrl: string): string {
@@ -3661,8 +3618,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
       byteBudget: sectionIndexRequest.byteBudget,
     });
     const responseDocument = JSON.stringify(sectionIndex);
-    const etag = createDocsMarkdownEtag(responseDocument);
-    const lastModified = resolveDocsMarkdownHttpDate(
+    const lastModified = resolveDocsHttpDate(
       options.lastModified ?? extractDocsMarkdownLastModified(document),
     );
     const responseHeaders: Record<string, string> = {
@@ -3671,7 +3627,6 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
       Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown"`,
       "Cache-Control": options.cacheControl ?? "public, max-age=0, s-maxage=3600",
       "Content-Type": "application/json; charset=utf-8",
-      ETag: etag,
       "X-Docs-Markdown-Section-Index": DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
       "X-Docs-Markdown-Section-Count": String(sectionIndex.sectionCount),
       "X-Docs-Markdown-Source-Estimated-Tokens": String(sectionIndex.estimatedTokens),
@@ -3687,16 +3642,10 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
       ...(lastModified ? { "Last-Modified": lastModified } : {}),
     };
 
-    if (
-      requestMatchesDocsMarkdownEtag(request, etag) ||
-      requestHasFreshDocsMarkdownDate(request, lastModified)
-    ) {
-      const { "Content-Type": _contentType, ...notModifiedHeaders } = responseHeaders;
-      return new Response(null, { status: 304, headers: notModifiedHeaders });
-    }
-
-    return new Response(request.method.toUpperCase() === "HEAD" ? null : responseDocument, {
-      status: 200,
+    return createDocsCacheableResponse({
+      request,
+      content: responseDocument,
+      lastModified,
       headers: responseHeaders,
     });
   }
@@ -3730,8 +3679,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
       }
     : {};
 
-  const etag = createDocsMarkdownEtag(responseDocument);
-  const lastModified = resolveDocsMarkdownHttpDate(
+  const lastModified = resolveDocsHttpDate(
     options.lastModified ?? extractDocsMarkdownLastModified(document),
   );
   const responseHeaders: Record<string, string> = {
@@ -3743,21 +3691,15 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
         ? "no-store"
         : (options.cacheControl ?? "public, max-age=0, s-maxage=3600"),
     "Content-Type": "text/markdown; charset=utf-8",
-    ETag: etag,
     ...sectionHeaders,
     ...(lastModified ? { "Last-Modified": lastModified } : {}),
   };
 
-  if (
-    requestMatchesDocsMarkdownEtag(request, etag) ||
-    requestHasFreshDocsMarkdownDate(request, lastModified)
-  ) {
-    const { "Content-Type": _contentType, ...notModifiedHeaders } = responseHeaders;
-    return new Response(null, { status: 304, headers: notModifiedHeaders });
-  }
-
-  return new Response(responseDocument, {
+  return createDocsCacheableResponse({
+    request,
+    content: responseDocument,
     status: sectionResult?.found === false ? 404 : 200,
+    lastModified,
     headers: responseHeaders,
   });
 }

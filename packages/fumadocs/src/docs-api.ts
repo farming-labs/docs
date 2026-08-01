@@ -48,6 +48,7 @@ import {
   createDocsAgentTraceId,
   createDocsContentChangeFeed,
   createDocsContentChangesHttpResponse,
+  createDocsCacheableResponse,
   createDocsStandardsDiscoveryResponse,
   createDocsRobotsResponse,
   createDocsMarkdownResponse,
@@ -2478,32 +2479,37 @@ function renderAgentsDocument({
   return lines.join("\n");
 }
 
-function readRootSkillDocument(rootDir: string): string | null {
-  const candidate = path.join(rootDir, "skill.md");
-  try {
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-      return fs.readFileSync(candidate, "utf-8");
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function readRootAgentsDocument(rootDir: string): string | null {
-  for (const fileName of ["AGENTS.md", "AGENT.md"]) {
-    const candidate = path.join(rootDir, fileName);
-    try {
-      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-        return fs.readFileSync(candidate, "utf-8");
+function createRootDocumentReader(rootDir: string, fileNames: readonly string[]) {
+  let cached:
+    | {
+        path: string;
+        signature: string;
+        content: string;
       }
-    } catch {
-      continue;
-    }
-  }
+    | undefined;
 
-  return null;
+  return function readRootDocument(): string | null {
+    for (const fileName of fileNames) {
+      const candidate = path.join(rootDir, fileName);
+      try {
+        const stats = fs.statSync(candidate);
+        if (!stats.isFile()) continue;
+        const signature = [stats.dev, stats.ino, stats.size, stats.mtimeMs, stats.ctimeMs].join(
+          ":",
+        );
+        if (cached?.path === candidate && cached.signature === signature) return cached.content;
+
+        const content = fs.readFileSync(candidate, "utf-8");
+        cached = { path: candidate, signature, content };
+        return content;
+      } catch {
+        continue;
+      }
+    }
+
+    cached = undefined;
+    return null;
+  };
 }
 
 function compactSkillText(value: string): string {
@@ -3859,6 +3865,8 @@ function generateLlmsTxt(
  */
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
+  const readRootSkillDocument = createRootDocumentReader(root, ["skill.md"]);
+  const readRootAgentsDocument = createRootDocumentReader(root, ["AGENTS.md", "AGENT.md"]);
   let publishedAgentSkills: Promise<DocsPublishedAgentSkill[]> | undefined;
   function getPublishedAgentSkills(): Promise<DocsPublishedAgentSkill[]> {
     if (!publishedAgentSkills) {
@@ -4091,6 +4099,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const llmsCache = new BoundedRouteCache<ReturnType<typeof renderDocsLlmsTxt>>(
     MAX_LLMS_CACHE_ROUTES_PER_LOCALE,
   );
+  const generatedAgentsCache = new BoundedRouteCache<string>(MAX_LLMS_CACHE_ROUTES_PER_LOCALE);
+  const generatedSkillCache = new BoundedRouteCache<string>(MAX_LLMS_CACHE_ROUTES_PER_LOCALE);
   const markdownSourcesByLocale = new Map<
     string,
     ReturnType<typeof createFilesystemDocsMcpSource>[]
@@ -4226,6 +4236,51 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return next;
   }
 
+  function getGeneratedAgentsDocument(origin: string, apiRoute: string): string {
+    const cacheKey = `${origin}\0${apiRoute}`;
+    const cached = generatedAgentsCache.get(undefined, cacheKey);
+    if (cached) return cached;
+    const next = renderAgentsDocument({
+      origin,
+      entry,
+      apiRoute,
+      apiCatalog: apiCatalogEnabled,
+      search: searchConfig,
+      contentChanges: contentChangesConfig.enabled,
+      mcp: mcpConfig,
+      feedback: agentFeedbackConfig,
+      llms: llmsConfig,
+      sitemap: sitemapConfig,
+      robots: robotsConfig,
+      openapi: openapiDiscovery,
+    });
+    generatedAgentsCache.set(undefined, cacheKey, next);
+    return next;
+  }
+
+  function getGeneratedSkillDocument(origin: string, apiRoute: string): string {
+    const cacheKey = `${origin}\0${apiRoute}`;
+    const cached = generatedSkillCache.get(undefined, cacheKey);
+    if (cached) return cached;
+    const next = renderSkillDocument({
+      origin,
+      entry,
+      apiRoute,
+      apiCatalog: apiCatalogEnabled,
+      i18n,
+      search: searchConfig,
+      contentChanges: contentChangesConfig.enabled,
+      mcp: mcpConfig,
+      feedback: agentFeedbackConfig,
+      llms: llmsConfig,
+      sitemap: sitemapConfig,
+      robots: robotsConfig,
+      openapi: openapiDiscovery,
+    });
+    generatedSkillCache.set(undefined, cacheKey, next);
+    return next;
+  }
+
   async function resolveStandardsResponse(request: Request, url: URL): Promise<Response | null> {
     const apiRoute = resolveDocsRequestApiRoute(url, configuredApiRouteInput);
     const resolved = resolveDocsStandardsDiscoveryRequest(url, { apiRoute });
@@ -4233,27 +4288,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     const method = request.method.toUpperCase();
     const needsSkill = (method === "GET" || method === "HEAD") && resolved.kind !== "api-catalog";
-    const fallbackSkillDocument = needsSkill
-      ? renderSkillDocument({
-          origin: url.origin,
-          entry,
-          apiRoute,
-          apiCatalog: apiCatalogEnabled,
-          i18n,
-          search: searchConfig,
-          contentChanges: contentChangesConfig.enabled,
-          mcp: mcpConfig,
-          feedback: agentFeedbackConfig,
-          llms: llmsConfig,
-          sitemap: sitemapConfig,
-          robots: robotsConfig,
-          openapi: openapiDiscovery,
-        })
-      : "";
+    const fallbackSkillDocument = needsSkill ? getGeneratedSkillDocument(url.origin, apiRoute) : "";
 
     return createDocsStandardsDiscoveryResponse({
       request,
-      preferredSkillDocument: needsSkill ? readRootSkillDocument(root) : null,
+      preferredSkillDocument: needsSkill ? readRootSkillDocument() : null,
       fallbackSkillDocument,
       publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: options?.agent?.a2a,
@@ -4335,17 +4374,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
-        if (isHeadRequest) {
-          return new Response(null, {
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: agentManifestLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
-          });
-        }
-        return Response.json(
+        const content = `${JSON.stringify(
           buildAgentSpec({
             origin: url.origin,
             entry,
@@ -4362,35 +4391,26 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             openapi: openapiDiscovery,
             publishedSkills: [
               await resolveDocsPublishedAgentSkill({
-                preferredDocument: readRootSkillDocument(root),
-                fallbackDocument: renderSkillDocument({
-                  origin: url.origin,
-                  entry,
-                  apiRoute: requestApiRoute,
-                  apiCatalog: apiCatalogEnabled,
-                  i18n,
-                  search: searchConfig,
-                  contentChanges: contentChangesConfig.enabled,
-                  mcp: mcpConfig,
-                  feedback: agentFeedbackConfig,
-                  llms: llmsConfig,
-                  sitemap: sitemapConfig,
-                  robots: robotsConfig,
-                  openapi: openapiDiscovery,
-                }),
+                preferredDocument: readRootSkillDocument(),
+                fallbackDocument: getGeneratedSkillDocument(url.origin, requestApiRoute),
               }),
               ...(await getPublishedAgentSkills()),
             ],
             agentCard: options?.agent?.a2a,
           }),
-          {
-            headers: {
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: agentManifestLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
+          null,
+          2,
+        )}\n`;
+        return createDocsCacheableResponse({
+          request,
+          content,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: agentManifestLinkHeader,
+            "X-Robots-Tag": "noindex",
           },
-        );
+        });
       }
 
       if (isDocsContentChangesRequest(url)) {
@@ -4499,33 +4519,18 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
-        return new Response(
-          isHeadRequest
-            ? null
-            : (readRootAgentsDocument(root) ??
-                renderAgentsDocument({
-                  origin: url.origin,
-                  entry,
-                  apiRoute: requestApiRoute,
-                  apiCatalog: apiCatalogEnabled,
-                  search: searchConfig,
-                  contentChanges: contentChangesConfig.enabled,
-                  mcp: mcpConfig,
-                  feedback: agentFeedbackConfig,
-                  llms: llmsConfig,
-                  sitemap: sitemapConfig,
-                  robots: robotsConfig,
-                  openapi: openapiDiscovery,
-                })),
-          {
-            headers: {
-              "Content-Type": "text/markdown; charset=utf-8",
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: discoveryLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
+        const content =
+          readRootAgentsDocument() ?? getGeneratedAgentsDocument(url.origin, requestApiRoute);
+        return createDocsCacheableResponse({
+          request,
+          content,
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: discoveryLinkHeader,
+            "X-Robots-Tag": "noindex",
           },
-        );
+        });
       }
 
       if (resolveSkillRequest(url)) {
@@ -4540,34 +4545,18 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
-        return new Response(
-          isHeadRequest
-            ? null
-            : (readRootSkillDocument(root) ??
-                renderSkillDocument({
-                  origin: url.origin,
-                  entry,
-                  apiRoute: requestApiRoute,
-                  apiCatalog: apiCatalogEnabled,
-                  i18n,
-                  search: searchConfig,
-                  contentChanges: contentChangesConfig.enabled,
-                  mcp: mcpConfig,
-                  feedback: agentFeedbackConfig,
-                  llms: llmsConfig,
-                  sitemap: sitemapConfig,
-                  robots: robotsConfig,
-                  openapi: openapiDiscovery,
-                })),
-          {
-            headers: {
-              "Content-Type": "text/markdown; charset=utf-8",
-              "Cache-Control": "public, max-age=0, s-maxage=3600",
-              Link: discoveryLinkHeader,
-              "X-Robots-Tag": "noindex",
-            },
+        const content =
+          readRootSkillDocument() ?? getGeneratedSkillDocument(url.origin, requestApiRoute);
+        return createDocsCacheableResponse({
+          request,
+          content,
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: discoveryLinkHeader,
+            "X-Robots-Tag": "noindex",
           },
-        );
+        });
       }
 
       const robotsResponse = createDocsRobotsResponse({
@@ -4754,7 +4743,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             contentLength: selected.content.length,
           },
         });
-        return new Response(selected.content, {
+        return createDocsCacheableResponse({
+          request,
+          content: selected.content,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
@@ -5008,6 +4999,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
  */
 export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const rootDir = options.rootDir ?? process.cwd();
+  const readRootSkillDocument = createRootDocumentReader(rootDir, ["skill.md"]);
   const entry = options.entry ?? readEntry(rootDir);
   const appDir = getNextAppDir(rootDir);
   const contentDir = options.contentDir ?? path.join(appDir, entry);
@@ -5040,7 +5032,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     ...filesystemSource,
     async getSkills() {
       const configured = await getConfiguredAgentSkills();
-      const preferredDocument = readRootSkillDocument(rootDir);
+      const preferredDocument = readRootSkillDocument();
       const fallbackDocument = `---\nname: docs\ndescription: Use the project documentation through MCP resources and tools.\n---\n\n# Documentation\n`;
       const rootSkill = await resolveDocsPublishedAgentSkill({
         preferredDocument,

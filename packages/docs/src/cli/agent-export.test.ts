@@ -250,6 +250,13 @@ pnpm add example
     expect(manifest.format).toBe("farming-labs-agent-bundle.v1");
     expect(manifest.contentHash).toMatch(/^[a-f0-9]{64}$/);
     expect(manifest.files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256))).toBe(true);
+    expect(manifest.files.every((file) => file.etag === `"${file.sha256}"`)).toBe(true);
+    expect(
+      manifest.files.every(
+        (file) =>
+          file.contentDigest === `sha-256=:${Buffer.from(file.sha256, "hex").toString("base64")}:`,
+      ),
+    ).toBe(true);
     expect(manifest.pages).toHaveLength(2);
 
     await expect(exportAgentBundle({ check: true })).resolves.toBeUndefined();
@@ -535,6 +542,18 @@ pnpm add example
     mkdirSync(path.join(tmpDir, "public"), { recursive: true });
     writeFileSync(path.join(tmpDir, "public", "docs.md"), "# Custom static home\n", "utf-8");
     writeFileSync(path.join(tmpDir, "public", "llms.txt"), "# Custom llms index\n", "utf-8");
+    execFileSync("git", ["init", "-q"], { cwd: tmpDir });
+    execFileSync("git", ["config", "user.name", "Agent Export Test"], { cwd: tmpDir });
+    execFileSync("git", ["config", "user.email", "agent-export@example.com"], { cwd: tmpDir });
+    execFileSync("git", ["add", "docs.config.ts", "docs"], { cwd: tmpDir });
+    execFileSync("git", ["commit", "-q", "-m", "initial docs"], {
+      cwd: tmpDir,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_DATE: "2020-01-02T03:04:05Z",
+        GIT_COMMITTER_DATE: "2020-01-02T03:04:05Z",
+      },
+    });
     process.chdir(tmpDir);
 
     await exportAgentBundle({ public: true });
@@ -548,7 +567,14 @@ pnpm add example
     const manifest = JSON.parse(
       readFileSync(path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json"), "utf-8"),
     ) as AgentBundleManifest;
-    expect(manifest.files.find((file) => file.path === "docs.md")?.managed).toBe(false);
+    const overriddenPage = manifest.files.find((file) => file.path === "docs.md");
+    expect(overriddenPage?.managed).toBe(false);
+    expect(overriddenPage).not.toHaveProperty("lastModified");
+    expect(
+      manifest.files.some(
+        (file) => file.kind === "page" && file.managed && file.lastModified !== undefined,
+      ),
+    ).toBe(true);
     expect(manifest.files.find((file) => file.path === "llms.txt")?.managed).toBe(false);
   });
 
@@ -635,6 +661,17 @@ pnpm add example
     const firstPage = readFileSync(pagePath, "utf-8");
     const firstManifest = readFileSync(manifestPath, "utf-8");
     expect(firstPage).toContain('last_updated: "2020-01-02"');
+    const parsedManifest = JSON.parse(firstManifest) as AgentBundleManifest;
+    expect(
+      parsedManifest.files
+        .filter((file) => file.kind === "page")
+        .every((file) => file.lastModified === "Thu, 02 Jan 2020 03:04:05 GMT"),
+    ).toBe(true);
+    expect(
+      parsedManifest.files
+        .filter((file) => file.kind !== "page")
+        .every((file) => file.lastModified === undefined),
+    ).toBe(true);
 
     const future = new Date("2040-12-31T23:59:59Z");
     utimesSync(path.join(tmpDir, "docs", "guides", "install", "page.mdx"), future, future);
@@ -663,6 +700,9 @@ pnpm add example
       managed: false,
       orphaned: true,
     });
+    expect(manifest.files.find((file) => file.path === "llms.txt")).not.toHaveProperty(
+      "lastModified",
+    );
     await expect(exportAgentBundle({ check: true })).rejects.toThrow(
       "Static Agent Bundle is stale",
     );

@@ -24,6 +24,10 @@ function normalizeDigestContent(value: string): string {
     .trimEnd();
 }
 
+function toSha256Bytes(value: string | Uint8Array): Uint8Array {
+  return typeof value === "string" ? new TextEncoder().encode(value) : value;
+}
+
 /** Validate the bounded HTTP(S) URL or root-relative URI reference used by provenance. */
 export function isDocsRetrievalCanonicalUrl(value: string): boolean {
   const hasUnsafeCharacter =
@@ -53,15 +57,9 @@ export function isDocsRetrievalCanonicalUrl(value: string): boolean {
   }
 }
 
-/**
- * Hash a retrieval source projection with portable SHA-256.
- *
- * The projection is normalized by removing one leading BOM, converting CRLF/CR
- * line endings to LF, and trimming trailing whitespace. The helper is exported so
- * agents can independently verify provenance in Node, edge, and browser runtimes.
- */
-export function digestDocsRetrievalContent(value: string): `sha256:${string}` {
-  const input = new TextEncoder().encode(normalizeDigestContent(value));
+/** Hash exact bytes with portable SHA-256 in Node, edge, and browser runtimes. */
+export function sha256DocsContent(value: string | Uint8Array): string {
+  const input = toSha256Bytes(value);
   const paddedLength = Math.ceil((input.length + 9) / 64) * 64;
   const padded = new Uint8Array(paddedLength);
   padded.set(input);
@@ -124,5 +122,20 @@ export function digestDocsRetrievalContent(value: string): `sha256:${string}` {
     state[7] = (state[7]! + h) >>> 0;
   }
 
-  return `sha256:${Array.from(state, (word) => word.toString(16).padStart(8, "0")).join("")}`;
+  return Array.from(state, (word) => word.toString(16).padStart(8, "0")).join("");
+}
+
+/** Hash exact message-content bytes with portable SHA-256. */
+export function digestDocsContent(value: string | Uint8Array): `sha256:${string}` {
+  return `sha256:${sha256DocsContent(value)}`;
+}
+
+/**
+ * Hash the normalized retrieval projection used by search provenance.
+ *
+ * The projection removes one leading BOM, normalizes line endings to LF, and trims
+ * trailing whitespace. This deliberately differs from HTTP digests over exact bytes.
+ */
+export function digestDocsRetrievalContent(value: string): `sha256:${string}` {
+  return digestDocsContent(normalizeDigestContent(value));
 }

@@ -102,6 +102,7 @@ describe("createDocsMCPAPI", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     process.chdir(originalCwd);
     while (tempDirs.length > 0) {
       const dir = tempDirs.pop();
@@ -1280,6 +1281,31 @@ export default defineDocs({
       expect(await response.text()).toBe(llmsApiText);
     }
 
+    const cacheResponse = await GET(new Request("http://localhost/llms.txt"));
+    const cacheContent = await cacheResponse.text();
+    const cacheEtag = cacheResponse.headers.get("etag");
+    expect(cacheEtag).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(cacheResponse.headers.get("content-digest")).toBe(
+      `sha-256=:${createHash("sha256").update(cacheContent, "utf8").digest("base64")}:`,
+    );
+    expect(cacheResponse.headers.get("last-modified")).toBeNull();
+    const cacheNotModified = await GET(
+      new Request("http://localhost/llms.txt", {
+        headers: { "If-None-Match": cacheEtag! },
+      }),
+    );
+    expect(cacheNotModified.status).toBe(304);
+    expect(cacheNotModified.headers.get("content-digest")).toBe(
+      cacheResponse.headers.get("content-digest"),
+    );
+    expect(await cacheNotModified.text()).toBe("");
+    const dateOnlyRevalidation = await GET(
+      new Request("http://localhost/llms.txt", {
+        headers: { "If-Modified-Since": "Sat, 01 Aug 2026 00:00:00 GMT" },
+      }),
+    );
+    expect(dateOnlyRevalidation.status).toBe(200);
+
     const customLlms = await GET(new Request("http://localhost/api/internal/docs?format=llms"));
     expect(customLlms.status).toBe(200);
     expect(await customLlms.text()).toBe(llmsApiText);
@@ -2214,7 +2240,7 @@ Use the product-specific workflow first.
     }
   });
 
-  it("serves legacy discovery HEAD without loading documents and records HEAD analytics", async () => {
+  it("serves legacy discovery HEAD with GET validators and records HEAD analytics", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-discovery-head-route-"));
     tempDirs.push(rootDir);
 
@@ -2233,7 +2259,7 @@ description: Custom docs skill.
     );
 
     const events: DocsAnalyticsEvent[] = [];
-    const { HEAD, POST } = createDocsAPI({
+    const { GET, HEAD, POST } = createDocsAPI({
       rootDir,
       entry: "docs",
       analytics: {
@@ -2243,41 +2269,37 @@ description: Custom docs skill.
         },
       },
     });
-    const readFileSpy = vi.spyOn(fs, "readFileSync");
-
-    try {
-      for (const path of ["/.well-known/agent.json", "/AGENTS.md", "/skill.md"]) {
-        const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
-        expect(response.status).toBe(200);
-        expect(await response.text()).toBe("");
-        if (path === "/.well-known/agent.json") {
-          expect(response.headers.get("link")).toContain('rel="describedby"');
-          expect(response.headers.get("link")).toContain(
-            `type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
-          );
-        }
+    for (const path of ["/.well-known/agent.json", "/AGENTS.md", "/skill.md"]) {
+      const get = await GET(new Request(`http://localhost${path}`));
+      const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("etag")).toBe(get.headers.get("etag"));
+      expect(response.headers.get("content-digest")).toBe(get.headers.get("content-digest"));
+      expect(response.headers.get("last-modified")).toBe(get.headers.get("last-modified"));
+      expect(await response.text()).toBe("");
+      if (path === "/.well-known/agent.json") {
+        expect(response.headers.get("link")).toContain('rel="describedby"');
+        expect(response.headers.get("link")).toContain(
+          `type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+        );
       }
-
-      const legacyFiles = new Set([join(rootDir, "AGENTS.md"), join(rootDir, "skill.md")]);
-      expect(
-        readFileSpy.mock.calls.some(([file]) => typeof file === "string" && legacyFiles.has(file)),
-      ).toBe(false);
-      expect(
-        events
-          .filter((event) =>
-            ["agent_spec_request", "agents_request", "skill_request"].includes(event.type),
-          )
-          .map((event) => event.properties?.method),
-      ).toEqual(["HEAD", "HEAD", "HEAD"]);
-
-      const unsupported = await POST(
-        new Request("http://localhost/api/docs?format=agent-skills", { method: "POST" }),
-      );
-      expect(unsupported.status).toBe(405);
-      expect(unsupported.headers.get("allow")).toBe("GET, HEAD");
-    } finally {
-      readFileSpy.mockRestore();
     }
+
+    expect(
+      events
+        .filter(
+          (event) =>
+            ["agent_spec_request", "agents_request", "skill_request"].includes(event.type) &&
+            event.properties?.method === "HEAD",
+        )
+        .map((event) => event.properties?.method),
+    ).toEqual(["HEAD", "HEAD", "HEAD"]);
+
+    const unsupported = await POST(
+      new Request("http://localhost/api/docs?format=agent-skills", { method: "POST" }),
+    );
+    expect(unsupported.status).toBe(405);
+    expect(unsupported.headers.get("allow")).toBe("GET, HEAD");
   });
 
   it("serves a root AGENTS.md file before falling back to generated agent instructions", async () => {
@@ -2308,6 +2330,8 @@ Use the product-specific coding workflow first.
       rootDir,
       entry: "docs",
     });
+    const agentsPath = join(rootDir, "AGENTS.md");
+    const readFileSpy = vi.spyOn(fs, "readFileSync");
 
     const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
     const agentsApiText = await agentsApi.text();
@@ -2329,6 +2353,24 @@ Use the product-specific coding workflow first.
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(agentsApiText);
     }
+
+    expect(
+      readFileSpy.mock.calls.filter(([candidate]) => String(candidate) === agentsPath),
+    ).toHaveLength(1);
+
+    writeFileSync(
+      agentsPath,
+      `# Updated Agent Instructions
+
+Use the newly revised product workflow.
+`,
+    );
+    const updated = await GET(new Request("http://localhost/AGENTS.md"));
+    expect(await updated.text()).toContain("newly revised product workflow");
+    expect(
+      readFileSpy.mock.calls.filter(([candidate]) => String(candidate) === agentsPath),
+    ).toHaveLength(2);
+    readFileSpy.mockRestore();
   });
 
   it("uses the human audience projection for normal search", async () => {
@@ -2624,7 +2666,10 @@ Config content.
     expect(rewrittenFallbackResponse.headers.get("content-location")).toBe(
       "http://localhost/docs/getting-started/quickstart.md",
     );
-    expect(rewrittenFallbackResponse.headers.get("etag")).toMatch(/^W\/"/);
+    expect(rewrittenFallbackResponse.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(rewrittenFallbackResponse.headers.get("content-digest")).toMatch(
+      /^sha-256=:[A-Za-z0-9+/]{43}=:$/u,
+    );
     expect(rewrittenFallbackResponse.headers.get("last-modified")).toBe(
       "Fri, 17 Jul 2026 00:00:00 GMT",
     );

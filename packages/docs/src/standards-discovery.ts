@@ -21,6 +21,8 @@ import {
   type DocsAgentSkillFrontmatter,
   type DocsAgentSkillFrontmatterValidationOptions,
 } from "./agent-skills-spec.js";
+import { createDocsCacheableResponse } from "./http-cache.js";
+import { sha256DocsContent } from "./retrieval-digest.js";
 
 export const DEFAULT_API_CATALOG_ROUTE = "/.well-known/api-catalog";
 export const DEFAULT_API_CATALOG_FORMAT = "api-catalog";
@@ -236,6 +238,8 @@ export interface CreateDocsStandardsResponseOptions {
   publishedSkills?: readonly DocsPublishedAgentSkill[];
   /** Identity used to publish the optional A2A Agent Card. */
   agentCard?: DocsA2AAgentCardOptions;
+  /** Stable representation generation or source modification time. */
+  lastModified?: string | Date | null;
 }
 
 function normalizeDocsRoute(value: string): string {
@@ -443,13 +447,6 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
   return { linkset };
 }
 
-function toDiscoveryBytes(content: string | Uint8Array): Uint8Array<ArrayBuffer> {
-  if (typeof content === "string") return new TextEncoder().encode(content);
-  const bytes = new Uint8Array(new ArrayBuffer(content.byteLength));
-  bytes.set(content);
-  return bytes;
-}
-
 function toPublishedSkillArray(
   skills: DocsPublishedAgentSkill | readonly DocsPublishedAgentSkill[],
 ): readonly DocsPublishedAgentSkill[] {
@@ -459,12 +456,7 @@ function toPublishedSkillArray(
 }
 
 export async function sha256DocsDiscoveryContent(content: string | Uint8Array): Promise<string> {
-  const subtle = globalThis.crypto?.subtle;
-  if (!subtle) {
-    throw new Error("Web Crypto SHA-256 support is required for Agent Skills discovery.");
-  }
-  const digest = await subtle.digest("SHA-256", toDiscoveryBytes(content));
-  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+  return sha256DocsContent(content);
 }
 
 function createDocsPublishedAgentSkill(
@@ -1415,45 +1407,30 @@ export function appendDocsDiscoveryLinkHeader(headers: Headers, value?: string):
   return next;
 }
 
-function requestMatchesEtag(request: Request, etag: string): boolean {
-  const value = request.headers.get("if-none-match");
-  if (!value) return false;
-  if (value.trim() === "*") return true;
-  return value.split(",").some((candidate) => candidate.trim().replace(/^W\//i, "") === etag);
-}
-
 async function createHashedDiscoveryResponse(options: {
   request: Request;
   content: string | Uint8Array;
   contentType: string;
   sha256?: string;
   linkHeader: string;
+  lastModified?: string | Date | null;
 }): Promise<Response> {
   const sha256 = options.sha256 ?? (await sha256DocsDiscoveryContent(options.content));
-  const etag = `"${sha256}"`;
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Expose-Headers": "ETag, Link",
-    Allow: "GET, HEAD",
-    "Cache-Control": DISCOVERY_CACHE_CONTROL,
-    "Content-Type": options.contentType,
-    ETag: etag,
-    Link: options.linkHeader,
-    "X-Robots-Tag": "noindex",
-  };
-
-  if (requestMatchesEtag(options.request, etag)) {
-    const { "Content-Type": _contentType, ...notModifiedHeaders } = headers;
-    return new Response(null, { status: 304, headers: notModifiedHeaders });
-  }
-
-  const body =
-    options.request.method.toUpperCase() === "HEAD"
-      ? null
-      : typeof options.content === "string"
-        ? options.content
-        : toDiscoveryBytes(options.content).buffer;
-  return new Response(body, { headers });
+  return createDocsCacheableResponse({
+    request: options.request,
+    content: options.content,
+    sha256,
+    lastModified: options.lastModified,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Expose-Headers": "Link",
+      Allow: "GET, HEAD",
+      "Cache-Control": DISCOVERY_CACHE_CONTROL,
+      "Content-Type": options.contentType,
+      Link: options.linkHeader,
+      "X-Robots-Tag": "noindex",
+    },
+  });
 }
 
 function standardsNotFoundResponse(request: Request, linkHeader: string): Response {
@@ -1495,6 +1472,7 @@ export async function createDocsStandardsResponse({
   fallbackSkillDocument,
   publishedSkills = [],
   agentCard,
+  lastModified,
 }: CreateDocsStandardsResponseOptions): Promise<Response | null> {
   const resolved = resolveDocsStandardsDiscoveryRequest(new URL(request.url), { apiRoute });
   if (!resolved) return null;
@@ -1519,6 +1497,7 @@ export async function createDocsStandardsResponse({
       content,
       contentType: `${API_CATALOG_MEDIA_TYPE}; profile="${API_CATALOG_PROFILE_URI}"; charset=utf-8`,
       linkHeader,
+      lastModified,
     });
   }
 
@@ -1555,6 +1534,7 @@ export async function createDocsStandardsResponse({
           ? "application/gzip"
           : "text/markdown; charset=utf-8",
       sha256: file?.sha256 ?? skill.sha256,
+      lastModified,
       linkHeader: [
         linkHeader,
         formatLinkTarget(DEFAULT_AGENT_SKILLS_INDEX_ROUTE, "collection", {
@@ -1574,6 +1554,7 @@ export async function createDocsStandardsResponse({
       content: skill.content,
       contentType: "application/gzip",
       sha256: skill.sha256,
+      lastModified,
       linkHeader: [
         linkHeader,
         formatLinkTarget(DEFAULT_AGENT_SKILLS_INDEX_ROUTE, "collection", {
@@ -1599,6 +1580,7 @@ export async function createDocsStandardsResponse({
       content: file.content,
       contentType: `${file.mediaType}${file.mediaType.startsWith("text/") ? "; charset=utf-8" : ""}`,
       sha256: file.sha256,
+      lastModified,
       linkHeader: [
         linkHeader,
         formatLinkTarget(DEFAULT_AGENT_SKILLS_INDEX_ROUTE, "collection", {
@@ -1616,6 +1598,7 @@ export async function createDocsStandardsResponse({
       content,
       contentType: "application/json; charset=utf-8",
       linkHeader,
+      lastModified,
     });
   }
 
@@ -1626,6 +1609,7 @@ export async function createDocsStandardsResponse({
       content,
       contentType: "application/json; charset=utf-8",
       linkHeader,
+      lastModified,
     });
   }
 
@@ -1634,6 +1618,7 @@ export async function createDocsStandardsResponse({
     request,
     content,
     contentType: "application/json; charset=utf-8",
+    lastModified,
     linkHeader: [
       linkHeader,
       ...skills.map((skill) =>

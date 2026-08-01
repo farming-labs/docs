@@ -627,7 +627,20 @@ export type {
   DocsAgentTraceStatus,
 } from "./types.js";
 
-export { digestDocsRetrievalContent, isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
+export {
+  digestDocsContent,
+  digestDocsRetrievalContent,
+  isDocsRetrievalCanonicalUrl,
+  sha256DocsContent,
+} from "./retrieval-digest.js";
+export {
+  createDocsCacheableResponse,
+  formatDocsContentDigest,
+  requestHasFreshDocsDate,
+  requestMatchesDocsEtag,
+  resolveDocsHttpDate,
+} from "./http-cache.js";
+export type { DocsCacheableResponseOptions } from "./http-cache.js";
 export type {
   DocsAgentTraceContext,
   ResolvedDocsAnalyticsConfig,
