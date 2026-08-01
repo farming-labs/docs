@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { analyzeConfiguredAgentSkillsProgressiveDisclosure } from "../agent-skills-progressive-disclosure.js";
@@ -98,12 +107,14 @@ ${options.prose ?? "This full page prose must not be copied into a generated tas
         "--include=/docs/guides",
         "--include",
         "/docs/reference",
+        "--config=fixtures/docs=custom.config.ts",
         "--check",
       ]),
     ).toEqual({
       name: "acme-docs",
       output: "skills/acme-docs",
       include: ["/docs/guides", "/docs/reference"],
+      configPath: "fixtures/docs=custom.config.ts",
       check: true,
     });
 
@@ -146,6 +157,7 @@ ${options.prose ?? "This full page prose must not be copied into a generated tas
     expect(installReference).toContain("## Expected result");
     expect(installReference).toContain("`pnpm add @acme/docs`");
     expect(installReference).toContain("Recovery: Confirm the adapter route exists.");
+    expect(installReference).not.toContain("Complete the selected Acme workflow.");
     expect(installReference).not.toContain("This full page prose must not be copied");
 
     const disclosure = analyzeConfiguredAgentSkillsProgressiveDisclosure("skills/acme-docs", {
@@ -157,6 +169,60 @@ ${options.prose ?? "This full page prose must not be copied into a generated tas
     await expect(scaffoldSkillFromContracts({ check: true })).resolves.toMatchObject({
       status: "current",
     });
+  });
+
+  it("prints skills help from the command group", () => {
+    const cliPath = path.resolve(import.meta.dirname, "../../dist/cli/index.mjs");
+    for (const flag of ["--help", "-h"]) {
+      const output = execFileSync(process.execPath, [cliPath, "skills", flag], {
+        encoding: "utf8",
+      });
+      expect(output).toContain("docs skills scaffold");
+      expect(output).not.toContain("Unknown skills subcommand");
+    }
+  });
+
+  it("quotes YAML-sensitive skill names", async () => {
+    writeConfig();
+    writeContractPage("installation");
+
+    await scaffoldSkillFromContracts({ name: "true", output: "skills/true" });
+    const skill = readFileSync(path.join(rootDir, "skills", "true", "SKILL.md"), "utf8");
+
+    expect(skill).toContain('name: "true"');
+    expect(validateDocsAgentSkillFrontmatter(skill, { directoryName: "true" }).valid).toBe(true);
+  });
+
+  it("rejects symlinked reference parents in write, check, and dry-run modes", async () => {
+    writeConfig();
+    writeContractPage("installation");
+    const outputDir = path.join(rootDir, "skills", "acme-docs");
+    const outsideDir = path.join(rootDir, "outside");
+    mkdirSync(outputDir, { recursive: true });
+    mkdirSync(outsideDir);
+    symlinkSync(outsideDir, path.join(outputDir, "references"), "dir");
+
+    for (const options of [{}, { check: true }, { dryRun: true }]) {
+      await expect(scaffoldSkillFromContracts(options)).rejects.toThrow(
+        "Refusing to traverse symbolic-link skill output",
+      );
+    }
+    expect(existsSync(path.join(outsideDir, "installation.md"))).toBe(false);
+  });
+
+  it("rejects dangling output-file symlinks", async () => {
+    writeConfig();
+    writeContractPage("installation");
+    const outputDir = path.join(rootDir, "skills", "acme-docs");
+    const referencesDir = path.join(outputDir, "references");
+    const outsideFile = path.join(rootDir, "outside", "installation.md");
+    mkdirSync(referencesDir, { recursive: true });
+    symlinkSync(outsideFile, path.join(referencesDir, "installation.md"));
+
+    await expect(scaffoldSkillFromContracts()).rejects.toThrow(
+      "Refusing to traverse symbolic-link skill output",
+    );
+    expect(existsSync(outsideFile)).toBe(false);
   });
 
   it("detects stale contracts and previews without writing", async () => {

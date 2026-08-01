@@ -227,6 +227,12 @@ async function main() {
       return;
     }
     await scaffoldSkillFromContracts(skillOptions);
+  } else if (
+    parsedCommand.command === "skills" &&
+    (subcommand === "--help" || subcommand === "-h")
+  ) {
+    const { printSkillScaffoldHelp } = await import("./skills.js");
+    printSkillScaffoldHelp();
   } else if (parsedCommand.command === "skills") {
     console.error(pc.red(`Unknown skills subcommand: ${subcommand ?? "(missing)"}`));
     console.error();

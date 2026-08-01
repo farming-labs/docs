@@ -71,8 +71,13 @@ const DEFAULT_SKILL_NAME = "docs-workflows";
 const SKILL_SCAFFOLD_VALUE_FLAGS = new Set(["name", "output", "config", "include"]);
 
 function inlineFlag(arg: string): { key: string; value?: string } {
-  const [rawKey, value] = arg.slice(2).split("=", 2);
-  return { key: rawKey.trim(), value };
+  const flag = arg.slice(2);
+  const separator = flag.indexOf("=");
+  const rawKey = separator === -1 ? flag : flag.slice(0, separator);
+  return {
+    key: rawKey.trim(),
+    value: separator === -1 ? undefined : flag.slice(separator + 1),
+  };
 }
 
 export function parseSkillScaffoldArgs(argv: string[]): ParsedSkillScaffoldArgs {
@@ -204,6 +209,36 @@ function assertSafeOutputDirectory(rootDir: string, outputDir: string): void {
   }
 }
 
+function lstatIfPresent(filePath: string): ReturnType<typeof lstatSync> | undefined {
+  try {
+    return lstatSync(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+function assertSafeScaffoldFile(skillDir: string, filePath: string): void {
+  if (!relativeInside(skillDir, filePath)) {
+    throw new Error(
+      `Skill output file must remain inside the selected skill directory: ${filePath}`,
+    );
+  }
+
+  let candidate = filePath;
+  while (true) {
+    const stats = lstatIfPresent(candidate);
+    if (stats?.isSymbolicLink()) {
+      throw new Error(`Refusing to traverse symbolic-link skill output: ${candidate}`);
+    }
+    if (candidate !== filePath && stats && !stats.isDirectory()) {
+      throw new Error(`Skill output parent must be a directory: ${candidate}`);
+    }
+    if (candidate === skillDir) break;
+    candidate = path.dirname(candidate);
+  }
+}
+
 function findNestedSkill(directory: string, root = directory): string | undefined {
   if (!existsSync(directory) || !lstatSync(directory).isDirectory()) return undefined;
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -332,7 +367,6 @@ function renderContractReference(reference: ContractReference, baseUrl?: string)
     `Source: [${markdownLabel(source)}](<${source}>)`,
   ];
 
-  if (page.description) lines.push(`Description: ${compactText(page.description)}`);
   if (contract.task) lines.push("", "## Task", "", contract.task);
   if (contract.outcome) lines.push("", "## Expected result", "", contract.outcome);
   if (contract.appliesTo) {
@@ -410,7 +444,7 @@ function renderSkillDocument(options: {
     "Requires access to the documented project and any tools, runtimes, credentials, or network capabilities named by the selected task reference.";
   const lines = [
     "---",
-    `name: ${options.name}`,
+    `name: ${yamlString(options.name)}`,
     `description: ${yamlString(description)}`,
     `compatibility: ${yamlString(compatibility)}`,
     "---",
@@ -521,9 +555,7 @@ function compareScaffoldFiles(
 
   for (const file of files) {
     const filePath = path.resolve(skillDir, file.relativePath);
-    if (existsSync(filePath) && lstatSync(filePath).isSymbolicLink()) {
-      throw new Error(`Refusing to replace symbolic-link skill output: ${filePath}`);
-    }
+    assertSafeScaffoldFile(skillDir, filePath);
     const current = existsSync(filePath) ? readFileSync(filePath, "utf8") : undefined;
     if (current === file.content) continue;
     if (current !== undefined && !force && !current.includes(SKILL_SCAFFOLD_MARKER)) {
@@ -550,7 +582,9 @@ function writeScaffoldFiles(
   for (const file of files) {
     const filePath = path.resolve(skillDir, file.relativePath);
     if (!changed.has(filePath)) continue;
+    assertSafeScaffoldFile(skillDir, filePath);
     mkdirSync(path.dirname(filePath), { recursive: true });
+    assertSafeScaffoldFile(skillDir, filePath);
     writeFileSync(filePath, file.content, "utf8");
   }
   for (const filePath of obsoleteFiles) rmSync(filePath);
