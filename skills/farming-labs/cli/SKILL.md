@@ -1,6 +1,6 @@
 ---
 name: cli
-description: Use the @farming-labs/docs CLI to scaffold, upgrade, downgrade, deploy, audit, review, export or compact agent docs, validate code blocks, generate discovery files, sync search indexes, and run MCP. Use for init, deploy, upgrade, downgrade, doctor, review, agent export, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags.
+description: Use the @farming-labs/docs CLI to scaffold projects or Agent Skills, upgrade, downgrade, deploy, audit, review, export or compact agent docs, validate code blocks, generate discovery files, sync search indexes, and run MCP. Use for init, deploy, upgrade, downgrade, doctor, review, agent export, agent compact, skills scaffold, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags.
 compatibility: Requires Node.js and npm, pnpm, Yarn, or Bun. Package installation, hosted deployment, and external search commands require network access and provider credentials.
 ---
 
@@ -45,7 +45,7 @@ All references are one hop from this file.
 | Scaffold, framework templates, init flags, upgrade, downgrade, generated files | [Init and package versions](references/init-and-package-versions.md) |
 | stdio/hosted MCP setup, Docs Cloud deploy, Typesense or Algolia sync | [MCP, cloud, and search](references/mcp-cloud-and-search.md) |
 | Code-fence execution planning and docs PR review | [Validation and review](references/validation-and-review.md) |
-| Sitemap, Agent Bundle, compaction, AGENTS.md, or robots.txt generation | [Agent and static outputs](references/agent-and-static-outputs.md) |
+| Sitemap, Agent Bundle, compaction, Agent Skill scaffolding, AGENTS.md, or robots.txt generation | [Agent and static outputs](references/agent-and-static-outputs.md) |
 | Agent/site readiness audits, hosted probes, JSON reports | [Doctor audits](references/doctor-audits.md) |
 
 ## Common commands
@@ -55,6 +55,7 @@ pnpm dlx @farming-labs/docs@latest init
 pnpm dlx @farming-labs/docs@latest upgrade --dry-run
 pnpm exec docs review --ci
 pnpm exec docs doctor --agent
+pnpm exec docs skills scaffold --dry-run
 pnpm exec docs agent export --check
 pnpm exec docs sitemap generate --check
 ```

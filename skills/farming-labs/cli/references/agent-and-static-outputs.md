@@ -8,6 +8,7 @@ robots.txt.
 - [Sitemap generation](#sitemap-generation)
 - [Static Agent Bundles](#static-agent-bundles)
 - [Agent compaction](#agent-compaction)
+- [Agent Skill scaffolding](#agent-skill-scaffolding)
 - [AGENTS.md generation](#agentsmd-generation)
 - [robots.txt generation](#robotstxt-generation)
 - [Verification](#verification)
@@ -126,6 +127,34 @@ agent: {
   },
 }
 ```
+
+## Agent Skill scaffolding
+
+Compile structured page `agent` contracts into an installable, progressively disclosed skill:
+
+```bash
+pnpm exec docs skills scaffold --dry-run
+pnpm exec docs skills scaffold
+pnpm exec docs skills scaffold --check
+```
+
+The command works offline and deterministically. It writes one compact `SKILL.md` routing file and
+one direct `references/*.md` file per selected actionable page. References contain the authored
+task, expected result, applicability, prerequisites, files, commands, side effects, verification,
+recovery, rollback, and canonical source—but not the complete page prose.
+
+Defaults and controls:
+
+- derives the skill name from `nav.title` and writes `skills/<name>/`
+- accepts a positional name or `--name <name>`
+- accepts `--output <skill-directory>` when the directory basename matches the skill name
+- accepts repeatable `--include <route-prefix>` values for a smaller topic-specific skill
+- honors configured Agent Skill line and instruction-token budgets
+- preserves user-owned files unless `--force` is explicit
+- removes obsolete references only when they retain the generated marker
+
+Use `--check` in CI after committing the generated skill. Add the resulting skill directory to
+`agent.skills.paths` when it should be published through discovery, static exports, and MCP.
 
 ## AGENTS.md generation
 
