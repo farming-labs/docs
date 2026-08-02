@@ -49,7 +49,7 @@ const ShadcnUIDefaults = {
     header: { height: 56, sticky: true },
   },
   sidebar: {
-    style: "bordered" as const,
+    style: "default" as const,
   },
   components: {
     Callout: { variant: "soft", icon: true },
