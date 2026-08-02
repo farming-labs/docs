@@ -770,9 +770,7 @@ figure.shiki figcaption {
 
 .fd-ai-esc,
 .fd-ai-close-btn,
-.fd-ai-fm-close-btn,
-.fd-ai-clear-btn,
-.fd-ai-fm-clear-btn {
+.fd-ai-fm-close-btn {
   border: 0 !important;
   border-radius: calc(var(--radius) * 0.7) !important;
   background: var(--fd-shadcn-control) !important;
@@ -781,10 +779,23 @@ figure.shiki figcaption {
 }
 
 .fd-ai-close-btn:hover,
-.fd-ai-fm-close-btn:hover,
+.fd-ai-fm-close-btn:hover {
+  background: var(--fd-shadcn-control-hover) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-ai-clear-btn,
+.fd-ai-fm-clear-btn {
+  border: 0 !important;
+  border-radius: calc(var(--radius) * 0.6) !important;
+  background: transparent !important;
+  color: var(--color-fd-muted-foreground) !important;
+  box-shadow: none !important;
+}
+
 .fd-ai-clear-btn:hover,
 .fd-ai-fm-clear-btn:hover {
-  background: var(--fd-shadcn-control-hover) !important;
+  background: transparent !important;
   color: var(--color-fd-foreground) !important;
 }
 
