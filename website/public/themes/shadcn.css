@@ -959,77 +959,39 @@ figure.shiki figcaption {
 }
 
 .fd-table-wrapper {
-  width: 100%;
-  overflow-x: auto;
   border: 1px solid var(--fd-shadcn-soft-border) !important;
   border-radius: calc(var(--radius) * 1.2) !important;
-  background: var(--color-fd-card) !important;
+  background: transparent !important;
   box-shadow: none !important;
 }
 
 .fd-table-wrapper table,
-:is(.fd-docs-content, #nd-page .prose) table {
-  width: 100%;
-  margin: 0 !important;
+:is(.fd-docs-content, .prose) table,
+.prose table {
   border: 0 !important;
-  border-collapse: collapse;
+  border-radius: 0 !important;
   background: transparent !important;
-  font-size: 0.875rem !important;
   box-shadow: none !important;
 }
 
 .fd-table-wrapper thead,
-:is(.fd-docs-content, #nd-page .prose) table thead {
+:is(.fd-docs-content, .prose) table thead,
+.prose table thead {
   border-bottom: 1px solid var(--color-fd-border) !important;
-}
-
-.fd-table-wrapper tbody tr,
-:is(.fd-docs-content, #nd-page .prose) table tbody tr {
-  border-bottom: 1px solid var(--fd-shadcn-soft-border) !important;
-  transition: background-color 150ms ease;
-}
-
-.fd-table-wrapper tbody tr:last-child,
-:is(.fd-docs-content, #nd-page .prose) table tbody tr:last-child {
-  border-bottom: 0 !important;
-}
-
-@media (hover: hover) {
-  .fd-table-wrapper tbody tr:hover,
-  :is(.fd-docs-content, #nd-page .prose) table tbody tr:hover {
-    background: color-mix(in oklab, var(--color-fd-muted) 48%, transparent) !important;
-  }
+  background: var(--color-fd-card) !important;
 }
 
 .fd-table-wrapper th,
-:is(.fd-docs-content, #nd-page .prose) table th {
-  height: 2.5rem;
-  padding: 0.625rem 0.75rem !important;
-  background: transparent !important;
+:is(.fd-docs-content, .prose) table th,
+.prose table th {
+  background: var(--color-fd-card) !important;
   color: var(--color-fd-foreground) !important;
-  font-size: 0.8125rem !important;
-  font-weight: 500 !important;
-  line-height: 1.25rem !important;
-  text-align: start;
-  vertical-align: middle;
+  font-weight: 500;
 }
 
-.fd-table-wrapper td,
-:is(.fd-docs-content, #nd-page .prose) table td {
-  padding: 0.625rem 0.75rem !important;
-  border: 0 !important;
-  color: var(--color-fd-foreground) !important;
-  font-size: 0.875rem !important;
-  line-height: 1.5 !important;
-  vertical-align: middle;
-}
-
-.fd-table-wrapper caption,
-:is(.fd-docs-content, #nd-page .prose) table caption {
-  margin-top: 0.75rem;
-  color: var(--color-fd-muted-foreground) !important;
-  font-size: 0.8125rem;
-  caption-side: bottom;
+.fd-table-wrapper :is(th, td),
+.prose :is(th, td) {
+  border-color: var(--color-fd-border) !important;
 }
 
 .fd-callout,
