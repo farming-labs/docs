@@ -75,6 +75,31 @@ const T3ChatIcon = () => (
   </svg>
 );
 
+const ShadcnIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 256 256" fill="none" aria-hidden="true">
+    <line
+      x1="208"
+      y1="128"
+      x2="128"
+      y2="208"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="32"
+    />
+    <line
+      x1="192"
+      y1="40"
+      x2="40"
+      y2="192"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="32"
+    />
+  </svg>
+);
+
 export default defineDocs({
   entry: "docs",
   search: searchConfig,
@@ -173,6 +198,7 @@ export default defineDocs({
     infrastructure: <Building2 size={16} />,
     dollarSign: <DollarSign size={16} />,
     route: <Route size={16} />,
+    shadcn: <ShadcnIcon />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
