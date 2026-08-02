@@ -160,12 +160,15 @@ button[data-search-full] kbd,
 
 aside#nd-sidebar,
 .fd-sidebar {
-  position: relative;
   border-right: 0 !important;
   background: transparent !important;
   background-image: none !important;
   color: var(--color-fd-foreground);
   box-shadow: none !important;
+}
+
+.fd-sidebar {
+  position: relative;
 }
 
 aside#nd-sidebar-mobile {
@@ -265,6 +268,10 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   border-left: 0 !important;
 }
 
+#nd-toc [style*="--track-top"] {
+  display: none;
+}
+
 #toc-title,
 .fd-toc-title {
   color: var(--color-fd-muted-foreground) !important;
@@ -274,14 +281,24 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 }
 
 .fd-toc-link,
-.fd-toc-clerk .fd-toc-link,
-#nd-toc a {
+.fd-toc-clerk .fd-toc-link {
   border: 0 !important;
   border-radius: 0 !important;
   color: var(--color-fd-muted-foreground) !important;
   font-size: 0.8rem !important;
   line-height: 1.45;
   padding: 0 !important;
+  text-decoration: none !important;
+  transition: color 150ms ease;
+}
+
+#nd-toc a {
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.8rem !important;
+  line-height: 1.45;
+  padding: 0.1875rem 0 !important;
   text-decoration: none !important;
   transition: color 150ms ease;
 }
@@ -569,6 +586,16 @@ figure.shiki figcaption,
 .fd-layout :is(a, button, input, textarea, select):focus-visible {
   outline: 2px solid var(--color-fd-ring);
   outline-offset: 2px;
+}
+
+@media (min-width: 1024px) {
+  #nd-docs-layout:not([data-fd-framework]) aside#nd-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    min-height: 0;
+    height: 100dvh;
+  }
 }
 
 @media (max-width: 767px) {
