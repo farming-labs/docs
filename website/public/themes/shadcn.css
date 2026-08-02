@@ -664,7 +664,7 @@ figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-code-block pre,
 .fd-ai-fm-msg-content .fd-ai-code-block pre {
   margin: 0 !important;
-  padding: 0.75rem 0.5rem !important;
+  padding: 0.5rem 0.375rem !important;
   background: transparent !important;
   box-shadow: none !important;
 }
