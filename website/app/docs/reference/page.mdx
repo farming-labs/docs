@@ -1340,6 +1340,25 @@ The following are exported from `@farming-labs/docs` and `@farming-labs/docs/ser
 | `DocsRetrievalSourceScope` | type | Applicability metadata for a retrieved source: `audience`, `locale`, `framework`, `version`, `versionGroups`, and `package`. |
 | `EnrichDocsSearchDocumentsWithProvenanceOptions` | type | Options accepted by `enrichDocsSearchDocumentsWithProvenance`. |
 
+### HTTP cache integrity helpers
+
+The following are exported from `@farming-labs/docs`:
+
+| Export | Kind | Description |
+| ------ | ---- | ----------- |
+| `createDocsCacheableResponse` | function | Build a cacheable `Response` for an agent-surface request. Computes a strong `ETag` (`"<64-hex-char sha256>"`), an RFC 9530 `Content-Digest: sha-256=:…:` header, and an optional `Last-Modified` header. Returns an empty-body response for `HEAD` requests and `304 Not Modified` when `If-None-Match` matches. |
+| `formatDocsContentDigest` | function | Format a SHA-256 hex digest as an RFC 9530 `Content-Digest` field value (`sha-256=:…:`). |
+| `requestHasFreshDocsDate` | function | Return `true` when the request's `If-Modified-Since` header indicates the client already has a fresh copy. |
+| `requestMatchesDocsEtag` | function | Return `true` when the request's `If-None-Match` header matches the supplied strong ETag. |
+| `resolveDocsHttpDate` | function | Parse a `string`, `Date`, or `null` into an RFC 7231 HTTP-date string, returning `null` for invalid or absent values. |
+| `sha256DocsContent` | function | Hash exact bytes (string or `Uint8Array`) with portable SHA-256; returns the lowercase hex digest. Works in Node, edge, and browser runtimes. |
+| `digestDocsContent` | function | Hash a string or `Uint8Array` and return the result in `sha256:<hex>` provenance format. |
+| `DocsCacheableResponseOptions` | type | Options accepted by `createDocsCacheableResponse`: `request`, `content`, `status?`, `headers?`, `sha256?` (pre-computed hex digest), and `lastModified?` (`string \| Date \| null`). |
+
+**ETag format change:** Agent-surface responses now use a **strong** ETag (`"<64-hex-char sha256>"`) instead of the previous weak form (`W/"…"`). Clients that cache or compare ETags must update their `If-None-Match` logic accordingly. Conditional `GET` and `HEAD` requests with a matching strong ETag receive `304 Not Modified` with the `Content-Digest` header preserved.
+
+**`lastModified` on discovery responses:** `DocsStandardsDiscoveryResponseOptions` and `CreateDocsStandardsResponseOptions` both accept a new optional `lastModified?: string | Date | null` field. When supplied, the response includes a `Last-Modified` header and supports `If-Modified-Since` conditional requests.
+
 ### `DocsSearchFacetValue`
 
 One selectable search-scope value and the number of matching source pages.
