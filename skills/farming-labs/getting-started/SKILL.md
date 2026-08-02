@@ -40,7 +40,7 @@ and the framework adapters.
 
 ### Built-in themes
 
-Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `ledger`, `concrete`, `command-grid`, and `hardline`. `hardline` is the existing hard-edge preset, `concrete` is the louder brutalist poster-style variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, and `ledger` is a Stripe Docs-inspired product docs shell. The init CLI offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).
+Twelve CLI-selectable built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `ledger`, `shadcn`, `concrete`, `command-grid`, and `hardline`. `hardline` is the existing hard-edge preset, `concrete` is the louder brutalist poster-style variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, `ledger` is a Stripe Docs-inspired product docs shell, and `shadcn` recreates the compact neutral shadcn/ui documentation shell. The init CLI offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `shadcn` → `@farming-labs/theme/shadcn/css` for Next.js).
 
 ### Built-in UI features
 

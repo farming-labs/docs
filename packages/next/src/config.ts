@@ -442,6 +442,10 @@ function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record
       ["packages", "fumadocs", "dist", "ledger", "index.mjs"],
       ["packages", "fumadocs", "src", "ledger", "index.ts"],
     ),
+    "@farming-labs/theme/shadcn": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "shadcn", "index.mjs"],
+      ["packages", "fumadocs", "src", "shadcn", "index.ts"],
+    ),
     "@farming-labs/theme/mdx": workspaceEntrypoint(
       ["packages", "fumadocs", "dist", "mdx.mjs"],
       ["packages", "fumadocs", "src", "mdx.ts"],

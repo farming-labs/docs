@@ -104,6 +104,14 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     nuxtImport: "@farming-labs/nuxt-theme/ledger",
     nextCssImport: "ledger",
   },
+  shadcn: {
+    factory: "shadcn",
+    nextImport: "@farming-labs/theme/shadcn",
+    svelteImport: "@farming-labs/svelte-theme/shadcn",
+    astroImport: "@farming-labs/astro-theme/shadcn",
+    nuxtImport: "@farming-labs/nuxt-theme/shadcn",
+    nextCssImport: "shadcn",
+  },
   greentree: {
     factory: "greentree",
     nextImport: "@farming-labs/theme/greentree",

@@ -55,6 +55,7 @@ type ThemePresetName =
   | "darkbold"
   | "shiny"
   | "ledger"
+  | "shadcn"
   | "greentree"
   | "concrete"
   | "command-grid"
@@ -207,6 +208,12 @@ const THEME_PRESETS: Record<string, ManagedThemePreset> = {
     templateTheme: "ledger",
     importPath: "@farming-labs/theme/ledger",
     factory: "ledger",
+  },
+  shadcn: {
+    configName: "shadcn",
+    templateTheme: "shadcn",
+    importPath: "@farming-labs/theme/shadcn",
+    factory: "shadcn",
   },
   greentree: {
     configName: "greentree",

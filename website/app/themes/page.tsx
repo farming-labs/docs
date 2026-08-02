@@ -139,6 +139,25 @@ export default defineDocs({
 @import "@farming-labs/theme/ledger/css";`,
   },
   {
+    key: "shadcn",
+    name: "Shadcn Docs",
+    description:
+      "Compact neutral documentation shell with the same proportions, type rhythm, and controls as the shadcn/ui docs.",
+    cssImport: '@import "@farming-labs/theme/shadcn/css";',
+    colors: ["#000000", "#ffffff", "#737373", "#f5f5f5"],
+    accent: "#000000",
+    previewEnabled: true,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { shadcn } from "@farming-labs/theme/shadcn";
+
+export default defineDocs({
+  entry: "docs",
+  theme: shadcn(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/shadcn/css";`,
+  },
+  {
     key: "darkbold",
     name: "DarkBold",
     description: "Pure monochrome with tight Geist typography and bold, minimal surfaces.",
