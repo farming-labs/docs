@@ -574,7 +574,7 @@ figure.shiki:has(figcaption) > div:first-child,
   display: flex !important;
   min-height: 2.5rem !important;
   align-items: center !important;
-  border-bottom: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-fd-border) 46%, transparent) !important;
   background: var(--fd-shadcn-code) !important;
   color: var(--color-fd-muted-foreground) !important;
   font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace);
@@ -664,7 +664,7 @@ figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-code-block pre,
 .fd-ai-fm-msg-content .fd-ai-code-block pre {
   margin: 0 !important;
-  padding: 1rem 0.75rem !important;
+  padding: 0.75rem 0.5rem !important;
   background: transparent !important;
   box-shadow: none !important;
 }
