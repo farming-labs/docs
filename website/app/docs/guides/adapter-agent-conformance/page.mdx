@@ -67,6 +67,9 @@ The versioned contract (`DOCS_AGENT_CONTRACT_VERSION` `1.3`) verifies:
 - cursor-based structured search pagination (see below)
 
 - `capabilities.contentChanges` flag and a live `GET /api/docs?audience=agent&response=changes` endpoint returning a valid `docs-content-changes.v1` JSON payload with `indexGeneration`, `mode`, `resetRequired`, `documentCount`, and array fields; ETag and body-free delivery are also verified
+
+- HTTP cache validators on every agent-surface response (see below)
+
 The first-party Next.js, TanStack Start, SvelteKit, Astro, and Nuxt adapters run this same contract
 in their package tests.
 
@@ -94,6 +97,19 @@ The discovery spec (`/.well-known/agent.json`) advertises four pagination `const
 
 These fields are absent from the legacy v1 schema and present in agent manifest v2. An adapter
 that omits them from its discovery output will fail the `analyzeAgentSurfaceDrift` check.
+
+## HTTP cache validators
+
+All first-party adapters now attach strong HTTP cache validators to every agent-surface response. The conformance suite verifies that:
+
+- Every `GET` response for a machine-readable route (`/docs.md`, `/llms.txt`, `/.well-known/agent.json`, etc.) includes:
+  - A **strong `ETag`** matching the pattern `"<64-hex-char sha256>"` — derived from the exact response bytes.
+  - A **`Content-Digest: sha-256=:…:`** header (RFC 9530) whose base64 value matches the same bytes.
+- A `HEAD` request returns the same `ETag` and `Content-Digest` headers with an **empty body**.
+- A conditional `GET` with `If-None-Match` equal to the returned ETag receives **`304 Not Modified`** with the `Content-Digest` header preserved and an **empty body**.
+- `304` responses never include a body.
+
+Adapters that build responses through `createDocsCacheableResponse` satisfy these requirements automatically. Custom adapters must produce the same header shape and honour conditional-request semantics.
 
 ## Use it in an adapter test
 
