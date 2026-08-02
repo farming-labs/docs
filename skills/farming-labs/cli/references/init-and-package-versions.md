@@ -67,7 +67,7 @@ pnpm dlx @farming-labs/docs@latest init \
   --theme pixel-border
 
 pnpm dlx @farming-labs/docs@latest init \
-  --theme greentree \
+  --theme shadcn \
   --entry docs \
   --api-reference \
   --api-route-root internal-api

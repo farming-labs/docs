@@ -1067,7 +1067,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = applySidebarFolderIndexBehavior(buildTree(config, localeContext, !!sidebarFlat), {
       sidebar: config.sidebar,
-      defaultBehavior: "link",
+      defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
     });
     const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 

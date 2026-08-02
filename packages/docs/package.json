@@ -16,7 +16,8 @@
     "docs": "./dist/cli/index.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "styles"
   ],
   "type": "module",
   "main": "./dist/index.mjs",
@@ -67,7 +68,8 @@
       "types": "./dist/mcp.d.mts",
       "import": "./dist/mcp.mjs",
       "default": "./dist/mcp.mjs"
-    }
+    },
+    "./styles/themes/shadcn.css": "./styles/themes/shadcn.css"
   },
   "scripts": {
     "build": "tsdown",

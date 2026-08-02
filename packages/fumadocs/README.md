@@ -65,7 +65,7 @@ import { hardline } from "@farming-labs/theme/hardline";
 ```
 
 Available preset subpaths include `default`, `darksharp`, `pixel-border`, `colorful`, `shiny`,
-`darkbold`, `greentree`, `hardline`, `concrete`, `command-grid`, `ledger`, and `threadline`.
+`darkbold`, `greentree`, `hardline`, `concrete`, `command-grid`, `ledger`, `shadcn`, and `threadline`.
 
 ## Main entrypoints
 

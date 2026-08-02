@@ -119,6 +119,10 @@ function resolveWorkspaceAliases() {
       replacement: `${themeSrc}/hardline/index.ts`,
     },
     {
+      find: /^@farming-labs\/theme\/shadcn$/,
+      replacement: `${themeSrc}/shadcn/index.ts`,
+    },
+    {
       find: /^@farming-labs\/theme\/search$/,
       replacement: `${themeSrc}/search.ts`,
     },

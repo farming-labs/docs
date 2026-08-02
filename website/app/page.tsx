@@ -1047,6 +1047,12 @@ function ThemesSection() {
       colors: ["#5f6cf6", "#f6f8fb", "#30364a", "#262c43"],
     },
     {
+      name: "Shadcn Docs",
+      description: "Compact neutral shell inspired by the shadcn/ui documentation",
+      import: '@import "@farming-labs/theme/shadcn/css";',
+      colors: ["#000000", "#ffffff", "#737373", "#f5f5f5"],
+    },
+    {
       name: "DarkBold",
       description: "Pure monochrome design — clean, bold, minimal",
       import: '@import "@farming-labs/theme/darkbold/css";',

@@ -279,6 +279,11 @@ describe("globalCssTemplate", () => {
     const out = globalCssTemplate("ledger");
     expect(out).toContain("@farming-labs/theme/ledger/css");
   });
+
+  it("uses correct theme path for shadcn", () => {
+    const out = globalCssTemplate("shadcn");
+    expect(out).toContain("@farming-labs/theme/shadcn/css");
+  });
 });
 
 describe("injectCssImport", () => {
@@ -354,6 +359,12 @@ describe("docsConfigTemplate", () => {
     const out = docsConfigTemplate({ ...baseConfig, theme: "ledger" });
     expect(out).toContain("ledger");
     expect(out).toContain("@farming-labs/theme/ledger");
+  });
+
+  it("uses correct theme factory for shadcn", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "shadcn" });
+    expect(out).toContain("theme: shadcn(");
+    expect(out).toContain("@farming-labs/theme/shadcn");
   });
 
   it("uses local theme path for custom theme with customThemeName", () => {

@@ -88,6 +88,11 @@
       "import": "./dist/ledger/index.mjs",
       "default": "./dist/ledger/index.mjs"
     },
+    "./shadcn": {
+      "types": "./dist/shadcn/index.d.mts",
+      "import": "./dist/shadcn/index.mjs",
+      "default": "./dist/shadcn/index.mjs"
+    },
     "./threadline": {
       "types": "./dist/threadline/index.d.mts",
       "import": "./dist/threadline/index.mjs",
@@ -126,6 +131,7 @@
     "./concrete/css": "./styles/concrete.css",
     "./command-grid/css": "./styles/command-grid.css",
     "./ledger/css": "./styles/ledger.css",
+    "./shadcn/css": "./styles/shadcn.css",
     "./threadline/css": "./styles/threadline.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
