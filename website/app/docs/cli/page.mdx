@@ -382,6 +382,13 @@ SvelteKit's `static/` directory:
 - `/.well-known/agent-bundle.json` and `.farming-labs/agent-bundle-manifest.json`, containing
   deterministic SHA-256 hashes for the exported files
 
+Every file entry in the bundle manifest now includes three additional fields derived from the exact exported bytes:
+
+| Field | Description |
+| ----- | ----------- |
+| `etag` | Strong HTTP entity tag in the form `"<64-hex-char sha256>"` — the same value served as `ETag` by live adapters |
+| `contentDigest` | RFC 9530 `Content-Digest` field value in the form `sha-256=:…:` (base64-encoded SHA-256) |
+| `lastModified` | Optional ISO-8601 source modification time when the exporter can derive one (e.g. from the last git commit date for tracked files) |
 The exported artifact is static by definition. Its discovery document disables server-only search,
 MCP, feedback, API reference, and OpenAPI capabilities even when the application config is otherwise
 server-rendered.
