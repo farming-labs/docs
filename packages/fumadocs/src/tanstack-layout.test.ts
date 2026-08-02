@@ -94,6 +94,66 @@ describe("TanstackDocsLayout", () => {
     });
   });
 
+  it("renders Shadcn folder landing pages as section labels unless links are requested", () => {
+    const sourceTree = {
+      name: "Docs",
+      children: [
+        {
+          type: "folder" as const,
+          name: "Authentication",
+          index: { type: "page" as const, name: "Authentication", url: "/docs/authentication" },
+          children: [{ type: "page" as const, name: "Email", url: "/docs/authentication/email" }],
+        },
+      ],
+    };
+    const shadcnLayout = TanstackDocsLayout({
+      config: { entry: "docs", theme: { name: "shadcn" } },
+      tree: sourceTree,
+      children: React.createElement("div", null, "child"),
+    });
+    const linkedShadcnLayout = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        theme: { name: "shadcn" },
+        sidebar: { folderIndexBehavior: "link" },
+      },
+      tree: sourceTree,
+      children: React.createElement("div", null, "child"),
+    });
+
+    const shadcnTree = (
+      shadcnLayout.props as {
+        tree: { children: Array<Record<string, unknown>> };
+      }
+    ).tree;
+    const linkedShadcnTree = (
+      linkedShadcnLayout.props as {
+        tree: { children: Array<Record<string, unknown>> };
+      }
+    ).tree;
+
+    expect(shadcnTree.children[0]).toMatchObject({
+      type: "folder",
+      index: undefined,
+      url: undefined,
+      children: [
+        expect.objectContaining({
+          type: "page",
+          name: "Email",
+          url: "/docs/authentication/email",
+        }),
+      ],
+    });
+    expect(linkedShadcnTree.children[0]).toMatchObject({
+      type: "folder",
+      index: expect.objectContaining({
+        type: "page",
+        name: "Authentication",
+        url: "/docs/authentication",
+      }),
+    });
+  });
+
   it("applies sidebar.folderIndexBehaviorOverrides selectively", () => {
     const tree = TanstackDocsLayout({
       config: {

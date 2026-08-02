@@ -621,6 +621,64 @@ agent:
     });
   });
 
+  it("renders Shadcn folder landing pages as section labels unless links are requested", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "authentication", "email"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "authentication", "page.mdx"),
+      "---\ntitle: Authentication\n---\n\n# Authentication\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "authentication", "email", "page.mdx"),
+      "---\ntitle: Email\n---\n\n# Email\n",
+      "utf-8",
+    );
+
+    const ShadcnLayout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "shadcn" },
+    });
+    const linkedShadcnLayout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "shadcn" },
+      sidebar: { folderIndexBehavior: "link" },
+    });
+
+    const shadcnTree = findDocsLayoutTree(
+      ShadcnLayout({ children: React.createElement("div", null, "child") }),
+    );
+    const linkedShadcnTree = findDocsLayoutTree(
+      linkedShadcnLayout({ children: React.createElement("div", null, "child") }),
+    );
+    const shadcnAuthentication = (
+      (shadcnTree?.children ?? []) as Array<Record<string, unknown>>
+    ).find((entry) => entry.name === "Authentication");
+    const linkedAuthentication = (
+      (linkedShadcnTree?.children ?? []) as Array<Record<string, unknown>>
+    ).find((entry) => entry.name === "Authentication");
+
+    expect(shadcnAuthentication).toMatchObject({
+      type: "folder",
+      index: undefined,
+      url: undefined,
+      children: [
+        expect.objectContaining({
+          type: "page",
+          name: "Email",
+          url: "/docs/authentication/email",
+        }),
+      ],
+    });
+    expect(linkedAuthentication).toMatchObject({
+      type: "folder",
+      index: expect.objectContaining({
+        type: "page",
+        name: "Authentication",
+        url: "/docs/authentication",
+      }),
+    });
+  });
+
   it("applies sidebar.folderIndexBehaviorOverrides selectively", () => {
     mkdirSync(join(tmpDir, "app", "docs", "components", "button"), { recursive: true });
     mkdirSync(join(tmpDir, "app", "docs", "guides", "writing"), { recursive: true });

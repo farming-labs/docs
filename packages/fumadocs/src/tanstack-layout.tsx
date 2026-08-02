@@ -450,13 +450,13 @@ export function TanstackDocsLayout({
       ? localizeTreeUrls(
           applySidebarFolderIndexBehavior(tree, {
             sidebar: config.sidebar,
-            defaultBehavior: "link",
+            defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
           }),
           locale,
         )
       : applySidebarFolderIndexBehavior(tree, {
           sidebar: config.sidebar,
-          defaultBehavior: "link",
+          defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
         }),
     config.icons as Record<string, unknown> | undefined,
   );

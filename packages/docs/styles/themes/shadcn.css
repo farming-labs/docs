@@ -244,6 +244,33 @@ aside#nd-sidebar-mobile [data-radix-scroll-area-viewport] a[data-active] > svg {
 
 aside#nd-sidebar
   [data-radix-scroll-area-viewport]
+  [class~="wrap-anywhere"][class~="w-full"][class~="text-fd-muted-foreground"],
+aside#nd-sidebar-mobile
+  [data-radix-scroll-area-viewport]
+  [class~="wrap-anywhere"][class~="w-full"][class~="text-fd-muted-foreground"] {
+  min-height: 1.75rem !important;
+  gap: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 0.25rem 0.5rem !important;
+}
+
+aside#nd-sidebar
+  [data-radix-scroll-area-viewport]
+  [class~="wrap-anywhere"][class~="w-full"][class~="text-fd-muted-foreground"]
+  > svg,
+aside#nd-sidebar-mobile
+  [data-radix-scroll-area-viewport]
+  [class~="wrap-anywhere"][class~="w-full"][class~="text-fd-muted-foreground"]
+  > svg {
+  display: none !important;
+}
+
+aside#nd-sidebar
+  [data-radix-scroll-area-viewport]
   [class*="before:inset-s-2.5"]::before,
 aside#nd-sidebar-mobile
   [data-radix-scroll-area-viewport]
@@ -644,10 +671,17 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 
 .fd-card,
 [data-card],
-.fd-hover-link-card,
-.fd-callout,
-[data-callout],
-[style*="--callout-color"],
+.fd-hover-link-card {
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 1.2) !important;
+  background: var(--color-fd-card) !important;
+  color: var(--color-fd-card-foreground) !important;
+  box-shadow: none !important;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease !important;
+}
+
 .fd-feedback-input,
 .fd-feedback-choice {
   border: 0 !important;
@@ -659,17 +693,44 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-card:hover,
 [data-card]:hover,
 .fd-hover-link-card:hover {
-  background: var(--fd-shadcn-control) !important;
+  border-color: var(--color-fd-border) !important;
+  background: color-mix(in oklab, var(--color-fd-accent) 55%, var(--color-fd-card)) !important;
 }
 
-.fd-tabs,
+.fd-card :is(h3, h4),
+[data-card] :is(h3, h4),
+.fd-hover-link-card :is(h3, h4) {
+  color: var(--color-fd-card-foreground) !important;
+  font-weight: 600 !important;
+}
+
+.fd-callout,
+[data-callout],
+[style*="--callout-color"] {
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 1.2) !important;
+  background: color-mix(in oklab, var(--color-fd-card) 92%, transparent) !important;
+  color: var(--color-fd-foreground) !important;
+  box-shadow: none !important;
+}
+
+.fd-callout > [role="none"],
+[data-callout] > [role="none"],
+[style*="--callout-color"] > [role="none"] {
+  width: 2px !important;
+  border-radius: 999px !important;
+  background: var(--callout-color, var(--color-fd-border)) !important;
+  opacity: 0.65;
+}
+
 .fd-tabs-list,
 [role="tablist"] {
   border: 0 !important;
   border-bottom: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
   background: transparent !important;
-  padding: 0 !important;
+  gap: 1rem !important;
+  padding: 0 0.75rem !important;
 }
 
 .fd-tabs-trigger,
@@ -682,6 +743,8 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   color: var(--color-fd-muted-foreground) !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
+  min-height: 2.5rem !important;
+  padding: 0.625rem 0 !important;
   box-shadow: none !important;
 }
 
@@ -692,6 +755,28 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 [role="tab"][data-active="true"] {
   border-bottom-color: var(--color-fd-foreground) !important;
   color: var(--color-fd-foreground) !important;
+}
+
+.fd-tabs-trigger:focus-visible,
+.fd-tab-trigger:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--color-fd-ring) !important;
+  outline-offset: -2px !important;
+}
+
+:is(.fd-docs-content, #nd-page .prose)
+  [data-orientation="horizontal"]:has(> [role="tablist"]) {
+  overflow: hidden;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 1.2) !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: none !important;
+}
+
+:is(.fd-docs-content, #nd-page .prose)
+  [data-orientation="horizontal"]:has(> [role="tablist"])
+  > [role="tabpanel"] {
+  background: var(--color-fd-card) !important;
 }
 
 .fd-docs-content pre,
@@ -873,26 +958,78 @@ figure.shiki figcaption {
   }
 }
 
-.fd-table-wrapper,
-:is(.fd-docs-content, .prose) table,
-.prose table {
-  border: 0 !important;
-  border-bottom: 1px solid var(--color-fd-border) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+.fd-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 1.2) !important;
+  background: var(--color-fd-card) !important;
   box-shadow: none !important;
 }
 
-.fd-table-wrapper th,
-.prose th {
+.fd-table-wrapper table,
+:is(.fd-docs-content, #nd-page .prose) table {
+  width: 100%;
+  margin: 0 !important;
+  border: 0 !important;
+  border-collapse: collapse;
   background: transparent !important;
-  color: var(--color-fd-foreground) !important;
-  font-weight: 500;
+  font-size: 0.875rem !important;
+  box-shadow: none !important;
 }
 
-.fd-table-wrapper :is(th, td),
-.prose :is(th, td) {
-  border-color: var(--color-fd-border) !important;
+.fd-table-wrapper thead,
+:is(.fd-docs-content, #nd-page .prose) table thead {
+  border-bottom: 1px solid var(--color-fd-border) !important;
+}
+
+.fd-table-wrapper tbody tr,
+:is(.fd-docs-content, #nd-page .prose) table tbody tr {
+  border-bottom: 1px solid var(--fd-shadcn-soft-border) !important;
+  transition: background-color 150ms ease;
+}
+
+.fd-table-wrapper tbody tr:last-child,
+:is(.fd-docs-content, #nd-page .prose) table tbody tr:last-child {
+  border-bottom: 0 !important;
+}
+
+@media (hover: hover) {
+  .fd-table-wrapper tbody tr:hover,
+  :is(.fd-docs-content, #nd-page .prose) table tbody tr:hover {
+    background: color-mix(in oklab, var(--color-fd-muted) 48%, transparent) !important;
+  }
+}
+
+.fd-table-wrapper th,
+:is(.fd-docs-content, #nd-page .prose) table th {
+  height: 2.5rem;
+  padding: 0.625rem 0.75rem !important;
+  background: transparent !important;
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  line-height: 1.25rem !important;
+  text-align: start;
+  vertical-align: middle;
+}
+
+.fd-table-wrapper td,
+:is(.fd-docs-content, #nd-page .prose) table td {
+  padding: 0.625rem 0.75rem !important;
+  border: 0 !important;
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  vertical-align: middle;
+}
+
+.fd-table-wrapper caption,
+:is(.fd-docs-content, #nd-page .prose) table caption {
+  margin-top: 0.75rem;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.8125rem;
+  caption-side: bottom;
 }
 
 .fd-callout,
@@ -904,6 +1041,110 @@ figure.shiki figcaption {
 .fd-callout-title {
   color: var(--color-fd-foreground);
   font-weight: 600;
+}
+
+:is(.fd-docs-content, #nd-page .prose) blockquote {
+  margin: 1.25rem 0 !important;
+  border-inline-start: 2px solid var(--color-fd-border) !important;
+  background: transparent !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-style: normal !important;
+  padding: 0.125rem 0 0.125rem 1rem !important;
+}
+
+:is(.fd-docs-content, #nd-page .prose) blockquote :is(p, li) {
+  color: inherit !important;
+}
+
+:is(.fd-docs-content, #nd-page .prose) details {
+  overflow: hidden;
+  margin: 1rem 0;
+  border: 1px solid var(--fd-shadcn-soft-border);
+  border-radius: calc(var(--radius) * 1.2);
+  background: var(--color-fd-card);
+}
+
+:is(.fd-docs-content, #nd-page .prose) details > summary {
+  min-height: 2.75rem;
+  cursor: pointer;
+  color: var(--color-fd-card-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  transition: background-color 150ms ease;
+}
+
+:is(.fd-docs-content, #nd-page .prose) details > summary:hover {
+  background: color-mix(in oklab, var(--color-fd-accent) 55%, transparent);
+}
+
+:is(.fd-docs-content, #nd-page .prose) details[open] > summary {
+  border-bottom: 1px solid var(--fd-shadcn-soft-border);
+}
+
+:is(.fd-docs-content, #nd-page .prose) details > :not(summary) {
+  margin-inline: 1rem;
+}
+
+:is(.fd-docs-content, #nd-page .prose)
+  [data-orientation="vertical"][class~="divide-y"] {
+  overflow: hidden;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 1.2) !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: none !important;
+}
+
+:is(.fd-docs-content, #nd-page .prose)
+  [data-orientation="vertical"][class~="divide-y"]
+  [data-radix-collection-item] {
+  min-height: 2.75rem;
+  color: var(--color-fd-card-foreground) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: background-color 150ms ease;
+}
+
+:is(.fd-docs-content, #nd-page .prose)
+  [data-orientation="vertical"][class~="divide-y"]
+  [data-radix-collection-item]:hover {
+  background: color-mix(in oklab, var(--color-fd-accent) 55%, transparent) !important;
+}
+
+.fd-steps {
+  border-inline-start-color: var(--fd-shadcn-soft-border) !important;
+}
+
+.fd-step::before {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-background) !important;
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 4px var(--color-fd-background);
+}
+
+:is(.fd-docs-content, #nd-page .prose) kbd {
+  display: inline-flex;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-fd-border);
+  border-radius: calc(var(--radius) * 0.6);
+  background: var(--color-fd-muted);
+  color: var(--color-fd-muted-foreground);
+  font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.375rem;
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--color-fd-border) 80%, transparent);
+}
+
+:is(.fd-docs-content, #nd-page .prose) hr {
+  border-color: var(--fd-shadcn-soft-border) !important;
 }
 
 .omni-overlay,
