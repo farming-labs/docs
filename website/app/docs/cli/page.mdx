@@ -66,6 +66,8 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`agent export`** — materialize the complete machine-readable surface for static hosting
 - **`agent compact`** — generate sibling `agent.md` files from resolved docs pages
 - **`agents generate`** — write root and static `AGENTS.md` instructions for coding agents
+
+- **`skills scaffold`** — compile structured page `agent` contracts into an installable Agent Skill
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
 - **`review`** — review docs changes locally or in GitHub Actions
 - **`codeblocks validate`** — plan and validate runnable MDX code fences
@@ -561,6 +563,66 @@ By default the command writes a managed root `AGENTS.md` plus public copies at `
 `/.well-known/AGENTS.md`, `/AGENT.md`, and `/.well-known/AGENT.md` (`static/` instead of `public/`
 for SvelteKit). If a hand-written root `AGENTS.md` or `AGENT.md` already exists, the command keeps
 it and uses that content for missing static aliases unless `--force` is passed.
+
+## Skills scaffold
+
+Use `docs skills scaffold` to compile structured page `agent` contracts into an installable, progressively disclosed Agent Skill. The command reads actionable pages from the configured docs source, writes one compact `SKILL.md` routing file and one focused `references/*.md` file per selected page into a `skills/<name>/` directory, and works offline and deterministically.
+
+Common invocations:
+
+```bash title="terminal"
+# Preview what would be written without making changes
+pnpm exec docs skills scaffold --dry-run
+
+# Write (or update) the skill directory
+pnpm exec docs skills scaffold
+
+# Fail if the generated skill files are stale — useful in CI
+pnpm exec docs skills scaffold --check
+```
+
+Default behavior:
+
+- derives the skill name from `nav.title` in `docs.config`
+- writes output to `skills/<name>/`
+- includes all actionable pages (pages that define a structured `agent` contract)
+
+Flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--name <name>` | Override the derived skill name. Accepts a positional name as well. |
+| `--output <dir>` | Write the skill to a custom directory instead of `skills/<name>/`. |
+| `--include <slug>` | Repeatable. Restrict scaffolding to the listed page slugs or paths. |
+| `--config <path>` | Use a custom docs config path (e.g. `src/lib/docs.config.ts`). |
+| `--dry-run` | Print what would be written without touching the filesystem. |
+| `--force` | Overwrite existing skill files even when they appear up to date. |
+| `--check` | Exit non-zero if the generated output would differ from what is already on disk. |
+
+Output shape:
+
+- `skills/<name>/SKILL.md` — a compact routing file that names the skill and links to each reference
+- `skills/<name>/references/<slug>.md` — one file per selected actionable page, containing the authored task, expected result, applicability, prerequisites, files, commands, side effects, verification, recovery, rollback, and canonical source, but not the full page prose
+
+Once generated, publish the skill through `agent.skills` in `docs.config.ts` so it is indexed by the runtime, Static Agent Bundle, and MCP:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    skills: "./skills",
+  },
+});
+```
+
+Add the check to CI when generated skill files are committed:
+
+```json title="package.json"
+{
+  "scripts": {
+    "check:skills": "docs skills scaffold --check"
+  }
+}
+```
 
 ## Doctor
 
