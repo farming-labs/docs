@@ -821,16 +821,6 @@ figure.shiki figcaption {
   box-shadow: none !important;
 }
 
-.fd-ai-input-wrap:focus-within,
-.fd-ai-fm-input-container:focus-within {
-  border-color: var(--color-fd-ring) !important;
-  box-shadow: none !important;
-}
-
-.fd-ai-fm-input-container:focus-within {
-  box-shadow: var(--fd-shadcn-dialog-shadow) !important;
-}
-
 .fd-ai-suggestion,
 .fd-ai-fm-suggestion {
   border: 0 !important;
