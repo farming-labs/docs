@@ -395,7 +395,8 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-ai-code-copy,
 .fd-ai-model-dropdown-btn,
 .fd-page-nav-card,
-.fd-page-nav a {
+.fd-page-nav a,
+#nd-page > div[class~="@container"] > a {
   border: 0 !important;
   border-radius: calc(var(--radius) * 0.8) !important;
   background: var(--fd-shadcn-control) !important;
@@ -410,8 +411,59 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-ai-code-copy:hover,
 .fd-ai-model-dropdown-btn:hover,
 .fd-page-nav-card:hover,
-.fd-page-nav a:hover {
+.fd-page-nav a:hover,
+#nd-page > div[class~="@container"] > a:hover {
   background: var(--fd-shadcn-control-hover) !important;
+}
+
+.fd-page-nav,
+#nd-page > div[class~="@container"] {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+  margin-top: 1.5rem !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
+.fd-page-nav > div:empty {
+  display: none;
+}
+
+.fd-page-nav-card,
+.fd-page-nav a,
+#nd-page > div[class~="@container"] > a {
+  display: flex !important;
+  min-width: 0;
+  min-height: 4rem !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 0.125rem !important;
+  padding: 0.75rem !important;
+  text-decoration: none !important;
+}
+
+.fd-page-nav-next,
+#nd-page > div[class~="@container"] > a.text-end {
+  grid-column: 2;
+}
+
+.fd-page-nav-title,
+#nd-page > div[class~="@container"] > a > div:first-child {
+  min-height: 0 !important;
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  line-height: 1.35 !important;
+}
+
+.fd-page-nav-description,
+#nd-page > div[class~="@container"] > a > p:last-child {
+  min-height: 0 !important;
+  margin: 0 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.75rem !important;
+  line-height: 1.35 !important;
 }
 
 .fd-card,
@@ -494,7 +546,6 @@ figure.shiki pre,
 
 .fd-codeblock-title,
 figure.shiki:has(figcaption) > div:first-child,
-figure.shiki figcaption,
 .fd-ai-code-header {
   display: flex !important;
   min-height: 2.5rem !important;
@@ -506,6 +557,14 @@ figure.shiki figcaption,
   font-size: 0.8rem !important;
   font-weight: 500 !important;
   padding: 0 1rem !important;
+}
+
+figure.shiki figcaption {
+  display: block !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
 }
 
 .fd-docs-content :not(pre) > code {
@@ -599,6 +658,16 @@ figure.shiki figcaption,
 }
 
 @media (max-width: 767px) {
+  .fd-page-nav,
+  #nd-page > div[class~="@container"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fd-page-nav-next,
+  #nd-page > div[class~="@container"] > a.text-end {
+    grid-column: auto;
+  }
+
   #nd-docs-layout[data-fd-framework] {
     --fd-framework-article-padding: 24px 16px 48px;
   }
