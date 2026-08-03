@@ -13,6 +13,7 @@ import {
 } from "@modelcontextprotocol/server";
 import type {
   AuthInfo,
+  CacheScope,
   ListPromptsResult,
   ListResourcesResult,
   ListResourceTemplatesResult,
@@ -499,6 +500,9 @@ interface ScannedDocsMcpPage extends DocsMcpPage {
 
 const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
+const DOCS_MCP_DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1_000;
+const DOCS_MCP_LIST_CACHE_TTL_MS = 5 * 60 * 1_000;
+const DOCS_MCP_RESOURCE_CACHE_TTL_MS = 60 * 1_000;
 const DEFAULT_MCP_CONTEXT_TOKEN_BUDGET = 4_000;
 const MIN_MCP_CONTEXT_TOKEN_BUDGET = 256;
 const MAX_MCP_CONTEXT_TOKEN_BUDGET = 32_000;
@@ -3344,15 +3348,24 @@ interface DocsMcpContentChangeMonitor<Context> {
   close(): void;
 }
 
+interface DocsMcpContentGenerationState {
+  indexGeneration: string;
+  resourceUris: readonly string[];
+}
+
 function createDocsMcpContentChangeMonitor<Context>(options: {
   pollIntervalMs: number;
-  readGeneration: (context: Context) => Promise<string>;
-  notify: () => void | Promise<void>;
+  readState: (context: Context) => Promise<DocsMcpContentGenerationState>;
+  notify: (change: {
+    context: Context;
+    previous: DocsMcpContentGenerationState;
+    current: DocsMcpContentGenerationState;
+  }) => void | Promise<void>;
   isActive?: () => boolean;
   unrefTimer?: boolean;
 }): DocsMcpContentChangeMonitor<Context> {
   let context: Context | undefined;
-  let generation: string | undefined;
+  let state: DocsMcpContentGenerationState | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;
   let closed = false;
@@ -3364,12 +3377,15 @@ function createDocsMcpContentChangeMonitor<Context>(options: {
       if (closed || context === undefined || options.isActive?.() === false) return;
       running = true;
       try {
-        const nextGeneration = await options.readGeneration(context);
-        if (generation && nextGeneration !== generation) {
-          generation = nextGeneration;
-          await options.notify();
-        } else {
-          generation = nextGeneration;
+        const nextState = await options.readState(context);
+        const previousState = state;
+        state = nextState;
+        if (previousState && nextState.indexGeneration !== previousState.indexGeneration) {
+          await options.notify({
+            context,
+            previous: previousState,
+            current: nextState,
+          });
         }
       } catch {
         // A transient source or durable-store failure must not terminate a
@@ -3396,9 +3412,9 @@ function createDocsMcpContentChangeMonitor<Context>(options: {
         timer = undefined;
       }
       try {
-        generation = await options.readGeneration(nextContext);
+        state = await options.readState(nextContext);
       } catch {
-        generation = undefined;
+        state = undefined;
       }
       schedule();
     },
@@ -3644,10 +3660,41 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     contentChangesConfig.enabled && resolved.tools.listContentChanges !== false;
   const contentChangeHydrationEnabled =
     contentChangesEnabled && resolved.tools.hydrateContentChanges !== false;
-  const server = new McpServer({
-    name: resolved.name,
-    version: resolved.version,
-  });
+  const cacheScope: CacheScope = options.requestContext?.auth ? "private" : "public";
+  const server = new McpServer(
+    {
+      name: resolved.name,
+      version: resolved.version,
+    },
+    {
+      cacheHints: {
+        "server/discover": {
+          ttlMs: DOCS_MCP_DISCOVERY_CACHE_TTL_MS,
+          cacheScope,
+        },
+        "tools/list": {
+          ttlMs: DOCS_MCP_LIST_CACHE_TTL_MS,
+          cacheScope,
+        },
+        "prompts/list": {
+          ttlMs: DOCS_MCP_LIST_CACHE_TTL_MS,
+          cacheScope,
+        },
+        "resources/list": {
+          ttlMs: DOCS_MCP_LIST_CACHE_TTL_MS,
+          cacheScope,
+        },
+        "resources/templates/list": {
+          ttlMs: DOCS_MCP_LIST_CACHE_TTL_MS,
+          cacheScope,
+        },
+        "resources/read": {
+          ttlMs: DOCS_MCP_RESOURCE_CACHE_TTL_MS,
+          cacheScope,
+        },
+      },
+    },
+  );
   installDocsMcpSdkRegistrationPagination(server, protocolScope);
   if (contentChangesEnabled) {
     server.server.registerCapabilities({
@@ -5667,7 +5714,9 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       ? Math.floor(configuredPollInterval)
       : DEFAULT_DOCS_MCP_CONTENT_CHANGE_POLL_INTERVAL_MS;
 
-  async function readMonitoredGeneration(context: DocsMcpRequestContext): Promise<string> {
+  async function readMonitoredState(
+    context: DocsMcpRequestContext,
+  ): Promise<DocsMcpContentGenerationState> {
     const locale = options.source.resolveLocale?.(undefined, context);
     const pages = dedupePages(await options.source.getPages(locale, context));
     const result = await contentChangeFeed.resolve({
@@ -5680,13 +5729,27 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
         (context.request ? new URL(context.request.url).origin : undefined),
       ...(context.request ? { request: context.request.clone() } : {}),
     });
-    return result.indexGeneration;
+    return {
+      indexGeneration: result.indexGeneration,
+      resourceUris: [
+        "docs://navigation",
+        DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+        `docs://changes/${result.indexGeneration}`,
+        ...pages.map((page) => toPageResourceUri(page.url)),
+      ],
+    };
   }
 
   const contentChangeMonitor = createDocsMcpContentChangeMonitor({
     pollIntervalMs: contentChangePollIntervalMs,
-    readGeneration: readMonitoredGeneration,
-    notify: () => mcpHandler.notify.resourceUpdated(DOCS_MCP_CONTENT_CHANGES_CURRENT_URI),
+    readState: readMonitoredState,
+    notify: ({ previous, current }) => {
+      mcpHandler.notify.resourcesChanged();
+      const affectedUris = new Set([...previous.resourceUris, ...current.resourceUris]);
+      for (const uri of affectedUris) {
+        mcpHandler.notify.resourceUpdated(uri);
+      }
+    },
     isActive: () => eventBus.listenerCount > 0,
     unrefTimer: true,
   });
@@ -5915,7 +5978,7 @@ export async function runDocsMcpStdio(options: CreateDocsMcpServerOptions): Prom
     });
     if (!contentChangesEnabled) return server;
 
-    const readGeneration = async () => {
+    const readState = async (): Promise<DocsMcpContentGenerationState> => {
       const locale = options.source.resolveLocale?.(undefined, requestContext);
       const pages = dedupePages(await options.source.getPages(locale, requestContext));
       const result = await contentChangeFeed.resolve({
@@ -5925,15 +5988,26 @@ export async function runDocsMcpStdio(options: CreateDocsMcpServerOptions): Prom
         locale,
         baseUrl: options.source.baseUrl,
       });
-      return result.indexGeneration;
+      return {
+        indexGeneration: result.indexGeneration,
+        resourceUris: [
+          "docs://navigation",
+          DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+          `docs://changes/${result.indexGeneration}`,
+          ...pages.map((page) => toPageResourceUri(page.url)),
+        ],
+      };
     };
     const monitor = createDocsMcpContentChangeMonitor({
       pollIntervalMs,
-      readGeneration: () => readGeneration(),
-      notify: () =>
-        server.server.sendResourceUpdated({
-          uri: DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
-        }),
+      readState: () => readState(),
+      notify: async ({ previous, current }) => {
+        await server.server.sendResourceListChanged();
+        const affectedUris = new Set([...previous.resourceUris, ...current.resourceUris]);
+        for (const uri of affectedUris) {
+          await server.server.sendResourceUpdated({ uri });
+        }
+      },
     });
     await monitor.start(requestContext);
 
