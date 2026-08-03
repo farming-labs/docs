@@ -703,6 +703,38 @@ This page tells an agent to deploy the site.
     );
   });
 
+  it("does not classify prose containing inline code as a shell command", () => {
+    const prose =
+      "Golden tasks measure adversarial safety. Add `expect.safety` to a task to enable these checks.";
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page(
+            "inline-code-prose",
+            `# Golden evaluations
+
+${prose}
+
+\`\`\`bash
+pnpm exec docs doctor --agent
+\`\`\``,
+          ),
+          actionable: false,
+        },
+      ],
+    });
+
+    expect(report.findings.map((finding) => finding.command)).not.toContain(prose);
+    expect(report.findings.map((finding) => finding.code)).not.toContain("command-unverified");
+    expect(report.metrics.commands).toEqual({
+      total: 1,
+      healthy: 1,
+      unhealthy: 0,
+      unverified: 0,
+    });
+  });
+
   it("checks package manager, scripts, working directories, and docs CLI commands", () => {
     mkdirSync(path.join(rootDir, "apps", "docs"), { recursive: true });
     writeFileSync(
