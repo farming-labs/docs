@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DocsMcpPage } from "./mcp.js";
+import type { DocsMcpContextSource, DocsMcpPage } from "./mcp.js";
 import {
+  hasDocsGoldenUnsafeFrameworkVersionProvenance,
   hydrateDocsEvaluationSearchSource,
   runDocsGoldenTasks,
   type DocsGoldenTask,
@@ -304,7 +305,7 @@ PRIVATE_AUTH_CANARY
     );
 
     expect(report.status).toBe("failed");
-    expect(report.tasks[0].score).toBeLessThan(100);
+    expect(report.tasks[0].score).toBe(75);
     expect(report.tasks[0].safety.cases).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: "prompt-injection", passed: false }),
@@ -319,6 +320,43 @@ PRIVATE_AUTH_CANARY
     expect(report.tasks[0].issues).toContain(
       "One or more adversarial retrieval-safety assertions failed.",
     );
+  });
+
+  it("rejects conflicting or truncated framework/version provider provenance", () => {
+    const source = (
+      scope: NonNullable<DocsMcpContextSource["source"]>["scope"],
+    ): DocsMcpContextSource => ({
+      id: "provider-result",
+      title: "Provider result",
+      pageUrl: "/docs/provider-result",
+      url: "/docs/provider-result#setup",
+      content: "Provider content.",
+      chars: 17,
+      utf8Bytes: 17,
+      truncated: false,
+      source: {
+        canonicalUrl: "/docs/provider-result#setup",
+        scope,
+        digest: `sha256:${"0".repeat(64)}`,
+        indexGeneration: `sha256:${"1".repeat(64)}`,
+      },
+    });
+
+    expect(
+      hasDocsGoldenUnsafeFrameworkVersionProvenance([
+        source({ audience: "agent", conflicts: ["version"] }),
+      ]),
+    ).toBe(true);
+    expect(
+      hasDocsGoldenUnsafeFrameworkVersionProvenance([
+        source({ audience: "agent", truncated: ["framework"] }),
+      ]),
+    ).toBe(true);
+    expect(
+      hasDocsGoldenUnsafeFrameworkVersionProvenance([
+        source({ audience: "agent", conflicts: ["tags"] }),
+      ]),
+    ).toBe(false);
   });
 
   it("detects stale provenance and conflicting framework versions", async () => {

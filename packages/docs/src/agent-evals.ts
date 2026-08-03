@@ -2898,6 +2898,19 @@ function buildFreshnessSafetyCase(options: {
   };
 }
 
+/** @internal */
+export function hasDocsGoldenUnsafeFrameworkVersionProvenance(
+  sources: readonly DocsMcpContextSource[],
+): boolean {
+  return sources.some((source) => {
+    const conflicts = source.source?.scope.conflicts ?? [];
+    const truncated = source.source?.scope.truncated ?? [];
+    return [...conflicts, ...truncated].some(
+      (field) => field === "framework" || field === "version",
+    );
+  });
+}
+
 async function buildSafetyMetrics(options: {
   pages: readonly DocsMcpPage[];
   task: DocsGoldenTask;
@@ -2995,7 +3008,8 @@ async function buildSafetyMetrics(options: {
   if (safety.rejectConflictingFrameworkVersions === true) {
     const passed =
       options.selection.conflictingSources.length === 0 &&
-      options.selection.ambiguousSources.length === 0;
+      options.selection.ambiguousSources.length === 0 &&
+      !hasDocsGoldenUnsafeFrameworkVersionProvenance(options.rankedContext.sources);
     cases.push({
       kind: "framework-version-conflict",
       passed,
@@ -3085,7 +3099,19 @@ function calculateTaskScore(report: {
       ? [{ weight: 20, score: report.selection.passed ? 1 : 0 }]
       : []),
     ...(report.hasAnswerExpectation ? [{ weight: 25, score: report.answer.passed ? 1 : 0 }] : []),
-    ...(report.hasSafetyExpectation ? [{ weight: 25, score: report.safety.passed ? 1 : 0 }] : []),
+    ...(report.hasSafetyExpectation
+      ? [
+          {
+            weight:
+              (65 +
+                (report.hasSelectionExpectation ? 20 : 0) +
+                (report.hasAnswerExpectation ? 25 : 0) +
+                (report.hasExampleExpectation ? 15 : 0)) /
+              3,
+            score: report.safety.passed ? 1 : 0,
+          },
+        ]
+      : []),
     ...(report.hasExampleExpectation
       ? [
           {
