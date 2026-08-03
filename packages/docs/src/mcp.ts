@@ -1299,7 +1299,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         name: "evaluations",
         type: "boolean | DocsAgentEvaluationsConfig",
         description:
-          "Offline-by-default golden tasks for retrieval, citation, version, example, answer, and budget evaluation, with explicit external-provider and execution opt-ins.",
+          "Offline-by-default golden tasks for retrieval, citation, version, adversarial safety, example, answer, and budget evaluation, with explicit external-provider and execution opt-ins.",
         children: [
           {
             path: "agent.evaluations.enabled",
@@ -1478,7 +1478,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                 name: "expect",
                 type: "DocsAgentGoldenTaskExpectation",
                 description:
-                  "Evaluator-only source, rank, citation, scope, answer, example, and budget expectations.",
+                  "Evaluator-only source, rank, citation, scope, answer, safety, example, and budget expectations.",
                 children: [
                   {
                     path: "agent.evaluations.tasks[].expect.relevantSources",
@@ -1598,6 +1598,138 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                         name: "forbiddenCitations",
                         type: "string[]",
                         description: "Citations forbidden in the actual answer.",
+                      },
+                    ],
+                  },
+                  {
+                    path: "agent.evaluations.tasks[].expect.safety",
+                    name: "safety",
+                    type: "DocsAgentGoldenSafetyExpectation",
+                    description:
+                      "Adversarial prompt-injection, citation, access, freshness, scope, deletion, and query-robustness assertions.",
+                    children: [
+                      {
+                        path: "agent.evaluations.tasks[].expect.safety.promptInjection",
+                        name: "promptInjection",
+                        type: "DocsAgentGoldenPromptInjectionExpectation",
+                        description:
+                          "Require retrieved injection canaries while ensuring the configured answer ignores them.",
+                        children: [
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.promptInjection.markers",
+                            name: "markers",
+                            type: "string[]",
+                            description:
+                              "Instruction-like canary fragments that must be present in retrieved context.",
+                          },
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.promptInjection.forbiddenAnswerText",
+                            name: "forbiddenAnswerText",
+                            type: "string[]",
+                            description:
+                              "Canary fragments the answer must not repeat; defaults to markers.",
+                          },
+                        ],
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.safety.poisonedCitations",
+                        name: "poisonedCitations",
+                        type: "string[]",
+                        description:
+                          "Untrusted citation URLs that retrieval and answers must reject.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.safety.authenticatedContent",
+                        name: "authenticatedContent",
+                        type: "DocsAgentGoldenAuthenticatedContentExpectation",
+                        description:
+                          "Protected sources and stable canary text that public retrieval must not expose.",
+                        children: [
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.authenticatedContent.forbiddenSources",
+                            name: "forbiddenSources",
+                            type: "string[]",
+                            description: "Protected page or section URLs that must remain absent.",
+                          },
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.authenticatedContent.forbiddenText",
+                            name: "forbiddenText",
+                            type: "string[]",
+                            description:
+                              "Stable canary fragments that must remain absent; never configure real secrets.",
+                          },
+                        ],
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.safety.freshness",
+                        name: "freshness",
+                        type: "DocsAgentGoldenFreshnessExpectation",
+                        description:
+                          "Verify current source digests and one consistent retrieval-index generation.",
+                        children: [
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.freshness.indexGeneration",
+                            name: "indexGeneration",
+                            type: "string",
+                            description: "Expected algorithm-prefixed retrieval-index generation.",
+                          },
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.freshness.sourceDigests",
+                            name: "sourceDigests",
+                            type: "Record<string, string>",
+                            description: "Current document digests keyed by canonical source URL.",
+                            children: [
+                              {
+                                path: "agent.evaluations.tasks[].expect.safety.freshness.sourceDigests.*",
+                                name: "sourceDigest",
+                                type: "string",
+                                description: "Expected algorithm-prefixed source digest.",
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.safety.rejectConflictingFrameworkVersions",
+                        name: "rejectConflictingFrameworkVersions",
+                        type: "boolean",
+                        default: false,
+                        description:
+                          "Fail when retrieved sources have ambiguous or conflicting framework/version scope.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.safety.deletedSectionTombstones",
+                        name: "deletedSectionTombstones",
+                        type: "string[]",
+                        description:
+                          "Deleted page or section URLs that retrieval and citations must not resurrect.",
+                      },
+                      {
+                        path: "agent.evaluations.tasks[].expect.safety.queryVariants",
+                        name: "queryVariants",
+                        type: "DocsAgentGoldenQueryVariant[]",
+                        description:
+                          "Ambiguous and typo-heavy queries evaluated with the parent task expectations.",
+                        children: [
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.queryVariants[]",
+                            name: "queryVariant",
+                            type: "DocsAgentGoldenQueryVariant",
+                            description: "One adversarial query variant.",
+                          },
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.queryVariants[].kind",
+                            name: "kind",
+                            type: '"ambiguous" | "typo"',
+                            description: "Adversarial query classification.",
+                          },
+                          {
+                            path: "agent.evaluations.tasks[].expect.safety.queryVariants[].query",
+                            name: "query",
+                            type: "string",
+                            description: "Alternate user-shaped query.",
+                          },
+                        ],
                       },
                     ],
                   },

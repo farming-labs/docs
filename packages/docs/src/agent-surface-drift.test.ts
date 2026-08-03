@@ -471,6 +471,9 @@ describe("agent surface drift", () => {
       "agent.evaluations.tasks[].surface",
       "agent.evaluations.tasks[].expect.scope.version",
       "agent.evaluations.tasks[].expect.answer.includes",
+      "agent.evaluations.tasks[].expect.safety.promptInjection.markers",
+      "agent.evaluations.tasks[].expect.safety.freshness.sourceDigests.*",
+      "agent.evaluations.tasks[].expect.safety.queryVariants[].kind",
       "agent.evaluations.tasks[].expect.examples[].verification",
     ]) {
       expect(getDocsConfigSchema({ option }).resultCount, option).toBe(1);
@@ -494,6 +497,9 @@ describe("agent surface drift", () => {
       "agent.evaluations.tasks[0].surface",
       "agent.evaluations.tasks[0].expect.scope.version",
       "agent.evaluations.tasks[0].expect.answer.includes[0]",
+      "agent.evaluations.tasks[0].expect.safety.promptInjection.markers[0]",
+      "agent.evaluations.tasks[0].expect.safety.freshness.sourceDigests./docs/install",
+      "agent.evaluations.tasks[0].expect.safety.queryVariants[0].kind",
       "agent.evaluations.tasks[0].expect.examples[0].verification",
     ];
     options.schemaOptions = getDocsConfigSchema().options;
