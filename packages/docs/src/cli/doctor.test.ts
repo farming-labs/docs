@@ -20,6 +20,7 @@ import {
   inspectAgentReadiness,
   inspectHumanReadiness,
   parseDoctorArgs,
+  printAgentDoctorReport,
   probeProtectedMcpDiscovery,
   runDoctor,
 } from "./doctor.js";
@@ -105,6 +106,14 @@ describe("parseDoctorArgs", () => {
     });
     expect(parseDoctorArgs(["--site", "--json"])).toEqual({
       mode: "human",
+      json: true,
+    });
+  });
+
+  it("parses CI annotation mode", () => {
+    expect(parseDoctorArgs(["--agent", "--ci", "--json"])).toEqual({
+      mode: "agent",
+      ci: true,
       json: true,
     });
   });
@@ -1040,6 +1049,94 @@ console.log("verified")
         status: "warn",
         score: 0,
       });
+    }
+  });
+
+  it("reports unhealthy commands with actionable text, JSON, and CI annotations", async () => {
+    writePackageJson(tmpDir, "doctor-actionable-command-findings", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "app/docs",
+  agent: { evaluations: false },
+};`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Broken commands
+description: Commands that doctor should explain.
+agent:
+  commands:
+    - pnpm run missing
+---
+
+# Broken commands
+
+\`\`\`bash
+pnpm exec docs imaginary
+\`\`\`
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const commandCheck = report.checks.find((check) => check.id === "command-health");
+    expect(commandCheck?.findings).toEqual([
+      expect.objectContaining({
+        code: "command-script-missing",
+        file: "app/docs/page.mdx",
+        line: 6,
+        command: "pnpm run missing",
+        reason: expect.stringContaining('script "missing"'),
+        proposedCorrection: expect.stringContaining('Add a "missing" script'),
+      }),
+      expect.objectContaining({
+        code: "command-cli-unknown",
+        file: "app/docs/page.mdx",
+        line: 12,
+        command: "pnpm exec docs imaginary",
+        reason: expect.stringContaining("unknown docs CLI command"),
+        proposedCorrection: expect.stringContaining("docs --help"),
+      }),
+    ]);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      printAgentDoctorReport(report);
+      const textOutput = logSpy.mock.calls.flat().join("\n");
+      expect(textOutput).toContain("app/docs/page.mdx:6");
+      expect(textOutput).toContain("Command: pnpm run missing");
+      expect(textOutput).toContain('Reason: Command references package script "missing"');
+      expect(textOutput).toContain('Proposed correction: Add a "missing" script');
+
+      logSpy.mockClear();
+      process.env.GITHUB_ACTIONS = "true";
+      await runDoctor({ mode: "agent", json: true, ci: true });
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(String(logSpy.mock.calls[0]?.[0])) as {
+        checks: Array<{ id: string; findings?: unknown[] }>;
+      };
+      expect(payload.checks.find((check) => check.id === "command-health")?.findings).toEqual(
+        commandCheck?.findings,
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "::error file=app/docs/page.mdx,line=6,title=Documented command health::Command: pnpm run missing Reason:",
+        ),
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Proposed correction: Add a "missing" script'),
+      );
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
     }
   });
 

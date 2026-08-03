@@ -41,6 +41,9 @@ import { PAGE_AGENT_CONTRACT_FIELDS } from "../agent-contract.js";
 import {
   analyzeAgentUsefulness,
   createAgentUsefulnessPagesFromMcp,
+  type AgentUsefulnessFinding,
+  type AgentUsefulnessFindingCode,
+  type AgentUsefulnessFindingSeverity,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
@@ -102,6 +105,8 @@ export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
   json?: boolean;
+  /** Emit file/line GitHub workflow annotations when running in GitHub Actions. */
+  ci?: boolean;
   strict?: boolean;
   failOn?: DoctorFailOn;
   url?: string;
@@ -121,6 +126,18 @@ export interface AgentDoctorCheck {
   score: number;
   maxScore: number;
   recommendation?: string;
+  /** Actionable source findings that explain this aggregate check. */
+  findings?: AgentDoctorCommandFinding[];
+}
+
+export interface AgentDoctorCommandFinding {
+  code: AgentUsefulnessFindingCode;
+  severity: AgentUsefulnessFindingSeverity;
+  file: string;
+  line?: number;
+  command: string;
+  reason: string;
+  proposedCorrection: string;
 }
 
 export interface AgentDoctorCoverage {
@@ -255,6 +272,11 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg === "--ci") {
+      parsed.ci = true;
+      continue;
+    }
+
     if (arg === "--strict") {
       parsed.strict = true;
       continue;
@@ -385,6 +407,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
   ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
+  ${pc.cyan("--ci")}               Emit actionable GitHub annotations when running in GitHub Actions
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
   ${pc.cyan("--fix")}              Refresh stale generated agent.md files and token-budget missing outputs
   ${pc.cyan("--dry-run")}          With ${pc.cyan("--fix")}, report the compaction command without writing files
@@ -2898,8 +2921,35 @@ function makeCheck(
   maxScore: number,
   detail: string,
   recommendation?: string,
+  findings?: AgentDoctorCommandFinding[],
 ): AgentDoctorCheck {
-  return { id, title, status, score, maxScore, detail, recommendation };
+  return { id, title, status, score, maxScore, detail, recommendation, findings };
+}
+
+function toDoctorCommandFindings(
+  findings: readonly AgentUsefulnessFinding[],
+): AgentDoctorCommandFinding[] {
+  return findings
+    .filter(
+      (
+        finding,
+      ): finding is AgentUsefulnessFinding & {
+        command: string;
+        proposedCorrection: string;
+      } =>
+        finding.category === "command" &&
+        Boolean(finding.command) &&
+        Boolean(finding.proposedCorrection),
+    )
+    .map((finding) => ({
+      code: finding.code,
+      severity: finding.severity,
+      file: finding.file,
+      line: finding.line,
+      command: finding.command,
+      reason: finding.message,
+      proposedCorrection: finding.proposedCorrection,
+    }));
 }
 
 export async function inspectAgentReadiness(
@@ -3027,6 +3077,7 @@ export async function inspectAgentReadiness(
     pages: createAgentUsefulnessPagesFromMcp(rootDir, pages),
     projectFramework: framework === "unknown" ? undefined : framework,
   });
+  const commandFindings = toDoctorCommandFindings(usefulness.findings);
   const evaluationInput = config?.agent?.evaluations;
   const evaluation = resolveGoldenEvaluationInput(evaluationInput);
   const evaluationBaseUrl = config ? resolveDocsMetadataBaseUrl(config) : undefined;
@@ -3718,6 +3769,7 @@ export async function inspectAgentReadiness(
         usefulness.metrics.commands.unverified === 0
         ? undefined
         : "Update broken or stale commands and make workspace selectors resolvable so scripts, working directories, package managers, and docs CLI subcommands can be verified.",
+      commandFindings,
     ),
   );
 
@@ -4138,6 +4190,12 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
       `${formatStatus(check.status)} ${check.title} ${pc.dim(`(${check.score}/${check.maxScore})`)}`,
     );
     console.log(`  ${check.detail}`);
+    for (const finding of check.findings ?? []) {
+      const location = `${finding.file}${finding.line ? `:${finding.line}` : ""}`;
+      console.log(`  ${pc.dim(location)} ${pc.bold("Command:")} ${finding.command}`);
+      console.log(`    ${pc.bold("Reason:")} ${finding.reason}`);
+      console.log(`    ${pc.bold("Proposed correction:")} ${finding.proposedCorrection}`);
+    }
   }
 
   if (report.recommendations.length > 0) {
@@ -4197,6 +4255,39 @@ function serializeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport
 
 export function printDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport) {
   console.log(JSON.stringify(serializeDoctorJsonReport(report), null, 2));
+}
+
+function escapeGitHubAnnotationData(value: string): string {
+  return value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+}
+
+function escapeGitHubAnnotationProperty(value: string): string {
+  return escapeGitHubAnnotationData(value).replaceAll(":", "%3A").replaceAll(",", "%2C");
+}
+
+function emitDoctorGitHubAnnotations(report: AgentDoctorReport | HumanDoctorReport) {
+  if (process.env.GITHUB_ACTIONS !== "true" || report.mode !== "agent") return;
+
+  for (const check of report.checks) {
+    for (const finding of check.findings ?? []) {
+      const command =
+        finding.severity === "error"
+          ? "error"
+          : finding.severity === "warning"
+            ? "warning"
+            : "notice";
+      const location = [
+        `file=${escapeGitHubAnnotationProperty(finding.file)}`,
+        finding.line ? `line=${finding.line}` : undefined,
+        `title=${escapeGitHubAnnotationProperty(check.title)}`,
+      ]
+        .filter(Boolean)
+        .join(",");
+      const message = `Command: ${finding.command} Reason: ${finding.reason} Proposed correction: ${finding.proposedCorrection}`;
+      // stderr preserves JSON-only stdout while GitHub Actions still recognizes the workflow command.
+      console.error(`::${command} ${location}::${escapeGitHubAnnotationData(message)}`);
+    }
+  }
 }
 
 function hasNonPassingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport) {
@@ -4306,9 +4397,11 @@ export async function runDoctor(options: DoctorOptions = {}) {
     applyDoctorExitCode(report, options);
     if (options.json) {
       printDoctorJsonReport(report);
+      if (options.ci) emitDoctorGitHubAnnotations(report);
       return report;
     }
     printHumanDoctorReport(report);
+    if (options.ci) emitDoctorGitHubAnnotations(report);
     return report;
   }
 
@@ -4325,8 +4418,10 @@ export async function runDoctor(options: DoctorOptions = {}) {
   applyDoctorExitCode(report, options);
   if (options.json) {
     printDoctorJsonReport(report);
+    if (options.ci) emitDoctorGitHubAnnotations(report);
     return report;
   }
   printAgentDoctorReport(report);
+  if (options.ci) emitDoctorGitHubAnnotations(report);
   return report;
 }
