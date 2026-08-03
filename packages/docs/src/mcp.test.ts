@@ -604,7 +604,7 @@ describe("MCP contract prompts", () => {
     await client.connect(clientTransport);
 
     try {
-      expect(client.getServerCapabilities()?.prompts).toEqual({ listChanged: true });
+      expect(client.getServerCapabilities()?.prompts).toEqual({ listChanged: false });
       const listed = await client.listPrompts();
       expect(listed.prompts.map((prompt) => prompt.name)).toEqual([
         "contract-docs-installation",

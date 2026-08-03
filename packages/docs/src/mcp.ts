@@ -4211,6 +4211,13 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     ? resolveDocsMcpGoldenPromptDefinitions(prompts.goldenTasks, options.evaluations)
     : [];
 
+  if (contractPromptDefinitions.length > 0 || goldenPromptDefinitions.length > 0) {
+    // Built-in prompts are fixed when the server instance is created. Advertising
+    // listChanged would require a live mutation path and subscription notification
+    // that this static catalog intentionally does not expose.
+    server.server.registerCapabilities({ prompts: { listChanged: false } });
+  }
+
   for (const definition of contractPromptDefinitions) {
     const { page, contract, resourceUri } = definition;
     server.registerPrompt(
