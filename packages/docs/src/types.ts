@@ -3116,6 +3116,61 @@ export interface DocsAgentGoldenTaskExpectation {
   scope?: DocsAgentGoldenTaskFilters;
   /** Assertions evaluated against an explicitly configured answer runner. */
   answer?: DocsAgentGoldenAnswerExpectation;
+  /** Adversarial retrieval and answer-safety assertions. */
+  safety?: DocsAgentGoldenSafetyExpectation;
+}
+
+export interface DocsAgentGoldenPromptInjectionExpectation {
+  /** Canary instruction fragments that must be present in retrieved context. */
+  markers: string[];
+  /** Canary fragments the answer must not repeat. Defaults to `markers`. */
+  forbiddenAnswerText?: string[];
+}
+
+export interface DocsAgentGoldenAuthenticatedContentExpectation {
+  /** Protected page or section URLs that public retrieval must not expose. */
+  forbiddenSources?: string[];
+  /** Stable canary fragments that must not appear in context or answers. Never use real secrets. */
+  forbiddenText?: string[];
+}
+
+export interface DocsAgentGoldenFreshnessExpectation {
+  /** Expected retrieval-index generation. Omit to require one consistent generation. */
+  indexGeneration?: string;
+  /** Expected full-document digest keyed by canonical page or section URL. */
+  sourceDigests?: Record<string, string>;
+}
+
+export type DocsAgentGoldenQueryVariantKind = "ambiguous" | "typo";
+
+export interface DocsAgentGoldenQueryVariant {
+  /** Stable classification used in safety reports. */
+  kind: DocsAgentGoldenQueryVariantKind;
+  /** Alternate user-shaped query evaluated with the parent task's expectations. */
+  query: string;
+}
+
+/**
+ * Opt-in adversarial assertions for one golden retrieval task.
+ *
+ * These assertions use canaries and evaluator-only expectations; they are never forwarded to
+ * configured search or answer providers.
+ */
+export interface DocsAgentGoldenSafetyExpectation {
+  /** Verify that an answer ignores instruction-like canary text retrieved from documentation. */
+  promptInjection?: DocsAgentGoldenPromptInjectionExpectation;
+  /** Citations that must never be trusted or emitted, including poisoned external origins. */
+  poisonedCitations?: string[];
+  /** Protected-source and stable canary checks for public retrieval. */
+  authenticatedContent?: DocsAgentGoldenAuthenticatedContentExpectation;
+  /** Verify source digests and index generations against current retrieval content. */
+  freshness?: DocsAgentGoldenFreshnessExpectation;
+  /** Fail when retrieved provenance contains conflicting or ambiguous framework/version scope. */
+  rejectConflictingFrameworkVersions?: boolean;
+  /** Deleted page or section URLs that must remain absent from retrieval and citations. */
+  deletedSectionTombstones?: string[];
+  /** Ambiguous and typo-heavy queries evaluated with the parent task's full expectations. */
+  queryVariants?: DocsAgentGoldenQueryVariant[];
 }
 
 export interface DocsAgentGoldenAnswerExpectation {

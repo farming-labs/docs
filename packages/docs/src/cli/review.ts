@@ -386,7 +386,7 @@ export async function runReview(options: ReviewOptions = {}): Promise<DocsReview
         evaluationInput === false ||
         (typeof evaluationInput === "object" && evaluationInput.enabled === false)
           ? "Golden agent tasks are disabled, so retrieval usefulness is unmeasured."
-          : "No golden agent tasks are configured; retrieval, citations, version selection, executable examples, and token usage are unmeasured.",
+          : "No golden agent tasks are configured; retrieval, citations, version selection, adversarial safety, executable examples, and token usage are unmeasured.",
     });
   }
   for (const task of evaluations.tasks.filter((task) => !task.passed)) {

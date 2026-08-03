@@ -1969,6 +1969,22 @@ describe("MCP context and schema APIs", () => {
       });
     }
   });
+
+  it("publishes adversarial golden-task safety schema paths", () => {
+    const schema = getDocsConfigSchema();
+    for (const path of [
+      "agent.evaluations.tasks[].expect.safety.promptInjection.markers",
+      "agent.evaluations.tasks[].expect.safety.poisonedCitations",
+      "agent.evaluations.tasks[].expect.safety.authenticatedContent.forbiddenSources",
+      "agent.evaluations.tasks[].expect.safety.freshness.indexGeneration",
+      "agent.evaluations.tasks[].expect.safety.freshness.sourceDigests.*",
+      "agent.evaluations.tasks[].expect.safety.rejectConflictingFrameworkVersions",
+      "agent.evaluations.tasks[].expect.safety.deletedSectionTombstones",
+      "agent.evaluations.tasks[].expect.safety.queryVariants[].kind",
+    ]) {
+      expect(findSchemaOption(schema.options, path), path).toBeDefined();
+    }
+  });
 });
 
 describe("createFilesystemDocsMcpSource", () => {

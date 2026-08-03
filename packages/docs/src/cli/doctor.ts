@@ -3843,6 +3843,10 @@ export async function inspectAgentReadiness(
     evaluations.status === "failed"
       ? Math.min(14, proportionalEvaluationScore)
       : proportionalEvaluationScore;
+  const safetyEvaluations = evaluations.tasks.filter((task) => task.safety.expected);
+  const safetyEvaluationSummary = safetyEvaluations.length
+    ? `${safetyEvaluations.filter((task) => task.safety.passed).length}/${safetyEvaluations.length} adversarial safety suites passed`
+    : "no adversarial safety suites configured";
   checks.push(
     makeCheck(
       "golden-tasks",
@@ -3852,12 +3856,12 @@ export async function inspectAgentReadiness(
       15,
       evaluations.status === "unmeasured"
         ? "No golden agent tasks are configured; retrieval usefulness is unmeasured."
-        : `${evaluations.passedTaskCount}/${evaluations.taskCount} golden tasks passed with ${evaluations.score}/100 average score, ${averageMetric(evaluations.tasks.map((task) => task.retrieval.recallAtK))} retrieval recall, ${averageMetric(evaluations.tasks.map((task) => task.citations.recall))} citation recall, and ${evaluations.tasks.reduce((total, task) => total + task.usage.usedUtf8Bytes, 0)} UTF-8 context bytes used.`,
+        : `${evaluations.passedTaskCount}/${evaluations.taskCount} golden tasks passed with ${evaluations.score}/100 average score, ${averageMetric(evaluations.tasks.map((task) => task.retrieval.recallAtK))} retrieval recall, ${averageMetric(evaluations.tasks.map((task) => task.citations.recall))} citation recall, ${safetyEvaluationSummary}, and ${evaluations.tasks.reduce((total, task) => total + task.usage.usedUtf8Bytes, 0)} UTF-8 context bytes used.`,
       evaluations.status === "passed"
         ? undefined
         : evaluations.status === "unmeasured"
-          ? "Configure agent.evaluations.tasks so doctor and review can measure retrieval, citations, framework/version selection, executable examples, and token usage."
-          : "Inspect the failed golden task metrics and fix retrieval ranking, citations, applicability metadata, examples, or context budgets.",
+          ? "Configure agent.evaluations.tasks so doctor and review can measure retrieval, citations, framework/version selection, adversarial safety, executable examples, and token usage."
+          : "Inspect the failed golden task metrics and fix retrieval ranking, citations, applicability metadata, adversarial safety, examples, or context budgets.",
     ),
   );
 
