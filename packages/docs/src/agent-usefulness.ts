@@ -1,5 +1,6 @@
 import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { isMap, isScalar, isSeq, parseDocument, type Scalar } from "yaml";
 import { hasStructuredPageAgentContract, normalizePageAgentFrontmatter } from "./agent-contract.js";
 import {
   agentVersionConstraintsOverlap,
@@ -79,6 +80,8 @@ export interface AgentUsefulnessFinding {
   message: string;
   relatedFiles?: string[];
   command?: string;
+  /** Concrete authoring change that resolves or makes the command finding verifiable. */
+  proposedCorrection?: string;
 }
 
 export interface AgentUsefulnessMetrics {
@@ -204,6 +207,12 @@ interface AnalyzedCommand {
   source: "contract" | "fence";
 }
 
+interface AnalyzedShellLine {
+  run: string;
+  /** Zero-based physical line offset from the first line inside the fence. */
+  lineOffset: number;
+}
+
 interface ProjectPackageManifest {
   directory: string;
   relativePath: string;
@@ -236,6 +245,7 @@ const DEFAULT_DOCS_COMMANDS = [
   "cloud deploy",
   "cloud preview",
   "mcp",
+  "skills scaffold",
   "agent compact",
   "agent export",
   "agents generate",
@@ -788,7 +798,7 @@ function analyzePage(page: AgentUsefulnessPage): PageAnalysis {
     sourcePath: page.sourcePath,
     route: page.route,
   });
-  const shellCommands = collectPageCommands(page, agent, projectedSource);
+  const shellCommands = collectPageCommands(page, agent);
   const actionable =
     page.actionable ??
     (hasStructuredPageAgentContract(agent) ||
@@ -1047,6 +1057,7 @@ function analyzeCommand(options: {
         code: "command-cwd-outside-root",
         severity: "error",
         message: `Command working directory resolves outside the project root: ${commandCwd}`,
+        proposedCorrection: `Set cwd to an existing project-relative directory inside the docs project instead of ${JSON.stringify(commandCwd)}.`,
       }),
     );
     return commandAnalysis(findings);
@@ -1058,6 +1069,7 @@ function analyzeCommand(options: {
         code: "command-cwd-missing",
         severity: "error",
         message: `Command working directory does not exist: ${commandCwd}`,
+        proposedCorrection: `Create ${JSON.stringify(commandCwd)} or change cwd to an existing project-relative directory.`,
       }),
     );
     return commandAnalysis(findings);
@@ -1070,6 +1082,8 @@ function analyzeCommand(options: {
         severity: "suggestion",
         message:
           "Compound commands, redirections, and shell expansions are not executed or inferred; this command is unverified.",
+        proposedCorrection:
+          "Split the shell expression into one independently verifiable command per line and document any redirection or expansion as a separate step.",
       }),
     );
     return commandAnalysis(findings);
@@ -1090,6 +1104,7 @@ function analyzeCommand(options: {
         code: "command-package-manager-mismatch",
         severity: "warning",
         message: `Command uses ${commandPackageManager}, but ${expectedPackageManager} is expected for this project or code block.`,
+        proposedCorrection: `Rewrite this command using ${expectedPackageManager}, or explicitly mark the example as a ${commandPackageManager} alternative when that is intentional.`,
       }),
     );
   }
@@ -1110,6 +1125,8 @@ function analyzeCommand(options: {
         code: "command-unverified",
         severity: "suggestion",
         message: `Workspace selector could not be resolved statically (${selectors}); this command is unverified.`,
+        proposedCorrection:
+          "Replace the selector with an exact workspace package name or path declared by the nearest workspace manifest.",
       }),
     );
   }
@@ -1131,6 +1148,8 @@ function analyzeCommand(options: {
           code: "command-unverified",
           severity: "suggestion",
           message: `No package.json could be found for package script "${script}"; this command is unverified.`,
+          proposedCorrection:
+            "Set cwd to the package that owns this script, or add a package.json with the documented script.",
         }),
       );
     }
@@ -1144,6 +1163,7 @@ function analyzeCommand(options: {
             code: "command-script-missing",
             severity: "error",
             message: `Command references package script "${script}", but that script is not defined in ${packageJson.relativePath}.`,
+            proposedCorrection: `Add a ${JSON.stringify(script)} script to ${packageJson.relativePath}, or replace the command with an existing script from that file.`,
           }),
         );
       }
@@ -1160,6 +1180,7 @@ function analyzeCommand(options: {
           code: "command-cli-unknown",
           severity: "error",
           message: `Command references an unknown docs CLI command: docs ${docsCommand}`,
+          proposedCorrection: `Replace "docs ${docsCommand}" with the intended supported command listed by "docs --help".`,
         }),
       );
     }
@@ -1181,6 +1202,8 @@ function analyzeCommand(options: {
         code: "command-unverified",
         severity: "suggestion",
         message: "Command form could not be verified statically; this command is unverified.",
+        proposedCorrection:
+          "Use a documented package-manager or docs CLI command, or configure explicit executable-example validation for this command.",
       }),
     );
   }
@@ -1196,30 +1219,173 @@ function commandAnalysis(findings: AgentUsefulnessFinding[]): CommandAnalysis {
   return { findings, status: "healthy" };
 }
 
+interface ContractCommandLocation {
+  run: string;
+  line: number;
+}
+
+interface ContractCommandLocations {
+  commands: ContractCommandLocation[];
+  verification: ContractCommandLocation[];
+}
+
+function collectContractCommandLocations(source: string): ContractCommandLocations {
+  const empty = (): ContractCommandLocations => ({ commands: [], verification: [] });
+  const opening = source.match(/^---[^\S\r\n]*\r?\n/);
+  if (!opening) return empty();
+
+  const frontmatterOffset = opening[0].length;
+  const remainder = source.slice(frontmatterOffset);
+  const closing = /(?:^|\r?\n)---[^\S\r\n]*(?:\r?\n|$)/.exec(remainder);
+  if (!closing) return empty();
+
+  try {
+    const document = parseDocument(remainder.slice(0, closing.index), { uniqueKeys: true });
+    if (document.errors.length > 0 || !isMap(document.contents)) return empty();
+    const agent = document.contents.get("agent", true);
+    if (!isMap(agent)) return empty();
+
+    return {
+      commands: collectContractSequenceLocations(
+        agent.get("commands", true),
+        source,
+        frontmatterOffset,
+      ),
+      verification: collectContractSequenceLocations(
+        agent.get("verification", true),
+        source,
+        frontmatterOffset,
+      ),
+    };
+  } catch {
+    return empty();
+  }
+}
+
+function collectContractSequenceLocations(
+  value: unknown,
+  source: string,
+  frontmatterOffset: number,
+): ContractCommandLocation[] {
+  if (!isSeq(value)) return [];
+  const locations: ContractCommandLocation[] = [];
+
+  for (const item of value.items) {
+    const run = isScalar(item) ? item : isMap(item) ? item.get("run", true) : undefined;
+    if (!isScalar(run) || typeof run.value !== "string") continue;
+    const location = contractScalarLocation(run, source, frontmatterOffset);
+    if (location) locations.push(location);
+  }
+
+  return locations;
+}
+
+function contractScalarLocation(
+  scalar: Scalar,
+  source: string,
+  frontmatterOffset: number,
+): ContractCommandLocation | undefined {
+  const relativeOffset = scalar.range?.[0];
+  if (typeof scalar.value !== "string" || relativeOffset === undefined) return undefined;
+  const absoluteOffset = frontmatterOffset + relativeOffset;
+  return {
+    run: scalar.value,
+    line: source.slice(0, absoluteOffset).split(/\r?\n/).length,
+  };
+}
+
+function claimContractCommandLine(
+  locations: readonly ContractCommandLocation[],
+  command: string,
+  claimedLines: Set<number>,
+): number | undefined {
+  const location = locations.find(
+    (candidate) => candidate.run === command && !claimedLines.has(candidate.line),
+  );
+  if (!location) return undefined;
+  claimedLines.add(location.line);
+  return location.line;
+}
+
+function preserveLineBreaksOnly(value: string): string {
+  return value.replace(/[^\r\n]/g, " ");
+}
+
+/** Agent projection used for command discovery that keeps original source line numbers stable. */
+function projectAgentCommandSource(source: string): string {
+  const tags = findDocsAudienceMdxTags(source);
+  if (tags.length === 0) return source;
+
+  const scopes: Array<Pick<DocsAudienceMdxTag, "name" | "only">> = [];
+  let output = "";
+  let cursor = 0;
+  const visible = () => scopes.every((scope) => scope.only !== "human");
+
+  for (const tag of tags) {
+    const activeScope = scopes.at(-1);
+    if (tag.closing && activeScope?.name !== tag.name) continue;
+
+    const content = source.slice(cursor, tag.index);
+    output += visible() ? content : preserveLineBreaksOnly(content);
+    output += preserveLineBreaksOnly(source.slice(tag.index, tag.end));
+    cursor = tag.end;
+
+    if (tag.closing) {
+      scopes.pop();
+    } else if (!tag.selfClosing) {
+      scopes.push({ name: tag.name, only: tag.only });
+    }
+  }
+
+  const remaining = source.slice(cursor);
+  output += visible() ? remaining : preserveLineBreaksOnly(remaining);
+  return output;
+}
+
 function collectPageCommands(
   page: AgentUsefulnessPage,
   agent: PageAgentFrontmatter | undefined,
-  projectedSource: string,
 ): AnalyzedCommand[] {
   const commands: AnalyzedCommand[] = [];
+  const contractLocations = collectContractCommandLocations(page.source);
+  const claimedContractLines = new Set<number>();
 
   for (const command of agent?.commands ?? []) {
-    commands.push(normalizeAgentCommand(command, page.sourcePath));
+    commands.push(
+      normalizeAgentCommand(
+        command,
+        page.sourcePath,
+        claimContractCommandLine(
+          contractLocations.commands,
+          typeof command === "string" ? command : command.run,
+          claimedContractLines,
+        ),
+      ),
+    );
   }
 
   for (const verification of agent?.verification ?? []) {
     if (typeof verification !== "string" && verification.run) {
       commands.push({
         run: verification.run,
+        line: claimContractCommandLine(
+          contractLocations.verification,
+          verification.run,
+          claimedContractLines,
+        ),
         sourcePath: page.sourcePath,
         source: "contract",
       });
     }
   }
 
-  collectMarkdownCommands(commands, projectedSource, page.sourcePath);
+  collectMarkdownCommands(commands, projectAgentCommandSource(page.source), page.sourcePath);
   if (page.agentSource) {
-    collectMarkdownCommands(commands, page.agentSource, page.agentSourcePath ?? page.sourcePath);
+    collectMarkdownCommands(
+      commands,
+      projectAgentCommandSource(page.agentSource),
+      page.agentSourcePath ?? page.sourcePath,
+    );
   }
 
   return dedupeCommands(commands);
@@ -1236,8 +1402,8 @@ function collectMarkdownCommands(commands: AnalyzedCommand[], source: string, so
     if (!/^(?:bash|console|sh|shell|zsh)$/i.test(block.language ?? "")) continue;
     for (const command of shellLines(block.code, block.language)) {
       commands.push({
-        run: command,
-        line: block.lineStart,
+        run: command.run,
+        line: block.lineStart + 1 + command.lineOffset,
         sourcePath,
         packageManagerHint: block.packageManager,
         source: "fence",
@@ -1249,23 +1415,41 @@ function collectMarkdownCommands(commands: AnalyzedCommand[], source: string, so
 function normalizeAgentCommand(
   command: string | PageAgentCommand,
   sourcePath: string,
+  line: number | undefined,
 ): AnalyzedCommand {
+  const run = typeof command === "string" ? command : command.run;
   return typeof command === "string"
-    ? { run: command, sourcePath, source: "contract" }
-    : { run: command.run, cwd: command.cwd, sourcePath, source: "contract" };
+    ? { run, line, sourcePath, source: "contract" }
+    : { run, cwd: command.cwd, line, sourcePath, source: "contract" };
 }
 
-function shellLines(code: string, language: string | undefined): string[] {
-  const joined = code.replace(/\\\s*\r?\n\s*/g, " ");
-  const lines = joined.split(/\r?\n/);
-  const promptedConsole =
-    language?.toLowerCase() === "console" && lines.some((line) => /^(?:\$|>)\s+/.test(line.trim()));
+function shellLines(code: string, language: string | undefined): AnalyzedShellLine[] {
+  const logicalLines: AnalyzedShellLine[] = [];
+  let pending: AnalyzedShellLine | undefined;
 
-  return lines
-    .map((line) => line.trim())
-    .filter((line) => !promptedConsole || /^(?:\$|>)\s+/.test(line))
-    .map((line) => line.replace(/^(?:\$|>)\s+/, ""))
-    .filter((line) => Boolean(line) && !line.startsWith("#") && !/^\w+=\S+$/.test(line));
+  for (const [lineOffset, physicalLine] of code.split(/\r?\n/).entries()) {
+    const trimmed = physicalLine.trim();
+    if (!pending) pending = { run: "", lineOffset };
+    const continued = /\\\s*$/.test(trimmed);
+    const segment = continued ? trimmed.replace(/\\\s*$/, "").trimEnd() : trimmed;
+    pending.run = `${pending.run}${pending.run && segment ? " " : ""}${segment}`;
+    if (continued) continue;
+    logicalLines.push(pending);
+    pending = undefined;
+  }
+  if (pending) logicalLines.push(pending);
+
+  const promptedConsole =
+    language?.toLowerCase() === "console" &&
+    logicalLines.some((line) => /^(?:\$|>)\s+/.test(line.run.trim()));
+
+  return logicalLines
+    .map((line) => ({ ...line, run: line.run.trim() }))
+    .filter((line) => !promptedConsole || /^(?:\$|>)\s+/.test(line.run))
+    .map((line) => ({ ...line, run: line.run.replace(/^(?:\$|>)\s+/, "") }))
+    .filter(
+      (line) => Boolean(line.run) && !line.run.startsWith("#") && !/^\w+=\S+$/.test(line.run),
+    );
 }
 
 function dedupeCommands(commands: AnalyzedCommand[]): AnalyzedCommand[] {
@@ -2130,7 +2314,7 @@ function isPathInside(rootDir: string, candidate: string): boolean {
 
 function commandFinding(
   options: { page: AgentUsefulnessPage; command: AnalyzedCommand },
-  finding: Pick<AgentUsefulnessFinding, "code" | "severity" | "message">,
+  finding: Pick<AgentUsefulnessFinding, "code" | "severity" | "message" | "proposedCorrection">,
 ): AgentUsefulnessFinding {
   return {
     ...makeFinding(options.page, {

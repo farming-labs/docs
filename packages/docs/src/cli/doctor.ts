@@ -1,4 +1,11 @@
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
@@ -41,6 +48,9 @@ import { PAGE_AGENT_CONTRACT_FIELDS } from "../agent-contract.js";
 import {
   analyzeAgentUsefulness,
   createAgentUsefulnessPagesFromMcp,
+  type AgentUsefulnessFinding,
+  type AgentUsefulnessFindingCode,
+  type AgentUsefulnessFindingSeverity,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
@@ -102,6 +112,10 @@ export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
   json?: boolean;
+  /** Write the JSON report to a file without mixing it into annotation stdout. */
+  jsonOutputPath?: string;
+  /** Emit file/line GitHub workflow annotations when running in GitHub Actions. */
+  ci?: boolean;
   strict?: boolean;
   failOn?: DoctorFailOn;
   url?: string;
@@ -121,6 +135,18 @@ export interface AgentDoctorCheck {
   score: number;
   maxScore: number;
   recommendation?: string;
+  /** Actionable source findings that explain this aggregate check. */
+  findings?: AgentDoctorCommandFinding[];
+}
+
+export interface AgentDoctorCommandFinding {
+  code: AgentUsefulnessFindingCode;
+  severity: AgentUsefulnessFindingSeverity;
+  file: string;
+  line?: number;
+  command: string;
+  reason: string;
+  proposedCorrection: string;
 }
 
 export interface AgentDoctorCoverage {
@@ -255,6 +281,30 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg.startsWith("--json-output=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --json-output.");
+      }
+      parsed.jsonOutputPath = value;
+      continue;
+    }
+
+    if (arg === "--json-output") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --json-output.");
+      }
+      parsed.jsonOutputPath = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--ci") {
+      parsed.ci = true;
+      continue;
+    }
+
     if (arg === "--strict") {
       parsed.strict = true;
       continue;
@@ -385,6 +435,8 @@ ${pc.dim("Options:")}
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
   ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
+  ${pc.cyan("--json-output <path>")} Write the JSON report to a file; use with ${pc.cyan("--ci")} to keep annotation stdout valid
+  ${pc.cyan("--ci")}               Emit actionable GitHub annotations when running in GitHub Actions
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
   ${pc.cyan("--fix")}              Refresh stale generated agent.md files and token-budget missing outputs
   ${pc.cyan("--dry-run")}          With ${pc.cyan("--fix")}, report the compaction command without writing files
@@ -2898,8 +2950,35 @@ function makeCheck(
   maxScore: number,
   detail: string,
   recommendation?: string,
+  findings?: AgentDoctorCommandFinding[],
 ): AgentDoctorCheck {
-  return { id, title, status, score, maxScore, detail, recommendation };
+  return { id, title, status, score, maxScore, detail, recommendation, findings };
+}
+
+function toDoctorCommandFindings(
+  findings: readonly AgentUsefulnessFinding[],
+): AgentDoctorCommandFinding[] {
+  return findings
+    .filter(
+      (
+        finding,
+      ): finding is AgentUsefulnessFinding & {
+        command: string;
+        proposedCorrection: string;
+      } =>
+        finding.category === "command" &&
+        Boolean(finding.command) &&
+        Boolean(finding.proposedCorrection),
+    )
+    .map((finding) => ({
+      code: finding.code,
+      severity: finding.severity,
+      file: finding.file,
+      line: finding.line,
+      command: finding.command,
+      reason: finding.message,
+      proposedCorrection: finding.proposedCorrection,
+    }));
 }
 
 export async function inspectAgentReadiness(
@@ -3027,6 +3106,7 @@ export async function inspectAgentReadiness(
     pages: createAgentUsefulnessPagesFromMcp(rootDir, pages),
     projectFramework: framework === "unknown" ? undefined : framework,
   });
+  const commandFindings = toDoctorCommandFindings(usefulness.findings);
   const evaluationInput = config?.agent?.evaluations;
   const evaluation = resolveGoldenEvaluationInput(evaluationInput);
   const evaluationBaseUrl = config ? resolveDocsMetadataBaseUrl(config) : undefined;
@@ -3718,6 +3798,7 @@ export async function inspectAgentReadiness(
         usefulness.metrics.commands.unverified === 0
         ? undefined
         : "Update broken or stale commands and make workspace selectors resolvable so scripts, working directories, package managers, and docs CLI subcommands can be verified.",
+      commandFindings,
     ),
   );
 
@@ -4138,6 +4219,12 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
       `${formatStatus(check.status)} ${check.title} ${pc.dim(`(${check.score}/${check.maxScore})`)}`,
     );
     console.log(`  ${check.detail}`);
+    for (const finding of check.findings ?? []) {
+      const location = `${finding.file}${finding.line ? `:${finding.line}` : ""}`;
+      console.log(`  ${pc.dim(location)} ${pc.bold("Command:")} ${finding.command}`);
+      console.log(`    ${pc.bold("Reason:")} ${finding.reason}`);
+      console.log(`    ${pc.bold("Proposed correction:")} ${finding.proposedCorrection}`);
+    }
   }
 
   if (report.recommendations.length > 0) {
@@ -4197,6 +4284,48 @@ function serializeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport
 
 export function printDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport) {
   console.log(JSON.stringify(serializeDoctorJsonReport(report), null, 2));
+}
+
+function writeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport, outputPath: string) {
+  const resolvedPath = path.resolve(process.cwd(), outputPath);
+  mkdirSync(path.dirname(resolvedPath), { recursive: true });
+  writeFileSync(
+    resolvedPath,
+    `${JSON.stringify(serializeDoctorJsonReport(report), null, 2)}\n`,
+    "utf-8",
+  );
+}
+
+function escapeGitHubAnnotationData(value: string): string {
+  return value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+}
+
+function escapeGitHubAnnotationProperty(value: string): string {
+  return escapeGitHubAnnotationData(value).replaceAll(":", "%3A").replaceAll(",", "%2C");
+}
+
+function emitDoctorGitHubAnnotations(report: AgentDoctorReport | HumanDoctorReport) {
+  if (process.env.GITHUB_ACTIONS !== "true" || report.mode !== "agent") return;
+
+  for (const check of report.checks) {
+    for (const finding of check.findings ?? []) {
+      const command =
+        finding.severity === "error"
+          ? "error"
+          : finding.severity === "warning"
+            ? "warning"
+            : "notice";
+      const location = [
+        `file=${escapeGitHubAnnotationProperty(finding.file)}`,
+        finding.line ? `line=${finding.line}` : undefined,
+        `title=${escapeGitHubAnnotationProperty(check.title)}`,
+      ]
+        .filter(Boolean)
+        .join(",");
+      const message = `Command: ${finding.command} Reason: ${finding.reason} Proposed correction: ${finding.proposedCorrection}`;
+      console.log(`::${command} ${location}::${escapeGitHubAnnotationData(message)}`);
+    }
+  }
 }
 
 function hasNonPassingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport) {
@@ -4297,6 +4426,12 @@ async function runAgentDoctorFixes(
 }
 
 export async function runDoctor(options: DoctorOptions = {}) {
+  if (options.ci && options.json) {
+    throw new Error(
+      "doctor --ci and --json cannot share stdout. Use --ci --json-output <path> to emit GitHub annotations and persist the JSON report in one run.",
+    );
+  }
+
   if (options.mode === "human") {
     if (options.fix) {
       throw new Error("doctor --fix is currently only supported with --agent.");
@@ -4304,11 +4439,15 @@ export async function runDoctor(options: DoctorOptions = {}) {
 
     const report = await inspectHumanReadiness(options);
     applyDoctorExitCode(report, options);
+    if (options.jsonOutputPath) {
+      writeDoctorJsonReport(report, options.jsonOutputPath);
+    }
     if (options.json) {
       printDoctorJsonReport(report);
       return report;
     }
     printHumanDoctorReport(report);
+    if (options.ci) emitDoctorGitHubAnnotations(report);
     return report;
   }
 
@@ -4323,10 +4462,14 @@ export async function runDoctor(options: DoctorOptions = {}) {
   }
 
   applyDoctorExitCode(report, options);
+  if (options.jsonOutputPath) {
+    writeDoctorJsonReport(report, options.jsonOutputPath);
+  }
   if (options.json) {
     printDoctorJsonReport(report);
     return report;
   }
   printAgentDoctorReport(report);
+  if (options.ci) emitDoctorGitHubAnnotations(report);
   return report;
 }

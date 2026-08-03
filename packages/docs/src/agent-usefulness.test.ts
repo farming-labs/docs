@@ -796,16 +796,79 @@ pnpm run test -- --filter missing-workspace
         .map((finding) => finding.command),
     ).toEqual(["npm --workspace @acme/app run missing"]);
     expect(
+      commandFindings.find((finding) => finding.code === "command-script-missing"),
+    ).toMatchObject({
+      line: 7,
+      proposedCorrection: expect.stringContaining('Add a "missing" script'),
+    });
+    expect(
       commandFindings
         .filter((finding) => finding.code === "command-unverified")
         .map((finding) => finding.command),
     ).toEqual(["pnpm --filter @acme/app... run missing"]);
+    expect(commandFindings.find((finding) => finding.code === "command-unverified")).toMatchObject({
+      line: 8,
+      proposedCorrection: expect.stringContaining("exact workspace package name or path"),
+    });
     expect(report.metrics.commands).toEqual({
       total: 6,
       healthy: 4,
       unhealthy: 1,
       unverified: 1,
     });
+  });
+
+  it("keeps contract and audience-projected fence findings on their exact source lines", () => {
+    const source = [
+      "---",
+      "title: Command locations",
+      "agent:",
+      "  commands:",
+      "    - run: pnpm run missing",
+      "  verification:",
+      "    - run: pnpm exec docs imaginary",
+      "---",
+      "",
+      "The command `pnpm run fence-missing` is explained before its runnable example.",
+      "",
+      "<Human>",
+      "```bash",
+      "pnpm run human-only",
+      "```",
+      "</Human>",
+      "",
+      "```bash",
+      "pnpm run fence-missing",
+      "```",
+    ].join("\n");
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page("command-locations", source),
+          agent: {
+            commands: [{ run: "pnpm run missing" }],
+            verification: [
+              {
+                run: "pnpm exec docs imaginary",
+                expect: "Doctor rejects the unsupported command.",
+              },
+            ],
+          },
+          actionable: false,
+        },
+      ],
+    });
+    const commandFindings = report.findings.filter((finding) => finding.category === "command");
+
+    expect(commandFindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ command: "pnpm run missing", line: 5 }),
+        expect.objectContaining({ command: "pnpm exec docs imaginary", line: 7 }),
+        expect.objectContaining({ command: "pnpm run fence-missing", line: 19 }),
+      ]),
+    );
+    expect(commandFindings.map((finding) => finding.command)).not.toContain("pnpm run human-only");
   });
 
   it("resolves named and path selectors from an enclosing package-manager workspace", () => {
@@ -935,6 +998,7 @@ echo "operators such as && and > stay literal when quoted"
 npx skills add farming-labs/docs
 claude mcp add-json farming-labs-docs '{"type":"http","url":"https://docs.example.com/mcp"}'
 pnpm exec docs mcp setup --deployment <id>
+pnpm exec docs skills scaffold --dry-run
 curl --imaginary "https://docs.example.com"
 npx skills add not-a-repository
 npx mystery-tool run build
@@ -963,8 +1027,8 @@ echo first > output.txt
     );
     expect(unverified).toHaveLength(6);
     expect(report.metrics.commands).toEqual({
-      total: 17,
-      healthy: 11,
+      total: 18,
+      healthy: 12,
       unhealthy: 0,
       unverified: 6,
     });
