@@ -381,6 +381,7 @@ Telemetry can be disabled with either:
 ```bash title=".env.local"
 DOCS_TELEMETRY=false
 # or
+> Golden tasks now also measure adversarial safety: prompt-injection resistance, poisoned-citation rejection, authenticated-content leakage prevention, retrieval freshness, framework-version-conflict rejection, deleted-section tombstones, and query variants. Add `expect.safety` to any task to enable these checks.
 DOCS_TELEMETRY_DISABLED=1
 ```
 
@@ -982,6 +983,30 @@ expectations. The serializable HTTP request omits that callback-only signal. Bot
 providers return `{ text, citations? }`. HTTP auth is opt-in through `headers`, and header values
 never appear in reports. Managed external search and HTTP requests require `allowNetwork: true`,
 while callbacks remain explicit user code.
+
+#### `DocsAgentGoldenSafetyExpectation`
+
+Optional adversarial safety assertions on a golden task. All fields are evaluator-only and must never contain real credentials or private data. Exported as `DocsAgentGoldenSafetyExpectation` from `@farming-labs/docs`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `promptInjection` | `DocsAgentGoldenPromptInjectionExpectation` | Assert prompt-injection resistance using canary markers |
+| `poisonedCitations` | `boolean` | Assert that retrieval rejects injected citation payloads |
+| `authenticatedContent` | `DocsAgentGoldenAuthenticatedContentExpectation` | Assert that authenticated content does not leak into public retrieval |
+| `freshness` | `DocsAgentGoldenFreshnessExpectation` | Assert retrieval-index generation and per-source content digests |
+| `rejectConflictingFrameworkVersions` | `boolean` | Assert that sources with conflicting framework version provenance are rejected |
+| `deletedSectionTombstones` | `boolean` | Assert that deleted-section tombstones are surfaced |
+| `queryVariants` | `DocsAgentGoldenQueryVariant[]` | Additional query variant kinds to evaluate alongside the primary query |
+
+`DocsAgentGoldenPromptInjectionExpectation` has `markers: string[]` (canary fragments that must appear in retrieved context) and an optional `forbiddenAnswerText?: string[]` (fragments the answer must not repeat; defaults to `markers`).
+
+`DocsAgentGoldenAuthenticatedContentExpectation` has optional `forbiddenSources?: string[]` (protected URLs that public retrieval must not expose) and `forbiddenText?: string[]` (canary fragments that must not appear in context or answers).
+
+`DocsAgentGoldenFreshnessExpectation` has optional `indexGeneration?: string` (expected retrieval-index generation digest) and `sourceDigests?: Record<string, string>` (expected full-document digest keyed by canonical page or section URL).
+
+`DocsAgentGoldenQueryVariant` has `kind: DocsAgentGoldenQueryVariantKind` (a string such as `"rephrased"` or `"adversarial"`).
+
+All five types are exported from `@farming-labs/docs` and `@farming-labs/docs/server`.
 
 `DocsAgentGoldenExpectedExample.verification` accepts `"present"`, `"syntax"`, or `"execute"`.
 Runnable examples default to syntax verification and explicitly non-runnable examples default to

@@ -9,6 +9,8 @@ related:
   - /docs/customization/sitemaps
   - /docs/customization/llms-txt
 agent:
+
+> When golden tasks are configured, `docs review` also checks adversarial safety suites. Without tasks, retrieval, citations, version selection, adversarial safety, executable examples, and token usage are all unmeasured.
   tokenBudget: 1400
   task: Choose and run the appropriate Farming Labs docs CLI workflow for a project.
   outcome: The selected CLI operation completes and the resulting docs configuration passes the agent doctor.
@@ -672,6 +674,8 @@ What it checks:
 - documented command health and related-page coverage
 - config loading confidence and drift between discovery, resolved config, contracts, and schema
 - configured golden tasks for retrieval, citations, version selection, answers, examples, and budgets
+
+- adversarial safety suites within configured golden tasks (prompt injection, poisoned citations, authenticated-content leakage, freshness, framework-version conflicts, deleted-section tombstones, and query variants)
 - generated `agent.md` freshness and `agent.compact` defaults
 
 Command health is a static check: the doctor validates package-manager usage, package scripts
@@ -758,6 +762,12 @@ PASS Agent context usefulness (15/15)
   35/35 Agent blocks are specific and non-repetitive (0 duplicate, 0 boilerplate, 0 generic).
 PASS Golden agent tasks (15/15)
   4/4 golden tasks passed with 100/100 average score.
+```txt
+PASS Golden agent tasks (15/15)
+  4/4 golden tasks passed with 100/100 average score. 2/2 adversarial safety suites passed.
+```
+
+When safety suites are configured on tasks, the doctor appends a summary such as `2/2 adversarial safety suites passed` or `no adversarial safety suites configured` to the golden-tasks finding.
 PASS Agent compaction freshness (5/5)
   0 fresh, 0 stale, 0 modified, 2 unknown, 0 token-budget missing, and 35 other missing pages across compactable docs pages. agent.compact defaults are configured.
 ```
