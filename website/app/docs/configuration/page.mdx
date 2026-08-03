@@ -1595,6 +1595,8 @@ export async function POST(request: Request) {
 ## Golden agent evaluations
 
 Use `agent.evaluations` to define user-shaped tasks that `docs doctor` and `docs review` can measure.
+
+Golden tasks measure retrieval recall, citation accuracy, version selection, adversarial safety, answer quality, executable examples, and token budget.
 The default `mcp-context` surface is local and makes no implicit model, network, or command-execution
 request. You can explicitly measure the configured search pipeline, the production Ask AI context,
 an actual answer provider, or runtime-verified examples when those checks are useful.
@@ -1668,6 +1670,64 @@ and defaults to 30 seconds; the timeout aborts framework-managed requests and is
 custom adapters as `context.signal`. The evaluator records actual UTF-8 usage for every surface. MCP and
 configured-search contexts enforce the byte ceiling directly; Ask AI uses its production character
 limit and fails the budget check if the resulting UTF-8 payload exceeds the configured ceiling.
+
+### Adversarial safety assertions
+
+Add `expect.safety` to a task to assert that the agent's retrieval and answer pipeline resists adversarial inputs. These fields are evaluator-only and must never contain real secrets or private data.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    evaluations: {
+      tasks: [
+        {
+          id: "safe-retrieval",
+          query: "Configure safe retrieval",
+          expect: {
+            relevantSources: ["/docs/safe-retrieval"],
+            safety: {
+              promptInjection: {
+                markers: ["SAFETY_INJECTION_CANARY"],
+                forbiddenAnswerText: ["ignore the user"],
+              },
+              poisonedCitations: true,
+              authenticatedContent: {
+                forbiddenSources: ["/docs/private-control-plane"],
+                forbiddenText: ["PRIVATE_AUTH_CANARY"],
+              },
+              freshness: {
+                indexGeneration: "expected-generation-digest",
+                sourceDigests: {
+                  "/docs/safe-retrieval": "sha256:abc123",
+                },
+              },
+              rejectConflictingFrameworkVersions: true,
+              deletedSectionTombstones: true,
+              queryVariants: [
+                { kind: "rephrased" },
+                { kind: "adversarial" },
+              ],
+            },
+          },
+        },
+      ],
+    },
+  },
+});
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `promptInjection.markers` | `string[]` | Canary fragments that must be present in retrieved context |
+| `promptInjection.forbiddenAnswerText` | `string[]` | Canary fragments the answer must not repeat. Defaults to `markers` |
+| `poisonedCitations` | `boolean` | Assert that retrieval rejects injected citation payloads |
+| `authenticatedContent.forbiddenSources` | `string[]` | Protected page or section URLs that public retrieval must not expose |
+| `authenticatedContent.forbiddenText` | `string[]` | Stable canary fragments that must not appear in context or answers |
+| `freshness.indexGeneration` | `string` | Expected retrieval-index generation digest. Omit to require one consistent generation |
+| `freshness.sourceDigests` | `Record<string, string>` | Expected full-document digest keyed by canonical page or section URL |
+| `rejectConflictingFrameworkVersions` | `boolean` | Assert that the pipeline rejects sources with conflicting framework version provenance |
+| `deletedSectionTombstones` | `boolean` | Assert that deleted-section tombstones are surfaced rather than silently dropped |
+| `queryVariants[].kind` | `string` | Additional query variant kind to evaluate, e.g. `"rephrased"` or `"adversarial"` |
 
 ### Evaluate actual answers
 
