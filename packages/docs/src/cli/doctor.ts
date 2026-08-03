@@ -85,6 +85,7 @@ import {
   readTopLevelStringProperty,
   resolveDocsConfigPath,
   resolveDocsContentDir,
+  resolveDocsProjectRoot,
 } from "./config.js";
 import { compactAgentDocs, inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
 import type { AgentCompactOptions } from "./agent.js";
@@ -2904,16 +2905,23 @@ function makeCheck(
 export async function inspectAgentReadiness(
   options: DoctorOptions = {},
 ): Promise<AgentDoctorReport> {
-  const rootDir = process.cwd();
-  const files = listProjectFiles(rootDir);
-  const framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
+  const invocationRoot = process.cwd();
+  let rootDir = invocationRoot;
+  let files: string[] = [];
+  let framework: Framework | "unknown" = "unknown";
   const configCheckMax = 10;
 
   let configPath: string | undefined;
   try {
-    configPath = resolveDocsConfigPath(rootDir, options.configPath);
+    configPath = resolveDocsConfigPath(invocationRoot, options.configPath);
+    rootDir = resolveDocsProjectRoot(invocationRoot, configPath);
+    files = listProjectFiles(rootDir);
+    framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const invocationFiles = listProjectFiles(invocationRoot);
+    framework =
+      detectFramework(invocationRoot) ?? detectFrameworkFromFiles(invocationFiles) ?? "unknown";
     const checks = [
       makeCheck(
         "config",
@@ -2953,7 +2961,7 @@ export async function inspectAgentReadiness(
   }
 
   const configContent = readFileSync(configPath, "utf-8");
-  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, configPath);
   const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
   let configuredAgentSkillNames: string[] | undefined;
   let configuredAgentSkillsError: string | undefined;
@@ -3805,16 +3813,23 @@ export async function inspectAgentReadiness(
 export async function inspectHumanReadiness(
   options: DoctorOptions = {},
 ): Promise<HumanDoctorReport> {
-  const rootDir = process.cwd();
-  const files = listProjectFiles(rootDir);
-  const framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
+  const invocationRoot = process.cwd();
+  let rootDir = invocationRoot;
+  let files: string[] = [];
+  let framework: Framework | "unknown" = "unknown";
   const configCheckMax = 10;
 
   let configPath: string | undefined;
   try {
-    configPath = resolveDocsConfigPath(rootDir, options.configPath);
+    configPath = resolveDocsConfigPath(invocationRoot, options.configPath);
+    rootDir = resolveDocsProjectRoot(invocationRoot, configPath);
+    files = listProjectFiles(rootDir);
+    framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const invocationFiles = listProjectFiles(invocationRoot);
+    framework =
+      detectFramework(invocationRoot) ?? detectFrameworkFromFiles(invocationFiles) ?? "unknown";
     const checks = [
       makeCheck(
         "config",
@@ -3848,7 +3863,7 @@ export async function inspectHumanReadiness(
   }
 
   const configContent = readFileSync(configPath, "utf-8");
-  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, configPath);
   const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = config?.contentDir ?? resolveDocsContentDir(rootDir, configContent, entry);

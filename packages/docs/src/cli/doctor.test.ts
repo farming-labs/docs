@@ -480,6 +480,64 @@ If module evaluation fails, restore \`docs.config.ts\` and retry the doctor comm
     );
   }
 
+  it("resolves an explicit nested app config from the monorepo root", async () => {
+    const appRoot = path.join(tmpDir, "website");
+    mkdirSync(appRoot, { recursive: true });
+    writePackageJson(tmpDir, "doctor-workspace");
+    writePackageJson(appRoot, "doctor-website", { next: "16.0.0" });
+    writeFileSync(path.join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - website\n", "utf-8");
+    writeDocsConfig(
+      appRoot,
+      "docs.config.tsx",
+      `export default {
+  entry: "docs",
+  contentDir: "app/docs",
+  agent: { skills: "../skills/farming-labs" },
+};`,
+    );
+    writeDocsPage(appRoot, "app/docs");
+    writeDocsConfig(
+      tmpDir,
+      "skills/farming-labs/migration/SKILL.md",
+      `---
+name: migration
+description: Migrate an existing documentation project to Farming Labs Docs.
+---
+
+# Workflow
+
+Review the source project before changing its documentation.
+`,
+    );
+    process.chdir(tmpDir);
+
+    const agentReport = await inspectAgentReadiness({
+      configPath: "website/docs.config.tsx",
+    });
+    const humanReport = await inspectHumanReadiness({
+      configPath: "website/docs.config.tsx",
+    });
+
+    expect(agentReport).toMatchObject({
+      framework: "nextjs",
+      configPath: "docs.config.tsx",
+      contentDir: "app/docs",
+      coverage: { totalPages: 1 },
+    });
+    expect(
+      agentReport.checks.find((check) => check.id === "agent-skills-frontmatter"),
+    ).toMatchObject({
+      status: "pass",
+      detail: expect.stringContaining("migration"),
+    });
+    expect(humanReport).toMatchObject({
+      framework: "nextjs",
+      configPath: "docs.config.tsx",
+      contentDir: "app/docs",
+      coverage: { totalPages: 1 },
+    });
+  });
+
   it("scores a healthy Next.js docs app as agent-optimized", async () => {
     writePackageJson(tmpDir, "doctor-next", { next: "16.0.0" });
 

@@ -103,6 +103,39 @@ export function resolveDocsConfigPath(rootDir: string, explicitPath?: string): s
   );
 }
 
+/**
+ * Resolve the application root that owns a docs config selected from another
+ * working directory. This keeps config-relative paths anchored to a nested
+ * workspace package without changing the behavior of configs stored below a
+ * project's root (for example, src/lib/docs.config.ts).
+ */
+export function resolveDocsProjectRoot(rootDir: string, configPath: string): string {
+  const invocationRoot = resolve(rootDir);
+  const resolvedConfigPath = resolve(configPath);
+  const configDir = dirname(resolvedConfigPath);
+  const relativeConfigDir = relative(invocationRoot, configDir);
+  const configIsInsideInvocationRoot =
+    relativeConfigDir === "" ||
+    (relativeConfigDir !== ".." && !relativeConfigDir.startsWith(`..${sep}`));
+  const fallbackRoot = configIsInsideInvocationRoot ? invocationRoot : configDir;
+  let currentDir = configDir;
+
+  while (true) {
+    if (existsSync(join(currentDir, "package.json"))) return currentDir;
+    if (configIsInsideInvocationRoot && currentDir === invocationRoot) return invocationRoot;
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) return fallbackRoot;
+    if (configIsInsideInvocationRoot) {
+      const relativeParent = relative(invocationRoot, parentDir);
+      if (relativeParent === ".." || relativeParent.startsWith(`..${sep}`)) {
+        return invocationRoot;
+      }
+    }
+    currentDir = parentDir;
+  }
+}
+
 export function readStringProperty(content: string, key: string): string | undefined {
   const match = content.match(createPropertyPattern(key, `["']([^"']+)["']`));
   return match?.[1];
