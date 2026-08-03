@@ -24,10 +24,7 @@ import {
   probeProtectedMcpDiscovery,
   runDoctor,
 } from "./doctor.js";
-
-function stripAnsi(value: string): string {
-  return value.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
-}
+import { stripAnsi } from "./test-utils.js";
 
 function writePackageJson(
   rootDir: string,
@@ -115,10 +112,16 @@ describe("parseDoctorArgs", () => {
   });
 
   it("parses CI annotation mode", () => {
-    expect(parseDoctorArgs(["--agent", "--ci", "--json"])).toEqual({
+    expect(
+      parseDoctorArgs(["--agent", "--ci", "--json-output", ".farming-labs/doctor.json"]),
+    ).toEqual({
       mode: "agent",
       ci: true,
-      json: true,
+      jsonOutputPath: ".farming-labs/doctor.json",
+    });
+    expect(parseDoctorArgs(["--json-output=reports/doctor.json"])).toEqual({
+      mode: "agent",
+      jsonOutputPath: "reports/doctor.json",
     });
   });
 
@@ -1120,8 +1123,7 @@ pnpm exec docs imaginary
       expect(textOutput).toContain('Proposed correction: Add a "missing" script');
 
       logSpy.mockClear();
-      process.env.GITHUB_ACTIONS = "true";
-      await runDoctor({ mode: "agent", json: true, ci: true });
+      await runDoctor({ mode: "agent", json: true });
 
       expect(logSpy).toHaveBeenCalledTimes(1);
       const payload = JSON.parse(String(logSpy.mock.calls[0]?.[0])) as {
@@ -1130,13 +1132,27 @@ pnpm exec docs imaginary
       expect(payload.checks.find((check) => check.id === "command-health")?.findings).toEqual(
         commandCheck?.findings,
       );
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "::error file=app/docs/page.mdx,line=6,title=Documented command health::Command: pnpm run missing Reason:",
-        ),
+
+      logSpy.mockClear();
+      process.env.GITHUB_ACTIONS = "true";
+      const jsonOutputPath = path.join(tmpDir, "reports", "doctor.json");
+      await runDoctor({ mode: "agent", ci: true, jsonOutputPath });
+
+      const annotationOutput = stripAnsi(logSpy.mock.calls.flat().join("\n"));
+      expect(annotationOutput).toContain(
+        "::error file=app/docs/page.mdx,line=6,title=Documented command health::Command: pnpm run missing Reason:",
       );
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Proposed correction: Add a "missing" script'),
+      expect(annotationOutput).toContain('Proposed correction: Add a "missing" script');
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      const filePayload = JSON.parse(readFileSync(jsonOutputPath, "utf-8")) as {
+        checks: Array<{ id: string; findings?: unknown[] }>;
+      };
+      expect(filePayload.checks.find((check) => check.id === "command-health")?.findings).toEqual(
+        commandCheck?.findings,
+      );
+      await expect(runDoctor({ mode: "agent", ci: true, json: true })).rejects.toThrow(
+        "Use --ci --json-output <path>",
       );
     } finally {
       logSpy.mockRestore();

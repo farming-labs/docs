@@ -818,6 +818,59 @@ pnpm run test -- --filter missing-workspace
     });
   });
 
+  it("keeps contract and audience-projected fence findings on their exact source lines", () => {
+    const source = [
+      "---",
+      "title: Command locations",
+      "agent:",
+      "  commands:",
+      "    - run: pnpm run missing",
+      "  verification:",
+      "    - run: pnpm exec docs imaginary",
+      "---",
+      "",
+      "The command `pnpm run fence-missing` is explained before its runnable example.",
+      "",
+      "<Human>",
+      "```bash",
+      "pnpm run human-only",
+      "```",
+      "</Human>",
+      "",
+      "```bash",
+      "pnpm run fence-missing",
+      "```",
+    ].join("\n");
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page("command-locations", source),
+          agent: {
+            commands: [{ run: "pnpm run missing" }],
+            verification: [
+              {
+                run: "pnpm exec docs imaginary",
+                expect: "Doctor rejects the unsupported command.",
+              },
+            ],
+          },
+          actionable: false,
+        },
+      ],
+    });
+    const commandFindings = report.findings.filter((finding) => finding.category === "command");
+
+    expect(commandFindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ command: "pnpm run missing", line: 5 }),
+        expect.objectContaining({ command: "pnpm exec docs imaginary", line: 7 }),
+        expect.objectContaining({ command: "pnpm run fence-missing", line: 19 }),
+      ]),
+    );
+    expect(commandFindings.map((finding) => finding.command)).not.toContain("pnpm run human-only");
+  });
+
   it("resolves named and path selectors from an enclosing package-manager workspace", () => {
     const workspaceRoot = path.join(rootDir, "monorepo");
     const docsRoot = path.join(workspaceRoot, "website");

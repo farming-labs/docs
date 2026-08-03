@@ -458,6 +458,7 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor --site")}                       Score the current docs app for reader-facing docs quality
   ${pc.cyan("doctor --human")}                      Alias for ${pc.cyan("doctor --site")}
   ${pc.cyan("doctor --json")}                       Print the report as JSON for CI, scripts, and automation
+  ${pc.cyan("doctor --json-output <path>")}         Write the JSON report to a file, including alongside ${pc.cyan("--ci")}
   ${pc.cyan("doctor --ci")}                         Emit actionable GitHub annotations in GitHub Actions
   ${pc.cyan("doctor --strict")}                     Exit with failure when any doctor check warns or fails
   ${pc.cyan("doctor --agent --fix")}                Refresh stale generated ${pc.dim("agent.md")} files and token-budget missing outputs

@@ -1,5 +1,6 @@
 import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { isMap, isScalar, isSeq, parseDocument, type Scalar } from "yaml";
 import { hasStructuredPageAgentContract, normalizePageAgentFrontmatter } from "./agent-contract.js";
 import {
   agentVersionConstraintsOverlap,
@@ -797,7 +798,7 @@ function analyzePage(page: AgentUsefulnessPage): PageAnalysis {
     sourcePath: page.sourcePath,
     route: page.route,
   });
-  const shellCommands = collectPageCommands(page, agent, projectedSource);
+  const shellCommands = collectPageCommands(page, agent);
   const actionable =
     page.actionable ??
     (hasStructuredPageAgentContract(agent) ||
@@ -1218,42 +1219,179 @@ function commandAnalysis(findings: AgentUsefulnessFinding[]): CommandAnalysis {
   return { findings, status: "healthy" };
 }
 
+interface ContractCommandLocation {
+  run: string;
+  line: number;
+}
+
+interface ContractCommandLocations {
+  commands: ContractCommandLocation[];
+  verification: ContractCommandLocation[];
+}
+
+function collectContractCommandLocations(source: string): ContractCommandLocations {
+  const empty = (): ContractCommandLocations => ({ commands: [], verification: [] });
+  const opening = source.match(/^---[^\S\r\n]*\r?\n/);
+  if (!opening) return empty();
+
+  const frontmatterOffset = opening[0].length;
+  const remainder = source.slice(frontmatterOffset);
+  const closing = /(?:^|\r?\n)---[^\S\r\n]*(?:\r?\n|$)/.exec(remainder);
+  if (!closing) return empty();
+
+  try {
+    const document = parseDocument(remainder.slice(0, closing.index), { uniqueKeys: true });
+    if (document.errors.length > 0 || !isMap(document.contents)) return empty();
+    const agent = document.contents.get("agent", true);
+    if (!isMap(agent)) return empty();
+
+    return {
+      commands: collectContractSequenceLocations(
+        agent.get("commands", true),
+        source,
+        frontmatterOffset,
+      ),
+      verification: collectContractSequenceLocations(
+        agent.get("verification", true),
+        source,
+        frontmatterOffset,
+      ),
+    };
+  } catch {
+    return empty();
+  }
+}
+
+function collectContractSequenceLocations(
+  value: unknown,
+  source: string,
+  frontmatterOffset: number,
+): ContractCommandLocation[] {
+  if (!isSeq(value)) return [];
+  const locations: ContractCommandLocation[] = [];
+
+  for (const item of value.items) {
+    const run = isScalar(item) ? item : isMap(item) ? item.get("run", true) : undefined;
+    if (!isScalar(run) || typeof run.value !== "string") continue;
+    const location = contractScalarLocation(run, source, frontmatterOffset);
+    if (location) locations.push(location);
+  }
+
+  return locations;
+}
+
+function contractScalarLocation(
+  scalar: Scalar,
+  source: string,
+  frontmatterOffset: number,
+): ContractCommandLocation | undefined {
+  const relativeOffset = scalar.range?.[0];
+  if (typeof scalar.value !== "string" || relativeOffset === undefined) return undefined;
+  const absoluteOffset = frontmatterOffset + relativeOffset;
+  return {
+    run: scalar.value,
+    line: source.slice(0, absoluteOffset).split(/\r?\n/).length,
+  };
+}
+
+function claimContractCommandLine(
+  locations: readonly ContractCommandLocation[],
+  command: string,
+  claimedLines: Set<number>,
+): number | undefined {
+  const location = locations.find(
+    (candidate) => candidate.run === command && !claimedLines.has(candidate.line),
+  );
+  if (!location) return undefined;
+  claimedLines.add(location.line);
+  return location.line;
+}
+
+function preserveLineBreaksOnly(value: string): string {
+  return value.replace(/[^\r\n]/g, " ");
+}
+
+/** Agent projection used for command discovery that keeps original source line numbers stable. */
+function projectAgentCommandSource(source: string): string {
+  const tags = findDocsAudienceMdxTags(source);
+  if (tags.length === 0) return source;
+
+  const scopes: Array<Pick<DocsAudienceMdxTag, "name" | "only">> = [];
+  let output = "";
+  let cursor = 0;
+  const visible = () => scopes.every((scope) => scope.only !== "human");
+
+  for (const tag of tags) {
+    const activeScope = scopes.at(-1);
+    if (tag.closing && activeScope?.name !== tag.name) continue;
+
+    const content = source.slice(cursor, tag.index);
+    output += visible() ? content : preserveLineBreaksOnly(content);
+    output += preserveLineBreaksOnly(source.slice(tag.index, tag.end));
+    cursor = tag.end;
+
+    if (tag.closing) {
+      scopes.pop();
+    } else if (!tag.selfClosing) {
+      scopes.push({ name: tag.name, only: tag.only });
+    }
+  }
+
+  const remaining = source.slice(cursor);
+  output += visible() ? remaining : preserveLineBreaksOnly(remaining);
+  return output;
+}
+
 function collectPageCommands(
   page: AgentUsefulnessPage,
   agent: PageAgentFrontmatter | undefined,
-  projectedSource: string,
 ): AnalyzedCommand[] {
   const commands: AnalyzedCommand[] = [];
+  const contractLocations = collectContractCommandLocations(page.source);
+  const claimedContractLines = new Set<number>();
 
   for (const command of agent?.commands ?? []) {
-    commands.push(normalizeAgentCommand(command, page.sourcePath, page.source));
+    commands.push(
+      normalizeAgentCommand(
+        command,
+        page.sourcePath,
+        claimContractCommandLine(
+          contractLocations.commands,
+          typeof command === "string" ? command : command.run,
+          claimedContractLines,
+        ),
+      ),
+    );
   }
 
   for (const verification of agent?.verification ?? []) {
     if (typeof verification !== "string" && verification.run) {
       commands.push({
         run: verification.run,
-        line: findCommandSourceLine(page.source, verification.run),
+        line: claimContractCommandLine(
+          contractLocations.verification,
+          verification.run,
+          claimedContractLines,
+        ),
         sourcePath: page.sourcePath,
         source: "contract",
       });
     }
   }
 
-  collectMarkdownCommands(commands, projectedSource, page.sourcePath, page.source);
+  collectMarkdownCommands(commands, projectAgentCommandSource(page.source), page.sourcePath);
   if (page.agentSource) {
-    collectMarkdownCommands(commands, page.agentSource, page.agentSourcePath ?? page.sourcePath);
+    collectMarkdownCommands(
+      commands,
+      projectAgentCommandSource(page.agentSource),
+      page.agentSourcePath ?? page.sourcePath,
+    );
   }
 
   return dedupeCommands(commands);
 }
 
-function collectMarkdownCommands(
-  commands: AnalyzedCommand[],
-  source: string,
-  sourcePath: string,
-  locationSource = source,
-) {
+function collectMarkdownCommands(commands: AnalyzedCommand[], source: string, sourcePath: string) {
   const blocks = extractCodeBlocksFromMarkdown({
     source,
     filePath: sourcePath,
@@ -1265,9 +1403,7 @@ function collectMarkdownCommands(
     for (const command of shellLines(block.code, block.language)) {
       commands.push({
         run: command.run,
-        line:
-          findCommandSourceLine(locationSource, command.run) ??
-          block.lineStart + 1 + command.lineOffset,
+        line: block.lineStart + 1 + command.lineOffset,
         sourcePath,
         packageManagerHint: block.packageManager,
         source: "fence",
@@ -1279,20 +1415,12 @@ function collectMarkdownCommands(
 function normalizeAgentCommand(
   command: string | PageAgentCommand,
   sourcePath: string,
-  source: string,
+  line: number | undefined,
 ): AnalyzedCommand {
   const run = typeof command === "string" ? command : command.run;
-  const line = findCommandSourceLine(source, run);
   return typeof command === "string"
     ? { run, line, sourcePath, source: "contract" }
     : { run, cwd: command.cwd, line, sourcePath, source: "contract" };
-}
-
-function findCommandSourceLine(source: string, command: string): number | undefined {
-  const needle = command.trim();
-  if (!needle) return undefined;
-  const index = source.split(/\r?\n/).findIndex((line) => line.includes(needle));
-  return index >= 0 ? index + 1 : undefined;
 }
 
 function shellLines(code: string, language: string | undefined): AnalyzedShellLine[] {

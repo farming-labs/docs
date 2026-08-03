@@ -1,4 +1,11 @@
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
@@ -105,6 +112,8 @@ export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
   json?: boolean;
+  /** Write the JSON report to a file without mixing it into annotation stdout. */
+  jsonOutputPath?: string;
   /** Emit file/line GitHub workflow annotations when running in GitHub Actions. */
   ci?: boolean;
   strict?: boolean;
@@ -272,6 +281,25 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg.startsWith("--json-output=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --json-output.");
+      }
+      parsed.jsonOutputPath = value;
+      continue;
+    }
+
+    if (arg === "--json-output") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --json-output.");
+      }
+      parsed.jsonOutputPath = value;
+      index += 1;
+      continue;
+    }
+
     if (arg === "--ci") {
       parsed.ci = true;
       continue;
@@ -407,6 +435,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
   ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
+  ${pc.cyan("--json-output <path>")} Write the JSON report to a file; use with ${pc.cyan("--ci")} to keep annotation stdout valid
   ${pc.cyan("--ci")}               Emit actionable GitHub annotations when running in GitHub Actions
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
   ${pc.cyan("--fix")}              Refresh stale generated agent.md files and token-budget missing outputs
@@ -4257,6 +4286,16 @@ export function printDoctorJsonReport(report: AgentDoctorReport | HumanDoctorRep
   console.log(JSON.stringify(serializeDoctorJsonReport(report), null, 2));
 }
 
+function writeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport, outputPath: string) {
+  const resolvedPath = path.resolve(process.cwd(), outputPath);
+  mkdirSync(path.dirname(resolvedPath), { recursive: true });
+  writeFileSync(
+    resolvedPath,
+    `${JSON.stringify(serializeDoctorJsonReport(report), null, 2)}\n`,
+    "utf-8",
+  );
+}
+
 function escapeGitHubAnnotationData(value: string): string {
   return value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
 }
@@ -4284,8 +4323,7 @@ function emitDoctorGitHubAnnotations(report: AgentDoctorReport | HumanDoctorRepo
         .filter(Boolean)
         .join(",");
       const message = `Command: ${finding.command} Reason: ${finding.reason} Proposed correction: ${finding.proposedCorrection}`;
-      // stderr preserves JSON-only stdout while GitHub Actions still recognizes the workflow command.
-      console.error(`::${command} ${location}::${escapeGitHubAnnotationData(message)}`);
+      console.log(`::${command} ${location}::${escapeGitHubAnnotationData(message)}`);
     }
   }
 }
@@ -4388,6 +4426,12 @@ async function runAgentDoctorFixes(
 }
 
 export async function runDoctor(options: DoctorOptions = {}) {
+  if (options.ci && options.json) {
+    throw new Error(
+      "doctor --ci and --json cannot share stdout. Use --ci --json-output <path> to emit GitHub annotations and persist the JSON report in one run.",
+    );
+  }
+
   if (options.mode === "human") {
     if (options.fix) {
       throw new Error("doctor --fix is currently only supported with --agent.");
@@ -4395,9 +4439,11 @@ export async function runDoctor(options: DoctorOptions = {}) {
 
     const report = await inspectHumanReadiness(options);
     applyDoctorExitCode(report, options);
+    if (options.jsonOutputPath) {
+      writeDoctorJsonReport(report, options.jsonOutputPath);
+    }
     if (options.json) {
       printDoctorJsonReport(report);
-      if (options.ci) emitDoctorGitHubAnnotations(report);
       return report;
     }
     printHumanDoctorReport(report);
@@ -4416,9 +4462,11 @@ export async function runDoctor(options: DoctorOptions = {}) {
   }
 
   applyDoctorExitCode(report, options);
+  if (options.jsonOutputPath) {
+    writeDoctorJsonReport(report, options.jsonOutputPath);
+  }
   if (options.json) {
     printDoctorJsonReport(report);
-    if (options.ci) emitDoctorGitHubAnnotations(report);
     return report;
   }
   printAgentDoctorReport(report);

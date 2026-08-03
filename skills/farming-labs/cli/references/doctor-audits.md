@@ -18,6 +18,7 @@ pnpm exec docs doctor
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
 pnpm exec docs doctor --agent --json
+pnpm exec docs doctor --agent --ci --json-output .farming-labs/doctor.json
 pnpm exec docs doctor --agent --config docs.config.tsx
 pnpm exec docs doctor --agent --url https://docs.example.com
 pnpm exec docs doctor --agent --url https://docs.example.com --json
@@ -92,6 +93,8 @@ Explain:
 - Low explicit optimization does not make pages invisible; it means fewer pages contain extra
   machine-only context.
 - `--json` is for CI, dashboards, scripts, and agents.
+- `--ci` emits GitHub annotations on stdout; pair it with `--json-output <path>` when the same run
+  must also persist a machine-readable report.
 - Loader notices may appear separately from JSON stdout.
 - A warning for size/compatibility is advisory; broken or unsafe skill references are blocking.
 

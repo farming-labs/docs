@@ -3,10 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCodeBlocksValidate } from "./codeblocks.js";
-
-function stripAnsi(value: string): string {
-  return value.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
-}
+import { stripAnsi } from "./test-utils.js";
 
 describe("codeblocks validate cli", () => {
   let tmpDir: string;
