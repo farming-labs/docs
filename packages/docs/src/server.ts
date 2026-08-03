@@ -55,6 +55,7 @@ export {
   getDocsConfigSchema,
   normalizeDocsMcpRoute,
   resolveDocsMcpConfig,
+  resolveDocsMcpPromptsConfig,
   runDocsMcpStdio,
 } from "./mcp.js";
 export { createDocsCloudRouteHandler, createDocsCloudServer } from "./docs-cloud-server.js";
@@ -230,6 +231,7 @@ export type {
   DocsMcpRequestContext,
   DocsMcpResolvedCorsConfig,
   DocsMcpResolvedConfig,
+  DocsMcpResolvedPromptsConfig,
   DocsMcpResolvedProtectedResourceConfig,
   DocsMcpResolvedSecurityConfig,
   DocsMcpSource,

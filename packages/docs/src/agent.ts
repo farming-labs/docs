@@ -497,6 +497,7 @@ export interface DocsDiagnosticsFeature {
   mode?: string;
   transport?: "GET" | "POST" | "GET/HEAD" | "GET/POST";
   tools?: Record<string, boolean>;
+  prompts?: DocsMcpResolvedConfig["prompts"];
   human?: boolean;
   agent?: boolean;
 }
@@ -1167,6 +1168,7 @@ export function buildDocsDiagnostics(
         route: mcp.enabled ? mcp.route : null,
         transport: "GET/POST",
         tools: mcp.tools as Record<string, boolean>,
+        prompts: mcp.prompts ?? { enabled: false, contracts: false, goldenTasks: [] },
       },
       feedback: {
         status: agentFeedbackEnabled || humanFeedback ? "enabled" : "disabled",
@@ -3937,8 +3939,8 @@ function appendDocsMcpStartLine(
   if (!context.mcpEnabled) return;
   lines.push(
     variant === "skill"
-      ? `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`
-      : `- Use MCP at ${DEFAULT_MCP_PUBLIC_ROUTE} or ${DEFAULT_MCP_WELL_KNOWN_ROUTE} when your environment supports MCP tools.`,
+      ? `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools, resources, and configured prompts.`
+      : `- Use MCP at ${DEFAULT_MCP_PUBLIC_ROUTE} or ${DEFAULT_MCP_WELL_KNOWN_ROUTE} when your environment supports MCP capabilities.`,
   );
 }
 
@@ -4252,7 +4254,7 @@ export function renderDocsAgentsDocument(options: DocsAgentsDocumentOptions): st
   lines.push(
     "",
     "## Working Rules",
-    "- Prefer markdown routes, llms.txt, sitemap.md, OpenAPI schemas, and MCP tools over scraping rendered HTML.",
+    "- Prefer markdown routes, llms.txt, sitemap.md, OpenAPI schemas, and MCP capabilities over scraping rendered HTML.",
     "- Treat generated context files as discovery aids, then fetch the smallest page or section that answers the task.",
     "- Preserve canonical docs URLs when citing pages back to humans.",
     "- If a markdown route returns a recovery page, use its closest matches, sitemap, and discovery spec before guessing another slug.",
@@ -4633,6 +4635,7 @@ export function buildDocsAgentDiscoverySpec({
       name: mcp.name,
       version: mcp.version,
       tools: mcp.tools,
+      prompts: mcp.prompts ?? { enabled: false, contracts: false, goldenTasks: [] },
       ...(protectedResource
         ? {
             protectedResource: {

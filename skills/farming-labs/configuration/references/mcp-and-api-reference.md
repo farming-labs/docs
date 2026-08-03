@@ -9,6 +9,7 @@ generated API reference pages.
 - [Opt-in authentication](#opt-in-authentication)
 - [HTTP transport security](#http-transport-security)
 - [Built-in tools](#built-in-tools)
+- [Built-in prompts](#built-in-prompts)
 - [Framework routing](#framework-routing)
 - [API reference](#api-reference)
 
@@ -133,6 +134,30 @@ conflicting scopes are excluded.
 
 `read_page` accepts optional `section` and `maxChars`. Successful tools expose validated
 `structuredContent` while retaining text output for older clients.
+
+## Built-in prompts
+
+Actionable page contracts are exposed through MCP `prompts/list` and `prompts/get` by default.
+Select specific contract pages, disable them, or publish selected golden tasks by ID:
+
+```ts
+mcp: {
+  prompts: {
+    contracts: [
+      "/docs/installation",
+      "/docs/configuration",
+      "/docs/migrations/mintlify",
+      "/docs/themes/creating-themes",
+    ],
+    goldenTasks: ["install-existing-nextjs", "create-reusable-theme"],
+  },
+}
+```
+
+Use `prompts: false` to disable the built-in prompt projection. Contract prompts embed only the
+compact structured contract and accept validated scope arguments. Golden prompts expose the task
+query, retrieval filters, and token budget; evaluator expectations, expected/forbidden sources,
+answer assertions, and safety canaries remain private.
 
 ## Framework routing
 

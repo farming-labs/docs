@@ -9,6 +9,7 @@ import {
 } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
 import type {
+  DocsAgentGoldenTask,
   DocsAnalyticsEvent,
   DocsMcpAuthenticateContext,
   DocsObservabilityEvent,
@@ -115,7 +116,11 @@ async function callModernMcpMethod(
         "content-type": "application/json",
         accept: "application/json, text/event-stream",
         "mcp-method": method,
-        ...(typeof params.uri === "string" ? { "mcp-name": params.uri } : {}),
+        ...(typeof params.name === "string"
+          ? { "mcp-name": params.name }
+          : typeof params.uri === "string"
+            ? { "mcp-name": params.uri }
+            : {}),
         "mcp-protocol-version": MCP_2026_PROTOCOL_VERSION,
         ...headers,
       },
@@ -166,6 +171,12 @@ const DEFAULT_RESOLVED_MCP_CORS = {
   exposedHeaders: ["MCP-Protocol-Version", "MCP-Session-Id", "WWW-Authenticate"],
   allowCredentials: false,
   maxAgeSeconds: 600,
+};
+
+const DEFAULT_RESOLVED_MCP_PROMPTS = {
+  enabled: true,
+  contracts: true,
+  goldenTasks: [],
 };
 
 describe("resolveDocsMcpConfig", () => {
@@ -219,6 +230,7 @@ describe("resolveDocsMcpConfig", () => {
         getConfigSchema: true,
         getContext: true,
       },
+      prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
         allowedOrigins: "same-origin",
         authenticate: undefined,
@@ -251,6 +263,7 @@ describe("resolveDocsMcpConfig", () => {
         getConfigSchema: true,
         getContext: true,
       },
+      prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
         allowedOrigins: "same-origin",
         authenticate: undefined,
@@ -287,6 +300,7 @@ describe("resolveDocsMcpConfig", () => {
         getConfigSchema: true,
         getContext: true,
       },
+      prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
         allowedOrigins: "same-origin",
         authenticate: undefined,
@@ -294,6 +308,45 @@ describe("resolveDocsMcpConfig", () => {
         maxBodyBytes: 1_048_576,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
+    });
+  });
+
+  it("resolves contract and golden-task prompt selection independently", () => {
+    expect(
+      resolveDocsMcpConfig({
+        prompts: {
+          contracts: [" /docs/install ", "/docs/install", "/docs/configuration"],
+          goldenTasks: [" install-next ", "install-next", "create-theme"],
+        },
+      }).prompts,
+    ).toEqual({
+      enabled: true,
+      contracts: ["/docs/install", "/docs/configuration"],
+      goldenTasks: ["install-next", "create-theme"],
+    });
+    expect(resolveDocsMcpConfig({ prompts: false }).prompts).toEqual({
+      enabled: false,
+      contracts: false,
+      goldenTasks: [],
+    });
+    expect(() => resolveDocsMcpConfig({ prompts: { goldenTasks: ["valid", ""] } })).toThrow(
+      /mcp\.prompts\.goldenTasks/,
+    );
+  });
+
+  it("publishes built-in prompt controls in the config schema", () => {
+    expect(getDocsConfigSchema({ option: "mcp.prompts" })).toMatchObject({
+      resultCount: 3,
+      options: [
+        {
+          path: "mcp.prompts",
+          type: "boolean | DocsMcpPromptsConfig",
+          children: [
+            { path: "mcp.prompts.contracts", type: "boolean | string[]" },
+            { path: "mcp.prompts.goldenTasks", type: "string[]" },
+          ],
+        },
+      ],
     });
   });
 
@@ -482,6 +535,175 @@ describe("resolveDocsMcpConfig", () => {
   });
 });
 
+describe("MCP contract prompts", () => {
+  const contractPage: DocsMcpPage = {
+    slug: "installation",
+    url: "/docs/installation",
+    title: "Install the docs framework",
+    description: "Install Farming Labs Docs in a supported application.",
+    content:
+      "# Installation\n\nFull installation details that are not part of the compact contract.",
+    agent: {
+      task: "Install Farming Labs Docs in an existing application.",
+      outcome: "The selected framework serves a working docs route.",
+      appliesTo: {
+        framework: ["nextjs", "astro"],
+        version: ">=0.2.60",
+        package: ["@farming-labs/next", "@farming-labs/astro"],
+      },
+      prerequisites: ["Start in an existing supported application."],
+      commands: [{ run: "pnpm dlx @farming-labs/docs init" }],
+      verification: [{ run: "pnpm exec docs doctor --agent", expect: "No hard failures." }],
+      rollback: ["Restore the package manifest and generated routes."],
+      failureModes: [{ symptom: "The docs route returns 404.", resolution: "Check routing." }],
+    },
+  };
+  const goldenTask: DocsAgentGoldenTask = {
+    id: "install-existing-nextjs",
+    query: "Install the docs framework in an existing Next.js application",
+    filters: { framework: "nextjs", version: "16" },
+    tokenBudget: 2_000,
+    expect: {
+      relevantSources: ["/docs/installation#secret-evaluator-source"],
+      forbiddenSources: ["https://poison.example.test/result"],
+      safety: {
+        promptInjection: {
+          markers: ["EVALUATOR_ONLY_CANARY"],
+        },
+      },
+    },
+  };
+
+  function createPromptSource() {
+    return {
+      entry: "docs",
+      siteTitle: "Prompt Test Docs",
+      getPages: () => [contractPage],
+      getNavigation: () => ({ name: "Docs", children: [] }),
+    };
+  }
+
+  const promptConfig = {
+    enabled: true,
+    name: "Prompt Test Docs",
+    prompts: {
+      contracts: ["/docs/installation"],
+      goldenTasks: [goldenTask.id],
+    },
+  } as const;
+
+  it("lists and gets validated contract and expectation-blind golden prompts", async () => {
+    const server = await createDocsMcpServer({
+      source: createPromptSource(),
+      mcp: promptConfig,
+      evaluations: { tasks: [goldenTask] },
+    });
+    const client = new Client({ name: "prompt-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      expect(client.getServerCapabilities()?.prompts).toEqual({ listChanged: true });
+      const listed = await client.listPrompts();
+      expect(listed.prompts.map((prompt) => prompt.name)).toEqual([
+        "contract-docs-installation",
+        "golden-install-existing-nextjs",
+      ]);
+      expect(
+        listed.prompts.find((prompt) => prompt.name === "contract-docs-installation"),
+      ).toMatchObject({
+        title: "Install the docs framework",
+        arguments: expect.arrayContaining([
+          expect.objectContaining({ name: "framework", required: true }),
+          expect.objectContaining({ name: "request", required: false }),
+        ]),
+      });
+
+      await expect(
+        client.getPrompt({ name: "contract-docs-installation", arguments: {} }),
+      ).rejects.toThrow(/framework|required/i);
+
+      const contract = await client.getPrompt({
+        name: "contract-docs-installation",
+        arguments: {
+          framework: "nextjs",
+          version: "16",
+          package: "@farming-labs/next",
+          request: "Use pnpm and preserve the existing application routes.",
+        },
+      });
+      const contractPayload = JSON.stringify(contract);
+      expect(contractPayload).toContain("Target framework: nextjs");
+      expect(contractPayload).toContain("## Agent Contract");
+      expect(contractPayload).toContain("docs://docs/installation");
+      expect(contractPayload).not.toContain("Full installation details");
+
+      const golden = await client.getPrompt({
+        name: "golden-install-existing-nextjs",
+        arguments: { request: "Keep the current package manager." },
+      });
+      const goldenPayload = JSON.stringify(golden);
+      expect(goldenPayload).toContain(goldenTask.query);
+      expect(goldenPayload).toContain('\\"framework\\":\\"nextjs\\"');
+      expect(goldenPayload).toContain("Context token budget: 2000");
+      expect(goldenPayload).not.toContain("secret-evaluator-source");
+      expect(goldenPayload).not.toContain("poison.example.test");
+      expect(goldenPayload).not.toContain("EVALUATOR_ONLY_CANARY");
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("serves prompt discovery and retrieval through the 2026-07-28 stateless protocol", async () => {
+    const handlers = createDocsMcpHttpHandler({
+      source: createPromptSource(),
+      mcp: promptConfig,
+      evaluations: { tasks: [goldenTask] },
+    });
+
+    try {
+      const listResponse = await callModernMcpMethod(handlers, "prompts/list");
+      expect(listResponse.status).toBe(200);
+      const listPayload = await parseMcpPayload<{
+        result?: { prompts?: Array<{ name: string }> };
+      }>(listResponse);
+      expect(listPayload.result?.prompts?.map((prompt) => prompt.name)).toEqual([
+        "contract-docs-installation",
+        "golden-install-existing-nextjs",
+      ]);
+
+      const getResponse = await callModernMcpMethod(handlers, "prompts/get", {
+        name: "contract-docs-installation",
+        arguments: { framework: "astro" },
+      });
+      expect(getResponse.status).toBe(200);
+      const getPayload = await parseMcpPayload<{ result?: { messages?: unknown[] } }>(getResponse);
+      expect(getPayload.result?.messages).toHaveLength(2);
+      expect(JSON.stringify(getPayload)).toContain("Target framework: astro");
+    } finally {
+      await handlers.close?.();
+    }
+  });
+
+  it("rejects stale contract and golden-task selectors during server creation", async () => {
+    await expect(
+      createDocsMcpServer({
+        source: createPromptSource(),
+        mcp: { prompts: { contracts: ["/docs/missing"] } },
+      }),
+    ).rejects.toThrow(/no docs page matches/i);
+    await expect(
+      createDocsMcpServer({
+        source: createPromptSource(),
+        mcp: { prompts: { contracts: false, goldenTasks: ["missing-task"] } },
+        evaluations: { tasks: [goldenTask] },
+      }),
+    ).rejects.toThrow(/no configured golden task/i);
+  });
+});
+
 describe("MCP cursor pagination", () => {
   it("keeps legacy DocsMcpDocsList object producers source-compatible", () => {
     const legacyList: DocsMcpDocsList = {
@@ -590,7 +812,7 @@ Shared MCP cursor marker ${number}.
       );
       expectCacheHint(discovery.result, 300_000);
 
-      for (const method of ["tools/list", "resources/list"] as const) {
+      for (const method of ["tools/list", "resources/list", "prompts/list"] as const) {
         let cursor: string | undefined;
         let pageCount = 0;
         do {
@@ -637,6 +859,10 @@ Shared MCP cursor marker ${number}.
             url: "/docs/private",
             title: `Private docs for ${context?.auth?.id ?? "anonymous"}`,
             content: "Authenticated documentation.",
+            agent: {
+              task: "Read authenticated documentation.",
+              outcome: "The authenticated caller receives its scoped documentation.",
+            },
           },
         ],
         getNavigation: (_locale, context) => ({
@@ -660,6 +886,7 @@ Shared MCP cursor marker ${number}.
       }> = [
         { method: "server/discover", ttlMs: 300_000 },
         { method: "tools/list", ttlMs: 300_000 },
+        { method: "prompts/list", ttlMs: 300_000 },
         { method: "resources/list", ttlMs: 300_000 },
         { method: "resources/templates/list", ttlMs: 300_000 },
         {

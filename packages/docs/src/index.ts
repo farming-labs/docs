@@ -437,6 +437,7 @@ export type {
   DocsMcpConfig,
   DocsMcpCorsConfig,
   DocsMcpOriginContext,
+  DocsMcpPromptsConfig,
   DocsMcpProtectedResourceConfig,
   DocsMcpSecurityConfig,
   DocsMcpToolsConfig,

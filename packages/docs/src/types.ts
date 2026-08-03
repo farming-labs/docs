@@ -1397,6 +1397,24 @@ export interface DocsMcpToolsConfig {
   getContext?: boolean;
 }
 
+/** Built-in MCP prompt templates projected from documentation contracts and golden tasks. */
+export interface DocsMcpPromptsConfig {
+  /**
+   * Publish structured page agent contracts as MCP prompts.
+   *
+   * `true` publishes every actionable contract. A string array publishes only the
+   * matching page slugs or URL paths. Defaults to `true`.
+   */
+  contracts?: boolean | readonly string[];
+  /**
+   * Golden-task IDs to publish as expectation-blind MCP prompts.
+   *
+   * Only the task query, retrieval scope, and budget are exposed. Evaluator-only
+   * expectations are never included in `prompts/list` or `prompts/get`.
+   */
+  goldenTasks?: readonly string[];
+}
+
 /** Authenticated identity returned by an MCP authentication callback. */
 export interface DocsMcpAuthPrincipal {
   /** Stable identifier for the authenticated user, service, or agent. */
@@ -1518,6 +1536,11 @@ export interface DocsMcpConfig {
   version?: string;
   /** Fine-grained tool toggles. Omitted tools stay enabled. */
   tools?: DocsMcpToolsConfig;
+  /**
+   * Built-in MCP prompts generated from structured agent contracts and explicitly
+   * selected golden tasks. Defaults to all contracts and no golden tasks.
+   */
+  prompts?: boolean | DocsMcpPromptsConfig;
   /** Streamable HTTP security controls. Authentication is opt-in; stdio is unaffected. */
   security?: DocsMcpSecurityConfig;
 }

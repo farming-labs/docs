@@ -2040,6 +2040,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     },
     mcp: config.mcp,
     contentChanges: config.agent?.contentChanges,
+    evaluations: config.agent?.evaluations,
     contentChangeFeed,
     analytics,
     telemetry: config.telemetry,

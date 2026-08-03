@@ -1224,6 +1224,7 @@ function readMcpConfig(
         route: readStringFromBlock(block, "route"),
         name: readStringFromBlock(block, "name"),
         version: readStringFromBlock(block, "version"),
+        prompts: readBooleanFromBlock(block, "prompts"),
         tools: {
           listDocs: readBooleanFromBlock(block, "listDocs"),
           listPages: readBooleanFromBlock(block, "listPages"),
@@ -5046,6 +5047,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     source,
     mcp: mcpConfig,
     contentChanges: options.agent?.contentChanges,
+    evaluations: options.agent?.evaluations,
     contentChangeFeed,
     search: options.search,
     analytics: options.analytics,

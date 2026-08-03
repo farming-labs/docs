@@ -65,7 +65,7 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
   const entry = readStringProperty(content, "entry") ?? "docs";
   const contentDir = resolveDocsContentDir(rootDir, content, entry);
   const navTitle = readNavTitle(content);
-  const mcp = readMcpConfig(content);
+  const mcp = loadedConfig?.mcp ?? readMcpConfig(content);
 
   const filesystemSource = createFilesystemDocsMcpSource({
     rootDir,
@@ -101,6 +101,7 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
     source,
     mcp: resolvedMcp,
     contentChanges: loadedConfig?.agent?.contentChanges,
+    evaluations: loadedConfig?.agent?.evaluations,
     defaultName: navTitle ?? "@farming-labs/docs",
   });
 }
@@ -235,6 +236,7 @@ export function readMcpConfig(content: string): boolean | DocsMcpConfig | undefi
     route: readStringProperty(block, "route"),
     name: readStringProperty(block, "name"),
     version: readStringProperty(block, "version"),
+    prompts: readBooleanProperty(block, "prompts"),
     tools: {
       listDocs: readBooleanProperty(block, "listDocs"),
       listPages: readBooleanProperty(block, "listPages"),
