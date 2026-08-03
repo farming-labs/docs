@@ -2078,6 +2078,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     },
     mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
     contentChanges: config.agent?.contentChanges,
+    evaluations: config.agent?.evaluations,
     contentChangeFeed,
     analytics,
     telemetry: config.telemetry,

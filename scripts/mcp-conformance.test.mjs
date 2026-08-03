@@ -23,11 +23,13 @@ test("selects lifecycle and capability-neutral scenarios for each protocol", () 
     "ping",
     "tools-list",
     "resources-list",
+    "prompts-list",
   ]);
   assert.deepEqual(getMcpConformanceScenarios("2026-07-28"), [
     "server-stateless",
     "tools-list",
     "resources-list",
+    "prompts-list",
     "dns-rebinding-protection",
     "http-header-validation",
   ]);

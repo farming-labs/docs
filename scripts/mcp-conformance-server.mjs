@@ -11,6 +11,15 @@ export const MCP_CONFORMANCE_ADAPTERS = ["next", "tanstack-start", "nuxt", "astr
 const FIXTURE_PAGE = `---
 title: MCP conformance
 description: Adapter-neutral MCP conformance fixture.
+agent:
+  task: Verify the selected adapter exposes a working MCP documentation surface.
+  outcome: MCP prompt, resource, and tool discovery agree across every supported adapter.
+  appliesTo:
+    framework: [nextjs, tanstackstart, nuxt, astro, sveltekit]
+  prerequisites:
+    - Start the adapter-neutral conformance fixture.
+  verification:
+    - Confirm prompts/list returns this structured contract prompt.
 ---
 
 # MCP conformance

@@ -13,7 +13,7 @@ const EXPECTED_FAILURES_PATH = fileURLToPath(
   new URL("./mcp-conformance-expected-failures.yml", import.meta.url),
 );
 
-const SHARED_SCENARIOS = ["tools-list", "resources-list"];
+const SHARED_SCENARIOS = ["tools-list", "resources-list", "prompts-list"];
 const SCENARIOS_BY_PROTOCOL = {
   "2025-11-25": ["server-initialize", "ping", ...SHARED_SCENARIOS],
   "2026-07-28": [

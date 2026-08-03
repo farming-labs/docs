@@ -677,6 +677,10 @@ export default defineDocs({
   mcp: {
     enabled: true,
     name: "@farming-labs/docs",
+    prompts: {
+      contracts: true,
+      goldenTasks: ["install-existing-nextjs", "create-reusable-theme"],
+    },
     tools: {
       listPages: true,
       readPage: true,

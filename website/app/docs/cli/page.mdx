@@ -9,8 +9,6 @@ related:
   - /docs/customization/sitemaps
   - /docs/customization/llms-txt
 agent:
-
-> When golden tasks are configured, `docs review` also checks adversarial safety suites. Without tasks, retrieval, citations, version selection, adversarial safety, executable examples, and token usage are all unmeasured.
   tokenBudget: 1400
   task: Choose and run the appropriate Farming Labs docs CLI workflow for a project.
   outcome: The selected CLI operation completes and the resulting docs configuration passes the agent doctor.
@@ -1402,6 +1400,8 @@ with `--ci`. The review also uses the full docs corpus to catch copied Agent boi
 changed page, statically validates commands and related routes, reports low-confidence config
 loading or public-surface drift, and runs the same configured golden tasks as `docs doctor`.
 The same offline defaults and explicit network, answer-provider, and example-execution opt-ins apply.
+
+> When golden tasks are configured, `docs review` also checks adversarial safety suites. Without tasks, retrieval, citations, version selection, adversarial safety, executable examples, and token usage are all unmeasured.
 
 ```bash title="terminal"
 pnpm exec docs review
