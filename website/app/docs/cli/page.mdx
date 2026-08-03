@@ -700,6 +700,7 @@ pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
 pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --agent --ci --json-output .farming-labs/doctor.json
 pnpm exec docs doctor --agent --fail-on warn
 pnpm exec docs doctor --site --json --fail-on fail
 pnpm exec docs doctor --fix
@@ -833,6 +834,17 @@ Sample shape:
 The JSON report itself is written to stdout. Separate loader notices, such as config fallback
 warnings, are outside the JSON payload.
 
+Use `--ci` when running inside GitHub Actions to emit file/line workflow annotations for each
+finding directly to the job log. Because `--ci` prints annotations to stdout, pair it with
+`--json-output <path>` when the same run must also persist a machine-readable report:
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --ci --json-output .farming-labs/doctor.json
+```
+
+`--json-output <path>` writes the JSON report to a file and accepts both space-separated
+(`--json-output <path>`) and equals-sign (`--json-output=<path>`) forms. It can be combined with
+`--ci`, `--json`, `--strict`, or any other doctor flag.
 ### Hosted agent checks
 
 Add `--url` when you want the doctor to verify a deployed docs site in addition to the local
