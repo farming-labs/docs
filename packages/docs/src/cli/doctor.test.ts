@@ -25,6 +25,10 @@ import {
   runDoctor,
 } from "./doctor.js";
 
+function stripAnsi(value: string): string {
+  return value.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
 function writePackageJson(
   rootDir: string,
   name: string,
@@ -1109,7 +1113,7 @@ pnpm exec docs imaginary
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {
       printAgentDoctorReport(report);
-      const textOutput = logSpy.mock.calls.flat().join("\n");
+      const textOutput = stripAnsi(logSpy.mock.calls.flat().join("\n"));
       expect(textOutput).toContain("app/docs/page.mdx:6");
       expect(textOutput).toContain("Command: pnpm run missing");
       expect(textOutput).toContain('Reason: Command references package script "missing"');
