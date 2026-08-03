@@ -100,6 +100,45 @@ async function callMcpMethod(
   });
 }
 
+const MCP_2026_PROTOCOL_VERSION = "2026-07-28";
+
+async function callModernMcpMethod(
+  handlers: ReturnType<typeof createDocsMcpHttpHandler>,
+  method: string,
+  params: Record<string, unknown> = {},
+  headers: Record<string, string> = {},
+) {
+  return handlers.POST({
+    request: new Request("http://localhost/api/docs/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-method": method,
+        ...(typeof params.uri === "string" ? { "mcp-name": params.uri } : {}),
+        "mcp-protocol-version": MCP_2026_PROTOCOL_VERSION,
+        ...headers,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: `call-modern-${method}`,
+        method,
+        params: {
+          ...params,
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": MCP_2026_PROTOCOL_VERSION,
+            "io.modelcontextprotocol/clientInfo": {
+              name: "cache-hints-test",
+              version: "1.0.0",
+            },
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      }),
+    }),
+  });
+}
+
 function expectSuccessfulStructuredTextResult(payload: {
   result?: {
     content?: Array<{ text?: string }>;
@@ -480,6 +519,13 @@ describe("MCP cursor pagination", () => {
     nextCursor?: string;
   };
 
+  type ProtocolCacheableResult = {
+    resultType?: "complete" | "input_required";
+    ttlMs?: number;
+    cacheScope?: "public" | "private";
+    nextCursor?: string;
+  };
+
   async function readStructuredToolResult<T>(response: Response): Promise<{
     result?: {
       structuredContent?: T;
@@ -517,6 +563,126 @@ Shared MCP cursor marker ${number}.
       };
     });
   }
+
+  it("emits useful public cache hints for completed discovery, every list page, and resource reads", async () => {
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        getPages: () => createPaginationPages(25),
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+    });
+
+    const expectCacheHint = (
+      result: ProtocolCacheableResult | undefined,
+      ttlMs: number,
+      cacheScope: "public" | "private" = "public",
+    ) => {
+      expect(result).toMatchObject({
+        resultType: "complete",
+        ttlMs,
+        cacheScope,
+      });
+    };
+
+    try {
+      const discovery = await parseMcpPayload<{ result?: ProtocolCacheableResult }>(
+        await callModernMcpMethod(handlers, "server/discover"),
+      );
+      expectCacheHint(discovery.result, 300_000);
+
+      for (const method of ["tools/list", "resources/list"] as const) {
+        let cursor: string | undefined;
+        let pageCount = 0;
+        do {
+          const page = await parseMcpPayload<{ result?: ProtocolCacheableResult }>(
+            await callModernMcpMethod(handlers, method, cursor ? { cursor } : {}),
+          );
+          expectCacheHint(page.result, 300_000);
+          cursor = page.result?.nextCursor;
+          pageCount += 1;
+        } while (cursor);
+        expect(pageCount).toBeGreaterThan(1);
+      }
+
+      const templates = await parseMcpPayload<{ result?: ProtocolCacheableResult }>(
+        await callModernMcpMethod(handlers, "resources/templates/list"),
+      );
+      expectCacheHint(templates.result, 300_000);
+
+      const read = await parseMcpPayload<{ result?: ProtocolCacheableResult }>(
+        await callModernMcpMethod(handlers, "resources/read", {
+          uri: "docs://navigation",
+        }),
+      );
+      expectCacheHint(read.result, 60_000);
+
+      const legacy = await parseMcpPayload<{ result?: ProtocolCacheableResult }>(
+        await callMcpMethod(handlers, "resources/read", {
+          uri: "docs://navigation",
+        }),
+      );
+      expect(legacy.result).not.toHaveProperty("ttlMs");
+      expect(legacy.result).not.toHaveProperty("cacheScope");
+    } finally {
+      await handlers.close?.();
+    }
+  });
+
+  it("keeps cacheable MCP results private when their source is authentication-dependent", async () => {
+    const handlers = createDocsMcpHttpHandler({
+      source: {
+        getPages: (_locale, context) => [
+          {
+            slug: "private",
+            url: "/docs/private",
+            title: `Private docs for ${context?.auth?.id ?? "anonymous"}`,
+            content: "Authenticated documentation.",
+          },
+        ],
+        getNavigation: (_locale, context) => ({
+          name: `Private docs for ${context?.auth?.id ?? "anonymous"}`,
+          children: [],
+        }),
+      },
+      mcp: {
+        security: {
+          authenticate: async () => ({ id: "agent-123" }),
+        },
+      },
+    });
+    const authHeaders = { authorization: "Bearer private-token" };
+
+    try {
+      const cases: Array<{
+        method: string;
+        params?: Record<string, unknown>;
+        ttlMs: number;
+      }> = [
+        { method: "server/discover", ttlMs: 300_000 },
+        { method: "tools/list", ttlMs: 300_000 },
+        { method: "resources/list", ttlMs: 300_000 },
+        { method: "resources/templates/list", ttlMs: 300_000 },
+        {
+          method: "resources/read",
+          params: { uri: "docs://navigation" },
+          ttlMs: 60_000,
+        },
+      ];
+
+      for (const testCase of cases) {
+        const payload = await parseMcpPayload<{ result?: ProtocolCacheableResult }>(
+          await callModernMcpMethod(handlers, testCase.method, testCase.params, authHeaders),
+        );
+        expect(payload.result).toMatchObject({
+          resultType: "complete",
+          ttlMs: testCase.ttlMs,
+          cacheScope: "private",
+        });
+      }
+    } finally {
+      await handlers.close?.();
+    }
+  });
 
   it("paginates MCP protocol resources and tools with stable standard cursors", async () => {
     const pages = createPaginationPages(105);
@@ -1356,7 +1522,11 @@ describe("MCP content-change synchronization", () => {
                 "io.modelcontextprotocol/clientCapabilities": {},
               },
               notifications: {
-                resourceSubscriptions: [DOCS_MCP_CONTENT_CHANGES_CURRENT_URI],
+                resourcesListChanged: true,
+                resourceSubscriptions: [
+                  DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+                  "docs://docs/overview",
+                ],
               },
             },
           }),
@@ -1390,8 +1560,11 @@ describe("MCP content-change synchronization", () => {
         ...pages[0]!,
         content: "# Overview\n\nUpdated content.",
       };
-      await readUntil("notifications/resources/updated");
+      await readUntil("notifications/resources/list_changed");
+      await readUntil(`"uri":"${DOCS_MCP_CONTENT_CHANGES_CURRENT_URI}"`);
+      await readUntil('"uri":"docs://docs/overview"');
       expect(received).toContain(`"uri":"${DOCS_MCP_CONTENT_CHANGES_CURRENT_URI}"`);
+      expect(received).toContain("notifications/resources/list_changed");
 
       abortController.abort();
       await reader?.cancel().catch(() => {});
