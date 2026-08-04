@@ -3448,7 +3448,10 @@ function buildGoldenEvaluationCoverage(
     };
   };
   const dimensions = {
-    safety: dimension(tasks.filter((task) => task.safety.expected).length),
+    safety: dimension(
+      tasks.filter((task) => task.safety.cases.length > 0 || task.safety.queryVariants.length > 0)
+        .length,
+    ),
     answerQuality: dimension(tasks.filter((task) => task.answer.expected).length),
     executableExamples: dimension(
       tasks.filter((task) =>

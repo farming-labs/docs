@@ -51,8 +51,8 @@ executes arbitrary documentation snippets or makes implicit network requests.
 
 Golden evaluations default to local `mcp-context`. Configured search, HTTP answers, and runtime
 example execution need explicit network permission. Doctor reports golden-task quality separately
-from evaluation coverage. Safety, actual-answer quality, and execute-level examples remain
-`unmeasured` until tasks explicitly exercise them; partial task coverage is reported as
+from evaluation coverage. Safety, answer quality, and executable examples remain `unmeasured`
+until tasks explicitly exercise them; partial task coverage is reported as
 `partially-measured`. No configured tasks means both quality and coverage are `unmeasured`, not a
 perfect pass.
 

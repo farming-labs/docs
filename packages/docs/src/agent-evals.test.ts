@@ -228,6 +228,34 @@ describe("runDocsGoldenTasks", () => {
     expect(result.score).toBe(100);
   });
 
+  it("keeps an empty safety declaration unmeasured", async () => {
+    const report = await runDocsGoldenTasks(pages, [
+      {
+        ...passingTask,
+        id: "empty-safety",
+        expect: { ...passingTask.expect, safety: {} },
+      },
+    ]);
+
+    expect(report.tasks[0].safety).toMatchObject({
+      expected: true,
+      passed: false,
+      cases: [],
+      queryVariants: [],
+    });
+    expect(report.tasks[0].issues).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("must enable at least one adversarial assertion"),
+      ]),
+    );
+    expect(report.coverage.dimensions.safety).toMatchObject({
+      status: "unmeasured",
+      measuredTaskCount: 0,
+      totalTaskCount: 1,
+      coveragePercent: 0,
+    });
+  });
+
   it("passes first-class adversarial retrieval safety assertions", async () => {
     const safetyPage = page({
       slug: "safe-retrieval",
