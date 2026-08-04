@@ -26,6 +26,7 @@ import type {
   AIConfig,
   OrderingItem,
   PageFrontmatter,
+  TweaksConfig,
   OpenDocsConfig,
   CopyMarkdownConfig,
 } from "@farming-labs/docs";
@@ -37,6 +38,8 @@ import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
+import { TweaksAutoPortalTrigger, TweaksControl } from "./tweaks-dialog.js";
+import { buildFoucScript as buildTweaksFoucScript } from "./tweaks-runtime.js";
 import { withLangInUrl } from "./i18n.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
@@ -984,6 +987,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   // llms.txt config
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
+  const tweaksConfig = resolveTweaksConfig(config.tweaks);
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
@@ -1074,6 +1078,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
     const sidebarFooter = sidebarProps.footer as ReactNode;
 
+    const tweaksAutoTrigger =
+      tweaksConfig.mode !== null &&
+      (tweaksConfig.position === "sidebar-footer" || tweaksConfig.position === "both");
+
     if (i18n) {
       finalSidebarProps.footer = (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1115,6 +1123,32 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+        {tweaksConfig.mode !== null && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: buildTweaksFoucScript(tweaksConfig.storageKey),
+            }}
+          />
+        )}
+        {tweaksConfig.mode !== null && (
+          <Suspense fallback={null}>
+            <TweaksControl
+              mode={tweaksConfig.mode!}
+              knobs={tweaksConfig.knobs}
+              position={tweaksConfig.position}
+              label={tweaksConfig.label}
+              storageKey={tweaksConfig.storageKey}
+              persist={tweaksConfig.persist}
+              fontOptions={tweaksConfig.fontOptions}
+              onApply={tweaksConfig.onApply}
+            />
+          </Suspense>
+        )}
+        {tweaksAutoTrigger && (
+          <Suspense fallback={null}>
+            <TweaksAutoPortalTrigger label={tweaksConfig.label} />
+          </Suspense>
+        )}
         {!staticExport && (
           <Suspense fallback={null}>
             <DocsCommandSearch
@@ -1251,6 +1285,59 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     submitLabel: feedback.submitLabel ?? defaults.submitLabel,
     successMessage: feedback.successMessage ?? defaults.successMessage,
     errorMessage: feedback.errorMessage ?? defaults.errorMessage,
+  };
+}
+
+interface ResolvedTweaksConfig {
+  /**
+   * Which dialog to mount, if any:
+   *   "author" — full knob set + code export (typically dev-only)
+   *   "reader" — limited knob set, public-facing
+   *   null     — no dialog mounted at all
+   */
+  mode: "author" | "reader" | null;
+  knobs: NonNullable<TweaksConfig["knobs"]>;
+  position: "sidebar-footer" | "floating" | "both" | "manual";
+  label: string;
+  storageKey: string;
+  persist: boolean;
+  fontOptions: ReadonlyArray<{ label: string; value: string }> | undefined;
+  onApply: TweaksConfig["onApply"];
+}
+
+function resolveTweaksConfig(tweaks: DocsConfig["tweaks"]): ResolvedTweaksConfig {
+  const defaults: ResolvedTweaksConfig = {
+    mode: null,
+    knobs: ["color", "density", "radius", "preset", "font-family"],
+    position: "both",
+    label: "Tweaks",
+    storageKey: "fd:tweaks:v1",
+    persist: true,
+    fontOptions: undefined,
+    onApply: undefined,
+  };
+
+  if (tweaks === undefined || tweaks === false) return defaults;
+  if (tweaks === true) return { ...defaults, mode: "author" };
+
+  // Author mode supersedes reader when both are set
+  const mode: "author" | "reader" | null = tweaks.author
+    ? "author"
+    : tweaks.reader
+      ? "reader"
+      : null;
+
+  return {
+    mode,
+    knobs: tweaks.knobs ?? defaults.knobs,
+    position: tweaks.position ?? defaults.position,
+    label: tweaks.label ?? defaults.label,
+    storageKey: tweaks.storageKey ?? defaults.storageKey,
+    persist: tweaks.persist !== false,
+    fontOptions: tweaks.fontOptions
+      ? tweaks.fontOptions.map((value: string) => ({ label: value.split(",")[0] ?? value, value }))
+      : undefined,
+    onApply: tweaks.onApply,
   };
 }
 
