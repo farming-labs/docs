@@ -694,6 +694,7 @@ execution require `allowNetwork: true`; callbacks are explicit user code, and ru
 execute only when both the task and `codeBlocks.validate` request it. Configured retrieval uses the
 per-task `searchTimeoutMs` limit, which defaults to 30 seconds.
 
+The doctor separates **golden-task quality** (pass/fail rate across configured expectations) from **evaluation coverage** (which evaluation dimensions are exercised). The three coverage dimensions — safety, answer quality, and executable examples — each report `unmeasured` until at least one configured task explicitly exercises them, and `partially-measured` when only a subset of tasks do. A new `golden-task-coverage` check reports `warn` when any dimension is unmeasured or partially measured. Because incomplete coverage blocks the top grade, a site with unmeasured dimensions scores as **Agent-ready** at most, even when quality is perfect — **Agent-optimized** requires full evaluation coverage.
 Common forms:
 
 ```bash title="terminal"
@@ -745,6 +746,8 @@ Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 37/37 pages (100%)
 Useful Agent blocks: 35/35 • 18/18 actionable pages task-complete
 Golden tasks: 4/4 passed (100/100)
+Golden task quality: 4/4 passed (100/100)
+Evaluation coverage: measured (12/12 task-dimensions, 100%)
 
 PASS Docs API route (10/10)
   Found docs API route at app/api/docs/route.ts.
@@ -820,6 +823,27 @@ Sample shape:
   "evaluations": {
     "status": "failed",
     "score": 88,
+    "taskCount": 4,
+    "passedTaskCount": 3,
+    "failedTaskCount": 1
+  },
+  "evaluations": {
+    "status": "failed",
+    "score": 88,
+    "quality": {
+      "status": "failed",
+      "passed": false,
+      "score": 88,
+      "taskCount": 4,
+      "passedTaskCount": 3,
+      "failedTaskCount": 1
+    },
+    "coverage": {
+      "status": "partially-measured",
+      "measuredTaskDimensions": 5,
+      "totalTaskDimensions": 12,
+      "coveragePercent": 42
+    },
     "taskCount": 4,
     "passedTaskCount": 3,
     "failedTaskCount": 1
