@@ -123,6 +123,40 @@ describe("runDocsGoldenTasks", () => {
       taskCount: 0,
       passedTaskCount: 0,
       failedTaskCount: 0,
+      quality: {
+        status: "unmeasured",
+        passed: null,
+        score: null,
+        taskCount: 0,
+        passedTaskCount: 0,
+        failedTaskCount: 0,
+      },
+      coverage: {
+        status: "unmeasured",
+        measuredTaskDimensions: 0,
+        totalTaskDimensions: 0,
+        coveragePercent: 0,
+        dimensions: {
+          safety: {
+            status: "unmeasured",
+            measuredTaskCount: 0,
+            totalTaskCount: 0,
+            coveragePercent: 0,
+          },
+          answerQuality: {
+            status: "unmeasured",
+            measuredTaskCount: 0,
+            totalTaskCount: 0,
+            coveragePercent: 0,
+          },
+          executableExamples: {
+            status: "unmeasured",
+            measuredTaskCount: 0,
+            totalTaskCount: 0,
+            coveragePercent: 0,
+          },
+        },
+      },
       tasks: [],
     });
   });
@@ -133,6 +167,22 @@ describe("runDocsGoldenTasks", () => {
 
     expect(report.status).toBe("passed");
     expect(report.passed).toBe(true);
+    expect(report.quality).toMatchObject({
+      status: "passed",
+      passed: true,
+      score: 100,
+      taskCount: 1,
+    });
+    expect(report.coverage).toMatchObject({
+      status: "unmeasured",
+      measuredTaskDimensions: 0,
+      totalTaskDimensions: 3,
+      dimensions: {
+        safety: { status: "unmeasured", measuredTaskCount: 0 },
+        answerQuality: { status: "unmeasured", measuredTaskCount: 0 },
+        executableExamples: { status: "unmeasured", measuredTaskCount: 0 },
+      },
+    });
     expect(result.retrieval).toMatchObject({
       recallAtK: 1,
       firstRelevantRank: 1,
@@ -176,6 +226,34 @@ describe("runDocsGoldenTasks", () => {
     expect(result.usage.conservativeTokenUpperBound).toBe(result.usage.usedUtf8Bytes);
     expect(result.usage.usedUtf8Bytes).toBeLessThanOrEqual(result.usage.tokenBudget);
     expect(result.score).toBe(100);
+  });
+
+  it("keeps an empty safety declaration unmeasured", async () => {
+    const report = await runDocsGoldenTasks(pages, [
+      {
+        ...passingTask,
+        id: "empty-safety",
+        expect: { ...passingTask.expect, safety: {} },
+      },
+    ]);
+
+    expect(report.tasks[0].safety).toMatchObject({
+      expected: true,
+      passed: false,
+      cases: [],
+      queryVariants: [],
+    });
+    expect(report.tasks[0].issues).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("must enable at least one adversarial assertion"),
+      ]),
+    );
+    expect(report.coverage.dimensions.safety).toMatchObject({
+      status: "unmeasured",
+      measuredTaskCount: 0,
+      totalTaskCount: 1,
+      coveragePercent: 0,
+    });
   });
 
   it("passes first-class adversarial retrieval safety assertions", async () => {
@@ -257,6 +335,12 @@ Use the verified public configuration and preserve its canonical citation.
         { kind: "ambiguous", passed: true },
         { kind: "typo", passed: true },
       ],
+    });
+    expect(report.coverage.dimensions.safety).toMatchObject({
+      status: "measured",
+      measuredTaskCount: 1,
+      totalTaskCount: 1,
+      coveragePercent: 100,
     });
     expect(report.tasks[0].score).toBe(100);
   });

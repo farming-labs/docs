@@ -150,6 +150,10 @@ export { renderDocsAgentSkillsBundle } from "./agent-skills-vite.js";
 export type {
   DocsGoldenAnswerMetrics,
   DocsGoldenCitationMetrics,
+  DocsGoldenEvaluationCoverage,
+  DocsGoldenEvaluationCoverageStatus,
+  DocsGoldenEvaluationDimensionCoverage,
+  DocsGoldenEvaluationQuality,
   DocsGoldenEvaluationStatus,
   DocsGoldenExampleMetrics,
   DocsGoldenExampleResult,

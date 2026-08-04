@@ -82,6 +82,7 @@ const EXECUTABLE_LANGUAGES = new Set([
 ]);
 
 export type DocsGoldenEvaluationStatus = "unmeasured" | "passed" | "failed";
+export type DocsGoldenEvaluationCoverageStatus = "measured" | "partially-measured" | "unmeasured";
 
 export type DocsGoldenTaskFilters = DocsAgentGoldenTaskFilters;
 export type DocsGoldenExpectedExample = DocsAgentGoldenExpectedExample;
@@ -255,11 +256,44 @@ export interface DocsGoldenTaskReport {
 export interface DocsGoldenTasksReport {
   status: DocsGoldenEvaluationStatus;
   passed: boolean | null;
+  /** Compatibility alias for quality.score. */
   score: number | null;
   taskCount: number;
   passedTaskCount: number;
   failedTaskCount: number;
+  /** Quality across only the expectations configured by each task. */
+  quality: DocsGoldenEvaluationQuality;
+  /** Coverage is intentionally separate so absent evaluation dimensions cannot look perfect. */
+  coverage: DocsGoldenEvaluationCoverage;
   tasks: DocsGoldenTaskReport[];
+}
+
+export interface DocsGoldenEvaluationQuality {
+  status: DocsGoldenEvaluationStatus;
+  passed: boolean | null;
+  score: number | null;
+  taskCount: number;
+  passedTaskCount: number;
+  failedTaskCount: number;
+}
+
+export interface DocsGoldenEvaluationDimensionCoverage {
+  status: DocsGoldenEvaluationCoverageStatus;
+  measuredTaskCount: number;
+  totalTaskCount: number;
+  coveragePercent: number;
+}
+
+export interface DocsGoldenEvaluationCoverage {
+  status: DocsGoldenEvaluationCoverageStatus;
+  measuredTaskDimensions: number;
+  totalTaskDimensions: number;
+  coveragePercent: number;
+  dimensions: {
+    safety: DocsGoldenEvaluationDimensionCoverage;
+    answerQuality: DocsGoldenEvaluationDimensionCoverage;
+    executableExamples: DocsGoldenEvaluationDimensionCoverage;
+  };
 }
 
 interface NormalizedScope {
@@ -3394,6 +3428,62 @@ async function evaluateTask(
  * Configured external retrieval, HTTP answers, and runtime execution require explicit opt-in.
  * An empty task list is intentionally unmeasured so CI cannot turn absent coverage into a pass.
  */
+function buildGoldenEvaluationCoverage(
+  tasks: readonly DocsGoldenTaskReport[],
+): DocsGoldenEvaluationCoverage {
+  const totalTaskCount = tasks.length;
+  const dimension = (measuredTaskCount: number): DocsGoldenEvaluationDimensionCoverage => {
+    const coveragePercent =
+      totalTaskCount === 0 ? 0 : Math.round((measuredTaskCount / totalTaskCount) * 100);
+    return {
+      status:
+        measuredTaskCount === 0
+          ? "unmeasured"
+          : measuredTaskCount === totalTaskCount
+            ? "measured"
+            : "partially-measured",
+      measuredTaskCount,
+      totalTaskCount,
+      coveragePercent,
+    };
+  };
+  const dimensions = {
+    safety: dimension(
+      tasks.filter((task) => task.safety.cases.length > 0 || task.safety.queryVariants.length > 0)
+        .length,
+    ),
+    answerQuality: dimension(tasks.filter((task) => task.answer.expected).length),
+    executableExamples: dimension(
+      tasks.filter((task) =>
+        task.examples.results.some((result) => result.verification === "execute"),
+      ).length,
+    ),
+  };
+  const dimensionValues = Object.values(dimensions);
+  const measuredTaskDimensions = dimensionValues.reduce(
+    (total, value) => total + value.measuredTaskCount,
+    0,
+  );
+  const totalTaskDimensions = totalTaskCount * dimensionValues.length;
+  const coveragePercent =
+    totalTaskDimensions === 0
+      ? 0
+      : Math.round((measuredTaskDimensions / totalTaskDimensions) * 100);
+
+  return {
+    status:
+      coveragePercent === 100
+        ? "measured"
+        : coveragePercent === 0
+          ? "unmeasured"
+          : "partially-measured",
+    measuredTaskDimensions,
+    totalTaskDimensions,
+    coveragePercent,
+    dimensions,
+  };
+}
+
 export async function runDocsGoldenTasks(
   pages: readonly DocsMcpPage[],
   tasks: readonly DocsGoldenTask[] | undefined,
@@ -3408,6 +3498,15 @@ export async function runDocsGoldenTasks(
       taskCount: 0,
       passedTaskCount: 0,
       failedTaskCount: 0,
+      quality: {
+        status: "unmeasured",
+        passed: null,
+        score: null,
+        taskCount: 0,
+        passedTaskCount: 0,
+        failedTaskCount: 0,
+      },
+      coverage: buildGoldenEvaluationCoverage([]),
       tasks: [],
     };
   }
@@ -3429,13 +3528,18 @@ export async function runDocsGoldenTasks(
   );
   const passedTaskCount = reports.filter((task) => task.passed).length;
   const failedTaskCount = reports.length - passedTaskCount;
-  return {
-    status: failedTaskCount === 0 ? "passed" : "failed",
+  const quality = {
+    status: failedTaskCount === 0 ? ("passed" as const) : ("failed" as const),
     passed: failedTaskCount === 0,
     score: round(reports.reduce((sum, task) => sum + task.score, 0) / reports.length),
     taskCount: reports.length,
     passedTaskCount,
     failedTaskCount,
+  };
+  return {
+    ...quality,
+    quality,
+    coverage: buildGoldenEvaluationCoverage(reports),
     tasks: reports,
   };
 }

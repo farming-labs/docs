@@ -50,7 +50,10 @@ Command health is static. It recognizes constrained package/CLI commands and saf
 executes arbitrary documentation snippets or makes implicit network requests.
 
 Golden evaluations default to local `mcp-context`. Configured search, HTTP answers, and runtime
-example execution need explicit network permission. No configured tasks means `unmeasured`, not a
+example execution need explicit network permission. Doctor reports golden-task quality separately
+from evaluation coverage. Safety, answer quality, and executable examples remain `unmeasured`
+until tasks explicitly exercise them; partial task coverage is reported as
+`partially-measured`. No configured tasks means both quality and coverage are `unmeasured`, not a
 perfect pass.
 
 ## Hosted probes
@@ -83,7 +86,8 @@ Score: 82% (Agent-ready)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 10/41 pages (24%)
 Useful Agent blocks: 8/14 • 6/12 actionable pages task-complete
-Golden tasks: 3/4 passed (88/100)
+Golden task quality: 3/4 passed (88/100)
+Evaluation coverage: partially-measured (5/12 task-dimensions, 42%)
 ```
 
 Explain:
