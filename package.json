@@ -72,6 +72,7 @@
       "undici": "7.29.0",
       "postcss@<=8.5.17": "8.5.18",
       "seroval@<=1.5.2": "1.5.3",
+      "ip-address@<=10.3.0": "10.4.0",
       "ws": "^8.21.0",
       "readdir-glob>minimatch": "10.2.4",
       "glob@10>minimatch": "10.2.4",
