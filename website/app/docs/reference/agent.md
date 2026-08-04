@@ -1,90 +1,126 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:196e9e5dd8fb1f2f
+sourceHash=fnv1a64:4d985abdc02e6e10
 settingsHash=fnv1a64:aa433a28ef4afd1f
-outputHash=fnv1a64:99e9aed8b5d79935
-generatedAt=2026-08-01T13:49:56.427Z
+outputHash=fnv1a64:173fd105503fea58
+generatedAt=2026-08-04T11:40:37.014Z
 -->
 # API Reference
+URL: /docs/reference
+LLM index: /llms.txt
+Description: Complete reference for all configuration options
+Related: /docs/configuration, /docs/cli, /docs/installation, /docs/customization/mcp
 
-## API Reference task
+Inspect the existing `defineDocs()` call and select the exact exported `DocsConfig` field documented below. Config path: `docs.config.ts[x]` for Next.js, TanStack Start, and Nuxt; `src/lib/docs.config.ts` for SvelteKit and Astro. Non-Next adapters can configure `contentDir` and `nav` explicitly; Next.js derives its content tree from `app/{entry}/`.
 
-Task: Select and configure the exact typed Farming Labs docs option required by a project.
+When MCP `get_config_schema` publishes the option, compare its type and default; otherwise verify against installed exported types. Run `pnpm exec docs doctor --agent` for resolved capability and discovery fields. For SvelteKit or Astro, append `--config src/lib/docs.config.ts`. If TypeScript rejects the documented shape, align all `@farming-labs/*` package versions and rename config to `.tsx` when it contains JSX. If diagnostics and public discovery disagree, restore the previous value and repair the adapter route or stale static export before re-enabling.
 
-Expected result: The chosen defineDocs option has the documented type and default and the resolved runtime exposes matching behavior.
-## API Reference prerequisites
+All types exported from `@farming-labs/docs`.
 
-- Identify the project framework and the exact capability being configured.
-- Read the existing docs.config before changing nested options or callbacks.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+---
 
-## API Reference verification
+## `defineDocs(config)`
 
-- Run pnpm exec docs doctor --agent. Expected: Config loading confidence and discovery/config/schema consistency pass after the option change.
-- Query MCP get_config_schema for the changed option. Expected: The returned type, default, and description match the option used in docs.config.
-- Failure: TypeScript rejects a documented option.
-- Recovery: Confirm all Farming Labs packages use the same version and use docs.config.tsx when JSX is present.
-- Rollback: Restore the previous option value and any route wiring or environment variables added with it.
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
 
-## API Reference agent guidance
+export default defineDocs({
+  entry: "docs",
+  // ...all options below
+});
+```
 
-Before changing configuration, inspect the existing `defineDocs()` call and select the exact
-exported `DocsConfig` field or nested type documented below. Preserve the framework's config path:
-`docs.config.ts[x]` for Next.js, TanStack Start, and Nuxt, or `src/lib/docs.config.ts` for SvelteKit
-and Astro. The non-Next adapters can configure `contentDir` and `nav` explicitly, while Next.js
-derives its content tree from `app/{entry}/`.
+---
 
-When MCP `get_config_schema` publishes the option, compare its type and default; otherwise verify
-against the installed exported types and matching-version reference. Then run
-`pnpm exec docs doctor --agent` for the resolved capability and discovery fields it audits. For
-SvelteKit or Astro, append `--config src/lib/docs.config.ts`. If TypeScript rejects the documented
-shape, first align all `@farming-labs/*` package versions and rename the config to `.tsx` when it
-contains JSX. If diagnostics and public discovery disagree, restore the previous value and repair
-the adapter route or stale static export before enabling the capability again.
+## `DocsConfig`
 
-## API Reference Agent Skills progressive disclosure
+### `DocsLocalMcpSearchRuntimeConfig`
 
-`agent.skills` accepts a path, an array of paths, or an object with `paths` and an optional
-`progressiveDisclosure` policy. Use `maxSkillLines`, `instructionTokenBudget`, and
-`maxReferenceDepth` to bound activated context. Set `compatibility` to `"when-needed"` (default),
-`"always"`, or `"off"`; use `checkScripts` to verify that bundled scripts document dependencies
-and validation. `docs doctor --agent` checks every configured skill, while `docs review` runs the
-same checks when a configured skill, companion file, or docs config changes.
+Runtime shape for whether the local MCP server is the search target. Exported from `@farming-labs/docs` and `@farming-labs/docs/server`.
 
-## API Reference PageAgentFrontmatter fields
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `enabled` | `boolean` | Whether the local MCP server is enabled |
+| `route` | `string` | Canonical HTTP route for the local MCP endpoint (e.g. `"/api/docs/mcp"`) |
+| `tools` | `{ searchDocs?: boolean }` | `searchDocs` controls whether `search_docs` is exposed |
 
-`PageAgentFrontmatter` defines `task`, `outcome`, `appliesTo`, `prerequisites`, `verification`, `rollback`, and `failureModes`; each failure mode pairs a `symptom` with its `resolution`.
+### `DocsLocalMcpSearchRuntimeInput`
 
-## PageAgentFrontmatter task outcome appliesTo verification rollback failureModes
+Accepted input for `resolveLocalDocsMcpSearchConfig`. Partial form of `DocsLocalMcpSearchRuntimeConfig` — all fields optional. Exported from `@farming-labs/docs` and `@farming-labs/docs/server`.
 
-In `page-frontmatter.md`, the exact fields are `task`, `outcome`, `appliesTo`, `verification`, `rollback`, and `failureModes`. Each failure mode contains a `symptom` and a `resolution`; the recovery example uses `resolution: Confirm withDocs wraps the Next.js config`.
+### `DocsSearchRequestResolutionOptions`
 
-## PageAgentFrontmatter exact page-frontmatter.md example
+Options for the third parameter of `resolveSearchRequestConfig`. Exported from `@farming-labs/docs` and `@farming-labs/docs/server`.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `localMcp` | `DocsLocalMcpSearchRuntimeInput \| null \| undefined` | When present, calls `resolveLocalDocsMcpSearchConfig` before the self-referential URL check |
+
+### `resolveLocalDocsMcpSearchConfig`
+
+Exported from `@farming-labs/docs` and `@farming-labs/docs/server`. Given a `McpDocsSearchConfig`, optional `DocsLocalMcpSearchRuntimeInput`, and optional request URL, returns a modified search config using direct simple search when the configured MCP endpoint resolves to the local server. Returns original config unchanged for external endpoints.
+
+```ts
+import { resolveLocalDocsMcpSearchConfig } from "@farming-labs/docs";
+
+const resolved = resolveLocalDocsMcpSearchConfig(
+  search,       // McpDocsSearchConfig
+  mcp,          // DocsLocalMcpSearchRuntimeInput | null | undefined
+  requestUrl,   // string | undefined
+);
+```
+
+`resolveSearchRequestConfig` accepts an optional third `options: DocsSearchRequestResolutionOptions` argument. Pass `{ localMcp: config.mcp }` to enable local-MCP detection in custom server adapters.
+
+Top-level configuration object passed to `defineDocs()`:
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `entry` | `string` | **required** | Docs source route and folder (e.g. `"docs"` -> `app/docs`) |
+| `docsPath` | `string` | same as `entry` | Public docs route prefix in Next.js. Use `""` to serve docs from `/` |
+| `contentDir` | `string` | same as `entry` | Path to content files. TanStack Start, SvelteKit, Astro, and Nuxt use it; Next.js uses `app/{entry}/` |
+| `staticExport` | `boolean` | `false` | `true` for full static builds; hides search and AI |
+| `theme` | `DocsTheme` | — | Theme preset (`fumadocs()`, `darksharp()`, `pixelBorder()`, etc.) |
+| `github` | `string \| GithubConfig` | — | GitHub repo config for "Edit on GitHub" links |
+| `nav` | `DocsNav` | — | Sidebar header title and URL |
+| `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
+| `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
+| `sidebar` | `boolean \| SidebarConfig` | `true` | Sidebar visibility and customization |
+| `icons` | `Record<string, unknown>` | — | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
+| `components` | `Record<string, unknown>` | — | Custom MDX component overrides including built-ins like `HoverLink` and `Prompt` |
+| `analytics` | `boolean \| DocsAnalyticsConfig` | `false` | Product/usage event stream for docs UI, search, AI, feedback, agent reads |
+
+Page-level metadata for machine-readable docs workflows:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `tokenBudget` | `number` | Approximate output token target for `docs agent compact` on this page |
+| `task` | `string` | Concrete task the page helps an agent complete |
+| `outcome` | `string` | Observable end state indicating completion |
+| `appliesTo` | `{ framework?, version?, package? }` | Each accepts a string or string array |
+| `prerequisites` | `string[]` | Setup or conditions that must already be true |
+| `files` | `string[]` | Files the task is expected to read or change |
+| `commands` | `(string \| PageAgentCommand)[]` | Command strings or `{ run, cwd?, description? }` objects |
+| `sideEffects` | `string[]` | Material state changes or external effects |
+| `verification` | `(string \| PageAgentVerification)[]` | Checks or `{ description?, run?, expect? }` objects |
+| `rollback` | `string[]` | Steps that restore the prior state |
+| `failureModes` | `(string \| PageAgentFailureMode)[]` | Symptoms or `{ symptom, resolution? }` objects |
+
+## PageAgentFrontmatter field types
+
+`PageAgentFrontmatter` defines `task`, `outcome`, `appliesTo`, `prerequisites`, `verification`, `rollback`, and `failureModes`; every structured failure mode pairs a `symptom` with its `resolution`.
+
+## PageAgentFrontmatter failureModes resolution
+
+In `page-frontmatter.md`, use `failureModes` for recoverable failures. The exact example resolves a missing route with `resolution: Confirm withDocs wraps the Next.js config`.
 
 ```md title="page-frontmatter.md"
 ---
 title: "Installation"
-description: "Install the framework"
 agent:
-  tokenBudget: 777
   task: Install the framework
   outcome: The docs route renders locally.
-  appliesTo:
-    framework: nextjs
-    version: ">=16"
-    package: "@farming-labs/next"
-  prerequisites:
-    - The app uses the App Router
-  files:
-    - package.json
-    - next.config.ts
-  commands:
-    - run: pnpm add @farming-labs/docs @farming-labs/next
-      description: Install the required packages
-  verification:
-    - run: pnpm dev
-      expect: The docs route returns HTTP 200
   failureModes:
     - symptom: The route returns 404
       resolution: Confirm withDocs wraps the Next.js config
