@@ -35,6 +35,7 @@ overrides:
   undici: 7.29.0
   postcss@<=8.5.17: 8.5.18
   seroval@<=1.5.2: 1.5.3
+  ip-address@<=10.3.0: 10.4.0
   ws: ^8.21.0
   readdir-glob>minimatch: 10.2.4
   glob@10>minimatch: 10.2.4
@@ -5227,8 +5228,8 @@ packages:
     resolution: {integrity: sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A==}
     engines: {node: '>=12.22.0'}
 
-  ip-address@10.1.0:
-    resolution: {integrity: sha512-XXADHxXmvT9+CRxhXg56LJovE+bmWnEWB78LB83VZTprKTmaC5QfruXocxzTZ2Kl0DNwKuBdlIhjL8LeY8Sf8Q==}
+  ip-address@10.4.0:
+    resolution: {integrity: sha512-oSK96Grm3aP6OrS263xVxbNDGVL7rzBtYdpGqlDG8iQdoenDoTs/nkki+DflYbAEE8Xl6o5YxhxlrKvI3nqKXQ==}
     engines: {node: '>= 12'}
 
   iron-webcrypto@1.2.1:
@@ -12600,7 +12601,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ip-address@10.1.0: {}
+  ip-address@10.4.0: {}
 
   iron-webcrypto@1.2.1: {}
 
@@ -14928,7 +14929,7 @@ snapshots:
 
   socks@2.8.7:
     dependencies:
-      ip-address: 10.1.0
+      ip-address: 10.4.0
       smart-buffer: 4.2.0
 
   source-map-js@1.2.1: {}
