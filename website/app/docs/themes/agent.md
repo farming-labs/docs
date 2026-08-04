@@ -1,20 +1,19 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:435214e238ba8714
+sourceHash=fnv1a64:4bb6c5241a575cbf
 settingsHash=fnv1a64:b2106dff2d4f1f98
-outputHash=fnv1a64:d56b7fd0ce59bc24
-generatedAt=2026-07-30T09:43:36.702Z
+outputHash=fnv1a64:75c3aeaa240cd419
+generatedAt=2026-08-04T11:33:15.461Z
 -->
 # Themes
+URL: /docs/themes
+Description: Built-in themes and how to create your own
+Related: /docs/themes/creating-themes, /docs/configuration, /docs/customization/colors, /docs/customization/typography
 
-## Themes task
+Select factory and package subpath as a pair—e.g., `pixelBorder` from `@farming-labs/theme/pixel-border` with `theme: pixelBorder()`—then import `@farming-labs/theme/pixel-border/css` globally. Use `createTheme()` for custom factories and `extendTheme()` to derive from a preset. If visuals don't change, fix the CSS entrypoint; if the factory can't be resolved, copy its exact export and import path from the table below.
 
-Task: Select and apply a built-in or custom theme to a Farming Labs docs site.
-
-Expected result: docs.config and the global stylesheet reference the same theme and docs pages render its visual defaults.
-
-Exact implementation:
+## Using a Theme
 
 ```tsx title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -30,21 +29,17 @@ export default defineDocs({
 @import "tailwindcss";
 @import "@farming-labs/theme/pixel-border/css";
 ```
-## Themes prerequisites
 
-- The docs app and its framework-specific global stylesheet already work.
-- Choose a built-in preset before creating a custom theme unless requirements demand custom tokens.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs, @farming-labs/theme.
+## Built-in Themes
 
-## Themes verification
-
-- Build and open a docs page containing navigation, code, callouts, and tables. Expected: The production build succeeds and all elements use the selected theme without an unstyled flash.
-- Failure: The selected theme has no visual effect.
-- Recovery: Import the matching theme CSS in the global stylesheet and restart the framework dev server.
-- Rollback: Restore the previous theme factory and matching CSS import.
-
-## Themes agent guidance
-
-Select the factory and package subpath as a pair—for example, `pixelBorder` from `@farming-labs/theme/pixel-border` with `theme: pixelBorder()`—then import the matching `@farming-labs/theme/pixel-border/css` globally.
-Test navigation, code blocks, callouts, and tables after switching presets. Use `createTheme()` for a reusable custom factory and `extendTheme()` to derive a theme from an existing preset.
-If config builds but visuals do not change, repair the CSS entrypoint; if the factory cannot be resolved, copy its exact export and import path from the built-in themes table.
+| Theme | Import | Description |
+|---|---|---|
+| [Default](/docs/themes/default) | `@farming-labs/theme` | Neutral colors, standard radius |
+| [Colorful](/docs/themes/colorful) | `@farming-labs/theme/colorful` | Warm amber accent, Inter typography |
+| [Darksharp](/docs/themes/darksharp) | `@farming-labs/theme/darksharp` | All-black, sharp corners |
+| [Pixel Border](/docs/themes/pixel-border) | `@farming-labs/theme/pixel-border` | Inspired by better-auth.com |
+| [Shiny](/docs/themes/shiny) | `@farming-labs/theme/shiny` | Clerk-inspired, purple accents |
+| [Threadline](/docs/themes/threadline) | `@farming-labs/theme/threadline` | Compact neutral shell for chat and agent docs |
+| [DarkBold](/docs/themes/darkbold) | `@farming-labs/theme/darkbold` | Pure monochrome, Geist typography |
+| [GreenTree](/docs/themes/greentree) | `@farming-labs/theme/greentree` | Mintlify-inspired, emerald green accent |
+| [Concrete](/docs/themes/concrete) | `@farming-labs/theme/concrete` | Gray architectural surfaces |

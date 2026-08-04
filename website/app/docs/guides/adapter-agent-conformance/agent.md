@@ -1,69 +1,52 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:39c61f7a4d47cc7d
+sourceHash=fnv1a64:5364738b43bfa549
 settingsHash=fnv1a64:1b5212557ba75927
-outputHash=fnv1a64:a2e521aa2c2f844c
-generatedAt=2026-07-30T09:43:36.482Z
+outputHash=fnv1a64:a83cd1b06f2d79ce
+generatedAt=2026-08-04T11:32:22.439Z
 -->
 # Adapter Agent Conformance
+URL: /docs/guides/adapter-agent-conformance
+LLM index: /llms.txt
+Description: Validate that a framework adapter exposes the same agent-readable documentation contract as the first-party adapters
+Related: /docs/guides/agent-friendly-docs, /docs/customization/mcp, /docs/customization/llms-txt, /docs/customization/sitemaps, /docs/cli
 
-## Adapter Agent Conformance task
+Every `@farming-labs/docs` adapter should expose the same machine-readable surface. The shared conformance runner turns that expectation into an executable contract.
 
-Task: Add the shared agent-surface conformance suite to a framework adapter.
+Use `runDocsAgentConformance` when building or changing a framework adapter. Provide one callback dispatching GET requests to the adapter's public handler and the `mcp` case to its MCP POST handler. Use fixture titles `Introduction` and `Bonjour` for default and localized Markdown. A passing report must contain no failed cases.
 
-Expected result: The adapter passes the same discovery, Markdown, sitemap, robots, skills, MCP, and paginated search contract as first-party adapters.
-
-Exact implementation:
+## Exact implementation
 
 ```ts title="src/agent-conformance.test.ts" framework="custom" runnable
-import { expect, it } from "vitest";
 import { runDocsAgentConformance } from "@farming-labs/docs";
-import { createDocsServer } from "./server";
 
-it("implements the agent surface contract", async () => {
-  const server = createDocsServer({
-    entry: "docs",
-    i18n: { locales: ["en", "fr"], defaultLocale: "en" },
-    mcp: true,
-    sitemap: true,
-    robots: true,
-    _preloadedContent: {
-      "/docs/en/page.md": "---\ntitle: Introduction\n---\n# Introduction",
-      "/docs/fr/page.md": "---\ntitle: Introduction\n---\n# Introduction\n\nBonjour",
+export async function verifyAdapter() {
+  return runDocsAgentConformance({
+    adapter: "nextjs",
+    async handle(request) {
+      return fetch(request);
     },
   });
-
-  const report = await runDocsAgentConformance({
-    adapter: "sveltekit",
-    async handle(request, surface) {
-      if (surface === "mcp") {
-        return server.MCP.POST({ request });
-      }
-
-      return server.GET({ request, url: new URL(request.url) });
-    },
-  });
-
-  expect(report.cases.filter((result) => !result.passed)).toEqual([]);
-});
+}
 ```
-## Adapter Agent Conformance prerequisites
 
-- The adapter exposes one request handler that can serve the shared docs API and public aliases.
-- A test fixture contains at least one docs page and can issue Web Request objects to the adapter.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+## Covered surfaces
 
-## Adapter Agent Conformance verification
+Versioned contract (`DOCS_AGENT_CONTRACT_VERSION` `1.3`) verifies:
 
-- Run the adapter test containing runDocsAgentConformance. Expected: The report contains no failed cases and identifies the expected contract version.
-- Failure: One public alias fails while the canonical docs API passes.
-- Recovery: Forward the alias through the same shared server and preserve its method, headers, status, and response body.
-- Rollback: Restore the previous adapter handler and remove only the conformance wiring introduced by the change.
+- Custom agent discovery, RFC 9727 API catalog GET/HEAD, Agent Skills index/artifact GET/HEAD, config, diagnostics, and feedback schema
+- Explicit `.md` aliases and `Accept: text/markdown` negotiation
+- Default and localized page content; actionable missing-page recovery
+- `llms.txt`, `llms-full.txt`, `AGENTS.md`, `skill.md`
+- XML and Markdown sitemaps plus `robots.txt`
+- Streamable HTTP MCP initialize request
+- Gzip-encoded tar archive delivery of SKILL.md (decompressed via `readAgentSkillDocumentFromTar`)
+- SKILL.md frontmatter validated against full spec — unexpected fields like `version` and incorrect `allowed-tools` type are conformance failures
+- Cursor-based structured search pagination
+- `capabilities.contentChanges` flag and live `GET /api/docs?audience=agent&response=changes` returning valid `docs-content-changes.v1` JSON with `indexGeneration`, `mode`, `resetRequired`, `documentCount`, and array fields; ETag and body-free delivery verified
+- HTTP cache validators on every agent-surface response
 
-## Adapter Agent Conformance agent guidance
+## Cursor-based structured search
 
-Use `runDocsAgentConformance` when building or changing a framework adapter. Provide one callback
-that dispatches ordinary requests to the adapter's public GET handler and the `mcp`
-case to its MCP POST handler. Use the standard fixture titles `Introduction` and `Bonjour` so the
-contract can verify default and localized Markdown. A passing report must contain no failed cases.
+- `GET /api/docs?response=structured&query=<term>&limit=1` returns `hasMore`, `total`, and `nextCursor`.
