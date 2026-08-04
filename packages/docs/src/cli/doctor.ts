@@ -1040,7 +1040,11 @@ function gradeForAgentScore(
   const hasBlockingFailure = checks.some(
     (check) => check.status === "fail" && AGENT_OPTIMIZATION_BLOCKING_CHECKS.has(check.id),
   );
-  if (score >= 90 && !hasBlockingFailure) return "Agent-optimized";
+  const hasIncompleteEvaluationCoverage = checks.some(
+    (check) => check.id === "golden-task-coverage" && check.status !== "pass",
+  );
+  if (score >= 90 && !hasBlockingFailure && !hasIncompleteEvaluationCoverage)
+    return "Agent-optimized";
   if (score >= 75) return "Agent-ready";
   if (score >= 60) return "Promising";
   return "Needs work";
@@ -3837,31 +3841,52 @@ export async function inspectAgentReadiness(
     values.length === 0
       ? 0
       : Math.round((values.reduce((total, value) => total + value, 0) / values.length) * 100) / 100;
+  const evaluationQuality = evaluations.quality;
   const proportionalEvaluationScore =
-    evaluations.score === null ? 0 : Math.round((evaluations.score / 100) * 15);
+    evaluationQuality.score === null ? 0 : Math.round((evaluationQuality.score / 100) * 10);
   const evaluationScore =
-    evaluations.status === "failed"
-      ? Math.min(14, proportionalEvaluationScore)
+    evaluationQuality.status === "failed"
+      ? Math.min(9, proportionalEvaluationScore)
       : proportionalEvaluationScore;
-  const safetyEvaluations = evaluations.tasks.filter((task) => task.safety.expected);
-  const safetyEvaluationSummary = safetyEvaluations.length
-    ? `${safetyEvaluations.filter((task) => task.safety.passed).length}/${safetyEvaluations.length} adversarial safety suites passed`
-    : "no adversarial safety suites configured";
   checks.push(
     makeCheck(
       "golden-tasks",
-      "Golden agent tasks",
-      evaluations.status === "passed" ? "pass" : evaluations.status === "failed" ? "fail" : "warn",
+      "Golden task quality",
+      evaluationQuality.status === "passed"
+        ? "pass"
+        : evaluationQuality.status === "failed"
+          ? "fail"
+          : "warn",
       evaluationScore,
-      15,
-      evaluations.status === "unmeasured"
-        ? "No golden agent tasks are configured; retrieval usefulness is unmeasured."
-        : `${evaluations.passedTaskCount}/${evaluations.taskCount} golden tasks passed with ${evaluations.score}/100 average score, ${averageMetric(evaluations.tasks.map((task) => task.retrieval.recallAtK))} retrieval recall, ${averageMetric(evaluations.tasks.map((task) => task.citations.recall))} citation recall, ${safetyEvaluationSummary}, and ${evaluations.tasks.reduce((total, task) => total + task.usage.usedUtf8Bytes, 0)} UTF-8 context bytes used.`,
-      evaluations.status === "passed"
+      10,
+      evaluationQuality.status === "unmeasured"
+        ? "No golden agent tasks are configured; evaluation quality is unmeasured."
+        : `${evaluationQuality.passedTaskCount}/${evaluationQuality.taskCount} golden tasks passed with ${evaluationQuality.score}/100 average quality across configured expectations, ${averageMetric(evaluations.tasks.map((task) => task.retrieval.recallAtK))} retrieval recall, ${averageMetric(evaluations.tasks.map((task) => task.citations.recall))} citation recall, and ${evaluations.tasks.reduce((total, task) => total + task.usage.usedUtf8Bytes, 0)} UTF-8 context bytes used.`,
+      evaluationQuality.status === "passed"
         ? undefined
-        : evaluations.status === "unmeasured"
+        : evaluationQuality.status === "unmeasured"
           ? "Configure agent.evaluations.tasks so doctor and review can measure retrieval, citations, framework/version selection, adversarial safety, executable examples, and token usage."
           : "Inspect the failed golden task metrics and fix retrieval ranking, citations, applicability metadata, adversarial safety, examples, or context budgets.",
+    ),
+  );
+
+  const evaluationCoverage = evaluations.coverage;
+  const formatDimensionCoverage = (
+    label: string,
+    dimension: typeof evaluationCoverage.dimensions.safety,
+  ) =>
+    `${label}: ${dimension.status} (${dimension.measuredTaskCount}/${dimension.totalTaskCount} tasks)`;
+  checks.push(
+    makeCheck(
+      "golden-task-coverage",
+      "Golden evaluation coverage",
+      evaluationCoverage.status === "measured" ? "pass" : "warn",
+      Math.round((evaluationCoverage.coveragePercent / 100) * 5),
+      5,
+      `${evaluationCoverage.status} coverage across optional confidence dimensions (${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%): ${formatDimensionCoverage("safety", evaluationCoverage.dimensions.safety)}; ${formatDimensionCoverage("answer quality", evaluationCoverage.dimensions.answerQuality)}; ${formatDimensionCoverage("executable examples", evaluationCoverage.dimensions.executableExamples)}.`,
+      evaluationCoverage.status === "measured"
+        ? undefined
+        : "Add golden-task safety expectations, actual-answer assertions, and execute-level example checks so each confidence dimension is measured explicitly.",
     ),
   );
 
@@ -4200,8 +4225,13 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
     );
   }
   if (report.evaluations) {
+    const evaluationQuality = report.evaluations.quality;
     console.log(
-      `${pc.bold("Golden tasks:")} ${report.evaluations.status === "unmeasured" ? "unmeasured" : `${report.evaluations.passedTaskCount}/${report.evaluations.taskCount} passed (${report.evaluations.score}/100)`}`,
+      `${pc.bold("Golden task quality:")} ${evaluationQuality.status === "unmeasured" ? "unmeasured" : `${evaluationQuality.passedTaskCount}/${evaluationQuality.taskCount} passed (${evaluationQuality.score}/100)`}`,
+    );
+    const evaluationCoverage = report.evaluations.coverage;
+    console.log(
+      `${pc.bold("Evaluation coverage:")} ${evaluationCoverage.status} ${pc.dim(`(${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%)`)} ${pc.dim("•")} safety ${evaluationCoverage.dimensions.safety.status} ${pc.dim("•")} answer quality ${evaluationCoverage.dimensions.answerQuality.status} ${pc.dim("•")} executable examples ${evaluationCoverage.dimensions.executableExamples.status}`,
     );
   }
   console.log(

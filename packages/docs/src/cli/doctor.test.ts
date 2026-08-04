@@ -554,7 +554,7 @@ Review the source project before changing its documentation.
     });
   });
 
-  it("scores a healthy Next.js docs app as agent-optimized", async () => {
+  it("keeps a healthy app agent-ready when confidence dimensions are unmeasured", async () => {
     writePackageJson(tmpDir, "doctor-next", { next: "16.0.0" });
 
     writeFileSync(
@@ -701,7 +701,7 @@ Use this docs site through markdown routes and MCP.
     const report = await inspectAgentReadiness();
 
     expect(report.framework).toBe("nextjs");
-    expect(report.grade).toBe("Agent-optimized");
+    expect(report.grade).toBe("Agent-ready");
     expect(report.score).toBeGreaterThanOrEqual(90);
     expect(report.maxScore).toBe(100);
     expect(report.coverage.totalPages).toBe(3);
@@ -726,7 +726,27 @@ Use this docs site through markdown routes and MCP.
       "pass",
     );
     expect(report.checks.find((check) => check.id === "golden-tasks")?.status).toBe("pass");
-    expect(report.evaluations).toMatchObject({ status: "passed", passedTaskCount: 1 });
+    expect(report.checks.find((check) => check.id === "golden-task-coverage")).toMatchObject({
+      status: "warn",
+      score: 0,
+      maxScore: 5,
+      detail: expect.stringMatching(
+        /safety: unmeasured.*answer quality: unmeasured.*executable examples: unmeasured/,
+      ),
+    });
+    expect(report.evaluations).toMatchObject({
+      status: "passed",
+      passedTaskCount: 1,
+      coverage: {
+        status: "unmeasured",
+        coveragePercent: 0,
+        dimensions: {
+          safety: { status: "unmeasured", measuredTaskCount: 0 },
+          answerQuality: { status: "unmeasured", measuredTaskCount: 0 },
+          executableExamples: { status: "unmeasured", measuredTaskCount: 0 },
+        },
+      },
+    });
   });
 
   it("reports full-spec errors in every configured Agent Skill", async () => {
@@ -1117,6 +1137,11 @@ pnpm exec docs imaginary
     try {
       printAgentDoctorReport(report);
       const textOutput = stripAnsi(logSpy.mock.calls.flat().join("\n"));
+      expect(textOutput).toContain("Golden task quality: unmeasured");
+      expect(textOutput).toContain("Evaluation coverage: unmeasured");
+      expect(textOutput).toContain("safety unmeasured");
+      expect(textOutput).toContain("answer quality unmeasured");
+      expect(textOutput).toContain("executable examples unmeasured");
       expect(textOutput).toContain("app/docs/page.mdx:6");
       expect(textOutput).toContain("Command: pnpm run missing");
       expect(textOutput).toContain('Reason: Command references package script "missing"');
@@ -1285,8 +1310,8 @@ related:
 
     expect(report.evaluations).toMatchObject({ status: "failed" });
     expect(report.evaluations?.score).toBeLessThan(100);
-    expect(goldenTasks).toMatchObject({ status: "fail", maxScore: 15 });
-    expect(goldenTasks?.score).toBeLessThan(15);
+    expect(goldenTasks).toMatchObject({ status: "fail", maxScore: 10 });
+    expect(goldenTasks?.score).toBeLessThan(10);
     expect(report.score).toBeGreaterThanOrEqual(90);
     expect(report.grade).toBe("Agent-ready");
   });
