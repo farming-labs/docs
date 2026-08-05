@@ -107,6 +107,13 @@ All adapters install `@farming-labs/docs`, their adapter package, and their them
 The existing-project flow currently skips built-in TanStack i18n scaffolding so generated routes
 remain minimal.
 
+### Farm.js
+
+- root `docs.config.ts` and Markdown content
+- existing `farm.config.ts` wrapped with `@farming-labs/farmjs/config`
+- selected global CSS import
+- `@farming-labs/farmjs` and `@farming-labs/theme`; `@farm.js/core` owns routing and deployment
+
 ### SvelteKit
 
 - `src/lib/docs.config.ts` and server wrapper
@@ -153,6 +160,7 @@ exists, the CLI prompts.
 | --- | --- |
 | Next.js | `docs`, `theme`, `next` |
 | TanStack Start | `docs`, `theme`, `tanstack-start` |
+| Farm.js | `docs`, `theme`, `farmjs` |
 | Nuxt | `docs`, `nuxt`, `nuxt-theme` |
 | SvelteKit | `docs`, `svelte`, `svelte-theme` |
 | Astro | `docs`, `astro`, `astro-theme` |

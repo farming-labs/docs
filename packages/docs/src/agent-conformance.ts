@@ -36,7 +36,13 @@ import { DEFAULT_ROBOTS_TXT_ROUTE } from "./robots.js";
 
 export const DOCS_AGENT_CONTRACT_VERSION = "1.3";
 
-export type DocsAgentAdapter = "next" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
+export type DocsAgentAdapter =
+  | "next"
+  | "tanstack-start"
+  | "farmjs"
+  | "sveltekit"
+  | "astro"
+  | "nuxt";
 
 export type DocsAgentContractSurface =
   | "discovery"

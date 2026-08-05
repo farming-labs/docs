@@ -13,8 +13,8 @@ import {
 
 describe("upgrade", () => {
   describe("PRESETS", () => {
-    it("includes next, tanstack-start, nuxt, sveltekit, astro", () => {
-      expect(PRESETS).toEqual(["next", "tanstack-start", "nuxt", "sveltekit", "astro"]);
+    it("includes every supported package preset", () => {
+      expect(PRESETS).toEqual(["next", "tanstack-start", "farmjs", "nuxt", "sveltekit", "astro"]);
     });
   });
 
@@ -33,6 +33,14 @@ describe("upgrade", () => {
       expect(pkgs).toContain("@farming-labs/theme");
       expect(pkgs).toContain("@farming-labs/tanstack-start");
       expect(pkgs).toHaveLength(3);
+    });
+
+    it("farmjs has docs, theme, and the Farm adapter", () => {
+      expect(getPackagesForFramework("farmjs")).toEqual([
+        "@farming-labs/docs",
+        "@farming-labs/theme",
+        "@farming-labs/farmjs",
+      ]);
     });
 
     it("nuxt has docs, nuxt, nuxt-theme, and shared theme css", () => {
@@ -66,6 +74,7 @@ describe("upgrade", () => {
       const frameworks: UpgradeFramework[] = [
         "nextjs",
         "tanstack-start",
+        "farmjs",
         "nuxt",
         "sveltekit",
         "astro",
@@ -83,6 +92,7 @@ describe("upgrade", () => {
 
     it("other frameworks map to themselves as preset", () => {
       expect(presetFromFramework("tanstack-start")).toBe("tanstack-start");
+      expect(presetFromFramework("farmjs")).toBe("farmjs");
       expect(presetFromFramework("nuxt")).toBe("nuxt");
       expect(presetFromFramework("sveltekit")).toBe("sveltekit");
       expect(presetFromFramework("astro")).toBe("astro");
@@ -96,6 +106,7 @@ describe("upgrade", () => {
       const frameworks: UpgradeFramework[] = [
         "nextjs",
         "tanstack-start",
+        "farmjs",
         "nuxt",
         "sveltekit",
         "astro",

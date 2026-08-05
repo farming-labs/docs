@@ -1,6 +1,6 @@
 /**
  * Downgrade @farming-labs/* packages to a lower exact version.
- * Detects framework from package.json by default, or use --framework (next, tanstack-start, nuxt, sveltekit, astro).
+ * Detects framework from package.json by default, or use --framework (next, tanstack-start, farmjs, nuxt, sveltekit, astro).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -17,7 +17,7 @@ import {
 } from "./package-version.js";
 
 export interface DowngradeOptions {
-  /** Explicit framework: next, tanstack-start, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
+  /** Explicit framework: next, tanstack-start, farmjs, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
   framework?: string;
   /** Exact package version to install, e.g. 0.1.104. Must be lower than the current installed version. */
   version?: string;

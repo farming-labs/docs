@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, navigation, search, feedback, agent surfaces, MCP, API references, review, metadata, or framework-specific config wiring for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, navigation, search, feedback, agent surfaces, MCP, API references, review, metadata, or framework-specific config wiring for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt.
 compatibility: Requires a JavaScript or TypeScript project using @farming-labs/docs. Verification commands require Node.js and the project's package manager.
 ---
 
@@ -30,11 +30,12 @@ Read only the focused reference that matches the requested option family.
 | --- | --- | --- |
 | Next.js | `docs.config.ts[x]` at the project root | Wrap Next config with `withDocs()` |
 | TanStack Start | `docs.config.ts[x]` at the project root | Pass config to the docs server and keep the public forwarder aligned |
+| Farm.js | `docs.config.ts[x]` at the project root | Wrap `defineConfig()` with `withDocs()`; Farm owns docs routing and production output |
 | SvelteKit | `src/lib/docs.config.ts` | Pass config to the docs server and hooks |
 | Astro | `src/lib/docs.config.ts` | Pass config to the docs server and middleware |
 | Nuxt | `docs.config.ts` at the project root | Pass config to `defineDocsHandler()` and public middleware |
 
-TanStack Start, SvelteKit, Astro, and Nuxt normally need `contentDir` and `nav` in addition to
+TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt normally need `contentDir` and `nav` in addition to
 `entry` and `theme`.
 
 ## Minimal shape
