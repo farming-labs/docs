@@ -37,6 +37,7 @@ overrides:
   seroval@<=1.5.2: 1.5.3
   ip-address@<=10.3.0: 10.4.0
   ws: ^8.21.0
+  '@farm.js/core>vite': 6.4.3
   readdir-glob>minimatch: 10.2.4
   glob@10>minimatch: 10.2.4
   glob@13>minimatch: ^10.2.3
@@ -407,7 +408,7 @@ importers:
         version: 4.0.1(supports-color@10.2.2)
       yaml:
         specifier: ^2.8.2
-        version: 2.8.2
+        version: 2.9.0
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -438,7 +439,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.8
-        version: 4.1.8(@opentelemetry/api@1.9.0)(@types/node@22.19.11)(vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
+        version: 4.1.8(@opentelemetry/api@1.9.0)(@types/node@22.19.11)(vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
 
   packages/farmjs:
     dependencies:
@@ -9518,37 +9519,6 @@ packages:
       vite:
         optional: true
 
-  vite@5.4.21:
-    resolution: {integrity: sha512-o5a9xKjbtuhY6Bi5S3+HvbRERmouabWbyUcpXXUA1u+GNUKoROi9byOJ8M0nHbHYHkYICiMlqxkg1KkYmm25Sw==}
-    engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
-    peerDependencies:
-      '@types/node': ^18.0.0 || >=20.0.0
-      less: '*'
-      lightningcss: ^1.21.0
-      sass: '*'
-      sass-embedded: '*'
-      stylus: '*'
-      sugarss: '*'
-      terser: ^5.4.0
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      less:
-        optional: true
-      lightningcss:
-        optional: true
-      sass:
-        optional: true
-      sass-embedded:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
-        optional: true
-
   vite@6.4.3:
     resolution: {integrity: sha512-NTKlcQjlAK7MlQoyb6LgaqHc8sso/pVyUJYWMws3jg21uTJw/LddqIFPcPqP6PzpgbIcZyKI85sFE4HBrQDA8A==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
@@ -10816,9 +10786,9 @@ snapshots:
       '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
       '@scalar/api-reference': 1.64.0(supports-color@10.2.2)(tailwindcss@4.1.18)(typescript@5.9.3)(zod@4.3.6)
       '@scalar/openapi-parser': 0.22.3
-      '@tailwindcss/vite': 4.1.18(vite@5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0))
+      '@tailwindcss/vite': 4.1.18(vite@6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
       '@vercel/og': 0.11.1(@types/node@22.19.11)
-      '@vitejs/plugin-react': 4.7.0(supports-color@10.2.2)(vite@5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0))
+      '@vitejs/plugin-react': 4.7.0(supports-color@10.2.2)(vite@6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
       better-call: 1.3.7(zod@4.3.6)
       db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3)))
       esbuild: 0.28.1
@@ -10827,7 +10797,7 @@ snapshots:
       image-size: 2.0.2
       intl-messageformat: 11.2.12
       marked: 12.0.2
-      nitro: 3.0.1-alpha.0(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(chokidar@4.0.3)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3)))(ioredis@5.11.1)(lru-cache@11.5.1)(mongodb@6.21.0(socks@2.8.7))(rolldown@1.2.0)(vite@5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0))
+      nitro: 3.0.1-alpha.0(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(chokidar@4.0.3)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3)))(ioredis@5.11.1)(lru-cache@11.5.1)(mongodb@6.21.0(socks@2.8.7))(rolldown@1.2.0)(vite@6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
       pg: 8.22.0
       picocolors: 1.1.1
       react: 19.2.4
@@ -10838,7 +10808,7 @@ snapshots:
       supports-color: 10.2.2
       tailwindcss: 4.1.18
       unstorage: 2.0.0-alpha.7(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(chokidar@4.0.3)(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))))(ioredis@5.11.1)(lru-cache@11.5.1)(mongodb@6.21.0(socks@2.8.7))(ofetch@1.5.1)
-      vite: 5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0)
+      vite: 6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)
       zod: 4.3.6
     optionalDependencies:
       rolldown: 1.2.0
@@ -10922,7 +10892,7 @@ snapshots:
       parse-entities: 4.0.2
       picocolors: 1.1.1
       remark-gfm: 4.0.1(supports-color@10.2.2)
-      yaml: 2.8.2
+      yaml: 2.9.0
       zod: 4.3.6
     optionalDependencies:
       react: 19.2.4
@@ -13952,12 +13922,12 @@ snapshots:
       postcss: 8.5.18
       tailwindcss: 4.1.18
 
-  '@tailwindcss/vite@4.1.18(vite@5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0))':
+  '@tailwindcss/vite@4.1.18(vite@6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
       '@tailwindcss/node': 4.1.18
       '@tailwindcss/oxide': 4.1.18
       tailwindcss: 4.1.18
-      vite: 5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0)
+      vite: 6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)
 
   '@tailwindcss/vite@4.2.1(vite@7.3.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
@@ -14369,7 +14339,7 @@ snapshots:
       - bare-abort-controller
       - react-native-b4a
 
-  '@vitejs/plugin-react@4.7.0(supports-color@10.2.2)(vite@5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0))':
+  '@vitejs/plugin-react@4.7.0(supports-color@10.2.2)(vite@6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
       '@babel/core': 7.29.0(supports-color@10.2.2)
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.0(supports-color@10.2.2))
@@ -14377,7 +14347,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0)
+      vite: 6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -14427,14 +14397,6 @@ snapshots:
       magic-string: 0.30.21
     optionalDependencies:
       vite: 7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)
-
-  '@vitest/mocker@4.1.8(vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
-    dependencies:
-      '@vitest/spy': 4.1.8
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/mocker@4.1.8(vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
@@ -14667,7 +14629,7 @@ snapshots:
       picomatch: 4.0.4
       turndown: 7.2.4
       turndown-plugin-gfm: 1.0.2
-      yaml: 2.8.2
+      yaml: 2.9.0
 
   agent-base@7.1.4: {}
 
@@ -15043,7 +15005,7 @@ snapshots:
       semver: 7.7.4
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
-      yaml: 2.8.2
+      yaml: 2.9.0
     transitivePeerDependencies:
       - magicast
 
@@ -17535,7 +17497,7 @@ snapshots:
 
   nf3@0.1.12: {}
 
-  nitro@3.0.1-alpha.0(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(chokidar@4.0.3)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3)))(ioredis@5.11.1)(lru-cache@11.5.1)(mongodb@6.21.0(socks@2.8.7))(rolldown@1.2.0)(vite@5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0)):
+  nitro@3.0.1-alpha.0(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(chokidar@4.0.3)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3)))(ioredis@5.11.1)(lru-cache@11.5.1)(mongodb@6.21.0(socks@2.8.7))(rolldown@1.2.0)(vite@6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)):
     dependencies:
       consola: 3.4.2
       cookie-es: 2.0.1
@@ -17556,7 +17518,7 @@ snapshots:
       unstorage: 2.0.0-alpha.3(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(chokidar@4.0.3)(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.2)(typescript@5.9.3))))(ioredis@5.11.1)(lru-cache@11.5.1)(mongodb@6.21.0(socks@2.8.7))(ofetch@1.5.1)
     optionalDependencies:
       rolldown: 1.2.0
-      vite: 5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0)
+      vite: 6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -20008,7 +19970,7 @@ snapshots:
       tinyglobby: 0.2.16
       unplugin: 2.3.11
       unplugin-utils: 0.3.1
-      yaml: 2.8.2
+      yaml: 2.9.0
     optionalDependencies:
       vue-router: 4.6.4(vue@3.5.38(typescript@5.9.3))
     transitivePeerDependencies:
@@ -20278,16 +20240,22 @@ snapshots:
       - supports-color
       - typescript
 
-  vite@5.4.21(@types/node@22.19.11)(lightningcss@1.33.0)(terser@5.46.0):
+  vite@6.4.3(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0):
     dependencies:
       esbuild: 0.28.1
+      fdir: 6.5.0(picomatch@4.0.4)
+      picomatch: 4.0.4
       postcss: 8.5.18
       rollup: 4.59.0
+      tinyglobby: 0.2.16
     optionalDependencies:
       '@types/node': 22.19.11
       fsevents: 2.3.3
+      jiti: 2.7.0
       lightningcss: 1.33.0
       terser: 5.46.0
+      tsx: 4.21.0
+      yaml: 2.9.0
 
   vite@6.4.3(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0):
     dependencies:
@@ -20339,22 +20307,6 @@ snapshots:
       terser: 5.46.0
       tsx: 4.21.0
       yaml: 2.9.0
-
-  vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2):
-    dependencies:
-      lightningcss: 1.33.0
-      picomatch: 4.0.5
-      postcss: 8.5.18
-      rolldown: 1.1.5
-      tinyglobby: 0.2.17
-    optionalDependencies:
-      '@types/node': 22.19.11
-      esbuild: 0.28.1
-      fsevents: 2.3.3
-      jiti: 2.7.0
-      terser: 5.46.0
-      tsx: 4.21.0
-      yaml: 2.8.2
 
   vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0):
     dependencies:
@@ -20421,34 +20373,6 @@ snapshots:
       tinyglobby: 0.2.16
       tinyrainbow: 3.1.0
       vite: 7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@opentelemetry/api': 1.9.0
-      '@types/node': 22.19.11
-    transitivePeerDependencies:
-      - msw
-
-  vitest@4.1.8(@opentelemetry/api@1.9.0)(@types/node@22.19.11)(vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)):
-    dependencies:
-      '@vitest/expect': 4.1.8
-      '@vitest/mocker': 4.1.8(vite@8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
-      '@vitest/pretty-format': 4.1.8
-      '@vitest/runner': 4.1.8
-      '@vitest/snapshot': 4.1.8
-      '@vitest/spy': 4.1.8
-      '@vitest/utils': 4.1.8
-      es-module-lexer: 2.0.0
-      expect-type: 1.3.0
-      magic-string: 0.30.21
-      obug: 2.1.1
-      pathe: 2.0.3
-      picomatch: 4.0.4
-      std-env: 4.1.0
-      tinybench: 2.9.0
-      tinyexec: 1.0.2
-      tinyglobby: 0.2.16
-      tinyrainbow: 3.1.0
-      vite: 8.1.5(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0

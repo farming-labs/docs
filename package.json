@@ -74,6 +74,7 @@
       "seroval@<=1.5.2": "1.5.3",
       "ip-address@<=10.3.0": "10.4.0",
       "ws": "^8.21.0",
+      "@farm.js/core>vite": "6.4.3",
       "readdir-glob>minimatch": "10.2.4",
       "glob@10>minimatch": "10.2.4",
       "glob@13>minimatch": "^10.2.3"
