@@ -15,7 +15,7 @@ Keep documentation settings in `docs.config.ts`, then enable the adapter from
 `farm.config.ts`:
 
 ```ts
-import { defineConfig } from "@farmjs/core";
+import { defineConfig } from "@farm.js/core";
 import { withDocs } from "@farming-labs/farmjs/config";
 
 export default withDocs(
@@ -25,7 +25,9 @@ export default withDocs(
 );
 ```
 
-Farm discovers `docs.config.ts` from the application root. A different path can
+Farm discovers `docs.config.ts` from the application root. The wrapper writes
+Farm's native `docs` configuration and leaves routing, development middleware,
+and production output to `@farm.js/core`. A different path can
 be provided explicitly:
 
 ```ts

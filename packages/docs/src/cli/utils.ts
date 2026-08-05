@@ -20,7 +20,7 @@ export function detectFramework(cwd: string): Framework | null {
 
   if (allDeps["next"]) return "nextjs";
   if (allDeps["@tanstack/react-start"]) return "tanstack-start";
-  if (allDeps["@farmjs/core"]) return "farmjs";
+  if (allDeps["@farm.js/core"] || allDeps["@farmjs/core"]) return "farmjs";
   if (allDeps["@sveltejs/kit"]) return "sveltekit";
   if (allDeps["astro"]) return "astro";
   if (allDeps["nuxt"]) return "nuxt";

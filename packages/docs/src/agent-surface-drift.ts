@@ -13,6 +13,12 @@ export interface AgentSurfaceExpectedValues {
     enabled: boolean;
     endpoint: string | null;
     tools: Readonly<Record<string, boolean>>;
+    protectedResource?: {
+      metadataEndpoints: readonly string[];
+      authorizationServers: readonly string[];
+      scopesSupported: readonly string[];
+      requiredScopes: readonly string[];
+    } | null;
   };
   /**
    * Discovery dot paths whose values must match their resolved runtime values.
@@ -42,9 +48,12 @@ export type AgentSurfaceDriftCode =
   | "search-enabled-mismatch"
   | "search-capability-mismatch"
   | "search-route-mismatch"
+  | "search-audience-mismatch"
+  | "search-scope-mismatch"
   | "mcp-enabled-mismatch"
   | "mcp-capability-mismatch"
   | "mcp-route-mismatch"
+  | "mcp-protected-resource-mismatch"
   | "mcp-tool-mismatch"
   | "mcp-tool-unexpected"
   | "route-mismatch";
@@ -160,7 +169,15 @@ function displayValue(value: unknown, present = true): string {
 }
 
 function valuesMatch(actual: PathValue, expected: unknown): boolean {
-  return actual.present && Object.is(actual.value, expected);
+  if (!actual.present) return false;
+  if (Object.is(actual.value, expected)) return true;
+  if (
+    (Array.isArray(actual.value) || isRecord(actual.value)) &&
+    (Array.isArray(expected) || isRecord(expected))
+  ) {
+    return displayValue(actual.value) === displayValue(expected);
+  }
+  return false;
 }
 
 function mismatchIssue(
@@ -287,6 +304,99 @@ export function analyzeAgentSurfaceDrift(
     options.expected.search.endpoint,
     "Discovery search.endpoint",
   );
+  const expectedAgentSearchEndpoint =
+    options.expected.search.endpoint === null
+      ? null
+      : `${options.expected.search.endpoint}${
+          options.expected.search.endpoint.includes("?") ? "&" : "?"
+        }audience=agent`;
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.agentEndpoint",
+    expectedAgentSearchEndpoint,
+    "Discovery search.agentEndpoint",
+  );
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.audienceParam",
+    "audience",
+    "Discovery search.audienceParam",
+  );
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.defaultAudience",
+    "human",
+    "Discovery search.defaultAudience",
+  );
+  compareExpectedValue(
+    issues,
+    options.discovery,
+    "search-audience-mismatch",
+    "search.supportedAudiences",
+    ["human", "agent"],
+    "Discovery search.supportedAudiences",
+  );
+  const expectedStructuredAgentSearchEndpoint =
+    expectedAgentSearchEndpoint === null
+      ? null
+      : `${expectedAgentSearchEndpoint}&response=structured`;
+  const expectedSearchFacetsEndpoint =
+    expectedAgentSearchEndpoint === null
+      ? null
+      : expectedAgentSearchEndpoint.replace(
+          "query={query}&audience=agent",
+          "audience=agent&response=facets",
+        );
+  const expectedExplainedAgentSearchEndpoint =
+    expectedStructuredAgentSearchEndpoint === null
+      ? null
+      : `${expectedStructuredAgentSearchEndpoint}&explain=true`;
+  for (const [path, expected] of [
+    ["search.structuredAgentEndpoint", expectedStructuredAgentSearchEndpoint],
+    ["search.explainedAgentEndpoint", expectedExplainedAgentSearchEndpoint],
+    ["search.facetsEndpoint", expectedSearchFacetsEndpoint],
+    ["search.responseParam", "response"],
+    ["search.structuredResponseValue", "structured"],
+    ["search.facetsResponseValue", "facets"],
+    ["search.responseFormat", "docs-search.v1"],
+    ["search.explainParam", "explain"],
+    ["search.explainValue", "true"],
+    ["search.explanationField", "explanation"],
+    ["search.explanationFormat", "docs-search-explanation.v1"],
+    ["search.facetsResponseFormat", "docs-search-facets.v1"],
+    [
+      "search.filterParams",
+      {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+    ],
+    ["search.repeatedFilterParams", ["framework", "version", "package", "tags"]],
+    ["search.warningsField", "warnings"],
+    ["search.facetParam", "facet"],
+    ["search.limitParam", "limit"],
+    ["search.cursorParam", "cursor"],
+    ["search.nextCursorField", "nextCursor"],
+    ["search.hasMoreField", "hasMore"],
+    ["search.totalField", "total"],
+  ] as const) {
+    compareExpectedValue(
+      issues,
+      options.discovery,
+      "search-scope-mismatch",
+      path,
+      expected,
+      `Discovery ${path}`,
+    );
+  }
 
   compareExpectedValue(
     issues,
@@ -312,6 +422,40 @@ export function analyzeAgentSurfaceDrift(
     options.expected.mcp.endpoint,
     "Discovery mcp.endpoint",
   );
+
+  if (options.expected.mcp.protectedResource !== undefined) {
+    const expectedProtectedResource = options.expected.mcp.protectedResource;
+    const discoveredProtectedResource = readPath(options.discovery, "mcp.protectedResource");
+    if (expectedProtectedResource === null) {
+      if (discoveredProtectedResource.present) {
+        issues.push(
+          mismatchIssue(
+            "mcp-protected-resource-mismatch",
+            "mcp.protectedResource",
+            undefined,
+            discoveredProtectedResource,
+            "Discovery mcp.protectedResource",
+          ),
+        );
+      }
+    } else {
+      for (const field of [
+        "metadataEndpoints",
+        "authorizationServers",
+        "scopesSupported",
+        "requiredScopes",
+      ] as const) {
+        compareExpectedValue(
+          issues,
+          options.discovery,
+          "mcp-protected-resource-mismatch",
+          `mcp.protectedResource.${field}`,
+          expectedProtectedResource[field],
+          `Discovery mcp.protectedResource.${field}`,
+        );
+      }
+    }
+  }
 
   const expectedToolNames = Object.keys(options.expected.mcp.tools).sort();
   const expectedToolSet = new Set(expectedToolNames);

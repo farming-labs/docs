@@ -10,6 +10,41 @@ related:
   - /docs/configuration
   - /docs/cli
   - /docs/customization/analytics
+agent:
+  tokenBudget: 800
+  task: Connect a Farming Labs docs project to the Docs Cloud repository contract.
+  outcome: docs.config and docs.json agree, secrets remain outside source control, and Cloud checks can inspect the project.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The repository already contains a working Farming Labs docs project.
+    - The team has Docs Cloud access and knows which project should own the integration.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - docs.json
+    - .env.local
+  commands:
+    - run: pnpm dlx @farming-labs/docs cloud sync
+      description: Materialize the serializable repository contract.
+    - run: pnpm dlx @farming-labs/docs cloud check --no-network
+      description: Compare local config, docs.json, and environment requirements without a network request.
+  sideEffects:
+    - cloud sync creates or updates docs.json.
+  verification:
+    - run: pnpm dlx @farming-labs/docs cloud check --no-network
+      expect: The local config loads and docs.json is current with no raw API key value.
+  rollback:
+    - Restore the previous docs.config and docs.json from version control.
+    - Remove Cloud-only environment variables when disconnecting the project.
+  failureModes:
+    - symptom: docs.json is stale after editing docs.config.
+      resolution: Run cloud sync again and review the generated diff before committing it.
+    - symptom: A raw API key appears in a tracked file.
+      resolution: Revoke the key, remove it from Git history, and keep only the environment variable name in config.
 ---
 
 # Docs Cloud

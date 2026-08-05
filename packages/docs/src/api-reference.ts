@@ -30,6 +30,7 @@ export interface ResolvedApiReferenceConfig {
   enabled: boolean;
   path: string;
   specUrl?: string;
+  catalogTargets?: string[];
   renderer?: ApiReferenceRenderer;
   routeRoot: string;
   exclude: string[];
@@ -38,9 +39,11 @@ export interface ResolvedApiReferenceConfig {
 export interface ApiReferenceOpenApiDiscovery {
   enabled: boolean;
   url?: string;
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
+  catalogTargets?: string[];
 }
 
 interface BuildApiReferenceOptions {
@@ -75,6 +78,7 @@ export function resolveApiReferenceConfig(
       enabled: true,
       path: "api-reference",
       specUrl: undefined,
+      catalogTargets: undefined,
       renderer: undefined,
       routeRoot: "api",
       exclude: [],
@@ -86,6 +90,7 @@ export function resolveApiReferenceConfig(
       enabled: false,
       path: "api-reference",
       specUrl: undefined,
+      catalogTargets: undefined,
       renderer: undefined,
       routeRoot: "api",
       exclude: [],
@@ -96,6 +101,7 @@ export function resolveApiReferenceConfig(
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
     specUrl: normalizeRemoteSpecUrl(value.specUrl),
+    catalogTargets: normalizeApiReferenceCatalogTargets(value.catalogTargets),
     renderer: normalizeApiReferenceRenderer(value.renderer),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
@@ -122,13 +128,18 @@ export function resolveApiReferenceOpenApiDiscovery(
 ): ApiReferenceOpenApiDiscovery {
   const config = resolveApiReferenceConfig(value);
   if (!config.enabled) return { enabled: false };
+  const catalogTargets =
+    config.catalogTargets ??
+    (!config.specUrl || isRequestRelativeSpecUrl(config.specUrl) ? ["/"] : undefined);
 
   return {
     enabled: true,
     url: options.route ?? DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+    urlSource: options.route === undefined ? "default" : "configured",
     source: config.specUrl ? "configured" : "generated",
     specUrl: config.specUrl,
     apiReferencePath: `/${config.path}`,
+    catalogTargets,
   };
 }
 
@@ -142,8 +153,21 @@ function normalizeRemoteSpecUrl(value?: string): string | undefined {
   return trimmed;
 }
 
+function normalizeApiReferenceCatalogTargets(value?: string[]): string[] | undefined {
+  if (value === undefined) return undefined;
+
+  return Array.from(
+    new Set(
+      value
+        .filter((target): target is string => typeof target === "string")
+        .map((target) => target.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
 function isRequestRelativeSpecUrl(value?: string): boolean {
-  return typeof value === "string" && value.startsWith("/");
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
 }
 
 export function buildApiReferencePageTitle(config: DocsConfig, title = "API Reference"): string {

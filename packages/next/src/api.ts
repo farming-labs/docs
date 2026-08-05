@@ -4,6 +4,7 @@ import {
   createDocsAPI as createThemeDocsAPI,
   createDocsMCPAPI as createThemeDocsMCPAPI,
 } from "@farming-labs/theme/api";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import type {
   DocsCloudRouteHandlerOptions,
   DocsCloudServer,
@@ -188,7 +189,12 @@ export function createDocsAPI(
   cloudIntegration?: DocsAPICloudIntegration,
 ) {
   const rootDir = options.rootDir ?? inferNextProjectRootFromCaller();
-  const handlers = createThemeDocsAPI(rootDir ? { ...options, rootDir } : options);
+  const resolvedOptions = {
+    ...options,
+    ...(rootDir ? { rootDir } : {}),
+    _preloadedAgentSkills: options._preloadedAgentSkills ?? bundledAgentSkills,
+  };
+  const handlers = createThemeDocsAPI(resolvedOptions);
   const integration = resolveDocsCloudIntegration(cloudIntegration);
 
   if (!integration) return handlers;
@@ -200,6 +206,15 @@ export function createDocsAPI(
       }
 
       return handlers.GET(request);
+    },
+    async HEAD(request: Request) {
+      if (!isDocsCloudGetRequest(request)) return handlers.HEAD(request);
+      const response = await integration.docsCloud.handleRequest(request, integration.routeOptions);
+      return new Response(null, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
     },
     async POST(request: Request) {
       if (await isDocsCloudPostRequest(request)) {
@@ -213,5 +228,9 @@ export function createDocsAPI(
 
 export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const rootDir = options.rootDir ?? inferNextProjectRootFromCaller();
-  return createThemeDocsMCPAPI(rootDir ? { ...options, rootDir } : options);
+  return createThemeDocsMCPAPI({
+    ...options,
+    ...(rootDir ? { rootDir } : {}),
+    _preloadedAgentSkills: options._preloadedAgentSkills ?? bundledAgentSkills,
+  });
 }

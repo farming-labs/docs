@@ -30,16 +30,36 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, extname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  DEFAULT_AGENT_SKILL_ARCHIVE_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
+  DEFAULT_API_CATALOG_ROUTE,
+  type DocsConfig,
 } from "@farming-labs/docs";
-import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
+import {
+  ensureDocsReviewWorkflow,
+  renderDocsAgentSkillsBundle,
+  resolveConfiguredAgentSkillsSync,
+} from "@farming-labs/docs/server";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
+import { parse, type ParserPlugin } from "@babel/parser";
+import type {
+  Expression,
+  ObjectExpression,
+  ObjectMethod,
+  ObjectProperty,
+  Program,
+} from "@babel/types";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -108,7 +128,7 @@ const docsCloud = createDocsCloudServer({
   config: docsConfig,
 });
 
-export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
+export const { GET, HEAD, POST } = createDocsAPI(docsConfig, docsCloud);
 
 export const revalidate = false;
 `;
@@ -170,6 +190,8 @@ export default function HiddenChangelogSourceLayout() {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
+const AGENT_SKILLS_BUNDLE_ALIAS = "@farming-labs/docs/agent-skills-bundle";
+const AGENT_SKILLS_BUNDLE_PATH = ".docs/agent-skills-bundle.mjs";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -178,6 +200,7 @@ const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
 const DEFAULT_MCP_WELL_KNOWN_ROUTE = "/.well-known/mcp";
+const DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE = "/.well-known/oauth-protected-resource";
 const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
@@ -224,8 +247,12 @@ function resolvePackageSubpath(packageDir: string, relativePath: string): string
 
 function toTurbopackAliasPath(root: string, value: string): string {
   if (!isAbsolute(value)) return value;
-  const relativePath = relative(root, value);
-  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+  const relativePath = relative(root, value).replaceAll("\\", "/");
+  return relativePath === ".." || relativePath.startsWith("../")
+    ? relativePath
+    : relativePath.startsWith("./")
+      ? relativePath
+      : `./${relativePath}`;
 }
 
 const FUMADOCS_OPENAPI_PACKAGE_ALIAS =
@@ -415,6 +442,10 @@ function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record
       ["packages", "fumadocs", "dist", "ledger", "index.mjs"],
       ["packages", "fumadocs", "src", "ledger", "index.ts"],
     ),
+    "@farming-labs/theme/shadcn": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "shadcn", "index.mjs"],
+      ["packages", "fumadocs", "src", "shadcn", "index.ts"],
+    ),
     "@farming-labs/theme/mdx": workspaceEntrypoint(
       ["packages", "fumadocs", "dist", "mdx.mjs"],
       ["packages", "fumadocs", "src", "mdx.ts"],
@@ -497,6 +528,238 @@ function readDocsConfigPath(root: string): string {
   }
 
   return "docs.config.ts";
+}
+
+type StaticPropertyResolution =
+  | { status: "absent" }
+  | { status: "unknown" }
+  | { status: "value"; value: Expression };
+
+function unwrapStaticExpression(expression: Expression): Expression {
+  let current = expression;
+  while (
+    current.type === "ParenthesizedExpression" ||
+    current.type === "TSAsExpression" ||
+    current.type === "TSSatisfiesExpression" ||
+    current.type === "TSTypeAssertion" ||
+    current.type === "TSNonNullExpression" ||
+    current.type === "TSInstantiationExpression"
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function readStaticPropertyName(property: ObjectMethod | ObjectProperty): string | undefined {
+  const key = unwrapStaticExpression(property.key as Expression);
+
+  if (property.computed) return undefined;
+  if (key.type === "Identifier") return key.name;
+  if (key.type === "StringLiteral") return key.value;
+  if (key.type === "NumericLiteral") return String(key.value);
+  if (key.type === "BigIntLiteral") return key.value;
+  if (key.type === "TemplateLiteral" && key.expressions.length === 0) {
+    return key.quasis[0]?.value.cooked ?? undefined;
+  }
+  return undefined;
+}
+
+function resolveStaticObjectProperty(
+  object: ObjectExpression,
+  key: string,
+): StaticPropertyResolution {
+  let resolution: StaticPropertyResolution = { status: "absent" };
+
+  for (const entry of object.properties) {
+    if (entry.type === "SpreadElement") {
+      resolution = { status: "unknown" };
+      continue;
+    }
+
+    const name = readStaticPropertyName(entry);
+    if (name === undefined) {
+      if (entry.computed) resolution = { status: "unknown" };
+      continue;
+    }
+    if (
+      name === "__proto__" &&
+      !entry.computed &&
+      entry.type === "ObjectProperty" &&
+      !entry.shorthand
+    ) {
+      if (resolution.status !== "value") resolution = { status: "unknown" };
+      continue;
+    }
+    if (name !== key) continue;
+
+    if (entry.type !== "ObjectProperty" || entry.shorthand) {
+      resolution = { status: "unknown" };
+      continue;
+    }
+
+    resolution = { status: "value", value: entry.value as Expression };
+  }
+
+  return resolution;
+}
+
+function hasDefineDocsImport(program: Program, localName: string): boolean {
+  return program.body.some(
+    (statement) =>
+      statement.type === "ImportDeclaration" &&
+      statement.importKind !== "type" &&
+      statement.source.value === "@farming-labs/docs" &&
+      statement.specifiers.some(
+        (specifier) =>
+          specifier.type === "ImportSpecifier" &&
+          specifier.importKind !== "type" &&
+          specifier.local.name === localName &&
+          specifier.imported.type === "Identifier" &&
+          specifier.imported.name === "defineDocs",
+      ),
+  );
+}
+
+function readDocsConfigRootObject(configPath: string, content: string): ObjectExpression {
+  let program: Program;
+  try {
+    const extension = extname(configPath).toLowerCase();
+    const syntaxPlugins: ParserPlugin[] =
+      extension === ".tsx"
+        ? ["typescript", "jsx", "decorators-legacy"]
+        : extension === ".ts"
+          ? ["typescript", "decorators-legacy"]
+          : extension === ".jsx"
+            ? ["jsx", "decorators-legacy"]
+            : ["decorators-legacy"];
+    program = parse(content, {
+      sourceType: "module",
+      sourceFilename: configPath,
+      plugins: syntaxPlugins,
+      createParenthesizedExpressions: true,
+    }).program;
+  } catch (error) {
+    throw new Error(
+      `withDocs could not parse ${configPath} while bundling Agent Skills: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const defaults = program.body.filter(
+    (statement) => statement.type === "ExportDefaultDeclaration",
+  );
+  if (defaults.length !== 1) {
+    throw new Error(
+      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+    );
+  }
+
+  let expression = unwrapStaticExpression(defaults[0]!.declaration as Expression);
+  if (expression.type === "CallExpression") {
+    const callee =
+      expression.callee.type === "V8IntrinsicIdentifier"
+        ? undefined
+        : unwrapStaticExpression(expression.callee);
+    const argument = expression.arguments[0];
+    if (
+      !callee ||
+      callee.type !== "Identifier" ||
+      !hasDefineDocsImport(program, callee.name) ||
+      !argument ||
+      argument.type === "SpreadElement" ||
+      argument.type === "ArgumentPlaceholder"
+    ) {
+      throw new Error(
+        "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+      );
+    }
+    expression = unwrapStaticExpression(argument);
+  }
+
+  if (expression.type !== "ObjectExpression") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills. Pass the live docs config as the second withDocs argument or use a literal agent object.",
+    );
+  }
+  return expression;
+}
+
+function readStaticStringPaths(expression: Expression): string[] | null {
+  const value = unwrapStaticExpression(expression);
+  if (value.type === "StringLiteral") return [value.value];
+  if (value.type !== "ArrayExpression") return null;
+
+  const paths: string[] = [];
+  for (const entry of value.elements) {
+    if (!entry || entry.type === "SpreadElement") {
+      return null;
+    }
+    const item = unwrapStaticExpression(entry);
+    if (item.type !== "StringLiteral") return null;
+    paths.push(item.value);
+  }
+  return paths;
+}
+
+function readAgentSkillPaths(root: string, configPath: string): string[] {
+  const absoluteConfigPath = join(root, configPath);
+  if (!existsSync(absoluteConfigPath)) return [];
+
+  const content = readFileSync(absoluteConfigPath, "utf8");
+  const rootObject = readDocsConfigRootObject(absoluteConfigPath, content);
+  const agent = resolveStaticObjectProperty(rootObject, "agent");
+  if (agent.status === "absent") return [];
+  if (agent.status === "unknown") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+
+  const agentValue = unwrapStaticExpression(agent.value);
+  if (agentValue.type !== "ObjectExpression") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+
+  const skills = resolveStaticObjectProperty(agentValue, "skills");
+  if (skills.status === "absent") return [];
+  if (skills.status === "unknown") {
+    throw new Error(
+      "withDocs could not statically determine agent.skills from a composed agent config. Pass the live docs config as the second withDocs argument.",
+    );
+  }
+
+  const skillsValue = unwrapStaticExpression(skills.value);
+  let configured: string[] | null;
+  if (skillsValue.type === "ObjectExpression") {
+    const paths = resolveStaticObjectProperty(skillsValue, "paths");
+    configured = paths.status === "value" ? readStaticStringPaths(paths.value) : null;
+  } else {
+    configured = readStaticStringPaths(skillsValue);
+  }
+
+  if (!configured) {
+    throw new Error(
+      "withDocs could not statically bundle agent.skills. Use a literal path, a literal path array, or { paths: [...] } so configured skills are included in production.",
+    );
+  }
+  return configured;
+}
+
+function writeAgentSkillsBundle(
+  root: string,
+  configuredSkills: NonNullable<DocsConfig["agent"]>["skills"],
+): string {
+  const bundlePath = join(root, AGENT_SKILLS_BUNDLE_PATH);
+  const skills = resolveConfiguredAgentSkillsSync(configuredSkills, { rootDir: root });
+  const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(skills)}`;
+
+  mkdirSync(dirname(bundlePath), { recursive: true });
+  if (!existsSync(bundlePath) || readFileSync(bundlePath, "utf8") !== source) {
+    writeFileSync(bundlePath, source, "utf8");
+  }
+
+  return bundlePath;
 }
 
 /** Read the OG endpoint from docs.config.ts[x] (returns undefined if not set). */
@@ -1172,10 +1435,28 @@ function removeManagedFile(filePath: string) {
   }
 }
 
-function readMcpConfig(root: string): {
+type ResolvedNextMcpConfig = {
   enabled: boolean;
   route: string;
-} {
+  protectedResource: boolean;
+};
+
+function resolveMcpConfig(mcp: DocsConfig["mcp"]): ResolvedNextMcpConfig {
+  if (mcp === false) {
+    return { enabled: false, route: DEFAULT_MCP_ROUTE, protectedResource: false };
+  }
+  if (!mcp || mcp === true) {
+    return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
+  }
+
+  return {
+    enabled: mcp.enabled ?? true,
+    route: normalizeRoutePath(mcp.route ?? DEFAULT_MCP_ROUTE),
+    protectedResource: Boolean(mcp.security?.authenticate && mcp.security.protectedResource),
+  };
+}
+
+function readMcpConfig(root: string): ResolvedNextMcpConfig {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (!existsSync(configPath)) continue;
@@ -1184,11 +1465,11 @@ function readMcpConfig(root: string): {
       const content = readFileSync(configPath, "utf-8");
 
       if (content.match(/mcp\s*:\s*false/)) {
-        return { enabled: false, route: DEFAULT_MCP_ROUTE };
+        return { enabled: false, route: DEFAULT_MCP_ROUTE, protectedResource: false };
       }
 
       if (content.match(/mcp\s*:\s*true/)) {
-        return { enabled: true, route: DEFAULT_MCP_ROUTE };
+        return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
       }
 
       const block = extractObjectLiteral(content, "mcp");
@@ -1196,22 +1477,39 @@ function readMcpConfig(root: string): {
 
       const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
       const routeMatch = block.match(/route\s*:\s*["']([^"']+)["']/);
-
+      const securityBlock = extractObjectLiteral(block, "security");
+      const protectedResource = Boolean(
+        securityBlock &&
+        /\bauthenticate\b/u.test(securityBlock) &&
+        extractObjectLiteral(securityBlock, "protectedResource"),
+      );
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
         route: normalizeRoutePath(routeMatch?.[1] ?? DEFAULT_MCP_ROUTE),
+        protectedResource,
       };
     } catch {
-      return { enabled: true, route: DEFAULT_MCP_ROUTE };
+      return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
     }
   }
 
-  return { enabled: true, route: DEFAULT_MCP_ROUTE };
+  return { enabled: true, route: DEFAULT_MCP_ROUTE, protectedResource: false };
 }
 
 function normalizeRoutePath(route: string): string {
   const normalized = `/${route}`.replace(/\/+/g, "/");
   return normalized !== "/" ? normalized.replace(/\/+$/, "") : DEFAULT_MCP_ROUTE;
+}
+
+function normalizeMcpResourcePath(route: string): string {
+  return route.trim() === "/" ? "/" : normalizeRoutePath(route);
+}
+
+function buildMcpProtectedResourceMetadataRoute(resourcePath: string): string {
+  const normalized = normalizeMcpResourcePath(resourcePath);
+  return normalized === "/"
+    ? DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE
+    : `${DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE}${normalized}`;
 }
 
 function normalizeRoutePrefix(prefix?: string): string {
@@ -1639,6 +1937,51 @@ function buildAgentSpecRewrites(): NextRewrite[] {
   ];
 }
 
+function buildStandardsDiscoveryRewrites(): NextRewrite[] {
+  return [
+    {
+      source: DEFAULT_API_CATALOG_ROUTE,
+      destination: "/api/docs?format=api-catalog",
+    },
+    {
+      source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+      destination: "/api/docs?format=agent-skills",
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/skill.md`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name.tar.gz`,
+      destination: `/api/docs?format=${DEFAULT_AGENT_SKILL_ARCHIVE_FORMAT}&name=:name`,
+    },
+    {
+      source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/:path*`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=:path*",
+    },
+    {
+      source: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+      destination: "/api/docs?format=legacy-skills",
+    },
+    {
+      source: `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/:name/skill.md`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+    },
+    {
+      source: `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/:name/:path*`,
+      destination: "/api/docs?format=agent-skill-file&name=:name&path=:path*",
+    },
+    {
+      source: DEFAULT_A2A_AGENT_CARD_ROUTE,
+      destination: "/api/docs?format=agent-card",
+    },
+  ];
+}
+
 function buildLlmsTxtRewrites(entry: string, docsPath: string): NextRewrite[] {
   const normalizedEntry = normalizeRouteSegment(entry);
   const internalBase = `/${normalizedEntry}`;
@@ -1756,15 +2099,28 @@ function buildRobotsRewrites(config: { enabled: boolean; hasStaticFile: boolean 
   ];
 }
 
-function buildMcpRewrites(config: { enabled: boolean; route: string }): NextRewrite[] {
+function buildMcpRewrites(config: {
+  enabled: boolean;
+  route: string;
+  protectedResource: boolean;
+}): NextRewrite[] {
   if (!config.enabled) return [];
 
-  return [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE]
+  const endpointRewrites = [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE]
     .filter((source) => source !== config.route)
     .map((source) => ({
       source,
+      // Next.js preserves the incoming public URL for an internally rewritten Route Handler.
+      // Keeping the destination free of identity markers avoids trusting client-controlled input.
       destination: config.route,
     }));
+  const metadataRewrites = config.protectedResource
+    ? Array.from(new Set([config.route, DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE]))
+        .map(buildMcpProtectedResourceMetadataRoute)
+        .map((source) => ({ source, destination: config.route }))
+    : [];
+
+  return [...endpointRewrites, ...metadataRewrites];
 }
 
 function buildAgentFeedbackRewrites(config: {
@@ -1946,6 +2302,7 @@ function mergeDocsMarkdownRewrites(
   mcp: {
     enabled: boolean;
     route: string;
+    protectedResource: boolean;
   },
   sitemap: {
     enabled: boolean;
@@ -1964,6 +2321,7 @@ function mergeDocsMarkdownRewrites(
 ): NextRewriteResult {
   const autoBeforeFilesRewrites = [
     ...buildAgentSpecRewrites(),
+    ...buildStandardsDiscoveryRewrites(),
     ...buildMcpRewrites(mcp),
     ...buildAgentsMdRewrites(),
     ...buildSkillMdRewrites(),
@@ -2005,11 +2363,26 @@ function mergeDocsRedirects(
 
 // ─── withDocs ───────────────────────────────────────────────────────
 
-export function withDocs(nextConfig: NextConfig = {}): NextConfig {
+export function withDocs(
+  nextConfig: NextConfig = {},
+  docsConfig?: Pick<DocsConfig, "agent" | "mcp">,
+): NextConfig {
   const root = process.cwd();
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
   const docsConfigAbsolutePath = join(root, docsConfigPath);
+  const mcp = docsConfig ? resolveMcpConfig(docsConfig.mcp) : readMcpConfig(root);
+  const nextBasePath = normalizeRoutePrefix(nextConfig.basePath);
+  if (mcp.enabled && mcp.protectedResource && nextBasePath) {
+    throw new Error(
+      `@farming-labs/next: mcp.security.protectedResource cannot be combined with Next.js basePath ${JSON.stringify(nextBasePath)} because RFC 9728 metadata must be hosted at origin-root well-known URLs. Host the protected docs app at the origin root or publish the metadata and MCP proxy at the edge.`,
+    );
+  }
+  const configuredAgentSkills =
+    docsConfig === undefined || !Object.hasOwn(docsConfig, "agent")
+      ? readAgentSkillPaths(root, docsConfigPath)
+      : docsConfig.agent?.skills;
+  const agentSkillsBundlePath = writeAgentSkillsBundle(root, configuredAgentSkills);
   const agentFeedback = readAgentFeedbackConfig(root);
   const docsConfigRelativeAlias =
     docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
@@ -2051,12 +2424,18 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   // and use client-side search or leave search disabled.
   const isStaticExport = nextConfig.output === "export";
   const docsApiRouteDir = join(root, appDir, "api", "docs");
-  if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
+  const existingDocsApiRoutePath = FILE_EXTS.map((ext) =>
+    join(docsApiRouteDir, `route.${ext}`),
+  ).find((filePath) => existsSync(filePath));
+  const docsApiRoutePath = existingDocsApiRoutePath ?? join(docsApiRouteDir, "route.ts");
+  if (
+    !isStaticExport &&
+    (!existingDocsApiRoutePath || isManagedGeneratedFile(existingDocsApiRoutePath))
+  ) {
     mkdirSync(docsApiRouteDir, { recursive: true });
-    writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
+    writeFileSync(docsApiRoutePath, DOCS_API_ROUTE_TEMPLATE);
   }
 
-  const mcp = readMcpConfig(root);
   const sitemap = readSitemapConfig(root);
   const robots = readRobotsConfig(root);
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
@@ -2257,6 +2636,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
       ...(workspaceRoot ? createDocsWorkspaceAliases(root, workspaceRoot) : {}),
       ...existingResolveAlias,
       [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
+      [AGENT_SKILLS_BUNDLE_ALIAS]: toTurbopackAliasPath(root, agentSkillsBundlePath),
       "fumadocs-openapi": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_PACKAGE_ALIAS),
       "fumadocs-openapi/ui": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_UI_ALIAS),
       "fumadocs-openapi/server": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_SERVER_ALIAS),
@@ -2331,6 +2711,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
       });
     }
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
+    resolvedConfig.resolve.alias[AGENT_SKILLS_BUNDLE_ALIAS] = agentSkillsBundlePath;
     resolvedConfig.resolve.alias["fumadocs-openapi"] = FUMADOCS_OPENAPI_PACKAGE_ALIAS;
     resolvedConfig.resolve.alias["fumadocs-openapi/ui"] = FUMADOCS_OPENAPI_UI_ALIAS;
     resolvedConfig.resolve.alias["fumadocs-openapi/server"] = FUMADOCS_OPENAPI_SERVER_ALIAS;
@@ -2403,7 +2784,11 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
       ]),
     ],
     [DEFAULT_MCP_ROUTE]: [
-      ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),
+      ...new Set([
+        ...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []),
+        docsTraceGlob,
+        skillTraceFile,
+      ]),
     ],
   };
 

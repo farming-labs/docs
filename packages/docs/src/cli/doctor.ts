@@ -1,15 +1,29 @@
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
-import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
+import { gunzipSync } from "node:zlib";
+import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/server";
 import pc from "picocolors";
 import {
-  DEFAULT_DOCS_API_ROUTE,
-  DEFAULT_DOCS_CONFIG_ROUTE,
   DEFAULT_AGENTS_MD_ROUTE,
   DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
+  DEFAULT_AGENT_SKILL_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+  DEFAULT_API_CATALOG_ROUTE,
+  DEFAULT_API_CATALOG_FORMAT,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
   DEFAULT_LLMS_TXT_ROUTE,
   DEFAULT_MCP_PUBLIC_ROUTE,
@@ -20,16 +34,39 @@ import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsMcpEndpointCandidates,
+  getDocsMcpProtectedResourceMetadataRoutes,
+  isDocsAgentSkillName,
+  resolveDocsDiscoveryApiRoute,
+  validateDocsAgentSkillFrontmatter,
 } from "../agent.js";
+import {
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
+} from "../standards-discovery.js";
 import { PAGE_AGENT_CONTRACT_FIELDS } from "../agent-contract.js";
 import {
   analyzeAgentUsefulness,
   createAgentUsefulnessPagesFromMcp,
+  type AgentUsefulnessFinding,
+  type AgentUsefulnessFindingCode,
+  type AgentUsefulnessFindingSeverity,
   type AgentUsefulnessMetrics,
 } from "../agent-usefulness.js";
 import { runDocsGoldenTasks, type DocsGoldenTasksReport } from "../agent-evals.js";
 import { analyzeAgentSurfaceDrift } from "../agent-surface-drift.js";
+import { resolveConfiguredAgentSkills } from "../agent-skills-server.js";
+import {
+  analyzeConfiguredAgentSkillsProgressiveDisclosure,
+  type DocsAgentSkillsProgressiveDisclosureReport,
+} from "../agent-skills-progressive-disclosure.js";
+import {
+  AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
+  readAgentSkillDocumentFromTar,
+} from "../agent-skills-archive.js";
+import { httpLinkHeaderHasTargetRelation } from "../http-link.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
+import { isDocsMcpOAuthScopeToken, normalizeDocsMcpAuthorizationServerUrls } from "../mcp-auth.js";
 import {
   createFilesystemDocsMcpSource,
   getDocsConfigSchema,
@@ -46,6 +83,7 @@ import {
   DEFAULT_ROBOTS_TXT_ROUTE,
   analyzeDocsRobotsTxt,
   resolveDocsRobotsConfig,
+  type DocsRobotsAnalysisOptions,
 } from "../robots.js";
 import type { DocsConfig, DocsMcpConfig, DocsRobotsConfig, DocsSitemapConfig } from "../types.js";
 import {
@@ -57,6 +95,7 @@ import {
   readTopLevelStringProperty,
   resolveDocsConfigPath,
   resolveDocsContentDir,
+  resolveDocsProjectRoot,
 } from "./config.js";
 import { compactAgentDocs, inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
 import type { AgentCompactOptions } from "./agent.js";
@@ -73,6 +112,10 @@ export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
   json?: boolean;
+  /** Write the JSON report to a file without mixing it into annotation stdout. */
+  jsonOutputPath?: string;
+  /** Emit file/line GitHub workflow annotations when running in GitHub Actions. */
+  ci?: boolean;
   strict?: boolean;
   failOn?: DoctorFailOn;
   url?: string;
@@ -92,6 +135,18 @@ export interface AgentDoctorCheck {
   score: number;
   maxScore: number;
   recommendation?: string;
+  /** Actionable source findings that explain this aggregate check. */
+  findings?: AgentDoctorCommandFinding[];
+}
+
+export interface AgentDoctorCommandFinding {
+  code: AgentUsefulnessFindingCode;
+  severity: AgentUsefulnessFindingSeverity;
+  file: string;
+  line?: number;
+  command: string;
+  reason: string;
+  proposedCorrection: string;
 }
 
 export interface AgentDoctorCoverage {
@@ -226,6 +281,30 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg.startsWith("--json-output=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --json-output.");
+      }
+      parsed.jsonOutputPath = value;
+      continue;
+    }
+
+    if (arg === "--json-output") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --json-output.");
+      }
+      parsed.jsonOutputPath = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--ci") {
+      parsed.ci = true;
+      continue;
+    }
+
     if (arg === "--strict") {
       parsed.strict = true;
       continue;
@@ -356,6 +435,8 @@ ${pc.dim("Options:")}
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
   ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
+  ${pc.cyan("--json-output <path>")} Write the JSON report to a file; use with ${pc.cyan("--ci")} to keep annotation stdout valid
+  ${pc.cyan("--ci")}               Emit actionable GitHub annotations when running in GitHub Actions
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
   ${pc.cyan("--fix")}              Refresh stale generated agent.md files and token-budget missing outputs
   ${pc.cyan("--dry-run")}          With ${pc.cyan("--fix")}, report the compaction command without writing files
@@ -557,6 +638,25 @@ function resolveRobotsFilePath(
 function resolveStaticExport(config: DocsConfig | undefined, content: string): boolean {
   if (typeof config?.staticExport === "boolean") return config.staticExport;
   return readTopLevelBooleanProperty(content, "staticExport") ?? false;
+}
+
+function resolveApiCatalogEnabled(
+  config: DocsConfig | undefined,
+  content: string,
+  staticExport: boolean,
+): boolean {
+  if (staticExport) return false;
+  if (config?.llmsTxt && typeof config.llmsTxt === "object") {
+    return config.llmsTxt.apiCatalog !== false;
+  }
+
+  const llmsBlock = extractNestedObjectLiteral(content, ["llmsTxt"]);
+  return llmsBlock ? readObjectBooleanProperty(llmsBlock, "apiCatalog") !== false : true;
+}
+
+function resolveAgentCardEnabled(config: DocsConfig | undefined, content: string): boolean {
+  if (config) return Boolean(config.agent?.a2a);
+  return Boolean(extractNestedObjectLiteral(content, ["agent", "a2a"]));
 }
 
 function resolveAgentFeedbackEnabled(config: DocsConfig | undefined, content: string): boolean {
@@ -923,6 +1023,8 @@ function navigationScore(navigationCoverage: number): { status: DoctorStatus; sc
 
 const AGENT_OPTIMIZATION_BLOCKING_CHECKS = new Set([
   "surface-drift",
+  "agent-skills-frontmatter",
+  "agent-skills-progressive-disclosure",
   "agent-context-quality",
   "agent-task-completeness",
   "agent-applicability",
@@ -938,7 +1040,11 @@ function gradeForAgentScore(
   const hasBlockingFailure = checks.some(
     (check) => check.status === "fail" && AGENT_OPTIMIZATION_BLOCKING_CHECKS.has(check.id),
   );
-  if (score >= 90 && !hasBlockingFailure) return "Agent-optimized";
+  const hasIncompleteEvaluationCoverage = checks.some(
+    (check) => check.id === "golden-task-coverage" && check.status !== "pass",
+  );
+  if (score >= 90 && !hasBlockingFailure && !hasIncompleteEvaluationCoverage)
+    return "Agent-optimized";
   if (score >= 75) return "Agent-ready";
   if (score >= 60) return "Promising";
   return "Needs work";
@@ -1584,6 +1690,9 @@ async function probeMcpRoute(
         },
       },
     });
+    if (initializeResponse.status === 401) {
+      return await probeProtectedMcpDiscovery(baseUrl, route, initializeResponse);
+    }
     const initializePayload = await parseMcpResponse(initializeResponse);
 
     if (!initializeResponse.ok || initializePayload.error) {
@@ -1595,31 +1704,72 @@ async function probeMcpRoute(
 
     const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
 
-    if (sessionId) {
-      await postMcpJson(
-        baseUrl,
-        route,
-        {
-          jsonrpc: "2.0",
-          method: "notifications/initialized",
-          params: {},
-        },
-        sessionId,
-      ).catch(() => undefined);
-    }
-
-    const toolsResponse = await postMcpJson(
+    await postMcpJson(
       baseUrl,
       route,
       {
         jsonrpc: "2.0",
-        id: "doctor-tools-list",
-        method: "tools/list",
+        method: "notifications/initialized",
         params: {},
       },
       sessionId,
-    );
-    const toolsPayload = await parseMcpResponse(toolsResponse);
+    ).catch(() => undefined);
+
+    const toolNames = new Set<string>();
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    let toolsListError: { status: number; message: string } | undefined;
+    let completedToolsList = false;
+
+    for (let page = 0; page < 20; page += 1) {
+      const toolsResponse = await postMcpJson(
+        baseUrl,
+        route,
+        {
+          jsonrpc: "2.0",
+          id: `doctor-tools-list-${page + 1}`,
+          method: "tools/list",
+          params: cursor !== undefined ? { cursor } : {},
+        },
+        sessionId,
+      );
+      const toolsPayload = await parseMcpResponse(toolsResponse);
+      if (!toolsResponse.ok || toolsPayload.error) {
+        toolsListError = {
+          status: toolsResponse.status,
+          message: String(toolsPayload.error?.message ?? "unknown MCP error"),
+        };
+        break;
+      }
+
+      const result = toolsPayload.result as
+        | { tools?: Array<{ name?: unknown }>; nextCursor?: unknown }
+        | undefined;
+      for (const tool of result?.tools ?? []) {
+        if (typeof tool.name === "string") toolNames.add(tool.name);
+      }
+
+      const nextCursor = result?.nextCursor;
+      if (nextCursor === undefined) {
+        completedToolsList = true;
+        break;
+      }
+      if (typeof nextCursor !== "string" || seenCursors.has(nextCursor)) {
+        toolsListError = {
+          status: toolsResponse.status,
+          message: "server returned an invalid or repeated pagination cursor",
+        };
+        break;
+      }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    }
+    if (!completedToolsList && !toolsListError) {
+      toolsListError = {
+        status: 200,
+        message: "server exceeded the 20-page tools/list safety limit",
+      };
+    }
 
     if (sessionId) {
       await fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
@@ -1631,18 +1781,14 @@ async function probeMcpRoute(
       }).catch(() => undefined);
     }
 
-    if (!toolsResponse.ok || toolsPayload.error) {
+    if (toolsListError) {
       return {
         ok: false,
-        detail: `${route} tools/list returned HTTP ${toolsResponse.status}: ${String(toolsPayload.error?.message ?? "unknown MCP error")}.`,
+        detail: `${route} tools/list returned HTTP ${toolsListError.status}: ${toolsListError.message}.`,
       };
     }
 
-    const tools = (toolsPayload.result as { tools?: Array<{ name?: unknown }> } | undefined)?.tools;
-    const toolNames = Array.isArray(tools)
-      ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
-      : [];
-    const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
+    const missingTools = expectedTools.filter((tool) => !toolNames.has(tool));
 
     if (missingTools.length > 0) {
       return {
@@ -1653,7 +1799,7 @@ async function probeMcpRoute(
 
     return {
       ok: true,
-      detail: `${route} initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${toolNames.length} MCP tool${toolNames.length === 1 ? "" : "s"}.`,
+      detail: `${route} initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${toolNames.size} MCP tool${toolNames.size === 1 ? "" : "s"}.`,
     };
   } catch (error) {
     return {
@@ -1661,6 +1807,178 @@ async function probeMcpRoute(
       detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
     };
   }
+}
+
+export async function probeProtectedMcpDiscovery(
+  baseUrl: string,
+  route: string,
+  response: Response,
+): Promise<{ ok: boolean; detail: string }> {
+  const challenge = response.headers.get("www-authenticate") ?? "";
+  const bearerChallenge = findBearerChallenge(challenge);
+  const rawMetadataUrl = bearerChallenge
+    ? readHttpAuthQuotedParameter(bearerChallenge, "resource_metadata")
+    : undefined;
+  if (!bearerChallenge || !rawMetadataUrl) {
+    return {
+      ok: false,
+      detail: `${route} requires authentication but did not return a Bearer resource_metadata challenge.`,
+    };
+  }
+
+  const resourceUrl = new URL(joinDoctorUrl(baseUrl, route));
+  let metadataUrl: URL;
+  try {
+    metadataUrl = new URL(rawMetadataUrl);
+  } catch {
+    return { ok: false, detail: `${route} returned an invalid resource_metadata URL.` };
+  }
+  if (metadataUrl.origin !== resourceUrl.origin) {
+    return {
+      ok: false,
+      detail: `${route} returned cross-origin protected-resource metadata; the hosted doctor will not fetch it.`,
+    };
+  }
+
+  let metadataResponse: Response;
+  try {
+    metadataResponse = await fetchWithTimeout(metadataUrl.href, {
+      headers: { Accept: "application/json" },
+      redirect: "manual",
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+
+  if (metadataResponse.status !== 200) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata returned HTTP ${metadataResponse.status}.`,
+    };
+  }
+  if (responseMediaType(metadataResponse.headers.get("content-type")) !== "application/json") {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata did not return application/json.`,
+    };
+  }
+
+  let metadata: Record<string, unknown>;
+  try {
+    const parsedMetadata = await metadataResponse.json();
+    const metadataRecord = asRecord(parsedMetadata);
+    if (!metadataRecord) {
+      return {
+        ok: false,
+        detail: `${route} protected-resource metadata must be a JSON object.`,
+      };
+    }
+    metadata = metadataRecord;
+  } catch {
+    return { ok: false, detail: `${route} protected-resource metadata is not valid JSON.` };
+  }
+
+  if (metadata.resource !== resourceUrl.href) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata identifies ${String(metadata.resource ?? "no resource")} instead of ${resourceUrl.href}.`,
+    };
+  }
+  const authorizationServers = metadata.authorization_servers;
+  if (
+    !Array.isArray(authorizationServers) ||
+    authorizationServers.length === 0 ||
+    normalizeDocsMcpAuthorizationServerUrls(
+      authorizationServers.filter((issuer): issuer is string => typeof issuer === "string"),
+    ).length !== authorizationServers.length
+  ) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata is missing valid authorization_servers.`,
+    };
+  }
+  const scopesSupported = metadata.scopes_supported;
+  if (
+    scopesSupported !== undefined &&
+    (!Array.isArray(scopesSupported) ||
+      scopesSupported.some((scope) => !isDocsMcpOAuthScopeToken(scope)))
+  ) {
+    return {
+      ok: false,
+      detail: `${route} protected-resource metadata has invalid scopes_supported.`,
+    };
+  }
+  const challengeScope = readHttpAuthQuotedParameter(bearerChallenge, "scope");
+  if (
+    challengeScope !== undefined &&
+    challengeScope.split(" ").some((scope) => !isDocsMcpOAuthScopeToken(scope))
+  ) {
+    return { ok: false, detail: `${route} returned an invalid Bearer scope challenge.` };
+  }
+
+  return {
+    ok: true,
+    detail: `${route} is protected and exposes valid RFC 9728 metadata at ${metadataUrl.pathname}.`,
+  };
+}
+
+function findBearerChallenge(header: string): string | undefined {
+  let first = 0;
+  while (first < header.length && /\s/u.test(header[first] ?? "")) first += 1;
+  const starts = [first];
+  let quoted = false;
+  let escaped = false;
+
+  for (let index = 0; index < header.length; index += 1) {
+    const character = header[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quoted && character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (quoted || character !== ",") continue;
+
+    let candidate = index + 1;
+    while (candidate < header.length && /\s/u.test(header[candidate] ?? "")) candidate += 1;
+    const tokenStart = candidate;
+    while (
+      candidate < header.length &&
+      /[!#$%&'*+\-.^_`|~0-9A-Za-z]/u.test(header[candidate] ?? "")
+    ) {
+      candidate += 1;
+    }
+    if (candidate === tokenStart) continue;
+    let afterToken = candidate;
+    while (afterToken < header.length && /\s/u.test(header[afterToken] ?? "")) {
+      afterToken += 1;
+    }
+    if (header[afterToken] !== "=") starts.push(tokenStart);
+  }
+
+  for (let index = 0; index < starts.length; index += 1) {
+    const start = starts[index] ?? 0;
+    const scheme = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+/u.exec(header.slice(start))?.[0];
+    if (scheme?.toLowerCase() !== "bearer") continue;
+    const end = starts[index + 1] ?? header.length;
+    return header.slice(start, end).replace(/,\s*$/u, "").trim();
+  }
+  return undefined;
+}
+
+function readHttpAuthQuotedParameter(header: string, name: string): string | undefined {
+  const expression = new RegExp(`(?:^|[,\\s])${name}\\s*=\\s*"((?:\\\\.|[^"\\\\])*)"`, "i");
+  const value = expression.exec(header)?.[1];
+  return value?.replace(/\\(.)/g, "$1");
 }
 
 async function probeMcpRouteCandidates(
@@ -1707,11 +2025,15 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
   const site = asRecord(root?.site);
   const capabilities = asRecord(root?.capabilities);
   const api = asRecord(root?.api);
+  const apiCatalog = asRecord(root?.apiCatalog);
   const config = asRecord(root?.config);
   const search = asRecord(root?.search);
+  const skills = asRecord(root?.skills);
+  const skillsDiscovery = asRecord(skills?.discovery);
   const mcp = asRecord(root?.mcp);
   const agentContract = asRecord(root?.agentContract);
   const agentContractFields = asRecord(agentContract?.fields);
+  const apiRoute = isNonEmptyString(api?.docs) ? resolveDocsDiscoveryApiRoute(api.docs) : undefined;
 
   return Boolean(
     root &&
@@ -1721,9 +2043,27 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
     isNonEmptyString(site?.entry) &&
     typeof capabilities?.search === "boolean" &&
     typeof capabilities?.mcp === "boolean" &&
-    isNonEmptyString(api?.docs) &&
-    isNonEmptyString(api?.config) &&
-    isNonEmptyString(config?.endpoint) &&
+    capabilities?.apiCatalog === true &&
+    capabilities?.agentSkillsDiscovery === true &&
+    apiRoute &&
+    api?.docs === apiRoute &&
+    api?.config === `${apiRoute}?format=config` &&
+    api?.apiCatalog === DEFAULT_API_CATALOG_ROUTE &&
+    api?.apiCatalogQuery === `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
+    api?.agentSkillsIndex === DEFAULT_AGENT_SKILLS_INDEX_ROUTE &&
+    apiCatalog?.enabled === true &&
+    apiCatalog?.route === DEFAULT_API_CATALOG_ROUTE &&
+    apiCatalog?.api === `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}` &&
+    apiCatalog?.mediaType === API_CATALOG_MEDIA_TYPE &&
+    apiCatalog?.profile === API_CATALOG_PROFILE_URI &&
+    skillsDiscovery?.schema === AGENT_SKILLS_DISCOVERY_SCHEMA_URI &&
+    skillsDiscovery?.index === DEFAULT_AGENT_SKILLS_INDEX_ROUTE &&
+    skillsDiscovery?.artifact === DEFAULT_AGENT_SKILLS_ROUTE_PATTERN &&
+    skillsDiscovery?.apiIndex === `${apiRoute}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}` &&
+    skillsDiscovery?.apiArtifact ===
+      `${apiRoute}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}` &&
+    skillsDiscovery?.digest === "sha256" &&
+    config?.endpoint === `${apiRoute}?format=config` &&
     typeof search?.enabled === "boolean" &&
     isNonEmptyString(search?.endpoint) &&
     typeof mcp?.enabled === "boolean" &&
@@ -1732,6 +2072,296 @@ function isHostedAgentDiscoveryManifest(value: unknown): boolean {
     agentContractFields &&
     Object.keys(agentContractFields).length > 0,
   );
+}
+
+interface HostedStandardsProbe {
+  ok: boolean;
+  detail: string;
+}
+
+function responseMediaType(contentType: string | null): string {
+  return contentType?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+}
+
+function contentTypeParameter(contentType: string | null, name: string): string | undefined {
+  if (!contentType) return undefined;
+  const parameterPattern = new RegExp(
+    `(?:^|;)\\s*${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\s*=\\s*(?:"([^"]*)"|([^;\\s]+))`,
+    "i",
+  );
+  const match = contentType.match(parameterPattern);
+  return match?.[1] ?? match?.[2];
+}
+
+function isApiCatalogLinkset(value: unknown): boolean {
+  const root = asRecord(value);
+  if (!Array.isArray(root?.linkset) || root.linkset.length === 0) return false;
+
+  let apiLinks = 0;
+  for (const rawContext of root.linkset) {
+    const context = asRecord(rawContext);
+    if (!isNonEmptyString(context?.anchor)) return false;
+    if (!Array.isArray(context.item)) continue;
+    for (const rawItem of context.item) {
+      const item = asRecord(rawItem);
+      if (!isNonEmptyString(item?.href)) return false;
+      apiLinks += 1;
+    }
+  }
+
+  return apiLinks > 0;
+}
+
+async function probeApiCatalogRoute(baseUrl: string): Promise<HostedStandardsProbe> {
+  const route = DEFAULT_API_CATALOG_ROUTE;
+  const url = joinDoctorUrl(baseUrl, route);
+
+  try {
+    const [getResponse, headResponse] = await Promise.all([
+      fetchWithTimeout(url, {
+        headers: { Accept: API_CATALOG_MEDIA_TYPE },
+      }),
+      fetchWithTimeout(url, {
+        method: "HEAD",
+        headers: { Accept: API_CATALOG_MEDIA_TYPE },
+      }),
+    ]);
+    const text = await getResponse.text().catch(() => "");
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = undefined;
+    }
+
+    const failures: string[] = [];
+    if (!getResponse.ok) failures.push(`GET returned HTTP ${getResponse.status}`);
+    if (!headResponse.ok) failures.push(`HEAD returned HTTP ${headResponse.status}`);
+
+    for (const [method, response] of [
+      ["GET", getResponse],
+      ["HEAD", headResponse],
+    ] as const) {
+      const contentType = response.headers.get("content-type");
+      if (responseMediaType(contentType) !== API_CATALOG_MEDIA_TYPE) {
+        failures.push(`${method} Content-Type is ${JSON.stringify(contentType ?? "<missing>")}`);
+      } else if (contentTypeParameter(contentType, "profile") !== API_CATALOG_PROFILE_URI) {
+        failures.push(`${method} Content-Type is missing the RFC 9727 profile`);
+      }
+      if (
+        !httpLinkHeaderHasTargetRelation(
+          response.headers.get("link"),
+          DEFAULT_API_CATALOG_ROUTE,
+          "api-catalog",
+          url,
+        )
+      ) {
+        failures.push(
+          `${method} is missing an ${DEFAULT_API_CATALOG_ROUTE} rel="api-catalog" Link value`,
+        );
+      }
+    }
+
+    if (!isApiCatalogLinkset(body)) {
+      failures.push("GET did not return a JSON Linkset with at least one API item");
+    }
+
+    return failures.length === 0
+      ? {
+          ok: true,
+          detail: `${route} passed RFC 9727 GET and HEAD checks with a profiled JSON Linkset and api-catalog Link headers.`,
+        }
+      : {
+          ok: false,
+          detail: `${route} failed standards validation: ${failures.join("; ")}.`,
+        };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+}
+
+function isValidAgentSkillEntry(value: unknown): value is {
+  name: string;
+  type: "skill-md" | "archive";
+  description: string;
+  url: string;
+  digest: string;
+} {
+  const entry = asRecord(value);
+  return Boolean(
+    entry &&
+    typeof entry.name === "string" &&
+    isDocsAgentSkillName(entry.name) &&
+    (entry.type === "skill-md" || entry.type === "archive") &&
+    isNonEmptyString(entry.description) &&
+    Array.from(entry.description).length <= 1024 &&
+    isNonEmptyString(entry.url) &&
+    typeof entry.digest === "string" &&
+    /^sha256:[0-9a-f]{64}$/u.test(entry.digest),
+  );
+}
+
+async function probeAgentSkillsDiscovery(baseUrl: string): Promise<HostedStandardsProbe> {
+  const route = DEFAULT_AGENT_SKILLS_INDEX_ROUTE;
+  const indexUrl = joinDoctorUrl(baseUrl, route);
+
+  try {
+    const [indexResponse, indexHeadResponse] = await Promise.all([
+      fetchWithTimeout(indexUrl, {
+        headers: { Accept: "application/json" },
+      }),
+      fetchWithTimeout(indexUrl, {
+        method: "HEAD",
+        headers: { Accept: "application/json" },
+      }),
+    ]);
+    const text = await indexResponse.text().catch(() => "");
+    const failures: string[] = [];
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = undefined;
+    }
+
+    if (!indexResponse.ok) failures.push(`index returned HTTP ${indexResponse.status}`);
+    if (!indexHeadResponse.ok) {
+      failures.push(`index HEAD returned HTTP ${indexHeadResponse.status}`);
+    }
+    if (responseMediaType(indexResponse.headers.get("content-type")) !== "application/json") {
+      failures.push("index Content-Type is not application/json");
+    }
+    if (responseMediaType(indexHeadResponse.headers.get("content-type")) !== "application/json") {
+      failures.push("index HEAD Content-Type is not application/json");
+    }
+
+    const root = asRecord(body);
+    if (root?.$schema !== AGENT_SKILLS_DISCOVERY_SCHEMA_URI) {
+      failures.push("index $schema is not the Agent Skills discovery 0.2.0 schema");
+    }
+    const skills = Array.isArray(root?.skills) ? root.skills : [];
+    if (skills.length === 0) failures.push("index does not publish any skills");
+    if (skills.length > 100) failures.push("index publishes more than 100 skills");
+
+    const validSkills = skills.filter(isValidAgentSkillEntry);
+    if (validSkills.length !== skills.length) {
+      failures.push(
+        "one or more index entries have invalid name, type, description, URL, or digest fields",
+      );
+    }
+    if (new Set(validSkills.map((skill) => skill.name)).size !== validSkills.length) {
+      failures.push("index contains duplicate skill names");
+    }
+
+    const baseOrigin = new URL(baseUrl).origin;
+    const artifactDetails: string[] = [];
+    if (skills.length <= 100) {
+      for (const skill of validSkills) {
+        let artifactUrl: URL;
+        try {
+          artifactUrl = new URL(skill.url, indexUrl);
+        } catch {
+          failures.push(`${skill.name} has an invalid artifact URL`);
+          continue;
+        }
+
+        const expectedPath =
+          skill.type === "archive"
+            ? `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/${encodeURIComponent(skill.name)}.tar.gz`
+            : DEFAULT_AGENT_SKILLS_ROUTE_PATTERN.replace("{name}", encodeURIComponent(skill.name));
+        const expectedMediaType = skill.type === "archive" ? "application/gzip" : "text/markdown";
+        if (artifactUrl.origin !== baseOrigin) {
+          failures.push(`${skill.name} artifact is not same-origin`);
+          continue;
+        }
+        if (!artifactUrl.pathname.endsWith(expectedPath)) {
+          failures.push(`${skill.name} artifact URL does not match ${expectedPath}`);
+          continue;
+        }
+
+        try {
+          const [artifactResponse, artifactHeadResponse] = await Promise.all([
+            fetchWithTimeout(artifactUrl.toString(), {
+              headers: { Accept: expectedMediaType },
+            }),
+            fetchWithTimeout(artifactUrl.toString(), {
+              method: "HEAD",
+              headers: { Accept: expectedMediaType },
+            }),
+          ]);
+          const content = Buffer.from(await artifactResponse.arrayBuffer());
+          const computedDigest = `sha256:${createHash("sha256").update(content).digest("hex")}`;
+
+          if (!artifactResponse.ok) {
+            failures.push(`${skill.name} artifact returned HTTP ${artifactResponse.status}`);
+          } else if (!artifactHeadResponse.ok) {
+            failures.push(
+              `${skill.name} artifact HEAD returned HTTP ${artifactHeadResponse.status}`,
+            );
+          } else if (
+            responseMediaType(artifactResponse.headers.get("content-type")) !== expectedMediaType
+          ) {
+            failures.push(`${skill.name} artifact Content-Type is not ${expectedMediaType}`);
+          } else if (
+            responseMediaType(artifactHeadResponse.headers.get("content-type")) !==
+            expectedMediaType
+          ) {
+            failures.push(`${skill.name} artifact HEAD Content-Type is not ${expectedMediaType}`);
+          } else if (content.length === 0) {
+            failures.push(`${skill.name} artifact is empty`);
+          } else if (computedDigest !== skill.digest) {
+            failures.push(`${skill.name} artifact digest does not match the index`);
+          } else {
+            artifactDetails.push(`${skill.name} digest verified`);
+          }
+
+          const skillDocument =
+            skill.type === "skill-md"
+              ? new TextDecoder("utf-8", { fatal: true }).decode(content)
+              : readAgentSkillDocumentFromTar(
+                  gunzipSync(content, {
+                    maxOutputLength: AGENT_SKILL_ARCHIVE_MAX_UNCOMPRESSED_BYTES,
+                  }),
+                );
+
+          const validation = validateDocsAgentSkillFrontmatter(skillDocument, {
+            directoryName: skill.name,
+          });
+          if (!validation.valid) {
+            failures.push(
+              `${skill.name} has invalid SKILL.md frontmatter: ${validation.issues
+                .map((issue) => issue.message)
+                .join("; ")}`,
+            );
+          } else if (validation.data.description !== skill.description) {
+            failures.push(`${skill.name} SKILL.md description does not match the index`);
+          }
+        } catch (error) {
+          failures.push(
+            `${skill.name} artifact failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+    }
+
+    return failures.length === 0
+      ? {
+          ok: true,
+          detail: `${route} returned a valid Agent Skills index; ${artifactDetails.join(", ")}.`,
+        }
+      : {
+          ok: false,
+          detail: `${route} failed standards validation: ${failures.join("; ")}.`,
+        };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
 }
 
 function readDiscoveryRoute(value: unknown): string | undefined {
@@ -1796,6 +2426,7 @@ function hostedMcpRoutes(discoveryBody: unknown): string[] {
 const MCP_DISCOVERY_TOOL_NAMES = [
   ["listDocs", "list_docs"],
   ["listPages", "list_pages"],
+  ["listPageSections", "list_page_sections"],
   ["listTasks", "list_tasks"],
   ["readTask", "read_task"],
   ["getNavigation", "get_navigation"],
@@ -1823,6 +2454,16 @@ function hostedCapability(discoveryBody: unknown, key: string): boolean | undefi
   const block = asRecord(root?.[key]);
   const enabled = block?.enabled;
   return typeof enabled === "boolean" ? enabled : undefined;
+}
+
+function hostedRobotsAnalysisOptions(
+  discoveryBody: unknown,
+): Pick<DocsRobotsAnalysisOptions, "apiCatalog" | "agentCard"> {
+  const api = asRecord(asRecord(discoveryBody)?.api);
+  return {
+    apiCatalog: hostedCapability(discoveryBody, "apiCatalog") !== false,
+    agentCard: Boolean(readDiscoveryRoute(api?.agentCard)),
+  };
 }
 
 function hostedRootDocsRoute(discoveryBody: unknown): string {
@@ -1973,6 +2614,37 @@ async function buildHostedAgentChecks(
     ),
   );
 
+  const [apiCatalog, agentSkills] = await Promise.all([
+    probeApiCatalogRoute(baseUrl),
+    probeAgentSkillsDiscovery(baseUrl),
+  ]);
+  checks.push(
+    makeCheck(
+      "hosted-api-catalog",
+      "Hosted RFC 9727 API catalog",
+      apiCatalog.ok ? "pass" : "fail",
+      apiCatalog.ok ? 5 : 0,
+      5,
+      apiCatalog.detail,
+      apiCatalog.ok
+        ? undefined
+        : `Publish ${DEFAULT_API_CATALOG_ROUTE} with GET and HEAD support, the profiled ${API_CATALOG_MEDIA_TYPE} content type, a rel="api-catalog" Link header, and API links.`,
+    ),
+  );
+  checks.push(
+    makeCheck(
+      "hosted-agent-skills",
+      "Hosted Agent Skills discovery",
+      agentSkills.ok ? "pass" : "fail",
+      agentSkills.ok ? 5 : 0,
+      5,
+      agentSkills.detail,
+      agentSkills.ok
+        ? undefined
+        : `Publish ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE} and make every indexed SKILL.md artifact match its declared SHA-256 digest.`,
+    ),
+  );
+
   const llms = await Promise.all([
     probeTextRoute(baseUrl, DEFAULT_LLMS_TXT_ROUTE),
     probeTextRoute(baseUrl, DEFAULT_LLMS_FULL_TXT_ROUTE),
@@ -2040,7 +2712,12 @@ async function buildHostedAgentChecks(
   const robotsRoute = hostedRobotsRoute(discovery.body);
   if (robotsRoute.enabled) {
     const robots = await probeRobotsRoute(baseUrl, robotsRoute.route);
-    const robotsAnalysis = robots.body ? analyzeDocsRobotsTxt(robots.body) : undefined;
+    const robotsAnalysis = robots.body
+      ? analyzeDocsRobotsTxt(robots.body, {
+          ...hostedRobotsAnalysisOptions(discovery.body),
+          sitemapRoutes: sitemapRoutes.enabled ? sitemapRoutes.routes : [],
+        })
+      : undefined;
     const robotsBlocked = robotsAnalysis?.blocksAgentRoutes || robotsAnalysis?.blocksAiAgents;
     const robotsComplete = robotsAnalysis?.hasAgentRoutes && robotsAnalysis?.hasAiPolicy;
     checks.push(
@@ -2277,23 +2954,57 @@ function makeCheck(
   maxScore: number,
   detail: string,
   recommendation?: string,
+  findings?: AgentDoctorCommandFinding[],
 ): AgentDoctorCheck {
-  return { id, title, status, score, maxScore, detail, recommendation };
+  return { id, title, status, score, maxScore, detail, recommendation, findings };
+}
+
+function toDoctorCommandFindings(
+  findings: readonly AgentUsefulnessFinding[],
+): AgentDoctorCommandFinding[] {
+  return findings
+    .filter(
+      (
+        finding,
+      ): finding is AgentUsefulnessFinding & {
+        command: string;
+        proposedCorrection: string;
+      } =>
+        finding.category === "command" &&
+        Boolean(finding.command) &&
+        Boolean(finding.proposedCorrection),
+    )
+    .map((finding) => ({
+      code: finding.code,
+      severity: finding.severity,
+      file: finding.file,
+      line: finding.line,
+      command: finding.command,
+      reason: finding.message,
+      proposedCorrection: finding.proposedCorrection,
+    }));
 }
 
 export async function inspectAgentReadiness(
   options: DoctorOptions = {},
 ): Promise<AgentDoctorReport> {
-  const rootDir = process.cwd();
-  const files = listProjectFiles(rootDir);
-  const framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
+  const invocationRoot = process.cwd();
+  let rootDir = invocationRoot;
+  let files: string[] = [];
+  let framework: Framework | "unknown" = "unknown";
   const configCheckMax = 10;
 
   let configPath: string | undefined;
   try {
-    configPath = resolveDocsConfigPath(rootDir, options.configPath);
+    configPath = resolveDocsConfigPath(invocationRoot, options.configPath);
+    rootDir = resolveDocsProjectRoot(invocationRoot, configPath);
+    files = listProjectFiles(rootDir);
+    framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const invocationFiles = listProjectFiles(invocationRoot);
+    framework =
+      detectFramework(invocationRoot) ?? detectFrameworkFromFiles(invocationFiles) ?? "unknown";
     const checks = [
       makeCheck(
         "config",
@@ -2333,8 +3044,30 @@ export async function inspectAgentReadiness(
   }
 
   const configContent = readFileSync(configPath, "utf-8");
-  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, configPath);
   const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
+  let configuredAgentSkillNames: string[] | undefined;
+  let configuredAgentSkillsError: string | undefined;
+  let configuredAgentSkillsDisclosure: DocsAgentSkillsProgressiveDisclosureReport | undefined;
+  let configuredAgentSkillsDisclosureError: string | undefined;
+  const configuredAgentSkills = config?.agent?.skills;
+  if (configuredAgentSkills) {
+    try {
+      configuredAgentSkillNames = (
+        await resolveConfiguredAgentSkills(configuredAgentSkills, { rootDir })
+      ).map((skill) => skill.name);
+    } catch (error) {
+      configuredAgentSkillsError = error instanceof Error ? error.message : String(error);
+    }
+    try {
+      configuredAgentSkillsDisclosure = analyzeConfiguredAgentSkillsProgressiveDisclosure(
+        configuredAgentSkills,
+        { rootDir },
+      );
+    } catch (error) {
+      configuredAgentSkillsDisclosureError = error instanceof Error ? error.message : String(error);
+    }
+  }
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = config?.contentDir ?? resolveDocsContentDir(rootDir, configContent, entry);
   const ordering =
@@ -2348,12 +3081,18 @@ export async function inspectAgentReadiness(
       ? config.nav.title
       : (readNavTitle(configContent) ?? "Documentation");
   const staticExport = resolveStaticExport(config, configContent);
+  const apiCatalogEnabled = resolveApiCatalogEnabled(config, configContent, staticExport);
+  const agentCardEnabled = resolveAgentCardEnabled(config, configContent);
   const llmsEnabled = resolveFeatureEnabled(config, configContent, "llmsTxt");
   const searchEnabled = resolveFeatureEnabled(config, configContent, "search");
   const mcpEnabled = resolveFeatureEnabled(config, configContent, "mcp");
   const agentFeedbackEnabled = resolveAgentFeedbackEnabled(config, configContent);
   const compactConfigured = hasAgentCompactDefaults(config, configContent);
-  const skillFileExists = existsSync(path.join(rootDir, "skill.md"));
+  const skillFilePath = path.join(rootDir, "skill.md");
+  const skillFileExists = existsSync(skillFilePath);
+  const rootSkillValidation = skillFileExists
+    ? validateDocsAgentSkillFrontmatter(readFileSync(skillFilePath, "utf8"))
+    : undefined;
   const agentsFileExists =
     existsSync(path.join(rootDir, "AGENTS.md")) || existsSync(path.join(rootDir, "AGENT.md"));
 
@@ -2371,6 +3110,7 @@ export async function inspectAgentReadiness(
     pages: createAgentUsefulnessPagesFromMcp(rootDir, pages),
     projectFramework: framework === "unknown" ? undefined : framework,
   });
+  const commandFindings = toDoctorCommandFindings(usefulness.findings);
   const evaluationInput = config?.agent?.evaluations;
   const evaluation = resolveGoldenEvaluationInput(evaluationInput);
   const evaluationBaseUrl = config ? resolveDocsMetadataBaseUrl(config) : undefined;
@@ -2461,9 +3201,11 @@ export async function inspectAgentReadiness(
   );
   const feedbackRoute = DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = `${feedbackRoute}/schema`;
+  const apiRoute = resolveDocsDiscoveryApiRoute(config?.cloud?.apiRoute);
   const discovery = buildDocsAgentDiscoverySpec({
     origin: "http://localhost",
     entry,
+    apiRoute,
     search: searchEnabled,
     mcp: mcpConfig,
     feedback: {
@@ -2480,10 +3222,21 @@ export async function inspectAgentReadiness(
             (optionPath) =>
               optionPath === "agent" ||
               optionPath.startsWith("agent.") ||
+              optionPath === "mcp" ||
+              optionPath.startsWith("mcp.") ||
               optionPath === "review" ||
               optionPath.startsWith("review."),
           )
       : [];
+  const expectedMcpProtectedResource =
+    mcpConfig.enabled && mcpConfig.security?.authenticate && mcpConfig.security.protectedResource
+      ? {
+          metadataEndpoints: [...getDocsMcpProtectedResourceMetadataRoutes(mcpConfig.route)],
+          authorizationServers: mcpConfig.security.protectedResource.authorizationServers,
+          scopesSupported: mcpConfig.security.protectedResource.scopesSupported,
+          requiredScopes: mcpConfig.security.protectedResource.requiredScopes,
+        }
+      : null;
   const surfaceDrift = analyzeAgentSurfaceDrift({
     configOptionPaths: [
       ...new Set([...DOCS_CONFIG_MAP_TOP_LEVEL_KEYS, ...configuredAgentReviewPaths]),
@@ -2495,17 +3248,27 @@ export async function inspectAgentReadiness(
       entry,
       search: {
         enabled: searchEnabled,
-        endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+        endpoint: `${apiRoute}?query={query}`,
       },
       mcp: {
         enabled: mcpConfig.enabled,
         endpoint: mcpConfig.route,
         tools: mcpConfig.tools,
+        protectedResource: expectedMcpProtectedResource,
       },
       routes: {
-        "api.docs": DEFAULT_DOCS_API_ROUTE,
-        "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
-        "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+        "api.docs": apiRoute,
+        "api.config": `${apiRoute}?format=config`,
+        "api.apiCatalog": DEFAULT_API_CATALOG_ROUTE,
+        "api.apiCatalogQuery": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+        "api.agentSkillsIndex": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+        "apiCatalog.route": DEFAULT_API_CATALOG_ROUTE,
+        "apiCatalog.api": `${apiRoute}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+        "config.endpoint": `${apiRoute}?format=config`,
+        "skills.discovery.index": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+        "skills.discovery.artifact": DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+        "skills.discovery.apiIndex": `${apiRoute}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
+        "skills.discovery.apiArtifact": `${apiRoute}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
       },
     },
   });
@@ -2525,6 +3288,72 @@ export async function inspectAgentReadiness(
       configLoad.status === "evaluated"
         ? undefined
         : "Fix docs.config module evaluation before relying on resolved diagnostic scores.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
+      "agent-skills-frontmatter",
+      "Configured Agent Skills frontmatter",
+      configLoad.status !== "evaluated" ? "warn" : configuredAgentSkillsError ? "fail" : "pass",
+      configLoad.status === "evaluated" && !configuredAgentSkillsError ? 1 : 0,
+      1,
+      configLoad.status !== "evaluated"
+        ? "Not verified because docs.config could not be evaluated."
+        : configuredAgentSkillsError
+          ? configuredAgentSkillsError
+          : configuredAgentSkillNames
+            ? `${configuredAgentSkillNames.length} configured Agent Skill${configuredAgentSkillNames.length === 1 ? "" : "s"} passed full frontmatter validation: ${configuredAgentSkillNames.join(", ")}.`
+            : "No configured Agent Skills require validation.",
+      configuredAgentSkillsError
+        ? "Fix every configured SKILL.md field reported here before building or publishing the docs site."
+        : undefined,
+    ),
+  );
+
+  const skillDisclosureIssues = configuredAgentSkillsDisclosure?.issues ?? [];
+  const skillDisclosureHasErrors = skillDisclosureIssues.some(
+    (issue) => issue.severity === "error",
+  );
+  const skillDisclosureStatus: DoctorStatus =
+    configLoad.status !== "evaluated"
+      ? "warn"
+      : configuredAgentSkillsDisclosureError
+        ? "fail"
+        : skillDisclosureHasErrors
+          ? "fail"
+          : skillDisclosureIssues.length > 0
+            ? "warn"
+            : "pass";
+  const skillDisclosureDetail =
+    configLoad.status !== "evaluated"
+      ? "Not verified because docs.config could not be evaluated."
+      : configuredAgentSkillsDisclosureError
+        ? configuredAgentSkillsDisclosureError
+        : configuredAgentSkillsDisclosure
+          ? skillDisclosureIssues.length === 0
+            ? `${configuredAgentSkillsDisclosure.skills.length} configured Agent Skill${configuredAgentSkillsDisclosure.skills.length === 1 ? "" : "s"} stay within line/token budgets, use resolvable shallow references, declare required compatibility, and document bundled scripts.`
+            : `${skillDisclosureIssues.length} progressive-disclosure issue${skillDisclosureIssues.length === 1 ? "" : "s"} across ${configuredAgentSkillsDisclosure.skills.length} configured skill${configuredAgentSkillsDisclosure.skills.length === 1 ? "" : "s"}: ${skillDisclosureIssues
+                .slice(0, 4)
+                .map((issue) => {
+                  const file = path.relative(rootDir, issue.filePath).replace(/\\/g, "/");
+                  return `${file}${issue.line ? `:${issue.line}` : ""} ${issue.message}`;
+                })
+                .join(
+                  " ",
+                )}${skillDisclosureIssues.length > 4 ? ` (+${skillDisclosureIssues.length - 4} more)` : ""}`
+          : "No configured Agent Skills require progressive-disclosure analysis.";
+  checks.push(
+    makeCheck(
+      "agent-skills-progressive-disclosure",
+      "Agent Skills progressive disclosure",
+      skillDisclosureStatus,
+      skillDisclosureStatus === "pass" ? 5 : skillDisclosureStatus === "warn" ? 2 : 0,
+      5,
+      skillDisclosureDetail,
+      skillDisclosureStatus === "pass"
+        ? undefined
+        : "Keep SKILL.md under its configured line and instruction-token budgets, repair local references, keep reference chains shallow, declare compatibility requirements, and document script dependencies and validation.",
     ),
   );
 
@@ -2551,7 +3380,7 @@ export async function inspectAgentReadiness(
       canScoreSurfaceDrift && surfaceDrift.length === 0
         ? undefined
         : canScoreSurfaceDrift
-          ? "Align docs config, agent discovery, MCP tools, config schema, and the canonical page agent contract before publishing."
+          ? "Align docs config, agent discovery (including API catalog and Agent Skills routes), MCP tools, config schema, and the canonical page agent contract before publishing."
           : "Fix docs.config module evaluation so doctor can compare resolved config with discovery and schema surfaces.",
     ),
   );
@@ -2628,7 +3457,7 @@ export async function inspectAgentReadiness(
       routeSurface.publicDetail,
       routeSurface.publicMounted
         ? undefined
-        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /docs/sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
+        : "Add the framework public forwarder so /.well-known/api-catalog, /.well-known/agent-skills/*, the other /.well-known/* resources, /llms.txt, /sitemap.xml, /sitemap.md, /docs/sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
     ),
   );
 
@@ -2640,11 +3469,11 @@ export async function inspectAgentReadiness(
       routeSurface.apiMounted && routeSurface.publicMounted ? 5 : 0,
       5,
       routeSurface.apiMounted && routeSurface.publicMounted
-        ? `Expected discovery endpoints are available through ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, and /api/docs?agent=spec.`
+        ? `Expected discovery endpoints are available through ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, ${DEFAULT_API_CATALOG_ROUTE}, ${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}, and /api/docs?agent=spec.`
         : "Could not verify the shared agent discovery spec endpoints because docs API/public route wiring is incomplete.",
       routeSurface.apiMounted && routeSurface.publicMounted
         ? undefined
-        : "Make sure both the docs API handler and the public docs forwarder are mounted so agents can discover the site through the well-known agent spec.",
+        : "Make sure both the docs API handler and public docs forwarder expose the custom agent manifest, RFC 9727 API catalog, and Agent Skills discovery routes.",
     ),
   );
 
@@ -2739,6 +3568,8 @@ export async function inspectAgentReadiness(
     const robots = readFileSync(robotsPath, "utf-8");
     const analysis = analyzeDocsRobotsTxt(robots, {
       entry,
+      apiCatalog: apiCatalogEnabled,
+      agentCard: agentCardEnabled,
       sitemap: sitemapConfig,
       baseUrl: robotsConfig.baseUrl,
       robots: robotsConfig,
@@ -2767,14 +3598,26 @@ export async function inspectAgentReadiness(
 
   checks.push(
     skillFileExists
-      ? makeCheck(
-          "skill",
-          "Skill document",
-          "pass",
-          5,
-          5,
-          `Found root skill.md for ${DEFAULT_SKILL_MD_ROUTE} and ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}.`,
-        )
+      ? rootSkillValidation?.valid
+        ? makeCheck(
+            "skill",
+            "Skill document",
+            "pass",
+            5,
+            5,
+            `Found a standards-compliant root skill.md for ${DEFAULT_SKILL_MD_ROUTE}, ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}, and Agent Skills discovery.`,
+          )
+        : makeCheck(
+            "skill",
+            "Skill document",
+            "warn",
+            4,
+            5,
+            `Root skill.md remains available on the legacy routes, but Agent Skills discovery will publish the generated fallback because its frontmatter is invalid: ${rootSkillValidation?.issues
+              .map((issue) => issue.message)
+              .join("; ")}`,
+            "Add complete Agent Skills frontmatter to root skill.md if it should be published through standards discovery.",
+          )
       : makeCheck(
           "skill",
           "Skill document",
@@ -2959,6 +3802,7 @@ export async function inspectAgentReadiness(
         usefulness.metrics.commands.unverified === 0
         ? undefined
         : "Update broken or stale commands and make workspace selectors resolvable so scripts, working directories, package managers, and docs CLI subcommands can be verified.",
+      commandFindings,
     ),
   );
 
@@ -2997,27 +3841,52 @@ export async function inspectAgentReadiness(
     values.length === 0
       ? 0
       : Math.round((values.reduce((total, value) => total + value, 0) / values.length) * 100) / 100;
+  const evaluationQuality = evaluations.quality;
   const proportionalEvaluationScore =
-    evaluations.score === null ? 0 : Math.round((evaluations.score / 100) * 15);
+    evaluationQuality.score === null ? 0 : Math.round((evaluationQuality.score / 100) * 10);
   const evaluationScore =
-    evaluations.status === "failed"
-      ? Math.min(14, proportionalEvaluationScore)
+    evaluationQuality.status === "failed"
+      ? Math.min(9, proportionalEvaluationScore)
       : proportionalEvaluationScore;
   checks.push(
     makeCheck(
       "golden-tasks",
-      "Golden agent tasks",
-      evaluations.status === "passed" ? "pass" : evaluations.status === "failed" ? "fail" : "warn",
+      "Golden task quality",
+      evaluationQuality.status === "passed"
+        ? "pass"
+        : evaluationQuality.status === "failed"
+          ? "fail"
+          : "warn",
       evaluationScore,
-      15,
-      evaluations.status === "unmeasured"
-        ? "No golden agent tasks are configured; retrieval usefulness is unmeasured."
-        : `${evaluations.passedTaskCount}/${evaluations.taskCount} golden tasks passed with ${evaluations.score}/100 average score, ${averageMetric(evaluations.tasks.map((task) => task.retrieval.recallAtK))} retrieval recall, ${averageMetric(evaluations.tasks.map((task) => task.citations.recall))} citation recall, and ${evaluations.tasks.reduce((total, task) => total + task.usage.usedUtf8Bytes, 0)} UTF-8 context bytes used.`,
-      evaluations.status === "passed"
+      10,
+      evaluationQuality.status === "unmeasured"
+        ? "No golden agent tasks are configured; evaluation quality is unmeasured."
+        : `${evaluationQuality.passedTaskCount}/${evaluationQuality.taskCount} golden tasks passed with ${evaluationQuality.score}/100 average quality across configured expectations, ${averageMetric(evaluations.tasks.map((task) => task.retrieval.recallAtK))} retrieval recall, ${averageMetric(evaluations.tasks.map((task) => task.citations.recall))} citation recall, and ${evaluations.tasks.reduce((total, task) => total + task.usage.usedUtf8Bytes, 0)} UTF-8 context bytes used.`,
+      evaluationQuality.status === "passed"
         ? undefined
-        : evaluations.status === "unmeasured"
-          ? "Configure agent.evaluations.tasks so doctor and review can measure retrieval, citations, framework/version selection, executable examples, and token usage."
-          : "Inspect the failed golden task metrics and fix retrieval ranking, citations, applicability metadata, examples, or context budgets.",
+        : evaluationQuality.status === "unmeasured"
+          ? "Configure agent.evaluations.tasks so doctor and review can measure retrieval, citations, framework/version selection, adversarial safety, executable examples, and token usage."
+          : "Inspect the failed golden task metrics and fix retrieval ranking, citations, applicability metadata, adversarial safety, examples, or context budgets.",
+    ),
+  );
+
+  const evaluationCoverage = evaluations.coverage;
+  const formatDimensionCoverage = (
+    label: string,
+    dimension: typeof evaluationCoverage.dimensions.safety,
+  ) =>
+    `${label}: ${dimension.status} (${dimension.measuredTaskCount}/${dimension.totalTaskCount} tasks)`;
+  checks.push(
+    makeCheck(
+      "golden-task-coverage",
+      "Golden evaluation coverage",
+      evaluationCoverage.status === "measured" ? "pass" : "warn",
+      Math.round((evaluationCoverage.coveragePercent / 100) * 5),
+      5,
+      `${evaluationCoverage.status} coverage across optional confidence dimensions (${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%): ${formatDimensionCoverage("safety", evaluationCoverage.dimensions.safety)}; ${formatDimensionCoverage("answer quality", evaluationCoverage.dimensions.answerQuality)}; ${formatDimensionCoverage("executable examples", evaluationCoverage.dimensions.executableExamples)}.`,
+      evaluationCoverage.status === "measured"
+        ? undefined
+        : "Add golden-task safety expectations, actual-answer assertions, and execute-level example checks so each confidence dimension is measured explicitly.",
     ),
   );
 
@@ -3054,16 +3923,23 @@ export async function inspectAgentReadiness(
 export async function inspectHumanReadiness(
   options: DoctorOptions = {},
 ): Promise<HumanDoctorReport> {
-  const rootDir = process.cwd();
-  const files = listProjectFiles(rootDir);
-  const framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
+  const invocationRoot = process.cwd();
+  let rootDir = invocationRoot;
+  let files: string[] = [];
+  let framework: Framework | "unknown" = "unknown";
   const configCheckMax = 10;
 
   let configPath: string | undefined;
   try {
-    configPath = resolveDocsConfigPath(rootDir, options.configPath);
+    configPath = resolveDocsConfigPath(invocationRoot, options.configPath);
+    rootDir = resolveDocsProjectRoot(invocationRoot, configPath);
+    files = listProjectFiles(rootDir);
+    framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const invocationFiles = listProjectFiles(invocationRoot);
+    framework =
+      detectFramework(invocationRoot) ?? detectFrameworkFromFiles(invocationFiles) ?? "unknown";
     const checks = [
       makeCheck(
         "config",
@@ -3097,7 +3973,7 @@ export async function inspectHumanReadiness(
   }
 
   const configContent = readFileSync(configPath, "utf-8");
-  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, configPath);
   const config = configLoad.status === "evaluated" ? configLoad.config : undefined;
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = config?.contentDir ?? resolveDocsContentDir(rootDir, configContent, entry);
@@ -3349,8 +4225,13 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
     );
   }
   if (report.evaluations) {
+    const evaluationQuality = report.evaluations.quality;
     console.log(
-      `${pc.bold("Golden tasks:")} ${report.evaluations.status === "unmeasured" ? "unmeasured" : `${report.evaluations.passedTaskCount}/${report.evaluations.taskCount} passed (${report.evaluations.score}/100)`}`,
+      `${pc.bold("Golden task quality:")} ${evaluationQuality.status === "unmeasured" ? "unmeasured" : `${evaluationQuality.passedTaskCount}/${evaluationQuality.taskCount} passed (${evaluationQuality.score}/100)`}`,
+    );
+    const evaluationCoverage = report.evaluations.coverage;
+    console.log(
+      `${pc.bold("Evaluation coverage:")} ${evaluationCoverage.status} ${pc.dim(`(${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%)`)} ${pc.dim("•")} safety ${evaluationCoverage.dimensions.safety.status} ${pc.dim("•")} answer quality ${evaluationCoverage.dimensions.answerQuality.status} ${pc.dim("•")} executable examples ${evaluationCoverage.dimensions.executableExamples.status}`,
     );
   }
   console.log(
@@ -3372,6 +4253,12 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
       `${formatStatus(check.status)} ${check.title} ${pc.dim(`(${check.score}/${check.maxScore})`)}`,
     );
     console.log(`  ${check.detail}`);
+    for (const finding of check.findings ?? []) {
+      const location = `${finding.file}${finding.line ? `:${finding.line}` : ""}`;
+      console.log(`  ${pc.dim(location)} ${pc.bold("Command:")} ${finding.command}`);
+      console.log(`    ${pc.bold("Reason:")} ${finding.reason}`);
+      console.log(`    ${pc.bold("Proposed correction:")} ${finding.proposedCorrection}`);
+    }
   }
 
   if (report.recommendations.length > 0) {
@@ -3431,6 +4318,48 @@ function serializeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport
 
 export function printDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport) {
   console.log(JSON.stringify(serializeDoctorJsonReport(report), null, 2));
+}
+
+function writeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport, outputPath: string) {
+  const resolvedPath = path.resolve(process.cwd(), outputPath);
+  mkdirSync(path.dirname(resolvedPath), { recursive: true });
+  writeFileSync(
+    resolvedPath,
+    `${JSON.stringify(serializeDoctorJsonReport(report), null, 2)}\n`,
+    "utf-8",
+  );
+}
+
+function escapeGitHubAnnotationData(value: string): string {
+  return value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+}
+
+function escapeGitHubAnnotationProperty(value: string): string {
+  return escapeGitHubAnnotationData(value).replaceAll(":", "%3A").replaceAll(",", "%2C");
+}
+
+function emitDoctorGitHubAnnotations(report: AgentDoctorReport | HumanDoctorReport) {
+  if (process.env.GITHUB_ACTIONS !== "true" || report.mode !== "agent") return;
+
+  for (const check of report.checks) {
+    for (const finding of check.findings ?? []) {
+      const command =
+        finding.severity === "error"
+          ? "error"
+          : finding.severity === "warning"
+            ? "warning"
+            : "notice";
+      const location = [
+        `file=${escapeGitHubAnnotationProperty(finding.file)}`,
+        finding.line ? `line=${finding.line}` : undefined,
+        `title=${escapeGitHubAnnotationProperty(check.title)}`,
+      ]
+        .filter(Boolean)
+        .join(",");
+      const message = `Command: ${finding.command} Reason: ${finding.reason} Proposed correction: ${finding.proposedCorrection}`;
+      console.log(`::${command} ${location}::${escapeGitHubAnnotationData(message)}`);
+    }
+  }
 }
 
 function hasNonPassingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport) {
@@ -3531,6 +4460,12 @@ async function runAgentDoctorFixes(
 }
 
 export async function runDoctor(options: DoctorOptions = {}) {
+  if (options.ci && options.json) {
+    throw new Error(
+      "doctor --ci and --json cannot share stdout. Use --ci --json-output <path> to emit GitHub annotations and persist the JSON report in one run.",
+    );
+  }
+
   if (options.mode === "human") {
     if (options.fix) {
       throw new Error("doctor --fix is currently only supported with --agent.");
@@ -3538,11 +4473,15 @@ export async function runDoctor(options: DoctorOptions = {}) {
 
     const report = await inspectHumanReadiness(options);
     applyDoctorExitCode(report, options);
+    if (options.jsonOutputPath) {
+      writeDoctorJsonReport(report, options.jsonOutputPath);
+    }
     if (options.json) {
       printDoctorJsonReport(report);
       return report;
     }
     printHumanDoctorReport(report);
+    if (options.ci) emitDoctorGitHubAnnotations(report);
     return report;
   }
 
@@ -3557,10 +4496,14 @@ export async function runDoctor(options: DoctorOptions = {}) {
   }
 
   applyDoctorExitCode(report, options);
+  if (options.jsonOutputPath) {
+    writeDoctorJsonReport(report, options.jsonOutputPath);
+  }
   if (options.json) {
     printDoctorJsonReport(report);
     return report;
   }
   printAgentDoctorReport(report);
+  if (options.ci) emitDoctorGitHubAnnotations(report);
   return report;
 }

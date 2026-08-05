@@ -1,0 +1,71 @@
+---
+title: "Shadcn"
+description: "Compact neutral theme matching the layout, typography, and controls of the shadcn/ui documentation"
+icon: "shadcn"
+order: 4.86
+related:
+  - /docs/themes
+  - /docs/themes/threadline
+  - /docs/customization/colors
+  - /docs/themes/creating-themes
+agent:
+  tokenBudget: 700
+---
+
+# Shadcn Theme
+
+<Agent>
+Apply the Shadcn preset through `shadcn` from `@farming-labs/theme/shadcn`, `theme: shadcn()`, and `@import "@farming-labs/theme/shadcn/css"` in the global stylesheet.
+Expect a 56px header, 288px sidebar, 640px reading column, 256px table of contents, Geist typography, neutral surfaces, and compact controls in light and dark mode.
+If the page keeps the default shell, verify that the `/shadcn/css` entrypoint and `shadcn()` factory are both configured.
+</Agent>
+
+An unofficial preset modeled on the open-source [shadcn/ui documentation](https://ui.shadcn.com/docs). It recreates the documentation shell and interactions without copying shadcn branding or written content.
+
+## Usage
+
+```tsx title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { shadcn } from "@farming-labs/theme/shadcn";
+
+export default defineDocs({
+  entry: "docs",
+  theme: shadcn(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/shadcn/css";
+```
+
+## Defaults
+
+| Property      | Value                                  |
+| ------------- | -------------------------------------- |
+| Primary       | Neutral black / white                  |
+| Background    | White (light), neutral near-black (dark) |
+| Border radius | `0.625rem`                             |
+| Content width | 640px                                  |
+| Sidebar width | 288px                                  |
+| TOC width     | 256px                                  |
+| Header height | 56px                                   |
+
+## Style Notes
+
+- Compact desktop navigation and quiet search controls
+- Rounded active sidebar rows with a subtle fading divider
+- Narrow reading measure and restrained heading scale
+- Borderless soft code blocks, callouts, cards, and page actions
+- Responsive mobile content with the same typography rhythm
+
+## Customizing
+
+```tsx title="customizing.tsx"
+theme: shadcn({
+  ui: {
+    colors: { primary: "#18181b" },
+    layout: { contentWidth: 680, sidebarWidth: 300 },
+  },
+}),
+```

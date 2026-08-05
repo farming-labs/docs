@@ -102,7 +102,7 @@ Farming Labs can expose the same docs in machine-readable forms, including:
 
 - `llms.txt` and full-document feeds
 - Markdown routes for individual pages
-- `skill.md`, `AGENTS.md`, and agent discovery endpoints
+- `skill.md`, multi-skill discovery with hashed companion assets, `AGENTS.md`, and agent discovery endpoints
 - A built-in Model Context Protocol (MCP) server
 - Schema.org JSON-LD, sitemaps, and generated `robots.txt`
 - Agent-focused health checks with `docs doctor --agent`

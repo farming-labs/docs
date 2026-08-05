@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/theme",
-  "version": "0.2.58",
+  "version": "0.2.92",
   "description": "Theme package for @farming-labs/docs — layout, provider, MDX components, and styles",
   "keywords": [
     "docs",
@@ -88,6 +88,11 @@
       "import": "./dist/ledger/index.mjs",
       "default": "./dist/ledger/index.mjs"
     },
+    "./shadcn": {
+      "types": "./dist/shadcn/index.d.mts",
+      "import": "./dist/shadcn/index.mjs",
+      "default": "./dist/shadcn/index.mjs"
+    },
     "./threadline": {
       "types": "./dist/threadline/index.d.mts",
       "import": "./dist/threadline/index.mjs",
@@ -126,6 +131,7 @@
     "./concrete/css": "./styles/concrete.css",
     "./command-grid/css": "./styles/command-grid.css",
     "./ledger/css": "./styles/ledger.css",
+    "./shadcn/css": "./styles/shadcn.css",
     "./threadline/css": "./styles/threadline.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
@@ -151,6 +157,8 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "next": ">=14.0.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",

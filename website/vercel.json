@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install --frozen-lockfile",
+  "installCommand": "pnpm install --frozen-lockfile --force",
   "crons": [
     {
       "path": "/api/enterprise-support/email/process",

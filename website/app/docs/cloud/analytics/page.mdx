@@ -8,6 +8,42 @@ related:
   - /docs/cloud/deploy
   - /docs/customization/analytics
   - /docs/guides/docs-json
+agent:
+  tokenBudget: 900
+  task: Connect a docs runtime to Docs Cloud analytics without exposing user-authored inputs by default.
+  outcome: Runtime events are attributed to the intended Docs Cloud project and appear in its analytics dashboard.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - A Docs Cloud workspace has an imported project or custom analytics project.
+    - The dashboard-provided project ID is available for the runtime environment.
+    - Consent and retention policies are defined before enabling includeInputs.
+  files:
+    - .env.local
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - docs.json
+  commands:
+    - run: pnpm dlx @farming-labs/docs cloud check --analytics --no-network
+      description: Validate local analytics configuration and required environment variables.
+  sideEffects:
+    - Enabling Cloud analytics sends runtime usage events for the configured project.
+    - Enabling includeInputs can send raw search, Ask AI, feedback, or copy inputs.
+  verification:
+    - run: pnpm dlx @farming-labs/docs cloud check --analytics --no-network
+      expect: The analytics runtime, Cloud setting, and project environment checks pass.
+    - description: Trigger a test page view and confirm the event is attributed to the expected project in Docs Cloud.
+  rollback:
+    - Disable cloud.analytics or set the documented analytics-enabled environment flag to false.
+    - Remove the project ID and analytics key from the runtime environment when disconnecting the site.
+  failureModes:
+    - symptom: Events do not appear in the dashboard.
+      resolution: Copy the project ID from Docs Cloud again and use the framework-specific public or server environment variable documented on this page.
+    - symptom: User-authored text appears unexpectedly.
+      resolution: Set includeInputs to false and review the project consent and retention policy.
 ---
 
 # Analytics

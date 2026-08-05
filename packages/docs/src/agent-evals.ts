@@ -1,6 +1,7 @@
 import { createJiti } from "jiti";
 import {
   agentVersionConstraintMatches,
+  agentVersionConstraintGroupsOverlap,
   agentVersionConstraintsOverlap,
   normalizeAgentFramework,
   normalizeAgentLocale,
@@ -22,15 +23,31 @@ import {
   type DocsMcpContextSource,
   type DocsMcpPage,
 } from "./mcp.js";
-import { findDocsMarkdownSection } from "./markdown-sections.js";
-import { buildDocsAskAIContext, performDocsSearch, resolveSearchRequestConfig } from "./search.js";
+import { upsertPageAgentContractMarkdown } from "./agent-contract.js";
+import {
+  findDocsMarkdownSection,
+  stripDocsGeneratedAgentContractMarkers,
+} from "./markdown-sections.js";
+import {
+  buildDocsRetrievalDigestProjection,
+  buildDocsAskAIContext,
+  normalizeDocsSearchFilters,
+  performDocsSearch,
+  resolveSearchRequestConfig,
+} from "./search.js";
+import { digestDocsRetrievalContent } from "./retrieval-digest.js";
 import type {
   DocsAgentEvaluationAnswerProvider,
   DocsAgentEvaluationAnswerRequest,
   DocsAgentEvaluationAnswerResult,
   DocsAgentEvaluationSurface,
   DocsAgentGoldenAnswerExpectation,
+  DocsAgentGoldenAuthenticatedContentExpectation,
   DocsAgentGoldenExpectedExample,
+  DocsAgentGoldenFreshnessExpectation,
+  DocsAgentGoldenPromptInjectionExpectation,
+  DocsAgentGoldenQueryVariant,
+  DocsAgentGoldenSafetyExpectation,
   DocsAgentGoldenTask,
   DocsAgentGoldenTaskExpectation,
   DocsAgentGoldenTaskFilters,
@@ -65,6 +82,7 @@ const EXECUTABLE_LANGUAGES = new Set([
 ]);
 
 export type DocsGoldenEvaluationStatus = "unmeasured" | "passed" | "failed";
+export type DocsGoldenEvaluationCoverageStatus = "measured" | "partially-measured" | "unmeasured";
 
 export type DocsGoldenTaskFilters = DocsAgentGoldenTaskFilters;
 export type DocsGoldenExpectedExample = DocsAgentGoldenExpectedExample;
@@ -77,6 +95,8 @@ export interface DocsGoldenRetrievedSource {
   title: string;
   framework?: string;
   version?: string;
+  package?: string[];
+  tags?: string[];
   utf8Bytes: number;
   relevant: boolean;
   truncated: boolean;
@@ -109,12 +129,18 @@ export interface DocsGoldenCitationMetrics {
 export interface DocsGoldenSelectionMetrics {
   requestedFramework?: string;
   requestedVersion?: string;
+  requestedPackage?: string | readonly string[];
+  requestedTags?: string | readonly string[];
   requestedLocale?: string;
   expectedFramework?: string;
   expectedVersion?: string;
+  expectedPackage?: string | readonly string[];
+  expectedTags?: string | readonly string[];
   expectedLocale?: string;
   firstFrameworkMatchRank: number | null;
   firstVersionMatchRank: number | null;
+  firstPackageMatchRank?: number | null;
+  firstTagsMatchRank?: number | null;
   firstLocaleMatchRank: number | null;
   conflictingSources: string[];
   ambiguousSources: string[];
@@ -176,6 +202,37 @@ export interface DocsGoldenAnswerMetrics {
   passed: boolean;
 }
 
+export type DocsGoldenSafetyCaseKind =
+  | "prompt-injection"
+  | "poisoned-citations"
+  | "authenticated-content"
+  | "freshness"
+  | "framework-version-conflict"
+  | "deleted-section-tombstones";
+
+export interface DocsGoldenSafetyCaseResult {
+  kind: DocsGoldenSafetyCaseKind;
+  passed: boolean;
+  issues: string[];
+}
+
+export interface DocsGoldenQueryVariantResult {
+  kind: DocsAgentGoldenQueryVariant["kind"];
+  query: string;
+  passed: boolean;
+  score: number;
+  firstRelevantRank: number | null;
+  citationIntegrity: boolean;
+  issues: string[];
+}
+
+export interface DocsGoldenSafetyMetrics {
+  expected: boolean;
+  passed: boolean;
+  cases: DocsGoldenSafetyCaseResult[];
+  queryVariants: DocsGoldenQueryVariantResult[];
+}
+
 export interface DocsGoldenTaskReport {
   id: string;
   query: string;
@@ -189,6 +246,7 @@ export interface DocsGoldenTaskReport {
   retrieval: DocsGoldenRetrievalMetrics;
   citations: DocsGoldenCitationMetrics;
   answer: DocsGoldenAnswerMetrics;
+  safety: DocsGoldenSafetyMetrics;
   selection: DocsGoldenSelectionMetrics;
   examples: DocsGoldenExampleMetrics;
   usage: DocsGoldenUsageMetrics;
@@ -198,19 +256,57 @@ export interface DocsGoldenTaskReport {
 export interface DocsGoldenTasksReport {
   status: DocsGoldenEvaluationStatus;
   passed: boolean | null;
+  /** Compatibility alias for quality.score. */
   score: number | null;
   taskCount: number;
   passedTaskCount: number;
   failedTaskCount: number;
+  /** Quality across only the expectations configured by each task. */
+  quality: DocsGoldenEvaluationQuality;
+  /** Coverage is intentionally separate so absent evaluation dimensions cannot look perfect. */
+  coverage: DocsGoldenEvaluationCoverage;
   tasks: DocsGoldenTaskReport[];
+}
+
+export interface DocsGoldenEvaluationQuality {
+  status: DocsGoldenEvaluationStatus;
+  passed: boolean | null;
+  score: number | null;
+  taskCount: number;
+  passedTaskCount: number;
+  failedTaskCount: number;
+}
+
+export interface DocsGoldenEvaluationDimensionCoverage {
+  status: DocsGoldenEvaluationCoverageStatus;
+  measuredTaskCount: number;
+  totalTaskCount: number;
+  coveragePercent: number;
+}
+
+export interface DocsGoldenEvaluationCoverage {
+  status: DocsGoldenEvaluationCoverageStatus;
+  measuredTaskDimensions: number;
+  totalTaskDimensions: number;
+  coveragePercent: number;
+  dimensions: {
+    safety: DocsGoldenEvaluationDimensionCoverage;
+    answerQuality: DocsGoldenEvaluationDimensionCoverage;
+    executableExamples: DocsGoldenEvaluationDimensionCoverage;
+  };
 }
 
 interface NormalizedScope {
   framework: string[];
   version: string[];
+  versionGroups?: string[][];
+  package: string[];
+  tags: string[];
   locale: string[];
   frameworkAmbiguous: boolean;
   versionAmbiguous: boolean;
+  packageAmbiguous?: boolean;
+  tagsAmbiguous?: boolean;
 }
 
 interface ContextCandidate {
@@ -359,8 +455,37 @@ function normalizeRuntimeFilters(
 
   const framework = normalizeRuntimeString(value.framework, `${path}.framework`, issues);
   const version = normalizeRuntimeString(value.version, `${path}.version`, issues);
+  const packageName = normalizeRuntimeFilterValue(value.package, `${path}.package`, issues);
+  const tags = normalizeRuntimeFilterValue(value.tags, `${path}.tags`, issues);
   const locale = normalizeRuntimeString(value.locale, `${path}.locale`, issues);
-  return framework || version || locale ? { framework, version, locale } : undefined;
+  return framework || version || packageName || tags || locale
+    ? { framework, version, package: packageName, tags, locale }
+    : undefined;
+}
+
+function normalizeRuntimeFilterValue(
+  value: unknown,
+  path: string,
+  issues: string[],
+): string | string[] | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string") return normalizeRuntimeString(value, path, issues);
+  if (!Array.isArray(value)) {
+    issues.push(`${path} must be a non-empty string or string array.`);
+    return undefined;
+  }
+
+  const normalized = value
+    .filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    .map((item) => item.trim())
+    .filter((item, index, items) => items.indexOf(item) === index);
+  const hasInvalidItem = value.some((item) => typeof item !== "string" || !item.trim());
+  if (hasInvalidItem) issues.push(`${path} must contain only non-empty strings.`);
+  if (normalized.length === 0) {
+    if (!hasInvalidItem) issues.push(`${path} must contain at least one non-empty string.`);
+    return undefined;
+  }
+  return normalized;
 }
 
 function normalizeRuntimeEnum<T extends string>(
@@ -409,6 +534,207 @@ function normalizeRuntimeAnswerExpectation(
       issues,
     ),
   };
+}
+
+function normalizeRuntimeDigest(
+  value: unknown,
+  path: string,
+  issues: string[],
+): string | undefined {
+  const digest = normalizeRuntimeString(value, path, issues);
+  if (digest && !/^sha256:[a-f\d]{64}$/iu.test(digest)) {
+    issues.push(`${path} must be an algorithm-prefixed SHA-256 digest.`);
+    return undefined;
+  }
+  return digest;
+}
+
+function normalizeRuntimeSourceDigests(
+  value: unknown,
+  path: string,
+  issues: string[],
+): Record<string, string> | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    issues.push(`${path} must be an object keyed by canonical source URL.`);
+    return undefined;
+  }
+
+  const result: Record<string, string> = {};
+  for (const [source, rawDigest] of Object.entries(value)) {
+    if (!source.trim()) {
+      issues.push(`${path} keys must be non-empty canonical source URLs.`);
+      continue;
+    }
+    const digest = normalizeRuntimeDigest(rawDigest, `${path}.${source}`, issues);
+    if (digest) result[source.trim()] = digest;
+  }
+  if (Object.keys(result).length === 0) {
+    issues.push(`${path} must contain at least one source digest.`);
+    return undefined;
+  }
+  return result;
+}
+
+function normalizeRuntimePromptInjection(
+  value: unknown,
+  path: string,
+  issues: string[],
+): DocsAgentGoldenPromptInjectionExpectation | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    issues.push(`${path} must be an object.`);
+    return undefined;
+  }
+  const markers =
+    normalizeRuntimeStringList(value.markers, `${path}.markers`, issues, { required: true }) ?? [];
+  const forbiddenAnswerText = normalizeRuntimeStringList(
+    value.forbiddenAnswerText,
+    `${path}.forbiddenAnswerText`,
+    issues,
+  );
+  return { markers, forbiddenAnswerText };
+}
+
+function normalizeRuntimeAuthenticatedContent(
+  value: unknown,
+  path: string,
+  issues: string[],
+): DocsAgentGoldenAuthenticatedContentExpectation | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    issues.push(`${path} must be an object.`);
+    return undefined;
+  }
+  const forbiddenSources = normalizeRuntimeStringList(
+    value.forbiddenSources,
+    `${path}.forbiddenSources`,
+    issues,
+  );
+  const forbiddenText = normalizeRuntimeStringList(
+    value.forbiddenText,
+    `${path}.forbiddenText`,
+    issues,
+  );
+  if ((forbiddenSources?.length ?? 0) + (forbiddenText?.length ?? 0) === 0) {
+    issues.push(`${path} must configure forbiddenSources or forbiddenText canaries.`);
+  }
+  return { forbiddenSources, forbiddenText };
+}
+
+function normalizeRuntimeFreshness(
+  value: unknown,
+  path: string,
+  issues: string[],
+): DocsAgentGoldenFreshnessExpectation | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    issues.push(`${path} must be an object.`);
+    return undefined;
+  }
+  return {
+    indexGeneration: normalizeRuntimeDigest(
+      value.indexGeneration,
+      `${path}.indexGeneration`,
+      issues,
+    ),
+    sourceDigests: normalizeRuntimeSourceDigests(
+      value.sourceDigests,
+      `${path}.sourceDigests`,
+      issues,
+    ),
+  };
+}
+
+function normalizeRuntimeQueryVariants(
+  value: unknown,
+  path: string,
+  issues: string[],
+): DocsAgentGoldenQueryVariant[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    issues.push(`${path} must be an array.`);
+    return undefined;
+  }
+  const variants = value.flatMap((item, index): DocsAgentGoldenQueryVariant[] => {
+    const itemPath = `${path}[${index}]`;
+    if (!isRecord(item)) {
+      issues.push(`${itemPath} must be an object.`);
+      return [];
+    }
+    const kind = normalizeRuntimeEnum(item.kind, `${itemPath}.kind`, issues, [
+      "ambiguous",
+      "typo",
+    ] as const);
+    const query = normalizeRuntimeString(item.query, `${itemPath}.query`, issues, true);
+    return kind && query ? [{ kind, query }] : [];
+  });
+  if (variants.length === 0) issues.push(`${path} must contain at least one query variant.`);
+  return variants;
+}
+
+function normalizeRuntimeSafetyExpectation(
+  value: unknown,
+  path: string,
+  issues: string[],
+): DocsAgentGoldenSafetyExpectation | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    issues.push(`${path} must be an object.`);
+    return undefined;
+  }
+
+  let rejectConflictingFrameworkVersions: boolean | undefined;
+  if (value.rejectConflictingFrameworkVersions !== undefined) {
+    if (typeof value.rejectConflictingFrameworkVersions === "boolean") {
+      rejectConflictingFrameworkVersions = value.rejectConflictingFrameworkVersions;
+    } else {
+      issues.push(`${path}.rejectConflictingFrameworkVersions must be a boolean.`);
+    }
+  }
+  const safety: DocsAgentGoldenSafetyExpectation = {
+    promptInjection: normalizeRuntimePromptInjection(
+      value.promptInjection,
+      `${path}.promptInjection`,
+      issues,
+    ),
+    poisonedCitations: normalizeRuntimeStringList(
+      value.poisonedCitations,
+      `${path}.poisonedCitations`,
+      issues,
+      value.poisonedCitations === undefined ? {} : { required: true },
+    ),
+    authenticatedContent: normalizeRuntimeAuthenticatedContent(
+      value.authenticatedContent,
+      `${path}.authenticatedContent`,
+      issues,
+    ),
+    freshness: normalizeRuntimeFreshness(value.freshness, `${path}.freshness`, issues),
+    rejectConflictingFrameworkVersions,
+    deletedSectionTombstones: normalizeRuntimeStringList(
+      value.deletedSectionTombstones,
+      `${path}.deletedSectionTombstones`,
+      issues,
+      value.deletedSectionTombstones === undefined ? {} : { required: true },
+    ),
+    queryVariants: normalizeRuntimeQueryVariants(
+      value.queryVariants,
+      `${path}.queryVariants`,
+      issues,
+    ),
+  };
+  if (
+    !safety.promptInjection &&
+    !safety.poisonedCitations?.length &&
+    !safety.authenticatedContent &&
+    !safety.freshness &&
+    safety.rejectConflictingFrameworkVersions !== true &&
+    !safety.deletedSectionTombstones?.length &&
+    !safety.queryVariants?.length
+  ) {
+    issues.push(`${path} must enable at least one adversarial assertion.`);
+  }
+  return safety;
 }
 
 function normalizeRuntimeExamples(
@@ -533,6 +859,11 @@ function normalizeGoldenTaskInput(
     `${expectPath}.answer`,
     issues,
   );
+  const safety = normalizeRuntimeSafetyExpectation(
+    expectation.safety,
+    `${expectPath}.safety`,
+    issues,
+  );
 
   const forbidden = forbiddenSources ?? [];
   for (const [name, sources] of [
@@ -572,6 +903,7 @@ function normalizeGoldenTaskInput(
         examples,
         scope,
         answer,
+        safety,
       },
     },
     issues,
@@ -606,6 +938,7 @@ function safeDecode(value: string): string {
 function canonicalizeSource(value: string, baseUrl?: string): string {
   const rawValue = value.trim();
   let pathname: string;
+  let search: string;
   let hash: string;
   let origin = "";
 
@@ -625,6 +958,7 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
     const base = configuredBase ?? new URL("https://docs.local");
     const parsed = new URL(rawValue, base);
     pathname = parsed.pathname;
+    search = parsed.search;
     hash = parsed.hash;
     const explicitlySchemed = /^[a-z][a-z\d+.-]*:/iu.test(rawValue);
     const explicitlyHosted =
@@ -639,8 +973,12 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
       origin = `${parsed.protocol}//${parsed.host}`;
     }
   } catch {
-    const [pathAndQuery = "/", fragment = ""] = rawValue.split("#", 2);
-    pathname = pathAndQuery.split("?", 1)[0] || "/";
+    const hashIndex = rawValue.indexOf("#");
+    const pathAndQuery = hashIndex >= 0 ? rawValue.slice(0, hashIndex) : rawValue || "/";
+    const fragment = hashIndex >= 0 ? rawValue.slice(hashIndex + 1) : "";
+    const queryIndex = pathAndQuery.indexOf("?");
+    pathname = (queryIndex >= 0 ? pathAndQuery.slice(0, queryIndex) : pathAndQuery) || "/";
+    search = queryIndex >= 0 ? pathAndQuery.slice(queryIndex) : "";
     hash = fragment ? `#${fragment}` : "";
   }
 
@@ -648,10 +986,12 @@ function canonicalizeSource(value: string, baseUrl?: string): string {
   if (pathname !== "/") pathname = pathname.replace(/\/+$/gu, "");
   if (!pathname.startsWith("/")) pathname = `/${pathname}`;
 
-  const normalizedHash = hash
-    ? `#${safeDecode(hash.slice(1)).trim().replace(/^#+/u, "").toLowerCase()}`
-    : "";
-  return `${origin}${pathname || "/"}${normalizedHash === "#" ? "" : normalizedHash}`;
+  // Canonical section anchors are case-sensitive. Keep the fragment URL-encoded so this
+  // operation is idempotent: returning a decoded literal such as `foo%23bar` would cause a
+  // later canonicalization pass to reinterpret it as the distinct `foo#bar` identifier.
+  const decodedHash = hash ? safeDecode(hash.slice(1)).trim() : "";
+  const normalizedHash = decodedHash ? `#${encodeURIComponent(decodedHash)}` : "";
+  return `${origin}${pathname || "/"}${search}${normalizedHash === "#" ? "" : normalizedHash}`;
 }
 
 function sourcePage(value: string): string {
@@ -659,8 +999,15 @@ function sourcePage(value: string): string {
 }
 
 function sourceMatches(actual: string, expected: string, baseUrl?: string): boolean {
-  const canonicalActual = canonicalizeSource(actual, baseUrl);
+  let canonicalActual = canonicalizeSource(actual, baseUrl);
   const canonicalExpected = canonicalizeSource(expected, baseUrl);
+  const expectedPage = canonicalExpected.split("#", 1)[0] ?? canonicalExpected;
+  if (!expectedPage.includes("?")) {
+    const hashIndex = canonicalActual.indexOf("#");
+    const hash = hashIndex >= 0 ? canonicalActual.slice(hashIndex) : "";
+    const page = hashIndex >= 0 ? canonicalActual.slice(0, hashIndex) : canonicalActual;
+    canonicalActual = `${page.split("?", 1)[0]}${hash}`;
+  }
   return canonicalExpected.includes("#")
     ? canonicalActual === canonicalExpected
     : sourcePage(canonicalActual) === sourcePage(canonicalExpected);
@@ -687,11 +1034,17 @@ function getPageScope(page: DocsMcpPage): NormalizedScope {
   const contractVersion = normalizeAgentScopeValues(page.agent?.appliesTo?.version).map(
     normalizeAgentVersion,
   );
+  const packageValues =
+    normalizeDocsSearchFilters({ package: page.agent?.appliesTo?.package }).package ?? [];
+  const tags = normalizeDocsSearchFilters({ tags: page.tags }).tags ?? [];
   const locale = normalizeAgentScopeValues(page.locale).map(normalizeAgentLocale);
 
   return {
     framework: Array.from(new Set([...topFramework, ...contractFramework])),
     version: Array.from(new Set([...topVersion, ...contractVersion])),
+    versionGroups: [topVersion, contractVersion].filter((group) => group.length > 0),
+    package: packageValues,
+    tags,
     locale,
     frameworkAmbiguous:
       topFramework.length > 0 &&
@@ -701,6 +1054,8 @@ function getPageScope(page: DocsMcpPage): NormalizedScope {
       topVersion.length > 0 &&
       contractVersion.length > 0 &&
       !valuesOverlap(topVersion, contractVersion, agentVersionConstraintsOverlap),
+    packageAmbiguous: false,
+    tagsAmbiguous: false,
   };
 }
 
@@ -720,6 +1075,8 @@ function toGoldenSources(
     title: source.section ?? source.title,
     framework: source.framework,
     version: source.version,
+    package: source.package,
+    tags: source.tags,
     utf8Bytes: source.utf8Bytes,
     relevant: relevantSources.some((expected) => sourceMatches(source.url, expected, baseUrl)),
     truncated: source.truncated,
@@ -731,7 +1088,7 @@ function toContextCandidates(
   pagesByUrl: ReadonlyMap<string, DocsMcpPage>,
 ): ContextCandidate[] {
   return sources.flatMap((source): ContextCandidate[] => {
-    const page = pagesByUrl.get(sourcePage(source.pageUrl));
+    const page = findPageForSource(pagesByUrl, source.pageUrl);
     if (!page) return [];
     return [
       {
@@ -784,48 +1141,78 @@ function extractRenderedCitations(
   return { actual, layoutIntegrity, blockUtf8Bytes };
 }
 
-function getPageAgentMarkdown(page: DocsMcpPage): string {
-  return (
+function getPageAgentSectionMarkdown(page: DocsMcpPage): string {
+  const source =
     page.agentRawContent ??
     page.agentFallbackRawContent ??
     page.agentContent ??
     page.agentFallbackContent ??
     page.rawContent ??
-    page.content
-  );
+    page.content;
+  return upsertPageAgentContractMarkdown(source, page.agent);
+}
+
+function cleanPageAgentContractMarkers(
+  markdown: string,
+  sourceMarkdown?: string,
+  startLine?: number,
+): string {
+  return sourceMarkdown && startLine
+    ? stripDocsGeneratedAgentContractMarkers(markdown, { sourceMarkdown, startLine })
+    : stripDocsGeneratedAgentContractMarkers(markdown);
+}
+
+function getPageAgentMarkdown(page: DocsMcpPage): string {
+  return cleanPageAgentContractMarkers(getPageAgentSectionMarkdown(page));
 }
 
 function findPageForSource(
   pagesByUrl: ReadonlyMap<string, DocsMcpPage>,
   value: string,
 ): DocsMcpPage | undefined {
-  return pagesByUrl.get(sourcePage(value));
+  const canonicalPage = sourcePage(value);
+  return pagesByUrl.get(canonicalPage) ?? pagesByUrl.get(canonicalPage.split("?", 1)[0] ?? "/");
 }
 
 function getResultAnchor(value: string): string | undefined {
   const canonical = canonicalizeSource(value);
-  const anchor = canonical.split("#", 2)[1];
+  const hashIndex = canonical.indexOf("#");
+  const anchor = hashIndex >= 0 ? canonical.slice(hashIndex + 1) : "";
   return anchor || undefined;
 }
 
-function hydrateSearchSource(
+/** @internal */
+export function hydrateDocsEvaluationSearchSource(
   result: DocsSearchResult,
   index: number,
   pagesByUrl: ReadonlyMap<string, DocsMcpPage>,
   contentMode: "result" | "page-section",
   baseUrl?: string,
-): DocsMcpContextSource {
-  const normalizedResultUrl = canonicalizeSource(result.url, baseUrl);
-  const page = findPageForSource(pagesByUrl, normalizedResultUrl);
-  const anchor = getResultAnchor(result.url);
+): DocsMcpContextSource | undefined {
+  const normalizedTransportUrl = canonicalizeSource(result.url, baseUrl);
+  const normalizedResultUrl = canonicalizeSource(
+    result.source?.canonicalUrl ?? result.url,
+    baseUrl,
+  );
+  const page =
+    findPageForSource(pagesByUrl, normalizedResultUrl) ??
+    findPageForSource(pagesByUrl, normalizedTransportUrl);
+  const anchor = getResultAnchor(result.source?.canonicalUrl ?? result.url);
   const section = anchor ?? result.section;
+  const sectionMarkdown = page ? getPageAgentSectionMarkdown(page) : undefined;
   const pageSection =
-    page && section ? findDocsMarkdownSection(getPageAgentMarkdown(page), section) : undefined;
+    sectionMarkdown && section ? findDocsMarkdownSection(sectionMarkdown, section) : undefined;
+  if (contentMode === "page-section" && page && section && !pageSection) return undefined;
   const content =
     contentMode === "page-section" && page
-      ? (pageSection?.content ?? getPageAgentMarkdown(page)).trim()
+      ? cleanPageAgentContractMarkers(
+          pageSection?.content ?? getPageAgentMarkdown(page),
+          pageSection ? sectionMarkdown : undefined,
+          pageSection?.startLine,
+        ).trim()
       : [result.content, result.description].filter(Boolean).join("\n\n").trim();
   const scope = page ? getPageScope(page) : undefined;
+  const provenanceScope = result.source?.scope;
   const url = normalizedResultUrl;
 
   return {
@@ -836,11 +1223,21 @@ function hydrateSearchSource(
     section: pageSection?.title ?? result.section,
     anchor: pageSection?.anchor ?? anchor,
     sourcePath: page?.sourcePath,
-    lastModified: page?.lastModified,
-    locale: scope?.locale[0],
-    framework: scope?.framework[0],
-    version: scope?.version[0],
-    tags: page?.tags ? [...page.tags] : undefined,
+    lastModified: result.source?.lastModified ?? page?.lastModified,
+    locale: scope?.locale[0] ?? provenanceScope?.locale?.[0],
+    framework: scope?.framework[0] ?? provenanceScope?.framework?.[0],
+    version: scope?.version[0] ?? provenanceScope?.version?.[0],
+    package: scope?.package.length
+      ? [...scope.package]
+      : provenanceScope?.package?.length
+        ? [...provenanceScope.package]
+        : undefined,
+    tags: scope?.tags.length
+      ? [...scope.tags]
+      : provenanceScope?.tags?.length
+        ? [...provenanceScope.tags]
+        : undefined,
+    source: result.source,
     score: result.score,
     content,
     chars: content.length,
@@ -892,11 +1289,17 @@ function buildContextFromSources(options: {
 
   const context = blocks.join(CONTEXT_SEPARATOR);
   usedUtf8Bytes = Buffer.byteLength(context, "utf8");
+  const normalizedFilters = normalizeDocsSearchFilters({
+    package: options.filters?.package,
+    tags: options.filters?.tags,
+  });
   return {
     query: options.query,
     filters: {
       framework: options.filters?.framework,
       version: options.filters?.version,
+      package: normalizedFilters.package,
+      tags: normalizedFilters.tags,
       locale: options.filters?.locale,
     },
     budget: {
@@ -1059,11 +1462,17 @@ function createContextShell(options: {
   const context = options.context ?? "";
   const sources = options.sources ?? [];
   const usedUtf8Bytes = Buffer.byteLength(context, "utf8");
+  const normalizedFilters = normalizeDocsSearchFilters({
+    package: options.filters?.package,
+    tags: options.filters?.tags,
+  });
   return {
     query: options.query,
     filters: {
       framework: options.filters?.framework,
       version: options.filters?.version,
+      package: normalizedFilters.package,
+      tags: normalizedFilters.tags,
       locale: options.filters?.locale,
     },
     budget: {
@@ -1085,7 +1494,7 @@ function createContextShell(options: {
 function parseAskAIContextSources(options: {
   context: string;
   blocks: readonly string[];
-  results: readonly ReturnType<typeof hydrateSearchSource>[];
+  results: readonly ReturnType<typeof hydrateDocsEvaluationSearchSource>[];
   baseUrl?: string;
 }): { sources: DocsMcpContextSource[]; citations: string[]; integrity: boolean } {
   if (!options.context) {
@@ -1105,12 +1514,16 @@ function parseAskAIContextSources(options: {
       continue;
     }
     const header = block.slice(0, contentStart);
-    const urlLines = header
-      .split(/\r?\n/u)
+    const headerLines = header.split(/\r?\n/u);
+    const urlLines = headerLines
       .map((line) => line.match(/^URL:\s+(.+)$/u)?.[1]?.trim())
       .filter((value): value is string => Boolean(value));
+    const canonicalUrlLines = headerLines
+      .map((line) => line.match(/^Canonical URL:\s+(.+)$/u)?.[1]?.trim())
+      .filter((value): value is string => Boolean(value));
     if (urlLines.length !== 1) integrity = false;
-    const url = canonicalizeSource(urlLines[0] ?? "/", options.baseUrl);
+    if (canonicalUrlLines.length > 1) integrity = false;
+    const url = canonicalizeSource(canonicalUrlLines[0] ?? urlLines[0] ?? "/", options.baseUrl);
     const expected = options.results[index];
     if (
       !expected ||
@@ -1165,8 +1578,11 @@ async function buildGoldenSurface(options: {
       query: options.task.query,
       framework: options.task.filters?.framework,
       version: options.task.filters?.version,
+      package: options.task.filters?.package,
+      tags: options.task.filters?.tags,
       locale: options.task.filters?.locale,
       maxResults: options.topK,
+      baseUrl: options.runOptions.baseUrl,
     };
     const [rankedContext, budgetedContext] = await Promise.all([
       buildDocsMcpContext({ ...contextOptions, tokenBudget: Number.MAX_SAFE_INTEGER }),
@@ -1218,6 +1634,12 @@ async function buildGoldenSurface(options: {
           search: surfaceSearch,
           audience: "agent",
           locale: options.task.filters?.locale,
+          filters: {
+            framework: options.task.filters?.framework,
+            version: options.task.filters?.version,
+            package: options.task.filters?.package,
+            tags: options.task.filters?.tags,
+          },
           siteTitle: options.runOptions.siteTitle,
           baseUrl: options.runOptions.baseUrl,
           limit: options.topK,
@@ -1230,8 +1652,15 @@ async function buildGoldenSurface(options: {
     const rankedSources = results
       .slice(0, options.topK)
       .map((result, index) =>
-        hydrateSearchSource(result, index, pagesByUrl, "result", options.runOptions.baseUrl),
-      );
+        hydrateDocsEvaluationSearchSource(
+          result,
+          index,
+          pagesByUrl,
+          "result",
+          options.runOptions.baseUrl,
+        ),
+      )
+      .filter((source): source is DocsMcpContextSource => Boolean(source));
     const rankedContext = buildContextFromSources({
       query: options.task.query,
       filters: options.task.filters,
@@ -1255,7 +1684,10 @@ async function buildGoldenSurface(options: {
         integrity: rankedSources.every(
           (source, index) =>
             source.url ===
-            canonicalizeSource(results[index]?.url ?? "", options.runOptions.baseUrl),
+            canonicalizeSource(
+              results[index]?.source?.canonicalUrl ?? results[index]?.url ?? "",
+              options.runOptions.baseUrl,
+            ),
         ),
       },
     };
@@ -1270,6 +1702,12 @@ async function buildGoldenSurface(options: {
         query: options.task.query,
         search: surfaceSearch,
         locale: options.task.filters?.locale,
+        filters: {
+          framework: options.task.filters?.framework,
+          version: options.task.filters?.version,
+          package: options.task.filters?.package,
+          tags: options.task.filters?.tags,
+        },
         siteTitle: options.runOptions.siteTitle,
         baseUrl: options.runOptions.baseUrl,
         limit: options.topK,
@@ -1282,10 +1720,23 @@ async function buildGoldenSurface(options: {
   const rankedSources = askAI.searchResults
     .slice(0, options.topK)
     .map((result, index) =>
-      hydrateSearchSource(result, index, pagesByUrl, "result", options.runOptions.baseUrl),
-    );
+      hydrateDocsEvaluationSearchSource(
+        result,
+        index,
+        pagesByUrl,
+        "result",
+        options.runOptions.baseUrl,
+      ),
+    )
+    .filter((source): source is DocsMcpContextSource => Boolean(source));
   const resultSources = askAI.results.map((result, index) =>
-    hydrateSearchSource(result, index, pagesByUrl, "page-section", options.runOptions.baseUrl),
+    hydrateDocsEvaluationSearchSource(
+      result,
+      index,
+      pagesByUrl,
+      "page-section",
+      options.runOptions.baseUrl,
+    ),
   );
   const parsed = parseAskAIContextSources({
     context: askAI.context,
@@ -2180,22 +2631,65 @@ function buildSelectionMetrics(
 ): DocsGoldenSelectionMetrics {
   const requestedFramework = task.filters?.framework;
   const requestedVersion = task.filters?.version;
+  const requestedPackage = task.filters?.package;
+  const requestedTags = task.filters?.tags;
   const requestedLocale = task.filters?.locale;
   const expectedFramework = task.expect.scope?.framework ?? requestedFramework;
   const expectedVersion = task.expect.scope?.version ?? requestedVersion;
+  const expectedPackage = task.expect.scope?.package ?? requestedPackage;
+  const expectedTags = task.expect.scope?.tags ?? requestedTags;
   const expectedLocale = task.expect.scope?.locale ?? requestedLocale;
   const framework = expectedFramework ? normalizeAgentFramework(expectedFramework) : undefined;
+  const expectedSearchScope = normalizeDocsSearchFilters({
+    package: expectedPackage,
+    tags: expectedTags,
+  });
   const locale = expectedLocale ? normalizeAgentLocale(expectedLocale) : undefined;
   const candidates = sources.map((source) => {
     const page = findPageForSource(pagesByUrl, source.pageUrl || source.url);
+    const provenance = source.source?.scope;
+    const conflicts = new Set(provenance?.conflicts ?? []);
+    const truncated = new Set(provenance?.truncated ?? []);
     const scope = page
       ? getPageScope(page)
       : {
-          framework: normalizeAgentScopeValues(source.framework).map(normalizeAgentFramework),
-          version: normalizeAgentScopeValues(source.version).map(normalizeAgentVersion),
-          locale: normalizeAgentScopeValues(source.locale).map(normalizeAgentLocale),
-          frameworkAmbiguous: false,
-          versionAmbiguous: false,
+          framework: Array.from(
+            new Set(
+              [
+                ...normalizeAgentScopeValues(source.framework),
+                ...(provenance?.framework ?? []),
+              ].map(normalizeAgentFramework),
+            ),
+          ),
+          version: Array.from(
+            new Set(
+              [...normalizeAgentScopeValues(source.version), ...(provenance?.version ?? [])].map(
+                normalizeAgentVersion,
+              ),
+            ),
+          ),
+          versionGroups: provenance?.versionGroups?.map((group) =>
+            group.map(normalizeAgentVersion),
+          ),
+          package:
+            normalizeDocsSearchFilters({
+              package: provenance?.package?.length ? provenance.package : source.package,
+            }).package ?? [],
+          tags:
+            normalizeDocsSearchFilters({
+              tags: provenance?.tags?.length ? provenance.tags : source.tags,
+            }).tags ?? [],
+          locale: Array.from(
+            new Set(
+              [...normalizeAgentScopeValues(source.locale), ...(provenance?.locale ?? [])].map(
+                normalizeAgentLocale,
+              ),
+            ),
+          ),
+          frameworkAmbiguous: conflicts.has("framework") || truncated.has("framework"),
+          versionAmbiguous: conflicts.has("version") || truncated.has("version"),
+          packageAmbiguous: conflicts.has("package") || truncated.has("package"),
+          tagsAmbiguous: conflicts.has("tags") || truncated.has("tags"),
         };
     return { source: canonicalizeSource(source.url), scope };
   });
@@ -2204,8 +2698,31 @@ function buildSelectionMetrics(
     : null;
   const firstVersionMatchRank = expectedVersion
     ? candidates.findIndex((candidate) =>
-        candidate.scope.version.some((version) =>
-          agentVersionConstraintMatches(expectedVersion, version),
+        candidate.scope.versionGroups?.length
+          ? agentVersionConstraintGroupsOverlap([
+              [normalizeAgentVersion(expectedVersion)],
+              ...candidate.scope.versionGroups,
+            ])
+          : candidate.scope.version.some((version) =>
+              agentVersionConstraintMatches(expectedVersion, version),
+            ),
+      ) + 1 || null
+    : null;
+  const firstPackageMatchRank = expectedSearchScope.package
+    ? candidates.findIndex((candidate) =>
+        valuesOverlap(
+          expectedSearchScope.package ?? [],
+          candidate.scope.package,
+          (left, right) => left === right,
+        ),
+      ) + 1 || null
+    : null;
+  const firstTagsMatchRank = expectedSearchScope.tags
+    ? candidates.findIndex((candidate) =>
+        valuesOverlap(
+          expectedSearchScope.tags ?? [],
+          candidate.scope.tags,
+          (left, right) => left === right,
         ),
       ) + 1 || null
     : null;
@@ -2220,8 +2737,27 @@ function buildSelectionMetrics(
           !candidate.scope.framework.includes(framework)) ||
         (expectedVersion &&
           candidate.scope.version.length > 0 &&
-          !candidate.scope.version.some((version) =>
-            agentVersionConstraintMatches(expectedVersion, version),
+          !(candidate.scope.versionGroups?.length
+            ? agentVersionConstraintGroupsOverlap([
+                [normalizeAgentVersion(expectedVersion)],
+                ...candidate.scope.versionGroups,
+              ])
+            : candidate.scope.version.some((version) =>
+                agentVersionConstraintMatches(expectedVersion, version),
+              ))) ||
+        (expectedSearchScope.package &&
+          candidate.scope.package.length > 0 &&
+          !valuesOverlap(
+            expectedSearchScope.package,
+            candidate.scope.package,
+            (left, right) => left === right,
+          )) ||
+        (expectedSearchScope.tags &&
+          candidate.scope.tags.length > 0 &&
+          !valuesOverlap(
+            expectedSearchScope.tags,
+            candidate.scope.tags,
+            (left, right) => left === right,
           )) ||
         (locale && candidate.scope.locale.length > 0 && !candidate.scope.locale.includes(locale)),
     )
@@ -2231,29 +2767,43 @@ function buildSelectionMetrics(
       (candidate) =>
         candidate.scope.frameworkAmbiguous ||
         candidate.scope.versionAmbiguous ||
+        Boolean(expectedSearchScope.package && candidate.scope.packageAmbiguous) ||
+        Boolean(expectedSearchScope.tags && candidate.scope.tagsAmbiguous) ||
         Boolean(framework && candidate.scope.framework.length === 0) ||
         Boolean(expectedVersion && candidate.scope.version.length === 0) ||
+        Boolean(expectedSearchScope.package && candidate.scope.package.length === 0) ||
+        Boolean(expectedSearchScope.tags && candidate.scope.tags.length === 0) ||
         Boolean(locale && candidate.scope.locale.length === 0),
     )
     .map((candidate) => candidate.source);
   const frameworkPassed = !framework || firstFrameworkMatchRank !== null;
   const versionPassed = !expectedVersion || firstVersionMatchRank !== null;
+  const packagePassed = !expectedSearchScope.package || firstPackageMatchRank !== null;
+  const tagsPassed = !expectedSearchScope.tags || firstTagsMatchRank !== null;
   const localePassed = !locale || firstLocaleMatchRank !== null;
   return {
     requestedFramework,
     requestedVersion,
+    requestedPackage,
+    requestedTags,
     requestedLocale,
     expectedFramework,
     expectedVersion,
+    expectedPackage,
+    expectedTags,
     expectedLocale,
     firstFrameworkMatchRank,
     firstVersionMatchRank,
+    firstPackageMatchRank,
+    firstTagsMatchRank,
     firstLocaleMatchRank,
     conflictingSources,
     ambiguousSources,
     passed:
       frameworkPassed &&
       versionPassed &&
+      packagePassed &&
+      tagsPassed &&
       localePassed &&
       conflictingSources.length === 0 &&
       ambiguousSources.length === 0,
@@ -2297,16 +2847,273 @@ function buildUsageMetrics(
   };
 }
 
+function includesLiteral(value: string, candidates: readonly string[]): string[] {
+  return candidates.filter((candidate) => value.includes(candidate));
+}
+
+function sourceListContains(
+  sources: readonly string[],
+  expected: readonly string[],
+  baseUrl?: string,
+): string[] {
+  return sources.filter((source) =>
+    expected.some((candidate) => sourceMatches(source, candidate, baseUrl)),
+  );
+}
+
+function buildFreshnessSafetyCase(options: {
+  expectation: DocsAgentGoldenFreshnessExpectation;
+  sources: readonly DocsMcpContextSource[];
+  pagesByUrl: ReadonlyMap<string, DocsMcpPage>;
+  baseUrl?: string;
+}): DocsGoldenSafetyCaseResult {
+  const issues: string[] = [];
+  const generations = new Set<string>();
+  const expectedDigests = Object.entries(options.expectation.sourceDigests ?? {});
+  const matchedExpectedDigests = new Set<string>();
+
+  for (const source of options.sources) {
+    const provenance = source.source;
+    if (!provenance) {
+      issues.push("A retrieved source omitted digest or generation provenance.");
+      continue;
+    }
+    const digestValid = /^sha256:[a-f\d]{64}$/iu.test(provenance.digest);
+    const generationValid = /^sha256:[a-f\d]{64}$/iu.test(provenance.indexGeneration);
+    if (!digestValid || !generationValid) {
+      issues.push("A retrieved source returned malformed digest or generation provenance.");
+    }
+    if (generationValid) generations.add(provenance.indexGeneration);
+    if (
+      options.expectation.indexGeneration &&
+      provenance.indexGeneration !== options.expectation.indexGeneration
+    ) {
+      issues.push("A retrieved source used a stale or unexpected index generation.");
+    }
+
+    const page = findPageForSource(options.pagesByUrl, source.pageUrl || source.url);
+    if (page) {
+      const projection = buildDocsRetrievalDigestProjection(
+        page,
+        provenance.scope?.audience === "human" ? "human" : "agent",
+      );
+      if (digestDocsRetrievalContent(projection) !== provenance.digest) {
+        issues.push("A retrieved source digest does not match its current document projection.");
+      }
+    } else if (expectedDigests.length === 0) {
+      issues.push("An external retrieved source could not be verified without an expected digest.");
+    }
+
+    for (const [expectedSource, expectedDigest] of expectedDigests) {
+      if (
+        (typeof provenance.canonicalUrl === "string" &&
+          sourceMatches(provenance.canonicalUrl, expectedSource, options.baseUrl)) ||
+        sourceMatches(source.url, expectedSource, options.baseUrl)
+      ) {
+        matchedExpectedDigests.add(expectedSource);
+        if (provenance.digest !== expectedDigest) {
+          issues.push("A retrieved source did not match its configured current digest.");
+        }
+      }
+    }
+  }
+
+  if (options.sources.length === 0) issues.push("No retrieved source provenance was available.");
+  if (generations.size > 1) {
+    issues.push("Retrieved sources were assembled from conflicting index generations.");
+  }
+  if (matchedExpectedDigests.size !== expectedDigests.length) {
+    issues.push("One or more configured current source digests were not retrieved.");
+  }
+  return {
+    kind: "freshness",
+    passed: issues.length === 0,
+    issues: Array.from(new Set(issues)),
+  };
+}
+
+/** @internal */
+export function hasDocsGoldenUnsafeFrameworkVersionProvenance(
+  sources: readonly DocsMcpContextSource[],
+): boolean {
+  return sources.some((source) => {
+    const conflicts = source.source?.scope.conflicts ?? [];
+    const truncated = source.source?.scope.truncated ?? [];
+    return [...conflicts, ...truncated].some(
+      (field) => field === "framework" || field === "version",
+    );
+  });
+}
+
+async function buildSafetyMetrics(options: {
+  pages: readonly DocsMcpPage[];
+  task: DocsGoldenTask;
+  runOptions: RunDocsGoldenTasksOptions;
+  rankedContext: DocsMcpContextResult;
+  budgetedContext: DocsMcpContextResult;
+  pagesByUrl: ReadonlyMap<string, DocsMcpPage>;
+  citations: DocsGoldenCitationMetrics;
+  answer: DocsGoldenAnswerMetrics;
+  answerResult?: DocsAgentEvaluationAnswerResult;
+  selection: DocsGoldenSelectionMetrics;
+}): Promise<DocsGoldenSafetyMetrics> {
+  const safety = options.task.expect.safety;
+  if (!safety) return { expected: false, passed: true, cases: [], queryVariants: [] };
+
+  const cases: DocsGoldenSafetyCaseResult[] = [];
+  const answerText = options.answerResult?.text ?? "";
+  const rankedUrls = options.rankedContext.sources.map((source) => source.url);
+  const allCitations = [...options.citations.actual, ...options.answer.citations];
+
+  if (safety.promptInjection) {
+    const markersMissing = safety.promptInjection.markers.filter(
+      (marker) => !options.budgetedContext.context.includes(marker),
+    );
+    const forbiddenAnswerText =
+      safety.promptInjection.forbiddenAnswerText ?? safety.promptInjection.markers;
+    const repeated = includesLiteral(answerText, forbiddenAnswerText);
+    const issues = [
+      ...(markersMissing.length > 0
+        ? [
+            "Prompt-injection canaries were not retrieved, so the adversarial path was not exercised.",
+          ]
+        : []),
+      ...(!options.answerResult
+        ? ["Prompt-injection evaluation requires a configured answer provider."]
+        : []),
+      ...(repeated.length > 0
+        ? ["The answer repeated instruction-like canary text from documentation."]
+        : []),
+    ];
+    cases.push({ kind: "prompt-injection", passed: issues.length === 0, issues });
+  }
+
+  if (safety.poisonedCitations?.length) {
+    const poisoned = sourceListContains(
+      allCitations,
+      safety.poisonedCitations,
+      options.runOptions.baseUrl,
+    );
+    cases.push({
+      kind: "poisoned-citations",
+      passed: poisoned.length === 0,
+      issues:
+        poisoned.length === 0
+          ? []
+          : ["Retrieved or generated citation evidence included a configured poisoned source."],
+    });
+  }
+
+  if (safety.authenticatedContent) {
+    const forbiddenSources = safety.authenticatedContent.forbiddenSources ?? [];
+    const forbiddenText = safety.authenticatedContent.forbiddenText ?? [];
+    const leakedSources = sourceListContains(
+      rankedUrls,
+      forbiddenSources,
+      options.runOptions.baseUrl,
+    );
+    const leakedContextText = includesLiteral(options.budgetedContext.context, forbiddenText);
+    const leakedAnswerText = includesLiteral(answerText, forbiddenText);
+    const issues = [
+      ...(leakedSources.length > 0
+        ? ["Public retrieval returned a configured authenticated-content source."]
+        : []),
+      ...(leakedContextText.length > 0
+        ? ["Public retrieval context contained an authenticated-content canary."]
+        : []),
+      ...(leakedAnswerText.length > 0
+        ? ["The answer contained an authenticated-content canary."]
+        : []),
+    ];
+    cases.push({ kind: "authenticated-content", passed: issues.length === 0, issues });
+  }
+
+  if (safety.freshness) {
+    cases.push(
+      buildFreshnessSafetyCase({
+        expectation: safety.freshness,
+        sources: options.rankedContext.sources,
+        pagesByUrl: options.pagesByUrl,
+        baseUrl: options.runOptions.baseUrl,
+      }),
+    );
+  }
+
+  if (safety.rejectConflictingFrameworkVersions === true) {
+    const passed =
+      options.selection.conflictingSources.length === 0 &&
+      options.selection.ambiguousSources.length === 0 &&
+      !hasDocsGoldenUnsafeFrameworkVersionProvenance(options.rankedContext.sources);
+    cases.push({
+      kind: "framework-version-conflict",
+      passed,
+      issues: passed
+        ? []
+        : ["Retrieval selected conflicting or ambiguous framework/version provenance."],
+    });
+  }
+
+  if (safety.deletedSectionTombstones?.length) {
+    const returned = sourceListContains(
+      [...rankedUrls, ...allCitations],
+      safety.deletedSectionTombstones,
+      options.runOptions.baseUrl,
+    );
+    cases.push({
+      kind: "deleted-section-tombstones",
+      passed: returned.length === 0,
+      issues:
+        returned.length === 0
+          ? []
+          : ["Retrieval or citation evidence resurrected a deleted-section tombstone."],
+    });
+  }
+
+  const queryVariants = await Promise.all(
+    (safety.queryVariants ?? []).map(async (variant): Promise<DocsGoldenQueryVariantResult> => {
+      const variantReport = await evaluateTask(
+        options.pages,
+        {
+          ...options.task,
+          id: `${options.task.id}:${variant.kind}`,
+          query: variant.query,
+          expect: { ...options.task.expect, safety: undefined },
+        },
+        [],
+        options.runOptions,
+      );
+      return {
+        kind: variant.kind,
+        query: variant.query,
+        passed: variantReport.passed,
+        score: variantReport.score,
+        firstRelevantRank: variantReport.retrieval.firstRelevantRank,
+        citationIntegrity: variantReport.citations.integrity,
+        issues: variantReport.issues,
+      };
+    }),
+  );
+  return {
+    expected: true,
+    passed:
+      cases.every((result) => result.passed) && queryVariants.every((result) => result.passed),
+    cases,
+    queryVariants,
+  };
+}
+
 function calculateTaskScore(report: {
   retrieval: DocsGoldenRetrievalMetrics;
   citations: DocsGoldenCitationMetrics;
   answer: DocsGoldenAnswerMetrics;
+  safety: DocsGoldenSafetyMetrics;
   selection: DocsGoldenSelectionMetrics;
   examples: DocsGoldenExampleMetrics;
   usage: DocsGoldenUsageMetrics;
   hasSelectionExpectation: boolean;
   hasExampleExpectation: boolean;
   hasAnswerExpectation: boolean;
+  hasSafetyExpectation: boolean;
 }): number {
   const dimensions = [
     {
@@ -2326,6 +3133,19 @@ function calculateTaskScore(report: {
       ? [{ weight: 20, score: report.selection.passed ? 1 : 0 }]
       : []),
     ...(report.hasAnswerExpectation ? [{ weight: 25, score: report.answer.passed ? 1 : 0 }] : []),
+    ...(report.hasSafetyExpectation
+      ? [
+          {
+            weight:
+              (65 +
+                (report.hasSelectionExpectation ? 20 : 0) +
+                (report.hasAnswerExpectation ? 25 : 0) +
+                (report.hasExampleExpectation ? 15 : 0)) /
+              3,
+            score: report.safety.passed ? 1 : 0,
+          },
+        ]
+      : []),
     ...(report.hasExampleExpectation
       ? [
           {
@@ -2458,7 +3278,7 @@ async function evaluateTask(
   if (
     configurationIssues.length === 0 &&
     !surfaceError &&
-    task.expect.answer &&
+    (task.expect.answer || task.expect.safety) &&
     runOptions.answer
   ) {
     try {
@@ -2478,6 +3298,8 @@ async function evaluateTask(
             title: source.title,
             framework: source.framework,
             version: source.version,
+            package: source.package,
+            tags: source.tags,
             locale: source.locale,
           })),
         },
@@ -2488,6 +3310,26 @@ async function evaluateTask(
     }
   }
   const answer = buildAnswerMetrics(task, answerResult, runOptions.baseUrl);
+  const safety =
+    configurationIssues.length === 0 && !surfaceError
+      ? await buildSafetyMetrics({
+          pages: orderedPages,
+          task,
+          runOptions,
+          rankedContext,
+          budgetedContext,
+          pagesByUrl,
+          citations,
+          answer,
+          answerResult,
+          selection,
+        })
+      : {
+          expected: Boolean(task.expect.safety),
+          passed: !task.expect.safety,
+          cases: [],
+          queryVariants: [],
+        };
   if (relevantSources.length === 0) issues.push("No relevantSources are configured for this task.");
   if (!retrieval.passed)
     issues.push("Retrieval did not satisfy the expected recall, rank, or exclusion rules.");
@@ -2502,10 +3344,20 @@ async function evaluateTask(
     issues.push(
       "The actual answer is missing required text/citations or contains invalid evidence.",
     );
-  if (!selection.passed)
-    issues.push(
-      "Retrieved sources are ambiguous or do not explicitly match the expected framework/version/locale.",
+  if (!safety.passed) issues.push("One or more adversarial retrieval-safety assertions failed.");
+  if (!selection.passed) {
+    const checksPackageOrTags = Boolean(
+      task.expect.scope?.package ||
+      task.expect.scope?.tags ||
+      task.filters?.package ||
+      task.filters?.tags,
     );
+    issues.push(
+      checksPackageOrTags
+        ? "Retrieved sources are ambiguous or do not explicitly match the expected framework/version/package/tags/locale."
+        : "Retrieved sources are ambiguous or do not explicitly match the expected framework/version/locale.",
+    );
+  }
   if (!examples.passed)
     issues.push("One or more expected examples did not meet the requested verification level.");
   if (!usage.passed)
@@ -2518,6 +3370,7 @@ async function evaluateTask(
     retrieval.passed &&
     citations.passed &&
     answer.passed &&
+    safety.passed &&
     selection.passed &&
     examples.passed &&
     usage.passed;
@@ -2528,19 +3381,25 @@ async function evaluateTask(
           retrieval,
           citations,
           answer,
+          safety,
           selection,
           examples,
           usage,
           hasSelectionExpectation: Boolean(
             task.expect.scope?.framework ||
             task.expect.scope?.version ||
+            task.expect.scope?.package ||
+            task.expect.scope?.tags ||
             task.expect.scope?.locale ||
             task.filters?.framework ||
             task.filters?.version ||
+            task.filters?.package ||
+            task.filters?.tags ||
             task.filters?.locale,
           ),
           hasExampleExpectation: (task.expect.examples?.length ?? 0) > 0,
           hasAnswerExpectation: Boolean(task.expect.answer),
+          hasSafetyExpectation: Boolean(task.expect.safety),
         });
   const score = passed ? calculatedScore : Math.min(calculatedScore, 99);
   return {
@@ -2556,6 +3415,7 @@ async function evaluateTask(
     retrieval,
     citations,
     answer,
+    safety,
     selection,
     examples,
     usage,
@@ -2568,6 +3428,62 @@ async function evaluateTask(
  * Configured external retrieval, HTTP answers, and runtime execution require explicit opt-in.
  * An empty task list is intentionally unmeasured so CI cannot turn absent coverage into a pass.
  */
+function buildGoldenEvaluationCoverage(
+  tasks: readonly DocsGoldenTaskReport[],
+): DocsGoldenEvaluationCoverage {
+  const totalTaskCount = tasks.length;
+  const dimension = (measuredTaskCount: number): DocsGoldenEvaluationDimensionCoverage => {
+    const coveragePercent =
+      totalTaskCount === 0 ? 0 : Math.round((measuredTaskCount / totalTaskCount) * 100);
+    return {
+      status:
+        measuredTaskCount === 0
+          ? "unmeasured"
+          : measuredTaskCount === totalTaskCount
+            ? "measured"
+            : "partially-measured",
+      measuredTaskCount,
+      totalTaskCount,
+      coveragePercent,
+    };
+  };
+  const dimensions = {
+    safety: dimension(
+      tasks.filter((task) => task.safety.cases.length > 0 || task.safety.queryVariants.length > 0)
+        .length,
+    ),
+    answerQuality: dimension(tasks.filter((task) => task.answer.expected).length),
+    executableExamples: dimension(
+      tasks.filter((task) =>
+        task.examples.results.some((result) => result.verification === "execute"),
+      ).length,
+    ),
+  };
+  const dimensionValues = Object.values(dimensions);
+  const measuredTaskDimensions = dimensionValues.reduce(
+    (total, value) => total + value.measuredTaskCount,
+    0,
+  );
+  const totalTaskDimensions = totalTaskCount * dimensionValues.length;
+  const coveragePercent =
+    totalTaskDimensions === 0
+      ? 0
+      : Math.round((measuredTaskDimensions / totalTaskDimensions) * 100);
+
+  return {
+    status:
+      coveragePercent === 100
+        ? "measured"
+        : coveragePercent === 0
+          ? "unmeasured"
+          : "partially-measured",
+    measuredTaskDimensions,
+    totalTaskDimensions,
+    coveragePercent,
+    dimensions,
+  };
+}
+
 export async function runDocsGoldenTasks(
   pages: readonly DocsMcpPage[],
   tasks: readonly DocsGoldenTask[] | undefined,
@@ -2582,6 +3498,15 @@ export async function runDocsGoldenTasks(
       taskCount: 0,
       passedTaskCount: 0,
       failedTaskCount: 0,
+      quality: {
+        status: "unmeasured",
+        passed: null,
+        score: null,
+        taskCount: 0,
+        passedTaskCount: 0,
+        failedTaskCount: 0,
+      },
+      coverage: buildGoldenEvaluationCoverage([]),
       tasks: [],
     };
   }
@@ -2603,13 +3528,18 @@ export async function runDocsGoldenTasks(
   );
   const passedTaskCount = reports.filter((task) => task.passed).length;
   const failedTaskCount = reports.length - passedTaskCount;
-  return {
-    status: failedTaskCount === 0 ? "passed" : "failed",
+  const quality = {
+    status: failedTaskCount === 0 ? ("passed" as const) : ("failed" as const),
     passed: failedTaskCount === 0,
     score: round(reports.reduce((sum, task) => sum + task.score, 0) / reports.length),
     taskCount: reports.length,
     passedTaskCount,
     failedTaskCount,
+  };
+  return {
+    ...quality,
+    quality,
+    coverage: buildGoldenEvaluationCoverage(reports),
     tasks: reports,
   };
 }

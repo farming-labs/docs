@@ -3,14 +3,55 @@ title: "Ask AI"
 description: "Add a RAG-powered AI chat to your documentation"
 icon: "zap"
 order: 5.5
+related:
+  - /docs/configuration
+  - /docs/customization/mcp
+  - /docs/customization/analytics
+  - /docs/guides/agent-friendly-docs
+agent:
+  tokenBudget: 1200
+  task: Enable Ask AI with an explicit provider, retrieval path, and secret-handling model.
+  outcome: A docs question returns a grounded streamed answer with citations from the configured documentation corpus.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - A working docs runtime and searchable content are already available.
+    - The selected provider credentials are stored in environment variables rather than committed config.
+    - Decide whether the browser may call the provider directly or must use a same-origin server proxy.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - .env.local
+  sideEffects:
+    - Ask AI can send questions and retrieved documentation to the configured model provider.
+    - Enabling feedback or analytics can store additional interaction metadata.
+  verification:
+    - description: Ask a question answered by one known page.
+      expect: The response streams successfully, cites the expected page, and does not expose provider credentials to the browser.
+  rollback:
+    - Set ai.enabled to false and remove provider credentials and any custom chat route added for the integration.
+  failureModes:
+    - symptom: The answer is plausible but cites no documentation.
+      resolution: Verify the search provider, maxResults, MCP endpoint when useMcp is enabled, and the selected page's machine-readable content.
+    - symptom: The browser reports an authentication or CORS error.
+      resolution: Move secret-bearing requests behind the same-origin docs API or configure the documented browser-safe Docs Cloud path.
 ---
 
 # Ask AI
 
 <Agent>
-Use this page when the user asks about this topic: Add a RAG-powered AI chat to your documentation.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Configure top-level `ai` in `docs.config.ts` or `docs.config.tsx`, and keep provider credentials in
+environment variables. Next.js reads `OPENAI_API_KEY` directly; TanStack Start, SvelteKit, and Astro
+pass the server-only value through `src/lib/docs.server.ts`, while Nuxt reads it through Nitro.
+
+Set `ai.useMcp: true` only when Ask AI should retrieve with `search_docs` from `mcp.route` (default
+`/api/docs/mcp`). Success means a question answered by a known page streams and cites that page. If
+the answer has no citation, check the search provider, `ai.maxResults`, MCP endpoint, and the page's
+machine-readable content. Move credential-bearing requests behind the same-origin docs API when the
+browser reports authentication or CORS errors; `staticExport: true` intentionally hides Ask AI.
 </Agent>
 
 Add a built-in AI chat that lets users ask questions about your documentation. The AI searches relevant pages, builds context, and streams a response from any OpenAI-compatible LLM.
@@ -80,7 +121,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
@@ -110,7 +151,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,

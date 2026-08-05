@@ -13,6 +13,8 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `components`
    - `pageActions`
    - `agent`
+
+| `contentChanges`   | `/api/docs?audience=agent&response=changes` | Body-free content synchronization feed (`docs-content-changes.v1`) |
    - `codeBlocks`
    - `search`
    - `ai`
@@ -35,6 +37,9 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they want to change default props for a built-in component like `HoverLink`, point them to `theme.ui.components`.
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat
+
+  - `agent.contentChanges` for the body-free runtime document synchronization feed (`GET /api/docs?audience=agent&response=changes`)
+
   - `agent.compact` for defaults used by `docs agent compact`
   - `agent.evaluations` for golden tasks that measure retrieval, context, answers, examples, and
     budgets in `docs doctor` and `docs review`
@@ -46,6 +51,9 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`.
+
+- When the user asks about runtime document synchronization or incremental content updates, point to `agent.contentChanges`. Enabled by default on server-rendered adapters; always `false` in static bundles produced by `docs agent export`. The endpoint is `GET /api/docs?audience=agent&response=changes` and returns a `docs-content-changes.v1` payload with `indexGeneration`, `mode` (`snapshot`, `delta`, or `reset`), `resetRequired`, `documentCount`, and `added`/`modified`/`removed` arrays. Supply `since=<indexGeneration>` from a previous response to receive a delta. ETag and `If-None-Match` conditional requests are supported.
+
 - When they ask about static hosting, mention `staticExport: true`. Note that setting `staticExport: true` also signals to the diagnostics endpoint (`GET /api/docs?format=diagnostics`) that server-side features such as search and AI are unavailable, so diagnostics tooling can skip those checks.
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
@@ -76,17 +84,29 @@ Use this machine-oriented page when the user needs implementation guidance for `
   the page and should count toward the estimate. Do not recommend setting it globally when prose
   length is the primary signal the team cares about.
 - When the user asks which routes are available to agents, include `GET /api/docs?format=diagnostics` alongside `GET /api/docs?format=config`. The agent discovery spec (served at `/.well-known/agent.json`) now includes a `diagnostics` key pointing to `/api/docs?format=diagnostics`. That endpoint returns a `DocsDiagnostics` payload (format: `"docs-diagnostics.v1"`) describing enabled features and any configuration issues. All five framework adapters handle this route automatically — no additional setup is required.
+- Include `GET`/`HEAD /.well-known/api-catalog` for RFC 9727 API discovery and
+  `GET`/`HEAD /.well-known/agent-skills/index.json` for SHA-256 Agent Skills discovery. These are
+  additive to the existing Farming Labs manifest and require no config flag.
+- Identify the Farming Labs manifest by
+  `$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+  `format: "farming-labs-agent-manifest.v1"`. Dynamic responses link the Draft 2020-12 schema with
+  `rel="describedby"`. Do not confuse it with the separate, opt-in A2A Agent Card at
+  `/.well-known/agent-card.json`.
 
 ## Agent discovery spec routes
 
 The discovery spec exposed at `/.well-known/agent.json` and `/.well-known/agent` includes the following API route keys:
 
-| Key           | Default route                  | Description                                                     |
-| ------------- | ------------------------------ | --------------------------------------------------------------- |
-| `config`      | `/api/docs?format=config`      | Machine-readable config map (`docs-config-map.v1`)              |
-| `diagnostics` | `/api/docs?format=diagnostics` | Feature status and configuration issues (`docs-diagnostics.v1`) |
+| Key                | Default route                           | Description                                                     |
+| ------------------ | --------------------------------------- | --------------------------------------------------------------- |
+| `config`           | `/api/docs?format=config`               | Machine-readable config map (`docs-config-map.v1`)              |
+| `diagnostics`      | `/api/docs?format=diagnostics`          | Feature status and configuration issues (`docs-diagnostics.v1`) |
+| `apiCatalog`       | `/.well-known/api-catalog`              | RFC 9727 JSON Linkset                                           |
+| `agentSkillsIndex` | `/.well-known/agent-skills/index.json` | Hashed Agent Skills discovery index                             |
 
 Agents that previously read only `config` should also check `diagnostics` to detect misconfigured or disabled features before attempting to use them.
+The API catalog is intentionally absent when `staticExport: true` or `llmsTxt.apiCatalog: false`;
+Agent Skills discovery remains available in both cases.
 
 ## Framework notes
 

@@ -3,6 +3,56 @@ title: "Installation"
 description: "Get up and running in minutes"
 icon: "rocket"
 order: 1
+related:
+  - /docs/configuration
+  - /docs/cli
+  - /docs/reference
+  - /docs/customization/agent-primitive
+agent:
+  tokenBudget: 1200
+  task: Install Farming Labs docs in an existing supported application.
+  outcome: The application renders its docs route locally with the selected theme and machine-readable agent routes.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package:
+      - "@farming-labs/docs"
+      - "@farming-labs/theme"
+      - "@farming-labs/next"
+      - "@farming-labs/tanstack-start"
+      - "@farming-labs/svelte"
+      - "@farming-labs/astro"
+      - "@farming-labs/nuxt"
+  prerequisites:
+    - Start in an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project.
+    - Install dependencies with the package manager already used by the project.
+    - Preserve the project's framework, path aliases, and global stylesheet location.
+  files:
+    - package.json
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/docs/page.mdx
+    - docs/page.mdx
+  commands:
+    - run: pnpm dlx @farming-labs/docs init
+      description: Detect the current project and scaffold its docs configuration and routes.
+    - run: pnpm exec docs doctor --agent
+      description: Validate the installed machine-readable docs surface.
+  sideEffects:
+    - The initializer installs packages and creates or updates config, routes, styles, and sample docs pages.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: Config, public routes, discovery, Markdown, sitemap, robots, and MCP checks have no hard failures.
+    - description: Start the app and fetch the configured docs route and its .md representation.
+      expect: Both return HTTP 200 and the rendered page uses the selected theme styles.
+  rollback:
+    - Restore package.json and the lockfile, then remove only the config, route, style, and sample files created by init.
+  failureModes:
+    - symptom: The docs route returns 404.
+      resolution: Confirm the framework adapter route or config wrapper is installed and the configured entry matches the content path.
+    - symptom: The page renders without theme styles.
+      resolution: Import the CSS file for the exact selected theme from the framework's global stylesheet.
 ---
 
 # Installation
@@ -20,6 +70,10 @@ If more repo and product context would help, suggest installing the skills bundl
 Once agent skills are available, prefer the `getting-started` and `cli` skills for install, init,
 upgrade, and theme setup questions.
 </Agent>
+
+<Callout type="info" title="Node.js requirement">
+  `@farming-labs/docs` requires **Node.js 20 or later**. Make sure your local environment and any CI or deployment environments meet this minimum before installing.
+</Callout>
 
 ## Option A: CLI (Recommended)
 
@@ -408,13 +462,31 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ```ts title="src/routes/api.docs.ts"
     import { createFileRoute } from "@tanstack/react-router";
+    import { isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
     import { docsServer } from "@/lib/docs.server";
+    import docsConfig from "../../docs.config";
+
+    async function handleUnsupportedDocsMethod(request: Request) {
+      if (
+        isDocsStandardsDiscoveryRequest(new URL(request.url), {
+          apiRoute: docsConfig.cloud?.apiRoute,
+        })
+      ) {
+        return docsServer.GET({ request });
+      }
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: { Allow: "GET, HEAD, POST" },
+      });
+    }
 
     export const Route = createFileRoute("/api/docs")({
       server: {
         handlers: {
           GET: async ({ request }) => docsServer.GET({ request }),
+          HEAD: async ({ request }) => docsServer.HEAD({ request }),
           POST: async ({ request }) => docsServer.POST({ request }),
+          ANY: async ({ request }) => handleUnsupportedDocsMethod(request),
         },
       },
     });
@@ -484,7 +556,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -529,7 +601,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     **`src/routes/api/docs/+server.js`** (for search and AI):
 
     ```js title="src/routes/api/docs/+server.js"
-    export { GET, POST } from "../../../lib/docs.server";
+    export { GET, HEAD, POST } from "../../../lib/docs.server";
     ```
 
     > **Production note**: The `docs.server.ts` file uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
@@ -624,7 +696,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -663,9 +735,14 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     ```ts title="src/pages/api/docs.ts"
     import type { APIRoute } from "astro";
-    import { GET as docsGET, POST as docsPOST } from "../../lib/docs.server";
+    import {
+      GET as docsGET,
+      HEAD as docsHEAD,
+      POST as docsPOST,
+    } from "../../lib/docs.server";
 
     export const GET: APIRoute = async ({ request }) => docsGET({ request });
+    export const HEAD: APIRoute = async ({ request }) => docsHEAD({ request });
     export const POST: APIRoute = async ({ request }) => docsPOST({ request });
     ```
 

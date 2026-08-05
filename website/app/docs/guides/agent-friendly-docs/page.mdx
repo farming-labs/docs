@@ -10,6 +10,44 @@ related:
   - /docs/configuration
   - /docs/cli
 order: 1
+agent:
+  tokenBudget: 1300
+  task: Turn an implementation-heavy docs page into a measurable agent-ready task contract.
+  outcome: The page is retrievable for its target task, cites canonical sources, declares applicability, includes executable evidence, and stays within its context budget.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Start with accurate human-facing documentation and a concrete user task.
+    - Identify the framework, package version, required files, commands, side effects, and likely failure modes.
+    - Keep secrets and authorization-only content out of all audience projections.
+  files:
+    - app/docs/example/page.mdx
+    - app/docs/example/agent.md
+    - docs/example/page.mdx
+    - docs/example/agent.md
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Measure task completeness, applicability, commands, related routes, and golden evaluations.
+  sideEffects:
+    - Adding a sibling agent.md replaces the machine-readable body for that page.
+    - Golden tasks add offline retrieval work to docs doctor and docs review.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: The page is task-complete and its configured golden task passes retrieval, citation, scope, example, and budget checks.
+    - description: Compare rendered HTML, the .md route, search, Ask AI context, MCP read_page, llms-full.txt, and static export.
+      expect: Every surface applies the same audience policy and exposes the same structured contract.
+  rollback:
+    - Restore the previous page frontmatter and audience content, then remove its golden task if the contract is withdrawn.
+  failureModes:
+    - symptom: The doctor gives context credit to repeated generic guidance.
+      resolution: Replace boilerplate with page-specific paths, commands, expected results, and recovery instructions.
+    - symptom: Retrieval returns a plausible page for the wrong framework or version.
+      resolution: Declare agent.appliesTo and assert the same scope independently in a golden task.
 ---
 
 import { WebsiteThemePrompt } from "@/components/website-theme-prompt";
@@ -249,6 +287,21 @@ Once `agent.md` exists, it becomes the source for:
 - `{page}` with a known AI `User-Agent` in Next.js
 - MCP `read_page`
 
+### Control retrieval freshness with `lastmod`
+
+By default, the framework derives a page's last-modified date from the source file's filesystem mtime. You can override this with the `lastmod` frontmatter key:
+
+```md title="page.mdx"
+---
+title: "Installation"
+lastmod: 2026-07-17
+---
+```
+
+Accepts a YAML date (`2026-07-17`) or a quoted ISO-8601 string. The declared date is used as the canonical last-modified timestamp for retrieval provenance — the value that appears in structured search documents and MCP source metadata. It does **not** affect the filesystem mtime or git history.
+
+When a page folder also contains a sibling `agent.md`, that file tracks its own separate modification time (`agentLastModified`). Retrieval consumers can use this to detect when the machine-readable override has drifted from the human page's `lastmod`.
+
 So use it when that stronger machine contract is genuinely worth owning.
 
 ## Ship The Discovery Layer Too
@@ -285,6 +338,13 @@ export default defineDocs({
 
 That gives agents a much better workflow:
 
+- `/.well-known/api-catalog` exposes an RFC 9727 JSON Linkset for API and metadata discovery
+- `/.well-known/agent-skills/index.json` publishes the root site skill plus every reusable skill
+  configured with `agent.skills`; entries hash either the exact `SKILL.md` or a deterministic
+  archive containing safe `references/`, `scripts/`, and `assets/`
+- direct skill files remain available below `/.well-known/agent-skills/<name>/`, while
+  `/.well-known/skills/index.json` supports legacy clients and MCP mirrors files as
+  `docs://skills/<name>/<path>` resources
 - `/.well-known/agent.json` tells them which routes exist
 - `/llms.txt` links directly to page markdown routes, while `/llms-full.txt` exposes full machine-readable context
 - section-level files like [`/docs/guides/llms.txt`](/docs/guides/llms.txt) give larger docs progressive disclosure without adding UI
@@ -303,7 +363,16 @@ That gives agents a much better workflow:
 - `/api/docs/agent/feedback/schema` and `/api/docs/agent/feedback` let agents report missing context without enabling the human feedback UI
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
-system you have to keep in sync by hand.
+system you have to keep in sync by hand. The existing Farming Labs manifest stays available; the
+standards routes and HTTP `Link` headers are additive and cross-link back to it. Static Agent
+Bundles emit the same skill indexes, artifacts, companion files, and hashes. An A2A Agent Card is
+separate and opt-in: configure `agent.a2a` only when there is a real A2A interface behind the
+advertised URL. Prefer ordered `supportedInterfaces`, whose first entry is preferred and whose
+entries default to A2A `1.0` over `HTTP+JSON`; `JSONRPC` and `GRPC` are the other core bindings.
+The emitted card uses the strict v1 shape. `interfaceUrl` remains a deprecated single-interface
+shorthand with its historical `0.3` default. The preferred interface-array form requires explicit
+A2A skills. Capabilities, media modes, skills, and optional security metadata should describe the
+service itself; Agent Skill document and artifact URLs stay in skill discovery and MCP.
 
 ## Expose API Schemas Before API Pages
 
@@ -603,6 +672,68 @@ That page-level `agent.tokenBudget` overrides broader compact defaults for that 
 useful when one page needs a tighter machine contract than the rest of the site.
 
 Do not use compaction to paper over vague docs. Shorter confusion is still confusion.
+
+## Discover Sections Before Fetching One
+
+Agents can enumerate all heading sections of any Markdown page without downloading the full content by appending `?sections` to a `.md` route or to the API format route:
+
+```bash title="terminal"
+curl "https://docs.example.com/docs/installation.md?sections"
+curl "https://docs.example.com/api/docs?format=markdown&path=installation&sections"
+```
+
+The response is a `docs-markdown-sections.v1` JSON payload:
+
+```json title="docs-markdown-sections.v1 response"
+{
+  "format": "docs-markdown-sections.v1",
+  "sectionCount": 4,
+  "sections": [
+    {
+      "id": "installation",
+      "heading": "Installation",
+      "markdownUrl": "https://docs.example.com/docs/installation.md?section=installation"
+    },
+    {
+      "id": "prerequisites",
+      "heading": "Prerequisites",
+      "markdownUrl": "https://docs.example.com/docs/installation.md?section=prerequisites"
+    }
+  ]
+}
+```
+
+The response also includes the `x-docs-markdown-section-count` header with the total section count. Use the `markdownUrl` values directly to fetch individual sections with optional `tokenBudget` or `byteBudget` params.
+
+This capability is advertised in `/.well-known/agent.json` under `markdown.sectionDiscovery` when enabled. Static Agent Bundle exports set `sectionDiscovery: { enabled: false }` because the feature requires a live runtime.
+
+## Request a Single Section From the Markdown API
+
+Agents that only need one heading block from a long page can request it directly using the `section` query parameter on the markdown API route:
+
+```bash title="terminal"
+curl "https://docs.example.com/api/docs?format=markdown&path=installation&section=prerequisites"
+```
+
+When the section is found, the response body contains only that heading block's content and the `x-docs-markdown-section` response header confirms which section was resolved:
+
+```http
+x-docs-markdown-section: prerequisites
+```
+
+Pair `section` with `tokenBudget` (or `byteBudget`) to enforce a size ceiling on the returned content:
+
+```bash title="terminal"
+curl "https://docs.example.com/api/docs?format=markdown&path=installation&section=prerequisites&tokenBudget=60"
+```
+
+When the requested section is not found, the response still returns `200` with the full document and includes an `availableSections` list in the result so an agent can recover by picking the correct heading id from the list and retrying.
+
+| Query parameter | Type | Description |
+| --------------- | ---- | ----------- |
+| `section` | `string` | Stable kebab-case heading id to extract, e.g. `prerequisites` |
+| `tokenBudget` | `number` | Soft token ceiling; the section content is truncated when the estimate exceeds this value |
+| `byteBudget` | `number` | Soft UTF-8 byte ceiling applied before the token estimate |
 
 ## The Practical Authoring Loop
 

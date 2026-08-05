@@ -92,6 +92,7 @@ async function main() {
         : typeof flags.url === "string"
           ? flags.url
           : undefined,
+    client: typeof flags.client === "string" ? flags.client : undefined,
     json: typeof flags.json === "boolean" ? flags.json : undefined,
   };
   const devOptions = {
@@ -107,6 +108,7 @@ async function main() {
     typesense: typeof flags.typesense === "boolean" ? flags.typesense : undefined,
     algolia: typeof flags.algolia === "boolean" ? flags.algolia : undefined,
     baseUrl: typeof flags["base-url"] === "string" ? flags["base-url"] : undefined,
+    siteUrl: typeof flags["site-url"] === "string" ? flags["site-url"] : undefined,
     collection: typeof flags.collection === "string" ? flags.collection : undefined,
     apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
     adminApiKey: typeof flags["admin-api-key"] === "string" ? flags["admin-api-key"] : undefined,
@@ -117,6 +119,8 @@ async function main() {
     appId: typeof flags["app-id"] === "string" ? flags["app-id"] : undefined,
     indexName: typeof flags["index-name"] === "string" ? flags["index-name"] : undefined,
     searchApiKey: typeof flags["search-api-key"] === "string" ? flags["search-api-key"] : undefined,
+    syncNamespace:
+      typeof flags["sync-namespace"] === "string" ? flags["sync-namespace"] : undefined,
   };
   const cloudOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
@@ -213,6 +217,27 @@ async function main() {
     console.error();
     const { printAgentsGenerateHelp } = await import("./agents.js");
     printAgentsGenerateHelp();
+    process.exit(1);
+  } else if (parsedCommand.command === "skills" && subcommand === "scaffold") {
+    const { parseSkillScaffoldArgs, printSkillScaffoldHelp, scaffoldSkillFromContracts } =
+      await import("./skills.js");
+    const skillOptions = parseSkillScaffoldArgs(args.slice(2));
+    if (skillOptions.help) {
+      printSkillScaffoldHelp();
+      return;
+    }
+    await scaffoldSkillFromContracts(skillOptions);
+  } else if (
+    parsedCommand.command === "skills" &&
+    (subcommand === "--help" || subcommand === "-h")
+  ) {
+    const { printSkillScaffoldHelp } = await import("./skills.js");
+    printSkillScaffoldHelp();
+  } else if (parsedCommand.command === "skills") {
+    console.error(pc.red(`Unknown skills subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printSkillScaffoldHelp } = await import("./skills.js");
+    printSkillScaffoldHelp();
     process.exit(1);
   } else if (parsedCommand.command === "doctor") {
     const { parseDoctorArgs, printDoctorHelp, runDoctor } = await import("./doctor.js");
@@ -343,6 +368,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("check")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} page context, ${pc.dim("export")} static bundles)
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
+  ${pc.cyan("skills")}   Agent Skills utilities (${pc.dim("scaffold")} from structured page contracts)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
@@ -371,7 +397,8 @@ ${pc.dim("Options for mcp:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("mcp setup --deployment <id>")} Print Docs Cloud hosted MCP setup for a deployment id
   ${pc.cyan("--api-base-url <url>")} Override the hosted Docs Cloud API base URL for ${pc.cyan("mcp setup")}
-  ${pc.cyan("--json")}              Print MCP client JSON only for ${pc.cyan("mcp setup")}
+  ${pc.cyan("--client <name>")}     Emit native config for ${pc.dim("claude-code")}, ${pc.dim("cursor")}, or ${pc.dim("vscode")}
+  ${pc.cyan("--json")}              Print the selected MCP client JSON only for ${pc.cyan("mcp setup")}
 
 ${pc.dim("Options for dev:")}
   ${pc.cyan("--port <number>")}     Run the frameworkless preview on a custom port
@@ -416,12 +443,23 @@ ${pc.dim("Options for agent export:")}
   ${pc.cyan("agent export --check")}                Fail when the static Agent Bundle is stale
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
+${pc.dim("Options for skills scaffold:")}
+  ${pc.cyan("skills scaffold [name]")}              Compile page agent contracts into a compact ${pc.dim("SKILL.md")} router and focused references
+  ${pc.cyan("--output <directory>")}                Write to a full skill directory; defaults to ${pc.dim("skills/<name>")}
+  ${pc.cyan("--include <route>")}                   Include a route prefix; repeat for multiple focused sections
+  ${pc.cyan("--check")}                             Fail when generated skill files are missing or stale
+  ${pc.cyan("--dry-run")}                           Preview generated skill changes without writing files
+  ${pc.cyan("--force")}                             Replace colliding user-owned files in the selected directory
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
 ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor")}                              Score the current docs app for agent-readiness
   ${pc.cyan("doctor --agent")}                      Same as ${pc.cyan("doctor")}; explicit agent scoring mode
   ${pc.cyan("doctor --site")}                       Score the current docs app for reader-facing docs quality
   ${pc.cyan("doctor --human")}                      Alias for ${pc.cyan("doctor --site")}
   ${pc.cyan("doctor --json")}                       Print the report as JSON for CI, scripts, and automation
+  ${pc.cyan("doctor --json-output <path>")}         Write the JSON report to a file, including alongside ${pc.cyan("--ci")}
+  ${pc.cyan("doctor --ci")}                         Emit actionable GitHub annotations in GitHub Actions
   ${pc.cyan("doctor --strict")}                     Exit with failure when any doctor check warns or fails
   ${pc.cyan("doctor --agent --fix")}                Refresh stale generated ${pc.dim("agent.md")} files and token-budget missing outputs
   ${pc.cyan("doctor --agent --fix --dry-run")}      Report the fix command without writing generated ${pc.dim("agent.md")} files
@@ -448,6 +486,8 @@ ${pc.dim("Options for search sync:")}
   ${pc.cyan("--typesense")}                        Shortcut for ${pc.cyan("--provider typesense")}
   ${pc.cyan("--algolia")}                          Shortcut for ${pc.cyan("--provider algolia")}
   ${pc.cyan("--base-url <url>")}                   Typesense base URL (or use ${pc.dim("TYPESENSE_URL")})
+  ${pc.cyan("--site-url <url>")}                   Canonical public docs URL for source provenance
+  ${pc.cyan("--sync-namespace <name>")}            Stable ownership namespace for a shared hosted index
   ${pc.cyan("--collection <name>")}                Typesense collection name (default ${pc.dim("docs")})
   ${pc.cyan("--api-key <key>")}                    Typesense search/api key (or use ${pc.dim("TYPESENSE_API_KEY")})
   ${pc.cyan("--admin-api-key <key>")}              Admin-capable sync key for Typesense/Algolia

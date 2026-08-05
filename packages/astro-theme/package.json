@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/astro-theme",
-  "version": "0.2.58",
+  "version": "0.2.92",
   "description": "Astro UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
   "keywords": [
     "astro",
@@ -43,6 +43,9 @@
       ],
       "ledger": [
         "./src/themes/ledger.d.ts"
+      ],
+      "shadcn": [
+        "./src/themes/shadcn.d.ts"
       ]
     }
   },
@@ -93,6 +96,11 @@
       "import": "./src/themes/ledger.js",
       "default": "./src/themes/ledger.js"
     },
+    "./shadcn": {
+      "types": "./src/themes/shadcn.d.ts",
+      "import": "./src/themes/shadcn.js",
+      "default": "./src/themes/shadcn.js"
+    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
@@ -115,7 +123,9 @@
     "./styles/command-grid.css": "./styles/command-grid.css",
     "./command-grid/css": "./styles/command-grid-bundle.css",
     "./styles/ledger.css": "./styles/ledger.css",
-    "./ledger/css": "./styles/ledger-bundle.css"
+    "./ledger/css": "./styles/ledger-bundle.css",
+    "./styles/shadcn.css": "./styles/shadcn.css",
+    "./shadcn/css": "./styles/shadcn-bundle.css"
   },
   "scripts": {
     "build": "echo 'Astro components are shipped as source'",

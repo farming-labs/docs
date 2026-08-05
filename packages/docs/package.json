@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/docs",
-  "version": "0.2.58",
+  "version": "0.2.92",
   "description": "Modern, flexible MDX-based docs framework — core types, config, and CLI",
   "keywords": [
     "docs",
@@ -9,11 +9,15 @@
   ],
   "license": "MIT",
   "author": "Farming Labs",
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "docs": "./dist/cli/index.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "styles"
   ],
   "type": "module",
   "main": "./dist/index.mjs",
@@ -30,6 +34,26 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./markdown-rendering": {
+      "types": "./dist/markdown-rendering.d.mts",
+      "import": "./dist/markdown-rendering.mjs",
+      "default": "./dist/markdown-rendering.mjs"
+    },
+    "./agent-skills-bundle": {
+      "types": "./dist/agent-skills-bundle.d.mts",
+      "import": "./dist/agent-skills-bundle.mjs",
+      "default": "./dist/agent-skills-bundle.mjs"
+    },
+    "./agent-skills": {
+      "types": "./dist/agent-skills-spec.d.mts",
+      "import": "./dist/agent-skills-spec.mjs",
+      "default": "./dist/agent-skills-spec.mjs"
+    },
+    "./vite": {
+      "types": "./dist/agent-skills-vite.d.mts",
+      "import": "./dist/agent-skills-vite.mjs",
+      "default": "./dist/agent-skills-vite.mjs"
+    },
     "./cloud/server": {
       "types": "./dist/docs-cloud-server.d.mts",
       "import": "./dist/docs-cloud-server.mjs",
@@ -44,7 +68,8 @@
       "types": "./dist/mcp.d.mts",
       "import": "./dist/mcp.mjs",
       "default": "./dist/mcp.mjs"
-    }
+    },
+    "./styles/themes/shadcn.css": "./styles/themes/shadcn.css"
   },
   "scripts": {
     "build": "tsdown",
@@ -56,12 +81,16 @@
   "dependencies": {
     "@clack/prompts": "^0.9.1",
     "@mdx-js/mdx": "^3.1.1",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/server": "2.0.0",
     "@scalar/core": "^0.4.3",
     "@vercel/sandbox": "^2.0.0",
+    "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "jiti": "^2.7.0",
+    "parse-entities": "^4.0.2",
     "picocolors": "^1.1.1",
+    "remark-gfm": "^4.0.1",
+    "yaml": "^2.8.2",
     "zod": "^4.3.6"
   },
   "peerDependencies": {
@@ -73,8 +102,11 @@
     }
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.2",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "react": "^19.2.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",

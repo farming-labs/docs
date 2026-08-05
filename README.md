@@ -13,7 +13,8 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
-- Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps, `robots.txt`, `skill.md`, agent discovery, and MCP
+- Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps,
+  `robots.txt`, RFC 9727 API catalogs, Agent Skills discovery, `skill.md`, agent discovery, and MCP
 - Complete static Agent Bundles with `docs agent export --public` and deterministic SHA-256 manifests
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 - Agent and reader-facing docs scoring with `docs doctor --agent` and `docs doctor --site`
@@ -64,7 +65,7 @@ export default withDocs();
 Farm.js projects wrap `farm.config.ts`:
 
 ```ts
-import { defineConfig } from "@farmjs/core";
+import { defineConfig } from "@farm.js/core";
 import { withDocs } from "@farming-labs/farmjs/config";
 
 export default withDocs(defineConfig({}));
@@ -119,6 +120,12 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 - `/.well-known/sitemap.md`
 - `/skill.md`
 - `/.well-known/skill.md`
+- `/.well-known/agent-skills/index.json`
+- `/.well-known/agent-skills/<name>/SKILL.md`
+- `/.well-known/agent-skills/<name>.tar.gz` for skills with companion files
+- `/.well-known/skills/index.json` for legacy clients
+- `/.well-known/agent-card.json` when an A2A service is explicitly configured
+- `/.well-known/api-catalog`
 - `/.well-known/agent.json`
 - `/.well-known/agent`
 - `/mcp`
@@ -136,7 +143,38 @@ are handled by that same shared `/api/docs` route, so apps do not need a second 
 wrapper. For mixed HTML/Markdown accept lists, use the exact `.md` or `format=markdown` route.
 The agent discovery JSON also includes structured-data capability metadata plus `robots.enabled`,
 `robots.route`, and `robots.defaultRoute` so agents can find page metadata and the static crawl
-policy without guessing.
+policy without guessing. The existing `/.well-known/agent.json` manifest remains available and
+cross-links the [RFC 9727 API catalog](https://datatracker.ietf.org/doc/html/rfc9727) and
+[Agent Skills index](https://www.mintlify.com/docs/ai/skillmd). Dynamic responses also advertise
+these discovery resources with HTTP `Link` headers.
+
+Publish one skill, a skill directory, or every skill below a collection directory with
+`agent.skills`. Paths are resolved from the project root and must stay inside the workspace:
+
+```ts
+export default defineDocs({
+  agent: {
+    skills: ["./skills/getting-started/SKILL.md", "./skills/product"],
+  },
+});
+```
+
+Each published skill includes `SKILL.md` plus safe regular files below `references/`, `scripts/`,
+and `assets/`. Skills with companion files use a deterministic archive so the discovery digest is
+stable; every file is also available directly and as a `docs://skills/<name>/<path>` MCP resource.
+The existing project-root `skill.md` remains the site skill and is published alongside configured
+skills. Configure `agent.a2a` only when the site fronts a real A2A interface; docs and MCP routes
+alone do not make an A2A endpoint. New configurations should use ordered `supportedInterfaces`
+(first is preferred), which default to A2A `1.0` over `HTTP+JSON`. The generated card uses the
+strict v1 shape. The single-interface `interfaceUrl` form remains as a deprecated compatibility
+shorthand. Configure its capabilities, media modes, A2A skills, and optional security metadata to
+match the service; Agent Skill document and artifact URLs remain in skill discovery and MCP.
+
+Static Agent Bundles publish the same modern and legacy skill indexes, artifacts, companion files,
+and optional Agent Card as the runtime. They intentionally omit the API catalog: a generic
+`public/` or `static/` directory cannot guarantee RFC 9727's required profiled
+`application/linkset+json` response type. Use a dynamic adapter or configure and publish that route
+through host-specific routing when the catalog is required.
 
 ## Agent Health Check
 

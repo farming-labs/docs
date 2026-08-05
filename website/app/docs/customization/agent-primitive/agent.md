@@ -83,14 +83,26 @@ and to watch the explicit audience coverage improve as more routes gain audience
 
 ## Let Agents Discover The Spec
 
+Use `GET` or `HEAD /.well-known/api-catalog` for RFC 9727 API discovery. Use `GET` or
+`HEAD /.well-known/agent-skills/index.json` for Agent Skills discovery; each entry points to the
+exact `SKILL.md` bytes covered by its `sha256:` digest.
+
 Fetch `GET /.well-known/agent.json` before choosing how to read or report on the docs. If that is
 unavailable, fall back to `GET /.well-known/agent` and then `GET /api/docs/agent/spec`.
+
+This is the Farming Labs documentation-discovery extension. Verify
+`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+`format: "farming-labs-agent-manifest.v1"` before consuming it. Dynamic responses also associate
+the Draft 2020-12 schema with `Link: <...>; rel="describedby"; type="application/schema+json"`.
+Do not parse this document as A2A; an explicitly configured A2A service uses the separate,
+opt-in `/.well-known/agent-card.json` route.
 
 The spec is generated from `docs.config` and includes:
 
 - site title, description, docs entry, and base URL
 - configured locales and the `lang`/`locale` query parameters
-- capability flags for markdown, structured data, MCP, search, feedback, `AGENTS.md`, skills, `llms.txt`, and sitemap
+- capability flags for the API catalog, Agent Skills discovery, markdown, structured data, MCP,
+  search, feedback, `AGENTS.md`, skills, `llms.txt`, and sitemap
 - shared docs API route
 - search endpoint and query parameter
 - markdown route patterns, `Accept: text/markdown`, and `Signature-Agent` support
@@ -99,6 +111,7 @@ The spec is generated from `docs.config` and includes:
 - `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
 - `AGENTS.md` route, well-known alias, API format, compatibility aliases, and root file convention
 - `skill.md` route, well-known alias, API format, and root file convention
+- RFC 9727 catalog and Agent Skills index/artifact routes
 - Skills CLI install command and recommended skill metadata
 - MCP enabled state, endpoint, server name, version, and tool toggles
 - agent feedback enabled state, schema route, and submit route

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import {
   existsSync,
@@ -12,13 +13,18 @@ import {
 import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
+import { gzipSync } from "node:zlib";
 import { compactAgentDocs } from "./agent.js";
+import { renderDocsRobotsTxt } from "../robots.js";
 import {
   inspectAgentReadiness,
   inspectHumanReadiness,
   parseDoctorArgs,
+  printAgentDoctorReport,
+  probeProtectedMcpDiscovery,
   runDoctor,
 } from "./doctor.js";
+import { stripAnsi } from "./test-utils.js";
 
 function writePackageJson(
   rootDir: string,
@@ -53,6 +59,31 @@ description: "Docs home"
   );
 }
 
+function createAgentSkillArchive(document: string): Uint8Array {
+  const content = new TextEncoder().encode(document);
+  const header = new Uint8Array(512);
+  const write = (offset: number, length: number, value: string) => {
+    header.set(new TextEncoder().encode(value).subarray(0, length), offset);
+  };
+  write(0, 100, "SKILL.md");
+  write(100, 8, "0000644");
+  write(108, 8, "0000000");
+  write(116, 8, "0000000");
+  write(124, 12, content.byteLength.toString(8).padStart(11, "0"));
+  write(136, 12, "00000000000");
+  header.fill(0x20, 148, 156);
+  header[156] = "0".charCodeAt(0);
+  write(257, 6, "ustar");
+  write(263, 2, "00");
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  write(148, 8, `${checksum.toString(8).padStart(6, "0")}\0 `);
+
+  const tar = new Uint8Array(512 + Math.ceil(content.byteLength / 512) * 512 + 1024);
+  tar.set(header);
+  tar.set(content, 512);
+  return new Uint8Array(gzipSync(tar));
+}
+
 describe("parseDoctorArgs", () => {
   it("defaults to agent mode", () => {
     expect(parseDoctorArgs([])).toEqual({ mode: "agent" });
@@ -77,6 +108,20 @@ describe("parseDoctorArgs", () => {
     expect(parseDoctorArgs(["--site", "--json"])).toEqual({
       mode: "human",
       json: true,
+    });
+  });
+
+  it("parses CI annotation mode", () => {
+    expect(
+      parseDoctorArgs(["--agent", "--ci", "--json-output", ".farming-labs/doctor.json"]),
+    ).toEqual({
+      mode: "agent",
+      ci: true,
+      jsonOutputPath: ".farming-labs/doctor.json",
+    });
+    expect(parseDoctorArgs(["--json-output=reports/doctor.json"])).toEqual({
+      mode: "agent",
+      jsonOutputPath: "reports/doctor.json",
     });
   });
 
@@ -173,6 +218,182 @@ describe("parseDoctorArgs", () => {
     expect(() => parseDoctorArgs(["--fail-on", "error"])).toThrow(
       "Invalid value for --fail-on. Expected warn or fail.",
     );
+  });
+});
+
+describe("protected MCP doctor discovery", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function challenge(
+    value = 'Basic realm="legacy", Bearer resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope="docs:read"',
+  ) {
+    return new Response(null, { status: 401, headers: { "WWW-Authenticate": value } });
+  }
+
+  it("accepts a valid RFC 9728 challenge and metadata document", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+          scopes_supported: ["docs:read"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toEqual({
+      ok: true,
+      detail:
+        "/mcp is protected and exposes valid RFC 9728 metadata at /.well-known/oauth-protected-resource/mcp.",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs.example.com/.well-known/oauth-protected-resource/mcp",
+      expect.objectContaining({ redirect: "manual" }),
+    );
+  });
+
+  it("rejects missing and cross-origin resource_metadata challenges", async () => {
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge('Bearer scope="docs:read"'),
+      ),
+    ).resolves.toMatchObject({ ok: false });
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata="https://attacker.example/.well-known/oauth-protected-resource/mcp"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("cross-origin"),
+    });
+  });
+
+  it("does not borrow resource metadata from a later non-Bearer challenge", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer realm="docs", Basic resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("did not return a Bearer resource_metadata"),
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts optional whitespace around Bearer auth-param equals signs", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata = "https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope = "docs:read"',
+        ),
+      ),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
+  it("requires an exact HTTP 200 metadata response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 204, headers: { "Content-Type": "application/json" } }),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("HTTP 204"),
+    });
+  });
+
+  it.each([
+    [
+      "resource mismatch",
+      {
+        resource: "https://docs.example.com/other",
+        authorization_servers: ["https://auth.example.com"],
+      },
+      "instead of",
+    ],
+    [
+      "invalid authorization server",
+      {
+        resource: "https://docs.example.com/mcp",
+        authorization_servers: ["http://auth.example.com"],
+      },
+      "authorization_servers",
+    ],
+    [
+      "invalid scopes",
+      {
+        resource: "https://docs.example.com/mcp",
+        authorization_servers: ["https://auth.example.com"],
+        scopes_supported: ["docs read"],
+      },
+      "scopes_supported",
+    ],
+    ["non-object JSON", null, "JSON object"],
+  ])("rejects protected-resource metadata with %s", async (_label, metadata, detail) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(metadata), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toMatchObject({ ok: false, detail: expect.stringContaining(detail) });
+  });
+
+  it("rejects malformed required scopes in the Bearer challenge", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope="docs:read  docs:write"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("scope challenge"),
+    });
   });
 });
 
@@ -275,7 +496,65 @@ If module evaluation fails, restore \`docs.config.ts\` and retry the doctor comm
     );
   }
 
-  it("scores a healthy Next.js docs app as agent-optimized", async () => {
+  it("resolves an explicit nested app config from the monorepo root", async () => {
+    const appRoot = path.join(tmpDir, "website");
+    mkdirSync(appRoot, { recursive: true });
+    writePackageJson(tmpDir, "doctor-workspace");
+    writePackageJson(appRoot, "doctor-website", { next: "16.0.0" });
+    writeFileSync(path.join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - website\n", "utf-8");
+    writeDocsConfig(
+      appRoot,
+      "docs.config.tsx",
+      `export default {
+  entry: "docs",
+  contentDir: "app/docs",
+  agent: { skills: "../skills/farming-labs" },
+};`,
+    );
+    writeDocsPage(appRoot, "app/docs");
+    writeDocsConfig(
+      tmpDir,
+      "skills/farming-labs/migration/SKILL.md",
+      `---
+name: migration
+description: Migrate an existing documentation project to Farming Labs Docs.
+---
+
+# Workflow
+
+Review the source project before changing its documentation.
+`,
+    );
+    process.chdir(tmpDir);
+
+    const agentReport = await inspectAgentReadiness({
+      configPath: "website/docs.config.tsx",
+    });
+    const humanReport = await inspectHumanReadiness({
+      configPath: "website/docs.config.tsx",
+    });
+
+    expect(agentReport).toMatchObject({
+      framework: "nextjs",
+      configPath: "docs.config.tsx",
+      contentDir: "app/docs",
+      coverage: { totalPages: 1 },
+    });
+    expect(
+      agentReport.checks.find((check) => check.id === "agent-skills-frontmatter"),
+    ).toMatchObject({
+      status: "pass",
+      detail: expect.stringContaining("migration"),
+    });
+    expect(humanReport).toMatchObject({
+      framework: "nextjs",
+      configPath: "docs.config.tsx",
+      contentDir: "app/docs",
+      coverage: { totalPages: 1 },
+    });
+  });
+
+  it("keeps a healthy app agent-ready when confidence dimensions are unmeasured", async () => {
     writePackageJson(tmpDir, "doctor-next", { next: "16.0.0" });
 
     writeFileSync(
@@ -422,7 +701,7 @@ Use this docs site through markdown routes and MCP.
     const report = await inspectAgentReadiness();
 
     expect(report.framework).toBe("nextjs");
-    expect(report.grade).toBe("Agent-optimized");
+    expect(report.grade).toBe("Agent-ready");
     expect(report.score).toBeGreaterThanOrEqual(90);
     expect(report.maxScore).toBe(100);
     expect(report.coverage.totalPages).toBe(3);
@@ -433,7 +712,12 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "public-routes")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "agent-discovery")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "sitemap")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "skill")).toMatchObject({
+      status: "warn",
+      score: 4,
+      maxScore: 5,
+      detail: expect.stringContaining("Agent Skills discovery will publish the generated fallback"),
+    });
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
@@ -442,7 +726,120 @@ Use this docs site through markdown routes and MCP.
       "pass",
     );
     expect(report.checks.find((check) => check.id === "golden-tasks")?.status).toBe("pass");
-    expect(report.evaluations).toMatchObject({ status: "passed", passedTaskCount: 1 });
+    expect(report.checks.find((check) => check.id === "golden-task-coverage")).toMatchObject({
+      status: "warn",
+      score: 0,
+      maxScore: 5,
+      detail: expect.stringMatching(
+        /safety: unmeasured.*answer quality: unmeasured.*executable examples: unmeasured/,
+      ),
+    });
+    expect(report.evaluations).toMatchObject({
+      status: "passed",
+      passedTaskCount: 1,
+      coverage: {
+        status: "unmeasured",
+        coveragePercent: 0,
+        dimensions: {
+          safety: { status: "unmeasured", measuredTaskCount: 0 },
+          answerQuality: { status: "unmeasured", measuredTaskCount: 0 },
+          executableExamples: { status: "unmeasured", measuredTaskCount: 0 },
+        },
+      },
+    });
+  });
+
+  it("reports full-spec errors in every configured Agent Skill", async () => {
+    writePackageJson(tmpDir, "doctor-invalid-agent-skill", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: { skills: "skills/broken" },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "skills", "broken"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "skills", "broken", "SKILL.md"),
+      `---
+name: broken
+description: Exercise doctor validation for configured skills.
+version: "1.0"
+metadata:
+  revision: 1
+---
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const check = report.checks.find((candidate) => candidate.id === "agent-skills-frontmatter");
+
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toContain("Unexpected fields in frontmatter: version");
+    expect(check?.detail).toContain("Field 'metadata.revision' must be a string");
+    expect(report.grade).not.toBe("Agent-optimized");
+  });
+
+  it("reports configured Agent Skill progressive-disclosure failures", async () => {
+    writePackageJson(tmpDir, "doctor-agent-skill-disclosure", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    skills: {
+      paths: "skills/large-skill",
+      progressiveDisclosure: {
+        maxSkillLines: 8,
+        instructionTokenBudget: 12,
+      },
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "skills", "large-skill"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "skills", "large-skill", "SKILL.md"),
+      `---
+name: large-skill
+description: Exercise doctor progressive-disclosure validation.
+---
+
+# Workflow
+
+Run pnpm install before following these deliberately long instructions.
+
+Read [the missing guide](references/missing.md).
+
+Continue configuring the project and verify the generated output.
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const check = report.checks.find(
+      (candidate) => candidate.id === "agent-skills-progressive-disclosure",
+    );
+
+    expect(check).toMatchObject({
+      status: "fail",
+      score: 0,
+      maxScore: 5,
+      detail: expect.stringContaining("progressive-disclosure issues"),
+    });
+    expect(check?.detail).toContain("exceeding the configured 8-line limit");
+    expect(check?.detail).toContain("does not resolve to a regular file");
+    expect(check?.recommendation).toContain("instruction-token budgets");
+    expect(report.grade).not.toBe("Agent-optimized");
   });
 
   it("evaluates the configured Ask AI surface, answer callback, base URL, and runtime examples", async () => {
@@ -682,6 +1079,112 @@ console.log("verified")
     }
   });
 
+  it("reports unhealthy commands with actionable text, JSON, and CI annotations", async () => {
+    writePackageJson(tmpDir, "doctor-actionable-command-findings", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "app/docs",
+  agent: { evaluations: false },
+};`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Broken commands
+description: Commands that doctor should explain.
+agent:
+  commands:
+    - pnpm run missing
+---
+
+# Broken commands
+
+\`\`\`bash
+pnpm exec docs imaginary
+\`\`\`
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const commandCheck = report.checks.find((check) => check.id === "command-health");
+    expect(commandCheck?.findings).toEqual([
+      expect.objectContaining({
+        code: "command-script-missing",
+        file: "app/docs/page.mdx",
+        line: 6,
+        command: "pnpm run missing",
+        reason: expect.stringContaining('script "missing"'),
+        proposedCorrection: expect.stringContaining('Add a "missing" script'),
+      }),
+      expect.objectContaining({
+        code: "command-cli-unknown",
+        file: "app/docs/page.mdx",
+        line: 12,
+        command: "pnpm exec docs imaginary",
+        reason: expect.stringContaining("unknown docs CLI command"),
+        proposedCorrection: expect.stringContaining("docs --help"),
+      }),
+    ]);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      printAgentDoctorReport(report);
+      const textOutput = stripAnsi(logSpy.mock.calls.flat().join("\n"));
+      expect(textOutput).toContain("Golden task quality: unmeasured");
+      expect(textOutput).toContain("Evaluation coverage: unmeasured");
+      expect(textOutput).toContain("safety unmeasured");
+      expect(textOutput).toContain("answer quality unmeasured");
+      expect(textOutput).toContain("executable examples unmeasured");
+      expect(textOutput).toContain("app/docs/page.mdx:6");
+      expect(textOutput).toContain("Command: pnpm run missing");
+      expect(textOutput).toContain('Reason: Command references package script "missing"');
+      expect(textOutput).toContain('Proposed correction: Add a "missing" script');
+
+      logSpy.mockClear();
+      await runDoctor({ mode: "agent", json: true });
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(String(logSpy.mock.calls[0]?.[0])) as {
+        checks: Array<{ id: string; findings?: unknown[] }>;
+      };
+      expect(payload.checks.find((check) => check.id === "command-health")?.findings).toEqual(
+        commandCheck?.findings,
+      );
+
+      logSpy.mockClear();
+      process.env.GITHUB_ACTIONS = "true";
+      const jsonOutputPath = path.join(tmpDir, "reports", "doctor.json");
+      await runDoctor({ mode: "agent", ci: true, jsonOutputPath });
+
+      const annotationOutput = stripAnsi(logSpy.mock.calls.flat().join("\n"));
+      expect(annotationOutput).toContain(
+        "::error file=app/docs/page.mdx,line=6,title=Documented command health::Command: pnpm run missing Reason:",
+      );
+      expect(annotationOutput).toContain('Proposed correction: Add a "missing" script');
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      const filePayload = JSON.parse(readFileSync(jsonOutputPath, "utf-8")) as {
+        checks: Array<{ id: string; findings?: unknown[] }>;
+      };
+      expect(filePayload.checks.find((check) => check.id === "command-health")?.findings).toEqual(
+        commandCheck?.findings,
+      );
+      await expect(runDoctor({ mode: "agent", ci: true, json: true })).rejects.toThrow(
+        "Use --ci --json-output <path>",
+      );
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
   it("counts human-only primitives as audience-tailored coverage without usefulness credit", async () => {
     writePackageJson(tmpDir, "doctor-human-audience", { next: "16.0.0" });
     writeFileSync(
@@ -807,8 +1310,8 @@ related:
 
     expect(report.evaluations).toMatchObject({ status: "failed" });
     expect(report.evaluations?.score).toBeLessThan(100);
-    expect(goldenTasks).toMatchObject({ status: "fail", maxScore: 15 });
-    expect(goldenTasks?.score).toBeLessThan(15);
+    expect(goldenTasks).toMatchObject({ status: "fail", maxScore: 10 });
+    expect(goldenTasks?.score).toBeLessThan(10);
     expect(report.score).toBeGreaterThanOrEqual(90);
     expect(report.grade).toBe("Agent-ready");
   });
@@ -898,7 +1401,7 @@ Point to the closest related docs instead of inventing config.
     expect(report.evaluations?.status).toBe("unmeasured");
   });
 
-  it("checks the local robots.txt agent policy", async () => {
+  it("detects stale discovery coverage in a local robots.txt policy", async () => {
     writePackageJson(tmpDir, "doctor-robots", { next: "16.0.0" });
 
     writeFileSync(
@@ -931,44 +1434,44 @@ export const { GET, POST } = createDocsAPI({});
       "utf-8",
     );
     mkdirSync(path.join(tmpDir, "public"), { recursive: true });
+    const robotsPath = path.join(tmpDir, "public", "robots.txt");
+    const completeRobots = renderDocsRobotsTxt({
+      entry: "docs",
+      baseUrl: "https://docs.example.com",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+    });
     writeFileSync(
-      path.join(tmpDir, "public", "robots.txt"),
-      `User-agent: *
-Allow: /
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /sitemap.xml
-Allow: /sitemap.md
-Allow: /docs/sitemap.md
-Allow: /.well-known/sitemap.md
-Allow: /.well-known/agent.json
-Allow: /.well-known/agent
-Allow: /AGENTS.md
-Allow: /skill.md
-Allow: /mcp
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-`,
+      robotsPath,
+      completeRobots
+        .replace(
+          "Allow: /.well-known/agent-skills/*\n",
+          "Allow: /.well-known/agent-skills/*/SKILL.md\n",
+        )
+        .replace("Allow: /.well-known/skills/index.json\n", "")
+        .replace("Allow: /.well-known/skills/*\n", ""),
       "utf-8",
     );
     writeDocsPage(tmpDir);
     process.chdir(tmpDir);
 
-    const report = await inspectAgentReadiness();
+    const staleReport = await inspectAgentReadiness();
+    const staleRobots = staleReport.checks.find((check) => check.id === "robots");
 
-    expect(report.checks.find((check) => check.id === "robots")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
-      "public/robots.txt",
+    expect(staleRobots).toMatchObject({ status: "warn", score: 3, maxScore: 5 });
+    expect(staleRobots?.detail).toContain(
+      "agent routes (/.well-known/agent-skills/*, /.well-known/skills/index.json",
     );
-    expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
+
+    writeFileSync(robotsPath, completeRobots, "utf-8");
+    const completeReport = await inspectAgentReadiness();
+
+    expect(completeReport.checks.find((check) => check.id === "robots")).toMatchObject({
+      status: "pass",
+      score: 5,
+      maxScore: 5,
+    });
+    expect(completeReport.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+    expect(completeReport.checks.find((check) => check.id === "skill")?.status).toBe("pass");
   });
 
   it("detects agent.compact in static config parsing after module evaluation fails", async () => {
@@ -1059,8 +1562,76 @@ export const { GET, POST } = createDocsAPI({});
 
     writeDocsPage(tmpDir);
 
+    const hostedSkill = `---
+name: docs
+description: Use the hosted documentation through its agent-readable resources.
+---
+
+# Docs skill
+
+Use MCP and markdown routes.
+`;
+    const invalidHostedSkill = hostedSkill.replace(
+      "description: Use the hosted documentation through its agent-readable resources.",
+      'description: Use the hosted documentation through its agent-readable resources.\nversion: "1.0"',
+    );
+    const invalidHostedSkillUtf8 = Buffer.from([0xff, 0xfe, 0xfd]);
+    const invalidHostedSkillArchive = createAgentSkillArchive(invalidHostedSkill);
+    let serveStaleRobots = false;
+    let serveInvalidSkillFrontmatter = false;
+    let serveInvalidSkillUtf8 = false;
+    let serveArchiveSkill = false;
+    let initializedNotifications = 0;
+
     const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
+
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/api-catalog"
+      ) {
+        res.writeHead(200, {
+          "Content-Type":
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+          Link: '</.well-known/api-catalog>; title="Docs, API"; rel="api-catalog"; type="application/linkset+json"',
+        });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                linkset: [
+                  {
+                    anchor: "http://docs.example.test/.well-known/api-catalog",
+                    item: [
+                      {
+                        href: "http://docs.example.test/api/docs",
+                        type: "application/json",
+                      },
+                    ],
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/index.json") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end();
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
+        res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+        res.end();
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/docs.tar.gz") {
+        res.writeHead(200, { "Content-Type": "application/gzip" });
+        res.end();
+        return;
+      }
 
       if (req.method === "GET") {
         if (url.pathname === "/.well-known/agent.json") {
@@ -1076,10 +1647,22 @@ export const { GET, POST } = createDocsAPI({});
                 structuredData: true,
                 search: true,
                 mcp: true,
+                apiCatalog: true,
+                agentSkillsDiscovery: true,
               },
               api: {
                 docs: "/api/docs",
                 config: "/api/docs?format=config",
+                apiCatalog: "/.well-known/api-catalog",
+                apiCatalogQuery: "/api/docs?format=api-catalog",
+                agentSkillsIndex: "/.well-known/agent-skills/index.json",
+              },
+              apiCatalog: {
+                enabled: true,
+                route: "/.well-known/api-catalog",
+                api: "/api/docs?format=api-catalog",
+                mediaType: "application/linkset+json",
+                profile: "https://www.rfc-editor.org/info/rfc9727",
               },
               config: {
                 endpoint: "/api/docs?format=config",
@@ -1094,6 +1677,7 @@ export const { GET, POST } = createDocsAPI({});
                 tools: {
                   listDocs: true,
                   listPages: true,
+                  listPageSections: true,
                   listTasks: false,
                   readTask: false,
                   getNavigation: true,
@@ -1106,6 +1690,16 @@ export const { GET, POST } = createDocsAPI({});
               },
               agentContract: {
                 fields: { task: "string", outcome: "string" },
+              },
+              skills: {
+                discovery: {
+                  schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+                  index: "/.well-known/agent-skills/index.json",
+                  artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+                  apiIndex: "/api/docs?format=agent-skills",
+                  apiArtifact: "/api/docs?format=agent-skill&name={name}",
+                  digest: "sha256",
+                },
               },
               llms: { enabled: true },
               sitemap: {
@@ -1121,6 +1715,55 @@ export const { GET, POST } = createDocsAPI({});
               robots: { enabled: true, route: "/robots.txt" },
             }),
           );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/index.json") {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(
+            JSON.stringify({
+              $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+              skills: [
+                {
+                  name: "docs",
+                  type: serveArchiveSkill ? "archive" : "skill-md",
+                  description: "Use the hosted documentation through its agent-readable resources.",
+                  url: serveArchiveSkill
+                    ? "/.well-known/agent-skills/docs.tar.gz"
+                    : "/.well-known/agent-skills/docs/SKILL.md",
+                  digest: `sha256:${createHash("sha256")
+                    .update(
+                      serveArchiveSkill
+                        ? invalidHostedSkillArchive
+                        : serveInvalidSkillUtf8
+                          ? invalidHostedSkillUtf8
+                          : serveInvalidSkillFrontmatter
+                            ? invalidHostedSkill
+                            : hostedSkill,
+                    )
+                    .digest("hex")}`,
+                },
+              ],
+            }),
+          );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
+          res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+          res.end(
+            serveInvalidSkillUtf8
+              ? invalidHostedSkillUtf8
+              : serveInvalidSkillFrontmatter
+                ? invalidHostedSkill
+                : hostedSkill,
+          );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/docs.tar.gz") {
+          res.writeHead(200, { "Content-Type": "application/gzip" });
+          res.end(invalidHostedSkillArchive);
           return;
         }
 
@@ -1143,29 +1786,18 @@ export const { GET, POST } = createDocsAPI({});
 
         if (url.pathname === "/robots.txt") {
           res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(`User-agent: *
-Allow: /
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /sitemap.xml
-Allow: /sitemap.md
-Allow: /docs/sitemap.md
-Allow: /.well-known/sitemap.md
-Allow: /.well-known/agent.json
-Allow: /.well-known/agent
-Allow: /AGENTS.md
-Allow: /skill.md
-Allow: /mcp
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-`);
+          const completeRobots = renderDocsRobotsTxt({ entry: "docs" });
+          res.end(
+            serveStaleRobots
+              ? completeRobots
+                  .replace(
+                    "Allow: /.well-known/agent-skills/*\n",
+                    "Allow: /.well-known/agent-skills/*/SKILL.md\n",
+                  )
+                  .replace("Allow: /.well-known/skills/index.json\n", "")
+                  .replace("Allow: /.well-known/skills/*\n", "")
+              : completeRobots,
+          );
           return;
         }
 
@@ -1223,6 +1855,7 @@ Allow: /
         const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as {
           id?: string | number;
           method?: string;
+          params?: { cursor?: string };
         };
         const writeMcpPayload = (
           value: unknown,
@@ -1259,26 +1892,35 @@ Allow: /
         }
 
         if (payload.method === "notifications/initialized") {
+          initializedNotifications += 1;
           res.writeHead(202);
           res.end();
           return;
         }
 
         if (payload.method === "tools/list") {
+          const continued =
+            payload.params !== undefined &&
+            Object.prototype.hasOwnProperty.call(payload.params, "cursor");
+          const firstPage = [
+            { name: "list_docs" },
+            { name: "list_pages" },
+            { name: "list_page_sections" },
+            { name: "get_navigation" },
+          ];
+          const secondPage = [
+            { name: "search_docs" },
+            { name: "read_page" },
+            { name: "get_code_examples" },
+            { name: "get_config_schema" },
+            { name: "get_context" },
+          ];
           writeMcpPayload({
             jsonrpc: "2.0",
             id: payload.id,
             result: {
-              tools: [
-                { name: "list_docs" },
-                { name: "list_pages" },
-                { name: "get_navigation" },
-                { name: "search_docs" },
-                { name: "read_page" },
-                { name: "get_code_examples" },
-                { name: "get_config_schema" },
-                { name: "get_context" },
-              ],
+              tools: continued ? secondPage : firstPage,
+              ...(continued ? {} : { nextCursor: "" }),
             },
           });
           return;
@@ -1303,6 +1945,13 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
+      expect(report.checks.find((check) => check.id === "hosted-api-catalog")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-agent-skills")?.status).toBe(
+        "pass",
+      );
+      expect(report.checks.find((check) => check.id === "hosted-agent-skills")?.detail).toContain(
+        "docs digest verified",
+      );
       expect(report.checks.find((check) => check.id === "hosted-llms")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-sitemap")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
@@ -1323,6 +1972,164 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
         "/.well-known/mcp initialized statelessly",
+      );
+      expect(initializedNotifications).toBeGreaterThanOrEqual(2);
+
+      serveStaleRobots = true;
+      const staleReport = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+      const staleRobots = staleReport.checks.find((check) => check.id === "hosted-robots");
+      expect(staleRobots).toMatchObject({ status: "warn", score: 3, maxScore: 5 });
+      expect(staleRobots?.detail).toContain(
+        "agent routes (/.well-known/agent-skills/*, /.well-known/skills/index.json",
+      );
+
+      serveStaleRobots = false;
+      serveInvalidSkillFrontmatter = true;
+      const invalidSkillReport = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidSkillCheck = invalidSkillReport.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidSkillCheck?.status).toBe("fail");
+      expect(invalidSkillCheck?.detail).toContain(
+        "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
+      );
+
+      serveInvalidSkillFrontmatter = false;
+      serveInvalidSkillUtf8 = true;
+      const invalidUtf8Report = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidUtf8Check = invalidUtf8Report.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidUtf8Check?.status).toBe("fail");
+      expect(invalidUtf8Check?.detail).toContain("artifact failed:");
+
+      serveInvalidSkillUtf8 = false;
+      serveArchiveSkill = true;
+      const invalidArchiveReport = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidArchiveCheck = invalidArchiveReport.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidArchiveCheck?.status).toBe("fail");
+      expect(invalidArchiveCheck?.detail).toContain(
+        "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
+      );
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
+  it("rejects a hosted Agent Skills artifact whose bytes do not match its digest", async () => {
+    writePackageJson(tmpDir, "doctor-hosted-skill-digest", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", search: true, mcp: true };`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/api-catalog"
+      ) {
+        res.writeHead(200, {
+          "Content-Type":
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+          Link: '</.well-known/api-catalog>; title="Docs, API"; rel="service-meta", </unrelated>; rel="api-catalog"',
+        });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                linkset: [
+                  {
+                    anchor: "http://docs.example.test/.well-known/api-catalog",
+                    item: [{ href: "http://docs.example.test/api/docs" }],
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/agent-skills/index.json"
+      ) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+                skills: [
+                  {
+                    name: "docs",
+                    type: "skill-md",
+                    description: "Use the documentation.",
+                    url: "/.well-known/agent-skills/docs/SKILL.md",
+                    digest: `sha256:${"0".repeat(64)}`,
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/agent-skills/docs/SKILL.md"
+      ) {
+        res.writeHead(200, { "Content-Type": "text/markdown" });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : "---\nname: docs\ndescription: Use the documentation.\n---\n\n# Docs\n",
+        );
+        return;
+      }
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not found");
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+      const check = report.checks.find((candidate) => candidate.id === "hosted-agent-skills");
+
+      expect(check?.status).toBe("fail");
+      expect(check?.detail).toContain("docs artifact digest does not match the index");
+      const catalogCheck = report.checks.find((candidate) => candidate.id === "hosted-api-catalog");
+      expect(catalogCheck?.status).toBe("fail");
+      expect(catalogCheck?.detail).toContain(
+        '/.well-known/api-catalog rel="api-catalog" Link value',
       );
     } finally {
       await new Promise<void>((resolve, reject) =>

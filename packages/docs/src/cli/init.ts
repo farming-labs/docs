@@ -64,6 +64,8 @@ import {
   injectTanstackRootProviderIntoRoute,
   tanstackViteConfigTemplate,
   injectTanstackVitePlugins,
+  svelteViteConfigTemplate,
+  injectDocsAgentSkillsVitePlugin,
   tanstackWelcomePageTemplate,
   tanstackInstallationPageTemplate,
   tanstackQuickstartPageTemplate,
@@ -91,6 +93,7 @@ import {
   astroDocsConfigTemplate,
   astroDocsServerTemplate,
   astroConfigTemplate,
+  injectAstroAgentSkillsPlugin,
   astroDocsPageTemplate,
   astroDocsIndexTemplate,
   astroApiRouteTemplate,
@@ -109,6 +112,7 @@ import {
   nuxtServerApiReferenceRouteTemplate,
   nuxtDocsPageTemplate,
   nuxtConfigTemplate,
+  injectNuxtAgentSkillsPlugin,
   nuxtWelcomePageTemplate,
   nuxtInstallationPageTemplate,
   nuxtQuickstartPageTemplate,
@@ -686,6 +690,11 @@ export async function init(options: InitOptions = {}) {
       value: "ledger",
       label: "Ledger",
       hint: "Stripe Docs-inspired product docs shell with navy code panels",
+    },
+    {
+      value: "shadcn",
+      label: "Shadcn Docs",
+      hint: "Compact neutral shell inspired by the shadcn/ui documentation",
     },
     {
       value: "greentree",
@@ -1705,6 +1714,26 @@ function scaffoldSvelteKit(
   write("src/lib/docs.config.ts", svelteDocsConfigTemplate(cfg));
 
   write("src/lib/docs.server.ts", svelteDocsServerTemplate(cfg));
+  const viteConfigRel = fileExists(path.join(cwd, "vite.config.ts"))
+    ? "vite.config.ts"
+    : fileExists(path.join(cwd, "vite.config.mts"))
+      ? "vite.config.mts"
+      : fileExists(path.join(cwd, "vite.config.js"))
+        ? "vite.config.js"
+        : "vite.config.ts";
+  const viteConfigPath = path.join(cwd, viteConfigRel);
+  const existingViteConfig = readFileSafe(viteConfigPath);
+  if (!existingViteConfig) {
+    write(viteConfigRel, svelteViteConfigTemplate(), true);
+  } else {
+    const injected = injectDocsAgentSkillsVitePlugin(existingViteConfig, "./src/lib/docs.config");
+    if (injected) {
+      writeFileSafe(viteConfigPath, injected, true);
+      written.push(`${viteConfigRel} (updated)`);
+    } else {
+      skipped.push(`${viteConfigRel} (already configured)`);
+    }
+  }
   write(`src/routes/${cfg.entry}/+layout.svelte`, svelteDocsLayoutTemplate(cfg));
   write(`src/routes/${cfg.entry}/+layout.server.js`, svelteDocsLayoutServerTemplate(cfg));
   write(`src/routes/${cfg.entry}/[...slug]/+page.svelte`, svelteDocsPageTemplate(cfg));
@@ -1756,6 +1785,7 @@ function scaffoldSvelteKit(
     darkbold: "darkbold",
     shiny: "shiny",
     ledger: "ledger",
+    shadcn: "shadcn",
     greentree: "greentree",
     concrete: "concrete",
     "command-grid": "command-grid",
@@ -1811,11 +1841,23 @@ function scaffoldAstro(
   write("src/lib/docs.config.ts", astroDocsConfigTemplate(cfg));
   write("src/lib/docs.server.ts", astroDocsServerTemplate(cfg));
 
-  if (
-    !fileExists(path.join(cwd, "astro.config.mjs")) &&
-    !fileExists(path.join(cwd, "astro.config.ts"))
-  ) {
-    write("astro.config.mjs", astroConfigTemplate(cfg.astroAdapter ?? "vercel"));
+  const astroConfigRel = fileExists(path.join(cwd, "astro.config.mjs"))
+    ? "astro.config.mjs"
+    : fileExists(path.join(cwd, "astro.config.ts"))
+      ? "astro.config.ts"
+      : "astro.config.mjs";
+  const astroConfigPath = path.join(cwd, astroConfigRel);
+  const existingAstroConfig = readFileSafe(astroConfigPath);
+  if (!existingAstroConfig) {
+    write(astroConfigRel, astroConfigTemplate(cfg.astroAdapter ?? "vercel"));
+  } else {
+    const injected = injectAstroAgentSkillsPlugin(existingAstroConfig);
+    if (injected) {
+      writeFileSafe(astroConfigPath, injected, true);
+      written.push(`${astroConfigRel} (updated)`);
+    } else {
+      skipped.push(`${astroConfigRel} (already configured)`);
+    }
   }
 
   write(`src/pages/${cfg.entry}/index.astro`, astroDocsIndexTemplate(cfg));
@@ -1855,6 +1897,7 @@ function scaffoldAstro(
     darkbold: "darkbold",
     shiny: "shiny",
     ledger: "ledger",
+    shadcn: "shadcn",
     greentree: "greentree",
     concrete: "concrete",
     "command-grid": "command-grid",
@@ -1924,11 +1967,23 @@ function scaffoldNuxt(
     );
   }
 
-  if (
-    !fileExists(path.join(cwd, "nuxt.config.ts")) &&
-    !fileExists(path.join(cwd, "nuxt.config.js"))
-  ) {
-    write("nuxt.config.ts", nuxtConfigTemplate(cfg));
+  const nuxtConfigRel = fileExists(path.join(cwd, "nuxt.config.ts"))
+    ? "nuxt.config.ts"
+    : fileExists(path.join(cwd, "nuxt.config.js"))
+      ? "nuxt.config.js"
+      : "nuxt.config.ts";
+  const nuxtConfigPath = path.join(cwd, nuxtConfigRel);
+  const existingNuxtConfig = readFileSafe(nuxtConfigPath);
+  if (!existingNuxtConfig) {
+    write(nuxtConfigRel, nuxtConfigTemplate(cfg));
+  } else {
+    const injected = injectNuxtAgentSkillsPlugin(existingNuxtConfig);
+    if (injected) {
+      writeFileSafe(nuxtConfigPath, injected, true);
+      written.push(`${nuxtConfigRel} (updated)`);
+    } else {
+      skipped.push(`${nuxtConfigRel} (already configured)`);
+    }
   }
 
   const themeMapping: Record<string, string> = {
@@ -1939,6 +1994,7 @@ function scaffoldNuxt(
     darkbold: "darkbold",
     shiny: "shiny",
     ledger: "ledger",
+    shadcn: "shadcn",
     greentree: "greentree",
     concrete: "concrete",
     "command-grid": "command-grid",

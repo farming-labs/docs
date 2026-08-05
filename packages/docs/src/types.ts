@@ -977,6 +977,7 @@ export type DocsTelemetryAgentSurface =
   | "llms"
   | "agent_feedback_schema"
   | "agent_feedback_submit"
+  | "content_changes"
   | "ask_ai"
   | "mcp";
 
@@ -1000,6 +1001,7 @@ export interface DocsTelemetryConfig {
 
 export interface DocsTelemetryFeatures {
   search: boolean;
+  contentChanges: boolean;
   ai: boolean;
   mcp: boolean;
   llmsTxt: boolean;
@@ -1157,6 +1159,12 @@ export interface LlmsTxtConfig {
    * @default true
    */
   enabled?: boolean;
+  /**
+   * Whether to expose and advertise the RFC 9727 API catalog.
+   * Agent Skills discovery remains available when this is disabled.
+   * @default true
+   */
+  apiCatalog?: boolean;
   /**
    * Base URL for your docs site (used to build absolute links in llms.txt).
    * @example "https://docs.example.com"
@@ -1355,6 +1363,11 @@ export interface DocsMcpToolsConfig {
   listDocs?: boolean;
   /** Expose a `list_pages` tool that returns the known docs pages. */
   listPages?: boolean;
+  /**
+   * Expose a `list_page_sections` tool that returns body-free section discovery metadata
+   * for a page.
+   */
+  listPageSections?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */
   readPage?: boolean;
   /** Expose a `list_tasks` tool for pages with actionable agent contracts. */
@@ -1363,6 +1376,18 @@ export interface DocsMcpToolsConfig {
   readTask?: boolean;
   /** Expose a `search_docs` tool for keyword search over page content. */
   searchDocs?: boolean;
+  /**
+   * Expose a `list_search_facets` tool that returns valid framework, version,
+   * package, and tag values before an agent runs a scoped search.
+   */
+  searchFacets?: boolean;
+  /** Expose body-free document changes with polling through `list_content_changes`. */
+  listContentChanges?: boolean;
+  /**
+   * Expose `hydrate_content_changes` for budget-aware section bodies and deletion
+   * tombstones after polling `list_content_changes`.
+   */
+  hydrateContentChanges?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */
   getNavigation?: boolean;
   /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
@@ -1371,6 +1396,24 @@ export interface DocsMcpToolsConfig {
   getConfigSchema?: boolean;
   /** Expose deterministic `get_context` retrieval with a conservative UTF-8 byte ceiling. */
   getContext?: boolean;
+}
+
+/** Built-in MCP prompt templates projected from documentation contracts and golden tasks. */
+export interface DocsMcpPromptsConfig {
+  /**
+   * Publish structured page agent contracts as MCP prompts.
+   *
+   * `true` publishes every actionable contract. A string array publishes only the
+   * matching page slugs or URL paths. Defaults to `true`.
+   */
+  contracts?: boolean | readonly string[];
+  /**
+   * Golden-task IDs to publish as expectation-blind MCP prompts.
+   *
+   * Only the task query, retrieval scope, and budget are exposed. Evaluator-only
+   * expectations are never included in `prompts/list` or `prompts/get`.
+   */
+  goldenTasks?: readonly string[];
 }
 
 /** Authenticated identity returned by an MCP authentication callback. */
@@ -1397,6 +1440,8 @@ export interface DocsMcpAuthenticateContext {
   request: Request;
   /** Normalized pathname of the MCP endpoint being requested. */
   pathname: string;
+  /** Canonical OAuth resource identifier for exact token audience validation. */
+  resource: string;
 }
 
 export type DocsMcpAllowedOrigins =
@@ -1422,6 +1467,23 @@ export interface DocsMcpCorsConfig {
   maxAgeSeconds?: number;
 }
 
+/** RFC 9728 discovery and endpoint-wide OAuth scope requirements for protected HTTP MCP. */
+export interface DocsMcpProtectedResourceConfig {
+  /**
+   * OAuth authorization server issuer identifiers advertised to MCP clients.
+   * Requires at least one HTTPS URL without query or fragment; loopback HTTP is accepted for development.
+   */
+  authorizationServers: readonly string[];
+  /** OAuth scopes advertised through RFC 9728 `scopes_supported` metadata. */
+  scopesSupported?: readonly string[];
+  /** Scopes every authenticated HTTP MCP principal must have. */
+  requiredScopes?: readonly string[];
+  /** Human-readable protected-resource name. Defaults to the resolved MCP server name. */
+  resourceName?: string;
+  /** Absolute HTTP(S) URL of human-readable authentication guidance for this MCP resource. */
+  resourceDocumentation?: string;
+}
+
 /** Security controls for the Streamable HTTP MCP transport. */
 export interface DocsMcpSecurityConfig {
   /**
@@ -1434,6 +1496,11 @@ export interface DocsMcpSecurityConfig {
    * returning `null` rejects the request with 401 and returning a Response passes it through.
    */
   authenticate?: DocsMcpAuthenticate;
+  /**
+   * Opt-in OAuth protected-resource discovery. Requires `authenticate` to protect HTTP MCP.
+   * When active, adapters publish RFC 9728 metadata and framework-generated Bearer challenges.
+   */
+  protectedResource?: DocsMcpProtectedResourceConfig;
   /** Maximum POST body size in bytes. Defaults to 1 MiB. */
   maxBodyBytes?: number;
   /**
@@ -1470,6 +1537,11 @@ export interface DocsMcpConfig {
   version?: string;
   /** Fine-grained tool toggles. Omitted tools stay enabled. */
   tools?: DocsMcpToolsConfig;
+  /**
+   * Built-in MCP prompts generated from structured agent contracts and explicitly
+   * selected golden tasks. Defaults to all contracts and no golden tasks.
+   */
+  prompts?: boolean | DocsMcpPromptsConfig;
   /** Streamable HTTP security controls. Authentication is opt-in; stdio is unaffected. */
   security?: DocsMcpSecurityConfig;
 }
@@ -1479,6 +1551,8 @@ export type DocsSearchResultType = "page" | "heading" | "text";
 export interface DocsSearchSourcePage {
   title: string;
   url: string;
+  /** Canonical public URL override. Relative values are resolved against the request base URL. */
+  canonicalUrl?: string;
   content: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
@@ -1489,6 +1563,8 @@ export interface DocsSearchSourcePage {
   rawContent?: string;
   agentContent?: string;
   agentRawContent?: string;
+  /** Modified time for an explicit agent-source override such as agent.md. */
+  agentLastModified?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
   type?: "page" | "api" | "code" | "changelog";
@@ -1497,6 +1573,114 @@ export interface DocsSearchSourcePage {
   version?: string;
   tags?: string[];
 }
+
+/** Normalized applicability metadata attached to a retrieved source. */
+export interface DocsRetrievalSourceScope {
+  audience: "human" | "agent";
+  locale?: string[];
+  framework?: string[];
+  version?: string[];
+  /**
+   * Version declarations remain grouped so consumers can enforce their intersection
+   * (for example, top-level `>=1` together with an agent contract `<2`).
+   */
+  versionGroups?: string[][];
+  package?: string[];
+  tags?: string[];
+  /** Scope fields with additional authored values omitted from this bounded payload. */
+  truncated?: DocsSearchFilterField[];
+  /** Conflicting declarations that prevent the affected scope fields from being trusted. */
+  conflicts?: DocsSearchFilterField[];
+}
+
+/**
+ * Verifiable metadata for the canonical source behind a retrieval result.
+ *
+ * Digests and generations are algorithm-prefixed. The digest identifies the selected
+ * audience projection of one page; the generation identifies the complete index snapshot.
+ */
+export interface DocsRetrievalSourceProvenance {
+  canonicalUrl: string;
+  scope: DocsRetrievalSourceScope;
+  lastModified?: string;
+  digest: string;
+  indexGeneration: string;
+}
+
+/** One canonical document in a content-change snapshot. */
+export interface DocsContentSnapshotDocument {
+  /** Framework route that produced this canonical document. */
+  url: string;
+  canonicalUrl: string;
+  /** SHA-256 of the body digest plus fetch-relevant page metadata. */
+  digest: string;
+  lastModified?: string;
+}
+
+/**
+ * Serializable content inventory stored by the optional durable change-feed callbacks.
+ *
+ * The snapshot contains metadata only, never document bodies.
+ */
+export interface DocsContentSnapshot {
+  format: "docs-content-snapshot.v1";
+  audience: "human" | "agent";
+  locale?: string;
+  baseUrl?: string;
+  indexGeneration: string;
+  documents: DocsContentSnapshotDocument[];
+}
+
+/** Added or removed document metadata in a content-change response. */
+export type DocsContentChangeDocument = DocsContentSnapshotDocument;
+
+/** Changed document metadata, including the immediately compared prior digest. */
+export interface DocsContentChangedDocument extends DocsContentChangeDocument {
+  previousDigest: string;
+  previousLastModified?: string;
+}
+
+/**
+ * Body-free synchronization response for documentation agents.
+ *
+ * `resetRequired` is explicit because a bare SHA-256 generation cannot reconstruct
+ * history that was never retained by this process or a configured durable store.
+ */
+export interface DocsContentChangesResponse {
+  format: "docs-content-changes.v1";
+  audience: "human" | "agent";
+  locale?: string;
+  since: string | null;
+  indexGeneration: string;
+  mode: "snapshot" | "delta" | "reset";
+  resetRequired: boolean;
+  documentCount: number;
+  counts: {
+    added: number;
+    changed: number;
+    deleted: number;
+  };
+  added: DocsContentChangeDocument[];
+  changed: DocsContentChangedDocument[];
+  deleted: DocsContentChangeDocument[];
+}
+
+export interface DocsContentChangeSnapshotContext {
+  audience: "human" | "agent";
+  locale?: string;
+  baseUrl?: string;
+  request?: Request;
+}
+
+export type DocsContentChangeSnapshotLoader = (
+  generation: string,
+  context: DocsContentChangeSnapshotContext,
+) => DocsContentSnapshot | null | undefined | Promise<DocsContentSnapshot | null | undefined>;
+
+export type DocsContentChangeSnapshotSaver = (
+  snapshot: DocsContentSnapshot,
+  context: DocsContentChangeSnapshotContext,
+) => void | Promise<void>;
 
 export interface DocsSearchDocument {
   id: string;
@@ -1509,7 +1693,103 @@ export interface DocsSearchDocument {
   locale?: string;
   framework?: string;
   version?: string;
+  package?: string[];
   tags?: string[];
+  /** Source metadata persisted with hosted search records. */
+  source?: DocsRetrievalSourceProvenance;
+}
+
+/** Search fields that can contribute lexical evidence for one result. */
+export type DocsSearchMatchField = "title" | "section" | "description" | "content" | "url";
+
+/** One normalized query term and the result fields in which it was found. */
+export interface DocsSearchMatchedTerm {
+  term: string;
+  fields: DocsSearchMatchField[];
+}
+
+export type DocsSearchFilterDecisionOutcome = "not_requested" | "matched" | "not_verifiable";
+
+/** How one scope filter affected an included result. */
+export interface DocsSearchFilterDecision {
+  field: DocsSearchFilterField;
+  requestedValues: string[];
+  selectedValues: string[];
+  matchedValues: string[];
+  outcome: DocsSearchFilterDecisionOutcome;
+}
+
+export type DocsSearchAmbiguityDecisionStatus =
+  | "unambiguous"
+  | "resolved_by_filter"
+  | "requires_filter"
+  | "not_verifiable";
+
+/** How one ambiguity-prone scope field was resolved for the result set. */
+export interface DocsSearchAmbiguityDecision {
+  field: Exclude<DocsSearchFilterField, "tags">;
+  status: DocsSearchAmbiguityDecisionStatus;
+  selectedValues: string[];
+  candidateValues?: string[];
+  reason: string;
+}
+
+/** Summary of scope ambiguity after applying the requested filters. */
+export interface DocsSearchAmbiguityResolution {
+  status: "unambiguous" | "resolved" | "unresolved" | "not_verifiable";
+  decisions: DocsSearchAmbiguityDecision[];
+}
+
+export type DocsSearchRankingStrategy = "lexical" | "exact" | "provider";
+
+export type DocsSearchRankingReasonCode =
+  | "literal_match"
+  | "title_phrase"
+  | "section_phrase"
+  | "title_section_phrase"
+  | "url_phrase"
+  | "description_phrase"
+  | "content_phrase"
+  | "title_terms"
+  | "section_terms"
+  | "description_terms"
+  | "content_terms"
+  | "all_terms_in_section"
+  | "all_terms_in_title"
+  | "all_query_terms"
+  | "heading_boost"
+  | "exact_page_boost"
+  | "provider_order"
+  | "literal_result_priority"
+  | "stable_url_tiebreak";
+
+/** One deterministic reason that contributed to, or controlled, final result ordering. */
+export interface DocsSearchRankingReason {
+  code: DocsSearchRankingReasonCode;
+  description: string;
+  /** Numeric contribution to the built-in lexical score, when applicable. */
+  contribution?: number;
+}
+
+/**
+ * Optional, bounded explanation generated after final ranking and provenance validation.
+ *
+ * Explanations describe the result that was actually returned. Provider ordering is
+ * identified explicitly rather than being presented as a framework-computed lexical score.
+ */
+export interface DocsSearchExplanation {
+  format: "docs-search-explanation.v1";
+  /** One-based rank in the complete cursor-bound result set. */
+  rank: number;
+  rankingStrategy: DocsSearchRankingStrategy;
+  matchedTerms: DocsSearchMatchedTerm[];
+  /** Whether additional terms or term characters were omitted from this bounded payload. */
+  matchedTermsTruncated: boolean;
+  /** Final selected provenance scope, or null when a remote provider did not supply one. */
+  selectedScope: DocsRetrievalSourceScope | null;
+  filterDecisions: DocsSearchFilterDecision[];
+  ambiguityResolution: DocsSearchAmbiguityResolution;
+  rankingReasons: DocsSearchRankingReason[];
 }
 
 export interface DocsSearchResult {
@@ -1520,21 +1800,171 @@ export interface DocsSearchResult {
   type: DocsSearchResultType;
   score?: number;
   section?: string;
+  /** Canonical, scope-aware provenance when supplied or recoverable locally. */
+  source?: DocsRetrievalSourceProvenance;
+  /** Present only when the caller opts into retrieval explanations. */
+  explanation?: DocsSearchExplanation;
+}
+
+export type DocsSearchFilterField = "framework" | "version" | "package" | "tags";
+
+export interface DocsSearchFilterInput {
+  framework?: string | readonly string[];
+  version?: string | readonly string[];
+  package?: string | readonly string[];
+  tags?: string | readonly string[];
+}
+
+/** Normalized search scope. Values are ORed within a field and fields are ANDed together. */
+export interface DocsSearchFilters {
+  framework?: string[];
+  version?: string[];
+  package?: string[];
+  tags?: string[];
+}
+
+/** One selectable search-scope value and the number of matching source pages. */
+export interface DocsSearchFacetValue {
+  value: string;
+  count: number;
+}
+
+/** Cursor-aware values for one search-scope field. */
+export interface DocsSearchFacet {
+  /** Number of distinct values before the response limit is applied. */
+  valueCount: number;
+  /** Total number of distinct values. Alias of `valueCount` for pagination clients. */
+  total: number;
+  /** Whether another page can be requested with `nextCursor`. */
+  hasMore: boolean;
+  /** Opaque cursor for the next page. Omitted when this is the final page. */
+  nextCursor?: string;
+  /** Whether this page omits any values from the complete facet. */
+  truncated: boolean;
+  values: DocsSearchFacetValue[];
+}
+
+/**
+ * Cheap, body-free discovery response for the search scopes available in an index.
+ *
+ * Counts for each facet apply the other selected filters but intentionally ignore
+ * the selected values for that same field, so agents can discover alternatives.
+ */
+export interface DocsSearchFacetsResponse {
+  format: "docs-search-facets.v1";
+  audience: "human" | "agent";
+  filters: DocsSearchFilters;
+  indexGeneration: string;
+  /** Number of source pages matching every selected filter. */
+  matchedPageCount: number;
+  facets: Record<DocsSearchFilterField, DocsSearchFacet>;
+}
+
+export type DocsSearchWarningCode =
+  | "ambiguous_scope"
+  | "unknown_filter_value"
+  | "missing_scope_metadata"
+  | "conflicting_scope_metadata";
+
+export interface DocsSearchWarning {
+  code: DocsSearchWarningCode;
+  field: DocsSearchFilterField;
+  message: string;
+  /** Bounded, normalized values relevant to this warning. */
+  values?: string[];
+  /** Bounded, deterministic sample of affected canonical page URLs. */
+  pageUrls?: string[];
+  /** Total number of affected values or pages before samples were bounded. */
+  count?: number;
+}
+
+export interface DocsSearchResponse {
+  format: "docs-search.v1";
+  query: string;
+  audience: "human" | "agent";
+  filters: DocsSearchFilters;
+  /**
+   * Generation of the complete local index snapshot used for this retrieval.
+   * Built-in search endpoints always emit it; optionality preserves source compatibility
+   * for callers that construct the versioned response object themselves.
+   */
+  indexGeneration?: string;
+  /** Number of results in this response page. */
+  resultCount: number;
+  /**
+   * Exact number of results available for the cursor-bound query.
+   * Built-in structured endpoints always emit this; optionality preserves the v1
+   * producer contract for existing integrations.
+   */
+  total?: number;
+  /**
+   * Whether another page can be requested with `nextCursor`.
+   * Built-in structured endpoints always emit this; optionality preserves the v1
+   * producer contract for existing integrations.
+   */
+  hasMore?: boolean;
+  /** Opaque cursor for the next page. Omitted when this is the final page. */
+  nextCursor?: string;
+  results: DocsSearchResult[];
+  warnings: DocsSearchWarning[];
+}
+
+/** Structured search response emitted by built-in cursor-aware endpoints. */
+export interface DocsPaginatedSearchResponse extends DocsSearchResponse {
+  total: number;
+  hasMore: boolean;
+}
+
+export interface DocsSearchRequest {
+  filters: DocsSearchFilters;
+  structured: boolean;
+  /** Whether search results should include bounded retrieval explanations. */
+  explain?: boolean;
+  /** Whether the caller requested the body-free search facet response. */
+  facets?: boolean;
+  /** Facet field selected for cursor continuation. */
+  facet?: DocsSearchFilterField;
+  /** Opaque cursor supplied by a previous structured or facet response. */
+  cursor?: string;
+  /** Structured result or facet value page size. */
+  limit?: number;
 }
 
 export interface DocsSearchQuery {
   query: string;
   limit?: number;
+  /** Zero-based provider offset used by the shared structured-search pipeline. */
+  offset?: number;
+  /** Provider cursor used by cursor-native remote adapters. */
+  cursor?: string;
   locale?: string;
   pathname?: string;
+  /** Requested content projection. Omitted callers retain the human-search default. */
+  audience?: "human" | "agent";
+  /** Normalized framework, version, package, and tag constraints. */
+  filters?: DocsSearchFilters;
+  /** Whether the shared pipeline should explain the final ranked results. */
+  explain?: boolean;
 }
 
 export interface DocsSearchAdapterContext {
   pages: DocsSearchSourcePage[];
   documents: DocsSearchDocument[];
+  /** Resolved content projection supplied to this adapter. */
+  audience?: "human" | "agent";
   locale?: string;
   pathname?: string;
   siteTitle?: string;
+  /** Canonical docs origin used to make result provenance URLs absolute. */
+  baseUrl?: string;
+  /** @internal Trusted canonical origin used to identify hosted-index ownership. */
+  indexBaseUrl?: string;
+  /** Complete index generation represented by this adapter context. */
+  indexGeneration?: string;
+  /** Chunking policy represented by this adapter context. */
+  chunking?: DocsSearchChunkingConfig;
+  /** @internal Let the shared search pipeline attach provenance once after provider merging. */
+  deferSourceProvenance?: boolean;
   /** Optional cancellation signal, including diagnostic timeouts. */
   signal?: AbortSignal;
 }
@@ -1543,6 +1973,28 @@ export interface DocsSearchAdapter {
   name: string;
   index?(context: DocsSearchAdapterContext): Promise<void>;
   search(query: DocsSearchQuery, context: DocsSearchAdapterContext): Promise<DocsSearchResult[]>;
+  /**
+   * Optional exact pagination contract. Built-in adapters implement this while legacy custom
+   * adapters can continue exposing only `search`.
+   */
+  searchPage?(
+    query: DocsSearchQuery,
+    context: DocsSearchAdapterContext,
+  ): Promise<DocsSearchAdapterPage>;
+}
+
+/**
+ * Exact page metadata returned by pagination-aware search adapters.
+ *
+ * Legacy custom adapters may continue implementing only `search` for unpaginated callers.
+ * Cursor-aware structured search uses the exact local fallback unless the custom adapter
+ * also implements `searchPage` and declares a stable `paginationRevision`.
+ */
+export interface DocsSearchAdapterPage {
+  results: DocsSearchResult[];
+  total: number;
+  /** Cursor-native providers can supply their own continuation token. */
+  nextCursor?: string;
 }
 
 export type DocsSearchAdapterFactory = (
@@ -1589,6 +2041,8 @@ export interface AlgoliaDocsSearchConfig {
   adminApiKey?: string;
   maxResults?: number;
   syncOnSearch?: boolean;
+  /** Stable namespace used to identify this docs corpus in a shared index. */
+  syncNamespace?: string;
   chunking?: DocsSearchChunkingConfig;
 }
 
@@ -1601,6 +2055,8 @@ export interface TypesenseDocsSearchConfig {
   adminApiKey?: string;
   maxResults?: number;
   syncOnSearch?: boolean;
+  /** Stable namespace used to identify this docs corpus in a shared collection. */
+  syncNamespace?: string;
   queryBy?: string[];
   mode?: "keyword" | "hybrid";
   embeddings?: DocsSearchEmbeddingsConfig;
@@ -1624,6 +2080,12 @@ export interface McpDocsSearchConfig {
    */
   toolName?: string;
   /**
+   * Forward the resolved human/agent projection as the tool's `audience` argument.
+   * HTTP request resolution enables this for same-origin `search_docs` routes.
+   * Remote and custom tools must opt in explicitly after supporting the argument.
+   */
+  forwardAudience?: boolean;
+  /**
    * Override the MCP protocol version header when needed.
    */
   protocolVersion?: string;
@@ -1639,6 +2101,13 @@ export interface CustomDocsSearchConfig {
   provider: "custom";
   enabled?: boolean;
   adapter: DocsSearchAdapter | DocsSearchAdapterFactory;
+  /**
+   * Stable revision for the adapter's result ordering.
+   *
+   * Custom adapters must set this and implement `searchPage` to participate in cursor
+   * pagination. Change it whenever ranking behavior changes so old cursors fail closed.
+   */
+  paginationRevision?: string;
   maxResults?: number;
   chunking?: DocsSearchChunkingConfig;
 }
@@ -2544,6 +3013,20 @@ export interface ApiReferenceConfig {
    */
   specUrl?: string;
   /**
+   * Product API base URLs described by the OpenAPI document.
+   *
+   * These URLs become RFC 9727 API catalog targets, and the OpenAPI document is
+   * associated with each target through `service-desc`. Relative URLs resolve
+   * against the docs origin.
+   *
+   * Same-origin generated schemas default to the request origin. Set this for
+   * remotely hosted schemas because the schema URL is not necessarily the API
+   * URL. An explicit empty array disables the catalog association.
+   *
+   * @example ["https://api.example.com/v1"]
+   */
+  catalogTargets?: string[];
+  /**
    * Which renderer to use for the API reference UI.
    *
    * - `"fumadocs"` uses the Fumadocs OpenAPI renderer bundled by `@farming-labs/next`
@@ -2624,6 +3107,10 @@ export interface DocsAgentGoldenTaskFilters {
   framework?: string;
   /** Limit retrieval to an exact documented version. */
   version?: string;
+  /** Limit retrieval to one or more documented package names. */
+  package?: string | readonly string[];
+  /** Limit retrieval to pages with one or more matching tags. */
+  tags?: string | readonly string[];
   /** Limit retrieval to a locale. */
   locale?: string;
 }
@@ -2653,6 +3140,61 @@ export interface DocsAgentGoldenTaskExpectation {
   scope?: DocsAgentGoldenTaskFilters;
   /** Assertions evaluated against an explicitly configured answer runner. */
   answer?: DocsAgentGoldenAnswerExpectation;
+  /** Adversarial retrieval and answer-safety assertions. */
+  safety?: DocsAgentGoldenSafetyExpectation;
+}
+
+export interface DocsAgentGoldenPromptInjectionExpectation {
+  /** Canary instruction fragments that must be present in retrieved context. */
+  markers: string[];
+  /** Canary fragments the answer must not repeat. Defaults to `markers`. */
+  forbiddenAnswerText?: string[];
+}
+
+export interface DocsAgentGoldenAuthenticatedContentExpectation {
+  /** Protected page or section URLs that public retrieval must not expose. */
+  forbiddenSources?: string[];
+  /** Stable canary fragments that must not appear in context or answers. Never use real secrets. */
+  forbiddenText?: string[];
+}
+
+export interface DocsAgentGoldenFreshnessExpectation {
+  /** Expected retrieval-index generation. Omit to require one consistent generation. */
+  indexGeneration?: string;
+  /** Expected full-document digest keyed by canonical page or section URL. */
+  sourceDigests?: Record<string, string>;
+}
+
+export type DocsAgentGoldenQueryVariantKind = "ambiguous" | "typo";
+
+export interface DocsAgentGoldenQueryVariant {
+  /** Stable classification used in safety reports. */
+  kind: DocsAgentGoldenQueryVariantKind;
+  /** Alternate user-shaped query evaluated with the parent task's expectations. */
+  query: string;
+}
+
+/**
+ * Opt-in adversarial assertions for one golden retrieval task.
+ *
+ * These assertions use canaries and evaluator-only expectations; they are never forwarded to
+ * configured search or answer providers.
+ */
+export interface DocsAgentGoldenSafetyExpectation {
+  /** Verify that an answer ignores instruction-like canary text retrieved from documentation. */
+  promptInjection?: DocsAgentGoldenPromptInjectionExpectation;
+  /** Citations that must never be trusted or emitted, including poisoned external origins. */
+  poisonedCitations?: string[];
+  /** Protected-source and stable canary checks for public retrieval. */
+  authenticatedContent?: DocsAgentGoldenAuthenticatedContentExpectation;
+  /** Verify source digests and index generations against current retrieval content. */
+  freshness?: DocsAgentGoldenFreshnessExpectation;
+  /** Fail when retrieved provenance contains conflicting or ambiguous framework/version scope. */
+  rejectConflictingFrameworkVersions?: boolean;
+  /** Deleted page or section URLs that must remain absent from retrieval and citations. */
+  deletedSectionTombstones?: string[];
+  /** Ambiguous and typo-heavy queries evaluated with the parent task's full expectations. */
+  queryVariants?: DocsAgentGoldenQueryVariant[];
 }
 
 export interface DocsAgentGoldenAnswerExpectation {
@@ -2712,6 +3254,8 @@ export interface DocsAgentEvaluationSourceReference {
   title?: string;
   framework?: string;
   version?: string;
+  package?: readonly string[];
+  tags?: readonly string[];
   locale?: string;
 }
 
@@ -2785,6 +3329,301 @@ export interface DocsAgentEvaluationsConfig {
   tasks?: DocsAgentGoldenTask[];
 }
 
+/**
+ * Project-local Agent Skills published by the runtime, static Agent Bundle, and MCP server.
+ *
+ * Each path may point at a `SKILL.md`, a skill directory containing `SKILL.md`, or a
+ * collection directory whose descendants contain `SKILL.md` files. Paths are resolved
+ * inside the current project/workspace boundary. Only `SKILL.md` and files below the
+ * standard `references/`, `scripts/`, and `assets/` directories are published.
+ */
+export interface DocsAgentSkillsConfig {
+  /** Project-relative skill file, skill directory, or collection directory paths. */
+  paths: string | readonly string[];
+  /**
+   * Thresholds used by `docs doctor --agent` and `docs review` to keep skills
+   * progressively disclosed and executable without loading avoidable context.
+   */
+  progressiveDisclosure?: DocsAgentSkillsProgressiveDisclosureConfig;
+}
+
+export type DocsAgentSkillsCompatibilityPolicy = "when-needed" | "always" | "off";
+
+export interface DocsAgentSkillsProgressiveDisclosureConfig {
+  /** Recommended maximum size of the complete SKILL.md document. @default 500 */
+  maxSkillLines?: number;
+  /**
+   * Approximate token budget for the SKILL.md instructions after frontmatter.
+   * Detailed material should move to `references/` when this is exceeded.
+   *
+   * @default 5000
+   */
+  instructionTokenBudget?: number;
+  /**
+   * Maximum local Markdown reference hops from SKILL.md.
+   * `1` permits SKILL.md -> references/guide.md but flags deeper chains.
+   *
+   * @default 1
+   */
+  maxReferenceDepth?: number;
+  /**
+   * When compatibility frontmatter is expected.
+   *
+   * - `"when-needed"`: require it when scripts or environment/tool requirements are present
+   * - `"always"`: require it for every configured skill
+   * - `"off"`: do not diagnose missing compatibility metadata
+   *
+   * @default "when-needed"
+   */
+  compatibility?: DocsAgentSkillsCompatibilityPolicy;
+  /** Diagnose scripts without dependency and validation guidance. @default true */
+  checkScripts?: boolean;
+}
+
+/** Concise array shorthand for `agent.skills.paths`. */
+export type DocsAgentSkillsInput = string | readonly string[] | DocsAgentSkillsConfig;
+
+/** Core A2A v1 bindings plus URI-identified custom bindings. */
+export type DocsAgentA2AProtocolBinding = "JSONRPC" | "GRPC" | "HTTP+JSON" | (string & {});
+
+/** One A2A protocol interface advertised by an Agent Card. */
+export interface DocsAgentA2AInterfaceConfig {
+  /** Absolute binding-appropriate URL. Core bindings require HTTPS outside loopback development. */
+  url: string;
+  /** A2A protocol binding implemented at this URL. @default "HTTP+JSON" */
+  protocolBinding?: DocsAgentA2AProtocolBinding;
+  /** A2A protocol version implemented at this URL. @default "1.0" */
+  protocolVersion?: string;
+  /** Optional tenant identifier clients must send when calling this interface. */
+  tenant?: string;
+}
+
+/** A protocol extension implemented by the configured A2A service. */
+export interface DocsAgentA2AExtension {
+  /** Stable URI identifying the extension. */
+  uri: string;
+  /** How this agent implements the extension. */
+  description?: string;
+  /** Whether clients must understand the extension before using the agent. */
+  required?: boolean;
+  /** Extension-specific JSON configuration. */
+  params?: Readonly<Record<string, unknown>>;
+}
+
+/** Optional capabilities implemented by the configured A2A service. */
+export interface DocsAgentA2ACapabilities {
+  streaming?: boolean;
+  pushNotifications?: boolean;
+  extensions?: readonly DocsAgentA2AExtension[];
+  /** Requires implemented GetExtendedAgentCard plus a declared scheme and security requirement. */
+  extendedAgentCard?: boolean;
+}
+
+/** A list of OAuth scopes associated with one named security scheme. */
+export interface DocsAgentA2ASecurityScopeList {
+  list: readonly string[];
+}
+
+/** One alternative set of security schemes required to call an A2A service or skill. */
+export interface DocsAgentA2ASecurityRequirement {
+  schemes: Readonly<Record<string, DocsAgentA2ASecurityScopeList>>;
+}
+
+export interface DocsAgentA2AApiKeySecurityScheme {
+  description?: string;
+  location: "query" | "header" | "cookie";
+  name: string;
+}
+
+export interface DocsAgentA2AHttpAuthSecurityScheme {
+  description?: string;
+  scheme: string;
+  bearerFormat?: string;
+}
+
+export interface DocsAgentA2AOAuthAuthorizationCodeFlow {
+  authorizationUrl: string;
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+  pkceRequired?: boolean;
+}
+
+export interface DocsAgentA2AOAuthClientCredentialsFlow {
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+export interface DocsAgentA2AOAuthDeviceCodeFlow {
+  deviceAuthorizationUrl: string;
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** @deprecated A2A v1 retains this OAuth flow for compatibility only. */
+export interface DocsAgentA2AOAuthImplicitFlow {
+  authorizationUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** @deprecated A2A v1 retains this OAuth flow for compatibility only. */
+export interface DocsAgentA2AOAuthPasswordFlow {
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** A2A v1 OAuth flow union. Exactly one flow is allowed by the protocol. */
+export type DocsAgentA2AOAuthFlows =
+  | {
+      authorizationCode: DocsAgentA2AOAuthAuthorizationCodeFlow;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials: DocsAgentA2AOAuthClientCredentialsFlow;
+      deviceCode?: never;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode: DocsAgentA2AOAuthDeviceCodeFlow;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit: DocsAgentA2AOAuthImplicitFlow;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit?: never;
+      password: DocsAgentA2AOAuthPasswordFlow;
+    };
+
+export interface DocsAgentA2AOAuth2SecurityScheme {
+  description?: string;
+  flows: DocsAgentA2AOAuthFlows;
+  oauth2MetadataUrl?: string;
+}
+
+export interface DocsAgentA2AOpenIdConnectSecurityScheme {
+  description?: string;
+  openIdConnectUrl: string;
+}
+
+export interface DocsAgentA2AMutualTlsSecurityScheme {
+  description?: string;
+}
+
+/** A2A v1 security scheme union. Exactly one scheme is allowed by the protocol. */
+export type DocsAgentA2ASecurityScheme =
+  | {
+      apiKeySecurityScheme: DocsAgentA2AApiKeySecurityScheme;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme: DocsAgentA2AHttpAuthSecurityScheme;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme: DocsAgentA2AOAuth2SecurityScheme;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme: DocsAgentA2AOpenIdConnectSecurityScheme;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme: DocsAgentA2AMutualTlsSecurityScheme;
+    };
+
+/** One capability implemented by the configured A2A service. */
+export interface DocsAgentA2ASkill {
+  id: string;
+  name: string;
+  description: string;
+  tags: readonly string[];
+  examples?: readonly string[];
+  inputModes?: readonly string[];
+  outputModes?: readonly string[];
+  securityRequirements?: readonly DocsAgentA2ASecurityRequirement[];
+}
+
+interface DocsAgentA2ABaseConfig {
+  name: string;
+  description: string;
+  /** Absolute HTTPS documentation URL; HTTP is allowed only for loopback development. */
+  documentationUrl?: string;
+  /** Provider identity with an absolute HTTPS URL outside loopback development. */
+  provider?: { organization: string; url: string };
+  version?: string;
+  /** Absolute HTTPS icon URL; HTTP is allowed only for loopback development. */
+  iconUrl?: string;
+  capabilities?: DocsAgentA2ACapabilities;
+  /** Agent-wide supported input media types. @default ["text/plain"] */
+  defaultInputModes?: readonly string[];
+  /** Agent-wide supported output media types. @default ["text/plain"] */
+  defaultOutputModes?: readonly string[];
+  securitySchemes?: Readonly<Record<string, DocsAgentA2ASecurityScheme>>;
+  securityRequirements?: readonly DocsAgentA2ASecurityRequirement[];
+}
+
+interface DocsAgentA2ASingleInterfaceConfig {
+  /** @deprecated Prefer `supportedInterfaces` for new A2A v1 configurations. */
+  interfaceUrl: string;
+  supportedInterfaces?: never;
+  /** A2A protocol version exposed by the shorthand interface. @default "0.3" */
+  protocolVersion?: string;
+  /** Transport binding exposed by the shorthand interface. @default "HTTP+JSON" */
+  protocolBinding?: DocsAgentA2AProtocolBinding;
+  /** Explicit A2A skills; published documentation skills are projected when omitted. */
+  skills?: readonly DocsAgentA2ASkill[];
+}
+
+interface DocsAgentA2AInterfacesConfig {
+  /** Ordered interfaces; the first entry is preferred. At least one is required. */
+  supportedInterfaces: readonly [DocsAgentA2AInterfaceConfig, ...DocsAgentA2AInterfaceConfig[]];
+  /** Capabilities actually implemented by the configured A2A interfaces. */
+  skills: readonly DocsAgentA2ASkill[];
+  interfaceUrl?: never;
+  protocolVersion?: never;
+  protocolBinding?: never;
+}
+
+/** Explicit A2A service metadata. Configure this only when the URL implements A2A. */
+export type DocsAgentA2AConfig = DocsAgentA2ABaseConfig &
+  (DocsAgentA2ASingleInterfaceConfig | DocsAgentA2AInterfacesConfig);
+
 export interface DocsAgentConfig {
   /**
    * Defaults for `docs agent compact`.
@@ -2795,6 +3634,27 @@ export interface DocsAgentConfig {
    * External providers and runtime execution require explicit opt-in.
    */
   evaluations?: boolean | DocsAgentEvaluationsConfig;
+  /** Publish reusable Agent Skills through standards discovery, static exports, and MCP. */
+  skills?: DocsAgentSkillsInput;
+  /**
+   * Body-free document synchronization feed. Enabled for runtime adapters by default.
+   *
+   * Configure snapshot callbacks when exact deltas must survive server restarts or deployments.
+   */
+  contentChanges?: boolean | DocsAgentContentChangesConfig;
+  /** Opt in to an A2A Agent Card for a separately implemented A2A service. */
+  a2a?: DocsAgentA2AConfig;
+}
+
+export interface DocsAgentContentChangesConfig {
+  /** Disable the runtime content-change endpoint. @default true */
+  enabled?: boolean;
+  /** Number of metadata-only snapshots retained in this server process. @default 8 */
+  maxSnapshots?: number;
+  /** Load an older snapshot from a durable store for exact cross-deployment deltas. */
+  loadSnapshot?: DocsContentChangeSnapshotLoader;
+  /** Persist the current snapshot to a durable store. */
+  saveSnapshot?: DocsContentChangeSnapshotSaver;
 }
 
 export type DocsReviewSeverity = "off" | "suggestion" | "warn" | "error";
@@ -2828,6 +3688,8 @@ export interface DocsReviewRulesConfig {
   agentSurfaceDrift?: DocsReviewSeverity;
   /** Run configured agent golden tasks and report failed or unmeasured behavior. */
   goldenTasks?: DocsReviewSeverity;
+  /** Check configured Agent Skills for progressive disclosure and executable guidance. */
+  agentSkills?: DocsReviewSeverity;
 }
 
 export interface DocsReviewScoreConfig {

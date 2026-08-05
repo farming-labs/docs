@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   extractNestedObjectLiteral,
+  hasTopLevelProperty,
   loadDocsConfigModuleResult,
   readBooleanProperty,
   readTopLevelBooleanProperty,
@@ -12,6 +13,7 @@ import {
   readStringProperty,
   readTopLevelStringProperty,
   resolveDocsContentDir,
+  resolveDocsProjectRoot,
 } from "./config.js";
 
 const tempDirs: string[] = [];
@@ -67,7 +69,44 @@ describe("resolveDocsContentDir", () => {
   });
 });
 
+describe("resolveDocsProjectRoot", () => {
+  it("uses the nested package that owns an explicitly selected config", () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "docs-project-root-"));
+    tempDirs.push(workspaceRoot);
+    const appRoot = join(workspaceRoot, "website");
+    mkdirSync(appRoot, { recursive: true });
+    writeFileSync(join(workspaceRoot, "package.json"), '{"private":true}', "utf-8");
+    writeFileSync(join(appRoot, "package.json"), '{"private":true}', "utf-8");
+    const configPath = join(appRoot, "docs.config.tsx");
+    writeFileSync(configPath, "export default {};\n", "utf-8");
+
+    expect(resolveDocsProjectRoot(workspaceRoot, configPath)).toBe(appRoot);
+  });
+
+  it("keeps configs below an application anchored to the package root", () => {
+    const appRoot = mkdtempSync(join(tmpdir(), "docs-project-root-"));
+    tempDirs.push(appRoot);
+    const configPath = join(appRoot, "src", "lib", "docs.config.ts");
+    mkdirSync(join(appRoot, "src", "lib"), { recursive: true });
+    writeFileSync(join(appRoot, "package.json"), '{"private":true}', "utf-8");
+    writeFileSync(configPath, "export default {};\n", "utf-8");
+
+    expect(resolveDocsProjectRoot(appRoot, configPath)).toBe(appRoot);
+  });
+});
+
 describe("property readers", () => {
+  it("detects direct properties without matching comments or nested objects", () => {
+    const block = `
+      // skills: "ignored"
+      nested: { skills: "also-ignored" },
+      "skills": ["skills/one"],
+    `;
+
+    expect(hasTopLevelProperty(block, "skills")).toBe(true);
+    expect(hasTopLevelProperty("// skills: 'ignored'\nother: true", "skills")).toBe(false);
+  });
+
   it("matches exact string property names", () => {
     const content = `
       export default defineDocs({

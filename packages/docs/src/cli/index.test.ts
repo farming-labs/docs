@@ -47,8 +47,9 @@ describe("parseFlags", () => {
   });
 
   it("parses mcp flags", () => {
-    const flags = parseFlags(["mcp", "--config", "src/lib/docs.config.ts"]);
+    const flags = parseFlags(["mcp", "--config", "src/lib/docs.config.ts", "--client", "cursor"]);
     expect(flags.config).toBe("src/lib/docs.config.ts");
+    expect(flags.client).toBe("cursor");
   });
 
   it("parses search sync provider flags", () => {

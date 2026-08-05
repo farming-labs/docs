@@ -69,10 +69,10 @@ describe("utils", () => {
       expect(detectFramework(tmpDir)).toBe("tanstack-start");
     });
 
-    it("returns farmjs when @farmjs/core is present", () => {
+    it("returns farmjs when @farm.js/core is present", () => {
       fs.writeFileSync(
         path.join(tmpDir, "package.json"),
-        JSON.stringify({ dependencies: { "@farmjs/core": "0.0.3-beta.3" } }),
+        JSON.stringify({ dependencies: { "@farm.js/core": "0.1.0-beta.19" } }),
       );
       expect(detectFramework(tmpDir)).toBe("farmjs");
     });

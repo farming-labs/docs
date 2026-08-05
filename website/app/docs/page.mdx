@@ -12,6 +12,37 @@ related:
   - /docs/customization/mcp
   - /docs/cli
 icon: "book"
+agent:
+  tokenBudget: 950
+  task: Select the correct Farming Labs docs workflow and bootstrap a supported project.
+  outcome: The project has a working docs entry plus discoverable Markdown, search, sitemap, robots, and MCP capabilities appropriate to its config.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Identify whether the user is adding docs to an existing app or creating a new docs project.
+    - Identify the existing framework and package manager before choosing an adapter or command.
+  files:
+    - package.json
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm dlx @farming-labs/docs init
+      description: Start the existing-project setup flow from the application root.
+  sideEffects:
+    - Initialization installs packages and scaffolds framework-specific docs files.
+  verification:
+    - description: Open the configured docs entry and fetch /.well-known/agent.json from the same origin.
+      expect: The docs page renders and discovery advertises only the capabilities enabled by the resolved config.
+  rollback:
+    - Restore dependency and lock files and remove only the scaffolded docs files created by initialization.
+  failureModes:
+    - symptom: The initializer selects the wrong framework.
+      resolution: Stop before accepting generated changes and rerun with the documented explicit template or framework choice.
+    - symptom: An agent starts scraping HTML for implementation details.
+      resolution: Read /.well-known/agent.json first and use its Markdown, search, schema, sitemap, or MCP routes.
 ---
 
 # @farming-labs/docs

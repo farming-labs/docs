@@ -9,6 +9,47 @@ related:
   - /docs/customization/mcp
   - /docs/configuration
   - /docs/cli
+agent:
+  tokenBudget: 950
+  task: Generate and verify XML and Markdown sitemaps for runtime and static docs deployments.
+  outcome: Canonical sitemap routes or generated files list the expected docs pages with valid links and configured freshness metadata.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The docs content tree and public base URL are configured.
+    - Decide whether the deployment serves runtime routes or needs generated public files.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - .farming-labs/sitemap-manifest.json
+    - public/sitemap.xml
+    - public/sitemap.md
+    - public/docs/sitemap.md
+    - static/sitemap.xml
+    - static/sitemap.md
+    - static/docs/sitemap.md
+  commands:
+    - run: pnpm exec docs sitemap generate
+      description: Generate the manifest and static sitemap artifacts.
+    - run: pnpm exec docs sitemap generate --check
+      description: Fail when committed sitemap artifacts are stale.
+  sideEffects:
+    - Static generation writes the sitemap manifest and public sitemap files.
+  verification:
+    - run: pnpm exec docs sitemap generate --check
+      expect: Generated sitemap artifacts match the current docs tree.
+    - description: Fetch sitemap.xml, sitemap.md, /docs/sitemap.md, and /.well-known/sitemap.md from a running site.
+      expect: Each route returns the configured format and links to known canonical docs pages.
+  rollback:
+    - Restore the previous sitemap config and regenerate or remove only the sitemap artifacts it owned.
+  failureModes:
+    - symptom: The check reports stale generated files.
+      resolution: Regenerate from the same docs config and commit the manifest and public output together.
+    - symptom: Sitemap URLs use the wrong origin or prefix.
+      resolution: Correct sitemap.baseUrl or routePrefix, regenerate, and verify every advertised alias.
 ---
 
 # Sitemaps

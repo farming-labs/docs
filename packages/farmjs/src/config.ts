@@ -34,7 +34,7 @@ function normalizeExistingDocs(value: FarmConfigLike["docs"]): FarmDocsCoreConfi
  *
  * The wrapper is deliberately structural, so it preserves the exact config
  * type returned by Farm's defineConfig without coupling this package to a
- * particular pre-release of @farmjs/core.
+ * particular release of @farm.js/core.
  */
 export function withDocs<TConfig extends FarmConfigLike>(
   farmConfig: TConfig,

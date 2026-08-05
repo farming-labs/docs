@@ -23,7 +23,7 @@ const DEFAULT_API_REFERENCE_ROOT = "api-reference";
 const DEFAULT_MANAGED_OPENAPI_ENDPOINT = "/api/docs/openapi";
 const DEFAULT_THEME_PRESET = "default";
 const DEFAULT_POLL_INTERVAL_MS = 750;
-const DEFAULT_NEXT_VERSION = "16.2.3";
+const DEFAULT_NEXT_VERSION = "16.2.11";
 const DEFAULT_REACT_VERSION = "^19.2.0";
 const DEFAULT_TAILWIND_VERSION = "^4.1.18";
 const DEFAULT_POSTCSS_VERSION = "^8.5.6";
@@ -55,6 +55,7 @@ type ThemePresetName =
   | "darkbold"
   | "shiny"
   | "ledger"
+  | "shadcn"
   | "greentree"
   | "concrete"
   | "command-grid"
@@ -88,6 +89,7 @@ interface ManagedOpenApiSpec {
   route: string;
   path: string;
   specUrl: string;
+  catalogTargets?: string[];
   sourcePath?: string;
   navigationLabel?: string;
 }
@@ -207,6 +209,12 @@ const THEME_PRESETS: Record<string, ManagedThemePreset> = {
     importPath: "@farming-labs/theme/ledger",
     factory: "ledger",
   },
+  shadcn: {
+    configName: "shadcn",
+    templateTheme: "shadcn",
+    importPath: "@farming-labs/theme/shadcn",
+    factory: "shadcn",
+  },
   greentree: {
     configName: "greentree",
     templateTheme: "greentree",
@@ -269,6 +277,7 @@ const managedConfigSchema = z
                 name: z.string().optional(),
                 path: z.string(),
                 route: z.string().optional(),
+                catalogTargets: z.array(z.string()).optional(),
                 navigationLabel: z.string().optional(),
               })
               .passthrough(),
@@ -360,6 +369,7 @@ function resolveManagedOpenApiSpec(
         name?: string;
         path: string;
         route?: string;
+        catalogTargets?: string[];
         navigationLabel?: string;
       }>
     | undefined,
@@ -368,6 +378,12 @@ function resolveManagedOpenApiSpec(
   if (configured) {
     const rawPath = configured.path.trim();
     const route = normalizeManagedRoutePath(configured.route);
+    const catalogTargets =
+      configured.catalogTargets === undefined
+        ? undefined
+        : Array.from(
+            new Set(configured.catalogTargets.map((target) => target.trim()).filter(Boolean)),
+          );
 
     if (isRemoteManagedSpecPath(rawPath) || isRequestRelativeManagedSpecPath(rawPath)) {
       return {
@@ -375,6 +391,7 @@ function resolveManagedOpenApiSpec(
         route,
         path: rawPath,
         specUrl: rawPath,
+        catalogTargets,
         navigationLabel: configured.navigationLabel?.trim() || undefined,
       };
     }
@@ -384,6 +401,7 @@ function resolveManagedOpenApiSpec(
       route,
       path: rawPath,
       specUrl: DEFAULT_MANAGED_OPENAPI_ENDPOINT,
+      catalogTargets,
       sourcePath: path.resolve(projectRoot, rawPath),
       navigationLabel: configured.navigationLabel?.trim() || undefined,
     };
@@ -889,15 +907,20 @@ function renderDocsConfigFile(options: {
   apiReference?: {
     path: string;
     specUrl: string;
+    catalogTargets?: string[];
   };
 }): string {
+  const catalogTargetsLine =
+    options.apiReference?.catalogTargets === undefined
+      ? ""
+      : `    catalogTargets: ${JSON.stringify(options.apiReference.catalogTargets)},\n`;
   const apiReferenceBlock = options.apiReference
     ? `  apiReference: {
     enabled: true,
     path: ${JSON.stringify(options.apiReference.path)},
     renderer: "fumadocs",
     specUrl: ${JSON.stringify(options.apiReference.specUrl)},
-  },
+${catalogTargetsLine}  },
 `
     : "";
   const analyticsBlock = renderManagedAnalyticsBlock(options.analytics);
@@ -1458,6 +1481,7 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
         ? {
             path: apiReferenceRoute,
             specUrl: project.apiReferenceSpec.specUrl,
+            catalogTargets: project.apiReferenceSpec.catalogTargets,
           }
         : undefined,
     }),

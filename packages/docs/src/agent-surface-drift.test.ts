@@ -4,6 +4,12 @@ import {
   type AnalyzeAgentSurfaceDriftOptions,
 } from "./agent-surface-drift.js";
 import {
+  DEFAULT_AGENT_SKILL_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_FORMAT,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+  DEFAULT_API_CATALOG_FORMAT,
+  DEFAULT_API_CATALOG_ROUTE,
   DEFAULT_DOCS_API_ROUTE,
   DEFAULT_DOCS_CONFIG_ROUTE,
   DOCS_CONFIG_MAP_TOP_LEVEL_KEYS,
@@ -31,15 +37,59 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
     agentContractFields: ["task", "outcome", "rollback"],
     discovery: {
       site: { entry: "docs" },
-      capabilities: { search: true, mcp: true },
+      capabilities: {
+        search: true,
+        mcp: true,
+        apiCatalog: true,
+        agentSkillsDiscovery: true,
+      },
       api: {
         docs: "/api/docs",
         config: "/api/docs?format=config",
+        apiCatalog: "/.well-known/api-catalog",
+        apiCatalogQuery: "/api/docs?format=api-catalog",
+        agentSkillsIndex: "/.well-known/agent-skills/index.json",
+      },
+      apiCatalog: {
+        enabled: true,
+        route: "/.well-known/api-catalog",
+        api: "/api/docs?format=api-catalog",
       },
       config: { endpoint: "/api/docs?format=config" },
       search: {
         enabled: true,
         endpoint: "/api/docs?query={query}",
+        agentEndpoint: "/api/docs?query={query}&audience=agent",
+        structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
+        explainedAgentEndpoint:
+          "/api/docs?query={query}&audience=agent&response=structured&explain=true",
+        facetsEndpoint: "/api/docs?audience=agent&response=facets",
+        audienceParam: "audience",
+        defaultAudience: "human",
+        supportedAudiences: ["human", "agent"],
+        responseParam: "response",
+        structuredResponseValue: "structured",
+        facetsResponseValue: "facets",
+        responseFormat: "docs-search.v1",
+        explainParam: "explain",
+        explainValue: "true",
+        explanationField: "explanation",
+        explanationFormat: "docs-search-explanation.v1",
+        facetsResponseFormat: "docs-search-facets.v1",
+        filterParams: {
+          framework: "framework",
+          version: "version",
+          package: "package",
+          tags: "tags",
+        },
+        repeatedFilterParams: ["framework", "version", "package", "tags"],
+        warningsField: "warnings",
+        facetParam: "facet",
+        limitParam: "limit",
+        cursorParam: "cursor",
+        nextCursorField: "nextCursor",
+        hasMoreField: "hasMore",
+        totalField: "total",
       },
       mcp: {
         enabled: true,
@@ -51,6 +101,14 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
           task: "string",
           outcome: "string",
           rollback: "string[]",
+        },
+      },
+      skills: {
+        discovery: {
+          index: "/.well-known/agent-skills/index.json",
+          artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+          apiIndex: "/api/docs?format=agent-skills",
+          apiArtifact: "/api/docs?format=agent-skill&name={name}",
         },
       },
     },
@@ -68,7 +126,16 @@ function healthyOptions(): AnalyzeAgentSurfaceDriftOptions {
       routes: {
         "api.docs": "/api/docs",
         "api.config": "/api/docs?format=config",
+        "api.apiCatalog": "/.well-known/api-catalog",
+        "api.apiCatalogQuery": "/api/docs?format=api-catalog",
+        "api.agentSkillsIndex": "/.well-known/agent-skills/index.json",
+        "apiCatalog.route": "/.well-known/api-catalog",
+        "apiCatalog.api": "/api/docs?format=api-catalog",
         "config.endpoint": "/api/docs?format=config",
+        "skills.discovery.index": "/.well-known/agent-skills/index.json",
+        "skills.discovery.artifact": "/.well-known/agent-skills/{name}/SKILL.md",
+        "skills.discovery.apiIndex": "/api/docs?format=agent-skills",
+        "skills.discovery.apiArtifact": "/api/docs?format=agent-skill&name={name}",
       },
     },
   };
@@ -97,7 +164,16 @@ describe("agent surface drift", () => {
           routes: {
             "api.docs": DEFAULT_DOCS_API_ROUTE,
             "api.config": DEFAULT_DOCS_CONFIG_ROUTE,
+            "api.apiCatalog": DEFAULT_API_CATALOG_ROUTE,
+            "api.apiCatalogQuery": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
+            "api.agentSkillsIndex": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+            "apiCatalog.route": DEFAULT_API_CATALOG_ROUTE,
+            "apiCatalog.api": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_API_CATALOG_FORMAT}`,
             "config.endpoint": DEFAULT_DOCS_CONFIG_ROUTE,
+            "skills.discovery.index": DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+            "skills.discovery.artifact": DEFAULT_AGENT_SKILLS_ROUTE_PATTERN,
+            "skills.discovery.apiIndex": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILLS_INDEX_FORMAT}`,
+            "skills.discovery.apiArtifact": `${DEFAULT_DOCS_API_ROUTE}?format=${DEFAULT_AGENT_SKILL_FORMAT}&name={name}`,
           },
         },
       }),
@@ -106,6 +182,44 @@ describe("agent surface drift", () => {
 
   it("accepts aligned config, schema, contract, discovery, tools, and routes", () => {
     expect(analyzeAgentSurfaceDrift(healthyOptions())).toEqual([]);
+  });
+
+  it("detects protected-resource discovery drift", () => {
+    const options = healthyOptions();
+    const protectedResource = {
+      metadataEndpoints: [
+        "/.well-known/oauth-protected-resource/mcp",
+        "/.well-known/oauth-protected-resource/.well-known/mcp",
+      ],
+      authorizationServers: ["https://auth.example.com"],
+      scopesSupported: ["docs:read"],
+      requiredScopes: ["docs:read"],
+    };
+    (options.discovery as { mcp: Record<string, unknown> }).mcp.protectedResource = {
+      ...protectedResource,
+      metadataEndpoints: [...protectedResource.metadataEndpoints],
+    };
+    options.expected.mcp.protectedResource = protectedResource;
+
+    expect(analyzeAgentSurfaceDrift(options)).toEqual([]);
+
+    (options.discovery as { mcp: Record<string, unknown> }).mcp.protectedResource = {
+      ...protectedResource,
+      authorizationServers: ["https://stale-auth.example.com"],
+      metadataEndpoints: ["/.well-known/oauth-protected-resource/mcp"],
+    };
+    expect(analyzeAgentSurfaceDrift(options)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "mcp-protected-resource-mismatch",
+          path: "mcp.protectedResource.authorizationServers",
+        }),
+        expect.objectContaining({
+          code: "mcp-protected-resource-mismatch",
+          path: "mcp.protectedResource.metadataEndpoints",
+        }),
+      ]),
+    );
   });
 
   it("reports every supported drift category with stable paths and values", () => {
@@ -122,6 +236,34 @@ describe("agent surface drift", () => {
       search: {
         enabled: false,
         endpoint: "/wrong-search",
+        agentEndpoint: "/wrong-agent-search",
+        structuredAgentEndpoint: "/wrong-structured-agent-search",
+        explainedAgentEndpoint: "/wrong-explained-agent-search",
+        facetsEndpoint: "/wrong-search-facets",
+        audienceParam: "target",
+        defaultAudience: "agent",
+        supportedAudiences: ["agent"],
+        responseParam: "format",
+        structuredResponseValue: "json",
+        facetsResponseValue: "legacy-facets",
+        responseFormat: "legacy-search",
+        explainParam: "why",
+        explainValue: "yes",
+        explanationField: "reason",
+        explanationFormat: "legacy-explanation",
+        facetsResponseFormat: "legacy-search-facets",
+        filterParams: {
+          framework: "runtime",
+          version: "release",
+          package: "module",
+          tags: "labels",
+        },
+        repeatedFilterParams: ["tags"],
+        warningsField: "notices",
+        cursorParam: "page",
+        nextCursorField: "continuation",
+        hasMoreField: "more",
+        totalField: "count",
       },
       mcp: {
         enabled: false,
@@ -161,6 +303,8 @@ describe("agent surface drift", () => {
         "search-enabled-mismatch",
         "search-capability-mismatch",
         "search-route-mismatch",
+        "search-audience-mismatch",
+        "search-scope-mismatch",
         "mcp-enabled-mismatch",
         "mcp-capability-mismatch",
         "mcp-route-mismatch",
@@ -182,6 +326,41 @@ describe("agent surface drift", () => {
       expected: "documented schema option",
       actual: "<missing>",
     });
+    expect(
+      issues
+        .filter((issue) => issue.code === "search-audience-mismatch")
+        .map((issue) => issue.path),
+    ).toEqual([
+      "search.agentEndpoint",
+      "search.audienceParam",
+      "search.defaultAudience",
+      "search.supportedAudiences",
+    ]);
+    expect(
+      issues.filter((issue) => issue.code === "search-scope-mismatch").map((issue) => issue.path),
+    ).toEqual([
+      "search.cursorParam",
+      "search.explainedAgentEndpoint",
+      "search.explainParam",
+      "search.explainValue",
+      "search.explanationField",
+      "search.explanationFormat",
+      "search.facetParam",
+      "search.facetsEndpoint",
+      "search.facetsResponseFormat",
+      "search.facetsResponseValue",
+      "search.filterParams",
+      "search.hasMoreField",
+      "search.limitParam",
+      "search.nextCursorField",
+      "search.repeatedFilterParams",
+      "search.responseFormat",
+      "search.responseParam",
+      "search.structuredAgentEndpoint",
+      "search.structuredResponseValue",
+      "search.totalField",
+      "search.warningsField",
+    ]);
     expect(issues.find((issue) => issue.path === "agentContract.fields.rollback")).toMatchObject({
       code: "agent-contract-field-missing",
     });
@@ -194,6 +373,16 @@ describe("agent surface drift", () => {
       code: "mcp-tool-unexpected",
       expected: "<absent>",
       actual: "true",
+    });
+    expect(issues.find((issue) => issue.path === "api.apiCatalog")).toMatchObject({
+      code: "route-mismatch",
+      expected: JSON.stringify(DEFAULT_API_CATALOG_ROUTE),
+      actual: "<missing>",
+    });
+    expect(issues.find((issue) => issue.path === "skills.discovery.index")).toMatchObject({
+      code: "route-mismatch",
+      expected: JSON.stringify(DEFAULT_AGENT_SKILLS_INDEX_ROUTE),
+      actual: "<missing>",
     });
   });
 
@@ -282,6 +471,9 @@ describe("agent surface drift", () => {
       "agent.evaluations.tasks[].surface",
       "agent.evaluations.tasks[].expect.scope.version",
       "agent.evaluations.tasks[].expect.answer.includes",
+      "agent.evaluations.tasks[].expect.safety.promptInjection.markers",
+      "agent.evaluations.tasks[].expect.safety.freshness.sourceDigests.*",
+      "agent.evaluations.tasks[].expect.safety.queryVariants[].kind",
       "agent.evaluations.tasks[].expect.examples[].verification",
     ]) {
       expect(getDocsConfigSchema({ option }).resultCount, option).toBe(1);
@@ -305,6 +497,9 @@ describe("agent surface drift", () => {
       "agent.evaluations.tasks[0].surface",
       "agent.evaluations.tasks[0].expect.scope.version",
       "agent.evaluations.tasks[0].expect.answer.includes[0]",
+      "agent.evaluations.tasks[0].expect.safety.promptInjection.markers[0]",
+      "agent.evaluations.tasks[0].expect.safety.freshness.sourceDigests./docs/install",
+      "agent.evaluations.tasks[0].expect.safety.queryVariants[0].kind",
       "agent.evaluations.tasks[0].expect.examples[0].verification",
     ];
     options.schemaOptions = getDocsConfigSchema().options;

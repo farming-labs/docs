@@ -65,6 +65,30 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Build Next adapter test dependencies
+        run: pnpm --filter @farming-labs/theme build
+
+      - name: Run Next adapter tests
+        run: pnpm --filter @farming-labs/next test
+
+      - name: Run TanStack Start adapter tests
+        run: pnpm --filter @farming-labs/tanstack-start test
+
+      - name: Run Fumadocs theme tests
+        run: pnpm --filter @farming-labs/theme test
+
+      - name: Test deployed agent surface smoke validator
+        run: pnpm test:smoke-agent-surfaces
+
+      - name: Run Nuxt adapter tests
+        run: pnpm --filter @farming-labs/nuxt test
+
+      - name: Run Astro adapter tests
+        run: pnpm --filter @farming-labs/astro test
+
+      - name: Run Svelte adapter tests
+        run: pnpm --filter @farming-labs/svelte test
   security-audit:
     runs-on: ubuntu-latest
 

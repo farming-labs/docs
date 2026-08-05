@@ -8,6 +8,46 @@ related:
   - /docs/cloud/analytics
   - /docs/guides/docs-json
   - /docs/cli
+agent:
+  tokenBudget: 1000
+  task: Configure a repository and deploy a hosted Docs Cloud preview.
+  outcome: Docs Cloud accepts the synchronized contract and returns a preview deployment URL.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The workspace has Docs Cloud access and a connected project.
+    - DOCS_CLOUD_API_KEY is available through the shell, .env.local, or CI secrets.
+    - The cloud deploy setting is enabled in docs.config.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - docs.json
+    - .env.local
+  commands:
+    - run: pnpm dlx @farming-labs/docs cloud sync
+      description: Synchronize safe Cloud settings into docs.json.
+    - run: pnpm dlx @farming-labs/docs cloud check --deploy --no-network
+      description: Validate the local deployment contract before making a hosted request.
+    - run: pnpm dlx @farming-labs/docs deploy --json
+      description: Create or update the hosted preview and return machine-readable output.
+  sideEffects:
+    - cloud sync writes or updates docs.json.
+    - deploy creates or updates a hosted Docs Cloud preview.
+  verification:
+    - run: pnpm dlx @farming-labs/docs cloud check --deploy
+      expect: Config, docs.json freshness, API key, deploy scopes, and hosted API checks pass.
+    - description: Confirm the JSON deploy response includes the expected project and preview URL.
+  rollback:
+    - Restore the previous docs.json and docs.config cloud block from version control.
+    - Disable cloud.deploy and remove the unwanted preview from the Docs Cloud project.
+  failureModes:
+    - symptom: The CLI reports a missing or invalid API key.
+      resolution: Set the environment variable named by cloud.apiKey.env and never put the raw value in committed config.
+    - symptom: Browser checks report a CORS failure.
+      resolution: Configure the public docs origin and allow that exact origin in a self-hosted Cloud API.
 ---
 
 # Deploy

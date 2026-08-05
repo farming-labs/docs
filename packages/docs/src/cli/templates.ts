@@ -104,6 +104,14 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     nuxtImport: "@farming-labs/nuxt-theme/ledger",
     nextCssImport: "ledger",
   },
+  shadcn: {
+    factory: "shadcn",
+    nextImport: "@farming-labs/theme/shadcn",
+    svelteImport: "@farming-labs/svelte-theme/shadcn",
+    astroImport: "@farming-labs/astro-theme/shadcn",
+    nuxtImport: "@farming-labs/nuxt-theme/shadcn",
+    nextCssImport: "shadcn",
+  },
   greentree: {
     factory: "greentree",
     nextImport: "@farming-labs/theme/greentree",
@@ -949,7 +957,7 @@ export function farmjsDocsConfigTemplate(cfg: TemplateConfig): string {
 
 export function farmjsConfigTemplate(): string {
   return `\
-import { defineConfig } from "@farmjs/core";
+import { defineConfig } from "@farm.js/core";
 import { withDocs } from "@farming-labs/farmjs/config";
 
 export default withDocs(defineConfig({}));
@@ -1017,7 +1025,7 @@ pnpm add @farming-labs/docs @farming-labs/farmjs @farming-labs/theme
 Wrap the existing Farm config:
 
 \`\`\`ts title="farm.config.ts"
-import { defineConfig } from "@farmjs/core";
+import { defineConfig } from "@farm.js/core";
 import { withDocs } from "@farming-labs/farmjs/config";
 
 export default withDocs(
@@ -1124,11 +1132,13 @@ export default defineDocs({
 export function tanstackDocsServerTemplate(): string {
   return `\
 import { createDocsServer } from "@farming-labs/tanstack-start/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import docsConfig from "../../docs.config";
 
 export const docsServer = createDocsServer({
   ...docsConfig,
   rootDir: process.cwd(),
+  _preloadedAgentSkills: bundledAgentSkills,
 });
 `;
 }
@@ -1222,6 +1232,13 @@ export const Route = createFileRoute("${entryUrl}/$")({
         }
         return undefined;
       },
+      HEAD: async ({ request }) => {
+        const url = new URL(request.url);
+        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+          return docsServer.HEAD({ request });
+        }
+        return undefined;
+      },
     },
   },
   loader: async ({ location }) => {
@@ -1264,16 +1281,32 @@ export function tanstackApiDocsRouteTemplate(useAlias: boolean, filePath: string
   const serverImport = useAlias
     ? "@/lib/docs.server"
     : relativeImport(filePath, "src/lib/docs.server.ts");
+  const configImport = tanstackDocsConfigImport(filePath);
 
   return `\
 import { createFileRoute } from "@tanstack/react-router";
+import { isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import { docsServer } from "${serverImport}";
+import docsConfig from "${configImport}";
+
+async function handleUnsupportedDocsMethod(request: Request) {
+  const url = new URL(request.url);
+  if (isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    return docsServer.GET({ request });
+  }
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: { Allow: "GET, HEAD, POST" },
+  });
+}
 
 export const Route = createFileRoute("/api/docs")({
   server: {
     handlers: {
       GET: async ({ request }) => docsServer.GET({ request }),
+      HEAD: async ({ request }) => docsServer.HEAD({ request }),
       POST: async ({ request }) => docsServer.POST({ request }),
+      ANY: async ({ request }) => handleUnsupportedDocsMethod(request),
     },
   },
 });
@@ -1291,8 +1324,9 @@ export function tanstackDocsPublicRouteTemplate(
 
   return `\
 import { createFileRoute } from "@tanstack/react-router";
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import { docsServer } from "${serverImport}";
+import docsConfig from "${tanstackDocsConfigImport(filePath)}";
 
 const docsEntry = ${JSON.stringify(entry)};
 
@@ -1300,7 +1334,7 @@ async function handlePublicDocsRequest(request: Request) {
   const url = new URL(request.url);
   const method = request.method.toUpperCase();
 
-  if (isDocsMcpRequest(url)) {
+  if (isDocsMcpRequest(url, docsConfig.mcp)) {
     if (method === "OPTIONS") return docsServer.MCP.OPTIONS({ request });
     if (method === "POST") return docsServer.MCP.POST({ request });
     if (method === "DELETE") return docsServer.MCP.DELETE({ request });
@@ -1311,8 +1345,14 @@ async function handlePublicDocsRequest(request: Request) {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+  if (isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    if (method === "HEAD") return docsServer.HEAD({ request });
+    if (method === "POST") return docsServer.POST({ request });
     return docsServer.GET({ request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { apiRoute: docsConfig.cloud?.apiRoute, sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+    return method === "HEAD" ? docsServer.HEAD({ request }) : docsServer.GET({ request });
   }
 
   return new Response("Not Found", { status: 404 });
@@ -1322,9 +1362,11 @@ export const Route = createFileRoute("/$")({
   server: {
     handlers: {
       GET: async ({ request }) => handlePublicDocsRequest(request),
+      HEAD: async ({ request }) => handlePublicDocsRequest(request),
       POST: async ({ request }) => handlePublicDocsRequest(request),
       DELETE: async ({ request }) => handlePublicDocsRequest(request),
       OPTIONS: async ({ request }) => handlePublicDocsRequest(request),
+      ANY: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });
@@ -1411,12 +1453,54 @@ export function tanstackViteConfigTemplate(useAlias: boolean): string {
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 ${useAlias ? 'import tsconfigPaths from "vite-tsconfig-paths";\n' : ""}import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { docsAgentSkills } from "@farming-labs/docs/vite";
 import { docsMdx } from "@farming-labs/tanstack-start/vite";
+import docsConfig from "./docs.config";
 
 export default defineConfig({
-  plugins: [tailwindcss(), docsMdx(), ${useAlias ? "tsconfigPaths({ ignoreConfigErrors: true }), " : ""}tanstackStart()],
+  plugins: [tailwindcss(), docsMdx(), docsAgentSkills(docsConfig), ${useAlias ? "tsconfigPaths({ ignoreConfigErrors: true }), " : ""}tanstackStart()],
 });
 `;
+}
+
+export function svelteViteConfigTemplate(): string {
+  return `\
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vite";
+import { docsAgentSkills } from "@farming-labs/docs/vite";
+import docsConfig from "./src/lib/docs.config";
+
+export default defineConfig({
+  plugins: [sveltekit(), docsAgentSkills(docsConfig)],
+});
+`;
+}
+
+/** Add the Agent Skills snapshot plugin to an existing Vite config. */
+export function injectDocsAgentSkillsVitePlugin(
+  content: string,
+  configImportPath: string,
+): string | null {
+  if (!content) return null;
+
+  let out = addImportLine(content, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, `import docsConfig from ${JSON.stringify(configImportPath)};`);
+
+  if (out.includes("docsAgentSkills(docsConfig)")) return out === content ? null : out;
+
+  const pluginsMatch = out.match(/plugins\s*:\s*\[([\s\S]*?)\]/m);
+  if (pluginsMatch) {
+    const current = pluginsMatch[1].trim();
+    const existing = current ? `${current}${current.endsWith(",") ? "" : ","}` : "";
+    return out.replace(
+      pluginsMatch[0],
+      `plugins: [${existing}${existing ? " " : ""}docsAgentSkills(docsConfig)]`,
+    );
+  }
+
+  const configMatch = out.match(/defineConfig\(\s*\{/);
+  if (!configMatch) return null;
+  return out.replace(configMatch[0], "defineConfig({\n  plugins: [docsAgentSkills(docsConfig)],");
 }
 
 export function injectTanstackVitePlugins(content: string, useAlias: boolean): string | null {
@@ -1428,10 +1512,13 @@ export function injectTanstackVitePlugins(content: string, useAlias: boolean): s
     out = addImportLine(out, 'import tsconfigPaths from "vite-tsconfig-paths";');
   }
   out = addImportLine(out, 'import { docsMdx } from "@farming-labs/tanstack-start/vite";');
+  out = addImportLine(out, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, 'import docsConfig from "./docs.config";');
 
   const additions: string[] = [];
   if (!out.includes("tailwindcss()")) additions.push("tailwindcss()");
   if (!out.includes("docsMdx()")) additions.push("docsMdx()");
+  if (!out.includes("docsAgentSkills(")) additions.push("docsAgentSkills(docsConfig)");
   if (useAlias && !out.includes("tsconfigPaths("))
     additions.push("tsconfigPaths({ ignoreConfigErrors: true })");
 
@@ -1689,6 +1776,7 @@ export function svelteDocsServerTemplate(cfg: TemplateConfig): string {
   const contentDirName = cfg.entry ?? "docs";
   return `\
 import { createDocsServer } from "@farming-labs/svelte/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
 // preload for production
@@ -1698,9 +1786,10 @@ const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
+  _preloadedAgentSkills: bundledAgentSkills,
 });
 `;
 }
@@ -1759,7 +1848,7 @@ export function svelteDocsApiRouteTemplate(filePath: string, useAlias: boolean):
   const serverImport = svelteRouteServerImport(filePath, useAlias);
 
   return `\
-export { GET, POST } from "${serverImport}";
+export { GET, HEAD, POST } from "${serverImport}";
 `;
 }
 
@@ -1768,17 +1857,17 @@ export function svelteDocsPublicHookTemplate(filePath: string, useAlias: boolean
   const configImport = svelteRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import type { Handle } from "@sveltejs/kit";
 import config from "${configImport}";
-import { GET, MCP } from "${serverImport}";
+import { GET, HEAD, POST, MCP } from "${serverImport}";
 
 const docsEntry = config.entry ?? "docs";
 
 export const handle: Handle = async ({ event, resolve }) => {
   const method = event.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(event.url)) {
+  if (isDocsMcpRequest(event.url, config.mcp)) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
@@ -1789,13 +1878,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(event.url, { apiRoute: config.cloud?.apiRoute })) {
+    if (method === "HEAD") return HEAD({ url: event.url, request: event.request });
+    if (method === "POST") return POST({ url: event.url, request: event.request });
+    return GET({ url: event.url, request: event.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry, { apiRoute: config.cloud?.apiRoute })) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
-    return GET({ url: event.url, request: event.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: config.cloud?.apiRoute, sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
+    return method === "HEAD"
+      ? HEAD({ url: event.url, request: event.request })
+      : GET({ url: event.url, request: event.request });
   }
 
   return resolve(event);
@@ -1834,13 +1931,13 @@ export function injectSvelteDocsPublicHook(
   }
 
   const imports = [
-    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";',
     ...(next.includes("Handle") ? [] : ['import type { Handle } from "@sveltejs/kit";']),
     ...(hasExistingHandle && !next.includes("sequence")
       ? ['import { sequence } from "@sveltejs/kit/hooks";']
       : []),
     `import docsConfig from "${configImport}";`,
-    `import { GET as docsGET, MCP as docsMCP } from "${serverImport}";`,
+    `import { GET as docsGET, HEAD as docsHEAD, POST as docsPOST, MCP as docsMCP } from "${serverImport}";`,
   ];
 
   const docsHandle = `\
@@ -1849,7 +1946,7 @@ const docsEntry = docsConfig.entry ?? "docs";
 const docsPublicHandle: Handle = async ({ event, resolve }) => {
   const method = event.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(event.url)) {
+  if (isDocsMcpRequest(event.url, docsConfig.mcp)) {
     if (method === "OPTIONS") return docsMCP.OPTIONS({ request: event.request });
     if (method === "POST") return docsMCP.POST({ request: event.request });
     if (method === "DELETE") return docsMCP.DELETE({ request: event.request });
@@ -1860,13 +1957,21 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(event.url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    if (method === "HEAD") return docsHEAD({ url: event.url, request: event.request });
+    if (method === "POST") return docsPOST({ url: event.url, request: event.request });
+    return docsGET({ url: event.url, request: event.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
-    return docsGET({ url: event.url, request: event.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: docsConfig.cloud?.apiRoute, sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+    return method === "HEAD"
+      ? docsHEAD({ url: event.url, request: event.request })
+      : docsGET({ url: event.url, request: event.request });
   }
 
   return resolve(event);
@@ -2190,6 +2295,7 @@ export function astroDocsServerTemplate(cfg: TemplateConfig): string {
   const contentDirName = cfg.entry ?? "docs";
   return `\
 import { createDocsServer } from "@farming-labs/astro/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
 const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
@@ -2198,9 +2304,10 @@ const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/AGE
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
+  _preloadedAgentSkills: bundledAgentSkills,
 });
 `;
 }
@@ -2223,12 +2330,46 @@ export function astroConfigTemplate(adapter: string = "vercel"): string {
   return `\
 import { defineConfig } from "astro/config";
 import ${adapter} from "${info.import}";
+import { docsAgentSkills } from "@farming-labs/docs/vite";
+import docsConfig from "./src/lib/docs.config";
 
 export default defineConfig({
   output: "server",
   adapter: ${adapterCall},
+  vite: { plugins: [docsAgentSkills(docsConfig)] },
 });
 `;
+}
+
+/** Add the Agent Skills snapshot plugin to an existing Astro config. */
+export function injectAstroAgentSkillsPlugin(content: string): string | null {
+  if (!content) return null;
+
+  let out = addImportLine(content, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, 'import docsConfig from "./src/lib/docs.config";');
+  if (out.includes("docsAgentSkills(docsConfig)")) return out === content ? null : out;
+
+  const vitePlugins = out.match(/(vite\s*:\s*\{[\s\S]*?plugins\s*:\s*\[)([\s\S]*?)(\])/m);
+  if (vitePlugins) {
+    const current = vitePlugins[2].trim();
+    const next = `${current}${current && !current.endsWith(",") ? "," : ""}${current ? " " : ""}docsAgentSkills(docsConfig)`;
+    return out.replace(vitePlugins[0], `${vitePlugins[1]}${next}${vitePlugins[3]}`);
+  }
+
+  const viteBlock = out.match(/vite\s*:\s*\{/);
+  if (viteBlock) {
+    return out.replace(
+      viteBlock[0],
+      `${viteBlock[0]}\n    plugins: [docsAgentSkills(docsConfig)],`,
+    );
+  }
+
+  const configMatch = out.match(/defineConfig\(\s*\{/);
+  if (!configMatch) return null;
+  return out.replace(
+    configMatch[0],
+    "defineConfig({\n  vite: { plugins: [docsAgentSkills(docsConfig)] },",
+  );
 }
 
 export function astroDocsPageTemplate(cfg: TemplateConfig): string {
@@ -2299,10 +2440,14 @@ export function astroApiRouteTemplate(cfg: TemplateConfig): string {
   const serverImport = astroPageServerImport(cfg.useAlias, 2);
   return `\
 import type { APIRoute } from "astro";
-import { GET as docsGET, POST as docsPOST } from "${serverImport}";
+import { GET as docsGET, HEAD as docsHEAD, POST as docsPOST } from "${serverImport}";
 
 export const GET: APIRoute = async ({ request }) => {
   return docsGET({ request });
+};
+
+export const HEAD: APIRoute = async ({ request }) => {
+  return docsHEAD({ request });
 };
 
 export const POST: APIRoute = async ({ request }) => {
@@ -2316,17 +2461,17 @@ export function astroDocsMiddlewareTemplate(filePath: string, useAlias: boolean)
   const configImport = astroRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import type { MiddlewareHandler } from "astro";
 import config from "${configImport}";
-import { GET, MCP } from "${serverImport}";
+import { GET, HEAD, POST, MCP } from "${serverImport}";
 
 const docsEntry = config.entry ?? "docs";
 
 export const onRequest: MiddlewareHandler = async (context, next) => {
   const method = context.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(context.url)) {
+  if (isDocsMcpRequest(context.url, config.mcp)) {
     if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
@@ -2337,13 +2482,21 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(context.url, { apiRoute: config.cloud?.apiRoute })) {
+    if (method === "HEAD") return HEAD({ request: context.request });
+    if (method === "POST") return POST({ request: context.request });
+    return GET({ request: context.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry, { apiRoute: config.cloud?.apiRoute })) {
     const nativeResponse = await next();
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
-    return GET({ request: context.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: config.cloud?.apiRoute, sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
+    return method === "HEAD"
+      ? HEAD({ request: context.request })
+      : GET({ request: context.request });
   }
 
   return next();
@@ -2382,7 +2535,7 @@ export function injectAstroDocsMiddleware(
   }
 
   const imports = [
-    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest, isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";',
     ...(next.includes("MiddlewareHandler")
       ? []
       : ['import type { MiddlewareHandler } from "astro";']),
@@ -2390,7 +2543,7 @@ export function injectAstroDocsMiddleware(
       ? ['import { sequence } from "astro:middleware";']
       : []),
     `import docsConfig from "${configImport}";`,
-    `import { GET as docsGET, MCP as docsMCP } from "${serverImport}";`,
+    `import { GET as docsGET, HEAD as docsHEAD, POST as docsPOST, MCP as docsMCP } from "${serverImport}";`,
   ];
 
   const docsMiddleware = `\
@@ -2399,7 +2552,7 @@ const docsEntry = docsConfig.entry ?? "docs";
 const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
   const method = context.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(context.url)) {
+  if (isDocsMcpRequest(context.url, docsConfig.mcp)) {
     if (method === "OPTIONS") return docsMCP.OPTIONS({ request: context.request });
     if (method === "POST") return docsMCP.POST({ request: context.request });
     if (method === "DELETE") return docsMCP.DELETE({ request: context.request });
@@ -2410,13 +2563,21 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry)) {
+  if (isDocsStandardsDiscoveryRequest(context.url, { apiRoute: docsConfig.cloud?.apiRoute })) {
+    if (method === "HEAD") return docsHEAD({ request: context.request });
+    if (method === "POST") return docsPOST({ request: context.request });
+    return docsGET({ request: context.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })) {
     const nativeResponse = await next();
     if (nativeResponse.status !== 404) return nativeResponse;
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
-    return docsGET({ request: context.request });
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: docsConfig.cloud?.apiRoute, sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
+    return method === "HEAD"
+      ? docsHEAD({ request: context.request })
+      : docsGET({ request: context.request });
   }
 
   return next();
@@ -2720,9 +2881,13 @@ export function nuxtServerApiDocsRouteTemplate(cfg: TemplateConfig): string {
   const configImport = cfg.useAlias ? "~/docs.config" : "../../docs.config";
   return `\
 import { defineDocsHandler } from "@farming-labs/nuxt/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
-export default defineDocsHandler(config, useStorage);
+export default defineDocsHandler(
+  { ...config, _preloadedAgentSkills: bundledAgentSkills },
+  useStorage,
+);
 `;
 }
 
@@ -2731,9 +2896,13 @@ export function nuxtServerDocsPublicMiddlewareTemplate(cfg: TemplateConfig): str
 
   return `\
 import { defineDocsPublicHandler } from "@farming-labs/nuxt/server";
+import { bundledAgentSkills } from "@farming-labs/docs/agent-skills-bundle";
 import config from "${configImport}";
 
-export default defineDocsPublicHandler(config, useStorage);
+export default defineDocsPublicHandler(
+  { ...config, _preloadedAgentSkills: bundledAgentSkills },
+  useStorage,
+);
 `;
 }
 
@@ -2784,6 +2953,9 @@ if (error.value) {
 
 export function nuxtConfigTemplate(cfg: TemplateConfig): string {
   return `\
+import { docsAgentSkills } from "@farming-labs/docs/vite";
+import docsConfig from "./docs.config";
+
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
 
@@ -2798,9 +2970,49 @@ export default defineNuxtConfig({
   nitro: {
     moduleSideEffects: ["@farming-labs/nuxt/server"],
     serverAssets: [{ baseName: "${cfg.entry}", dir: "${cfg.entry}" }],
+    rollupConfig: { plugins: [docsAgentSkills(docsConfig)] },
   },
 });
 `;
+}
+
+/** Add the Agent Skills snapshot plugin to Nitro's server Rollup build. */
+export function injectNuxtAgentSkillsPlugin(content: string): string | null {
+  if (!content) return null;
+
+  let out = addImportLine(content, 'import { docsAgentSkills } from "@farming-labs/docs/vite";');
+  out = addImportLine(out, 'import docsConfig from "./docs.config";');
+  if (out.includes("docsAgentSkills(docsConfig)")) return out === content ? null : out;
+
+  const rollupPlugins = out.match(/(rollupConfig\s*:\s*\{[\s\S]*?plugins\s*:\s*\[)([\s\S]*?)(\])/m);
+  if (rollupPlugins) {
+    const current = rollupPlugins[2].trim();
+    const next = `${current}${current && !current.endsWith(",") ? "," : ""}${current ? " " : ""}docsAgentSkills(docsConfig)`;
+    return out.replace(rollupPlugins[0], `${rollupPlugins[1]}${next}${rollupPlugins[3]}`);
+  }
+
+  const rollupBlock = out.match(/rollupConfig\s*:\s*\{/);
+  if (rollupBlock) {
+    return out.replace(
+      rollupBlock[0],
+      `${rollupBlock[0]}\n      plugins: [docsAgentSkills(docsConfig)],`,
+    );
+  }
+
+  const nitroBlock = out.match(/nitro\s*:\s*\{/);
+  if (nitroBlock) {
+    return out.replace(
+      nitroBlock[0],
+      `${nitroBlock[0]}\n    rollupConfig: { plugins: [docsAgentSkills(docsConfig)] },`,
+    );
+  }
+
+  const configMatch = out.match(/defineNuxtConfig\(\s*\{/);
+  if (!configMatch) return null;
+  return out.replace(
+    configMatch[0],
+    "defineNuxtConfig({\n  nitro: { rollupConfig: { plugins: [docsAgentSkills(docsConfig)] } },",
+  );
 }
 
 export function nuxtWelcomePageTemplate(cfg: TemplateConfig): string {

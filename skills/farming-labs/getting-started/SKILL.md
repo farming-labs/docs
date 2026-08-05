@@ -1,6 +1,7 @@
 ---
 name: getting-started
 description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, changelog, API reference, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, changelog, apiReference, entry, contentDir, and common gotchas.
+compatibility: Requires Node.js and npm, pnpm, Yarn, or Bun. Setup targets a supported Next.js, TanStack Start, Farm.js, SvelteKit, Astro, or Nuxt project; scaffolding and package installation require network access.
 ---
 
 # @farming-labs/docs — Getting Started
@@ -21,7 +22,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | Add docs to existing app | Run `init` in project root; choose **Existing project** when prompted. |
 | Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| tanstack-start \| nuxt \| sveltekit \| astro> --name <project-name>` |
 | Add generated API reference during init | `npx @farming-labs/docs@latest init --api-reference` (optional `--api-route-root <path>`) |
-| Upgrade docs packages | `npx @farming-labs/docs@latest upgrade` — auto-detects `next`, `tanstack-start`, `farmjs`, `nuxt`, `sveltekit`, or `astro`; use `--framework` if detection is ambiguous. |
+| Upgrade docs packages | `npx @farming-labs/docs@latest upgrade` — auto-detects `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`; use `--framework` if detection is ambiguous. |
 
 ### Packages by framework
 
@@ -40,7 +41,7 @@ and the framework adapters.
 
 ### Built-in themes
 
-Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `ledger`, `concrete`, `command-grid`, and `hardline`. `hardline` is the existing hard-edge preset, `concrete` is the louder brutalist poster-style variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, and `ledger` is a Stripe Docs-inspired product docs shell. The init CLI offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).
+Twelve CLI-selectable built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `ledger`, `shadcn`, `concrete`, `command-grid`, and `hardline`. `hardline` is the existing hard-edge preset, `concrete` is the louder brutalist poster-style variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, `ledger` is a Stripe Docs-inspired product docs shell, and `shadcn` recreates the compact neutral shadcn/ui documentation shell. The init CLI offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `shadcn` → `@farming-labs/theme/shadcn/css` for Next.js).
 
 ### Built-in UI features
 
@@ -50,9 +51,9 @@ Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-bor
   `<Audience only="human">` for human-only context. Keep `Audience.only` static and avoid spread
   props; `docs review` reports declarations that static agent outputs cannot resolve consistently.
 - **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
-- **Agent discovery spec** — agents should call `/.well-known/agent.json`, fall back to `/.well-known/agent`, and use `/api/docs/agent/spec` as the canonical framework route. The spec discovers site identity, locale config, capability flags, search, markdown routes, JSON-LD structured data support, `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, generated/root `AGENTS.md`, root `skill.md` route, Skills CLI install metadata, MCP config, and feedback endpoints generated from `docs.config`.
+- **Agent discovery** — agents can use the RFC 9727 `/.well-known/api-catalog` linkset and the hashed `/.well-known/agent-skills/index.json` index. The existing `/.well-known/agent.json` manifest remains the preferred Farming Labs document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as its canonical framework route. These resources cross-link one another, and dynamic responses expose discovery `Link` headers.
 - **Generated AGENTS.md** — `GET /AGENTS.md`, `GET /.well-known/AGENTS.md`, and `GET /api/docs?format=agents` return coding-agent instructions by default. A root `AGENTS.md` or `AGENT.md` overrides the generated fallback; use `docs agents generate` for static exports.
-- **Generated robots.txt** — use `docs robots generate` to write a static policy that allows docs routes, `.md` routes, `llms.txt`, sitemaps, `AGENTS.md`, `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents. Existing files are preserved by default; use `--append` to add the managed block or `--force` to replace the file.
+- **Generated robots.txt** — use `docs robots generate` to write a static policy that allows docs routes, `.md` routes, `llms.txt`, sitemaps, `AGENTS.md`, `skill.md`, the API catalog, Agent Skills discovery, MCP aliases, existing agent discovery routes, and common AI crawler user agents. Existing files are preserved by default; use `--append` to add the managed block or `--force` to replace the file.
 - **Structured data** — every docs page emits Schema.org `TechArticle` JSON-LD with title, description, canonical URL, freshness, and breadcrumbs. It reuses `sitemap.baseUrl`, `llmsTxt.baseUrl`, `robots.baseUrl`, or `ai.docsUrl`; no separate config flag is required.
 - **Agent feedback endpoints** — add `feedback.agent` when agents should report structured `{ context?, payload }` feedback through `/api/docs/agent/feedback` and `/api/docs/agent/feedback/schema`.
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
@@ -102,7 +103,7 @@ import { fumadocs } from "@farming-labs/theme"; // or svelte-theme, astro-theme,
 
 export default defineDocs({
   entry: "docs",
-  contentDir: "docs", // Farm.js, TanStack Start, SvelteKit, Astro, Nuxt
+  contentDir: "docs", // SvelteKit, Astro, Nuxt
   theme: fumadocs(),
   metadata: {
     titleTemplate: "%s – Docs",
@@ -113,125 +114,21 @@ export default defineDocs({
 
 - **Next.js:** `docs.config.ts` at project root; wrap Next config with `withDocs()` from `@farming-labs/next/config`. Content lives under `app/docs/` (path derived from `entry`).
 - **TanStack Start:** `docs.config.ts` or `docs.config.tsx` at project root; set `contentDir` and `nav`, create `/api/docs`, and load content from your `docs/` directory via `@farming-labs/tanstack-start/server`.
-- **Farm.js:** `docs.config.ts` at project root; set `contentDir` and `nav`, then wrap `farm.config.ts` with `withDocs()` from `@farming-labs/farmjs/config`. For custom request pipelines, delegate to `createDocsServer(config).handle(request)`.
+- **Farm.js:** `docs.config.ts` at project root; set `contentDir` and `nav`, then wrap Farm's `defineConfig()` result with `withDocs()` from `@farming-labs/farmjs/config`. Farm owns development and production docs routing.
 - **SvelteKit:** `src/lib/docs.config.ts`; routes under `src/routes/docs/`; set `contentDir` to the folder containing your markdown (e.g. `docs`).
 - **Astro:** `src/lib/docs.config.ts`; pages under `src/pages/<entry>/`; set `contentDir`.
 - **Nuxt:** `docs.config.ts` at project root; `server/api/docs.ts` and `pages/docs/[...slug].vue`; set `contentDir` and `nav`.
 
-Farm.js, TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL).
+TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL).
 
 ---
 
-## API reference quick setup
+## Optional generated pages
 
-`apiReference` generates an API reference from your framework's route handlers or from a hosted
-OpenAPI JSON document.
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    routeRoot: "api",
-  },
-  theme: fumadocs(),
-});
-```
-
-Important framework behavior:
-
-- **Next.js**: `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled.
-- **Farm.js**: `createDocsServer(config).handle(request)` serves the configured API reference path when Farm delegates the request to the docs runtime.
-- **TanStack Start, SvelteKit, Astro, Nuxt**: `docs.config` controls scanning and theming, but the app still needs the `/{path}` route handler.
-- **CLI**: `init --api-reference` writes the config and scaffolds those handler files for you.
-- **Agents**: `GET /api/docs?format=openapi` serves the machine-readable schema and is advertised through agent discovery, generated `llms.txt`, generated `AGENTS.md`, and generated `skill.md`.
-
-Remote OpenAPI JSON example:
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
-  },
-  theme: fumadocs(),
-});
-```
-
-When `specUrl` is set, local route scanning is skipped. On TanStack Start, SvelteKit, Astro, and
-Nuxt you still need the `/{path}` route handler because that route serves the generated API
-reference page.
-
-Minimal handler files for non-Next frameworks:
-
-- **TanStack Start**: `src/routes/api-reference.index.ts` and `src/routes/api-reference.$.ts` using `createTanstackApiReference(config)`
-- **SvelteKit**: `src/routes/api-reference/+server.ts` and `src/routes/api-reference/[...slug]/+server.ts` using `createSvelteApiReference(config)`
-- **Astro**: `src/pages/api-reference/index.ts` and `src/pages/api-reference/[...slug].ts` using `createAstroApiReference(config)`
-- **Nuxt**: `server/routes/api-reference/index.ts` and `server/routes/api-reference/[...slug].ts` using `defineApiReferenceHandler(config)`
-
-Route scan conventions:
-
-- **Next.js**: `app/api/**/route.ts` or `src/app/api/**/route.ts`
-- **Farm.js**: `app/api/**/route.ts` or `src/app/api/**/route.ts`
-- **TanStack Start**: `src/routes/api.*.ts` and nested route files under the configured route root
-- **SvelteKit**: `src/routes/api/**/+server.ts` or `+server.js`
-- **Astro**: `src/pages/api/**/*.ts` or `.js`
-- **Nuxt**: `server/api/**/*.ts` or `.js`
-
-For the full option surface (`path`, `specUrl`, `routeRoot`, `exclude`), use the
-`configuration` skill.
-
----
-
-## Changelog quick setup
-
-Today, the turn-key generated changelog route flow is available in **Next.js** with
-`@farming-labs/next/config`.
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  changelog: {
-    enabled: true,
-    path: "changelogs",
-    contentDir: "changelog",
-    title: "Changelog",
-    description: "Latest product updates and release notes.",
-    search: true,
-  },
-  theme: fumadocs(),
-});
-```
-
-Default content structure:
-
-```text
-app/docs/changelog/
-  2026-04-15/page.mdx
-  2026-04-03/page.mdx
-```
-
-That publishes:
-
-- `/docs/changelogs`
-- `/docs/changelogs/2026-04-15`
-
-Use entry frontmatter like:
-
-```mdx
----
-title: "OpenAPI mode is now the default"
-description: "The docs example now ships with the faster API reference experience."
-version: "v0.1.13"
-tags: ["api-reference", "next"]
----
-```
-
-When you use `withDocs()`, the route files are generated automatically. There is no separate
-`__changelog.generated.tsx` file to maintain.
+- **API reference:** Read [references/api-reference.md](references/api-reference.md) when enabling
+  local route scanning, a hosted OpenAPI document, or non-Next handler routes.
+- **Changelog:** Read [references/changelog.md](references/changelog.md) when adding the generated
+  Next.js release feed and dated entry pages.
 
 ---
 

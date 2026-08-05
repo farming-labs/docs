@@ -8,14 +8,55 @@ related:
   - /docs/guides/agent-friendly-docs
   - /docs/customization/sitemaps
   - /docs/customization/llms-txt
+agent:
+  tokenBudget: 1400
+  task: Choose and run the appropriate Farming Labs docs CLI workflow for a project.
+  outcome: The selected CLI operation completes and the resulting docs configuration passes the agent doctor.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Run commands from the docs project root with its package manager available.
+    - Install project dependencies before invoking the local docs binary with pnpm exec.
+  files:
+    - package.json
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Validate the configured agent-facing docs surface after a CLI workflow.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: The doctor loads docs.config and reports the enabled discovery surfaces without hard failures.
+  rollback:
+    - Restore generated configuration and public artifacts from version control if a mutating command produced the wrong result.
+  failureModes:
+    - symptom: pnpm cannot find the docs executable.
+      resolution: Install dependencies or invoke the published CLI with pnpm dlx @farming-labs/docs.
+    - symptom: The CLI loads the wrong config file.
+      resolution: Run from the project root or pass the documented --config path explicitly.
 ---
 
 # CLI
 
 <Agent>
-Use this page when the user asks about this topic: Scaffold, upgrade, export static Agent Bundles, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Choose the CLI workflow before changing files. For a published release use
+`pnpm dlx @farming-labs/docs <command>`; use `pnpm exec docs <command>` only after the project has
+installed its dependencies. For a non-interactive fresh scaffold, use
+`init --template <framework> --name <dir>`; omit `--name` to be prompted. Plain `init` asks whether
+to modify the current app or create a fresh project.
+
+After a mutating command, run `pnpm exec docs doctor --agent`; the expected result is a loaded
+`docs.config.ts`, `docs.config.tsx`, or `src/lib/docs.config.ts` with no hard failure for an enabled
+agent surface. For SvelteKit or Astro, append `--config src/lib/docs.config.ts`. Prefer `--dry-run`
+for upgrade or compaction previews and `--check` for generated agent bundles, sitemaps, robots, or
+AGENTS files where the command documents that flag.
+
+If `pnpm` cannot find `docs`, install dependencies or switch to the published `pnpm dlx` form. If
+the wrong config is loaded, return to the project root or pass the command's documented
+`--config <path>` option; do not copy flags between unrelated subcommands.
 </Agent>
 
 The `@farming-labs/docs` CLI has a few main jobs:
@@ -25,6 +66,8 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`agent export`** — materialize the complete machine-readable surface for static hosting
 - **`agent compact`** — generate sibling `agent.md` files from resolved docs pages
 - **`agents generate`** — write root and static `AGENTS.md` instructions for coding agents
+
+- **`skills scaffold`** — compile structured page `agent` contracts into an installable Agent Skill
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
 - **`review`** — review docs changes locally or in GitHub Actions
 - **`codeblocks validate`** — plan and validate runnable MDX code fences
@@ -208,6 +251,22 @@ TYPESENSE_OLLAMA_MODEL=embeddinggemma
 TYPESENSE_OLLAMA_BASE_URL=http://127.0.0.1:11434
 ```
 
+Optionally scope the synced corpus with a namespace (max 1024 characters). The CLI flag and the environment variable are equivalent:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --typesense --sync-namespace product-docs
+```
+
+```bash title=".env"
+DOCS_SEARCH_SYNC_NAMESPACE=product-docs
+```
+
+Pass `--site-url` when you want the sync command to embed a canonical public URL in the indexed documents (overrides any base URL derived from config):
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --typesense --site-url https://docs.example.com
+```
+
 Algolia example:
 
 ```bash title="terminal"
@@ -294,6 +353,11 @@ Useful flags:
 | `--check` | Fail if the generated output would change. |
 | `--config <path>` | Use a custom docs config path. |
 
+The generated allow-list covers wildcard agent-skills routes (`/.well-known/agent-skills/*`) and the legacy skills namespace (`/.well-known/skills/index.json`, `/.well-known/skills/*`). Two rules are conditional:
+
+- `Allow: /.well-known/api-catalog` is **omitted** when `llmsTxt.apiCatalog: false` or `staticExport: true`.
+- `Allow: /.well-known/agent-card.json` is **included** only when `agent.a2a` is configured.
+
 Configure defaults with `robots` in `docs.config.ts`, then run the command during release prep or
 static export builds when you want the policy committed.
 
@@ -320,9 +384,18 @@ SvelteKit's `static/` directory:
 - `/.well-known/agent-bundle.json` and `.farming-labs/agent-bundle-manifest.json`, containing
   deterministic SHA-256 hashes for the exported files
 
+Every file entry in the bundle manifest now includes three additional fields derived from the exact exported bytes:
+
+| Field | Description |
+| ----- | ----------- |
+| `etag` | Strong HTTP entity tag in the form `"<64-hex-char sha256>"` — the same value served as `ETag` by live adapters |
+| `contentDigest` | RFC 9530 `Content-Digest` field value in the form `sha-256=:…:` (base64-encoded SHA-256) |
+| `lastModified` | Optional ISO-8601 source modification time when the exporter can derive one (e.g. from the last git commit date for tracked files) |
 The exported artifact is static by definition. Its discovery document disables server-only search,
 MCP, feedback, API reference, and OpenAPI capabilities even when the application config is otherwise
-server-rendered. Page freshness uses tracked git commit dates; untracked pages omit `last_updated`
+server-rendered.
+
+The static bundle also always advertises `capabilities.contentChanges: false` and omits the `contentChanges` API endpoint, because the runtime change feed requires a live server and is unavailable in static exports. Page freshness uses tracked git commit dates; untracked pages omit `last_updated`
 instead of hashing checkout-specific filesystem mtimes.
 
 Add the read-only check to CI when generated files are committed:
@@ -498,6 +571,66 @@ By default the command writes a managed root `AGENTS.md` plus public copies at `
 for SvelteKit). If a hand-written root `AGENTS.md` or `AGENT.md` already exists, the command keeps
 it and uses that content for missing static aliases unless `--force` is passed.
 
+## Skills scaffold
+
+Use `docs skills scaffold` to compile structured page `agent` contracts into an installable, progressively disclosed Agent Skill. The command reads actionable pages from the configured docs source, writes one compact `SKILL.md` routing file and one focused `references/*.md` file per selected page into a `skills/<name>/` directory, and works offline and deterministically.
+
+Common invocations:
+
+```bash title="terminal"
+# Preview what would be written without making changes
+pnpm exec docs skills scaffold --dry-run
+
+# Write (or update) the skill directory
+pnpm exec docs skills scaffold
+
+# Fail if the generated skill files are stale — useful in CI
+pnpm exec docs skills scaffold --check
+```
+
+Default behavior:
+
+- derives the skill name from `nav.title` in `docs.config`
+- writes output to `skills/<name>/`
+- includes all actionable pages (pages that define a structured `agent` contract)
+
+Flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--name <name>` | Override the derived skill name. Accepts a positional name as well. |
+| `--output <dir>` | Write the skill to a custom directory instead of `skills/<name>/`. |
+| `--include <slug>` | Repeatable. Restrict scaffolding to the listed page slugs or paths. |
+| `--config <path>` | Use a custom docs config path (e.g. `src/lib/docs.config.ts`). |
+| `--dry-run` | Print what would be written without touching the filesystem. |
+| `--force` | Overwrite existing skill files even when they appear up to date. |
+| `--check` | Exit non-zero if the generated output would differ from what is already on disk. |
+
+Output shape:
+
+- `skills/<name>/SKILL.md` — a compact routing file that names the skill and links to each reference
+- `skills/<name>/references/<slug>.md` — one file per selected actionable page, containing the authored task, expected result, applicability, prerequisites, files, commands, side effects, verification, recovery, rollback, and canonical source, but not the full page prose
+
+Once generated, publish the skill through `agent.skills` in `docs.config.ts` so it is indexed by the runtime, Static Agent Bundle, and MCP:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    skills: "./skills",
+  },
+});
+```
+
+Add the check to CI when generated skill files are committed:
+
+```json title="package.json"
+{
+  "scripts": {
+    "check:skills": "docs skills scaffold --check"
+  }
+}
+```
+
 ## Doctor
 
 Use `docs doctor --agent` when you want a quick health check for the machine-facing side of the
@@ -539,12 +672,16 @@ What it checks:
 - documented command health and related-page coverage
 - config loading confidence and drift between discovery, resolved config, contracts, and schema
 - configured golden tasks for retrieval, citations, version selection, answers, examples, and budgets
+
+- adversarial safety suites within configured golden tasks (prompt injection, poisoned citations, authenticated-content leakage, freshness, framework-version conflicts, deleted-section tombstones, and query variants)
 - generated `agent.md` freshness and `agent.compact` defaults
 
-Command health is a static check: the doctor validates package-manager usage, package scripts,
-working directories, and known docs CLI commands without executing arbitrary snippets from the
-documentation. Workspace selectors that cannot be resolved safely are reported as unverified and
-do not receive healthy-command credit. Corpus checks compare every docs page, so copying the same
+Command health is a static check: the doctor validates package-manager usage, package scripts
+(including selectors resolved from an enclosing workspace), working directories, known docs CLI
+commands, constrained HTTP probes, safe shell built-ins, and supported Agent Skills or Claude MCP
+setup forms without executing arbitrary snippets or making network requests. Unknown binaries,
+unsupported options, compound shell expressions, and unresolved selectors stay unverified and do
+not receive healthy-command credit. Corpus checks compare every docs page, so copying the same
 plausible-looking Agent template onto many pages no longer increases the score.
 
 Golden tasks are configured under `agent.evaluations.tasks`. When none are configured, the doctor
@@ -557,6 +694,7 @@ execution require `allowNetwork: true`; callbacks are explicit user code, and ru
 execute only when both the task and `codeBlocks.validate` request it. Configured retrieval uses the
 per-task `searchTimeoutMs` limit, which defaults to 30 seconds.
 
+The doctor separates **golden-task quality** (pass/fail rate across configured expectations) from **evaluation coverage** (which evaluation dimensions are exercised). The three coverage dimensions — safety, answer quality, and executable examples — each report `unmeasured` until at least one configured task explicitly exercises them, and `partially-measured` when only a subset of tasks do. A new `golden-task-coverage` check reports `warn` when any dimension is unmeasured or partially measured. Because incomplete coverage blocks the top grade, a site with unmeasured dimensions scores as **Agent-ready** at most, even when quality is perfect — **Agent-optimized** requires full evaluation coverage.
 Common forms:
 
 ```bash title="terminal"
@@ -565,6 +703,7 @@ pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
 pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --agent --ci --json-output .farming-labs/doctor.json
 pnpm exec docs doctor --agent --fail-on warn
 pnpm exec docs doctor --site --json --fail-on fail
 pnpm exec docs doctor --fix
@@ -607,6 +746,8 @@ Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 37/37 pages (100%)
 Useful Agent blocks: 35/35 • 18/18 actionable pages task-complete
 Golden tasks: 4/4 passed (100/100)
+Golden task quality: 4/4 passed (100/100)
+Evaluation coverage: measured (12/12 task-dimensions, 100%)
 
 PASS Docs API route (10/10)
   Found docs API route at app/api/docs/route.ts.
@@ -622,6 +763,12 @@ PASS Agent context usefulness (15/15)
   35/35 Agent blocks are specific and non-repetitive (0 duplicate, 0 boilerplate, 0 generic).
 PASS Golden agent tasks (15/15)
   4/4 golden tasks passed with 100/100 average score.
+```txt
+PASS Golden agent tasks (15/15)
+  4/4 golden tasks passed with 100/100 average score. 2/2 adversarial safety suites passed.
+```
+
+When safety suites are configured on tasks, the doctor appends a summary such as `2/2 adversarial safety suites passed` or `no adversarial safety suites configured` to the golden-tasks finding.
 PASS Agent compaction freshness (5/5)
   0 fresh, 0 stale, 0 modified, 2 unknown, 0 token-budget missing, and 35 other missing pages across compactable docs pages. agent.compact defaults are configured.
 ```
@@ -680,6 +827,27 @@ Sample shape:
     "passedTaskCount": 3,
     "failedTaskCount": 1
   },
+  "evaluations": {
+    "status": "failed",
+    "score": 88,
+    "quality": {
+      "status": "failed",
+      "passed": false,
+      "score": 88,
+      "taskCount": 4,
+      "passedTaskCount": 3,
+      "failedTaskCount": 1
+    },
+    "coverage": {
+      "status": "partially-measured",
+      "measuredTaskDimensions": 5,
+      "totalTaskDimensions": 12,
+      "coveragePercent": 42
+    },
+    "taskCount": 4,
+    "passedTaskCount": 3,
+    "failedTaskCount": 1
+  },
   "checks": [
     {
       "id": "api-route",
@@ -698,6 +866,17 @@ Sample shape:
 The JSON report itself is written to stdout. Separate loader notices, such as config fallback
 warnings, are outside the JSON payload.
 
+Use `--ci` when running inside GitHub Actions to emit file/line workflow annotations for each
+finding directly to the job log. Because `--ci` prints annotations to stdout, pair it with
+`--json-output <path>` when the same run must also persist a machine-readable report:
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --ci --json-output .farming-labs/doctor.json
+```
+
+`--json-output <path>` writes the JSON report to a file and accepts both space-separated
+(`--json-output <path>`) and equals-sign (`--json-output=<path>`) forms. It can be combined with
+`--ci`, `--json`, `--strict`, or any other doctor flag.
 ### Hosted agent checks
 
 Add `--url` when you want the doctor to verify a deployed docs site in addition to the local
@@ -1125,6 +1304,7 @@ The current built-in MCP surface includes:
 returns structured `docs.config.ts` option metadata. `get_context` returns deterministic,
 token-budgeted section context with source anchors.
 
+When `agent.contentChanges` is configured in `docs.config`, the stdio server also registers the `list_content_changes` tool and its associated polling resources for body-free document-change detection.
 For the HTTP endpoint version, see [MCP Server](/docs/customization/mcp).
 
 ### Print hosted MCP client config with `mcp setup`
@@ -1135,11 +1315,46 @@ Use `mcp setup` when you want to print the MCP client configuration for a Docs C
 pnpm exec docs mcp setup --deployment <id>
 ```
 
-By default the command prints human-readable setup instructions. Use `--json` to print only the JSON block:
+By default the command prints human-readable setup instructions and a Claude Code-compatible JSON
+block. Use `--json` to print only that JSON:
 
 ```bash title="terminal"
 pnpm exec docs mcp setup --deployment <id> --json
 ```
+
+The default `claude-code` format connects directly to the deployment over Streamable HTTP. Its
+`${DOCS_CLOUD_API_KEY}` placeholder is Claude Code's environment-variable syntax, so set that
+variable before starting Claude Code:
+
+```json title="Claude Code .mcp.json (default)"
+{
+  "mcpServers": {
+    "docs-cloud": {
+      "type": "http",
+      "url": "https://api.farming-labs.dev/v1/mcp/<id>",
+      "headers": {
+        "Authorization": "Bearer ${DOCS_CLOUD_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+MCP clients use different config schemas and secret placeholders. Select the target client instead
+of copying the default block into an incompatible config file:
+
+```bash title="terminal"
+pnpm exec docs mcp setup --deployment <id> --client cursor --json
+pnpm exec docs mcp setup --deployment <id> --client vscode --json
+```
+
+| Client | `--client` value | Generated secret handling |
+| ------ | ---------------- | ------------------------- |
+| Claude Code | `claude-code` (default) | Reads `${DOCS_CLOUD_API_KEY}` from the Claude Code process environment. |
+| Cursor | `cursor` | Reads `${env:DOCS_CLOUD_API_KEY}` using Cursor's environment-variable syntax. |
+| VS Code | `vscode` | Uses the native `servers` schema and a secure `${input:docs-cloud-api-key}` prompt. |
+
+None of the formats embeds the raw API key in generated JSON.
 
 Use `--api-base-url` to override the Docs Cloud API base URL (defaults to `https://api.farming-labs.dev`):
 
@@ -1153,7 +1368,8 @@ Flags for `mcp setup`:
 | ---- | ----------- |
 | `--deployment <id>` | **(Required)** Docs Cloud deployment ID. |
 | `--api-base-url <url>` | Override the Docs Cloud API base URL. Defaults to `https://api.farming-labs.dev`. |
-| `--json` | Print only the MCP client JSON without human-readable instructions. |
+| `--client <name>` | Emit native config for `claude-code` (default), `cursor`, or `vscode`. |
+| `--json` | Print only the selected MCP client JSON without human-readable instructions. |
 ## Code Blocks
 
 Use `docs codeblocks validate` to plan and validate fenced code blocks from your docs content.
@@ -1209,6 +1425,8 @@ changed page, statically validates commands and related routes, reports low-conf
 loading or public-surface drift, and runs the same configured golden tasks as `docs doctor`.
 The same offline defaults and explicit network, answer-provider, and example-execution opt-ins apply.
 
+> When golden tasks are configured, `docs review` also checks adversarial safety suites. Without tasks, retrieval, citations, version selection, adversarial safety, executable examples, and token usage are all unmeasured.
+
 ```bash title="terminal"
 pnpm exec docs review
 pnpm exec docs review --ci
@@ -1255,6 +1473,7 @@ The init CLI offers several built-in themes plus an option to create your own:
 | `colorful`     | Fumadocs-style neutral theme with description support      |
 | `greentree`    | Emerald green accent, Inter font, Mintlify-inspired        |
 | `ledger`       | Stripe Docs-inspired product docs shell with navy code panels |
+| `shadcn`       | Compact neutral shell inspired by the shadcn/ui documentation |
 | `command-grid` | Mono-first paper-grid preset inspired by the better-cmdk landing page |
 | `concrete`     | Brutalist poster-style theme with offset shadows            |
 | `hardline`     | Hard-edge theme with square corners and bold borders        |
@@ -1398,6 +1617,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ greentree
       │ ○ concrete
       │ ○ command-grid
+      │ ○ shadcn
       │ ○ hardline
       │ ○ darkbold
       │ ○ shiny
@@ -1471,6 +1691,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ greentree
       │ ○ concrete
       │ ○ command-grid
+      │ ○ shadcn
       │ ○ hardline
       │ ○ darkbold
       │ ○ shiny
@@ -1524,6 +1745,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ greentree
       │ ○ concrete
       │ ○ command-grid
+      │ ○ shadcn
       │ ○ hardline
       │
       ◆ Entry path for docs:
@@ -1594,6 +1816,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ greentree
       │ ○ concrete
       │ ○ command-grid
+      │ ○ shadcn
       │ ○ hardline
       │
       ◆ Entry path for docs:
@@ -1665,6 +1888,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ greentree
       │ ○ concrete
       │ ○ command-grid
+      │ ○ shadcn
       │ ○ hardline
       │
       ◆ Entry path for docs:
@@ -1715,7 +1939,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 | ----------------------- | --------------------------------------------------------------------------- |
 | `--template <name>`     | Bootstrap a project: `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Use with `--name`. |
 | `--name <project>`      | Project folder name when using `--template`; prompt if omitted (e.g. `my-docs`) |
-| `--theme <name>`        | Skip theme prompt: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `darkbold`, `shiny`, `ledger`, `greentree`, `concrete`, `command-grid`, `hardline` |
+| `--theme <name>`        | Skip theme prompt: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `darkbold`, `shiny`, `ledger`, `shadcn`, `greentree`, `concrete`, `command-grid`, `hardline` |
 | `--entry <path>`        | Skip entry path prompt (e.g. `--entry docs`)                                |
 
 **Starting from scratch?** Use `--template` with `--name <project>`. The CLI bootstraps a project with the given name, installs dependencies, and then you run `cd <project> && pnpm run dev` to start.
@@ -1967,7 +2191,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -2010,7 +2234,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     **`src/routes/api/docs/+server.js`** (search & AI)
 
     ```js title="src/routes/api/docs/+server.js"
-    export { GET, POST } from "../../../lib/docs.server";
+    export { GET, HEAD, POST } from "../../../lib/docs.server";
     ```
 
     **`src/app.css`** — add your theme's CSS here so docs styling applies.
@@ -2076,7 +2300,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       _preloadedContent: contentFiles,
     });
@@ -2109,9 +2333,14 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
 
     ```ts title="src/pages/api/docs.ts"
     import type { APIRoute } from "astro";
-    import { GET as docsGET, POST as docsPOST } from "../../lib/docs.server";
+    import {
+      GET as docsGET,
+      HEAD as docsHEAD,
+      POST as docsPOST,
+    } from "../../lib/docs.server";
 
     export const GET: APIRoute = async ({ request }) => docsGET({ request });
+    export const HEAD: APIRoute = async ({ request }) => docsHEAD({ request });
     export const POST: APIRoute = async ({ request }) => docsPOST({ request });
     ```
 

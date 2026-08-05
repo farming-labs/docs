@@ -7,6 +7,32 @@ related:
   - /docs/customization/llms-txt
   - /docs/customization/sitemaps
   - /docs/cli
+agent:
+  tokenBudget: 850
+  task: Add the shared agent-surface conformance suite to a framework adapter.
+  outcome: The adapter passes the same discovery, Markdown, sitemap, robots, skills, MCP, and paginated search contract as first-party adapters.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The adapter exposes one request handler that can serve the shared docs API and public aliases.
+    - A test fixture contains at least one docs page and can issue Web Request objects to the adapter.
+  files:
+    - src/server.ts
+    - src/agent-conformance.test.ts
+  sideEffects:
+    - Expanding the shared contract can require coordinated public-route changes across every adapter.
+  verification:
+    - description: Run the adapter test containing runDocsAgentConformance.
+      expect: The report contains no failed cases and identifies the expected contract version.
+  rollback:
+    - Restore the previous adapter handler and remove only the conformance wiring introduced by the change.
+  failureModes:
+    - symptom: One public alias fails while the canonical docs API passes.
+      resolution: Forward the alias through the same shared server and preserve its method, headers, status, and response body.
+    - symptom: Static and runtime discovery disagree.
+      resolution: Generate both surfaces from the same resolved config and assert their hashed artifacts in the conformance test.
 ---
 
 # Adapter Agent Conformance
@@ -24,9 +50,10 @@ contract can verify default and localized Markdown. A passing report must contai
 
 ## Covered surfaces
 
-The versioned contract verifies:
+The versioned contract (`DOCS_AGENT_CONTRACT_VERSION` `1.3`) verifies:
 
-- agent discovery, config, diagnostics, and feedback schema
+- custom agent discovery, RFC 9727 API catalog GET/HEAD, Agent Skills index/artifact GET/HEAD,
+  config, diagnostics, and feedback schema
 - explicit `.md` aliases and `Accept: text/markdown` negotiation
 - default and localized page content
 - actionable missing-page recovery
@@ -34,9 +61,55 @@ The versioned contract verifies:
 - `AGENTS.md` and `skill.md`
 - XML and Markdown sitemaps plus `robots.txt`
 - a Streamable HTTP MCP initialize request
+- gzip-encoded tar archive delivery of SKILL.md (decompressed and validated by `readAgentSkillDocumentFromTar`)
+- SKILL.md frontmatter validated against the full spec — unexpected fields such as `version` and
+  an incorrect `allowed-tools` type are reported as conformance failures
+- cursor-based structured search pagination (see below)
+
+- `capabilities.contentChanges` flag and a live `GET /api/docs?audience=agent&response=changes` endpoint returning a valid `docs-content-changes.v1` JSON payload with `indexGeneration`, `mode`, `resetRequired`, `documentCount`, and array fields; ETag and body-free delivery are also verified
+
+- HTTP cache validators on every agent-surface response (see below)
 
 The first-party Next.js, TanStack Start, SvelteKit, Astro, and Nuxt adapters run this same contract
 in their package tests.
+
+## Cursor-based structured search
+
+All first-party adapters support cursor pagination for structured search. The conformance suite
+verifies that:
+
+- `GET /api/docs?response=structured&query=<term>&limit=1` returns `hasMore`, `total`, and
+  `nextCursor` in the response body.
+- Supplying the returned `nextCursor` as `?cursor=<token>` fetches the next page.
+- Legacy array responses (without `?response=structured`) remain unchanged — no `cursor`,
+  `nextCursor`, `hasMore`, or `total` fields are injected.
+- Passing an invalid or stale `cursor` without `?response=structured` returns HTTP `400`.
+
+The discovery spec (`/.well-known/agent.json`) advertises four pagination `const` fields under
+`search`:
+
+| Field             | Value          |
+| ----------------- | -------------- |
+| `cursorParam`     | `"cursor"`     |
+| `nextCursorField` | `"nextCursor"` |
+| `hasMoreField`    | `"hasMore"`    |
+| `totalField`      | `"total"`      |
+
+These fields are absent from the legacy v1 schema and present in agent manifest v2. An adapter
+that omits them from its discovery output will fail the `analyzeAgentSurfaceDrift` check.
+
+## HTTP cache validators
+
+All first-party adapters now attach strong HTTP cache validators to every agent-surface response. The conformance suite verifies that:
+
+- Every `GET` response for a machine-readable route (`/docs.md`, `/llms.txt`, `/.well-known/agent.json`, etc.) includes:
+  - A **strong `ETag`** matching the pattern `"<64-hex-char sha256>"` — derived from the exact response bytes.
+  - A **`Content-Digest: sha-256=:…:`** header (RFC 9530) whose base64 value matches the same bytes.
+- A `HEAD` request returns the same `ETag` and `Content-Digest` headers with an **empty body**.
+- A conditional `GET` with `If-None-Match` equal to the returned ETag receives **`304 Not Modified`** with the `Content-Digest` header preserved and an **empty body**.
+- `304` responses never include a body.
+
+Adapters that build responses through `createDocsCacheableResponse` satisfy these requirements automatically. Custom adapters must produce the same header shape and honour conditional-request semantics.
 
 ## Use it in an adapter test
 
@@ -77,6 +150,37 @@ The report includes the contract version and an individual result for every surf
 messages include the unexpected status, content type, or missing response text so adapter drift is
 visible in CI.
 
+## SKILL.md frontmatter in the contract
+
+As of contract version `1.3`, the conformance runner fetches each skill artifact, decompresses the
+gzip-encoded tar archive, and validates the embedded `SKILL.md` frontmatter against the strict spec.
+
+A SKILL.md that passes the contract must:
+
+- Contain only the standard fields: `name`, `description`, `license`, `compatibility`, `metadata`,
+  and `allowed-tools`
+- Set `allowed-tools` as a space-separated string — not a YAML list
+- Keep `name` within 64 characters, `description` within 1024 characters, and `compatibility`
+  within 500 characters
+
+Any other top-level key (e.g. `version`) causes `DocsAgentSkillFrontmatterError` to be thrown and
+the conformance case to fail. Skills with non-standard frontmatter are not published to the
+standards discovery index.
+
+### Publishing a skill from source
+
+When building a published skill programmatically, `buildDocsPublishedAgentSkill` now accepts
+`directoryName` and `source` options used for frontmatter name-matching and error reporting:
+
+```ts
+import { buildDocsPublishedAgentSkill } from "@farming-labs/docs";
+
+const skill = buildDocsPublishedAgentSkill(skillDocument, hash, {
+  directoryName: "my-tool",    // must match the `name` field in frontmatter
+  source: "/path/to/SKILL.md", // included in error messages
+});
+```
+
 ## Extending the contract
 
 Add a new invariant to `createDocsAgentContractCases` once, then update every first-party adapter
@@ -87,7 +191,6 @@ requiring the useful recovery document in either response.
 Run the relevant adapter test and core typecheck before publishing:
 
 ```bash title="terminal"
-pnpm --filter @farming-labs/docs build
-pnpm --filter @farming-labs/svelte test
+pnpm --filter @farming-labs/docs test adapter-agent-conformance.test.ts
 pnpm --filter @farming-labs/svelte typecheck
 ```

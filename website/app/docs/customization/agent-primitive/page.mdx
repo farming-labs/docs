@@ -3,6 +3,47 @@ title: "Agent Primitive"
 description: "Author human- and agent-specific page context, generated AGENTS.md instructions, and machine-readable route discovery."
 icon: "bot"
 order: 5.65
+related:
+  - /docs/guides/agent-friendly-docs
+  - /docs/customization/mcp
+  - /docs/customization/llms-txt
+  - /docs/customization/sitemaps
+  - /docs/configuration
+agent:
+  tokenBudget: 1100
+  task: Add audience-specific agent guidance without changing the human page or exposing private data.
+  outcome: Human HTML and search exclude agent-only guidance while Markdown, Ask AI, MCP, llms-full.txt, and exports include it consistently.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The target page is MDX when it uses Agent, Human, or Audience components.
+    - Decide whether additive embedded guidance or a full sibling agent.md override is required.
+    - Remove secrets and private content because audience projection is not authorization.
+  files:
+    - app/docs/example/page.mdx
+    - app/docs/example/agent.md
+    - docs/example/page.mdx
+    - docs/example/agent.md
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Audit audience coverage, usefulness, and discovery parity.
+  verification:
+    - description: Compare the rendered HTML page with its .md route and MCP read_page output.
+      expect: Human-only content stays in HTML, agent-only content stays in agent projections, and shared content appears in both.
+    - run: pnpm exec docs doctor --agent
+      expect: Audience coverage and agent surface checks report no new failures.
+  rollback:
+    - Remove the audience wrapper or sibling agent.md and restore the shared page content.
+  failureModes:
+    - symptom: Agent-only instructions appear in rendered HTML or public search.
+      resolution: Use a static Agent block or Audience only="agent" and verify that every surface uses the shared exposure resolver.
+    - symptom: The .md route omits the whole human-authored page.
+      resolution: Remove an accidental sibling agent.md override or copy the required contract into that override.
 ---
 
 # Agent Primitive
@@ -36,6 +77,12 @@ The same page model also powers the built-in machine-readable routes:
 - agents can fetch a machine-readable map of the active docs config with
   `GET /api/docs?format=config` (returns `docs-config-map.v1` JSON, `X-Robots-Tag: noindex`,
   CDN-cached at `s-maxage=3600`)
+
+- agents can discover valid filter values (framework, version, package, tags) without a text query
+  using `GET /api/docs?audience=agent&response=facets` (returns `DocsSearchFacetsResponse` with
+  `format: "docs-search-facets.v1"`, cached `max-age=60`); the agent discovery spec advertises this
+  as `search.facetsEndpoint`, `search.facetsResponseValue: "facets"`, and
+  `search.facetsResponseFormat: "docs-search-facets.v1"`
 <Callout type="info" title="Same URL, different representation">
   `/docs/installation` stays the human HTML page by default. In Next.js, send an unambiguous
   `Accept: text/markdown`, send `Signature-Agent`, or identify with a known AI user agent on that
@@ -121,7 +168,8 @@ The framework resolves the same audience policy before each content surface cons
 | Surface | Projection |
 | ------- | ---------- |
 | Rendered docs HTML | Human |
-| Public docs search | Human |
+| Search API without `audience=agent` | Human |
+| Search API with exact `audience=agent` | Agent |
 | Markdown routes and the markdown API format | Agent |
 | Ask AI retrieval and context | Agent |
 | MCP search, context, and page reads | Agent |
@@ -191,7 +239,8 @@ Recommended bootstrap flow:
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when you want the concise site skill.
 3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read relevant docs pages as markdown.
-4. Use `spec.search.endpoint` when you need to find the right page first.
+4. Use `spec.search.agentEndpoint` when you need to find the right page first. Older discovery
+   documents can be handled by adding `&audience=agent` to `spec.search.endpoint`.
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy.
 7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
@@ -306,10 +355,43 @@ That works especially well when:
 
 ## Agent Discovery
 
-`GET /.well-known/agent.json` is the preferred public discovery URL. `GET /.well-known/agent` is the
-public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. Next.js wires
-these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt scaffold one public forwarder
-each, so the well-known aliases share the same docs server handler.
+For standards-based discovery, `GET` or `HEAD /.well-known/api-catalog` returns an
+`application/linkset+json` [RFC 9727](https://datatracker.ietf.org/doc/html/rfc9727) catalog.
+`GET` or `HEAD /.well-known/agent-skills/index.json` returns the
+[Agent Skills v0.2 index](https://www.mintlify.com/docs/ai/skillmd). Configure `agent.skills` with a
+project-relative `SKILL.md`, skill directory, collection directory, or array of those paths. The
+runtime discovers every valid skill and publishes only non-symlink regular files from `SKILL.md`,
+`references/`, `scripts/`, and `assets/`.
+
+Standalone skill documents are indexed directly. Skills with companions use a deterministic
+`.tar.gz` artifact whose SHA-256 digest covers the exact archive bytes, while each source file stays
+available below `/.well-known/agent-skills/<name>/`. Legacy clients can use
+`/.well-known/skills/index.json`; static exports reproduce both indexes and their artifacts. MCP
+clients see the same files at `docs://skills/<name>/<path>`, with text returned as text and binary
+assets returned as base64 blobs.
+
+The optional `/.well-known/agent-card.json` route is different from skill discovery. It appears
+only when `agent.a2a` describes a real A2A interface. A preferred ordered
+`supportedInterfaces` configuration defaults each entry to protocol `1.0` over `HTTP+JSON`; the
+first entry is preferred, and the other core bindings are `JSONRPC` and `GRPC`. The generated card
+uses the strict A2A v1 shape. `interfaceUrl` remains only as a deprecated single-interface
+shorthand and retains its historical protocol `0.3` default. The preferred interface-array form
+requires explicit A2A skills; it does not turn published Agent Skill documents into callable
+capabilities automatically. A2A capability entries do not carry Agent Skill document URLs—those
+stay in the skill indexes and MCP resources. Do not configure the card merely because the site
+exposes docs, Ask AI, or MCP.
+
+`GET /.well-known/agent.json` is the preferred public discovery URL. It is a Farming Labs
+documentation-discovery extension, not an A2A Agent Card. The document identifies itself with
+`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+`format: "farming-labs-agent-manifest.v1"`. The schema uses JSON Schema Draft 2020-12, and dynamic
+responses link it with the registered HTTP `describedby` relation. Existing fields and routes remain
+available.
+
+`GET /.well-known/agent` is the public fallback, and `GET /api/docs/agent/spec` is the canonical
+framework route. Next.js wires these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt
+scaffold one public forwarder each, so the aliases share the same docs server handler. The separate,
+opt-in A2A document remains at `/.well-known/agent-card.json`.
 
 Agents should fetch it before choosing a transport. It tells them:
 
@@ -317,6 +399,9 @@ Agents should fetch it before choosing a transport. It tells them:
 - which locales are configured and which query parameter selects one
 - which agent-facing capabilities are enabled
 - where the shared docs API lives
+- where the RFC 9727 API catalog and hashed Agent Skills index live
+- which skills and companion files are published, including modern and legacy discovery routes
+- whether a separately implemented A2A service publishes an Agent Card
 - which agent discovery URL is the default and which public route to use as fallback
 - where to search the docs with a query
 - which markdown URL pattern to use for page reads
@@ -338,6 +423,16 @@ The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 preference themselves. It also includes `robots.route` so agents can find the static crawl policy
 without guessing.
 
+The `search` object keeps `endpoint` as the backward-compatible human-default URL and adds
+`agentEndpoint` for agent-projected retrieval. It also declares `audienceParam: "audience"`,
+`defaultAudience: "human"`, and `supportedAudiences: ["human", "agent"]`. Only the exact lowercase
+`audience=agent` value opts into shared plus agent-only content; this is projection rather than an
+authorization boundary.
+
+The custom manifest remains supported and advertises the standards routes through
+`apiCatalog` and `skills.discovery`. Discovery responses also include an `api-catalog` HTTP
+`Link` relation so clients can start from either model.
+
 The spec also includes `api.config: "/api/docs?format=config"` and a top-level `config` object
 with `format: "docs-config-map.v1"` and `endpoint: "/api/docs?format=config"` so agents can
 discover and fetch the config map without hard-coding the route.
@@ -346,7 +441,8 @@ well-known alias and `GET /api/docs?format=skill` as the shared API format. Put 
 the project root, beside `docs.config.ts`, when you want custom site-specific instructions. If that
 file is missing, the framework generates a short fallback from config that points agents to
 markdown, search, MCP, `llms.txt`, sitemap routes, `robots.txt`, feedback, and the reusable Skills
-CLI install command.
+CLI install command. This root site skill remains available and is also included in discovery when
+`agent.skills` publishes additional reusable skills.
 
 `AGENTS.md` is available at `GET /AGENTS.md`, with `GET /.well-known/AGENTS.md` as the well-known
 alias and `GET /api/docs?format=agents` as the shared API format. It is generated by default as a
