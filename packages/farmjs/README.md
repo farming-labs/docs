@@ -26,8 +26,9 @@ export default withDocs(
 ```
 
 Farm discovers `docs.config.ts` from the application root. The wrapper writes
-Farm's native `docs` configuration and leaves routing, development middleware,
-and production output to `@farm.js/core`. A different path can
+an adapter runtime descriptor into Farm's `docs` configuration. Farm uses that
+versioned contract to load page rendering, server behavior, and MDX integration
+from `@farming-labs/farmjs` without selecting a docs theme itself. A different path can
 be provided explicitly:
 
 ```ts
@@ -35,6 +36,21 @@ export default withDocs(defineConfig({}), {
   configPath: "config/docs.config.ts",
 });
 ```
+
+Import the selected theme from the application-owned global stylesheet. This
+also gives the application a normal place for project-specific overrides:
+
+```css
+/* src/app/globals.css */
+@import "@farming-labs/theme/pixel-border/css";
+
+:root {
+  --color-fd-primary: #8b5cf6;
+}
+```
+
+The theme factory in `docs.config.ts` and the CSS entrypoint must describe the
+same theme.
 
 ## Server wrapper
 

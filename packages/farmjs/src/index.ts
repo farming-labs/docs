@@ -18,4 +18,10 @@ export {
 export { createDocsServer, type DocsServer, type DocsServerLoadResult } from "./server.js";
 export { FarmDocsPage } from "./react.js";
 export { docsMdx } from "./vite.js";
+export {
+  FARM_DOCS_ADAPTER_ID,
+  FARM_DOCS_ADAPTER_PROTOCOL,
+  farmDocsRuntimeAdapter,
+  type FarmDocsRuntimeAdapter,
+} from "./runtime.js";
 export { createFarmjsApiReference } from "./api-reference.js";

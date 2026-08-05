@@ -1,9 +1,12 @@
 import type { DocsConfig } from "@farming-labs/docs";
+import { farmDocsRuntimeAdapter, type FarmDocsRuntimeAdapter } from "./runtime.js";
 
 export interface FarmDocsCoreConfig extends Partial<DocsConfig> {
   enabled?: boolean;
   configPath?: string;
   config?: Partial<DocsConfig>;
+  /** Runtime entrypoints owned by the official Farm adapter. */
+  adapter?: FarmDocsRuntimeAdapter;
 }
 
 export interface FarmDocsAdapterOptions {
@@ -48,6 +51,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
     docs: {
       ...existing,
       enabled,
+      adapter: farmDocsRuntimeAdapter,
       ...(options.configPath ? { configPath: options.configPath } : {}),
       ...(options.config
         ? {
