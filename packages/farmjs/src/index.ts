@@ -22,6 +22,7 @@ export {
   FARM_DOCS_ADAPTER_ID,
   FARM_DOCS_ADAPTER_PROTOCOL,
   farmDocsRuntimeAdapter,
+  farmDocsPresentationCss,
   type FarmDocsRuntimeAdapter,
 } from "./runtime.js";
 export { createFarmjsApiReference } from "./api-reference.js";

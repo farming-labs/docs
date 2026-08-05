@@ -82,6 +82,7 @@ pipeline without taking over application routes. The server also exposes
 | `@farming-labs/farmjs/react` | React documentation page renderer |
 | `@farming-labs/farmjs/content` | Content and navigation utilities |
 | `@farming-labs/farmjs/vite` | MDX compilation plugin |
+| `@farming-labs/farmjs/runtime` | Versioned Farm runtime contract and adapter-owned presentation assets |
 | `@farming-labs/farmjs/api-reference` | Farm API-reference handler |
 
 ## License

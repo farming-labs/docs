@@ -24,3 +24,5 @@ export const farmDocsRuntimeAdapter: FarmDocsRuntimeAdapter = Object.freeze({
   react: "@farming-labs/farmjs/react",
   vite: "@farming-labs/farmjs/vite",
 });
+
+export { farmDocsPresentationCss } from "./presentation-css.js";
