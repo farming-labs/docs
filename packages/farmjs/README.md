@@ -50,7 +50,10 @@ also gives the application a normal place for project-specific overrides:
 ```
 
 The theme factory in `docs.config.ts` and the CSS entrypoint must describe the
-same theme.
+same theme. Farm's standalone docs renderer marks its layout with the shared
+`data-fd-framework` contract, so this is the same unified CSS entrypoint used
+by the Next.js, TanStack Start, SvelteKit, Astro, and Nuxt integrations. The
+adapter does not ship or inject a second Farm-specific theme stylesheet.
 
 ## Server wrapper
 
@@ -82,7 +85,7 @@ pipeline without taking over application routes. The server also exposes
 | `@farming-labs/farmjs/react` | React documentation page renderer |
 | `@farming-labs/farmjs/content` | Content and navigation utilities |
 | `@farming-labs/farmjs/vite` | MDX compilation plugin |
-| `@farming-labs/farmjs/runtime` | Versioned Farm runtime contract and adapter-owned presentation assets |
+| `@farming-labs/farmjs/runtime` | Versioned Farm runtime contract |
 | `@farming-labs/farmjs/api-reference` | Farm API-reference handler |
 
 ## License
