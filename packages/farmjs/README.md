@@ -50,10 +50,9 @@ also gives the application a normal place for project-specific overrides:
 ```
 
 The theme factory in `docs.config.ts` and the CSS entrypoint must describe the
-same theme. Farm's standalone docs renderer marks its layout with the shared
-`data-fd-framework` contract, so this is the same unified CSS entrypoint used
-by the Next.js, TanStack Start, SvelteKit, Astro, and Nuxt integrations. The
-adapter does not ship or inject a second Farm-specific theme stylesheet.
+same theme. This is the same unified CSS entrypoint used by the Next.js,
+TanStack Start, SvelteKit, Astro, and Nuxt integrations. The adapter does not
+ship or inject a second Farm-specific theme stylesheet.
 
 ## Server wrapper
 

@@ -1,10 +1,9 @@
 /*
  * @farming-labs/theme - framework-neutral docs layout CSS.
  *
- * Activates for adapters and standalone renderers that mark their docs root
- * with `data-fd-framework`, including SvelteKit, Astro, Nuxt, and Farm.js.
- * These structural rules do not collide with fumadocs-ui's React/TanStack
- * layout CSS.
+ * Activates only for non-React adapters that mark their docs root with
+ * `data-fd-framework`, so these structural rules do not collide with
+ * fumadocs-ui's React/TanStack layout CSS.
  */
 
 /* CSS Reset */
