@@ -13,6 +13,7 @@ export default defineConfig({
     "packages/svelte-theme/package.json",
     "packages/astro/package.json",
     "packages/astro-theme/package.json",
+    "packages/farmjs/package.json",
     "packages/nuxt/package.json",
     "packages/nuxt-theme/package.json",
   ],
