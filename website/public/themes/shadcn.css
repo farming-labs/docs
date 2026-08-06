@@ -187,6 +187,24 @@ aside#nd-sidebar-mobile {
 
 aside#nd-sidebar::after,
 .fd-sidebar::after {
+  position: absolute;
+  inset-block: 1.25rem 1.5rem;
+  inset-inline-end: 0;
+  z-index: 1;
+  display: block !important;
+  width: 1px;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--color-fd-border) 10%,
+    var(--color-fd-border) 90%,
+    transparent 100%
+  );
+}
+
+aside#nd-sidebar-mobile::after {
   display: none !important;
 }
 
@@ -197,10 +215,10 @@ aside#nd-sidebar-mobile .fd-sidebar {
   background: transparent !important;
 }
 
-/* Match shadcn/ui's compact, unframed navigation rail. */
+/* Match shadcn/ui's compact navigation rail while preserving built-in controls. */
 aside#nd-sidebar > div:first-child {
   gap: 0.375rem !important;
-  padding: 0.5rem 1rem 0.25rem !important;
+  padding: 0.75rem 1.25rem 0.5rem !important;
 }
 
 aside#nd-sidebar .fd-api-reference-switcher {
@@ -208,7 +226,14 @@ aside#nd-sidebar .fd-api-reference-switcher {
 }
 
 aside#nd-sidebar [data-radix-scroll-area-viewport] {
-  padding: 0 4rem 1rem 1.625rem !important;
+  padding: 1.25rem 1.25rem 2rem 1.5rem !important;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 1.25rem,
+    black calc(100% - 1.5rem),
+    transparent 100%
+  ) !important;
 }
 
 aside#nd-sidebar-mobile [data-radix-scroll-area-viewport] {
@@ -305,7 +330,7 @@ aside#nd-sidebar-mobile
 }
 
 aside#nd-sidebar > div:last-child {
-  padding: 0.5rem 4rem 1rem 1.625rem !important;
+  padding: 0.5rem 1.25rem 1rem 1.5rem !important;
 }
 
 aside#nd-sidebar > div:last-child > div {
@@ -567,6 +592,15 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   line-height: 1.5 !important;
 }
 
+.fd-generated-page-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.fd-generated-page-header .fd-page-title {
+  margin: 0 0 0.5rem;
+}
+
 .fd-docs-content,
 #nd-page .prose {
   color: var(--color-fd-foreground);
@@ -597,6 +631,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-copy-btn,
 .fd-ai-code-copy,
 .fd-ai-model-dropdown-btn,
+.fd-page-footer > a,
 .fd-page-nav-card,
 .fd-page-nav a,
 #nd-page > div[class~="@container"] > a {
@@ -613,10 +648,25 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-copy-btn:hover,
 .fd-ai-code-copy:hover,
 .fd-ai-model-dropdown-btn:hover,
+.fd-page-footer > a:hover,
 .fd-page-nav-card:hover,
 .fd-page-nav a:hover,
 #nd-page > div[class~="@container"] > a:hover {
   background: var(--fd-shadcn-control-hover) !important;
+}
+
+.fd-page-footer > a {
+  min-height: 2rem;
+  padding: 0.5rem 0.75rem !important;
+  text-decoration: none !important;
+}
+
+.fd-llms-txt-links {
+  display: none !important;
+}
+
+#nd-docs-layout a[href$="/llms.txt"] {
+  display: none !important;
 }
 
 .fd-page-nav,
@@ -825,6 +875,62 @@ figure.shiki pre,
   box-shadow: none !important;
 }
 
+/* Compact code surfaces modeled after the current shadcn docs. */
+figure.shiki,
+.fd-docs-content figure.shiki {
+  margin-block: 1.25rem !important;
+  border: 0 !important;
+  border-radius: calc(var(--radius) * 1.8) !important;
+  background: var(--fd-shadcn-code) !important;
+  padding-block: 0 !important;
+}
+
+figure.shiki pre,
+.fd-docs-content figure.shiki pre {
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 0.625rem 0.75rem !important;
+  overflow-x: auto !important;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: color-mix(in oklab, var(--color-fd-foreground) 18%, transparent)
+    transparent;
+  scrollbar-width: thin;
+}
+
+figure.shiki pre > code,
+.fd-docs-content figure.shiki pre > code {
+  font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace) !important;
+  font-size: 0.875rem !important;
+  font-variant-ligatures: none;
+  line-height: 1.75 !important;
+  tab-size: 2;
+}
+
+figure.shiki pre > code > :is(.line, [data-line]) {
+  min-height: 1.53125rem;
+}
+
+figure.shiki pre > code > :is(.line, [data-line])[data-highlighted-line] {
+  background: var(--fd-shadcn-code-highlight) !important;
+}
+
+figure.shiki > button,
+figure.shiki > div:first-child button {
+  width: 2rem !important;
+  height: 2rem !important;
+  border: 0 !important;
+  border-radius: calc(var(--radius) * 0.8) !important;
+  background: color-mix(in oklab, var(--fd-shadcn-code) 82%, transparent) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  backdrop-filter: blur(8px);
+}
+
+figure.shiki > button:hover,
+figure.shiki > div:first-child button:hover {
+  background: var(--fd-shadcn-control-hover) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
 .fd-codeblock-title,
 figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-code-header {
@@ -941,20 +1047,37 @@ figure.shiki figcaption {
   padding: 0 !important;
 }
 
+article :not(pre) > code,
 .fd-docs-content :not(pre) > code,
 :is(.fd-ai-bubble-ai, .fd-ai-fm-msg-content) :not(pre) > code {
   border: 0 !important;
-  border-radius: calc(var(--radius) * 0.6);
-  background: var(--color-fd-muted);
+  border-radius: calc(var(--radius) * 0.5) !important;
+  background: color-mix(in oklab, var(--color-fd-muted) 48%, transparent) !important;
   color: var(--color-fd-foreground);
   font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace);
   font-size: 0.85em;
-  padding: 0.125em 0.3em;
+  padding: 0.08em 0.24em !important;
+  box-decoration-break: clone;
 }
 
 @media (hover: none) {
   .fd-ai-code-copy {
     opacity: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  figure.shiki pre,
+  .fd-docs-content figure.shiki pre {
+    padding: 0.625rem 0.75rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  aside#nd-sidebar a,
+  aside#nd-sidebar button {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
