@@ -1230,6 +1230,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         <Suspense fallback={children}>
           <DocsPageClient
             tocEnabled={tocEnabled}
+            themeName={config.theme?.name}
             tocStyle={tocStyle}
             breadcrumbEnabled={breadcrumbEnabled}
             changelogBasePath={changelogBasePath}

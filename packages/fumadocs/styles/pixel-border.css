@@ -35,7 +35,7 @@
   --scrollbar-track: transparent;
   /* Sharp corners — no rounding */
   --radius: 0px;
-  --fd-nav-height: 56px;
+  --fd-nav-height: 44px;
   --fd-banner-height: 0px;
   --fd-tocnav-height: 0px;
 }
@@ -149,24 +149,49 @@ code:not(pre code) {
  * Pixel-border theme — better-auth inspired sidebar, clean dark UI
  * ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── Wider content area on desktop ──────────────────────────────── */
+/* ─── Production shell geometry ─────────────────────────────────── */
 
 @media (min-width: 1024px) {
   :root {
     --fd-layout-width: 1400px;
   }
-}
 
-/* ─── Docs grid: sidebar (sticky left, full height) | content | TOC ─────── */
-@media (min-width: 768px) {
   #nd-docs-layout.grid:not([data-fd-framework]) {
+    --fd-header-height: 44px;
     grid-template:
-      "sidebar header toc"
-      "sidebar toc-popover toc"
+      "sidebar header header" 44px
       "sidebar main toc" 1fr /
       var(--fd-sidebar-col) minmax(0, 1fr) var(--fd-toc-width) !important;
   }
-  /* Sidebar stretches to end and sticks on scroll; no max-height so content isn't clipped */
+
+  #nd-docs-layout #nd-subnav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex !important;
+    grid-area: header;
+    grid-column: 2 / -1;
+    height: 44px;
+    padding: 0 105px 0 0;
+    border-bottom: 1px solid var(--color-fd-border);
+    background: color-mix(in srgb, var(--color-fd-background) 92%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  #nd-docs-layout #nd-subnav > a,
+  #nd-docs-layout #nd-subnav button[aria-label="Open Sidebar"] {
+    display: none !important;
+  }
+
+  #nd-docs-layout #nd-subnav button[data-search] {
+    width: 56px;
+    height: 44px;
+    margin-left: auto;
+    padding: 0;
+    border-left: 1px solid var(--color-fd-border);
+    color: var(--color-fd-muted-foreground);
+  }
+
   #nd-docs-layout aside#nd-sidebar {
     position: sticky;
     top: 0;
@@ -174,16 +199,114 @@ code:not(pre code) {
     min-height: 0;
     height: 100vh;
   }
-}
 
-@media (min-width: 1024px) {
   #nd-docs-layout [data-sidebar-placeholder] {
     justify-self: stretch;
   }
 
   #nd-docs-layout article#nd-page {
+    width: min(100%, var(--fd-content-width));
     max-width: none;
-    margin-inline: 0;
+    margin-inline: auto;
+    padding: 46px 40px 80px !important;
+    gap: 0;
+  }
+
+  #nd-docs-layout article#nd-page > .prose {
+    max-width: none;
+  }
+
+  #nd-docs-layout #nd-toc {
+    display: flex !important;
+    width: var(--fd-toc-width);
+    padding: 48px 16px 8px 0;
+  }
+}
+
+/* Fumadocs switches its shell at 768px; Farm's docs keep the mobile shell
+ * through tablet sizes, matching the production 1020px breakpoint. */
+@media (max-width: 1023px) {
+  :root {
+    --fd-mobile-nav-height: 56px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  #nd-docs-layout.grid:not([data-fd-framework]) {
+    --fd-header-height: 56px;
+    display: block !important;
+    min-height: 100dvh;
+    padding-top: 56px;
+  }
+
+  #nd-docs-layout #nd-subnav {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 80;
+    display: flex !important;
+    width: 100%;
+    height: 56px;
+    padding: 0 105px 0 0;
+    border-bottom: 1px solid var(--color-fd-border);
+    background: color-mix(in srgb, var(--color-fd-background) 94%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  #nd-docs-layout #nd-subnav > a {
+    display: none;
+  }
+
+  #nd-docs-layout #nd-subnav > div.flex-1 {
+    order: 2;
+  }
+
+  #nd-docs-layout #nd-subnav button[aria-label="Open Sidebar"] {
+    order: 1;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border-right: 1px solid var(--color-fd-border);
+  }
+
+  #nd-docs-layout #nd-subnav button[aria-label="Open Sidebar"] svg {
+    display: none;
+  }
+
+  #nd-docs-layout #nd-subnav button[aria-label="Open Sidebar"]::before {
+    content: "";
+    width: 18px;
+    height: 1.5px;
+    background: currentColor;
+    box-shadow:
+      0 -6px 0 currentColor,
+      0 6px 0 currentColor;
+  }
+
+  #nd-docs-layout #nd-subnav button[data-search] {
+    order: 3;
+    width: 44px;
+    height: 56px;
+    margin-left: auto;
+    padding: 0;
+    border-left: 1px solid var(--color-fd-border);
+    color: var(--color-fd-muted-foreground);
+  }
+
+  #nd-docs-layout [data-sidebar-placeholder],
+  #nd-docs-layout [data-sidebar-panel],
+  #nd-docs-layout [data-toc-popover],
+  #nd-docs-layout #nd-toc {
+    display: none !important;
+  }
+
+  #nd-docs-layout article#nd-page {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 34px 20px 64px !important;
+    gap: 0;
   }
 
   #nd-docs-layout article#nd-page > .prose {
@@ -191,19 +314,148 @@ code:not(pre code) {
   }
 }
 
-/* ─── Mobile: ensure sidebar drawer/content isn't clipped ───────────────── */
-@media (max-width: 767px) {
-  #nd-docs-layout aside#nd-sidebar {
+@media (min-width: 768px) and (max-width: 1023px) {
+  #nd-docs-layout[data-fd-tablet-sidebar-open="true"]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 85;
+    background: color-mix(in srgb, var(--color-fd-background) 72%, transparent);
+  }
+
+  #nd-docs-layout[data-fd-tablet-sidebar-open="true"] [data-sidebar-placeholder] {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 90;
+    display: block !important;
+    width: min(342px, calc(100vw - 42px));
+    height: 100dvh;
+    pointer-events: auto;
+  }
+
+  #nd-docs-layout[data-fd-tablet-sidebar-open="true"] [data-sidebar-placeholder] > aside {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100dvh;
     max-height: none;
-    overflow-y: visible;
+  }
+}
+
+.fd-agent-llms-directive[data-visible-in-header="true"] {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 90;
+  display: inline-flex;
+  width: 105px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+  background: color-mix(in srgb, var(--color-fd-background) 94%, transparent);
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+}
+
+.fd-agent-llms-directive[data-visible-in-header="true"]:hover {
+  color: var(--color-fd-foreground);
+}
+
+@media (max-width: 1023px) {
+  .fd-agent-llms-directive[data-visible-in-header="true"] {
+    height: 56px;
   }
 }
 
 /* ─── Sidebar (better-auth style) — light + dark ───────────────────── */
 /* Sidebar container: use theme variables for both modes */
 aside#nd-sidebar {
+  --fd-pixel-rail-width: 12px;
   background: var(--color-fd-background);
+  background-image:
+    linear-gradient(var(--color-fd-border), var(--color-fd-border)),
+    linear-gradient(var(--color-fd-border), var(--color-fd-border)),
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-fd-border) 2%, transparent),
+      color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
+      transparent 1px,
+      transparent 6px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-fd-border) 2%, transparent),
+      color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  background-position:
+    var(--fd-pixel-rail-width) 0,
+    calc(100% - var(--fd-pixel-rail-width)) 0,
+    left top,
+    right top;
+  background-repeat: repeat-y;
+  background-size:
+    1px 100%,
+    1px 100%,
+    var(--fd-pixel-rail-width) 100%,
+    var(--fd-pixel-rail-width) 100%;
+  border-left: 1px solid var(--color-fd-border);
   border-color: var(--color-fd-border);
+}
+
+aside#nd-sidebar > div:first-child {
+  min-height: 44px;
+  gap: 0;
+  justify-content: center;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+aside#nd-sidebar > div:first-child > div:first-child {
+  width: 100%;
+  height: 44px;
+  align-items: center;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+aside#nd-sidebar > div:first-child > div:first-child::after {
+  content: "/ DOCS";
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--color-fd-foreground);
+}
+
+aside#nd-sidebar > div:first-child > div:first-child > a {
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+aside#nd-sidebar > div:first-child > div:first-child > a::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  background:
+    linear-gradient(currentColor 0 0) 0 0 / 6px 6px no-repeat,
+    linear-gradient(currentColor 0 0) 8px 0 / 8px 6px no-repeat,
+    linear-gradient(color-mix(in srgb, currentColor 64%, transparent) 0 0) 0 8px / 6px 6px
+      no-repeat,
+    linear-gradient(color-mix(in srgb, currentColor 64%, transparent) 0 0) 8px 8px / 8px 6px
+      no-repeat;
+}
+
+aside#nd-sidebar > div:first-child button[aria-label="Collapse Sidebar"],
+aside#nd-sidebar > div:first-child button[data-search-full] {
+  display: none !important;
 }
 
 /* ── Full-width border separators between top-level items ─────────── */
@@ -354,6 +606,84 @@ aside button[class*="rounded-full"] {
 
 /* ─── Tables: visible borders, rounded-none (light + dark) ─────────── */
 
+/* ─── Page rhythm and typography ─────────────────────────────────── */
+
+#nd-docs-layout {
+  background: var(--color-fd-background);
+  font-family: var(--fd-font-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+#nd-page > .prose h1 {
+  margin: 0 0 16px;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+}
+
+#nd-page > .prose h2 {
+  margin: 44px 0 14px;
+  padding-top: 26px;
+  border-top: 1px solid var(--color-fd-border);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.24;
+  letter-spacing: -0.01em;
+}
+
+#nd-page > .prose h3 {
+  margin: 30px 0 12px;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+#nd-page > .prose h4,
+#nd-page > .prose h5,
+#nd-page > .prose h6 {
+  margin: 24px 0 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+#nd-page > .prose p {
+  margin: 14px 0;
+  color: color-mix(in srgb, var(--color-fd-foreground) 74%, transparent);
+  font-size: 15.6px;
+  line-height: 1.8;
+}
+
+#nd-page > .prose ul,
+#nd-page > .prose ol {
+  margin: 16px 0;
+  padding-left: 24px;
+  color: color-mix(in srgb, var(--color-fd-foreground) 78%, transparent);
+  line-height: 1.75;
+}
+
+#nd-page > .prose li {
+  margin: 6px 0;
+}
+
+#nd-docs-layout .fd-title-separator {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  #nd-page > .prose h1 {
+    font-size: 32px;
+    line-height: 1.16;
+    letter-spacing: 0;
+  }
+
+  #nd-page > .prose h2 {
+    margin-top: 34px;
+    padding-top: 22px;
+    font-size: 23px;
+  }
+}
+
 table {
   border: 1px solid var(--color-fd-border);
   border-radius: 0 !important;
@@ -384,10 +714,46 @@ tr:last-child td {
 /* Target the fumadocs CodeBlock figure (shiki class) */
 figure.shiki,
 .fd-codeblock {
+  --padding-left: 0px;
+  --padding-right: 0px;
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
   overflow: hidden;
-  box-shadow: none !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border) !important;
+}
+
+figure.shiki pre,
+.fd-codeblock pre {
+  margin: 0;
+  padding: 18px 20px !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+figure.shiki > div[role="region"],
+.fd-codeblock > div[role="region"] {
+  padding-block: 0 !important;
+}
+
+figure.shiki code,
+.fd-codeblock code {
+  font-family: inherit !important;
+}
+
+@media (max-width: 1023px) {
+  figure.shiki,
+  .fd-codeblock {
+    margin: 16px 0;
+    box-shadow: 2px 2px 0 0 var(--color-fd-border) !important;
+  }
+
+  figure.shiki pre,
+  .fd-codeblock pre {
+    padding: 12px 11px !important;
+    font-size: 12px;
+    line-height: 1.5;
+  }
 }
 
 /* Copy button inside code blocks */

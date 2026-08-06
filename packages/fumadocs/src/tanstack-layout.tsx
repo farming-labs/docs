@@ -536,6 +536,7 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
+          themeName={config.theme?.name}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}

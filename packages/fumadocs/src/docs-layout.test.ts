@@ -134,6 +134,18 @@ agent:
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
+  it("passes the theme name through for theme-owned structural styling", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "fumadocs-pixel-border" } as any,
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props?.themeName).toBe("fumadocs-pixel-border");
+  });
+
   it("passes frontmatter titles only for pages without an authored h1", () => {
     mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
     mkdirSync(join(tmpDir, "app", "docs", "authored"), { recursive: true });

@@ -43,6 +43,23 @@ describe("DocsPageClient llms.txt footer links", () => {
     expect(html).toContain('class="fd-agent-llms-directive"');
     expect(html).not.toContain("/api/docs?format=llms");
   });
+
+  it("exposes the llms.txt link as a visible pixel-border header action", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        llmsTxtEnabled: true,
+        themeName: "fumadocs-pixel-border",
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-visible-in-header="true"');
+    expect(html).toContain(">LLMS.TXT</a>");
+    expect(html).not.toContain('tabindex="-1"');
+    expect(html).not.toContain('aria-hidden="true"');
+  });
 });
 
 describe("DocsPageClient generated page title", () => {

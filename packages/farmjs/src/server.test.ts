@@ -1,5 +1,6 @@
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { createDocsServer } from "./server.js";
+import { createDocsServer, createFarmDocsRuntimeHandler } from "./server.js";
 
 const config = {
   entry: "docs",
@@ -27,7 +28,57 @@ describe("createDocsServer", () => {
     expect(page).toMatchObject({
       title: "Introduction",
       description: "Build a Farm application.",
+      descriptionInBody: false,
       url: "/docs",
+    });
+  });
+
+  it("does not ask the client renderer to repeat an authored lead description", async () => {
+    const server = createDocsServer({
+      ...config,
+      _preloadedContent: {
+        "/docs/page.md": `---
+title: Introduction
+description: Build a Farm application.
+---
+
+# Introduction
+
+Build a Farm application.
+
+## Create an app`,
+      },
+    });
+
+    const page = await server.load({ pathname: "/docs" });
+
+    expect(page.description).toBe("Build a Farm application.");
+    expect(page.descriptionInBody).toBe(true);
+  });
+
+  it("opens configured pixel-border navigation groups by default", async () => {
+    const server = createDocsServer({
+      ...config,
+      theme: { name: "fumadocs-pixel-border" },
+      navigation: {
+        sidebar: [
+          {
+            label: "Start",
+            children: [{ label: "Guide", slug: "guide" }],
+          },
+        ],
+      },
+      _preloadedContent: {
+        "/docs/guide/page.md": "# Guide",
+      },
+    } as any);
+
+    const page = await server.load({ pathname: "/docs/guide" });
+
+    expect(page.tree.children[0]).toMatchObject({
+      type: "folder",
+      name: "Start",
+      defaultOpen: true,
     });
   });
 
@@ -59,5 +110,27 @@ describe("createDocsServer", () => {
 
     expect(response?.status).toBeLessThan(500);
     expect(response).not.toBeNull();
+  });
+});
+
+describe("createFarmDocsRuntimeHandler", () => {
+  it("loads the adapter base CSS before host theme stylesheets", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      stylesheets: ["/src/app/globals.css"],
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response?.text();
+
+    expect(response?.status).toBe(200);
+    expect(html).toContain('<link rel="stylesheet" href="/__farm_docs/browser.css">');
+    expect(html).toContain('<link rel="stylesheet" href="/src/app/globals.css">');
+    expect(html?.indexOf("/__farm_docs/browser.css")).toBeLessThan(
+      html?.indexOf("/src/app/globals.css") ?? -1,
+    );
   });
 });

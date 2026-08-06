@@ -96,7 +96,7 @@ export function FarmDocsPage({ config, data }: { config: DocsConfig; data: DocsS
         config={resolvedConfig}
         tree={data.tree}
         locale={data.locale}
-        description={data.description}
+        description={data.descriptionInBody ? undefined : data.description}
         readingTime={data.readingTime}
         lastModified={data.lastModified}
         previousPage={data.previousPage}

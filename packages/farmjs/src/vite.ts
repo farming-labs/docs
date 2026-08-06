@@ -31,6 +31,54 @@ export function createCanonicalDocsRemarkHeading(): ReturnType<
   };
 }
 
+interface MarkdownNode {
+  type: string;
+  value?: string;
+  meta?: string | null;
+  children?: MarkdownNode[];
+}
+
+/**
+ * Preserve Farm's conventional standalone bold code labels without requiring
+ * framework-owned HTML. File labels become code-block titles; generic terminal
+ * labels are omitted because the language and copy affordance already identify
+ * those blocks.
+ */
+export function remarkStandaloneCodeLabels() {
+  return (tree: MarkdownNode) => {
+    const children = tree.children;
+    if (!children) return tree;
+
+    for (let index = 0; index < children.length - 1; index += 1) {
+      const label = children[index];
+      const code = children[index + 1];
+      const strong = label?.type === "paragraph" ? label.children?.[0] : undefined;
+      const text = strong?.type === "strong" ? strong.children?.[0] : undefined;
+
+      if (
+        label?.children?.length !== 1 ||
+        strong?.children?.length !== 1 ||
+        text?.type !== "text" ||
+        code?.type !== "code" ||
+        !text.value?.trim()
+      ) {
+        continue;
+      }
+
+      const value = text.value.trim();
+      if (!/^(terminal|shell|console)$/i.test(value)) {
+        const title = `title=${JSON.stringify(value)}`;
+        code.meta = [code.meta?.trim(), title].filter(Boolean).join(" ");
+      }
+
+      children.splice(index, 1);
+      index -= 1;
+    }
+
+    return tree;
+  };
+}
+
 function findWorkspaceRoot(startDir: string): string | null {
   let current = startDir;
 
@@ -180,6 +228,7 @@ export function docsMdx(): PluginOption {
         remarkGfm,
         remarkFrontmatter,
         [remarkMdxFrontmatter, { name: "metadata" }],
+        remarkStandaloneCodeLabels,
         remarkCodeGroup,
         createCanonicalDocsRemarkHeading,
       ],

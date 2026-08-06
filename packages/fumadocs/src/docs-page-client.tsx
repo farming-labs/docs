@@ -46,6 +46,8 @@ interface SerializedProvider {
 
 interface DocsPageClientProps {
   tocEnabled: boolean;
+  /** Active theme preset name, used for theme-specific structural affordances. */
+  themeName?: string;
   tocStyle?: "default" | "directional";
   breadcrumbEnabled?: boolean;
   changelogBasePath?: string;
@@ -499,6 +501,7 @@ function findThreadlineTocActionsContainer(): HTMLElement | null {
 
 export function DocsPageClient({
   tocEnabled,
+  themeName,
   tocStyle = "default",
   breadcrumbEnabled = true,
   changelogBasePath,
@@ -563,6 +566,7 @@ export function DocsPageClient({
   const activeLocale = resolveClientLocale(searchParams, locale);
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
+  const showLlmsInHeader = llmsTxtEnabled && themeName === "fumadocs-pixel-border";
 
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
   const pageTitle = generatedTitleMap?.[normalizedPath];
@@ -590,6 +594,76 @@ export function DocsPageClient({
       },
     });
   }, [analytics, activeLocale, browserSearch, entry, isChangelogRoute, normalizedPath]);
+
+  useEffect(() => {
+    if (themeName !== "fumadocs-pixel-border") return;
+
+    const layout = document.getElementById("nd-docs-layout");
+    const toggle = layout?.querySelector<HTMLButtonElement>(
+      '#nd-subnav button[aria-label="Open Sidebar"]',
+    );
+    const sidebar = layout?.querySelector<HTMLElement>("[data-sidebar-placeholder]");
+    if (!layout || !toggle || !sidebar) return;
+
+    const tablet = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
+    const previousOverflow = document.documentElement.style.overflow;
+    let open = false;
+
+    toggle.dataset.fdTabletSidebarToggle = "true";
+
+    const setOpen = (next: boolean) => {
+      open = next && tablet.matches;
+      if (open) layout.dataset.fdTabletSidebarOpen = "true";
+      else delete layout.dataset.fdTabletSidebarOpen;
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", open ? "Close Sidebar" : "Open Sidebar");
+      document.documentElement.style.overflow = open ? "hidden" : previousOverflow;
+    };
+
+    const handleClickCapture = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !tablet.matches) return;
+
+      if (target.closest("[data-fd-tablet-sidebar-toggle]")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setOpen(!open);
+      }
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      if (!open || !(event.target instanceof Element)) return;
+      if (!sidebar.contains(event.target) || event.target.closest("a[href]")) setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (open && event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        toggle.focus();
+      }
+    };
+
+    const handleBreakpointChange = () => {
+      if (!tablet.matches) setOpen(false);
+    };
+
+    document.addEventListener("click", handleClickCapture, true);
+    document.addEventListener("click", handleClick);
+    document.addEventListener("keydown", handleKeyDown);
+    tablet.addEventListener("change", handleBreakpointChange);
+
+    return () => {
+      setOpen(false);
+      delete toggle.dataset.fdTabletSidebarToggle;
+      toggle.removeAttribute("aria-expanded");
+      document.removeEventListener("click", handleClickCapture, true);
+      document.removeEventListener("click", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+      tablet.removeEventListener("change", handleBreakpointChange);
+      document.documentElement.style.overflow = previousOverflow;
+    };
+  }, [pathname, themeName]);
 
   useEffect(() => {
     return installDocsPathNavigationGuard(entry, resolvedPublicPath);
@@ -950,11 +1024,12 @@ export function DocsPageClient({
           key="llms-txt"
           href={`/llms.txt${llmsLangQuery}`}
           className="fd-agent-llms-directive"
-          style={agentLlmsDirectiveStyle}
-          tabIndex={-1}
-          aria-hidden="true"
+          data-visible-in-header={showLlmsInHeader ? "true" : undefined}
+          style={showLlmsInHeader ? undefined : agentLlmsDirectiveStyle}
+          tabIndex={showLlmsInHeader ? undefined : -1}
+          aria-hidden={showLlmsInHeader ? undefined : true}
         >
-          llms.txt
+          {showLlmsInHeader ? "LLMS.TXT" : "llms.txt"}
         </a>
       )}
       {titleControlsPortal}

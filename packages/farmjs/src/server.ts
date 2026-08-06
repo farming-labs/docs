@@ -223,6 +223,8 @@ export interface DocsServerLoadResult {
   url: string;
   title: string;
   description?: string;
+  /** Whether the rendered MDX body already opens with the frontmatter description. */
+  descriptionInBody?: boolean;
   rawContent: string;
   readingTime?: number | null;
   readingTimeFormat?: "long" | "short";
@@ -306,6 +308,7 @@ function navigationItemUrl(item: FarmDocsNavigationItem, entry: string): string 
 function navTreeFromNavigation(config: Record<string, any>, entry: string): NavTree | null {
   const configured = config.navigation?.sidebar;
   if (!Array.isArray(configured) || configured.length === 0) return null;
+  const defaultOpen = config.theme?.name === "fumadocs-pixel-border";
 
   function toNode(item: FarmDocsNavigationItem): NavNode | null {
     const children = item.children ?? item.items ?? [];
@@ -317,6 +320,7 @@ function navTreeFromNavigation(config: Record<string, any>, entry: string): NavT
       return {
         type: "folder",
         name,
+        ...(defaultOpen ? { defaultOpen: true } : {}),
         ...(item.icon ? { icon: item.icon } : {}),
         ...(url
           ? {
@@ -395,6 +399,19 @@ function stripMarkdownText(content: string): string {
     .replace(/^[-*_]{3,}\s*$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function markdownStartsWithDescription(content: string, description?: string): boolean {
+  if (!description?.trim()) return false;
+
+  const withoutLeadingTitle = content
+    .trimStart()
+    .replace(/^#\s+[^\r\n]+(?:\r?\n|$)/, "")
+    .trimStart();
+  const firstBlock = withoutLeadingTitle.split(/\r?\n\s*\r?\n/, 1)[0] ?? "";
+  const normalize = (value: string) => stripMarkdownText(value).replace(/\s+/g, " ").trim();
+
+  return normalize(firstBlock) === normalize(description);
 }
 
 function normalizePathSegment(value: string): string {
@@ -966,6 +983,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
     const title = (data.title as string) ?? fallbackTitle;
     const description = data.description as string | undefined;
+    const descriptionInBody = markdownStartsWithDescription(humanRawContent, description);
     const structuredData = renderDocsPageStructuredDataJson({
       title,
       description,
@@ -982,6 +1000,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       url: currentUrl,
       title,
       description,
+      descriptionInBody,
       rawContent: humanRawContent,
       readingTime,
       readingTimeFormat: readingTimeOptions.format,
@@ -2446,10 +2465,10 @@ function renderFarmDocsDocument(input: {
   ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
   ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
   ${fontPreloads}
+  <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
   ${input.stylesheets
     .map((href) => `<link rel="stylesheet" href="${escapeDocumentText(href)}">`)
     .join("\n  ")}
-  <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
 </head>
 <body>
   <div id="root"><div id="farm-docs-root"${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
