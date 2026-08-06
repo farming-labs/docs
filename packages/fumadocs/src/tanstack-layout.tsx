@@ -10,12 +10,15 @@ import type {
   OpenDocsConfig,
   CopyMarkdownConfig,
 } from "@farming-labs/docs";
-import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
+import {
+  applySidebarFolderIndexBehavior,
+  resolveDocsAnalyticsConfig,
+} from "@farming-labs/docs/browser";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
-import { resolveReadingTimeOptions } from "./reading-time.js";
+import { resolveReadingTimeOptions } from "./reading-time-options.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";

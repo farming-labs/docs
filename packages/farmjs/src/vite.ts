@@ -2,14 +2,34 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@mdx-js/rollup";
+import {
+  applyDocsMarkdownHeadingAnchors,
+  encodeDocsHeadingTocUrls,
+  isolateDocsMarkdownPromptReferences,
+  withDocsMarkdownRenderableHeadings,
+} from "@farming-labs/docs";
 import { remarkCodeGroup } from "@farming-labs/docs/server";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
-import { remarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
+import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
+
+export function createCanonicalDocsRemarkHeading(): ReturnType<
+  typeof createFumadocsRemarkHeading
+> {
+  return (root, file) => {
+    isolateDocsMarkdownPromptReferences(root, file.value);
+    applyDocsMarkdownHeadingAnchors(root);
+    withDocsMarkdownRenderableHeadings(root, () =>
+      createFumadocsRemarkHeading({ customId: false })(root, file, () => undefined),
+    );
+    encodeDocsHeadingTocUrls(file.data.toc);
+    return root;
+  };
+}
 
 function findWorkspaceRoot(startDir: string): string | null {
   let current = startDir;
@@ -101,6 +121,22 @@ function resolveWorkspaceAliases() {
       replacement: `${themeSrc}/hardline/index.ts`,
     },
     {
+      find: /^@farming-labs\/theme\/shadcn$/,
+      replacement: `${themeSrc}/shadcn/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/threadline$/,
+      replacement: `${themeSrc}/threadline/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/command-grid$/,
+      replacement: `${themeSrc}/command-grid/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/ledger$/,
+      replacement: `${themeSrc}/ledger/index.ts`,
+    },
+    {
       find: /^@farming-labs\/theme\/search$/,
       replacement: `${themeSrc}/search.ts`,
     },
@@ -127,11 +163,13 @@ export function docsMdx(): PluginOption {
       name: "farming-labs-farmjs-workspace-alias",
       enforce: "pre",
       config() {
-        if (aliases.length === 0) return;
-
         return {
-          resolve: {
-            alias: aliases,
+          ...(aliases.length > 0 ? { resolve: { alias: aliases } } : {}),
+          ssr: {
+            noExternal: [
+              "@farming-labs/docs",
+              "@farming-labs/theme",
+            ],
           },
         };
       },
@@ -143,7 +181,7 @@ export function docsMdx(): PluginOption {
         remarkFrontmatter,
         [remarkMdxFrontmatter, { name: "metadata" }],
         remarkCodeGroup,
-        remarkHeading,
+        createCanonicalDocsRemarkHeading,
       ],
       rehypePlugins: [
         rehypeToc,

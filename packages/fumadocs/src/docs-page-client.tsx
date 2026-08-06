@@ -956,7 +956,7 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: !isChangelogRoute }}
+        footer={{ enabled: false }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb

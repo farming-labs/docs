@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
+const postcss = require("postcss");
 const packageDir = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const stylesDir = path.join(packageDir, "styles");
 const bundlesDir = path.join(stylesDir, "bundles");
@@ -53,8 +54,25 @@ function normalizeGeneratedCss(css) {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
   return `${withoutComments
     .replace(/\r\n/g, "\n")
+    .replace(/[\t ]+$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim()}\n`;
+}
+
+/**
+ * Tailwind 3 emits application utilities without cascade layers. Browsers give
+ * every unlayered rule priority over layered rules, even when the docs theme is
+ * loaded later. Farm's adapter serves this compatibility bundle only inside
+ * its standalone docs document, so flatten the already-compiled framework
+ * layers without changing the universal theme CSS users import globally.
+ */
+function flattenCascadeLayers(css) {
+  const root = postcss.parse(css);
+  root.walkAtRules("layer", (rule) => {
+    if (rule.nodes) rule.replaceWith(...rule.nodes);
+    else rule.remove();
+  });
+  return normalizeGeneratedCss(root.toString());
 }
 
 async function buildBundle(name, files) {
@@ -78,3 +96,9 @@ async function buildBundle(name, files) {
 await mkdir(bundlesDir, { recursive: true });
 
 await buildBundle("shared-framework", ["fumadocs-ui/dist/style.css", "base.css", "framework.css"]);
+
+const sharedFrameworkCss = await readFile(path.join(bundlesDir, "shared-framework.css"), "utf8");
+await writeFile(
+  path.join(bundlesDir, "browser-framework.css"),
+  flattenCascadeLayers(sharedFrameworkCss),
+);

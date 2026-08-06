@@ -10,6 +10,7 @@ export default defineConfig({
     "src/agent-skills-vite.ts",
     "src/docs-cloud-server.ts",
     "src/client/react.ts",
+    "src/browser.ts",
     "src/mcp.ts",
     "src/cli/index.ts",
   ],

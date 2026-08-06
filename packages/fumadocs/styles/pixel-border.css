@@ -159,9 +159,12 @@ code:not(pre code) {
 
 /* ─── Docs grid: sidebar (sticky left, full height) | content | TOC ─────── */
 @media (min-width: 768px) {
-  #nd-docs-layout:not([data-fd-framework]),
-  #nd-docs-layout:not([data-fd-framework]) [style*="fd-sidebar-col"] {
-    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  #nd-docs-layout.grid:not([data-fd-framework]) {
+    grid-template:
+      "sidebar header toc"
+      "sidebar toc-popover toc"
+      "sidebar main toc" 1fr /
+      var(--fd-sidebar-col) minmax(0, 1fr) var(--fd-toc-width) !important;
   }
   /* Sidebar stretches to end and sticks on scroll; no max-height so content isn't clipped */
   #nd-docs-layout aside#nd-sidebar {
@@ -174,14 +177,6 @@ code:not(pre code) {
 }
 
 @media (min-width: 1024px) {
-  #nd-docs-layout.grid:not([data-fd-framework]) {
-    grid-template:
-      "sidebar header toc"
-      "sidebar toc-popover toc"
-      "sidebar main toc" 1fr /
-      var(--fd-sidebar-col) minmax(0, 1fr) var(--fd-toc-width) !important;
-  }
-
   #nd-docs-layout [data-sidebar-placeholder] {
     justify-self: stretch;
   }

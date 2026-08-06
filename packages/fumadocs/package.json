@@ -33,6 +33,12 @@
       "import": "./dist/docs-client-hooks.mjs",
       "default": "./dist/docs-client-hooks.mjs"
     },
+    "./browser": {
+      "types": "./dist/browser.d.mts",
+      "import": "./dist/browser.mjs",
+      "default": "./dist/browser.mjs"
+    },
+    "./browser/css": "./styles/bundles/browser-framework.css",
     "./default": {
       "types": "./dist/default/index.d.mts",
       "import": "./dist/default/index.mjs",
@@ -160,6 +166,7 @@
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
     "next": ">=14.0.0",
+    "postcss": "^8.5.6",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
