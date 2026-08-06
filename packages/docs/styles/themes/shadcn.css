@@ -839,7 +839,7 @@ figure.shiki pre,
 .fd-docs-content figure.shiki pre {
   max-width: 100%;
   margin: 0 !important;
-  padding: 0.875rem 1rem !important;
+  padding: 0.625rem 0.75rem !important;
   overflow-x: auto !important;
   overscroll-behavior-inline: contain;
   scrollbar-color: color-mix(in oklab, var(--color-fd-foreground) 18%, transparent)
