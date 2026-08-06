@@ -107,6 +107,8 @@ interface DocsPageClientProps {
   lastUpdatedPosition?: "footer" | "below-title";
   /** Whether llms.txt is enabled — shows links in footer */
   llmsTxtEnabled?: boolean;
+  /** Frontmatter titles for pages whose MDX body does not author an h1 */
+  generatedTitleMap?: Record<string, string>;
   /** Map of pathname → frontmatter description */
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
@@ -533,6 +535,7 @@ export function DocsPageClient({
   lastUpdatedLabel = "Last updated",
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
+  generatedTitleMap,
   descriptionMap,
   description,
   feedbackEnabled = false,
@@ -561,8 +564,9 @@ export function DocsPageClient({
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
 
-  const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
+  const pageTitle = generatedTitleMap?.[normalizedPath];
+  const pageDescription = description ?? descriptionMap?.[normalizedPath];
   const isChangelogRoute = !!(
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
@@ -860,7 +864,7 @@ export function DocsPageClient({
     ) : undefined;
 
   const decoratedChildren = children;
-  const needsTitleDecorationsPortal = !!titleDescription || !!belowTitleBlock;
+  const needsTitleDecorationsPortal = !pageTitle && (!!titleDescription || !!belowTitleBlock);
 
   useEffect(() => {
     if (!needsTitleDecorationsPortal) {
@@ -894,6 +898,12 @@ export function DocsPageClient({
       ? createPortal(titleDecorations, titlePortalHost, "title-decorations")
       : null;
   const titleDecorationsFallback = titleDecorations && !titlePortalHost ? titleDecorations : null;
+  const generatedPageHeader = pageTitle ? (
+    <div className="fd-generated-page-header not-prose">
+      <h1 className="fd-page-title">{pageTitle}</h1>
+      <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
+    </div>
+  ) : null;
   const titleControlsPortal =
     showActionsInToc && titleControlsPortalHost
       ? createPortal(<ThreadlinePageControls />, titleControlsPortalHost, "title-controls")
@@ -994,10 +1004,11 @@ export function DocsPageClient({
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
         <DocsBody key="body" style={{ display: "flex", flexDirection: "column" }}>
+          {generatedPageHeader}
           <div key="content" style={{ flex: 1 }}>
             {renderedChildren}
           </div>
-          {titleDecorationsFallback}
+          {!generatedPageHeader && titleDecorationsFallback}
           {titleDecorationsPortal}
           {!isChangelogRoute && feedbackEnabled && (
             <DocsFeedback

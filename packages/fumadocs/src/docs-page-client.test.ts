@@ -45,6 +45,32 @@ describe("DocsPageClient llms.txt footer links", () => {
   });
 });
 
+describe("DocsPageClient generated page title", () => {
+  it("renders title, description, and below-title actions before preserved MDX content", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        generatedTitleMap: { "/docs/installation": "Installation" },
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        children: React.createElement("p", null, "Preserved content"),
+      }),
+    );
+
+    const titleIndex = html.indexOf("Installation");
+    const descriptionIndex = html.indexOf("Install the SDK.");
+    const actionsIndex = html.indexOf("Mock Actions");
+    const contentIndex = html.indexOf("Preserved content");
+
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(titleIndex).toBeLessThan(descriptionIndex);
+    expect(descriptionIndex).toBeLessThan(actionsIndex);
+    expect(actionsIndex).toBeLessThan(contentIndex);
+  });
+});
+
 describe("DocsPageClient structured data", () => {
   it("renders serialized Schema.org JSON-LD for the active docs page", () => {
     const html = renderToStaticMarkup(

@@ -134,6 +134,30 @@ agent:
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
+  it("passes frontmatter titles only for pages without an authored h1", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
+    mkdirSync(join(tmpDir, "app", "docs", "authored"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "generated", "page.mdx"),
+      "---\ntitle: Generated title\n---\n\nPreserved body\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "authored", "page.mdx"),
+      "---\ntitle: Authored title\n---\n\n# Authored title\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs" });
+    const props = findDocsPageClientProps(
+      Layout({ children: React.createElement("div", null, "child") }),
+    );
+    const titleMap = props?.generatedTitleMap as Record<string, string> | undefined;
+
+    expect(titleMap?.["/docs/generated"]).toBe("Generated title");
+    expect(titleMap?.["/docs/authored"]).toBeUndefined();
+  });
+
   it("enables llms.txt footer links by default", () => {
     const Layout = createDocsLayout({
       entry: "docs",
@@ -677,6 +701,29 @@ agent:
         url: "/docs/authentication",
       }),
     });
+  });
+
+  it("uses the folder slug for generic Shadcn introduction section labels", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "statewire", "authoring"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "page.mdx"),
+      "---\ntitle: Introduction\n---\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "authoring", "page.mdx"),
+      "---\ntitle: Authoring\n---\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs", theme: { name: "shadcn" } });
+    const tree = findDocsLayoutTree(
+      Layout({ children: React.createElement("div", null, "child") }),
+    );
+
+    expect(
+      (tree?.children as Array<Record<string, unknown>>).find((item) => item.name === "Statewire"),
+    ).toMatchObject({ type: "folder" });
   });
 
   it("applies sidebar.folderIndexBehaviorOverrides selectively", () => {
