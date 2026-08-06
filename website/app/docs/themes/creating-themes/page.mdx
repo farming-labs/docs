@@ -277,6 +277,17 @@ codeBlock: {
 }
 ```
 
+The `theme` and `darkTheme` fields drive syntax highlighting during the Next.js build. Pass the live theme object to `withDocs()` so these values are picked up:
+
+```ts title="next.config.ts"
+import { withDocs } from "@farming-labs/next/config";
+import docsConfig from "./docs.config";
+
+export default withDocs({}, { theme: docsConfig.theme });
+```
+
+When the `theme` field is omitted, `withDocs()` reads `docs.config` directly to detect whether the shadcn preset is in use and selects `github-light-default` / `vesper` accordingly; all other configs fall back to `github-light` / `github-dark`.
+
 ### `ui.sidebar`
 
 Sidebar visual style.
