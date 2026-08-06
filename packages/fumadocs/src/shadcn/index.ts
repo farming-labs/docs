@@ -48,6 +48,12 @@ const ShadcnUIDefaults = {
     toc: { enabled: true, depth: 4, style: "default" as const },
     header: { height: 56, sticky: true },
   },
+  codeBlock: {
+    showCopyButton: true,
+    showLineNumbers: false,
+    theme: "github-light-default",
+    darkTheme: "vesper",
+  },
   sidebar: {
     style: "default" as const,
   },
