@@ -250,8 +250,9 @@ code:not(pre code) {
   }
 }
 
-/* Fumadocs switches its shell at 768px; Farm's docs keep the mobile shell
- * through tablet sizes, matching the production 1020px breakpoint. */
+/* Keep the compact shell through tablet sizes. The sidebar itself stays on
+ * Fumadocs' native mobile lifecycle so focus, scroll locking, Escape, and
+ * backdrop dismissal work consistently at every touch breakpoint. */
 @media (max-width: 1023px) {
   :root {
     --fd-mobile-nav-height: 56px;
@@ -339,33 +340,244 @@ code:not(pre code) {
   #nd-docs-layout article#nd-page > .prose {
     max-width: none;
   }
-}
 
-@media (min-width: 768px) and (max-width: 1023px) {
-  #nd-docs-layout[data-fd-tablet-sidebar-open="true"]::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 85;
-    background: color-mix(in srgb, var(--color-fd-background) 72%, transparent);
+  html:has([data-fd-tablet-sidebar-state="open"]) {
+    overflow: hidden;
   }
 
-  #nd-docs-layout[data-fd-tablet-sidebar-open="true"] [data-sidebar-placeholder] {
+  #nd-docs-layout:has([data-fd-tablet-sidebar-state="open"])
+    [data-sidebar-placeholder] {
     position: fixed;
     inset: 0 auto 0 0;
-    z-index: 90;
+    z-index: 100;
     display: block !important;
     width: min(342px, calc(100vw - 42px));
     height: 100dvh;
     pointer-events: auto;
   }
 
-  #nd-docs-layout[data-fd-tablet-sidebar-open="true"] [data-sidebar-placeholder] > aside {
+  #nd-docs-layout:has([data-fd-tablet-sidebar-state="open"])
+    [data-sidebar-placeholder]
+    > aside {
     position: absolute;
     inset: 0;
     width: 100% !important;
     height: 100dvh;
     max-height: none;
+  }
+
+  #nd-docs-layout:has([data-fd-tablet-sidebar-state="open"])
+    aside#nd-sidebar
+    > div:first-child {
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    flex-basis: 56px;
+    padding-right: 58px;
+  }
+
+  .fd-tablet-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    display: block;
+    border: 0;
+    background: color-mix(in srgb, var(--color-fd-background) 72%, transparent);
+    backdrop-filter: blur(2px);
+  }
+
+  .fd-tablet-sidebar-close {
+    position: fixed;
+    top: 6px;
+    left: calc(min(342px, calc(100vw - 42px)) - 50px);
+    z-index: 101;
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    color: var(--color-fd-muted-foreground);
+    background: transparent;
+  }
+
+  .fd-tablet-sidebar-close:hover,
+  .fd-tablet-sidebar-close:focus-visible {
+    color: var(--color-fd-foreground);
+  }
+
+  .fd-tablet-sidebar-close:focus-visible {
+    outline: 1px solid var(--color-fd-ring);
+    outline-offset: -1px;
+  }
+
+  .fd-tablet-sidebar-close > span,
+  .fd-tablet-sidebar-close > span::after {
+    display: block;
+    width: 18px;
+    height: 1px;
+    background: currentColor;
+    content: "";
+  }
+
+  .fd-tablet-sidebar-close > span {
+    transform: rotate(45deg);
+  }
+
+  .fd-tablet-sidebar-close > span::after {
+    transform: rotate(90deg);
+  }
+
+  #nd-docs-layout > div[data-state]:has(+ aside#nd-sidebar-mobile) {
+    z-index: 95;
+    background: color-mix(in srgb, var(--color-fd-background) 72%, transparent);
+  }
+
+  aside#nd-sidebar-mobile {
+    --fd-pixel-rail-width: 12px;
+    inset: 0 auto 0 0 !important;
+    z-index: 100;
+    width: min(342px, calc(100vw - 42px));
+    max-width: none;
+    border-right: 1px solid var(--color-fd-border);
+    border-left: 0;
+    background-color: var(--color-fd-background);
+    background-image:
+      linear-gradient(var(--color-fd-border), var(--color-fd-border)),
+      linear-gradient(var(--color-fd-border), var(--color-fd-border)),
+      repeating-linear-gradient(
+        -45deg,
+        color-mix(in srgb, var(--color-fd-border) 2%, transparent),
+        color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
+        transparent 1px,
+        transparent 6px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        color-mix(in srgb, var(--color-fd-border) 2%, transparent),
+        color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
+        transparent 1px,
+        transparent 6px
+      );
+    background-position:
+      var(--fd-pixel-rail-width) 0,
+      calc(100% - var(--fd-pixel-rail-width)) 0,
+      left top,
+      right top;
+    background-repeat: repeat-y;
+    background-size:
+      1px 100%,
+      1px 100%,
+      var(--fd-pixel-rail-width) 100%,
+      var(--fd-pixel-rail-width) 100%;
+    box-shadow: none;
+  }
+
+  aside#nd-sidebar-mobile[data-state="open"] {
+    animation: fd-pixel-sidebar-in 180ms ease-out both !important;
+  }
+
+  aside#nd-sidebar-mobile[data-state="closed"] {
+    animation: fd-pixel-sidebar-out 150ms ease-in both !important;
+  }
+
+  aside#nd-sidebar-mobile > div:first-child {
+    box-sizing: border-box;
+    min-height: 56px;
+    flex: 0 0 56px;
+    gap: 0;
+    padding: 0 calc(var(--fd-pixel-rail-width) + 8px);
+    border-bottom: 1px solid var(--color-fd-border);
+  }
+
+  aside#nd-sidebar-mobile > div:first-child > div {
+    height: 100%;
+  }
+
+  aside#nd-sidebar-mobile > div:first-child > div::before {
+    content: "/ DOCS";
+    flex: 0 0 auto;
+    color: var(--color-fd-foreground);
+    font-family: var(--fd-font-mono, ui-monospace, monospace);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+
+  aside#nd-sidebar-mobile
+    > div:first-child
+    > div
+    > button[aria-label="Open Sidebar"]:last-child {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  aside#nd-sidebar-mobile
+    > div:first-child
+    > div
+    > button[aria-label="Open Sidebar"]:last-child
+    svg {
+    display: none;
+  }
+
+  aside#nd-sidebar-mobile
+    > div:first-child
+    > div
+    > button[aria-label="Open Sidebar"]:last-child::before,
+  aside#nd-sidebar-mobile
+    > div:first-child
+    > div
+    > button[aria-label="Open Sidebar"]:last-child::after {
+    position: absolute;
+    width: 18px;
+    height: 1px;
+    background: currentColor;
+    content: "";
+  }
+
+  aside#nd-sidebar-mobile
+    > div:first-child
+    > div
+    > button[aria-label="Open Sidebar"]:last-child::before {
+    transform: rotate(45deg);
+  }
+
+  aside#nd-sidebar-mobile
+    > div:first-child
+    > div
+    > button[aria-label="Open Sidebar"]:last-child::after {
+    transform: rotate(-45deg);
+  }
+
+  aside#nd-sidebar-mobile > div:nth-child(2) > div:last-child {
+    padding-inline: calc(var(--fd-pixel-rail-width) + 4px) !important;
+  }
+}
+
+@keyframes fd-pixel-sidebar-in {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fd-pixel-sidebar-out {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  aside#nd-sidebar-mobile[data-state] {
+    animation-duration: 1ms !important;
   }
 }
 

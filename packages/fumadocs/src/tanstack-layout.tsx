@@ -21,6 +21,7 @@ import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveReadingTimeOptions } from "./reading-time-options.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
+import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
@@ -510,6 +511,7 @@ export function TanstackDocsLayout({
       <TypographyStyle typography={typography} />
       <LayoutStyle layout={layoutDimensions} />
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+      {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
       {!staticExport && (
         <Suspense fallback={null}>
           <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />

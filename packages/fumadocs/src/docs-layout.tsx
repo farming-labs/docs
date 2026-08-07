@@ -36,6 +36,7 @@ import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
+import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -1195,6 +1196,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+        {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
         {!staticExport && (
           <Suspense fallback={null}>
             <DocsCommandSearch
