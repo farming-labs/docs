@@ -192,6 +192,33 @@ code:not(pre code) {
     color: var(--color-fd-muted-foreground);
   }
 
+  /* Farm's desktop header uses the compact keyboard hint in place of the
+   * magnifier while keeping Fumadocs' search trigger and shortcut behavior. */
+  #nd-docs-layout #nd-subnav button[data-search] svg {
+    display: none !important;
+  }
+
+  #nd-docs-layout #nd-subnav button[data-search]::after {
+    content: "⌘  K";
+    display: inline-flex;
+    width: 35px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-fd-border);
+    background: linear-gradient(
+      to right,
+      transparent calc(50% - 0.5px),
+      var(--color-fd-border) calc(50% - 0.5px),
+      var(--color-fd-border) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    );
+    font-family: var(--fd-font-mono, ui-monospace, monospace);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+
   #nd-docs-layout aside#nd-sidebar {
     position: sticky;
     top: 0;
@@ -208,7 +235,7 @@ code:not(pre code) {
     width: min(100%, var(--fd-content-width));
     max-width: none;
     margin-inline: auto;
-    padding: 46px 40px 80px !important;
+    padding: 47px 40px 80px !important;
     gap: 0;
   }
 
@@ -413,7 +440,7 @@ aside#nd-sidebar > div:first-child {
   gap: 0;
   justify-content: center;
   padding: 0 32px;
-  border-bottom: 1px solid var(--color-fd-border);
+  border-bottom: 0;
 }
 
 aside#nd-sidebar > div:first-child > div:first-child {
@@ -458,9 +485,15 @@ aside#nd-sidebar > div:first-child button[data-search-full] {
   display: none !important;
 }
 
+/* Production keeps the tree scrollable to the bottom without a pinned
+ * Fumadocs appearance switcher occupying the last row. */
+aside#nd-sidebar > div:last-child {
+  display: none !important;
+}
+
 /* ── Full-width border separators between top-level items ─────────── */
 aside .overscroll-contain > div {
-  margin-top: -22px;
+  margin-top: 3px;
 }
 
 aside .overscroll-contain > div > a[data-active] {
@@ -474,13 +507,12 @@ aside .overscroll-contain > div > a[data-active] {
 
 aside .overscroll-contain > div > div {
   border-top: 1px solid var(--color-fd-border);
-  margin-left: -1rem;
+  margin-left: -0.875rem;
   margin-right: -1rem;
   padding: 0 !important;
 }
 
-aside .overscroll-contain > div > a[data-active]:first-child,
-aside .overscroll-contain > div > div:first-child {
+aside .overscroll-contain > div > a[data-active]:first-child {
   border-top: none;
 }
 
@@ -493,10 +525,7 @@ aside .overscroll-contain > div > div:last-child {
 
 aside a[data-active],
 aside button[aria-controls][aria-expanded] {
-  font-size: 0.875rem;
-  line-height: 1.6;
   border-radius: 0 !important;
-  padding: 0.5rem 0.625rem !important;
   transition: color 0.15s ease;
   overflow: hidden;
   background-color: transparent !important;
@@ -512,7 +541,7 @@ aside a[data-active="true"]:hover {
   background: transparent !important;
   background-color: transparent !important;
   color: var(--color-fd-primary) !important;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 aside a[data-active="false"]:hover {
@@ -524,10 +553,11 @@ aside a[data-active="false"]:hover {
 /* ── Child links inside collapsible folders ──────────────────────── */
 
 aside div.overflow-hidden[data-state] a[data-active] {
-  font-size: 0.785rem !important;
-  padding-left: 2rem !important;
-  padding-top: 0.25rem !important;
-  padding-bottom: 0.25rem !important;
+  position: relative;
+  min-height: 31.5703125px;
+  padding: 6px 30px 6px 68px !important;
+  font-size: 13.5px !important;
+  line-height: 1.45 !important;
   color: var(--color-fd-muted-foreground) !important;
   overflow: hidden;
 }
@@ -535,7 +565,7 @@ aside div.overflow-hidden[data-state] a[data-active] {
 aside div.overflow-hidden[data-state] a[data-active="true"],
 aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
   color: var(--color-fd-primary) !important;
-  font-weight: 500 !important;
+  font-weight: 400 !important;
 }
 
 aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
@@ -544,31 +574,68 @@ aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
 
 /* ── Folder toggle buttons (section headers) ─────────────────────── */
 
-aside button.text-fd-muted-foreground {
-  color: var(--color-fd-foreground);
-  font-size: 0.875rem;
-  font-weight: 500;
+aside#nd-sidebar button.text-fd-muted-foreground {
+  height: 35px;
+  min-height: 35px;
+  padding: 8px 30px !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 18px !important;
   letter-spacing: normal;
   text-transform: none;
 }
 
-aside button.text-fd-muted-foreground:hover {
-  color: var(--color-fd-foreground);
+aside#nd-sidebar button.text-fd-muted-foreground:hover {
+  color: var(--color-fd-foreground) !important;
 }
 
 aside a[data-active="true"]::before {
-  background-color: var(--color-fd-primary) !important;
-  width: 2px !important;
-  height: 40% !important;
-  margin-top: -1.5px !important;
-  margin-left: 0.6rem !important;
-  inset-inline-start: 0.5rem !important;
+  content: none !important;
+}
+
+aside div.overflow-hidden[data-state] > div {
+  gap: 0 !important;
+  padding: 8px 0 6px !important;
+}
+
+/* Nested metadata folders are structural separators in the Farm sidebar.
+ * Their labels stay out of the visual tree, but their spacing remains so
+ * related integration links retain the same production grouping. */
+aside div.overflow-hidden[data-state] button[aria-expanded] {
+  display: none !important;
+}
+
+aside div.overflow-hidden[data-state] div.overflow-hidden[data-state] > div {
+  padding: 33.5703125px 0 8px !important;
+}
+
+aside div.overflow-hidden[data-state] a[data-active]::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 0.5px);
+  inset-inline-start: 46px;
+  width: 22px;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-fd-border) 88%, transparent);
+}
+
+aside div.overflow-hidden[data-state] a[data-active="true"]::after {
+  background: var(--color-fd-primary);
 }
 
 aside div.overflow-hidden[data-state]::before {
-  margin-left: 0.5rem !important;
-  height: calc(100% + 20px) !important;
-  margin-top: -25px !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  inset-inline-start: 46px !important;
+  width: 1px !important;
+  height: auto !important;
+  margin: 0 !important;
+}
+
+aside button[aria-expanded] > .lucide-chevron-down,
+aside button[aria-expanded] > .lucide-chevron-right {
+  display: none !important;
 }
 
 aside div[data-state="open"] > :last-child {
@@ -670,6 +737,22 @@ aside button[class*="rounded-full"] {
   display: none;
 }
 
+/* The adapter portals title actions beside an MDX-owned h1. Removing the
+ * portal wrapper from layout makes that block flow like the native page. */
+#nd-docs-layout .fd-title-decorations-host {
+  display: contents;
+}
+
+#nd-docs-layout .fd-below-title-block {
+  display: flex;
+  width: 100%;
+  margin: 0 0 20px;
+}
+
+#nd-docs-layout .fd-below-title-block .fd-actions-portal {
+  width: 100%;
+}
+
 @media (max-width: 1023px) {
   #nd-page > .prose h1 {
     font-size: 32px;
@@ -718,8 +801,21 @@ figure.shiki,
   --padding-right: 0px;
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
+  background: #141414 !important;
   overflow: hidden;
   box-shadow: 3px 3px 0 0 var(--color-fd-border) !important;
+}
+
+@media (min-width: 1024px) {
+  figure.shiki,
+  .fd-codeblock {
+    margin: 20px 0 !important;
+  }
+
+  figure.shiki span[style*="--shiki-dark"],
+  .fd-codeblock span[style*="--shiki-dark"] {
+    color: color-mix(in srgb, var(--color-fd-foreground) 74%, transparent) !important;
+  }
 }
 
 figure.shiki pre,
@@ -760,6 +856,12 @@ figure.shiki code,
 figure.shiki button,
 .fd-copy-btn {
   border-radius: 0 !important;
+}
+
+figure.shiki button[aria-label="Copy Text"],
+.fd-copy-btn {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Code block title bar */
@@ -887,6 +989,9 @@ hr {
 
 /* ─── Page Actions (pixel-border overrides) ───────────────────────── */
 .fd-page-action-btn {
+  height: 34px;
+  gap: 8px;
+  padding: 0 12px;
   border-radius: 0 !important;
   font-size: 0.75rem;
   letter-spacing: 0.03em;
