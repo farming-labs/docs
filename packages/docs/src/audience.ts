@@ -1,13 +1,7 @@
 import { createProcessor } from "@mdx-js/mdx";
-import {
-  resolveDocsAudienceExposure,
-  type DocsContentAudience,
-} from "./audience-exposure.js";
+import { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
 
-export {
-  resolveDocsAudienceExposure,
-  type DocsContentAudience,
-} from "./audience-exposure.js";
+export { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
 
 type DocsAudienceTagName = "Agent" | "Human" | "Audience";
 

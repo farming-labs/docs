@@ -3,9 +3,7 @@ import { normalizeDocsModuleKey, resolveDocsModule } from "./module-map.js";
 
 describe("Farm docs module map", () => {
   it("normalizes Vite module keys", () => {
-    expect(normalizeDocsModuleKey("./docs\\guide/page.mdx")).toBe(
-      "/docs/guide/page.mdx",
-    );
+    expect(normalizeDocsModuleKey("./docs\\guide/page.mdx")).toBe("/docs/guide/page.mdx");
   });
 
   it("resolves route-relative module keys directly", () => {

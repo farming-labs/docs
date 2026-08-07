@@ -77,11 +77,7 @@ import {
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
 } from "@farming-labs/docs";
-import type {
-  DocsAgentTraceEventInput,
-  DocsAskAIMcpConfig,
-  DocsConfig,
-} from "@farming-labs/docs";
+import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
@@ -2498,13 +2494,16 @@ export function createFarmDocsRuntimeHandler(
   return async function handleFarmDocsRuntimeRequest(request: Request): Promise<Response | null> {
     const url = new URL(request.url);
     if (url.pathname === FARM_DOCS_BROWSER_CSS_PATH) {
-      return new Response(request.method.toUpperCase() === "HEAD" ? null : loadFarmDocsBrowserCss(), {
-        status: 200,
-        headers: {
-          "Content-Type": "text/css; charset=utf-8",
-          "Cache-Control": "public, max-age=31536000, immutable",
+      return new Response(
+        request.method.toUpperCase() === "HEAD" ? null : loadFarmDocsBrowserCss(),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "text/css; charset=utf-8",
+            "Cache-Control": "public, max-age=31536000, immutable",
+          },
         },
-      });
+      );
     }
 
     if (!isHtmlDocsPageRequest(runtimeConfig, request)) {
@@ -2516,7 +2515,9 @@ export function createFarmDocsRuntimeHandler(
       data = await docsServer.load({ pathname: url.pathname });
     } catch (error) {
       const status =
-        error && typeof error === "object" && typeof (error as { status?: unknown }).status === "number"
+        error &&
+        typeof error === "object" &&
+        typeof (error as { status?: unknown }).status === "number"
           ? (error as { status: number }).status
           : 500;
       if (status === 404) return null;

@@ -187,6 +187,24 @@ aside#nd-sidebar-mobile {
 
 aside#nd-sidebar::after,
 .fd-sidebar::after {
+  position: absolute;
+  inset-block: 3rem 0;
+  inset-inline-end: 0.5rem;
+  z-index: 1;
+  display: block !important;
+  width: 1px;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--color-fd-border) 10%,
+    var(--color-fd-border) 90%,
+    transparent 100%
+  );
+}
+
+aside#nd-sidebar-mobile::after {
   display: none !important;
 }
 
@@ -567,6 +585,15 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   line-height: 1.5 !important;
 }
 
+.fd-generated-page-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.fd-generated-page-header .fd-page-title {
+  margin: 0 0 0.5rem;
+}
+
 .fd-docs-content,
 #nd-page .prose {
   color: var(--color-fd-foreground);
@@ -597,6 +624,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-copy-btn,
 .fd-ai-code-copy,
 .fd-ai-model-dropdown-btn,
+.fd-page-footer > a,
 .fd-page-nav-card,
 .fd-page-nav a,
 #nd-page > div[class~="@container"] > a {
@@ -613,10 +641,21 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-copy-btn:hover,
 .fd-ai-code-copy:hover,
 .fd-ai-model-dropdown-btn:hover,
+.fd-page-footer > a:hover,
 .fd-page-nav-card:hover,
 .fd-page-nav a:hover,
 #nd-page > div[class~="@container"] > a:hover {
   background: var(--fd-shadcn-control-hover) !important;
+}
+
+.fd-page-footer > a {
+  min-height: 2rem;
+  padding: 0.5rem 0.75rem !important;
+  text-decoration: none !important;
+}
+
+.fd-llms-txt-links {
+  display: none !important;
 }
 
 .fd-page-nav,

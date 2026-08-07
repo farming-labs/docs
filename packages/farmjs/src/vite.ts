@@ -17,9 +17,7 @@ import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
 
-export function createCanonicalDocsRemarkHeading(): ReturnType<
-  typeof createFumadocsRemarkHeading
-> {
+export function createCanonicalDocsRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
   return (root, file) => {
     isolateDocsMarkdownPromptReferences(root, file.value);
     applyDocsMarkdownHeadingAnchors(root);
@@ -214,10 +212,7 @@ export function docsMdx(): PluginOption {
         return {
           ...(aliases.length > 0 ? { resolve: { alias: aliases } } : {}),
           ssr: {
-            noExternal: [
-              "@farming-labs/docs",
-              "@farming-labs/theme",
-            ],
+            noExternal: ["@farming-labs/docs", "@farming-labs/theme"],
           },
         };
       },

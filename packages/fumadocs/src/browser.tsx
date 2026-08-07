@@ -74,7 +74,10 @@ function useBrowserParams() {
   return useMemo<Record<string, string | string[]>>(() => ({}), []);
 }
 
-function BrowserLink({ prefetch: _prefetch, ...props }: ComponentProps<"a"> & { prefetch?: boolean }) {
+function BrowserLink({
+  prefetch: _prefetch,
+  ...props
+}: ComponentProps<"a"> & { prefetch?: boolean }) {
   return <a {...props} />;
 }
 
