@@ -611,15 +611,39 @@ aside div.overflow-hidden[data-state] > div {
   padding: 8px 0 6px !important;
 }
 
-/* Nested metadata folders are structural separators in the Farm sidebar.
- * Their labels stay out of the visual tree, but their spacing remains so
- * related integration links retain the same production grouping. */
-aside div.overflow-hidden[data-state] button[aria-expanded] {
-  display: none !important;
+/* Nested folders keep their labels visible so the configured information
+ * architecture survives in adapters with deeper sidebar trees. */
+aside#nd-sidebar div.overflow-hidden[data-state] button[aria-expanded] {
+  position: relative;
+  display: flex !important;
+  height: 31.5703125px;
+  min-height: 31.5703125px;
+  padding: 6px 30px 6px 68px !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.45 !important;
 }
 
 aside div.overflow-hidden[data-state] div.overflow-hidden[data-state] > div {
-  padding: 33.5703125px 0 8px !important;
+  padding: 0 0 6px !important;
+}
+
+aside div.overflow-hidden[data-state] button[aria-expanded]::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 0.5px);
+  inset-inline-start: 46px;
+  width: 22px;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-fd-border) 88%, transparent);
+}
+
+aside
+  div.overflow-hidden[data-state]
+  div.overflow-hidden[data-state]
+  a[data-active] {
+  padding-inline-start: 94px !important;
 }
 
 aside div.overflow-hidden[data-state] a[data-active]::after {
@@ -643,6 +667,19 @@ aside div.overflow-hidden[data-state]::before {
   width: 1px !important;
   height: auto !important;
   margin: 0 !important;
+}
+
+aside
+  div.overflow-hidden[data-state]
+  div.overflow-hidden[data-state]
+  a[data-active]::after {
+  inset-inline-start: 72px;
+}
+
+aside
+  div.overflow-hidden[data-state]
+  div.overflow-hidden[data-state]::before {
+  inset-inline-start: 72px !important;
 }
 
 aside button[aria-expanded] > .lucide-chevron-down,

@@ -83,6 +83,14 @@ function normalizeProviderName(name: string): string {
   return name.trim().toLowerCase();
 }
 
+export function resolveOpenDocsProviderIcon(name?: string): string | undefined {
+  if (!name) return undefined;
+
+  const normalizedName = normalizeProviderName(name);
+  const presetId = normalizedName === "github copilot" ? "copilot" : normalizedName;
+  return OPEN_DOCS_PROVIDER_PRESETS[presetId]?.iconHtml;
+}
+
 export function resolveOpenDocsProviders(
   providers?: OpenDocsProvider[],
   options: ResolveOpenDocsProvidersOptions = {},

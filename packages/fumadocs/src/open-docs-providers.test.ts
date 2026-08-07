@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveOpenDocsProvider } from "./open-docs-providers.js";
+import { resolveOpenDocsProvider, resolveOpenDocsProviderIcon } from "./open-docs-providers.js";
 
 describe("resolveOpenDocsProvider", () => {
   it("keeps preset targets ahead of global targets for provider objects", () => {
@@ -59,5 +59,11 @@ describe("resolveOpenDocsProvider", () => {
         icon: '<svg viewBox="0 0 1 1"><path d="M0 0" /></svg>',
       })?.iconHtml,
     ).toContain('viewBox="0 0 1 1"');
+  });
+
+  it("recovers preset icons from serialized provider labels", () => {
+    expect(resolveOpenDocsProviderIcon("ChatGPT")).toContain("<svg");
+    expect(resolveOpenDocsProviderIcon("GitHub Copilot")).toContain("<svg");
+    expect(resolveOpenDocsProviderIcon("Internal")).toBeUndefined();
   });
 });

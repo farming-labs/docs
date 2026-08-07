@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { usePathname } from "fumadocs-core/framework";
 import type { CopyMarkdownFormat } from "@farming-labs/docs";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
-import { resolveOpenDocsProviders } from "./open-docs-providers.js";
+import { resolveOpenDocsProviderIcon, resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { sanitizeIconHtml } from "./safe-icon-html.js";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
@@ -464,7 +464,9 @@ export function PageActions({
           {dropdownOpen && (
             <div className="fd-page-action-menu" role="menu">
               {resolvedProviders.map((provider) => {
-                const iconHtml = sanitizeIconHtml(provider.iconHtml);
+                const iconHtml = sanitizeIconHtml(
+                  provider.iconHtml ?? resolveOpenDocsProviderIcon(provider.name),
+                );
 
                 return (
                   <button

@@ -958,12 +958,38 @@ export function DocsPageClient({
 
     const host = document.createElement("div");
     host.className = "fd-title-decorations-host";
-    const authoredDescription = descriptionInBody ? title.nextElementSibling : null;
-    const anchor = authoredDescription?.matches("p") ? authoredDescription : title;
-    anchor.insertAdjacentElement("afterend", host);
+
+    const placeHost = () => {
+      let anchor: Element = title;
+
+      if (descriptionInBody) {
+        let sibling = title.nextElementSibling;
+        while (sibling) {
+          if (sibling === host || sibling.matches(".not-prose, .fd-title-decorations-host")) {
+            sibling = sibling.nextElementSibling;
+            continue;
+          }
+
+          if (sibling.matches("p")) anchor = sibling;
+          break;
+        }
+      }
+
+      if (anchor.nextElementSibling !== host) {
+        anchor.insertAdjacentElement("afterend", host);
+      }
+    };
+
+    title.insertAdjacentElement("afterend", host);
+    placeHost();
+    const observer = new MutationObserver(placeHost);
+    observer.observe(title.parentElement ?? title, { childList: true });
+    const animationFrame = window.requestAnimationFrame(placeHost);
     setTitlePortalHost(host);
 
     return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
       host.remove();
       setTitlePortalHost(null);
     };
