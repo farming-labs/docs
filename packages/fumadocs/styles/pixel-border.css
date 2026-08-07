@@ -714,9 +714,11 @@ aside#nd-sidebar > div:first-child button[data-search-full] {
 }
 
 /* Production keeps the tree scrollable to the bottom without a pinned
- * Fumadocs appearance switcher occupying the last row. Framework adapters
- * use the last child for their navigation tree, so keep this Fumadocs-only. */
-#nd-docs-layout:not([data-fd-framework]) aside#nd-sidebar > div:last-child {
+ * Fumadocs appearance switcher occupying the last row. Farm's server-rendered
+ * layout uses `.sidebar-scroll` as its last child, so never hide that tree. */
+#nd-docs-layout:not([data-fd-framework])
+  aside#nd-sidebar
+  > div:last-child:not(.sidebar-scroll) {
   display: none !important;
 }
 
