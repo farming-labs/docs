@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
+import { shadcn } from "./shadcn/index.js";
 
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
@@ -132,6 +133,75 @@ agent:
     expect(props?.openDocs).toBe(true);
     expect(props?.pageActionsAlignment).toBe("right");
     expect(props?.pageActionsPosition).toBe("below-title");
+  });
+
+  it("generates frontmatter titles only when the MDX body does not author an h1", () => {
+    const pages = {
+      generated: ["---", "title: Generated", "---", "", "Body without a heading."],
+      fenced: ["---", "title: Fenced", "---", "", "```md", "# Example heading", "```"],
+      markdown: ["---", "title: Markdown", "---", "", "# Markdown"],
+      html: ["---", "title: HTML", "---", "", "<h1>HTML</h1>"],
+      setext: ["---", "title: Setext", "---", "", "Setext", "======"],
+    };
+
+    for (const [slug, lines] of Object.entries(pages)) {
+      mkdirSync(join(tmpDir, "app", "docs", slug), { recursive: true });
+      writeFileSync(join(tmpDir, "app", "docs", slug, "page.mdx"), lines.join("\n"), "utf-8");
+    }
+
+    const Layout = createDocsLayout({ entry: "docs", theme: shadcn() });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props?.generatedTitleMap).toEqual({
+      "/docs/generated": "Generated",
+      "/docs/fenced": "Fenced",
+    });
+  });
+
+  it("does not change title rendering for non-Shadcn themes", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "generated", "page.mdx"),
+      "---\ntitle: Generated\n---\n\nBody without a heading.",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs" });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props?.generatedTitleMap).toEqual({});
+  });
+
+  it("uses a readable Shadcn folder label for Introduction landing pages", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "statewire", "authoring-js"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "page.mdx"),
+      "---\ntitle: Introduction\n---\n\n# Introduction\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "authoring-js", "page.mdx"),
+      "---\ntitle: Authoring JavaScript\n---\n\n# Authoring JavaScript\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: shadcn(),
+    });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const pageTree = findDocsLayoutTree(tree) as {
+      children?: Array<{ type?: string; name?: string; index?: { name?: string } }>;
+    } | null;
+    const statewire = pageTree?.children?.find((node) => node.type === "folder");
+
+    expect(statewire).toMatchObject({
+      type: "folder",
+      name: "Statewire",
+    });
+    expect(statewire?.index).toBeUndefined();
   });
 
   it("enables llms.txt footer links by default", () => {

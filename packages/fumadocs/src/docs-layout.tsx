@@ -100,6 +100,41 @@ function readFrontmatter(filePath: string): Record<string, unknown> {
   }
 }
 
+function hasAuthoredPageTitle(source: string): boolean {
+  const { content } = matter(source);
+  const lines = content.split(/\r?\n/);
+  let fence: string | undefined;
+  let previousTextLine = "";
+
+  for (const line of lines) {
+    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1]?.[0];
+      fence = fence === marker ? undefined : (fence ?? marker);
+      previousTextLine = "";
+      continue;
+    }
+    if (fence) continue;
+    if (/^ {0,3}#(?:\s+|$)/.test(line) || /^\s*<h1(?:\s|>)/i.test(line)) return true;
+    if (previousTextLine && /^ {0,3}=+\s*$/.test(line)) return true;
+    previousTextLine = line.trim() && !line.trimStart().startsWith("<") ? line : "";
+  }
+
+  return false;
+}
+
+function resolveSidebarFolderName(themeName: string | undefined, slug: string, pageTitle: string) {
+  if (themeName !== "shadcn" || pageTitle.trim().toLowerCase() !== "introduction") {
+    return pageTitle;
+  }
+
+  return slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 /** Check if a directory has any subdirectories that contain page.mdx. */
 function isWithinDir(candidate: string, target: string): boolean {
   const relative = path.relative(target, candidate);
@@ -343,6 +378,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
     const url = publicDocsRoute(ctx, slug);
     const icon = resolveIcon(data.icon as string | undefined, icons);
     const displayName = (data.title as string) ?? name.replace(/-/g, " ");
+    const folderName = resolveSidebarFolderName(config.theme?.name, name, displayName);
     const hasChildren = hasChildPages(full, excludedDirs);
 
     if (data.hidden === true) {
@@ -351,7 +387,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
       const folderChildren = scanDir(full, slug, slugOrder);
       return {
         type: "folder",
-        name: displayName,
+        name: folderName,
         icon,
         children: folderChildren,
         ...(flat ? { collapsible: false, defaultOpen: true } : {}),
@@ -362,7 +398,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
       const folderChildren = scanDir(full, slug, slugOrder);
       return {
         type: "folder",
-        name: displayName,
+        name: folderName,
         icon,
         index: { type: "page", name: displayName, url, icon },
         folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
@@ -542,6 +578,38 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
       if (fs.statSync(full).isDirectory()) {
         scan(full, [...slugParts, name]);
       }
+    }
+  }
+
+  scan(docsDir, []);
+  return map;
+}
+
+/** Build titles only for pages whose MDX body does not already author an h1. */
+function buildGeneratedTitleMap(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+): Record<string, string> {
+  const docsDir = ctx.docsDir;
+  const map: Record<string, string> = {};
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!fs.existsSync(dir)) return;
+    if (isExcludedDir(dir, excludedDirs)) return;
+
+    const pagePath = findDocsPageFile(dir);
+    if (pagePath) {
+      const source = fs.readFileSync(pagePath, "utf-8");
+      const { data } = matter(source);
+      if (typeof data.title === "string" && !hasAuthoredPageTitle(source)) {
+        map[publicDocsRoute(ctx, slugParts)] = data.title;
+      }
+    }
+
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) scan(full, [...slugParts, name]);
     }
   }
 
@@ -1056,6 +1124,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Build description map from frontmatter
   const descriptionMap = buildDescriptionMap(config, localeContext);
+  const generatedTitleMap =
+    config.theme?.name === "shadcn" ? buildGeneratedTitleMap(config, localeContext) : {};
   const readingTimeMap = buildReadingTimeMap(config, localeContext, {
     enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,
@@ -1180,6 +1250,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             readingTimeMap={readingTimeMap}
             structuredDataMap={structuredDataMap}
             llmsTxtEnabled={llmsTxtEnabled}
+            generatedTitleMap={generatedTitleMap}
             descriptionMap={descriptionMap}
             feedbackEnabled={feedbackConfig.enabled}
             feedbackQuestion={feedbackConfig.question}

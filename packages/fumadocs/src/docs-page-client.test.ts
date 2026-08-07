@@ -69,6 +69,33 @@ describe("DocsPageClient structured data", () => {
   });
 });
 
+describe("DocsPageClient generated page header", () => {
+  it("renders title, description, and below-title actions before preserved page content", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        generatedTitleMap: { "/docs/installation": "Installation" },
+        descriptionMap: { "/docs/installation": "Install the framework." },
+        children: React.createElement("article", null, "Preserved page content"),
+      }),
+    );
+
+    const titleIndex = html.indexOf("Installation");
+    const descriptionIndex = html.indexOf("Install the framework.");
+    const actionsIndex = html.indexOf("Mock Actions");
+    const contentIndex = html.indexOf("Preserved page content");
+
+    expect(html).toContain('class="fd-generated-page-header not-prose"');
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(descriptionIndex).toBeGreaterThan(titleIndex);
+    expect(actionsIndex).toBeGreaterThan(descriptionIndex);
+    expect(contentIndex).toBeGreaterThan(actionsIndex);
+  });
+});
+
 describe("DocsPageClient reading time", () => {
   it("renders the reading-time row when enabled", () => {
     const html = renderToStaticMarkup(
