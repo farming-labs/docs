@@ -149,7 +149,7 @@ agent:
       writeFileSync(join(tmpDir, "app", "docs", slug, "page.mdx"), lines.join("\n"), "utf-8");
     }
 
-    const Layout = createDocsLayout({ entry: "docs" });
+    const Layout = createDocsLayout({ entry: "docs", theme: shadcn() });
     const tree = Layout({ children: React.createElement("div", null, "child") });
     const props = findDocsPageClientProps(tree);
 
@@ -157,6 +157,21 @@ agent:
       "/docs/generated": "Generated",
       "/docs/fenced": "Fenced",
     });
+  });
+
+  it("does not change title rendering for non-Shadcn themes", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "generated", "page.mdx"),
+      "---\ntitle: Generated\n---\n\nBody without a heading.",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs" });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props?.generatedTitleMap).toEqual({});
   });
 
   it("uses a readable Shadcn folder label for Introduction landing pages", () => {
