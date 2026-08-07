@@ -258,6 +258,17 @@ code:not(pre code) {
     --fd-mobile-nav-height: 56px;
   }
 
+  /* Farm's server-rendered sidebar brand defaults to a 44px row followed by
+   * an 18px gap. On tablet, that puts its divider below the 56px mobile
+   * topbar. Give both sides of the shell one shared header edge instead. */
+  #nd-docs-layout aside#nd-sidebar > .sidebar-brand {
+    height: var(--fd-mobile-nav-height);
+    min-height: var(--fd-mobile-nav-height);
+    max-height: var(--fd-mobile-nav-height);
+    flex-basis: var(--fd-mobile-nav-height);
+    margin-bottom: 0;
+  }
+
   body {
     overflow-x: hidden;
   }
