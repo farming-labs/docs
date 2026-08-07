@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { usePathname } from "fumadocs-core/framework";
 import type { CopyMarkdownFormat } from "@farming-labs/docs";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { sanitizeIconHtml } from "./safe-icon-html.js";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
@@ -137,16 +138,8 @@ const SparklesIcon = () => (
   </svg>
 );
 
-const DEFAULT_PROVIDERS: SerializedProvider[] = [
-  {
-    name: "ChatGPT",
-    urlTemplate: "https://chatgpt.com/?q={prompt}",
-  },
-  {
-    name: "Claude",
-    urlTemplate: "https://claude.ai/new?q={prompt}",
-  },
-];
+const DEFAULT_PROVIDERS: SerializedProvider[] =
+  resolveOpenDocsProviders(["chatgpt", "claude"]) ?? [];
 
 const DEFAULT_OPEN_DOCS_TARGET = "markdown";
 const DEFAULT_OPEN_DOCS_PROMPT = "Read this documentation: {url}";
