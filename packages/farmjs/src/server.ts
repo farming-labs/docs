@@ -789,7 +789,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       ? githubRaw.replace(/\/$/, "")
       : githubRaw?.url.replace(/\/$/, "");
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
-  const githubContentPath =
+  const githubDirectory =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
 
@@ -967,10 +967,20 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const nextPage = currentIndex < flatPages.length - 1 ? flatPages[currentIndex + 1] : null;
 
     let editOnGithub: string | undefined;
-    if (githubRepo && githubContentPath) {
-      const trimmed = githubContentPath.replace(/\/+$/, "");
-      const localePrefix = ctx.locale ? `${ctx.locale}/` : "";
-      editOnGithub = `${githubRepo}/blob/${githubBranch}/${trimmed}/${localePrefix}${toPosixPath(relPath)}`;
+    if (githubRepo) {
+      const contentPath = normalizePathSegment(
+        path.isAbsolute(ctx.contentDirRel)
+          ? toPosixPath(path.relative(rootDir, ctx.contentDirRel))
+          : toPosixPath(ctx.contentDirRel),
+      );
+      const configuredDirectory = normalizePathSegment(githubDirectory ?? "");
+      const sourceDirectory =
+        configuredDirectory &&
+        (contentPath === configuredDirectory || contentPath.startsWith(`${configuredDirectory}/`))
+          ? contentPath
+          : joinPathParts(configuredDirectory, contentPath);
+      const sourcePath = joinPathParts(sourceDirectory, toPosixPath(relPath));
+      editOnGithub = `${githubRepo}/edit/${githubBranch}/${sourcePath}`;
     }
 
     const fallbackTitle = isIndex
