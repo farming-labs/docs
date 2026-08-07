@@ -13,6 +13,7 @@ export default defineConfig({
       ),
       "@farming-labs/docs/client/react": resolve(rootDir, "../docs/src/client/react.ts"),
       "@farming-labs/docs/cloud/server": resolve(rootDir, "../docs/src/docs-cloud-server.ts"),
+      "@farming-labs/docs/browser": resolve(rootDir, "../docs/src/browser.ts"),
       "@farming-labs/docs/server": resolve(rootDir, "../docs/src/server.ts"),
       "@farming-labs/docs": resolve(rootDir, "../docs/src/index.ts"),
       "@farming-labs/next-internal-docs-config": resolve(rootDir, "src/test-docs-config.ts"),

@@ -66,4 +66,27 @@ describe("withDocs", () => {
       adapter: { id: "@farming-labs/farmjs", protocol: 1 },
     });
   });
+
+  it("registers the adapter-owned MDX transform before existing Vite plugins", () => {
+    const existingPlugin = { name: "existing" };
+    const result = withDocs({ vite: { plugins: [existingPlugin] } });
+
+    expect(result.vite).toMatchObject({
+      plugins: [expect.any(Array), existingPlugin],
+    });
+  });
+
+  it("preserves functional Vite config while registering the MDX transform", () => {
+    const existingPlugin = { name: "existing" };
+    const result = withDocs({
+      vite: (config) => ({ ...config, plugins: [existingPlugin] }),
+    });
+
+    expect(result.vite).toBeTypeOf("function");
+    expect(
+      (result.vite as (config: Record<string, unknown>) => Record<string, unknown>)({}),
+    ).toMatchObject({
+      plugins: [expect.any(Array), existingPlugin],
+    });
+  });
 });
