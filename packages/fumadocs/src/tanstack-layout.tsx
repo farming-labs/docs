@@ -102,6 +102,7 @@ export interface TanstackDocsLayoutProps {
   tree: TreeRoot;
   locale?: string;
   description?: string;
+  descriptionInBody?: boolean;
   readingTime?: number | null;
   lastModified?: string;
   previousPage?: { name: string; url: string } | null;
@@ -346,6 +347,7 @@ export function TanstackDocsLayout({
   tree,
   locale,
   description,
+  descriptionInBody,
   readingTime,
   lastModified,
   previousPage,
@@ -564,6 +566,7 @@ export function TanstackDocsLayout({
           readingTime={typeof readingTime === "number" ? readingTime : undefined}
           llmsTxtEnabled={llmsTxtEnabled}
           description={description}
+          descriptionInBody={descriptionInBody}
           feedbackEnabled={feedbackConfig.enabled}
           feedbackQuestion={feedbackConfig.question}
           feedbackPlaceholder={feedbackConfig.placeholder}

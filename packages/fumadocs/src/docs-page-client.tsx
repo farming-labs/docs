@@ -115,6 +115,8 @@ interface DocsPageClientProps {
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
   description?: string;
+  /** The first authored paragraph already contains the frontmatter description. */
+  descriptionInBody?: boolean;
   /** Built-in page feedback prompt configuration */
   feedbackEnabled?: boolean;
   feedbackQuestion?: string;
@@ -541,6 +543,7 @@ export function DocsPageClient({
   generatedTitleMap,
   descriptionMap,
   description,
+  descriptionInBody = false,
   feedbackEnabled = false,
   feedbackQuestion,
   feedbackPlaceholder,
@@ -955,14 +958,16 @@ export function DocsPageClient({
 
     const host = document.createElement("div");
     host.className = "fd-title-decorations-host";
-    title.insertAdjacentElement("afterend", host);
+    const authoredDescription = descriptionInBody ? title.nextElementSibling : null;
+    const anchor = authoredDescription?.matches("p") ? authoredDescription : title;
+    anchor.insertAdjacentElement("afterend", host);
     setTitlePortalHost(host);
 
     return () => {
       host.remove();
       setTitlePortalHost(null);
     };
-  }, [needsTitleDecorationsPortal, pathname]);
+  }, [descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
     <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
