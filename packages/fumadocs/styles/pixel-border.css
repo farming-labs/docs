@@ -366,6 +366,17 @@ code:not(pre code) {
     max-height: none;
   }
 
+  /* Fumadocs keeps the desktop sidebar's internal width on its direct
+   * children. The tablet drawer is wider, so the end-aligned children left a
+   * large empty gutter at the start of the panel. Let the header and tree use
+   * the full overlay width instead. */
+  #nd-docs-layout:has([data-fd-tablet-sidebar-state="open"])
+    [data-sidebar-placeholder]
+    > aside
+    > * {
+    width: 100% !important;
+  }
+
   #nd-docs-layout:has([data-fd-tablet-sidebar-state="open"])
     aside#nd-sidebar
     > div:first-child {
@@ -798,7 +809,8 @@ aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
 
 /* ── Folder toggle buttons (section headers) ─────────────────────── */
 
-aside#nd-sidebar button.text-fd-muted-foreground {
+aside#nd-sidebar button.text-fd-muted-foreground,
+aside#nd-sidebar-mobile button.text-fd-muted-foreground {
   height: 35px;
   min-height: 35px;
   padding: 8px 30px !important;
@@ -810,7 +822,8 @@ aside#nd-sidebar button.text-fd-muted-foreground {
   text-transform: none;
 }
 
-aside#nd-sidebar button.text-fd-muted-foreground:hover {
+aside#nd-sidebar button.text-fd-muted-foreground:hover,
+aside#nd-sidebar-mobile button.text-fd-muted-foreground:hover {
   color: var(--color-fd-foreground) !important;
 }
 
@@ -825,7 +838,23 @@ aside div.overflow-hidden[data-state] > div {
 
 /* Nested folders keep their labels visible so the configured information
  * architecture survives in adapters with deeper sidebar trees. */
-aside#nd-sidebar div.overflow-hidden[data-state] button[aria-expanded] {
+aside div.overflow-hidden[data-state] > div > div[data-state] {
+  position: relative;
+  padding: 2px 0 4px;
+}
+
+aside div.overflow-hidden[data-state] > div > div[data-state]::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  bottom: 19px;
+  inset-inline-start: 75px;
+  width: 1px;
+  background: color-mix(in srgb, var(--color-fd-border) 88%, transparent);
+}
+
+aside#nd-sidebar div.overflow-hidden[data-state] button[aria-expanded],
+aside#nd-sidebar-mobile div.overflow-hidden[data-state] button[aria-expanded] {
   position: relative;
   display: flex !important;
   height: 31.5703125px;
@@ -838,7 +867,7 @@ aside#nd-sidebar div.overflow-hidden[data-state] button[aria-expanded] {
 }
 
 aside div.overflow-hidden[data-state] div.overflow-hidden[data-state] > div {
-  padding: 0 0 6px !important;
+  padding: 0 0 4px !important;
 }
 
 aside div.overflow-hidden[data-state] button[aria-expanded]::after {
@@ -846,7 +875,7 @@ aside div.overflow-hidden[data-state] button[aria-expanded]::after {
   position: absolute;
   top: calc(50% - 0.5px);
   inset-inline-start: 46px;
-  width: 22px;
+  width: 29px;
   height: 1px;
   background: color-mix(in srgb, var(--color-fd-border) 88%, transparent);
 }
@@ -855,7 +884,7 @@ aside
   div.overflow-hidden[data-state]
   div.overflow-hidden[data-state]
   a[data-active] {
-  padding-inline-start: 94px !important;
+  padding-inline-start: 103px !important;
 }
 
 aside div.overflow-hidden[data-state] a[data-active]::after {
@@ -885,13 +914,14 @@ aside
   div.overflow-hidden[data-state]
   div.overflow-hidden[data-state]
   a[data-active]::after {
-  inset-inline-start: 72px;
+  inset-inline-start: 75px;
+  width: 28px;
 }
 
 aside
   div.overflow-hidden[data-state]
   div.overflow-hidden[data-state]::before {
-  inset-inline-start: 72px !important;
+  content: none !important;
 }
 
 aside button[aria-expanded] > .lucide-chevron-down,
