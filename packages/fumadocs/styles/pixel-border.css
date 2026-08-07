@@ -1808,16 +1808,145 @@ hr {
 
 /* ─── Omni Command Palette (pixel-border theme) ─────────────────── */
 
+.omni-overlay {
+  z-index: 200;
+  background: color-mix(in srgb, var(--color-fd-background) 64%, transparent);
+  backdrop-filter: blur(3px);
+}
+
 .omni-content {
+  --omni-content-top: clamp(72px, 14vh, 104px);
+  z-index: 201;
+  width: min(680px, calc(100% - 24px));
+  overflow: hidden;
   border-radius: 0 !important;
   border: 1px solid var(--fd-pixel-modal-border);
+  background: var(--color-fd-background);
   box-shadow:
     2px 2px 0 0 var(--fd-pixel-modal-shadow),
     0 0 0 1px color-mix(in srgb, var(--color-fd-foreground) 3%, transparent);
 }
 
+.omni-header {
+  background: color-mix(in srgb, var(--color-fd-background) 96%, var(--color-fd-foreground));
+}
+
+.omni-search-row {
+  min-height: 54px;
+  padding: 0 14px;
+}
+
+.omni-search-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.omni-search-input {
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+.omni-close-btn {
+  min-width: 36px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 0 !important;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.omni-close-btn:focus-visible,
+.omni-filter-button:focus-visible,
+.omni-filter-option:focus-visible,
+.omni-item:focus-visible {
+  outline: 1px solid var(--color-fd-ring, var(--color-fd-foreground));
+  outline-offset: -2px;
+}
+
+.omni-body {
+  max-height: min(500px, calc(100dvh - var(--omni-content-top) - 112px));
+  padding: 0;
+}
+
+.omni-group + .omni-group {
+  border-top: 1px solid var(--color-fd-border);
+}
+
+.omni-group-label {
+  display: block;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.omni-group-items {
+  gap: 0;
+}
+
 .omni-item {
   border-radius: 0 !important;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--color-fd-border);
+  transition:
+    color 80ms ease,
+    background-color 80ms ease;
+}
+
+.omni-group-items > .omni-item:last-child {
+  border-bottom: 0;
+}
+
+.omni-item:hover,
+.omni-item-active {
+  background: color-mix(in srgb, var(--color-fd-foreground) 7%, transparent);
+}
+
+.omni-item-active {
+  box-shadow: inset 2px 0 0 var(--color-fd-foreground);
+}
+
+.omni-item-subtitle {
+  margin-bottom: 2px;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+
+.omni-item-label {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.omni-item-description {
+  -webkit-line-clamp: 2;
+  margin-top: 6px;
+  padding-left: 0;
+  border-left: 0;
+  color: var(--color-fd-muted-foreground);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.omni-empty {
+  display: flex;
+  min-height: 132px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.omni-empty-icon {
+  border-radius: 0 !important;
+  border: 1px solid var(--color-fd-border);
+  background: transparent;
 }
 
 .omni-kbd,
@@ -1826,25 +1955,11 @@ hr {
   border: 1px solid var(--color-fd-border, hsl(0 0% 15%));
 }
 
-.omni-close-btn {
-  border-radius: 0 !important;
-}
-
-.omni-empty-icon {
-  border-radius: 0 !important;
-}
-
-.omni-search-input {
-  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif);
-}
-
-.omni-group-label {
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
-  letter-spacing: 0.08em;
-}
-
 .omni-footer-inner {
+  min-height: 42px;
+  padding: 8px 12px;
   font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
 }
 
 .omni-footer-hint svg {
@@ -1859,6 +1974,57 @@ hr {
 .omni-highlight {
   background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent);
   border-radius: 0 !important;
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (max-width: 639px) {
+  .omni-content {
+    --omni-content-top: 8px;
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .omni-search-row {
+    min-height: 52px;
+    padding: 0 12px;
+  }
+
+  .omni-search-input {
+    font-size: 16px;
+  }
+
+  .omni-body {
+    max-height: min(500px, calc(100dvh - 108px));
+  }
+
+  .omni-item {
+    padding: 10px 12px;
+  }
+
+  .omni-item-description {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .omni-footer-inner {
+    min-height: 40px;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+
+  .omni-footer-hints {
+    gap: 7px;
+  }
+
+  .omni-footer-hint {
+    gap: 3px;
+  }
+
+  .omni-filter-label {
+    display: none;
+  }
 }
 
 /* ─── Feedback (pixel-border theme) ──────────────────────────────── */

@@ -382,6 +382,7 @@ export function DocsCommandSearch({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const searchCacheRef = useRef(new Map<string, ResultItem[]>());
 
   const setOpenWithAnalytics = useCallback(
@@ -566,13 +567,25 @@ export function DocsCommandSearch({
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 10);
+      const activeElement = document.activeElement;
+      restoreFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+      const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 10);
+      return () => window.clearTimeout(focusTimer);
     } else {
       setQuery("");
       setResults([]);
       setFilter("all");
       setFilterOpen(false);
       setActiveIndex(0);
+
+      const restoreTarget = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (restoreTarget?.isConnected) {
+        const focusFrame = window.requestAnimationFrame(() =>
+          restoreTarget.focus({ preventScroll: true }),
+        );
+        return () => window.cancelAnimationFrame(focusFrame);
+      }
     }
   }, [open]);
 
