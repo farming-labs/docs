@@ -864,6 +864,62 @@ figure.shiki pre,
   box-shadow: none !important;
 }
 
+/* Compact code surfaces modeled after the current shadcn docs. */
+figure.shiki,
+.fd-docs-content figure.shiki {
+  margin-block: 1.25rem !important;
+  border: 0 !important;
+  border-radius: calc(var(--radius) * 1.8) !important;
+  background: var(--fd-shadcn-code) !important;
+  padding-block: 0 !important;
+}
+
+figure.shiki pre,
+.fd-docs-content figure.shiki pre {
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 0.625rem 0.75rem !important;
+  overflow-x: auto !important;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: color-mix(in oklab, var(--color-fd-foreground) 18%, transparent)
+    transparent;
+  scrollbar-width: thin;
+}
+
+figure.shiki pre > code,
+.fd-docs-content figure.shiki pre > code {
+  font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace) !important;
+  font-size: 0.875rem !important;
+  font-variant-ligatures: none;
+  line-height: 1.75 !important;
+  tab-size: 2;
+}
+
+figure.shiki pre > code > :is(.line, [data-line]) {
+  min-height: 1.53125rem;
+}
+
+figure.shiki pre > code > :is(.line, [data-line])[data-highlighted-line] {
+  background: var(--fd-shadcn-code-highlight) !important;
+}
+
+figure.shiki > button,
+figure.shiki > div:first-child button {
+  width: 2rem !important;
+  height: 2rem !important;
+  border: 0 !important;
+  border-radius: calc(var(--radius) * 0.8) !important;
+  background: color-mix(in oklab, var(--fd-shadcn-code) 82%, transparent) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  backdrop-filter: blur(8px);
+}
+
+figure.shiki > button:hover,
+figure.shiki > div:first-child button:hover {
+  background: var(--fd-shadcn-control-hover) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
 .fd-codeblock-title,
 figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-code-header {
@@ -980,15 +1036,17 @@ figure.shiki figcaption {
   padding: 0 !important;
 }
 
+article :not(pre) > code,
 .fd-docs-content :not(pre) > code,
 :is(.fd-ai-bubble-ai, .fd-ai-fm-msg-content) :not(pre) > code {
   border: 0 !important;
-  border-radius: calc(var(--radius) * 0.6);
-  background: var(--color-fd-muted);
+  border-radius: calc(var(--radius) * 0.5) !important;
+  background: color-mix(in oklab, var(--color-fd-muted) 48%, transparent) !important;
   color: var(--color-fd-foreground);
   font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace);
   font-size: 0.85em;
-  padding: 0.125em 0.3em;
+  padding: 0.08em 0.24em !important;
+  box-decoration-break: clone;
 }
 
 @media (hover: none) {
