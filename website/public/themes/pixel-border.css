@@ -145,8 +145,13 @@ code:not(pre code) {
   }
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
-  #nd-docs-layout:not([data-fd-framework]) #nd-toc {
+@media (max-width: 1023px) {
+  #nd-docs-layout:not([data-fd-framework]) {
+    --fd-toc-popover-height: 0px !important;
+  }
+
+  #nd-docs-layout:not([data-fd-framework]) #nd-toc,
+  #nd-docs-layout:not([data-fd-framework]) [data-toc-popover] {
     display: none !important;
   }
 }
