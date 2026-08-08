@@ -101,6 +101,8 @@ function resolveTreeIcons(tree: TreeRoot, registry: Record<string, unknown> | un
 export interface TanstackDocsLayoutProps {
   config: DocsConfig;
   tree: TreeRoot;
+  /** Enables browser-adapter shell affordances that are not part of a theme preset. */
+  browserRuntime?: boolean;
   locale?: string;
   description?: string;
   descriptionInBody?: boolean;
@@ -346,6 +348,7 @@ function ForcedThemeScript({ theme }: { theme: string }) {
 export function TanstackDocsLayout({
   config,
   tree,
+  browserRuntime = false,
   locale,
   description,
   descriptionInBody,
@@ -511,7 +514,7 @@ export function TanstackDocsLayout({
       <TypographyStyle typography={typography} />
       <LayoutStyle layout={layoutDimensions} />
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-      {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
+      {browserRuntime && config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
       {!staticExport && (
         <Suspense fallback={null}>
           <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
@@ -540,7 +543,7 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
-          themeName={config.theme?.name}
+          showLlmsInHeader={browserRuntime && config.theme?.name === "fumadocs-pixel-border"}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}

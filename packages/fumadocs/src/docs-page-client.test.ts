@@ -44,13 +44,13 @@ describe("DocsPageClient llms.txt footer links", () => {
     expect(html).not.toContain("/api/docs?format=llms");
   });
 
-  it("exposes the llms.txt link as a visible pixel-border header action", () => {
+  it("exposes the llms.txt link only when the runtime owns a header action", () => {
     const html = renderToStaticMarkup(
       React.createElement(DocsPageClient, {
         tocEnabled: false,
         breadcrumbEnabled: false,
         llmsTxtEnabled: true,
-        themeName: "fumadocs-pixel-border",
+        showLlmsInHeader: true,
         children: React.createElement("article", null, "Docs"),
       }),
     );

@@ -8,9 +8,14 @@ import {
   type ComponentProps,
   type ComponentPropsWithoutRef,
 } from "react";
+import { TanstackDocsLayout, type TanstackDocsLayoutProps } from "./tanstack-layout.js";
 
-export { TanstackDocsLayout as BrowserDocsLayout } from "./tanstack-layout.js";
-export type { TanstackDocsLayoutProps as BrowserDocsLayoutProps } from "./tanstack-layout.js";
+export type BrowserDocsLayoutProps = Omit<TanstackDocsLayoutProps, "browserRuntime">;
+
+/** Docs layout for framework-neutral browser adapters such as Farm.js. */
+export function BrowserDocsLayout(props: BrowserDocsLayoutProps) {
+  return <TanstackDocsLayout {...props} browserRuntime />;
+}
 
 type FumadocsProviderProps = ComponentPropsWithoutRef<typeof FumadocsRootProvider>;
 

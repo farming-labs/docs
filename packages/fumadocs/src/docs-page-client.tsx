@@ -46,8 +46,8 @@ interface SerializedProvider {
 
 interface DocsPageClientProps {
   tocEnabled: boolean;
-  /** Active theme preset name, used for theme-specific structural affordances. */
-  themeName?: string;
+  /** Expose the llms.txt action in a runtime-owned header slot. */
+  showLlmsInHeader?: boolean;
   tocStyle?: "default" | "directional";
   breadcrumbEnabled?: boolean;
   changelogBasePath?: string;
@@ -503,7 +503,7 @@ function findThreadlineTocActionsContainer(): HTMLElement | null {
 
 export function DocsPageClient({
   tocEnabled,
-  themeName,
+  showLlmsInHeader = false,
   tocStyle = "default",
   breadcrumbEnabled = true,
   changelogBasePath,
@@ -569,7 +569,7 @@ export function DocsPageClient({
   const activeLocale = resolveClientLocale(searchParams, locale);
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
-  const showLlmsInHeader = llmsTxtEnabled && themeName === "fumadocs-pixel-border";
+  const shouldShowLlmsInHeader = llmsTxtEnabled && showLlmsInHeader;
 
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
   const pageTitle = generatedTitleMap?.[normalizedPath];
@@ -985,12 +985,12 @@ export function DocsPageClient({
           key="llms-txt"
           href={`/llms.txt${llmsLangQuery}`}
           className="fd-agent-llms-directive"
-          data-visible-in-header={showLlmsInHeader ? "true" : undefined}
-          style={showLlmsInHeader ? undefined : agentLlmsDirectiveStyle}
-          tabIndex={showLlmsInHeader ? undefined : -1}
-          aria-hidden={showLlmsInHeader ? undefined : true}
+          data-visible-in-header={shouldShowLlmsInHeader ? "true" : undefined}
+          style={shouldShowLlmsInHeader ? undefined : agentLlmsDirectiveStyle}
+          tabIndex={shouldShowLlmsInHeader ? undefined : -1}
+          aria-hidden={shouldShowLlmsInHeader ? undefined : true}
         >
-          {showLlmsInHeader ? "LLMS.TXT" : "llms.txt"}
+          {shouldShowLlmsInHeader ? "LLMS.TXT" : "llms.txt"}
         </a>
       )}
       {titleControlsPortal}
@@ -1002,7 +1002,7 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: false }}
+        footer={{ enabled: !isChangelogRoute }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb
