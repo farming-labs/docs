@@ -75,10 +75,13 @@ describe("pixel-border CSS", () => {
     expect(websiteGlobalCss).not.toContain('#nd-toc [style*="--track-top"]');
   });
 
-  it("ends straight TOC rails where the native Clerk bend begins", () => {
-    const seamFix = /#nd-toc a > div\.bottom-1\\\.5 \{[^}]*bottom: 0\.375rem;/;
-    expect(css).toMatch(seamFix);
-    expect(previewCss).toMatch(seamFix);
+  it("meets native Clerk bends without overlapping either endpoint", () => {
+    const bendStart = /#nd-toc a > div\.top-1\\\.5 \{[^}]*top: 0\.375rem;/;
+    const bendEnd = /#nd-toc a > div\.bottom-1\\\.5 \{[^}]*bottom: 0\.375rem;/;
+    expect(css).toMatch(bendStart);
+    expect(css).toMatch(bendEnd);
+    expect(previewCss).toMatch(bendStart);
+    expect(previewCss).toMatch(bendEnd);
   });
 
   it("keeps the website theme preview on the same responsive boundary", () => {
