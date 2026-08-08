@@ -19,6 +19,18 @@ describe("pixel-border CSS", () => {
     fileURLToPath(new URL("../../../website/app/global.css", import.meta.url)),
     "utf8",
   );
+  const reactPreset = readFileSync(
+    fileURLToPath(new URL("./pixel-border/index.ts", import.meta.url)),
+    "utf8",
+  );
+  const frameworkPresets = ["astro", "svelte", "nuxt"].map((framework) =>
+    readFileSync(
+      fileURLToPath(
+        new URL(`../../${framework}-theme/src/themes/pixel-border.js`, import.meta.url),
+      ),
+      "utf8",
+    ),
+  );
 
   it("keeps the built-in preset free of browser-adapter shell overrides", () => {
     expect(css).not.toContain("Farm's");
@@ -55,7 +67,11 @@ describe("pixel-border CSS", () => {
     expect(css).not.toContain('[class*="fd-toc"]');
     expect(previewCss).not.toContain('nav[class*="toc"]');
     expect(previewCss).not.toContain('[class*="fd-toc"]');
-    expect(websiteConfig).toContain('style: "directional"');
+    expect(reactPreset).toContain('style: "directional" as const');
+    for (const preset of frameworkPresets) {
+      expect(preset).toContain('style: "directional"');
+    }
+    expect(websiteConfig).not.toContain('style: "directional"');
     expect(websiteGlobalCss).not.toContain('#nd-toc [style*="--track-top"]');
   });
 
