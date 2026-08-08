@@ -15,6 +15,10 @@ describe("pixel-border CSS", () => {
     fileURLToPath(new URL("../../../website/docs.config.tsx", import.meta.url)),
     "utf8",
   );
+  const websiteGlobalCss = readFileSync(
+    fileURLToPath(new URL("../../../website/app/global.css", import.meta.url)),
+    "utf8",
+  );
 
   it("keeps the built-in preset free of browser-adapter shell overrides", () => {
     expect(css).not.toContain("Farm's");
@@ -46,12 +50,15 @@ describe("pixel-border CSS", () => {
     );
   });
 
-  it("leaves native TOC presentation to Fumadocs", () => {
+  it("uses the native directional TOC without theme-level rail overrides", () => {
     expect(css).not.toContain('nav[class*="toc"]');
     expect(css).not.toContain('[class*="fd-toc"]');
     expect(previewCss).not.toContain('nav[class*="toc"]');
     expect(previewCss).not.toContain('[class*="fd-toc"]');
-    expect(websiteConfig).not.toContain('style: "directional"');
+    expect(websiteConfig).toContain('style: "directional"');
+    expect(websiteGlobalCss).toContain(
+      '#nd-toc [style*="--track-top"] ~ a[style*="padding-inline-start"] > div',
+    );
   });
 
   it("keeps the website theme preview on the same responsive boundary", () => {
