@@ -87,11 +87,6 @@
   color: black;
 }
 
-/* Keep Fumadocs' directional TOC track without its straight per-link underlay. */
-#nd-toc [style*="--track-top"] ~ a[style*="padding-inline-start"] > div {
-  display: none;
-}
-
 /* sugar-high syntax highlighting tokens (dark code block) */
 .sh-code {
   --sh-class: #e5c07b;

@@ -56,9 +56,7 @@ describe("pixel-border CSS", () => {
     expect(previewCss).not.toContain('nav[class*="toc"]');
     expect(previewCss).not.toContain('[class*="fd-toc"]');
     expect(websiteConfig).toContain('style: "directional"');
-    expect(websiteGlobalCss).toContain(
-      '#nd-toc [style*="--track-top"] ~ a[style*="padding-inline-start"] > div',
-    );
+    expect(websiteGlobalCss).not.toContain('#nd-toc [style*="--track-top"]');
   });
 
   it("keeps the website theme preview on the same responsive boundary", () => {
