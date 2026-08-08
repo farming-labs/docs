@@ -24,7 +24,7 @@ const PixelBorderUIDefaults = {
   layout: {
     contentWidth: 860,
     sidebarWidth: 286,
-    toc: { enabled: true, depth: 3 },
+    toc: { enabled: true, depth: 3, style: "directional" },
     header: { height: 56, sticky: true },
   },
   components: {

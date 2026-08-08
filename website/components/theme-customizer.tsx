@@ -147,7 +147,7 @@ const PRESETS: Record<
       ring: "#fbfbfa",
     },
     sidebar: "bordered",
-    toc: { style: "default" },
+    toc: { style: "directional" },
     radius: "0px",
   },
   shiny: {

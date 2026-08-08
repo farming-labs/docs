@@ -11,6 +11,26 @@ describe("pixel-border CSS", () => {
     fileURLToPath(new URL("../../../website/public/themes/pixel-border.css", import.meta.url)),
     "utf8",
   );
+  const websiteConfig = readFileSync(
+    fileURLToPath(new URL("../../../website/docs.config.tsx", import.meta.url)),
+    "utf8",
+  );
+  const websiteGlobalCss = readFileSync(
+    fileURLToPath(new URL("../../../website/app/global.css", import.meta.url)),
+    "utf8",
+  );
+  const reactPreset = readFileSync(
+    fileURLToPath(new URL("./pixel-border/index.ts", import.meta.url)),
+    "utf8",
+  );
+  const frameworkPresets = ["astro", "svelte", "nuxt"].map((framework) =>
+    readFileSync(
+      fileURLToPath(
+        new URL(`../../${framework}-theme/src/themes/pixel-border.js`, import.meta.url),
+      ),
+      "utf8",
+    ),
+  );
 
   it("keeps the built-in preset free of browser-adapter shell overrides", () => {
     expect(css).not.toContain("Farm's");
@@ -35,11 +55,33 @@ describe("pixel-border CSS", () => {
   });
 
   it("removes all table-of-contents chrome below desktop widths", () => {
-    expect(css).toContain("@media (max-width: 1023px)");
+    expect(css).toContain("@media (max-width: 1279px)");
     expect(css).toContain("--fd-toc-popover-height: 0px !important");
     expect(css).toMatch(
       /#nd-docs-layout:not\(\[data-fd-framework\]\) #nd-toc,[^}]*\[data-toc-popover\] \{[^}]*display: none !important;/,
     );
+  });
+
+  it("uses the native directional TOC without replacing its rail", () => {
+    expect(css).not.toContain('nav[class*="toc"]');
+    expect(css).not.toContain('[class*="fd-toc"]');
+    expect(previewCss).not.toContain('nav[class*="toc"]');
+    expect(previewCss).not.toContain('[class*="fd-toc"]');
+    expect(reactPreset).toContain('style: "directional" as const');
+    for (const preset of frameworkPresets) {
+      expect(preset).toContain('style: "directional"');
+    }
+    expect(websiteConfig).not.toContain('style: "directional"');
+    expect(websiteGlobalCss).not.toContain('#nd-toc [style*="--track-top"]');
+  });
+
+  it("meets native Clerk bends without overlapping either endpoint", () => {
+    const bendStart = /#nd-toc a > div\.top-1\\\.5 \{[^}]*top: 0\.375rem;/;
+    const bendEnd = /#nd-toc a > div\.bottom-1\\\.5 \{[^}]*bottom: 0\.375rem;/;
+    expect(css).toMatch(bendStart);
+    expect(css).toMatch(bendEnd);
+    expect(previewCss).toMatch(bendStart);
+    expect(previewCss).toMatch(bendEnd);
   });
 
   it("keeps the website theme preview on the same responsive boundary", () => {
@@ -50,6 +92,7 @@ describe("pixel-border CSS", () => {
       "@media (min-width: 1024px) {\n  #nd-docs-layout:not([data-fd-framework]),",
     );
     expect(previewCss).toContain("padding-inline: 2rem !important");
+    expect(previewCss).toContain("@media (max-width: 1279px)");
     expect(previewCss).toContain("--fd-toc-popover-height: 0px !important");
   });
 });

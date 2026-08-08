@@ -145,7 +145,7 @@ code:not(pre code) {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1279px) {
   #nd-docs-layout:not([data-fd-framework]) {
     --fd-toc-popover-height: 0px !important;
   }
@@ -154,6 +154,15 @@ code:not(pre code) {
   #nd-docs-layout:not([data-fd-framework]) [data-toc-popover] {
     display: none !important;
   }
+}
+
+/* Keep the native Clerk bend from overpainting the straight rail segment. */
+#nd-toc a > div.bottom-1\.5 {
+  bottom: 0.375rem;
+}
+
+#nd-toc a > div.top-1\.5 {
+  top: 0.375rem;
 }
 
 @media (min-width: 1024px) {
@@ -487,13 +496,6 @@ article a[class*="border"]:hover {
 
 [role="dialog"] [class*="rounded"] {
   border-radius: 0 !important;
-}
-
-/* ─── TOC right panel ─────────────────────────────────────────────── */
-
-nav[class*="toc"],
-[class*="fd-toc"] {
-  border-color: var(--color-fd-border) !important;
 }
 
 /* ─── Separator/Divider (hr) ──────────────────────────────────────── */
