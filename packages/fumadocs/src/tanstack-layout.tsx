@@ -1,5 +1,5 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, type HTMLAttributes, type ReactNode } from "react";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -45,6 +45,10 @@ interface FolderNode {
 }
 
 type TreeNode = PageNode | FolderNode;
+
+type FrameworkContainerProps = HTMLAttributes<HTMLDivElement> & {
+  "data-fd-framework"?: string;
+};
 
 interface TreeRoot {
   name: string;
@@ -417,6 +421,9 @@ export function TanstackDocsLayout({
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
+  const frameworkContainerProps: FrameworkContainerProps | undefined = browserRuntime
+    ? { "data-fd-framework": "" }
+    : undefined;
 
   const openDocsConfig =
     pageActions?.openDocs && typeof pageActions.openDocs === "object"
@@ -504,6 +511,7 @@ export function TanstackDocsLayout({
       nav={{ title: navTitle, url: navUrl }}
       themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
       sidebar={finalSidebarProps}
+      containerProps={frameworkContainerProps}
       {...(aiMode === "sidebar-icon" && aiEnabled
         ? {
             searchToggle: { components: { lg: <SidebarSearchWithAI /> } },

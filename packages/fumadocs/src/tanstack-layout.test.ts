@@ -335,6 +335,21 @@ describe("TanstackDocsLayout", () => {
     });
 
     expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
+    expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-framework": "",
+    });
+  });
+
+  it("keeps the native TanStack layout out of framework-owned CSS", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs" },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(
+      (tree.props as { containerProps?: Record<string, unknown> }).containerProps,
+    ).toBeUndefined();
   });
 
   it("passes the configured feedback placeholder through to DocsPageClient", () => {
