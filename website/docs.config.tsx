@@ -124,7 +124,7 @@ export default defineDocs({
   },
   theme: pixelBorder({
     ui: {
-      layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 320 },
+      layout: { toc: { enabled: true, depth: 3 }, sidebarWidth: 320 },
       sidebar: { style: "floating" },
       components: {
         Prompt: {

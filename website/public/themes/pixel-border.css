@@ -489,13 +489,6 @@ article a[class*="border"]:hover {
   border-radius: 0 !important;
 }
 
-/* ─── TOC right panel ─────────────────────────────────────────────── */
-
-nav[class*="toc"],
-[class*="fd-toc"] {
-  border-color: var(--color-fd-border) !important;
-}
-
 /* ─── Separator/Divider (hr) ──────────────────────────────────────── */
 
 hr {

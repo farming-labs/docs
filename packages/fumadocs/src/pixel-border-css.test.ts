@@ -11,6 +11,10 @@ describe("pixel-border CSS", () => {
     fileURLToPath(new URL("../../../website/public/themes/pixel-border.css", import.meta.url)),
     "utf8",
   );
+  const websiteConfig = readFileSync(
+    fileURLToPath(new URL("../../../website/docs.config.tsx", import.meta.url)),
+    "utf8",
+  );
 
   it("keeps the built-in preset free of browser-adapter shell overrides", () => {
     expect(css).not.toContain("Farm's");
@@ -40,6 +44,14 @@ describe("pixel-border CSS", () => {
     expect(css).toMatch(
       /#nd-docs-layout:not\(\[data-fd-framework\]\) #nd-toc,[^}]*\[data-toc-popover\] \{[^}]*display: none !important;/,
     );
+  });
+
+  it("leaves native TOC presentation to Fumadocs", () => {
+    expect(css).not.toContain('nav[class*="toc"]');
+    expect(css).not.toContain('[class*="fd-toc"]');
+    expect(previewCss).not.toContain('nav[class*="toc"]');
+    expect(previewCss).not.toContain('[class*="fd-toc"]');
+    expect(websiteConfig).not.toContain('style: "directional"');
   });
 
   it("keeps the website theme preview on the same responsive boundary", () => {

@@ -487,13 +487,6 @@ article a[class*="border"]:hover {
   border-color: var(--fd-pixel-modal-border) !important;
 }
 
-/* ─── TOC right panel (light + dark) ───────────────────────────────── */
-
-nav[class*="toc"],
-[class*="fd-toc"] {
-  border-color: var(--color-fd-border);
-}
-
 /* ─── Separator/Divider (hr) — light + dark ─────────────────────────── */
 
 hr {
