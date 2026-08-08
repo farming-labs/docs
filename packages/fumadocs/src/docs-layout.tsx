@@ -1136,7 +1136,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Build description map from frontmatter
   const descriptionMap = buildDescriptionMap(config, localeContext);
-  const generatedTitleMap = buildGeneratedTitleMap(config, localeContext);
+  const generatedTitleMap =
+    config.theme?.name === "shadcn" ? buildGeneratedTitleMap(config, localeContext) : {};
   const readingTimeMap = buildReadingTimeMap(config, localeContext, {
     enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,

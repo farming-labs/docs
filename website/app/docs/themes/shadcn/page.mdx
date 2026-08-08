@@ -50,11 +50,31 @@ export default defineDocs({
 | Sidebar width | 288px                                  |
 | TOC width     | 256px                                  |
 | Header height | 56px                                   |
+| Copy button   | Enabled                                |
+| Line numbers  | Disabled                               |
+| Syntax theme (light) | `github-light-default`          |
+| Syntax theme (dark)  | `vesper`                        |
+
+### Passing the theme to `withDocs()`
+
+To apply the shadcn syntax-highlighting themes during the Next.js build, pass the imported theme config to `withDocs()`:
+
+```ts title="next.config.ts"
+import { withDocs } from "@farming-labs/next/config";
+import docsConfig from "./docs.config";
+
+export default withDocs({}, { theme: docsConfig.theme });
+```
+
+Without this, `withDocs()` falls back to `github-light-default` / `vesper` automatically when it detects `@farming-labs/theme/shadcn` in your `docs.config` file, so the correct themes are used either way.
 
 ## Style Notes
 
 - Compact desktop navigation and quiet search controls
 - Rounded active sidebar rows with a subtle fading divider
+
+- Fading vertical divider on the desktop sidebar rail — a 1 px gradient line that fades to transparent at the top and bottom edges
+- Compact navigation-rail padding and a masked scroll-area viewport that softly fades content at the scroll boundaries
 - Narrow reading measure and restrained heading scale
 - Borderless soft code blocks, callouts, cards, and page actions
 - Responsive mobile content with the same typography rhythm
