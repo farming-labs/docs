@@ -164,7 +164,7 @@ code:not(pre code) {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1279px) {
   #nd-docs-layout:not([data-fd-framework]) {
     --fd-toc-popover-height: 0px !important;
   }

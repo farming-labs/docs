@@ -35,7 +35,7 @@ describe("pixel-border CSS", () => {
   });
 
   it("removes all table-of-contents chrome below desktop widths", () => {
-    expect(css).toContain("@media (max-width: 1023px)");
+    expect(css).toContain("@media (max-width: 1279px)");
     expect(css).toContain("--fd-toc-popover-height: 0px !important");
     expect(css).toMatch(
       /#nd-docs-layout:not\(\[data-fd-framework\]\) #nd-toc,[^}]*\[data-toc-popover\] \{[^}]*display: none !important;/,
@@ -50,6 +50,7 @@ describe("pixel-border CSS", () => {
       "@media (min-width: 1024px) {\n  #nd-docs-layout:not([data-fd-framework]),",
     );
     expect(previewCss).toContain("padding-inline: 2rem !important");
+    expect(previewCss).toContain("@media (max-width: 1279px)");
     expect(previewCss).toContain("--fd-toc-popover-height: 0px !important");
   });
 });
