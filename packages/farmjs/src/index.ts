@@ -15,8 +15,14 @@ export {
   type NavTree,
   type PageNode,
 } from "./content.js";
-export { createDocsServer, type DocsServer, type DocsServerLoadResult } from "./server.js";
-export { FarmDocsPage } from "./react.js";
+export {
+  createDocsServer,
+  createFarmDocsRuntimeHandler,
+  type DocsServer,
+  type DocsServerLoadResult,
+  type FarmDocsRuntimeHandlerOptions,
+} from "./server.js";
+export { FarmDocsPage, hydrateFarmDocs } from "./react.js";
 export { docsMdx } from "./vite.js";
 export {
   FARM_DOCS_ADAPTER_ID,

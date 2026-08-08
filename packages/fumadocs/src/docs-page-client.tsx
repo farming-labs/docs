@@ -46,6 +46,8 @@ interface SerializedProvider {
 
 interface DocsPageClientProps {
   tocEnabled: boolean;
+  /** Active theme preset name, used for theme-specific structural affordances. */
+  themeName?: string;
   tocStyle?: "default" | "directional";
   breadcrumbEnabled?: boolean;
   changelogBasePath?: string;
@@ -113,6 +115,8 @@ interface DocsPageClientProps {
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
   description?: string;
+  /** The first authored paragraph already contains the frontmatter description. */
+  descriptionInBody?: boolean;
   /** Built-in page feedback prompt configuration */
   feedbackEnabled?: boolean;
   feedbackQuestion?: string;
@@ -499,6 +503,7 @@ function findThreadlineTocActionsContainer(): HTMLElement | null {
 
 export function DocsPageClient({
   tocEnabled,
+  themeName,
   tocStyle = "default",
   breadcrumbEnabled = true,
   changelogBasePath,
@@ -538,6 +543,7 @@ export function DocsPageClient({
   generatedTitleMap,
   descriptionMap,
   description,
+  descriptionInBody = false,
   feedbackEnabled = false,
   feedbackQuestion,
   feedbackPlaceholder,
@@ -563,6 +569,7 @@ export function DocsPageClient({
   const activeLocale = resolveClientLocale(searchParams, locale);
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
+  const showLlmsInHeader = llmsTxtEnabled && themeName === "fumadocs-pixel-border";
 
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
   const pageTitle = generatedTitleMap?.[normalizedPath];
@@ -881,14 +888,42 @@ export function DocsPageClient({
 
     const host = document.createElement("div");
     host.className = "fd-title-decorations-host";
+
+    const placeHost = () => {
+      let anchor: Element = title;
+
+      if (descriptionInBody) {
+        let sibling = title.nextElementSibling;
+        while (sibling) {
+          if (sibling === host || sibling.matches(".not-prose, .fd-title-decorations-host")) {
+            sibling = sibling.nextElementSibling;
+            continue;
+          }
+
+          if (sibling.matches("p")) anchor = sibling;
+          break;
+        }
+      }
+
+      if (anchor.nextElementSibling !== host) {
+        anchor.insertAdjacentElement("afterend", host);
+      }
+    };
+
     title.insertAdjacentElement("afterend", host);
+    placeHost();
+    const observer = new MutationObserver(placeHost);
+    observer.observe(title.parentElement ?? title, { childList: true });
+    const animationFrame = window.requestAnimationFrame(placeHost);
     setTitlePortalHost(host);
 
     return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
       host.remove();
       setTitlePortalHost(null);
     };
-  }, [needsTitleDecorationsPortal, pathname]);
+  }, [descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
     <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
@@ -950,11 +985,12 @@ export function DocsPageClient({
           key="llms-txt"
           href={`/llms.txt${llmsLangQuery}`}
           className="fd-agent-llms-directive"
-          style={agentLlmsDirectiveStyle}
-          tabIndex={-1}
-          aria-hidden="true"
+          data-visible-in-header={showLlmsInHeader ? "true" : undefined}
+          style={showLlmsInHeader ? undefined : agentLlmsDirectiveStyle}
+          tabIndex={showLlmsInHeader ? undefined : -1}
+          aria-hidden={showLlmsInHeader ? undefined : true}
         >
-          llms.txt
+          {showLlmsInHeader ? "LLMS.TXT" : "llms.txt"}
         </a>
       )}
       {titleControlsPortal}
@@ -966,7 +1002,7 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: !isChangelogRoute }}
+        footer={{ enabled: false }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb

@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
+import { PassThrough } from "node:stream";
 import matter from "gray-matter";
+import { createElement, type ComponentType, type ReactElement } from "react";
+import * as ReactDOMServer from "react-dom/server";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
@@ -73,7 +77,7 @@ import {
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
 } from "@farming-labs/docs";
-import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
+import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
@@ -82,6 +86,7 @@ import {
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
 } from "@farming-labs/docs/server";
+
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import {
   loadDocsNavTree,
@@ -91,6 +96,48 @@ import {
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 export { createFarmjsApiReference } from "./api-reference.js";
+
+const require = createRequire(import.meta.url);
+const FARM_DOCS_BROWSER_CSS_PATH = "/__farm_docs/browser.css";
+
+function loadFarmDocsBrowserCss(): string {
+  return fs.readFileSync(require.resolve("@farming-labs/theme/browser/css"), "utf8");
+}
+
+async function renderFarmDocsMarkup(element: ReactElement): Promise<string> {
+  const server = ReactDOMServer as typeof ReactDOMServer & {
+    renderToReadableStream?: (
+      children: ReactElement,
+      options?: { onError?: (error: unknown) => void },
+    ) => Promise<ReadableStream<Uint8Array> & { allReady?: Promise<void> }>;
+  };
+
+  if (server.renderToReadableStream) {
+    const stream = await server.renderToReadableStream(element);
+    await stream.allReady;
+    return new Response(stream).text();
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    const destination = new PassThrough();
+    const chunks: Buffer[] = [];
+    destination.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    destination.on("error", reject);
+    destination.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+
+    const renderer = server.renderToPipeableStream(element, {
+      onAllReady() {
+        renderer.pipe(destination);
+      },
+      onShellError(error) {
+        reject(error);
+      },
+      onError(error) {
+        if (!destination.readableEnded) destination.destroy(error as Error);
+      },
+    });
+  });
+}
 
 function isApiReferenceOpenApiRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "openapi";
@@ -172,6 +219,8 @@ export interface DocsServerLoadResult {
   url: string;
   title: string;
   description?: string;
+  /** Whether the rendered MDX body already opens with the frontmatter description. */
+  descriptionInBody?: boolean;
   rawContent: string;
   readingTime?: number | null;
   readingTimeFormat?: "long" | "short";
@@ -196,7 +245,112 @@ export interface DocsServer {
   handle: (request: Request) => Promise<Response | null>;
 }
 
+interface FarmDocsRuntimeFont {
+  className?: string;
+  variable?: string;
+  style?: {
+    fontFamily?: string;
+  };
+  preloads?: readonly { href: string; type: string }[];
+}
+
+interface FarmDocsRuntimeFonts {
+  body?: FarmDocsRuntimeFont;
+  code?: FarmDocsRuntimeFont;
+}
+
+interface FarmDocsReactModule {
+  FarmDocsPage: ComponentType<{ config: DocsConfig; data: DocsServerLoadResult }>;
+}
+
+export interface FarmDocsRuntimeHandlerOptions {
+  /** Application root used to resolve the configured content directory. */
+  rootDir?: string;
+  /** Browser entry that hydrates the adapter-rendered page. */
+  clientEntry?: string;
+  /** Stylesheets owned by the host application. */
+  stylesheets?: readonly string[];
+  /** Resolve the semantic fonts exported by the host application's layouts. */
+  resolveLayoutFonts?: (
+    pathname: string,
+  ) => FarmDocsRuntimeFonts | undefined | Promise<FarmDocsRuntimeFonts | undefined>;
+  /** Development hook used by Farm to load the React entry through Vite SSR. */
+  loadReactModule?: () => Promise<FarmDocsReactModule>;
+}
+
 type ContentFileMap = Record<string, string>;
+
+interface FarmDocsNavigationItem {
+  label?: string;
+  title?: string;
+  slug?: string;
+  href?: string;
+  icon?: string;
+  children?: FarmDocsNavigationItem[];
+  items?: FarmDocsNavigationItem[];
+}
+
+function navigationItemName(item: FarmDocsNavigationItem): string {
+  return item.label?.trim() || item.title?.trim() || item.slug?.trim() || "Documentation";
+}
+
+function navigationItemUrl(item: FarmDocsNavigationItem, entry: string): string | undefined {
+  if (item.href?.trim()) return item.href.trim();
+  if (typeof item.slug !== "string") return undefined;
+  const slug = item.slug.replace(/^\/+|\/+$/g, "");
+  return slug ? `/${entry}/${slug}` : `/${entry}`;
+}
+
+function navTreeFromNavigation(config: Record<string, any>, entry: string): NavTree | null {
+  const configured = config.navigation?.sidebar;
+  if (!Array.isArray(configured) || configured.length === 0) return null;
+  const defaultOpen = config.theme?.name === "fumadocs-pixel-border";
+
+  function toNode(item: FarmDocsNavigationItem): NavNode | null {
+    const children = item.children ?? item.items ?? [];
+    const name = navigationItemName(item);
+    const url = navigationItemUrl(item, entry);
+
+    if (children.length > 0) {
+      const mappedChildren = children.map(toNode).filter((node): node is NavNode => node !== null);
+      return {
+        type: "folder",
+        name,
+        ...(defaultOpen ? { defaultOpen: true } : {}),
+        ...(item.icon ? { icon: item.icon } : {}),
+        ...(url
+          ? {
+              index: {
+                type: "page" as const,
+                name,
+                url,
+                ...(item.icon ? { icon: item.icon } : {}),
+              },
+            }
+          : {}),
+        children: mappedChildren,
+      };
+    }
+
+    if (!url) return null;
+    return {
+      type: "page",
+      name,
+      url,
+      ...(item.icon ? { icon: item.icon } : {}),
+    };
+  }
+
+  return {
+    name:
+      typeof config.nav?.title === "string" && config.nav.title.trim()
+        ? config.nav.title.trim()
+        : "Docs",
+    children: configured
+      .map((item: FarmDocsNavigationItem) => toNode(item))
+      .filter((node: NavNode | null): node is NavNode => node !== null),
+  };
+}
 
 function resolvePreloadedContent(value: unknown): ContentFileMap | null {
   if (!value || typeof value !== "object") return null;
@@ -241,6 +395,19 @@ function stripMarkdownText(content: string): string {
     .replace(/^[-*_]{3,}\s*$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function markdownStartsWithDescription(content: string, description?: string): boolean {
+  if (!description?.trim()) return false;
+
+  const withoutLeadingTitle = content
+    .trimStart()
+    .replace(/^#\s+[^\r\n]+(?:\r?\n|$)/, "")
+    .trimStart();
+  const firstBlock = withoutLeadingTitle.split(/\r?\n\s*\r?\n/, 1)[0] ?? "";
+  const normalize = (value: string) => stripMarkdownText(value).replace(/\s+/g, " ").trim();
+
+  return normalize(firstBlock) === normalize(description);
 }
 
 function normalizePathSegment(value: string): string {
@@ -622,7 +789,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       ? githubRaw.replace(/\/$/, "")
       : githubRaw?.url.replace(/\/$/, "");
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
-  const githubContentPath =
+  const githubDirectory =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
 
@@ -697,10 +864,12 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const resolvedLocale =
       (i18n && locale && i18n.locales.includes(locale) ? locale : undefined) ?? i18n?.defaultLocale;
     const ctx = resolveContextFromPath(pathname, resolvedLocale);
+    const configuredNavigation = navTreeFromNavigation(config, entry);
     const tree = applySidebarFolderIndexBehavior(
-      preloaded
-        ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-        : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
+      configuredNavigation ??
+        (preloaded
+          ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+          : loadDocsNavTree(ctx.contentDirAbs, entry, ordering)),
       {
         sidebar: config.sidebar,
         defaultBehavior: "link",
@@ -798,10 +967,20 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const nextPage = currentIndex < flatPages.length - 1 ? flatPages[currentIndex + 1] : null;
 
     let editOnGithub: string | undefined;
-    if (githubRepo && githubContentPath) {
-      const trimmed = githubContentPath.replace(/\/+$/, "");
-      const localePrefix = ctx.locale ? `${ctx.locale}/` : "";
-      editOnGithub = `${githubRepo}/blob/${githubBranch}/${trimmed}/${localePrefix}${toPosixPath(relPath)}`;
+    if (githubRepo) {
+      const contentPath = normalizePathSegment(
+        path.isAbsolute(ctx.contentDirRel)
+          ? toPosixPath(path.relative(rootDir, ctx.contentDirRel))
+          : toPosixPath(ctx.contentDirRel),
+      );
+      const configuredDirectory = normalizePathSegment(githubDirectory ?? "");
+      const sourceDirectory =
+        configuredDirectory &&
+        (contentPath === configuredDirectory || contentPath.startsWith(`${configuredDirectory}/`))
+          ? contentPath
+          : joinPathParts(configuredDirectory, contentPath);
+      const sourcePath = joinPathParts(sourceDirectory, toPosixPath(relPath));
+      editOnGithub = `${githubRepo}/edit/${githubBranch}/${sourcePath}`;
     }
 
     const fallbackTitle = isIndex
@@ -810,6 +989,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
     const title = (data.title as string) ?? fallbackTitle;
     const description = data.description as string | undefined;
+    const descriptionInBody = markdownStartsWithDescription(humanRawContent, description);
     const structuredData = renderDocsPageStructuredDataJson({
       title,
       description,
@@ -826,6 +1006,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       url: currentUrl,
       title,
       description,
+      descriptionInBody,
       rawContent: humanRawContent,
       readingTime,
       readingTimeFormat: readingTimeOptions.format,
@@ -1999,9 +2180,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       getNavigation(locale) {
         const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
         return applySidebarFolderIndexBehavior(
-          preloaded
-            ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-            : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
+          navTreeFromNavigation(config, entry) ??
+            (preloaded
+              ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+              : loadDocsNavTree(ctx.contentDirAbs, entry, ordering)),
           {
             sidebar: config.sidebar,
             defaultBehavior: "link",
@@ -2136,4 +2318,250 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   }
 
   return { load, GET, HEAD, POST, MCP, handle };
+}
+
+function escapeDocumentText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function serializeInlineJson(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+function createClientDocsConfig(config: DocsConfig & Record<string, any>): Record<string, unknown> {
+  const {
+    apiKey: _apiKey,
+    rootDir: _rootDir,
+    contentDir: _contentDir,
+    _preloadedContent,
+    _preloadedAgentSkills,
+    socialImage,
+    ...clientConfig
+  } = config;
+  const ai =
+    clientConfig.ai && typeof clientConfig.ai === "object"
+      ? {
+          ...clientConfig.ai,
+          apiKey: undefined,
+          providers:
+            clientConfig.ai.providers && typeof clientConfig.ai.providers === "object"
+              ? Object.fromEntries(
+                  Object.entries(clientConfig.ai.providers).map(([name, provider]) => [
+                    name,
+                    provider && typeof provider === "object"
+                      ? { ...(provider as Record<string, unknown>), apiKey: undefined }
+                      : provider,
+                  ]),
+                )
+              : clientConfig.ai.providers,
+        }
+      : clientConfig.ai;
+
+  return {
+    ...clientConfig,
+    ...(ai ? { ai } : {}),
+    ...(socialImage === false ? { socialImage: false } : {}),
+  };
+}
+
+function normalizedPublicRoute(value: unknown, fallback: string): string {
+  const normalized = typeof value === "string" && value.trim() ? value.trim() : fallback;
+  if (normalized === "/") return "/";
+  return `/${normalized.replace(/^\/+|\/+$/g, "")}`;
+}
+
+function isHtmlDocsPageRequest(config: Record<string, any>, request: Request): boolean {
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return false;
+
+  const url = new URL(request.url);
+  const pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
+  const docsPath = normalizedPublicRoute(config.docsPath, `/${config.entry ?? "docs"}`);
+  const isPagePath =
+    docsPath === "/"
+      ? !pathname.endsWith(".md")
+      : pathname === docsPath || pathname.startsWith(`${docsPath}/`);
+  if (!isPagePath || pathname.endsWith(".md")) return false;
+
+  const accept = request.headers.get("accept")?.toLowerCase() ?? "";
+  return !accept.includes("text/markdown");
+}
+
+function runtimeFontClasses(fonts: FarmDocsRuntimeFonts | undefined): string {
+  return Array.from(
+    new Set(
+      [fonts?.body?.className, fonts?.body?.variable, fonts?.code?.variable].filter(
+        (value): value is string => typeof value === "string" && value.length > 0,
+      ),
+    ),
+  ).join(" ");
+}
+
+function runtimeFontStyle(fonts: FarmDocsRuntimeFonts | undefined): string {
+  const declarations: string[] = [];
+  const bodyFontFamily = fonts?.body?.style?.fontFamily?.trim();
+  const codeFontFamily = fonts?.code?.style?.fontFamily?.trim();
+
+  if (bodyFontFamily) {
+    declarations.push(`--font-sans:${bodyFontFamily}`, `--fd-font-sans:${bodyFontFamily}`);
+  }
+  if (codeFontFamily) {
+    declarations.push(`--font-mono:${codeFontFamily}`, `--fd-font-mono:${codeFontFamily}`);
+  }
+
+  return declarations.join(";");
+}
+
+function runtimeFontPreloads(fonts: FarmDocsRuntimeFonts | undefined): {
+  markup: string;
+  header: string;
+} {
+  const seen = new Set<string>();
+  const values = [fonts?.body, fonts?.code].flatMap((font) => font?.preloads ?? []);
+  const unique = values.filter(({ href }) => {
+    if (seen.has(href)) return false;
+    seen.add(href);
+    return true;
+  });
+
+  return {
+    markup: unique
+      .map(
+        ({ href, type }) =>
+          `<link rel="preload" href="${escapeDocumentText(href)}" as="font" type="${escapeDocumentText(type)}" crossorigin>`,
+      )
+      .join("\n  "),
+    header: unique
+      .map(({ href, type }) => `<${href}>; rel=preload; as=font; type=${type}; crossorigin`)
+      .join(", "),
+  };
+}
+
+function renderFarmDocsDocument(input: {
+  config: DocsConfig & Record<string, any>;
+  data: DocsServerLoadResult;
+  markup: string;
+  clientEntry: string;
+  stylesheets: readonly string[];
+  fonts?: FarmDocsRuntimeFonts;
+}): string {
+  const { config, data } = input;
+  const description = data.description ?? config.metadata?.description;
+  const themeName = config.theme?.name ?? "default";
+  const favicon = typeof config.favicon === "string" ? config.favicon : undefined;
+  const rootClasses = runtimeFontClasses(input.fonts);
+  const rootStyle = runtimeFontStyle(input.fonts);
+  const fontPreloads = runtimeFontPreloads(input.fonts).markup;
+
+  return `<!doctype html>
+<html class="dark" lang="${escapeDocumentText(data.locale ?? "en")}" data-docs-theme="${escapeDocumentText(themeName)}" data-farm-docs-runtime="true">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="@farming-labs/farmjs">
+  <title>${escapeDocumentText(data.title)}</title>
+  ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
+  ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
+  ${fontPreloads}
+  <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
+  ${input.stylesheets
+    .map((href) => `<link rel="stylesheet" href="${escapeDocumentText(href)}">`)
+    .join("\n  ")}
+</head>
+<body>
+  <div id="root"><div id="farm-docs-root"${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
+  <script>window.__FARM_DOCS_ADAPTER__={config:${serializeInlineJson(createClientDocsConfig(config))},data:${serializeInlineJson(data)}};</script>
+  <script type="module" src="${escapeDocumentText(input.clientEntry)}"></script>
+</body>
+</html>`;
+}
+
+/**
+ * Create the complete Farm docs runtime owned by this adapter.
+ *
+ * Farm core supplies host assets and module loading; this adapter owns route
+ * classification, docs APIs, content loading, React rendering, and hydration
+ * state for every documentation request.
+ */
+export function createFarmDocsRuntimeHandler(
+  config: DocsConfig & Record<string, any>,
+  options: FarmDocsRuntimeHandlerOptions = {},
+) {
+  const runtimeConfig = {
+    ...config,
+    rootDir: options.rootDir ?? config.rootDir ?? process.cwd(),
+  };
+  const docsServer = createDocsServer(runtimeConfig);
+
+  return async function handleFarmDocsRuntimeRequest(request: Request): Promise<Response | null> {
+    const url = new URL(request.url);
+    if (url.pathname === FARM_DOCS_BROWSER_CSS_PATH) {
+      return new Response(
+        request.method.toUpperCase() === "HEAD" ? null : loadFarmDocsBrowserCss(),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "text/css; charset=utf-8",
+            "Cache-Control": "public, max-age=31536000, immutable",
+          },
+        },
+      );
+    }
+
+    if (!isHtmlDocsPageRequest(runtimeConfig, request)) {
+      return docsServer.handle(request);
+    }
+
+    let data: DocsServerLoadResult;
+    try {
+      data = await docsServer.load({ pathname: url.pathname });
+    } catch (error) {
+      const status =
+        error &&
+        typeof error === "object" &&
+        typeof (error as { status?: unknown }).status === "number"
+          ? (error as { status: number }).status
+          : 500;
+      if (status === 404) return null;
+      throw error;
+    }
+
+    const reactModule = options.loadReactModule
+      ? await options.loadReactModule()
+      : ((await import("./react.js")) as FarmDocsReactModule);
+    const markup = await renderFarmDocsMarkup(
+      createElement(reactModule.FarmDocsPage, {
+        config: runtimeConfig,
+        data,
+      }),
+    );
+    const fonts = await options.resolveLayoutFonts?.(url.pathname);
+    const fontPreloadHeader = runtimeFontPreloads(fonts).header;
+    const html = renderFarmDocsDocument({
+      config: runtimeConfig,
+      data,
+      markup,
+      clientEntry: options.clientEntry ?? "/farm-client.js",
+      stylesheets: options.stylesheets ?? [],
+      fonts,
+    });
+
+    return new Response(request.method.toUpperCase() === "HEAD" ? null : html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        "X-Farm-Docs-Adapter": "@farming-labs/farmjs",
+        ...(fontPreloadHeader ? { Link: fontPreloadHeader } : {}),
+      },
+    });
+  };
 }

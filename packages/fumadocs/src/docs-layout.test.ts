@@ -135,6 +135,18 @@ agent:
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
+  it("passes the theme name through for theme-owned structural styling", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "fumadocs-pixel-border" } as any,
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props?.themeName).toBe("fumadocs-pixel-border");
+  });
+
   it("generates frontmatter titles only when the MDX body does not author an h1", () => {
     const pages = {
       generated: ["---", "title: Generated", "---", "", "Body without a heading."],
@@ -747,6 +759,29 @@ agent:
         url: "/docs/authentication",
       }),
     });
+  });
+
+  it("uses the folder slug for generic Shadcn introduction section labels", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "statewire", "authoring"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "page.mdx"),
+      "---\ntitle: Introduction\n---\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "authoring", "page.mdx"),
+      "---\ntitle: Authoring\n---\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs", theme: { name: "shadcn" } });
+    const tree = findDocsLayoutTree(
+      Layout({ children: React.createElement("div", null, "child") }),
+    );
+
+    expect(
+      (tree?.children as Array<Record<string, unknown>>).find((item) => item.name === "Statewire"),
+    ).toMatchObject({ type: "folder" });
   });
 
   it("applies sidebar.folderIndexBehaviorOverrides selectively", () => {

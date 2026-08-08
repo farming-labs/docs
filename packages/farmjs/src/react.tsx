@@ -1,9 +1,11 @@
-import type { ComponentType } from "react";
+import { createElement, type ComponentType, type ReactNode } from "react";
+import { hydrateRoot, type Root } from "react-dom/client";
 import type { DocsConfig, FeedbackConfig } from "@farming-labs/docs";
 import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
-import { TanstackDocsLayout } from "@farming-labs/theme/tanstack";
+import { BrowserDocsLayout, BrowserRootProvider } from "@farming-labs/theme/browser";
 import { getMDXComponents, type GetMDXComponentsOptions } from "@farming-labs/theme/mdx";
 import type { DocsServerLoadResult } from "./server.js";
+import { normalizeDocsModuleKey, resolveDocsModule } from "./module-map.js";
 
 interface MdxModule {
   default: ComponentType<any>;
@@ -13,57 +15,89 @@ const rawDocModules = import.meta.glob("/**/*.{md,mdx}", {
   eager: true,
 });
 
-function normalizeDocsKey(key: string) {
-  const posixKey = key.replace(/\\/g, "/");
-  return posixKey.startsWith("/") ? posixKey : `/${posixKey.replace(/^\.?\//, "")}`;
-}
-
 const docModules = Object.fromEntries(
-  Object.entries(rawDocModules).map(([key, value]) => [normalizeDocsKey(key), value]),
+  Object.entries(rawDocModules).map(([key, value]) => [normalizeDocsModuleKey(key), value]),
 );
 
+function renderConfiguredIcon(value: unknown): ReactNode {
+  if (typeof value !== "string") return value as ReactNode;
+  const markup = value.trim();
+  if (!markup) return undefined;
+
+  const svgMatch = markup.match(/^<svg\b([^>]*)>([\s\S]*)<\/svg>$/i);
+  const inner = svgMatch?.[2] ?? markup;
+  const viewBox = svgMatch?.[1].match(/\bviewBox=["']([^"']+)["']/i)?.[1] ?? "0 0 24 24";
+
+  return createElement("svg", {
+    "aria-hidden": "true",
+    focusable: "false",
+    viewBox,
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    dangerouslySetInnerHTML: { __html: inner },
+  });
+}
+
+function withRenderableIcons(config: DocsConfig): DocsConfig {
+  if (!config.icons || typeof config.icons !== "object") return config;
+  return {
+    ...config,
+    icons: Object.fromEntries(
+      Object.entries(config.icons).map(([name, value]) => [name, renderConfiguredIcon(value)]),
+    ),
+  };
+}
+
 export function FarmDocsPage({ config, data }: { config: DocsConfig; data: DocsServerLoadResult }) {
-  const promptIconRegistry = config.icons as GetMDXComponentsOptions["icons"];
+  const resolvedConfig = withRenderableIcons(config);
+  const promptIconRegistry = resolvedConfig.icons as GetMDXComponentsOptions["icons"];
   const promptOpenDocsProviders =
-    config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
-      ? (config.pageActions.openDocs.providers as GetMDXComponentsOptions["openDocsProviders"])
+    resolvedConfig.pageActions?.openDocs && typeof resolvedConfig.pageActions.openDocs === "object"
+      ? (resolvedConfig.pageActions.openDocs
+          .providers as GetMDXComponentsOptions["openDocsProviders"])
       : undefined;
-  const module = docModules[data.sourcePath] as MdxModule | undefined;
+  const module = resolveDocsModule(docModules, data.sourcePath) as MdxModule | undefined;
   const Content = module?.default ?? null;
 
   if (!Content) {
     return (
-      <TanstackDocsLayout config={config} tree={data.tree} locale={data.locale}>
-        <article style={{ padding: "2rem" }}>
-          <h1>Page module missing</h1>
-          <p>Expected a compiled MDX module at `{data.sourcePath}`.</p>
-        </article>
-      </TanstackDocsLayout>
+      <BrowserRootProvider initialPathname={data.url}>
+        <BrowserDocsLayout config={resolvedConfig} tree={data.tree} locale={data.locale}>
+          <article style={{ padding: "2rem" }}>
+            <h1>Page module missing</h1>
+            <p>Expected a compiled MDX module at `{data.sourcePath}`.</p>
+          </article>
+        </BrowserDocsLayout>
+      </BrowserRootProvider>
     );
   }
 
   return (
-    <>
+    <BrowserRootProvider initialPathname={data.url}>
       <DocsClientHooks
-        onCopyClick={config.onCopyClick}
-        analytics={config.analytics}
+        onCopyClick={resolvedConfig.onCopyClick}
+        analytics={resolvedConfig.analytics}
         onFeedback={
-          typeof config.feedback === "object"
-            ? (config.feedback as FeedbackConfig).onFeedback
+          typeof resolvedConfig.feedback === "object"
+            ? (resolvedConfig.feedback as FeedbackConfig).onFeedback
             : undefined
         }
         onAIFeedback={
-          config.ai?.feedback && typeof config.ai.feedback === "object"
-            ? config.ai.feedback.onFeedback
+          resolvedConfig.ai?.feedback && typeof resolvedConfig.ai.feedback === "object"
+            ? resolvedConfig.ai.feedback.onFeedback
             : undefined
         }
-        onAIActions={config.ai?.onActions}
+        onAIActions={resolvedConfig.ai?.onActions}
       />
-      <TanstackDocsLayout
-        config={config}
+      <BrowserDocsLayout
+        config={resolvedConfig}
         tree={data.tree}
         locale={data.locale}
-        description={data.description}
+        description={data.descriptionInBody ? undefined : data.description}
+        descriptionInBody={data.descriptionInBody}
         readingTime={data.readingTime}
         lastModified={data.lastModified}
         previousPage={data.previousPage}
@@ -72,14 +106,27 @@ export function FarmDocsPage({ config, data }: { config: DocsConfig; data: DocsS
         editOnGithubUrl={data.editOnGithub}
       >
         <Content
-          components={getMDXComponents(config.components as Record<string, unknown>, {
-            onCopyClick: config.onCopyClick,
-            theme: config.theme,
+          components={getMDXComponents(resolvedConfig.components as Record<string, unknown>, {
+            onCopyClick: resolvedConfig.onCopyClick,
+            theme: resolvedConfig.theme,
             icons: promptIconRegistry,
             openDocsProviders: promptOpenDocsProviders,
           })}
         />
-      </TanstackDocsLayout>
-    </>
+      </BrowserDocsLayout>
+    </BrowserRootProvider>
   );
+}
+
+export function hydrateFarmDocs(input: {
+  config: DocsConfig;
+  data: DocsServerLoadResult;
+  container?: Element | null;
+}): Root {
+  const container = input.container ?? document.getElementById("farm-docs-root");
+  if (!container) {
+    throw new Error("Farm docs hydration root was not found.");
+  }
+
+  return hydrateRoot(container, <FarmDocsPage config={input.config} data={input.data} />);
 }

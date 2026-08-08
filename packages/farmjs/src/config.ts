@@ -1,5 +1,13 @@
 import type { DocsConfig } from "@farming-labs/docs";
 import { farmDocsRuntimeAdapter, type FarmDocsRuntimeAdapter } from "./runtime.js";
+import { docsMdx } from "./vite.js";
+
+interface FarmViteConfigLike {
+  plugins?: unknown[];
+  [key: string]: unknown;
+}
+
+type FarmViteConfigFactory = (config: FarmViteConfigLike) => FarmViteConfigLike;
 
 export interface FarmDocsCoreConfig extends Partial<DocsConfig> {
   enabled?: boolean;
@@ -20,16 +28,35 @@ export interface FarmDocsAdapterOptions {
 
 export interface FarmConfigLike {
   docs?: boolean | FarmDocsCoreConfig;
+  vite?: FarmViteConfigLike | FarmViteConfigFactory;
   [key: string]: unknown;
 }
 
-export type FarmConfigWithDocs<TConfig extends FarmConfigLike> = Omit<TConfig, "docs"> & {
+export type FarmConfigWithDocs<TConfig extends FarmConfigLike> = Omit<TConfig, "docs" | "vite"> & {
   docs: FarmDocsCoreConfig;
+  vite: FarmViteConfigLike | FarmViteConfigFactory;
 };
 
 function normalizeExistingDocs(value: FarmConfigLike["docs"]): FarmDocsCoreConfig {
   if (!value || value === true) return {};
   return value;
+}
+
+function appendDocsVitePlugins(config: FarmViteConfigLike = {}): FarmViteConfigLike {
+  return {
+    ...config,
+    plugins: [docsMdx(), ...(config.plugins ?? [])],
+  };
+}
+
+function withDocsViteConfig(
+  value: FarmConfigLike["vite"],
+): FarmViteConfigLike | FarmViteConfigFactory {
+  if (typeof value === "function") {
+    return (config) => appendDocsVitePlugins(value(config));
+  }
+
+  return appendDocsVitePlugins(value);
 }
 
 /**
@@ -48,6 +75,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
 
   return {
     ...farmConfig,
+    vite: withDocsViteConfig(farmConfig.vite),
     docs: {
       ...existing,
       enabled,

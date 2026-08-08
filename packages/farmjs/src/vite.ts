@@ -2,14 +2,80 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@mdx-js/rollup";
+import {
+  applyDocsMarkdownHeadingAnchors,
+  encodeDocsHeadingTocUrls,
+  isolateDocsMarkdownPromptReferences,
+  withDocsMarkdownRenderableHeadings,
+} from "@farming-labs/docs";
 import { remarkCodeGroup } from "@farming-labs/docs/server";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
-import { remarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
+import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
+
+export function createCanonicalDocsRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
+  return (root, file) => {
+    isolateDocsMarkdownPromptReferences(root, file.value);
+    applyDocsMarkdownHeadingAnchors(root);
+    withDocsMarkdownRenderableHeadings(root, () =>
+      createFumadocsRemarkHeading({ customId: false })(root, file, () => undefined),
+    );
+    encodeDocsHeadingTocUrls(file.data.toc);
+    return root;
+  };
+}
+
+interface MarkdownNode {
+  type: string;
+  value?: string;
+  meta?: string | null;
+  children?: MarkdownNode[];
+}
+
+/**
+ * Preserve Farm's conventional standalone bold code labels without requiring
+ * framework-owned HTML. File labels become code-block titles; generic terminal
+ * labels are omitted because the language and copy affordance already identify
+ * those blocks.
+ */
+export function remarkStandaloneCodeLabels() {
+  return (tree: MarkdownNode) => {
+    const children = tree.children;
+    if (!children) return tree;
+
+    for (let index = 0; index < children.length - 1; index += 1) {
+      const label = children[index];
+      const code = children[index + 1];
+      const strong = label?.type === "paragraph" ? label.children?.[0] : undefined;
+      const text = strong?.type === "strong" ? strong.children?.[0] : undefined;
+
+      if (
+        label?.children?.length !== 1 ||
+        strong?.children?.length !== 1 ||
+        text?.type !== "text" ||
+        code?.type !== "code" ||
+        !text.value?.trim()
+      ) {
+        continue;
+      }
+
+      const value = text.value.trim();
+      if (!/^(terminal|shell|console)$/i.test(value)) {
+        const title = `title=${JSON.stringify(value)}`;
+        code.meta = [code.meta?.trim(), title].filter(Boolean).join(" ");
+      }
+
+      children.splice(index, 1);
+      index -= 1;
+    }
+
+    return tree;
+  };
+}
 
 function findWorkspaceRoot(startDir: string): string | null {
   let current = startDir;
@@ -101,6 +167,22 @@ function resolveWorkspaceAliases() {
       replacement: `${themeSrc}/hardline/index.ts`,
     },
     {
+      find: /^@farming-labs\/theme\/shadcn$/,
+      replacement: `${themeSrc}/shadcn/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/threadline$/,
+      replacement: `${themeSrc}/threadline/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/command-grid$/,
+      replacement: `${themeSrc}/command-grid/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/ledger$/,
+      replacement: `${themeSrc}/ledger/index.ts`,
+    },
+    {
       find: /^@farming-labs\/theme\/search$/,
       replacement: `${themeSrc}/search.ts`,
     },
@@ -127,11 +209,10 @@ export function docsMdx(): PluginOption {
       name: "farming-labs-farmjs-workspace-alias",
       enforce: "pre",
       config() {
-        if (aliases.length === 0) return;
-
         return {
-          resolve: {
-            alias: aliases,
+          ...(aliases.length > 0 ? { resolve: { alias: aliases } } : {}),
+          ssr: {
+            noExternal: ["@farming-labs/docs", "@farming-labs/theme"],
           },
         };
       },
@@ -142,8 +223,9 @@ export function docsMdx(): PluginOption {
         remarkGfm,
         remarkFrontmatter,
         [remarkMdxFrontmatter, { name: "metadata" }],
+        remarkStandaloneCodeLabels,
         remarkCodeGroup,
-        remarkHeading,
+        createCanonicalDocsRemarkHeading,
       ],
       rehypePlugins: [
         rehypeToc,

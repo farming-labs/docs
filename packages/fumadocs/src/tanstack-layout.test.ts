@@ -289,6 +289,25 @@ describe("TanstackDocsLayout", () => {
     expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
   });
 
+  it("passes authored description placement through to DocsPageClient", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+      },
+      tree: {
+        name: "Docs",
+        children: [],
+      },
+      descriptionInBody: true,
+      children: React.createElement("div", null, "child"),
+    });
+
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.descriptionInBody).toBe(true);
+  });
+
   it("passes the configured feedback placeholder through to DocsPageClient", () => {
     const tree = TanstackDocsLayout({
       config: {

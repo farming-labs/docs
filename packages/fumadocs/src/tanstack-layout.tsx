@@ -10,14 +10,18 @@ import type {
   OpenDocsConfig,
   CopyMarkdownConfig,
 } from "@farming-labs/docs";
-import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
+import {
+  applySidebarFolderIndexBehavior,
+  resolveDocsAnalyticsConfig,
+} from "@farming-labs/docs/browser";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
-import { resolveReadingTimeOptions } from "./reading-time.js";
+import { resolveReadingTimeOptions } from "./reading-time-options.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
+import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
@@ -99,6 +103,7 @@ export interface TanstackDocsLayoutProps {
   tree: TreeRoot;
   locale?: string;
   description?: string;
+  descriptionInBody?: boolean;
   readingTime?: number | null;
   lastModified?: string;
   previousPage?: { name: string; url: string } | null;
@@ -343,6 +348,7 @@ export function TanstackDocsLayout({
   tree,
   locale,
   description,
+  descriptionInBody,
   readingTime,
   lastModified,
   previousPage,
@@ -505,6 +511,7 @@ export function TanstackDocsLayout({
       <TypographyStyle typography={typography} />
       <LayoutStyle layout={layoutDimensions} />
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+      {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
       {!staticExport && (
         <Suspense fallback={null}>
           <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
@@ -533,6 +540,7 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
+          themeName={config.theme?.name}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}
@@ -560,6 +568,7 @@ export function TanstackDocsLayout({
           readingTime={typeof readingTime === "number" ? readingTime : undefined}
           llmsTxtEnabled={llmsTxtEnabled}
           description={description}
+          descriptionInBody={descriptionInBody}
           feedbackEnabled={feedbackConfig.enabled}
           feedbackQuestion={feedbackConfig.question}
           feedbackPlaceholder={feedbackConfig.placeholder}

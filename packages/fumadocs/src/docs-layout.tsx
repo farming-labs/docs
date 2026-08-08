@@ -36,6 +36,7 @@ import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
+import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -103,27 +104,33 @@ function readFrontmatter(filePath: string): Record<string, unknown> {
 function hasAuthoredPageTitle(source: string): boolean {
   const { content } = matter(source);
   const lines = content.split(/\r?\n/);
-  let fence: string | undefined;
+  let fence: "`" | "~" | undefined;
   let previousTextLine = "";
 
   for (const line of lines) {
     const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
     if (fenceMatch) {
-      const marker = fenceMatch[1]?.[0];
+      const marker = fenceMatch[1]?.[0] as "`" | "~";
       fence = fence === marker ? undefined : (fence ?? marker);
       previousTextLine = "";
       continue;
     }
+
     if (fence) continue;
     if (/^ {0,3}#(?:\s+|$)/.test(line) || /^\s*<h1(?:\s|>)/i.test(line)) return true;
     if (previousTextLine && /^ {0,3}=+\s*$/.test(line)) return true;
+
     previousTextLine = line.trim() && !line.trimStart().startsWith("<") ? line : "";
   }
 
   return false;
 }
 
-function resolveSidebarFolderName(themeName: string | undefined, slug: string, pageTitle: string) {
+function resolveSidebarFolderName(
+  themeName: string | undefined,
+  slug: string,
+  pageTitle: string,
+): string {
   if (themeName !== "shadcn" || pageTitle.trim().toLowerCase() !== "introduction") {
     return pageTitle;
   }
@@ -585,7 +592,10 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
   return map;
 }
 
-/** Build titles only for pages whose MDX body does not already author an h1. */
+/**
+ * Build titles only for pages whose MDX body does not already author an h1.
+ * This lets the page frame render the frontmatter title exactly once.
+ */
 function buildGeneratedTitleMap(
   config: DocsConfig,
   ctx: DocsLocaleContext,
@@ -609,7 +619,9 @@ function buildGeneratedTitleMap(
 
     for (const name of fs.readdirSync(dir)) {
       const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) scan(full, [...slugParts, name]);
+      if (fs.statSync(full).isDirectory()) {
+        scan(full, [...slugParts, name]);
+      }
     }
   }
 
@@ -1185,6 +1197,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+        {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
         {!staticExport && (
           <Suspense fallback={null}>
             <DocsCommandSearch
@@ -1220,6 +1233,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         <Suspense fallback={children}>
           <DocsPageClient
             tocEnabled={tocEnabled}
+            themeName={config.theme?.name}
             tocStyle={tocStyle}
             breadcrumbEnabled={breadcrumbEnabled}
             changelogBasePath={changelogBasePath}

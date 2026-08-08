@@ -32,6 +32,7 @@ export interface FolderNode {
   type: "folder";
   name: string;
   icon?: string;
+  defaultOpen?: boolean;
   index?: PageNode;
   folderIndexBehavior?: SidebarFolderIndexBehavior;
   children: NavNode[];

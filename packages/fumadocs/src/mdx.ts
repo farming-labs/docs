@@ -41,8 +41,8 @@ import {
   type CodeBlockCopyData,
   type DocsContentAudience,
   type DocsTheme,
-  resolveDocsAudienceExposure,
 } from "@farming-labs/docs";
+import { resolveDocsAudienceExposure } from "@farming-labs/docs/browser";
 
 function Table(props: React.ComponentPropsWithoutRef<"table">) {
   return React.createElement(

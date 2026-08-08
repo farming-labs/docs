@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
+import { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "@farming-labs/docs/browser";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import type {
   CodeBlockCopyData,
