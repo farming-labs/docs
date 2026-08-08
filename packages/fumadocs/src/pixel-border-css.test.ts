@@ -62,7 +62,7 @@ describe("pixel-border CSS", () => {
     );
   });
 
-  it("uses the native directional TOC without theme-level rail overrides", () => {
+  it("uses the native directional TOC without replacing its rail", () => {
     expect(css).not.toContain('nav[class*="toc"]');
     expect(css).not.toContain('[class*="fd-toc"]');
     expect(previewCss).not.toContain('nav[class*="toc"]');
@@ -73,6 +73,12 @@ describe("pixel-border CSS", () => {
     }
     expect(websiteConfig).not.toContain('style: "directional"');
     expect(websiteGlobalCss).not.toContain('#nd-toc [style*="--track-top"]');
+  });
+
+  it("ends straight TOC rails where the native Clerk bend begins", () => {
+    const seamFix = /#nd-toc a > div\.bottom-1\\\.5 \{[^}]*bottom: 0\.375rem;/;
+    expect(css).toMatch(seamFix);
+    expect(previewCss).toMatch(seamFix);
   });
 
   it("keeps the website theme preview on the same responsive boundary", () => {

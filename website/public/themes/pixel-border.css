@@ -156,6 +156,11 @@ code:not(pre code) {
   }
 }
 
+/* Keep the native Clerk bend from overpainting the straight rail segment. */
+#nd-toc a > div.bottom-1\.5 {
+  bottom: 0.375rem;
+}
+
 @media (min-width: 1024px) {
   #nd-docs-layout:not([data-fd-framework]),
   #nd-docs-layout:not([data-fd-framework]) [style*="fd-sidebar-col"] {
