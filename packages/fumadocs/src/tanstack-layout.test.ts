@@ -308,6 +308,50 @@ describe("TanstackDocsLayout", () => {
     expect(props?.descriptionInBody).toBe(true);
   });
 
+  it("keeps browser-only header actions out of normal TanStack layouts", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        theme: { name: "fumadocs-pixel-border" } as any,
+        llmsTxt: true,
+      },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(false);
+  });
+
+  it("enables browser-owned header actions for the browser runtime", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        theme: { name: "fumadocs-pixel-border" } as any,
+        llmsTxt: true,
+      },
+      tree: { name: "Docs", children: [] },
+      browserRuntime: true,
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
+    expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-framework": "",
+    });
+  });
+
+  it("keeps the native TanStack layout out of framework-owned CSS", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs" },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(
+      (tree.props as { containerProps?: Record<string, unknown> }).containerProps,
+    ).toBeUndefined();
+  });
+
   it("passes the configured feedback placeholder through to DocsPageClient", () => {
     const tree = TanstackDocsLayout({
       config: {

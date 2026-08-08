@@ -1,5 +1,5 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, type HTMLAttributes, type ReactNode } from "react";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -45,6 +45,10 @@ interface FolderNode {
 }
 
 type TreeNode = PageNode | FolderNode;
+
+type FrameworkContainerProps = HTMLAttributes<HTMLDivElement> & {
+  "data-fd-framework"?: string;
+};
 
 interface TreeRoot {
   name: string;
@@ -101,6 +105,8 @@ function resolveTreeIcons(tree: TreeRoot, registry: Record<string, unknown> | un
 export interface TanstackDocsLayoutProps {
   config: DocsConfig;
   tree: TreeRoot;
+  /** Enables browser-adapter shell affordances that are not part of a theme preset. */
+  browserRuntime?: boolean;
   locale?: string;
   description?: string;
   descriptionInBody?: boolean;
@@ -346,6 +352,7 @@ function ForcedThemeScript({ theme }: { theme: string }) {
 export function TanstackDocsLayout({
   config,
   tree,
+  browserRuntime = false,
   locale,
   description,
   descriptionInBody,
@@ -414,6 +421,9 @@ export function TanstackDocsLayout({
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
+  const frameworkContainerProps: FrameworkContainerProps | undefined = browserRuntime
+    ? { "data-fd-framework": "" }
+    : undefined;
 
   const openDocsConfig =
     pageActions?.openDocs && typeof pageActions.openDocs === "object"
@@ -501,6 +511,7 @@ export function TanstackDocsLayout({
       nav={{ title: navTitle, url: navUrl }}
       themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
       sidebar={finalSidebarProps}
+      containerProps={frameworkContainerProps}
       {...(aiMode === "sidebar-icon" && aiEnabled
         ? {
             searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
@@ -511,7 +522,7 @@ export function TanstackDocsLayout({
       <TypographyStyle typography={typography} />
       <LayoutStyle layout={layoutDimensions} />
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-      {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
+      {browserRuntime && config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
       {!staticExport && (
         <Suspense fallback={null}>
           <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
@@ -540,7 +551,7 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
-          themeName={config.theme?.name}
+          showLlmsInHeader={browserRuntime && config.theme?.name === "fumadocs-pixel-border"}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}
