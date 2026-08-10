@@ -17,6 +17,33 @@ import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
 
+export interface FarmDocsCodeBlockThemes {
+  /** Shiki theme used in light mode. */
+  light?: string;
+  /** Shiki theme used in dark mode. */
+  dark?: string;
+}
+
+export interface FarmDocsMdxOptions {
+  /** Shiki themes used while compiling Markdown and MDX code blocks. */
+  codeBlockThemes?: FarmDocsCodeBlockThemes;
+}
+
+const DEFAULT_CODE_BLOCK_THEMES = {
+  light: "github-light",
+  dark: "github-dark",
+} as const;
+
+export function resolveFarmDocsCodeBlockThemes(themes: FarmDocsCodeBlockThemes = {}): {
+  light: string;
+  dark: string;
+} {
+  return {
+    light: themes.light ?? DEFAULT_CODE_BLOCK_THEMES.light,
+    dark: themes.dark ?? DEFAULT_CODE_BLOCK_THEMES.dark,
+  };
+}
+
 export function createCanonicalDocsRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
   return (root, file) => {
     isolateDocsMarkdownPromptReferences(root, file.value);
@@ -201,8 +228,9 @@ function resolveWorkspaceAliases() {
   ];
 }
 
-export function docsMdx(): PluginOption {
+export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
+  const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
 
   return [
     {
@@ -227,10 +255,7 @@ export function docsMdx(): PluginOption {
         remarkCodeGroup,
         createCanonicalDocsRemarkHeading,
       ],
-      rehypePlugins: [
-        rehypeToc,
-        [rehypeCode, { themes: { dark: "github-dark", light: "github-light" } }],
-      ],
+      rehypePlugins: [rehypeToc, [rehypeCode, { themes: codeBlockThemes }]],
     }),
   ];
 }

@@ -1,6 +1,6 @@
 import type { DocsConfig } from "@farming-labs/docs";
 import { farmDocsRuntimeAdapter, type FarmDocsRuntimeAdapter } from "./runtime.js";
-import { docsMdx } from "./vite.js";
+import { docsMdx, type FarmDocsCodeBlockThemes } from "./vite.js";
 
 interface FarmViteConfigLike {
   plugins?: unknown[];
@@ -24,6 +24,8 @@ export interface FarmDocsAdapterOptions {
   configPath?: string;
   /** Inline docs config merged after the config file. */
   config?: Partial<DocsConfig>;
+  /** Shiki themes used to compile Markdown and MDX code blocks. */
+  codeBlockThemes?: FarmDocsCodeBlockThemes;
 }
 
 export interface FarmConfigLike {
@@ -42,21 +44,25 @@ function normalizeExistingDocs(value: FarmConfigLike["docs"]): FarmDocsCoreConfi
   return value;
 }
 
-function appendDocsVitePlugins(config: FarmViteConfigLike = {}): FarmViteConfigLike {
+function appendDocsVitePlugins(
+  config: FarmViteConfigLike = {},
+  codeBlockThemes?: FarmDocsCodeBlockThemes,
+): FarmViteConfigLike {
   return {
     ...config,
-    plugins: [docsMdx(), ...(config.plugins ?? [])],
+    plugins: [docsMdx({ codeBlockThemes }), ...(config.plugins ?? [])],
   };
 }
 
 function withDocsViteConfig(
   value: FarmConfigLike["vite"],
+  codeBlockThemes?: FarmDocsCodeBlockThemes,
 ): FarmViteConfigLike | FarmViteConfigFactory {
   if (typeof value === "function") {
-    return (config) => appendDocsVitePlugins(value(config));
+    return (config) => appendDocsVitePlugins(value(config), codeBlockThemes);
   }
 
-  return appendDocsVitePlugins(value);
+  return appendDocsVitePlugins(value, codeBlockThemes);
 }
 
 /**
@@ -75,7 +81,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
 
   return {
     ...farmConfig,
-    vite: withDocsViteConfig(farmConfig.vite),
+    vite: withDocsViteConfig(farmConfig.vite, options.codeBlockThemes),
     docs: {
       ...existing,
       enabled,
