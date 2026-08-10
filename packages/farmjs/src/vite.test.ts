@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { remarkStandaloneCodeLabels } from "./vite.js";
+import { remarkStandaloneCodeLabels, resolveFarmDocsCodeBlockThemes } from "./vite.js";
 
 const paragraphLabel = (value: string) => ({
   type: "paragraph",
@@ -34,5 +34,26 @@ describe("remarkStandaloneCodeLabels", () => {
     expect(tree.children).toHaveLength(1);
     expect(tree.children[0]).toMatchObject({ type: "code", lang: "bash" });
     expect(tree.children[0]).not.toHaveProperty("meta");
+  });
+});
+
+describe("resolveFarmDocsCodeBlockThemes", () => {
+  it("preserves the Farm adapter defaults", () => {
+    expect(resolveFarmDocsCodeBlockThemes()).toEqual({
+      light: "github-light",
+      dark: "github-dark",
+    });
+  });
+
+  it("allows a Farm app to opt into Vesper without replacing the MDX pipeline", () => {
+    expect(
+      resolveFarmDocsCodeBlockThemes({
+        light: "github-light-default",
+        dark: "vesper",
+      }),
+    ).toEqual({
+      light: "github-light-default",
+      dark: "vesper",
+    });
   });
 });

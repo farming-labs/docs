@@ -23,7 +23,12 @@ export {
   type FarmDocsRuntimeHandlerOptions,
 } from "./server.js";
 export { FarmDocsPage, hydrateFarmDocs } from "./react.js";
-export { docsMdx } from "./vite.js";
+export {
+  docsMdx,
+  resolveFarmDocsCodeBlockThemes,
+  type FarmDocsCodeBlockThemes,
+  type FarmDocsMdxOptions,
+} from "./vite.js";
 export {
   FARM_DOCS_ADAPTER_ID,
   FARM_DOCS_ADAPTER_PROTOCOL,
