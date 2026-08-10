@@ -92,6 +92,8 @@ import {
   loadDocsContent,
   flattenNavTree,
   normalizeDocsFrontmatterLastmod,
+  readFarmDocsLastModifiedManifest,
+  resolveFarmDocsLastModified,
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 import farmDocsBrowserCss from "./browser-css.generated.js";
@@ -945,8 +947,13 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
       raw = fs.readFileSync(filePath, "utf-8");
       const stat = fs.statSync(filePath);
-      lastModifiedIso = stat.mtime.toISOString();
-      lastModified = stat.mtime.toLocaleDateString("en-US", {
+      lastModifiedIso =
+        resolveFarmDocsLastModified(
+          ctx.contentDirAbs,
+          filePath,
+          readFarmDocsLastModifiedManifest(ctx.contentDirAbs),
+        ) ?? stat.mtime.toISOString();
+      lastModified = new Date(lastModifiedIso).toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",

@@ -69,6 +69,53 @@ export interface ContentPage {
   agentFallbackRawContent?: string;
 }
 
+const FARM_DOCS_LAST_MODIFIED_MANIFEST = ".farm-docs-last-modified.json";
+
+interface FarmDocsLastModifiedManifest {
+  version: 1;
+  pages: Record<string, string>;
+}
+
+function normalizeRelativeContentPath(value: string): string {
+  return value.replace(/\\/g, "/").replace(/^\.\/+/, "");
+}
+
+export function readFarmDocsLastModifiedManifest(
+  contentDir: string,
+): FarmDocsLastModifiedManifest | null {
+  const manifestPath = path.join(contentDir, FARM_DOCS_LAST_MODIFIED_MANIFEST);
+  if (!fs.existsSync(manifestPath)) return null;
+
+  try {
+    const parsed = JSON.parse(
+      fs.readFileSync(manifestPath, "utf-8"),
+    ) as Partial<FarmDocsLastModifiedManifest>;
+    if (parsed.version !== 1 || !parsed.pages || typeof parsed.pages !== "object") return null;
+
+    return {
+      version: 1,
+      pages: Object.fromEntries(
+        Object.entries(parsed.pages).filter(
+          (entry): entry is [string, string] =>
+            typeof entry[1] === "string" && !Number.isNaN(new Date(entry[1]).getTime()),
+        ),
+      ),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function resolveFarmDocsLastModified(
+  contentDir: string,
+  sourcePath: string,
+  manifest: FarmDocsLastModifiedManifest | null,
+): string | undefined {
+  if (!manifest) return undefined;
+  const relativePath = normalizeRelativeContentPath(path.relative(contentDir, sourcePath));
+  return manifest.pages[relativePath];
+}
+
 export function normalizeDocsFrontmatterLastmod(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
@@ -78,6 +125,7 @@ export function normalizeDocsFrontmatterLastmod(value: unknown): string | undefi
 export function loadDocsContent(contentDir: string, entry: string = "docs"): ContentPage[] {
   const pages: ContentPage[] = [];
   const absDir = path.resolve(contentDir);
+  const lastModifiedManifest = readFarmDocsLastModifiedManifest(absDir);
 
   function scan(dir: string, slugParts: string[]) {
     if (!fs.existsSync(dir)) return;
@@ -122,7 +170,9 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         icon: data.icon as string | undefined,
         sourcePath: full.replace(/\\/g, "/"),
         lastmod: normalizeDocsFrontmatterLastmod(data.lastmod),
-        lastModified: stat.mtime.toISOString(),
+        lastModified:
+          resolveFarmDocsLastModified(absDir, full, lastModifiedManifest) ??
+          stat.mtime.toISOString(),
         locale: typeof data.locale === "string" ? data.locale : undefined,
         framework: typeof data.framework === "string" ? data.framework : undefined,
         version: typeof data.version === "string" ? data.version : undefined,

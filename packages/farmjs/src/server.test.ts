@@ -1,4 +1,7 @@
 import { createElement } from "react";
+import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDocsServer, createFarmDocsRuntimeHandler } from "./server.js";
 
@@ -116,6 +119,44 @@ Build a Farm application.
     expect(page.editOnGithub).toBe(
       "https://github.com/farming-labs/farm.js/edit/next/docs/src/app/docs/page.md",
     );
+  });
+
+  it("uses bundled Git dates instead of deployment file mtimes", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-last-modified-"));
+    const contentDir = path.join(rootDir, "docs");
+    const pagePath = path.join(contentDir, "page.md");
+
+    try {
+      mkdirSync(contentDir, { recursive: true });
+      writeFileSync(pagePath, "# Farm Docs\n");
+      utimesSync(
+        pagePath,
+        new Date("2018-10-20T00:00:00.000Z"),
+        new Date("2018-10-20T00:00:00.000Z"),
+      );
+      writeFileSync(
+        path.join(contentDir, ".farm-docs-last-modified.json"),
+        JSON.stringify({
+          version: 1,
+          pages: { "page.md": "2026-08-09T04:25:45+03:00" },
+        }),
+      );
+
+      const server = createDocsServer({
+        entry: "docs",
+        contentDir,
+        rootDir,
+        nav: { title: "Farm Docs" },
+        sitemap: true,
+      });
+      const page = await server.load({ pathname: "/docs" });
+      const sitemap = await server.handle(new Request("https://farm.example/sitemap.xml"));
+
+      expect(page.lastModified).toBe("August 9, 2026");
+      expect(await sitemap?.text()).toContain("<lastmod>2026-08-09</lastmod>");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
   });
 
   it("handles docs endpoints and falls through for application routes", async () => {
