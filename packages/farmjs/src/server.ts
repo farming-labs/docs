@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
 import { PassThrough } from "node:stream";
 import matter from "gray-matter";
 import { createElement, type ComponentType, type ReactElement } from "react";
@@ -95,13 +94,13 @@ import {
   normalizeDocsFrontmatterLastmod,
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
+import farmDocsBrowserCss from "./browser-css.generated.js";
 export { createFarmjsApiReference } from "./api-reference.js";
 
-const require = createRequire(import.meta.url);
 const FARM_DOCS_BROWSER_CSS_PATH = "/__farm_docs/browser.css";
 
 function loadFarmDocsBrowserCss(): string {
-  return fs.readFileSync(require.resolve("@farming-labs/theme/browser/css"), "utf8");
+  return farmDocsBrowserCss;
 }
 
 async function renderFarmDocsMarkup(element: ReactElement): Promise<string> {
