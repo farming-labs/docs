@@ -23,6 +23,21 @@ describe("Farm docs module map", () => {
     ).toBe(module);
   });
 
+  it("uses the docs entry to disambiguate a production index module", () => {
+    const module = { default: "docs-index" };
+
+    expect(
+      resolveDocsModule(
+        {
+          "/src/app/docs/page.md": module,
+          "/src/app/examples/page.md": { default: "example-index" },
+        },
+        "/page.md",
+        "/docs",
+      ),
+    ).toBe(module);
+  });
+
   it("does not guess when multiple content roots have the same source path", () => {
     expect(
       resolveDocsModule(

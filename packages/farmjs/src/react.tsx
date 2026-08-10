@@ -59,7 +59,9 @@ export function FarmDocsPage({ config, data }: { config: DocsConfig; data: DocsS
       ? (resolvedConfig.pageActions.openDocs
           .providers as GetMDXComponentsOptions["openDocsProviders"])
       : undefined;
-  const module = resolveDocsModule(docModules, data.sourcePath) as MdxModule | undefined;
+  const module = resolveDocsModule(docModules, data.sourcePath, data.entry) as
+    | MdxModule
+    | undefined;
   const Content = module?.default ?? null;
 
   if (!Content) {
