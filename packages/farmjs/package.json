@@ -60,10 +60,11 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "generate:browser-css": "node scripts/generate-browser-css.mjs",
+    "build": "pnpm run generate:browser-css && tsc",
+    "dev": "pnpm run generate:browser-css && tsc --watch",
+    "test": "pnpm run generate:browser-css && vitest run",
+    "typecheck": "pnpm run generate:browser-css && tsc --noEmit"
   },
   "dependencies": {
     "@mdx-js/rollup": "^3.1.1",
