@@ -150,6 +150,23 @@ Build a Farm application.
 });
 
 describe("createFarmDocsRuntimeHandler", () => {
+  it("serves the bundled adapter CSS without a runtime filesystem dependency", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/__farm_docs/browser.css"));
+    const css = await response?.text();
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("content-type")).toContain("text/css");
+    expect(css?.length).toBeGreaterThan(100_000);
+    expect(css).toContain(".\\[\\&_svg\\]\\:size-4");
+  });
+
   it("loads the adapter base CSS before host theme stylesheets", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",
