@@ -104,8 +104,8 @@ import {
   readDocsOpenApiMcpResponse,
   resolveDocsOpenApiMcpBaseUrl,
   resolveDocsOpenApiMcpOperations,
-  validateDocsOpenApiMcpUrl,
 } from "./openapi-mcp.js";
+import { validateDocsOpenApiMcpUrl } from "./openapi-mcp-node.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
   isDocsMcpProtectedResourceMetadataPath,

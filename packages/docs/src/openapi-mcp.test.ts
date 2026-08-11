@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   acquireDocsOpenApiMcpBudget,
-  isDocsOpenApiMcpPrivateAddress,
   readDocsOpenApiMcpResponse,
   resolveDocsOpenApiMcpBaseUrl,
   resolveDocsOpenApiMcpOperations,
-  validateDocsOpenApiMcpUrl,
 } from "./openapi-mcp.js";
+import { isDocsOpenApiMcpPrivateAddress, validateDocsOpenApiMcpUrl } from "./openapi-mcp-node.js";
 
 const document = {
   openapi: "3.1.0",
