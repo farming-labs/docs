@@ -578,6 +578,7 @@ describe("P1 trust and OpenAPI tools", () => {
           enabled: true,
           operations: ["getUser"],
           headers: { Authorization: "Bearer server-secret" },
+          resolveHost: async () => ["93.184.216.34"],
         },
         document: {
           openapi: "3.1.0",

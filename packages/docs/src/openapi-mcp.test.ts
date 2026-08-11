@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { resolveDocsOpenApiMcpBaseUrl, resolveDocsOpenApiMcpOperations } from "./openapi-mcp.js";
+import {
+  acquireDocsOpenApiMcpBudget,
+  isDocsOpenApiMcpPrivateAddress,
+  readDocsOpenApiMcpResponse,
+  resolveDocsOpenApiMcpBaseUrl,
+  resolveDocsOpenApiMcpOperations,
+  validateDocsOpenApiMcpUrl,
+} from "./openapi-mcp.js";
 
 const document = {
   openapi: "3.1.0",
@@ -85,5 +92,56 @@ describe("OpenAPI MCP projection", () => {
       resolveDocsOpenApiMcpBaseUrl(document, { baseUrl: "https://override.example.com" }),
     ).toBe("https://override.example.com");
     expect(resolveDocsOpenApiMcpBaseUrl(document, {})).toBe("https://api.example.com/v1");
+  });
+
+  it("blocks private destinations and insecure HTTP by default", async () => {
+    await expect(
+      validateDocsOpenApiMcpUrl(new URL("https://api.example.com"), {
+        resolveHost: async () => ["127.0.0.1"],
+      }),
+    ).rejects.toThrow("private");
+    await expect(validateDocsOpenApiMcpUrl(new URL("http://93.184.216.34"), {})).rejects.toThrow(
+      "HTTPS",
+    );
+    expect(isDocsOpenApiMcpPrivateAddress("::ffff:127.0.0.1")).toBe(true);
+    expect(isDocsOpenApiMcpPrivateAddress("93.184.216.34")).toBe(false);
+  });
+
+  it("validates public destinations with a server-owned resolver", async () => {
+    await expect(
+      validateDocsOpenApiMcpUrl(new URL("https://api.example.com"), {
+        resolveHost: async () => ["93.184.216.34"],
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("caps streamed response bodies before buffering the full payload", async () => {
+    const result = await readDocsOpenApiMcpResponse(new Response("abcdefghij"), 5);
+    expect(result).toEqual({ text: "abcde", truncated: true });
+  });
+
+  it("enforces per-principal rate and concurrency budgets", () => {
+    const first = acquireDocsOpenApiMcpBudget("test:getUser", {
+      requestsPerMinute: 2,
+      maxConcurrentRequests: 1,
+    });
+    expect(() =>
+      acquireDocsOpenApiMcpBudget("test:getUser", {
+        requestsPerMinute: 2,
+        maxConcurrentRequests: 1,
+      }),
+    ).toThrow("concurrency");
+    first();
+    const second = acquireDocsOpenApiMcpBudget("test:getUser", {
+      requestsPerMinute: 2,
+      maxConcurrentRequests: 1,
+    });
+    second();
+    expect(() =>
+      acquireDocsOpenApiMcpBudget("test:getUser", {
+        requestsPerMinute: 2,
+        maxConcurrentRequests: 1,
+      }),
+    ).toThrow("rate limit");
   });
 });

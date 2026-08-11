@@ -1618,10 +1618,22 @@ from the hosted spec instead.
 | `allowMutations` | `boolean` | `false` | Permit allowlisted POST, PUT, PATCH, and DELETE operations |
 | `headers` | `Record<string, string> \| callback` | — | Server-owned credentials resolved for each operation |
 | `timeoutMs` | `number` | `10000` | Request timeout |
+| `allowInsecureHttp` | `boolean` | `false` | Permit plain HTTP destinations for explicitly trusted development environments |
+| `allowPrivateNetwork` | `boolean` | `false` | Permit loopback, private, link-local, and reserved destinations |
+| `resolveHost` | `callback` | Node DNS | Server-owned DNS resolver used to validate every destination |
+| `maxRedirects` | `number` | `0` | Validated redirects to follow; redirects are blocked by default |
+| `maxResponseBytes` | `number` | `1000000` | Maximum response bytes read into an MCP result |
+| `requestsPerMinute` | `number` | `60` | Per-principal, per-operation request budget |
+| `maxConcurrentRequests` | `number` | `4` | Per-principal, per-operation concurrency budget |
 
 An operation can also opt in with `x-farming-labs-mcp: true`. Security requirements and only the
 referenced `components.securitySchemes` are included in the tool metadata. Credentials remain
 server-owned and are applied after parsed tool parameters.
+
+Every request and redirect is DNS-checked before egress. HTTPS, public-network destinations,
+bounded response streaming, rate limits, and concurrency limits are enforced by default. Development
+servers on private networks must opt in explicitly; never enable those exceptions for untrusted
+OpenAPI documents or model-supplied destinations.
 
 This does not remove the framework route requirement on non-Next adapters. TanStack Start,
 SvelteKit, Astro, and Nuxt still need their `/{path}` handler files so the docs app has a route

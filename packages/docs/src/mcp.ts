@@ -99,7 +99,13 @@ import {
   normalizeDocsOkfTrustMetadataInput,
   resolveDocsOkfConfig,
 } from "./okf.js";
-import { resolveDocsOpenApiMcpBaseUrl, resolveDocsOpenApiMcpOperations } from "./openapi-mcp.js";
+import {
+  acquireDocsOpenApiMcpBudget,
+  readDocsOpenApiMcpResponse,
+  resolveDocsOpenApiMcpBaseUrl,
+  resolveDocsOpenApiMcpOperations,
+  validateDocsOpenApiMcpUrl,
+} from "./openapi-mcp.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
   isDocsMcpProtectedResourceMetadataPath,
@@ -3381,6 +3387,7 @@ const openApiOperationOutputSchema = z.object({
   status: z.number().int(),
   ok: z.boolean(),
   contentType: z.string().optional(),
+  responseTruncated: z.boolean().optional(),
   body: z.unknown(),
 });
 const readPagesOutputSchema = z.object({
@@ -4575,10 +4582,12 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           `${baseUrl.replace(/\/+$/u, "")}/`,
         );
         for (const [name, value] of query) requestUrl.searchParams.append(name, value);
-        if (requestUrl.protocol !== "https:" && requestUrl.protocol !== "http:") {
+        try {
+          await validateDocsOpenApiMcpUrl(requestUrl, openapiConfig);
+        } catch (error) {
           throw new ProtocolError(
             ProtocolErrorCode.InvalidParams,
-            "OpenAPI MCP server URLs must use HTTP or HTTPS.",
+            error instanceof Error ? error.message : "OpenAPI MCP destination was blocked.",
           );
         }
         const configuredHeaders =
@@ -4602,17 +4611,48 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         if (body !== undefined) requestHeaders.set("Content-Type", "application/json");
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), openapiConfig.timeoutMs ?? 10_000);
+        const budgetKey = `${options.requestContext?.auth?.id ?? "anonymous"}:${operation.operationId}`;
+        let releaseBudget: (() => void) | undefined;
         try {
-          const response = await fetch(requestUrl, {
-            method: operation.method,
-            headers: requestHeaders,
-            ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-            signal: controller.signal,
-          });
+          releaseBudget = acquireDocsOpenApiMcpBudget(budgetKey, openapiConfig);
+          let response: Response | undefined;
+          let destination = requestUrl;
+          const maxRedirects = Math.max(0, openapiConfig.maxRedirects ?? 0);
+          for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+            response = await fetch(destination, {
+              method: operation.method,
+              headers: requestHeaders,
+              ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+              redirect: "manual",
+              signal: controller.signal,
+            });
+            if (![301, 302, 303, 307, 308].includes(response.status)) break;
+            const location = response.headers.get("location");
+            if (!location || redirectCount >= maxRedirects) {
+              throw new ProtocolError(
+                ProtocolErrorCode.InvalidRequest,
+                "OpenAPI MCP redirect blocked. Increase maxRedirects to follow validated redirects.",
+              );
+            }
+            destination = new URL(location, destination);
+            try {
+              await validateDocsOpenApiMcpUrl(destination, openapiConfig);
+            } catch (error) {
+              throw new ProtocolError(
+                ProtocolErrorCode.InvalidRequest,
+                error instanceof Error ? error.message : "OpenAPI MCP redirect was blocked.",
+              );
+            }
+          }
+          if (!response)
+            throw new ProtocolError(ProtocolErrorCode.InternalError, "No API response.");
           const contentType = response.headers.get("content-type") ?? undefined;
-          const text = (await response.text()).slice(0, 1_000_000);
+          const { text, truncated } = await readDocsOpenApiMcpResponse(
+            response,
+            openapiConfig.maxResponseBytes,
+          );
           let responseBody: unknown = text;
-          if (contentType?.includes("json") && text) {
+          if (contentType?.includes("json") && text && !truncated) {
             try {
               responseBody = JSON.parse(text);
             } catch {
@@ -4624,6 +4664,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             status: response.status,
             ok: response.ok,
             ...(contentType ? { contentType } : {}),
+            ...(truncated ? { responseTruncated: true } : {}),
             body: responseBody,
           };
           trackMcpTool(operation.toolName, { resultCount: 1 });
@@ -4632,6 +4673,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             ...(response.ok ? {} : { isError: true }),
           };
         } finally {
+          releaseBudget?.();
           clearTimeout(timeout);
         }
       },
