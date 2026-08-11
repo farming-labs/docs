@@ -2160,6 +2160,26 @@ the command only prints JSON.
 Feedback text remains untrusted evidence in every draft. Review it before copying suggestions into
 docs, issues, evaluation config, or model prompts.
 
+Feed that report—or normalized search, Ask AI, MCP, issue, support, and git signals—into the
+maintenance proposal workflow:
+
+```bash title="terminal"
+pnpm exec docs agent propose \
+  --input .farming-labs/agent-feedback-improvements.json \
+  --input .farming-labs/search-signals.jsonl \
+  --write
+```
+
+Generic inputs are JSON arrays/objects or JSON Lines records with `source`, `summary`, and optional
+`page`, `topic`, `task`, `severity`, and `count` fields. Supported sources are `agent-feedback`,
+`ask-ai`, `git`, `issue`, `mcp`, `search`, and `support`. Use the same `topic` on related records to
+cluster evidence from different systems.
+
+The output ranks recurring gaps by represented occurrences, source diversity, and severity, then
+drafts acceptance criteria, issues, golden tasks, and a PR description. Signal summaries are always
+rendered as untrusted evidence. The workflow is deliberately proposal-only: it never edits docs,
+creates issues, publishes branches, or merges changes, and every proposal requires human review.
+
 Default request shape:
 
 ```json title="POST body"

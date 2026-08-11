@@ -91,6 +91,20 @@ export {
 } from "./agent-contract.js";
 export type { PageAgentFrontmatterIssue } from "./agent-contract.js";
 export {
+  analyzeDocsAgentMaintenanceSignals,
+  DOCS_AGENT_MAINTENANCE_PROPOSAL_FORMAT,
+  parseDocsAgentMaintenanceSignals,
+} from "./agent-maintenance.js";
+export type {
+  AnalyzeDocsAgentMaintenanceSignalsOptions,
+  DocsAgentMaintenanceIssueDraft,
+  DocsAgentMaintenanceProposal,
+  DocsAgentMaintenanceProposalReport,
+  DocsAgentMaintenanceSeverity,
+  DocsAgentMaintenanceSignal,
+  DocsAgentMaintenanceSignalSource,
+} from "./agent-maintenance.js";
+export {
   applySidebarFolderIndexBehavior,
   resolvePageSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehavior,
