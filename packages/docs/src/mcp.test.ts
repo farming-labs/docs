@@ -229,6 +229,7 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
       prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
@@ -262,6 +263,7 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
       prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
@@ -299,6 +301,7 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
       prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
@@ -532,6 +535,88 @@ describe("resolveDocsMcpConfig", () => {
     expect(buildDocsMcpProtectedResourceMetadataRoute("/mcp/")).toBe(
       "/.well-known/oauth-protected-resource/mcp/",
     );
+  });
+});
+
+describe("P1 trust and OpenAPI tools", () => {
+  it("publishes OKF trust and executes only allowlisted OpenAPI operations", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://api.example.com/v1/users/42?expand=teams");
+      expect(init?.method).toBe("GET");
+      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer server-secret");
+      return Response.json({ id: 42, name: "Ada" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const server = await createDocsMcpServer({
+      source: {
+        entry: "docs",
+        siteTitle: "Trust Docs",
+        getPages: () => [
+          {
+            slug: "install",
+            url: "/docs/install",
+            title: "Install",
+            content: "Install content",
+            lastmod: "2026-01-01",
+            okf: {
+              verified: [{ by: "human:docs-team", at: "2026-01-02" }],
+            },
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+      okf: { staleAfterDays: 30 },
+      openapi: {
+        config: {
+          enabled: true,
+          operations: ["getUser"],
+          headers: { Authorization: "Bearer server-secret" },
+        },
+        document: {
+          openapi: "3.1.0",
+          servers: [{ url: "https://api.example.com/v1" }],
+          paths: {
+            "/users/{id}": {
+              get: {
+                operationId: "getUser",
+                parameters: [
+                  { name: "id", in: "path", required: true },
+                  { name: "expand", in: "query" },
+                ],
+              },
+            },
+          },
+        },
+      },
+    });
+    const client = new Client({ name: "p1-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.map((tool) => tool.name)).toEqual(
+        expect.arrayContaining(["get_trust_metadata", "api_getUser"]),
+      );
+      const trust = await client.callTool({
+        name: "get_trust_metadata",
+        arguments: { path: "install" },
+      });
+      expect(JSON.stringify(trust)).toContain('"trust_tier":"human-reviewed"');
+
+      const result = await client.callTool({
+        name: "api_getUser",
+        arguments: { parameters: { id: 42, expand: "teams" } },
+      });
+      expect(JSON.stringify(result)).toContain('"name":"Ada"');
+      expect(fetchMock).toHaveBeenCalledOnce();
+    } finally {
+      await client.close();
+      await server.close();
+      vi.unstubAllGlobals();
+    }
   });
 });
 

@@ -58,6 +58,7 @@ import {
   stripDocsGeneratedAgentContractMarkers,
 } from "./markdown-sections.js";
 import { isDocsMcpResourcePath } from "./mcp-auth.js";
+import { resolveDocsOkfTrustMetadata } from "./okf.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const MAX_STRUCTURED_SEARCH_LIMIT = 25;
@@ -1966,6 +1967,7 @@ async function enrichDocsSearchResultsWithSources(options: {
       if (page) {
         return {
           ...resultWithoutSource,
+          trust: resolveDocsOkfTrustMetadata(page),
           source: await buildDocsRetrievalSource(page, result.url, {
             audience: options.audience,
             chunking: options.chunking,

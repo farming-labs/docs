@@ -1,6 +1,9 @@
 import type {
   DocsConfig,
   DocsAgentContentChangesConfig,
+  DocsOkfConfig,
+  DocsOkfTrustMetadata,
+  DocsOkfTrustMetadataInput,
   DocsRobotsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
@@ -14,6 +17,7 @@ import type {
   PageAgentFrontmatter,
   ResolvedDocsRelatedLink,
 } from "./types.js";
+import { resolveDocsOkfConfig, resolveDocsOkfTrustMetadata } from "./okf.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import {
@@ -739,6 +743,8 @@ export interface DocsMarkdownPage {
   markdownUrl?: string;
   lastModified?: string;
   lastmod?: string;
+  sourcePath?: string;
+  okf?: DocsOkfTrustMetadataInput;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
   content: string;
@@ -751,6 +757,7 @@ export interface DocsMarkdownPage {
 
 export interface DocsMarkdownDocumentOptions {
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
+  okf?: boolean | DocsOkfConfig;
   origin?: string;
   sitemap?: boolean | DocsSitemapConfig;
 }
@@ -2980,6 +2987,7 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl,
   markdownUrl,
   lastUpdated,
+  trust,
   agent,
   generatedPreamble,
 }: {
@@ -2988,6 +2996,7 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl: string;
   markdownUrl: string;
   lastUpdated?: string;
+  trust?: DocsOkfTrustMetadata;
   agent?: PageAgentFrontmatter;
   generatedPreamble?: boolean;
 }): string {
@@ -2998,6 +3007,7 @@ function renderDocsMarkdownFrontmatter({
     `canonical_url: ${toYamlString(canonicalUrl)}`,
     `markdown_url: ${toYamlString(markdownUrl)}`,
     ...(lastUpdated ? [`last_updated: ${toYamlString(lastUpdated)}`] : []),
+    ...(trust ? [`okf: ${JSON.stringify(trust)}`] : []),
     ...(generatedPreamble ? [`${DOCS_MARKDOWN_GENERATED_PREAMBLE_FIELD}: true`] : []),
     ...renderPageAgentFrontmatterYamlLines(agent),
     "---",
@@ -3388,16 +3398,23 @@ function resolveDocsMarkdownPageMetadata(
   page: DocsMarkdownPage,
   options?: DocsMarkdownDocumentOptions,
 ): Parameters<typeof renderDocsMarkdownFrontmatter>[0] {
+  const canonicalUrl = resolveDocsMarkdownMetadataUrl(page.url, options?.origin);
+  const okfEnabled = resolveDocsOkfConfig(options?.okf).enabled || page.okf !== undefined;
   return {
     title: page.title,
     description: page.description,
-    canonicalUrl: resolveDocsMarkdownMetadataUrl(page.url, options?.origin),
+    canonicalUrl,
     markdownUrl: resolveDocsMarkdownMetadataUrl(
       page.markdownUrl ?? toDocsMarkdownUrl(page.url),
       options?.origin,
     ),
     lastUpdated: normalizeDocsMarkdownLastUpdated(page.lastmod ?? page.lastModified),
     agent: page.agent,
+    ...(okfEnabled
+      ? {
+          trust: resolveDocsOkfTrustMetadata({ ...page, canonicalUrl }, options?.okf),
+        }
+      : {}),
   };
 }
 

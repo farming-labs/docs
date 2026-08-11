@@ -789,10 +789,42 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `okf` | `boolean \| DocsOkfConfig` | Publish OKF v0.2 trust metadata in Markdown, search, MCP, doctor, and Static Agent Bundles |
 | `compact` | `DocsAgentCompactConfig` | Defaults for `docs agent compact` |
 | `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Offline-by-default golden tasks used by `docs doctor` and `docs review` |
 | `skills` | `DocsAgentSkillsInput` | Project or workspace skills published by the runtime, Static Agent Bundle, and MCP |
 | `a2a` | `DocsAgentA2AConfig` | Opt-in Agent Card metadata for a real A2A interface |
+
+### `agent.okf` and `DocsOkfConfig`
+
+OKF metadata makes provenance and freshness explicit for machine readers. `agent.okf: true` derives
+conservative defaults; an object can provide corpus defaults and a staleness policy.
+
+```ts title="docs.config.ts"
+agent: {
+  okf: {
+    generatedBy: "software:docs-build",
+    staleAfterDays: 90,
+    verified: [{ by: "human:docs-team", at: "2026-08-01" }],
+  },
+},
+```
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `enabled` | `boolean` | `true` inside the object | Enable OKF projection |
+| `route` | `string` | `"/.well-known/okf.json"` | Static knowledge-bundle route |
+| `generatedBy` | `string` | `"software:@farming-labs/docs"` | Generator actor for derived records |
+| `staleAfterDays` | `number` | — | Derive `stale_after` from the best page timestamp |
+| `sources` | `DocsOkfSource[]` | derived per page | Default source provenance |
+| `generated` | `{ by, at }` | derived | Explicit generation record |
+| `verified` | `{ by, at }[]` | `[]` | Verification records; a `human:` actor produces `human-reviewed` trust |
+| `status` | `"draft" \| "stable" \| "deprecated"` | `"stable"` | Knowledge lifecycle status |
+| `stale_after` | `string` | derived when configured | Explicit expiry date |
+
+Pages can override these fields with `okf` frontmatter. `docs agent export --public` writes the
+JSON bundle, Markdown frontmatter carries the resolved trust object, local search results expose a
+`trust` field, MCP adds `get_trust_metadata`, and `docs doctor --agent` reports expired pages.
 ### `agent.contentChanges` and `DocsAgentContentChangesConfig`
 
 Body-free runtime document synchronization feed. Enabled by default on server-rendered adapters; always disabled (`false`) in static bundles produced by `docs agent export`.
@@ -1536,6 +1568,7 @@ deployed elsewhere and already exposes an `openapi.json`.
 | `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |
 | `exclude`   | `string[]` | `[]`              | Route entries to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative values like `"hello"` / `"hello/route.ts"` |
+| `mcp`       | `boolean \| DocsOpenApiMcpConfig` | `false` | Deny-by-default projection of selected OpenAPI operations into MCP tools |
 
 ```ts title="docs.config.ts"
 apiReference: {
@@ -1556,6 +1589,20 @@ apiReference: {
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
 from the hosted spec instead.
+
+### `DocsOpenApiMcpConfig`
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `operations` | `readonly string[]` | `[]` | Allowed `operationId` or `METHOD /path` selectors |
+| `baseUrl` | `string` | first OpenAPI server | API origin used for operation requests |
+| `allowMutations` | `boolean` | `false` | Permit allowlisted POST, PUT, PATCH, and DELETE operations |
+| `headers` | `Record<string, string> \| callback` | — | Server-owned credentials resolved for each operation |
+| `timeoutMs` | `number` | `10000` | Request timeout |
+
+An operation can also opt in with `x-farming-labs-mcp: true`. Security requirements and only the
+referenced `components.securitySchemes` are included in the tool metadata. Credentials remain
+server-owned and are applied after parsed tool parameters.
 
 This does not remove the framework route requirement on non-Next adapters. TanStack Start,
 SvelteKit, Astro, and Nuxt still need their `/{path}` handler files so the docs app has a route

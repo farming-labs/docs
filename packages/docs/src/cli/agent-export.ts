@@ -62,6 +62,7 @@ import {
   type DocsSitemapManifest,
 } from "../sitemap.js";
 import { createFilesystemDocsMcpSource, resolveDocsMcpConfig } from "../server.js";
+import { buildDocsOkfBundle, resolveDocsOkfConfig } from "../okf.js";
 import type {
   DocsConfig,
   DocsI18nConfig,
@@ -102,7 +103,8 @@ type AgentBundleFileKind =
   | "skill"
   | "agents"
   | "sitemap"
-  | "robots";
+  | "robots"
+  | "okf";
 
 export interface AgentBundleManifestFile {
   path: string;
@@ -733,7 +735,7 @@ function resolveUserOwnedOverrides(
   outputs: PlannedOutput[],
   previous: AgentBundleManifest | undefined,
 ): PlannedOutput[] {
-  const preserveKinds = new Set<AgentBundleFileKind>(["page", "llms", "discovery", "skill"]);
+  const preserveKinds = new Set<AgentBundleFileKind>(["page", "llms", "discovery", "skill", "okf"]);
   const previousByPath = new Map(previous?.files.map((file) => [file.path, file] as const) ?? []);
 
   return outputs.map((output) => {
@@ -1148,6 +1150,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     throw new Error(`No docs content was found under ${contentDir}.`);
   }
   const pages = localizedPages.map(({ page }) => page);
+  const okfConfig = resolveDocsOkfConfig(config?.agent?.okf);
   const sitemap = resolveDocsSitemapConfig(sitemapInput, { baseUrl });
   const robots = resolveDocsRobotsConfig(robotsInput, {
     baseUrl:
@@ -1211,12 +1214,31 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
         },
         {
           llms,
+          okf: config?.agent?.okf,
           origin: baseUrl,
           sitemap: sitemapInput,
         },
       ),
     );
     output.lastModified = resolveDocsHttpDate(page.lastModified);
+  }
+
+  if (okfConfig.enabled) {
+    const okfBundle = buildDocsOkfBundle(
+      pages.map((page) => ({
+        ...page,
+        canonicalUrl: baseUrl ? new URL(page.url, baseUrl).toString() : page.url,
+      })),
+      okfConfig,
+    );
+    addOutput(
+      outputs,
+      publicDir,
+      okfConfig.route,
+      "okf",
+      "application/json",
+      JSON.stringify(okfBundle, null, 2),
+    );
   }
 
   if (llmsEnabled) {

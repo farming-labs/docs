@@ -10,6 +10,27 @@ golden tasks, or setting agent compaction defaults.
 - [A2A agent cards](#a2a-agent-cards)
 - [Golden evaluations](#golden-evaluations)
 - [Agent compaction](#agent-compaction)
+- [OKF trust metadata](#okf-trust-metadata)
+
+## OKF trust metadata
+
+Enable OKF v0.2 projection with `agent.okf: true`, or configure corpus defaults:
+
+```ts
+agent: {
+  okf: {
+    generatedBy: "software:docs-build",
+    staleAfterDays: 90,
+    verified: [{ by: "human:docs-team", at: "2026-08-01" }],
+  },
+}
+```
+
+Page `okf` frontmatter may set `sources`, `generated`, `verified`, `status`, and `stale_after`.
+Resolved metadata adds `trust_tier` (`unverified`, `machine-confirmed`, or `human-reviewed`) and a
+boolean `stale`. It appears in Markdown, local search, MCP `get_trust_metadata`, doctor output, and
+the `/.well-known/okf.json` Static Agent Bundle export. Use `human:` verifier prefixes only for
+actual human review.
 
 ## Reusable Agent Skills
 
