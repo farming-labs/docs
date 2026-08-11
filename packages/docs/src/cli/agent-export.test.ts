@@ -306,6 +306,40 @@ pnpm add example
     );
   });
 
+  it("omits access-protected pages from public static agent bundles", async () => {
+    writeProject();
+    writeFileSync(
+      path.join(tmpDir, "docs", "guides", "install", "page.mdx"),
+      `---
+title: "Private install"
+description: "Internal installation runbook"
+agent:
+  access:
+    scopes:
+      - docs:private
+---
+
+# Private install
+
+STATIC PRIVATE SENTINEL
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+
+    expect(existsSync(path.join(tmpDir, "public", "docs", "guides", "install.md"))).toBe(false);
+    expect(readFileSync(path.join(tmpDir, "public", "llms-full.txt"), "utf-8")).not.toContain(
+      "STATIC PRIVATE SENTINEL",
+    );
+    const bundle = readFileSync(
+      path.join(tmpDir, "public", ".well-known", "agent-bundle.json"),
+      "utf-8",
+    );
+    expect(bundle).not.toContain("/docs/guides/install");
+  });
+
   it("uses SvelteKit static and preserves already-public custom policy files", async () => {
     writeProject({ staticExport: false });
     writeFileSync(

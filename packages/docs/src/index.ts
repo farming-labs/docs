@@ -9,6 +9,13 @@
 
 import type { DocsConfig } from "./types.js";
 
+export {
+  filterDocsPagesByAccess,
+  isDocsAgentPageAccessible,
+  isDocsPageAccessAllowed,
+  normalizeDocsPageAccessPolicy,
+} from "./access.js";
+
 export { defineDocs } from "./define-docs.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
@@ -103,6 +110,20 @@ export type {
   DocsAgentFeedbackEvaluationTaskBaseline,
 } from "./agent-feedback-evaluations.js";
 export {
+  analyzeDocsAgentMaintenanceSignals,
+  DOCS_AGENT_MAINTENANCE_PROPOSAL_FORMAT,
+  parseDocsAgentMaintenanceSignals,
+} from "./agent-maintenance.js";
+export type {
+  AnalyzeDocsAgentMaintenanceSignalsOptions,
+  DocsAgentMaintenanceIssueDraft,
+  DocsAgentMaintenanceProposal,
+  DocsAgentMaintenanceProposalReport,
+  DocsAgentMaintenanceSeverity,
+  DocsAgentMaintenanceSignal,
+  DocsAgentMaintenanceSignalSource,
+} from "./agent-maintenance.js";
+export {
   applySidebarFolderIndexBehavior,
   resolvePageSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehavior,
@@ -190,6 +211,7 @@ export {
   DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
   buildDocsAgentDiscoverySpec,
+  compactDocsAgentDiscoverySpec,
   buildDocsAgentSkillsIndex,
   buildDocsLegacySkillsIndex,
   buildDocsA2AAgentCard,
@@ -526,6 +548,9 @@ export type {
   PageTwitter,
   DocsRelatedItem,
   ResolvedDocsRelatedLink,
+  DocsAccessClaimValue,
+  DocsAccessPrincipal,
+  DocsPageAccessPolicy,
   PageAgentAppliesTo,
   PageAgentCommand,
   PageAgentFailureMode,

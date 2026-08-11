@@ -1909,6 +1909,43 @@ Notes:
 See [CLI](/docs/cli) for the command surface and [Token Efficiency](/docs/token-efficiency) for
 when to use compaction instead of writing `agent.md` by hand.
 
+## Protect agent-facing page content
+
+Add `agent.access` to keep a page out of unauthenticated machine-readable surfaces while allowing
+an authenticated MCP principal with the required scopes and claims to read it:
+
+```md title="app/docs/internal-runbook/page.mdx"
+---
+title: "Internal deployment runbook"
+agent:
+  access:
+    visibility: authenticated
+    scopes:
+      - docs:private
+    claims:
+      role:
+        - admin
+        - editor
+      plan: enterprise
+---
+```
+
+The policy is deny by default. Every scope and claim must match; an expected claim array matches
+when the principal has any listed value. The principal comes from `mcp.security.authenticate`, so
+the example requires a principal such as
+`{ id: "agent-1", scopes: ["docs:private"], claims: { role: "editor", plan: "enterprise" } }`.
+
+Protected pages are omitted from public `llms.txt`, search/Ask AI indexes, content-change feeds,
+Markdown recovery suggestions, MCP navigation, and Static Agent Bundles. Default `.md` routes
+return a private, non-cacheable `404` instead of revealing whether the page exists. Invalid authored
+policies also fail closed and are reported by `docs review`.
+
+<Callout type="warning">
+  `agent.access` protects the framework's agent-facing machine surfaces. It does not authenticate
+  your rendered HTML page route; enforce application authorization separately when the human page
+  is also private.
+</Callout>
+
 ## Reusable Agent Skills
 
 Set `agent.skills` to publish every configured skill through standards discovery, Static Agent
@@ -2158,6 +2195,26 @@ The check catches suite score drops, per-task score drops, pass-to-fail changes,
 tasks, and newly added failing tasks. Use `--max-score-drop` only for an intentional bounded
 tolerance, and `--allow-new-failures` only when newly introduced tasks are expected to start red.
 Baseline replacement is always explicit through `--write-baseline`.
+
+Feed that report—or normalized search, Ask AI, MCP, issue, support, and git signals—into the
+maintenance proposal workflow:
+
+```bash title="terminal"
+pnpm exec docs agent propose \
+  --input .farming-labs/agent-feedback-improvements.json \
+  --input .farming-labs/search-signals.jsonl \
+  --write
+```
+
+Generic inputs are JSON arrays/objects or JSON Lines records with `source`, `summary`, and optional
+`page`, `topic`, `task`, `severity`, and `count` fields. Supported sources are `agent-feedback`,
+`ask-ai`, `git`, `issue`, `mcp`, `search`, and `support`. Use the same `topic` on related records to
+cluster evidence from different systems.
+
+The output ranks recurring gaps by represented occurrences, source diversity, and severity, then
+drafts acceptance criteria, issues, golden tasks, and a PR description. Signal summaries are always
+rendered as untrusted evidence. The workflow is deliberately proposal-only: it never edits docs,
+creates issues, publishes branches, or merges changes, and every proposal requires human review.
 
 Default request shape:
 

@@ -307,12 +307,33 @@ export interface PageAgentFailureMode {
   resolution?: string;
 }
 
+export type DocsAccessClaimValue = string | number | boolean | readonly string[];
+
+/** Declarative, deny-by-default authorization requirements for agent-facing page surfaces. */
+export interface DocsPageAccessPolicy {
+  /** Require an authenticated principal even when no scopes or claims are listed. */
+  visibility?: "public" | "authenticated";
+  /** Every listed scope must be present on the principal. */
+  scopes?: readonly string[];
+  /** Every listed claim must match; arrays match when at least one value overlaps. */
+  claims?: Readonly<Record<string, DocsAccessClaimValue>>;
+}
+
+/** Identity used when evaluating page access outside the MCP transport. */
+export interface DocsAccessPrincipal {
+  id: string;
+  scopes?: readonly string[];
+  claims?: Readonly<Record<string, unknown>>;
+}
+
 export interface PageAgentFrontmatter {
   /**
    * Approximate output token target for machine-readable compaction on this page.
    * Used by `docs agent compact` as a per-page override.
    */
   tokenBudget?: number;
+  /** Authorization requirements shared by Markdown, search, llms.txt, sync, export, and MCP. */
+  access?: DocsPageAccessPolicy;
   /** Concrete task the page helps an agent complete. */
   task?: string;
   /** Observable end state the agent should reach. */
@@ -1494,7 +1515,7 @@ export interface DocsMcpPromptsConfig {
 }
 
 /** Authenticated identity returned by an MCP authentication callback. */
-export interface DocsMcpAuthPrincipal {
+export interface DocsMcpAuthPrincipal extends DocsAccessPrincipal {
   /** Stable identifier for the authenticated user, service, or agent. */
   id: string;
   /** Optional authorization scopes that source adapters can inspect. */
@@ -3072,6 +3093,10 @@ export type DocsOpenApiMcpHeaders =
       context: DocsOpenApiMcpCredentialContext,
     ) => Readonly<Record<string, string>> | Promise<Readonly<Record<string, string>>>);
 
+export type DocsOpenApiMcpHostResolver = (
+  hostname: string,
+) => readonly string[] | Promise<readonly string[]>;
+
 /** Explicit, deny-by-default projection of OpenAPI operations into MCP tools. */
 export interface DocsOpenApiMcpConfig {
   /** Enable operation projection. No tools are exposed until an operation is explicitly allowed. */
@@ -3086,6 +3111,20 @@ export interface DocsOpenApiMcpConfig {
   headers?: DocsOpenApiMcpHeaders;
   /** Per-operation request timeout. @default 10000 */
   timeoutMs?: number;
+  /** Permit plain HTTP destinations. Disabled by default. */
+  allowInsecureHttp?: boolean;
+  /** Permit loopback, private, link-local, and reserved network destinations. Disabled by default. */
+  allowPrivateNetwork?: boolean;
+  /** Server-owned DNS resolver used before every request and redirect. */
+  resolveHost?: DocsOpenApiMcpHostResolver;
+  /** Number of validated redirects to follow. @default 0 */
+  maxRedirects?: number;
+  /** Maximum downstream response bytes buffered into an MCP result. @default 1000000 */
+  maxResponseBytes?: number;
+  /** Per-principal operation calls allowed in a rolling minute. @default 60 */
+  requestsPerMinute?: number;
+  /** Concurrent downstream operation calls allowed per principal. @default 4 */
+  maxConcurrentRequests?: number;
 }
 
 export interface ApiReferenceConfig {

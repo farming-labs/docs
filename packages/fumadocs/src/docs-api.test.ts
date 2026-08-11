@@ -4018,6 +4018,20 @@ description: "Start building quickly"
       doNotAssumeFeedbackPayloadShape: true,
     });
 
+    const compactResponse = await GET(
+      new Request("http://localhost/.well-known/agent.json?profile=compact"),
+    );
+    const compactText = await compactResponse.text();
+    const compactSpec = JSON.parse(compactText) as {
+      profile: string;
+      skills: { published: Array<{ fileCount: number; files: unknown[] }> };
+    };
+    expect(compactResponse.headers.get("cache-control")).toContain("stale-while-revalidate=86400");
+    expect(compactText).not.toContain("\n  ");
+    expect(compactText.length).toBeLessThan(JSON.stringify(spec, null, 2).length);
+    expect(compactSpec.profile).toBe("compact");
+    expect(compactSpec.skills.published[0]).toMatchObject({ fileCount: 1, files: [] });
+
     for (const path of ["/.well-known/agent", "/.well-known/agent.json"]) {
       const wellKnownResponse = await GET(new Request(`http://localhost${path}`));
       expect(wellKnownResponse.status).toBe(200);

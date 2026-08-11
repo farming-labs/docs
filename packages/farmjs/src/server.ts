@@ -9,6 +9,7 @@ import {
   buildDocsAskAIContext,
   buildDocsSearchFacets,
   buildDocsAgentDiscoverySpec,
+  compactDocsAgentDiscoverySpec,
   buildDocsConfigMap,
   buildDocsDiagnostics,
   createDocsContentChangeFeed,
@@ -1164,6 +1165,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
             okf: config.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
+          access: page.agent?.access,
         }
       : null;
   }
@@ -1272,27 +1274,26 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     if (standardsDiscoveryResponse) return standardsDiscoveryResponse;
 
     if (isDocsAgentDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
-      const content = `${JSON.stringify(
-        buildDocsAgentDiscoverySpec({
-          ...discoveryOptions,
-          publishedSkills: [
-            await resolveDocsPublishedAgentSkill({
-              preferredDocument: readRootSkillDocument(preloaded, rootDir),
-              fallbackDocument: renderDocsSkillDocument(discoveryOptions),
-            }),
-            ...(await getPublishedAgentSkills()),
-          ],
-          agentCard: config.agent?.a2a,
-        }),
-        null,
-        2,
-      )}\n`;
+      const fullSpec = buildDocsAgentDiscoverySpec({
+        ...discoveryOptions,
+        publishedSkills: [
+          await resolveDocsPublishedAgentSkill({
+            preferredDocument: readRootSkillDocument(preloaded, rootDir),
+            fallbackDocument: renderDocsSkillDocument(discoveryOptions),
+          }),
+          ...(await getPublishedAgentSkills()),
+        ],
+        agentCard: config.agent?.a2a,
+      });
+      const compact = url.searchParams.get("profile") === "compact";
+      const spec = compact ? compactDocsAgentDiscoverySpec(fullSpec) : fullSpec;
+      const content = `${JSON.stringify(spec, null, compact ? undefined : 2)}\n`;
       return createDocsCacheableResponse({
         request: event.request,
         content,
         headers: {
           "Content-Type": "application/json; charset=utf-8",
-          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
           "X-Robots-Tag": "noindex",
           Link: agentManifestLinkHeader,
         },
@@ -1454,6 +1455,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         origin: markdownOrigin,
         locale: ctx.locale,
         lastModified: representation?.lastModified,
+        access: representation?.access,
         pages: getSearchIndex(ctx),
         sitemap: config.sitemap,
       });

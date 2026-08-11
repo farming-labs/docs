@@ -116,6 +116,7 @@ import {
 import {
   buildDocsAskAIContext,
   buildDocsSearchFacets,
+  compactDocsAgentDiscoverySpec,
   formatDocsAskAIPackageHints,
   performDocsSearch,
   performDocsSearchWithMetadata,
@@ -536,6 +537,12 @@ function buildAgentSpec({
     format: DOCS_AGENT_MANIFEST_FORMAT,
     version: DOCS_AGENT_MANIFEST_VERSION,
     name: "@farming-labs/docs",
+    profile: "full",
+    profiles: {
+      default: "full",
+      full: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+      compact: `${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}?profile=compact`,
+    },
     baseUrl: origin,
     site: {
       title: llms.siteTitle ?? "Documentation",
@@ -4196,6 +4203,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             okf: options?.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
+          access: page.agent?.access,
         };
       }
     }
@@ -4213,6 +4221,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           okf: options?.agent?.okf,
         }),
         lastModified: resolveDocsRetrievalLastModified(fallbackPage, "agent"),
+        access: fallbackPage.agent?.access,
       };
     }
 
@@ -4228,6 +4237,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             okf: options?.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
+          access: page.agent?.access,
         };
       }
     }
@@ -4390,39 +4400,38 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
-        const content = `${JSON.stringify(
-          buildAgentSpec({
-            origin: url.origin,
-            entry,
-            apiRoute: requestApiRoute,
-            apiCatalog: apiCatalogEnabled,
-            i18n,
-            search: searchConfig,
-            contentChanges: contentChangesConfig.enabled,
-            mcp: mcpConfig,
-            feedback: agentFeedbackConfig,
-            llms: llmsConfig,
-            sitemap: sitemapConfig,
-            robots: robotsConfig,
-            openapi: openapiDiscovery,
-            publishedSkills: [
-              await resolveDocsPublishedAgentSkill({
-                preferredDocument: readRootSkillDocument(),
-                fallbackDocument: getGeneratedSkillDocument(url.origin, requestApiRoute),
-              }),
-              ...(await getPublishedAgentSkills()),
-            ],
-            agentCard: options?.agent?.a2a,
-          }),
-          null,
-          2,
-        )}\n`;
+        const fullSpec = buildAgentSpec({
+          origin: url.origin,
+          entry,
+          apiRoute: requestApiRoute,
+          apiCatalog: apiCatalogEnabled,
+          i18n,
+          search: searchConfig,
+          contentChanges: contentChangesConfig.enabled,
+          mcp: mcpConfig,
+          feedback: agentFeedbackConfig,
+          llms: llmsConfig,
+          sitemap: sitemapConfig,
+          robots: robotsConfig,
+          openapi: openapiDiscovery,
+          publishedSkills: [
+            await resolveDocsPublishedAgentSkill({
+              preferredDocument: readRootSkillDocument(),
+              fallbackDocument: getGeneratedSkillDocument(url.origin, requestApiRoute),
+            }),
+            ...(await getPublishedAgentSkills()),
+          ],
+          agentCard: options?.agent?.a2a,
+        });
+        const compact = url.searchParams.get("profile") === "compact";
+        const spec = compact ? compactDocsAgentDiscoverySpec(fullSpec) : fullSpec;
+        const content = `${JSON.stringify(spec, null, compact ? undefined : 2)}\n`;
         return createDocsCacheableResponse({
           request,
           content,
           headers: {
             "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
             Link: agentManifestLinkHeader,
             "X-Robots-Tag": "noindex",
           },
@@ -4696,6 +4705,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           canonicalUrl,
           locale: ctx.locale,
           lastModified: representation?.lastModified,
+          access: representation?.access,
           sitemap: sitemapConfig,
         });
       }
