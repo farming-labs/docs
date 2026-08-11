@@ -291,6 +291,7 @@ Once `agent.md` exists, it becomes the source for:
 
 By default, the framework derives a page's last-modified date from the source file's filesystem mtime. You can override this with the `lastmod` frontmatter key:
 
+When a bundled `.farm-docs-last-modified.json` manifest is present in the content directory, the docs server uses the Git-derived dates from that manifest instead of the deployment filesystem mtime. Filesystem mtime remains a fallback only when no manifest entry exists for a page. Running `docs sitemap generate` (or `--manifest-only`) before your framework build produces this manifest with stable, git-sourced dates.
 ```md title="page.mdx"
 ---
 title: "Installation"
