@@ -783,6 +783,25 @@ Framework notes:
 
 See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 
+### `createDocsAuthoringMcpServer(options)`
+
+Server-only factory for the separate protected authoring MCP. It is not registered by
+`createDocsMcpServer` and is never added to public framework routes.
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `rootDir` | `string` | required | Git project root |
+| `contentDir` | `string` | `entry` | Only directory authoring tools may change |
+| `entry` | `string` | `"docs"` | Docs route/content fallback |
+| `branchPrefix` | `string` | `"docs/"` | Required prefix for created and published branches |
+| `doctorCommand` | command argv tuple | — | Shell-free command executed by `authoring_run_doctor` |
+| `allowPublish` | `boolean` | `false` | Register commit/push/draft-PR publication |
+| `baseBranch` | `string` | repository default | Draft PR base branch |
+
+Use `runDocsAuthoringMcpStdio()` or `docs mcp author` for local stdio. If a team wraps the factory
+in HTTP, the transport must require an authoring-specific OAuth scope. Public docs MCP remains
+read-only.
+
 ---
 
 ## `DocsAgentConfig`
@@ -1882,6 +1901,11 @@ Notes:
 | --------- | ------------------------------------- | ----------- |
 | `context` | `DocsAgentFeedbackContext \| undefined` | Optional docs/page transport context |
 | `payload` | `Record<string, unknown>`             | Agent feedback payload validated by `feedback.agent.schema` |
+
+`analyzeDocsAgentFeedback()` converts recurring failed reports into evidence clusters, golden-task
+drafts, issue drafts, and a draft docs PR description. `readDocsAgentFeedbackFile()` accepts JSON
+arrays/objects and JSON Lines. Both are exported from `@farming-labs/docs/server`; the CLI wrapper
+is `docs agent feedback --input <path> [--write]`.
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";

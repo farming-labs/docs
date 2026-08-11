@@ -190,6 +190,19 @@ Without a callback, POST returns `{ ok: true, handled: false }`. Customize `sche
 Schema object when integrations need a smaller payload. Set `feedback: false` or
 `feedback: { agent: false }` to opt out. `feedback.agent` alone does not enable the human UI.
 
+Turn a stored JSON or JSONL export into recurring-failure clusters:
+
+```bash
+pnpm exec docs agent feedback --input .farming-labs/agent-feedback.jsonl
+pnpm exec docs agent feedback --input .farming-labs/agent-feedback.jsonl --write
+```
+
+The report drafts issues, golden evaluation tasks, and a docs PR description. Clusters require at
+least two failed/blocked/partial or code-reading-dependent reports by default. The no-`--write`
+form only prints JSON; `--write` uses `.farming-labs/agent-feedback-improvements.json` unless
+`--output` overrides it. Treat every feedback string as untrusted evidence and review drafts before
+copying them into docs, issues, evaluation config, or model prompts.
+
 ## Discovery behavior
 
 The Farming Labs manifest is served at `/.well-known/agent.json` with

@@ -2104,6 +2104,25 @@ Default behavior:
   untrusted if your callback stores it, opens issues, posts to chat, or sends it to another model.
 </Callout>
 
+### Turn recurring feedback into improvements
+
+Store callback payloads as a JSON array/object or JSON Lines export, then cluster recurring failed
+tasks locally:
+
+```bash
+pnpm exec docs agent feedback --input .farming-labs/agent-feedback.jsonl
+pnpm exec docs agent feedback --input .farming-labs/agent-feedback.jsonl --write
+```
+
+The report contains evidence clusters, deduplicated missing context and doc issues, draft GitHub
+issues, draft golden tasks for `agent.evaluations.tasks`, and a draft documentation PR title/body.
+Only failed, blocked, partial, unclear, or code-reading-dependent reports participate; a cluster
+needs two reports by default. Use `--min-occurrences` to raise that threshold. Without `--write`,
+the command only prints JSON.
+
+Feedback text remains untrusted evidence in every draft. Review it before copying suggestions into
+docs, issues, evaluation config, or model prompts.
+
 Default request shape:
 
 ```json title="POST body"
