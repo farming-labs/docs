@@ -383,10 +383,14 @@ exposes docs, Ask AI, or MCP.
 
 `GET /.well-known/agent.json` is the preferred public discovery URL. It is a Farming Labs
 documentation-discovery extension, not an A2A Agent Card. The document identifies itself with
-`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
-`format: "farming-labs-agent-manifest.v1"`. The schema uses JSON Schema Draft 2020-12, and dynamic
+`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v2.json"` and
+`format: "farming-labs-agent-manifest.v2"`. The schema uses JSON Schema Draft 2020-12, and dynamic
 responses link it with the registered HTTP `describedby` relation. Existing fields and routes remain
 available.
+
+Use `GET /.well-known/agent.json?profile=compact` for a minified first hop without expanded skill
+file inventories. The response retains discovery routes and reports each skill's `fileCount`, so an
+agent can fetch the Agent Skills index only when the task requires those companion files.
 
 `GET /.well-known/agent` is the public fallback, and `GET /api/docs/agent/spec` is the canonical
 framework route. Next.js wires these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt

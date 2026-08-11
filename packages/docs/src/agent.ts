@@ -4363,6 +4363,12 @@ export function buildDocsAgentDiscoverySpec({
     format: DOCS_AGENT_MANIFEST_FORMAT,
     version: DOCS_AGENT_MANIFEST_VERSION,
     name: "@farming-labs/docs",
+    profile: "full",
+    profiles: {
+      default: "full",
+      full: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+      compact: `${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}?profile=compact`,
+    },
     baseUrl: origin,
     site: {
       title: llms?.siteTitle ?? "Documentation",
@@ -4684,6 +4690,26 @@ export function buildDocsAgentDiscoverySpec({
       doNotAssumeFeedbackPayloadShape: true,
     },
   };
+}
+
+/** Remove first-hop file inventories while retaining every discovery route and capability. */
+export function compactDocsAgentDiscoverySpec<
+  T extends {
+    skills: { published: Array<Record<string, unknown> & { files: readonly unknown[] }> };
+  },
+>(spec: T): T {
+  return {
+    ...spec,
+    profile: "compact",
+    skills: {
+      ...spec.skills,
+      published: spec.skills.published.map((skill) => ({
+        ...skill,
+        fileCount: skill.files.length,
+        files: [],
+      })),
+    },
+  } as T;
 }
 
 export function acceptsDocsMarkdown(request: Request): boolean {

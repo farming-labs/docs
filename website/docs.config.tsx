@@ -43,6 +43,7 @@ import { DocsMcpAccess } from "@/components/ui/docs-mcp-access";
 import { GuideCard } from "@/components/ui/guide-card";
 import { MigrationCard } from "@/components/ui/migration-card";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
+import docsPackage from "../packages/docs/package.json";
 
 const algoliaAppId = process.env.ALGOLIA_APP_ID;
 const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? "farming-labs-docs";
@@ -216,6 +217,18 @@ export default defineDocs({
 
   pageActions: {
     copyMarkdown: { enabled: true },
+    connectMcp: {
+      enabled: true,
+      endpoint: "/mcp",
+      providers: ["copy", "claude-code", "cursor", "vscode", "codex"],
+      label: "Connect docs MCP",
+    },
+    installSkills: {
+      enabled: true,
+      index: "/.well-known/agent-skills/index.json",
+      command: "npx skills add farming-labs/docs",
+      label: "Install docs skills",
+    },
     alignment: "right",
     openDocs: {
       enabled: true,
@@ -680,6 +693,7 @@ export default defineDocs({
   mcp: {
     enabled: true,
     name: "@farming-labs/docs",
+    version: docsPackage.version,
     prompts: {
       contracts: true,
       goldenTasks: ["install-existing-nextjs", "create-reusable-theme"],
