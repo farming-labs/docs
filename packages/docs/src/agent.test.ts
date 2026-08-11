@@ -1192,8 +1192,9 @@ describe("agent route helpers", () => {
     );
     expect(response.headers.get("content-language")).toBe("en");
     expect(response.headers.get("link")).toBe(
-      '<https://example.com/docs/install?lang=en>; rel="canonical"',
+      '<https://example.com/docs/install?lang=en>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
     );
+    expect(response.headers.get("x-llms-txt")).toBe("https://example.com/llms.txt");
     const responseDigest = createHash("sha256").update(document, "utf8").digest("base64");
     expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
     expect(response.headers.get("content-digest")).toBe(`sha-256=:${responseDigest}:`);
@@ -1625,7 +1626,7 @@ describe("agent route helpers", () => {
       "https://example.com/docs/install.md?lang=en&sections&tokenBudget=80",
     );
     expect(response.headers.get("link")).toBe(
-      '<https://example.com/docs/install?lang=en>; rel="canonical", <https://example.com/docs/install.md?lang=en>; rel="alternate"; type="text/markdown"',
+      '<https://example.com/docs/install?lang=en>; rel="canonical", <https://example.com/docs/install.md?lang=en>; rel="alternate"; type="text/markdown", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
     );
     expect(response.headers.get("x-docs-markdown-section-index")).toBe(
       DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
@@ -1776,7 +1777,7 @@ describe("agent route helpers", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("x-docs-markdown-section")).toBe("%E5%AE%89%E8%A3%85");
     expect(response.headers.get("link")).toBe(
-      '<https://example.com/docs/international#%E5%AE%89%E8%A3%85>; rel="canonical"',
+      '<https://example.com/docs/international#%E5%AE%89%E8%A3%85>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
     );
     expect(await response.text()).toContain("中文。");
   });
@@ -1839,7 +1840,9 @@ describe("agent route helpers", () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.get("x-docs-markdown-section")).toBe(encodeURIComponent(section.id));
-      expect(response.headers.get("link")).toBe(`<${section.canonicalUrl}>; rel="canonical"`);
+      expect(response.headers.get("link")).toBe(
+        `<${section.canonicalUrl}>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"`,
+      );
       expect(await response.text()).toContain(`${section.heading} [#`);
     }
   });
@@ -1910,7 +1913,7 @@ describe("agent route helpers", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("link")).toBe(
-      '<https://example.com/docs/install#prerequisites>; rel="canonical"',
+      '<https://example.com/docs/install#prerequisites>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
     );
     expect(response.headers.get("content-location")).toBe(
       "https://example.com/docs/install.md?section=prerequisites&tokenBudget=24",
@@ -1985,7 +1988,7 @@ describe("agent route helpers", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("link")).toBe(
-      '<https://example.com/docs/install>; rel="canonical"',
+      '<https://example.com/docs/install>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
     );
     expect(response.headers.get("x-docs-markdown-section-found")).toBe("true");
     expect(response.headers.get("x-docs-markdown-section-truncated")).toBe("true");

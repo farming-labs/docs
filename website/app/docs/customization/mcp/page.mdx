@@ -92,6 +92,8 @@ The current built-in surface includes:
 - `list_page_sections`
 - `search_docs`
 - `read_page`
+- `read_pages`
+- `submit_feedback` when machine feedback is enabled
 - `get_code_examples`
 - `get_config_schema`
 - `get_context`
@@ -100,6 +102,28 @@ It also exposes resources for:
 
 - `docs://navigation`
 - one `docs://…` resource per page
+
+`read_pages` accepts up to 20 page paths and applies one shared conservative token budget, which
+reduces MCP round trips without letting a batch grow without bounds. `submit_feedback` uses the
+same `{ context?, payload }` envelope as the HTTP feedback endpoint and validates `payload` against
+`feedback.agent.schema` before calling `feedback.agent.onFeedback`.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  feedback: {
+    agent: {
+      schema: {
+        type: "object",
+        properties: { outcome: { type: "string" } },
+        required: ["outcome"],
+      },
+      async onFeedback(data) {
+        await saveAgentFeedback(data);
+      },
+    },
+  },
+});
+```
 
 ## Default behavior
 

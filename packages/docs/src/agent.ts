@@ -238,6 +238,8 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   listPages: true,
   listPageSections: true,
   readPage: true,
+  readPages: true,
+  submitFeedback: true,
   listTasks: true,
   readTask: true,
   searchDocs: true,
@@ -3561,8 +3563,11 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
   const contentLocation =
     options.contentLocation ?? resolveDocsMarkdownContentLocation(canonicalUrl);
   const varyHeader = getDocsMarkdownVaryHeader(request);
+  const llmsTxtUrl = new URL(DEFAULT_LLMS_TXT_ROUTE, origin).toString();
+  const discoveryLink = `<${llmsTxtUrl}>; rel="describedby"; type="text/plain"`;
   const baseSharedHeaders: Record<string, string> = {
     "X-Robots-Tag": "noindex",
+    "X-Llms-Txt": llmsTxtUrl,
     ...(locale ? { "Content-Language": locale } : {}),
     ...(varyHeader ? { Vary: varyHeader } : {}),
   };
@@ -3575,7 +3580,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
         headers: {
           ...baseSharedHeaders,
           "Content-Location": contentLocation,
-          Link: `<${canonicalUrl}>; rel="canonical"`,
+          Link: `<${canonicalUrl}>; rel="canonical", ${discoveryLink}`,
           "Cache-Control": "no-store",
           Location: new URL(recovery.redirect.markdownUrl, request.url).toString(),
         },
@@ -3596,7 +3601,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
         headers: {
           ...baseSharedHeaders,
           "Content-Location": contentLocation,
-          Link: `<${canonicalUrl}>; rel="canonical"`,
+          Link: `<${canonicalUrl}>; rel="canonical", ${discoveryLink}`,
           "Cache-Control": "no-store",
           "Content-Type": "text/markdown; charset=utf-8",
         },
@@ -3626,7 +3631,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     const responseHeaders: Record<string, string> = {
       ...baseSharedHeaders,
       "Content-Location": sectionIndexContentLocation,
-      Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown"`,
+      Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown", ${discoveryLink}`,
       "Cache-Control": options.cacheControl ?? "public, max-age=0, s-maxage=3600",
       "Content-Type": "application/json; charset=utf-8",
       "X-Docs-Markdown-Section-Index": DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
@@ -3687,7 +3692,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
   const responseHeaders: Record<string, string> = {
     ...baseSharedHeaders,
     "Content-Location": sectionContentLocation,
-    Link: `<${sectionCanonicalUrl}>; rel="canonical"`,
+    Link: `<${sectionCanonicalUrl}>; rel="canonical", ${discoveryLink}`,
     "Cache-Control":
       sectionResult?.found === false
         ? "no-store"

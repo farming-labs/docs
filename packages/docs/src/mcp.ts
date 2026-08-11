@@ -41,7 +41,9 @@ import {
 import {
   DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
   buildDocsMarkdownSectionIndex,
+  resolveDocsAgentFeedbackConfig,
   toDocsMarkdownUrl,
+  validateDocsAgentFeedbackPayload,
   type DocsMarkdownSectionIndex,
 } from "./agent.js";
 import {
@@ -119,6 +121,7 @@ import type {
   DocsAgentContentChangesConfig,
   DocsAgentEvaluationsConfig,
   DocsAgentGoldenTask,
+  DocsAgentFeedbackContext,
   DocsContentChangesResponse,
   DocsMcpAllowedOrigins,
   DocsMcpAuthPrincipal,
@@ -132,6 +135,7 @@ import type {
   DocsSearchSourcePage,
   DocsTelemetryConfig,
   DocsTelemetryFramework,
+  FeedbackConfig,
   OrderingItem,
   PageAgentFrontmatter,
 } from "./types.js";
@@ -441,6 +445,10 @@ export interface DocsMcpResolvedConfig {
     /** Optional so manually constructed resolved configs from older releases remain assignable. */
     listPageSections?: boolean;
     readPage: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    readPages?: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    submitFeedback?: boolean;
     listTasks?: boolean;
     readTask?: boolean;
     searchDocs: boolean;
@@ -490,6 +498,8 @@ export interface CreateDocsMcpServerOptions {
   contentChanges?: boolean | DocsAgentContentChangesConfig;
   /** Golden-task definitions available for explicit, expectation-blind prompt projection. */
   evaluations?: boolean | DocsAgentEvaluationsConfig;
+  /** Agent feedback schema and callback used by the opt-in `submit_feedback` tool. */
+  feedback?: boolean | FeedbackConfig;
   /** @internal Shared feed instance keeps HTTP and MCP snapshot history aligned. */
   contentChangeFeed?: DocsContentChangeFeed;
   /** @internal Check interval while at least one 2026 content subscription is open. */
@@ -519,6 +529,8 @@ const DOCS_MCP_RESOURCE_CACHE_TTL_MS = 60 * 1_000;
 const DEFAULT_MCP_CONTEXT_TOKEN_BUDGET = 4_000;
 const MIN_MCP_CONTEXT_TOKEN_BUDGET = 256;
 const MAX_MCP_CONTEXT_TOKEN_BUDGET = 32_000;
+const DEFAULT_MCP_READ_PAGES_TOKEN_BUDGET = 8_000;
+const MAX_MCP_READ_PAGES_COUNT = 20;
 const DOCS_MCP_PROTOCOL_LIST_PAGE_SIZE = 10;
 const DOCS_MCP_TOOL_LIST_PAGE_SIZE = 25;
 const DOCS_MCP_PAGINATION_META_KEY = "dev.farming-labs/pagination";
@@ -1955,7 +1967,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
     path: "pageActions",
     name: "pageActions",
     type: "PageActionsConfig",
-    description: "Copy Markdown and Open in LLM actions for docs pages.",
+    description: "Copy, Open in LLM, MCP connection, and Agent Skills setup actions.",
     docs: "/docs/customization/page-actions",
     children: [
       {
@@ -1992,6 +2004,20 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Prompt text prepended to the provider URL when opening docs.",
           },
         ],
+      },
+      {
+        path: "pageActions.connectMcp",
+        name: "connectMcp",
+        type: "boolean | PageActionConnectMcpConfig",
+        description:
+          "Show copyable MCP setup for Claude Code, Cursor, VS Code, Codex, or a raw endpoint.",
+      },
+      {
+        path: "pageActions.installSkills",
+        name: "installSkills",
+        type: "boolean | PageActionInstallSkillsConfig",
+        description:
+          "Discover the published Agent Skills index and provide a copyable skills install command.",
       },
     ],
   },
@@ -2381,6 +2407,21 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Expose the read_page tool.",
           },
           {
+            path: "mcp.tools.readPages",
+            name: "readPages",
+            type: "boolean",
+            default: true,
+            description: "Expose the budget-aware read_pages batch tool.",
+          },
+          {
+            path: "mcp.tools.submitFeedback",
+            name: "submitFeedback",
+            type: "boolean",
+            default: true,
+            description:
+              "Expose submit_feedback when feedback.agent is enabled and validate payloads with its configured schema.",
+          },
+          {
             path: "mcp.tools.getCodeExamples",
             name: "getCodeExamples",
             type: "boolean",
@@ -2623,6 +2664,35 @@ const readPageInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
   section: z.string().trim().min(1).optional(),
   maxChars: z.number().int().min(256).max(1_000_000).optional(),
+});
+
+const readPagesInputSchema = z.object({
+  paths: z
+    .array(z.string().trim().min(1))
+    .min(1)
+    .max(MAX_MCP_READ_PAGES_COUNT)
+    .describe("Page slugs or URL paths to read in the requested order."),
+  locale: z.string().trim().min(1).max(128).optional(),
+  tokenBudget: z
+    .number()
+    .int()
+    .min(MIN_MCP_CONTEXT_TOKEN_BUDGET)
+    .max(MAX_MCP_CONTEXT_TOKEN_BUDGET)
+    .optional(),
+  maxCharsPerPage: z.number().int().min(256).max(1_000_000).optional(),
+});
+
+const submitFeedbackInputSchema = z.object({
+  context: z
+    .object({
+      page: z.string().optional(),
+      url: z.string().optional(),
+      slug: z.string().optional(),
+      locale: z.string().optional(),
+      source: z.string().optional(),
+    })
+    .optional(),
+  payload: z.record(z.string(), z.unknown()),
 });
 
 const listPageSectionsInputSchema = z.object({
@@ -3171,6 +3241,26 @@ const readPageOutputSchema = z.object({
   totalChars: z.number().int().nonnegative(),
   truncated: z.boolean(),
 });
+const readPagesOutputSchema = z.object({
+  format: z.literal("docs-read-pages.v1"),
+  budget: z.object({
+    requestedTokens: z.number().int().positive(),
+    strategy: z.literal("utf8-bytes"),
+    maxUtf8Bytes: z.number().int().positive(),
+    usedUtf8Bytes: z.number().int().nonnegative(),
+    remainingUtf8Bytes: z.number().int().nonnegative(),
+    truncated: z.boolean(),
+  }),
+  resultCount: z.number().int().nonnegative(),
+  requestedCount: z.number().int().positive(),
+  pages: z.array(readPageOutputSchema.extend({ requestedPath: z.string() })),
+  errors: z.array(z.object({ path: z.string(), error: z.string() })),
+  remainingPaths: z.array(z.string()),
+});
+const submitFeedbackOutputSchema = z.object({
+  accepted: z.literal(true),
+  message: z.string(),
+});
 const pageSectionMetadataOutputSchema = z.object({
   id: z.string(),
   heading: z.string(),
@@ -3270,6 +3360,8 @@ export function resolveDocsMcpConfig(
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -3298,6 +3390,8 @@ export function resolveDocsMcpConfig(
       listPages: config.tools?.listPages ?? true,
       listPageSections: config.tools?.listPageSections ?? true,
       readPage: config.tools?.readPage ?? true,
+      readPages: config.tools?.readPages ?? true,
+      submitFeedback: config.tools?.submitFeedback ?? true,
       listTasks: config.tools?.listTasks ?? true,
       readTask: config.tools?.readTask ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
@@ -4104,6 +4198,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     contentChangesConfig.enabled && resolved.tools.listContentChanges !== false;
   const contentChangeHydrationEnabled =
     contentChangesEnabled && resolved.tools.hydrateContentChanges !== false;
+  const agentFeedback = resolveDocsAgentFeedbackConfig(options.feedback);
   const cacheScope: CacheScope = options.requestContext?.auth ? "private" : "public";
   const server = new McpServer(
     {
@@ -5940,6 +6035,129 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           });
           throw error;
         }
+      },
+    );
+  }
+
+  if (resolved.tools.readPages !== false) {
+    registerTool(
+      "read_pages",
+      {
+        title: "Read several docs pages",
+        description:
+          "Read up to 20 documentation pages in one round trip. Results preserve request order and share a conservative UTF-8 token budget.",
+        inputSchema: readPagesInputSchema,
+        outputSchema: readPagesOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({
+        paths: requestedPaths,
+        locale,
+        tokenBudget = DEFAULT_MCP_READ_PAGES_TOKEN_BUDGET,
+        maxCharsPerPage,
+      }) => {
+        const pages = dedupePages(await getSourcePages(locale));
+        const maxUtf8Bytes = tokenBudget * 4;
+        let usedUtf8Bytes = 0;
+        let processedCount = 0;
+        let truncated = false;
+        const results: Array<z.infer<typeof readPageOutputSchema> & { requestedPath: string }> = [];
+        const errors: Array<{ path: string; error: string }> = [];
+
+        for (const requestedPath of requestedPaths) {
+          if (usedUtf8Bytes >= maxUtf8Bytes) {
+            truncated = true;
+            break;
+          }
+
+          processedCount += 1;
+          const page = findDocsPage(pages, requestedPath, options.source.entry);
+          if (!page) {
+            errors.push({ path: requestedPath, error: `No docs page matched "${requestedPath}".` });
+            continue;
+          }
+
+          const fullDocument = renderPageDocument(page);
+          const perPage = limitDocsMcpText(fullDocument, maxCharsPerPage);
+          const remainingUtf8Bytes = maxUtf8Bytes - usedUtf8Bytes;
+          const budgeted = limitDocsMcpUtf8Bytes(perPage.text, remainingUtf8Bytes);
+          const document = budgeted.text;
+          const documentBytes = docsMcpUtf8Bytes(document);
+          usedUtf8Bytes += documentBytes;
+          const pageTruncated = perPage.truncated || budgeted.truncated;
+          truncated ||= pageTruncated;
+
+          results.push({
+            requestedPath,
+            page: toStructuredDocsMcpPage(page),
+            document,
+            chars: document.length,
+            totalChars: fullDocument.length,
+            truncated: pageTruncated,
+          });
+        }
+
+        const result = {
+          format: "docs-read-pages.v1" as const,
+          budget: {
+            requestedTokens: tokenBudget,
+            strategy: "utf8-bytes" as const,
+            maxUtf8Bytes,
+            usedUtf8Bytes,
+            remainingUtf8Bytes: Math.max(0, maxUtf8Bytes - usedUtf8Bytes),
+            truncated: truncated || processedCount < requestedPaths.length,
+          },
+          resultCount: results.length,
+          requestedCount: requestedPaths.length,
+          pages: results,
+          errors,
+          remainingPaths: requestedPaths.slice(processedCount),
+        };
+        trackMcpTool("read_pages", { locale, resultCount: results.length });
+        return createStructuredTextResult(result);
+      },
+    );
+  }
+
+  if (resolved.tools.submitFeedback !== false && agentFeedback.enabled) {
+    registerTool(
+      "submit_feedback",
+      {
+        title: "Submit documentation feedback",
+        description:
+          "Submit machine-readable documentation feedback. The payload is validated against the site's configured agent feedback schema before delivery.",
+        inputSchema: submitFeedbackInputSchema,
+        outputSchema: submitFeedbackOutputSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+        _meta: {
+          "dev.farming-labs/feedbackSchema": agentFeedback.schema,
+        },
+      },
+      async ({ context, payload }) => {
+        const validationError = validateDocsAgentFeedbackPayload(
+          payload,
+          agentFeedback.payloadSchema,
+        );
+        if (validationError) {
+          return {
+            content: [{ type: "text", text: validationError }],
+            isError: true,
+          };
+        }
+
+        const feedbackContext: DocsAgentFeedbackContext = {
+          ...context,
+          source: context?.source ?? "mcp",
+        };
+        await agentFeedback.onFeedback?.({
+          ...(Object.keys(feedbackContext).length > 0 ? { context: feedbackContext } : {}),
+          payload,
+        });
+        trackMcpTool("submit_feedback", { locale: feedbackContext.locale, resultCount: 1 });
+        return createStructuredTextResult({
+          accepted: true as const,
+          message: "Feedback accepted.",
+        });
       },
     );
   }
