@@ -1,6 +1,9 @@
 import type {
   DocsConfig,
   DocsAgentContentChangesConfig,
+  DocsOkfConfig,
+  DocsOkfTrustMetadata,
+  DocsOkfTrustMetadataInput,
   DocsRobotsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
@@ -14,6 +17,7 @@ import type {
   PageAgentFrontmatter,
   ResolvedDocsRelatedLink,
 } from "./types.js";
+import { resolveDocsOkfConfig, resolveDocsOkfTrustMetadata } from "./okf.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import {
@@ -238,6 +242,8 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   listPages: true,
   listPageSections: true,
   readPage: true,
+  readPages: true,
+  submitFeedback: true,
   listTasks: true,
   readTask: true,
   searchDocs: true,
@@ -739,6 +745,8 @@ export interface DocsMarkdownPage {
   markdownUrl?: string;
   lastModified?: string;
   lastmod?: string;
+  sourcePath?: string;
+  okf?: DocsOkfTrustMetadataInput;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
   content: string;
@@ -751,6 +759,7 @@ export interface DocsMarkdownPage {
 
 export interface DocsMarkdownDocumentOptions {
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
+  okf?: boolean | DocsOkfConfig;
   origin?: string;
   sitemap?: boolean | DocsSitemapConfig;
 }
@@ -2980,6 +2989,7 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl,
   markdownUrl,
   lastUpdated,
+  trust,
   agent,
   generatedPreamble,
 }: {
@@ -2988,6 +2998,7 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl: string;
   markdownUrl: string;
   lastUpdated?: string;
+  trust?: DocsOkfTrustMetadata;
   agent?: PageAgentFrontmatter;
   generatedPreamble?: boolean;
 }): string {
@@ -2998,6 +3009,7 @@ function renderDocsMarkdownFrontmatter({
     `canonical_url: ${toYamlString(canonicalUrl)}`,
     `markdown_url: ${toYamlString(markdownUrl)}`,
     ...(lastUpdated ? [`last_updated: ${toYamlString(lastUpdated)}`] : []),
+    ...(trust ? [`okf: ${JSON.stringify(trust)}`] : []),
     ...(generatedPreamble ? [`${DOCS_MARKDOWN_GENERATED_PREAMBLE_FIELD}: true`] : []),
     ...renderPageAgentFrontmatterYamlLines(agent),
     "---",
@@ -3388,16 +3400,23 @@ function resolveDocsMarkdownPageMetadata(
   page: DocsMarkdownPage,
   options?: DocsMarkdownDocumentOptions,
 ): Parameters<typeof renderDocsMarkdownFrontmatter>[0] {
+  const canonicalUrl = resolveDocsMarkdownMetadataUrl(page.url, options?.origin);
+  const okfEnabled = resolveDocsOkfConfig(options?.okf).enabled || page.okf !== undefined;
   return {
     title: page.title,
     description: page.description,
-    canonicalUrl: resolveDocsMarkdownMetadataUrl(page.url, options?.origin),
+    canonicalUrl,
     markdownUrl: resolveDocsMarkdownMetadataUrl(
       page.markdownUrl ?? toDocsMarkdownUrl(page.url),
       options?.origin,
     ),
     lastUpdated: normalizeDocsMarkdownLastUpdated(page.lastmod ?? page.lastModified),
     agent: page.agent,
+    ...(okfEnabled
+      ? {
+          trust: resolveDocsOkfTrustMetadata({ ...page, canonicalUrl }, options?.okf),
+        }
+      : {}),
   };
 }
 
@@ -3561,8 +3580,11 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
   const contentLocation =
     options.contentLocation ?? resolveDocsMarkdownContentLocation(canonicalUrl);
   const varyHeader = getDocsMarkdownVaryHeader(request);
+  const llmsTxtUrl = new URL(DEFAULT_LLMS_TXT_ROUTE, origin).toString();
+  const discoveryLink = `<${llmsTxtUrl}>; rel="describedby"; type="text/plain"`;
   const baseSharedHeaders: Record<string, string> = {
     "X-Robots-Tag": "noindex",
+    "X-Llms-Txt": llmsTxtUrl,
     ...(locale ? { "Content-Language": locale } : {}),
     ...(varyHeader ? { Vary: varyHeader } : {}),
   };
@@ -3575,7 +3597,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
         headers: {
           ...baseSharedHeaders,
           "Content-Location": contentLocation,
-          Link: `<${canonicalUrl}>; rel="canonical"`,
+          Link: `<${canonicalUrl}>; rel="canonical", ${discoveryLink}`,
           "Cache-Control": "no-store",
           Location: new URL(recovery.redirect.markdownUrl, request.url).toString(),
         },
@@ -3596,7 +3618,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
         headers: {
           ...baseSharedHeaders,
           "Content-Location": contentLocation,
-          Link: `<${canonicalUrl}>; rel="canonical"`,
+          Link: `<${canonicalUrl}>; rel="canonical", ${discoveryLink}`,
           "Cache-Control": "no-store",
           "Content-Type": "text/markdown; charset=utf-8",
         },
@@ -3626,7 +3648,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     const responseHeaders: Record<string, string> = {
       ...baseSharedHeaders,
       "Content-Location": sectionIndexContentLocation,
-      Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown"`,
+      Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown", ${discoveryLink}`,
       "Cache-Control": options.cacheControl ?? "public, max-age=0, s-maxage=3600",
       "Content-Type": "application/json; charset=utf-8",
       "X-Docs-Markdown-Section-Index": DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
@@ -3687,7 +3709,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
   const responseHeaders: Record<string, string> = {
     ...baseSharedHeaders,
     "Content-Location": sectionContentLocation,
-    Link: `<${sectionCanonicalUrl}>; rel="canonical"`,
+    Link: `<${sectionCanonicalUrl}>; rel="canonical", ${discoveryLink}`,
     "Cache-Control":
       sectionResult?.found === false
         ? "no-store"

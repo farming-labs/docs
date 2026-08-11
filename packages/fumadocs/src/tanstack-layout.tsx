@@ -9,6 +9,8 @@ import type {
   AIConfig,
   OpenDocsConfig,
   CopyMarkdownConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
 } from "@farming-labs/docs";
 import {
   applySidebarFolderIndexBehavior,
@@ -404,6 +406,16 @@ export function TanstackDocsLayout({
       ? (pageActions.copyMarkdown as CopyMarkdownConfig)
       : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
+  const connectMcp = resolveBool(pageActions?.connectMcp)
+    ? pageActions?.connectMcp && typeof pageActions.connectMcp === "object"
+      ? (pageActions.connectMcp as PageActionConnectMcpConfig)
+      : {}
+    : undefined;
+  const installSkills = resolveBool(pageActions?.installSkills)
+    ? pageActions?.installSkills && typeof pageActions.installSkills === "object"
+      ? (pageActions.installSkills as PageActionInstallSkillsConfig)
+      : {}
+    : undefined;
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
 
@@ -565,6 +577,8 @@ export function TanstackDocsLayout({
           openDocsProviders={openDocsProviders}
           openDocsTarget={openDocsConfig?.target}
           openDocsPrompt={openDocsConfig?.prompt}
+          connectMcp={connectMcp}
+          installSkills={installSkills}
           pageActionsPosition={pageActionsPosition}
           pageActionsAlignment={pageActionsAlignment}
           editOnGithubUrl={editOnGithubUrl}

@@ -112,7 +112,8 @@ These settings do not affect stdio.
 Core tools include:
 
 - `list_docs`, `list_pages`, `list_tasks`
-- `read_task`, `read_page`
+- `read_task`, `read_page`, budget-aware `read_pages`
+- `submit_feedback` when machine feedback is enabled
 - `get_navigation`, `search_docs`
 - `get_code_examples`
 - `get_config_schema`
@@ -213,3 +214,25 @@ are bundled.
 When `specUrl` is set, local `routeRoot` and `exclude` are ignored. The shared API exposes
 `GET /api/docs?format=openapi`; discovery, llms, AGENTS.md, and skill.md advertise it. Static Next
 export skips the generated API route.
+
+## OpenAPI operations as MCP tools
+
+`apiReference.mcp` is deny-by-default. Allow operations by `operationId`, `METHOD /path`, or the
+operation-level `x-farming-labs-mcp: true` extension. Mutations also require
+`allowMutations: true`.
+
+```ts
+apiReference: {
+  enabled: true,
+  mcp: {
+    operations: ["getUser", "GET /projects/{id}"],
+    baseUrl: "https://api.example.com",
+    headers: { Authorization: `Bearer ${process.env.PRODUCT_API_TOKEN}` },
+  },
+}
+```
+
+Configured headers are server-owned and override model-provided header inputs. Tool metadata
+includes the method, path, OpenAPI security requirements, referenced security schemes, and MCP
+read-only/destructive/idempotent annotations. Never expose broad service credentials through a
+public MCP endpoint.

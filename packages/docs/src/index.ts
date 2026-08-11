@@ -428,6 +428,9 @@ export type {
   ChangelogFrontmatter,
   ApiReferenceConfig,
   ApiReferenceRenderer,
+  DocsOpenApiMcpConfig,
+  DocsOpenApiMcpCredentialContext,
+  DocsOpenApiMcpHeaders,
   DocsI18nConfig,
   DocsMcpAllowedOrigins,
   DocsMcpAuthPrincipal,
@@ -509,6 +512,13 @@ export type {
   PageAgentFailureMode,
   PageAgentFrontmatter,
   PageAgentVerification,
+  DocsOkfActorTimestamp,
+  DocsOkfConfig,
+  DocsOkfSource,
+  DocsOkfStatus,
+  DocsOkfTrustMetadata,
+  DocsOkfTrustMetadataInput,
+  DocsOkfTrustTier,
   UIConfig,
   FontStyle,
   TypographyConfig,
@@ -524,6 +534,9 @@ export type {
   SidebarPageNode,
   SidebarFolderNode,
   PageActionsConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
+  PageActionMcpProvider,
   CopyMarkdownConfig,
   CopyMarkdownFormat,
   OpenDocsConfig,
@@ -640,6 +653,23 @@ export {
   isDocsRetrievalCanonicalUrl,
   sha256DocsContent,
 } from "./retrieval-digest.js";
+export {
+  DEFAULT_DOCS_OKF_ROUTE,
+  DOCS_OKF_BUNDLE_FORMAT,
+  DOCS_OKF_VERSION,
+  buildDocsOkfBundle,
+  normalizeDocsOkfTrustMetadataInput,
+  resolveDocsOkfConfig,
+  resolveDocsOkfTrustMetadata,
+} from "./okf.js";
+export { resolveDocsOpenApiMcpBaseUrl, resolveDocsOpenApiMcpOperations } from "./openapi-mcp.js";
+export type { DocsOpenApiMcpOperation, DocsOpenApiMcpParameter } from "./openapi-mcp.js";
+export type {
+  DocsOkfBundle,
+  DocsOkfKnowledgeDocument,
+  DocsOkfPageLike,
+  DocsOkfResolvedConfig,
+} from "./okf.js";
 export {
   createDocsCacheableResponse,
   formatDocsContentDigest,

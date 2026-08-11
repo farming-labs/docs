@@ -54,6 +54,7 @@ import {
   isDocsSkillRequest,
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
+  normalizeDocsOkfTrustMetadataInput,
   parseDocsAgentFeedbackData,
   performDocsSearch,
   performDocsSearchWithMetadata,
@@ -98,6 +99,7 @@ import {
   buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
   readDocsSitemapManifest,
+  resolveApiReferenceConfig,
   resolveApiReferenceOpenApiDiscovery,
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
@@ -522,6 +524,7 @@ function searchIndexFromMap(
       description: data.description as string | undefined,
       ...(related.length > 0 ? { related } : {}),
       agent: normalizePageAgentFrontmatter(data.agent),
+      okf: normalizeDocsOkfTrustMetadataInput(data.okf),
       icon: data.icon as string | undefined,
       lastmod: normalizeDocsFrontmatterLastmod(data.lastmod),
       locale: typeof data.locale === "string" ? data.locale : undefined,
@@ -995,7 +998,11 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
     return page
       ? {
-          document: renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }),
+          document: renderDocsMarkdownDocument(page, {
+            origin,
+            sitemap: config.sitemap,
+            okf: config.agent?.okf,
+          }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
         }
       : null;
@@ -2021,6 +2028,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     typeof (config.nav as Record<string, unknown>)?.title === "string"
       ? ((config.nav as Record<string, unknown>).title as string)
       : "Documentation";
+  const mcpApiReference = resolveApiReferenceConfig(config.apiReference).mcp;
 
   const MCP = createDocsMcpHttpHandler({
     source: {
@@ -2077,8 +2085,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       },
     },
     mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
+    okf: config.agent?.okf,
+    openapi: mcpApiReference
+      ? {
+          config: mcpApiReference,
+          document: () =>
+            buildApiReferenceOpenApiDocumentAsync(config as any, {
+              framework: "nuxt",
+              rootDir,
+              baseUrl: markdownMetadataBaseUrl || undefined,
+            }),
+        }
+      : undefined,
     contentChanges: config.agent?.contentChanges,
     evaluations: config.agent?.evaluations,
+    feedback: config.feedback,
     contentChangeFeed,
     analytics,
     telemetry: config.telemetry,

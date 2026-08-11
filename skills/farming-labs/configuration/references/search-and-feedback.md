@@ -183,6 +183,7 @@ Default shared routes:
 
 - `GET /api/docs/agent/feedback/schema`
 - `POST /api/docs/agent/feedback`
+- MCP `submit_feedback` (when MCP and machine feedback are enabled)
 - non-Next adapters also advertise the existing query-route form
 
 Without a callback, POST returns `{ ok: true, handled: false }`. Customize `schema` with a JSON

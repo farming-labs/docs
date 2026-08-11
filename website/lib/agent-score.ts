@@ -430,6 +430,7 @@ async function fetchWithTimeout(
 interface TextProbe {
   ok: boolean;
   status?: number;
+  durationMs?: number;
   detail: string;
   body?: string;
 }
@@ -440,6 +441,7 @@ async function probeTextRoute(
   accept = "text/plain, text/markdown, */*",
 ): Promise<TextProbe> {
   const url = joinUrl(baseUrl, route);
+  const startedAt = Date.now();
   try {
     const response = await fetchWithTimeout(url, { headers: { Accept: accept } });
     const body = await response.text().catch(() => "");
@@ -447,6 +449,7 @@ async function probeTextRoute(
       return {
         ok: false,
         status: response.status,
+        durationMs: Date.now() - startedAt,
         detail: `${route} returned HTTP ${response.status}.`,
       };
     }
@@ -454,18 +457,21 @@ async function probeTextRoute(
       return {
         ok: false,
         status: response.status,
+        durationMs: Date.now() - startedAt,
         detail: `${route} returned an empty body.`,
       };
     }
     return {
       ok: true,
       status: response.status,
-      detail: `${route} returned HTTP ${response.status} with ${body.length} characters.`,
+      durationMs: Date.now() - startedAt,
+      detail: `${route} returned HTTP ${response.status} with ${body.length} characters in ${Date.now() - startedAt}ms.`,
       body,
     };
   } catch (error) {
     return {
       ok: false,
+      durationMs: Date.now() - startedAt,
       detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
     };
   }
@@ -474,12 +480,14 @@ async function probeTextRoute(
 interface JsonProbe {
   ok: boolean;
   status?: number;
+  durationMs?: number;
   detail: string;
   body?: unknown;
 }
 
 async function probeJsonRoute(baseUrl: string, route: string): Promise<JsonProbe> {
   const url = joinUrl(baseUrl, route);
+  const startedAt = Date.now();
   try {
     const response = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
     const text = await response.text().catch(() => "");
@@ -487,22 +495,31 @@ async function probeJsonRoute(baseUrl: string, route: string): Promise<JsonProbe
       return {
         ok: false,
         status: response.status,
+        durationMs: Date.now() - startedAt,
         detail: `${route} returned HTTP ${response.status}.`,
       };
     }
     try {
       const body = JSON.parse(text) as unknown;
-      return { ok: true, status: response.status, detail: `${route} returned valid JSON.`, body };
+      return {
+        ok: true,
+        status: response.status,
+        durationMs: Date.now() - startedAt,
+        detail: `${route} returned valid JSON in ${Date.now() - startedAt}ms.`,
+        body,
+      };
     } catch {
       return {
         ok: false,
         status: response.status,
+        durationMs: Date.now() - startedAt,
         detail: `${route} did not return valid JSON.`,
       };
     }
   } catch (error) {
     return {
       ok: false,
+      durationMs: Date.now() - startedAt,
       detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
     };
   }
@@ -1141,6 +1158,8 @@ interface MarkdownCanonicalProbe {
   status?: number;
   detail: string;
   hasCanonicalLink: boolean;
+  hasLlmsDiscoveryHeader: boolean;
+  hasLlmsDiscoveryLink: boolean;
 }
 
 interface AdjacentMarkdownRouteProbe {
@@ -1541,6 +1560,8 @@ async function probeMarkdownCanonicalHeader(
       ok: false,
       detail: `${new URL(probe.url).pathname} was not available for markdown canonical probing.`,
       hasCanonicalLink: false,
+      hasLlmsDiscoveryHeader: false,
+      hasLlmsDiscoveryLink: false,
     };
   }
 
@@ -1554,6 +1575,11 @@ async function probeMarkdownCanonicalHeader(
       probe.url,
       markdownUrl,
     );
+    const linkHeader = response.headers.get("link") ?? "";
+    const hasLlmsDiscoveryHeader = Boolean(response.headers.get("x-llms-txt")?.trim());
+    const hasLlmsDiscoveryLink = /<[^>]*llms\.txt[^>]*>\s*;[^,]*rel="?describedby"?/i.test(
+      linkHeader,
+    );
 
     return {
       pageUrl: probe.url,
@@ -1566,6 +1592,8 @@ async function probeMarkdownCanonicalHeader(
           }.`
         : `${new URL(markdownUrl).pathname} returned HTTP ${response.status}.`,
       hasCanonicalLink,
+      hasLlmsDiscoveryHeader,
+      hasLlmsDiscoveryLink,
     };
   } catch (error) {
     return {
@@ -1574,6 +1602,8 @@ async function probeMarkdownCanonicalHeader(
       ok: false,
       detail: `${markdownUrl} failed: ${error instanceof Error ? error.message : String(error)}.`,
       hasCanonicalLink: false,
+      hasLlmsDiscoveryHeader: false,
+      hasLlmsDiscoveryLink: false,
     };
   }
 }
@@ -1611,6 +1641,40 @@ function scoreMarkdownCanonicalCoverage(
     return { status: "warn", score: roundScore((passed / total) * maxScore), passed, total };
   }
   return { status: "fail", score: 0, passed, total };
+}
+
+function buildAgentLatencyCheck(
+  probes: Array<{ ok: boolean; durationMs?: number }>,
+): AgentScoreCheck {
+  const durations = probes
+    .filter((probe) => probe.ok && typeof probe.durationMs === "number")
+    .map((probe) => probe.durationMs as number)
+    .sort((left, right) => left - right);
+  if (durations.length === 0) {
+    return makeCheck(
+      "framework:latency",
+      "Agent endpoint latency",
+      "warn",
+      0,
+      2,
+      "No successful agent endpoints supplied latency measurements.",
+      "Verify the advertised discovery, index, sitemap, search, and feedback routes respond within 2.5 seconds.",
+    );
+  }
+
+  const p95 = durations[Math.min(durations.length - 1, Math.ceil(durations.length * 0.95) - 1)]!;
+  const status: ScoreStatus = p95 <= 1_000 ? "pass" : p95 <= 2_500 ? "warn" : "fail";
+  return makeCheck(
+    "framework:latency",
+    "Agent endpoint latency",
+    status,
+    status === "pass" ? 2 : status === "warn" ? 1 : 0,
+    2,
+    `Measured ${durations.length} successful agent routes; p95 latency was ${p95}ms.`,
+    status === "pass"
+      ? undefined
+      : "Cache generated agent artifacts and keep their p95 response latency below 1 second.",
+  );
 }
 
 function scoreAdjacentMarkdownRoutes(
@@ -2077,6 +2141,46 @@ async function buildFrameworkChecks(
     ),
   );
 
+  const discoveryHeaderTotal = markdownCanonicalProbes.length;
+  const discoveryHeaderPassed = markdownCanonicalProbes.filter(
+    (probe) => probe.ok && probe.hasLlmsDiscoveryHeader && probe.hasLlmsDiscoveryLink,
+  ).length;
+  const discoveryHeaderStatus: ScoreStatus =
+    discoveryHeaderTotal > 0 && discoveryHeaderPassed === discoveryHeaderTotal
+      ? "pass"
+      : discoveryHeaderPassed > 0
+        ? "warn"
+        : "fail";
+  checks.push(
+    makeCheck(
+      "framework:discovery-headers",
+      "HTTP discovery headers",
+      discoveryHeaderStatus,
+      discoveryHeaderStatus === "pass" ? 2 : discoveryHeaderStatus === "warn" ? 1 : 0,
+      2,
+      discoveryHeaderTotal > 0
+        ? `${discoveryHeaderPassed}/${discoveryHeaderTotal} sampled markdown responses advertise llms.txt through both X-Llms-Txt and a describedby Link.`
+        : "No markdown responses were available for HTTP discovery-header verification.",
+      discoveryHeaderStatus === "pass"
+        ? undefined
+        : "Advertise the absolute llms.txt URL through X-Llms-Txt and Link rel=describedby headers.",
+    ),
+  );
+
+  checks.push(
+    buildAgentLatencyCheck([
+      frameworkDiscovery.discovery,
+      ...fullContextProbes,
+      ...sitemapProbes,
+      ...(robotsProbe ? [robotsProbe] : []),
+      ...agentsProbes,
+      ...skillProbes,
+      ...(searchProbe ? [searchProbe] : []),
+      ...(feedbackSchemaProbe ? [feedbackSchemaProbe] : []),
+      ...(openapiProbe ? [openapiProbe] : []),
+    ]),
+  );
+
   return {
     framework: view.framework,
     usesFarmingLabsDocs: true,
@@ -2097,7 +2201,7 @@ export async function inspectHostedAgentReadiness(rawUrl: string): Promise<Agent
   const { afdocsReport, adjacentMarkdownChecks, framework } = await withPublicAgentScoreFetch(
     async () => {
       const report = await runChecks(baseUrl, {
-        samplingStrategy: "none",
+        samplingStrategy: "deterministic",
         maxLinksToTest: AF_DOCS_MAX_LINKS_TO_TEST,
         maxConcurrency: AF_DOCS_MAX_CONCURRENCY,
         requestDelay: AF_DOCS_REQUEST_DELAY_MS,

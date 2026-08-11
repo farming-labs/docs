@@ -1,6 +1,6 @@
 ---
 title: "Page Actions"
-description: 'Add "Open in LLM" and "Copy Markdown" buttons to your doc pages'
+description: 'Add copy, LLM, MCP connection, and Agent Skills actions to docs pages'
 icon: "mousePointerClick"
 order: 5.6
 related:
@@ -10,8 +10,8 @@ related:
   - /docs/customization/mcp
 agent:
   tokenBudget: 900
-  task: Configure Copy Markdown and Open in LLM actions for docs pages.
-  outcome: The selected actions appear in the intended position and produce canonical Markdown or provider URLs for the current page.
+  task: Configure copy, Open in LLM, MCP connection, and Agent Skills actions for docs pages.
+  outcome: The selected actions appear in the intended position and produce canonical Markdown, provider URLs, or copyable agent setup instructions.
   appliesTo:
     framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
     version: ">=0.2.60"
@@ -61,10 +61,12 @@ Page actions are buttons rendered above or below the page title. They let users 
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: { enabled: true },
+  connectMcp: true,
+  installSkills: true,
 }
 ```
 
-This adds two buttons: **Copy Markdown** and an **Open in...** dropdown.
+This adds the content actions plus **Connect MCP** and **Install skills** setup controls.
 
 ## Configuration Reference
 
@@ -116,6 +118,44 @@ pageActions: {
   alignment: "right",
 }
 ```
+
+---
+
+## Agent setup actions
+
+### `pageActions.connectMcp`
+
+Show one-click, copyable MCP setup for the raw endpoint, Claude Code, Cursor, VS Code, and Codex.
+Relative endpoints are resolved against the deployed docs origin.
+
+```ts title="docs.config.ts"
+pageActions: {
+  connectMcp: {
+    enabled: true,
+    endpoint: "/mcp",
+    providers: ["copy", "claude-code", "cursor", "vscode", "codex"],
+    label: "Connect docs MCP",
+  },
+}
+```
+
+### `pageActions.installSkills`
+
+Read the published `/.well-known/agent-skills/index.json` catalog and offer a copyable Skills CLI
+command. You can override the index or command when the docs are hosted behind a proxy.
+
+```ts title="docs.config.ts"
+pageActions: {
+  installSkills: {
+    enabled: true,
+    index: "/.well-known/agent-skills/index.json",
+    command: "npx skills add https://docs.example.com",
+  },
+}
+```
+
+Both actions are opt-in. Keep `mcp` and `agent.skills` enabled so the copied setup resolves to live
+surfaces after deployment.
 
 ---
 
