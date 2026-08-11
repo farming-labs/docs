@@ -3072,6 +3072,10 @@ export type DocsOpenApiMcpHeaders =
       context: DocsOpenApiMcpCredentialContext,
     ) => Readonly<Record<string, string>> | Promise<Readonly<Record<string, string>>>);
 
+export type DocsOpenApiMcpHostResolver = (
+  hostname: string,
+) => readonly string[] | Promise<readonly string[]>;
+
 /** Explicit, deny-by-default projection of OpenAPI operations into MCP tools. */
 export interface DocsOpenApiMcpConfig {
   /** Enable operation projection. No tools are exposed until an operation is explicitly allowed. */
@@ -3086,6 +3090,20 @@ export interface DocsOpenApiMcpConfig {
   headers?: DocsOpenApiMcpHeaders;
   /** Per-operation request timeout. @default 10000 */
   timeoutMs?: number;
+  /** Permit plain HTTP destinations. Disabled by default. */
+  allowInsecureHttp?: boolean;
+  /** Permit loopback, private, link-local, and reserved network destinations. Disabled by default. */
+  allowPrivateNetwork?: boolean;
+  /** Server-owned DNS resolver used before every request and redirect. */
+  resolveHost?: DocsOpenApiMcpHostResolver;
+  /** Number of validated redirects to follow. @default 0 */
+  maxRedirects?: number;
+  /** Maximum downstream response bytes buffered into an MCP result. @default 1000000 */
+  maxResponseBytes?: number;
+  /** Per-principal operation calls allowed in a rolling minute. @default 60 */
+  requestsPerMinute?: number;
+  /** Concurrent downstream operation calls allowed per principal. @default 4 */
+  maxConcurrentRequests?: number;
 }
 
 export interface ApiReferenceConfig {

@@ -1,6 +1,73 @@
 import type { DocsOpenApiMcpConfig } from "./types.js";
 
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "options", "head"] as const;
+const OPENAPI_RATE_WINDOW_MS = 60_000;
+const openApiRateWindows = new Map<string, { startedAt: number; count: number; active: number }>();
+
+export function acquireDocsOpenApiMcpBudget(
+  key: string,
+  config: DocsOpenApiMcpConfig,
+  now = Date.now(),
+): () => void {
+  const requestsPerMinute = Math.max(1, config.requestsPerMinute ?? 60);
+  const maxConcurrentRequests = Math.max(1, config.maxConcurrentRequests ?? 4);
+  let window = openApiRateWindows.get(key);
+  if (!window || now - window.startedAt >= OPENAPI_RATE_WINDOW_MS) {
+    window = { startedAt: now, count: 0, active: window?.active ?? 0 };
+    openApiRateWindows.set(key, window);
+  }
+  if (window.count >= requestsPerMinute) {
+    throw new Error("OpenAPI MCP rate limit exceeded for this principal and operation.");
+  }
+  if (window.active >= maxConcurrentRequests) {
+    throw new Error("OpenAPI MCP concurrency limit exceeded for this principal and operation.");
+  }
+  window.count += 1;
+  window.active += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    window.active = Math.max(0, window.active - 1);
+  };
+}
+
+export async function readDocsOpenApiMcpResponse(
+  response: Response,
+  maxBytes = 1_000_000,
+): Promise<{ text: string; truncated: boolean }> {
+  const limit = Math.max(1, maxBytes);
+  if (!response.body) return { text: "", truncated: false };
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let used = 0;
+  let truncated = false;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (used + value.byteLength > limit) {
+        const remaining = limit - used;
+        if (remaining > 0) chunks.push(value.subarray(0, remaining));
+        used = limit;
+        truncated = true;
+        await reader.cancel("OpenAPI MCP response byte limit reached");
+        break;
+      }
+      chunks.push(value);
+      used += value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(used);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { text: new TextDecoder().decode(bytes), truncated };
+}
 
 export interface DocsOpenApiMcpParameter {
   name: string;
