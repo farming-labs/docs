@@ -8,8 +8,8 @@ import {
   buildDocsAgentFeedbackEvaluationCandidates,
   compareDocsAgentFeedbackEvaluationBaseline,
   createDocsAgentFeedbackEvaluationBaseline,
-  readDocsGoldenTasksReportFile,
 } from "./agent-feedback-evaluations.js";
+import { readDocsGoldenTasksReportFile } from "./agent-feedback-evaluations-node.js";
 
 function feedbackReport(): DocsAgentFeedbackImprovementReport {
   const goldenTask = {

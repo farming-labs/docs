@@ -5,13 +5,15 @@ import {
   buildDocsAgentFeedbackEvaluationCandidates,
   compareDocsAgentFeedbackEvaluationBaseline,
   createDocsAgentFeedbackEvaluationBaseline,
+  type DocsAgentFeedbackEvaluationCandidateRegistry,
+  type DocsAgentFeedbackEvaluationRegressionReport,
+} from "../agent-feedback-evaluations.js";
+import {
   readDocsAgentEvaluationTasksFile,
   readDocsAgentFeedbackEvaluationBaseline,
   readDocsAgentFeedbackImprovementReport,
   readDocsGoldenTasksReportFile,
-  type DocsAgentFeedbackEvaluationCandidateRegistry,
-  type DocsAgentFeedbackEvaluationRegressionReport,
-} from "../agent-feedback-evaluations.js";
+} from "../agent-feedback-evaluations-node.js";
 
 export interface AgentFeedbackEvaluationsOptions {
   input?: string;
