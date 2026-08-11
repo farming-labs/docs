@@ -10,7 +10,42 @@ vi.mock("fumadocs-core/framework", () => ({
   usePathname: () => mockRouterState.pathname,
 }));
 
-import { formatCopyMarkdownContent, PageActions } from "./page-actions.js";
+import {
+  buildMcpSetupInstruction,
+  formatCopyMarkdownContent,
+  PageActions,
+} from "./page-actions.js";
+
+describe("PageActions agent setup", () => {
+  it("builds copyable setup for supported MCP clients", () => {
+    const endpoint = "https://docs.example.com/mcp";
+    expect(buildMcpSetupInstruction("copy", endpoint)).toBe(endpoint);
+    expect(buildMcpSetupInstruction("claude-code", endpoint)).toContain(
+      "claude mcp add --transport http docs",
+    );
+    expect(buildMcpSetupInstruction("codex", endpoint)).toBe(
+      `codex mcp add docs --url ${endpoint}`,
+    );
+    expect(JSON.parse(buildMcpSetupInstruction("cursor", endpoint))).toEqual({
+      mcpServers: { docs: { url: endpoint } },
+    });
+    expect(JSON.parse(buildMcpSetupInstruction("vscode", endpoint))).toEqual({
+      servers: { docs: { type: "http", url: endpoint } },
+    });
+  });
+
+  it("renders MCP and Agent Skills setup actions", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, {
+        connectMcp: { label: "Add docs MCP" },
+        installSkills: { label: "Add docs skills" },
+        providers: [],
+      }),
+    );
+    expect(html).toContain("Add docs MCP");
+    expect(html).toContain("Add docs skills");
+  });
+});
 
 describe("PageActions alignment", () => {
   beforeEach(() => {

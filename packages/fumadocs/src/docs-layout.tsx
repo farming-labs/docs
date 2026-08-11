@@ -28,6 +28,8 @@ import type {
   PageFrontmatter,
   OpenDocsConfig,
   CopyMarkdownConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
@@ -1042,6 +1044,16 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
       ? (pageActions.copyMarkdown as CopyMarkdownConfig)
       : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
+  const connectMcp = resolveBool(pageActions?.connectMcp)
+    ? pageActions?.connectMcp && typeof pageActions.connectMcp === "object"
+      ? (pageActions.connectMcp as PageActionConnectMcpConfig)
+      : {}
+    : undefined;
+  const installSkills = resolveBool(pageActions?.installSkills)
+    ? pageActions?.installSkills && typeof pageActions.installSkills === "object"
+      ? (pageActions.installSkills as PageActionInstallSkillsConfig)
+      : {}
+    : undefined;
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
 
@@ -1246,6 +1258,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             openDocsProviders={openDocsProviders as any}
             openDocsTarget={openDocsConfig?.target}
             openDocsPrompt={openDocsConfig?.prompt}
+            connectMcp={connectMcp}
+            installSkills={installSkills}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
             githubUrl={githubUrl}

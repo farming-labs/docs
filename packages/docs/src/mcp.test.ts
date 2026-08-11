@@ -219,6 +219,8 @@ describe("resolveDocsMcpConfig", () => {
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -253,6 +255,8 @@ describe("resolveDocsMcpConfig", () => {
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -291,6 +295,8 @@ describe("resolveDocsMcpConfig", () => {
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -786,6 +792,116 @@ describe("MCP contract prompts", () => {
         evaluations: { tasks: [goldenTask] },
       }),
     ).rejects.toThrow(/no configured golden task/i);
+  });
+});
+
+describe("agent-ready MCP write and batch tools", () => {
+  const source = {
+    entry: "docs",
+    siteTitle: "Batch Docs",
+    getPages: () => [
+      {
+        slug: "first",
+        url: "/docs/first",
+        title: "First",
+        content: "# First\n\nFirst page content.",
+      },
+      {
+        slug: "second",
+        url: "/docs/second",
+        title: "Second",
+        content: "# Second\n\nSecond page content.",
+      },
+    ],
+    getNavigation: () => ({ name: "Docs", children: [] }),
+  };
+
+  it("reads several pages under one shared token budget", async () => {
+    const server = await createDocsMcpServer({ source });
+    const client = new Client({ name: "batch-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.map((tool) => tool.name)).toContain("read_pages");
+      const result = await client.callTool({
+        name: "read_pages",
+        arguments: {
+          paths: ["first", "/docs/second", "missing"],
+          tokenBudget: 256,
+        },
+      });
+      expect(result.structuredContent).toMatchObject({
+        format: "docs-read-pages.v1",
+        requestedCount: 3,
+        resultCount: 2,
+        errors: [{ path: "missing", error: expect.stringContaining("No docs page matched") }],
+        pages: [
+          { requestedPath: "first", document: expect.stringContaining("First page content") },
+          {
+            requestedPath: "/docs/second",
+            document: expect.stringContaining("Second page content"),
+          },
+        ],
+      });
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("validates submit_feedback with the configured schema before delivery", async () => {
+    const onFeedback = vi.fn();
+    const server = await createDocsMcpServer({
+      source,
+      feedback: {
+        agent: {
+          schema: {
+            type: "object",
+            properties: { outcome: { type: "string" } },
+            required: ["outcome"],
+            additionalProperties: false,
+          },
+          onFeedback,
+        },
+      },
+    });
+    const client = new Client({ name: "feedback-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.map((tool) => tool.name)).toContain("submit_feedback");
+      const invalid = await client.callTool({
+        name: "submit_feedback",
+        arguments: { payload: {} },
+      });
+      expect(invalid.isError).toBe(true);
+      expect(onFeedback).not.toHaveBeenCalled();
+
+      const valid = await client.callTool({
+        name: "submit_feedback",
+        arguments: {
+          context: { page: "/docs/first" },
+          payload: { outcome: "The example was useful." },
+        },
+      });
+      expect(valid.structuredContent).toEqual({
+        accepted: true,
+        message: "Feedback accepted.",
+      });
+      expect(onFeedback).toHaveBeenCalledWith({
+        context: { page: "/docs/first", source: "mcp" },
+        payload: { outcome: "The example was useful." },
+      });
+    } finally {
+      await client.close();
+      await server.close();
+    }
   });
 });
 

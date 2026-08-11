@@ -241,6 +241,7 @@ interface DocsMCPAPIOptions {
   observability?: boolean | DocsObservabilityConfig;
   agent?: DocsConfig["agent"];
   apiReference?: DocsConfig["apiReference"];
+  feedback?: DocsConfig["feedback"];
   /** @internal Build-time Agent Skills snapshot supplied by framework adapters. */
   _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
 }
@@ -5078,6 +5079,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
       : undefined,
     contentChanges: options.agent?.contentChanges,
     evaluations: options.agent?.evaluations,
+    feedback: options.feedback,
     contentChangeFeed,
     search: options.search,
     analytics: options.analytics,

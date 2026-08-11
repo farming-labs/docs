@@ -824,6 +824,10 @@ export interface PageActionsConfig {
   copyMarkdown?: boolean | CopyMarkdownConfig;
   /** "Open in …" dropdown with LLM / tool providers */
   openDocs?: boolean | OpenDocsConfig;
+  /** One-click MCP connection instructions for supported coding agents. */
+  connectMcp?: boolean | PageActionConnectMcpConfig;
+  /** Agent Skills discovery and install dialog backed by the published skills index. */
+  installSkills?: boolean | PageActionInstallSkillsConfig;
   /**
    * Where to render the page action buttons relative to the page title.
    *
@@ -843,6 +847,30 @@ export interface PageActionsConfig {
    * @default "left"
    */
   alignment?: "left" | "right";
+}
+
+export type PageActionMcpProvider = "copy" | "claude-code" | "cursor" | "vscode" | "codex";
+
+export interface PageActionConnectMcpConfig {
+  /** Show the connection menu. @default true */
+  enabled?: boolean;
+  /** Public MCP route or absolute URL. @default "/mcp" */
+  endpoint?: string;
+  /** Connection targets shown in the menu. */
+  providers?: readonly PageActionMcpProvider[];
+  /** Trigger label. @default "Connect MCP" */
+  label?: string;
+}
+
+export interface PageActionInstallSkillsConfig {
+  /** Show the skills install dialog. @default true */
+  enabled?: boolean;
+  /** Agent Skills index route or absolute URL. */
+  index?: string;
+  /** Override the install command copied by the dialog. */
+  command?: string;
+  /** Trigger label. @default "Install skills" */
+  label?: string;
 }
 
 export type DocsAnalyticsSource = "client" | "server" | "mcp";
@@ -1410,6 +1438,13 @@ export interface DocsMcpToolsConfig {
   listPageSections?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */
   readPage?: boolean;
+  /** Expose a budget-aware `read_pages` tool for fetching several pages in one round trip. */
+  readPages?: boolean;
+  /**
+   * Expose `submit_feedback` when machine feedback is enabled. The tool validates
+   * payloads against `feedback.agent.schema` before invoking the configured callback.
+   */
+  submitFeedback?: boolean;
   /** Expose a `list_tasks` tool for pages with actionable agent contracts. */
   listTasks?: boolean;
   /** Expose a `read_task` tool that returns a page's full agent contract. */
