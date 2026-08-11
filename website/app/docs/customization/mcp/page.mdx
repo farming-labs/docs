@@ -101,6 +101,37 @@ It also exposes resources for:
 - `docs://navigation`
 - one `docs://…` resource per page
 
+## Protected authoring MCP
+
+The public docs MCP remains read-only. Run the separate local authoring server when an agent needs
+to propose documentation changes:
+
+```bash
+pnpm exec docs mcp author --branch-prefix docs/
+```
+
+Its workflow tools cover status, branch creation, hash-checked reads and writes, machine-readable
+page preview, `docs doctor`, Git diff review, and recurring-feedback analysis. Writes are restricted
+to `.md`, `.mdx`, and `.svx` files inside `contentDir`; overwriting a file requires the SHA-256 from
+the preceding read, which prevents a stale agent from replacing newer work.
+
+Draft-PR publishing is absent by default. Register it only for an operator-controlled session:
+
+```bash
+pnpm exec docs mcp author --branch-prefix docs/ --base-branch main --allow-publish
+```
+
+The publishing tool requires explicit confirmation, rejects dirty files outside `contentDir`,
+requires a matching branch prefix and authenticated GitHub CLI, then commits docs-only changes,
+pushes the branch, and opens a draft PR. `createDocsAuthoringMcpServer()` is also exported from the
+server entry for teams that place this distinct surface behind authoring-scoped OAuth. It is never
+wired into `/mcp`, `/.well-known/mcp`, or a framework public forwarder.
+
+<Callout type="warning" title="Keep authoring separate">
+  Do not expose the authoring server through the public docs MCP route. Use local stdio or a
+  separately authenticated transport with an authoring-specific OAuth scope.
+</Callout>
+
 ## Default behavior
 
 MCP is enabled by default.

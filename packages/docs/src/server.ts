@@ -58,6 +58,24 @@ export {
   resolveDocsMcpPromptsConfig,
   runDocsMcpStdio,
 } from "./mcp.js";
+export {
+  createDocsAuthoringMcpServer,
+  readDocsAuthoringFile,
+  runDocsAuthoringMcpStdio,
+  writeDocsAuthoringFile,
+} from "./authoring-mcp.js";
+export type { DocsAuthoringFileState, DocsAuthoringMcpOptions } from "./authoring-mcp.js";
+export {
+  DOCS_AGENT_FEEDBACK_IMPROVEMENT_FORMAT,
+  analyzeDocsAgentFeedback,
+  readDocsAgentFeedbackFile,
+} from "./agent-feedback-loop.js";
+export type {
+  DocsAgentFeedbackCluster,
+  DocsAgentFeedbackImprovementOptions,
+  DocsAgentFeedbackImprovementReport,
+  DocsAgentFeedbackIssueDraft,
+} from "./agent-feedback-loop.js";
 export { createDocsCloudRouteHandler, createDocsCloudServer } from "./docs-cloud-server.js";
 export { createDocsCloudAskAIResponse, isDocsCloudAskAIProvider } from "./cloud-ask-ai.js";
 export type {
