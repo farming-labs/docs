@@ -1,5 +1,6 @@
 import type {
   DocsConfig,
+  DocsAccessPrincipal,
   DocsAgentContentChangesConfig,
   DocsOkfConfig,
   DocsOkfTrustMetadata,
@@ -15,8 +16,10 @@ import type {
   LlmsTxtMaxCharsMode,
   LlmsTxtSectionConfig,
   PageAgentFrontmatter,
+  DocsPageAccessPolicy,
   ResolvedDocsRelatedLink,
 } from "./types.js";
+import { filterDocsPagesByAccess, isDocsPageAccessAllowed } from "./access.js";
 import { resolveDocsOkfConfig, resolveDocsOkfTrustMetadata } from "./okf.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
@@ -640,6 +643,7 @@ export interface DocsLlmsTxtPageInput {
   agentRawContent?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
+  agent?: PageAgentFrontmatter;
 }
 
 export interface DocsLlmsTxtGeneratedSection extends DocsLlmsTxtResolvedSection {
@@ -869,6 +873,10 @@ export interface DocsMarkdownResponseOptions extends DocsMarkdownNotFoundOptions
   /** Exact source modification timestamp. Date-only values are intentionally ignored. */
   lastModified?: string | Date | null;
   cacheControl?: string;
+  /** Page policy evaluated before any body or recovery metadata is returned. */
+  access?: DocsPageAccessPolicy;
+  /** Authenticated identity; omitted public requests fail closed for protected pages. */
+  principal?: DocsAccessPrincipal;
 }
 
 const DOCS_MARKDOWN_SECTION_MAX_BUDGET = 1_000_000;
@@ -2169,6 +2177,7 @@ export function renderDocsLlmsTxt(
   pages: DocsLlmsTxtPageInput[],
   options: DocsLlmsDiscoveryConfig = {},
 ): DocsLlmsTxtGeneratedContent {
+  pages = filterDocsPagesByAccess(pages);
   const siteTitle = options.siteTitle ?? "Documentation";
   const siteDescription = options.siteDescription;
   const baseUrl = options.baseUrl ?? "";
@@ -3570,7 +3579,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     entry = "docs",
     requestedPath,
     origin = new URL(request.url).origin,
-    pages,
+    pages: rawPages,
     sitemap,
     locale,
   } = options;
@@ -3588,6 +3597,18 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     ...(locale ? { "Content-Language": locale } : {}),
     ...(varyHeader ? { Vary: varyHeader } : {}),
   };
+  const pages = rawPages ? filterDocsPagesByAccess(rawPages, options.principal) : undefined;
+
+  if (!isDocsPageAccessAllowed(options.access, options.principal)) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: {
+        ...baseSharedHeaders,
+        "Cache-Control": "private, no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
+  }
 
   if (!document) {
     const recovery = resolveDocsMarkdownRecovery({ entry, requestedPath, pages, sitemap });

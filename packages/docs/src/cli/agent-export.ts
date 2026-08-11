@@ -44,6 +44,7 @@ import {
   type DocsLlmsDiscoveryConfig,
 } from "../agent.js";
 import { resolveConfiguredAgentSkills } from "../agent-skills-server.js";
+import { isDocsAgentPageAccessible } from "../access.js";
 import { formatDocsContentDigest, resolveDocsHttpDate } from "../http-cache.js";
 import { resolveDocsI18n } from "../i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "../mcp.js";
@@ -1149,7 +1150,8 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   if (localizedPages.length === 0) {
     throw new Error(`No docs content was found under ${contentDir}.`);
   }
-  const pages = localizedPages.map(({ page }) => page);
+  const publishablePages = localizedPages.filter(({ page }) => isDocsAgentPageAccessible(page));
+  const pages = publishablePages.map(({ page }) => page);
   const okfConfig = resolveDocsOkfConfig(config?.agent?.okf);
   const sitemap = resolveDocsSitemapConfig(sitemapInput, { baseUrl });
   const robots = resolveDocsRobotsConfig(robotsInput, {
@@ -1200,7 +1202,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
   let outputs: PlannedOutput[] = [];
   const internalOutputs: PlannedInternalOutput[] = [];
 
-  for (const { page } of localizedPages) {
+  for (const { page } of publishablePages) {
     const output = addOutput(
       outputs,
       publicDir,
@@ -1254,6 +1256,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
         agentRawContent: page.agentRawContent,
         agentFallbackContent: page.agentFallbackContent,
         agentFallbackRawContent: page.agentFallbackRawContent,
+        agent: page.agent,
       })),
       llms,
     );
@@ -1522,7 +1525,7 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     internalOutputs,
     orphanedFiles,
     orphanedInternalFiles,
-    pages: localizedPages,
+    pages: publishablePages,
   });
   const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
   const changed = changedOutputs(outputs);

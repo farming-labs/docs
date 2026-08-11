@@ -4203,6 +4203,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             okf: options?.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
+          access: page.agent?.access,
         };
       }
     }
@@ -4220,6 +4221,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           okf: options?.agent?.okf,
         }),
         lastModified: resolveDocsRetrievalLastModified(fallbackPage, "agent"),
+        access: fallbackPage.agent?.access,
       };
     }
 
@@ -4235,6 +4237,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             okf: options?.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
+          access: page.agent?.access,
         };
       }
     }
@@ -4702,6 +4705,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           canonicalUrl,
           locale: ctx.locale,
           lastModified: representation?.lastModified,
+          access: representation?.access,
           sitemap: sitemapConfig,
         });
       }
