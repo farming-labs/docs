@@ -109,6 +109,19 @@
     "name": {
       "const": "@farming-labs/docs"
     },
+    "profile": {
+      "enum": ["full", "compact"]
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "default": { "const": "full" },
+        "full": { "$ref": "#/$defs/route" },
+        "compact": { "$ref": "#/$defs/route" }
+      },
+      "required": ["default", "full", "compact"]
+    },
     "baseUrl": {
       "$ref": "#/$defs/nonEmptyString",
       "description": "Deployment origin or a relative base used by portable static exports."

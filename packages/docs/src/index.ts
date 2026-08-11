@@ -171,6 +171,7 @@ export {
   DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
   buildDocsAgentDiscoverySpec,
+  compactDocsAgentDiscoverySpec,
   buildDocsAgentSkillsIndex,
   buildDocsLegacySkillsIndex,
   buildDocsA2AAgentCard,

@@ -290,7 +290,7 @@ array of `DocsConfigMapPointer` entries. Sensitive config values are redacted be
 | Header | Value |
 | ------ | ----- |
 | `Content-Type` | `application/json; charset=utf-8` |
-| `Cache-Control` | `public, max-age=0, s-maxage=3600` |
+| `Cache-Control` | `public, max-age=0, s-maxage=3600, stale-while-revalidate=86400` |
 | `X-Robots-Tag` | `noindex` |
 
 ### Agent discovery spec
@@ -299,9 +299,14 @@ The agent discovery spec (`GET /.well-known/agent.json`) now includes:
 
 ```json
 {
-  "$schema": "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
-  "format": "farming-labs-agent-manifest.v1",
-  "version": "1",
+  "$schema": "https://docs.farming-labs.dev/schema/agent-manifest.v2.json",
+  "format": "farming-labs-agent-manifest.v2",
+  "version": "2",
+  "profile": "full",
+  "profiles": {
+    "full": "/.well-known/agent.json",
+    "compact": "/.well-known/agent.json?profile=compact"
+  },
   "api": {
     "config": "/api/docs?format=config"
   },
@@ -315,11 +320,15 @@ The agent discovery spec (`GET /.well-known/agent.json`) now includes:
 Agents that read the discovery spec can use `spec.config.endpoint` and `spec.config.format` to
 fetch and identify the config map without hard-coding the route.
 
+Agents with a small first-hop budget can request `?profile=compact`. The compact response is
+minified and replaces each published skill's companion-file inventory with `fileCount`; agents can
+then follow `skills.discovery.index` only when they need the expanded catalog.
+
 The root `$schema` and `format` identify this as the Farming Labs manifest extension. Dynamic
 manifest responses keep `Content-Type: application/json` and add:
 
 ```http
-Link: <https://docs.farming-labs.dev/schema/agent-manifest.v1.json>; rel="describedby"; type="application/schema+json"
+Link: <https://docs.farming-labs.dev/schema/agent-manifest.v2.json>; rel="describedby"; type="application/schema+json"
 ```
 
 This is intentionally distinct from the opt-in A2A v1 Agent Card at
