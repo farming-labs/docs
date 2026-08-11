@@ -1,10 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   analyzeDocsAgentMaintenanceSignals,
-  readDocsAgentMaintenanceSignalsFile,
+  parseDocsAgentMaintenanceSignals,
 } from "./agent-maintenance.js";
 
 describe("agent maintenance proposals", () => {
@@ -95,11 +95,11 @@ describe("agent maintenance proposals", () => {
       "utf8",
     );
 
-    expect(readDocsAgentMaintenanceSignalsFile(jsonlPath)).toMatchObject([
+    expect(parseDocsAgentMaintenanceSignals(readFileSync(jsonlPath, "utf8"))).toMatchObject([
       { source: "issue", page: "/docs/migrate" },
       { source: "agent-feedback", page: "/docs/install", severity: "error" },
     ]);
-    expect(readDocsAgentMaintenanceSignalsFile(feedbackPath)).toEqual([
+    expect(parseDocsAgentMaintenanceSignals(readFileSync(feedbackPath, "utf8"))).toEqual([
       expect.objectContaining({ source: "agent-feedback", count: 3, summary: "Peer dependencies" }),
     ]);
   });

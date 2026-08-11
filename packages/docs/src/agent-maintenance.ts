@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import type { DocsAgentGoldenTask } from "./types.js";
 
 export const DOCS_AGENT_MAINTENANCE_PROPOSAL_FORMAT =
@@ -438,10 +437,8 @@ function extractSignals(value: unknown): DocsAgentMaintenanceSignal[] | undefine
   return undefined;
 }
 
-export function readDocsAgentMaintenanceSignalsFile(
-  filePath: string,
-): DocsAgentMaintenanceSignal[] {
-  const content = readFileSync(filePath, "utf8").trim();
+export function parseDocsAgentMaintenanceSignals(content: string): DocsAgentMaintenanceSignal[] {
+  content = content.trim();
   if (!content) return [];
   try {
     const extracted = extractSignals(JSON.parse(content));

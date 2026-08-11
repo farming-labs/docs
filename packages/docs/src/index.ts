@@ -86,7 +86,7 @@ export type { PageAgentFrontmatterIssue } from "./agent-contract.js";
 export {
   analyzeDocsAgentMaintenanceSignals,
   DOCS_AGENT_MAINTENANCE_PROPOSAL_FORMAT,
-  readDocsAgentMaintenanceSignalsFile,
+  parseDocsAgentMaintenanceSignals,
 } from "./agent-maintenance.js";
 export type {
   AnalyzeDocsAgentMaintenanceSignalsOptions,

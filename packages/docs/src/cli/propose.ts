@@ -1,9 +1,9 @@
-import { mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import pc from "picocolors";
 import {
   analyzeDocsAgentMaintenanceSignals,
-  readDocsAgentMaintenanceSignalsFile,
+  parseDocsAgentMaintenanceSignals,
   type DocsAgentMaintenanceProposalReport,
 } from "../agent-maintenance.js";
 
@@ -76,7 +76,7 @@ export async function runAgentMaintenancePropose(
       ? options.inputs
       : [".farming-labs/agent-feedback-improvements.json"];
   const signals = inputs.flatMap((input) =>
-    readDocsAgentMaintenanceSignalsFile(resolveProjectPath(rootDir, input)),
+    parseDocsAgentMaintenanceSignals(readFileSync(resolveProjectPath(rootDir, input), "utf8")),
   );
   const report = analyzeDocsAgentMaintenanceSignals(signals, {
     minOccurrences: options.minOccurrences,
