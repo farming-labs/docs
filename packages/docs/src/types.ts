@@ -344,6 +344,44 @@ export interface PageSidebarFrontmatter {
   folderIndexBehavior?: SidebarFolderIndexBehavior;
 }
 
+export type DocsOkfStatus = "draft" | "stable" | "deprecated";
+
+export interface DocsOkfSource {
+  resource: string;
+  id?: string;
+  title?: string;
+  author?: string;
+  usage_count?: number;
+  last_modified?: string;
+  usage_window?: { start?: string; end?: string };
+}
+
+export interface DocsOkfActorTimestamp {
+  by: string;
+  at: string;
+}
+
+/** Authored OKF v0.2 trust metadata. Missing fields are derived conservatively at runtime. */
+export interface DocsOkfTrustMetadataInput {
+  sources?: readonly DocsOkfSource[];
+  generated?: DocsOkfActorTimestamp;
+  verified?: readonly DocsOkfActorTimestamp[];
+  status?: DocsOkfStatus;
+  stale_after?: string;
+}
+
+export type DocsOkfTrustTier = "unverified" | "machine-confirmed" | "human-reviewed";
+
+export interface DocsOkfTrustMetadata {
+  sources: DocsOkfSource[];
+  generated: DocsOkfActorTimestamp;
+  verified: DocsOkfActorTimestamp[];
+  status: DocsOkfStatus;
+  stale_after?: string;
+  trust_tier: DocsOkfTrustTier;
+  stale: boolean;
+}
+
 export interface PageFrontmatter {
   title: string;
   description?: string;
@@ -351,6 +389,8 @@ export interface PageFrontmatter {
   related?: DocsRelatedItem[];
   /** Per-page agent-oriented metadata used by machine-readable docs features. */
   agent?: PageAgentFrontmatter;
+  /** OKF v0.2 source, generation, verification, lifecycle, and staleness metadata. */
+  okf?: DocsOkfTrustMetadataInput;
   /** Per-page sidebar metadata used when building the docs navigation tree. */
   sidebar?: PageSidebarFrontmatter;
   /** Override or disable the estimated reading time for this page. */
@@ -1431,6 +1471,8 @@ export interface DocsMcpToolsConfig {
   getConfigSchema?: boolean;
   /** Expose deterministic `get_context` retrieval with a conservative UTF-8 byte ceiling. */
   getContext?: boolean;
+  /** Expose OKF v0.2 source, verification, lifecycle, and staleness metadata. */
+  getTrustMetadata?: boolean;
 }
 
 /** Built-in MCP prompt templates projected from documentation contracts and golden tasks. */
@@ -1592,6 +1634,7 @@ export interface DocsSearchSourcePage {
   description?: string;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
+  okf?: DocsOkfTrustMetadataInput;
   sourcePath?: string;
   lastModified?: string;
   lastmod?: string;
@@ -1837,6 +1880,8 @@ export interface DocsSearchResult {
   section?: string;
   /** Canonical, scope-aware provenance when supplied or recoverable locally. */
   source?: DocsRetrievalSourceProvenance;
+  /** OKF v0.2 trust metadata for the selected source. */
+  trust?: DocsOkfTrustMetadata;
   /** Present only when the caller opts into retrieval explanations. */
   explanation?: DocsSearchExplanation;
 }
@@ -3014,6 +3059,35 @@ export interface ChangelogConfig {
 
 export type ApiReferenceRenderer = "fumadocs" | "scalar";
 
+export interface DocsOpenApiMcpCredentialContext {
+  operationId: string;
+  method: string;
+  path: string;
+  security: readonly Record<string, readonly string[]>[];
+}
+
+export type DocsOpenApiMcpHeaders =
+  | Readonly<Record<string, string>>
+  | ((
+      context: DocsOpenApiMcpCredentialContext,
+    ) => Readonly<Record<string, string>> | Promise<Readonly<Record<string, string>>>);
+
+/** Explicit, deny-by-default projection of OpenAPI operations into MCP tools. */
+export interface DocsOpenApiMcpConfig {
+  /** Enable operation projection. No tools are exposed until an operation is explicitly allowed. */
+  enabled?: boolean;
+  /** Allowed operationIds or `METHOD /path` selectors. */
+  operations?: readonly string[];
+  /** Override the first OpenAPI server URL used for requests. */
+  baseUrl?: string;
+  /** Allow POST, PUT, PATCH, or DELETE operations. Defaults to false. */
+  allowMutations?: boolean;
+  /** Server-owned credentials added after user input is parsed. */
+  headers?: DocsOpenApiMcpHeaders;
+  /** Per-operation request timeout. @default 10000 */
+  timeoutMs?: number;
+}
+
 export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
@@ -3072,6 +3146,11 @@ export interface ApiReferenceConfig {
    * - TanStack Start / SvelteKit / Astro / Nuxt: `"scalar"`
    */
   renderer?: ApiReferenceRenderer;
+  /**
+   * Explicitly expose selected OpenAPI operations as MCP tools. This is deny-by-default:
+   * set `operations`, or mark an operation with `x-farming-labs-mcp.enabled: true`.
+   */
+  mcp?: boolean | DocsOpenApiMcpConfig;
   /**
    * Filesystem route root to scan for API handlers.
    *
@@ -3660,6 +3739,8 @@ export type DocsAgentA2AConfig = DocsAgentA2ABaseConfig &
   (DocsAgentA2ASingleInterfaceConfig | DocsAgentA2AInterfacesConfig);
 
 export interface DocsAgentConfig {
+  /** Publish OKF v0.2 trust metadata and a machine-readable knowledge bundle. */
+  okf?: boolean | DocsOkfConfig;
   /**
    * Defaults for `docs agent compact`.
    */
@@ -3679,6 +3760,17 @@ export interface DocsAgentConfig {
   contentChanges?: boolean | DocsAgentContentChangesConfig;
   /** Opt in to an A2A Agent Card for a separately implemented A2A service. */
   a2a?: DocsAgentA2AConfig;
+}
+
+export interface DocsOkfConfig extends DocsOkfTrustMetadataInput {
+  /** Enable OKF projection. @default true when configured */
+  enabled?: boolean;
+  /** Public bundle route. @default "/.well-known/okf.json" */
+  route?: string;
+  /** Generator actor used when a page has no authored `okf.generated`. */
+  generatedBy?: string;
+  /** Derive `stale_after` this many days after the best page timestamp. */
+  staleAfterDays?: number;
 }
 
 export interface DocsAgentContentChangesConfig {

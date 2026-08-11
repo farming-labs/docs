@@ -1,7 +1,13 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
-import type { ApiReferenceRenderer, DocsConfig, DocsTheme } from "./types.js";
+import type {
+  ApiReferenceRenderer,
+  ApiReferenceConfig,
+  DocsConfig,
+  DocsOpenApiMcpConfig,
+  DocsTheme,
+} from "./types.js";
 
 export type { ApiReferenceRenderer };
 
@@ -32,6 +38,7 @@ export interface ResolvedApiReferenceConfig {
   specUrl?: string;
   catalogTargets?: string[];
   renderer?: ApiReferenceRenderer;
+  mcp?: DocsOpenApiMcpConfig;
   routeRoot: string;
   exclude: string[];
 }
@@ -80,6 +87,7 @@ export function resolveApiReferenceConfig(
       specUrl: undefined,
       catalogTargets: undefined,
       renderer: undefined,
+      mcp: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -92,6 +100,7 @@ export function resolveApiReferenceConfig(
       specUrl: undefined,
       catalogTargets: undefined,
       renderer: undefined,
+      mcp: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -103,9 +112,17 @@ export function resolveApiReferenceConfig(
     specUrl: normalizeRemoteSpecUrl(value.specUrl),
     catalogTargets: normalizeApiReferenceCatalogTargets(value.catalogTargets),
     renderer: normalizeApiReferenceRenderer(value.renderer),
+    mcp: resolveOpenApiMcpConfig(value.mcp),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
   };
+}
+
+function resolveOpenApiMcpConfig(
+  value: ApiReferenceConfig["mcp"],
+): DocsOpenApiMcpConfig | undefined {
+  if (!value) return undefined;
+  return value === true ? { enabled: true } : { ...value, enabled: value.enabled !== false };
 }
 
 function normalizeApiReferenceRenderer(value?: string): ApiReferenceRenderer | undefined {

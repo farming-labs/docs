@@ -97,6 +97,8 @@ The current built-in surface includes:
 - `get_code_examples`
 - `get_config_schema`
 - `get_context`
+- `get_trust_metadata` when `agent.okf` is enabled
+- explicitly allowlisted `api_*` operation tools when `apiReference.mcp` is configured
 
 It also exposes resources for:
 
@@ -124,6 +126,40 @@ export default defineDocs({
   },
 });
 ```
+
+## Project selected OpenAPI operations as tools
+
+`apiReference.mcp` can project API operations into MCP tools. It is deny-by-default: enabling the
+object alone exposes no operation unless its `operationId`, its `METHOD /path` selector, or its
+OpenAPI `x-farming-labs-mcp` extension explicitly allows it. Write methods need the additional
+`allowMutations: true` opt-in.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  apiReference: {
+    enabled: true,
+    mcp: {
+      operations: ["getUser", "GET /projects/{id}"],
+      baseUrl: "https://api.example.com",
+      headers: ({ security }) => ({
+        Authorization: `Bearer ${process.env.PRODUCT_API_TOKEN}`,
+        "X-Declared-Security": JSON.stringify(security),
+      }),
+      // allowMutations: true,
+    },
+  },
+});
+```
+
+Each projected tool carries its HTTP method, path, OpenAPI security requirements and referenced
+security schemes in MCP metadata. Server-owned headers are applied after tool input, so a model
+cannot replace configured credentials. Keep tokens on the server and restrict them to the smallest
+scopes required by the allowlist.
+
+<Callout type="warning" title="Public MCP tools call your API">
+  A public MCP endpoint makes every projected operation callable by public clients. Protect the MCP
+  endpoint, keep mutations disabled unless required, and use narrowly scoped service credentials.
+</Callout>
 
 ## Default behavior
 

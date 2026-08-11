@@ -41,6 +41,7 @@ import {
   acceptsDocsMarkdown,
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
+  normalizeDocsOkfTrustMetadataInput,
   buildDocsConfigMap,
   buildDocsDiagnostics,
   resolveChangelogConfig,
@@ -106,6 +107,7 @@ import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
   readDocsSitemapManifest,
+  resolveApiReferenceConfig,
   resolveApiReferenceOpenApiDiscovery,
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
@@ -238,6 +240,7 @@ interface DocsMCPAPIOptions {
   telemetry?: boolean | DocsTelemetryConfig;
   observability?: boolean | DocsObservabilityConfig;
   agent?: DocsConfig["agent"];
+  apiReference?: DocsConfig["apiReference"];
   feedback?: DocsConfig["feedback"];
   /** @internal Build-time Agent Skills snapshot supplied by framework adapters. */
   _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
@@ -1643,6 +1646,7 @@ function scanDocsDir(
             description,
             relatedInput: data.related,
             agent: normalizePageAgentFrontmatter(data.agent),
+            okf: normalizeDocsOkfTrustMetadataInput(data.okf),
             content,
             rawContent,
             agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
@@ -1740,6 +1744,7 @@ function scanChangelogDir(
         description,
         relatedInput: data.related,
         agent: normalizePageAgentFrontmatter(data.agent),
+        okf: normalizeDocsOkfTrustMetadataInput(data.okf),
         content,
         rawContent,
         agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
@@ -2081,12 +2086,18 @@ function resolvePublicMarkdownRequest(
 
 function renderMarkdownDocument(
   page: DocsMcpPage | DocsSearchSourcePage,
-  options: { llmsEnabled?: boolean; origin?: string; sitemap?: boolean | DocsSitemapConfig } = {},
+  options: {
+    llmsEnabled?: boolean;
+    origin?: string;
+    sitemap?: boolean | DocsSitemapConfig;
+    okf?: NonNullable<DocsConfig["agent"]>["okf"];
+  } = {},
 ): string {
   return renderDocsMarkdownDocument(page, {
     llms: options.llmsEnabled !== false,
     origin: options.origin,
     sitemap: options.sitemap,
+    okf: options.okf,
   });
 }
 
@@ -4182,6 +4193,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             llmsEnabled: llmsConfig.enabled,
             origin,
             sitemap: sitemapConfig,
+            okf: options?.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
         };
@@ -4198,6 +4210,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           llmsEnabled: llmsConfig.enabled,
           origin,
           sitemap: sitemapConfig,
+          okf: options?.agent?.okf,
         }),
         lastModified: resolveDocsRetrievalLastModified(fallbackPage, "agent"),
       };
@@ -4212,6 +4225,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             llmsEnabled: llmsConfig.enabled,
             origin,
             sitemap: sitemapConfig,
+            okf: options?.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
         };
@@ -5043,10 +5057,26 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
       return [rootSkill, ...configured];
     },
   };
+  const mcpApiReference = resolveApiReferenceConfig(options.apiReference).mcp;
 
   const handlers = createDocsMcpHttpHandler({
     source,
     mcp: mcpConfig,
+    okf: options.agent?.okf,
+    openapi: mcpApiReference
+      ? {
+          config: mcpApiReference,
+          document: () =>
+            buildApiReferenceOpenApiDocumentAsync(options as DocsConfig, {
+              framework: "next",
+              rootDir,
+              baseUrl:
+                options.baseUrl?.trim() ||
+                resolveDocsMetadataBaseUrl(options as DocsConfig) ||
+                undefined,
+            }),
+        }
+      : undefined,
     contentChanges: options.agent?.contentChanges,
     evaluations: options.agent?.evaluations,
     feedback: options.feedback,

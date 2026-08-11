@@ -12,10 +12,12 @@ import matter from "gray-matter";
 import {
   normalizeDocsRelated,
   normalizePageAgentFrontmatter,
+  normalizeDocsOkfTrustMetadataInput,
   resolveDocsAudienceMdxContent,
   resolvePageSidebarFolderIndexBehavior,
   type OrderingItem,
   type PageAgentFrontmatter,
+  type DocsOkfTrustMetadataInput,
   type ResolvedDocsRelatedLink,
   type SidebarFolderIndexBehavior,
 } from "@farming-labs/docs";
@@ -52,6 +54,7 @@ export interface ContentPage {
   description?: string;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
+  okf?: DocsOkfTrustMetadataInput;
   icon?: string;
   sourcePath?: string;
   lastmod?: string;
@@ -167,6 +170,7 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         description: data.description as string | undefined,
         ...(related.length > 0 ? { related } : {}),
         agent: normalizePageAgentFrontmatter(data.agent),
+        okf: normalizeDocsOkfTrustMetadataInput(data.okf),
         icon: data.icon as string | undefined,
         sourcePath: full.replace(/\\/g, "/"),
         lastmod: normalizeDocsFrontmatterLastmod(data.lastmod),
