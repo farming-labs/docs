@@ -1159,8 +1159,11 @@ The docs app starts.
     expect(response.status).toBe(200);
     expect(response.headers.get("x-docs-markdown-section")).toBe("prerequisites");
     expect(response.headers.get("x-docs-markdown-token-budget")).toBe("60");
-    expect(response.headers.get("link")).toBe(
+    expect(response.headers.get("link")).toContain(
       '<http://localhost/docs/installation#prerequisites>; rel="canonical"',
+    );
+    expect(response.headers.get("link")).toContain(
+      '<http://localhost/llms.txt>; rel="describedby"; type="text/plain"',
     );
     expect(markdown).toContain("## Prerequisites");
     expect(markdown).toContain("Use Node.js 22 or newer.");
@@ -2569,7 +2572,7 @@ Config content.
     );
     expect(fallbackResponse.status).toBe(200);
     expect(fallbackResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(fallbackResponse.headers.get("link")).toBe(
+    expect(fallbackResponse.headers.get("link")).toContain(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
     expect(fallbackResponse.headers.get("last-modified")).toBe("Fri, 17 Jul 2026 00:00:00 GMT");
@@ -2608,7 +2611,7 @@ Config content.
     const sitemapBaseUrlResponse = await getWithSitemapBaseUrl(
       new Request("http://localhost/api/docs?format=markdown&path=getting-started/quickstart"),
     );
-    expect(sitemapBaseUrlResponse.headers.get("link")).toBe(
+    expect(sitemapBaseUrlResponse.headers.get("link")).toContain(
       '<https://docs.example.com/docs/getting-started/quickstart>; rel="canonical"',
     );
     const sitemapBaseUrlDocument = await sitemapBaseUrlResponse.text();
@@ -2660,7 +2663,7 @@ Config content.
     );
     expect(rewrittenFallbackResponse.status).toBe(200);
     expect(rewrittenFallbackResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(rewrittenFallbackResponse.headers.get("link")).toBe(
+    expect(rewrittenFallbackResponse.headers.get("link")).toContain(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
     expect(rewrittenFallbackResponse.headers.get("content-location")).toBe(
@@ -2706,7 +2709,7 @@ Config content.
     );
     expect(acceptFallbackResponse.status).toBe(200);
     expect(acceptFallbackResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(acceptFallbackResponse.headers.get("link")).toBe(
+    expect(acceptFallbackResponse.headers.get("link")).toContain(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
     expect(acceptFallbackResponse.headers.get("vary")).toBe("Accept");
@@ -2761,7 +2764,7 @@ Config content.
     );
     expect(signatureAgentPageResponse.status).toBe(200);
     expect(signatureAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(signatureAgentPageResponse.headers.get("link")).toBe(
+    expect(signatureAgentPageResponse.headers.get("link")).toContain(
       '<http://localhost/docs/overview>; rel="canonical"',
     );
     expect(signatureAgentPageResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
@@ -2776,7 +2779,7 @@ Config content.
     );
     expect(userAgentPageResponse.status).toBe(200);
     expect(userAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(userAgentPageResponse.headers.get("link")).toBe(
+    expect(userAgentPageResponse.headers.get("link")).toContain(
       '<http://localhost/docs/overview>; rel="canonical"',
     );
     expect(userAgentPageResponse.headers.get("vary")).toBe("User-Agent");
@@ -3988,10 +3991,12 @@ description: "Start building quickly"
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
         listTasks: false,
         readTask: true,
         searchDocs: false,
         searchFacets: true,
+        submitFeedback: true,
         listContentChanges: true,
         hydrateContentChanges: true,
         getNavigation: true,
@@ -5088,7 +5093,7 @@ The changelog now has its own dedicated route.
     );
     expect(mdRouteResponse.status).toBe(200);
     expect(mdRouteResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(mdRouteResponse.headers.get("link")).toBe(
+    expect(mdRouteResponse.headers.get("link")).toContain(
       '<http://localhost/learn/changelogs/2026-04-15>; rel="canonical"',
     );
     expect(await mdRouteResponse.text()).toContain(
@@ -5101,7 +5106,7 @@ The changelog now has its own dedicated route.
       }),
     );
     expect(acceptResponse.status).toBe(200);
-    expect(acceptResponse.headers.get("link")).toBe(
+    expect(acceptResponse.headers.get("link")).toContain(
       '<http://localhost/learn/changelogs/2026-04-15>; rel="canonical"',
     );
   });
@@ -5136,7 +5141,9 @@ Welcome to the docs.
 
       const response = await GET(new Request("http://localhost/quickstart.md"));
       expect(response.status).toBe(200);
-      expect(response.headers.get("link")).toBe('<http://localhost/quickstart>; rel="canonical"');
+      expect(response.headers.get("link")).toContain(
+        '<http://localhost/quickstart>; rel="canonical"',
+      );
       expect(await response.text()).toContain("# Quickstart\nURL: /quickstart");
     },
   );
@@ -5171,7 +5178,7 @@ Welcome to the docs.
 
       const response = await GET(new Request("http://localhost/docs/quickstart.md"));
       expect(response.status).toBe(200);
-      expect(response.headers.get("link")).toBe(
+      expect(response.headers.get("link")).toContain(
         '<http://localhost/docs/quickstart>; rel="canonical"',
       );
       expect(await response.text()).toContain("# Quickstart\nURL: /docs/quickstart");
