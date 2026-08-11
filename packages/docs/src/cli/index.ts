@@ -200,6 +200,18 @@ async function main() {
       return;
     }
     await runAgentFeedbackImprove(feedbackOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "propose") {
+    const {
+      parseAgentMaintenanceProposeArgs,
+      printAgentMaintenanceProposeHelp,
+      runAgentMaintenancePropose,
+    } = await import("./propose.js");
+    const proposeOptions = parseAgentMaintenanceProposeArgs(args.slice(2));
+    if (proposeOptions.help) {
+      printAgentMaintenanceProposeHelp();
+      return;
+    }
+    await runAgentMaintenancePropose(proposeOptions);
   } else if (parsedCommand.command === "agent" && subcommand === "compact") {
     const { compactAgentDocs, parseAgentCompactArgs, printAgentCompactHelp } =
       await import("./agent.js");
@@ -224,9 +236,11 @@ async function main() {
     const { printAgentCompactHelp } = await import("./agent.js");
     const { printAgentExportHelp } = await import("./agent-export.js");
     const { printAgentFeedbackImproveHelp } = await import("./feedback.js");
+    const { printAgentMaintenanceProposeHelp } = await import("./propose.js");
     printAgentCompactHelp();
     printAgentExportHelp();
     printAgentFeedbackImproveHelp();
+    printAgentMaintenanceProposeHelp();
     process.exit(1);
   } else if (parsedCommand.command === "agents" && subcommand === "generate") {
     const { generateAgents, parseAgentsGenerateArgs, printAgentsGenerateHelp } =
@@ -476,6 +490,14 @@ ${pc.dim("Options for agent feedback:")}
   ${pc.cyan("agent feedback --input <path>")}       Cluster JSON or JSONL agent feedback into improvement drafts
   ${pc.cyan("--min-occurrences <2-100>")}           Recurrence threshold (default: 2)
   ${pc.cyan("--write")}                             Write the report to ${pc.dim(".farming-labs/agent-feedback-improvements.json")}
+  ${pc.cyan("--output <path>")}                     Override the written report path
+  ${pc.cyan("--json")}                              Print JSON while writing
+
+${pc.dim("Options for agent maintenance proposals:")}
+  ${pc.cyan("agent propose --input <path>")}        Combine JSON/JSONL feedback, search, MCP, issue, support, and git signals
+  ${pc.cyan("--input <path>")}                      Repeat to combine multiple signal exports
+  ${pc.cyan("--min-occurrences <1-100>")}           Proposal threshold (default: 2)
+  ${pc.cyan("--write")}                             Write the draft-only report to ${pc.dim(".farming-labs/agent-maintenance-proposals.json")}
   ${pc.cyan("--output <path>")}                     Override the written report path
   ${pc.cyan("--json")}                              Print JSON while writing
 
