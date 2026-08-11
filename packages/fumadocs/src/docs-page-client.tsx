@@ -4,7 +4,13 @@ import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page"
 import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
-import type { CopyMarkdownFormat, DocsFeedbackData, ReadingTimeFormat } from "@farming-labs/docs";
+import type {
+  CopyMarkdownFormat,
+  DocsFeedbackData,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
+  ReadingTimeFormat,
+} from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
@@ -66,6 +72,8 @@ interface DocsPageClientProps {
   openDocsProviders?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
+  connectMcp?: PageActionConnectMcpConfig;
+  installSkills?: PageActionInstallSkillsConfig;
   /** Where to render page actions relative to the title */
   pageActionsPosition?: "above-title" | "below-title" | "toc";
   /** Horizontal alignment of page action buttons */
@@ -519,6 +527,8 @@ export function DocsPageClient({
   openDocsProviders,
   openDocsTarget,
   openDocsPrompt,
+  connectMcp,
+  installSkills,
   pageActionsPosition = "below-title",
   pageActionsAlignment = "left",
   githubUrl,
@@ -859,6 +869,8 @@ export function DocsPageClient({
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
+              connectMcp={connectMcp}
+              installSkills={installSkills}
               alignment={pageActionsAlignment}
               variant="default"
               githubFileUrl={githubFileUrl}
@@ -957,6 +969,8 @@ export function DocsPageClient({
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
+              connectMcp={connectMcp}
+              installSkills={installSkills}
               alignment="left"
               variant="rail"
               githubFileUrl={githubFileUrl}
@@ -1029,6 +1043,8 @@ export function DocsPageClient({
                 providers={openDocsProviders}
                 openDocsTarget={openDocsTarget}
                 openDocsPrompt={openDocsPrompt}
+                connectMcp={connectMcp}
+                installSkills={installSkills}
                 alignment={pageActionsAlignment}
                 variant="default"
                 githubFileUrl={githubFileUrl}

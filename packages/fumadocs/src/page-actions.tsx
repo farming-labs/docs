@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { usePathname } from "fumadocs-core/framework";
-import type { CopyMarkdownFormat } from "@farming-labs/docs";
+import type { CopyMarkdownFormat, PageActionMcpProvider } from "@farming-labs/docs";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { resolveOpenDocsProviderIcon, resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { sanitizeIconHtml } from "./safe-icon-html.js";
@@ -31,6 +31,45 @@ interface PageActionsProps {
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
   analytics?: boolean;
+  connectMcp?: {
+    endpoint?: string;
+    providers?: readonly PageActionMcpProvider[];
+    label?: string;
+  };
+  installSkills?: {
+    index?: string;
+    command?: string;
+    label?: string;
+  };
+}
+
+const DEFAULT_MCP_PROVIDERS: readonly PageActionMcpProvider[] = [
+  "copy",
+  "claude-code",
+  "cursor",
+  "vscode",
+  "codex",
+];
+
+const MCP_PROVIDER_LABELS: Record<PageActionMcpProvider, string> = {
+  copy: "Copy endpoint",
+  "claude-code": "Claude Code",
+  cursor: "Cursor",
+  vscode: "VS Code",
+  codex: "Codex",
+};
+
+export function buildMcpSetupInstruction(
+  provider: PageActionMcpProvider,
+  endpoint: string,
+): string {
+  if (provider === "copy") return endpoint;
+  if (provider === "claude-code") return `claude mcp add --transport http docs ${endpoint}`;
+  if (provider === "codex") return `codex mcp add docs --url ${endpoint}`;
+  if (provider === "vscode") {
+    return JSON.stringify({ servers: { docs: { type: "http", url: endpoint } } }, null, 2);
+  }
+  return JSON.stringify({ mcpServers: { docs: { url: endpoint } } }, null, 2);
 }
 
 const CopyIcon = () => (
@@ -226,9 +265,17 @@ export function PageActions({
   variant = "default",
   githubFileUrl,
   analytics = false,
+  connectMcp,
+  installSkills,
 }: PageActionsProps) {
   const [copied, setCopied] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mcpOpen, setMcpOpen] = useState(false);
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [copiedSetup, setCopiedSetup] = useState<string>();
+  const [publishedSkills, setPublishedSkills] = useState<
+    Array<{ name: string; description?: string }>
+  >([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
@@ -236,6 +283,50 @@ export function PageActions({
   const cleanedPathname = pathname.replace(/\/+$/, "") || "/";
   const markdownHref =
     cleanedPathname === "/" ? "/index.md" : `${cleanedPathname.replace(/\.md$/, "")}.md`;
+  const resolveAbsoluteUrl = useCallback((value: string) => {
+    try {
+      return new URL(value, window.location.origin).toString();
+    } catch {
+      return value;
+    }
+  }, []);
+
+  const copySetup = useCallback(async (key: string, value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedSetup(key);
+    setTimeout(() => setCopiedSetup(undefined), 2000);
+  }, []);
+
+  const openSkills = useCallback(async () => {
+    setSkillsOpen(true);
+    if (publishedSkills.length > 0) return;
+    try {
+      const response = await fetch(
+        resolveAbsoluteUrl(installSkills?.index ?? "/.well-known/agent-skills/index.json"),
+        { headers: { Accept: "application/json" } },
+      );
+      if (!response.ok) return;
+      const body = (await response.json()) as {
+        skills?: Array<{ name?: unknown; description?: unknown }>;
+      };
+      setPublishedSkills(
+        (body.skills ?? []).flatMap((skill) =>
+          typeof skill.name === "string"
+            ? [
+                {
+                  name: skill.name,
+                  ...(typeof skill.description === "string"
+                    ? { description: skill.description }
+                    : {}),
+                },
+              ]
+            : [],
+        ),
+      );
+    } catch {
+      // The install command remains available when discovery is temporarily unavailable.
+    }
+  }, [installSkills?.index, publishedSkills.length, resolveAbsoluteUrl]);
 
   const handleCopyMarkdown = useCallback(async () => {
     try {
@@ -373,10 +464,13 @@ export function PageActions({
   // Close on route change
   useEffect(() => {
     setDropdownOpen(false);
+    setMcpOpen(false);
+    setSkillsOpen(false);
     setCopied(false);
   }, [pathname]);
 
-  if (variant !== "rail" && !copyMarkdown && !openDocs) return null;
+  if (variant !== "rail" && !copyMarkdown && !openDocs && !connectMcp && !installSkills)
+    return null;
 
   if (variant === "rail") {
     return (
@@ -417,6 +511,35 @@ export function PageActions({
           <SparklesIcon />
           <span>Ask AI</span>
         </button>
+        {connectMcp && (
+          <button
+            type="button"
+            onClick={() => copySetup("mcp:rail", resolveAbsoluteUrl(connectMcp.endpoint ?? "/mcp"))}
+            className="fd-page-action-btn"
+          >
+            <span>
+              {copiedSetup === "mcp:rail" ? "Copied endpoint" : (connectMcp.label ?? "Connect MCP")}
+            </span>
+          </button>
+        )}
+        {installSkills && (
+          <button
+            type="button"
+            onClick={() =>
+              copySetup(
+                "skills:rail",
+                installSkills.command ?? `npx skills add ${window.location.origin}`,
+              )
+            }
+            className="fd-page-action-btn"
+          >
+            <span>
+              {copiedSetup === "skills:rail"
+                ? "Copied command"
+                : (installSkills.label ?? "Install skills")}
+            </span>
+          </button>
+        )}
       </div>
     );
   }
@@ -487,6 +610,77 @@ export function PageActions({
                   </button>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {connectMcp && (
+        <div className="fd-page-action-dropdown">
+          <button
+            type="button"
+            className="fd-page-action-btn"
+            aria-expanded={mcpOpen}
+            onClick={() => setMcpOpen((open) => !open)}
+          >
+            <span>{connectMcp.label ?? "Connect MCP"}</span>
+            <ChevronDownIcon />
+          </button>
+          {mcpOpen && (
+            <div className="fd-page-action-menu" role="menu">
+              {(connectMcp.providers ?? DEFAULT_MCP_PROVIDERS).map((provider) => {
+                const endpoint = resolveAbsoluteUrl(connectMcp.endpoint ?? "/mcp");
+                const key = `mcp:${provider}`;
+                return (
+                  <button
+                    key={provider}
+                    type="button"
+                    role="menuitem"
+                    className="fd-page-action-menu-item"
+                    onClick={async () => {
+                      await copySetup(key, buildMcpSetupInstruction(provider, endpoint));
+                      setMcpOpen(false);
+                    }}
+                  >
+                    <span className="fd-page-action-menu-label">
+                      {copiedSetup === key ? "Copied" : MCP_PROVIDER_LABELS[provider]}
+                    </span>
+                    {copiedSetup === key ? <CheckIcon /> : <CopyIcon />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {installSkills && (
+        <div className="fd-page-action-dropdown">
+          <button type="button" className="fd-page-action-btn" onClick={openSkills}>
+            <span>{installSkills.label ?? "Install skills"}</span>
+          </button>
+          {skillsOpen && (
+            <div className="fd-page-action-menu" role="dialog" aria-label="Install Agent Skills">
+              {publishedSkills.map((skill) => (
+                <div key={skill.name} className="fd-page-action-menu-item">
+                  <span className="fd-page-action-menu-label">{skill.name}</span>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="fd-page-action-menu-item"
+                onClick={async () => {
+                  const command =
+                    installSkills.command ?? `npx skills add ${window.location.origin}`;
+                  await copySetup("skills", command);
+                  setSkillsOpen(false);
+                }}
+              >
+                <span className="fd-page-action-menu-label">
+                  {copiedSetup === "skills" ? "Copied install command" : "Copy install command"}
+                </span>
+                {copiedSetup === "skills" ? <CheckIcon /> : <CopyIcon />}
+              </button>
             </div>
           )}
         </div>

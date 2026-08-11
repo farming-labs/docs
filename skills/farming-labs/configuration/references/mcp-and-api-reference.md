@@ -112,7 +112,8 @@ These settings do not affect stdio.
 Core tools include:
 
 - `list_docs`, `list_pages`, `list_tasks`
-- `read_task`, `read_page`
+- `read_task`, `read_page`, budget-aware `read_pages`
+- `submit_feedback` when machine feedback is enabled
 - `get_navigation`, `search_docs`
 - `get_code_examples`
 - `get_config_schema`
