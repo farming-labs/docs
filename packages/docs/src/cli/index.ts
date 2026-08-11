@@ -200,6 +200,18 @@ async function main() {
       return;
     }
     await runAgentFeedbackImprove(feedbackOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "feedback-evals") {
+    const {
+      parseAgentFeedbackEvaluationsArgs,
+      printAgentFeedbackEvaluationsHelp,
+      runAgentFeedbackEvaluations,
+    } = await import("./feedback-evals.js");
+    const evaluationOptions = parseAgentFeedbackEvaluationsArgs(args.slice(2));
+    if (evaluationOptions.help) {
+      printAgentFeedbackEvaluationsHelp();
+      return;
+    }
+    await runAgentFeedbackEvaluations(evaluationOptions);
   } else if (parsedCommand.command === "agent" && subcommand === "propose") {
     const {
       parseAgentMaintenanceProposeArgs,
@@ -236,10 +248,12 @@ async function main() {
     const { printAgentCompactHelp } = await import("./agent.js");
     const { printAgentExportHelp } = await import("./agent-export.js");
     const { printAgentFeedbackImproveHelp } = await import("./feedback.js");
+    const { printAgentFeedbackEvaluationsHelp } = await import("./feedback-evals.js");
     const { printAgentMaintenanceProposeHelp } = await import("./propose.js");
     printAgentCompactHelp();
     printAgentExportHelp();
     printAgentFeedbackImproveHelp();
+    printAgentFeedbackEvaluationsHelp();
     printAgentMaintenanceProposeHelp();
     process.exit(1);
   } else if (parsedCommand.command === "agents" && subcommand === "generate") {
@@ -492,6 +506,14 @@ ${pc.dim("Options for agent feedback:")}
   ${pc.cyan("--write")}                             Write the report to ${pc.dim(".farming-labs/agent-feedback-improvements.json")}
   ${pc.cyan("--output <path>")}                     Override the written report path
   ${pc.cyan("--json")}                              Print JSON while writing
+
+${pc.dim("Options for feedback-derived evaluations:")}
+  ${pc.cyan("agent feedback-evals --write")}        Sanitize and deduplicate feedback-derived golden-task candidates
+  ${pc.cyan("--existing <path>")}                   Compare against an existing candidate registry, task list, or config JSON
+  ${pc.cyan("--results <path> --baseline <path>")} Read golden-task or doctor JSON for baseline comparison
+  ${pc.cyan("--write-baseline")}                    Create or replace an explicit evaluation baseline
+  ${pc.cyan("--check")}                             Fail CI when suite/task results regress
+  ${pc.cyan("--max-score-drop <0-100>")}            Allow a bounded suite/task score decrease
 
 ${pc.dim("Options for agent maintenance proposals:")}
   ${pc.cyan("agent propose --input <path>")}        Combine JSON/JSONL feedback, search, MCP, issue, support, and git signals

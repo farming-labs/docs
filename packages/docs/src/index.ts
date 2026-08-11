@@ -91,6 +91,25 @@ export {
 } from "./agent-contract.js";
 export type { PageAgentFrontmatterIssue } from "./agent-contract.js";
 export {
+  buildDocsAgentFeedbackEvaluationCandidates,
+  compareDocsAgentFeedbackEvaluationBaseline,
+  createDocsAgentFeedbackEvaluationBaseline,
+  DOCS_AGENT_FEEDBACK_EVALUATION_BASELINE_FORMAT,
+  DOCS_AGENT_FEEDBACK_EVALUATION_CANDIDATES_FORMAT,
+  DOCS_AGENT_FEEDBACK_EVALUATION_REGRESSION_FORMAT,
+} from "./agent-feedback-evaluations.js";
+export type {
+  BuildDocsAgentFeedbackEvaluationCandidatesOptions,
+  CompareDocsAgentFeedbackEvaluationOptions,
+  DocsAgentFeedbackEvaluationBaseline,
+  DocsAgentFeedbackEvaluationCandidate,
+  DocsAgentFeedbackEvaluationCandidateRegistry,
+  DocsAgentFeedbackEvaluationDuplicate,
+  DocsAgentFeedbackEvaluationRegression,
+  DocsAgentFeedbackEvaluationRegressionReport,
+  DocsAgentFeedbackEvaluationTaskBaseline,
+} from "./agent-feedback-evaluations.js";
+export {
   analyzeDocsAgentMaintenanceSignals,
   DOCS_AGENT_MAINTENANCE_PROPOSAL_FORMAT,
   parseDocsAgentMaintenanceSignals,

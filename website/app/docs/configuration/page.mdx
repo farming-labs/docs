@@ -2160,6 +2160,42 @@ the command only prints JSON.
 Feedback text remains untrusted evidence in every draft. Review it before copying suggestions into
 docs, issues, evaluation config, or model prompts.
 
+### Promote feedback into evaluation candidates
+
+Turn the feedback report's draft golden tasks into a sanitized candidate registry:
+
+```bash title="terminal"
+pnpm exec docs agent feedback-evals \
+  --input .farming-labs/agent-feedback-improvements.json \
+  --write
+```
+
+The command redacts common credentials, secret query parameters, private keys, and email addresses;
+normalizes task budgets and retrieval expectations; and deduplicates by task ID and a stable
+query/source fingerprint. Candidates remain in `state: "candidate"` and are never inserted into
+`agent.evaluations.tasks` automatically. Review the original evidence and the sanitized task before
+promoting it.
+
+After running `docs doctor --agent --json-output doctor.json`, create an explicit baseline and use
+it as a CI regression gate:
+
+```bash title="terminal"
+pnpm exec docs agent feedback-evals \
+  --results doctor.json \
+  --baseline .farming-labs/agent-evaluation-baseline.json \
+  --write-baseline
+
+pnpm exec docs agent feedback-evals \
+  --results doctor.json \
+  --baseline .farming-labs/agent-evaluation-baseline.json \
+  --check
+```
+
+The check catches suite score drops, per-task score drops, pass-to-fail changes, removed baseline
+tasks, and newly added failing tasks. Use `--max-score-drop` only for an intentional bounded
+tolerance, and `--allow-new-failures` only when newly introduced tasks are expected to start red.
+Baseline replacement is always explicit through `--write-baseline`.
+
 Feed that report—or normalized search, Ask AI, MCP, issue, support, and git signals—into the
 maintenance proposal workflow:
 
