@@ -3998,6 +3998,7 @@ description: "Start building quickly"
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
     });
     expect(spec.feedback).toMatchObject({
