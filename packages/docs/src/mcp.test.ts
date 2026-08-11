@@ -626,6 +626,57 @@ describe("P1 trust and OpenAPI tools", () => {
   });
 });
 
+describe("page access policies", () => {
+  const source = {
+    getPages: () => [
+      { slug: "public", url: "/docs/public", title: "Public", content: "Public content" },
+      {
+        slug: "private",
+        url: "/docs/private",
+        title: "Private",
+        content: "Private MCP sentinel",
+        agent: { access: { scopes: ["docs:private"] } },
+      },
+    ],
+    getNavigation: () => ({
+      name: "Docs",
+      children: [
+        { type: "page" as const, name: "Public", url: "/docs/public" },
+        { type: "page" as const, name: "Private", url: "/docs/private" },
+      ],
+    }),
+  };
+
+  it.each([
+    ["public", undefined, ["/docs/public"]],
+    [
+      "authorized",
+      { transport: "http" as const, auth: { id: "agent", scopes: ["docs:private"] } },
+      ["/docs/private", "/docs/public"],
+    ],
+  ])("filters MCP pages and navigation for %s requests", async (_label, requestContext, urls) => {
+    const server = await createDocsMcpServer({ source, requestContext });
+    const client = new Client({ name: "access-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const listed = await client.callTool({ name: "list_pages", arguments: {} });
+      const navigation = await client.callTool({ name: "get_navigation", arguments: {} });
+      expect(JSON.stringify(listed)).not.toContain("Private MCP sentinel");
+      const listedUrls = JSON.stringify(listed).match(/\/docs\/(?:private|public)/g) ?? [];
+      expect([...new Set(listedUrls)].sort()).toEqual(urls);
+      expect(JSON.stringify(navigation).includes("/docs/private")).toBe(
+        requestContext !== undefined,
+      );
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+});
+
 describe("MCP contract prompts", () => {
   const contractPage: DocsMcpPage = {
     slug: "installation",

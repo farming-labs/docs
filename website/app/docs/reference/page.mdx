@@ -2532,6 +2532,7 @@ Page-level metadata for machine-readable docs workflows.
 | Property        | Type | Description |
 | --------------- | ---- | ----------- |
 | `tokenBudget`   | `number` | Approximate output token target for `docs agent compact` on this page |
+| `access`        | `DocsPageAccessPolicy` | Deny-by-default scopes and claims for agent-facing page surfaces |
 | `task`          | `string` | Concrete task the page helps an agent complete |
 | `outcome`       | `string` | Observable end state that indicates completion |
 | `appliesTo`     | `{ framework?, version?, package? }` | Applicability values; each accepts a string or string array |
@@ -2549,6 +2550,14 @@ title: "Installation"
 description: "Install the framework"
 agent:
   tokenBudget: 777
+  access:
+    visibility: authenticated
+    scopes:
+      - docs:private
+    claims:
+      role:
+        - admin
+        - editor
   task: Install the framework
   outcome: The docs route renders locally.
   appliesTo:
@@ -2576,6 +2585,11 @@ Notes:
 
 - `agent.tokenBudget` overrides global `agent.compact.maxOutputTokens` defaults and CLI
   `--max-output-tokens` for that one page
+- `agent.access.visibility: authenticated` requires a principal; every listed scope and claim must
+  match, while claim arrays accept any overlapping value
+- protected pages are omitted from public Markdown discovery, `llms.txt`, search/Ask AI, content
+  sync, unauthenticated MCP results, and static agent bundles; application HTML authorization remains
+  the host application's responsibility
 - structured fields are normalized into served Markdown frontmatter, a deterministic
   `## Agent Contract` section, search/Ask AI context, Schema.org `HowTo` JSON-LD, and MCP task tools
 - MCP list-page results contain only `hasContract`, `task`, `outcome`, and `appliesTo`; call

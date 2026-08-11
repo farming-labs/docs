@@ -1014,6 +1014,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
             okf: config.agent?.okf,
           }),
           lastModified: resolveDocsRetrievalLastModified(page, "agent"),
+          access: page.agent?.access,
         }
       : null;
   }
@@ -1305,6 +1306,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         origin: markdownOrigin,
         locale: ctx.locale,
         lastModified: representation?.lastModified,
+        access: representation?.access,
         pages: getSearchIndex(ctx),
         sitemap: config.sitemap,
       });

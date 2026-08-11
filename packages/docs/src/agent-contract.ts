@@ -5,6 +5,7 @@ import type {
   PageAgentFrontmatter,
   PageAgentVerification,
 } from "./types.js";
+import { normalizeDocsPageAccessPolicy } from "./access.js";
 
 export interface PageAgentFrontmatterIssue {
   path: string;
@@ -26,10 +27,12 @@ export const PAGE_AGENT_STRUCTURED_CONTRACT_FIELDS = [
 
 export const PAGE_AGENT_CONTRACT_FIELDS = [
   "tokenBudget",
+  "access",
   ...PAGE_AGENT_STRUCTURED_CONTRACT_FIELDS,
 ] as const;
 export const PAGE_AGENT_CONTRACT_FIELD_SCHEMA = {
   tokenBudget: "number",
+  access: "{visibility?,scopes?,claims?}",
   task: "string",
   outcome: "string",
   appliesTo: {
@@ -49,6 +52,7 @@ const APPLIES_TO_FIELDS = ["framework", "version", "package"] as const;
 const COMMAND_FIELDS = ["run", "cwd", "description"] as const;
 const VERIFICATION_FIELDS = ["description", "run", "expect"] as const;
 const FAILURE_MODE_FIELDS = ["symptom", "resolution"] as const;
+const ACCESS_FIELDS = ["visibility", "scopes", "claims"] as const;
 
 export const PAGE_AGENT_CONTRACT_START_MARKER = "<!-- farming-labs:agent-contract:start -->";
 export const PAGE_AGENT_CONTRACT_END_MARKER = "<!-- farming-labs:agent-contract:end -->";
@@ -184,6 +188,12 @@ export function normalizePageAgentFrontmatter(value: unknown): PageAgentFrontmat
   if (!isRecord(value)) return undefined;
 
   const tokenBudget = normalizeTokenBudget(value.tokenBudget);
+  // An authored access rule must never become public because it was malformed.
+  // Preserve fail-closed behavior while diagnostics report the invalid shape.
+  const access =
+    "access" in value
+      ? (normalizeDocsPageAccessPolicy(value.access) ?? { visibility: "authenticated" })
+      : undefined;
   const task = normalizeString(value.task);
   const outcome = normalizeString(value.outcome);
   const appliesTo = normalizeAppliesTo(value.appliesTo);
@@ -197,6 +207,7 @@ export function normalizePageAgentFrontmatter(value: unknown): PageAgentFrontmat
 
   const normalized: PageAgentFrontmatter = {
     ...(tokenBudget !== undefined ? { tokenBudget } : {}),
+    ...(access ? { access } : {}),
     ...(task ? { task } : {}),
     ...(outcome ? { outcome } : {}),
     ...(appliesTo ? { appliesTo } : {}),
@@ -315,6 +326,50 @@ export function getPageAgentFrontmatterIssues(value: unknown): PageAgentFrontmat
       value.tokenBudget <= 0)
   ) {
     issues.push({ path: "agent.tokenBudget", message: "must be a positive finite number" });
+  }
+
+  if ("access" in value) {
+    if (!isRecord(value.access)) {
+      issues.push({ path: "agent.access", message: "must be an object" });
+    } else {
+      addUnknownKeyIssues(issues, value.access, ACCESS_FIELDS, "agent.access");
+      if (
+        "visibility" in value.access &&
+        value.access.visibility !== "public" &&
+        value.access.visibility !== "authenticated"
+      ) {
+        issues.push({
+          path: "agent.access.visibility",
+          message: 'must be "public" or "authenticated"',
+        });
+      }
+      if ("scopes" in value.access && !normalizeStringList(value.access.scopes)) {
+        issues.push({ path: "agent.access.scopes", message: "must be a non-empty string array" });
+      }
+      if ("claims" in value.access) {
+        if (!isRecord(value.access.claims) || Object.keys(value.access.claims).length === 0) {
+          issues.push({ path: "agent.access.claims", message: "must be a non-empty object" });
+        } else {
+          for (const [name, claim] of Object.entries(value.access.claims)) {
+            if (
+              !name.trim() ||
+              normalizeDocsPageAccessPolicy({ claims: { [name]: claim } }) === undefined
+            ) {
+              issues.push({
+                path: `agent.access.claims.${name || "<empty>"}`,
+                message: "must be a string, number, boolean, or non-empty string array",
+              });
+            }
+          }
+        }
+      }
+      if (!normalizeDocsPageAccessPolicy(value.access)) {
+        issues.push({
+          path: "agent.access",
+          message: "must include a valid visibility, scope, or claim",
+        });
+      }
+    }
   }
 
   addStringIssue(issues, value, "task");
@@ -502,6 +557,31 @@ export function renderPageAgentFrontmatterYamlLines(value: unknown, indentation 
   const child = `${indent}  `;
   const lines = [`${indent}agent:`];
   if (agent.tokenBudget !== undefined) lines.push(`${child}tokenBudget: ${agent.tokenBudget}`);
+  if (agent.access) {
+    lines.push(`${child}access:`);
+    const accessIndent = `${child}  `;
+    if (agent.access.visibility) {
+      lines.push(`${accessIndent}visibility: ${agent.access.visibility}`);
+    }
+    if (agent.access.scopes) {
+      renderYamlStringList(lines, accessIndent, "scopes", [...agent.access.scopes]);
+    }
+    if (agent.access.claims) {
+      lines.push(`${accessIndent}claims:`);
+      const claimsIndent = `${accessIndent}  `;
+      for (const [name, claim] of Object.entries(agent.access.claims).sort(([left], [right]) =>
+        left.localeCompare(right),
+      )) {
+        if (Array.isArray(claim)) {
+          renderYamlStringList(lines, claimsIndent, yamlString(name), [...claim]);
+        } else {
+          lines.push(
+            `${claimsIndent}${yamlString(name)}: ${typeof claim === "string" ? yamlString(claim) : claim}`,
+          );
+        }
+      }
+    }
+  }
   if (agent.task) lines.push(`${child}task: ${yamlString(agent.task)}`);
   if (agent.outcome) lines.push(`${child}outcome: ${yamlString(agent.outcome)}`);
   if (agent.appliesTo) {

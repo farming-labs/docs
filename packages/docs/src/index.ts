@@ -9,6 +9,13 @@
 
 import type { DocsConfig } from "./types.js";
 
+export {
+  filterDocsPagesByAccess,
+  isDocsAgentPageAccessible,
+  isDocsPageAccessAllowed,
+  normalizeDocsPageAccessPolicy,
+} from "./access.js";
+
 export { defineDocs } from "./define-docs.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
@@ -507,6 +514,9 @@ export type {
   PageTwitter,
   DocsRelatedItem,
   ResolvedDocsRelatedLink,
+  DocsAccessClaimValue,
+  DocsAccessPrincipal,
+  DocsPageAccessPolicy,
   PageAgentAppliesTo,
   PageAgentCommand,
   PageAgentFailureMode,
