@@ -85,6 +85,72 @@ Build a Farm application.
     });
   });
 
+  it("includes standalone Markdown pages and file-only folders in bundled navigation", async () => {
+    const server = createDocsServer({
+      ...config,
+      ordering: [
+        { slug: "capabilities" },
+        { slug: "api", children: [{ slug: "v1" }, { slug: "v0-core" }] },
+      ],
+      _preloadedContent: {
+        "/docs/page.md": config._preloadedContent["/docs/page.md"],
+        "/docs/capabilities.md": `---\ntitle: Capabilities\n---\n# Capabilities`,
+        "/docs/api/v0-core.md": `---\ntitle: v0 parity\n---\n# v0 parity`,
+        "/docs/api/v1.md": `---\ntitle: API v1\n---\n# API v1`,
+      },
+    });
+
+    const page = await server.load({ pathname: "/docs" });
+
+    expect(page.tree.children).toMatchObject([
+      { type: "page", name: "Introduction", url: "/docs" },
+      { type: "page", name: "Capabilities", url: "/docs/capabilities" },
+      {
+        type: "folder",
+        name: "Api",
+        children: [
+          { type: "page", name: "API v1", url: "/docs/api/v1" },
+          { type: "page", name: "v0 parity", url: "/docs/api/v0-core" },
+        ],
+      },
+    ]);
+  });
+
+  it("includes standalone Markdown pages and file-only folders in filesystem navigation", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-flat-navigation-"));
+    const contentDir = path.join(rootDir, "docs");
+
+    try {
+      mkdirSync(path.join(contentDir, "api"), { recursive: true });
+      writeFileSync(path.join(contentDir, "page.md"), `---\ntitle: Introduction\n---\n# Intro`);
+      writeFileSync(
+        path.join(contentDir, "capabilities.md"),
+        `---\ntitle: Capabilities\norder: 1\n---\n# Capabilities`,
+      );
+      writeFileSync(path.join(contentDir, "api", "v1.md"), `---\ntitle: API v1\n---\n# API v1`);
+
+      const server = createDocsServer({
+        entry: "docs",
+        contentDir,
+        rootDir,
+        ordering: "numeric",
+      });
+      const page = await server.load({ pathname: "/docs" });
+
+      expect(page.tree.children).toMatchObject([
+        { type: "page", name: "Introduction", url: "/docs" },
+        { type: "page", name: "Capabilities", url: "/docs/capabilities" },
+        {
+          type: "folder",
+          name: "Api",
+          children: [{ type: "page", name: "API v1", url: "/docs/api/v1" }],
+        },
+      ]);
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
   it("derives Edit on GitHub from the configured content directory", async () => {
     const server = createDocsServer({
       ...config,

@@ -453,13 +453,13 @@ function navTreeFromMap(
   interface DirInfo {
     parts: string[];
     title: string;
-    url: string;
+    url?: string;
     icon?: string;
     folderIndexBehavior?: "link" | "toggle" | "hidden";
     order: number;
   }
 
-  const dirs: DirInfo[] = [];
+  const pages: DirInfo[] = [];
 
   for (const key of Object.keys(contentMap)) {
     if (!key.startsWith(dirPrefix)) continue;
@@ -467,22 +467,26 @@ function navTreeFromMap(
     const rel = key.slice(dirPrefix.length);
     const segments = rel.split("/");
     const fileName = segments.pop()!;
+    if (fileName === "agent.md" || (!fileName.endsWith(".md") && !fileName.endsWith(".mdx"))) {
+      continue;
+    }
+
     const base = fileName.replace(/\.(md|mdx)$/, "");
-    if (base !== "page" && base !== "index") continue;
+    const isIndex = base === "page" || base === "index";
 
     const { data } = matter(contentMap[key]);
-    const dirParts = segments;
-    const slug = dirParts.join("/");
+    const pageParts = isIndex ? segments : [...segments, base];
+    const slug = pageParts.join("/");
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
     const fallbackTitle =
-      dirParts.length > 0
-        ? dirParts[dirParts.length - 1]
+      pageParts.length > 0
+        ? pageParts[pageParts.length - 1]
             .replace(/-/g, " ")
             .replace(/\b\w/g, (char) => char.toUpperCase())
         : "Documentation";
 
-    dirs.push({
-      parts: dirParts,
+    pages.push({
+      parts: pageParts,
       title: (data.title as string) ?? fallbackTitle,
       url,
       icon: data.icon as string | undefined,
@@ -491,18 +495,18 @@ function navTreeFromMap(
     });
   }
 
-  dirs.sort((a, b) => {
+  pages.sort((a, b) => {
     if (a.parts.length !== b.parts.length) return a.parts.length - b.parts.length;
     return a.parts.join("/").localeCompare(b.parts.join("/"));
   });
 
   const children: NavNode[] = [];
-  const rootInfo = dirs.find((dir) => dir.parts.length === 0);
+  const rootInfo = pages.find((page) => page.parts.length === 0);
   if (rootInfo) {
     children.push({
       type: "page",
       name: rootInfo.title,
-      url: rootInfo.url,
+      url: rootInfo.url!,
       icon: rootInfo.icon,
     });
   }
@@ -523,12 +527,33 @@ function navTreeFromMap(
   function buildLevel(parentParts: string[]): NavNode[] {
     const depth = parentParts.length;
 
-    const directChildren = dirs.filter((dir) => {
-      if (dir.parts.length !== depth + 1) return false;
-      for (let index = 0; index < depth; index++) {
-        if (dir.parts[index] !== parentParts[index]) return false;
-      }
-      return true;
+    const directSlugs = Array.from(
+      new Set(
+        pages
+          .filter((page) => {
+            if (page.parts.length <= depth) return false;
+            return parentParts.every((part, index) => page.parts[index] === part);
+          })
+          .map((page) => page.parts[depth]),
+      ),
+    );
+
+    const directChildren = directSlugs.map((slug) => {
+      const parts = [...parentParts, slug];
+      const page = pages.find(
+        (candidate) =>
+          candidate.parts.length === parts.length &&
+          candidate.parts.every((part, index) => part === parts[index]),
+      );
+      return {
+        parts,
+        title:
+          page?.title ?? slug.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()),
+        url: page?.url,
+        icon: page?.icon,
+        folderIndexBehavior: page?.folderIndexBehavior,
+        order: page?.order ?? Infinity,
+      };
     });
 
     const slugOrder = findSlugOrder(parentParts);
@@ -545,9 +570,9 @@ function navTreeFromMap(
       }
 
       return ordered.map((child) => {
-        const hasGrandChildren = dirs.some((dir) => {
-          if (dir.parts.length <= child.parts.length) return false;
-          return child.parts.every((part, index) => dir.parts[index] === part);
+        const hasGrandChildren = pages.some((page) => {
+          if (page.parts.length <= child.parts.length) return false;
+          return child.parts.every((part, index) => page.parts[index] === part);
         });
 
         if (hasGrandChildren) {
@@ -555,7 +580,16 @@ function navTreeFromMap(
             type: "folder",
             name: child.title,
             icon: child.icon,
-            index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+            ...(child.url
+              ? {
+                  index: {
+                    type: "page" as const,
+                    name: child.title,
+                    url: child.url,
+                    icon: child.icon,
+                  },
+                }
+              : {}),
             folderIndexBehavior: child.folderIndexBehavior,
             children: buildLevel(child.parts),
           } satisfies NavNode;
@@ -564,7 +598,7 @@ function navTreeFromMap(
         return {
           type: "page",
           name: child.title,
-          url: child.url,
+          url: child.url!,
           icon: child.icon,
         } satisfies NavNode;
       });
@@ -575,9 +609,9 @@ function navTreeFromMap(
     }
 
     return directChildren.map((child) => {
-      const hasGrandChildren = dirs.some((dir) => {
-        if (dir.parts.length <= child.parts.length) return false;
-        return child.parts.every((part, index) => dir.parts[index] === part);
+      const hasGrandChildren = pages.some((page) => {
+        if (page.parts.length <= child.parts.length) return false;
+        return child.parts.every((part, index) => page.parts[index] === part);
       });
 
       if (hasGrandChildren) {
@@ -585,7 +619,16 @@ function navTreeFromMap(
           type: "folder",
           name: child.title,
           icon: child.icon,
-          index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+          ...(child.url
+            ? {
+                index: {
+                  type: "page" as const,
+                  name: child.title,
+                  url: child.url,
+                  icon: child.icon,
+                },
+              }
+            : {}),
           folderIndexBehavior: child.folderIndexBehavior,
           children: buildLevel(child.parts),
         } satisfies NavNode;
@@ -594,7 +637,7 @@ function navTreeFromMap(
       return {
         type: "page",
         name: child.title,
-        url: child.url,
+        url: child.url!,
         icon: child.icon,
       } satisfies NavNode;
     });
