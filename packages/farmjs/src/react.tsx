@@ -177,7 +177,7 @@ function setNavigationPending(pending: boolean): void {
 }
 
 function updateNavigationHistory(mode: "push" | "replace", url: URL): void {
-  const state = { ...(window.history.state ?? {}), farmDocs: true };
+  const state = { ...window.history.state, farmDocs: true };
   window.history[mode === "push" ? "pushState" : "replaceState"](state, "", url.href);
 }
 
