@@ -13,7 +13,8 @@
   --fd-framework-article-padding: 32px 0 64px;
 }
 
-#nd-docs-layout:not([data-fd-framework]) article#nd-page {
+#nd-docs-layout:not([data-fd-framework]) article#nd-page,
+#nd-docs-layout[data-fd-browser-adapter] article#nd-page {
   width: 100%;
   max-width: calc(var(--fd-content-width, 640px) + 64px);
   padding: 32px 32px 64px;
@@ -1666,7 +1667,8 @@ article :not(pre) > code,
     --fd-framework-article-padding: 24px 16px 48px;
   }
 
-  #nd-docs-layout:not([data-fd-framework]) article#nd-page {
+  #nd-docs-layout:not([data-fd-framework]) article#nd-page,
+  #nd-docs-layout[data-fd-browser-adapter] article#nd-page {
     max-width: 100%;
     padding: 24px 16px 48px;
   }
