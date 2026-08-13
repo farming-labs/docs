@@ -47,7 +47,9 @@ function isDocsNavigationUrl(
 }
 
 function isAbortError(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "name" in error && error.name === "AbortError");
+  return Boolean(
+    error && typeof error === "object" && "name" in error && error.name === "AbortError",
+  );
 }
 
 export function createFarmDocsNavigator(input: {

@@ -181,13 +181,7 @@ function updateNavigationHistory(mode: "push" | "replace", url: URL): void {
   window.history[mode === "push" ? "pushState" : "replaceState"](state, "", url.href);
 }
 
-function FarmDocsClient({
-  config,
-  data,
-}: {
-  config: DocsConfig;
-  data: DocsServerLoadResult;
-}) {
+function FarmDocsClient({ config, data }: { config: DocsConfig; data: DocsServerLoadResult }) {
   const [runtimeData, setRuntimeData] = useState(data);
   const pendingScrollRef = useRef<URL | null>(null);
 

@@ -2524,7 +2524,9 @@ function runtimeFontPreloads(fonts: FarmDocsRuntimeFonts | undefined): {
   };
 }
 
-function resolveDefaultTheme(config: DocsConfig & Record<string, any>): "light" | "dark" | "system" {
+function resolveDefaultTheme(
+  config: DocsConfig & Record<string, any>,
+): "light" | "dark" | "system" {
   const toggle = config.themeToggle;
   const value = toggle && typeof toggle === "object" ? toggle.default : undefined;
   return value === "light" || value === "dark" || value === "system" ? value : "system";

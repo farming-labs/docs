@@ -133,15 +133,7 @@ function BrowserLink({
     [download, href, navigation, onClick, target],
   );
 
-  return (
-    <a
-      {...props}
-      href={href}
-      target={target}
-      download={download}
-      onClick={handleClick}
-    />
-  );
+  return <a {...props} href={href} target={target} download={download} onClick={handleClick} />;
 }
 
 /** Framework-neutral provider for server-rendered React documentation adapters. */

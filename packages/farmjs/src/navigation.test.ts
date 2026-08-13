@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DocsConfig } from "@farming-labs/docs";
 import type { DocsServerLoadResult } from "./server.js";
-import {
-  createFarmDocsNavigator,
-  type FarmDocsNavigationEnvironment,
-} from "./navigation.js";
+import { createFarmDocsNavigator, type FarmDocsNavigationEnvironment } from "./navigation.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 
 function page(url: string, title: string): DocsServerLoadResult {
@@ -51,8 +48,7 @@ function harness(fetchImpl: FarmDocsNavigationEnvironment["fetch"]) {
     config: { entry: "docs" } as DocsConfig,
     data: page("/docs", "Overview"),
     environment,
-    onData: (nextPage, target) =>
-      data.push({ page: nextPage, scrollTarget: target?.href ?? null }),
+    onData: (nextPage, target) => data.push({ page: nextPage, scrollTarget: target?.href ?? null }),
   });
 
   return {
@@ -97,14 +93,10 @@ describe("createFarmDocsNavigator", () => {
       }),
     );
 
-    resolveFetch?.(
-      Response.json({ data: page("/docs/guides", "Guides") }),
-    );
+    resolveFetch?.(Response.json({ data: page("/docs/guides", "Guides") }));
     await navigation;
 
-    expect(test.history).toEqual([
-      { mode: "push", url: "https://docs.example/docs/guides" },
-    ]);
+    expect(test.history).toEqual([{ mode: "push", url: "https://docs.example/docs/guides" }]);
     expect(test.data[0]).toMatchObject({
       page: { title: "Guides", url: "/docs/guides" },
       scrollTarget: "https://docs.example/docs/guides",
@@ -177,9 +169,7 @@ describe("createFarmDocsNavigator", () => {
     });
 
     expect(test.assigned).toEqual(["https://docs.example/dashboard"]);
-    expect(test.history).toEqual([
-      { mode: "push", url: "https://docs.example/docs#install" },
-    ]);
+    expect(test.history).toEqual([{ mode: "push", url: "https://docs.example/docs#install" }]);
     expect(test.scroll).toEqual(["https://docs.example/docs#install"]);
     expect(fetchImpl).not.toHaveBeenCalled();
   });

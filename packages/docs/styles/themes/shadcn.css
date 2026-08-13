@@ -166,7 +166,7 @@ button[data-search-full],
 [data-search-full],
 .fd-sidebar-search-btn,
 .fd-search-trigger-mobile {
-  min-height: 2rem;
+  min-height: 2.25rem;
   border: 1px solid var(--fd-shadcn-soft-border) !important;
   border-radius: calc(var(--radius) * 0.8) !important;
   background: color-mix(in oklab, var(--fd-shadcn-control) 82%, transparent) !important;
@@ -184,18 +184,64 @@ button[data-search-full]:hover,
   color: var(--color-fd-foreground) !important;
 }
 
+#nd-docs-layout .fd-sidebar-search-ai-row {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-search-btn {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem !important;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-search-btn > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  opacity: 0.72;
+}
+
+#nd-docs-layout
+  .fd-sidebar-search-ai-row
+  .fd-sidebar-search-btn
+  > span:not(.fd-sidebar-search-kbd) {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 button[data-search-full] > :is(div, span):has(> kbd),
 [data-search-full] > :is(div, span):has(> kbd),
 .fd-sidebar-search-kbd {
   display: inline-flex !important;
   min-width: 0 !important;
-  height: 1.25rem !important;
+  height: 1.375rem !important;
+  flex: 0 0 auto !important;
   align-items: center !important;
-  gap: 0.1875rem !important;
+  justify-content: center !important;
+  gap: 0.125rem !important;
+  margin-inline-start: auto !important;
   border: 1px solid var(--fd-shadcn-soft-border) !important;
   border-radius: calc(var(--radius) * 0.55) !important;
-  background: color-mix(in oklab, var(--color-fd-background) 72%, transparent) !important;
-  padding: 0 0.35rem !important;
+  background: var(--color-fd-background) !important;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    inset 0 -1px 0 color-mix(in oklab, var(--color-fd-border) 70%, transparent) !important;
+  padding: 0 0.375rem !important;
   line-height: 1 !important;
 }
 
@@ -211,6 +257,28 @@ button[data-search-full] kbd,
   font-weight: 500 !important;
   line-height: 1 !important;
   padding: 0 !important;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-ai-btn {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 0.8) !important;
+  background: color-mix(in oklab, var(--fd-shadcn-control) 82%, transparent) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  box-shadow: none !important;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-ai-btn:hover {
+  border-color: var(--color-fd-border) !important;
+  background: var(--fd-shadcn-control-hover) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row :is(.fd-sidebar-search-btn, .fd-sidebar-ai-btn):focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
 }
 
 aside#nd-sidebar,
@@ -710,7 +778,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-page-nav-card,
 .fd-page-nav a,
 #nd-page > div[class~="@container"] > a {
-  border: 0 !important;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
   border-radius: calc(var(--radius) * 0.8) !important;
   background: var(--fd-shadcn-control) !important;
   color: var(--color-fd-foreground) !important;
@@ -749,7 +817,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 0.75rem !important;
-  margin-top: 1.5rem !important;
+  margin-top: 2.25rem !important;
   padding-top: 0 !important;
   border-top: 0 !important;
 }
@@ -763,12 +831,34 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 #nd-page > div[class~="@container"] > a {
   display: flex !important;
   min-width: 0;
-  min-height: 4rem !important;
+  min-height: 4.75rem !important;
   flex-direction: column !important;
   justify-content: center !important;
-  gap: 0.125rem !important;
-  padding: 0.75rem !important;
+  gap: 0.375rem !important;
+  padding: 0.875rem 1rem !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%) !important;
   text-decoration: none !important;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms,
+    box-shadow 150ms !important;
+}
+
+.fd-page-nav-card:hover,
+.fd-page-nav a:hover,
+#nd-page > div[class~="@container"] > a:hover {
+  border-color: var(--color-fd-border) !important;
+  background: color-mix(in oklab, var(--color-fd-accent) 72%, var(--color-fd-card)) !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 7%) !important;
+}
+
+.fd-page-nav-card:focus-visible,
+.fd-page-nav a:focus-visible,
+#nd-page > div[class~="@container"] > a:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
 }
 
 .fd-page-nav-next,
@@ -778,11 +868,21 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 
 .fd-page-nav-title,
 #nd-page > div[class~="@container"] > a > div:first-child {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
   min-height: 0 !important;
   color: var(--color-fd-foreground) !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
   line-height: 1.35 !important;
+}
+
+.fd-page-nav-title svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: 0 0 auto;
+  color: var(--color-fd-muted-foreground);
 }
 
 .fd-page-nav-description,
