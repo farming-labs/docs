@@ -26,6 +26,8 @@ export interface FarmDocsAdapterOptions {
   config?: Partial<DocsConfig>;
   /** Shiki themes used to compile Markdown and MDX code blocks. */
   codeBlockThemes?: FarmDocsCodeBlockThemes;
+  /** Additional documentation roots outside the Farm application directory. */
+  contentRoots?: string[];
 }
 
 export interface FarmConfigLike {
@@ -47,22 +49,24 @@ function normalizeExistingDocs(value: FarmConfigLike["docs"]): FarmDocsCoreConfi
 function appendDocsVitePlugins(
   config: FarmViteConfigLike = {},
   codeBlockThemes?: FarmDocsCodeBlockThemes,
+  contentRoots?: string[],
 ): FarmViteConfigLike {
   return {
     ...config,
-    plugins: [docsMdx({ codeBlockThemes }), ...(config.plugins ?? [])],
+    plugins: [docsMdx({ codeBlockThemes, contentRoots }), ...(config.plugins ?? [])],
   };
 }
 
 function withDocsViteConfig(
   value: FarmConfigLike["vite"],
   codeBlockThemes?: FarmDocsCodeBlockThemes,
+  contentRoots?: string[],
 ): FarmViteConfigLike | FarmViteConfigFactory {
   if (typeof value === "function") {
-    return (config) => appendDocsVitePlugins(value(config), codeBlockThemes);
+    return (config) => appendDocsVitePlugins(value(config), codeBlockThemes, contentRoots);
   }
 
-  return appendDocsVitePlugins(value, codeBlockThemes);
+  return appendDocsVitePlugins(value, codeBlockThemes, contentRoots);
 }
 
 /**
@@ -81,7 +85,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
 
   return {
     ...farmConfig,
-    vite: withDocsViteConfig(farmConfig.vite, options.codeBlockThemes),
+    vite: withDocsViteConfig(farmConfig.vite, options.codeBlockThemes, options.contentRoots),
     docs: {
       ...existing,
       enabled,
