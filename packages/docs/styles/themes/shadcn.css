@@ -167,9 +167,9 @@ button[data-search-full],
 .fd-sidebar-search-btn,
 .fd-search-trigger-mobile {
   min-height: 2rem;
-  border: 0 !important;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
   border-radius: calc(var(--radius) * 0.8) !important;
-  background: var(--fd-shadcn-control) !important;
+  background: color-mix(in oklab, var(--fd-shadcn-control) 82%, transparent) !important;
   color: var(--color-fd-muted-foreground) !important;
   box-shadow: none !important;
   font-size: 0.8125rem !important;
@@ -184,14 +184,33 @@ button[data-search-full]:hover,
   color: var(--color-fd-foreground) !important;
 }
 
+button[data-search-full] > :is(div, span):has(> kbd),
+[data-search-full] > :is(div, span):has(> kbd),
+.fd-sidebar-search-kbd {
+  display: inline-flex !important;
+  min-width: 0 !important;
+  height: 1.25rem !important;
+  align-items: center !important;
+  gap: 0.1875rem !important;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 0.55) !important;
+  background: color-mix(in oklab, var(--color-fd-background) 72%, transparent) !important;
+  padding: 0 0.35rem !important;
+  line-height: 1 !important;
+}
+
 button[data-search-full] kbd,
 [data-search-full] kbd,
 .fd-sidebar-search-kbd kbd {
+  min-width: 0 !important;
   border: 0 !important;
   background: transparent !important;
   color: var(--color-fd-muted-foreground) !important;
+  font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace) !important;
   font-size: 0.6875rem !important;
   font-weight: 500 !important;
+  line-height: 1 !important;
+  padding: 0 !important;
 }
 
 aside#nd-sidebar,
@@ -940,10 +959,17 @@ figure.shiki,
 .fd-docs-content figure.shiki,
 .fd-page-body figure.shiki {
   margin: 1.5rem 0 2rem !important;
-  border: 0 !important;
-  border-radius: calc(var(--radius) * 1.8) !important;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 0.9) !important;
   background: var(--fd-shadcn-code) !important;
   padding-block: 0 !important;
+}
+
+/* Framework browser shells intentionally clear Shiki backgrounds so token
+ * colors can be themed. Restore only the code surface at equal specificity. */
+:is(html.dark, body.dark) #nd-docs-layout[data-fd-framework] figure.shiki,
+#nd-docs-layout[data-fd-framework].dark figure.shiki {
+  background: var(--fd-shadcn-code) !important;
 }
 
 figure.shiki pre,
@@ -951,7 +977,7 @@ figure.shiki pre,
 .fd-page-body figure.shiki pre {
   max-width: 100%;
   margin: 0 !important;
-  padding: 0.625rem 0.75rem !important;
+  padding: 0.75rem 0 !important;
   overflow-x: auto !important;
   overscroll-behavior-inline: contain;
   scrollbar-color: color-mix(in oklab, var(--color-fd-foreground) 18%, transparent)
@@ -963,14 +989,15 @@ figure.shiki pre > code,
 .fd-docs-content figure.shiki pre > code,
 .fd-page-body figure.shiki pre > code {
   font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace) !important;
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
   font-variant-ligatures: none;
-  line-height: 1.75 !important;
+  line-height: 1.6 !important;
   tab-size: 2;
 }
 
 figure.shiki pre > code > :is(.line, [data-line]) {
-  min-height: 1.53125rem;
+  min-height: 1.3rem;
+  padding-inline: 1rem 3rem !important;
 }
 
 figure.shiki pre > code > :is(.line, [data-line])[data-highlighted-line] {
