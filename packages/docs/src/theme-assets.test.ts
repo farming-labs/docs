@@ -15,4 +15,14 @@ describe("built-in theme assets", () => {
 
     expect(preview).toBe(source);
   });
+
+  it("styles the framework-neutral document class contract", () => {
+    const source = readFileSync(
+      fileURLToPath(new URL("../styles/themes/shadcn.css", import.meta.url)),
+      "utf8",
+    );
+
+    expect(source).toContain(".fd-page-body");
+    expect(source).toContain(".fd-docs-content");
+  });
 });

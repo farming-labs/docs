@@ -27,8 +27,11 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
         { "data-footer-enabled": String(footer?.enabled ?? true) },
         children,
       ),
-    DocsBody: ({ children }: { children: React.ReactNode }) =>
-      ReactModule.createElement("section", null, children),
+    DocsBody: ({
+      children,
+      ...props
+    }: React.ComponentPropsWithoutRef<"section"> & { children: React.ReactNode }) =>
+      ReactModule.createElement("section", props, children),
     EditOnGitHub: ({ href }: { href: string }) =>
       ReactModule.createElement("a", { href }, "Edit on GitHub"),
   };
@@ -37,6 +40,19 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
 import { DocsPageClient } from "./docs-page-client.js";
 
 describe("DocsPageClient llms.txt footer links", () => {
+  it("exposes the shared document class contract to every React adapter", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("p", null, "Portable content"),
+      }),
+    );
+
+    expect(html).toContain('class="fd-page-body"');
+    expect(html).toContain('class="fd-docs-content"');
+  });
+
   it("uses the public llms.txt defaults instead of docs api query routes", () => {
     const html = renderToStaticMarkup(
       React.createElement(DocsPageClient, {

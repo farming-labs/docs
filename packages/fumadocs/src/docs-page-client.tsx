@@ -1055,9 +1055,13 @@ export function DocsPageClient({
           </div>
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
-        <DocsBody key="body" style={{ display: "flex", flexDirection: "column" }}>
+        <DocsBody
+          key="body"
+          className="fd-page-body"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
           {generatedPageHeader}
-          <div key="content" style={{ flex: 1 }}>
+          <div key="content" className="fd-docs-content" style={{ flex: 1 }}>
             {renderedChildren}
           </div>
           {!generatedPageHeader && titleDecorationsFallback}
