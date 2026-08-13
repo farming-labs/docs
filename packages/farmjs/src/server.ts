@@ -308,7 +308,8 @@ function navigationItemUrl(item: FarmDocsNavigationItem, entry: string): string 
 function navTreeFromNavigation(config: Record<string, any>, entry: string): NavTree | null {
   const configured = config.navigation?.sidebar;
   if (!Array.isArray(configured) || configured.length === 0) return null;
-  const defaultOpen = config.theme?.name === "fumadocs-pixel-border";
+  const flat = config.sidebar?.flat === true;
+  const defaultOpen = flat || config.theme?.name === "fumadocs-pixel-border";
 
   function toNode(item: FarmDocsNavigationItem): NavNode | null {
     const children = item.children ?? item.items ?? [];
@@ -321,6 +322,7 @@ function navTreeFromNavigation(config: Record<string, any>, entry: string): NavT
         type: "folder",
         name,
         ...(defaultOpen ? { defaultOpen: true } : {}),
+        ...(flat ? { collapsible: false } : {}),
         ...(item.icon ? { icon: item.icon } : {}),
         ...(url
           ? {

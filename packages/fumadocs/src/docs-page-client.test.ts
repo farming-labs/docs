@@ -15,8 +15,18 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
   const ReactModule = await import("react");
 
   return {
-    DocsPage: ({ children }: { children: React.ReactNode }) =>
-      ReactModule.createElement("main", null, children),
+    DocsPage: ({
+      children,
+      footer,
+    }: {
+      children: React.ReactNode;
+      footer?: { enabled?: boolean };
+    }) =>
+      ReactModule.createElement(
+        "main",
+        { "data-footer-enabled": String(footer?.enabled ?? true) },
+        children,
+      ),
     DocsBody: ({ children }: { children: React.ReactNode }) =>
       ReactModule.createElement("section", null, children),
     EditOnGitHub: ({ href }: { href: string }) =>
@@ -85,6 +95,36 @@ describe("DocsPageClient generated page title", () => {
     expect(titleIndex).toBeLessThan(descriptionIndex);
     expect(descriptionIndex).toBeLessThan(actionsIndex);
     expect(actionsIndex).toBeLessThan(contentIndex);
+  });
+});
+
+describe("DocsPageClient page navigation", () => {
+  it("disables the built-in pager when custom page navigation is available", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        nextPage: { name: "Capabilities", url: "/docs/capabilities" },
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-footer-enabled="false"');
+    expect(html).toContain('class="not-prose fd-page-nav"');
+    expect(html.match(/Next Page/g)).toHaveLength(1);
+  });
+
+  it("keeps the built-in pager enabled when custom navigation is absent", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-footer-enabled="true"');
+    expect(html).not.toContain('class="not-prose fd-page-nav"');
   });
 });
 

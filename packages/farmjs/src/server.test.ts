@@ -85,6 +85,33 @@ Build a Farm application.
     });
   });
 
+  it("keeps configured navigation groups open for flat sidebars", async () => {
+    const server = createDocsServer({
+      ...config,
+      sidebar: { flat: true },
+      navigation: {
+        sidebar: [
+          {
+            label: "Start",
+            children: [{ label: "Guide", slug: "guide" }],
+          },
+        ],
+      },
+      _preloadedContent: {
+        "/docs/guide/page.md": "# Guide",
+      },
+    } as any);
+
+    const page = await server.load({ pathname: "/docs/guide" });
+
+    expect(page.tree.children[0]).toMatchObject({
+      type: "folder",
+      name: "Start",
+      collapsible: false,
+      defaultOpen: true,
+    });
+  });
+
   it("includes standalone Markdown pages and file-only folders in bundled navigation", async () => {
     const server = createDocsServer({
       ...config,

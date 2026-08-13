@@ -337,6 +337,35 @@ describe("TanstackDocsLayout", () => {
     expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
     expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
       "data-fd-framework": "",
+      "data-fd-browser-adapter": "",
+    });
+  });
+
+  it("keeps provided navigation groups open when the sidebar is flat", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        sidebar: { flat: true },
+      },
+      tree: {
+        name: "Docs",
+        children: [
+          {
+            type: "folder",
+            name: "Guides",
+            children: [{ type: "page", name: "Start", url: "/docs/start" }],
+          },
+        ],
+      },
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(
+      (tree.props as { tree: { children: Array<Record<string, unknown>> } }).tree.children[0],
+    ).toMatchObject({
+      type: "folder",
+      collapsible: false,
+      defaultOpen: true,
     });
   });
 
