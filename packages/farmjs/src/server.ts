@@ -100,6 +100,7 @@ import {
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 import farmDocsBrowserCss from "./browser-css.generated.js";
+import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 export { createFarmjsApiReference } from "./api-reference.js";
 
 const FARM_DOCS_BROWSER_CSS_PATH = "/__farm_docs/browser.css";
@@ -2452,7 +2453,7 @@ function normalizedPublicRoute(value: unknown, fallback: string): string {
   return `/${normalized.replace(/^\/+|\/+$/g, "")}`;
 }
 
-function isHtmlDocsPageRequest(config: Record<string, any>, request: Request): boolean {
+function isDocsPageRequest(config: Record<string, any>, request: Request): boolean {
   const method = request.method.toUpperCase();
   if (method !== "GET" && method !== "HEAD") return false;
 
@@ -2463,7 +2464,11 @@ function isHtmlDocsPageRequest(config: Record<string, any>, request: Request): b
     docsPath === "/"
       ? !pathname.endsWith(".md")
       : pathname === docsPath || pathname.startsWith(`${docsPath}/`);
-  if (!isPagePath || pathname.endsWith(".md")) return false;
+  return isPagePath && !pathname.endsWith(".md");
+}
+
+function isHtmlDocsPageRequest(config: Record<string, any>, request: Request): boolean {
+  if (!isDocsPageRequest(config, request)) return false;
 
   const accept = request.headers.get("accept")?.toLowerCase() ?? "";
   return !accept.includes("text/markdown");
@@ -2519,6 +2524,21 @@ function runtimeFontPreloads(fonts: FarmDocsRuntimeFonts | undefined): {
   };
 }
 
+function resolveDefaultTheme(config: DocsConfig & Record<string, any>): "light" | "dark" | "system" {
+  const toggle = config.themeToggle;
+  const value = toggle && typeof toggle === "object" ? toggle.default : undefined;
+  return value === "light" || value === "dark" || value === "system" ? value : "system";
+}
+
+function renderThemeBootstrap(config: DocsConfig & Record<string, any>): string {
+  const defaultTheme = resolveDefaultTheme(config);
+  const toggle = config.themeToggle;
+  const allowStoredTheme =
+    toggle !== false && !(toggle && typeof toggle === "object" && toggle.enabled === false);
+
+  return `<script>(()=>{try{const fallback=${JSON.stringify(defaultTheme)};const stored=${allowStoredTheme ? 'localStorage.getItem("theme")' : "null"};const selected=stored==="light"||stored==="dark"||stored==="system"?stored:fallback;const resolved=selected==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):selected;const root=document.documentElement;root.classList.remove("light","dark");root.classList.add(resolved);root.style.colorScheme=resolved}catch{}})()</script>`;
+}
+
 function renderFarmDocsDocument(input: {
   config: DocsConfig & Record<string, any>;
   data: DocsServerLoadResult;
@@ -2534,9 +2554,11 @@ function renderFarmDocsDocument(input: {
   const rootClasses = runtimeFontClasses(input.fonts);
   const rootStyle = runtimeFontStyle(input.fonts);
   const fontPreloads = runtimeFontPreloads(input.fonts).markup;
+  const defaultTheme = resolveDefaultTheme(config);
+  const fallbackTheme = defaultTheme === "dark" ? "dark" : "light";
 
   return `<!doctype html>
-<html class="dark" lang="${escapeDocumentText(data.locale ?? "en")}" data-docs-theme="${escapeDocumentText(themeName)}" data-farm-docs-runtime="true">
+<html class="${fallbackTheme}" lang="${escapeDocumentText(data.locale ?? "en")}" data-docs-theme="${escapeDocumentText(themeName)}" data-farm-docs-runtime="true">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -2544,6 +2566,7 @@ function renderFarmDocsDocument(input: {
   <title>${escapeDocumentText(data.title)}</title>
   ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
   ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
+  ${renderThemeBootstrap(config)}
   ${fontPreloads}
   <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
   ${input.stylesheets
@@ -2588,6 +2611,36 @@ export function createFarmDocsRuntimeHandler(
           },
         },
       );
+    }
+
+    if (
+      request.method.toUpperCase() === "GET" &&
+      request.headers.get(FARM_DOCS_NAVIGATION_HEADER) === "1" &&
+      isDocsPageRequest(runtimeConfig, request)
+    ) {
+      try {
+        const data = await docsServer.load({ pathname: url.pathname });
+        return Response.json(
+          { data },
+          {
+            headers: {
+              "Cache-Control": "no-store",
+              Vary: FARM_DOCS_NAVIGATION_HEADER,
+            },
+          },
+        );
+      } catch (error) {
+        const status =
+          error &&
+          typeof error === "object" &&
+          typeof (error as { status?: unknown }).status === "number"
+            ? (error as { status: number }).status
+            : 500;
+        if (status === 404) {
+          return Response.json({ error: "Documentation page not found." }, { status });
+        }
+        throw error;
+      }
     }
 
     if (!isHtmlDocsPageRequest(runtimeConfig, request)) {

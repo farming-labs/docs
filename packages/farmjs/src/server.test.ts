@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDocsServer, createFarmDocsRuntimeHandler } from "./server.js";
+import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 
 const config = {
   entry: "docs",
@@ -284,6 +285,45 @@ Build a Farm application.
 });
 
 describe("createFarmDocsRuntimeHandler", () => {
+  it("returns page data for client-side documentation navigation", async () => {
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...config,
+        _preloadedContent: {
+          ...config._preloadedContent,
+          "/docs/guides.md": `---\ntitle: Guides\n---\n# Guides`,
+        },
+      },
+      {
+        clientEntry: "/farm-client.js",
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+        }),
+      },
+    );
+
+    const response = await handler(
+      new Request("https://farm.example/docs/guides", {
+        headers: {
+          Accept: "application/json",
+          [FARM_DOCS_NAVIGATION_HEADER]: "1",
+        },
+      }),
+    );
+    const payload = await response?.json();
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("content-type")).toContain("application/json");
+    expect(response?.headers.get("cache-control")).toBe("no-store");
+    expect(payload).toMatchObject({
+      data: {
+        title: "Guides",
+        url: "/docs/guides",
+        sourcePath: "/docs/guides.md",
+      },
+    });
+  });
+
   it("serves the bundled adapter CSS without a runtime filesystem dependency", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",
@@ -318,6 +358,31 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(html).toContain('<link rel="stylesheet" href="/src/app/globals.css">');
     expect(html?.indexOf("/__farm_docs/browser.css")).toBeLessThan(
       html?.indexOf("/src/app/globals.css") ?? -1,
+    );
+  });
+
+  it("resolves the stored theme before loading documentation styles", async () => {
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...config,
+        themeToggle: { enabled: true, default: "light" },
+      },
+      {
+        clientEntry: "/farm-client.js",
+        stylesheets: ["/src/app/globals.css"],
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+        }),
+      },
+    );
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response?.text();
+
+    expect(html).toContain('<html class="light"');
+    expect(html).toContain('localStorage.getItem("theme")');
+    expect(html?.indexOf('localStorage.getItem("theme")')).toBeLessThan(
+      html?.indexOf("/__farm_docs/browser.css") ?? -1,
     );
   });
 

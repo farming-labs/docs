@@ -358,7 +358,11 @@ function isDocsNavigationPath(pathname: string, entry: string, publicPath: strin
   return pathname === publicPath || pathname.startsWith(`${publicPath}/`);
 }
 
-function installDocsPathNavigationGuard(entry: string, publicPath: string) {
+function installDocsPathNavigationGuard(
+  entry: string,
+  publicPath: string,
+  navigate: (url: string) => void | Promise<void>,
+) {
   const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
   if (publicPath === normalizedEntry) return undefined;
 
@@ -395,7 +399,7 @@ function installDocsPathNavigationGuard(entry: string, publicPath: string) {
       }
 
       event.preventDefault();
-      window.location.assign(nextHref);
+      void navigate(nextHref);
     } catch {
       // Ignore malformed links and leave them untouched.
     }
@@ -567,6 +571,7 @@ export function DocsPageClient({
   analytics = false,
   children,
 }: DocsPageClientProps) {
+  const router = useRouter();
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
@@ -609,8 +614,8 @@ export function DocsPageClient({
   }, [analytics, activeLocale, browserSearch, entry, isChangelogRoute, normalizedPath]);
 
   useEffect(() => {
-    return installDocsPathNavigationGuard(entry, resolvedPublicPath);
-  }, [entry, resolvedPublicPath]);
+    return installDocsPathNavigationGuard(entry, resolvedPublicPath, (url) => router.push(url));
+  }, [entry, resolvedPublicPath, router]);
 
   const resolvedReadingTime = !isChangelogRoute
     ? readingTimeProp !== undefined
