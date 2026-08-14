@@ -95,6 +95,8 @@ pnpm exec docs agent compact --all
 pnpm exec docs agent compact --changed
 pnpm exec docs agent compact --stale
 pnpm exec docs agent compact --stale --include-missing
+pnpm exec docs agent compact --review --reviewed-by "docs-team" --reason "Preserve reviewed operator guidance" /docs/configuration
+pnpm exec docs agent compact --check
 ```
 
 Behavior:
@@ -113,6 +115,15 @@ Behavior:
 - too-large inherited `minOutputTokens` is clamped down
 - hidden provenance lets doctor distinguish fresh, stale, modified, unknown, and missing-budget
   states
+- `--review` records source, settings, and output hashes in
+  `.farming-labs/agent-compaction-reviews.json` without rewriting `agent.md` or calling the
+  compressor
+- `--review` requires explicit pages, `--reviewed-by`, and `--reason`; use
+  `--review-manifest <path>` or `agent.compact.reviewManifestPath` for a custom project-relative
+  manifest
+- reviewed entries become invalid when the resolved page source, compaction settings, or reviewed
+  `agent.md` body changes; `--check` fails until the entry is inspected and deliberately reviewed
+  again
 
 Recommended config:
 
@@ -125,6 +136,7 @@ agent: {
     model: "docs-cloud-compress-v1",
     aggressiveness: 0.3,
     protectJson: true,
+    reviewManifestPath: ".farming-labs/agent-compaction-reviews.json",
   },
 }
 ```

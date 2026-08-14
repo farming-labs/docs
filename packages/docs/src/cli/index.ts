@@ -501,6 +501,7 @@ ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact --changed")}             Compact only docs pages changed in the current git working tree
   ${pc.cyan("agent compact --stale")}               Refresh only stale generated ${pc.dim("agent.md")} files
   ${pc.cyan("agent compact --check")}               Fail when generated ${pc.dim("agent.md")} files are stale or required files are missing
+  ${pc.cyan("agent compact --review <page...>")}    Record hash-bound human review without rewriting ${pc.dim("agent.md")}
   ${pc.cyan("--page <slug|path>")}                  Repeatable explicit page flag; positional page args work too
   ${pc.cyan("--include-missing")}                   With ${pc.cyan("--stale")}, also create explicit or token-budget pages missing ${pc.dim("agent.md")}
   ${pc.cyan("--api-key <key>")}                     Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}

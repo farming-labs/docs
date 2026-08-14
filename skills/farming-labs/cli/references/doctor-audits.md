@@ -46,6 +46,7 @@ Doctor checks:
 - golden retrieval, citation, version, answer, example, and budget tasks
 - Agent Skill frontmatter, budgets, shallow references, compatibility, and script guidance
 - generated `agent.md` freshness and compaction defaults
+- hash-bound reviewed `agent.md` exceptions, including invalid or orphaned review records
 - OKF trust-metadata enablement and pages beyond their resolved `stale_after` date
 
 Command health is static. It recognizes constrained package/CLI commands and safe probes but never

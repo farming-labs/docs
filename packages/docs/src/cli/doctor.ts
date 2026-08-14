@@ -99,7 +99,12 @@ import {
   resolveDocsContentDir,
   resolveDocsProjectRoot,
 } from "./config.js";
-import { compactAgentDocs, inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
+import {
+  compactAgentDocs,
+  inspectAgentCompactionState,
+  loadAgentCompactionReviews,
+  scanDocsPageTargets,
+} from "./agent.js";
 import type { AgentCompactOptions } from "./agent.js";
 import { resolveGoldenEvaluationInput } from "./golden-evaluations.js";
 import { detectFramework, type Framework } from "./utils.js";
@@ -174,6 +179,9 @@ export interface AgentDoctorCoverage {
 
 export interface AgentDoctorCompactionCoverage {
   freshGeneratedPages: number;
+  reviewedGeneratedPages: number;
+  invalidReviewedPages: number;
+  orphanedReviews: number;
   staleGeneratedPages: number;
   modifiedGeneratedPages: number;
   unknownGeneratedPages: number;
@@ -1180,6 +1188,9 @@ function buildCoverage(
     explicitCoverage,
     compaction: {
       freshGeneratedPages: 0,
+      reviewedGeneratedPages: 0,
+      invalidReviewedPages: 0,
+      orphanedReviews: 0,
       staleGeneratedPages: 0,
       modifiedGeneratedPages: 0,
       unknownGeneratedPages: 0,
@@ -1216,22 +1227,37 @@ function buildCompactionCoverage(
 
   const coverage: AgentDoctorCompactionCoverage = {
     freshGeneratedPages: 0,
+    reviewedGeneratedPages: 0,
+    invalidReviewedPages: 0,
+    orphanedReviews: 0,
     staleGeneratedPages: 0,
     modifiedGeneratedPages: 0,
     unknownGeneratedPages: 0,
     tokenBudgetMissingPages: 0,
     otherMissingPages: 0,
   };
+  const reviewRecords = loadAgentCompactionReviews(rootDir, defaults.reviewManifestPath);
+  const inspectionDefaults: AgentCompactOptions = { ...defaults, reviewRecords };
+  const targetRoutes = new Set(targets.map((target) => target.url));
+  coverage.orphanedReviews = reviewRecords.filter(
+    (review) => !targetRoutes.has(review.route),
+  ).length;
 
   for (const page of pages) {
     const target = targetsBySlug.get(page.slug);
     if (!target) continue;
 
-    const state = inspectAgentCompactionState(page, target, defaults);
+    const state = inspectAgentCompactionState(page, target, inspectionDefaults);
 
     switch (state.status) {
       case "fresh":
         coverage.freshGeneratedPages += 1;
+        break;
+      case "reviewed":
+        coverage.reviewedGeneratedPages += 1;
+        break;
+      case "review-invalid":
+        coverage.invalidReviewedPages += 1;
         break;
       case "stale":
         coverage.staleGeneratedPages += 1;
@@ -1258,12 +1284,24 @@ function compactionFreshnessScore(
   compactConfigured: boolean,
 ): { status: DoctorStatus; score: number; recommendation?: string } {
   const hasActionableIssues =
+    coverage.invalidReviewedPages > 0 ||
+    coverage.orphanedReviews > 0 ||
     coverage.staleGeneratedPages > 0 ||
     coverage.modifiedGeneratedPages > 0 ||
     coverage.tokenBudgetMissingPages > 0;
 
   if (hasActionableIssues) {
     const recommendations: string[] = [];
+    if (coverage.invalidReviewedPages > 0) {
+      recommendations.push(
+        "Inspect every changed source/settings/output hash, then rerun docs agent compact --review with an explicit reviewer and rationale only when the preserved agent.md remains correct.",
+      );
+    }
+    if (coverage.orphanedReviews > 0) {
+      recommendations.push(
+        "Remove or replace orphaned entries in the agent compaction review manifest.",
+      );
+    }
     if (coverage.staleGeneratedPages > 0) {
       recommendations.push(
         "Run docs agent compact --stale to refresh stale generated agent.md files.",
@@ -1294,7 +1332,7 @@ function compactionFreshnessScore(
     };
   }
 
-  if (coverage.freshGeneratedPages > 0) {
+  if (coverage.freshGeneratedPages > 0 || coverage.reviewedGeneratedPages > 0) {
     return {
       status: "pass",
       score: compactConfigured ? 5 : 4,
@@ -3128,6 +3166,9 @@ export async function inspectAgentReadiness(
         explicitCoverage: 0,
         compaction: {
           freshGeneratedPages: 0,
+          reviewedGeneratedPages: 0,
+          invalidReviewedPages: 0,
+          orphanedReviews: 0,
           staleGeneratedPages: 0,
           modifiedGeneratedPages: 0,
           unknownGeneratedPages: 0,
@@ -3925,7 +3966,7 @@ export async function inspectAgentReadiness(
       compactionResult.status,
       compactionResult.score,
       5,
-      `${compactionCoverage.freshGeneratedPages} fresh, ${compactionCoverage.staleGeneratedPages} stale, ${compactionCoverage.modifiedGeneratedPages} modified, ${compactionCoverage.unknownGeneratedPages} unknown, ${compactionCoverage.tokenBudgetMissingPages} token-budget missing, and ${compactionCoverage.otherMissingPages} other missing page${compactionCoverage.otherMissingPages === 1 ? "" : "s"} across compactable docs pages.` +
+      `${compactionCoverage.freshGeneratedPages} fresh, ${compactionCoverage.reviewedGeneratedPages} reviewed, ${compactionCoverage.invalidReviewedPages} invalid reviews, ${compactionCoverage.orphanedReviews} orphaned reviews, ${compactionCoverage.staleGeneratedPages} stale, ${compactionCoverage.modifiedGeneratedPages} modified, ${compactionCoverage.unknownGeneratedPages} unknown, ${compactionCoverage.tokenBudgetMissingPages} token-budget missing, and ${compactionCoverage.otherMissingPages} other missing page${compactionCoverage.otherMissingPages === 1 ? "" : "s"} across compactable docs pages.` +
         (compactConfigured
           ? " agent.compact defaults are configured."
           : " No agent.compact defaults were found in docs config."),
@@ -4367,7 +4408,7 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
     );
   }
   console.log(
-    `${pc.bold("Generated agent.md freshness:")} ${report.coverage.compaction.freshGeneratedPages} fresh ${pc.dim("•")} ${report.coverage.compaction.staleGeneratedPages} stale ${pc.dim("•")} ${report.coverage.compaction.modifiedGeneratedPages} modified ${pc.dim("•")} ${report.coverage.compaction.tokenBudgetMissingPages} token-budget missing`,
+    `${pc.bold("Generated agent.md freshness:")} ${report.coverage.compaction.freshGeneratedPages} fresh ${pc.dim("•")} ${report.coverage.compaction.reviewedGeneratedPages} reviewed ${pc.dim("•")} ${report.coverage.compaction.invalidReviewedPages} invalid reviews ${pc.dim("•")} ${report.coverage.compaction.staleGeneratedPages} stale ${pc.dim("•")} ${report.coverage.compaction.modifiedGeneratedPages} modified ${pc.dim("•")} ${report.coverage.compaction.tokenBudgetMissingPages} token-budget missing`,
   );
 
   if (report.fixes && report.fixes.length > 0) {
@@ -4529,13 +4570,18 @@ async function runAgentDoctorFixes(
     compaction.staleGeneratedPages > 0 || compaction.tokenBudgetMissingPages > 0;
 
   if (!shouldRunCompaction) {
-    if (compaction.modifiedGeneratedPages > 0 || compaction.unknownGeneratedPages > 0) {
+    if (
+      compaction.invalidReviewedPages > 0 ||
+      compaction.orphanedReviews > 0 ||
+      compaction.modifiedGeneratedPages > 0 ||
+      compaction.unknownGeneratedPages > 0
+    ) {
       fixes.push({
         id: "agent-compact",
         title: "agent compact",
         status: "skipped",
         detail:
-          "Only modified or unknown generated agent.md files need attention; doctor --fix leaves those for manual review.",
+          "Only invalid/orphaned reviews or modified/unknown agent.md files need attention; doctor --fix leaves those for manual review.",
       });
     }
 

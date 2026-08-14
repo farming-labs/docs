@@ -22,5 +22,12 @@ provenance was refreshed without accepting the lower-quality text. The final cor
 | `/docs/customization/agent-primitive` | Unknown / hand-authored | Preserve | This is the canonical audience-projection, discovery, feedback, and Agent Skills operating guide. |
 | `/docs/customization/sidebar` | Unknown / hand-authored | Preserve | This is a concise, intentionally scoped sidebar answer guide rather than generated page compression. |
 
-The CI freshness check allows reviewed modified and unknown files, but fails when a
-provenance-generated file is stale or when a token-budget page is missing its required `agent.md`.
+These decisions are now recorded in the machine-readable
+`website/.farming-labs/agent-compaction-reviews.json` manifest. Each entry binds the decision to
+the resolved page source, compaction settings, and preserved `agent.md` body hashes, plus the
+reviewer, timestamp, and rationale.
+
+The CI freshness check accepts matching reviewed entries, but fails when any reviewed hash drifts,
+a manifest entry becomes orphaned, a provenance-generated file is stale, or a token-budget page is
+missing its required `agent.md`. Re-review requires an explicit route, reviewer, and rationale; it
+never rewrites the preserved `agent.md`.

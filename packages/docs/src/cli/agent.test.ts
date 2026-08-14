@@ -86,6 +86,26 @@ describe("parseAgentCompactArgs", () => {
     });
   });
 
+  it("parses hash-bound review metadata", () => {
+    expect(
+      parseAgentCompactArgs([
+        "--review",
+        "--reviewed-by",
+        "docs-team",
+        "--reason=Preserve operator guidance",
+        "--review-manifest",
+        ".farming-labs/reviews.json",
+        "/docs/configuration",
+      ]),
+    ).toEqual({
+      review: true,
+      reviewedBy: "docs-team",
+      reviewReason: "Preserve operator guidance",
+      reviewManifestPath: ".farming-labs/reviews.json",
+      pages: ["/docs/configuration"],
+    });
+  });
+
   it("parses changed compaction flags", () => {
     expect(parseAgentCompactArgs(["--changed", "installation"])).toEqual({
       changed: true,
@@ -1185,7 +1205,7 @@ First body.
     expect(
       logs.some((line) =>
         line.includes(
-          "Agent compaction freshness check passed: 1 fresh, 0 stale, 0 modified, 0 unknown, 0 required missing, and 0 optional missing.",
+          "Agent compaction freshness check passed: 1 fresh, 0 reviewed, 0 invalid reviews, 0 orphaned reviews, 0 stale, 0 modified, 0 unknown, 0 required missing, and 0 optional missing.",
         ),
       ),
     ).toBe(true);
@@ -1207,8 +1227,94 @@ Updated body.
     );
 
     await expect(compactAgentDocs({ check: true })).rejects.toThrow(
-      "Agent compaction freshness check failed: 0 fresh, 1 stale",
+      "Agent compaction freshness check failed: 0 fresh, 0 reviewed, 0 invalid reviews, 0 orphaned reviews, 1 stale",
     );
+  });
+
+  it("records reviewed agent.md hashes and fails when reviewed content or source drifts", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", agent: { compact: { model: "docs-cloud-compress-v1" } } };`,
+      "utf-8",
+    );
+    const pageDir = path.join(tmpDir, "app", "docs", "operations");
+    mkdirSync(pageDir, { recursive: true });
+    const pagePath = path.join(pageDir, "page.mdx");
+    const agentPath = path.join(pageDir, "agent.md");
+    writeFileSync(
+      pagePath,
+      `---
+title: "Operations"
+description: "Operate the docs service"
+---
+
+# Operations
+
+Original source guidance.
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      agentPath,
+      "# Operations for agents\n\nPreserve the safe operator workflow.\n",
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+    await expect(
+      compactAgentDocs({
+        review: true,
+        reviewedBy: "docs-team",
+        reviewReason: "Preserve reviewed operator safety guidance.",
+        pages: ["operations"],
+      }),
+    ).resolves.toBeUndefined();
+
+    const manifest = JSON.parse(
+      readFileSync(path.join(tmpDir, ".farming-labs", "agent-compaction-reviews.json"), "utf-8"),
+    ) as {
+      version: number;
+      reviews: Array<Record<string, string>>;
+    };
+    expect(manifest.version).toBe(1);
+    expect(manifest.reviews).toEqual([
+      expect.objectContaining({
+        route: "/docs/operations",
+        reviewedBy: "docs-team",
+        reason: "Preserve reviewed operator safety guidance.",
+        sourceHash: expect.stringMatching(/^fnv1a64:/),
+        settingsHash: expect.stringMatching(/^fnv1a64:/),
+        outputHash: expect.stringMatching(/^fnv1a64:/),
+      }),
+    ]);
+
+    await expect(compactAgentDocs({ check: true })).resolves.toBeUndefined();
+    expect(
+      logs.some((line) =>
+        line.includes(
+          "Agent compaction freshness check passed: 0 fresh, 1 reviewed, 0 invalid reviews",
+        ),
+      ),
+    ).toBe(true);
+
+    writeFileSync(agentPath, "# Operations for agents\n\nChanged after review.\n", "utf-8");
+    await expect(compactAgentDocs({ check: true })).rejects.toThrow("1 invalid reviews");
+
+    await compactAgentDocs({
+      review: true,
+      reviewedBy: "docs-team",
+      reviewReason: "Re-reviewed the intentional agent guidance update.",
+      pages: ["operations"],
+    });
+    writeFileSync(
+      pagePath,
+      readFileSync(pagePath, "utf-8").replace(
+        "Original source guidance.",
+        "Source guidance changed after review.",
+      ),
+      "utf-8",
+    );
+    await expect(compactAgentDocs({ check: true })).rejects.toThrow("1 invalid reviews");
   });
 
   it("skips modified generated agent.md files during --stale runs", async () => {

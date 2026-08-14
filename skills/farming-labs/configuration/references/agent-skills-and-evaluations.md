@@ -215,6 +215,7 @@ agent: {
     model: "docs-cloud-compress-v1",
     aggressiveness: 0.3,
     protectJson: true,
+    reviewManifestPath: ".farming-labs/agent-compaction-reviews.json",
   },
 }
 ```
@@ -229,8 +230,14 @@ Supported defaults include `apiKeyEnv`, `baseUrl`, `model`, `aggressiveness`,
 - When the page budget is below `minOutputTokens`, the CLI clamps the minimum down.
 - `--changed` uses staged, unstaged, and untracked docs changes.
 - `--stale` refreshes generated files whose source or compaction settings changed.
+- `--review` records an auditable, hash-bound checkpoint for an intentional modified or
+  hand-authored `agent.md`; the default manifest is
+  `.farming-labs/agent-compaction-reviews.json`. A reviewed entry is invalidated by source,
+  settings, or output changes and then fails `--check` until a person inspects and reviews it
+  again.
 
 ```bash
 pnpm exec docs agent compact installation --dry-run
 pnpm exec docs agent compact --stale --include-missing
+pnpm exec docs agent compact --review --reviewed-by "docs-team" --reason "Preserve reviewed guidance" /docs/configuration
 ```
