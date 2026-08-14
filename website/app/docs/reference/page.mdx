@@ -368,6 +368,37 @@ That keeps the files under `app/docs` and serves them from the public root:
 `next.config.ts` for a docs-only deployment. Attach the docs deployment to a subdomain like
 `docs.example.com`, then root URLs resolve on that subdomain.
 
+## Farm.js adapter — `withDocs` Vite config
+
+When using the `@farming-labs/farmjs` adapter, `withDocs()` accepts an optional `vite` field on the config object passed to it.
+
+| Option | Type | Description |
+| ------ | ---- | ----------- |
+| `vite` | `FarmViteConfigLike \| ((config: FarmViteConfigLike) => FarmViteConfigLike)` | Optional Vite config object or factory function. The adapter injects its MDX/remark transform plugin ahead of any plugins you supply here. |
+
+Both object and function forms are supported:
+
+```ts title="farm.config.ts"
+import { withDocs } from "@farming-labs/farmjs";
+
+export default withDocs({
+  // object form
+  vite: {
+    plugins: [myPlugin()],
+  },
+});
+```
+
+```ts title="farm.config.ts"
+import { withDocs } from "@farming-labs/farmjs";
+
+export default withDocs({
+  // factory form — receives the resolved config and returns a merged object
+  vite: (config) => ({ ...config, plugins: [myPlugin()] }),
+});
+```
+
+In both cases the adapter-owned MDX transform is prepended before any plugins you provide, so MDX processing always runs first.
 <Callout type="warning" title="Root docs own root routes">
   Use `docsPath: ""` when the deployment is dedicated to docs. If the same app needs a marketing
   homepage at `/`, keep `docsPath` unset so docs stay under `/docs`.
