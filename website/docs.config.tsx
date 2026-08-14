@@ -1,4 +1,8 @@
-import { defineDocs } from "@farming-labs/docs";
+import {
+  defineDocs,
+  type DocsAgentEvaluationAnswerRunner,
+  type DocsAgentGoldenTask,
+} from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import {
   BookOpen,
@@ -67,6 +71,57 @@ const searchConfig =
         endpoint: "/api/docs/mcp",
       };
 
+const codeBlocksRunner = process.env.VERCEL_TOKEN
+  ? ({ provider: "vercel-sandbox", tokenEnv: "VERCEL_TOKEN" } as const)
+  : ({ provider: "local", timeoutMs: 5_000 } as const);
+
+const runGroundedEvaluationAnswer: DocsAgentEvaluationAnswerRunner = ({
+  task,
+  context,
+  sources,
+}) => {
+  const excerpt = context.split("\n---\n", 1)[0]?.trim() || "No grounded context was retrieved.";
+  return {
+    text: `Grounded evaluation answer for ${task.id}:\n\n${excerpt}`,
+    citations: Array.from(new Set(sources.map((source) => source.url))),
+  };
+};
+
+function withAgentEvaluationCoverage(tasks: DocsAgentGoldenTask[]): DocsAgentGoldenTask[] {
+  const evaluationCitationAllowlist = Array.from(
+    new Set(
+      tasks.flatMap((task) => [
+        ...task.expect.relevantSources,
+        ...(task.expect.allowedSources ?? []),
+      ]),
+    ),
+  );
+
+  return tasks.map((task) => ({
+    ...task,
+    expect: {
+      ...task.expect,
+      answer: task.expect.answer ?? {
+        includes: ["Grounded evaluation answer"],
+        requiredCitations: task.expect.requiredCitations ?? task.expect.relevantSources,
+        allowedCitations: evaluationCitationAllowlist,
+        forbiddenCitations: task.expect.forbiddenSources,
+      },
+      safety: {
+        poisonedCitations: ["https://poison.invalid/docs"],
+        authenticatedContent: {
+          forbiddenSources: ["/docs/private-control-plane"],
+          forbiddenText: ["PRIVATE_AUTH_CANARY"],
+        },
+        freshness: {},
+        rejectConflictingFrameworkVersions: true,
+        deletedSectionTombstones: ["/docs/removed-agent-surface"],
+        ...task.expect.safety,
+      },
+    },
+  }));
+}
+
 const T3ChatIcon = () => (
   <svg width="16" height="16" viewBox="0 0 512 512" fill="none" aria-hidden="true">
     <path
@@ -116,8 +171,7 @@ export default defineDocs({
         provider: "metadata",
       },
       runner: {
-        provider: "vercel-sandbox",
-        tokenEnv: "VERCEL_TOKEN",
+        ...codeBlocksRunner,
       },
       missingEnv: "skip",
       unsupportedLanguage: "skip",
@@ -305,9 +359,14 @@ export default defineDocs({
     },
     evaluations: {
       surface: "mcp-context",
+      allowNetwork: true,
       tokenBudget: 5_000,
       topK: 3,
-      tasks: [
+      answer: {
+        provider: "callback",
+        run: runGroundedEvaluationAnswer,
+      },
+      tasks: withAgentEvaluationCoverage([
         {
           id: "choose-project-workflow",
           query:
@@ -687,7 +746,31 @@ export default defineDocs({
             minUsefulByteRatio: 0.4,
           },
         },
-      ],
+        {
+          id: "execute-codeblocks-smoke",
+          query:
+            "Run the runnable codeblocks-smoke.js example and verify that metadata is marked runnable",
+          topK: 5,
+          tokenBudget: 20_000,
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/configuration"],
+            allowedSources: ["/docs/cli", "/docs/guides/agent-friendly-docs"],
+            maxFirstRelevantRank: 3,
+            examples: [
+              {
+                source: "/docs/configuration",
+                language: "js",
+                title: "codeblocks-smoke.js",
+                runnable: true,
+                includes: ["metadata.runnable", 'console.log("metadata ok")'],
+                verification: "execute",
+              },
+            ],
+          },
+        },
+      ]),
     },
   },
   mcp: {
