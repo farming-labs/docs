@@ -1,0 +1,719 @@
+/* ─── Tweaks dialog ─────────────────────────────────────────────────
+ *
+ * Floating panel readers (and theme authors) use to live-tweak theme
+ * tokens. Visual language: frosted-glass — the dialog itself uses a
+ * translucent background with a moderate backdrop-filter blur, and
+ * interactive elements inside it use a heavier blur so the layering
+ * reads as nested glass rather than a flat surface.
+ *
+ * Variants:
+ *   .fd-tweaks-trigger-sidebar   — pill button portal-mounted next to
+ *                                  the host's [data-theme-toggle].
+ *                                  border-radius matches the toggle's
+ *                                  computed radius via
+ *                                  --fd-tweaks-trigger-radius-match.
+ *   .fd-tweaks-trigger-floating  — fixed bottom-right FAB.
+ *     [data-fallback]            — hidden at md+ when used as fallback.
+ */
+
+@keyframes fd-tweaks-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─── Backdrop ──────────────────────────────────────────────────────── */
+
+.fd-tweaks-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* ─── Dialog — frosted-glass panel ──────────────────────────────────── */
+
+.fd-tweaks-dialog {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  left: auto;
+  z-index: 60;
+  width: 320px;
+  max-width: calc(100vw - 2rem);
+  pointer-events: auto;
+  transition: left 220ms cubic-bezier(0.2, 0.8, 0.2, 1), right 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* 18% opaque: enough to give the panel a tint but transparent enough
+   * for the backdrop-filter blur to be visible. Higher than ~25% makes
+   * the panel read as solid and kills the glass effect. */
+  background: color-mix(in srgb, var(--color-fd-card, var(--color-fd-background, #0a0a0a)) 18%, transparent);
+  color: var(--color-fd-foreground, #fafafa);
+  border: 1px solid color-mix(in srgb, var(--color-fd-border, rgba(255, 255, 255, 0.12)) 45%, transparent);
+  border-radius: 0.875rem;
+  /* Strong blur + saturation boost — standard frosted-glass recipe. */
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    0 24px 60px -12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font-family: var(--fd-font-sans, system-ui, sans-serif);
+  animation: fd-tweaks-slide-in 180ms ease-out;
+  /* Isolate so nested backdrop-filter on inner elements creates a layered
+   * glass effect within the dialog rather than blurring page content twice. */
+  isolation: isolate;
+}
+
+/* Drag-to-snap side variants — defaults to right above; left mirrors. */
+.fd-tweaks-dialog[data-side="left"] {
+  left: 1rem;
+  right: auto;
+}
+
+@media (max-width: 480px) {
+  .fd-tweaks-dialog,
+  .fd-tweaks-dialog[data-side="left"] {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+}
+
+/* ─── Header ────────────────────────────────────────────────────────── */
+
+.fd-tweaks-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-border) 60%, transparent);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.fd-tweaks-title {
+  margin-right: auto;
+}
+
+.fd-tweaks-header:active {
+  cursor: grabbing;
+}
+
+.fd-tweaks-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-tweaks-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: transparent;
+  color: var(--color-fd-muted-foreground);
+  border: 0;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.fd-tweaks-close:hover {
+  background: color-mix(in srgb, var(--color-fd-accent) 70%, transparent);
+  color: var(--color-fd-foreground);
+}
+
+/* ─── Body ──────────────────────────────────────────────────────────── */
+
+.fd-tweaks-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 0.875rem;
+}
+
+.fd-tweaks-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+}
+
+.fd-tweaks-row-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-tweaks-row-value {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-fd-foreground);
+}
+
+/* ─── Color swatches ────────────────────────────────────────────────── */
+
+.fd-tweaks-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.375rem;
+}
+
+.fd-tweaks-swatch {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 70%, transparent);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+  padding: 0;
+  /* Nested blur so swatches feel like floating tiles. */
+  backdrop-filter: blur(28px);
+}
+
+.fd-tweaks-swatch:hover {
+  transform: scale(1.06);
+}
+
+.fd-tweaks-swatch[data-selected] {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-fd-background, #0a0a0a) 85%, transparent),
+    0 0 0 4px var(--color-fd-foreground, #fafafa);
+}
+
+.fd-tweaks-swatch-check {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+/* ─── Chip group ────────────────────────────────────────────────────── */
+
+.fd-tweaks-chips {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 40%, transparent);
+  border-radius: 0.5rem;
+  /* Very translucent — heavy blur compounds with the dialog's own blur
+   * to give a "deeper" frosted look on the inner groove. */
+  background: color-mix(in srgb, var(--color-fd-muted) 10%, transparent);
+  backdrop-filter: blur(40px);
+  isolation: isolate;
+}
+
+.fd-tweaks-chip {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--color-fd-muted-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.fd-tweaks-chip:hover {
+  color: var(--color-fd-foreground);
+}
+
+.fd-tweaks-chip[data-selected] {
+  background: color-mix(in srgb, var(--color-fd-accent, var(--color-fd-foreground)) 22%, transparent);
+  color: var(--color-fd-foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(48px);
+}
+
+/* ─── Slider ────────────────────────────────────────────────────────── */
+
+.fd-tweaks-slider {
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: color-mix(in srgb, var(--color-fd-muted) 45%, transparent);
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.fd-tweaks-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-fd-primary);
+  border: 2px solid var(--color-fd-background, #0a0a0a);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.fd-tweaks-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-fd-primary);
+  border: 2px solid var(--color-fd-background, #0a0a0a);
+  cursor: pointer;
+}
+
+/* ─── Select (custom dropdown — cross-browser consistent) ──────────── */
+
+.fd-tweaks-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.fd-tweaks-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  height: 2rem;
+  padding: 0 0.625rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--color-fd-foreground);
+  background: color-mix(in srgb, var(--color-fd-background, transparent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 40%, transparent);
+  border-radius: 0.375rem;
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.fd-tweaks-select-trigger:hover {
+  border-color: color-mix(in srgb, var(--color-fd-foreground) 25%, var(--color-fd-border));
+  background: color-mix(in srgb, var(--color-fd-background, transparent) 18%, transparent);
+}
+
+.fd-tweaks-select-trigger:focus-visible {
+  border-color: var(--color-fd-primary);
+  box-shadow: 0 0 0 1px var(--color-fd-primary);
+}
+
+.fd-tweaks-select-trigger-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.fd-tweaks-select-chevron {
+  opacity: 0.5;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.fd-tweaks-select-trigger[data-open] .fd-tweaks-select-chevron {
+  transform: rotate(180deg);
+}
+
+.fd-tweaks-select-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--color-fd-popover, var(--color-fd-card));
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 65%, transparent);
+  border-radius: 0.5rem;
+  box-shadow:
+    0 10px 28px -10px rgba(0, 0, 0, 0.45),
+    0 4px 10px -4px rgba(0, 0, 0, 0.35);
+}
+
+.fd-tweaks-select-menu[data-flip-up] {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
+}
+
+.fd-tweaks-select-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fd-foreground) 65%, transparent);
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.fd-tweaks-select-option:hover {
+  color: var(--color-fd-foreground);
+  background: color-mix(in srgb, var(--color-fd-foreground) 6%, transparent);
+}
+
+.fd-tweaks-select-option[data-active] {
+  color: var(--color-fd-foreground);
+  background: color-mix(in srgb, var(--color-fd-foreground) 8%, transparent);
+}
+
+.fd-tweaks-select-option-dot {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.fd-tweaks-select-option[data-active] .fd-tweaks-select-option-dot {
+  background: var(--color-fd-primary);
+}
+
+/* ─── Author mode: section divider + label ───────────────────────────── */
+
+.fd-tweaks-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.fd-tweaks-section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-fd-border) 55%, transparent);
+}
+
+.fd-tweaks-section-label {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* ─── Author mode: color token grid ──────────────────────────────────── */
+
+.fd-tweaks-color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem 0.5rem;
+}
+
+.fd-tweaks-color-pair {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.375rem;
+  position: relative;
+}
+
+.fd-tweaks-color-swatch-mini {
+  width: 16px;
+  height: 16px;
+  border-radius: 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 70%, transparent);
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.fd-tweaks-color-swatch-mini:hover {
+  transform: scale(1.1);
+}
+
+.fd-tweaks-color-text {
+  width: 100%;
+  min-width: 0;
+  height: 1.625rem;
+  padding: 0 0.4rem;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  color: var(--color-fd-foreground);
+  background: color-mix(in srgb, var(--color-fd-background, transparent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 40%, transparent);
+  border-radius: 0.25rem;
+  outline: none;
+  backdrop-filter: blur(40px);
+  transition: border-color 0.15s;
+}
+
+.fd-tweaks-color-text:focus {
+  border-color: var(--color-fd-primary);
+}
+
+.fd-tweaks-color-label {
+  grid-column: 1 / -1;
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+  padding-inline-start: 1.625rem;
+  margin-top: -0.125rem;
+  line-height: 1;
+}
+
+/* ─── Author mode: code export panel ─────────────────────────────────── */
+
+.fd-tweaks-export {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 40%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--color-fd-background, transparent) 8%, transparent);
+  backdrop-filter: blur(40px);
+  overflow: hidden;
+}
+
+.fd-tweaks-export-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.375rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-border) 45%, transparent);
+}
+
+.fd-tweaks-export-tab {
+  padding: 0.25rem 0.5rem;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.fd-tweaks-export-tab:hover {
+  color: var(--color-fd-foreground);
+}
+
+.fd-tweaks-export-tab[data-selected] {
+  color: var(--color-fd-foreground);
+  background: color-mix(in srgb, var(--color-fd-accent) 60%, transparent);
+}
+
+.fd-tweaks-export-copy {
+  margin-inline-start: auto;
+  padding: 0.25rem 0.625rem;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+  background: color-mix(in srgb, var(--color-fd-muted) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 50%, transparent);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.fd-tweaks-export-copy:hover {
+  color: var(--color-fd-foreground);
+  background: color-mix(in srgb, var(--color-fd-accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--color-fd-foreground) 25%, var(--color-fd-border));
+}
+
+.fd-tweaks-export-code {
+  margin: 0;
+  padding: 0.5rem 0.625rem;
+  max-height: 200px;
+  overflow: auto;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  color: var(--color-fd-foreground);
+  white-space: pre;
+  background: transparent;
+}
+
+/* sugar-high token colors. The library emits inline style="color:var(--sh-*)"
+ * on each token; we define those vars here so they adapt to light/dark. */
+.fd-tweaks-export-code-highlighted {
+  --sh-class: #6366f1;
+  --sh-identifier: var(--color-fd-foreground);
+  --sh-sign: color-mix(in srgb, var(--color-fd-muted-foreground) 80%, transparent);
+  --sh-property: #0ea5e9;
+  --sh-entity: #0ea5e9;
+  --sh-jsxliterals: #8b5cf6;
+  --sh-string: #15803d;
+  --sh-keyword: #d946ef;
+  --sh-comment: color-mix(in srgb, var(--color-fd-muted-foreground) 70%, transparent);
+}
+
+.dark .fd-tweaks-export-code-highlighted {
+  --sh-class: #a5b4fc;
+  --sh-identifier: var(--color-fd-foreground);
+  --sh-sign: color-mix(in srgb, var(--color-fd-muted-foreground) 90%, transparent);
+  --sh-property: #7dd3fc;
+  --sh-entity: #7dd3fc;
+  --sh-jsxliterals: #c4b5fd;
+  --sh-string: #86efac;
+  --sh-keyword: #f0abfc;
+  --sh-comment: color-mix(in srgb, var(--color-fd-muted-foreground) 70%, transparent);
+}
+
+.fd-tweaks-export-code-highlighted .sh__line {
+  display: block;
+}
+
+/* Author dialog grows a bit wider for the 2-col color grid. When content
+ * exceeds the viewport height, the whole dialog scrolls (header and footer
+ * scroll along with the body). This is simpler and more robust than an
+ * inner flex-column with a scrolling body — the latter collapses to zero
+ * height in flex containers that have no explicit height to grow into. */
+.fd-tweaks-dialog:has(.fd-tweaks-color-grid) {
+  width: 360px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ─── Reset (header) ───────────────────────────────────────────────── */
+
+.fd-tweaks-reset {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: inherit;
+  color: var(--color-fd-muted-foreground);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 60%, transparent);
+  border-radius: 0.3125rem;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.fd-tweaks-reset:hover {
+  color: var(--color-fd-foreground);
+  border-color: color-mix(in srgb, var(--color-fd-foreground) 30%, var(--color-fd-border));
+  background: color-mix(in srgb, var(--color-fd-accent) 50%, transparent);
+}
+
+/* ─── Triggers ──────────────────────────────────────────────────────── */
+
+.fd-tweaks-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--color-fd-muted-foreground);
+  background: transparent;
+  border: 1px solid var(--color-fd-border);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.fd-tweaks-trigger:hover {
+  color: var(--color-fd-foreground);
+  background: var(--color-fd-accent);
+}
+
+.fd-tweaks-trigger[data-open] {
+  color: var(--color-fd-accent-foreground, var(--color-fd-foreground));
+  background: var(--color-fd-accent);
+  border-color: color-mix(in srgb, var(--color-fd-primary) 35%, var(--color-fd-border));
+}
+
+.fd-tweaks-trigger svg {
+  flex-shrink: 0;
+}
+
+/* Sidebar variant — border-radius is set dynamically by the auto-portal
+ * trigger from the host theme toggle's computed radius (see
+ * tweaks-dialog.tsx → TweaksAutoPortalTrigger). The default 1.5rem
+ * fallback covers the case where this is rendered manually without a
+ * portal context. */
+.fd-tweaks-trigger-sidebar {
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--fd-tweaks-trigger-radius-match, 1.5rem);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.fd-tweaks-trigger-sidebar .fd-tweaks-trigger-label {
+  text-transform: capitalize;
+}
+
+/* Floating variant — fixed FAB. When used as the fallback in
+ * position="both", it is hidden at md+ where the sidebar is visible. */
+.fd-tweaks-trigger-floating {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 40;
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--color-fd-card, var(--color-fd-background)) 22%, transparent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(28px) saturate(180%);
+}
+
+@media (min-width: 768px) {
+  .fd-tweaks-trigger-floating[data-fallback] {
+    display: none;
+  }
+}
+
