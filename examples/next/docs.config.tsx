@@ -76,7 +76,6 @@ const searchConfig: DocsSearchConfig | undefined =
 
 export default defineDocs({
   entry: "docs",
-  devTools: true,
   ...(searchConfig ? { search: searchConfig } : {}),
   observability: {
     console: "debug",
@@ -194,7 +193,6 @@ export default defineDocs({
     enabled: true,
     default: "dark",
   },
-  tweaks: { reader: true, author: process.env.NODE_ENV !== "production", position: "both" },
   og: {
     enabled: true,
     type: "dynamic",

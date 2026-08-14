@@ -36,7 +36,6 @@ export, and reader-facing UI configuration.
 | `agent` | unset | Compaction, evaluations, published skills, and A2A |
 | `review` | `true` | Review scoring, CI workflow, and severities |
 | `pageActions` | unset | Copy Markdown and Open in LLM actions |
-| `devTools` | `false` | Local visual MDX editor with apply and preview actions |
 | `ai` | unset | Ask AI configuration |
 | `search` | `true` | Simple, Typesense, Algolia, MCP, or custom search |
 | `cloud` | unset | Hosted preview/publish defaults |
@@ -166,22 +165,6 @@ export default defineDocs({
 - Publish the API catalog separately with host routing when static hosting must expose it.
 
 ## Reader-facing options
-
-### DevTools
-
-```ts
-devTools: true,
-
-// or
-devTools: {
-  enabled: true,
-},
-```
-
-The built-in DevTools editor is local-development only. It loads and writes the current MDX page
-through `/api/docs?devtools=page`, supports block and source editing, and can publish a preview
-through `/api/docs?devtools=publish` when `FARMING_CLOUD_API_KEY` or `FARMING_API_KEY` is available.
-It is hidden for `staticExport: true`, and its API rejects production or non-local requests.
 
 ### Reading time
 
