@@ -1,0 +1,181 @@
+---
+title: "From Material for MkDocs"
+description: "Migrate MkDocs Markdown, mkdocs.yml navigation, extensions, theme overrides, and plugins"
+icon: "file"
+order: 8
+related:
+  - /docs/migrations
+  - /docs/installation
+  - /docs/customization/sidebar
+  - /docs/customization/components
+  - /docs/configuration
+agent:
+  tokenBudget: 1750
+  task: Migrate a Material for MkDocs site into Farming Labs Docs.
+  outcome: MkDocs pages, nav order, assets, code, and converted Python Markdown extensions render in a buildable Farming Labs Docs project.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Preserve mkdocs.yml, docs, theme overrides, plugins, hooks, macros, includes, and dependency lock files.
+    - Record site_url, site_dir, use_directory_urls, nav, extra, and all Markdown extensions.
+    - Initialize the target runtime separately.
+  files:
+    - mkdocs.yml
+    - requirements.txt
+    - pyproject.toml
+    - docs.config.ts
+    - docs.config.tsx
+  commands:
+    - run: npx @farming-labs/docs init
+      description: Scaffold the selected Farming Labs target runtime.
+  sideEffects:
+    - Python Markdown extensions, Jinja macros, hooks, and theme overrides may be rewritten as MDX or application components.
+  verification:
+    - description: Build the target and compare mkdocs nav, routes, extensions, assets, macros, redirects, and search.
+      expect: Required routes resolve and no unconverted Python Markdown or Jinja syntax breaks MDX.
+  rollback:
+    - Keep the MkDocs build and deployment available until route and extension verification passes.
+  failureModes:
+    - symptom: Indented extension syntax renders as plain text.
+      resolution: Convert that Python Markdown extension family into supported Markdown or MDX across the corpus.
+    - symptom: A macro or plugin-generated page is missing.
+      resolution: Materialize its generated content or rebuild the behavior as an explicit target integration.
+---
+
+# Migrate from Material for MkDocs
+
+Material for MkDocs uses Markdown plus Python Markdown extensions, plugins, Jinja macros, and theme
+overrides. Standard prose moves directly, while `mkdocs.yml` navigation and extension syntax need
+structured conversion.
+
+<Callout type="warning" title="Inventory extensions before copying">
+  Read `markdown_extensions`, `plugins`, `hooks`, `extra`, and theme overrides first. Files that look
+  like ordinary Markdown may depend on Python-side preprocessing.
+</Callout>
+
+<Agent>
+Treat mkdocs.yml and its inherited config as the migration source of truth. Inventory docs_dir,
+site_url, use_directory_urls, nav, markdown_extensions, plugins, hooks, theme.custom_dir, extra_css,
+and extra_javascript. Search content for every enabled syntax before converting files.
+</Agent>
+
+## 1. Inventory the source
+
+Collect:
+
+- `mkdocs.yml` and any inherited config files
+- `docs_dir`, commonly `docs/`
+- explicit `nav`
+- `markdown_extensions`
+- `plugins`, `hooks`, macros, and generated pages
+- `theme.custom_dir` overrides
+- `extra_css`, `extra_javascript`, `extra`, and social metadata
+- `requirements.txt`, `pyproject.toml`, lock files, and plugin versions
+- redirects, versioning, localization, and deployment configuration
+
+## 2. Map the files
+
+| MkDocs | Farming Labs Docs |
+| --- | --- |
+| `docs_dir/**/*.md` | Target docs content tree |
+| `mkdocs.yml` `nav` | Directory hierarchy and page `order` |
+| `site_name` and metadata | `metadata` and navigation title |
+| `theme` settings | Theme factory and `theme.ui` |
+| `overrides/**` | Target components or application layout |
+| `stylesheets/**` | Global CSS or theme overrides |
+| `javascript/**` | Explicit application integration |
+| plugins and hooks | Built-in features, generated content, or custom build steps |
+
+## 3. Preserve routing
+
+Routes can depend on `docs_dir`, `site_url`, `use_directory_urls`, and plugins. Build a route list
+from the deployed site or MkDocs build before moving files.
+
+Translate `nav` in its exact YAML order. Headings become directory groups and file entries become
+pages. Add numeric `order` frontmatter and create landing pages for groups that need content.
+
+Preserve old paths through destination filenames or tested redirects.
+
+## 4. Convert frontmatter and macros
+
+Keep portable YAML fields such as `title`, `description`, `tags`, and dates. Review Material-specific
+fields and plugin metadata.
+
+Search for Jinja and macros:
+
+```text
+{{ variable }}
+{% include "file.md" %}
+{% if ... %}
+```
+
+Replace static values with resolved content. Replace reusable dynamic behavior with a registered
+component or explicit build step. Never leave Jinja syntax expecting MDX to evaluate it.
+
+## 5. Convert Markdown extensions
+
+| Material for MkDocs syntax | Target |
+| --- | --- |
+| `!!! note` / `??? note` admonitions | `<Callout>` or `<details>` |
+| `=== "Tab"` blocks | `<Tabs>` and `<Tab>` |
+| `--8<-- "include.md"` snippets | Local MDX import or copied shared content |
+| `:material-icon-name:` | Registered icon or text |
+| attribute lists `{ #id .class }` | Explicit heading ID or supported JSX props |
+| footnotes | Standard Markdown footnotes when supported |
+| task lists | Standard Markdown task lists |
+| code annotations | Code comments or adjacent explanation |
+| diagrams through plugins | Mermaid or a supported diagram component |
+
+Indentation is significant in Python Markdown extensions. Convert the entire block rather than
+editing only its opening line.
+
+## 6. Replace plugins and theme overrides
+
+Classify each plugin:
+
+- search → Farming Labs `search`
+- redirects → host/runtime redirects
+- versioning → explicit version routes or separate deployments
+- macros → resolved content or components
+- literate navigation → target file hierarchy
+- blog or generated pages → separate content/application migration
+- minification and sitemap → target build and `sitemap`
+
+Jinja templates under `theme.custom_dir` are application UI, not Markdown. Rebuild only the
+behavior still required using the target runtime and theme configuration.
+
+## 7. Move assets and links
+
+Copy assets from the docs tree or configured directories. Verify:
+
+- relative images
+- root-relative assets
+- downloadable files
+- image captions and alignment extensions
+- cross-page anchors
+- generated link references
+
+Do not copy the generated `site/` directory as source content.
+
+## 8. Validate and recover
+
+1. Run the target production build.
+2. Compare every `nav` entry and published route.
+3. Search the target for unconverted `!!!`, `???`, `===`, `--8<--`, `{{`, and `{%`.
+4. Test admonitions, tabs, includes, diagrams, code annotations, and assets.
+5. Verify redirects, search, versions, and locales.
+6. Fetch representative pages through `.md`.
+
+If extension syntax appears as text, convert that extension family corpus-wide. If plugin-generated
+pages are missing, materialize their output or keep the plugin-backed site until an explicit target
+replacement exists.
+
+## Source references
+
+- [Material for MkDocs navigation](https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/)
+- [Material for MkDocs reference](https://squidfunk.github.io/mkdocs-material/reference/)
+- [Material for MkDocs admonitions](https://squidfunk.github.io/mkdocs-material/reference/admonitions/)
+- [Material for MkDocs content tabs](https://squidfunk.github.io/mkdocs-material/reference/content-tabs/)
+- [Farming Labs configuration](/docs/configuration)

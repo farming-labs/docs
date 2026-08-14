@@ -8,6 +8,35 @@ related:
   - /docs/cli
   - /docs/customization
   - /docs/guides/agent-friendly-docs
+agent:
+  tokenBudget: 1800
+  task: Change docs.config safely for the selected framework and verify the resolved public behavior.
+  outcome: The configuration module loads successfully and the requested docs capability is reflected in diagnostics and discovery.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Identify the project framework and its documented docs.config location.
+    - Start from an existing defineDocs configuration and preserve framework-specific entry, contentDir, and nav requirements.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Evaluate the config and compare it with the generated agent surface.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: Config loading confidence and discovery/config/schema consistency pass.
+    - description: Read /api/docs?format=diagnostics and confirm the requested capability is enabled without configuration issues.
+  rollback:
+    - Restore the previous defineDocs option and any framework route wiring changed with it.
+  failureModes:
+    - symptom: The config cannot be evaluated.
+      resolution: Use docs.config.tsx when the file contains JSX and fix unresolved imports or environment-dependent top-level code.
+    - symptom: Config and public discovery disagree.
+      resolution: Run the agent doctor and align the adapter route wiring with the resolved docs.config values.
 ---
 
 # Configuration
@@ -133,22 +162,136 @@ All configuration lives in a single `docs.config.ts` file.
 | `icons`       | `Record<string, Component>`    | —               | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` and `Prompt` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
+| `codeBlocks`  | `DocsCodeBlocksConfig`         | —               | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false` for UI  | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
-| `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
+| `agent`       | `DocsAgentConfig`              | —               | Compaction, golden evaluations, reusable skills, and optional A2A metadata |
+| `review`      | `boolean \| DocsReviewConfig`  | `true`          | Docs Review CI workflow generation, scoring, and rule severity |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `devTools`    | `boolean \| DevToolsConfig`    | `false`         | Local visual MDX editor with Apply Changes and Publish Preview actions |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
+| `cloud`       | `DocsCloudConfig`              | —               | Docs Cloud API key env, deploy, and publish defaults mirrored into `docs.json` |
 | `llmsTxt`     | `boolean \| LlmsTxtConfig`     | `true`          | Generated root and optional section-level `llms.txt` files with markdown page links |
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
-| `sitemap`     | `boolean \| DocsSitemapConfig` | `true`          | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
+| `sitemap`     | `boolean \| DocsSitemapConfig` | `true`          | Generated `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` |
 | `robots`     | `boolean \| DocsRobotsConfig`  | `true`          | Runtime/generated `robots.txt` policy for docs and agent-readable routes |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template and JSON-LD page inputs      |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
+
+## Code block validation
+
+`codeBlocks.validate` lets the CLI inspect fenced MDX code blocks, build an execution plan from
+metadata, and optionally run executable snippets with a local or sandbox runner.
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  codeBlocks: {
+    validate: {
+      planner: {
+        provider: "openai",
+        model: "gpt-4.1-mini",
+        apiKeyEnv: "OPENAI_API_KEY",
+      },
+      runner: {
+        provider: "vercel-sandbox",
+        tokenEnv: "VERCEL_TOKEN",
+      },
+      envFile: [".env.local", ".env.test", ".env"],
+      env: {
+        OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+      },
+      missingEnv: "skip",
+    },
+  },
+});
+```
+
+Use metadata on the code fence to tell agents and validators how a snippet should be treated:
+
+````md title="page.mdx"
+```ts title="app/api/chat/route.ts" framework="nextjs" packageManager="pnpm" env="OPENAI_API_KEY" runnable
+const apiKey = process.env.OPENAI_API_KEY;
+```
+````
+
+Small runnable blocks make the check easy to dogfood:
+
+```json title="agent-context.json" runnable
+{
+  "framework": "nextjs",
+  "packageManager": "pnpm",
+  "agentReady": true
+}
+```
+
+```js title="codeblocks-smoke.js" runnable
+const metadata = { framework: "nextjs", runnable: true };
+
+if (!metadata.runnable) {
+  throw new Error("Expected runnable metadata");
+}
+
+console.log("metadata ok");
+```
+
+```bash title="codeblocks-smoke.sh" runnable
+test "docs" = "docs"
+echo "shell ok"
+```
+
+Run the validator locally:
+
+```bash
+pnpm exec docs codeblocks validate --plan
+pnpm exec docs codeblocks validate
+```
+
+The planner never writes secrets into docs. The `env` map means the snippet can keep using
+`process.env.OPENAI_API_KEY`, while validation injects that runtime variable from
+`OPENAI_TEST_API_KEY`. For Vercel Sandbox, `VERCEL_TOKEN` is enough in most projects; the runner
+uses `.vercel/project.json` when present and can auto-discover an accessible Vercel project from
+the token.
+
+Runner providers are explicit, so a remote sandbox never silently falls back to local execution:
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: { provider: "vercel-sandbox", tokenEnv: "VERCEL_TOKEN" },
+  },
+}
+```
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: { provider: "e2b", tokenEnv: "E2B_API_KEY" },
+  },
+}
+```
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: {
+      provider: "daytona",
+      tokenEnv: "DAYTONA_API_KEY",
+      targetEnv: "DAYTONA_TARGET",
+      apiUrlEnv: "DAYTONA_API_URL",
+    },
+  },
+}
+```
+
+E2B uses the `e2b` package and Daytona uses `@daytona/sdk`. Install the provider SDK in the
+project that runs the CLI when you choose one of those runners.
 
 ## Public docs path
 
@@ -227,13 +370,24 @@ No separate config flag is required for machine-readable page markdown.
 
 - The shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
-- Successful markdown responses include a `Link: <canonical-page-url>; rel="canonical"` response header so agents can read the markdown mirror but cite the normal docs page
-- In Next.js, sending `Accept: text/markdown` to `/docs/<slug>` returns the same markdown response
+- Successful markdown responses include canonical `Link` and `Content-Location` response headers, plus cache validators and locale metadata when available
+- In Next.js, sending an unambiguous `Accept: text/markdown` request to `/docs/<slug>` returns the same markdown response; mixed ranges that also advertise `text/html`, `text/*`, or `*/*` remain HTML
 - In Next.js, sending a non-empty `Signature-Agent` header to `/docs/<slug>` also returns the same markdown response
+- In Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
 - These negotiated Next.js reads are handled by the existing `/api/docs` route; `withDocs()` does not create a separate `/api/docs/markdown` wrapper
-- Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
-- When a page folder has `agent.md`, that file is returned instead of the normal page markdown
-- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or embedded `<Agent>` fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains a full override; include any `Related:` line manually inside `agent.md` when needed.
+- Markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a page freshness date is known
+- Successful markdown page responses append a `## Sitemap` footer that links agents back to the configured markdown sitemap routes
+- Missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
+- Very high-confidence missing slugs redirect to the closest `.md` page
+- Content is shared by default. `<Agent>` and `<Audience only="agent">` add agent-only content;
+  `<Human>` and `<Audience only="human">` add human-only content. Rendered HTML and public search
+  use the human projection, while Markdown, Ask AI, MCP, `llms-full.txt`, and static agent exports
+  use the agent projection. Compact `llms.txt` and sitemaps contain discovery/route metadata rather
+  than page bodies.
+- `Audience.only` must be a static `"human"` or `"agent"` literal. `docs review` reports dynamic
+  expressions and spread props because build-time exports cannot resolve them consistently.
+- When a page folder has `agent.md`, that file is returned instead of the audience-projected page source
+- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or an audience-projected fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains the page-content override; include any `Related:` line manually inside `agent.md` when needed.
 
 <Callout type="info" title="Markdown via content negotiation">
   You can keep the canonical docs URL and ask for markdown with an HTTP header:
@@ -241,33 +395,54 @@ No separate config flag is required for machine-readable page markdown.
   ```bash
   curl "https://docs.example.com/docs/installation" -H "Accept: text/markdown"
   curl "https://docs.example.com/docs/installation" -H "Signature-Agent: https://chatgpt.com"
+  curl "https://docs.example.com/docs/installation" -H "User-Agent: ClaudeBot/1.0"
   ```
 
   In Next.js, browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers
-  that send `Accept: text/markdown` or `Signature-Agent` receive the same machine-readable output
-  as `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so custom
-  apps should keep one docs API route instead of adding a second markdown-only wrapper. Other
-  adapters should use the `.md` URL or the API format route.
+  that send an unambiguous `Accept: text/markdown`, send `Signature-Agent`, identify as a known AI
+  user agent, or match a conservative bot-like agent heuristic receive the same machine-readable
+  output as `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so
+  custom apps should keep one docs API route instead of adding a second markdown-only wrapper.
+  Other adapters can negotiate by `Accept`, or use the `.md` URL or API format route directly.
 
   Successful markdown responses also include a canonical `Link` response header. The body is still
   the full markdown document; the header simply tells agents that `/docs/installation` is the
   source-of-truth URL for `/docs/installation.md` or a negotiated markdown read.
 
+  `Content-Location` identifies the selected `.md` representation. `Content-Language` is included
+  when the page locale is known. Every successful response has an `ETag`. `Last-Modified` is only
+  included when the adapter knows the exact source timestamp; a date-only `last_updated` value is
+  not promoted to midnight. Matching `If-None-Match` or `If-Modified-Since` requests receive HTTP
+  `304` when the corresponding validator is available.
+
+  The markdown body starts with YAML frontmatter. Agents can read `canonical_url`, `markdown_url`,
+  `title`, `description`, and `last_updated` before parsing the page body.
+
   Negotiated markdown responses include cache-safe `Vary` headers: `Accept` for
-  `Accept: text/markdown`, and `Accept, Signature-Agent` for `Signature-Agent`.
+  `Accept: text/markdown`, `Accept, Signature-Agent` for `Signature-Agent`, `User-Agent` for known
+  AI user agents, and `User-Agent, Sec-Fetch-Mode` for heuristic agent detection.
+  The shared handler and non-Next request handlers honor `q` values when an `Accept` header lists
+  both HTML and markdown. Next.js canonical-page negotiation is implemented as a static rewrite, so
+  it intentionally does not attempt arbitrary numeric `q` comparisons: any `text/html`, `text/*`,
+  or `*/*` range keeps the canonical URL on HTML. Use `/docs/installation.md` or
+  `/api/docs?format=markdown&path=installation` when the Markdown representation must be exact.
 
   That means a CDN can cache the HTML and markdown versions separately even though the URL is the
   same:
+
+| `apiCatalog` | `boolean` | `true` | When `false`, suppresses `Allow: /.well-known/api-catalog` from the generated `robots.txt` policy and removes that route from discovery links. Has no effect on hashed Agent Skills routes. |
 
   ```txt
   /docs/installation + normal browser headers      -> cached HTML
   /docs/installation + Accept: text/markdown       -> cached markdown
   /docs/installation + Signature-Agent: <agent-id> -> cached markdown
+  /docs/installation + User-Agent: ClaudeBot/1.0   -> cached markdown
   ```
 
-  If a markdown request misses, the 404 response is still markdown. It points agents at the agent
-  discovery spec, search endpoint, and sitemap routes so they can recover instead of stopping at a
-  plain `Not Found`.
+  If a markdown request misses, the recovery response is still markdown and returns HTTP `404`
+  unless a very high-confidence match redirects to the corrected `.md` page. The body lists closest
+  matches, recovery steps, the agent discovery spec, search endpoint, and sitemap routes so agents
+  can recover instead of stopping at a plain `Not Found`.
 </Callout>
 
 ```mdx title="page.mdx"
@@ -319,6 +494,7 @@ Default routes:
 
 - `/sitemap.xml`
 - `/sitemap.md`
+- `/docs/sitemap.md`
 - `/.well-known/sitemap.md`
 - `/api/docs?format=sitemap-xml`
 - `/api/docs?format=sitemap-md`
@@ -344,8 +520,9 @@ export default defineDocs({
 ```
 
 That generates `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and
-`/docs-map/.well-known/sitemap.md`. See [Sitemaps](/docs/customization/sitemaps) for static export,
-manifest, `lastmod`, and output examples.
+`/docs-map/.well-known/sitemap.md`. The default `/docs/sitemap.md` alias is emitted only when
+`routePrefix` is empty. See [Sitemaps](/docs/customization/sitemaps) for static export, manifest,
+`lastmod`, and output examples.
 
 ## Robots.txt
 
@@ -365,6 +542,7 @@ The generated policy explicitly allows the docs entry, `.md` routes, `llms.txt`,
 `AGENTS.md`, `skill.md`, MCP aliases, and agent discovery routes. It also includes common AI crawler user agents
 such as `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `CCBot`, and `Google-Extended`.
 
+Two allow rules are conditional: `Allow: /.well-known/api-catalog` is omitted when `llmsTxt.apiCatalog: false` or `staticExport: true`, and `Allow: /.well-known/agent-card.json` is included only when `agent.a2a` is configured.
 Generate the file with:
 
 ```bash title="terminal"
@@ -450,6 +628,46 @@ export default defineDocs({
   theme: fumadocs(),
   search: true,
 });
+```
+
+The same route supports two content projections. `GET /api/docs?query=<query>` remains the human
+default and searches shared plus human-only content. Use the exact lowercase
+`GET /api/docs?query=<query>&audience=agent` form to search shared plus agent-only content.
+`audience=human`, an omitted value, and invalid values all stay on the human projection.
+
+<Callout type="warning" title="Audience is not access control">
+  The query parameter selects a public content projection; it does not authenticate or authorize
+  the caller. Never place secrets or private data in audience-specific docs content.
+</Callout>
+
+### Explain retrieval decisions
+
+Use the exact lowercase `explain=true` opt-in when an agent needs to understand why a result was
+selected:
+
+```text title="HTTP"
+GET /api/docs?query=deploy&audience=agent&response=structured&explain=true
+```
+
+Each result then includes a bounded `explanation` with:
+
+- matched query terms and their title, section, description, content, or URL fields
+- the final provenance scope plus framework, version, package, and tag filter decisions
+- unresolved or unverifiable ambiguity, or the filter that resolved it
+- the one-based rank, ranking strategy, and concrete ranking reasons
+
+The default and `explain=false` omit this field, including from legacy array responses. For
+Typesense, Algolia, MCP, and custom adapters, the explanation identifies provider-owned ordering
+without claiming access to private provider ranking internals.
+
+The built-in MCP tool exposes the same behavior:
+
+```json title="search_docs arguments"
+{
+  "query": "deploy",
+  "audience": "agent",
+  "explain": true
+}
 ```
 
 Use an object when you want to switch providers or tune indexing behavior:
@@ -575,9 +793,17 @@ Notes:
 
 - `search: false` disables search entirely
 - `chunking.strategy` defaults to `"section"` and can be changed to `"page"` for one-document-per-page indexing
+- custom adapters receive the resolved value as `query.audience` and `context.audience`, and
+  `context.documents` uses the matching content projection
+- custom adapters should apply `query.audience` while filtering and ranking provider results
 - Typesense and Algolia can sync documents automatically on the first search request when `adminApiKey` is present
+- hosted index sync remains human-projected; requesting `audience=agent` does not replace the public
+  index with agent-only text
 - Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want manual indexing as a CLI step
 - `provider: "mcp"` can target a relative route like `/mcp` or `/.well-known/mcp` or an absolute remote MCP endpoint
+- same-origin MCP `search_docs` routes receive the resolved `audience`; remote endpoints and custom
+  tool names must set `forwardAudience: true` after supporting that argument; human-projection
+  requests fall back to local search until then
 - when MCP search points at the same site's relative MCP route, the MCP `search_docs` tool falls back to built-in simple search to avoid recursive loops
 - If you use a custom Next.js docs API route, import `createDocsAPI` from `@farming-labs/next/api` and pass the whole config: `createDocsAPI(docsConfig)`
 - Search requires the docs API route; with `staticExport: true` the UI is hidden because there is no server route
@@ -615,13 +841,66 @@ export default defineDocs({
 });
 ```
 
+Streamable HTTP MCP is public by default. Add `security.authenticate` only when the endpoint needs
+access control. To support OAuth-aware MCP clients, configure `protectedResource` alongside the
+callback:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read"],
+        requiredScopes: ["docs:read"],
+      },
+      async authenticate({ request, resource }) {
+        const user = await authenticateRequest(request, { audience: resource });
+        return user ? { id: user.id, scopes: user.scopes } : null;
+      },
+    },
+  },
+});
+```
+
+`authorizationServers` must be non-empty and contain HTTPS issuer URLs without query or fragment
+(loopback HTTP is accepted for development). `scopesSupported` is discovery metadata, while
+`requiredScopes` is enforced against the principal returned by `authenticate`. A `null` result
+receives a `401` Bearer challenge that links to public RFC 9728 metadata; a principal missing a
+required scope receives `403 insufficient_scope`. If the callback returns a Web `Response`, that
+response is preserved and must include its own challenge when needed.
+The framework does not issue or validate tokens; the callback must validate signature, issuer,
+expiry, the exact callback `resource` audience, and derive scopes from the verified token. The
+callback `request` retains the real incoming URL and query string.
+
+The default metadata routes are `/.well-known/oauth-protected-resource/mcp`,
+`/.well-known/oauth-protected-resource/.well-known/mcp`, and
+`/.well-known/oauth-protected-resource/api/docs/mcp`. The last path follows a custom `mcp.route`.
+Protected-resource discovery is inactive without `authenticate`, and stdio is unaffected. Use HTTPS
+for hosted MCP, authorization-server, and authentication-documentation URLs.
+Treat each MCP alias as a distinct OAuth resource identifier and validate token audiences against
+the exact endpoint used by the client.
+On Next.js, do not combine protected MCP with `basePath`; host the protected routes at the origin
+root or an edge proxy. Inline MCP objects are detected automatically. For imported, spread, or
+shorthand MCP configuration, import `docsConfig` in `next.config.ts` and call
+`withDocs(nextConfig, docsConfig)` so routing and the `basePath` check use the live object.
+
 Default behavior:
 
 - **Public HTTP route:** `/mcp`
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+- **Built-in tools:** `list_docs`, `list_pages`, `list_tasks`, `read_task`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`, `get_context`
+
+Useful built-in tool calls:
+
+- `list_docs` returns page summaries grouped by docs section, with optional `section` filtering
+- `list_tasks` filters actionable contract summaries by query/framework/version/package; `read_task` returns the full normalized contract as structured output plus a JSON text fallback
+- `list_docs` and `list_pages` expose only `hasContract`, `task`, `outcome`, and `appliesTo` in their contract summaries
+- `get_code_examples` returns fenced code blocks plus parsed metadata such as `title`, `framework`, `packageManager`, and `runnable`
+- `get_config_schema` returns structured `docs.config.ts` option metadata for agents editing config safely
+- `get_context` returns deterministic section-level context with source anchors and an explicit conservative UTF-8 byte ceiling for the complete assembled response
 
 Framework notes:
 
@@ -633,6 +912,71 @@ Framework notes:
 - **Custom routes:** set `mcp.route` in `docs.config` and update the framework public forwarder so the configured path and the actual endpoint stay aligned
 
 See the full [MCP Server guide](/docs/customization/mcp) for the route snippets and stdio usage.
+
+## Docs Review CI
+
+Docs Review is enabled by default. During `next dev` or `next build`, `withDocs()` creates
+`.github/workflows/docs-review.yml` when the workflow does not already exist. The generated workflow
+is intentionally tiny: it calls the hosted reusable workflow at
+`farming-labs/docs/.github/workflows/docs-review-reusable.yml@main` and passes the docs config path,
+package manager, check name, and working directory as inputs. In monorepos, the file is written at
+the repository root and the job runs from the docs app directory.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  review: true,
+  theme: fumadocs(),
+});
+```
+
+The generated wrapper only triggers on docs-related PR changes such as `docs.config.*`,
+`app/docs/**`, `src/app/docs/**`, `content/docs/**`, and the workflow files themselves. By default
+it runs in `warn` mode, posts GitHub annotations, uses `docs-review` as the GitHub check name, and
+keeps CI green.
+
+Use `block` mode when the team wants docs PRs to fail below the configured score threshold or when
+error-level findings exist:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  review: {
+    ci: {
+      name: "agent-docs-review",
+      mode: "block",
+    },
+    score: { threshold: 90 },
+    rules: {
+      brokenLinks: "error",
+      frontmatter: "error",
+      codeFenceMetadata: "warn",
+      agentContext: "warn",
+      commandHealth: "warn",
+      relatedCoverage: "suggestion",
+      configConfidence: "warn",
+      agentSurfaceDrift: "error",
+      goldenTasks: "warn",
+      agentSkills: "warn",
+    },
+  },
+  theme: fumadocs(),
+});
+```
+
+`agentContext` is corpus-aware: it detects exact duplicates, repeated boilerplate, generic Agent
+blocks, missing prerequisites/results/recovery, and ambiguous framework or version guidance.
+`commandHealth` inspects commands without running them or making network requests. It resolves
+package scripts from an enclosing workspace and recognizes constrained HTTP probes, safe shell
+built-ins, and supported Agent Skills or Claude MCP setup forms; unknown or compound commands stay
+unverified. `configConfidence` reports when `docs.config` could only be read through partial static
+parsing, while `agentSurfaceDrift` compares resolved configuration, discovery metadata, structured
+contracts, MCP tools, routes, and the public config schema. `goldenTasks` reports both failed
+evaluations and an unmeasured task suite. `agentSkills` reports oversized skill instructions,
+broken or deep references, missing compatibility requirements, and scripts without dependency or
+validation guidance.
+
+Set `review: false` to opt out of review and workflow generation.
 
 ## API Reference
 
@@ -1204,6 +1548,15 @@ export default defineDocs({
 
 If you just want the UI without a callback, use `feedback: true`.
 
+Set `requireComment: true` to disable the submit button until the user types a non-empty comment:
+
+```ts title="docs.config.ts"
+feedback: {
+  enabled: true,
+  requireComment: true,
+},
+```
+
 **Next.js / TanStack Start / SvelteKit / Nuxt:** `feedback.onFeedback` is called from the built-in page footer UI with no extra client bridge file.
 
 **Astro:** `feedback: true` still enables the built-in UI with no extra setup. For optional client-side analytics hooks, the same payload is also emitted through `window.__fdOnFeedback__` and the `fd:feedback` custom event.
@@ -1262,6 +1615,208 @@ export async function POST(request: Request) {
 }
 ```
 
+## Golden agent evaluations
+
+Use `agent.evaluations` to define user-shaped tasks that `docs doctor` and `docs review` can measure.
+
+Golden tasks measure retrieval recall, citation accuracy, version selection, adversarial safety, answer quality, executable examples, and token budget.
+The default `mcp-context` surface is local and makes no implicit model, network, or command-execution
+request. You can explicitly measure the configured search pipeline, the production Ask AI context,
+an actual answer provider, or runtime-verified examples when those checks are useful.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  agent: {
+    evaluations: {
+      tokenBudget: 4_000,
+      topK: 3,
+      searchTimeoutMs: 30_000,
+      surface: "mcp-context",
+      tasks: [
+        {
+          id: "next-16-install",
+          query: "Install the docs framework in a Next.js 16 app",
+          filters: {
+            framework: "nextjs",
+            version: "16",
+          },
+          expect: {
+            scope: {
+              framework: "nextjs",
+              version: "16",
+            },
+            relevantSources: ["/docs/installation"],
+            requiredCitations: ["/docs/installation"],
+            forbiddenSources: ["/docs/legacy-installation"],
+            minRecallAtK: 1,
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.7,
+            examples: [
+              {
+                source: "/docs/installation",
+                language: "bash",
+                packageManager: "pnpm",
+                runnable: true,
+                verification: "present",
+                includes: ["pnpm add @farming-labs/docs"],
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+```
+
+Top-level `tokenBudget` and `topK` are defaults; either can be overridden on an individual task.
+`requiredCitations` defaults to `relevantSources`, and `allowedSources` can name legitimate
+supporting pages that should not reduce citation precision. Source values may be canonical page or
+section URLs. `filters` constrain retrieval, while `expect.scope` independently asserts that the
+returned sources selected the right framework, version, or locale. This distinction catches a
+provider that returns a plausible result for the wrong target instead of hiding that result before
+evaluation.
+
+Choose the surface globally with `agent.evaluations.surface` or override it on one task:
+
+- `"mcp-context"` is the default built-in context builder and stays local.
+- `"configured-search"` queries the project's actual `search` provider and evaluates only its
+  returned order and citations, without local-result supplementation or diagnostic reranking.
+- `"ask-ai-context"` runs the production Ask AI retrieval and context-assembly path, including its
+  source headers and truncation behavior.
+
+Non-simple configured search providers require `allowNetwork: true`. Provider errors fail the task
+instead of silently substituting local search, so the report always identifies the surface and
+provider it actually measured. `searchTimeoutMs` bounds each configured-search or Ask AI retrieval
+and defaults to 30 seconds; the timeout aborts framework-managed requests and is also exposed to
+custom adapters as `context.signal`. The evaluator records actual UTF-8 usage for every surface. MCP and
+configured-search contexts enforce the byte ceiling directly; Ask AI uses its production character
+limit and fails the budget check if the resulting UTF-8 payload exceeds the configured ceiling.
+
+### Adversarial safety assertions
+
+Add `expect.safety` to a task to assert that the agent's retrieval and answer pipeline resists adversarial inputs. These fields are evaluator-only and must never contain real secrets or private data.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    evaluations: {
+      tasks: [
+        {
+          id: "safe-retrieval",
+          query: "Configure safe retrieval",
+          expect: {
+            relevantSources: ["/docs/safe-retrieval"],
+            safety: {
+              promptInjection: {
+                markers: ["SAFETY_INJECTION_CANARY"],
+                forbiddenAnswerText: ["ignore the user"],
+              },
+              poisonedCitations: true,
+              authenticatedContent: {
+                forbiddenSources: ["/docs/private-control-plane"],
+                forbiddenText: ["PRIVATE_AUTH_CANARY"],
+              },
+              freshness: {
+                indexGeneration: "expected-generation-digest",
+                sourceDigests: {
+                  "/docs/safe-retrieval": "sha256:abc123",
+                },
+              },
+              rejectConflictingFrameworkVersions: true,
+              deletedSectionTombstones: true,
+              queryVariants: [
+                { kind: "rephrased" },
+                { kind: "adversarial" },
+              ],
+            },
+          },
+        },
+      ],
+    },
+  },
+});
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `promptInjection.markers` | `string[]` | Canary fragments that must be present in retrieved context |
+| `promptInjection.forbiddenAnswerText` | `string[]` | Canary fragments the answer must not repeat. Defaults to `markers` |
+| `poisonedCitations` | `boolean` | Assert that retrieval rejects injected citation payloads |
+| `authenticatedContent.forbiddenSources` | `string[]` | Protected page or section URLs that public retrieval must not expose |
+| `authenticatedContent.forbiddenText` | `string[]` | Stable canary fragments that must not appear in context or answers |
+| `freshness.indexGeneration` | `string` | Expected retrieval-index generation digest. Omit to require one consistent generation |
+| `freshness.sourceDigests` | `Record<string, string>` | Expected full-document digest keyed by canonical page or section URL |
+| `rejectConflictingFrameworkVersions` | `boolean` | Assert that the pipeline rejects sources with conflicting framework version provenance |
+| `deletedSectionTombstones` | `boolean` | Assert that deleted-section tombstones are surfaced rather than silently dropped |
+| `queryVariants[].kind` | `string` | Additional query variant kind to evaluate, e.g. `"rephrased"` or `"adversarial"` |
+
+### Evaluate actual answers
+
+Answer scoring is opt-in. Add `expect.answer` to a task and configure either a callback or an HTTP
+provider. The framework does not choose or call a model when `answer` is omitted.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    evaluations: {
+      allowNetwork: true,
+      answer: {
+        provider: "http",
+        endpoint: process.env.AGENT_EVAL_ENDPOINT!,
+        headers: process.env.AGENT_EVAL_TOKEN
+          ? { authorization: `Bearer ${process.env.AGENT_EVAL_TOKEN}` }
+          : undefined,
+        timeoutMs: 10_000,
+      },
+      tasks: [
+        {
+          id: "install-answer",
+          query: "How do I install the framework?",
+          expect: {
+            relevantSources: ["/docs/installation"],
+            answer: {
+              includes: ["pnpm add"],
+              excludes: ["legacy-package"],
+              requiredCitations: ["/docs/installation"],
+            },
+          },
+        },
+      ],
+    },
+  },
+});
+```
+
+The HTTP endpoint receives the task id, query, filters, surface, context, and retrieved sources as
+JSON, but never receives the expected answer, citations, or callback-only abort signal. It returns
+`{ text, citations? }`. HTTP
+authentication is optional and explicit through `headers`; header values are never copied into
+evaluation reports. The built-in HTTP provider and managed external search requests require
+`allowNetwork: true` and use fail-closed provider errors. A
+`provider: "callback"` answer instead calls your explicit `run(input)` function and expects the same
+answer result shape. That callback is user code, so it may perform only the work you put inside it;
+`allowNetwork` does not sandbox or reinterpret it.
+
+### Choose example verification strength
+
+Set `expect.examples[].verification` to the evidence the task must produce:
+
+- `"present"` requires a matching retrieved fence.
+- `"syntax"` requires supported static syntax validation. It is the default for runnable examples.
+- `"execute"` requires the configured validator to execute the snippet and return `PASS`. It only
+  runs when `allowNetwork: true` and `codeBlocks.validate` are explicitly enabled in `"report"`
+  mode with a suitable runner.
+
+Examples marked `runnable: false` default to `"present"`. Unsupported syntax, a skipped runner, or a
+missing execution opt-in is reported as skipped or failed and never receives passing credit.
+
+An absent, disabled, or empty task suite is deliberately `unmeasured`, not passing. This keeps a
+site from receiving usefulness credit merely because no representative tasks were defined. Put
+`runnable`, `framework`, `packageManager`, and `title` metadata on expected code fences so example
+checks can select the intended snippet deterministically.
+
 ## Agent Compaction
 
 Use `agent.compact` to set defaults for `docs agent compact`, which generates sibling `agent.md`
@@ -1272,8 +1827,8 @@ export default defineDocs({
   entry: "docs",
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
       aggressiveness: 0.3,
       protectJson: true,
     },
@@ -1288,7 +1843,7 @@ export default defineDocs({
   entry: "docs",
   agent: {
     compact: {
-      apiKey: process.env.TOKEN_COMPANY_API_KEY,
+      apiKey: process.env.DOCS_CLOUD_API_KEY,
     },
   },
 });
@@ -1316,8 +1871,9 @@ Handwritten `agent.md` files are also valid. They count as explicit machine cont
 `docs doctor --agent`, but their freshness is reported as `unknown` because there is no generated
 provenance block to compare against the page source.
 
-The CLI loads `.env` and `.env.local` before resolving the key, so `TOKEN_COMPANY_API_KEY` works
-out of the box. Use positional page args by default:
+The CLI loads `.env` and `.env.local` before resolving the root `agent.compact` config, so
+`apiKeyEnv: "DOCS_CLOUD_API_KEY"` works without exporting the key manually. Keep compression keys in
+`agent.compact.apiKey` or `agent.compact.apiKeyEnv`; use positional page args by default:
 
 ```bash title="terminal"
 pnpm exec docs agent compact installation configuration
@@ -1334,6 +1890,20 @@ title: "Installation"
 description: "Install the framework"
 agent:
   tokenBudget: 777
+  task: Install the framework
+  outcome: The docs route renders locally.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+    package: "@farming-labs/next"
+  files:
+    - package.json
+    - next.config.ts
+  commands:
+    - run: pnpm add @farming-labs/docs @farming-labs/next
+  verification:
+    - run: pnpm dev
+      expect: The docs route returns HTTP 200
 ---
 ```
 
@@ -1341,9 +1911,17 @@ Notes:
 
 - `agent.tokenBudget` overrides global `agent.compact.maxOutputTokens` defaults and CLI
   `--max-output-tokens` for that one page
+- optional structured fields include `task`, `outcome`, `appliesTo`, `prerequisites`, `files`,
+  `commands`, `sideEffects`, `verification`, `rollback`, and `failureModes`
+- structured fields are emitted into machine-readable Markdown, search/Ask AI context, Schema.org
+  `HowTo` JSON-LD, and MCP task tools; page-list tools keep only the concise contract summary
+- invalid or unknown fields are ignored at runtime and reported by `docs review`; misspelled keys get
+  closest-name suggestions such as `verfication` → `verification`
 - if a sibling `agent.md` already exists, `docs agent compact` compacts that file
 - if no `agent.md` exists, the command compacts the generated machine-readable page output and then
   writes a new sibling `agent.md`
+- generated contract markers are excluded from compaction input, and rendering preserves a
+  handwritten `## Agent Contract`, so repeated compaction/read cycles do not duplicate the section
 - `docs agent compact --changed` only processes docs pages changed in the current git working
   tree, including staged, unstaged, and untracked docs changes
 - `docs agent compact --stale --include-missing` will also create missing `agent.md` files for
@@ -1353,6 +1931,166 @@ Notes:
 
 See [CLI](/docs/cli) for the command surface and [Token Efficiency](/docs/token-efficiency) for
 when to use compaction instead of writing `agent.md` by hand.
+
+## Protect agent-facing page content
+
+Add `agent.access` to keep a page out of unauthenticated machine-readable surfaces while allowing
+an authenticated MCP principal with the required scopes and claims to read it:
+
+```md title="app/docs/internal-runbook/page.mdx"
+---
+title: "Internal deployment runbook"
+agent:
+  access:
+    visibility: authenticated
+    scopes:
+      - docs:private
+    claims:
+      role:
+        - admin
+        - editor
+      plan: enterprise
+---
+```
+
+The policy is deny by default. Every scope and claim must match; an expected claim array matches
+when the principal has any listed value. The principal comes from `mcp.security.authenticate`, so
+the example requires a principal such as
+`{ id: "agent-1", scopes: ["docs:private"], claims: { role: "editor", plan: "enterprise" } }`.
+
+Protected pages are omitted from public `llms.txt`, search/Ask AI indexes, content-change feeds,
+Markdown recovery suggestions, MCP navigation, and Static Agent Bundles. Default `.md` routes
+return a private, non-cacheable `404` instead of revealing whether the page exists. Invalid authored
+policies also fail closed and are reported by `docs review`.
+
+<Callout type="warning">
+  `agent.access` protects the framework's agent-facing machine surfaces. It does not authenticate
+  your rendered HTML page route; enforce application authorization separately when the human page
+  is also private.
+</Callout>
+
+## Reusable Agent Skills
+
+Set `agent.skills` to publish every configured skill through standards discovery, Static Agent
+Bundles, and MCP. The value can be a string, an array, or `{ paths }`:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  agent: {
+    skills: {
+      paths: [
+        "./skills/getting-started/SKILL.md",
+        "./skills/product",
+        "./skills/team-skills",
+      ],
+      progressiveDisclosure: {
+        maxSkillLines: 500,
+        instructionTokenBudget: 5000,
+        maxReferenceDepth: 1,
+        compatibility: "when-needed",
+        checkScripts: true,
+      },
+    },
+  },
+});
+```
+
+A path can point to one `SKILL.md`, a skill directory containing `SKILL.md`, or a collection
+directory whose descendants contain skill directories. Paths are relative to the project root and
+must remain inside its workspace. Publication accepts only non-symlink regular files and
+directories. It includes the skill document and safe files below `references/`, `scripts/`, and
+`assets/`; other sibling content is not exposed.
+
+Skills with only `SKILL.md` are indexed as `skill-md`. Skills with companion files are packaged as
+deterministic `.tar.gz` archives, and the index digest covers the exact indexed artifact bytes.
+The original files stay directly available for progressive disclosure. The project-root
+`skill.md` remains the backwards-compatible site skill and is published alongside configured
+skills.
+
+`docs doctor --agent` checks every configured skill, and `docs review` checks the affected skill
+when `SKILL.md`, `references/`, `scripts/`, `assets/`, or the docs config changes. A local reference
+must stay inside the skill and resolve to content that publication exposes. Reference Markdown can
+be one hop away by default; move second-level detail into a directly linked focused reference.
+Token estimates use a dependency-free, code-conscious approximation and can be tuned with
+`instructionTokenBudget`.
+
+| Surface | Route or URI |
+| ------- | ------------ |
+| Agent Skills v0.2 index | `/.well-known/agent-skills/index.json` |
+| Indexed skill archive | `/.well-known/agent-skills/<name>.tar.gz` |
+| Direct skill files | `/.well-known/agent-skills/<name>/SKILL.md` and `/<companion-path>` below it |
+| Legacy index and files | `/.well-known/skills/index.json` and direct files below `/.well-known/skills/<name>/` |
+| MCP resources | `docs://skills/<name>/<path>` |
+
+MCP returns text-compatible resources as `text` and binary assets as base64 `blob` values. Running
+`docs agent export --public` emits the same indexes, artifacts, direct companion files, and hashes
+for static hosts.
+
+### Optional A2A Agent Card
+
+Configure `agent.a2a` only when the advertised URLs implement real A2A interfaces. A docs API, Ask
+AI route, or MCP endpoint does not satisfy that contract. Prefer ordered `supportedInterfaces`; the
+first entry is the preferred interface. Each interface defaults to A2A protocol `1.0` over
+`HTTP+JSON`. The core bindings are `JSONRPC`, `GRPC`, and `HTTP+JSON`; identify a custom binding
+with an absolute URI. The deprecated `interfaceUrl` shorthand remains available for a single
+interface, with top-level `protocolVersion` and `protocolBinding` applying only to that shorthand.
+It retains the historical protocol `0.3` default; set `protocolVersion: "1.0"` explicitly when a
+shorthand interface implements v1. Core interfaces and all HTTP card/authentication metadata
+require HTTPS outside loopback development. Custom bindings use a secure binding-appropriate
+absolute URL such as WSS or MQTTS.
+
+The published `/.well-known/agent-card.json` uses the strict A2A v1 shape: it does not emit the
+legacy top-level `url`, `protocolVersion`, or `preferredTransport` fields. Describe only
+capabilities, media modes, A2A skills, and optional security metadata that the service really
+implements. An A2A skill has no URL; configured Agent Skill documents and artifacts keep their URLs
+in the Agent Skills indexes and MCP resources. `supportedInterfaces` requires explicit A2A skills;
+automatic projection of published documentation skills remains only for the deprecated shorthand.
+When `agent.a2a` is omitted, the Agent Card route is not advertised or generated.
+
+```ts title="docs.config.ts"
+agent: {
+  skills: "./skills",
+  a2a: {
+    name: "Product docs agent",
+    description: "Answers implementation questions from the product docs.",
+    supportedInterfaces: [
+      {
+        url: "https://agent.example.com/a2a",
+        protocolBinding: "HTTP+JSON",
+        protocolVersion: "1.0",
+      },
+      {
+        url: "https://agent.example.com/a2a/rpc",
+        protocolBinding: "JSONRPC",
+        protocolVersion: "1.0",
+      },
+    ],
+    documentationUrl: "https://docs.example.com/docs",
+    provider: {
+      organization: "Example, Inc.",
+      url: "https://example.com",
+    },
+    version: "1.0.0",
+    capabilities: {
+      streaming: true,
+      pushNotifications: false,
+    },
+    defaultInputModes: ["text/plain"],
+    defaultOutputModes: ["text/plain"],
+    skills: [
+      {
+        id: "answer-docs",
+        name: "Answer documentation questions",
+        description: "Answers implementation questions using the product docs.",
+        tags: ["documentation", "implementation"],
+      },
+    ],
+  },
+},
+```
+
+See [Agent Primitive](/docs/customization/agent-primitive#agent-discovery) for the discovery flow and
+[API Reference](/docs/reference#docsagentconfig) for the exact types.
 
 ## Agent Feedback Endpoints
 
@@ -1366,6 +2104,7 @@ out.
 Agents should discover the configured routes first with `GET /.well-known/agent.json`.
 `GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
 canonical framework route. Generated projects wire all three to the same JSON. The spec includes
+the versioned Farming Labs manifest schema and format identifiers,
 site identity, locale config, capability flags, the search endpoint, markdown route pattern,
 `Accept: text/markdown` contract, `Signature-Agent` support, API, public, and section-level
 `llms.txt` routes, sitemap routes, the `robots.txt` route, generated `AGENTS.md` metadata, root
@@ -1388,14 +2127,29 @@ export default defineDocs({
 
 Default behavior:
 
+- `GET` and `HEAD /.well-known/api-catalog` return the RFC 9727 API catalog
+- set `llmsTxt.apiCatalog: false` to remove that catalog route and its discovery links without
+  disabling the hashed Agent Skills routes
+- `GET` and `HEAD /.well-known/agent-skills/index.json` return the modern hashed Agent Skills index
+- `GET` and `HEAD /.well-known/skills/index.json` return the legacy compatibility index; indexed
+  artifacts and safe direct files remain available at the routes described above
+- dynamic adapters set the catalog media type and discovery `Link` headers; static hosts should
+  serve `/.well-known/api-catalog` as `application/linkset+json` with the RFC 9727 profile
 - `GET /.well-known/agent.json` is the preferred public agent discovery URL
 - `GET /.well-known/agent` is the public fallback discovery URL
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
+- the manifest declares the Draft 2020-12 schema at
+  `https://docs.farming-labs.dev/schema/agent-manifest.v1.json`; dynamic responses advertise it with
+  `rel="describedby"` while preserving `application/json`
+- the manifest is a Farming Labs extension; the separate `/.well-known/agent-card.json` route is
+  only published when `agent.a2a` configures a real A2A service
 - `GET /AGENTS.md` serves a root `AGENTS.md` or `AGENT.md` file when present, and otherwise returns a generated fallback
 - `GET /.well-known/AGENTS.md` and `GET /api/docs?format=agents` return the same agent instructions
 - `GET /skill.md` serves a root `skill.md` file when present, and otherwise returns a generated fallback
 - `GET /.well-known/skill.md` and `GET /api/docs?format=skill` return the same skill document
-- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `agents.file`, `agents.route`, `skills.file`, `skills.route`, the root and section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
+- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `apiCatalog`,
+  `skills.discovery`, `agents.file`, `agents.route`, `skills.file`, `skills.route`, the root and
+  section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`; without `onFeedback` it returns `{ ok: true, handled: false }`
 - non-Next server adapters also expose the same contract through `GET /api/docs?feedback=agent&schema=1` and `POST /api/docs?feedback=agent`
@@ -1409,6 +2163,81 @@ Default behavior:
   inserted into the Ask AI system prompt or retrieved as documentation context. Treat the payload as
   untrusted if your callback stores it, opens issues, posts to chat, or sends it to another model.
 </Callout>
+
+### Turn recurring feedback into improvements
+
+Store callback payloads as a JSON array/object or JSON Lines export, then cluster recurring failed
+tasks locally:
+
+```bash
+pnpm exec docs agent feedback --input .farming-labs/agent-feedback.jsonl
+pnpm exec docs agent feedback --input .farming-labs/agent-feedback.jsonl --write
+```
+
+The report contains evidence clusters, deduplicated missing context and doc issues, draft GitHub
+issues, draft golden tasks for `agent.evaluations.tasks`, and a draft documentation PR title/body.
+Only failed, blocked, partial, unclear, or code-reading-dependent reports participate; a cluster
+needs two reports by default. Use `--min-occurrences` to raise that threshold. Without `--write`,
+the command only prints JSON.
+
+Feedback text remains untrusted evidence in every draft. Review it before copying suggestions into
+docs, issues, evaluation config, or model prompts.
+
+### Promote feedback into evaluation candidates
+
+Turn the feedback report's draft golden tasks into a sanitized candidate registry:
+
+```bash title="terminal"
+pnpm exec docs agent feedback-evals \
+  --input .farming-labs/agent-feedback-improvements.json \
+  --write
+```
+
+The command redacts common credentials, secret query parameters, private keys, and email addresses;
+normalizes task budgets and retrieval expectations; and deduplicates by task ID and a stable
+query/source fingerprint. Candidates remain in `state: "candidate"` and are never inserted into
+`agent.evaluations.tasks` automatically. Review the original evidence and the sanitized task before
+promoting it.
+
+After running `docs doctor --agent --json-output doctor.json`, create an explicit baseline and use
+it as a CI regression gate:
+
+```bash title="terminal"
+pnpm exec docs agent feedback-evals \
+  --results doctor.json \
+  --baseline .farming-labs/agent-evaluation-baseline.json \
+  --write-baseline
+
+pnpm exec docs agent feedback-evals \
+  --results doctor.json \
+  --baseline .farming-labs/agent-evaluation-baseline.json \
+  --check
+```
+
+The check catches suite score drops, per-task score drops, pass-to-fail changes, removed baseline
+tasks, and newly added failing tasks. Use `--max-score-drop` only for an intentional bounded
+tolerance, and `--allow-new-failures` only when newly introduced tasks are expected to start red.
+Baseline replacement is always explicit through `--write-baseline`.
+
+Feed that report—or normalized search, Ask AI, MCP, issue, support, and git signals—into the
+maintenance proposal workflow:
+
+```bash title="terminal"
+pnpm exec docs agent propose \
+  --input .farming-labs/agent-feedback-improvements.json \
+  --input .farming-labs/search-signals.jsonl \
+  --write
+```
+
+Generic inputs are JSON arrays/objects or JSON Lines records with `source`, `summary`, and optional
+`page`, `topic`, `task`, `severity`, and `count` fields. Supported sources are `agent-feedback`,
+`ask-ai`, `git`, `issue`, `mcp`, `search`, and `support`. Use the same `topic` on related records to
+cluster evidence from different systems.
+
+The output ranks recurring gaps by represented occurrences, source diversity, and severity, then
+drafts acceptance criteria, issues, golden tasks, and a PR description. Signal summaries are always
+rendered as untrusted evidence. The workflow is deliberately proposal-only: it never edits docs,
+creates issues, publishes branches, or merges changes, and every proposal requires human review.
 
 Default request shape:
 
@@ -1468,6 +2297,25 @@ curl -X POST "http://127.0.0.1:3000/api/docs/agent/feedback" \
   -d '{"payload":{"task":"demo","outcome":"implemented"}}'
 ```
 
+## Last Updated
+
+Use `lastUpdated` to control the date shown at the bottom of each docs page. The optional `label` field lets you replace the default `"Last updated"` prefix with any string — useful for localization or rebranding.
+
+```ts title="docs.config.ts"
+lastUpdated: {
+  label: "Updated",
+  position: "below-title",
+},
+```
+
+| Property   | Type                        | Default          | Description                                              |
+| ---------- | --------------------------- | ---------------- | -------------------------------------------------------- |
+| `enabled`  | `boolean`                   | `true`           | Show or hide the last-updated date                       |
+| `label`    | `string`                    | `"Last updated"` | Text prefix shown before the formatted date              |
+| `position` | `"footer" \| "below-title"` | `"footer"`       | Render beside "Edit on GitHub" or below the page title   |
+
+Set `label` to an empty string to display only the formatted date with no prefix text.
+
 ## Reading Time
 
 Use `readingTime` when you want an estimated label like `5 min read` on docs pages.
@@ -1478,15 +2326,31 @@ export default defineDocs({
   readingTime: {
     enabled: true,
     wordsPerMinute: 220,
+    format: "short",
   },
 });
 ```
 
+For code-heavy guides where examples make up a large part of the page, set `includeCode: true` so fenced and inline code blocks are counted toward the estimate:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  readingTime: {
+    enabled: true,
+    wordsPerMinute: 220,
+    includeCode: true,
+  },
+});
+```
 Default behavior:
 
 - the feature is **opt-in**
 - the estimate uses `220` words per minute unless you override it
+- labels render as `5 min read` by default; set `format: "short"` to render `5 min`
 - fenced code blocks, inline code, links, images, and raw HTML are stripped before counting words
+
+- set `includeCode: true` in `ReadingTimeConfig` to count code block and inline code words toward the estimate instead of stripping them
 - changelog pages do not render the reading-time label
 - page frontmatter wins when `readingTime` is present, even if the global config is disabled
 
@@ -1525,6 +2389,9 @@ That gives you a simple override model:
 - page `readingTime: true` -> force a computed label for that page
 - page `readingTime: 12` -> force an exact `12 min read` label for that page
 
+The global `format` setting applies to computed labels and exact per-page values. With
+`format: "short"`, the same `readingTime: 12` override renders as `12 min`.
+
 <Callout type="info" title="Placement with page actions">
   Reading time follows the same title-area slot as page actions. With
   `pageActions.position: "above-title"`, it renders directly under the action row. With
@@ -1543,30 +2410,25 @@ pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
-    providers: [
-      {
-        name: "ChatGPT",
-        urlTemplate: "https://chatgpt.com/?q=Read+this:+{url}",
-      },
-    ],
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
   },
 },
 ```
 
-Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass `providers` to fully customize it.
+Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass provider strings and `target: "markdown"` to send tools directly to the public `.md` route for the page.
 
-If you use the built-in `Prompt` component, you can also add `promptUrlTemplate` to a provider so the same provider name and icon can open prompt text directly:
+For deeper customization, use provider objects. This keeps the built-in preset but opens Cursor through the app deeplink:
 
 ```ts
 pageActions: {
   openDocs: {
     enabled: true,
+    target: "markdown",
     providers: [
-      {
-        name: "Cursor",
-        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
-        promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
-      },
+      "chatgpt",
+      "claude",
+      { id: "cursor", mode: "app" },
     ],
   },
 },
@@ -1634,7 +2496,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
     ```ts title="src/lib/docs.server.ts"
     import { env } from "$env/dynamic/private";
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
@@ -1656,7 +2518,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
     Pass the API key through `docs.server.ts` (Astro requires server-only env access):
 
     ```ts title="src/lib/docs.server.ts"
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,

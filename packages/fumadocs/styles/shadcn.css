@@ -1,0 +1,3 @@
+/* @farming-labs/theme - shadcn docs theme bundle */
+@import "./bundles/shared-framework.css";
+@import "@farming-labs/docs/styles/themes/shadcn.css";

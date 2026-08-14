@@ -46,3 +46,4 @@ app/api/search/route.ts
 benchmark/codex/artifacts/
 benchmark/codex/*/artifacts/
 benchmark/codex/analysis/
+.vercel

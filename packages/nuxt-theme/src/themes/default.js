@@ -24,7 +24,7 @@ const DefaultUIDefaults = {
   layout: {
     contentWidth: 768,
     sidebarWidth: 280,
-    toc: { enabled: true, depth: 3, style: "default" },
+    toc: { enabled: true, depth: 3 },
     header: { height: 72, sticky: true },
   },
   components: {

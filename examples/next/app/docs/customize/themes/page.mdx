@@ -20,7 +20,7 @@ export default defineDocs({
 
 ## Cross-Framework Theme Parity
 
-All built-in themes, including `concrete`, are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
+All cross-framework built-in themes, including `concrete` and `shadcn`, are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
 ```ts
 // Next.js / TanStack Start
@@ -36,18 +36,20 @@ import { concrete as astroConcrete } from "@farming-labs/astro-theme/concrete";
 import { concrete as nuxtConcrete } from "@farming-labs/nuxt-theme/concrete";
 ```
 
+The Shadcn Docs preset follows the same package pattern: import `shadcn` from the framework's `/shadcn` entrypoint and pair it with that package's `/shadcn/css` stylesheet.
+
 ```css
 /* Next.js / TanStack Start */
 @import "@farming-labs/theme/concrete/css";
 
 /* SvelteKit */
-@import "@farming-labs/svelte-theme/concrete/css";
+@import "@farming-labs/theme/concrete/css";
 
 /* Astro */
-@import "@farming-labs/astro-theme/concrete/css";
+@import "@farming-labs/theme/concrete/css";
 
 /* Nuxt */
-@import "@farming-labs/nuxt-theme/concrete/css";
+@import "@farming-labs/theme/concrete/css";
 ```
 
 ## Theme Options

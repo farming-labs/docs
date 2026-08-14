@@ -13,12 +13,14 @@ describe("docs sitemap helpers", () => {
   it("resolves default and prefixed sitemap routes", () => {
     expect(resolveDocsSitemapConfig().enabled).toBe(true);
     expect(resolveDocsSitemapConfig().xml.route).toBe("/sitemap.xml");
+    expect(resolveDocsSitemapConfig().markdown.docsRoute).toBe("/docs/sitemap.md");
     expect(resolveDocsSitemapConfig(true).xml.route).toBe("/sitemap.xml");
     expect(resolveDocsSitemapConfig(true).markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
 
     const prefixed = resolveDocsSitemapConfig({ routePrefix: "/docs" });
     expect(prefixed.xml.route).toBe("/docs/sitemap.xml");
     expect(prefixed.markdown.route).toBe("/docs/sitemap.md");
+    expect(prefixed.markdown.docsRoute).toBeUndefined();
     expect(prefixed.markdown.wellKnownRoute).toBe("/docs/.well-known/sitemap.md");
   });
 
@@ -28,9 +30,19 @@ describe("docs sitemap helpers", () => {
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.md"), true)).toBe(
       "markdown",
     );
+    expect(resolveDocsSitemapRequest(new URL("https://example.com/docs/sitemap.md"), true)).toBe(
+      "markdown",
+    );
     expect(
       resolveDocsSitemapRequest(new URL("https://example.com/api/docs?format=sitemap-md"), false),
     ).toBe("markdown");
+    expect(
+      resolveDocsSitemapRequest(
+        new URL("https://example.com/api/internal/docs?format=sitemap-xml"),
+        true,
+        { apiRoute: "/api/internal/docs" },
+      ),
+    ).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"), false)).toBeNull();
   });
 
@@ -74,6 +86,19 @@ describe("docs sitemap helpers", () => {
     expect(response?.headers.get("content-type")).toContain("application/xml");
     expect(response?.headers.get("etag")).toBeTruthy();
     expect(await response?.text()).toContain("<urlset");
+  });
+
+  it("creates query-format responses on a custom API route", async () => {
+    const response = createDocsSitemapResponse({
+      request: new Request("https://docs.example.com/api/internal/docs?format=sitemap-md"),
+      apiRoute: "/api/internal/docs",
+      sitemap: true,
+      entry: "docs",
+      pages: [{ url: "/docs", title: "Home" }],
+    });
+
+    expect(response?.headers.get("content-type")).toContain("text/markdown");
+    expect(await response?.text()).toContain("# Documentation Sitemap");
   });
 
   it("looks up stable page freshness from a sitemap manifest", () => {

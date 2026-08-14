@@ -286,12 +286,87 @@ export interface ResolvedDocsRelatedLink {
   href: string;
 }
 
+export interface PageAgentAppliesTo {
+  /** Framework name or names this task applies to, for example `"nextjs"`. */
+  framework?: string | string[];
+  /** Version range or ranges this task applies to, for example `">=16"`. */
+  version?: string | string[];
+  /** Package name or names this task applies to, for example `"@farming-labs/next"`. */
+  package?: string | string[];
+}
+
+export interface PageAgentCommand {
+  /** Exact command an agent may run. */
+  run: string;
+  /** Optional working directory, relative to the project root unless documented otherwise. */
+  cwd?: string;
+  /** Short explanation of what the command does. */
+  description?: string;
+}
+
+export interface PageAgentVerification {
+  /** Human-readable verification step. */
+  description?: string;
+  /** Optional command used to verify the result. */
+  run?: string;
+  /** Observable result that indicates success. */
+  expect?: string;
+}
+
+export interface PageAgentFailureMode {
+  /** Symptom an agent may observe. */
+  symptom: string;
+  /** Recovery guidance for the symptom. */
+  resolution?: string;
+}
+
+export type DocsAccessClaimValue = string | number | boolean | readonly string[];
+
+/** Declarative, deny-by-default authorization requirements for agent-facing page surfaces. */
+export interface DocsPageAccessPolicy {
+  /** Require an authenticated principal even when no scopes or claims are listed. */
+  visibility?: "public" | "authenticated";
+  /** Every listed scope must be present on the principal. */
+  scopes?: readonly string[];
+  /** Every listed claim must match; arrays match when at least one value overlaps. */
+  claims?: Readonly<Record<string, DocsAccessClaimValue>>;
+}
+
+/** Identity used when evaluating page access outside the MCP transport. */
+export interface DocsAccessPrincipal {
+  id: string;
+  scopes?: readonly string[];
+  claims?: Readonly<Record<string, unknown>>;
+}
+
 export interface PageAgentFrontmatter {
   /**
    * Approximate output token target for machine-readable compaction on this page.
    * Used by `docs agent compact` as a per-page override.
    */
   tokenBudget?: number;
+  /** Authorization requirements shared by Markdown, search, llms.txt, sync, export, and MCP. */
+  access?: DocsPageAccessPolicy;
+  /** Concrete task the page helps an agent complete. */
+  task?: string;
+  /** Observable end state the agent should reach. */
+  outcome?: string;
+  /** Framework, version, and package applicability constraints. */
+  appliesTo?: PageAgentAppliesTo;
+  /** Conditions or setup that must already be true. */
+  prerequisites?: string[];
+  /** Files the task is expected to read or change. */
+  files?: string[];
+  /** Commands the task may require. Strings are supported as a concise shorthand. */
+  commands?: Array<string | PageAgentCommand>;
+  /** Material state changes or external effects the task can cause. */
+  sideEffects?: string[];
+  /** Checks that prove the task completed successfully. */
+  verification?: Array<string | PageAgentVerification>;
+  /** Steps that restore the previous state when the task must be undone. */
+  rollback?: string[];
+  /** Common symptoms and optional recovery guidance. */
+  failureModes?: Array<string | PageAgentFailureMode>;
 }
 
 export interface PageSidebarFrontmatter {
@@ -303,6 +378,44 @@ export interface PageSidebarFrontmatter {
   folderIndexBehavior?: SidebarFolderIndexBehavior;
 }
 
+export type DocsOkfStatus = "draft" | "stable" | "deprecated";
+
+export interface DocsOkfSource {
+  resource: string;
+  id?: string;
+  title?: string;
+  author?: string;
+  usage_count?: number;
+  last_modified?: string;
+  usage_window?: { start?: string; end?: string };
+}
+
+export interface DocsOkfActorTimestamp {
+  by: string;
+  at: string;
+}
+
+/** Authored OKF v0.2 trust metadata. Missing fields are derived conservatively at runtime. */
+export interface DocsOkfTrustMetadataInput {
+  sources?: readonly DocsOkfSource[];
+  generated?: DocsOkfActorTimestamp;
+  verified?: readonly DocsOkfActorTimestamp[];
+  status?: DocsOkfStatus;
+  stale_after?: string;
+}
+
+export type DocsOkfTrustTier = "unverified" | "machine-confirmed" | "human-reviewed";
+
+export interface DocsOkfTrustMetadata {
+  sources: DocsOkfSource[];
+  generated: DocsOkfActorTimestamp;
+  verified: DocsOkfActorTimestamp[];
+  status: DocsOkfStatus;
+  stale_after?: string;
+  trust_tier: DocsOkfTrustTier;
+  stale: boolean;
+}
+
 export interface PageFrontmatter {
   title: string;
   description?: string;
@@ -310,6 +423,8 @@ export interface PageFrontmatter {
   related?: DocsRelatedItem[];
   /** Per-page agent-oriented metadata used by machine-readable docs features. */
   agent?: PageAgentFrontmatter;
+  /** OKF v0.2 source, generation, verification, lifecycle, and staleness metadata. */
+  okf?: DocsOkfTrustMetadataInput;
   /** Per-page sidebar metadata used when building the docs navigation tree. */
   sidebar?: PageSidebarFrontmatter;
   /** Override or disable the estimated reading time for this page. */
@@ -576,38 +691,80 @@ export interface SidebarConfig {
   folderIndexBehaviorOverrides?: SidebarFolderIndexBehaviorOverrides;
 }
 
+export type OpenDocsTarget = "markdown" | "page" | "source" | "github";
+
+export type OpenDocsProviderId =
+  | "chatgpt"
+  | "claude"
+  | "cursor"
+  | "gemini"
+  | "copilot"
+  | "perplexity"
+  | "github";
+
 /**
  * A single "Open in …" provider shown in the Open dropdown.
+ *
+ * Pass a string for a built-in provider preset, or pass an object to customize a known provider
+ * or keep using a custom `urlTemplate`.
+ *
+ * @example
+ * ```ts
+ * "cursor"
+ * ```
+ *
+ * @example
+ * ```ts
+ * {
+ *   id: "cursor",
+ *   prompt: "Use this docs page while editing the codebase: {url}",
+ * }
+ * ```
  *
  * @example
  * ```ts
  * {
  *   name: "Claude",
  *   icon: <ClaudeIcon />,
- *   urlTemplate: "https://claude.ai?url={url}",
+ *   urlTemplate: "https://claude.ai?url={url}.md",
  *   promptUrlTemplate: "https://claude.ai/new?q={prompt}",
  * }
  * ```
  */
-export interface OpenDocsProvider {
+export type OpenDocsProvider = OpenDocsProviderId | OpenDocsProviderConfig;
+
+export interface OpenDocsProviderConfig {
+  /** Built-in provider preset to use as the base. */
+  id?: OpenDocsProviderId | string;
   /** Display name (e.g. "ChatGPT", "Claude", "Cursor") */
-  name: string;
+  name?: string;
+  /** Alias for `name` when configuring a preset provider. */
+  label?: string;
   /** Icon element rendered next to the name */
   icon?: unknown; // ReactNode
+  /** Override the target URL inserted into `{url}` for this provider. */
+  target?: OpenDocsTarget;
+  /** Prompt text used by known provider presets. Supports `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. */
+  prompt?: string;
+  /** Cursor-specific mode. `"web"` opens cursor.com; `"app"` opens the Cursor app deeplink. */
+  mode?: "web" | "app";
   /**
    * URL template. Placeholders:
-   * - `{url}` — current page URL (encoded).
-   * - `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
+   * - `{url}` — selected target URL, controlled by `openDocs.target` or provider `target` (encoded).
+   * - `{pageUrl}` — rendered docs page URL (encoded).
+   * - `{markdownUrl}` — public `.md` route for the page (encoded).
+   * - `{sourceUrl}` / `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
    * - `{githubUrl}` — GitHub edit URL for the current page (same as "Edit on GitHub"). Requires `github` in config.
+   * - `{prompt}` — prompt text after resolving the target URL placeholders (encoded).
    *
-   * @example "https://claude.ai/new?q=Read+this+doc:+{url}"
+   * @example "https://claude.ai/new?q=Read+this+doc:+{url}.md"
    * @example "{githubUrl}" — open current page file on GitHub (edit view)
    */
-  urlTemplate: string;
+  urlTemplate?: string;
   /**
    * Optional URL template used by the built-in `Prompt` MDX component.
    * When omitted, known providers such as ChatGPT, Claude, Cursor, Gemini,
-   * and Copilot fall back to a built-in `{prompt}` template by provider name.
+   * Copilot, and Perplexity fall back to a built-in `{prompt}` template by provider name.
    *
    * Placeholders:
    * - `{prompt}` — prompt text (encoded).
@@ -625,9 +782,11 @@ export interface OpenDocsProvider {
  * ```ts
  * openDocs: {
  *   enabled: true,
+ *   target: "markdown",
  *   providers: [
- *     { name: "ChatGPT", icon: <ChatGPTIcon />, urlTemplate: "https://chatgpt.com/?q={url}" },
- *     { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai/new?q={url}" },
+ *     "chatgpt",
+ *     "claude",
+ *     "cursor",
  *   ],
  * }
  * ```
@@ -635,6 +794,19 @@ export interface OpenDocsProvider {
 export interface OpenDocsConfig {
   /** Whether to show the "Open" dropdown. @default false */
   enabled?: boolean;
+  /**
+   * Which URL should be inserted into `{url}` for preset providers and provider templates.
+   * @default "markdown"
+   */
+  target?: OpenDocsTarget;
+  /**
+   * Prompt text used by built-in provider presets.
+   * Supports `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`,
+   * and `{githubUrl}`.
+   *
+   * @default "Read this documentation: {url}"
+   */
+  prompt?: string;
   /**
    * List of LLM / tool providers to show in the dropdown.
    * If not provided, a sensible default list is used.
@@ -646,9 +818,19 @@ export interface OpenDocsConfig {
  * Configuration for the "Copy Markdown" button that copies
  * the current page's content as Markdown to the clipboard.
  */
+export type CopyMarkdownFormat = "markdown" | "text";
+
 export interface CopyMarkdownConfig {
   /** Whether to show the "Copy Markdown" button. @default false */
   enabled?: boolean;
+  /** Content format copied by the button. @default "markdown" */
+  format?: CopyMarkdownFormat;
+  /** Whether to prepend the current page title to copied content. @default false */
+  includeTitle?: boolean;
+  /** Button label shown before the page is copied. @default "Copy page" */
+  label?: string;
+  /** Button label shown after a successful copy. @default "Copied!" */
+  copiedLabel?: string;
 }
 
 /**
@@ -661,8 +843,11 @@ export interface CopyMarkdownConfig {
  *   copyMarkdown: { enabled: true },
  *   openDocs: {
  *     enabled: true,
+ *     target: "markdown",
  *     providers: [
- *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+ *       "chatgpt",
+ *       "claude",
+ *       { id: "cursor", mode: "app" },
  *     ],
  *   },
  * }
@@ -673,15 +858,20 @@ export interface PageActionsConfig {
   copyMarkdown?: boolean | CopyMarkdownConfig;
   /** "Open in …" dropdown with LLM / tool providers */
   openDocs?: boolean | OpenDocsConfig;
+  /** One-click MCP connection instructions for supported coding agents. */
+  connectMcp?: boolean | PageActionConnectMcpConfig;
+  /** Agent Skills discovery and install dialog backed by the published skills index. */
+  installSkills?: boolean | PageActionInstallSkillsConfig;
   /**
    * Where to render the page action buttons relative to the page title.
    *
    * - `"below-title"` — render below the first `<h1>` heading (default)
    * - `"above-title"` — render above the page title / content
+   * - `"toc"` — render as a compact rail in the table-of-contents column
    *
    * @default "below-title"
    */
-  position?: "above-title" | "below-title";
+  position?: "above-title" | "below-title" | "toc";
   /**
    * Horizontal alignment of page action buttons.
    *
@@ -691,6 +881,30 @@ export interface PageActionsConfig {
    * @default "left"
    */
   alignment?: "left" | "right";
+}
+
+export type PageActionMcpProvider = "copy" | "claude-code" | "cursor" | "vscode" | "codex";
+
+export interface PageActionConnectMcpConfig {
+  /** Show the connection menu. @default true */
+  enabled?: boolean;
+  /** Public MCP route or absolute URL. @default "/mcp" */
+  endpoint?: string;
+  /** Connection targets shown in the menu. */
+  providers?: readonly PageActionMcpProvider[];
+  /** Trigger label. @default "Connect MCP" */
+  label?: string;
+}
+
+export interface PageActionInstallSkillsConfig {
+  /** Show the skills install dialog. @default true */
+  enabled?: boolean;
+  /** Agent Skills index route or absolute URL. */
+  index?: string;
+  /** Override the install command copied by the dialog. */
+  command?: string;
+  /** Trigger label. @default "Install skills" */
+  label?: string;
 }
 
 export type DocsAnalyticsSource = "client" | "server" | "mcp";
@@ -760,6 +974,10 @@ export interface DocsAnalyticsInput {
   question?: string;
   feedbackValue?: string;
   feedbackComment?: string;
+  feedbackContext?: DocsAgentFeedbackContext;
+  feedbackPayload?: Record<string, unknown>;
+  agentFeedbackContext?: DocsAgentFeedbackContext;
+  agentFeedbackPayload?: Record<string, unknown>;
   content?: string;
 }
 
@@ -828,6 +1046,177 @@ export interface DocsAnalyticsConfig {
   includeInputs?: boolean;
   /** Callback fired for every emitted event. */
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
+  /**
+   * Forward events to Docs Cloud when project env vars are available.
+   *
+   * @default true
+   */
+  cloud?: boolean;
+}
+
+export type DocsTelemetryFramework =
+  | "next"
+  | "tanstack-start"
+  | "farmjs"
+  | "sveltekit"
+  | "astro"
+  | "nuxt"
+  | "mcp"
+  | (string & {});
+
+export type DocsTelemetryEventType =
+  | "project_detected"
+  | "agent_surface_used"
+  | "mcp_request"
+  | "mcp_tool_used"
+  | (string & {});
+
+export type DocsTelemetryAgentSurface =
+  | "agent_spec"
+  | "agents"
+  | "skill"
+  | "markdown"
+  | "llms"
+  | "agent_feedback_schema"
+  | "agent_feedback_submit"
+  | "content_changes"
+  | "ask_ai"
+  | "mcp";
+
+export interface DocsTelemetryConfig {
+  /** Enable Farming Labs maintainer telemetry. Defaults to production-only enabled. */
+  enabled?: boolean;
+  /**
+   * Public site origin to include in telemetry events.
+   *
+   * When omitted, the runtime request origin or deployment URL is used when available. Localhost
+   * and loopback origins are ignored.
+   */
+  siteOrigin?: string;
+  /**
+   * Override the telemetry ingestion endpoint.
+   *
+   * This is mostly useful for self-hosting, development verification, or tests.
+   */
+  endpoint?: string;
+}
+
+export interface DocsTelemetryFeatures {
+  search: boolean;
+  contentChanges: boolean;
+  ai: boolean;
+  mcp: boolean;
+  llmsTxt: boolean;
+  pageActions: boolean;
+  feedback: boolean;
+  agentFeedback: boolean;
+  sitemap: boolean;
+  robots: boolean;
+  apiReference: boolean;
+  staticExport: boolean;
+  changelog: boolean;
+  cloud: boolean;
+  review: boolean;
+  codeBlocksValidate: boolean;
+}
+
+export interface DocsTelemetryEvent {
+  type: DocsTelemetryEventType;
+  timestamp: string;
+  package: {
+    name: "@farming-labs/docs";
+    version?: string;
+  };
+  framework?: DocsTelemetryFramework;
+  runtime?: {
+    name?: string;
+    version?: string;
+  };
+  site?: {
+    origin?: string;
+  };
+  deployment?: {
+    provider?: string;
+    environment?: string;
+    id?: string;
+    region?: string;
+  };
+  features?: Partial<DocsTelemetryFeatures>;
+  properties?: Record<string, unknown>;
+}
+
+export type DocsTelemetryEventInput = Omit<DocsTelemetryEvent, "timestamp" | "package"> & {
+  timestamp?: string;
+  package?: Partial<DocsTelemetryEvent["package"]>;
+};
+
+export interface DocsCloudApiKeyConfig {
+  /**
+   * Environment variable that stores the Docs Cloud API key.
+   *
+   * The key value is never written to docs.json; only this env var name is
+   * mirrored for CLI and CI workflows.
+   *
+   * @default "DOCS_CLOUD_API_KEY"
+   */
+  env?: string;
+}
+
+export interface DocsCloudPreviewConfig {
+  /**
+   * Legacy hosted preview deployment gate.
+   *
+   * Prefer `cloud.deploy.enabled` in new configs.
+   *
+   * @default true when this legacy object is provided
+   */
+  enabled?: boolean;
+}
+
+export interface DocsCloudPublishConfig {
+  /** How Docs Cloud should publish generated docs changes. @default "draft-pr" */
+  mode?: "draft-pr" | "direct-commit";
+  /** Branch that generated docs work should target. @default "main" */
+  baseBranch?: string;
+}
+
+export interface DocsCloudFeatureConfig {
+  /** Whether the hosted cloud feature is enabled. @default true */
+  enabled?: boolean;
+}
+
+export interface DocsCloudConfig {
+  /**
+   * Optional explicit cloud toggle.
+   *
+   * Prefer omitting this in new projects; the presence of `cloud` opts the
+   * project into cloud-aware CLI flows. This remains available for backwards
+   * compatibility with older docs.json files.
+   */
+  enabled?: boolean;
+  /** API key lookup used by `docs deploy` and other cloud CLI commands. */
+  apiKey?: DocsCloudApiKeyConfig;
+  /**
+   * Same-origin route for the generated Docs API handler.
+   *
+   * Next.js layouts use this as the default client analytics proxy when no
+   * hosted analytics endpoint env is configured. Set it when the route is
+   * mounted somewhere other than `/api/docs`, or when a deployment uses a
+   * public base path.
+   *
+   * @default "/api/docs"
+   */
+  apiRoute?: string;
+  /** Legacy hosted preview deployment settings. Prefer `deploy` in new configs. */
+  preview?: DocsCloudPreviewConfig;
+  /** Generated docs publishing settings. */
+  publish?: DocsCloudPublishConfig;
+  /** Hosted analytics settings that can be mirrored to docs.json. */
+  analytics?: boolean | Omit<DocsAnalyticsConfig, "onEvent">;
+  /** Hosted AI feature toggle. */
+  ai?: DocsCloudFeatureConfig;
+  /** Hosted deployment feature toggle used by `docs deploy`. */
+  deploy?: DocsCloudFeatureConfig;
 }
 
 export interface DocsObservabilityConfig {
@@ -872,6 +1261,12 @@ export interface LlmsTxtConfig {
    * @default true
    */
   enabled?: boolean;
+  /**
+   * Whether to expose and advertise the RFC 9727 API catalog.
+   * Agent Skills discovery remains available when this is disabled.
+   * @default true
+   */
+  apiCatalog?: boolean;
   /**
    * Base URL for your docs site (used to build absolute links in llms.txt).
    * @example "https://docs.example.com"
@@ -983,7 +1378,7 @@ export interface SitemapMarkdownConfig {
 }
 
 /**
- * Configuration for generated `/sitemap.xml`, `/sitemap.md`, and
+ * Configuration for generated `/sitemap.xml`, `/sitemap.md`, `/docs/sitemap.md`, and
  * `/.well-known/sitemap.md` routes.
  */
 export interface DocsSitemapConfig {
@@ -1066,14 +1461,164 @@ export interface DocsRobotsConfig {
  * All tools default to `true` when omitted.
  */
 export interface DocsMcpToolsConfig {
+  /** Expose a `list_docs` tool that returns docs pages grouped by section. */
+  listDocs?: boolean;
   /** Expose a `list_pages` tool that returns the known docs pages. */
   listPages?: boolean;
+  /**
+   * Expose a `list_page_sections` tool that returns body-free section discovery metadata
+   * for a page.
+   */
+  listPageSections?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */
   readPage?: boolean;
+  /** Expose a budget-aware `read_pages` tool for fetching several pages in one round trip. */
+  readPages?: boolean;
+  /**
+   * Expose `submit_feedback` when machine feedback is enabled. The tool validates
+   * payloads against `feedback.agent.schema` before invoking the configured callback.
+   */
+  submitFeedback?: boolean;
+  /** Expose a `list_tasks` tool for pages with actionable agent contracts. */
+  listTasks?: boolean;
+  /** Expose a `read_task` tool that returns a page's full agent contract. */
+  readTask?: boolean;
   /** Expose a `search_docs` tool for keyword search over page content. */
   searchDocs?: boolean;
+  /**
+   * Expose a `list_search_facets` tool that returns valid framework, version,
+   * package, and tag values before an agent runs a scoped search.
+   */
+  searchFacets?: boolean;
+  /** Expose body-free document changes with polling through `list_content_changes`. */
+  listContentChanges?: boolean;
+  /**
+   * Expose `hydrate_content_changes` for budget-aware section bodies and deletion
+   * tombstones after polling `list_content_changes`.
+   */
+  hydrateContentChanges?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */
   getNavigation?: boolean;
+  /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
+  getCodeExamples?: boolean;
+  /** Expose a `get_config_schema` tool for docs.config option metadata. */
+  getConfigSchema?: boolean;
+  /** Expose deterministic `get_context` retrieval with a conservative UTF-8 byte ceiling. */
+  getContext?: boolean;
+  /** Expose OKF v0.2 source, verification, lifecycle, and staleness metadata. */
+  getTrustMetadata?: boolean;
+}
+
+/** Built-in MCP prompt templates projected from documentation contracts and golden tasks. */
+export interface DocsMcpPromptsConfig {
+  /**
+   * Publish structured page agent contracts as MCP prompts.
+   *
+   * `true` publishes every actionable contract. A string array publishes only the
+   * matching page slugs or URL paths. Defaults to `true`.
+   */
+  contracts?: boolean | readonly string[];
+  /**
+   * Golden-task IDs to publish as expectation-blind MCP prompts.
+   *
+   * Only the task query, retrieval scope, and budget are exposed. Evaluator-only
+   * expectations are never included in `prompts/list` or `prompts/get`.
+   */
+  goldenTasks?: readonly string[];
+}
+
+/** Authenticated identity returned by an MCP authentication callback. */
+export interface DocsMcpAuthPrincipal extends DocsAccessPrincipal {
+  /** Stable identifier for the authenticated user, service, or agent. */
+  id: string;
+  /** Optional authorization scopes that source adapters can inspect. */
+  scopes?: string[];
+  /** Additional application-specific identity claims. */
+  claims?: Record<string, unknown>;
+}
+
+/** Context passed to an MCP Origin policy callback. */
+export interface DocsMcpOriginContext {
+  /** Origin header supplied by the HTTP client. */
+  origin: string;
+  /** Portable Web Request for the incoming MCP request. */
+  request: Request;
+}
+
+/** Context passed to an opt-in MCP authentication callback. */
+export interface DocsMcpAuthenticateContext {
+  /** Portable Web Request for the incoming MCP request. */
+  request: Request;
+  /** Normalized pathname of the MCP endpoint being requested. */
+  pathname: string;
+  /** Canonical OAuth resource identifier for exact token audience validation. */
+  resource: string;
+}
+
+export type DocsMcpAllowedOrigins =
+  | "same-origin"
+  | readonly string[]
+  | ((context: DocsMcpOriginContext) => boolean | Promise<boolean>);
+
+export type DocsMcpAuthenticateResult = DocsMcpAuthPrincipal | null | Response;
+
+export type DocsMcpAuthenticate = (
+  context: DocsMcpAuthenticateContext,
+) => DocsMcpAuthenticateResult | Promise<DocsMcpAuthenticateResult>;
+
+/** Browser CORS response controls for an Origin already accepted by `allowedOrigins`. */
+export interface DocsMcpCorsConfig {
+  /** Additional request headers accepted during browser preflight. */
+  allowedHeaders?: readonly string[];
+  /** Additional response headers exposed to browser clients. */
+  exposedHeaders?: readonly string[];
+  /** Emit `Access-Control-Allow-Credentials: true`. Defaults to `false`. */
+  allowCredentials?: boolean;
+  /** Browser preflight cache lifetime in seconds. Defaults to 600. */
+  maxAgeSeconds?: number;
+}
+
+/** RFC 9728 discovery and endpoint-wide OAuth scope requirements for protected HTTP MCP. */
+export interface DocsMcpProtectedResourceConfig {
+  /**
+   * OAuth authorization server issuer identifiers advertised to MCP clients.
+   * Requires at least one HTTPS URL without query or fragment; loopback HTTP is accepted for development.
+   */
+  authorizationServers: readonly string[];
+  /** OAuth scopes advertised through RFC 9728 `scopes_supported` metadata. */
+  scopesSupported?: readonly string[];
+  /** Scopes every authenticated HTTP MCP principal must have. */
+  requiredScopes?: readonly string[];
+  /** Human-readable protected-resource name. Defaults to the resolved MCP server name. */
+  resourceName?: string;
+  /** Absolute HTTP(S) URL of human-readable authentication guidance for this MCP resource. */
+  resourceDocumentation?: string;
+}
+
+/** Security controls for the Streamable HTTP MCP transport. */
+export interface DocsMcpSecurityConfig {
+  /**
+   * Allowed values for a supplied HTTP Origin header.
+   * Defaults to `"same-origin"`. Requests without Origin remain supported for non-browser clients.
+   */
+  allowedOrigins?: DocsMcpAllowedOrigins;
+  /**
+   * Optional authentication callback. HTTP MCP stays public when omitted. When present,
+   * returning `null` rejects the request with 401 and returning a Response passes it through.
+   */
+  authenticate?: DocsMcpAuthenticate;
+  /**
+   * Opt-in OAuth protected-resource discovery. Requires `authenticate` to protect HTTP MCP.
+   * When active, adapters publish RFC 9728 metadata and framework-generated Bearer challenges.
+   */
+  protectedResource?: DocsMcpProtectedResourceConfig;
+  /** Maximum POST body size in bytes. Defaults to 1 MiB. */
+  maxBodyBytes?: number;
+  /**
+   * CORS responses for accepted browser Origins. Defaults to enabled with exact-Origin responses;
+   * set `false` to suppress CORS headers or use an object for credential/header controls.
+   */
+  cors?: boolean | DocsMcpCorsConfig;
 }
 
 /**
@@ -1103,6 +1648,13 @@ export interface DocsMcpConfig {
   version?: string;
   /** Fine-grained tool toggles. Omitted tools stay enabled. */
   tools?: DocsMcpToolsConfig;
+  /**
+   * Built-in MCP prompts generated from structured agent contracts and explicitly
+   * selected golden tasks. Defaults to all contracts and no golden tasks.
+   */
+  prompts?: boolean | DocsMcpPromptsConfig;
+  /** Streamable HTTP security controls. Authentication is opt-in; stdio is unaffected. */
+  security?: DocsMcpSecurityConfig;
 }
 
 export type DocsSearchResultType = "page" | "heading" | "text";
@@ -1110,15 +1662,21 @@ export type DocsSearchResultType = "page" | "heading" | "text";
 export interface DocsSearchSourcePage {
   title: string;
   url: string;
+  /** Canonical public URL override. Relative values are resolved against the request base URL. */
+  canonicalUrl?: string;
   content: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
+  agent?: PageAgentFrontmatter;
+  okf?: DocsOkfTrustMetadataInput;
   sourcePath?: string;
   lastModified?: string;
   lastmod?: string;
   rawContent?: string;
   agentContent?: string;
   agentRawContent?: string;
+  /** Modified time for an explicit agent-source override such as agent.md. */
+  agentLastModified?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
   type?: "page" | "api" | "code" | "changelog";
@@ -1127,6 +1685,114 @@ export interface DocsSearchSourcePage {
   version?: string;
   tags?: string[];
 }
+
+/** Normalized applicability metadata attached to a retrieved source. */
+export interface DocsRetrievalSourceScope {
+  audience: "human" | "agent";
+  locale?: string[];
+  framework?: string[];
+  version?: string[];
+  /**
+   * Version declarations remain grouped so consumers can enforce their intersection
+   * (for example, top-level `>=1` together with an agent contract `<2`).
+   */
+  versionGroups?: string[][];
+  package?: string[];
+  tags?: string[];
+  /** Scope fields with additional authored values omitted from this bounded payload. */
+  truncated?: DocsSearchFilterField[];
+  /** Conflicting declarations that prevent the affected scope fields from being trusted. */
+  conflicts?: DocsSearchFilterField[];
+}
+
+/**
+ * Verifiable metadata for the canonical source behind a retrieval result.
+ *
+ * Digests and generations are algorithm-prefixed. The digest identifies the selected
+ * audience projection of one page; the generation identifies the complete index snapshot.
+ */
+export interface DocsRetrievalSourceProvenance {
+  canonicalUrl: string;
+  scope: DocsRetrievalSourceScope;
+  lastModified?: string;
+  digest: string;
+  indexGeneration: string;
+}
+
+/** One canonical document in a content-change snapshot. */
+export interface DocsContentSnapshotDocument {
+  /** Framework route that produced this canonical document. */
+  url: string;
+  canonicalUrl: string;
+  /** SHA-256 of the body digest plus fetch-relevant page metadata. */
+  digest: string;
+  lastModified?: string;
+}
+
+/**
+ * Serializable content inventory stored by the optional durable change-feed callbacks.
+ *
+ * The snapshot contains metadata only, never document bodies.
+ */
+export interface DocsContentSnapshot {
+  format: "docs-content-snapshot.v1";
+  audience: "human" | "agent";
+  locale?: string;
+  baseUrl?: string;
+  indexGeneration: string;
+  documents: DocsContentSnapshotDocument[];
+}
+
+/** Added or removed document metadata in a content-change response. */
+export type DocsContentChangeDocument = DocsContentSnapshotDocument;
+
+/** Changed document metadata, including the immediately compared prior digest. */
+export interface DocsContentChangedDocument extends DocsContentChangeDocument {
+  previousDigest: string;
+  previousLastModified?: string;
+}
+
+/**
+ * Body-free synchronization response for documentation agents.
+ *
+ * `resetRequired` is explicit because a bare SHA-256 generation cannot reconstruct
+ * history that was never retained by this process or a configured durable store.
+ */
+export interface DocsContentChangesResponse {
+  format: "docs-content-changes.v1";
+  audience: "human" | "agent";
+  locale?: string;
+  since: string | null;
+  indexGeneration: string;
+  mode: "snapshot" | "delta" | "reset";
+  resetRequired: boolean;
+  documentCount: number;
+  counts: {
+    added: number;
+    changed: number;
+    deleted: number;
+  };
+  added: DocsContentChangeDocument[];
+  changed: DocsContentChangedDocument[];
+  deleted: DocsContentChangeDocument[];
+}
+
+export interface DocsContentChangeSnapshotContext {
+  audience: "human" | "agent";
+  locale?: string;
+  baseUrl?: string;
+  request?: Request;
+}
+
+export type DocsContentChangeSnapshotLoader = (
+  generation: string,
+  context: DocsContentChangeSnapshotContext,
+) => DocsContentSnapshot | null | undefined | Promise<DocsContentSnapshot | null | undefined>;
+
+export type DocsContentChangeSnapshotSaver = (
+  snapshot: DocsContentSnapshot,
+  context: DocsContentChangeSnapshotContext,
+) => void | Promise<void>;
 
 export interface DocsSearchDocument {
   id: string;
@@ -1139,7 +1805,103 @@ export interface DocsSearchDocument {
   locale?: string;
   framework?: string;
   version?: string;
+  package?: string[];
   tags?: string[];
+  /** Source metadata persisted with hosted search records. */
+  source?: DocsRetrievalSourceProvenance;
+}
+
+/** Search fields that can contribute lexical evidence for one result. */
+export type DocsSearchMatchField = "title" | "section" | "description" | "content" | "url";
+
+/** One normalized query term and the result fields in which it was found. */
+export interface DocsSearchMatchedTerm {
+  term: string;
+  fields: DocsSearchMatchField[];
+}
+
+export type DocsSearchFilterDecisionOutcome = "not_requested" | "matched" | "not_verifiable";
+
+/** How one scope filter affected an included result. */
+export interface DocsSearchFilterDecision {
+  field: DocsSearchFilterField;
+  requestedValues: string[];
+  selectedValues: string[];
+  matchedValues: string[];
+  outcome: DocsSearchFilterDecisionOutcome;
+}
+
+export type DocsSearchAmbiguityDecisionStatus =
+  | "unambiguous"
+  | "resolved_by_filter"
+  | "requires_filter"
+  | "not_verifiable";
+
+/** How one ambiguity-prone scope field was resolved for the result set. */
+export interface DocsSearchAmbiguityDecision {
+  field: Exclude<DocsSearchFilterField, "tags">;
+  status: DocsSearchAmbiguityDecisionStatus;
+  selectedValues: string[];
+  candidateValues?: string[];
+  reason: string;
+}
+
+/** Summary of scope ambiguity after applying the requested filters. */
+export interface DocsSearchAmbiguityResolution {
+  status: "unambiguous" | "resolved" | "unresolved" | "not_verifiable";
+  decisions: DocsSearchAmbiguityDecision[];
+}
+
+export type DocsSearchRankingStrategy = "lexical" | "exact" | "provider";
+
+export type DocsSearchRankingReasonCode =
+  | "literal_match"
+  | "title_phrase"
+  | "section_phrase"
+  | "title_section_phrase"
+  | "url_phrase"
+  | "description_phrase"
+  | "content_phrase"
+  | "title_terms"
+  | "section_terms"
+  | "description_terms"
+  | "content_terms"
+  | "all_terms_in_section"
+  | "all_terms_in_title"
+  | "all_query_terms"
+  | "heading_boost"
+  | "exact_page_boost"
+  | "provider_order"
+  | "literal_result_priority"
+  | "stable_url_tiebreak";
+
+/** One deterministic reason that contributed to, or controlled, final result ordering. */
+export interface DocsSearchRankingReason {
+  code: DocsSearchRankingReasonCode;
+  description: string;
+  /** Numeric contribution to the built-in lexical score, when applicable. */
+  contribution?: number;
+}
+
+/**
+ * Optional, bounded explanation generated after final ranking and provenance validation.
+ *
+ * Explanations describe the result that was actually returned. Provider ordering is
+ * identified explicitly rather than being presented as a framework-computed lexical score.
+ */
+export interface DocsSearchExplanation {
+  format: "docs-search-explanation.v1";
+  /** One-based rank in the complete cursor-bound result set. */
+  rank: number;
+  rankingStrategy: DocsSearchRankingStrategy;
+  matchedTerms: DocsSearchMatchedTerm[];
+  /** Whether additional terms or term characters were omitted from this bounded payload. */
+  matchedTermsTruncated: boolean;
+  /** Final selected provenance scope, or null when a remote provider did not supply one. */
+  selectedScope: DocsRetrievalSourceScope | null;
+  filterDecisions: DocsSearchFilterDecision[];
+  ambiguityResolution: DocsSearchAmbiguityResolution;
+  rankingReasons: DocsSearchRankingReason[];
 }
 
 export interface DocsSearchResult {
@@ -1150,27 +1912,203 @@ export interface DocsSearchResult {
   type: DocsSearchResultType;
   score?: number;
   section?: string;
+  /** Canonical, scope-aware provenance when supplied or recoverable locally. */
+  source?: DocsRetrievalSourceProvenance;
+  /** OKF v0.2 trust metadata for the selected source. */
+  trust?: DocsOkfTrustMetadata;
+  /** Present only when the caller opts into retrieval explanations. */
+  explanation?: DocsSearchExplanation;
+}
+
+export type DocsSearchFilterField = "framework" | "version" | "package" | "tags";
+
+export interface DocsSearchFilterInput {
+  framework?: string | readonly string[];
+  version?: string | readonly string[];
+  package?: string | readonly string[];
+  tags?: string | readonly string[];
+}
+
+/** Normalized search scope. Values are ORed within a field and fields are ANDed together. */
+export interface DocsSearchFilters {
+  framework?: string[];
+  version?: string[];
+  package?: string[];
+  tags?: string[];
+}
+
+/** One selectable search-scope value and the number of matching source pages. */
+export interface DocsSearchFacetValue {
+  value: string;
+  count: number;
+}
+
+/** Cursor-aware values for one search-scope field. */
+export interface DocsSearchFacet {
+  /** Number of distinct values before the response limit is applied. */
+  valueCount: number;
+  /** Total number of distinct values. Alias of `valueCount` for pagination clients. */
+  total: number;
+  /** Whether another page can be requested with `nextCursor`. */
+  hasMore: boolean;
+  /** Opaque cursor for the next page. Omitted when this is the final page. */
+  nextCursor?: string;
+  /** Whether this page omits any values from the complete facet. */
+  truncated: boolean;
+  values: DocsSearchFacetValue[];
+}
+
+/**
+ * Cheap, body-free discovery response for the search scopes available in an index.
+ *
+ * Counts for each facet apply the other selected filters but intentionally ignore
+ * the selected values for that same field, so agents can discover alternatives.
+ */
+export interface DocsSearchFacetsResponse {
+  format: "docs-search-facets.v1";
+  audience: "human" | "agent";
+  filters: DocsSearchFilters;
+  indexGeneration: string;
+  /** Number of source pages matching every selected filter. */
+  matchedPageCount: number;
+  facets: Record<DocsSearchFilterField, DocsSearchFacet>;
+}
+
+export type DocsSearchWarningCode =
+  | "ambiguous_scope"
+  | "unknown_filter_value"
+  | "missing_scope_metadata"
+  | "conflicting_scope_metadata";
+
+export interface DocsSearchWarning {
+  code: DocsSearchWarningCode;
+  field: DocsSearchFilterField;
+  message: string;
+  /** Bounded, normalized values relevant to this warning. */
+  values?: string[];
+  /** Bounded, deterministic sample of affected canonical page URLs. */
+  pageUrls?: string[];
+  /** Total number of affected values or pages before samples were bounded. */
+  count?: number;
+}
+
+export interface DocsSearchResponse {
+  format: "docs-search.v1";
+  query: string;
+  audience: "human" | "agent";
+  filters: DocsSearchFilters;
+  /**
+   * Generation of the complete local index snapshot used for this retrieval.
+   * Built-in search endpoints always emit it; optionality preserves source compatibility
+   * for callers that construct the versioned response object themselves.
+   */
+  indexGeneration?: string;
+  /** Number of results in this response page. */
+  resultCount: number;
+  /**
+   * Exact number of results available for the cursor-bound query.
+   * Built-in structured endpoints always emit this; optionality preserves the v1
+   * producer contract for existing integrations.
+   */
+  total?: number;
+  /**
+   * Whether another page can be requested with `nextCursor`.
+   * Built-in structured endpoints always emit this; optionality preserves the v1
+   * producer contract for existing integrations.
+   */
+  hasMore?: boolean;
+  /** Opaque cursor for the next page. Omitted when this is the final page. */
+  nextCursor?: string;
+  results: DocsSearchResult[];
+  warnings: DocsSearchWarning[];
+}
+
+/** Structured search response emitted by built-in cursor-aware endpoints. */
+export interface DocsPaginatedSearchResponse extends DocsSearchResponse {
+  total: number;
+  hasMore: boolean;
+}
+
+export interface DocsSearchRequest {
+  filters: DocsSearchFilters;
+  structured: boolean;
+  /** Whether search results should include bounded retrieval explanations. */
+  explain?: boolean;
+  /** Whether the caller requested the body-free search facet response. */
+  facets?: boolean;
+  /** Facet field selected for cursor continuation. */
+  facet?: DocsSearchFilterField;
+  /** Opaque cursor supplied by a previous structured or facet response. */
+  cursor?: string;
+  /** Structured result or facet value page size. */
+  limit?: number;
 }
 
 export interface DocsSearchQuery {
   query: string;
   limit?: number;
+  /** Zero-based provider offset used by the shared structured-search pipeline. */
+  offset?: number;
+  /** Provider cursor used by cursor-native remote adapters. */
+  cursor?: string;
   locale?: string;
   pathname?: string;
+  /** Requested content projection. Omitted callers retain the human-search default. */
+  audience?: "human" | "agent";
+  /** Normalized framework, version, package, and tag constraints. */
+  filters?: DocsSearchFilters;
+  /** Whether the shared pipeline should explain the final ranked results. */
+  explain?: boolean;
 }
 
 export interface DocsSearchAdapterContext {
   pages: DocsSearchSourcePage[];
   documents: DocsSearchDocument[];
+  /** Resolved content projection supplied to this adapter. */
+  audience?: "human" | "agent";
   locale?: string;
   pathname?: string;
   siteTitle?: string;
+  /** Canonical docs origin used to make result provenance URLs absolute. */
+  baseUrl?: string;
+  /** @internal Trusted canonical origin used to identify hosted-index ownership. */
+  indexBaseUrl?: string;
+  /** Complete index generation represented by this adapter context. */
+  indexGeneration?: string;
+  /** Chunking policy represented by this adapter context. */
+  chunking?: DocsSearchChunkingConfig;
+  /** @internal Let the shared search pipeline attach provenance once after provider merging. */
+  deferSourceProvenance?: boolean;
+  /** Optional cancellation signal, including diagnostic timeouts. */
+  signal?: AbortSignal;
 }
 
 export interface DocsSearchAdapter {
   name: string;
   index?(context: DocsSearchAdapterContext): Promise<void>;
   search(query: DocsSearchQuery, context: DocsSearchAdapterContext): Promise<DocsSearchResult[]>;
+  /**
+   * Optional exact pagination contract. Built-in adapters implement this while legacy custom
+   * adapters can continue exposing only `search`.
+   */
+  searchPage?(
+    query: DocsSearchQuery,
+    context: DocsSearchAdapterContext,
+  ): Promise<DocsSearchAdapterPage>;
+}
+
+/**
+ * Exact page metadata returned by pagination-aware search adapters.
+ *
+ * Legacy custom adapters may continue implementing only `search` for unpaginated callers.
+ * Cursor-aware structured search uses the exact local fallback unless the custom adapter
+ * also implements `searchPage` and declares a stable `paginationRevision`.
+ */
+export interface DocsSearchAdapterPage {
+  results: DocsSearchResult[];
+  total: number;
+  /** Cursor-native providers can supply their own continuation token. */
+  nextCursor?: string;
 }
 
 export type DocsSearchAdapterFactory = (
@@ -1217,6 +2155,8 @@ export interface AlgoliaDocsSearchConfig {
   adminApiKey?: string;
   maxResults?: number;
   syncOnSearch?: boolean;
+  /** Stable namespace used to identify this docs corpus in a shared index. */
+  syncNamespace?: string;
   chunking?: DocsSearchChunkingConfig;
 }
 
@@ -1229,6 +2169,8 @@ export interface TypesenseDocsSearchConfig {
   adminApiKey?: string;
   maxResults?: number;
   syncOnSearch?: boolean;
+  /** Stable namespace used to identify this docs corpus in a shared collection. */
+  syncNamespace?: string;
   queryBy?: string[];
   mode?: "keyword" | "hybrid";
   embeddings?: DocsSearchEmbeddingsConfig;
@@ -1252,6 +2194,12 @@ export interface McpDocsSearchConfig {
    */
   toolName?: string;
   /**
+   * Forward the resolved human/agent projection as the tool's `audience` argument.
+   * HTTP request resolution enables this for same-origin `search_docs` routes.
+   * Remote and custom tools must opt in explicitly after supporting the argument.
+   */
+  forwardAudience?: boolean;
+  /**
    * Override the MCP protocol version header when needed.
    */
   protocolVersion?: string;
@@ -1267,6 +2215,13 @@ export interface CustomDocsSearchConfig {
   provider: "custom";
   enabled?: boolean;
   adapter: DocsSearchAdapter | DocsSearchAdapterFactory;
+  /**
+   * Stable revision for the adapter's result ordering.
+   *
+   * Custom adapters must set this and implement `searchPage` to participate in cursor
+   * pagination. Change it whenever ranking behavior changes so old cursors fail closed.
+   */
+  paginationRevision?: string;
   maxResults?: number;
   chunking?: DocsSearchChunkingConfig;
 }
@@ -1285,6 +2240,11 @@ export interface LastUpdatedConfig {
    */
   enabled?: boolean;
   /**
+   * Label shown before the formatted date.
+   * @default "Last updated"
+   */
+  label?: string;
+  /**
    * Where to render the "Last updated" date.
    *
    * - `"footer"` — next to the "Edit on GitHub" link at the bottom (default)
@@ -1294,6 +2254,8 @@ export interface LastUpdatedConfig {
    */
   position?: "footer" | "below-title";
 }
+
+export type ReadingTimeFormat = "long" | "short";
 
 /**
  * Configuration for estimated page reading time.
@@ -1314,6 +2276,23 @@ export interface ReadingTimeConfig {
    * @default 220
    */
   wordsPerMinute?: number;
+  /**
+   * Label style used when rendering the reading-time estimate.
+   *
+   * `"long"` renders labels like `3 min read`; `"short"` renders `3 min`.
+   *
+   * @default "long"
+   */
+  format?: ReadingTimeFormat;
+  /**
+   * Whether fenced and inline code should count toward the estimate.
+   *
+   * Code is ignored by default so the label reflects human prose. Set this to
+   * `true` when code-heavy guides should include examples in the estimate.
+   *
+   * @default false
+   */
+  includeCode?: boolean;
 }
 
 /**
@@ -1538,6 +2517,37 @@ export interface AIConfig {
    * ```
    */
   triggerComponent?: unknown;
+
+  /**
+   * Server-side answer provider used by Ask AI.
+   *
+   * - `"docs-cloud"` — send questions to the configured Docs Cloud project
+   *   using `PUBLIC_DOCS_CLOUD_PROJECT_ID` and a browser-safe
+   *   Docs Cloud API key env such as `PUBLIC_DOCS_CLOUD_API_KEY`.
+   *   If only a server-side key is configured, framework integrations may
+   *   proxy through the local docs API route.
+   * - Omit this option to use the built-in OpenAI-compatible RAG handler.
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   provider: "docs-cloud",
+   * }
+   * ```
+   */
+  provider?: "docs-cloud" | (string & {});
+
+  /**
+   * Whether Ask AI should request streaming responses when the selected
+   * provider supports them.
+   *
+   * Docs Cloud streams token deltas by default for `provider: "docs-cloud"`.
+   * Set this to `false` to request a single JSON answer instead.
+   *
+   * @default true
+   */
+  stream?: boolean;
 
   /**
    * The LLM model configuration.
@@ -1974,14 +2984,20 @@ export interface FeedbackConfig {
   enabled?: boolean;
   /** Prompt shown above the feedback buttons. @default "How is this guide?" */
   question?: string;
-  /** Placeholder shown in the optional free-form feedback field. @default "Leave your feedback..." */
+  /** Placeholder shown in the optional free-form feedback field. @default "Share what could be clearer..." */
   placeholder?: string;
+  /** Require a non-empty comment before feedback can be submitted. @default false */
+  requireComment?: boolean;
   /** Label for the positive button. @default "Good" */
   positiveLabel?: string;
   /** Label for the negative button. @default "Bad" */
   negativeLabel?: string;
   /** Label for the submit button. @default "Submit" */
   submitLabel?: string;
+  /** Message shown after feedback is submitted successfully. @default "Thanks for the feedback." */
+  successMessage?: string;
+  /** Message shown when feedback submission fails. @default "Could not send feedback. Please try again." */
+  errorMessage?: string;
   /**
    * Callback fired when the user submits the feedback form.
    *
@@ -2077,10 +3093,58 @@ export interface ChangelogConfig {
 
 export type ApiReferenceRenderer = "fumadocs" | "scalar";
 
+export interface DocsOpenApiMcpCredentialContext {
+  operationId: string;
+  method: string;
+  path: string;
+  security: readonly Record<string, readonly string[]>[];
+}
+
+export type DocsOpenApiMcpHeaders =
+  | Readonly<Record<string, string>>
+  | ((
+      context: DocsOpenApiMcpCredentialContext,
+    ) => Readonly<Record<string, string>> | Promise<Readonly<Record<string, string>>>);
+
+export type DocsOpenApiMcpHostResolver = (
+  hostname: string,
+) => readonly string[] | Promise<readonly string[]>;
+
+/** Explicit, deny-by-default projection of OpenAPI operations into MCP tools. */
+export interface DocsOpenApiMcpConfig {
+  /** Enable operation projection. No tools are exposed until an operation is explicitly allowed. */
+  enabled?: boolean;
+  /** Allowed operationIds or `METHOD /path` selectors. */
+  operations?: readonly string[];
+  /** Override the first OpenAPI server URL used for requests. */
+  baseUrl?: string;
+  /** Allow POST, PUT, PATCH, or DELETE operations. Defaults to false. */
+  allowMutations?: boolean;
+  /** Server-owned credentials added after user input is parsed. */
+  headers?: DocsOpenApiMcpHeaders;
+  /** Per-operation request timeout. @default 10000 */
+  timeoutMs?: number;
+  /** Permit plain HTTP destinations. Disabled by default. */
+  allowInsecureHttp?: boolean;
+  /** Permit loopback, private, link-local, and reserved network destinations. Disabled by default. */
+  allowPrivateNetwork?: boolean;
+  /** Server-owned DNS resolver used before every request and redirect. */
+  resolveHost?: DocsOpenApiMcpHostResolver;
+  /** Number of validated redirects to follow. @default 0 */
+  maxRedirects?: number;
+  /** Maximum downstream response bytes buffered into an MCP result. @default 1000000 */
+  maxResponseBytes?: number;
+  /** Per-principal operation calls allowed in a rolling minute. @default 60 */
+  requestsPerMinute?: number;
+  /** Concurrent downstream operation calls allowed per principal. @default 4 */
+  maxConcurrentRequests?: number;
+}
+
 export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
-   * The initial implementation is wired for Next.js route handlers.
+   * Supported adapters can generate references from framework route handlers
+   * or a hosted OpenAPI JSON document.
    * @default false
    */
   enabled?: boolean;
@@ -2110,16 +3174,35 @@ export interface ApiReferenceConfig {
    */
   specUrl?: string;
   /**
+   * Product API base URLs described by the OpenAPI document.
+   *
+   * These URLs become RFC 9727 API catalog targets, and the OpenAPI document is
+   * associated with each target through `service-desc`. Relative URLs resolve
+   * against the docs origin.
+   *
+   * Same-origin generated schemas default to the request origin. Set this for
+   * remotely hosted schemas because the schema URL is not necessarily the API
+   * URL. An explicit empty array disables the catalog association.
+   *
+   * @example ["https://api.example.com/v1"]
+   */
+  catalogTargets?: string[];
+  /**
    * Which renderer to use for the API reference UI.
    *
-   * - `"fumadocs"` uses `fumadocs-openapi`
-   * - `"scalar"` uses the existing Scalar renderer
+   * - `"fumadocs"` uses the Fumadocs OpenAPI renderer bundled by `@farming-labs/next`
+   * - `"scalar"` uses the Scalar renderer bundled by `@farming-labs/docs` and the adapters
    *
    * Defaults are framework-aware:
    * - Next.js: `"fumadocs"`
    * - TanStack Start / SvelteKit / Astro / Nuxt: `"scalar"`
    */
   renderer?: ApiReferenceRenderer;
+  /**
+   * Explicitly expose selected OpenAPI operations as MCP tools. This is deny-by-default:
+   * set `operations`, or mark an operation with `x-farming-labs-mcp.enabled: true`.
+   */
+  mcp?: boolean | DocsOpenApiMcpConfig;
   /**
    * Filesystem route root to scan for API handlers.
    *
@@ -2142,22 +3225,27 @@ export interface ApiReferenceConfig {
 
 export interface DocsAgentCompactConfig {
   /**
-   * Direct API key for the Token Company compression API.
+   * Direct API key for the Docs Cloud compression API. Prefer `cloud.apiKey.env`
+   * so all Docs Cloud CLI commands share the same root API key configuration.
    *
-   * Prefer `apiKeyEnv` for checked-in config files so secrets stay in the environment.
+   * @deprecated Configure `cloud.apiKey.env` instead.
    */
   apiKey?: string;
   /**
-   * Environment variable name that stores the Token Company API key.
+   * Environment variable name that stores the Docs Cloud API key. Prefer
+   * `cloud.apiKey.env` so all Docs Cloud CLI commands share the same root API
+   * key configuration.
+   *
+   * @deprecated Configure `cloud.apiKey.env` instead.
    */
   apiKeyEnv?: string;
   /**
-   * Base URL for the Token Company API.
+   * Base URL for the compression API.
    */
   baseUrl?: string;
   /**
    * Compression model name.
-   * @default "bear-1.2"
+   * @default "docs-cloud-compress-v1"
    */
   model?: string;
   /**
@@ -2180,11 +3268,817 @@ export interface DocsAgentCompactConfig {
   protectJson?: boolean;
 }
 
+export interface DocsAgentGoldenTaskFilters {
+  /** Limit retrieval to a framework such as `nextjs`, `astro`, or `nuxt`. */
+  framework?: string;
+  /** Limit retrieval to an exact documented version. */
+  version?: string;
+  /** Limit retrieval to one or more documented package names. */
+  package?: string | readonly string[];
+  /** Limit retrieval to pages with one or more matching tags. */
+  tags?: string | readonly string[];
+  /** Limit retrieval to a locale. */
+  locale?: string;
+}
+
+export interface DocsAgentGoldenTaskExpectation {
+  /** Canonical page or section URLs that should answer this task. */
+  relevantSources: string[];
+  /** Additional sources that may be cited without reducing precision. */
+  allowedSources?: string[];
+  /** Sources that must not be selected, for example an obsolete version. */
+  forbiddenSources?: string[];
+  /** Citations that must appear. Defaults to `relevantSources`. */
+  requiredCitations?: string[];
+  /** Minimum relevant-source recall in the top K results. Defaults to `1`. */
+  minRecallAtK?: number;
+  /** Maximum acceptable rank for the first relevant source. Defaults to `topK`. */
+  maxFirstRelevantRank?: number;
+  /** Runnable examples that must be found in retrieved context. */
+  examples?: DocsAgentGoldenExpectedExample[];
+  /** Minimum share of context bytes that must come from relevant sources. */
+  minUsefulByteRatio?: number;
+  /**
+   * Scope that the returned sources must actually select. Unlike `filters`, this is an
+   * assertion and does not constrain retrieval, so it can detect a wrong framework,
+   * version, or locale result.
+   */
+  scope?: DocsAgentGoldenTaskFilters;
+  /** Assertions evaluated against an explicitly configured answer runner. */
+  answer?: DocsAgentGoldenAnswerExpectation;
+  /** Adversarial retrieval and answer-safety assertions. */
+  safety?: DocsAgentGoldenSafetyExpectation;
+}
+
+export interface DocsAgentGoldenPromptInjectionExpectation {
+  /** Canary instruction fragments that must be present in retrieved context. */
+  markers: string[];
+  /** Canary fragments the answer must not repeat. Defaults to `markers`. */
+  forbiddenAnswerText?: string[];
+}
+
+export interface DocsAgentGoldenAuthenticatedContentExpectation {
+  /** Protected page or section URLs that public retrieval must not expose. */
+  forbiddenSources?: string[];
+  /** Stable canary fragments that must not appear in context or answers. Never use real secrets. */
+  forbiddenText?: string[];
+}
+
+export interface DocsAgentGoldenFreshnessExpectation {
+  /** Expected retrieval-index generation. Omit to require one consistent generation. */
+  indexGeneration?: string;
+  /** Expected full-document digest keyed by canonical page or section URL. */
+  sourceDigests?: Record<string, string>;
+}
+
+export type DocsAgentGoldenQueryVariantKind = "ambiguous" | "typo";
+
+export interface DocsAgentGoldenQueryVariant {
+  /** Stable classification used in safety reports. */
+  kind: DocsAgentGoldenQueryVariantKind;
+  /** Alternate user-shaped query evaluated with the parent task's expectations. */
+  query: string;
+}
+
+/**
+ * Opt-in adversarial assertions for one golden retrieval task.
+ *
+ * These assertions use canaries and evaluator-only expectations; they are never forwarded to
+ * configured search or answer providers.
+ */
+export interface DocsAgentGoldenSafetyExpectation {
+  /** Verify that an answer ignores instruction-like canary text retrieved from documentation. */
+  promptInjection?: DocsAgentGoldenPromptInjectionExpectation;
+  /** Citations that must never be trusted or emitted, including poisoned external origins. */
+  poisonedCitations?: string[];
+  /** Protected-source and stable canary checks for public retrieval. */
+  authenticatedContent?: DocsAgentGoldenAuthenticatedContentExpectation;
+  /** Verify source digests and index generations against current retrieval content. */
+  freshness?: DocsAgentGoldenFreshnessExpectation;
+  /** Fail when retrieved provenance contains conflicting or ambiguous framework/version scope. */
+  rejectConflictingFrameworkVersions?: boolean;
+  /** Deleted page or section URLs that must remain absent from retrieval and citations. */
+  deletedSectionTombstones?: string[];
+  /** Ambiguous and typo-heavy queries evaluated with the parent task's full expectations. */
+  queryVariants?: DocsAgentGoldenQueryVariant[];
+}
+
+export interface DocsAgentGoldenAnswerExpectation {
+  /** Literal fragments that must occur in the generated answer. */
+  includes?: string[];
+  /** Literal fragments that must not occur in the generated answer. */
+  excludes?: string[];
+  /** Citations that the generated answer must contain. */
+  requiredCitations?: string[];
+  /** Additional answer citations that are valid but not required. */
+  allowedCitations?: string[];
+  /** Citations that the generated answer must not contain. */
+  forbiddenCitations?: string[];
+}
+
+export type DocsAgentGoldenExampleVerification = "present" | "syntax" | "execute";
+
+export interface DocsAgentGoldenExpectedExample {
+  /** Canonical page or section URL containing the example. */
+  source?: string;
+  language?: string;
+  framework?: string;
+  packageManager?: string;
+  title?: string;
+  /** Defaults to true. Set false for an intentionally non-runnable example. */
+  runnable?: boolean;
+  /** Literal fragments that must occur in the example. */
+  includes?: string[];
+  /**
+   * Verification strength. Runnable examples default to `syntax`; explicitly
+   * non-runnable examples default to `present`. Runtime execution is always opt-in.
+   */
+  verification?: DocsAgentGoldenExampleVerification;
+}
+
+export type DocsAgentEvaluationSurface = "mcp-context" | "configured-search" | "ask-ai-context";
+
+export interface DocsAgentGoldenTask {
+  /** Stable identifier shown in doctor/review reports. */
+  id: string;
+  /** User-shaped retrieval query. */
+  query: string;
+  /** Optional retrieval scope. */
+  filters?: DocsAgentGoldenTaskFilters;
+  /** Conservative context budget. Uses the MCP context UTF-8 accounting strategy. */
+  tokenBudget?: number;
+  /** Number of ranked search results to evaluate. */
+  topK?: number;
+  /** Override the evaluation surface configured for the task suite. */
+  surface?: DocsAgentEvaluationSurface;
+  /** Evaluator-only expectations used to score the task. */
+  expect: DocsAgentGoldenTaskExpectation;
+}
+
+export interface DocsAgentEvaluationSourceReference {
+  url: string;
+  title?: string;
+  framework?: string;
+  version?: string;
+  package?: readonly string[];
+  tags?: readonly string[];
+  locale?: string;
+}
+
+/** Blind task input sent to answer providers. Golden expectations stay evaluator-only. */
+export interface DocsAgentEvaluationTaskInput {
+  id: string;
+  query: string;
+  filters?: DocsAgentGoldenTaskFilters;
+}
+
+/** Serializable, expectation-blind request sent to every configured answer provider. */
+export interface DocsAgentEvaluationAnswerRequest {
+  task: DocsAgentEvaluationTaskInput;
+  surface: DocsAgentEvaluationSurface;
+  context: string;
+  sources: readonly DocsAgentEvaluationSourceReference[];
+}
+
+/** Callback answer input. The abort signal is not serialized for HTTP providers. */
+export interface DocsAgentEvaluationAnswerInput extends DocsAgentEvaluationAnswerRequest {
+  /** Aborted when the configured answer timeout elapses. */
+  signal: AbortSignal;
+}
+
+export interface DocsAgentEvaluationAnswerResult {
+  text: string;
+  /** Canonical URLs cited by the answer. Markdown links are also extracted from `text`. */
+  citations?: string[];
+}
+
+export type DocsAgentEvaluationAnswerRunner = (
+  input: DocsAgentEvaluationAnswerInput,
+) => DocsAgentEvaluationAnswerResult | Promise<DocsAgentEvaluationAnswerResult>;
+
+export type DocsAgentEvaluationAnswerProvider =
+  | {
+      provider: "callback";
+      run: DocsAgentEvaluationAnswerRunner;
+      /** Abort the callback after this many milliseconds. @default 30000 */
+      timeoutMs?: number;
+    }
+  | {
+      provider: "http";
+      /** Endpoint that accepts `DocsAgentEvaluationAnswerRequest` JSON and returns an answer result. */
+      endpoint: string;
+      /** Optional request headers. Values are never included in evaluation reports. */
+      headers?: Record<string, string>;
+      /** Abort the request after this many milliseconds. @default 30000 */
+      timeoutMs?: number;
+    };
+
+export interface DocsAgentEvaluationsConfig {
+  /** Enable golden-task evaluation. */
+  enabled?: boolean;
+  /** Default conservative context budget for tasks that omit `tokenBudget`. */
+  tokenBudget?: number;
+  /** Default retrieval depth for tasks that omit `topK`. */
+  topK?: number;
+  /** Retrieval/context surface measured by the task suite. @default "mcp-context" */
+  surface?: DocsAgentEvaluationSurface;
+  /**
+   * Permit configured external search, HTTP answers, and explicit executable-example
+   * verification. Disabled by default so doctor/review remain offline unless explicitly opted in.
+   */
+  allowNetwork?: boolean;
+  /** Timeout for configured retrieval during each task. @default 30000 */
+  searchTimeoutMs?: number;
+  /** Optional callback or HTTP runner used to measure actual generated answers. */
+  answer?: DocsAgentEvaluationAnswerProvider;
+  /** Golden tasks evaluated by `docs doctor` and `docs review`. */
+  tasks?: DocsAgentGoldenTask[];
+}
+
+/**
+ * Project-local Agent Skills published by the runtime, static Agent Bundle, and MCP server.
+ *
+ * Each path may point at a `SKILL.md`, a skill directory containing `SKILL.md`, or a
+ * collection directory whose descendants contain `SKILL.md` files. Paths are resolved
+ * inside the current project/workspace boundary. Only `SKILL.md` and files below the
+ * standard `references/`, `scripts/`, and `assets/` directories are published.
+ */
+export interface DocsAgentSkillsConfig {
+  /** Project-relative skill file, skill directory, or collection directory paths. */
+  paths: string | readonly string[];
+  /**
+   * Thresholds used by `docs doctor --agent` and `docs review` to keep skills
+   * progressively disclosed and executable without loading avoidable context.
+   */
+  progressiveDisclosure?: DocsAgentSkillsProgressiveDisclosureConfig;
+}
+
+export type DocsAgentSkillsCompatibilityPolicy = "when-needed" | "always" | "off";
+
+export interface DocsAgentSkillsProgressiveDisclosureConfig {
+  /** Recommended maximum size of the complete SKILL.md document. @default 500 */
+  maxSkillLines?: number;
+  /**
+   * Approximate token budget for the SKILL.md instructions after frontmatter.
+   * Detailed material should move to `references/` when this is exceeded.
+   *
+   * @default 5000
+   */
+  instructionTokenBudget?: number;
+  /**
+   * Maximum local Markdown reference hops from SKILL.md.
+   * `1` permits SKILL.md -> references/guide.md but flags deeper chains.
+   *
+   * @default 1
+   */
+  maxReferenceDepth?: number;
+  /**
+   * When compatibility frontmatter is expected.
+   *
+   * - `"when-needed"`: require it when scripts or environment/tool requirements are present
+   * - `"always"`: require it for every configured skill
+   * - `"off"`: do not diagnose missing compatibility metadata
+   *
+   * @default "when-needed"
+   */
+  compatibility?: DocsAgentSkillsCompatibilityPolicy;
+  /** Diagnose scripts without dependency and validation guidance. @default true */
+  checkScripts?: boolean;
+}
+
+/** Concise array shorthand for `agent.skills.paths`. */
+export type DocsAgentSkillsInput = string | readonly string[] | DocsAgentSkillsConfig;
+
+/** Core A2A v1 bindings plus URI-identified custom bindings. */
+export type DocsAgentA2AProtocolBinding = "JSONRPC" | "GRPC" | "HTTP+JSON" | (string & {});
+
+/** One A2A protocol interface advertised by an Agent Card. */
+export interface DocsAgentA2AInterfaceConfig {
+  /** Absolute binding-appropriate URL. Core bindings require HTTPS outside loopback development. */
+  url: string;
+  /** A2A protocol binding implemented at this URL. @default "HTTP+JSON" */
+  protocolBinding?: DocsAgentA2AProtocolBinding;
+  /** A2A protocol version implemented at this URL. @default "1.0" */
+  protocolVersion?: string;
+  /** Optional tenant identifier clients must send when calling this interface. */
+  tenant?: string;
+}
+
+/** A protocol extension implemented by the configured A2A service. */
+export interface DocsAgentA2AExtension {
+  /** Stable URI identifying the extension. */
+  uri: string;
+  /** How this agent implements the extension. */
+  description?: string;
+  /** Whether clients must understand the extension before using the agent. */
+  required?: boolean;
+  /** Extension-specific JSON configuration. */
+  params?: Readonly<Record<string, unknown>>;
+}
+
+/** Optional capabilities implemented by the configured A2A service. */
+export interface DocsAgentA2ACapabilities {
+  streaming?: boolean;
+  pushNotifications?: boolean;
+  extensions?: readonly DocsAgentA2AExtension[];
+  /** Requires implemented GetExtendedAgentCard plus a declared scheme and security requirement. */
+  extendedAgentCard?: boolean;
+}
+
+/** A list of OAuth scopes associated with one named security scheme. */
+export interface DocsAgentA2ASecurityScopeList {
+  list: readonly string[];
+}
+
+/** One alternative set of security schemes required to call an A2A service or skill. */
+export interface DocsAgentA2ASecurityRequirement {
+  schemes: Readonly<Record<string, DocsAgentA2ASecurityScopeList>>;
+}
+
+export interface DocsAgentA2AApiKeySecurityScheme {
+  description?: string;
+  location: "query" | "header" | "cookie";
+  name: string;
+}
+
+export interface DocsAgentA2AHttpAuthSecurityScheme {
+  description?: string;
+  scheme: string;
+  bearerFormat?: string;
+}
+
+export interface DocsAgentA2AOAuthAuthorizationCodeFlow {
+  authorizationUrl: string;
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+  pkceRequired?: boolean;
+}
+
+export interface DocsAgentA2AOAuthClientCredentialsFlow {
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+export interface DocsAgentA2AOAuthDeviceCodeFlow {
+  deviceAuthorizationUrl: string;
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** @deprecated A2A v1 retains this OAuth flow for compatibility only. */
+export interface DocsAgentA2AOAuthImplicitFlow {
+  authorizationUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** @deprecated A2A v1 retains this OAuth flow for compatibility only. */
+export interface DocsAgentA2AOAuthPasswordFlow {
+  tokenUrl: string;
+  refreshUrl?: string;
+  scopes: Readonly<Record<string, string>>;
+}
+
+/** A2A v1 OAuth flow union. Exactly one flow is allowed by the protocol. */
+export type DocsAgentA2AOAuthFlows =
+  | {
+      authorizationCode: DocsAgentA2AOAuthAuthorizationCodeFlow;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials: DocsAgentA2AOAuthClientCredentialsFlow;
+      deviceCode?: never;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode: DocsAgentA2AOAuthDeviceCodeFlow;
+      implicit?: never;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit: DocsAgentA2AOAuthImplicitFlow;
+      password?: never;
+    }
+  | {
+      authorizationCode?: never;
+      clientCredentials?: never;
+      deviceCode?: never;
+      implicit?: never;
+      password: DocsAgentA2AOAuthPasswordFlow;
+    };
+
+export interface DocsAgentA2AOAuth2SecurityScheme {
+  description?: string;
+  flows: DocsAgentA2AOAuthFlows;
+  oauth2MetadataUrl?: string;
+}
+
+export interface DocsAgentA2AOpenIdConnectSecurityScheme {
+  description?: string;
+  openIdConnectUrl: string;
+}
+
+export interface DocsAgentA2AMutualTlsSecurityScheme {
+  description?: string;
+}
+
+/** A2A v1 security scheme union. Exactly one scheme is allowed by the protocol. */
+export type DocsAgentA2ASecurityScheme =
+  | {
+      apiKeySecurityScheme: DocsAgentA2AApiKeySecurityScheme;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme: DocsAgentA2AHttpAuthSecurityScheme;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme: DocsAgentA2AOAuth2SecurityScheme;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme: DocsAgentA2AOpenIdConnectSecurityScheme;
+      mtlsSecurityScheme?: never;
+    }
+  | {
+      apiKeySecurityScheme?: never;
+      httpAuthSecurityScheme?: never;
+      oauth2SecurityScheme?: never;
+      openIdConnectSecurityScheme?: never;
+      mtlsSecurityScheme: DocsAgentA2AMutualTlsSecurityScheme;
+    };
+
+/** One capability implemented by the configured A2A service. */
+export interface DocsAgentA2ASkill {
+  id: string;
+  name: string;
+  description: string;
+  tags: readonly string[];
+  examples?: readonly string[];
+  inputModes?: readonly string[];
+  outputModes?: readonly string[];
+  securityRequirements?: readonly DocsAgentA2ASecurityRequirement[];
+}
+
+interface DocsAgentA2ABaseConfig {
+  name: string;
+  description: string;
+  /** Absolute HTTPS documentation URL; HTTP is allowed only for loopback development. */
+  documentationUrl?: string;
+  /** Provider identity with an absolute HTTPS URL outside loopback development. */
+  provider?: { organization: string; url: string };
+  version?: string;
+  /** Absolute HTTPS icon URL; HTTP is allowed only for loopback development. */
+  iconUrl?: string;
+  capabilities?: DocsAgentA2ACapabilities;
+  /** Agent-wide supported input media types. @default ["text/plain"] */
+  defaultInputModes?: readonly string[];
+  /** Agent-wide supported output media types. @default ["text/plain"] */
+  defaultOutputModes?: readonly string[];
+  securitySchemes?: Readonly<Record<string, DocsAgentA2ASecurityScheme>>;
+  securityRequirements?: readonly DocsAgentA2ASecurityRequirement[];
+}
+
+interface DocsAgentA2ASingleInterfaceConfig {
+  /** @deprecated Prefer `supportedInterfaces` for new A2A v1 configurations. */
+  interfaceUrl: string;
+  supportedInterfaces?: never;
+  /** A2A protocol version exposed by the shorthand interface. @default "0.3" */
+  protocolVersion?: string;
+  /** Transport binding exposed by the shorthand interface. @default "HTTP+JSON" */
+  protocolBinding?: DocsAgentA2AProtocolBinding;
+  /** Explicit A2A skills; published documentation skills are projected when omitted. */
+  skills?: readonly DocsAgentA2ASkill[];
+}
+
+interface DocsAgentA2AInterfacesConfig {
+  /** Ordered interfaces; the first entry is preferred. At least one is required. */
+  supportedInterfaces: readonly [DocsAgentA2AInterfaceConfig, ...DocsAgentA2AInterfaceConfig[]];
+  /** Capabilities actually implemented by the configured A2A interfaces. */
+  skills: readonly DocsAgentA2ASkill[];
+  interfaceUrl?: never;
+  protocolVersion?: never;
+  protocolBinding?: never;
+}
+
+/** Explicit A2A service metadata. Configure this only when the URL implements A2A. */
+export type DocsAgentA2AConfig = DocsAgentA2ABaseConfig &
+  (DocsAgentA2ASingleInterfaceConfig | DocsAgentA2AInterfacesConfig);
+
 export interface DocsAgentConfig {
+  /** Publish OKF v0.2 trust metadata and a machine-readable knowledge bundle. */
+  okf?: boolean | DocsOkfConfig;
   /**
    * Defaults for `docs agent compact`.
    */
   compact?: DocsAgentCompactConfig;
+  /**
+   * Offline-by-default retrieval, citation, version, example, and token-budget evaluations.
+   * External providers and runtime execution require explicit opt-in.
+   */
+  evaluations?: boolean | DocsAgentEvaluationsConfig;
+  /** Publish reusable Agent Skills through standards discovery, static exports, and MCP. */
+  skills?: DocsAgentSkillsInput;
+  /**
+   * Body-free document synchronization feed. Enabled for runtime adapters by default.
+   *
+   * Configure snapshot callbacks when exact deltas must survive server restarts or deployments.
+   */
+  contentChanges?: boolean | DocsAgentContentChangesConfig;
+  /** Opt in to an A2A Agent Card for a separately implemented A2A service. */
+  a2a?: DocsAgentA2AConfig;
+}
+
+export interface DocsOkfConfig extends DocsOkfTrustMetadataInput {
+  /** Enable OKF projection. @default true when configured */
+  enabled?: boolean;
+  /** Public bundle route. @default "/.well-known/okf.json" */
+  route?: string;
+  /** Generator actor used when a page has no authored `okf.generated`. */
+  generatedBy?: string;
+  /** Derive `stale_after` this many days after the best page timestamp. */
+  staleAfterDays?: number;
+}
+
+export interface DocsAgentContentChangesConfig {
+  /** Disable the runtime content-change endpoint. @default true */
+  enabled?: boolean;
+  /** Number of metadata-only snapshots retained in this server process. @default 8 */
+  maxSnapshots?: number;
+  /** Load an older snapshot from a durable store for exact cross-deployment deltas. */
+  loadSnapshot?: DocsContentChangeSnapshotLoader;
+  /** Persist the current snapshot to a durable store. */
+  saveSnapshot?: DocsContentChangeSnapshotSaver;
+}
+
+export type DocsReviewSeverity = "off" | "suggestion" | "warn" | "error";
+
+export type DocsReviewCiMode = "off" | "warn" | "block";
+
+export interface DocsReviewRulesConfig {
+  /** Check internal markdown/docs links. */
+  brokenLinks?: DocsReviewSeverity;
+  /** Check required page frontmatter such as title and description. */
+  frontmatter?: DocsReviewSeverity;
+  /** Check duplicate docs slugs in the resolved docs tree. */
+  duplicateSlugs?: DocsReviewSeverity;
+  /** Check whether changed markdown/MDX files can be parsed. */
+  invalidMdx?: DocsReviewSeverity;
+  /** Check docs.config examples against known config options when possible. */
+  configExamples?: DocsReviewSeverity;
+  /** Check code fences for useful metadata such as title and framework. */
+  codeFenceMetadata?: DocsReviewSeverity;
+  /** Check runnable command/code fences for package manager context. */
+  runnableMetadata?: DocsReviewSeverity;
+  /** Validate structured page agent contracts and suggest context for implementation-heavy pages. */
+  agentContext?: DocsReviewSeverity;
+  /** Statically validate commands referenced by agent contracts and runnable examples. */
+  commandHealth?: DocsReviewSeverity;
+  /** Require useful related-page coverage on actionable docs pages. */
+  relatedCoverage?: DocsReviewSeverity;
+  /** Report when docs.config could not be evaluated and only partial static parsing is available. */
+  configConfidence?: DocsReviewSeverity;
+  /** Detect disagreement between discovery, resolved config, and the public config schema. */
+  agentSurfaceDrift?: DocsReviewSeverity;
+  /** Run configured agent golden tasks and report failed or unmeasured behavior. */
+  goldenTasks?: DocsReviewSeverity;
+  /** Check configured Agent Skills for progressive disclosure and executable guidance. */
+  agentSkills?: DocsReviewSeverity;
+}
+
+export interface DocsReviewScoreConfig {
+  /**
+   * Minimum healthy score.
+   * CI reports the threshold in warn mode and blocks below it only when `ci.mode` is `"block"`.
+   *
+   * @default 80
+   */
+  threshold?: number;
+  /**
+   * Point deductions by finding severity.
+   *
+   * @default { error: 20, warn: 8, suggestion: 2 }
+   */
+  weights?: Partial<Record<"error" | "warn" | "suggestion", number>>;
+}
+
+export interface DocsReviewCiConfig {
+  /**
+   * Enable Docs Review CI workflow generation.
+   *
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * GitHub Actions job/check name for the generated workflow.
+   *
+   * @default "docs-review"
+   */
+  name?: string;
+  /**
+   * How CI should treat unhealthy review results.
+   *
+   * - `"off"`: do not create/report CI output
+   * - `"warn"`: report annotations but pass CI
+   * - `"block"`: fail CI when errors exist or the score is below threshold
+   *
+   * @default "warn"
+   */
+  mode?: DocsReviewCiMode;
+  /**
+   * Emit GitHub workflow command annotations in CI.
+   *
+   * @default true
+   */
+  annotations?: boolean;
+  /**
+   * Reserved for GitHub PR comments from the official action/bot.
+   *
+   * @default true
+   */
+  comment?: boolean;
+}
+
+export interface DocsReviewConfig {
+  /**
+   * Enable Docs Review.
+   *
+   * Omitted review config is treated as enabled so docs sites get PR review CI by default.
+   * Set `review: false` to opt out.
+   *
+   * @default true
+   */
+  enabled?: boolean;
+  /** Score threshold and severity weights. */
+  score?: DocsReviewScoreConfig;
+  /** GitHub Actions behavior. */
+  ci?: boolean | DocsReviewCiConfig;
+  /** Optional rule severity overrides. */
+  rules?: DocsReviewRulesConfig;
+}
+
+export type DocsCodeBlocksPlannerProvider = "metadata" | "openai" | "openai-compatible" | "cloud";
+
+export type DocsCodeBlocksRunnerProvider = "local" | "vercel-sandbox" | "e2b" | "daytona" | "cloud";
+
+export type DocsCodeBlocksValidationMode = "plan" | "report";
+
+export type DocsCodeBlocksValidationPolicy = "skip" | "warn" | "error";
+
+export interface DocsCodeBlocksPlannerConfig {
+  /**
+   * Planner used to turn code fence metadata into an execution plan.
+   *
+   * - `"metadata"` reads the fence language and metadata locally.
+   * - `"openai"` calls OpenAI's chat completions API.
+   * - `"openai-compatible"` calls an OpenAI-compatible chat completions endpoint.
+   * - `"cloud"` is reserved for the hosted Farming Labs planner.
+   *
+   * @default "metadata"
+   */
+  provider?: DocsCodeBlocksPlannerProvider;
+  /** Model name for LLM-backed planners. */
+  model?: string;
+  /** OpenAI-compatible base URL. Defaults to `https://api.openai.com/v1` for `provider: "openai"`. */
+  baseUrl?: string;
+  /** Environment variable containing the OpenAI-compatible base URL. */
+  baseUrlEnv?: string;
+  /** API key value. Prefer `apiKeyEnv` so secrets stay out of docs.config. */
+  apiKey?: string;
+  /** Environment variable containing the planner API key. */
+  apiKeyEnv?: string;
+}
+
+export interface DocsCodeBlocksRunnerConfig {
+  /**
+   * Runner used to execute planned code blocks.
+   *
+   * @default "local"
+   */
+  provider?: DocsCodeBlocksRunnerProvider;
+  /** Environment variable containing the sandbox provider token. */
+  tokenEnv?: string;
+  /** Advanced override for the Vercel project id env var used by `provider: "vercel-sandbox"`. */
+  projectIdEnv?: string;
+  /** Advanced override for the Vercel team/org id env var used by `provider: "vercel-sandbox"`. */
+  teamIdEnv?: string;
+  /**
+   * Path to a Vercel project metadata file. When enabled, the runner reads
+   * `projectId` and `orgId` from `.vercel/project.json`. If those are not
+   * available, the runner can auto-discover an accessible project from
+   * `VERCEL_TOKEN`.
+   *
+   * @default ".vercel/project.json"
+   */
+  projectJson?: string | false;
+  /** Vercel Sandbox runtime. */
+  runtime?: "node24" | "node22" | "python3.13";
+  /** Daytona API URL env var used by `provider: "daytona"`. */
+  apiUrlEnv?: string;
+  /** Daytona target/region env var used by `provider: "daytona"`. */
+  targetEnv?: string;
+  /** Per-command timeout in milliseconds. */
+  timeoutMs?: number;
+}
+
+export interface DocsCodeBlocksValidateConfig {
+  /**
+   * Enable code block validation.
+   *
+   * @default true when `codeBlocks.validate` is an object or `true`
+   */
+  enabled?: boolean;
+  /** Planner config. Use `"metadata"` for local deterministic planning. */
+  planner?: DocsCodeBlocksPlannerProvider | DocsCodeBlocksPlannerConfig;
+  /** Runner config. Use `"vercel-sandbox"` for isolated runtime checks. */
+  runner?: DocsCodeBlocksRunnerProvider | DocsCodeBlocksRunnerConfig;
+  /**
+   * Env files loaded for validation. These are read locally and never committed.
+   *
+   * @default [".env.local", ".env.test", ".env"]
+   */
+  envFile?: string | string[];
+  /**
+   * Runtime env mapping.
+   *
+   * The key is the env var used by the docs code block. The value is the local
+   * env var to read from. For example, `{ OPENAI_API_KEY: "OPENAI_TEST_API_KEY" }`
+   * injects `OPENAI_API_KEY` into the runner from `OPENAI_TEST_API_KEY`.
+   */
+  env?: Record<string, string>;
+  /**
+   * Behavior when a runnable block declares an env var that cannot be resolved.
+   *
+   * @default "skip"
+   */
+  missingEnv?: DocsCodeBlocksValidationPolicy;
+  /**
+   * Behavior when a language cannot be executed by the selected runner.
+   *
+   * @default "skip"
+   */
+  unsupportedLanguage?: DocsCodeBlocksValidationPolicy;
+  /**
+   * Default command mode.
+   *
+   * - `"plan"` builds execution plans without running them.
+   * - `"report"` runs executable plans and reports pass/skip/fail.
+   *
+   * @default "report"
+   */
+  mode?: DocsCodeBlocksValidationMode;
+}
+
+export interface DocsCodeBlocksConfig {
+  /**
+   * Validate fenced code blocks from MD/MDX docs.
+   *
+   * @example
+   * ```ts
+   * codeBlocks: {
+   *   validate: {
+   *     planner: {
+   *       provider: "openai",
+   *       model: "gpt-4.1-mini",
+   *       apiKeyEnv: "OPENAI_API_KEY",
+   *     },
+   *     runner: {
+   *       provider: "vercel-sandbox",
+   *       tokenEnv: "VERCEL_TOKEN",
+   *     },
+   *     env: {
+   *       OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+   *     },
+   *   },
+   * }
+   * ```
+   */
+  validate?: boolean | DocsCodeBlocksValidateConfig;
 }
 
 export interface DocsConfig {
@@ -2215,7 +4109,8 @@ export interface DocsConfig {
   /**
    * Built-in analytics event stream for docs interactions.
    *
-   * - `false` or omitted -> analytics disabled (default)
+   * - `false` -> analytics disabled
+   * - omitted -> analytics disabled unless Docs Cloud provides project identity
    * - `true` -> log product/usage events to the console
    * - `{ onEvent(event) { ... } }` -> send events to your analytics sink
    *
@@ -2223,6 +4118,33 @@ export interface DocsConfig {
    * included unless `includeInputs: true` is set.
    */
   analytics?: boolean | DocsAnalyticsConfig;
+  /**
+   * Farming Labs maintainer telemetry for production adoption and coarse
+   * agent-optimized feature usage.
+   *
+   * This is separate from project-owned `analytics`. It avoids visitor
+   * identities, page views, raw inputs, docs content, cookies, and per-user
+   * sessions. Disable with `telemetry: false`, `DOCS_TELEMETRY=false`, or
+   * `DOCS_TELEMETRY_DISABLED=1`.
+   */
+  telemetry?: boolean | DocsTelemetryConfig;
+  /**
+   * Docs Cloud integration settings.
+   *
+   * Use this to configure the API key env var and cloud deploy defaults once
+   * in `docs.config.ts`; cloud CLI commands mirror the serializable subset into
+   * `docs.json` automatically.
+   *
+   * @example
+   * ```ts
+   * cloud: {
+   *   apiKey: { env: "DOCS_CLOUD_API_KEY" },
+   *   deploy: { enabled: true },
+   *   publish: { mode: "draft-pr", baseBranch: "main" },
+   * }
+   * ```
+   */
+  cloud?: DocsCloudConfig;
   /**
    * Built-in observability stream for agent traces, timing, errors, and runtime debugging.
    * This is separate from `analytics`; it emits span-like Ask AI and MCP trace events.
@@ -2339,6 +4261,11 @@ export interface DocsConfig {
    */
   onCopyClick?: (data: CodeBlockCopyData) => void;
   /**
+   * Code block intelligence for MD/MDX fences, including validation planning
+   * and optional sandboxed execution.
+   */
+  codeBlocks?: DocsCodeBlocksConfig;
+  /**
    * Built-in page feedback prompt shown at the end of a docs page.
    *
    * - `false` or `undefined` → hidden (default)
@@ -2412,9 +4339,11 @@ export interface DocsConfig {
    *   copyMarkdown: { enabled: true },
    *   openDocs: {
    *     enabled: true,
+   *     target: "markdown",
    *     providers: [
-   *       { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
-   *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+   *       "chatgpt",
+   *       "claude",
+   *       "cursor",
    *     ],
    *   },
    * }
@@ -2629,6 +4558,22 @@ export interface DocsConfig {
    * Agent-oriented configuration, including defaults for `docs agent compact`.
    */
   agent?: DocsAgentConfig;
+  /**
+   * Docs Review checks changed docs files in CI/local runs and can auto-create
+   * a GitHub Actions workflow during dev/build startup.
+   *
+   * - omitted or `true` → enabled with warn-mode CI and an 80 score threshold
+   * - `false` → disable review and workflow generation
+   *
+   * @example
+   * ```ts
+   * review: {
+   *   ci: { mode: "block" },
+   *   score: { threshold: 90 },
+   * }
+   * ```
+   */
+  review?: boolean | DocsReviewConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /**

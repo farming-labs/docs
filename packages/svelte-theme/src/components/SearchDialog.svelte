@@ -11,7 +11,13 @@
   const STORAGE_KEY = "fd:omni:recents";
   const MAX_RECENTS = 8;
   const DEBOUNCE_MS = 120;
-  const PLACEHOLDER = "Search documentation…";
+  const BREADCRUMB_SEPARATOR = "\u00a0\u00a0>\u00a0\u00a0";
+  const FILTER_LABELS = {
+    all: "All",
+    pages: "Pages",
+    inside: "Inside pages",
+  };
+  const FILTER_OPTIONS = ["all", "pages", "inside"];
 
   let { onclose } = $props();
 
@@ -20,9 +26,13 @@
   let loading = $state(false);
   let activeId = $state(null);
   let recentsList = $state([]);
+  let filter = $state("all");
+  let filterOpen = $state(false);
   let inputEl = $state(null);
   let listRef = $state(null);
   let debounceTimer = null;
+  let abortController = null;
+  const searchCache = new Map();
 
   function withLang(url) {
     if (!url || url.startsWith("#")) return url;
@@ -37,14 +47,149 @@
     }
   }
 
+  function breadcrumbForUrl(url) {
+    try {
+      const parsed = new URL(url, "https://farming-labs.local");
+      const parts = parsed.pathname
+        .split("/")
+        .filter(Boolean)
+        .map((part) =>
+          decodeURIComponent(part)
+            .replace(/[-_]+/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase())
+        );
+      return parts.length ? parts.join(BREADCRUMB_SEPARATOR) : "Docs";
+    } catch {
+      return "Docs";
+    }
+  }
+
+  function displayLabelForResult(result) {
+    if (result.section) return result.section;
+    const label = result.content ?? "";
+    const parts = label.split(/\s+[—–]\s+/).map((part) => part.trim()).filter(Boolean);
+    return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
+  }
+
+  function normalizeSearchPhrase(value) {
+    return (value ?? "").toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function literalMatchPriority(searchQuery, value) {
+    const q = normalizeSearchPhrase(searchQuery);
+    const text = normalizeSearchPhrase(value);
+    if (!q || !text) return 0;
+    if (text === q) return 2;
+
+    const boundary = "[^\\p{L}\\p{N}]";
+    return new RegExp(`(^|${boundary})${escapeRegExp(q)}(?=$|${boundary})`, "u").test(text)
+      ? 1
+      : 0;
+  }
+
+  function tokenizeLiteralQuery(searchQuery) {
+    return Array.from(
+      new Set(
+        searchQuery
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+          .split(/\s+/)
+          .map((word) => word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""))
+          .filter((word) => word.length > 1)
+      )
+    );
+  }
+
+  function isLiteralLookupQuery(searchQuery) {
+    const q = normalizeSearchPhrase(searchQuery);
+    const words = tokenizeLiteralQuery(q);
+    return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+  }
+
+  function hasDistinctSearchSection(result) {
+    if (result.type === "page") return false;
+    if (!result.section) return true;
+    const title = (result.content ?? "").split(/\s+[—–]\s+/)[0] ?? "";
+    return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+  }
+
+  function insideLiteralPriority(result, searchQuery) {
+    if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
+    return Math.max(
+      literalMatchPriority(searchQuery, result.section),
+      literalMatchPriority(searchQuery, result.description)
+    );
+  }
+
+  function sortResultsForFilter(results) {
+    const q = query.trim();
+    if (!q) return results;
+    return results
+      .map((result, index) => ({ result, index }))
+      .sort((a, b) => {
+        const aLiteralPriority = insideLiteralPriority(a.result, q);
+        const bLiteralPriority = insideLiteralPriority(b.result, q);
+        const literalDelta = bLiteralPriority - aLiteralPriority;
+        if (literalDelta) return literalDelta;
+        if (aLiteralPriority > 0 && bLiteralPriority > 0) return a.index - b.index;
+
+        const scoreDelta = (b.result.score ?? 0) - (a.result.score ?? 0);
+        if (scoreDelta) return scoreDelta;
+
+        return a.index - b.index;
+      })
+      .map(({ result }) => result);
+  }
+
+  function escapeHtml(value) {
+    return (value ?? "").replace(/[&<>"']/g, (char) => {
+      if (char === "&") return "&amp;";
+      if (char === "<") return "&lt;";
+      if (char === ">") return "&gt;";
+      if (char === '"') return "&quot;";
+      return "&#39;";
+    });
+  }
+
+  function highlightSnippet(text) {
+    const q = query.trim();
+    if (!q) return escapeHtml(text);
+    let html = "";
+    let lastIndex = 0;
+    const regex = new RegExp(escapeRegExp(q), "gi");
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      html += escapeHtml(text.slice(lastIndex, match.index));
+      html += `<mark class="omni-highlight">${escapeHtml(match[0])}</mark>`;
+      lastIndex = match.index + match[0].length;
+    }
+
+    return html + escapeHtml(text.slice(lastIndex));
+  }
+
+  let visibleResults = $derived.by(() => {
+    if (filter === "pages") return currentResults.filter((result) => result.type === "page");
+    if (filter === "inside") {
+      return sortResultsForFilter(currentResults.filter((result) => result.type !== "page"));
+    }
+    return sortResultsForFilter(currentResults);
+  });
+
   let flatItems = $derived.by(() => {
     const q = query.trim();
-    if (q && currentResults.length) {
-      return currentResults.map((r) => ({
+    if (q && visibleResults.length) {
+      return visibleResults.map((r) => ({
         id: r.url,
-        label: r.content,
+        label: displayLabelForResult(r),
         url: r.url,
-        subtitle: r.description ?? "Page",
+        subtitle: breadcrumbForUrl(r.url),
+        description: r.description,
+        descriptionHtml: r.description ? highlightSnippet(r.description) : "",
       }));
     }
     return recentsList.map((r) => ({
@@ -56,13 +201,15 @@
   });
 
   let showRecents = $derived(!query.trim());
-  let showDocs = $derived(!!query.trim() && currentResults.length > 0);
+  let showDocs = $derived(!!query.trim() && visibleResults.length > 0);
   let showEmpty = $derived(
-    query.trim() ? currentResults.length === 0 && !loading : recentsList.length === 0
+    query.trim() ? visibleResults.length === 0 && !loading : recentsList.length === 0
   );
   let emptyText = $derived(
     query.trim()
-      ? "No results found. Try a different query."
+      ? currentResults.length > 0
+        ? `No ${FILTER_LABELS[filter].toLowerCase()} results found.`
+        : "No results found. Try a different query."
       : "Type to search the docs, or browse recent items."
   );
 
@@ -92,6 +239,12 @@
   function close() {
     if (typeof document !== "undefined") document.body.style.overflow = "";
     onclose?.();
+  }
+
+  function updateFilter(nextFilter) {
+    filter = nextFilter;
+    filterOpen = false;
+    activeId = flatItems[0]?.id ?? null;
   }
 
   function executeItem(item) {
@@ -133,19 +286,41 @@
     currentResults = [];
     activeId = null;
     const q = query.trim();
+    filterOpen = false;
+    if (abortController) abortController.abort();
     if (!q) return;
     if (debounceTimer) clearTimeout(debounceTimer);
+    const requestUrl = withLang(`/api/docs?query=${encodeURIComponent(q)}`);
+    const cached = searchCache.get(requestUrl);
+    if (cached) {
+      currentResults = cached;
+      activeId = cached[0]?.url ?? null;
+      return;
+    }
     debounceTimer = setTimeout(async () => {
+      const controller = new AbortController();
+      abortController = controller;
       loading = true;
       try {
-        const res = await fetch(withLang(`/api/docs?query=${encodeURIComponent(q)}`));
+        const res = await fetch(requestUrl, { signal: controller.signal });
         const data = res.ok ? await res.json() : [];
-        currentResults = Array.isArray(data) ? data : [];
+        if (controller.signal.aborted) return;
+        const nextResults = Array.isArray(data) ? data : [];
+        if (searchCache.size >= 20) {
+          const firstKey = searchCache.keys().next().value;
+          if (firstKey) searchCache.delete(firstKey);
+        }
+        searchCache.set(requestUrl, nextResults);
+        currentResults = nextResults;
         activeId = currentResults[0]?.url ?? null;
-      } catch {
+      } catch (error) {
+        if (controller.signal.aborted) return;
         currentResults = [];
       } finally {
-        loading = false;
+        if (abortController === controller) {
+          abortController = null;
+          loading = false;
+        }
       }
     }, DEBOUNCE_MS);
   }
@@ -153,6 +328,11 @@
   $effect(() => {
     void query;
     onInput();
+  });
+
+  $effect(() => {
+    void filter;
+    activeId = flatItems[0]?.id ?? null;
   });
 
   function handleKeydown(e) {
@@ -185,19 +365,6 @@
     e.stopPropagation();
   }
 
-  function onExternalClick(e, url) {
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
-    } catch {
-      if (typeof window !== "undefined") window.location.href = url;
-    }
-  }
-
-  const FileIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>`;
-  const ExternalIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
-  const ChevronIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
   const EmptyIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`;
 
   onMount(() => {
@@ -209,6 +376,7 @@
   onDestroy(() => {
     if (typeof document !== "undefined") document.body.style.overflow = "";
     if (debounceTimer) clearTimeout(debounceTimer);
+    if (abortController) abortController.abort();
   });
 </script>
 
@@ -247,16 +415,12 @@
           aria-expanded="true"
           aria-controls="omni-listbox"
           aria-activedescendant={activeId ? `omni-item-${activeId}` : undefined}
-          placeholder={PLACEHOLDER}
+          placeholder="Search"
           autocomplete="off"
           onkeydown={handleKeydown}
         />
-        <kbd class="omni-kbd">⌘ K</kbd>
         <button type="button" aria-label="Close" class="omni-close-btn" onclick={close}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
+          ESC
         </button>
       </div>
     </div>
@@ -293,27 +457,10 @@
                 onmouseenter={() => (activeId = item.id)}
                 onclick={() => executeItem(item)}
               >
-                <div class="omni-item-icon">
-                  {@html FileIcon}
-                </div>
                 <div class="omni-item-text">
-                  <div class="omni-item-label">{item.label}</div>
                   <div class="omni-item-subtitle">{item.subtitle}</div>
+                  <div class="omni-item-label">{item.label}</div>
                 </div>
-                <a
-                  href={item.url}
-                  class="omni-item-badge"
-                  title="Open in new tab"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-hidden="true"
-                  onclick={(e) => onExternalClick(e, item.url)}
-                >
-                  {@html ExternalIcon}
-                </a>
-                <span class="omni-item-chevron" aria-hidden="true">
-                  {@html ChevronIcon}
-                </span>
               </button>
             {/each}
           </div>
@@ -336,27 +483,15 @@
                 onmouseenter={() => (activeId = item.id)}
                 onclick={() => executeItem(item)}
               >
-                <div class="omni-item-icon">
-                  {@html FileIcon}
-                </div>
                 <div class="omni-item-text">
-                  <div class="omni-item-label">{item.label}</div>
                   <div class="omni-item-subtitle">{item.subtitle}</div>
+                  <div class="omni-item-label">{item.label}</div>
+                  {#if item.description}
+                    <div class="omni-item-description">
+                      {@html item.descriptionHtml}
+                    </div>
+                  {/if}
                 </div>
-                <a
-                  href={item.url}
-                  class="omni-item-badge"
-                  title="Open in new tab"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-hidden="true"
-                  onclick={(e) => onExternalClick(e, item.url)}
-                >
-                  {@html ExternalIcon}
-                </a>
-                <span class="omni-item-chevron" aria-hidden="true">
-                  {@html ChevronIcon}
-                </span>
               </button>
             {/each}
           </div>
@@ -377,27 +512,54 @@
       <div class="omni-footer-inner">
         <div class="omni-footer-hints">
           <span class="omni-footer-hint">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="9 18 15 12 9 6" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m9 10-5 5 5 5" />
+              <path d="M20 4v7a4 4 0 0 1-4 4H4" />
             </svg>
             to select
           </span>
           <span class="omni-footer-hint">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 15l-6-6-6 6" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m18 15-6-6-6 6" />
             </svg>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 9l6 6 6-6" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
             </svg>
             to navigate
           </span>
           <span class="omni-footer-hint omni-footer-hint-desktop">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
+            <span class="omni-kbd-sm">ESC</span>
             to close
           </span>
+        </div>
+        <div class="omni-footer-filter">
+          <span class="omni-filter-label">Filter</span>
+          <button
+            type="button"
+            class="omni-filter-button"
+            aria-expanded={filterOpen}
+            onclick={() => (filterOpen = !filterOpen)}
+          >
+            {FILTER_LABELS[filter]}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {#if filterOpen}
+            <div class="omni-filter-menu" role="group" aria-label="Search filter">
+              {#each FILTER_OPTIONS as option}
+                <button
+                  type="button"
+                  aria-pressed={filter === option}
+                  class="omni-filter-option"
+                  class:omni-filter-option-active={filter === option}
+                  onclick={() => updateFilter(option)}
+                >
+                  {FILTER_LABELS[option]}
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
     </div>

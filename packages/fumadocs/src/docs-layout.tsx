@@ -8,9 +8,10 @@ import {
   applySidebarFolderIndexBehavior,
   buildPageOpenGraph,
   buildPageTwitter,
+  normalizePageAgentFrontmatter,
   renderDocsPageStructuredDataJson,
   resolveChangelogConfig,
-  resolveDocsAgentMdxContent,
+  resolveDocsAudienceMdxContent,
   resolveDocsAnalyticsConfig,
   resolveDocsMetadataBaseUrl,
   resolvePageSidebarFolderIndexBehavior,
@@ -25,10 +26,16 @@ import type {
   AIConfig,
   OrderingItem,
   PageFrontmatter,
+  OpenDocsConfig,
+  CopyMarkdownConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
+import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
+import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
@@ -93,6 +100,47 @@ function readFrontmatter(filePath: string): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function hasAuthoredPageTitle(source: string): boolean {
+  const { content } = matter(source);
+  const lines = content.split(/\r?\n/);
+  let fence: "`" | "~" | undefined;
+  let previousTextLine = "";
+
+  for (const line of lines) {
+    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1]?.[0] as "`" | "~";
+      fence = fence === marker ? undefined : (fence ?? marker);
+      previousTextLine = "";
+      continue;
+    }
+
+    if (fence) continue;
+    if (/^ {0,3}#(?:\s+|$)/.test(line) || /^\s*<h1(?:\s|>)/i.test(line)) return true;
+    if (previousTextLine && /^ {0,3}=+\s*$/.test(line)) return true;
+
+    previousTextLine = line.trim() && !line.trimStart().startsWith("<") ? line : "";
+  }
+
+  return false;
+}
+
+function resolveSidebarFolderName(
+  themeName: string | undefined,
+  slug: string,
+  pageTitle: string,
+): string {
+  if (themeName !== "shadcn" || pageTitle.trim().toLowerCase() !== "introduction") {
+    return pageTitle;
+  }
+
+  return slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 /** Check if a directory has any subdirectories that contain page.mdx. */
@@ -189,10 +237,13 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
 function normalizeDocsPublicPath(value: string | undefined, entry: string): string {
   if (typeof value !== "string") return `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
 
-  const cleaned = value.trim();
-  if (cleaned === "" || cleaned === "/") return "";
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
 
-  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+  return `/${cleaned}`;
 }
 
 function publicDocsRoute(ctx: DocsLocaleContext, slugParts: string[] = []): string {
@@ -335,6 +386,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
     const url = publicDocsRoute(ctx, slug);
     const icon = resolveIcon(data.icon as string | undefined, icons);
     const displayName = (data.title as string) ?? name.replace(/-/g, " ");
+    const folderName = resolveSidebarFolderName(config.theme?.name, name, displayName);
     const hasChildren = hasChildPages(full, excludedDirs);
 
     if (data.hidden === true) {
@@ -343,7 +395,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
       const folderChildren = scanDir(full, slug, slugOrder);
       return {
         type: "folder",
-        name: displayName,
+        name: folderName,
         icon,
         children: folderChildren,
         ...(flat ? { collapsible: false, defaultOpen: true } : {}),
@@ -354,7 +406,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
       const folderChildren = scanDir(full, slug, slugOrder);
       return {
         type: "folder",
-        name: displayName,
+        name: folderName,
         icon,
         index: { type: "page", name: displayName, url, icon },
         folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
@@ -541,12 +593,50 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
   return map;
 }
 
+/**
+ * Build titles only for pages whose MDX body does not already author an h1.
+ * This lets the page frame render the frontmatter title exactly once.
+ */
+function buildGeneratedTitleMap(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+): Record<string, string> {
+  const docsDir = ctx.docsDir;
+  const map: Record<string, string> = {};
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!fs.existsSync(dir)) return;
+    if (isExcludedDir(dir, excludedDirs)) return;
+
+    const pagePath = findDocsPageFile(dir);
+    if (pagePath) {
+      const source = fs.readFileSync(pagePath, "utf-8");
+      const { data } = matter(source);
+      if (typeof data.title === "string" && !hasAuthoredPageTitle(source)) {
+        map[publicDocsRoute(ctx, slugParts)] = data.title;
+      }
+    }
+
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) {
+        scan(full, [...slugParts, name]);
+      }
+    }
+  }
+
+  scan(docsDir, []);
+  return map;
+}
+
 function buildReadingTimeMap(
   config: DocsConfig,
   ctx: DocsLocaleContext,
   options: {
     enabledByDefault: boolean;
     wordsPerMinute: number;
+    includeCode: boolean;
   },
 ): Record<string, number> {
   const docsDir = ctx.docsDir;
@@ -561,7 +651,7 @@ function buildReadingTimeMap(
     if (fs.existsSync(pagePath)) {
       const source = fs.readFileSync(pagePath, "utf-8");
       const { data, content } = matter(source);
-      const humanContent = resolveDocsAgentMdxContent(content, "human");
+      const humanContent = resolveDocsAudienceMdxContent(content, "human");
       const minutes = resolvePageReadingTime(data as PageFrontmatter, humanContent, options);
 
       if (typeof minutes === "number") {
@@ -618,6 +708,7 @@ function buildStructuredDataMap(
         baseUrl,
         entry: ctx.entryPath,
         dateModified: stat.mtime.toISOString(),
+        agent: normalizePageAgentFrontmatter(data.agent),
       });
     }
 
@@ -828,7 +919,9 @@ function buildTypographyCSS(typo?: TypographyConfig): string {
   }
 
   if (vars.length === 0) return "";
-  return `:root {\n  ${vars.join("\n  ")}\n}`;
+  return `:root,
+body:has(#nd-docs-layout),
+#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
 }
 
 function TypographyStyle({ typography }: { typography?: TypographyConfig }) {
@@ -871,7 +964,7 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
   const parts: string[] = [];
 
   if (rootVars.length > 0) {
-    parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+    parts.push(`:root,\n#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
   }
 
   if (desktopRootVars.length > 0) {
@@ -897,6 +990,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
   const activeLocale = localeContext.locale ?? i18n?.defaultLocale;
   const docsApiUrl = withLangInUrl("/api/docs", activeLocale);
+  const aiClientRequest = resolveDocsCloudAIClientRequest(config, docsApiUrl);
   const changelogConfig = resolveChangelogConfig(config.changelog);
   const changelogBasePath = changelogConfig.enabled
     ? publicDocsRoute(localeContext, [changelogConfig.path])
@@ -945,7 +1039,21 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   // Page actions (Copy Markdown, Open in …)
   const pageActions = config.pageActions;
   const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
+  const copyMarkdownConfig =
+    pageActions?.copyMarkdown && typeof pageActions.copyMarkdown === "object"
+      ? (pageActions.copyMarkdown as CopyMarkdownConfig)
+      : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
+  const connectMcp = resolveBool(pageActions?.connectMcp)
+    ? pageActions?.connectMcp && typeof pageActions.connectMcp === "object"
+      ? (pageActions.connectMcp as PageActionConnectMcpConfig)
+      : {}
+    : undefined;
+  const installSkills = resolveBool(pageActions?.installSkills)
+    ? pageActions?.installSkills && typeof pageActions.installSkills === "object"
+      ? (pageActions.installSkills as PageActionInstallSkillsConfig)
+      : {}
+    : undefined;
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
 
@@ -954,11 +1062,15 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const lastUpdatedEnabled =
     lastUpdatedRaw !== false &&
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
+  const lastUpdatedLabel =
+    typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.label ?? "Last updated") : "Last updated";
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
   const readingTimeEnabledByDefault = readingTimeOptions.enabled;
   const readingTimeWordsPerMinute = readingTimeOptions.wordsPerMinute ?? 220;
+  const readingTimeFormat = readingTimeOptions.format;
+  const readingTimeIncludeCode = readingTimeOptions.includeCode;
 
   // llms.txt config
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
@@ -966,22 +1078,15 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
-  const rawProviders =
-    pageActions?.openDocs &&
-    typeof pageActions.openDocs === "object" &&
-    pageActions.openDocs.providers
-      ? (pageActions.openDocs.providers as Array<{
-          name: string;
-          icon?: unknown;
-          urlTemplate: string;
-        }>)
+  const openDocsConfig =
+    pageActions?.openDocs && typeof pageActions.openDocs === "object"
+      ? (pageActions.openDocs as OpenDocsConfig)
       : undefined;
-
-  const openDocsProviders = rawProviders?.map((p) => ({
-    name: p.name,
-    urlTemplate: p.urlTemplate,
-    iconHtml: p.icon ? serializeIcon(p.icon) : undefined,
-  }));
+  const openDocsProviders = resolveOpenDocsProviders(openDocsConfig?.providers, {
+    target: openDocsConfig?.target,
+    prompt: openDocsConfig?.prompt,
+    serializeIcon,
+  });
 
   // GitHub config — normalize string shorthand to object
   const githubRaw = config.github;
@@ -1046,9 +1151,12 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Build description map from frontmatter
   const descriptionMap = buildDescriptionMap(config, localeContext);
+  const generatedTitleMap =
+    config.theme?.name === "shadcn" ? buildGeneratedTitleMap(config, localeContext) : {};
   const readingTimeMap = buildReadingTimeMap(config, localeContext, {
     enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,
+    includeCode: readingTimeIncludeCode,
   });
   const structuredDataMap = buildStructuredDataMap(config, localeContext);
   const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
@@ -1056,7 +1164,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = applySidebarFolderIndexBehavior(buildTree(config, localeContext, !!sidebarFlat), {
       sidebar: config.sidebar,
-      defaultBehavior: "link",
+      defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
     });
     const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 
@@ -1117,7 +1225,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
           <Suspense fallback={null}>
             <DocsAIFeatures
               mode={aiMode}
-              api={docsApiUrl}
+              api={aiClientRequest.api}
+              requestMode={aiClientRequest.requestMode}
+              requestHeaders={aiClientRequest.requestHeaders}
+              requestStream={aiClientRequest.requestStream}
               locale={activeLocale}
               position={aiPosition}
               floatingStyle={aiFloatingStyle}
@@ -1143,8 +1254,16 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             publicPath={localeContext.publicPath}
             locale={activeLocale}
             copyMarkdown={copyMarkdownEnabled}
+            copyMarkdownFormat={copyMarkdownConfig?.format}
+            copyMarkdownIncludeTitle={copyMarkdownConfig?.includeTitle}
+            copyMarkdownLabel={copyMarkdownConfig?.label}
+            copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
             openDocs={openDocsEnabled}
             openDocsProviders={openDocsProviders as any}
+            openDocsTarget={openDocsConfig?.target}
+            openDocsPrompt={openDocsConfig?.prompt}
+            connectMcp={connectMcp}
+            installSkills={installSkills}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
             githubUrl={githubUrl}
@@ -1153,20 +1272,26 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             githubDirectory={githubDirectory}
             lastModifiedMap={lastModifiedMap}
             lastUpdatedEnabled={lastUpdatedEnabled}
+            lastUpdatedLabel={lastUpdatedLabel}
             lastUpdatedPosition={lastUpdatedPosition}
             readingTimeEnabled={readingTimeEnabled}
+            readingTimeFormat={readingTimeFormat}
             readingTimeMap={readingTimeMap}
             structuredDataMap={structuredDataMap}
             llmsTxtEnabled={llmsTxtEnabled}
             devToolsEnabled={devToolsEnabled}
             docsApiUrl={docsApiUrl}
+            generatedTitleMap={generatedTitleMap}
             descriptionMap={descriptionMap}
             feedbackEnabled={feedbackConfig.enabled}
             feedbackQuestion={feedbackConfig.question}
             feedbackPlaceholder={feedbackConfig.placeholder}
+            feedbackRequireComment={feedbackConfig.requireComment}
             feedbackPositiveLabel={feedbackConfig.positiveLabel}
             feedbackNegativeLabel={feedbackConfig.negativeLabel}
             feedbackSubmitLabel={feedbackConfig.submitLabel}
+            feedbackSuccessMessage={feedbackConfig.successMessage}
+            feedbackErrorMessage={feedbackConfig.errorMessage}
             analytics={analyticsEnabled}
           >
             {children}
@@ -1194,10 +1319,13 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   const defaults = {
     enabled: false,
     question: "How is this guide?",
-    placeholder: "Leave your feedback...",
+    placeholder: "Share what could be clearer...",
+    requireComment: false,
     positiveLabel: "Good",
     negativeLabel: "Bad",
     submitLabel: "Submit",
+    successMessage: "Thanks for the feedback.",
+    errorMessage: "Could not send feedback. Please try again.",
   };
 
   if (feedback === undefined || feedback === false) return defaults;
@@ -1207,18 +1335,24 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     feedback.enabled !== undefined ||
     feedback.question !== undefined ||
     feedback.placeholder !== undefined ||
+    feedback.requireComment !== undefined ||
     feedback.positiveLabel !== undefined ||
     feedback.negativeLabel !== undefined ||
     feedback.submitLabel !== undefined ||
+    feedback.successMessage !== undefined ||
+    feedback.errorMessage !== undefined ||
     feedback.onFeedback !== undefined;
 
   return {
     enabled: feedback.enabled === true || (feedback.enabled !== false && hasHumanFeedbackConfig),
     question: feedback.question ?? defaults.question,
     placeholder: feedback.placeholder ?? defaults.placeholder,
+    requireComment: feedback.requireComment ?? defaults.requireComment,
     positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
     negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
     submitLabel: feedback.submitLabel ?? defaults.submitLabel,
+    successMessage: feedback.successMessage ?? defaults.successMessage,
+    errorMessage: feedback.errorMessage ?? defaults.errorMessage,
   };
 }
 

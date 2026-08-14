@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import type { DocsConfig } from "../types.js";
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
@@ -103,6 +103,39 @@ export function resolveDocsConfigPath(rootDir: string, explicitPath?: string): s
   );
 }
 
+/**
+ * Resolve the application root that owns a docs config selected from another
+ * working directory. This keeps config-relative paths anchored to a nested
+ * workspace package without changing the behavior of configs stored below a
+ * project's root (for example, src/lib/docs.config.ts).
+ */
+export function resolveDocsProjectRoot(rootDir: string, configPath: string): string {
+  const invocationRoot = resolve(rootDir);
+  const resolvedConfigPath = resolve(configPath);
+  const configDir = dirname(resolvedConfigPath);
+  const relativeConfigDir = relative(invocationRoot, configDir);
+  const configIsInsideInvocationRoot =
+    relativeConfigDir === "" ||
+    (relativeConfigDir !== ".." && !relativeConfigDir.startsWith(`..${sep}`));
+  const fallbackRoot = configIsInsideInvocationRoot ? invocationRoot : configDir;
+  let currentDir = configDir;
+
+  while (true) {
+    if (existsSync(join(currentDir, "package.json"))) return currentDir;
+    if (configIsInsideInvocationRoot && currentDir === invocationRoot) return invocationRoot;
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) return fallbackRoot;
+    if (configIsInsideInvocationRoot) {
+      const relativeParent = relative(invocationRoot, parentDir);
+      if (relativeParent === ".." || relativeParent.startsWith(`..${sep}`)) {
+        return invocationRoot;
+      }
+    }
+    currentDir = parentDir;
+  }
+}
+
 export function readStringProperty(content: string, key: string): string | undefined {
   const match = content.match(createPropertyPattern(key, `["']([^"']+)["']`));
   return match?.[1];
@@ -185,6 +218,15 @@ function extractTopLevelObjectLiteral(content: string, key: string): string | un
   }
 
   return undefined;
+}
+
+/** Return whether an object-literal body declares a direct property with this name. */
+export function hasTopLevelProperty(content: string, key: string): boolean {
+  const escaped = escapeRegExp(key);
+  const propertyPattern = new RegExp(`^(?:${escaped}|["']${escaped}["'])\\s*:`);
+  return splitTopLevelProperties(content).some((property) =>
+    propertyPattern.test(stripLeadingPropertyTrivia(property)),
+  );
 }
 
 export function extractTopLevelConfigObject(content: string): string | undefined {
@@ -306,6 +348,19 @@ export function readTopLevelStringProperty(content: string, key: string): string
   return undefined;
 }
 
+export function readTopLevelBooleanProperty(content: string, key: string): boolean | undefined {
+  const rootObject = extractTopLevelConfigObject(content);
+  const source = rootObject ?? content;
+  const propertyPattern = new RegExp(`^\\s*${escapeRegExp(key)}\\s*:\\s*(true|false)\\b`);
+
+  for (const property of splitTopLevelProperties(source)) {
+    const match = property.trim().match(propertyPattern);
+    if (match) return match[1] === "true";
+  }
+
+  return undefined;
+}
+
 export function readNavTitle(content: string): string | undefined {
   const rootObject = extractTopLevelConfigObject(content) ?? content;
   const block = extractObjectLiteral(rootObject, "nav");
@@ -367,7 +422,57 @@ export function loadProjectEnv(rootDir: string): Record<string, string> {
 export async function loadDocsConfigModule(
   rootDir: string,
   explicitPath?: string,
+  options: { silent?: boolean } = {},
 ): Promise<{ path: string; config: DocsConfig } | null> {
+  const result = await loadDocsConfigModuleResult(rootDir, explicitPath, options);
+  return result.status === "evaluated" ? { path: result.path, config: result.config } : null;
+}
+
+export type DocsConfigModuleLoadResult =
+  | { status: "evaluated"; path: string; config: DocsConfig }
+  | { status: "static-fallback"; path: string; error: string };
+
+function resolveDocsConfigModuleExport(loaded: unknown): unknown {
+  if (!loaded || typeof loaded !== "object" || Array.isArray(loaded)) return loaded;
+
+  const record = loaded as Record<string, unknown>;
+  return Object.prototype.hasOwnProperty.call(record, "default") ? record.default : loaded;
+}
+
+function isPlainDocsConfig(value: unknown): value is DocsConfig {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function resolveDocsConfigTsconfigPath(rootDir: string, configPath: string): string | false {
+  const projectRoot = resolve(rootDir);
+  let currentDir = dirname(configPath);
+
+  while (true) {
+    const tsconfigPath = join(currentDir, "tsconfig.json");
+    if (existsSync(tsconfigPath)) return tsconfigPath;
+    if (currentDir === projectRoot) return false;
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) return false;
+
+    const relativeParent = relative(projectRoot, parentDir);
+    if (relativeParent === ".." || relativeParent.startsWith(`..${sep}`)) return false;
+    currentDir = parentDir;
+  }
+}
+
+/**
+ * Load docs.config with an explicit confidence signal for diagnostics.
+ * Existing callers can keep using `loadDocsConfigModule`, which preserves the
+ * previous evaluated-config-or-null contract.
+ */
+export async function loadDocsConfigModuleResult(
+  rootDir: string,
+  explicitPath?: string,
+  options: { silent?: boolean } = {},
+): Promise<DocsConfigModuleLoadResult> {
   const configPath = resolveDocsConfigPath(rootDir, explicitPath);
 
   try {
@@ -375,21 +480,52 @@ export async function loadDocsConfigModule(
     const jiti = createJiti(import.meta.url, {
       moduleCache: false,
       fsCache: false,
-      interopDefault: true,
+      interopDefault: false,
+      jsx: {
+        runtime: "automatic",
+      },
+      tsconfigPaths: resolveDocsConfigTsconfigPath(rootDir, configPath),
     });
 
     const loaded = await jiti.import(configPath);
-    const config = ((loaded as { default?: unknown }).default ?? loaded) as DocsConfig | undefined;
-    if (!config || typeof config !== "object") return null;
+    const config = resolveDocsConfigModuleExport(loaded);
+    if (!isPlainDocsConfig(config)) {
+      return {
+        status: "static-fallback",
+        path: configPath,
+        error: "The config module did not export a plain object.",
+      };
+    }
 
-    return { path: configPath, config };
+    return { status: "evaluated", path: configPath, config };
   } catch (error) {
-    if (process.env.NODE_ENV !== "test") {
-      const message = error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
+    if (!options.silent && process.env.NODE_ENV !== "test") {
       console.warn(
         `[docs] Could not evaluate ${configPath} as a module; falling back to static parsing. ${message}`,
       );
     }
-    return null;
+    return { status: "static-fallback", path: configPath, error: message };
+  }
+}
+
+/** Evaluate docs.config after loading project-local env files, then restore process.env. */
+export async function loadDocsConfigModuleResultWithProjectEnv(
+  rootDir: string,
+  explicitPath?: string,
+  options: { silent?: boolean } = {},
+): Promise<DocsConfigModuleLoadResult> {
+  const env = loadProjectEnv(rootDir);
+  const injectedKeys = Object.entries(env)
+    .filter(([key]) => process.env[key] === undefined)
+    .map(([key, value]) => {
+      process.env[key] = value;
+      return key;
+    });
+
+  try {
+    return await loadDocsConfigModuleResult(rootDir, explicitPath, options);
+  } finally {
+    for (const key of injectedKeys) delete process.env[key];
   }
 }

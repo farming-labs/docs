@@ -3,17 +3,24 @@ import {
   type TemplateConfig,
   docsConfigTemplate,
   docsLayoutTemplate,
+  installationPageTemplate,
   nextApiReferencePageTemplate,
   nextApiReferenceRouteTemplate,
   rootLayoutTemplate,
   injectRootProviderIntoLayout,
   tanstackDocsConfigTemplate,
+  tanstackDocsCatchAllRouteTemplate,
   tanstackInstallationPageTemplate,
+  tanstackApiDocsRouteTemplate,
   tanstackApiReferenceRouteTemplate,
   tanstackDocsPublicRouteTemplate,
   tanstackRootRouteTemplate,
   injectTanstackRootProviderIntoRoute,
   injectTanstackVitePlugins,
+  farmjsDocsConfigTemplate,
+  injectFarmjsConfig,
+  tanstackDocsServerTemplate,
+  tanstackViteConfigTemplate,
   globalCssTemplate,
   injectCssImport,
   getThemeExportName,
@@ -26,16 +33,27 @@ import {
   nextConfigTemplate,
   nextConfigMergedTemplate,
   svelteDocsLayoutTemplate,
+  svelteDocsServerTemplate,
+  svelteViteConfigTemplate,
+  injectDocsAgentSkillsVitePlugin,
   svelteDocsLayoutServerTemplate,
+  svelteDocsApiRouteTemplate,
   svelteDocsPublicHookTemplate,
   injectSvelteDocsPublicHook,
   svelteApiReferenceRouteTemplate,
   astroDocsConfigTemplate,
+  astroDocsServerTemplate,
+  astroConfigTemplate,
+  injectAstroAgentSkillsPlugin,
   astroDocsMiddlewareTemplate,
   injectAstroDocsMiddleware,
+  astroApiRouteTemplate,
   astroApiReferenceRouteTemplate,
   nuxtServerApiReferenceRouteTemplate,
   nuxtServerDocsPublicMiddlewareTemplate,
+  nuxtServerApiDocsRouteTemplate,
+  nuxtConfigTemplate,
+  injectNuxtAgentSkillsPlugin,
 } from "./templates.js";
 
 const baseConfig: TemplateConfig = {
@@ -263,6 +281,11 @@ describe("globalCssTemplate", () => {
     const out = globalCssTemplate("ledger");
     expect(out).toContain("@farming-labs/theme/ledger/css");
   });
+
+  it("uses correct theme path for shadcn", () => {
+    const out = globalCssTemplate("shadcn");
+    expect(out).toContain("@farming-labs/theme/shadcn/css");
+  });
 });
 
 describe("injectCssImport", () => {
@@ -271,6 +294,16 @@ describe("injectCssImport", () => {
 @import "@farming-labs/theme/default/css";
 `;
     expect(injectCssImport(content, "fumadocs")).toBeNull();
+  });
+
+  it("does not treat theme preset imports plus unrelated css paths as built-in theme css", () => {
+    const content = `@import "tailwindcss";
+@import "@farming-labs/theme/presets/black";
+@import "./css/reset.css";
+`;
+    const result = injectCssImport(content, "fumadocs");
+    expect(result).not.toBeNull();
+    expect(result).toContain('@import "@farming-labs/theme/default/css"');
   });
 
   it("adds theme import when missing", () => {
@@ -330,6 +363,12 @@ describe("docsConfigTemplate", () => {
     expect(out).toContain("@farming-labs/theme/ledger");
   });
 
+  it("uses correct theme factory for shadcn", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "shadcn" });
+    expect(out).toContain("theme: shadcn(");
+    expect(out).toContain("@farming-labs/theme/shadcn");
+  });
+
   it("uses local theme path for custom theme with customThemeName", () => {
     const out = docsConfigTemplate({
       ...baseConfig,
@@ -360,6 +399,16 @@ describe("docsConfigTemplate", () => {
   });
 });
 
+describe("installationPageTemplate", () => {
+  it("lists the Next.js adapter and theme packages", () => {
+    const out = installationPageTemplate(baseConfig);
+
+    expect(out).toContain("pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme");
+    expect(out).not.toContain("pnpm add fumadocs");
+    expect(out).not.toContain("pnpm add @scalar");
+  });
+});
+
 describe("tanstackDocsConfigTemplate", () => {
   it("includes contentDir, nav, and theme toggle", () => {
     const out = tanstackDocsConfigTemplate({
@@ -373,7 +422,109 @@ describe("tanstackDocsConfigTemplate", () => {
   });
 });
 
+describe("Farm.js templates", () => {
+  it("includes localized content settings", () => {
+    const out = farmjsDocsConfigTemplate({
+      ...baseConfig,
+      framework: "farmjs",
+      i18n: { ...i18nConfig },
+    });
+
+    expect(out).toContain("i18n:");
+    expect(out).toContain('locales: ["en", "fr"]');
+    expect(out).toContain('defaultLocale: "en"');
+  });
+
+  it("wraps the current Farm config without changing its options", () => {
+    const out = injectFarmjsConfig(`import { defineConfig } from "@farm.js/core";
+
+export default defineConfig({
+  deploy: { target: "vercel" },
+});
+`);
+
+    expect(out).toContain('import { withDocs } from "@farming-labs/farmjs/config";');
+    expect(out).toContain("const farmConfig = defineConfig({");
+    expect(out).toContain('target: "vercel"');
+    expect(out).toContain("export default withDocs(farmConfig);");
+  });
+});
+
+describe("Agent Skills production bundle templates", () => {
+  it.each([
+    ["TanStack", tanstackDocsServerTemplate()],
+    ["SvelteKit", svelteDocsServerTemplate({ ...baseConfig, framework: "sveltekit" })],
+    ["Astro", astroDocsServerTemplate({ ...baseConfig, framework: "astro" })],
+    ["Nuxt", nuxtServerApiDocsRouteTemplate({ ...baseConfig, framework: "nuxt" })],
+  ])("passes the virtual skill snapshot to the %s server", (_framework, output) => {
+    expect(output).toContain("@farming-labs/docs/agent-skills-bundle");
+    expect(output).toContain("_preloadedAgentSkills: bundledAgentSkills");
+  });
+
+  it.each([
+    ["SvelteKit", svelteDocsServerTemplate({ ...baseConfig, framework: "sveltekit" })],
+    ["Astro", astroDocsServerTemplate({ ...baseConfig, framework: "astro" })],
+  ])("exposes the dedicated HEAD handler from the %s server", (_framework, output) => {
+    expect(output).toContain("{ load, GET, HEAD, POST, MCP }");
+  });
+
+  it("wires the plugin into generated Vite, Astro, and Nitro configs", () => {
+    expect(tanstackViteConfigTemplate(true)).toContain("docsAgentSkills(docsConfig)");
+    expect(svelteViteConfigTemplate()).toContain("docsAgentSkills(docsConfig)");
+    expect(astroConfigTemplate("vercel")).toContain(
+      "vite: { plugins: [docsAgentSkills(docsConfig)] }",
+    );
+    expect(nuxtConfigTemplate({ ...baseConfig, framework: "nuxt" })).toContain(
+      "rollupConfig: { plugins: [docsAgentSkills(docsConfig)] }",
+    );
+  });
+
+  it("injects the plugin into existing framework configs", () => {
+    const vite = injectDocsAgentSkillsVitePlugin(
+      'import { defineConfig } from "vite";\nexport default defineConfig({ plugins: [] });\n',
+      "./src/lib/docs.config",
+    );
+    expect(vite).toContain("docsAgentSkills(docsConfig)");
+
+    const astro = injectAstroAgentSkillsPlugin(
+      'import { defineConfig } from "astro/config";\nexport default defineConfig({ output: "server" });\n',
+    );
+    expect(astro).toContain("vite: { plugins: [docsAgentSkills(docsConfig)] }");
+
+    const nuxt = injectNuxtAgentSkillsPlugin(
+      "export default defineNuxtConfig({ nitro: { preset: 'node-server' } });\n",
+    );
+    expect(nuxt).toContain("rollupConfig: { plugins: [docsAgentSkills(docsConfig)] }");
+  });
+});
+
 describe("api reference route templates", () => {
+  it("creates a bodyless HEAD path on the specific TanStack docs route", () => {
+    const out = tanstackDocsCatchAllRouteTemplate({
+      entry: "docs",
+      filePath: "src/routes/docs.$.tsx",
+      useAlias: true,
+      projectName: "my-docs",
+    });
+
+    expect(out).toContain("HEAD: async ({ request }) =>");
+    expect(out).toContain("return docsServer.HEAD({ request })");
+    expect(out.match(/isDocsPublicGetRequest/g)).toHaveLength(3);
+  });
+
+  it("creates a method-aware TanStack docs API route", () => {
+    const out = tanstackApiDocsRouteTemplate(true, "src/routes/api.docs.ts");
+
+    expect(out).toContain("GET: async ({ request }) => docsServer.GET({ request })");
+    expect(out).toContain("HEAD: async ({ request }) => docsServer.HEAD({ request })");
+    expect(out).toContain("POST: async ({ request }) => docsServer.POST({ request })");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain("ANY: async ({ request }) => handleUnsupportedDocsMethod(request)");
+    expect(out).toContain('headers: { Allow: "GET, HEAD, POST" }');
+  });
+
   it("creates a TanStack API reference route handler", () => {
     const out = tanstackApiReferenceRouteTemplate({
       filePath: "src/routes/api-reference.index.ts",
@@ -387,12 +538,35 @@ describe("api reference route templates", () => {
     expect(out).toContain("GET: handler");
   });
 
-  it("creates a single TanStack public docs forwarder", () => {
-    const out = tanstackDocsPublicRouteTemplate(false, "src/routes/$.ts", "docs");
+  it.each([
+    ["path aliases", true, 'import { docsServer } from "@/lib/docs.server";'],
+    ["relative paths", false, 'import { docsServer } from "../lib/docs.server";'],
+  ])("creates a single TanStack public docs forwarder with %s", (_, useAlias, serverImport) => {
+    const out = tanstackDocsPublicRouteTemplate(useAlias, "src/routes/$.ts", "docs");
     expect(out).toContain('createFileRoute("/$")');
     expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
     expect(out).toContain("isDocsMcpRequest");
-    expect(out).toContain('from "../lib/docs.server"');
+    expect(out).toContain("isDocsMcpRequest(url, docsConfig.mcp)");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, url, request, { apiRoute: docsConfig.cloud?.apiRoute",
+    );
+    expect(out).toContain(serverImport);
+    expect(out).toContain('import docsConfig from "../../docs.config";');
+    expect(out).toContain("sitemap: docsConfig.sitemap");
+    expect(out).toContain("llms: docsConfig.llmsTxt");
+    expect(out).toContain("robots: docsConfig.robots");
+    expect(out).toContain("docsServer.MCP.OPTIONS");
+    expect(out).toContain('if (method === "HEAD") return docsServer.HEAD({ request })');
+    expect(out).toContain('if (method === "POST") return docsServer.POST({ request })');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
+    expect(out).toContain("HEAD: async ({ request }) => handlePublicDocsRequest(request)");
+    expect(out).toContain("OPTIONS: async");
+    expect(out).toContain("ANY: async ({ request }) => handlePublicDocsRequest(request)");
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
   it("creates a SvelteKit API reference route handler", () => {
@@ -401,15 +575,34 @@ describe("api reference route templates", () => {
     expect(out).toContain('import config from "$lib/docs.config"');
   });
 
+  it("creates a method-aware SvelteKit docs API route", () => {
+    const out = svelteDocsApiRouteTemplate("src/routes/api/docs/+server.ts", true);
+
+    expect(out).toContain("export { GET, HEAD, POST }");
+  });
+
   it("creates a SvelteKit public docs hook", () => {
     const out = svelteDocsPublicHookTemplate("src/hooks.server.ts", false);
     expect(out).toContain("export const handle");
     expect(out).toContain("isDocsLlmsTxtPublicRequest");
     expect(out).toContain("const nativeResponse = await resolve(event)");
     expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(event.url, { apiRoute: config.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: config.cloud?.apiRoute",
+    );
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
-    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+    expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain("import { GET, HEAD, POST, MCP }");
+    expect(out).toContain('if (method === "HEAD") return HEAD(');
+    expect(out).toContain('if (method === "POST") return POST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
+    expect(out).toContain("isDocsMcpRequest(event.url, config.mcp)");
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
   it("composes a SvelteKit public docs hook with an existing handle", () => {
@@ -428,7 +621,23 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).not.toBeNull();
     expect(out).toContain("const existingHandle: Handle =");
     expect(out).toContain("const docsPublicHandle: Handle =");
-    expect(out).toContain("isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt)");
+    expect(out).toContain("docsMCP.OPTIONS");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(event.url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, event.url, event.request, { apiRoute: docsConfig.cloud?.apiRoute",
+    );
+    expect(out).toContain("HEAD as docsHEAD");
+    expect(out).toContain("POST as docsPOST");
+    expect(out).toContain('if (method === "HEAD") return docsHEAD(');
+    expect(out).toContain('if (method === "POST") return docsPOST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
+    expect(out).toContain("isDocsMcpRequest(event.url, docsConfig.mcp)");
+    expect(out).toContain(
+      "isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
     expect(out).toContain("export const handle = sequence(docsPublicHandle, existingHandle);");
@@ -440,15 +649,36 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).toContain('import config from "../../lib/docs.config"');
   });
 
+  it("creates a method-aware Astro docs API route", () => {
+    const out = astroApiRouteTemplate({ ...baseConfig, framework: "astro" });
+
+    expect(out).toContain("HEAD as docsHEAD");
+    expect(out).toContain("export const HEAD: APIRoute");
+    expect(out).toContain("return docsHEAD({ request })");
+  });
+
   it("creates an Astro public docs middleware", () => {
     const out = astroDocsMiddlewareTemplate("src/middleware.ts", false);
     expect(out).toContain("export const onRequest");
     expect(out).toContain("isDocsLlmsTxtPublicRequest");
     expect(out).toContain("const nativeResponse = await next()");
     expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(context.url, { apiRoute: config.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: config.cloud?.apiRoute",
+    );
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
-    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+    expect(out).toContain("MCP.OPTIONS");
+    expect(out).toContain("import { GET, HEAD, POST, MCP }");
+    expect(out).toContain('if (method === "HEAD") return HEAD(');
+    expect(out).toContain('if (method === "POST") return POST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
+    expect(out).toContain("isDocsMcpRequest(context.url, config.mcp)");
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE, OPTIONS"');
   });
 
   it("composes Astro docs middleware with an existing onRequest", () => {
@@ -467,7 +697,23 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     expect(out).not.toBeNull();
     expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
     expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
-    expect(out).toContain("isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt)");
+    expect(out).toContain("docsMCP.OPTIONS");
+    expect(out).toContain("isDocsStandardsDiscoveryRequest");
+    expect(out).toContain(
+      "isDocsStandardsDiscoveryRequest(context.url, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
+    expect(out).toContain(
+      "isDocsPublicGetRequest(docsEntry, context.url, context.request, { apiRoute: docsConfig.cloud?.apiRoute",
+    );
+    expect(out).toContain("HEAD as docsHEAD");
+    expect(out).toContain("POST as docsPOST");
+    expect(out).toContain('if (method === "HEAD") return docsHEAD(');
+    expect(out).toContain('if (method === "POST") return docsPOST(');
+    expect(out).toContain('(method === "GET" || method === "HEAD") && isDocsPublicGetRequest');
+    expect(out).toContain("isDocsMcpRequest(context.url, docsConfig.mcp)");
+    expect(out).toContain(
+      "isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry, { apiRoute: docsConfig.cloud?.apiRoute })",
+    );
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
     expect(out).toContain(
@@ -490,7 +736,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
     expect(out).toContain('import { defineDocsPublicHandler } from "@farming-labs/nuxt/server"');
     expect(out).toContain('import config from "../../docs.config"');
-    expect(out).toContain("defineDocsPublicHandler(config, useStorage)");
+    expect(out).toContain("_preloadedAgentSkills: bundledAgentSkills");
   });
 });
 
@@ -563,11 +809,13 @@ export default defineConfig({
       `import { defineConfig } from "vite"
 import tailwindcss from '@tailwindcss/vite'
 import { docsMdx } from '@farming-labs/tanstack-start/vite'
+import { docsAgentSkills } from '@farming-labs/docs/vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from "@tanstack/react-start/plugin/vite"
+import docsConfig from './docs.config'
 
 export default defineConfig({
-  plugins: [tailwindcss(), docsMdx(), tsconfigPaths({ ignoreConfigErrors: true }), tanstackStart()],
+  plugins: [tailwindcss(), docsMdx(), docsAgentSkills(docsConfig), tsconfigPaths({ ignoreConfigErrors: true }), tanstackStart()],
 })
 `,
       true,

@@ -1,7 +1,18 @@
 /* @farming-labs/theme — greentree theme CSS
  * Mintlify-inspired design, emerald green accent, Inter font, clean & modern.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
+
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr)
+    minmax(0, min(900px, calc(100% - var(--fd-toc-width, 268px))))
+    var(--fd-toc-width, 268px) minmax(0, 1fr);
+  --fd-framework-article-column: 2;
+  --fd-framework-toc-column: 3;
+  --fd-framework-article-width: min(900px, 100%);
+  --fd-framework-article-justify: center;
+  --fd-framework-article-padding: 56px 32px 24px;
+}
 
 /* ─── GreenTree color overrides ────────────────────────────────── */
 
@@ -65,7 +76,8 @@ h3 {
   line-height: 1.3;
 }
 
-.fd-docs-content p {
+.fd-docs-content p,
+.fd-page-body p {
   font-size: 1rem;
   line-height: 1.7;
 }
@@ -219,7 +231,8 @@ nav[class*="header"] {
  * ═══════════════════════════════════════════════════════════════════ */
 
 /* Links in prose — green colored */
-.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+.fd-docs-content a:not(.fd-page-nav-card):not([class]),
+.fd-page-body a:not(.fd-page-nav-card):not([class]) {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-color: rgba(13, 147, 115, 0.3);
@@ -229,12 +242,14 @@ nav[class*="header"] {
   transition: text-decoration-color 150ms;
 }
 
-.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover {
+.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover,
+.fd-page-body a:not(.fd-page-nav-card):not([class]):hover {
   text-decoration-color: var(--color-fd-primary);
 }
 
 /* Inline code */
-.fd-docs-content :not(pre) > code {
+.fd-docs-content :not(pre) > code,
+.fd-page-body :not(pre) > code {
   padding: 2px 5px;
   border: 1px solid var(--color-fd-border);
   font-size: 0.875rem;
@@ -245,7 +260,12 @@ nav[class*="header"] {
 }
 
 /* Tables */
-.fd-docs-content table {
+.fd-table-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:is(.fd-docs-content, .prose, .fd-page-body) table {
   border-collapse: separate;
   border-spacing: 0;
   background: var(--color-fd-card);
@@ -255,7 +275,7 @@ nav[class*="header"] {
   width: 100%;
 }
 
-.fd-docs-content th {
+:is(.fd-docs-content, .prose, .fd-page-body) th {
   background: var(--color-fd-muted);
   font-weight: 500;
   font-size: 0.8125rem;
@@ -264,19 +284,20 @@ nav[class*="header"] {
   letter-spacing: normal;
 }
 
-.fd-docs-content th,
-.fd-docs-content td {
+:is(.fd-docs-content, .prose, .fd-page-body) th,
+:is(.fd-docs-content, .prose, .fd-page-body) td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-fd-border);
   font-size: 0.875rem;
 }
 
-.fd-docs-content tr:last-child td {
+:is(.fd-docs-content, .prose, .fd-page-body) tr:last-child td {
   border-bottom: none;
 }
 
 /* Blockquotes */
-.fd-docs-content blockquote {
+.fd-docs-content blockquote,
+.fd-page-body blockquote {
   border-left: 3px solid var(--color-fd-primary);
   padding-left: 1rem;
   color: var(--color-fd-muted-foreground);
@@ -285,7 +306,8 @@ nav[class*="header"] {
 }
 
 /* Horizontal rule */
-.fd-docs-content hr {
+.fd-docs-content hr,
+.fd-page-body hr {
   border-color: var(--color-fd-border);
 }
 
@@ -358,7 +380,8 @@ nav[class*="header"] {
  * CODE BLOCKS
  * ═══════════════════════════════════════════════════════════════════ */
 
-figure.shiki {
+figure.shiki,
+.fd-codeblock {
   overflow: hidden;
   border: 1px solid var(--color-fd-border);
 }
@@ -367,11 +390,14 @@ figure.shiki {
  * TABS — bottom border indicator
  * ═══════════════════════════════════════════════════════════════════ */
 
-[role="tablist"] {
+[role="tablist"],
+.fd-tabs,
+.fd-tabs-list {
   border-bottom: 1px solid var(--color-fd-border);
 }
 
-[role="tab"] {
+[role="tab"],
+.fd-tab-trigger {
   font-size: 0.875rem;
   font-weight: 400;
   padding: 0.5rem 0.75rem;
@@ -384,7 +410,8 @@ figure.shiki {
 }
 
 [role="tab"][aria-selected="true"],
-[role="tab"][data-state="active"] {
+[role="tab"][data-state="active"],
+.fd-tab-trigger.fd-tab-active {
   color: var(--color-fd-primary);
   border-bottom-color: var(--color-fd-primary);
   font-weight: 500;
@@ -394,7 +421,9 @@ figure.shiki {
  * CALLOUT, ACCORDION
  * ═══════════════════════════════════════════════════════════════════ */
 
-[style*="--callout-color"] {
+[style*="--callout-color"],
+.fd-callout,
+[data-callout] {
   border-radius: 10px;
   border-width: 1px;
 }
@@ -433,21 +462,27 @@ details > :not(summary) {
  * TOC
  * ═══════════════════════════════════════════════════════════════════ */
 
-#nd-toc a[data-active="true"] {
+#nd-toc a[data-active="true"],
+.fd-toc-link-active,
+.fd-toc-clerk .fd-toc-link[data-active="true"] {
   color: var(--color-fd-primary);
   font-weight: 500;
 }
 
-#nd-toc a[data-active="false"] {
+#nd-toc a[data-active="false"],
+.fd-toc-link {
   color: var(--color-fd-muted-foreground);
 }
 
-#nd-toc a {
+#nd-toc a,
+.fd-toc-link,
+.fd-toc-clerk .fd-toc-link {
   font-size: 0.875rem;
   line-height: 1.3;
 }
 
-#nd-toc h3 {
+#nd-toc h3,
+.fd-toc-title {
   font-size: 0.875rem;
   font-weight: 500;
 }

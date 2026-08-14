@@ -167,11 +167,16 @@ function wireInteractive() {
         trigger.addEventListener("click", () => {
           const val = trigger.getAttribute("data-tab-value");
           tabs.querySelectorAll(".fd-tab-trigger").forEach((t) => {
-            t.classList.toggle("fd-tab-active", t.getAttribute("data-tab-value") === val);
-            t.setAttribute("aria-selected", String(t.getAttribute("data-tab-value") === val));
+            const active = t.getAttribute("data-tab-value") === val;
+            t.classList.toggle("fd-tab-active", active);
+            t.setAttribute("aria-selected", String(active));
+            t.setAttribute("data-state", active ? "active" : "inactive");
+            t.setAttribute("tabindex", active ? "0" : "-1");
           });
           tabs.querySelectorAll(".fd-tab-panel").forEach((p) => {
-            p.classList.toggle("fd-tab-panel-active", p.getAttribute("data-tab-panel") === val);
+            const active = p.getAttribute("data-tab-panel") === val;
+            p.classList.toggle("fd-tab-panel-active", active);
+            p.setAttribute("data-state", active ? "active" : "inactive");
           });
         });
       });
@@ -402,7 +407,7 @@ watch(
             :to="localizedPreviousPage.url"
             class="fd-page-nav-card fd-page-nav-prev"
           >
-            <span class="fd-page-nav-label">
+            <span class="fd-page-nav-title fd-page-nav-title-prev">
               <svg
                 width="14"
                 height="14"
@@ -415,14 +420,14 @@ watch(
               >
                 <polyline points="15 18 9 12 15 6" />
               </svg>
-              Previous
+              {{ localizedPreviousPage.name }}
             </span>
-            <span class="fd-page-nav-title">{{ localizedPreviousPage.name }}</span>
+            <span class="fd-page-nav-description">Previous Page</span>
           </NuxtLink>
           <div v-else></div>
           <NuxtLink v-if="localizedNextPage" :to="localizedNextPage.url" class="fd-page-nav-card fd-page-nav-next">
-            <span class="fd-page-nav-label">
-              Next
+            <span class="fd-page-nav-title fd-page-nav-title-next">
+              {{ localizedNextPage.name }}
               <svg
                 width="14"
                 height="14"
@@ -436,7 +441,7 @@ watch(
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </span>
-            <span class="fd-page-nav-title">{{ localizedNextPage.name }}</span>
+            <span class="fd-page-nav-description">Next Page</span>
           </NuxtLink>
           <div v-else></div>
         </nav>

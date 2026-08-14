@@ -2,6 +2,35 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { TanstackDocsLayout } from "./tanstack-layout.js";
 
+function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
+  if (!node || typeof node !== "object") return null;
+
+  const candidate = node as {
+    type?: unknown;
+    props?: Record<string, unknown> & { children?: unknown };
+  };
+
+  if (
+    candidate.type &&
+    candidate.props &&
+    "copyMarkdown" in candidate.props &&
+    "openDocs" in candidate.props
+  ) {
+    return candidate.props;
+  }
+
+  const children = candidate.props?.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const found = findDocsPageClientProps(child);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  return children ? findDocsPageClientProps(children) : null;
+}
+
 describe("TanstackDocsLayout", () => {
   it("does not add an extra display: contents wrapper above the docs layout root", () => {
     const tree = TanstackDocsLayout({
@@ -62,6 +91,66 @@ describe("TanstackDocsLayout", () => {
           url: "/docs/components/button",
         }),
       ],
+    });
+  });
+
+  it("renders Shadcn folder landing pages as section labels unless links are requested", () => {
+    const sourceTree = {
+      name: "Docs",
+      children: [
+        {
+          type: "folder" as const,
+          name: "Authentication",
+          index: { type: "page" as const, name: "Authentication", url: "/docs/authentication" },
+          children: [{ type: "page" as const, name: "Email", url: "/docs/authentication/email" }],
+        },
+      ],
+    };
+    const shadcnLayout = TanstackDocsLayout({
+      config: { entry: "docs", theme: { name: "shadcn" } },
+      tree: sourceTree,
+      children: React.createElement("div", null, "child"),
+    });
+    const linkedShadcnLayout = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        theme: { name: "shadcn" },
+        sidebar: { folderIndexBehavior: "link" },
+      },
+      tree: sourceTree,
+      children: React.createElement("div", null, "child"),
+    });
+
+    const shadcnTree = (
+      shadcnLayout.props as {
+        tree: { children: Array<Record<string, unknown>> };
+      }
+    ).tree;
+    const linkedShadcnTree = (
+      linkedShadcnLayout.props as {
+        tree: { children: Array<Record<string, unknown>> };
+      }
+    ).tree;
+
+    expect(shadcnTree.children[0]).toMatchObject({
+      type: "folder",
+      index: undefined,
+      url: undefined,
+      children: [
+        expect.objectContaining({
+          type: "page",
+          name: "Email",
+          url: "/docs/authentication/email",
+        }),
+      ],
+    });
+    expect(linkedShadcnTree.children[0]).toMatchObject({
+      type: "folder",
+      index: expect.objectContaining({
+        type: "page",
+        name: "Authentication",
+        url: "/docs/authentication",
+      }),
     });
   });
 
@@ -174,5 +263,167 @@ describe("TanstackDocsLayout", () => {
         }),
       ],
     });
+  });
+
+  it("passes feedback status messages through to DocsPageClient", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        feedback: {
+          successMessage: "Thanks, we logged this.",
+          errorMessage: "Feedback could not be recorded.",
+        },
+      },
+      tree: {
+        name: "Docs",
+        children: [],
+      },
+      children: React.createElement("div", null, "child"),
+    });
+
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackSuccessMessage).toBe("Thanks, we logged this.");
+    expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
+  });
+
+  it("passes authored description placement through to DocsPageClient", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+      },
+      tree: {
+        name: "Docs",
+        children: [],
+      },
+      descriptionInBody: true,
+      children: React.createElement("div", null, "child"),
+    });
+
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.descriptionInBody).toBe(true);
+  });
+
+  it("keeps browser-only header actions out of normal TanStack layouts", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        theme: { name: "fumadocs-pixel-border" } as any,
+        llmsTxt: true,
+      },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(false);
+  });
+
+  it("enables browser-owned header actions for the browser runtime", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        theme: { name: "fumadocs-pixel-border" } as any,
+        llmsTxt: true,
+      },
+      tree: { name: "Docs", children: [] },
+      browserRuntime: true,
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
+    expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-framework": "",
+      "data-fd-browser-adapter": "",
+    });
+  });
+
+  it("keeps provided navigation groups open when the sidebar is flat", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        sidebar: { flat: true },
+      },
+      tree: {
+        name: "Docs",
+        children: [
+          {
+            type: "folder",
+            name: "Guides",
+            children: [{ type: "page", name: "Start", url: "/docs/start" }],
+          },
+        ],
+      },
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(
+      (tree.props as { tree: { children: Array<Record<string, unknown>> } }).tree.children[0],
+    ).toMatchObject({
+      type: "folder",
+      collapsible: false,
+      defaultOpen: true,
+    });
+  });
+
+  it("keeps the native TanStack layout out of framework-owned CSS", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs" },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(
+      (tree.props as { containerProps?: Record<string, unknown> }).containerProps,
+    ).toBeUndefined();
+  });
+
+  it("passes the configured feedback placeholder through to DocsPageClient", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        feedback: {
+          placeholder: "Tell us what felt unclear.",
+        },
+      },
+      tree: {
+        name: "Docs",
+        children: [],
+      },
+      children: React.createElement("div", null, "child"),
+    });
+
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackPlaceholder).toBe("Tell us what felt unclear.");
+  });
+
+  it("passes the configured last-updated label through to DocsPageClient", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        lastUpdated: {
+          label: "Updated",
+          position: "below-title",
+        },
+      },
+      tree: {
+        name: "Docs",
+        children: [],
+      },
+      children: React.createElement("div", null, "child"),
+    });
+
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.lastUpdatedEnabled).toBe(true);
+    expect(props?.lastUpdatedLabel).toBe("Updated");
+    expect(props?.lastUpdatedPosition).toBe("below-title");
   });
 });

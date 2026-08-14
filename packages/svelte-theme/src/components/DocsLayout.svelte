@@ -3,8 +3,14 @@
   import SearchDialog from "./SearchDialog.svelte";
   import AskAIDialog from "./AskAIDialog.svelte";
   import FloatingAIChat from "./FloatingAIChat.svelte";
+  import { afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";
+  import { env as publicEnv } from "$env/dynamic/public";
   import { onMount } from "svelte";
+  import {
+    emitSvelteDocsClientAnalyticsEvent,
+    installSvelteDocsAnalytics,
+  } from "../lib/clientAnalytics.js";
 
   let {
     tree,
@@ -79,11 +85,55 @@
     ].join("");
   });
 
+  let lastAnalyticsPageKey = "";
+
+  function emitPageView(url) {
+    if (typeof window === "undefined") return;
+    if (!url) return;
+
+    window.setTimeout(() => {
+      const pathname = url.pathname.replace(/\/$/, "") || "/";
+      const search = url.search;
+      const locale =
+        url.searchParams.get("lang") ?? url.searchParams.get("locale") ?? activeLocale ?? null;
+      const pageKey = `${pathname}${search}|${locale ?? ""}`;
+      if (pageKey === lastAnalyticsPageKey) return;
+
+      lastAnalyticsPageKey = pageKey;
+      emitSvelteDocsClientAnalyticsEvent({
+        type: "page_view",
+        locale,
+        path: pathname,
+        url: url.href,
+        properties: {
+          entry: config?.entry,
+          framework: "sveltekit",
+          pathname,
+          ...(search ? { search } : {}),
+          ...(document.title ? { title: document.title } : {}),
+        },
+      });
+    }, 0);
+  }
+
+  afterNavigate(({ to }) => {
+    emitPageView(to?.url ?? $page.url);
+  });
+
   onMount(() => {
+    const cleanupAnalytics = installSvelteDocsAnalytics({
+      analytics: config?.analytics,
+      env: publicEnv,
+    });
+
     if (forcedTheme) {
       document.documentElement.classList.remove("light", "dark");
       document.documentElement.classList.add(forcedTheme);
     }
+
+    return () => {
+      cleanupAnalytics();
+    };
   });
 
   let sidebarOpen = $state(false);
@@ -194,7 +244,7 @@
       vars.push(`${COLOR_MAP[key]}: ${value};`);
     }
     if (vars.length === 0) return "";
-    return `.dark {\n  ${vars.join("\n  ")}\n}`;
+    return `html.dark body:has(#nd-docs-layout),\nbody.dark:has(#nd-docs-layout),\nbody:has(#nd-docs-layout.dark),\n:is(html.dark, body.dark) #nd-docs-layout,\n#nd-docs-layout.dark {\n  ${vars.join("\n  ")}\n}`;
   }
 
   function buildFontStyleVars(prefix, style) {
@@ -221,7 +271,7 @@
       }
     }
     if (vars.length === 0) return "";
-    return `:root {\n  ${vars.join("\n  ")}\n}`;
+    return `:root,\nbody:has(#nd-docs-layout),\n#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
   }
 
   function buildLayoutCSS(layout) {
@@ -233,8 +283,8 @@
     if (layout.tocWidth) desktopVars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
     if (rootVars.length === 0 && desktopVars.length === 0) return "";
     const parts = [];
-    if (rootVars.length > 0) parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
-    if (desktopVars.length > 0) parts.push(`@media (min-width: 1024px) {\n  :root {\n    ${desktopVars.join("\n    ")}\n  }\n}`);
+    if (rootVars.length > 0) parts.push(`#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
+    if (desktopVars.length > 0) parts.push(`@media (min-width: 1024px) {\n  #nd-docs-layout {\n    ${desktopVars.join("\n    ")}\n  }\n}`);
     return parts.join("\n");
   }
 
@@ -245,7 +295,9 @@
     return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography), buildLayoutCSS(layout)].filter(Boolean).join("\n");
   });
 
-  // Build style tag from parts so Vite/Svelte preprocessor doesn't treat it as a real <style> block (PostCSS would then fail on "overrideCSS")
+  // Build tags from parts so Vite/Svelte preprocessors do not scan dynamic tag bodies.
+  const scriptTagOpen = "<scr" + "ipt>";
+  const scriptTagClose = "</scr" + "ipt>";
   const styleTagOpen = "<sty" + "le>";
   const styleTagClose = "</sty" + "le>";
 </script>
@@ -253,13 +305,13 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <svelte:head>
-  {@html `<script>${themeInitScript}</script>`}
+  {@html `${scriptTagOpen}${themeInitScript}${scriptTagClose}`}
   {#if overrideCSS}
     {@html `${styleTagOpen}${overrideCSS}${styleTagClose}`}
   {/if}
 </svelte:head>
 
-<div class="fd-layout">
+<div id="nd-docs-layout" data-fd-framework="sveltekit" class="fd-layout">
   <!-- Mobile header -->
   <header class="fd-header">
     <button class="fd-menu-btn" onclick={toggleSidebar} aria-label="Toggle sidebar">
@@ -505,19 +557,19 @@
   <main class="fd-main">
     {@render children()}
   </main>
+
+  {#if showFloatingAI}
+    <FloatingAIChat
+      api={localizedApi}
+      suggestedQuestions={config.ai.suggestedQuestions ?? []}
+      aiLabel={config.ai.aiLabel ?? "AI"}
+      position={config.ai.position ?? "bottom-right"}
+      floatingStyle={config.ai.floatingStyle ?? "panel"}
+      {triggerComponent}
+    />
+  {/if}
+
+  {#if showSearch && searchOpen}
+    <SearchDialog onclose={closeSearch} />
+  {/if}
 </div>
-
-{#if showFloatingAI}
-  <FloatingAIChat
-    api={localizedApi}
-    suggestedQuestions={config.ai.suggestedQuestions ?? []}
-    aiLabel={config.ai.aiLabel ?? "AI"}
-    position={config.ai.position ?? "bottom-right"}
-    floatingStyle={config.ai.floatingStyle ?? "panel"}
-    {triggerComponent}
-  />
-{/if}
-
-{#if showSearch && searchOpen}
-  <SearchDialog onclose={closeSearch} />
-{/if}

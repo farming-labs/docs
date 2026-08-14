@@ -43,12 +43,21 @@ function subscribe(onStoreChange: () => void) {
   };
 }
 
-function getSnapshot() {
+function getSearchSnapshot() {
   if (typeof window === "undefined") return "";
   return window.location.search;
 }
 
+function getPathnameSnapshot() {
+  if (typeof window === "undefined") return "";
+  return window.location.pathname;
+}
+
 export function useWindowSearchParams(): URLSearchParams {
-  const search = useSyncExternalStore(subscribe, getSnapshot, () => "");
+  const search = useSyncExternalStore(subscribe, getSearchSnapshot, () => "");
   return new URLSearchParams(search);
+}
+
+export function useWindowPathname(): string {
+  return useSyncExternalStore(subscribe, getPathnameSnapshot, () => "");
 }

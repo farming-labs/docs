@@ -9,8 +9,22 @@
  *   - Tables, lists, inline formatting, headings with anchor IDs
  */
 
-import { resolveDocsAgentMdxContent, type DocsTheme } from "@farming-labs/docs";
+import { resolveDocsAudienceMdxContent, type DocsTheme } from "@farming-labs/docs";
 import {
+  createDocsMarkdownBlockPlaceholderAllocator,
+  extractDocsMarkdownReferenceDefinitions as extractMarkdownReferenceDefinitions,
+  extractDocsRenderedHeadingElements as extractRenderedHeadingElements,
+  prepareDocsMarkdownHeadings as prepareMarkdownHeadings,
+  replaceDocsMarkdownFencedCodeBlocks as replaceMarkdownFencedCodeBlocks,
+  renderDocsMarkdownBlockContent as renderMarkdownBlockContent,
+  renderDocsMarkdownHeadings as renderMarkdownHeadings,
+  renderDocsMarkdownInline as renderMarkdownInline,
+  restoreDocsMarkdownHeadingOpeningTags as restoreMarkdownHeadingOpeningTags,
+  stripPreparedDocsMarkdownHeadingTokens as stripPreparedMarkdownHeadingTokens,
+  type DocsMarkdownReferenceDefinitions as MarkdownReferenceDefinitions,
+} from "@farming-labs/docs/markdown-rendering";
+import {
+  extractDocsMarkdownPromptBlocks,
   parsePromptStringArray,
   resolvePromptProviderChoices,
   sanitizePromptText,
@@ -45,16 +59,6 @@ function getHighlighter(): Promise<Highlighter> {
   return highlighterPromise;
 }
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/<[^>]+>/g, "")
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim();
-}
-
 const hoverLinkDefaults = {
   linkLabel: "Open page",
   showIndicator: false,
@@ -73,6 +77,16 @@ const promptDefaults = {
   openIcon: "arrowUpRight",
 } as const;
 
+function slugifyCodeGroupTab(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]+>/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+}
+
 const promptActionIcons: Record<string, string> = {
   copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>',
   check:
@@ -87,6 +101,11 @@ interface RenderMarkdownOptions {
   theme?: DocsTheme;
   icons?: Record<string, string>;
   openDocsProviders?: SerializedOpenDocsProvider[];
+}
+
+interface RenderedMarkdownBlock {
+  html: string;
+  token: string;
 }
 
 function escapeHtml(value: string): string {
@@ -386,10 +405,39 @@ const calloutIcons: Record<string, string> = {
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
 };
 
-function renderCallout(type: string, content: string): string {
-  const icon = calloutIcons[type] || calloutIcons.note;
-  const label = type.charAt(0).toUpperCase() + type.slice(1);
-  return `<div class="fd-callout fd-callout-${type}" role="note"><div class="fd-callout-indicator" role="none"></div><div class="fd-callout-icon">${icon}</div><div class="fd-callout-content"><p class="fd-callout-title">${label}</p><p>${content}</p></div></div>`;
+const calloutTypeAliases: Record<string, string> = {
+  danger: "caution",
+  error: "caution",
+  info: "note",
+  success: "tip",
+  warn: "warning",
+};
+
+const calloutLabels: Record<string, string> = {
+  caution: "Caution",
+  important: "Important",
+  note: "Note",
+  tip: "Tip",
+  warning: "Warning",
+};
+
+function normalizeCalloutType(type: string): string {
+  const normalized = type.trim().toLowerCase();
+  const aliased = calloutTypeAliases[normalized] ?? normalized;
+  return calloutIcons[aliased] ? aliased : "note";
+}
+
+function renderCallout(
+  type: string,
+  content: string,
+  title: string | null | undefined,
+  definitions: MarkdownReferenceDefinitions,
+): string {
+  const normalizedType = normalizeCalloutType(type);
+  const icon = calloutIcons[normalizedType] || calloutIcons.note;
+  const label = title?.trim() || calloutLabels[normalizedType] || "Note";
+  const renderedContent = renderMarkdownBlockContent(content, definitions);
+  return `<div class="fd-callout fd-callout-${normalizedType}" role="note"><div class="fd-callout-indicator" role="none"></div><div class="fd-callout-icon">${icon}</div><div class="fd-callout-content"><p class="fd-callout-title">${escapeHtml(label)}</p>${renderedContent}</div></div>`;
 }
 
 function highlightCode(hl: Highlighter, code: string, lang: string): { html: string; raw: string } {
@@ -418,10 +466,103 @@ function highlightCode(hl: Highlighter, code: string, lang: string): { html: str
   }
 }
 
+const ignoredCodeGroupBareTitleTokens = new Set([
+  "copy",
+  "no-copy",
+  "nocopy",
+  "line-numbers",
+  "linenumbers",
+  "runnable",
+  "show-line-numbers",
+  "showlinenumbers",
+  "wrap",
+]);
+
 function parseMeta(meta: string): { lang: string; title: string | null } {
-  const lang = (meta.split(/\s/)[0] || "text").toLowerCase();
-  const titleMatch = meta.match(/title=["']([^"']+)["']/);
-  return { lang, title: titleMatch ? titleMatch[1] : null };
+  const trimmed = meta.trim();
+  const firstToken = trimmed.split(/\s+/, 1)[0] ?? "";
+  const hasLanguage = Boolean(
+    firstToken && !firstToken.includes("=") && !firstToken.startsWith("{"),
+  );
+  const lang = hasLanguage ? firstToken.toLowerCase() : "text";
+  const titleMatch = trimmed.match(/\b(?:title|filename|file|name|label)=["']([^"']+)["']/);
+
+  if (titleMatch) return { lang, title: titleMatch[1] };
+
+  const bareTitle = trimmed
+    .slice(hasLanguage ? firstToken.length : 0)
+    .trim()
+    .replace(/\{[^}]*\}/g, " ")
+    .split(/\s+/)
+    .find(
+      (part) =>
+        part && !part.includes("=") && !ignoredCodeGroupBareTitleTokens.has(part.toLowerCase()),
+    );
+
+  return {
+    lang,
+    title: bareTitle ? bareTitle.replace(/^["']|["']$/g, "") : null,
+  };
+}
+
+function parseCodeGroupMeta(meta: string): { lang: string; title: string | null } {
+  const parsed = parseMeta(meta);
+  if (parsed.title) return parsed;
+
+  const trimmed = meta.trim();
+  const language = trimmed.split(/\s+/, 1)[0] ?? "";
+  const bareTitle = trimmed
+    .slice(language.length)
+    .trim()
+    .replace(/\{[^}]*\}/g, " ")
+    .split(/\s+/)
+    .find(
+      (part) =>
+        part && !part.includes("=") && !ignoredCodeGroupBareTitleTokens.has(part.toLowerCase()),
+    );
+
+  return {
+    ...parsed,
+    title: bareTitle ? bareTitle.replace(/^["']|["']$/g, "") : null,
+  };
+}
+
+function createCodeGroupTabValue(label: string, used: Set<string>): string {
+  const slug = slugifyCodeGroupTab(label) || `code-${used.size + 1}`;
+  let value = slug;
+  let suffix = 2;
+
+  while (used.has(value)) {
+    value = `${slug}-${suffix}`;
+    suffix += 1;
+  }
+
+  used.add(value);
+  return value;
+}
+
+const terminalCodeLanguages = new Set([
+  "bash",
+  "console",
+  "sh",
+  "shell",
+  "shellscript",
+  "terminal",
+]);
+const fileCodeBlockIcon =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+const terminalCodeBlockIcon =
+  '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="m 4,4 a 1,1 0 0 0 -0.7070312,0.2929687 1,1 0 0 0 0,1.4140625 L 8.5859375,11 3.2929688,16.292969 a 1,1 0 0 0 0,1.414062 1,1 0 0 0 1.4140624,0 l 5.9999998,-6 a 1.0001,1.0001 0 0 0 0,-1.414062 L 4.7070312,4.2929687 A 1,1 0 0 0 4,4 Z m 8,14 a 1,1 0 0 0 -1,1 1,1 0 0 0 1,1 h 8 a 1,1 0 0 0 1,-1 1,1 0 0 0 -1,-1 z" fill="currentColor"/></svg>';
+const copyCodeBlockIcon =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
+
+function renderCodeBlockTitleIcon(title?: string | null, language?: string | null): string {
+  const normalizedTitle = title?.trim().toLowerCase() ?? "";
+  const normalizedLanguage = language?.trim().toLowerCase() ?? "";
+  if (normalizedTitle.includes("terminal") || terminalCodeLanguages.has(normalizedLanguage)) {
+    return terminalCodeBlockIcon;
+  }
+  return fileCodeBlockIcon;
 }
 
 function wrapCodeWithCopy(
@@ -435,12 +576,12 @@ function wrapCodeWithCopy(
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const dataLang = language ? ` data-language="${String(language).replace(/"/g, "&quot;")}"` : "";
-  const copyBtn = `<button class="fd-copy-btn" data-code="${escapedRaw}" title="Copy code"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
+  const dataLang = language ? ` data-language="${escapeHtml(String(language))}"` : "";
+  const copyBtn = `<button type="button" class="fd-copy-btn" data-code="${escapedRaw}" title="Copy code" aria-label="Copy code">${copyCodeBlockIcon}</button>`;
   if (title) {
-    return `<div class="fd-codeblock fd-codeblock--titled"${dataLang}><div class="fd-codeblock-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg><span class="fd-codeblock-title-text">${title}</span>${copyBtn}</div><div class="fd-codeblock-content">${html}</div></div>`;
+    return `<figure class="fd-codeblock fd-codeblock--titled shiki not-prose" dir="ltr" tabindex="-1"${dataLang}><div class="fd-codeblock-title" data-title>${renderCodeBlockTitleIcon(title, language)}<span class="fd-codeblock-title-text">${escapeHtml(title)}</span><div class="fd-codeblock-actions">${copyBtn}</div></div><div class="fd-codeblock-content fd-scroll-container" role="region" tabindex="0">${html}</div></figure>`;
   }
-  return `<div class="fd-codeblock"${dataLang}>${copyBtn}<div class="fd-codeblock-content">${html}</div></div>`;
+  return `<figure class="fd-codeblock shiki not-prose" dir="ltr" tabindex="-1"${dataLang}><div class="fd-codeblock-actions fd-codeblock-actions-floating">${copyBtn}</div><div class="fd-codeblock-content fd-scroll-container" role="region" tabindex="0">${html}</div></figure>`;
 }
 
 function dedentCode(raw: string): string {
@@ -469,10 +610,81 @@ export async function renderMarkdown(
   if (!content) return "";
 
   const hl = await getHighlighter();
-  let result = resolveDocsAgentMdxContent(content, "human");
+  // Prompt children are literal copyable text, not renderable Markdown. Protect
+  // them before audience projection, reference collection, and heading
+  // preparation so none of those document-level passes can consume or interpret
+  // Prompt-only syntax.
+  const extractedPrompts = extractDocsMarkdownPromptBlocks(content);
+  const promptBlocks = extractedPrompts.blocks;
+  let result = extractedPrompts.markdown;
+  result = resolveDocsAudienceMdxContent(result, "human");
+  const allocateBlockPlaceholder = createDocsMarkdownBlockPlaceholderAllocator(result);
+  const extractedReferences = extractMarkdownReferenceDefinitions(result);
+  const referenceDefinitions = extractedReferences.definitions;
+  const preparedHeadings = prepareMarkdownHeadings(result);
+  const preparedWithoutReferences = extractMarkdownReferenceDefinitions(
+    preparedHeadings.markdown,
+  ).markdown;
+  const renderedHeadings = renderMarkdownHeadings(
+    preparedWithoutReferences,
+    preparedHeadings.headings,
+  );
+  result = renderedHeadings.markdown;
+  const headingOpeningTags = renderedHeadings.openingTags;
+
+  // ── Mintlify-style code groups: <CodeGroup> fenced code blocks </CodeGroup> ──
+  const tabsBlocks: RenderedMarkdownBlock[] = [];
+  result = result.replace(
+    /<CodeGroup(?:\s+([^>]*?))?>([\s\S]*?)<\/CodeGroup>/g,
+    (_: string, attrSource: string | undefined, body: string) => {
+      const attrs = parseJsxAttributes(attrSource ?? "");
+      const dropdown = toBoolean(attrs.dropdown, false);
+      const usedValues = new Set<string>();
+      const panels: { label: string; value: string; html: string }[] = [];
+      replaceMarkdownFencedCodeBlocks(body, ({ code, info }) => {
+        const { lang, title } = parseCodeGroupMeta(info);
+        const label = title || lang || `Code ${panels.length + 1}`;
+        const value = createCodeGroupTabValue(label, usedValues);
+        const dedented = dedentCode(code);
+        const { html, raw } = highlightCode(hl, dedented, lang);
+        panels.push({
+          label,
+          value,
+          html: wrapCodeWithCopy(html, raw, null, lang),
+        });
+        return "";
+      });
+
+      if (panels.length === 0) return body;
+      const extractedHeadings = extractRenderedHeadingElements(
+        body,
+        referenceDefinitions,
+        false,
+        headingOpeningTags,
+      );
+
+      let tabsHtml =
+        extractedHeadings.headingsHtml +
+        `<div class="fd-tabs fd-code-group" data-tabs data-code-group data-fd-code-group${dropdown ? ' data-dropdown="true"' : ""}>`;
+      tabsHtml += `<div class="fd-tabs-list fd-code-group-list" role="tablist">`;
+      for (let i = 0; i < panels.length; i++) {
+        const state = i === 0 ? "active" : "inactive";
+        tabsHtml += `<button type="button" role="tab" class="fd-tab-trigger${i === 0 ? " fd-tab-active" : ""}" data-tab-value="${escapeHtml(panels[i].value)}" data-state="${state}" aria-selected="${i === 0}" tabindex="${i === 0 ? "0" : "-1"}">${escapeHtml(panels[i].label)}</button>`;
+      }
+      tabsHtml += `</div>`;
+      for (let i = 0; i < panels.length; i++) {
+        const state = i === 0 ? "active" : "inactive";
+        tabsHtml += `<div class="fd-tab-panel fd-code-group-panel${i === 0 ? " fd-tab-panel-active" : ""}" data-tab-panel="${escapeHtml(panels[i].value)}" data-state="${state}" role="tabpanel">${panels[i].html}</div>`;
+      }
+      tabsHtml += `</div>`;
+
+      const placeholder = allocateBlockPlaceholder("TABS");
+      tabsBlocks.push({ html: tabsHtml, token: placeholder });
+      return placeholder;
+    },
+  );
 
   // ── Tabs blocks: <Tabs items={[...]}> ... </Tabs> ──
-  const tabsBlocks: string[] = [];
   result = result.replace(
     /<Tabs\s+items=\{?\[([^\]]+)\]\}?>([\s\S]*?)<\/Tabs>/g,
     (_: string, itemsStr: string, body: string) => {
@@ -482,95 +694,124 @@ export async function renderMarkdown(
       let tabMatch: RegExpExecArray | null;
       while ((tabMatch = tabRegex.exec(body)) !== null) {
         const tabValue = tabMatch[1];
-        const tabContent = tabMatch[2].trim();
-        const codeMatch = tabContent.match(/```([^\n]*)\n([\s\S]*?)```/);
-        if (codeMatch) {
-          const { lang, title } = parseMeta(codeMatch[1]);
-          const dedented = dedentCode(codeMatch[2]);
+        const extractedHeadings = extractRenderedHeadingElements(
+          tabMatch[2].trim(),
+          referenceDefinitions,
+          false,
+          headingOpeningTags,
+        );
+        let renderedCode: string | undefined;
+        replaceMarkdownFencedCodeBlocks(extractedHeadings.content, ({ code, info }) => {
+          if (renderedCode !== undefined) return "";
+          const { lang, title } = parseMeta(info);
+          const dedented = dedentCode(code);
           const { html, raw } = highlightCode(hl, dedented, lang);
-          panels.push({ value: tabValue, html: wrapCodeWithCopy(html, raw, title, lang) });
+          renderedCode = wrapCodeWithCopy(html, raw, title, lang);
+          return "";
+        });
+        if (renderedCode !== undefined) {
+          panels.push({
+            value: tabValue,
+            html: extractedHeadings.headingsHtml + renderedCode,
+          });
         } else {
-          panels.push({ value: tabValue, html: `<p>${tabContent}</p>` });
+          panels.push({
+            value: tabValue,
+            html:
+              extractedHeadings.headingsHtml +
+              renderMarkdownBlockContent(extractedHeadings.content, referenceDefinitions),
+          });
         }
       }
 
       let tabsHtml = `<div class="fd-tabs" data-tabs>`;
       tabsHtml += `<div class="fd-tabs-list" role="tablist">`;
       for (let i = 0; i < items.length; i++) {
-        tabsHtml += `<button role="tab" class="fd-tab-trigger${i === 0 ? " fd-tab-active" : ""}" data-tab-value="${items[i]}" aria-selected="${i === 0}">${items[i]}</button>`;
+        const state = i === 0 ? "active" : "inactive";
+        tabsHtml += `<button type="button" role="tab" class="fd-tab-trigger${i === 0 ? " fd-tab-active" : ""}" data-tab-value="${escapeHtml(items[i])}" data-state="${state}" aria-selected="${i === 0}" tabindex="${i === 0 ? "0" : "-1"}">${escapeHtml(items[i])}</button>`;
       }
       tabsHtml += `</div>`;
       for (let i = 0; i < panels.length; i++) {
-        tabsHtml += `<div class="fd-tab-panel${i === 0 ? " fd-tab-panel-active" : ""}" data-tab-panel="${panels[i].value}" role="tabpanel">${panels[i].html}</div>`;
+        const state = i === 0 ? "active" : "inactive";
+        tabsHtml += `<div class="fd-tab-panel${i === 0 ? " fd-tab-panel-active" : ""}" data-tab-panel="${escapeHtml(panels[i].value)}" data-state="${state}" role="tabpanel">${panels[i].html}</div>`;
       }
       tabsHtml += `</div>`;
 
-      const placeholder = `%%TABS_${tabsBlocks.length}%%`;
-      tabsBlocks.push(tabsHtml);
+      const placeholder = allocateBlockPlaceholder("TABS");
+      tabsBlocks.push({ html: tabsHtml, token: placeholder });
+      return placeholder;
+    },
+  );
+
+  const hoverLinkBlocks: RenderedMarkdownBlock[] = [];
+  result = result.replace(
+    /<HoverLink\s+([^>]*?)>([\s\S]*?)<\/HoverLink>/g,
+    (_: string, attrSource: string, children: string) => {
+      const placeholder = allocateBlockPlaceholder("HOVERLINK");
+      const extractedHeadings = extractRenderedHeadingElements(
+        children,
+        referenceDefinitions,
+        false,
+        headingOpeningTags,
+      );
+      hoverLinkBlocks.push({
+        html:
+          extractedHeadings.headingsHtml +
+          renderHoverLink(attrSource, extractedHeadings.content, options.theme),
+        token: placeholder,
+      });
       return placeholder;
     },
   );
 
   // ── Fenced code blocks ──
-  const codeBlocks: string[] = [];
-  result = result.replace(
-    /```([^\n]*)\n([\s\S]*?)```/g,
-    (_: string, meta: string, code: string) => {
-      const { lang, title } = parseMeta(meta);
-      const { html, raw } = highlightCode(hl, code, lang);
-      const placeholder = `%%CODEBLOCK_${codeBlocks.length}%%`;
-      codeBlocks.push(wrapCodeWithCopy(html, raw, title, lang));
-      return placeholder;
-    },
-  );
+  const codeBlocks: RenderedMarkdownBlock[] = [];
+  result = replaceMarkdownFencedCodeBlocks(result, ({ code, info }) => {
+    const { lang, title } = parseMeta(info);
+    const { html, raw } = highlightCode(hl, code, lang);
+    const placeholder = allocateBlockPlaceholder("CODEBLOCK");
+    codeBlocks.push({ html: wrapCodeWithCopy(html, raw, title, lang), token: placeholder });
+    return placeholder;
+  });
 
-  const hoverLinkBlocks: string[] = [];
+  const calloutBlocks: RenderedMarkdownBlock[] = [];
   result = result.replace(
-    /<HoverLink\s+([^>]*?)>([\s\S]*?)<\/HoverLink>/g,
-    (_: string, attrSource: string, children: string) => {
-      const placeholder = `%%HOVERLINK_${hoverLinkBlocks.length}%%`;
-      hoverLinkBlocks.push(renderHoverLink(attrSource, children, options.theme));
-      return placeholder;
-    },
-  );
-
-  const promptBlocks: string[] = [];
-  result = result.replace(
-    /<Prompt(?:\s+([^>]*?))?>([\s\S]*?)<\/Prompt>/g,
+    /<Callout(?:\s+([^>]*?))?>([\s\S]*?)<\/Callout>/g,
     (_: string, attrSource: string | undefined, children: string) => {
-      const placeholder = `%%PROMPT_${promptBlocks.length}%%`;
-      promptBlocks.push(renderPrompt(attrSource ?? "", children, options));
+      const attrs = parseJsxAttributes(attrSource ?? "");
+      const type = toStringValue(attrs.type) ?? toStringValue(attrs.kind) ?? "note";
+      const title = toStringValue(attrs.title);
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(
+          type,
+          restoreMarkdownHeadingOpeningTags(children, headingOpeningTags),
+          title,
+          referenceDefinitions,
+        ),
+        token: placeholder,
+      });
       return placeholder;
     },
   );
-
-  // Inline code
-  result = result.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-  // Headings (h4 → h1 order to avoid prefix collisions)
-  result = result.replace(/^#### (.+)$/gm, (_: string, text: string) => {
-    return `<h4 id="${slugify(text)}">${text}</h4>`;
-  });
-  result = result.replace(/^### (.+)$/gm, (_: string, text: string) => {
-    return `<h3 id="${slugify(text)}">${text}</h3>`;
-  });
-  result = result.replace(/^## (.+)$/gm, (_: string, text: string) => {
-    return `<h2 id="${slugify(text)}">${text}</h2>`;
-  });
-  result = result.replace(/^# (.+)$/gm, "<h1>$1</h1>");
 
   // ── Callouts / blockquotes (before inline formatting) ──
-  const calloutBlocks: string[] = [];
   result = result.replace(/(?:^>\s*.+\n?)+/gm, (block: string) => {
     const lines = block.split("\n").filter(Boolean);
-    const inner = lines.map((l: string) => l.replace(/^>\s?/, "")).join("\n");
+    const inner = restoreMarkdownHeadingOpeningTags(
+      lines.map((l: string) => l.replace(/^>\s?/, "")).join("\n"),
+      headingOpeningTags,
+    );
 
     const ghMatch = inner.match(/^\[!(NOTE|WARNING|TIP|IMPORTANT|CAUTION)\]\s*\n?([\s\S]*)/i);
     if (ghMatch) {
       const type = ghMatch[1].toLowerCase();
       const calloutContent = ghMatch[2].trim();
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(renderCallout(type, calloutContent));
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(type, calloutContent, undefined, referenceDefinitions),
+        token: placeholder,
+      });
       return placeholder;
     }
 
@@ -578,27 +819,23 @@ export async function renderMarkdown(
     if (boldMatch) {
       const type = boldMatch[1].toLowerCase();
       const calloutContent = boldMatch[2].trim();
-      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-      calloutBlocks.push(renderCallout(type, calloutContent));
+      const placeholder = allocateBlockPlaceholder("CALLOUT");
+      calloutBlocks.push({
+        html: renderCallout(type, calloutContent, undefined, referenceDefinitions),
+        token: placeholder,
+      });
       return placeholder;
     }
 
-    return `<blockquote><p>${inner}</p></blockquote>`;
+    const placeholder = allocateBlockPlaceholder("CALLOUT");
+    calloutBlocks.push({
+      html: `<blockquote>${renderMarkdownBlockContent(inner, referenceDefinitions)}</blockquote>`,
+      token: placeholder,
+    });
+    return placeholder;
   });
 
-  // Inline formatting
-  result = result.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
-  result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  result = result.replace(/\*(.+?)\*/g, "<em>$1</em>");
-
-  // Images — before links so ![alt](url) is not captured as a link
-  result = result.replace(
-    /!\[([^\]]*)\]\(([^)]+)\)/g,
-    (_: string, alt: string, src: string) =>
-      `<img src="${src}" alt="${alt.replace(/"/g, "&quot;")}" class="fd-docs-content-img" loading="lazy" decoding="async" />`,
-  );
-  // Links
-  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  result = renderMarkdownInline(result, referenceDefinitions);
 
   // Horizontal rules
   result = result.replace(/^---$/gm, "<hr />");
@@ -629,24 +866,47 @@ export async function renderMarkdown(
   );
 
   // Unordered lists
-  result = result.replace(/(?:^- .+\n?)+/gm, (block: string) => {
-    const items = block
-      .split("\n")
-      .filter((l: string) => l.startsWith("- "))
-      .map((l: string) => `<li>${l.slice(2)}</li>`)
-      .join("");
-    return `<ul>${items}</ul>`;
-  });
+  result = result.replace(
+    /(?:^[-+*] [^\r\n]+(?:\r?\n(?:(?: {2,}|\t)[^\r\n]+))*(?:\r?\n|$))+/gm,
+    (block: string) => {
+      const items: string[] = [];
+      for (const line of block.trimEnd().split(/\r?\n/)) {
+        if (/^[-+*] /.test(line)) {
+          items.push(line.slice(2));
+          continue;
+        }
+        if (items.length > 0) {
+          items[items.length - 1] += `\n${line.replace(/^(?: {2}|\t)/, "")}`;
+        }
+      }
+      return `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+    },
+  );
 
   // Ordered lists
-  result = result.replace(/(?:^\d+\. .+\n?)+/gm, (block: string) => {
-    const items = block
-      .split("\n")
-      .filter((l: string) => /^\d+\. /.test(l))
-      .map((l: string) => `<li>${l.replace(/^\d+\. /, "")}</li>`)
-      .join("");
-    return `<ol>${items}</ol>`;
-  });
+  result = result.replace(
+    /(?:^\d{1,9}[.)] [^\r\n]+(?:\r?\n(?:(?: {3,}|\t)[^\r\n]+))*(?:\r?\n|$))+/gm,
+    (block: string) => {
+      const items: string[] = [];
+      let continuationIndent = 0;
+      for (const line of block.trimEnd().split(/\r?\n/)) {
+        const marker = /^(\d{1,9}[.)]) (.*)$/.exec(line);
+        if (marker) {
+          items.push(marker[2]);
+          continuationIndent = marker[1].length + 1;
+          continue;
+        }
+        if (items.length > 0) {
+          const content =
+            line[0] === "\t"
+              ? line.slice(1)
+              : line.slice(Math.min(continuationIndent, /^ */.exec(line)?.[0].length ?? 0));
+          items[items.length - 1] += `\n${content}`;
+        }
+      }
+      return `<ol>${items.map((item) => `<li>${item}</li>`).join("")}</ol>`;
+    },
+  );
 
   // Wrap remaining bare text in <p> tags
   result = result
@@ -655,27 +915,36 @@ export async function renderMarkdown(
       block = block.trim();
       if (!block) return "";
       if (/^<(h[1-6]|pre|ul|ol|blockquote|hr|table|div)/.test(block)) return block;
-      if (/^%%(CODEBLOCK|CALLOUT|TABS|PROMPT|HOVERLINK)_\d+%%$/.test(block)) return block;
+      if (/^%%FARMINGLABS_DOCS_HEADING_OPEN_\d+%%/.test(block)) return block;
+      if (/^%%(?:CODEBLOCK|CALLOUT|TABS|PROMPT|HOVERLINK)_\d+%%/.test(block)) {
+        return block;
+      }
       return `<p>${block}</p>`;
     })
     .join("\n");
 
   // Restore placeholders
-  for (let i = 0; i < codeBlocks.length; i++) {
-    result = result.replace(`%%CODEBLOCK_${i}%%`, codeBlocks[i]);
+  for (const block of calloutBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < calloutBlocks.length; i++) {
-    result = result.replace(`%%CALLOUT_${i}%%`, calloutBlocks[i]);
+  for (const block of tabsBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < tabsBlocks.length; i++) {
-    result = result.replace(`%%TABS_${i}%%`, tabsBlocks[i]);
+  for (const block of hoverLinkBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
-  for (let i = 0; i < hoverLinkBlocks.length; i++) {
-    result = result.replace(`%%HOVERLINK_${i}%%`, hoverLinkBlocks[i]);
-  }
-  for (let i = 0; i < promptBlocks.length; i++) {
-    result = result.replace(`%%PROMPT_${i}%%`, promptBlocks[i]);
+  for (const block of codeBlocks) {
+    result = result.replace(block.token, () => block.html);
   }
 
+  result = restoreMarkdownHeadingOpeningTags(
+    stripPreparedMarkdownHeadingTokens(result),
+    headingOpeningTags,
+  );
+  for (const block of promptBlocks) {
+    result = result.replace(block.token, () =>
+      renderPrompt(block.attributes, block.children, options),
+    );
+  }
   return result;
 }

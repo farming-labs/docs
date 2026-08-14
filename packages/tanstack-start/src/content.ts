@@ -11,9 +11,13 @@ import path from "node:path";
 import matter from "gray-matter";
 import {
   normalizeDocsRelated,
-  resolveDocsAgentMdxContent,
+  normalizePageAgentFrontmatter,
+  normalizeDocsOkfTrustMetadataInput,
+  resolveDocsAudienceMdxContent,
   resolvePageSidebarFolderIndexBehavior,
   type OrderingItem,
+  type PageAgentFrontmatter,
+  type DocsOkfTrustMetadataInput,
   type ResolvedDocsRelatedLink,
   type SidebarFolderIndexBehavior,
 } from "@farming-labs/docs";
@@ -48,15 +52,29 @@ export interface ContentPage {
   title: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
+  agent?: PageAgentFrontmatter;
+  okf?: DocsOkfTrustMetadataInput;
   icon?: string;
   sourcePath?: string;
+  lastmod?: string;
   lastModified?: string;
+  locale?: string;
+  framework?: string;
+  version?: string;
+  tags?: string[];
   content: string;
   rawContent: string;
   agentContent?: string;
   agentRawContent?: string;
+  agentLastModified?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
+}
+
+export function normalizeDocsFrontmatterLastmod(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  return undefined;
 }
 
 export function loadDocsContent(contentDir: string, entry: string = "docs"): ContentPage[] {
@@ -81,8 +99,8 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
 
       const raw = fs.readFileSync(full, "utf-8");
       const { data, content } = matter(raw);
-      const humanRawContent = resolveDocsAgentMdxContent(content, "human");
-      const pageAgentRawContent = resolveDocsAgentMdxContent(content, "agent");
+      const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
+      const pageAgentRawContent = resolveDocsAudienceMdxContent(content, "agent");
       const related = normalizeDocsRelated(data.related);
 
       const baseName = name.replace(/\.(md|mdx)$/, "");
@@ -102,9 +120,18 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         title,
         description: data.description as string | undefined,
         ...(related.length > 0 ? { related } : {}),
+        agent: normalizePageAgentFrontmatter(data.agent),
+        okf: normalizeDocsOkfTrustMetadataInput(data.okf),
         icon: data.icon as string | undefined,
         sourcePath: full.replace(/\\/g, "/"),
+        lastmod: normalizeDocsFrontmatterLastmod(data.lastmod),
         lastModified: stat.mtime.toISOString(),
+        locale: typeof data.locale === "string" ? data.locale : undefined,
+        framework: typeof data.framework === "string" ? data.framework : undefined,
+        version: typeof data.version === "string" ? data.version : undefined,
+        tags: Array.isArray(data.tags)
+          ? data.tags.filter((tag): tag is string => typeof tag === "string")
+          : undefined,
         content: stripMarkdown(humanRawContent),
         rawContent: humanRawContent,
         ...(pageAgentRawContent !== humanRawContent
@@ -128,9 +155,11 @@ function readAgentDoc(dir: string) {
 
   const raw = fs.readFileSync(agentPath, "utf-8");
   const { content } = matter(raw);
+  const agentRawContent = resolveDocsAudienceMdxContent(content, "agent");
   return {
-    agentContent: stripMarkdown(content),
-    agentRawContent: content,
+    agentContent: stripMarkdown(agentRawContent),
+    agentRawContent,
+    agentLastModified: fs.statSync(agentPath).mtime.toISOString(),
   };
 }
 

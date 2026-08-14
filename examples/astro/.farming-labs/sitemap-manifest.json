@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "generatedAt": "2026-06-13T00:53:13.393Z",
+  "baseUrl": "https://docs.farming-labs.dev",
+  "entry": "docs",
+  "siteTitle": "Example Docs",
+  "pages": [
+    {
+      "url": "/docs",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs",
+      "markdownUrl": "/docs.md",
+      "title": "Introduction",
+      "description": "A comprehensive authentication and authorization framework for TypeScript.",
+      "sourcePath": "docs/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/authentication",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/authentication",
+      "markdownUrl": "/docs/authentication.md",
+      "title": "Authentication",
+      "description": "Authentication methods — email/password, social sign-on, and more.",
+      "sourcePath": "docs/authentication/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/authentication/email-verification",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/authentication/email-verification",
+      "markdownUrl": "/docs/authentication/email-verification.md",
+      "title": "Email Verification",
+      "description": "Verify user email addresses with magic tokens and custom email templates.",
+      "sourcePath": "docs/authentication/email-verification/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/authentication/social-sign-on",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/authentication/social-sign-on",
+      "markdownUrl": "/docs/authentication/social-sign-on.md",
+      "title": "Social Sign-on",
+      "description": "Set up OAuth social login with Google, GitHub, Discord, and more.",
+      "sourcePath": "docs/authentication/social-sign-on/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/basic-usage",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/basic-usage",
+      "markdownUrl": "/docs/basic-usage.md",
+      "title": "Basic Usage",
+      "description": "Learn the fundamental auth flows — sign up, sign in, and session management.",
+      "sourcePath": "docs/basic-usage/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/concepts",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/concepts",
+      "markdownUrl": "/docs/concepts.md",
+      "title": "Concepts",
+      "description": "Core concepts and architecture of Better Auth.",
+      "sourcePath": "docs/concepts/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/concepts/database",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/concepts/database",
+      "markdownUrl": "/docs/concepts/database.md",
+      "title": "Database",
+      "description": "Database adapters and schema management in Better Auth.",
+      "sourcePath": "docs/concepts/database/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/concepts/session-management",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/concepts/session-management",
+      "markdownUrl": "/docs/concepts/session-management.md",
+      "title": "Session Management",
+      "description": "How sessions work in Better Auth.",
+      "sourcePath": "docs/concepts/session-management/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/get-started",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/get-started",
+      "markdownUrl": "/docs/get-started.md",
+      "title": "Get Started",
+      "description": "Build your first authentication flow with Better Auth.",
+      "sourcePath": "docs/get-started/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/installation",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/installation",
+      "markdownUrl": "/docs/installation.md",
+      "title": "Installation",
+      "description": "Install and configure Better Auth in your project.",
+      "sourcePath": "docs/installation/page.mdx",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/integrations",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/integrations",
+      "markdownUrl": "/docs/integrations.md",
+      "title": "Integrations",
+      "description": "Framework integrations — Next.js, Nuxt, SvelteKit, Astro, and more.",
+      "sourcePath": "docs/integrations/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/plugins",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/plugins",
+      "markdownUrl": "/docs/plugins.md",
+      "title": "Plugins",
+      "description": "Extend Better Auth with powerful plugins — 2FA, organizations, passkeys, and more.",
+      "sourcePath": "docs/plugins/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/plugins/organizations",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/plugins/organizations",
+      "markdownUrl": "/docs/plugins/organizations.md",
+      "title": "Organizations",
+      "description": "Multi-tenant organization management with roles and invitations.",
+      "sourcePath": "docs/plugins/organizations/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    },
+    {
+      "url": "/docs/plugins/two-factor",
+      "absoluteUrl": "https://docs.farming-labs.dev/docs/plugins/two-factor",
+      "markdownUrl": "/docs/plugins/two-factor.md",
+      "title": "Two Factor Authentication",
+      "description": "Add TOTP-based two factor authentication with backup codes.",
+      "sourcePath": "docs/plugins/two-factor/page.md",
+      "lastmod": "2026-03-21",
+      "lastmodSource": "git"
+    }
+  ]
+}

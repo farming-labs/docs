@@ -10,13 +10,33 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import {
+  DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+  DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+  DEFAULT_AGENT_SKILLS_ROUTE_PREFIX,
+  DEFAULT_A2A_AGENT_CARD_ROUTE,
+  DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+  DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
+  DEFAULT_API_CATALOG_ROUTE,
+} from "@farming-labs/docs";
 import { withDocs } from "./config.js";
 
 type TestRewrite = {
   source: string;
   destination: string;
   has?: Array<Record<string, string>>;
+  missing?: Array<Record<string, string>>;
 };
+
+const DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE = "/.well-known/oauth-protected-resource";
+
+function buildMcpProtectedResourceMetadataRoute(resourcePath: string): string {
+  return resourcePath === "/"
+    ? DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE
+    : `${DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE}${resourcePath}`;
+}
 
 type TestRewriteResult =
   | TestRewrite[]
@@ -57,16 +77,24 @@ const DOCS_CONFIG_WITH_ROOT_DOCS_PATH = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_SLASH_DOCS_PATH = `export default {
+  entry: "docs",
+  docsPath: "/",
+};
+`;
+
 const MARKDOWN_ACCEPT_HEADER = {
   type: "header",
   key: "accept",
   value: [
-    "(?:^|.*,\\s*)",
-    "text/markdown",
+    "^",
+    "(?!.*(?:^|,)\\s*(?:[Tt][Ee][Xx][Tt]/[Hh][Tt][Mm][Ll]|[Tt][Ee][Xx][Tt]/\\*|\\*/\\*)(?:\\s*;[^,]*)?\\s*(?:,|$))",
+    "(?=.*(?:^|,)\\s*[Tt][Ee][Xx][Tt]/[Mm][Aa][Rr][Kk][Dd][Oo][Ww][Nn]",
     "(?:\\s*;",
-    "(?!\\s*(?:[^,;]*;\\s*)*q\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
+    "(?!\\s*(?:[^,;]*;\\s*)*[Qq]\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
     "[^,]*)?",
-    "(?:\\s*,.*|$)",
+    "\\s*(?:,|$))",
+    ".*$",
   ].join(""),
 };
 
@@ -74,6 +102,29 @@ const MARKDOWN_SIGNATURE_AGENT_HEADER = {
   type: "header",
   key: "signature-agent",
   value: ".+",
+};
+
+const MARKDOWN_AGENT_USER_AGENT_HEADER = {
+  type: "header",
+  key: "user-agent",
+  value: DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+};
+
+const MARKDOWN_BOT_LIKE_USER_AGENT_HEADER = {
+  type: "header",
+  key: "user-agent",
+  value: DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+};
+
+const MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER = {
+  type: "header",
+  key: "user-agent",
+  value: DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+};
+
+const MARKDOWN_SEC_FETCH_MODE_HEADER = {
+  type: "header",
+  key: "sec-fetch-mode",
 };
 
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
@@ -134,6 +185,23 @@ const DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_PROTECTED_MCP = `export default {
+  entry: "docs",
+  mcp: {
+    enabled: true,
+    route: "/api/internal/docs/mcp",
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+      },
+      async authenticate() {
+        return null;
+      },
+    },
+  },
+};
+`;
+
 const DOCS_CONFIG_WITH_SITEMAP = `export default {
   entry: "docs",
   sitemap: {
@@ -189,6 +257,13 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
   afterEach(() => {
     process.chdir(originalCwd);
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    delete process.env.DOCS_CLOUD_PROJECT_ID;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENABLED;
+
     try {
       rmSync(tmpDir, { recursive: true, force: true });
     } catch {
@@ -205,7 +280,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "src/app/docs/layout.tsx"))).toBe(true);
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(true);
     expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
-      "createDocsAPI(docsConfig)",
+      "createDocsAPI(docsConfig, docsCloud)",
+    );
+    expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
+      "export const { GET, HEAD, POST }",
     );
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(false);
@@ -221,6 +299,39 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(true);
     expect(existsSync(join(tmpDir, "src/app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(false);
+  });
+
+  it("upgrades an existing managed docs API route to export HEAD", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+    const routePath = join(tmpDir, "app/api/docs/route.ts");
+    const previousManagedRoute = readFileSync(routePath, "utf-8").replace(
+      "export const { GET, HEAD, POST }",
+      "export const { GET, POST }",
+    );
+    writeFileSync(routePath, previousManagedRoute, "utf-8");
+
+    withDocs({});
+
+    expect(readFileSync(routePath, "utf-8")).toContain("export const { GET, HEAD, POST }");
+  });
+
+  it("preserves a user-customized docs API route while upgrading generated files", () => {
+    const routeDir = join(tmpDir, "app/api/docs");
+    const routePath = join(routeDir, "route.ts");
+    const customRoute = `export function GET() {
+  return new Response("custom");
+}
+`;
+    mkdirSync(routeDir, { recursive: true });
+    writeFileSync(routePath, customRoute, "utf-8");
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(readFileSync(routePath, "utf-8")).toBe(customRoute);
   });
 
   it("prefers src/app when both app and src/app exist", () => {
@@ -274,6 +385,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain('import { createDocsMCPAPI } from "@farming-labs/next/api";');
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).toContain("createDocsMCPAPI(docsConfig)");
+    expect(route).toContain("GET, POST, DELETE, OPTIONS");
     expect(route).not.toContain("search: docsConfig.search");
   });
 
@@ -299,6 +411,12 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const beforeFiles = getBeforeFilesRewrites(rewritesResult);
     const afterFiles = getAfterFilesRewrites(rewritesResult);
 
+    expect(
+      beforeFiles.some((rewrite) =>
+        rewrite.source.startsWith(DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE),
+      ),
+    ).toBe(false);
+
     expect(beforeFiles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -312,6 +430,34 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/agent.json",
           destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_API_CATALOG_ROUTE,
+          destination: "/api/docs?format=api-catalog",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=agent-skills",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+          destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name.tar.gz`,
+          destination: "/api/docs?format=agent-skill-archive&name=:name",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX}/:name/skill.md`,
+          destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=legacy-skills",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_A2A_AGENT_CARD_ROUTE,
+          destination: "/api/docs?format=agent-card",
         }),
         expect.objectContaining({
           source: "/mcp",
@@ -347,6 +493,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+        expect.objectContaining({
+          source: "/docs/sitemap.md",
           destination: "/api/docs?format=sitemap-md",
         }),
         expect.objectContaining({
@@ -393,7 +543,32 @@ describe("withDocs (app dir: src/app vs app)", () => {
           has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
+        expect.objectContaining({
+          source: "/docs",
+          has: [MARKDOWN_AGENT_USER_AGENT_HEADER],
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_AGENT_USER_AGENT_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+        expect.objectContaining({
+          source: "/docs",
+          has: [MARKDOWN_BOT_LIKE_USER_AGENT_HEADER],
+          missing: [MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER, MARKDOWN_SEC_FETCH_MODE_HEADER],
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_BOT_LIKE_USER_AGENT_HEADER],
+          missing: [MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER, MARKDOWN_SEC_FETCH_MODE_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
       ]),
+    );
+    expect(beforeFiles).not.toContainEqual(
+      expect.objectContaining({ source: DEFAULT_MCP_PROTECTED_RESOURCE_METADATA_ROUTE }),
     );
     expect(afterFiles).toEqual(
       expect.arrayContaining([
@@ -411,6 +586,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/.well-known/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms-full.txt",
           destination: "/api/docs?format=llms-full",
         }),
         expect.objectContaining({
@@ -438,11 +621,31 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     const acceptPattern = new RegExp(MARKDOWN_ACCEPT_HEADER.value);
     expect(acceptPattern.test("text/markdown")).toBe(true);
+    expect(acceptPattern.test("TEXT/MARKDOWN")).toBe(true);
     expect(acceptPattern.test("application/json, text/markdown;q=0.5")).toBe(true);
+    expect(acceptPattern.test("text/html;q=1, text/markdown;q=0.5")).toBe(false);
+    expect(acceptPattern.test("Text/HTML;q=1, text/markdown;q=0.5")).toBe(false);
+    expect(acceptPattern.test("*/*;q=1, text/markdown;q=0.5")).toBe(false);
+    expect(acceptPattern.test("text/*;q=0, text/markdown")).toBe(false);
     expect(acceptPattern.test("application/json, text/markdown;q=0")).toBe(false);
+    expect(acceptPattern.test("application/json, text/markdown;Q=0")).toBe(false);
     expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
     expect(acceptPattern.test("text/markdown-v2")).toBe(false);
     expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);
+
+    const agentUserAgentPattern = new RegExp(MARKDOWN_AGENT_USER_AGENT_HEADER.value);
+    expect(agentUserAgentPattern.test("ClaudeBot/1.0")).toBe(true);
+    expect(agentUserAgentPattern.test("Mozilla/5.0")).toBe(false);
+
+    const botLikeUserAgentPattern = new RegExp(MARKDOWN_BOT_LIKE_USER_AGENT_HEADER.value);
+    expect(botLikeUserAgentPattern.test("AcmeAgentFetcher/1.0")).toBe(true);
+    expect(botLikeUserAgentPattern.test("Mozilla/5.0")).toBe(false);
+
+    const traditionalBotUserAgentPattern = new RegExp(
+      MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER.value,
+    );
+    expect(traditionalBotUserAgentPattern.test("Googlebot/2.1")).toBe(true);
+    expect(traditionalBotUserAgentPattern.test("AcmeAgentFetcher/1.0")).toBe(false);
   });
 
   it("exposes docs from the site root when docsPath is empty", async () => {
@@ -522,6 +725,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/docs-map/.well-known/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+      ]),
+    );
+    expect(rewrites).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/docs/sitemap.md",
           destination: "/api/docs?format=sitemap-md",
         }),
       ]),
@@ -679,6 +890,140 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/overview",
           destination: "/overview/what-is-surge",
           permanent: false,
+        }),
+      ]),
+    );
+  });
+
+  it.each([DOCS_CONFIG_WITH_ROOT_DOCS_PATH, DOCS_CONFIG_WITH_SLASH_DOCS_PATH])(
+    "treats root docsPath values as the site root",
+    async (configSource) => {
+      writeFileSync(join(tmpDir, "docs.config.ts"), configSource, "utf-8");
+      mkdirSync(join(tmpDir, "app"), { recursive: true });
+      process.chdir(tmpDir);
+
+      const nextConfig = withDocs({});
+      const beforeFiles = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+      expect(beforeFiles).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: "/",
+            destination: "/docs/",
+          }),
+          expect.objectContaining({
+            source: expect.stringContaining(":slug((?!"),
+            destination: "/docs/:slug",
+          }),
+          expect.objectContaining({
+            source: "/",
+            has: [MARKDOWN_ACCEPT_HEADER],
+            destination: "/api/docs?format=markdown",
+          }),
+        ]),
+      );
+    },
+  );
+
+  it.each(["docs", "/docs", "docs/", "/docs/"])(
+    "treats %s as the default docsPath",
+    async (docsPath) => {
+      writeFileSync(
+        join(tmpDir, "docs.config.ts"),
+        `export default {
+  entry: "docs",
+  docsPath: ${JSON.stringify(docsPath)},
+};
+`,
+        "utf-8",
+      );
+      mkdirSync(join(tmpDir, "app"), { recursive: true });
+      process.chdir(tmpDir);
+
+      const nextConfig = withDocs({});
+      const beforeFiles = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+      expect(beforeFiles).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: "/docs",
+            has: [MARKDOWN_ACCEPT_HEADER],
+            destination: "/api/docs?format=markdown",
+          }),
+          expect.objectContaining({
+            source: "/docs/:slug*",
+            has: [MARKDOWN_ACCEPT_HEADER],
+            destination: "/api/docs?format=markdown&path=:slug*",
+          }),
+        ]),
+      );
+      expect(beforeFiles).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: "/docs",
+            destination: "/docs",
+          }),
+          expect.objectContaining({
+            source: "/docs/:slug*",
+            destination: "/docs/:slug*",
+          }),
+        ]),
+      );
+    },
+  );
+
+  it("normalizes duplicate slashes inside docsPath", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  docsPath: "/guides//docs/",
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = await readRewrites(nextConfig);
+    const beforeFiles = getBeforeFilesRewrites(rewrites);
+    const afterFiles = getAfterFilesRewrites(rewrites);
+
+    expect(beforeFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/guides/docs",
+          destination: "/docs",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs/:slug*",
+          destination: "/docs/:slug*",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs",
+          has: [MARKDOWN_ACCEPT_HEADER],
+          destination: "/api/docs?format=markdown",
+        }),
+      ]),
+    );
+    expect(afterFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/guides/docs/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs/:section*/llms.txt",
+          destination: "/api/docs?format=llms&section=/guides/docs/:section*/llms.txt",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms.txt",
+          destination: "/api/docs?format=llms",
         }),
       ]),
     );
@@ -842,6 +1187,120 @@ describe("withDocs (app dir: src/app vs app)", () => {
     );
   });
 
+  it("routes RFC 9728 metadata while preserving each protected MCP resource", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_PROTECTED_MCP, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+    const resources = ["/api/internal/docs/mcp", "/mcp", "/.well-known/mcp"];
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining(
+        resources.map((resourcePath) =>
+          expect.objectContaining({
+            source: buildMcpProtectedResourceMetadataRoute(resourcePath),
+            destination: "/api/internal/docs/mcp",
+          }),
+        ),
+      ),
+    );
+  });
+
+  it("uses a live docs config for composed protected MCP routing", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `const sharedMcp = {};
+export default { mcp: sharedMcp };
+`,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const liveDocsConfig = {
+      mcp: {
+        route: "/api/live/mcp",
+        security: {
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+          },
+          async authenticate() {
+            return null;
+          },
+        },
+      },
+    };
+
+    expect(() => withDocs({ basePath: "/product" }, liveDocsConfig)).toThrow(
+      /protectedResource cannot be combined with Next\.js basePath/,
+    );
+
+    const nextConfig = withDocs({}, liveDocsConfig);
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: buildMcpProtectedResourceMetadataRoute("/api/live/mcp"),
+          destination: "/api/live/mcp",
+        }),
+        expect.objectContaining({
+          source: buildMcpProtectedResourceMetadataRoute("/mcp"),
+          destination: "/api/live/mcp",
+        }),
+      ]),
+    );
+  });
+
+  it("fails fast when protected MCP is combined with a Next.js basePath", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_PROTECTED_MCP, "utf-8");
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({ basePath: "/product" })).toThrow(
+      /protectedResource cannot be combined with Next\.js basePath/,
+    );
+  });
+
+  it("allows an inactive protectedResource block with a Next.js basePath", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  mcp: {
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+      },
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({ basePath: "/product" })).not.toThrow();
+  });
+
+  it("keeps public and callback-only MCP compatible with a Next.js basePath", () => {
+    process.chdir(tmpDir);
+
+    expect(() =>
+      withDocs(
+        { basePath: "/product" },
+        {
+          mcp: {
+            security: {
+              async authenticate() {
+                return { id: "reader" };
+              },
+            },
+          },
+        },
+      ),
+    ).not.toThrow();
+  });
+
   it("skips API reference generation for static export", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
@@ -915,6 +1374,67 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/docs/docs-theme.css"))).toBe(false);
   });
 
+  it("serializes public Docs Cloud analytics env into the client bundle", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server_only";
+    process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+    process.env.DOCS_CLOUD_ANALYTICS_ENABLED = "false";
+
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.env).toMatchObject({
+      NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_server_only",
+      NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT:
+        "https://docs-cloud.example.com/api/analytics/events",
+      NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED: "false",
+    });
+  });
+
+  it("does not serialize Docs Cloud analytics env when analytics is not configured", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.env).toBeUndefined();
+  });
+
+  it("does not override user-provided public Docs Cloud analytics env", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server_only";
+
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({
+      env: {
+        NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_user",
+      },
+    });
+
+    expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID).toBe("project_user");
+    expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT).toBeUndefined();
+  });
+
+  it("only serializes Docs Cloud analytics endpoint when a custom endpoint is configured", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server_only";
+    process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.env).toMatchObject({
+      NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_server_only",
+      NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT:
+        "https://docs-cloud.example.com/api/analytics/events",
+    });
+  });
+
   it("generates a docs API route that forwards search and ai config", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
@@ -924,9 +1444,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const route = readFileSync(join(tmpDir, "app/api/docs/route.ts"), "utf-8");
 
     expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
+    expect(route).toContain(
+      'import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";',
+    );
+    expect(route).toContain("const docsCloud = createDocsCloudServer({");
+    expect(route).toContain("config: docsConfig");
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).not.toContain("rootDir,");
-    expect(route).toContain("createDocsAPI(docsConfig)");
+    expect(route).toContain("createDocsAPI(docsConfig, docsCloud)");
     expect(route).not.toContain("changelog: docsConfig.changelog");
     expect(route).not.toContain("llmsTxt: docsConfig.llmsTxt");
     expect(route).not.toContain("sitemap: docsConfig.sitemap");
@@ -949,8 +1474,479 @@ describe("withDocs (app dir: src/app vs app)", () => {
         "AGENT.md",
         ".farming-labs/sitemap-manifest.json",
       ],
-      "/api/docs/mcp": ["app/docs/**/*"],
+      "/api/docs/mcp": ["app/docs/**/*", "skill.md"],
     });
+  });
+
+  it("bundles configured Agent Skills for both docs and MCP production handlers", () => {
+    const projectDir = join(tmpDir, "website");
+    const projectSkillDir = join(projectDir, "skills", "one");
+    const sharedSkillDir = join(tmpDir, "shared-skills");
+    writeFileSync(join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - website\n", "utf8");
+    mkdirSync(join(projectDir, "app"), { recursive: true });
+    mkdirSync(projectSkillDir, { recursive: true });
+    mkdirSync(sharedSkillDir, { recursive: true });
+    writeFileSync(
+      join(projectSkillDir, "SKILL.md"),
+      `---\nname: one\ndescription: Use the first test skill.\n---\n\n# One\n`,
+      "utf8",
+    );
+    writeFileSync(
+      join(sharedSkillDir, "SKILL.md"),
+      `---\nname: shared-skills\ndescription: Use the shared test skill.\n---\n\n# Shared\n`,
+      "utf8",
+    );
+    writeFileSync(
+      join(projectDir, "docs.config.ts"),
+      `export default { entry: "docs", agent: { skills: { paths: ["skills/one", /* portable */ "../shared-skills",] } } };\n`,
+      "utf8",
+    );
+    process.chdir(projectDir);
+
+    const nextConfig = withDocs({});
+    const bundlePath = join(realpathSync(projectDir), ".docs", "agent-skills-bundle.mjs");
+    const bundle = readFileSync(bundlePath, "utf8");
+    const turbopackAliases = nextConfig.turbopack?.resolveAlias as Record<string, string>;
+    const webpackConfig = nextConfig.webpack?.({ resolve: { alias: {} }, module: { rules: [] } }, {
+      defaultLoaders: { babel: "babel-loader" },
+    } as Parameters<NonNullable<typeof nextConfig.webpack>>[1]);
+
+    expect(bundle).toContain('"name":"one"');
+    expect(bundle).toContain('"name":"shared-skills"');
+    expect(bundle).toContain('"sha256"');
+    expect(turbopackAliases["@farming-labs/docs/agent-skills-bundle"]).toBe(
+      "./.docs/agent-skills-bundle.mjs",
+    );
+    expect(webpackConfig.resolve.alias["@farming-labs/docs/agent-skills-bundle"]).toBe(bundlePath);
+    expect(nextConfig.outputFileTracingRoot).toBeUndefined();
+    expect(nextConfig.outputFileTracingIncludes?.["/api/docs"]).not.toEqual(
+      expect.arrayContaining(["skills/one/**/*", "../shared-skills/**/*"]),
+    );
+    expect(nextConfig.outputFileTracingIncludes?.["/api/docs/mcp"]).not.toEqual(
+      expect.arrayContaining(["skills/one/**/*", "../shared-skills/**/*"]),
+    );
+  });
+
+  it("fails loudly when configured Agent Skill paths cannot be statically bundled", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    for (const source of [
+      `const skillPaths = ["skills/one"];
+export default { entry: "docs", agent: { skills: skillPaths } };
+`,
+      `const sharedSkill = "skills/two";
+export default { entry: "docs", agent: { skills: ["skills/one", sharedSkill] } };
+`,
+      `const sharedSkills = ["skills/two"];
+export default { entry: "docs", agent: { skills: ["skills/one", ...sharedSkills] } };
+`,
+      `const suffix = "/one";
+export default { entry: "docs", agent: { skills: "skills" + suffix } };
+`,
+      `const shared = { paths: ["skills/two"] };
+export default { entry: "docs", agent: { skills: { paths: ["skills/one"], ...shared } } };
+`,
+      `const key = "paths";
+export default { entry: "docs", agent: { skills: { [key]: ["skills/one"] } } };
+`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+      expect(() => withDocs({})).toThrow("could not statically bundle agent.skills");
+    }
+
+    expect(existsSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"))).toBe(false);
+  });
+
+  it("never silently omits statically present or ambiguous configured skill paths", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    for (const source of [
+      `const agent = { skills: "skills/one" };
+export default { entry: "docs", agent };
+`,
+      `const shared = { agent: { skills: "skills/one" } };
+export default { entry: "docs", ...shared };
+`,
+      `export default { "ag\\u0065nt": { skills: "skills/one" } };
+`,
+      `export default { "ag\\u{65}nt": { skills: "skills/one" } };
+`,
+      `export default { "a\\gent": { skills: "skills/one" } };
+`,
+      String.raw`export default { "ag\
+ent": { skills: "skills/one" } };
+`,
+      `export default { ag\\u0065nt: { skills: "skills/one" } };
+`,
+      `export default { ag\\u{65}nt: { skills: "skills/one" } };
+`,
+      `export default { get agent() { return { skills: "skills/one" }; } };
+`,
+      `export default { get ["agent"]() { return { skills: "skills/one" }; } };
+`,
+      `export default { agent<T>() { return { skills: "skills/one" }; } };
+`,
+      `export default { agent /* comment */ : { skills: "skills/one" } };
+`,
+      `export default {
+  agent // comment
+  : { skills: "skills/one" },
+};
+`,
+      `// defineDocs({})
+const closingBrace = /}/;
+export default { agent: { skills: "skills/one" } };
+`,
+      `const sharedAgent = { skills: "skills/one" };
+export default { entry: "docs", agent: sharedAgent };
+`,
+      `const sharedAgent = { skills: "skills/one" };
+export default { entry: "docs", agent: { ...sharedAgent } };
+`,
+      `const shared = { agent: { skills: "skills/two" } };
+export default { entry: "docs", agent: { skills: "skills/one" }, ...shared };
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: "skills/one" },
+  get agent() { return { skills: "skills/two" }; },
+};
+`,
+      `const sharedAgent = { skills: "skills/two" };
+export default { entry: "docs", agent: { skills: "skills/one", ...sharedAgent } };
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: "skills/one" },
+  agent: { skills: "skills/two" },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: "skills/one", skills: "skills/two" },
+};
+`,
+      `const key = "agent";
+export default { entry: "docs", [key]: { skills: "skills/one" } };
+`,
+      `export default { entry: "docs", ["agent"]: { skills: "skills/one" } };
+`,
+      `const key = "skills";
+export default { entry: "docs", agent: { [key]: "skills/one" } };
+`,
+      'export default { entry: "docs", agent: { [`skills`]: "skills/one" } };\n',
+      `export default { entry: "docs", agent: { "sk\\u0069lls": "skills/one" } };
+`,
+      `export default { entry: "docs", agent: { sk\\u0069lls: "skills/one" } };
+`,
+      `export default {
+  entry: "docs",
+  agent: { get skills() { return "skills/one"; } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { get ["skills"]() { return "skills/one"; } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills /* comment */ : "skills/one" },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { "pa\\u0074hs": ["skills/one"] } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { ["paths"]: ["skills/one"] } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { get ["paths"]() { return ["skills/one"]; } } },
+};
+`,
+      `export default {
+  entry: "docs",
+  agent: { skills: { paths /* comment */ : ["skills/one"] } },
+};
+`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+      expect(() => withDocs({})).toThrow();
+    }
+  });
+
+  it("recognizes deterministic Agent Skill syntax without falling back to filesystem errors", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    for (const name of ["one", "two"]) {
+      const skillDir = join(tmpDir, "skills", name);
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(
+        join(skillDir, "SKILL.md"),
+        `---\nname: ${name}\ndescription: Test ${name}.\n---\n\n# ${name}\n`,
+        "utf8",
+      );
+    }
+    process.chdir(tmpDir);
+
+    for (const [source, expectedName] of [
+      [`export default { "ag\\u0065nt": { skills: "skills/one" } };\n`, "one"],
+      [`export default { ag\\u0065nt: { skills: "skills/one" } };\n`, "one"],
+      [`export default { agent /* comment */ : { skills: "skills/one" } };\n`, "one"],
+      [`const closingBrace = /}/;\nexport default { agent: { skills: "skills/one" } };\n`, "one"],
+      [`export default { agent: { "sk\\u0069lls": "skills/one" } };\n`, "one"],
+      [
+        `export default {
+  agent: { skills: "skills/one" },
+  agent: { skills: "skills/two" },
+};
+`,
+        "two",
+      ],
+      [
+        `export default {
+  agent: { skills: "skills/one", skills: "skills/two" },
+};
+`,
+        "two",
+      ],
+      [
+        `export default {
+  agent: { skills: { paths: ["skills/one"], paths: ["skills/two"] } },
+};
+`,
+        "two",
+      ],
+    ] as const) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+
+      expect(() => withDocs({})).not.toThrow();
+      expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+        `"name":"${expectedName}"`,
+      );
+    }
+  });
+
+  it("accepts a literal agent config that overrides earlier composed properties", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    for (const source of [
+      `const search = { search: { provider: "mcp" } };
+export default { entry: "docs", ...search, agent: { compact: { tokenBudget: 5_000 } } };
+`,
+      `export default {
+  get agent() { return { skills: "skills/ignored" }; },
+  agent: { compact: { tokenBudget: 5_000 } },
+};
+`,
+      `const key = "search";
+export default {
+  [key]: { provider: "mcp" },
+  agent: { compact: { tokenBudget: 5_000 } },
+};
+`,
+      `const shared = { agent: { skills: "skills/ignored" } };
+export default {
+  agent: { skills: "skills/ignored" },
+  ...shared,
+  agent: { compact: { tokenBudget: 5_000 } },
+};
+`,
+      `const shared = { skills: "skills/ignored" };
+export default {
+  agent: {
+    skills: "skills/ignored",
+    ...shared,
+    skills: [],
+  },
+};
+`,
+      `const shared = { paths: ["skills/ignored"] };
+export default {
+  agent: {
+    skills: {
+      paths: ["skills/ignored"],
+      ...shared,
+      paths: [],
+    },
+  },
+};
+`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+
+      expect(() => withDocs({})).not.toThrow();
+    }
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("parses a composed TSX defineDocs config when a literal agent overrides earlier properties", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    writeFileSync(
+      join(tmpDir, "docs.config.tsx"),
+      `import { defineDocs } from "@farming-labs/docs";
+const condition = true;
+const search = { provider: "mcp" };
+export default defineDocs({
+  ...(condition ? { search } : {}),
+  agent: { compact: { tokenBudget: 5_000 } },
+  nav: { title: <div>Docs</div> },
+});
+`,
+      "utf8",
+    );
+
+    expect(() => withDocs({})).not.toThrow();
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("parses TypeScript assertions and decorated declarations without enabling JSX", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `type DocsConfig = { agent: { skills: string[] } };
+function sealed(value: unknown) { return value; }
+@sealed
+class ConfigMarker {}
+export default <DocsConfig>{ agent: { skills: [] } };
+`,
+      "utf8",
+    );
+
+    expect(() => withDocs({})).not.toThrow();
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("fails closed when an object prototype could provide agent or skills", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    for (const source of [
+      `export default { __proto__: { agent: { skills: "skills/one" } } };\n`,
+      `export default { agent: { __proto__: { skills: "skills/one" } } };\n`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+      expect(() => withDocs({})).toThrow("could not statically determine agent.skills");
+    }
+  });
+
+  it("rejects defineDocs calls that are not bound to @farming-labs/docs", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    for (const source of [
+      `function defineDocs(value: unknown) { return value; }
+export default defineDocs({ agent: { skills: "skills/one" } });
+`,
+      `import { defineDocs } from "unrelated-package";
+export default defineDocs({ agent: { skills: "skills/one" } });
+`,
+    ]) {
+      writeFileSync(join(tmpDir, "docs.config.ts"), source, "utf8");
+      expect(() => withDocs({})).toThrow("could not statically determine agent.skills");
+    }
+  });
+
+  it("uses an explicitly provided live agent value even when it is undefined", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `const shared = { entry: "docs" };
+export default { ...shared };
+`,
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({}, { agent: undefined })).not.toThrow();
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      "const snapshot = [];",
+    );
+  });
+
+  it("keeps statically configured skills when a partial live config only overrides MCP", () => {
+    const skillDir = join(tmpDir, "skills", "one");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default { agent: { skills: "skills/one" } };\n`,
+      "utf8",
+    );
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      `---\nname: one\ndescription: Test one.\n---\n\n# One\n`,
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    withDocs({}, { mcp: { enabled: false } });
+
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      `"name":"one"`,
+    );
+  });
+
+  it("bundles skills from a live composed docs config", () => {
+    const skillDir = join(tmpDir, "skills", "live");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `const agent = { skills: "skills/live" };
+export default { entry: "docs", agent };
+`,
+      "utf8",
+    );
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      `---\nname: live\ndescription: Use the live composed skill.\n---\n\n# Live\n`,
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    withDocs({}, { agent: { skills: "skills/live" } });
+
+    expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+      '"name":"live"',
+    );
+  });
+
+  it("fails the build when a configured Agent Skill is invalid", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", agent: { skills: "skills/broken" } };\n`,
+      "utf8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    mkdirSync(join(tmpDir, "skills", "broken"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "skills", "broken", "SKILL.md"),
+      `---
+name: broken
+description: Exercise full Agent Skills frontmatter validation.
+version: "1.0"
+---
+`,
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    expect(() => withDocs({})).toThrow("Unexpected fields in frontmatter: version");
   });
 
   it("reads a top-level contentDir even when nested config uses deeper indentation", () => {
@@ -968,7 +1964,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
         "AGENT.md",
         ".farming-labs/sitemap-manifest.json",
       ],
-      "/api/docs/mcp": ["website/app/docs/**/*"],
+      "/api/docs/mcp": ["website/app/docs/**/*", "skill.md"],
     });
   });
 
@@ -1002,6 +1998,26 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/agent.json",
           destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_API_CATALOG_ROUTE,
+          destination: "/api/docs?format=api-catalog",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_AGENT_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=agent-skills",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name/SKILL.md`,
+          destination: "/api/docs?format=agent-skill-file&name=:name&path=SKILL.md",
+        }),
+        expect.objectContaining({
+          source: `${DEFAULT_AGENT_SKILLS_ROUTE_PREFIX}/:name.tar.gz`,
+          destination: "/api/docs?format=agent-skill-archive&name=:name",
+        }),
+        expect.objectContaining({
+          source: DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
+          destination: "/api/docs?format=legacy-skills",
         }),
         expect.objectContaining({
           source: "/mcp",
@@ -1049,6 +2065,17 @@ describe("withDocs (app dir: src/app vs app)", () => {
           has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_AGENT_USER_AGENT_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_BOT_LIKE_USER_AGENT_HEADER],
+          missing: [MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER, MARKDOWN_SEC_FETCH_MODE_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
       ]),
     );
     expect(afterFiles).toEqual(
@@ -1074,6 +2101,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?format=llms-full",
         }),
         expect.objectContaining({
+          source: "/docs/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
           source: "/docs/:section*/llms.txt",
           destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
         }),
@@ -1096,7 +2131,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     writeFileSync(join(workspaceRoot, "packages", "docs", "src", "index.ts"), "export {};\n");
     writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "search.ts"), "export {};\n");
     writeFileSync(join(workspaceRoot, "packages", "next", "src", "config.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "next", "src", "api.ts"), "export {};\n");
     writeFileSync(join(appRoot, "docs.config.ts"), DOCS_CONFIG, "utf-8");
     process.chdir(appRoot);
 
@@ -1106,10 +2143,56 @@ describe("withDocs (app dir: src/app vs app)", () => {
       | undefined;
 
     expect(turbopack?.root).toBe(realpathSync(workspaceRoot));
-    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe("./packages/docs/src/index.ts");
-    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe("./packages/next/src/api.ts");
+    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe(
+      "../../packages/docs/src/index.ts",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe(
+      "../../packages/next/src/api.ts",
+    );
     expect(turbopack?.resolveAlias?.["@farming-labs/theme/search"]).toBe(
-      "./packages/fumadocs/src/search.ts",
+      "../../packages/fumadocs/src/search.ts",
+    );
+  });
+
+  it("prefers built workspace turbopack aliases when dist entrypoints exist", () => {
+    const workspaceRoot = join(tmpDir, "repo");
+    const appRoot = join(workspaceRoot, "examples", "next");
+
+    mkdirSync(join(workspaceRoot, "packages", "docs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "docs", "dist"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "fumadocs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "fumadocs", "dist"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "next", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "next", "dist"), { recursive: true });
+    mkdirSync(join(appRoot, "app"), { recursive: true });
+
+    writeFileSync(join(workspaceRoot, "packages", "docs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "docs", "dist", "index.mjs"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "search.ts"), "export {};\n");
+    writeFileSync(
+      join(workspaceRoot, "packages", "fumadocs", "dist", "search.mjs"),
+      "export {};\n",
+    );
+    writeFileSync(join(workspaceRoot, "packages", "next", "src", "config.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "next", "dist", "api.mjs"), "export {};\n");
+    writeFileSync(join(appRoot, "docs.config.ts"), DOCS_CONFIG, "utf-8");
+    process.chdir(appRoot);
+
+    const nextConfig = withDocs({});
+    const turbopack = nextConfig.turbopack as
+      | { root?: string; resolveAlias?: Record<string, string> }
+      | undefined;
+
+    expect(turbopack?.root).toBe(realpathSync(workspaceRoot));
+    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe(
+      "../../packages/docs/dist/index.mjs",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe(
+      "../../packages/next/dist/api.mjs",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/theme/search"]).toBe(
+      "../../packages/fumadocs/dist/search.mjs",
     );
   });
 });

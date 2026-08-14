@@ -1,0 +1,86 @@
+---
+title: Deploy Preview Docs
+description: Publish a hosted preview deployment from the @farming-labs/docs CLI.
+order: 25
+---
+
+# Deploy Preview Docs
+
+Use `docs deploy` when you want Docs Cloud to build your docs app, upload the prebuilt output to
+Vercel, and return a live preview URL.
+
+## 1. Create an API Key
+
+Create a Docs Cloud API key with these scopes:
+
+- `project:read`
+- `preview:write`
+- `jobs:read`
+
+Add `docs:write` too if the same key will also create generated docs changes or draft PRs.
+
+## 2. Store the Key Locally
+
+Put the key in your local environment. Do not commit this file.
+
+```bash title=".env.local"
+DOCS_CLOUD_API_KEY="fl_key_..."
+```
+
+## 3. Enable Cloud Deployments
+
+Add the cloud block to `docs.config.ts`.
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
+    deploy: {
+      enabled: true,
+    },
+    publish: {
+      mode: "draft-pr",
+      baseBranch: "main",
+    },
+  },
+});
+```
+
+`cloud.deploy.enabled` is the command-level toggle for `docs deploy`.
+
+## 4. Run the Deploy Command
+
+From the docs project root:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs deploy
+```
+
+For one-off usage with the published package:
+
+```bash title="terminal"
+npx @farming-labs/docs deploy
+```
+
+The command syncs cloud settings into `docs.json`, validates the API key, creates a preview job, and
+polls until Docs Cloud returns a live URL.
+
+## CI Usage
+
+Use the same command in CI after exposing `DOCS_CLOUD_API_KEY` as a secret.
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs deploy --json
+```
+
+`--json` prints the deployment URL and job response in a machine-readable shape.
+
+## Compatibility
+
+`docs preview` and `docs cloud preview` still work as compatibility aliases, but new scripts should
+prefer `docs deploy`.

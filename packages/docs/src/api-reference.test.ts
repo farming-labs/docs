@@ -7,6 +7,8 @@ import {
   buildApiReferenceScalarCss,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
+  DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+  resolveApiReferenceOpenApiDiscovery,
   resolveApiReferenceRenderer,
 } from "./api-reference.js";
 import { defineDocs } from "./define-docs.js";
@@ -20,6 +22,71 @@ afterEach(() => {
   }
 
   vi.unstubAllGlobals();
+});
+
+describe("resolveApiReferenceOpenApiDiscovery", () => {
+  it("distinguishes the generated endpoint from an identical explicit route", () => {
+    expect(resolveApiReferenceOpenApiDiscovery(true)).toMatchObject({
+      url: DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+      urlSource: "default",
+      catalogTargets: ["/"],
+    });
+    expect(
+      resolveApiReferenceOpenApiDiscovery(true, {
+        route: DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+      }),
+    ).toMatchObject({
+      url: DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+      urlSource: "configured",
+      catalogTargets: ["/"],
+    });
+  });
+
+  it("requires explicit catalog targets for absolute remote schemas", () => {
+    expect(
+      resolveApiReferenceOpenApiDiscovery({
+        enabled: true,
+        specUrl: "https://schemas.example.com/product.json",
+      }).catalogTargets,
+    ).toBeUndefined();
+    expect(
+      resolveApiReferenceOpenApiDiscovery({
+        enabled: true,
+        specUrl: "//schemas.example.com/product.json",
+      }).catalogTargets,
+    ).toBeUndefined();
+
+    expect(
+      resolveApiReferenceOpenApiDiscovery({
+        enabled: true,
+        specUrl: "https://schemas.example.com/product.json",
+        catalogTargets: [
+          " https://api.example.com/v1 ",
+          "https://api.example.com/v1",
+          "https://api.example.com/v2",
+        ],
+      }),
+    ).toMatchObject({
+      catalogTargets: ["https://api.example.com/v1", "https://api.example.com/v2"],
+    });
+  });
+
+  it("uses the request origin target for request-relative schemas unless explicitly disabled", () => {
+    expect(
+      resolveApiReferenceOpenApiDiscovery({
+        enabled: true,
+        specUrl: "/openapi.json",
+      }),
+    ).toMatchObject({ catalogTargets: ["/"] });
+
+    expect(
+      resolveApiReferenceOpenApiDiscovery({
+        enabled: true,
+        specUrl: "/openapi.json",
+        catalogTargets: [],
+      }),
+    ).toMatchObject({ catalogTargets: [] });
+  });
 });
 
 describe("buildApiReferenceOpenApiDocument", () => {
@@ -88,6 +155,37 @@ describe("buildApiReferenceOpenApiDocument", () => {
     expect(document.paths).not.toHaveProperty("/src/pages/api/hello.get");
   });
 
+  it("discovers Farm app API route handlers", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-farmjs-"));
+    tempDirs.push(rootDir);
+
+    const apiDir = join(rootDir, "src", "app", "api", "users");
+    mkdirSync(apiDir, { recursive: true });
+    writeFileSync(
+      join(apiDir, "route.ts"),
+      [
+        "/**",
+        " * Summary: List users",
+        " */",
+        "export async function GET() {",
+        "  return Response.json([]);",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: true,
+    });
+    const document = buildApiReferenceOpenApiDocument(config, {
+      framework: "farmjs",
+      rootDir,
+    });
+
+    expect(document.paths).toHaveProperty("/api/users.get");
+  });
+
   it("loads a hosted OpenAPI JSON document when specUrl is configured for every framework", async () => {
     vi.stubGlobal(
       "fetch",
@@ -102,7 +200,14 @@ describe("buildApiReferenceOpenApiDocument", () => {
       },
     });
 
-    for (const framework of ["next", "tanstack-start", "sveltekit", "astro", "nuxt"] as const) {
+    for (const framework of [
+      "next",
+      "tanstack-start",
+      "farmjs",
+      "sveltekit",
+      "astro",
+      "nuxt",
+    ] as const) {
       const document = await buildApiReferenceOpenApiDocumentAsync(config, {
         framework,
       });
@@ -250,7 +355,14 @@ describe("buildApiReferenceOpenApiDocument", () => {
       },
     });
 
-    for (const framework of ["next", "tanstack-start", "sveltekit", "astro", "nuxt"] as const) {
+    for (const framework of [
+      "next",
+      "tanstack-start",
+      "farmjs",
+      "sveltekit",
+      "astro",
+      "nuxt",
+    ] as const) {
       const html = await buildApiReferenceHtmlDocumentAsync(config, {
         framework,
       });

@@ -3,14 +3,55 @@ title: "Ask AI"
 description: "Add a RAG-powered AI chat to your documentation"
 icon: "zap"
 order: 5.5
+related:
+  - /docs/configuration
+  - /docs/customization/mcp
+  - /docs/customization/analytics
+  - /docs/guides/agent-friendly-docs
+agent:
+  tokenBudget: 1200
+  task: Enable Ask AI with an explicit provider, retrieval path, and secret-handling model.
+  outcome: A docs question returns a grounded streamed answer with citations from the configured documentation corpus.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - A working docs runtime and searchable content are already available.
+    - The selected provider credentials are stored in environment variables rather than committed config.
+    - Decide whether the browser may call the provider directly or must use a same-origin server proxy.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - .env.local
+  sideEffects:
+    - Ask AI can send questions and retrieved documentation to the configured model provider.
+    - Enabling feedback or analytics can store additional interaction metadata.
+  verification:
+    - description: Ask a question answered by one known page.
+      expect: The response streams successfully, cites the expected page, and does not expose provider credentials to the browser.
+  rollback:
+    - Set ai.enabled to false and remove provider credentials and any custom chat route added for the integration.
+  failureModes:
+    - symptom: The answer is plausible but cites no documentation.
+      resolution: Verify the search provider, maxResults, MCP endpoint when useMcp is enabled, and the selected page's machine-readable content.
+    - symptom: The browser reports an authentication or CORS error.
+      resolution: Move secret-bearing requests behind the same-origin docs API or configure the documented browser-safe Docs Cloud path.
 ---
 
 # Ask AI
 
 <Agent>
-Use this page when the user asks about this topic: Add a RAG-powered AI chat to your documentation.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Configure top-level `ai` in `docs.config.ts` or `docs.config.tsx`, and keep provider credentials in
+environment variables. Next.js reads `OPENAI_API_KEY` directly; TanStack Start, SvelteKit, and Astro
+pass the server-only value through `src/lib/docs.server.ts`, while Nuxt reads it through Nitro.
+
+Set `ai.useMcp: true` only when Ask AI should retrieve with `search_docs` from `mcp.route` (default
+`/api/docs/mcp`). Success means a question answered by a known page streams and cites that page. If
+the answer has no citation, check the search provider, `ai.maxResults`, MCP endpoint, and the page's
+machine-readable content. Move credential-bearing requests behind the same-origin docs API when the
+browser reports authentication or CORS errors; `staticExport: true` intentionally hides Ask AI.
 </Agent>
 
 Add a built-in AI chat that lets users ask questions about your documentation. The AI searches relevant pages, builds context, and streams a response from any OpenAI-compatible LLM.
@@ -80,7 +121,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
@@ -110,7 +151,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       },
     ) as Record<string, string>;
 
-    export const { load, GET, POST } = createDocsServer({
+    export const { load, GET, HEAD, POST } = createDocsServer({
       ...config,
       ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
@@ -137,6 +178,60 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
   </Tab>
 </Tabs>
 
+## Hosted Docs Cloud provider
+
+Use Docs Cloud when you want the Ask AI UI to query the knowledge index built from your imported
+repository instead of running the local OpenAI-compatible RAG handler inside the docs app.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  cloud: {
+    apiKey: { env: "PUBLIC_DOCS_CLOUD_API_KEY" },
+    ai: { enabled: true },
+  },
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+    stream: true,
+    mode: "floating",
+    floatingStyle: "full-modal",
+    suggestedQuestions: [
+      "How do I get started?",
+      "How do I configure this?",
+    ],
+  },
+});
+```
+
+Set the Docs Cloud project id and API key in environment variables:
+
+```bash title=".env"
+PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+PUBLIC_DOCS_CLOUD_API_KEY=fl_key_...
+```
+
+`provider: "docs-cloud"` keeps OpenAI, Anthropic, embeddings, and retrieval credentials on the
+Docs Cloud server. The Ask AI widget resolves one of two request paths:
+
+| Available runtime env | Request path | Use it when |
+| --------------------- | ------------ | ----------- |
+| `PUBLIC_DOCS_CLOUD_PROJECT_ID` plus `PUBLIC_DOCS_CLOUD_API_KEY` or another browser-safe `cloud.apiKey.env` | The browser posts directly to `/v1/projects/{projectId}/knowledge/ask` with the project-scoped Docs Cloud API key | You want the lowest-latency Cloud path and the key is safe to expose to the browser |
+| `DOCS_CLOUD_PROJECT_ID` plus the server env named by `cloud.apiKey.env` | The browser posts to the local docs API route and the server proxies the Docs Cloud request | You want the API key to stay server-only or you need same-origin browser requests |
+
+The local docs API route is also the fallback when the project id or API key is not available to the
+browser. In both paths, Docs Cloud reads the same project knowledge index and returns either an
+OpenAI-compatible event stream or a JSON answer. Streaming is enabled by default for Docs Cloud; set
+`stream: false` if you need a single JSON answer.
+
+Next.js projects can use the equivalent `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID` and
+`NEXT_PUBLIC_DOCS_CLOUD_API_KEY` names. SvelteKit, Astro, and Vite users should prefer the
+`PUBLIC_DOCS_CLOUD_*` names. SvelteKit's `createDocsServer()` handles the local Docs Cloud proxy
+automatically for `ai.provider: "docs-cloud"`, so the app does not need a custom `POST` handler.
+
+For staging or self-hosted Cloud APIs, direct browser requests read `PUBLIC_DOCS_CLOUD_URL` or
+`NEXT_PUBLIC_DOCS_CLOUD_URL`. Server-routed requests read `DOCS_CLOUD_API_BASE_URL`,
+`DOCS_CLOUD_API_URL`, then the public URL envs.
+
 ## Configuration Reference
 
 All options go inside the `ai` object in `docs.config.ts`:
@@ -157,7 +252,7 @@ Whether to enable AI chat functionality.
 | --------- | ------- |
 | `boolean` | `false` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
 }
@@ -174,7 +269,7 @@ How the AI chat UI is presented.
 - **`"search"`** — AI tab integrated into the `Cmd+K` search dialog. Users switch between "Search" and "AI" tabs.
 - **`"floating"`** — A floating chat widget with a button on screen. Opens as a panel, modal, or full-screen overlay.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -189,7 +284,7 @@ Position of the floating chat button on screen. Only used when `mode` is `"float
 | ---------------------------------------------------- | ---------------- |
 | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -210,13 +305,34 @@ Visual style of the floating chat when opened. Only used when `mode` is `"floati
 - **`"popover"`** — A compact popover near the button. Suitable for quick questions.
 - **`"full-modal"`** — A full-screen immersive overlay. Messages scroll in the center, input is pinned at the bottom, suggested questions appear as horizontal pills.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
   floatingStyle: "full-modal",
 }
 ```
+
+### `stream`
+
+Whether Ask AI should request a streaming response when the provider supports it. Docs Cloud streams
+token deltas by default.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `true`  |
+
+```ts
+ai: {
+  enabled: true,
+  provider: "docs-cloud",
+  stream: true,
+}
+```
+
+Streaming answers render as markdown while tokens arrive. Headings, tables, lists, horizontal rules,
+inline code, and fenced code blocks stay readable during the stream; fenced code blocks render with a
+language label and copy button.
 
 ### `model`
 
@@ -228,7 +344,7 @@ The LLM model configuration. Can be a simple string (single model) or an object 
 | -------- | --------------- |
 | `string` | `"gpt-4o-mini"` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   model: "gpt-4o",
@@ -241,7 +357,7 @@ ai: {
 | -------- | ------- |
 | `object` | —       |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   model: {
@@ -336,7 +452,7 @@ Custom system prompt prepended to the AI conversation. Documentation context is 
 | -------- | ------------------------------------------------ |
 | `string` | `"You are a helpful documentation assistant..."` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   systemPrompt: "You are a friendly assistant for Acme Corp. Always mention our support email for complex issues.",
@@ -502,7 +618,7 @@ Pre-filled suggested questions shown in the AI chat when the conversation is emp
 | ---------- | ------- |
 | `string[]` | `[]`    |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   suggestedQuestions: [
@@ -570,7 +686,7 @@ Loading indicator variant shown while the AI generates a response.
 
 Available variants: `"shimmer-dots"`, `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   loader: "wave",

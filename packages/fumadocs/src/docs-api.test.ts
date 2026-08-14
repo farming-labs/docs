@@ -1,9 +1,40 @@
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
+import fs, {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
+import type {
+  DocsAnalyticsEvent,
+  DocsObservabilityEvent,
+  DocsPublishedAgentSkill,
+} from "@farming-labs/docs";
+import {
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
+} from "@farming-labs/docs";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
+
+const agentManifestSchema = JSON.parse(
+  fs.readFileSync(
+    new URL("../../../website/public/schema/agent-manifest.v2.json", import.meta.url),
+    "utf8",
+  ),
+) as Record<string, unknown>;
+const agentManifestSchemaValidator = new Ajv2020({ allErrors: true, strict: true });
+addFormats(agentManifestSchemaValidator);
+const validateAgentManifest = agentManifestSchemaValidator.compile(agentManifestSchema);
 
 function createDeferredPromise<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -37,6 +68,39 @@ async function parseMcpPayload<T>(response: Response): Promise<T> {
   }
 }
 
+function createPreloadedAgentSkill(): DocsPublishedAgentSkill {
+  const skillDocument = `---
+name: packaged-skill
+description: Use the skill bundled into the deployment.
+---
+
+# Packaged skill
+`;
+  const sha256 = createHash("sha256").update(skillDocument, "utf8").digest("hex");
+  const url = "/.well-known/agent-skills/packaged-skill/SKILL.md";
+
+  return {
+    name: "packaged-skill",
+    type: "skill-md",
+    description: "Use the skill bundled into the deployment.",
+    url,
+    digest: `sha256:${sha256}`,
+    content: skillDocument,
+    sha256,
+    skillDocument,
+    files: [
+      {
+        path: "SKILL.md",
+        url,
+        mediaType: "text/markdown",
+        content: skillDocument,
+        sha256,
+        digest: `sha256:${sha256}`,
+      },
+    ],
+  };
+}
+
 describe("createDocsMCPAPI", () => {
   const tempDirs: string[] = [];
   let originalCwd: string;
@@ -46,6 +110,7 @@ describe("createDocsMCPAPI", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     process.chdir(originalCwd);
     while (tempDirs.length > 0) {
       const dir = tempDirs.pop();
@@ -70,7 +135,7 @@ Welcome to the docs.
 `,
     );
 
-    const { POST } = createDocsMCPAPI({
+    const { POST, OPTIONS } = createDocsMCPAPI({
       rootDir,
       entry: "docs",
       nav: { title: "Example Docs" },
@@ -132,6 +197,137 @@ Welcome to the docs.
     }>(listPagesResponse);
 
     expect(payload.result?.content?.[0]?.text).toContain("/docs");
+
+    const preflight = await OPTIONS(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "OPTIONS",
+        headers: {
+          origin: "http://localhost",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "content-type, mcp-protocol-version",
+        },
+      }),
+    );
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe("http://localhost");
+  });
+
+  it("publishes preloaded Agent Skills through MCP without runtime filesystem access", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-preloaded-skills-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Introduction\n");
+
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      agent: { skills: "../runtime-skills-not-deployed" },
+      _preloadedAgentSkills: [createPreloadedAgentSkill()],
+    });
+    const response = await POST(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "resources/list",
+          params: {},
+        }),
+      }),
+    );
+    const payload = await parseMcpPayload<{
+      result?: { resources?: Array<{ uri?: string }> };
+    }>(response);
+
+    expect(response.status).toBe(200);
+    expect(payload.result?.resources?.map((resource) => resource.uri)).toContain(
+      "docs://skills/packaged-skill/SKILL.md",
+    );
+  });
+
+  it("fails closed when the legacy constructor would drop source-configured MCP security", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-secure-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  mcp: {
+    security: {
+      async authenticate({ request }) {
+        return request.headers.has("authorization") ? { id: "docs-user" } : null;
+      },
+    },
+  },
+};
+`,
+    );
+
+    expect(() => createDocsMCPAPI({ rootDir })).toThrowError(
+      /Import the live config and call createDocsMCPAPI\(docsConfig\)/,
+    );
+
+    process.chdir(rootDir);
+    expect(() => createDocsMCPAPI()).toThrowError(/Refusing to create a public MCP endpoint/);
+  });
+
+  it("uses an explicitly provided live MCP authentication callback", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-live-security-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+
+    const authenticate = vi.fn(async ({ request }: { request: Request }) =>
+      request.headers.get("authorization") === "Bearer secret" ? { id: "docs-user" } : null,
+    );
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      mcp: {
+        security: { authenticate },
+      },
+    });
+    const createRequest = (authorization?: string) =>
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          ...(authorization ? { authorization } : {}),
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: { name: "vitest", version: "1.0.0" },
+          },
+        }),
+      });
+
+    expect((await POST(createRequest())).status).toBe(401);
+    expect((await POST(createRequest("Bearer secret"))).status).toBe(200);
+    expect(authenticate).toHaveBeenCalledTimes(2);
   });
 
   it("ignores commented or quoted mcp flags when real config enables MCP", async () => {
@@ -152,10 +348,17 @@ title: "Introduction"
     writeFileSync(
       join(rootDir, "docs.config.ts"),
       `export default {
-  note: "mcp: false",
+  note: "mcp: false; security: { authenticate() {} }",
   // mcp: false
   mcp: {
     enabled: true,
+    // security: { authenticate() { return null; } },
+    tools: {
+      note: "authenticate: callback",
+      security: {
+        authenticate: false,
+      },
+    },
   },
 };
 `,
@@ -197,6 +400,57 @@ title: "Introduction"
       result?: { serverInfo?: { name?: string } };
     }>(response);
     expect(payload.result?.serverInfo?.name).toBe("Example Docs");
+  });
+
+  it("honors task and context tool opt-outs from the source docs config", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-tool-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Introduction\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  mcp: {
+    enabled: true,
+    tools: {
+      listPageSections: false,
+      listTasks: false,
+      readTask: false,
+      getContext: false,
+    },
+  },
+};
+`,
+    );
+
+    const { POST } = createDocsMCPAPI({ rootDir });
+    const response = await POST(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+    );
+    const payload = await parseMcpPayload<{
+      result?: { tools?: Array<{ name?: string }> };
+    }>(response);
+    const toolNames = payload.result?.tools?.map((tool) => tool.name) ?? [];
+
+    expect(response.status).toBe(200);
+    expect(toolNames).toContain("list_pages");
+    expect(toolNames).not.toEqual(
+      expect.arrayContaining(["list_page_sections", "list_tasks", "read_task", "get_context"]),
+    );
   });
 
   it("ignores nested mcp booleans outside the root config property", async () => {
@@ -321,6 +575,251 @@ Welcome to the docs.
         type: "page",
       },
     ]);
+  });
+
+  it("paginates structured search with opaque cursors without changing legacy arrays", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-cursor-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "cursor-alpha"), { recursive: true });
+    mkdirSync(join(rootDir, "app", "docs", "cursor-beta"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n\nWelcome.\n");
+    writeFileSync(
+      join(rootDir, "app", "docs", "cursor-alpha", "page.mdx"),
+      `---
+title: "Cursor alpha"
+---
+
+# Cursor alpha
+
+Shared cursor pagination marker for alpha.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "cursor-beta", "page.mdx"),
+      `---
+title: "Cursor beta"
+---
+
+# Cursor beta
+
+Shared cursor pagination marker for beta.
+`,
+    );
+
+    process.chdir(rootDir);
+    const analyticsEvents: DocsAnalyticsEvent[] = [];
+    const { GET } = createDocsAPI({
+      entry: "docs",
+      analytics: {
+        console: false,
+        onEvent(event) {
+          analyticsEvents.push(event);
+        },
+      },
+      search: {
+        provider: "simple",
+        maxResults: 10,
+        chunking: { strategy: "page" },
+      },
+    });
+
+    const legacyUrl = new URL("https://docs.example.com/api/docs");
+    legacyUrl.searchParams.set("query", "shared cursor pagination marker");
+    legacyUrl.searchParams.set("limit", "1");
+    const legacyResponse = await GET(new Request(legacyUrl));
+    const legacyPayload = (await legacyResponse.json()) as Array<{ id: string }>;
+    expect(legacyResponse.status).toBe(200);
+    expect(Array.isArray(legacyPayload)).toBe(true);
+    expect(legacyPayload).toHaveLength(2);
+
+    const firstUrl = new URL(legacyUrl);
+    firstUrl.searchParams.set("response", "structured");
+    const firstResponse = await GET(new Request(firstUrl));
+    const first = (await firstResponse.json()) as {
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{ id: string; explanation?: unknown }>;
+    };
+    expect(firstResponse.status).toBe(200);
+    expect(first).toMatchObject({
+      resultCount: 1,
+      total: 2,
+      hasMore: true,
+      results: [expect.objectContaining({ id: expect.any(String) })],
+    });
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(first.results[0]?.explanation).toBeUndefined();
+
+    const nextUrl = new URL(firstUrl);
+    nextUrl.searchParams.set("cursor", first.nextCursor!);
+    nextUrl.searchParams.set("explain", "true");
+    const nextResponse = await GET(new Request(nextUrl));
+    const next = (await nextResponse.json()) as {
+      resultCount: number;
+      total: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      results: Array<{
+        id: string;
+        explanation?: { format?: string; rank?: number; rankingStrategy?: string };
+      }>;
+    };
+    expect(nextResponse.status).toBe(200);
+    expect(next).toMatchObject({
+      resultCount: 1,
+      total: first.total,
+      hasMore: false,
+      results: [expect.objectContaining({ id: expect.any(String) })],
+    });
+    expect(next.nextCursor).toBeUndefined();
+    expect(next.results[0]?.id).not.toBe(first.results[0]?.id);
+    expect(next.results[0]?.explanation).toMatchObject({
+      format: "docs-search-explanation.v1",
+      rank: 2,
+      rankingStrategy: "lexical",
+    });
+    expect(
+      analyticsEvents
+        .filter((event) => event.type === "api_search")
+        .every((event) => event.url === "https://docs.example.com/api/docs"),
+    ).toBe(true);
+
+    const invalidUrl = new URL(firstUrl);
+    invalidUrl.searchParams.set("cursor", "not-an-opaque-docs-cursor");
+    const invalidResponse = await GET(new Request(invalidUrl));
+    expect(invalidResponse.status).toBe(400);
+    await expect(invalidResponse.json()).resolves.toMatchObject({
+      error: {
+        code: "invalid_cursor",
+        message: expect.any(String),
+      },
+    });
+  });
+
+  it("does not invoke configured providers for blank structured search metadata", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-blank-structured-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+
+    process.chdir(rootDir);
+    const search = vi.fn(async () => {
+      throw new Error("blank structured search must not invoke its provider");
+    });
+    const { GET } = createDocsAPI({
+      entry: "docs",
+      search: {
+        provider: "custom",
+        adapter: { name: "must-not-run", search },
+      },
+    });
+
+    const response = await GET(
+      new Request("https://docs.example.com/api/docs?query=%20&response=structured"),
+    );
+    const payload = await response.json();
+
+    expect(search).not.toHaveBeenCalled();
+    expect(payload).toMatchObject({
+      format: "docs-search.v1",
+      query: "",
+      resultCount: 0,
+      results: [],
+    });
+    expect(payload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it("serves a body-free content change feed with generations and HTTP validators", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-content-changes-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+
+    process.chdir(rootDir);
+    const { GET, HEAD } = createDocsAPI({ entry: "docs" });
+    const url = "https://docs.example.com/api/docs?audience=agent&response=changes";
+    const firstResponse = await GET(new Request(url));
+    const first = (await firstResponse.json()) as {
+      format: string;
+      mode: string;
+      resetRequired: boolean;
+      indexGeneration: string;
+      documentCount: number;
+      added: Array<{ canonicalUrl: string; digest: string; content?: string }>;
+    };
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.headers.get("etag")).toMatch(/^"sha256:[a-f0-9]{64}"$/);
+    expect(first).toMatchObject({
+      format: "docs-content-changes.v1",
+      mode: "snapshot",
+      resetRequired: false,
+      documentCount: 1,
+      added: [
+        {
+          canonicalUrl: "https://docs.example.com/docs",
+          digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        },
+      ],
+    });
+    expect(first.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(first.added[0]).not.toHaveProperty("content");
+
+    const nextResponse = await GET(new Request(`${url}&since=${first.indexGeneration}`));
+    await expect(nextResponse.json()).resolves.toMatchObject({
+      mode: "delta",
+      resetRequired: false,
+      counts: { added: 0, changed: 0, deleted: 0 },
+    });
+
+    const headResponse = await HEAD(new Request(url, { method: "HEAD" }));
+    expect(headResponse.status).toBe(200);
+    expect(await headResponse.text()).toBe("");
+    expect(headResponse.headers.get("x-docs-index-generation")).toBe(first.indexGeneration);
+
+    const notModified = await GET(
+      new Request(url, {
+        headers: { "If-None-Match": firstResponse.headers.get("etag")! },
+      }),
+    );
+    expect(notModified.status).toBe(304);
+    expect(await notModified.text()).toBe("");
+
+    const staticHandlers = createDocsAPI({ entry: "docs", staticExport: true });
+    const disabled = await staticHandlers.GET(new Request(url));
+    expect(disabled.status).toBe(404);
+    const staticDiscovery = await staticHandlers.GET(
+      new Request("https://docs.example.com/.well-known/agent.json"),
+    );
+    await expect(staticDiscovery.json()).resolves.toMatchObject({
+      capabilities: { contentChanges: false },
+      contentChanges: { enabled: false, endpoint: null },
+    });
   });
 
   it("uses built-in simple search when no search config is provided", async () => {
@@ -515,6 +1014,217 @@ Updated from DevTools.
     }
   });
 
+  it("filters regular docs metadata and returns opt-in structured agent warnings", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-scoped-search-route-"));
+    tempDirs.push(rootDir);
+
+    for (const slug of ["next", "astro", "unscoped"]) {
+      mkdirSync(join(rootDir, "app", "docs", slug), { recursive: true });
+    }
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "app", "docs", "next", "page.mdx"),
+      `---
+title: "Next scoped setup"
+framework: "Next.js"
+version: "16"
+tags:
+  - routing
+  - setup
+agent:
+  appliesTo:
+    package: "@farming-labs/next"
+---
+
+# Next scoped setup
+
+Scoped adapter token for Next.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "astro", "page.mdx"),
+      `---
+title: "Astro scoped setup"
+framework: "astro"
+version: "5"
+tags:
+  - routing
+  - setup
+agent:
+  appliesTo:
+    package: "@farming-labs/astro"
+---
+
+# Astro scoped setup
+
+Scoped adapter token for Astro.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "unscoped", "page.mdx"),
+      `---
+title: "Unscoped setup"
+---
+
+# Unscoped setup
+
+Scoped adapter token without metadata.
+`,
+    );
+
+    process.chdir(rootDir);
+    const { GET } = createDocsAPI({ entry: "docs" });
+    const requestUrl = new URL("http://localhost/api/docs");
+    requestUrl.searchParams.set("query", "Scoped adapter token");
+    requestUrl.searchParams.set("audience", "agent");
+    requestUrl.searchParams.append("framework", "next");
+    requestUrl.searchParams.append("version", "v16");
+    requestUrl.searchParams.append("package", "@FARMING-LABS/NEXT");
+    requestUrl.searchParams.append("tags", "routing");
+    requestUrl.searchParams.append("tags", "setup");
+
+    const legacyResponse = await GET(new Request(requestUrl));
+    const legacyPayload = (await legacyResponse.json()) as Array<{ url: string }>;
+    expect(Array.isArray(legacyPayload)).toBe(true);
+    expect(legacyPayload.length).toBeGreaterThan(0);
+    expect(legacyPayload.every((result) => result.url.split("#", 1)[0] === "/docs/next")).toBe(
+      true,
+    );
+
+    requestUrl.searchParams.set("response", "structured");
+    const structuredResponse = await GET(new Request(requestUrl));
+    const structuredPayload = (await structuredResponse.json()) as {
+      format: string;
+      filters: Record<string, string[]>;
+      indexGeneration: string;
+      resultCount: number;
+      results: Array<{
+        url: string;
+        source?: {
+          canonicalUrl: string;
+          digest: string;
+          indexGeneration: string;
+        };
+      }>;
+      warnings: Array<{ code: string; field: string }>;
+    };
+    expect(structuredPayload).toMatchObject({
+      format: "docs-search.v1",
+      filters: {
+        framework: ["nextjs"],
+        version: ["16"],
+        package: ["@farming-labs/next"],
+        tags: ["routing", "setup"],
+      },
+    });
+    expect(structuredPayload.resultCount).toBe(structuredPayload.results.length);
+    expect(structuredPayload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(
+      structuredPayload.results.every((result) => result.url.split("#", 1)[0] === "/docs/next"),
+    ).toBe(true);
+    expect(
+      structuredPayload.results.every(
+        (result) =>
+          result.source?.canonicalUrl.startsWith("http://localhost/docs/next") &&
+          result.source.digest.match(/^sha256:[a-f0-9]{64}$/) &&
+          result.source.indexGeneration === structuredPayload.indexGeneration,
+      ),
+    ).toBe(true);
+    expect(
+      structuredPayload.warnings.some(
+        (warning) => warning.code === "missing_scope_metadata" && warning.field === "framework",
+      ),
+    ).toBe(true);
+
+    const facetsUrl = new URL("http://localhost/api/docs");
+    facetsUrl.searchParams.set("response", "facets");
+    facetsUrl.searchParams.set("audience", "agent");
+    facetsUrl.searchParams.set("framework", "next");
+    const facetsResponse = await GET(new Request(facetsUrl));
+    const facetsPayload = (await facetsResponse.json()) as {
+      format: string;
+      matchedPageCount: number;
+      facets: Record<
+        string,
+        { valueCount: number; truncated: boolean; values: Array<{ value: string; count: number }> }
+      >;
+    };
+    expect(facetsResponse.headers.get("cache-control")).toContain("max-age=60");
+    expect(facetsPayload).toMatchObject({
+      format: "docs-search-facets.v1",
+      matchedPageCount: 1,
+      facets: {
+        framework: {
+          valueCount: 2,
+          truncated: false,
+          values: [
+            { value: "astro", count: 1 },
+            { value: "nextjs", count: 1 },
+          ],
+        },
+        version: { values: [{ value: "16", count: 1 }] },
+        package: { values: [{ value: "@farming-labs/next", count: 1 }] },
+        tags: {
+          values: [
+            { value: "routing", count: 1 },
+            { value: "setup", count: 1 },
+          ],
+        },
+      },
+    });
+    expect(JSON.stringify(facetsPayload)).not.toContain("Scoped adapter token");
+
+    requestUrl.searchParams.set("framework", "remix");
+    requestUrl.searchParams.delete("version");
+    requestUrl.searchParams.delete("package");
+    requestUrl.searchParams.delete("tags");
+    const unknownResponse = await GET(new Request(requestUrl));
+    const unknownPayload = (await unknownResponse.json()) as {
+      results: unknown[];
+      warnings: Array<{ code: string; field: string }>;
+    };
+    expect(unknownPayload.results).toEqual([]);
+    expect(unknownPayload.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unknown_filter_value",
+          field: "framework",
+        }),
+      ]),
+    );
+
+    requestUrl.searchParams.set("query", "   ");
+    requestUrl.searchParams.delete("response");
+    const blankLegacyResponse = await GET(new Request(requestUrl));
+    await expect(blankLegacyResponse.json()).resolves.toEqual([]);
+
+    requestUrl.searchParams.set("response", "structured");
+    const blankStructuredResponse = await GET(new Request(requestUrl));
+    const blankStructuredPayload = (await blankStructuredResponse.json()) as {
+      indexGeneration: string;
+      warnings: Array<{ code: string; field: string }>;
+    };
+    expect(blankStructuredPayload).toMatchObject({
+      format: "docs-search.v1",
+      query: "",
+      audience: "agent",
+      filters: {
+        framework: ["remix"],
+      },
+      resultCount: 0,
+      results: [],
+    });
+    expect(blankStructuredPayload.indexGeneration).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(blankStructuredPayload.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unknown_filter_value",
+          field: "framework",
+        }),
+      ]),
+    );
+  });
+
   it("omits hidden folder index pages from search and markdown lookups", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-hidden-folder-index-"));
     tempDirs.push(rootDir);
@@ -560,6 +1270,95 @@ Surge overview child.
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
     expect(markdownResponse.status).toBe(404);
+    expect(await markdownResponse.text()).toContain("# Docs Page Not Found");
+  });
+
+  it("serves section-addressable markdown through the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-section-markdown-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "How to install"
+---
+
+# Installation
+
+Install the package.
+
+## Prerequisites
+
+Use Node.js 22 or newer.
+
+## Expected Results
+
+The docs app starts.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      entry: "docs",
+    });
+
+    const response = await GET(
+      new Request(
+        "http://localhost/api/docs?format=markdown&path=installation&section=prerequisites&tokenBudget=60",
+      ),
+    );
+    const markdown = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section")).toBe("prerequisites");
+    expect(response.headers.get("x-docs-markdown-token-budget")).toBe("60");
+    expect(response.headers.get("link")).toContain(
+      '<http://localhost/docs/installation#prerequisites>; rel="canonical"',
+    );
+    expect(response.headers.get("link")).toContain(
+      '<http://localhost/llms.txt>; rel="describedby"; type="text/plain"',
+    );
+    expect(markdown).toContain("## Prerequisites");
+    expect(markdown).toContain("Use Node.js 22 or newer.");
+    expect(markdown).not.toContain("## Expected Results");
+
+    const indexResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=installation&sections"),
+    );
+    const index = (await indexResponse.json()) as {
+      format: string;
+      sectionCount: number;
+      sections: Array<{ id: string; heading: string; markdownUrl: string }>;
+    };
+
+    expect(indexResponse.status).toBe(200);
+    expect(indexResponse.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(indexResponse.headers.get("x-docs-markdown-section-count")).toBe("3");
+    expect(index).toMatchObject({
+      format: "docs-markdown-sections.v2",
+      sectionCount: 3,
+      sections: [
+        {
+          id: "installation",
+          heading: "Installation",
+          markdownUrl: "http://localhost/docs/installation.md?section=installation",
+        },
+        {
+          id: "prerequisites",
+          heading: "Prerequisites",
+          markdownUrl: "http://localhost/docs/installation.md?section=prerequisites",
+        },
+        {
+          id: "expected-results",
+          heading: "Expected Results",
+          markdownUrl: "http://localhost/docs/installation.md?section=expected-results",
+        },
+      ],
+    });
+    expect(JSON.stringify(index)).not.toContain("Use Node.js 22 or newer.");
   });
 
   it("serves llms.txt aliases through the shared docs api handler", async () => {
@@ -577,6 +1376,10 @@ description: "Start here"
 # Introduction
 
 Welcome to the docs.
+
+<Human>Use the visual coral walkthrough.</Human>
+
+<Audience only="agent">Use the scripted indigo workflow.</Audience>
 `,
     );
     mkdirSync(join(rootDir, "app", "docs", "installation"), { recursive: true });
@@ -594,13 +1397,22 @@ Install the package.
     );
     writeFileSync(
       join(rootDir, "docs.config.ts"),
-      `export default {
+      `import { createTheme, defineDocs } from "@farming-labs/docs";
+
+const theme = createTheme({
+  colors: {
+    primary: "indigo",
+  },
+});
+
+export default defineDocs({
+  theme,
   llmsTxt: {
     enabled: true,
     siteTitle: "Alias Docs",
     baseUrl: "https://docs.example.com",
   },
-};`,
+});`,
     );
 
     process.chdir(rootDir);
@@ -621,24 +1433,86 @@ Install the package.
     );
     expect(llmsApiText).not.toContain("(https://docs.example.com/docs/installation):");
 
-    for (const path of ["/llms.txt", "/.well-known/llms.txt"]) {
+    for (const path of ["/llms.txt", "/.well-known/llms.txt", "/docs/llms.txt"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/plain");
       expect(await response.text()).toBe(llmsApiText);
     }
 
+    const cacheResponse = await GET(new Request("http://localhost/llms.txt"));
+    const cacheContent = await cacheResponse.text();
+    const cacheEtag = cacheResponse.headers.get("etag");
+    expect(cacheEtag).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(cacheResponse.headers.get("content-digest")).toBe(
+      `sha-256=:${createHash("sha256").update(cacheContent, "utf8").digest("base64")}:`,
+    );
+    expect(cacheResponse.headers.get("last-modified")).toBeNull();
+    const cacheNotModified = await GET(
+      new Request("http://localhost/llms.txt", {
+        headers: { "If-None-Match": cacheEtag! },
+      }),
+    );
+    expect(cacheNotModified.status).toBe(304);
+    expect(cacheNotModified.headers.get("content-digest")).toBe(
+      cacheResponse.headers.get("content-digest"),
+    );
+    expect(await cacheNotModified.text()).toBe("");
+    const dateOnlyRevalidation = await GET(
+      new Request("http://localhost/llms.txt", {
+        headers: { "If-Modified-Since": "Sat, 01 Aug 2026 00:00:00 GMT" },
+      }),
+    );
+    expect(dateOnlyRevalidation.status).toBe(200);
+
+    const customLlms = await GET(new Request("http://localhost/api/internal/docs?format=llms"));
+    expect(customLlms.status).toBe(200);
+    expect(await customLlms.text()).toBe(llmsApiText);
+
     const llmsFullApi = await GET(new Request("http://localhost/api/docs?format=llms-full"));
     const llmsFullApiText = await llmsFullApi.text();
     expect(llmsFullApi.status).toBe(200);
     expect(llmsFullApiText).toContain("Welcome to the docs.");
+    expect(llmsFullApiText).toContain("scripted indigo workflow");
+    expect(llmsFullApiText).not.toContain("visual coral walkthrough");
 
-    for (const path of ["/llms-full.txt", "/.well-known/llms-full.txt"]) {
+    for (const path of ["/llms-full.txt", "/.well-known/llms-full.txt", "/docs/llms-full.txt"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/plain");
       expect(await response.text()).toBe(llmsFullApiText);
     }
+
+    for (const path of ["/sitemap.xml", "/docs/sitemap.md"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      const sitemap = await response.text();
+      expect(response.status).toBe(200);
+      expect(sitemap).toContain("/docs");
+      expect(sitemap).not.toContain("visual coral walkthrough");
+      expect(sitemap).not.toContain("scripted indigo workflow");
+    }
+
+    const customSitemap = await GET(
+      new Request("http://localhost/api/internal/docs?format=sitemap-md"),
+    );
+    expect(customSitemap.status).toBe(200);
+    expect(await customSitemap.text()).toContain("/docs/installation.md");
+
+    const customMarkdown = await GET(
+      new Request("http://localhost/api/internal/docs?format=markdown&path=installation"),
+    );
+    expect(customMarkdown.status).toBe(200);
+    expect(customMarkdown.headers.get("content-type")).toContain("text/markdown");
+    expect(await customMarkdown.text()).toContain("Install the package.");
+
+    const customMissingMarkdown = await GET(
+      new Request("http://localhost/api/internal/docs?format=markdown&path=zzzzzzzz"),
+    );
+    const customMissingMarkdownText = await customMissingMarkdown.text();
+    expect(customMissingMarkdown.status).toBe(404);
+    expect(customMissingMarkdownText).toContain("/api/internal/docs?agent=spec");
+    expect(customMissingMarkdownText).toContain("/api/internal/docs?query={query}&audience=agent");
+    expect(customMissingMarkdownText).not.toContain("/api/docs?query={query}&audience=agent");
 
     const skillApi = await GET(new Request("http://localhost/api/docs?format=skill"));
     const skillApiText = await skillApi.text();
@@ -647,14 +1521,23 @@ Install the package.
     expect(skillApiText).toContain("name: docs");
     expect(skillApiText).toContain("# Alias Docs Skill");
     expect(skillApiText).toContain("/docs.md");
+    expect(skillApiText).toContain("/docs/{slug}.md?sections");
     expect(skillApiText).toContain("/.well-known/agent.json");
+    expect(skillApiText).toContain("/api/docs?query={query}&audience=agent");
 
-    for (const path of ["/skill.md", "/.well-known/skill.md", "/api/internal/docs?format=skill"]) {
+    for (const path of ["/skill.md", "/.well-known/skill.md"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(skillApiText);
     }
+
+    const customSkill = await GET(new Request("http://localhost/api/internal/docs?format=skill"));
+    const customSkillText = await customSkill.text();
+    expect(customSkill.status).toBe(200);
+    expect(customSkillText).toContain("/api/internal/docs?format=skill");
+    expect(customSkillText).toContain("/api/internal/docs?query={query}&audience=agent");
+    expect(customSkillText).not.toContain("/api/docs?format=skill");
 
     const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
     const agentsApiText = await agentsApi.text();
@@ -664,19 +1547,27 @@ Install the package.
     expect(agentsApiText).toContain("Site: Alias Docs");
     expect(agentsApiText).toContain("/AGENTS.md");
     expect(agentsApiText).toContain("/api/docs?format=agents");
+    expect(agentsApiText).toContain("/api/docs?query={query}&audience=agent");
+    expect(agentsApiText).toContain("/docs/{slug}.md?sections");
 
     for (const path of [
       "/AGENTS.md",
       "/.well-known/AGENTS.md",
       "/AGENT.md",
       "/.well-known/AGENT.md",
-      "/api/internal/docs?format=agents",
     ]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(agentsApiText);
     }
+
+    const customAgents = await GET(new Request("http://localhost/api/internal/docs?format=agents"));
+    const customAgentsText = await customAgents.text();
+    expect(customAgents.status).toBe(200);
+    expect(customAgentsText).toContain("/api/internal/docs?format=agents");
+    expect(customAgentsText).toContain("/api/internal/docs?query={query}&audience=agent");
+    expect(customAgentsText).not.toContain("/api/docs?format=agents");
   });
 
   it("serves opt-in section-level llms.txt routes", async () => {
@@ -805,11 +1696,57 @@ Start here.
       entry: "docs",
     });
 
-    const response = await GET(new Request("http://localhost/llms.txt"));
+    const response = await GET(new Request("http://localhost/docs/llms.txt"));
     const text = await response.text();
     expect(response.status).toBe(200);
     expect(text).toContain("# Default Docs");
     expect(text).toContain("- [Getting Started](/docs/getting-started.md): First steps");
+  });
+
+  it("serves llms.txt through a custom public docsPath", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-docspath-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "api"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "api", "page.mdx"),
+      `---
+title: "API"
+description: "Endpoint docs"
+---
+
+# API
+
+Use the API.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  docsPath: "/guides",
+  llmsTxt: {
+    enabled: true,
+    siteTitle: "Guide Docs",
+  },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/guides/llms.txt"));
+    const text = await response.text();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/plain");
+    expect(text).toContain("# Guide Docs");
+    expect(text).toContain("- [API](/guides/api.md): Endpoint docs");
+
+    const rootResponse = await GET(new Request("http://localhost/llms.txt"));
+    expect(await rootResponse.text()).toBe(text);
   });
 
   it("serves an OpenAPI schema through the shared docs api handler", async () => {
@@ -856,6 +1793,69 @@ export async function GET() {
         },
       },
     });
+
+    const catalogResponse = await GET(new Request("http://localhost/.well-known/api-catalog"));
+    const catalog = (await catalogResponse.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string }>;
+      }>;
+    };
+    const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+
+    expect(catalogResponse.status).toBe(200);
+    expect(catalog.linkset[0]?.["service-desc"]).toBeUndefined();
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain("http://localhost/");
+    expect(contexts.get("http://localhost/api/docs")?.["service-desc"]).toBeUndefined();
+    expect(contexts.get("http://localhost/")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "http://localhost/api/docs?format=openapi",
+      }),
+    ]);
+  });
+
+  it("reads product API catalog targets from docs.config", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-openapi-catalog-target-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  apiReference: {
+    enabled: true,
+    specUrl: "https://schemas.example.com/product.json",
+    catalogTargets: ["https://api.example.com/v1"],
+  },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+    const response = await GET(new Request("https://docs.example.com/.well-known/api-catalog"));
+    const catalog = (await response.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string }>;
+      }>;
+    };
+    const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+
+    expect(response.status).toBe(200);
+    expect(catalog.linkset[0]?.["service-desc"]).toBeUndefined();
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "https://api.example.com/v1",
+    );
+    expect(contexts.get("https://docs.example.com/api/docs")?.["service-desc"]).toBeUndefined();
+    expect(contexts.get("https://api.example.com/v1")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/api/docs?format=openapi",
+      }),
+    ]);
   });
 
   it("serves robots.txt by default through the shared docs api handler", async () => {
@@ -878,6 +1878,7 @@ export async function GET() {
       const content = await response.text();
       expect(content).toContain("Allow: /llms.txt");
       expect(content).toContain("Allow: /sitemap.xml");
+      expect(content).toContain("Allow: /docs/sitemap.md");
       expect(content).toContain("User-agent: GPTBot");
     }
   });
@@ -905,6 +1906,129 @@ export async function GET() {
     const response = await GET(new Request("http://localhost/llms.txt"));
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("Not Found");
+  });
+
+  it("keeps Agent Skills available when the API catalog is opted out", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-catalog-disabled-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  llmsTxt: { apiCatalog: false },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+    for (const path of ["/.well-known/api-catalog", "/api/internal/docs?format=api-catalog"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(404);
+      expect(response.headers.get("link")).not.toContain('rel="api-catalog"');
+    }
+
+    for (const path of [
+      "/.well-known/agent-skills/index.json",
+      "/api/internal/docs?format=agent-skills",
+    ]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("link")).not.toContain('rel="api-catalog"');
+      expect((await response.json()).skills).toHaveLength(1);
+    }
+
+    const manifestResponse = await GET(new Request("http://localhost/.well-known/agent.json"));
+    const manifest = (await manifestResponse.json()) as {
+      capabilities: { apiCatalog: boolean };
+      api: Record<string, unknown>;
+      apiCatalog: { enabled: boolean; route: string | null };
+    };
+    expect(manifest.capabilities.apiCatalog).toBe(false);
+    expect(manifest.api).not.toHaveProperty("apiCatalog");
+    expect(manifest.apiCatalog).toMatchObject({ enabled: false, route: null });
+    expect(manifestResponse.headers.get("link")).not.toContain('rel="api-catalog"');
+
+    for (const path of ["/skill.md", "/AGENTS.md", "/llms.txt"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      const content = await response.text();
+      expect(content).not.toContain("/.well-known/api-catalog");
+      expect(content).toContain("/.well-known/agent-skills/index.json");
+    }
+
+    const robotsResponse = await GET(new Request("http://localhost/robots.txt"));
+    const robots = await robotsResponse.text();
+    expect(robots).not.toContain("/.well-known/api-catalog");
+    expect(robots).toContain("/.well-known/agent-skills/index.json");
+
+    const explicitlyEnabled = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiCatalog: true,
+    });
+    const enabledCatalog = await explicitlyEnabled.GET(
+      new Request("http://localhost/.well-known/api-catalog"),
+    );
+    expect(enabledCatalog.status).toBe(200);
+  });
+
+  it("reads llmsTxt properties after nested config objects", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-nested-llms-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `import { createTheme, defineDocs } from "@farming-labs/docs";
+
+const theme = createTheme({
+  colors: {
+    primary: "indigo",
+  },
+});
+
+export default defineDocs({
+  theme,
+  llmsTxt: {
+    maxChars: {
+      mode: "warn",
+      chars: 50_000,
+    },
+    apiCatalog: false,
+    baseUrl: "https://docs.example.com",
+    siteTitle: "Nested Config Docs",
+    siteDescription: "Nested options stay readable",
+  },
+});`,
+    );
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+
+    const catalog = await GET(new Request("http://localhost/.well-known/api-catalog"));
+    expect(catalog.status).toBe(404);
+
+    const llms = await GET(new Request("http://localhost/llms.txt"));
+    const llmsText = await llms.text();
+    expect(llmsText).toContain("# Nested Config Docs");
+    expect(llmsText).toContain("> Nested options stay readable");
+    expect(llmsText).toContain("https://docs.example.com/docs.md");
+
+    const manifest = await GET(new Request("http://localhost/.well-known/agent.json"));
+    expect(await manifest.json()).toMatchObject({
+      capabilities: { apiCatalog: false },
+      apiCatalog: { enabled: false, route: null, api: null },
+    });
   });
 
   it("serves a root skill.md file before falling back to generated skill content", async () => {
@@ -936,7 +2060,7 @@ Use the product-specific workflow first.
 
     process.chdir(rootDir);
 
-    const { GET } = createDocsAPI({
+    const { GET, HEAD, POST } = createDocsAPI({
       rootDir,
       entry: "docs",
     });
@@ -955,6 +2079,386 @@ Use the product-specific workflow first.
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(skillApiText);
     }
+
+    const catalogResponse = await GET(new Request("http://localhost/.well-known/api-catalog"));
+    expect(catalogResponse.status).toBe(200);
+    expect(catalogResponse.headers.get("content-type")).toBe(
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+    );
+    expect(catalogResponse.headers.get("link")).toContain('rel="api-catalog"');
+    expect(catalogResponse.headers.get("link")).toContain("</.well-known/agent.json>");
+    expect(catalogResponse.headers.get("link")).toContain("</.well-known/agent-skills/index.json>");
+    const catalog = (await catalogResponse.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-doc"?: Array<{ href: string }>;
+        "service-meta"?: Array<{ href: string }>;
+      }>;
+    };
+    expect(catalog.linkset[0]).toMatchObject({
+      anchor: "http://localhost/.well-known/api-catalog",
+    });
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/docs",
+    );
+    expect(catalog.linkset[0]?.["service-doc"]?.map(({ href }) => href)).toEqual(
+      expect.arrayContaining([
+        "http://localhost/AGENTS.md",
+        "http://localhost/skill.md",
+        "http://localhost/docs.md",
+      ]),
+    );
+    expect(catalog.linkset[0]?.["service-meta"]?.map(({ href }) => href)).toEqual(
+      expect.arrayContaining([
+        "http://localhost/.well-known/agent.json",
+        "http://localhost/.well-known/agent-skills/index.json",
+      ]),
+    );
+
+    const catalogQueryResponse = await GET(
+      new Request("http://localhost/api/docs?format=api-catalog"),
+    );
+    expect(await catalogQueryResponse.json()).toEqual(catalog);
+
+    const catalogHead = await HEAD(
+      new Request("http://localhost/.well-known/api-catalog", { method: "HEAD" }),
+    );
+    expect(catalogHead.status).toBe(200);
+    expect(catalogHead.headers.get("content-type")).toContain("application/linkset+json");
+    expect(await catalogHead.text()).toBe("");
+
+    const indexResponse = await GET(
+      new Request("http://localhost/.well-known/agent-skills/index.json"),
+    );
+    expect(indexResponse.status).toBe(200);
+    expect(indexResponse.headers.get("content-type")).toContain("application/json");
+    expect(indexResponse.headers.get("access-control-allow-origin")).toBe("*");
+    expect(indexResponse.headers.get("link")).toContain('rel="item"');
+    const index = (await indexResponse.json()) as {
+      $schema: string;
+      skills: Array<{
+        name: string;
+        type: string;
+        description: string;
+        url: string;
+        digest: string;
+      }>;
+    };
+    const skillDigest = createHash("sha256").update(skillApiText, "utf8").digest("hex");
+    expect(index).toEqual({
+      $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+      skills: [
+        {
+          name: "docs",
+          type: "skill-md",
+          description: "Custom docs skill.",
+          url: "/.well-known/agent-skills/docs/SKILL.md",
+          digest: `sha256:${skillDigest}`,
+        },
+      ],
+    });
+
+    const indexQueryResponse = await GET(
+      new Request("http://localhost/api/docs?format=agent-skills"),
+    );
+    expect(await indexQueryResponse.json()).toEqual(index);
+
+    const customIndexQueryResponse = await GET(
+      new Request("http://localhost/api/internal/docs?format=agent-skills"),
+    );
+    expect(customIndexQueryResponse.status).toBe(200);
+    expect(await customIndexQueryResponse.json()).toEqual(index);
+
+    const customCatalogQueryResponse = await GET(
+      new Request("http://localhost/api/internal/docs?format=api-catalog"),
+    );
+    expect(customCatalogQueryResponse.status).toBe(200);
+    const customCatalog = (await customCatalogQueryResponse.json()) as {
+      linkset: Array<{ item?: Array<{ href: string }> }>;
+    };
+    expect(customCatalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/internal/docs",
+    );
+
+    for (const path of [
+      "/.well-known/agent-skills/docs/SKILL.md",
+      "/api/docs?format=agent-skill&name=docs",
+      "/api/internal/docs?format=agent-skill&name=docs",
+    ]) {
+      const artifactResponse = await GET(new Request(`http://localhost${path}`));
+      expect(artifactResponse.status).toBe(200);
+      expect(artifactResponse.headers.get("content-type")).toContain("text/markdown");
+      expect(artifactResponse.headers.get("etag")).toBe(`"${skillDigest}"`);
+      expect(artifactResponse.headers.get("link")).toContain('rel="collection"');
+      expect(await artifactResponse.text()).toBe(skillApiText);
+    }
+
+    for (const path of [
+      "/.well-known/agent-skills/index.json",
+      "/.well-known/agent-skills/docs/SKILL.md",
+    ]) {
+      const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
+      expect(await response.text()).toBe("");
+    }
+
+    const customIndexHead = await HEAD(
+      new Request("http://localhost/api/internal/docs?format=agent-skills", {
+        method: "HEAD",
+      }),
+    );
+    expect(customIndexHead.status).toBe(200);
+    expect(await customIndexHead.text()).toBe("");
+
+    const customIndexPost = await POST(
+      new Request("http://localhost/api/internal/docs?format=agent-skills", {
+        method: "POST",
+      }),
+    );
+    expect(customIndexPost.status).toBe(405);
+    expect(customIndexPost.headers.get("allow")).toBe("GET, HEAD");
+  });
+
+  it("publishes configured companion skills, legacy routes, and an opt-in A2A card", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-multi-skill-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    mkdirSync(join(rootDir, "skills", "portable", "references"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "skills", "portable", "SKILL.md"),
+      "---\nname: portable\ndescription: Reuse the portable workflow.\n---\n\n# Portable\n",
+    );
+    writeFileSync(join(rootDir, "skills", "portable", "references", "guide.md"), "# Guide\n");
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      agent: {
+        skills: "skills",
+        a2a: {
+          interfaceUrl: "https://agent.example.com/a2a",
+          name: "Docs agent",
+          description: "A real A2A documentation agent.",
+          documentationUrl: "https://docs.example.com/agent",
+          provider: { organization: "Example", url: "https://example.com" },
+        },
+      },
+    });
+
+    const indexResponse = await GET(
+      new Request("https://docs.example.com/.well-known/agent-skills/index.json"),
+    );
+    const index = (await indexResponse.json()) as {
+      skills: Array<{ digest: string; name: string; type: string; url: string }>;
+    };
+    const portable = index.skills.find((skill) => skill.name === "portable");
+    expect(portable).toMatchObject({
+      type: "archive",
+      url: "/.well-known/agent-skills/portable.tar.gz",
+    });
+
+    const archive = await GET(new Request(`https://docs.example.com${portable!.url}`));
+    expect(archive.headers.get("content-type")).toBe("application/gzip");
+    const archiveBytes = new Uint8Array(await archive.arrayBuffer());
+    expect(portable!.digest).toBe(
+      `sha256:${createHash("sha256").update(archiveBytes).digest("hex")}`,
+    );
+
+    const companion = await GET(
+      new Request("https://docs.example.com/.well-known/agent-skills/portable/references/guide.md"),
+    );
+    expect(await companion.text()).toBe("# Guide\n");
+
+    const legacy = await GET(new Request("https://docs.example.com/.well-known/skills/index.json"));
+    await expect(legacy.json()).resolves.toMatchObject({
+      skills: expect.arrayContaining([
+        {
+          name: "portable",
+          description: "Reuse the portable workflow.",
+          files: ["SKILL.md", "references/guide.md"],
+        },
+      ]),
+    });
+
+    const card = await GET(new Request("https://docs.example.com/.well-known/agent-card.json"));
+    expect(card.status).toBe(200);
+    const cardBody = (await card.json()) as {
+      name: string;
+      description: string;
+      supportedInterfaces: Array<{
+        url: string;
+        protocolBinding: string;
+        protocolVersion: string;
+      }>;
+      version: string;
+      capabilities: {
+        streaming: boolean;
+        pushNotifications: boolean;
+      };
+      defaultInputModes: string[];
+      defaultOutputModes: string[];
+      skills: Array<{
+        id: string;
+        name: string;
+        description: string;
+        tags: string[];
+      }>;
+    };
+    expect(cardBody).toMatchObject({
+      name: "Docs agent",
+      description: "A real A2A documentation agent.",
+      supportedInterfaces: [
+        {
+          url: "https://agent.example.com/a2a",
+          protocolBinding: "HTTP+JSON",
+          protocolVersion: "0.3",
+        },
+      ],
+      version: "1.0.0",
+      capabilities: {
+        streaming: false,
+        pushNotifications: false,
+      },
+      defaultInputModes: ["text/plain"],
+      defaultOutputModes: ["text/plain"],
+      skills: expect.arrayContaining([
+        expect.objectContaining({
+          id: "portable",
+          name: "portable",
+          description: "Reuse the portable workflow.",
+          tags: ["documentation"],
+        }),
+      ]),
+    });
+    expect(cardBody).not.toHaveProperty("url");
+    expect(cardBody).not.toHaveProperty("protocolVersion");
+    expect(cardBody).not.toHaveProperty("preferredTransport");
+    for (const skill of cardBody.skills) {
+      expect(skill).not.toHaveProperty("url");
+    }
+  });
+
+  it("uses preloaded Agent Skills when deployment filesystem paths are unavailable", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-preloaded-skills-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    const runtimeOnlyAgent = {
+      skills: "../runtime-skills-not-deployed",
+    };
+    const catalogOnly = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      agent: runtimeOnlyAgent,
+    });
+    const catalog = await catalogOnly.GET(
+      new Request("https://docs.example.com/.well-known/api-catalog"),
+    );
+    expect(catalog.status).toBe(200);
+
+    const preloaded = createPreloadedAgentSkill();
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      agent: runtimeOnlyAgent,
+      _preloadedAgentSkills: [preloaded],
+    });
+
+    const indexResponse = await GET(
+      new Request("https://docs.example.com/.well-known/agent-skills/index.json"),
+    );
+    expect(indexResponse.status).toBe(200);
+    await expect(indexResponse.json()).resolves.toMatchObject({
+      skills: expect.arrayContaining([
+        {
+          name: preloaded.name,
+          type: preloaded.type,
+          description: preloaded.description,
+          url: preloaded.url,
+          digest: preloaded.digest,
+        },
+      ]),
+    });
+
+    const artifact = await GET(new Request(`https://docs.example.com${preloaded.url}`));
+    expect(artifact.status).toBe(200);
+    expect(await artifact.text()).toBe(preloaded.skillDocument);
+
+    for (const route of ["/.well-known/agent.json", "/api/docs/agent/spec"]) {
+      const response = await GET(new Request(`https://docs.example.com${route}`));
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        skills: {
+          published: expect.arrayContaining([expect.objectContaining({ name: preloaded.name })]),
+        },
+      });
+    }
+  });
+
+  it("serves legacy discovery HEAD with GET validators and records HEAD analytics", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-discovery-head-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(join(rootDir, "AGENTS.md"), "# Custom agent instructions\n");
+    writeFileSync(
+      join(rootDir, "skill.md"),
+      `---
+name: docs
+description: Custom docs skill.
+---
+
+# Custom skill
+`,
+    );
+
+    const events: DocsAnalyticsEvent[] = [];
+    const { GET, HEAD, POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      analytics: {
+        console: false,
+        onEvent(event) {
+          events.push(event);
+        },
+      },
+    });
+    for (const path of ["/.well-known/agent.json", "/AGENTS.md", "/skill.md"]) {
+      const get = await GET(new Request(`http://localhost${path}`));
+      const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("etag")).toBe(get.headers.get("etag"));
+      expect(response.headers.get("content-digest")).toBe(get.headers.get("content-digest"));
+      expect(response.headers.get("last-modified")).toBe(get.headers.get("last-modified"));
+      expect(await response.text()).toBe("");
+      if (path === "/.well-known/agent.json") {
+        expect(response.headers.get("link")).toContain('rel="describedby"');
+        expect(response.headers.get("link")).toContain(
+          `type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+        );
+      }
+    }
+
+    expect(
+      events
+        .filter(
+          (event) =>
+            ["agent_spec_request", "agents_request", "skill_request"].includes(event.type) &&
+            event.properties?.method === "HEAD",
+        )
+        .map((event) => event.properties?.method),
+    ).toEqual(["HEAD", "HEAD", "HEAD"]);
+
+    const unsupported = await POST(
+      new Request("http://localhost/api/docs?format=agent-skills", { method: "POST" }),
+    );
+    expect(unsupported.status).toBe(405);
+    expect(unsupported.headers.get("allow")).toBe("GET, HEAD");
   });
 
   it("serves a root AGENTS.md file before falling back to generated agent instructions", async () => {
@@ -985,6 +2489,8 @@ Use the product-specific coding workflow first.
       rootDir,
       entry: "docs",
     });
+    const agentsPath = join(rootDir, "AGENTS.md");
+    const readFileSpy = vi.spyOn(fs, "readFileSync");
 
     const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
     const agentsApiText = await agentsApi.text();
@@ -1006,9 +2512,27 @@ Use the product-specific coding workflow first.
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(agentsApiText);
     }
+
+    expect(
+      readFileSpy.mock.calls.filter(([candidate]) => String(candidate) === agentsPath),
+    ).toHaveLength(1);
+
+    writeFileSync(
+      agentsPath,
+      `# Updated Agent Instructions
+
+Use the newly revised product workflow.
+`,
+    );
+    const updated = await GET(new Request("http://localhost/AGENTS.md"));
+    expect(await updated.text()).toContain("newly revised product workflow");
+    expect(
+      readFileSpy.mock.calls.filter(([candidate]) => String(candidate) === agentsPath),
+    ).toHaveLength(2);
+    readFileSpy.mockRestore();
   });
 
-  it("keeps Agent blocks out of the normal search index", async () => {
+  it("uses the human audience projection for normal search", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-search-route-"));
     tempDirs.push(rootDir);
 
@@ -1023,9 +2547,11 @@ title: "Introduction"
 
 Visible content.
 
-<Agent>
+<Human>Search should return this human-only coral token.</Human>
+
+<Audience only="agent">
 Search should not return this hidden agent-only zebra token.
-</Agent>
+</Audience>
 `,
     );
 
@@ -1033,6 +2559,24 @@ Search should not return this hidden agent-only zebra token.
 
     const { GET } = createDocsAPI({
       entry: "docs",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+      search: {
+        provider: "custom",
+        adapter: {
+          name: "stale-audience-index",
+          async search() {
+            return [
+              {
+                id: "stale-audience-hit",
+                url: "https://docs.example.com/docs",
+                content: "Introduction",
+                description: "Search should not return this hidden agent-only zebra token.",
+                type: "page",
+              },
+            ];
+          },
+        },
+      },
     });
 
     const response = await GET(
@@ -1044,6 +2588,35 @@ Search should not return this hidden agent-only zebra token.
       .join("\n");
 
     expect(renderedSearchText).not.toContain("agent-only zebra token");
+
+    const humanResponse = await GET(
+      new Request("http://localhost/api/docs?query=human-only%20coral%20token"),
+    );
+    const humanPayload = (await humanResponse.json()) as Array<{
+      content: string;
+      description?: string;
+    }>;
+    expect(humanPayload.some((result) => result.content.includes("Introduction"))).toBe(true);
+
+    const agentResponse = await GET(
+      new Request("http://localhost/api/docs?query=agent-only%20zebra%20token&audience=agent"),
+    );
+    const agentPayload = (await agentResponse.json()) as Array<{
+      content: string;
+      description?: string;
+    }>;
+    expect(agentPayload.some((result) => result.content.includes("Introduction"))).toBe(true);
+    expect(JSON.stringify(agentPayload)).not.toContain("human-only coral token");
+
+    const invalidAudienceResponse = await GET(
+      new Request("http://localhost/api/docs?query=agent-only%20zebra%20token&audience=Agent"),
+    );
+    const invalidAudiencePayload = (await invalidAudienceResponse.json()) as Array<{
+      content: string;
+      description?: string;
+    }>;
+    expect(JSON.stringify(invalidAudiencePayload)).not.toContain("agent-only zebra token");
+    expect(JSON.stringify(invalidAudiencePayload)).toContain("human-only coral token");
   });
 
   it("serves markdown through the default docs api route, including Agent blocks and preferring agent.md when present", async () => {
@@ -1053,14 +2626,36 @@ Search should not return this hidden agent-only zebra token.
     mkdirSync(join(rootDir, "app", "docs", "getting-started", "quickstart"), { recursive: true });
     mkdirSync(join(rootDir, "app", "docs", "overview"), { recursive: true });
     mkdirSync(join(rootDir, "app", "docs", "configuration"), { recursive: true });
+    const quickstartPath = join(
+      rootDir,
+      "app",
+      "docs",
+      "getting-started",
+      "quickstart",
+      "page.mdx",
+    );
     writeFileSync(
-      join(rootDir, "app", "docs", "getting-started", "quickstart", "page.mdx"),
+      quickstartPath,
       `---
 title: "Quickstart"
 description: "Start fast"
+lastmod: 2026-07-17
 related:
   - /docs/overview
   - /docs/configuration
+agent:
+  tokenBudget: 700
+  task: Start the docs app
+  outcome: The local docs route responds successfully.
+  appliesTo:
+    framework: nextjs
+    version: ">=16"
+  files:
+    - docs.config.ts
+  commands:
+    - pnpm dev
+  verification:
+    - expect: The docs route returns HTTP 200
 ---
 
 # Quickstart
@@ -1070,8 +2665,16 @@ Run \`pnpm dev\`.
 <Agent>
 Verify the onboarding command examples before changing this page.
 </Agent>
+
+<Human>Follow the visual dashboard walkthrough.</Human>
+
+<Audience only="agent">
+Run the deterministic onboarding verifier.
+</Audience>
 `,
     );
+    const quickstartLastModified = new Date("2026-07-18T14:23:45.000Z");
+    utimesSync(quickstartPath, quickstartLastModified, quickstartLastModified);
     writeFileSync(
       join(rootDir, "app", "docs", "overview", "page.mdx"),
       `---
@@ -1090,10 +2693,16 @@ This embedded agent block should be ignored because agent.md overrides the page.
 </Agent>
 `,
     );
+    const overviewAgentPath = join(rootDir, "app", "docs", "overview", "agent.md");
     writeFileSync(
-      join(rootDir, "app", "docs", "overview", "agent.md"),
-      "Use this page as the implementation map.\n",
+      overviewAgentPath,
+      `<Human>Open the overview dashboard.</Human>
+
+<Audience only="agent">Use this page as the implementation map.</Audience>
+`,
     );
+    const overviewAgentLastModified = new Date("2026-07-19T09:30:00.000Z");
+    utimesSync(overviewAgentPath, overviewAgentLastModified, overviewAgentLastModified);
     writeFileSync(
       join(rootDir, "app", "docs", "configuration", "page.mdx"),
       `---
@@ -1119,11 +2728,22 @@ Config content.
     );
     expect(fallbackResponse.status).toBe(200);
     expect(fallbackResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(fallbackResponse.headers.get("link")).toBe(
+    expect(fallbackResponse.headers.get("link")).toContain(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
+    expect(fallbackResponse.headers.get("last-modified")).toBe("Fri, 17 Jul 2026 00:00:00 GMT");
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
+    expect(fallbackDocument).toMatch(/^---\ntitle: "Quickstart"/);
+    expect(fallbackDocument).toContain(
+      'canonical_url: "http://localhost/docs/getting-started/quickstart"',
+    );
+    expect(fallbackDocument).toContain(
+      'markdown_url: "http://localhost/docs/getting-started/quickstart.md"',
+    );
+    expect(fallbackDocument).toMatch(/last_updated: "\d{4}-\d{2}-\d{2}"/);
+    expect(fallbackDocument).toContain("agent:\n  tokenBudget: 700");
+    expect(fallbackDocument).toContain('  task: "Start the docs app"');
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
     expect(fallbackDocument).toContain("LLM index: /llms.txt");
     expect(fallbackDocument).toContain(
@@ -1132,7 +2752,31 @@ Config content.
     expect(fallbackDocument).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
+    expect(fallbackDocument).toContain("Run the deterministic onboarding verifier.");
+    expect(fallbackDocument).not.toContain("Follow the visual dashboard walkthrough.");
+    expect(fallbackDocument).toContain("## Agent Contract");
+    expect(fallbackDocument).toContain("- Framework: `nextjs`");
+    expect(fallbackDocument).toContain("### Verification\n\n- The docs route returns HTTP 200");
     expect(fallbackDocument).not.toContain("<Agent>");
+
+    const { GET: getWithSitemapBaseUrl } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+    });
+    const sitemapBaseUrlResponse = await getWithSitemapBaseUrl(
+      new Request("http://localhost/api/docs?format=markdown&path=getting-started/quickstart"),
+    );
+    expect(sitemapBaseUrlResponse.headers.get("link")).toContain(
+      '<https://docs.example.com/docs/getting-started/quickstart>; rel="canonical"',
+    );
+    const sitemapBaseUrlDocument = await sitemapBaseUrlResponse.text();
+    expect(sitemapBaseUrlDocument).toContain(
+      'canonical_url: "https://docs.example.com/docs/getting-started/quickstart"',
+    );
+    expect(sitemapBaseUrlDocument).toContain(
+      'markdown_url: "https://docs.example.com/docs/getting-started/quickstart.md"',
+    );
 
     const { GET: getWithLlmsDisabled } = createDocsAPI({
       rootDir,
@@ -1148,24 +2792,71 @@ Config content.
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
     expect(agentResponse.status).toBe(200);
-    expect(await agentResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(agentResponse.headers.get("last-modified")).toBe("Sun, 19 Jul 2026 09:30:00 GMT");
+    const agentDocument = await agentResponse.text();
+    expect(agentDocument).toMatch(/^---\ntitle: "Overview"/);
+    expect(agentDocument).toContain('description: "Human overview"');
+    expect(agentDocument).toContain('canonical_url: "http://localhost/docs/overview"');
+    expect(agentDocument).toContain('markdown_url: "http://localhost/docs/overview.md"');
+    expect(agentDocument).toContain("Use this page as the implementation map.");
+    expect(agentDocument).not.toContain("Open the overview dashboard.");
+    expect(agentDocument).toContain("## Sitemap");
+
+    const agentSearchResponse = await GET(
+      new Request(
+        "http://localhost/api/docs?query=implementation%20map&audience=agent&response=structured",
+      ),
+    );
+    const agentSearchPayload = (await agentSearchResponse.json()) as {
+      results: Array<{ source?: { lastModified?: string } }>;
+    };
+    expect(agentSearchPayload.results[0]?.source?.lastModified).toBe(
+      overviewAgentLastModified.toISOString(),
+    );
 
     const rewrittenFallbackResponse = await GET(
       new Request("http://localhost/docs/getting-started/quickstart.md"),
     );
     expect(rewrittenFallbackResponse.status).toBe(200);
     expect(rewrittenFallbackResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(rewrittenFallbackResponse.headers.get("link")).toBe(
+    expect(rewrittenFallbackResponse.headers.get("link")).toContain(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
+    );
+    expect(rewrittenFallbackResponse.headers.get("content-location")).toBe(
+      "http://localhost/docs/getting-started/quickstart.md",
+    );
+    expect(rewrittenFallbackResponse.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(rewrittenFallbackResponse.headers.get("content-digest")).toMatch(
+      /^sha-256=:[A-Za-z0-9+/]{43}=:$/u,
+    );
+    expect(rewrittenFallbackResponse.headers.get("last-modified")).toBe(
+      "Fri, 17 Jul 2026 00:00:00 GMT",
     );
     expect(rewrittenFallbackResponse.headers.get("vary")).toBeNull();
     expect(await rewrittenFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
+    const conditionalResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart.md", {
+        headers: { "If-None-Match": rewrittenFallbackResponse.headers.get("etag") ?? "" },
+      }),
+    );
+    expect(conditionalResponse.status).toBe(304);
+    expect(await conditionalResponse.text()).toBe("");
+
+    const dateConditionalResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart.md", {
+        headers: { "If-Modified-Since": "Fri, 17 Jul 2026 00:00:00 GMT" },
+      }),
+    );
+    expect(dateConditionalResponse.status).toBe(304);
+    expect(await dateConditionalResponse.text()).toBe("");
 
     const rewrittenAgentResponse = await GET(new Request("http://localhost/docs/overview.md"));
     expect(rewrittenAgentResponse.status).toBe(200);
-    expect(await rewrittenAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await rewrittenAgentResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
 
     const acceptFallbackResponse = await GET(
       new Request("http://localhost/docs/getting-started/quickstart", {
@@ -1174,7 +2865,7 @@ Config content.
     );
     expect(acceptFallbackResponse.status).toBe(200);
     expect(acceptFallbackResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(acceptFallbackResponse.headers.get("link")).toBe(
+    expect(acceptFallbackResponse.headers.get("link")).toContain(
       '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
     );
     expect(acceptFallbackResponse.headers.get("vary")).toBe("Accept");
@@ -1189,7 +2880,7 @@ Config content.
     );
     expect(acceptAgentResponse.status).toBe(200);
     expect(acceptAgentResponse.headers.get("vary")).toBe("Accept");
-    expect(await acceptAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await acceptAgentResponse.text()).toContain("Use this page as the implementation map.");
 
     const weightedAcceptAgentResponse = await GET(
       new Request("http://localhost/docs/overview", {
@@ -1199,9 +2890,17 @@ Config content.
     expect(weightedAcceptAgentResponse.status).toBe(200);
     expect(weightedAcceptAgentResponse.headers.get("content-type")).toContain("text/markdown");
     expect(weightedAcceptAgentResponse.headers.get("vary")).toBe("Accept");
-    expect(await weightedAcceptAgentResponse.text()).toBe(
-      "Use this page as the implementation map.\n",
+    expect(await weightedAcceptAgentResponse.text()).toContain(
+      "Use this page as the implementation map.",
     );
+
+    const htmlPreferredResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "text/html;q=1, text/markdown;q=0.5" },
+      }),
+    );
+    expect(htmlPreferredResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await htmlPreferredResponse.text()).toBe("[]");
 
     const signatureAgentResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview", {
@@ -1210,7 +2909,9 @@ Config content.
     );
     expect(signatureAgentResponse.status).toBe(200);
     expect(signatureAgentResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
-    expect(await signatureAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await signatureAgentResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
 
     const signatureAgentPageResponse = await GET(
       new Request("http://localhost/docs/overview", {
@@ -1219,13 +2920,51 @@ Config content.
     );
     expect(signatureAgentPageResponse.status).toBe(200);
     expect(signatureAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(signatureAgentPageResponse.headers.get("link")).toBe(
+    expect(signatureAgentPageResponse.headers.get("link")).toContain(
       '<http://localhost/docs/overview>; rel="canonical"',
     );
     expect(signatureAgentPageResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
-    expect(await signatureAgentPageResponse.text()).toBe(
-      "Use this page as the implementation map.\n",
+    expect(await signatureAgentPageResponse.text()).toContain(
+      "Use this page as the implementation map.",
     );
+
+    const userAgentPageResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { "user-agent": "ClaudeBot/1.0" },
+      }),
+    );
+    expect(userAgentPageResponse.status).toBe(200);
+    expect(userAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(userAgentPageResponse.headers.get("link")).toContain(
+      '<http://localhost/docs/overview>; rel="canonical"',
+    );
+    expect(userAgentPageResponse.headers.get("vary")).toBe("User-Agent");
+    expect(await userAgentPageResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
+
+    const heuristicPageResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+      }),
+    );
+    expect(heuristicPageResponse.status).toBe(200);
+    expect(heuristicPageResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(heuristicPageResponse.headers.get("vary")).toBe("User-Agent, Sec-Fetch-Mode");
+    expect(await heuristicPageResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
+
+    const browserLikeHeuristicResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: {
+          "user-agent": "AcmeAgentFetcher/1.0",
+          "sec-fetch-mode": "navigate",
+        },
+      }),
+    );
+    expect(browserLikeHeuristicResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await browserLikeHeuristicResponse.text()).toBe("[]");
 
     const zeroQualityAcceptResponse = await GET(
       new Request("http://localhost/docs/overview", {
@@ -1287,14 +3026,25 @@ Install the package.
         headers: { accept: "text/markdown" },
       }),
     );
+    await GET(
+      new Request("http://localhost/docs/guides/setup", {
+        headers: { "user-agent": "ClaudeBot/1.0" },
+      }),
+    );
 
     const agentReads = events.filter((event) => event.type === "agent_read");
-    expect(agentReads).toHaveLength(3);
+    expect(agentReads).toHaveLength(4);
     expect(agentReads.map((event) => event.properties?.delivery)).toEqual([
       "api_format",
       "md_route",
       "accept_header",
+      "user_agent",
     ]);
+    expect(agentReads.find((event) => event.properties?.delivery === "user_agent")).toMatchObject({
+      properties: expect.objectContaining({
+        userAgent: "ClaudeBot/1.0",
+      }),
+    });
     expect(agentReads).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1477,12 +3227,24 @@ Install the package.
         queryLength: 7,
       }),
     });
-    expect(events.find((event) => event.type === "agent_feedback_submit")).toMatchObject({
+    const agentFeedbackSubmitEvent = events.find((event) => event.type === "agent_feedback_submit");
+    expect(agentFeedbackSubmitEvent).toMatchObject({
       properties: expect.objectContaining({
+        feedbackKind: "agent",
         handled: true,
+        hasContext: true,
+        hasPayload: true,
+        agentFeedbackContext: {
+          page: "/docs/guides/setup",
+        },
+        contextPage: "/docs/guides/setup",
         payloadKeys: ["task", "outcome"],
+        payloadFieldCount: 2,
       }),
     });
+    expect(agentFeedbackSubmitEvent?.input).toBeUndefined();
+    expect(agentFeedbackSubmitEvent?.properties).not.toHaveProperty("payload");
+    expect(agentFeedbackSubmitEvent?.properties).not.toHaveProperty("agentFeedbackPayload");
     expect(events.find((event) => event.type === "api_ai_error")).toMatchObject({
       properties: expect.objectContaining({
         reason: "disabled",
@@ -1604,6 +3366,206 @@ Install the framework with pnpm.
       );
     } finally {
       globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("uses Docs Cloud provider config for Ask AI while keeping the chat SSE contract", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-docs-cloud-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Installation"
+---
+
+# Installation
+
+Install the framework with pnpm.
+`,
+    );
+
+    const originalFetch = globalThis.fetch;
+    const originalProjectId = process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalNextProjectId = process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalServerProjectId = process.env.DOCS_CLOUD_PROJECT_ID;
+    const originalApiKey = process.env.CUSTOM_DOCS_CLOUD_KEY;
+
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_cloud";
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    delete process.env.DOCS_CLOUD_PROJECT_ID;
+    process.env.CUSTOM_DOCS_CLOUD_KEY = "cloud-key";
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ answer: "Use Docs Cloud for hosted Ask AI." }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      }),
+    ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        ai: {
+          enabled: true,
+          provider: "docs-cloud",
+        },
+        cloud: {
+          apiKey: { env: "CUSTOM_DOCS_CLOUD_KEY" },
+        },
+        analytics: false,
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How do I install it?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("text/event-stream");
+      expect(await response.text()).toContain("Use Docs Cloud for hosted Ask AI.");
+
+      const [cloudUrl, cloudInit] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
+      expect(cloudUrl).toBe("https://api.farming-labs.dev/v1/projects/project_cloud/knowledge/ask");
+      expect(cloudInit?.headers).toMatchObject({
+        Authorization: "Bearer cloud-key",
+      });
+      expect(JSON.parse(String(cloudInit?.body))).toMatchObject({
+        question: "How do I install it?",
+        answerMode: "auto",
+        answerStyle: "public",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalProjectId === undefined) delete process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = originalProjectId;
+      if (originalNextProjectId === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = originalNextProjectId;
+      if (originalServerProjectId === undefined) delete process.env.DOCS_CLOUD_PROJECT_ID;
+      else process.env.DOCS_CLOUD_PROJECT_ID = originalServerProjectId;
+      if (originalApiKey === undefined) delete process.env.CUSTOM_DOCS_CLOUD_KEY;
+      else process.env.CUSTOM_DOCS_CLOUD_KEY = originalApiKey;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("reads Docs Cloud API key env from docs.config for Ask AI", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-docs-cloud-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Configuration"
+---
+
+# Configuration
+
+Configure the framework with docs.config.ts.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "CONFIG_DOCS_CLOUD_KEY" },
+  },
+});
+`,
+    );
+
+    const originalFetch = globalThis.fetch;
+    const originalProjectId = process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalNextProjectId = process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalServerProjectId = process.env.DOCS_CLOUD_PROJECT_ID;
+    const originalDefaultApiKey = process.env.DOCS_CLOUD_API_KEY;
+    const originalApiKey = process.env.CONFIG_DOCS_CLOUD_KEY;
+    const originalApiUrl = process.env.DOCS_CLOUD_API_URL;
+    const originalPublicApiUrl = process.env.PUBLIC_DOCS_CLOUD_URL;
+    const originalNextPublicApiUrl = process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
+
+    process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_config";
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    delete process.env.DOCS_CLOUD_PROJECT_ID;
+    delete process.env.DOCS_CLOUD_API_KEY;
+    delete process.env.DOCS_CLOUD_API_URL;
+    delete process.env.PUBLIC_DOCS_CLOUD_URL;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
+    process.env.CONFIG_DOCS_CLOUD_KEY = "config-cloud-key";
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ answer: "The config key reached Docs Cloud." }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      }),
+    ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        analytics: false,
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How do I configure it?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain("The config key reached Docs Cloud.");
+
+      const [cloudUrl, cloudInit] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
+      expect(cloudUrl).toBe(
+        "https://api.farming-labs.dev/v1/projects/project_config/knowledge/ask",
+      );
+      expect(cloudInit?.headers).toMatchObject({
+        Authorization: "Bearer config-cloud-key",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalProjectId === undefined) delete process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = originalProjectId;
+      if (originalNextProjectId === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = originalNextProjectId;
+      if (originalServerProjectId === undefined) delete process.env.DOCS_CLOUD_PROJECT_ID;
+      else process.env.DOCS_CLOUD_PROJECT_ID = originalServerProjectId;
+      if (originalDefaultApiKey === undefined) delete process.env.DOCS_CLOUD_API_KEY;
+      else process.env.DOCS_CLOUD_API_KEY = originalDefaultApiKey;
+      if (originalApiKey === undefined) delete process.env.CONFIG_DOCS_CLOUD_KEY;
+      else process.env.CONFIG_DOCS_CLOUD_KEY = originalApiKey;
+      if (originalApiUrl === undefined) delete process.env.DOCS_CLOUD_API_URL;
+      else process.env.DOCS_CLOUD_API_URL = originalApiUrl;
+      if (originalPublicApiUrl === undefined) delete process.env.PUBLIC_DOCS_CLOUD_URL;
+      else process.env.PUBLIC_DOCS_CLOUD_URL = originalPublicApiUrl;
+      if (originalNextPublicApiUrl === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_URL;
+      else process.env.NEXT_PUBLIC_DOCS_CLOUD_URL = originalNextPublicApiUrl;
       vi.restoreAllMocks();
     }
   });
@@ -1773,11 +3735,12 @@ Install the framework with pnpm.
     }
   });
 
-  it("returns 404 for markdown mode when the requested page does not exist", async () => {
+  it("returns actionable markdown recovery when the requested page does not exist", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-markdown-missing-"));
     tempDirs.push(rootDir);
 
     mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    mkdirSync(join(rootDir, "app", "docs", "guides", "quickstart"), { recursive: true });
     writeFileSync(
       join(rootDir, "app", "docs", "page.mdx"),
       `---
@@ -1785,6 +3748,16 @@ title: "Home"
 ---
 
 # Home
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "guides", "quickstart", "page.mdx"),
+      `---
+title: "Quickstart"
+description: "Start building quickly"
+---
+
+# Quickstart
 `,
     );
 
@@ -1795,17 +3768,32 @@ title: "Home"
       entry: "docs",
     });
 
-    const response = await GET(
-      new Request("http://localhost/api/docs?format=markdown&path=missing"),
-    );
+    const response = await GET(new Request("http://localhost/api/docs?format=markdown&path=quick"));
     expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toContain("text/markdown");
     const notFoundDocument = await response.text();
+    expect(notFoundDocument).toMatch(/^---\ntitle: "Docs Page Not Found"/);
+    expect(notFoundDocument).toContain('canonical_url: "http://localhost/docs/quick"');
+    expect(notFoundDocument).toContain('markdown_url: "http://localhost/docs/quick.md"');
     expect(notFoundDocument).toContain("# Docs Page Not Found");
-    expect(notFoundDocument).toContain("`/docs/missing.md`");
+    expect(notFoundDocument).toContain("`/docs/quick.md`");
+    expect(notFoundDocument).toContain("## Closest Matches");
+    expect(notFoundDocument).toContain("[Quickstart](/docs/guides/quickstart.md)");
     expect(notFoundDocument).toContain("`/.well-known/agent.json`");
-    expect(notFoundDocument).toContain("`/api/docs?query={query}`");
+    expect(notFoundDocument).toContain("`/api/docs?audience=agent&response=facets`");
+    expect(notFoundDocument).toContain(
+      "`/api/docs?query={query}&audience=agent&response=structured`",
+    );
     expect(notFoundDocument).toContain("`/sitemap.md`");
+    expect(notFoundDocument).toContain("## Sitemap");
+
+    const redirectResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=guides/quikstart"),
+    );
+    expect(redirectResponse.status).toBe(307);
+    expect(redirectResponse.headers.get("location")).toBe(
+      "http://localhost/docs/guides/quickstart.md",
+    );
   });
 
   it("serves the agent discovery spec through the shared docs api handler", async () => {
@@ -1851,6 +3839,8 @@ title: "Home"
         tools: {
           listPages: true,
           readPage: true,
+          listTasks: false,
+          readTask: true,
           searchDocs: false,
           getNavigation: true,
         },
@@ -1864,8 +3854,15 @@ title: "Home"
     const response = await GET(new Request("http://localhost/api/docs/agent/spec"));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("link")).toContain("</.well-known/api-catalog>");
+    expect(response.headers.get("link")).toContain("</.well-known/agent-skills/index.json>");
+    expect(response.headers.get("link")).toContain(
+      `<${DOCS_AGENT_MANIFEST_SCHEMA_URI}>; rel="describedby"; type="${DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE}"`,
+    );
 
     const spec = (await response.json()) as {
+      $schema: string;
+      format: string;
       version: string;
       site: { title: string; description?: string; entry: string; baseUrl: string };
       locales: {
@@ -1877,6 +3874,9 @@ title: "Home"
       };
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
+      apiCatalog: Record<string, string | boolean>;
+      config: { format: string; endpoint: string };
+      agentContract: Record<string, unknown>;
       openapi: Record<string, unknown>;
       markdown: Record<string, unknown>;
       llms: Record<string, string | boolean>;
@@ -1888,6 +3888,7 @@ title: "Home"
         queryParam: string;
         localeParam: string;
       };
+      contentChanges: Record<string, unknown>;
       robots: { enabled: boolean; route: string; defaultRoute: string };
       structuredData: Record<string, unknown>;
       skills: {
@@ -1897,6 +3898,7 @@ title: "Home"
         wellKnown: string;
         api: string;
         generatedFallback: boolean;
+        discovery: Record<string, string>;
         registry: string;
         install: string;
         recommended: Array<{ name: string; description: string }>;
@@ -1917,7 +3919,12 @@ title: "Home"
       instructions: Record<string, boolean>;
     };
 
-    expect(spec.version).toBe("1");
+    expect(spec.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
+    expect(spec.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
+    expect(spec.version).toBe(DOCS_AGENT_MANIFEST_VERSION);
+    expect(validateAgentManifest(spec), JSON.stringify(validateAgentManifest.errors, null, 2)).toBe(
+      true,
+    );
     expect(spec.site).toEqual({
       title: "Agent Docs",
       description: "Machine-readable documentation",
@@ -1933,13 +3940,18 @@ title: "Home"
     });
     expect(spec.capabilities).toEqual({
       markdownRoutes: true,
+      markdownSectionDiscovery: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: true,
       skills: true,
+      apiCatalog: true,
+      agentSkillsDiscovery: true,
       mcp: true,
       search: true,
+      contentChanges: true,
       sitemap: true,
       robots: true,
       structuredData: true,
@@ -1956,9 +3968,42 @@ title: "Home"
       agentSpecWellKnown: "/.well-known/agent",
       agentSpecWellKnownJson: "/.well-known/agent.json",
       agentSpecQuery: "/api/docs?agent=spec",
+      config: "/api/docs?format=config",
+      diagnostics: "/api/docs?format=diagnostics",
       agents: "/api/docs?format=agents",
+      apiCatalog: "/.well-known/api-catalog",
+      apiCatalogQuery: "/api/docs?format=api-catalog",
+      agentSkillsIndex: "/.well-known/agent-skills/index.json",
       openapi: "/api/docs?format=openapi",
+      contentChanges: "/api/docs?audience=agent&response=changes",
     });
+    expect(spec.apiCatalog).toEqual({
+      enabled: true,
+      route: "/.well-known/api-catalog",
+      api: "/api/docs?format=api-catalog",
+      mediaType: "application/linkset+json",
+      profile: "https://www.rfc-editor.org/info/rfc9727",
+    });
+    expect(spec.config).toMatchObject({
+      format: "docs-config-map.v1",
+      endpoint: "/api/docs?format=config",
+    });
+    expect(spec.contentChanges).toMatchObject({
+      enabled: true,
+      endpoint: "/api/docs?audience=agent&response=changes",
+      format: "docs-content-changes.v1",
+      sinceParam: "since",
+      generationField: "indexGeneration",
+      resetRequiredField: "resetRequired",
+      bodyFree: true,
+      etag: true,
+    });
+    expect(spec.agentContract).toMatchObject({
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      mcpTools: { read: "read_task" },
+    });
+    expect(spec.agentContract).not.toHaveProperty("mcpTools.list");
     expect(spec.openapi).toEqual({
       enabled: true,
       url: "/api/docs?format=openapi",
@@ -1973,6 +4018,7 @@ title: "Home"
       pagePattern: "/docs/{slug}.md",
       rootPage: "/docs.md",
       apiPattern: "/api/docs?format=markdown&path={slug}",
+      resolutionOrder: ["agent.md", "agent audience projection", "shared page markdown"],
     });
     expect(spec.llms).toEqual({
       enabled: true,
@@ -1997,9 +4043,34 @@ title: "Home"
     expect(spec.search).toEqual({
       enabled: true,
       endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
+      structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
+      facetsEndpoint: "/api/docs?audience=agent&response=facets",
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
+      audienceParam: "audience",
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      facetsResponseValue: "facets",
+      responseFormat: "docs-search.v1",
+      facetsResponseFormat: "docs-search-facets.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
+      facetParam: "facet",
+      limitParam: "limit",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
     });
     expect(spec.robots).toEqual({
       enabled: true,
@@ -2010,9 +4081,10 @@ title: "Home"
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
     });
     expect(spec.skills).toEqual({
       enabled: true,
@@ -2021,6 +4093,35 @@ title: "Home"
       wellKnown: "/.well-known/skill.md",
       api: "/api/docs?format=skill",
       generatedFallback: true,
+      discovery: {
+        schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+        index: "/.well-known/agent-skills/index.json",
+        artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        archive: "/.well-known/agent-skills/{name}.tar.gz",
+        file: "/.well-known/agent-skills/{name}/{path}",
+        legacyIndex: "/.well-known/skills/index.json",
+        apiIndex: "/api/docs?format=agent-skills",
+        apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        apiFile: "/api/docs?format=agent-skill-file&name={name}&path={path}",
+        digest: "sha256",
+      },
+      published: [
+        {
+          name: "docs",
+          type: "skill-md",
+          description:
+            "Use Agent Docs through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.",
+          url: "/.well-known/agent-skills/docs/SKILL.md",
+          digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+          files: [
+            {
+              path: "SKILL.md",
+              url: "/.well-known/agent-skills/docs/SKILL.md",
+              digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+            },
+          ],
+        },
+      ],
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [
@@ -2038,14 +4139,27 @@ title: "Home"
       publicEndpoint: "/mcp",
       wellKnownEndpoint: "/.well-known/mcp",
       publicEndpoints: ["/mcp", "/.well-known/mcp"],
-      canonicalEndpoint: "/api/docs/mcp",
+      canonicalEndpoint: "/internal/docs/mcp",
       name: "Agent Docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
+        listPageSections: true,
         readPage: true,
+        readPages: true,
+        listTasks: false,
+        readTask: true,
         searchDocs: false,
+        searchFacets: true,
+        submitFeedback: true,
+        listContentChanges: true,
+        hydrateContentChanges: true,
         getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: true,
+        getContext: true,
+        getTrustMetadata: true,
       },
     });
     expect(spec.feedback).toMatchObject({
@@ -2060,12 +4174,228 @@ title: "Home"
       doNotAssumeFeedbackPayloadShape: true,
     });
 
+    const compactResponse = await GET(
+      new Request("http://localhost/.well-known/agent.json?profile=compact"),
+    );
+    const compactText = await compactResponse.text();
+    const compactSpec = JSON.parse(compactText) as {
+      profile: string;
+      skills: { published: Array<{ fileCount: number; files: unknown[] }> };
+    };
+    expect(compactResponse.headers.get("cache-control")).toContain("stale-while-revalidate=86400");
+    expect(compactText).not.toContain("\n  ");
+    expect(compactText.length).toBeLessThan(JSON.stringify(spec, null, 2).length);
+    expect(compactSpec.profile).toBe("compact");
+    expect(compactSpec.skills.published[0]).toMatchObject({ fileCount: 1, files: [] });
+
     for (const path of ["/.well-known/agent", "/.well-known/agent.json"]) {
       const wellKnownResponse = await GET(new Request(`http://localhost${path}`));
       expect(wellKnownResponse.status).toBe(200);
       expect(wellKnownResponse.headers.get("content-type")).toContain("application/json");
+      expect(wellKnownResponse.headers.get("link")).toContain('rel="api-catalog"');
+      expect(wellKnownResponse.headers.get("link")).toContain('rel="describedby"');
       expect(await wellKnownResponse.json()).toEqual(spec);
     }
+  });
+
+  it("serves a docs config map through the shared GET handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-config-map-"));
+    tempDirs.push(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      search: {
+        provider: "algolia",
+        appId: "APP_ID",
+        indexName: "docs",
+        searchApiKey: "search-secret",
+      },
+      feedback: {
+        onFeedback() {},
+      },
+      mcp: {
+        enabled: true,
+        tools: {
+          readPage: true,
+        },
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=config"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+
+    const config = (await response.json()) as {
+      format: string;
+      values: Record<string, any>;
+      pointers: Record<string, { path: string; kind: string }>;
+    };
+
+    expect(config.format).toBe("docs-config-map.v1");
+    expect(config.values.entry).toBe("docs");
+    expect(config.values.search).toMatchObject({
+      provider: "algolia",
+      appId: "APP_ID",
+      indexName: "docs",
+      searchApiKey: {
+        $kind: "secret",
+        value: "[redacted]",
+      },
+    });
+    expect(config.values.feedback).toMatchObject({
+      onFeedback: {
+        $kind: "function",
+        name: "onFeedback",
+      },
+    });
+    expect(config.pointers["/mcp/tools/readPage"]).toEqual({
+      path: "mcp.tools.readPage",
+      kind: "boolean",
+    });
+  });
+
+  it("serves docs diagnostics through the shared GET handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-diagnostics-"));
+    tempDirs.push(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      search: {
+        provider: "algolia",
+        appId: "APP_ID",
+        indexName: "docs",
+        searchApiKey: "search-secret",
+      },
+      ai: {
+        enabled: true,
+        model: "gpt-4o-mini",
+      },
+      mcp: {
+        enabled: true,
+        tools: {
+          readPage: true,
+          searchDocs: false,
+        },
+      },
+      feedback: {
+        agent: false,
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=diagnostics"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex");
+
+    const diagnostics = (await response.json()) as {
+      format: string;
+      ok: boolean;
+      adapter: string | null;
+      routes: Record<string, string | null>;
+      features: Record<string, any>;
+      warnings: Array<{ code: string }>;
+      errors: Array<{ code: string }>;
+    };
+
+    expect(diagnostics).toMatchObject({
+      format: "docs-diagnostics.v1",
+      ok: true,
+      adapter: "next",
+      routes: {
+        docs: "/docs",
+        api: "/api/docs",
+        config: "/api/docs?format=config",
+        diagnostics: "/api/docs?format=diagnostics",
+        search: "/api/docs?query={query}",
+        agentSearch: "/api/docs?query={query}&audience=agent",
+        askAi: "/api/docs",
+      },
+      features: {
+        search: {
+          status: "enabled",
+          provider: "algolia",
+          transport: "GET",
+          routes: {
+            human: "/api/docs?query={query}",
+            agent: "/api/docs?query={query}&audience=agent",
+          },
+          agentEndpoint: "/api/docs?query={query}&audience=agent",
+          audienceParam: "audience",
+          defaultAudience: "human",
+          supportedAudiences: ["human", "agent"],
+        },
+        ai: {
+          status: "enabled",
+          transport: "POST",
+        },
+        mcp: {
+          status: "enabled",
+          tools: {
+            readPage: true,
+            searchDocs: false,
+          },
+        },
+        feedback: {
+          status: "enabled",
+          human: true,
+          agent: false,
+        },
+      },
+    });
+    expect(diagnostics.warnings).toEqual([]);
+    expect(diagnostics.errors).toEqual([]);
+    expect(JSON.stringify(diagnostics)).not.toContain("search-secret");
+  });
+
+  it("reports a top-level apiCatalog opt-out in docs diagnostics", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-diagnostics-api-catalog-"));
+    tempDirs.push(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiCatalog: false,
+      llmsTxt: { apiCatalog: true },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=diagnostics"));
+    expect(response.status).toBe(200);
+
+    const diagnostics = (await response.json()) as {
+      routes: Record<string, string | null>;
+      features: Record<string, { status: string; route?: string | null }>;
+    };
+    expect(diagnostics.routes.apiCatalog).toBeNull();
+    expect(diagnostics.features.apiCatalog).toMatchObject({
+      status: "disabled",
+      route: null,
+    });
+  });
+
+  it("uses the resolved public docsPath in docs diagnostics", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-diagnostics-docspath-"));
+    tempDirs.push(rootDir);
+
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      'export default { entry: "docs", docsPath: "guides" };\n',
+    );
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=diagnostics"));
+    expect(response.status).toBe(200);
+
+    const diagnostics = (await response.json()) as {
+      routes: Record<string, string | null>;
+    };
+
+    expect(diagnostics.routes.docs).toBe("/guides");
   });
 
   it("serves the agent discovery spec through the rewritten query form", async () => {
@@ -2099,11 +4429,20 @@ title: "Home"
         fallbackQueryParam: string;
       };
       capabilities: Record<string, boolean>;
+      agentContract: Record<string, unknown>;
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: Record<string, string | boolean>;
       agents: Record<string, unknown>;
       openapi: Record<string, unknown>;
-      search: { enabled: boolean; endpoint: string; method: string };
+      search: {
+        enabled: boolean;
+        endpoint: string;
+        agentEndpoint: string;
+        method: string;
+        audienceParam: string;
+        defaultAudience: string;
+        supportedAudiences: string[];
+      };
       robots: { enabled: boolean; route: string; defaultRoute: string };
       structuredData: Record<string, unknown>;
       skills: {
@@ -2113,6 +4452,7 @@ title: "Home"
         wellKnown: string;
         api: string;
         generatedFallback: boolean;
+        discovery: Record<string, string>;
         registry: string;
         install: string;
       };
@@ -2142,13 +4482,18 @@ title: "Home"
     });
     expect(spec.capabilities).toEqual({
       markdownRoutes: true,
+      markdownSectionDiscovery: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      structuredAgentContracts: true,
       agents: true,
       llms: true,
       skills: true,
+      apiCatalog: true,
+      agentSkillsDiscovery: true,
       mcp: false,
       search: false,
+      contentChanges: true,
       sitemap: true,
       robots: true,
       structuredData: true,
@@ -2157,6 +4502,7 @@ title: "Home"
       agentFeedback: false,
       locales: false,
     });
+    expect(spec.agentContract).not.toHaveProperty("mcpTools");
     expect(spec.openapi).toMatchObject({
       enabled: false,
       url: null,
@@ -2189,7 +4535,11 @@ title: "Home"
     expect(spec.search).toMatchObject({
       enabled: false,
       endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
       method: "GET",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
     });
     expect(spec.robots).toEqual({
       enabled: true,
@@ -2208,6 +4558,14 @@ title: "Home"
       wellKnown: "/.well-known/skill.md",
       api: "/api/docs?format=skill",
       generatedFallback: true,
+      discovery: {
+        schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+        index: "/.well-known/agent-skills/index.json",
+        artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        apiIndex: "/api/docs?format=agent-skills",
+        apiArtifact: "/api/docs?format=agent-skill&name={name}",
+        digest: "sha256",
+      },
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
     });
@@ -2225,6 +4583,254 @@ title: "Home"
       schema: "/api/docs/agent/feedback/schema",
       submit: "/api/docs/agent/feedback",
     });
+  });
+
+  it("keeps OAuth protected-resource discovery aligned with the core agent spec", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-spec-oauth-mcp-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      mcp: {
+        route: "/internal/mcp",
+        security: {
+          authenticate: async () => ({ id: "reader", scopes: ["docs:read"] }),
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            scopesSupported: ["docs:read"],
+            requiredScopes: ["docs:read"],
+          },
+        },
+      },
+    });
+
+    const response = await GET(new Request("https://docs.example.com/api/docs?agent=spec"));
+    expect(response.status).toBe(200);
+    const spec = (await response.json()) as {
+      mcp: { canonicalEndpoint: string; protectedResource?: Record<string, unknown> };
+    };
+    expect(spec.mcp).toMatchObject({
+      canonicalEndpoint: "/internal/mcp",
+      protectedResource: {
+        metadataEndpoints: [
+          "/.well-known/oauth-protected-resource/internal/mcp",
+          "/.well-known/oauth-protected-resource/mcp",
+          "/.well-known/oauth-protected-resource/.well-known/mcp",
+        ],
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read"],
+        requiredScopes: ["docs:read"],
+      },
+    });
+  });
+
+  it("advertises the API route that serves a query-form agent manifest", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-custom-agent-spec-route-"));
+    tempDirs.push(rootDir);
+
+    const parseManifest = async (response: Response) => {
+      expect(response.status).toBe(200);
+      return (await response.json()) as {
+        api: Record<string, string>;
+        apiCatalog: { api: string | null };
+        config: { endpoint: string };
+        markdown: { apiPattern: string };
+        llms: { txt: string; full: string };
+        openapi: { enabled: boolean; url: string | null };
+        skills: {
+          api: string;
+          discovery: { apiIndex: string; apiArtifact: string };
+        };
+      };
+    };
+
+    const inferred = createDocsAPI({ rootDir, entry: "docs", apiReference: true });
+    const inferredManifest = await parseManifest(
+      await inferred.GET(new Request("http://localhost/api/internal/docs?agent=spec")),
+    );
+
+    expect(inferredManifest.api).toMatchObject({
+      docs: "/api/internal/docs",
+      config: "/api/internal/docs?format=config",
+      diagnostics: "/api/internal/docs?format=diagnostics",
+      agentSpec: "/api/internal/docs?agent=spec",
+      agentSpecQuery: "/api/internal/docs?agent=spec",
+      apiCatalogQuery: "/api/internal/docs?format=api-catalog",
+    });
+    expect(inferredManifest.apiCatalog.api).toBe("/api/internal/docs?format=api-catalog");
+    expect(inferredManifest.config.endpoint).toBe("/api/internal/docs?format=config");
+    expect(inferredManifest.markdown.apiPattern).toBe(
+      "/api/internal/docs?format=markdown&path={slug}",
+    );
+    expect(inferredManifest.llms).toMatchObject({
+      txt: "/api/internal/docs?format=llms",
+      full: "/api/internal/docs?format=llms-full",
+    });
+    expect(inferredManifest.skills).toMatchObject({
+      api: "/api/internal/docs?format=skill",
+      discovery: {
+        apiIndex: "/api/internal/docs?format=agent-skills",
+        apiArtifact: "/api/internal/docs?format=agent-skill&name={name}",
+      },
+    });
+
+    const inferredDiagnostics = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=diagnostics"),
+    );
+    expect(await inferredDiagnostics.json()).toMatchObject({
+      routes: {
+        api: "/api/internal/docs",
+        config: "/api/internal/docs?format=config",
+      },
+    });
+
+    const inferredSkill = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=skill"),
+    );
+    const inferredSkillText = await inferredSkill.text();
+    expect(inferredSkillText).toContain("/api/internal/docs?agent=spec");
+    expect(inferredSkillText).toContain("/api/internal/docs?query={query}");
+    expect(inferredSkillText).toContain("/api/internal/docs?format=agents");
+
+    const inferredSkillArtifact = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=agent-skill&name=docs"),
+    );
+    expect(await inferredSkillArtifact.text()).toContain("/api/internal/docs?format=skill");
+
+    const inferredLlms = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=llms"),
+    );
+    const inferredLlmsText = await inferredLlms.text();
+    expect(inferredLlmsText).toContain("/api/internal/docs?format=openapi");
+    expect(inferredLlmsText).not.toContain("/api/docs?format=openapi");
+
+    const inferredPublicLlms = await inferred.GET(new Request("http://localhost/llms.txt"));
+    const inferredPublicLlmsText = await inferredPublicLlms.text();
+    expect(inferredPublicLlmsText).toContain("/api/docs?format=openapi");
+    expect(inferredPublicLlmsText).not.toContain("/api/internal/docs?format=openapi");
+
+    const inferredLlmsAfterPublic = await inferred.GET(
+      new Request("http://localhost/api/internal/docs?format=llms"),
+    );
+    const inferredLlmsAfterPublicText = await inferredLlmsAfterPublic.text();
+    expect(inferredLlmsAfterPublicText).toContain("/api/internal/docs?format=openapi");
+    expect(inferredLlmsAfterPublicText).not.toContain("/api/docs?format=openapi");
+
+    const configured = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiRoute: "api/internal/docs/",
+      apiReference: {
+        enabled: true,
+        path: "api-reference",
+      },
+    });
+    const wellKnownManifest = await parseManifest(
+      await configured.GET(new Request("http://localhost/.well-known/agent.json")),
+    );
+    expect(wellKnownManifest.api.docs).toBe("/api/internal/docs");
+    expect(wellKnownManifest.api.agentSpecQuery).toBe("/api/internal/docs?agent=spec");
+    expect(wellKnownManifest.skills.discovery.apiIndex).toBe(
+      "/api/internal/docs?format=agent-skills",
+    );
+    expect(wellKnownManifest.openapi).toMatchObject({
+      enabled: true,
+      url: "/api/internal/docs?format=openapi",
+    });
+
+    const configuredSkillWithLocale = await configured.GET(
+      new Request("http://localhost/skill.md?lang=en"),
+    );
+    const configuredSkillWithLocaleText = await configuredSkillWithLocale.text();
+    expect(configuredSkillWithLocaleText).toContain("/api/internal/docs?format=skill");
+    expect(configuredSkillWithLocaleText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredSkillWithLocaleText).not.toContain("/api/docs?format=openapi");
+    expect(configuredSkillWithLocaleText).not.toContain("/skill.md?format=skill");
+
+    const configuredAgents = await configured.GET(
+      new Request("http://localhost/.well-known/AGENTS.md"),
+    );
+    const configuredAgentsText = await configuredAgents.text();
+    expect(configuredAgentsText).toContain("/api/internal/docs?agent=spec");
+    expect(configuredAgentsText).toContain("/api/internal/docs?query={query}");
+    expect(configuredAgentsText).toContain("/api/internal/docs?format=skill");
+    expect(configuredAgentsText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredAgentsText).not.toContain("/api/docs?format=openapi");
+
+    const configuredLlms = await configured.GET(new Request("http://localhost/llms.txt"));
+    const configuredLlmsText = await configuredLlms.text();
+    expect(configuredLlmsText).toContain("/api/internal/docs?format=openapi");
+    expect(configuredLlmsText).not.toContain("/api/docs?format=openapi");
+
+    const configuredOpenapi = await configured.GET(
+      new Request("http://localhost/api/internal/docs?format=openapi"),
+    );
+    expect(configuredOpenapi.status).toBe(200);
+
+    const configuredDiagnostics = await configured.GET(
+      new Request("http://localhost/api/internal/docs?format=diagnostics"),
+    );
+    expect(await configuredDiagnostics.json()).toMatchObject({
+      routes: {
+        api: "/api/internal/docs",
+        config: "/api/internal/docs?format=config",
+      },
+    });
+
+    for (const publicPath of [
+      "/docs/api/llms.txt",
+      "/docs-map/sitemap.md",
+      "/docs/installation.md",
+    ]) {
+      const publicDiagnostics = await configured.GET(
+        new Request(`http://localhost${publicPath}?format=diagnostics`),
+      );
+      expect(await publicDiagnostics.json()).toMatchObject({
+        routes: {
+          api: "/api/internal/docs",
+          config: "/api/internal/docs?format=config",
+        },
+      });
+    }
+
+    const configuredMap = await configured.GET(
+      new Request("http://localhost/api/internal/docs?format=config"),
+    );
+    expect(await configuredMap.json()).toMatchObject({
+      values: {
+        cloud: { apiRoute: "/api/internal/docs" },
+      },
+    });
+
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    apiRoute: " api//from-config/ ",
+  },
+};`,
+    );
+    const fromConfig = createDocsAPI({ rootDir, entry: "docs" });
+    const configManifest = await parseManifest(
+      await fromConfig.GET(new Request("http://localhost/.well-known/agent.json")),
+    );
+    expect(configManifest.api.docs).toBe("/api/from-config");
+    expect(configManifest.api.config).toBe("/api/from-config?format=config");
+
+    const configCatalog = await fromConfig.GET(
+      new Request("http://localhost/.well-known/api-catalog"),
+    );
+    const configCatalogBody = (await configCatalog.json()) as {
+      linkset: Array<{ item?: Array<{ href: string }> }>;
+    };
+    expect(configCatalogBody.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "http://localhost/api/from-config",
+    );
   });
 
   it("serves the default agent feedback schema through the shared docs api handler", async () => {
@@ -2560,8 +5166,9 @@ description: "Start here"
 Welcome to the docs.
 `,
     );
+    const changelogPagePath = join(rootDir, "app", "docs", "changelog", "2026-04-15", "page.mdx");
     writeFileSync(
-      join(rootDir, "app", "docs", "changelog", "2026-04-15", "page.mdx"),
+      changelogPagePath,
       `---
 title: "OpenAPI mode is now default"
 description: "A changelog entry"
@@ -2572,6 +5179,8 @@ description: "A changelog entry"
 The changelog now has its own dedicated route.
 `,
     );
+    const changelogModified = new Date("2026-04-15T12:00:00.000Z");
+    utimesSync(changelogPagePath, changelogModified, changelogModified);
 
     process.chdir(rootDir);
 
@@ -2594,6 +5203,17 @@ The changelog now has its own dedicated route.
 
     expect(payload.some((result) => result.url === "/docs/changelogs/2026-04-15")).toBe(true);
     expect(payload.some((result) => result.url.startsWith("/docs/changelog/"))).toBe(false);
+
+    const structuredResponse = await GET(
+      new Request("http://localhost/api/docs?query=OpenAPI&response=structured"),
+    );
+    const structuredPayload = (await structuredResponse.json()) as {
+      results: Array<{ url: string; source?: { lastModified?: string } }>;
+    };
+    expect(
+      structuredPayload.results.find((result) => result.url === "/docs/changelogs/2026-04-15")
+        ?.source?.lastModified,
+    ).toBe(changelogModified.toISOString());
   });
 
   it("serves changelog markdown with the public docsPath in lookups and canonical links", async () => {
@@ -2644,7 +5264,7 @@ The changelog now has its own dedicated route.
     );
     expect(mdRouteResponse.status).toBe(200);
     expect(mdRouteResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(mdRouteResponse.headers.get("link")).toBe(
+    expect(mdRouteResponse.headers.get("link")).toContain(
       '<http://localhost/learn/changelogs/2026-04-15>; rel="canonical"',
     );
     expect(await mdRouteResponse.text()).toContain(
@@ -2657,10 +5277,84 @@ The changelog now has its own dedicated route.
       }),
     );
     expect(acceptResponse.status).toBe(200);
-    expect(acceptResponse.headers.get("link")).toBe(
+    expect(acceptResponse.headers.get("link")).toContain(
       '<http://localhost/learn/changelogs/2026-04-15>; rel="canonical"',
     );
   });
+
+  it.each(["", "/", "///"])(
+    "serves markdown from root-mounted docsPath value %s",
+    async (docsPath) => {
+      const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-root-docspath-markdown-"));
+      tempDirs.push(rootDir);
+
+      mkdirSync(join(rootDir, "app", "docs", "quickstart"), { recursive: true });
+      writeFileSync(
+        join(rootDir, "app", "docs", "quickstart", "page.mdx"),
+        `---
+title: "Quickstart"
+description: "Start here"
+---
+
+# Quickstart
+
+Welcome to the docs.
+`,
+      );
+
+      process.chdir(rootDir);
+
+      const { GET } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        docsPath,
+      });
+
+      const response = await GET(new Request("http://localhost/quickstart.md"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("link")).toContain(
+        '<http://localhost/quickstart>; rel="canonical"',
+      );
+      expect(await response.text()).toContain("# Quickstart\nURL: /quickstart");
+    },
+  );
+
+  it.each(["docs", "/docs", "docs/", "/docs/"])(
+    "serves markdown from default docsPath value %s",
+    async (docsPath) => {
+      const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-default-docspath-markdown-"));
+      tempDirs.push(rootDir);
+
+      mkdirSync(join(rootDir, "app", "docs", "quickstart"), { recursive: true });
+      writeFileSync(
+        join(rootDir, "app", "docs", "quickstart", "page.mdx"),
+        `---
+title: "Quickstart"
+description: "Start here"
+---
+
+# Quickstart
+
+Welcome to the docs.
+`,
+      );
+
+      process.chdir(rootDir);
+
+      const { GET } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        docsPath,
+      });
+
+      const response = await GET(new Request("http://localhost/docs/quickstart.md"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("link")).toContain(
+        '<http://localhost/docs/quickstart>; rel="canonical"',
+      );
+      expect(await response.text()).toContain("# Quickstart\nURL: /docs/quickstart");
+    },
+  );
 
   it("skips changelog indexing when reading the changelog directory fails", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-changelog-search-read-failure-"));
@@ -2827,7 +5521,7 @@ Search from process cwd docs files.
     expect(payload.some((result) => result.content.includes("Overview"))).toBe(true);
   });
 
-  it("routes GET search through an MCP search provider with a relative endpoint", async () => {
+  it("routes GET search through a non-local MCP search provider with a relative endpoint", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-search-route-"));
     tempDirs.push(rootDir);
 
@@ -2869,6 +5563,7 @@ Welcome to the docs.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -2909,7 +5604,7 @@ Welcome to the docs.
         entry: "docs",
         search: {
           provider: "mcp",
-          endpoint: "/api/docs/mcp",
+          endpoint: "/external/search/mcp",
         },
       });
 
@@ -2934,13 +5629,82 @@ Welcome to the docs.
         },
       ]);
 
-      expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("http://localhost/api/docs/mcp");
-      expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe("http://localhost/api/docs/mcp");
+      expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(
+        "http://localhost/external/search/mcp",
+      );
+      expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe(
+        "http://localhost/external/search/mcp",
+      );
+      expect(
+        JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[2]?.[1]?.body)),
+      ).toMatchObject({
+        params: { arguments: { audience: "human" } },
+      });
     } finally {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();
     }
   });
+
+  it.each([
+    { endpoint: "/api/docs/mcp", mcp: undefined },
+    { endpoint: "/mcp", mcp: undefined },
+    { endpoint: "/.well-known/mcp", mcp: undefined },
+    { endpoint: "/internal/docs/mcp", mcp: { route: "/internal/docs/mcp" } },
+  ])(
+    "keeps GET search in-process for the local MCP endpoint $endpoint",
+    async ({ endpoint, mcp }) => {
+      const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-local-mcp-search-route-"));
+      tempDirs.push(rootDir);
+
+      mkdirSync(join(rootDir, "app", "docs", "installation"), { recursive: true });
+      writeFileSync(
+        join(rootDir, "app", "docs", "installation", "page.mdx"),
+        `---
+title: "Installation"
+---
+
+# Installation
+
+Install the framework with the local MCP search alias.
+`,
+      );
+
+      process.chdir(rootDir);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new Error("Unexpected loopback MCP request"));
+
+      try {
+        const { GET } = createDocsAPI({
+          entry: "docs",
+          mcp,
+          search: {
+            provider: "mcp",
+            endpoint,
+          },
+        });
+
+        const response = await GET(new Request("http://localhost/api/docs?query=framework"));
+        const payload = (await response.json()) as Array<{
+          url: string;
+          content: string;
+        }>;
+
+        expect(payload).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              url: expect.stringContaining("/docs/installation"),
+              content: expect.stringContaining("Installation"),
+            }),
+          ]),
+        );
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    },
+  );
 
   it.each([
     {
@@ -2995,6 +5759,7 @@ Welcome to the docs.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -3067,11 +5832,12 @@ Welcome to the docs.
       expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(scenario.endpoint);
       expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe(scenario.endpoint);
       expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe(scenario.endpoint);
-      expect(vi.mocked(globalThis.fetch).mock.calls[3]?.[0]).toBe(
+      expect(vi.mocked(globalThis.fetch).mock.calls[3]?.[0]).toBe(scenario.endpoint);
+      expect(vi.mocked(globalThis.fetch).mock.calls[4]?.[0]).toBe(
         "https://llm.example/v1/chat/completions",
       );
 
-      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[3]?.[1];
+      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[4]?.[1];
       const upstreamBody = JSON.parse(String(upstreamInit?.body)) as {
         messages?: Array<{ role?: string; content?: string }>;
       };
@@ -3125,6 +5891,7 @@ Welcome to the docs.
           },
         ),
       )
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -3200,25 +5967,28 @@ Welcome to the docs.
       expect(response.status).toBe(200);
       expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("https://docs.example.com/mcp");
       expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe("https://docs.example.com/mcp");
+      expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe("https://docs.example.com/mcp");
 
       const initializeInit = vi.mocked(globalThis.fetch).mock.calls[0]?.[1];
       expect(initializeInit?.headers).toMatchObject({
         Authorization: "Bearer docs-mcp-token",
       });
 
-      const toolInit = vi.mocked(globalThis.fetch).mock.calls[1]?.[1];
+      const toolInit = vi.mocked(globalThis.fetch).mock.calls[2]?.[1];
       expect(toolInit?.headers).toMatchObject({
         Authorization: "Bearer docs-mcp-token",
         "mcp-session-id": "remote-session-1",
       });
-      expect(JSON.parse(String(toolInit?.body))).toMatchObject({
+      const toolBody = JSON.parse(String(toolInit?.body));
+      expect(toolBody).toMatchObject({
         method: "tools/call",
         params: {
           name: "custom_search_docs",
         },
       });
+      expect(toolBody).not.toHaveProperty("params.arguments.audience");
 
-      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[3]?.[1];
+      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[4]?.[1];
       const upstreamBody = JSON.parse(String(upstreamInit?.body)) as {
         messages?: Array<{ role?: string; content?: string }>;
       };
@@ -3316,12 +6086,16 @@ Ask AI should retrieve this exact MCP Actual Retrieval Token from the real MCP h
       const mcpCalls = calls.filter(
         ({ request }) => request.url === "https://docs.example.com/mcp",
       );
-      expect(mcpCalls.map(({ request }) => request.method)).toEqual(["POST", "POST"]);
+      expect(mcpCalls.map(({ request }) => request.method)).toEqual(["POST", "POST", "POST"]);
       expect(new Headers(mcpCalls[0]?.init?.headers).get("authorization")).toBe(
         "Bearer docs-mcp-token",
       );
       expect(new Headers(mcpCalls[1]?.init?.headers).get("mcp-session-id")).toBeNull();
       expect(JSON.parse(String(mcpCalls[1]?.init?.body))).toMatchObject({
+        method: "notifications/initialized",
+      });
+      expect(new Headers(mcpCalls[2]?.init?.headers).get("mcp-session-id")).toBeNull();
+      expect(JSON.parse(String(mcpCalls[2]?.init?.body))).toMatchObject({
         method: "tools/call",
         params: {
           name: "search_docs",

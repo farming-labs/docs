@@ -5,15 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "pnpm --dir ../.. --filter @farming-labs/docs run build && node ../../packages/docs/dist/cli/index.mjs sitemap generate --config src/lib/docs.config.ts && astro build",
+    "build": "corepack pnpm --dir ../.. --filter @farming-labs/docs run build && node ../../packages/docs/dist/cli/index.mjs sitemap generate --config src/lib/docs.config.ts && astro build",
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/vercel": "^9.0.4",
-    "@farming-labs/astro": "0.1.108",
-    "@farming-labs/astro-theme": "0.1.108",
-    "@farming-labs/docs": "0.1.108",
-    "astro": "^5.7.0",
+    "@astrojs/vercel": "^10.0.8",
+    "@farming-labs/astro": "0.2.104",
+    "@farming-labs/astro-theme": "0.2.104",
+    "@farming-labs/docs": "0.2.104",
+    "@farming-labs/theme": "0.2.104",
+    "astro": "^6.4.8",
     "three": "^0.180.0"
   }
 }

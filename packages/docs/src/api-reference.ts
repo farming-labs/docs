@@ -1,13 +1,25 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
-import type { ApiReferenceRenderer, DocsConfig, DocsTheme } from "./types.js";
+import type {
+  ApiReferenceRenderer,
+  ApiReferenceConfig,
+  DocsConfig,
+  DocsOpenApiMcpConfig,
+  DocsTheme,
+} from "./types.js";
 
 export type { ApiReferenceRenderer };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
-export type ApiReferenceFramework = "next" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
+export type ApiReferenceFramework =
+  | "next"
+  | "tanstack-start"
+  | "farmjs"
+  | "sveltekit"
+  | "astro"
+  | "nuxt";
 
 export interface ApiReferenceRoute {
   title: string;
@@ -24,7 +36,9 @@ export interface ResolvedApiReferenceConfig {
   enabled: boolean;
   path: string;
   specUrl?: string;
+  catalogTargets?: string[];
   renderer?: ApiReferenceRenderer;
+  mcp?: DocsOpenApiMcpConfig;
   routeRoot: string;
   exclude: string[];
 }
@@ -32,9 +46,11 @@ export interface ResolvedApiReferenceConfig {
 export interface ApiReferenceOpenApiDiscovery {
   enabled: boolean;
   url?: string;
+  urlSource?: "default" | "configured";
   source?: "generated" | "configured";
   specUrl?: string;
   apiReferencePath?: string;
+  catalogTargets?: string[];
 }
 
 interface BuildApiReferenceOptions {
@@ -69,7 +85,9 @@ export function resolveApiReferenceConfig(
       enabled: true,
       path: "api-reference",
       specUrl: undefined,
+      catalogTargets: undefined,
       renderer: undefined,
+      mcp: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -80,7 +98,9 @@ export function resolveApiReferenceConfig(
       enabled: false,
       path: "api-reference",
       specUrl: undefined,
+      catalogTargets: undefined,
       renderer: undefined,
+      mcp: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -90,10 +110,19 @@ export function resolveApiReferenceConfig(
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
     specUrl: normalizeRemoteSpecUrl(value.specUrl),
+    catalogTargets: normalizeApiReferenceCatalogTargets(value.catalogTargets),
     renderer: normalizeApiReferenceRenderer(value.renderer),
+    mcp: resolveOpenApiMcpConfig(value.mcp),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
   };
+}
+
+function resolveOpenApiMcpConfig(
+  value: ApiReferenceConfig["mcp"],
+): DocsOpenApiMcpConfig | undefined {
+  if (!value) return undefined;
+  return value === true ? { enabled: true } : { ...value, enabled: value.enabled !== false };
 }
 
 function normalizeApiReferenceRenderer(value?: string): ApiReferenceRenderer | undefined {
@@ -116,13 +145,18 @@ export function resolveApiReferenceOpenApiDiscovery(
 ): ApiReferenceOpenApiDiscovery {
   const config = resolveApiReferenceConfig(value);
   if (!config.enabled) return { enabled: false };
+  const catalogTargets =
+    config.catalogTargets ??
+    (!config.specUrl || isRequestRelativeSpecUrl(config.specUrl) ? ["/"] : undefined);
 
   return {
     enabled: true,
     url: options.route ?? DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+    urlSource: options.route === undefined ? "default" : "configured",
     source: config.specUrl ? "configured" : "generated",
     specUrl: config.specUrl,
     apiReferencePath: `/${config.path}`,
+    catalogTargets,
   };
 }
 
@@ -136,8 +170,21 @@ function normalizeRemoteSpecUrl(value?: string): string | undefined {
   return trimmed;
 }
 
+function normalizeApiReferenceCatalogTargets(value?: string[]): string[] | undefined {
+  if (value === undefined) return undefined;
+
+  return Array.from(
+    new Set(
+      value
+        .filter((target): target is string => typeof target === "string")
+        .map((target) => target.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
 function isRequestRelativeSpecUrl(value?: string): boolean {
-  return typeof value === "string" && value.startsWith("/");
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
 }
 
 export function buildApiReferencePageTitle(config: DocsConfig, title = "API Reference"): string {
@@ -891,6 +938,15 @@ function buildApiReferenceRoutes(
         toRouteSegments: (relativeFile) => relativeFile.split("/").slice(0, -1).filter(Boolean),
         exclude: apiReference.exclude,
       });
+    case "farmjs":
+      return buildFileConventionRoutes({
+        rootDir,
+        sourceDir: resolveRootedDir(rootDir, apiReference.routeRoot, getFarmAppDir(rootDir)),
+        routePathBase: toRouteBase(apiReference.routeRoot, getFarmAppDir(rootDir)),
+        isRouteFile: (name) => NEXT_ROUTE_FILE_RE.test(name),
+        toRouteSegments: (relativeFile) => relativeFile.split("/").slice(0, -1).filter(Boolean),
+        exclude: apiReference.exclude,
+      });
     case "sveltekit":
       return buildFileConventionRoutes({
         rootDir,
@@ -923,6 +979,10 @@ function buildApiReferenceRoutes(
     case "tanstack-start":
       return buildTanstackRoutes(rootDir, apiReference);
   }
+}
+
+function getFarmAppDir(rootDir: string): string {
+  return existsSync(join(rootDir, "src", "app")) ? "src/app" : "app";
 }
 
 function buildFileConventionRoutes({

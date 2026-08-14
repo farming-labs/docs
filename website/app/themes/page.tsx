@@ -100,6 +100,26 @@ export default defineDocs({
 @import "@farming-labs/theme/shiny/css";`,
   },
   {
+    key: "threadline",
+    name: "Threadline",
+    description: "Compact neutral shell for chat and agent docs with dense Geist typography.",
+    cssImport: '@import "@farming-labs/theme/threadline/css";',
+    colors: ["#0a0a0a", "#ffffff", "#737373", "#e5e5e5"],
+    accent: "#0a0a0a",
+    previewEnabled: false,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { threadline, threadlinePageActions } from "@farming-labs/theme/threadline";
+
+export default defineDocs({
+  entry: "docs",
+  theme: threadline(),
+  github: { url: "https://github.com/acme/docs" },
+  pageActions: threadlinePageActions,
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/threadline/css";`,
+  },
+  {
     key: "ledger",
     name: "Ledger",
     description:
@@ -117,6 +137,25 @@ export default defineDocs({
 });`,
     globalCss: `@import "tailwindcss";
 @import "@farming-labs/theme/ledger/css";`,
+  },
+  {
+    key: "shadcn",
+    name: "Shadcn Docs",
+    description:
+      "Compact neutral documentation shell with the same proportions, type rhythm, and controls as the shadcn/ui docs.",
+    cssImport: '@import "@farming-labs/theme/shadcn/css";',
+    colors: ["#000000", "#ffffff", "#737373", "#f5f5f5"],
+    accent: "#000000",
+    previewEnabled: true,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { shadcn } from "@farming-labs/theme/shadcn";
+
+export default defineDocs({
+  entry: "docs",
+  theme: shadcn(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/shadcn/css";`,
   },
   {
     key: "darkbold",

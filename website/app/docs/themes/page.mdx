@@ -3,17 +3,54 @@ title: "Themes"
 description: "Built-in themes and how to create your own"
 icon: "palette"
 order: 4
+related:
+  - /docs/themes/creating-themes
+  - /docs/configuration
+  - /docs/customization/colors
+  - /docs/customization/typography
+agent:
+  tokenBudget: 750
+  task: Select and apply a built-in or custom theme to a Farming Labs docs site.
+  outcome: docs.config and the global stylesheet reference the same theme and docs pages render its visual defaults.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package:
+      - "@farming-labs/docs"
+      - "@farming-labs/theme"
+  prerequisites:
+    - The docs app and its framework-specific global stylesheet already work.
+    - Choose a built-in preset before creating a custom theme unless requirements demand custom tokens.
+  files:
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/global.css
+    - src/styles/app.css
+    - src/app.css
+    - nuxt.config.ts
+  sideEffects:
+    - Switching themes changes the default colors, typography, spacing, layout, and components for every docs page.
+  verification:
+    - description: Build and open a docs page containing navigation, code, callouts, and tables.
+      expect: The production build succeeds and all elements use the selected theme without an unstyled flash.
+  rollback:
+    - Restore the previous theme factory and matching CSS import.
+  failureModes:
+    - symptom: The selected theme has no visual effect.
+      resolution: Import the matching theme CSS in the global stylesheet and restart the framework dev server.
+    - symptom: TypeScript cannot resolve the theme factory.
+      resolution: Install the correct framework theme package and import the documented exported preset name.
 ---
 
 # Themes
 
 <Agent>
-Use this page when the user asks about this topic: Built-in themes and how to create your own.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Select the factory and package subpath as a pair—for example, `pixelBorder` from `@farming-labs/theme/pixel-border` with `theme: pixelBorder()`—then import the matching `@farming-labs/theme/pixel-border/css` globally.
+Test navigation, code blocks, callouts, and tables after switching presets. Use `createTheme()` for a reusable custom factory and `extendTheme()` to derive a theme from an existing preset.
+If config builds but visuals do not change, repair the CSS entrypoint; if the factory cannot be resolved, copy its exact export and import path from the built-in themes table.
 </Agent>
 
-@farming-labs/docs ships with eleven built-in theme entrypoints. Each is a preset factory function that you pass to `defineDocs()`. `hardline` stays as the original hard-edge preset, `concrete` is the louder brutalist variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, and `ledger` brings a Stripe Docs-inspired product documentation shell.
+@farming-labs/docs ships with thirteen built-in theme entrypoints. Each is a preset factory function that you pass to `defineDocs()`. `hardline` stays as the original hard-edge preset, `concrete` is the louder brutalist variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, `ledger` brings a Stripe Docs-inspired product documentation shell, `shadcn` recreates the compact neutral shadcn/ui documentation shell, and `threadline` adds compact neutral chrome for chat and agent docs.
 
 <Callout type="tip" title="Create your own theme">
   Want to build a custom theme or publish one as a package? See **[Creating your own theme](/docs/themes/creating-themes)** for the full guide.
@@ -28,11 +65,13 @@ If the request moves beyond this page, point to the closest related docs instead
 | [Darksharp](/docs/themes/darksharp)       | `@farming-labs/theme/darksharp`    | All-black, sharp corners                |
 | [Pixel Border](/docs/themes/pixel-border) | `@farming-labs/theme/pixel-border` | Inspired by better-auth.com             |
 | [Shiny](/docs/themes/shiny)               | `@farming-labs/theme/shiny`        | Clerk-inspired, purple accents          |
+| [Threadline](/docs/themes/threadline)     | `@farming-labs/theme/threadline`   | Compact neutral shell for chat and agent docs |
 | [DarkBold](/docs/themes/darkbold)         | `@farming-labs/theme/darkbold`     | Pure monochrome, Geist typography       |
 | [GreenTree](/docs/themes/greentree)       | `@farming-labs/theme/greentree`    | Mintlify-inspired, emerald green accent |
 | [Concrete](/docs/themes/concrete)         | `@farming-labs/theme/concrete`     | Brutalist poster-style hard-edge theme  |
 | [Command Grid](/docs/themes/command-grid) | `@farming-labs/theme/command-grid` | Mono-first paper-grid preset inspired by better-cmdk |
 | [Ledger](/docs/themes/ledger)             | `@farming-labs/theme/ledger`       | Stripe Docs-inspired product docs shell |
+| [Shadcn](/docs/themes/shadcn)             | `@farming-labs/theme/shadcn`       | Compact neutral shadcn/ui docs shell |
 | [Hardline](/docs/themes/hardline)         | `@farming-labs/theme/hardline`     | Original hard-edge theme with strong borders |
 
 ## Using a Theme

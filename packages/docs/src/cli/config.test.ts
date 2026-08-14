@@ -1,15 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   extractNestedObjectLiteral,
+  hasTopLevelProperty,
+  loadDocsConfigModuleResult,
   readBooleanProperty,
+  readTopLevelBooleanProperty,
   readEnvReferenceProperty,
   readNavTitle,
   readStringProperty,
   readTopLevelStringProperty,
   resolveDocsContentDir,
+  resolveDocsProjectRoot,
 } from "./config.js";
 
 const tempDirs: string[] = [];
@@ -65,7 +69,44 @@ describe("resolveDocsContentDir", () => {
   });
 });
 
+describe("resolveDocsProjectRoot", () => {
+  it("uses the nested package that owns an explicitly selected config", () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "docs-project-root-"));
+    tempDirs.push(workspaceRoot);
+    const appRoot = join(workspaceRoot, "website");
+    mkdirSync(appRoot, { recursive: true });
+    writeFileSync(join(workspaceRoot, "package.json"), '{"private":true}', "utf-8");
+    writeFileSync(join(appRoot, "package.json"), '{"private":true}', "utf-8");
+    const configPath = join(appRoot, "docs.config.tsx");
+    writeFileSync(configPath, "export default {};\n", "utf-8");
+
+    expect(resolveDocsProjectRoot(workspaceRoot, configPath)).toBe(appRoot);
+  });
+
+  it("keeps configs below an application anchored to the package root", () => {
+    const appRoot = mkdtempSync(join(tmpdir(), "docs-project-root-"));
+    tempDirs.push(appRoot);
+    const configPath = join(appRoot, "src", "lib", "docs.config.ts");
+    mkdirSync(join(appRoot, "src", "lib"), { recursive: true });
+    writeFileSync(join(appRoot, "package.json"), '{"private":true}', "utf-8");
+    writeFileSync(configPath, "export default {};\n", "utf-8");
+
+    expect(resolveDocsProjectRoot(appRoot, configPath)).toBe(appRoot);
+  });
+});
+
 describe("property readers", () => {
+  it("detects direct properties without matching comments or nested objects", () => {
+    const block = `
+      // skills: "ignored"
+      nested: { skills: "also-ignored" },
+      "skills": ["skills/one"],
+    `;
+
+    expect(hasTopLevelProperty(block, "skills")).toBe(true);
+    expect(hasTopLevelProperty("// skills: 'ignored'\nother: true", "skills")).toBe(false);
+  });
+
   it("matches exact string property names", () => {
     const content = `
       export default defineDocs({
@@ -91,6 +132,22 @@ describe("property readers", () => {
     expect(readTopLevelStringProperty(content, "contentDir")).toBeUndefined();
   });
 
+  it("reads top-level boolean properties without picking nested matches", () => {
+    const content = `
+      export default defineDocs({
+        cloud: {
+          preview: {
+            enabled: false,
+          },
+          enabled: true,
+        },
+      });
+    `;
+
+    const cloudBlock = extractNestedObjectLiteral(content, ["cloud"]) ?? "";
+    expect(readTopLevelBooleanProperty(cloudBlock, "enabled")).toBe(true);
+  });
+
   it("matches exact boolean property names", () => {
     const content = `
       export default defineDocs({
@@ -107,13 +164,13 @@ describe("property readers", () => {
       export default defineDocs({
         agent: {
           compact: {
-            apiKey: process.env.TOKEN_COMPANY_API_KEY,
+            apiKey: process.env.DOCS_CLOUD_API_KEY,
           },
         },
       });
     `;
 
-    expect(readEnvReferenceProperty(content, "apiKey")).toBe("TOKEN_COMPANY_API_KEY");
+    expect(readEnvReferenceProperty(content, "apiKey")).toBe("DOCS_CLOUD_API_KEY");
   });
 
   it("reads bracketed import.meta.env property references", () => {
@@ -121,13 +178,13 @@ describe("property readers", () => {
       export default defineDocs({
         agent: {
           compact: {
-            apiKey: import.meta.env["PUBLIC_TTC_KEY"],
+            apiKey: import.meta.env["PUBLIC_DOCS_CLOUD_KEY"],
           },
         },
       });
     `;
 
-    expect(readEnvReferenceProperty(content, "apiKey")).toBe("PUBLIC_TTC_KEY");
+    expect(readEnvReferenceProperty(content, "apiKey")).toBe("PUBLIC_DOCS_CLOUD_KEY");
   });
 
   it("ignores braces inside strings when extracting config blocks", () => {
@@ -165,7 +222,7 @@ describe("property readers", () => {
         // Keep these readable for automation.
         agent: {
           compact: {
-            apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+            apiKeyEnv: "DOCS_CLOUD_API_KEY",
           },
         },
         /*
@@ -178,8 +235,151 @@ describe("property readers", () => {
     `;
 
     expect(extractNestedObjectLiteral(content, ["agent", "compact"])).toContain(
-      'apiKeyEnv: "TOKEN_COMPANY_API_KEY"',
+      'apiKeyEnv: "DOCS_CLOUD_API_KEY"',
     );
     expect(extractNestedObjectLiteral(content, ["sitemap"])).toContain("enabled: true");
+  });
+});
+
+describe("loadDocsConfigModuleResult", () => {
+  it("evaluates a plain config export", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    writeFileSync(
+      join(rootDir, "docs.config.js"),
+      'export default { entry: "guide", search: true };\n',
+      "utf-8",
+    );
+
+    await expect(loadDocsConfigModuleResult(rootDir, undefined, { silent: true })).resolves.toEqual(
+      {
+        status: "evaluated",
+        path: join(rootDir, "docs.config.js"),
+        config: { entry: "guide", search: true },
+      },
+    );
+  });
+
+  it("evaluates a TSX config with JSX-valued options", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    writeFileSync(
+      join(rootDir, "docs.config.tsx"),
+      `export default {
+  entry: "guide",
+  nav: {
+    title: <span data-kind="docs-title">Agent-ready docs</span>,
+  },
+  pageActions: {
+    custom: <button type="button">Copy context</button>,
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const result = await loadDocsConfigModuleResult(rootDir, undefined, { silent: true });
+
+    expect(result).toMatchObject({
+      status: "evaluated",
+      path: join(rootDir, "docs.config.tsx"),
+      config: {
+        entry: "guide",
+        nav: {
+          title: {
+            type: "span",
+            props: {
+              "data-kind": "docs-title",
+              children: "Agent-ready docs",
+            },
+          },
+        },
+        pageActions: {
+          custom: {
+            type: "button",
+            props: {
+              type: "button",
+              children: "Copy context",
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("resolves project tsconfig paths for a nested TSX config", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "config"), { recursive: true });
+    mkdirSync(join(rootDir, "src", "components"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: { "@/*": ["src/*"] },
+        },
+      }),
+      "utf-8",
+    );
+    writeFileSync(
+      join(rootDir, "src", "components", "agent-icon.tsx"),
+      `export function AgentIcon() {
+  return <svg data-agent-icon="true" />;
+}
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      join(rootDir, "config", "docs.config.tsx"),
+      `import { AgentIcon } from "@/components/agent-icon";
+
+export default {
+  entry: "guide",
+  pageActions: {
+    custom: <AgentIcon />,
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const result = await loadDocsConfigModuleResult(rootDir, "config/docs.config.tsx", {
+      silent: true,
+    });
+
+    expect(result).toMatchObject({
+      status: "evaluated",
+      path: join(rootDir, "config", "docs.config.tsx"),
+      config: {
+        entry: "guide",
+        pageActions: {
+          custom: {
+            type: expect.any(Function),
+            props: {},
+          },
+        },
+      },
+    });
+  });
+
+  it.each([
+    ["an array", "export default [];\n"],
+    ["an array beside named exports", "export const helper = true;\nexport default [];\n"],
+    ["a Date instance", "export default new Date(0);\n"],
+    ["a class instance", "class Config {}\nexport default new Config();\n"],
+    ["null", "export default null;\n"],
+  ])("falls back when the config exports %s", async (_label, source) => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    writeFileSync(join(rootDir, "docs.config.js"), source, "utf-8");
+
+    await expect(
+      loadDocsConfigModuleResult(rootDir, undefined, { silent: true }),
+    ).resolves.toMatchObject({
+      status: "static-fallback",
+      path: join(rootDir, "docs.config.js"),
+      error: "The config module did not export a plain object.",
+    });
   });
 });

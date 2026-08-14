@@ -1,6 +1,6 @@
 ---
 title: "Sitemaps"
-description: "Generate sitemap.xml and sitemap.md for crawlers, agents, and static exports"
+description: "Generate sitemap.xml, sitemap.md, and docs/sitemap.md for crawlers, agents, and static exports"
 icon: "file"
 order: 5.85
 related:
@@ -9,14 +9,55 @@ related:
   - /docs/customization/mcp
   - /docs/configuration
   - /docs/cli
+agent:
+  tokenBudget: 950
+  task: Generate and verify XML and Markdown sitemaps for runtime and static docs deployments.
+  outcome: Canonical sitemap routes or generated files list the expected docs pages with valid links and configured freshness metadata.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The docs content tree and public base URL are configured.
+    - Decide whether the deployment serves runtime routes or needs generated public files.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - .farming-labs/sitemap-manifest.json
+    - public/sitemap.xml
+    - public/sitemap.md
+    - public/docs/sitemap.md
+    - static/sitemap.xml
+    - static/sitemap.md
+    - static/docs/sitemap.md
+  commands:
+    - run: pnpm exec docs sitemap generate
+      description: Generate the manifest and static sitemap artifacts.
+    - run: pnpm exec docs sitemap generate --check
+      description: Fail when committed sitemap artifacts are stale.
+  sideEffects:
+    - Static generation writes the sitemap manifest and public sitemap files.
+  verification:
+    - run: pnpm exec docs sitemap generate --check
+      expect: Generated sitemap artifacts match the current docs tree.
+    - description: Fetch sitemap.xml, sitemap.md, /docs/sitemap.md, and /.well-known/sitemap.md from a running site.
+      expect: Each route returns the configured format and links to known canonical docs pages.
+  rollback:
+    - Restore the previous sitemap config and regenerate or remove only the sitemap artifacts it owned.
+  failureModes:
+    - symptom: The check reports stale generated files.
+      resolution: Regenerate from the same docs config and commit the manifest and public output together.
+    - symptom: Sitemap URLs use the wrong origin or prefix.
+      resolution: Correct sitemap.baseUrl or routePrefix, regenerate, and verify every advertised alias.
 ---
 
 # Sitemaps
 
-Generate both a standard `sitemap.xml` and a semantic `sitemap.md` from the same docs source. The
-XML file gives search crawlers a canonical URL list with freshness dates. The Markdown file gives
-agents, contributors, and automation a readable map of the docs tree with titles, descriptions,
-markdown URLs, last-updated dates, and related pages.
+Generate a standard `sitemap.xml`, semantic `sitemap.md`, and docs-scoped `/docs/sitemap.md` from
+the same docs source. The XML file gives search crawlers a canonical URL list with freshness dates.
+The Markdown file gives agents, contributors, and automation a readable map of the docs tree with
+titles, descriptions, markdown URLs, last-updated dates, and related pages.
 
 <Agent>
 Use this page when the task is to customize or troubleshoot generated sitemaps. Runtime sitemap
@@ -25,6 +66,7 @@ routes are enabled by default; use `sitemap: false` only when a project must opt
 Default public routes:
 - `/sitemap.xml`
 - `/sitemap.md`
+- `/docs/sitemap.md`
 - `/.well-known/sitemap.md`
 
 Static export command:
@@ -60,6 +102,7 @@ That exposes these routes through the same docs server wrapper and public forwar
 
 - `GET /sitemap.xml`
 - `GET /sitemap.md`
+- `GET /docs/sitemap.md`
 - `GET /.well-known/sitemap.md`
 - `GET /api/docs?format=sitemap-xml`
 - `GET /api/docs?format=sitemap-md`
@@ -82,6 +125,7 @@ The command writes:
 - `.farming-labs/sitemap-manifest.json`
 - `public/sitemap.xml`
 - `public/sitemap.md`
+- `public/docs/sitemap.md`
 - `public/.well-known/sitemap.md`
 
 SvelteKit uses `static/` instead of `public/`.
@@ -131,8 +175,8 @@ Common build scripts:
     }
     ```
 
-    For `output: "export"`, drop `--manifest-only` so `public/sitemap.xml` and `public/sitemap.md`
-    are written before `next build`.
+    For `output: "export"`, drop `--manifest-only` so `public/sitemap.xml`, `public/sitemap.md`,
+    and `public/docs/sitemap.md` are written before `next build`.
   </Tab>
   <Tab value="Astro">
     ```json title="package.json"
@@ -187,6 +231,23 @@ The CLI resolves dates in this order:
 2. the filesystem modified date for the page source file
 3. no date, if neither source is available
 
+At runtime the docs server applies an additional, higher-priority source before falling back to the filesystem:
+
+1. the date from the bundled `.farm-docs-last-modified.json` manifest (when present)
+2. the last git commit date for the page source file (CLI generation)
+3. the filesystem modified date for the page source file
+4. no date, if none of the above is available
+
+The bundled manifest is a versioned JSON file with the shape `{ version: 1, pages: Record<path, ISO-date> }`. When the docs server finds this file in the content directory, it reads the manifest-provided date for each page first and only falls back to `stat.mtime` when no manifest entry exists. This makes the last-modified date stable across deployments and CI runs, because the bundled dates reflect the original Git history rather than the time files were copied during a redeploy.
+
+For preloaded adapters (Astro, SvelteKit, Nuxt, TanStack Start), include the manifest alongside your content files so the runtime can read it in serverless and static-friendly environments:
+
+```ts title="docs.server.ts"
+const contentFiles = import.meta.glob(
+  ["/docs/**/*.{md,mdx}", "/.farm-docs-last-modified.json"],
+  { query: "?raw", import: "default", eager: true },
+) as Record<string, string>;
+```
 Git dates are preferred because they are stable across machines and CI runs. Filesystem dates are a
 fallback for new files, generated content, or projects that are not in a git checkout.
 
@@ -234,8 +295,9 @@ This generates:
 - `/docs-map/sitemap.md`
 - `/docs-map/.well-known/sitemap.md`
 
-There is no separate well-known route setting. The prefix applies to all sitemap routes together so
-adapters only need one forwarding rule.
+The default `/docs/sitemap.md` alias is emitted only when `routePrefix` is empty. There is no
+separate well-known route setting. The prefix applies to custom sitemap routes together so adapters
+only need one forwarding rule.
 
 ## Configuration Reference
 
@@ -349,6 +411,7 @@ Check the public routes:
 ```bash title="terminal"
 curl "http://127.0.0.1:3000/sitemap.xml"
 curl "http://127.0.0.1:3000/sitemap.md"
+curl "http://127.0.0.1:3000/docs/sitemap.md"
 curl "http://127.0.0.1:3000/.well-known/sitemap.md"
 curl "http://127.0.0.1:3000/robots.txt"
 ```

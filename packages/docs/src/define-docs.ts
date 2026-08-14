@@ -17,8 +17,11 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     sidebar: config.sidebar,
     components: config.components,
     analytics: config.analytics,
+    telemetry: config.telemetry,
+    cloud: config.cloud,
     observability: config.observability,
     onCopyClick: config.onCopyClick,
+    codeBlocks: config.codeBlocks,
     feedback: config.feedback,
     search: config.search,
     mcp: config.mcp,
@@ -37,5 +40,6 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     changelog: config.changelog,
     apiReference: config.apiReference,
     agent: config.agent,
+    review: config.review,
   };
 }

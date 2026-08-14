@@ -70,6 +70,9 @@ description: "Configure docs"
     expect(readFileSync(path.join(tmpDir, "public", "sitemap.md"), "utf-8")).toContain(
       "Markdown: /docs/configuration.md",
     );
+    expect(readFileSync(path.join(tmpDir, "public", "docs", "sitemap.md"), "utf-8")).toContain(
+      "Markdown: /docs/configuration.md",
+    );
     expect(
       readFileSync(path.join(tmpDir, "public", ".well-known", "sitemap.md"), "utf-8"),
     ).toContain("# Example Docs Sitemap");

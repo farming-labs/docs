@@ -1,0 +1,189 @@
+---
+title: "From Docusaurus"
+description: "Migrate Docusaurus docs, sidebars, versions, components, and assets to Farming Labs Docs"
+icon: "file"
+order: 1
+related:
+  - /docs/migrations
+  - /docs/installation
+  - /docs/customization/components
+  - /docs/customization/sidebar
+  - /docs/configuration
+agent:
+  tokenBudget: 1700
+  task: Migrate a Docusaurus documentation site into a supported Farming Labs Docs runtime.
+  outcome: Docusaurus pages, sidebar order, assets, and supported MDX patterns render in a buildable Farming Labs Docs project.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Preserve docusaurus.config, sidebars, docs, static, versions.json, versioned_docs, and versioned_sidebars.
+    - Decide which Docusaurus docs versions and locales must remain public.
+    - Initialize the target runtime in a branch or separate directory.
+  files:
+    - docusaurus.config.js
+    - docusaurus.config.ts
+    - sidebars.js
+    - sidebars.ts
+    - docs.config.ts
+    - docs.config.tsx
+  commands:
+    - run: npx @farming-labs/docs init
+      description: Scaffold the target docs runtime before copying Docusaurus content.
+  sideEffects:
+    - Docusaurus navigation metadata and MDX components are rewritten for the target runtime.
+  verification:
+    - description: Build the target and compare every published Docusaurus route, sidebar group, version, and asset.
+      expect: Required routes resolve, the production build passes, and unsupported components are explicitly tracked.
+  rollback:
+    - Keep the original Docusaurus deployment and restore the migration branch if route or version checks fail.
+  failureModes:
+    - symptom: MDX compilation fails on a Docusaurus import or JSX component.
+      resolution: Replace the import with a Farming Labs component or preserve the component as a registered custom MDX component.
+    - symptom: A versioned URL no longer resolves.
+      resolution: Copy that version into an explicit target path or add a redirect before cutover.
+---
+
+# Migrate from Docusaurus
+
+Docusaurus is already Markdown- and MDX-based, so most prose, headings, code fences, and local
+assets can move directly. The main work is translating sidebars, Docusaurus-only components,
+versioned routes, and plugin behavior.
+
+<Callout type="info" title="Start with the repository">
+  Migrate from the Docusaurus source repository, not rendered HTML. The repository preserves
+  frontmatter, sidebar IDs, imports, version folders, and original asset paths.
+</Callout>
+
+<Agent>
+Inventory every active docs plugin instance, sidebar file, docs root, locale, and version before
+moving content. Treat docusaurus.config and sidebars as executable input: do not copy them into
+docs.config verbatim. Preserve published routes first, then translate components. Docusaurus blog,
+pages, custom themes, and non-doc plugins are separate application migrations.
+</Agent>
+
+## 1. Inventory the source
+
+Record these inputs before editing:
+
+- `docusaurus.config.js`, `.ts`, `.mjs`, or `.mts`
+- `sidebars.js`, `.ts`, or generated sidebar definitions
+- every `@docusaurus/plugin-content-docs` instance and its `path` and `routeBasePath`
+- `docs/`, `static/`, `src/components/`, and `src/css/`
+- `versions.json`, `versioned_docs/`, and `versioned_sidebars/`
+- locale folders under `i18n/`
+- redirects, Algolia, analytics, OpenAPI, and custom plugins
+
+## 2. Map the files
+
+| Docusaurus | Farming Labs Docs |
+| --- | --- |
+| `docs/**/*.mdx` | Target docs content tree |
+| `sidebars.*` | File order, `order` frontmatter, and folder structure |
+| `docusaurus.config.*` | `docs.config.ts` plus host/runtime configuration |
+| `static/**` | Target public/static directory |
+| `src/components/**` | Registered MDX components or plain Markdown replacements |
+| `src/css/custom.css` | Target global CSS or theme overrides |
+| `versioned_docs/**` | Explicit version folders or a maintained current-version subset |
+| `i18n/**/docusaurus-plugin-content-docs/**` | Locale content roots configured for the target |
+
+For Next.js, each migrated route uses `app/docs/**/page.mdx` or `src/app/docs/**/page.mdx`. The
+other adapters read Markdown or MDX from the configured `contentDir`.
+
+## 3. Preserve slugs and frontmatter
+
+Docusaurus commonly derives a route from `id`, `slug`, the filename, and the plugin route base.
+Build a route list before moving files. Keep these fields when they still describe content:
+
+- `title`
+- `description`
+- `sidebar_label` → `title` when it is the preferred navigation label
+- `sidebar_position` → `order`
+- `tags`
+- explicit `slug`, represented by the destination file path whenever possible
+
+Review Docusaurus-only fields such as `pagination_next`, `pagination_prev`, `toc_min_heading_level`,
+`toc_max_heading_level`, `hide_table_of_contents`, and `draft`. Recreate the desired behavior in
+Farming Labs config or remove the field intentionally.
+
+## 4. Translate sidebars
+
+Farming Labs Docs builds its default sidebar from the content tree. Recreate each Docusaurus
+category as a directory and give pages numeric `order` values matching the source order.
+
+```text title="example target structure"
+docs/
+├── getting-started/
+│   ├── index.mdx
+│   ├── installation.mdx
+│   └── configuration.mdx
+└── reference/
+    └── api.mdx
+```
+
+Use folder landing pages for category introductions. External sidebar links belong in the
+application navigation or a custom sidebar. Generated and dynamic sidebar functions require an
+explicit snapshot or an equivalent custom navigation implementation.
+
+## 5. Convert Docusaurus MDX
+
+| Docusaurus syntax | Target |
+| --- | --- |
+| `:::note`, `:::tip`, `:::warning`, `:::danger` | Built-in Markdown directive support or `<Callout>` |
+| `@theme/Tabs` and `@theme/TabItem` | `<Tabs>` and `<Tab>` |
+| `@docusaurus/Link` | Standard Markdown links or the target runtime link component |
+| `@site/static/...` | Public-root asset URL |
+| `require(...)` inside MDX | Static import supported by the target, or a public asset URL |
+| Swizzled theme component | Farming Labs theme configuration or a registered custom component |
+
+Remove Docusaurus imports only after replacing every corresponding JSX use. For a custom component
+that should survive, register it under `components` in `docs.config.ts`.
+
+## 6. Handle versions and locales
+
+Docusaurus stores frozen versions in `versioned_docs/version-<name>/` and matching navigation in
+`versioned_sidebars/`. Choose one policy:
+
+1. **Current only:** migrate `docs/` and redirect or archive older versions.
+2. **Supported versions:** place each maintained version under an explicit route such as
+   `/docs/v2/...`.
+3. **Separate deployments:** keep old Docusaurus versions online while new documentation moves.
+
+Do not silently collapse multiple versions into one route. Apply the same explicit decision to
+each locale under `i18n/`.
+
+## 7. Recreate integrations
+
+Translate these independently from content:
+
+- Algolia or another search provider → `search`
+- OpenAPI plugins → `apiReference`
+- redirects → target host/runtime redirects
+- analytics → `analytics` or the target provider
+- custom head tags → application metadata
+- authentication → application middleware plus opt-in agent endpoint authentication
+
+Docusaurus blog, custom React pages, and plugin-generated application routes are outside the docs
+content migration and should have their own owner.
+
+## 8. Validate and recover
+
+1. Run the target production build.
+2. Compare the source and target route lists, including version and locale prefixes.
+3. Open pages containing tabs, admonitions, imported components, diagrams, and relative images.
+4. Check sidebar order, collapsed groups, previous/next links, and mobile navigation.
+5. Fetch several migrated pages through their `.md` routes.
+6. Keep redirects and the source deployment until production traffic is verified.
+
+If compilation fails, isolate the first source-only import and replace it before continuing. If a
+route changes, prefer restoring the old path; otherwise add a permanent redirect and test its
+destination.
+
+## Source references
+
+- [Docusaurus docs configuration](https://docusaurus.io/docs/docs-introduction)
+- [Docusaurus sidebars](https://docusaurus.io/docs/sidebar)
+- [Docusaurus versioning](https://docusaurus.io/docs/versioning)
+- [Farming Labs components](/docs/customization/components)
+- [Farming Labs configuration](/docs/configuration)

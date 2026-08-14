@@ -49,6 +49,20 @@ describe("search sync cli", () => {
     ).toThrow(/TYPESENSE_OLLAMA_MODEL/);
   });
 
+  it("reads a stable hosted corpus namespace from env", () => {
+    expect(
+      resolveTypesenseSyncConfig(
+        {},
+        {
+          TYPESENSE_URL: "https://typesense.example.com",
+          TYPESENSE_API_KEY: "search-key",
+          TYPESENSE_ADMIN_API_KEY: "admin-key",
+          DOCS_SEARCH_SYNC_NAMESPACE: "product-docs",
+        },
+      ).syncNamespace,
+    ).toBe("product-docs");
+  });
+
   it("builds an algolia sync config from env", () => {
     expect(
       resolveAlgoliaSyncConfig(

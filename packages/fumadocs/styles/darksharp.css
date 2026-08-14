@@ -2,7 +2,18 @@
  * Inspired by all-black, sharp edges, minimal radius.
  * Uses the "black" color preset as the base.
  */
-@import "./presets/black.css";
+@import "./bundles/shared-framework.css";
+
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-columns-with-toc: minmax(0, 1fr)
+    minmax(0, min(900px, calc(100% - var(--fd-toc-width, 268px))))
+    var(--fd-toc-width, 268px) minmax(0, 1fr);
+  --fd-framework-article-column: 2;
+  --fd-framework-toc-column: 3;
+  --fd-framework-article-width: min(900px, 100%);
+  --fd-framework-article-justify: center;
+  --fd-framework-article-padding: 56px 32px 24px;
+}
 
 :root {
   --color-fd-background: oklch(1 0 0);
@@ -160,11 +171,14 @@ td {
 /* ─── Code blocks ─────────────────────────────────────────────────── */
 
 figure[data-rehype-pretty-code-figure],
-figure[data-rehype-pretty-code-figure] pre {
+figure[data-rehype-pretty-code-figure] pre,
+.fd-codeblock,
+.fd-codeblock pre {
   border-radius: 0.2rem !important;
 }
 
-article figure {
+article figure,
+.fd-codeblock {
   border-radius: 0.2rem !important;
   overflow: hidden;
 }
@@ -173,7 +187,19 @@ article figure {
   border-color: hsl(0 0% 14%);
 }
 
-figure button {
+figure button,
+.fd-copy-btn {
+  border-radius: 0.1rem !important;
+}
+
+.fd-codeblock-title,
+.fd-tabs,
+.fd-tabs-list,
+.fd-tab-panel {
+  border-radius: 0.2rem !important;
+}
+
+.fd-tab-trigger {
   border-radius: 0.1rem !important;
 }
 
@@ -198,7 +224,9 @@ kbd {
 /* ─── Callouts ────────────────────────────────────────────────────── */
 
 [class*="bg-fd-card"],
-[class*="fd-callout"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"],
 [role="alert"] {
   border-radius: 0.2rem !important;
 }

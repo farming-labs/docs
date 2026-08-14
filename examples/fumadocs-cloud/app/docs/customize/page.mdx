@@ -1,0 +1,50 @@
+---
+order: 6
+title: Customize
+description: Adjust the route, metadata, and client analytics behavior.
+icon: settings
+---
+
+# Customize
+
+The default local analytics proxy is `/api/docs?action=analytics`. If your app
+mounts the docs API elsewhere, set `cloud.apiRoute`:
+
+```tsx title="docs.config.tsx"
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiRoute: "/internal/docs-cloud",
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
+  },
+});
+```
+
+For deployments with a public base path, include that base path:
+
+```tsx title="docs.config.tsx"
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiRoute: "/base-path/api/docs",
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
+  },
+});
+```
+
+You can also override the analytics route with an environment variable:
+
+```bash
+NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ROUTE=/base-path/api/docs
+```
+
+Use a custom hosted analytics endpoint only when testing a custom or self-hosted
+Docs Cloud API:
+
+```bash
+NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT=https://cloud.example.com/v1/analytics/events
+```

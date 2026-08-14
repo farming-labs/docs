@@ -21,15 +21,11 @@ const { config = null } = Astro.props;
           role="combobox"
           aria-expanded="true"
           aria-controls="fd-omni-listbox"
-          placeholder="Search documentation…"
+          placeholder="Search"
           autocomplete="off"
         />
-        <kbd class="omni-kbd">⌘ K</kbd>
         <button type="button" aria-label="Close" class="omni-close-btn" id="fd-omni-close">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
+          ESC
         </button>
       </div>
     </div>
@@ -65,26 +61,70 @@ const { config = null } = Astro.props;
         <div class="omni-footer-hints">
           <span class="omni-footer-hint">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <polyline points="9 18 15 12 9 6" />
+              <path d="m9 10-5 5 5 5" />
+              <path d="M20 4v7a4 4 0 0 1-4 4H4" />
             </svg>
             to select
           </span>
           <span class="omni-footer-hint">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M18 15l-6-6-6 6" />
+              <path d="m18 15-6-6-6 6" />
             </svg>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" />
+              <path d="m6 9 6 6 6-6" />
             </svg>
             to navigate
           </span>
           <span class="omni-footer-hint omni-footer-hint-desktop">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
+            <span class="omni-kbd-sm">ESC</span>
             to close
           </span>
+        </div>
+        <div class="omni-footer-filter">
+          <span class="omni-filter-label">Filter</span>
+          <button
+            type="button"
+            class="omni-filter-button"
+            id="fd-omni-filter-button"
+            aria-expanded="false"
+          >
+            <span id="fd-omni-filter-value">All</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          <div
+            class="omni-filter-menu"
+            id="fd-omni-filter-menu"
+            role="group"
+            aria-label="Search filter"
+            style="display: none;"
+          >
+            <button
+              type="button"
+              aria-pressed="true"
+              class="omni-filter-option omni-filter-option-active"
+              data-filter="all"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              aria-pressed="false"
+              class="omni-filter-option"
+              data-filter="pages"
+            >
+              Pages
+            </button>
+            <button
+              type="button"
+              aria-pressed="false"
+              class="omni-filter-option"
+              data-filter="inside"
+            >
+              Inside pages
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -96,6 +136,12 @@ const { config = null } = Astro.props;
   var STORAGE_KEY = "fd:omni:recents";
   var MAX_RECENTS = 8;
   var DEBOUNCE_MS = 150;
+  var BREADCRUMB_SEPARATOR = "\u00a0\u00a0>\u00a0\u00a0";
+  var FILTER_LABELS = {
+    all: "All",
+    pages: "Pages",
+    inside: "Inside pages"
+  };
 
   function getDialog() { return document.getElementById("fd-search-dialog"); }
   function getOverlay() { return document.getElementById("fd-omni-overlay"); }
@@ -109,6 +155,9 @@ const { config = null } = Astro.props;
   function getDocsItems() { return document.getElementById("fd-omni-docs-items"); }
   function getEmpty() { return document.getElementById("fd-omni-empty"); }
   function getEmptyText() { return document.getElementById("fd-omni-empty-text"); }
+  function getFilterButton() { return document.getElementById("fd-omni-filter-button"); }
+  function getFilterValue() { return document.getElementById("fd-omni-filter-value"); }
+  function getFilterMenu() { return document.getElementById("fd-omni-filter-menu"); }
 
   function getRecents() {
     try {
@@ -148,13 +197,115 @@ const { config = null } = Astro.props;
     }
   }
 
+  function breadcrumbForUrl(url) {
+    try {
+      var parsed = new URL(url, window.location.origin);
+      var parts = parsed.pathname.split("/").filter(Boolean).map(function (part) {
+        return decodeURIComponent(part)
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, function (char) { return char.toUpperCase(); });
+      });
+      return parts.length ? parts.join(BREADCRUMB_SEPARATOR) : "Docs";
+    } catch (e) {
+      return "Docs";
+    }
+  }
+
+  function displayLabelForResult(result) {
+    if (result.section) return result.section;
+    var label = result.content || "";
+    var parts = label.split(/\s+[—–]\s+/).map(function (part) { return part.trim(); }).filter(Boolean);
+    return result.type === "heading" && parts.length > 1 ? parts[parts.length - 1] : label;
+  }
+
+  function normalizeSearchPhrase(value) {
+    return (value || "").toLowerCase().replace(/[?!.,;:]+$/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function literalMatchPriority(searchQuery, value) {
+    var q = normalizeSearchPhrase(searchQuery);
+    var text = normalizeSearchPhrase(value);
+    if (!q || !text) return 0;
+    if (text === q) return 2;
+
+    var boundary = "[^\\p{L}\\p{N}]";
+    return new RegExp("(^|" + boundary + ")" + escapeRegExp(q) + "(?=$|" + boundary + ")", "u").test(text)
+      ? 1
+      : 0;
+  }
+
+  function tokenizeLiteralQuery(searchQuery) {
+    return Array.from(new Set(
+      searchQuery
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+        .split(/\s+/)
+        .map(function (word) { return word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""); })
+        .filter(function (word) { return word.length > 1; })
+    ));
+  }
+
+  function isLiteralLookupQuery(searchQuery) {
+    var q = normalizeSearchPhrase(searchQuery);
+    var words = tokenizeLiteralQuery(q);
+    return words.length > 0 && words.length <= 3 && words.join(" ") === q;
+  }
+
+  function hasDistinctSearchSection(result) {
+    if (result.type === "page") return false;
+    if (!result.section) return true;
+    var title = (result.content || "").split(/\s+[—–]\s+/)[0] || "";
+    return normalizeSearchPhrase(result.section) !== normalizeSearchPhrase(title);
+  }
+
+  function insideLiteralPriority(result, searchQuery) {
+    if (!hasDistinctSearchSection(result) || !isLiteralLookupQuery(searchQuery)) return 0;
+    return Math.max(
+      literalMatchPriority(searchQuery, result.section),
+      literalMatchPriority(searchQuery, result.description)
+    );
+  }
+
+  function getCurrentSearchQuery() {
+    var input = getInput();
+    return input ? input.value.trim() : "";
+  }
+
+  function sortResultsForFilter(results, searchQuery) {
+    var q = typeof searchQuery === "string" ? searchQuery : getCurrentSearchQuery();
+    if (!q) return results;
+
+    return results.map(function (result, index) {
+      return { result: result, index: index };
+    }).sort(function (a, b) {
+      var aLiteralPriority = insideLiteralPriority(a.result, q);
+      var bLiteralPriority = insideLiteralPriority(b.result, q);
+      var literalDelta = bLiteralPriority - aLiteralPriority;
+      if (literalDelta) return literalDelta;
+      if (aLiteralPriority > 0 && bLiteralPriority > 0) return a.index - b.index;
+
+      var scoreDelta = (b.result.score || 0) - (a.result.score || 0);
+      if (scoreDelta) return scoreDelta;
+
+      return a.index - b.index;
+    }).map(function (item) {
+      return item.result;
+    });
+  }
+
   function openDialog() {
     var dialog = getDialog();
     if (dialog) {
       dialog.style.display = "block";
       document.body.style.overflow = "hidden";
+      currentFilter = "all";
+      setFilterMenuOpen(false);
+      renderFilter();
       bindListboxDelegation();
-      ensureListboxClickBound();
       setTimeout(function () {
         var input = getInput();
         if (input) { input.value = ""; input.focus(); }
@@ -168,6 +319,7 @@ const { config = null } = Astro.props;
     if (dialog) {
       dialog.style.display = "none";
       document.body.style.overflow = "";
+      setFilterMenuOpen(false);
     }
   }
 
@@ -178,26 +330,48 @@ const { config = null } = Astro.props;
     return el.textContent || el.innerText || "";
   }
 
-  var fileIconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
-  var externalSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
-  var chevronSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+  function escapeHtml(value) {
+    return (value || "").replace(/[&<>"']/g, function (char) {
+      if (char === "&") return "&amp;";
+      if (char === "<") return "&lt;";
+      if (char === ">") return "&gt;";
+      if (char === '"') return "&quot;";
+      return "&#39;";
+    });
+  }
+
+  function highlightSnippet(text, query) {
+    var q = (query || "").trim();
+    if (!q) return escapeHtml(text);
+    var html = "";
+    var lastIndex = 0;
+    var regex = new RegExp(escapeRegExp(q), "gi");
+    var match;
+
+    while ((match = regex.exec(text)) !== null) {
+      html += escapeHtml(text.slice(lastIndex, match.index));
+      html += '<mark class="omni-highlight">' + escapeHtml(match[0]) + '</mark>';
+      lastIndex = match.index + match[0].length;
+    }
+
+    return html + escapeHtml(text.slice(lastIndex));
+  }
 
   function renderItem(item, active, isRecent) {
-    var label = (item.label || item.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    var subtitle = (item.subtitle || item.description || (isRecent ? "Recently viewed" : "Page")).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    var label = escapeHtml(item.label || item.content || "");
+    var subtitle = escapeHtml(item.subtitle || (isRecent ? "Recently viewed" : breadcrumbForUrl(item.url || "")));
+    var rawDescription = item.description || "";
+    var description = highlightSnippet(rawDescription, getInput() && getInput().value || "");
     var url = item.url || "#";
     var id = (item.id || url).replace(/[^a-zA-Z0-9-_]/g, "_");
-    var safeUrl = url.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
     var activeClass = active ? " omni-item-active" : "";
     return (
       '<div class="omni-item' + activeClass + '" data-id="' + id + '" data-url="' + url.replace(/"/g, "&quot;") + '" role="option" aria-selected="' + (active ? "true" : "false") + '" tabindex="-1">' +
-        '<div class="omni-item-icon">' + fileIconSvg + '</div>' +
         '<div class="omni-item-text">' +
-          '<div class="omni-item-label">' + label + '</div>' +
           '<div class="omni-item-subtitle">' + subtitle + '</div>' +
+          '<div class="omni-item-label">' + label + '</div>' +
+          (description ? '<div class="omni-item-description">' + description + '</div>' : '') +
         '</div>' +
-        '<a href="' + safeUrl + '" class="omni-item-ext" title="Open in new tab" target="_blank" rel="noopener noreferrer" data-ext-url="' + url.replace(/"/g, "&quot;") + '">' + externalSvg + '</a>' +
-        '<span class="omni-item-chevron" aria-hidden="true">' + chevronSvg + '</span>' +
       '</div>'
     );
   }
@@ -206,11 +380,75 @@ const { config = null } = Astro.props;
   var currentResults = [];
   var recentsList = [];
   var activeIndex = 0;
+  var currentFilter = "all";
+  var abortController = null;
+  var searchCache = new Map();
+  var currentResultsVersion = 0;
+  var visibleResultsCacheKey = "";
+  var visibleResultsCacheResults = [];
+
+  function setCurrentResults(results) {
+    currentResults = results;
+    currentResultsVersion += 1;
+    visibleResultsCacheKey = "";
+    visibleResultsCacheResults = [];
+  }
+
+  function visibleResults() {
+    var q = getCurrentSearchQuery();
+    var cacheKey = currentFilter + "\n" + q + "\n" + currentResultsVersion;
+    if (visibleResultsCacheKey === cacheKey) return visibleResultsCacheResults;
+
+    var results;
+    if (currentFilter === "pages") {
+      results = currentResults.filter(function (result) { return result.type === "page"; });
+    } else if (currentFilter === "inside") {
+      results = sortResultsForFilter(
+        currentResults.filter(function (result) { return result.type !== "page"; }),
+        q
+      );
+    } else {
+      results = sortResultsForFilter(currentResults, q);
+    }
+
+    visibleResultsCacheKey = cacheKey;
+    visibleResultsCacheResults = results;
+    return results;
+  }
 
   function allItems() {
     var q = (getInput() && getInput().value || "").trim();
-    if (q && currentResults.length) return currentResults;
+    var results = visibleResults();
+    if (q && results.length) return results;
     return recentsList;
+  }
+
+  function setFilterMenuOpen(open) {
+    var menu = getFilterMenu();
+    var button = getFilterButton();
+    if (menu) menu.style.display = open ? "block" : "none";
+    if (button) button.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function renderFilter() {
+    var value = getFilterValue();
+    var menu = getFilterMenu();
+    if (value) value.textContent = FILTER_LABELS[currentFilter] || "All";
+    if (!menu) return;
+    Array.prototype.forEach.call(menu.querySelectorAll("[data-filter]"), function (option) {
+      var active = option.getAttribute("data-filter") === currentFilter;
+      option.setAttribute("aria-pressed", active ? "true" : "false");
+      option.classList.toggle("omni-filter-option-active", active);
+    });
+  }
+
+  function updateFilter(nextFilter) {
+    if (!FILTER_LABELS[nextFilter]) return;
+    currentFilter = nextFilter;
+    activeIndex = 0;
+    setFilterMenuOpen(false);
+    renderFilter();
+    render();
   }
 
   function render() {
@@ -223,12 +461,15 @@ const { config = null } = Astro.props;
     var docsItemsEl = getDocsItems();
     var emptyEl = getEmpty();
     var emptyText = getEmptyText();
+    var isLoading = !!loadingEl && loadingEl.style.display !== "none";
+    var results = visibleResults();
 
     recentsList = !q ? getRecents() : [];
     if (loadingEl && !q) loadingEl.style.display = "none";
+    renderFilter();
 
     if (!q) {
-      currentResults = [];
+      if (currentResults.length) setCurrentResults([]);
       if (recentGroup) recentGroup.style.display = recentsList.length ? "block" : "none";
       if (recentItemsEl) {
         recentItemsEl.innerHTML = recentsList.map(function (r, i) {
@@ -245,18 +486,22 @@ const { config = null } = Astro.props;
       if (emptyText) emptyText.textContent = "Type to search the docs, or browse recent items.";
     } else {
       if (recentGroup) recentGroup.style.display = "none";
-      if (docsGroup) docsGroup.style.display = currentResults.length ? "block" : "none";
+      if (docsGroup) docsGroup.style.display = results.length ? "block" : "none";
       if (docsItemsEl) {
-        docsItemsEl.innerHTML = currentResults.map(function (r, i) {
+        docsItemsEl.innerHTML = results.map(function (r, i) {
           return renderItem(
-            { id: r.url, label: r.content, url: r.url, subtitle: r.description || "Page" },
+            { id: r.url, label: displayLabelForResult(r), url: r.url, subtitle: breadcrumbForUrl(r.url), description: r.description || "" },
             i === activeIndex,
             false
           );
         }).join("");
       }
-      if (emptyEl) emptyEl.style.display = (currentResults.length === 0 && !loadingEl.style.display) ? "none" : (currentResults.length === 0 ? "block" : "none");
-      if (emptyText) emptyText.textContent = "No results found. Try a different query.";
+      if (emptyEl) emptyEl.style.display = (results.length === 0 && !isLoading) ? "block" : "none";
+      if (emptyText) {
+        emptyText.textContent = currentResults.length > 0
+          ? "No " + (FILTER_LABELS[currentFilter] || "all").toLowerCase() + " results found."
+          : "No results found. Try a different query.";
+      }
     }
 
     scrollActiveIntoView();
@@ -282,14 +527,6 @@ const { config = null } = Astro.props;
     var withinDialog = e.target.closest && e.target.closest("#fd-search-dialog");
     if (!withinDialog) return;
 
-    var ext = e.target.closest && e.target.closest("a.omni-item-ext");
-    if (ext) {
-      e.preventDefault();
-      e.stopPropagation();
-      var url = ext.getAttribute("data-ext-url") || ext.getAttribute("href");
-      navigateToUrl(url, true);
-      return;
-    }
     var row = e.target.closest && e.target.closest(".omni-item[data-url]");
     if (row) {
       e.preventDefault();
@@ -325,35 +562,6 @@ const { config = null } = Astro.props;
     document.addEventListener("mouseover", handleOmniItemMouseOver, true);
   }
 
-  function ensureListboxClickBound() {
-    var listbox = getListbox();
-    if (!listbox || listbox._fdOmniClickBound) return;
-    listbox._fdOmniClickBound = true;
-    function onListboxClick(e) {
-      var ext = e.target.closest && e.target.closest("a.omni-item-ext");
-      if (ext) {
-        e.preventDefault();
-        e.stopPropagation();
-        var url = ext.getAttribute("data-ext-url") || ext.getAttribute("href");
-        navigateToUrl(url, true);
-        return;
-      }
-      var row = e.target.closest && e.target.closest(".omni-item[data-url]");
-      if (row) {
-        e.preventDefault();
-        e.stopPropagation();
-        var url = row.getAttribute("data-url");
-        if (!url) return;
-        var labelEl = row.querySelector(".omni-item-label");
-        var label = labelEl ? labelEl.textContent : url;
-        saveRecent({ id: url, label: label, url: url });
-        closeDialog();
-        navigateToUrl(url, url.startsWith("http"));
-      }
-    }
-    listbox.addEventListener("click", onListboxClick, true);
-  }
-
   function scrollActiveIntoView() {
     var q = getInput() && getInput().value.trim();
     var container = q ? getDocsItems() : getRecentItems();
@@ -385,8 +593,10 @@ const { config = null } = Astro.props;
     var input = getInput();
     var q = (input && input.value || "").trim();
     if (getLoading()) getLoading().style.display = "none";
-    currentResults = [];
+    if (abortController) abortController.abort();
+    setCurrentResults([]);
     activeIndex = 0;
+    setFilterMenuOpen(false);
     if (getDocsGroup()) getDocsGroup().style.display = "none";
     if (getDocsItems()) getDocsItems().innerHTML = "";
     if (getRecentGroup()) getRecentGroup().style.display = !q && getRecents().length ? "block" : "none";
@@ -396,19 +606,38 @@ const { config = null } = Astro.props;
 
     clearTimeout(debounceTimer);
     if (!q) return;
+    var requestUrl = withLang("/api/docs?query=" + encodeURIComponent(q));
+    if (searchCache.has(requestUrl)) {
+      setCurrentResults(searchCache.get(requestUrl) || []);
+      activeIndex = 0;
+      render();
+      return;
+    }
     debounceTimer = setTimeout(function () {
+      var controller = new AbortController();
+      abortController = controller;
       if (getLoading()) getLoading().style.display = "flex";
-      fetch(withLang("/api/docs?query=" + encodeURIComponent(q)))
+      fetch(requestUrl, { signal: controller.signal })
         .then(function (res) { return res.ok ? res.json() : []; })
         .then(function (data) {
-          currentResults = Array.isArray(data) ? data : [];
+          if (controller.signal.aborted) return;
+          setCurrentResults(Array.isArray(data) ? data : []);
+          if (searchCache.size >= 20) {
+            var firstKey = searchCache.keys().next().value;
+            if (firstKey) searchCache.delete(firstKey);
+          }
+          searchCache.set(requestUrl, currentResults);
           activeIndex = 0;
           if (getLoading()) getLoading().style.display = "none";
           render();
         })
         .catch(function () {
+          if (controller.signal.aborted) return;
           if (getLoading()) getLoading().style.display = "none";
           render();
+        })
+        .finally(function () {
+          if (abortController === controller) abortController = null;
         });
     }, DEBOUNCE_MS);
   }
@@ -419,6 +648,8 @@ const { config = null } = Astro.props;
     var content = getContent();
     var input = getInput();
     var closeBtn = document.getElementById("fd-omni-close");
+    var filterButton = getFilterButton();
+    var filterMenu = getFilterMenu();
 
     if (!dialog || !input) return;
 
@@ -433,9 +664,40 @@ const { config = null } = Astro.props;
       else if (e.key === "Enter") { e.preventDefault(); executeActive(); }
     });
 
+    if (filterButton && !filterButton.hasAttribute("data-fd-bound")) {
+      filterButton.setAttribute("data-fd-bound", "true");
+      filterButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var menu = getFilterMenu();
+        var isOpen = !!menu && menu.style.display !== "none";
+        setFilterMenuOpen(!isOpen);
+      });
+    }
+
+    if (filterMenu && !filterMenu.hasAttribute("data-fd-bound")) {
+      filterMenu.setAttribute("data-fd-bound", "true");
+      filterMenu.addEventListener("click", function (e) {
+        var option = e.target.closest && e.target.closest("[data-filter]");
+        if (!option) return;
+        e.preventDefault();
+        e.stopPropagation();
+        updateFilter(option.getAttribute("data-filter"));
+      });
+    }
+
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeDialog();
     });
+
+    if (!document.body.hasAttribute("data-fd-omni-filter-close")) {
+      document.body.setAttribute("data-fd-omni-filter-close", "true");
+      document.addEventListener("click", function (e) {
+        var target = e.target;
+        if (target && target.closest && target.closest(".omni-footer-filter")) return;
+        setFilterMenuOpen(false);
+      });
+    }
 
     if (!document.body.hasAttribute("data-fd-cmdk-registered")) {
       document.body.setAttribute("data-fd-cmdk-registered", "true");

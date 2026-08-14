@@ -34,12 +34,16 @@ import {
   ChartNoAxesColumn,
   DollarSign,
   Activity,
+  Building2,
+  Route,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
 import { DocsMcpAccess } from "@/components/ui/docs-mcp-access";
 import { GuideCard } from "@/components/ui/guide-card";
+import { MigrationCard } from "@/components/ui/migration-card";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
+import docsPackage from "../packages/docs/package.json";
 
 const algoliaAppId = process.env.ALGOLIA_APP_ID;
 const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? "farming-labs-docs";
@@ -47,6 +51,7 @@ const algoliaSearchApiKey = process.env.ALGOLIA_SEARCH_API_KEY;
 const algoliaAdminApiKey = process.env.ALGOLIA_ADMIN_API_KEY;
 const docsSearchProvider =
   process.env.DOCS_SEARCH_PROVIDER ?? (algoliaAppId && algoliaSearchApiKey ? "algolia" : "mcp");
+const docsSiteOrigin = process.env.NEXT_PUBLIC_BASE_URL ?? "https://docs.farming-labs.dev";
 
 const searchConfig =
   docsSearchProvider === "algolia" && algoliaAppId && algoliaSearchApiKey
@@ -62,21 +67,74 @@ const searchConfig =
         endpoint: "/api/docs/mcp",
       };
 
+const T3ChatIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 512 512" fill="none" aria-hidden="true">
+    <path
+      d="M115.3 407.6c-4.7 2.7-10.4-1.1-9.7-6.5l11.7-87.8C100.9 292.3 92 267.9 92 242c0-80.7 83.7-146.2 187-146.2S466 161.3 466 242 382.3 388.2 279 388.2c-28.2 0-55-4.9-78.9-13.6l-84.8 33Z"
+      fill="var(--color-fd-foreground, currentColor)"
+    />
+  </svg>
+);
+
+const ShadcnIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 256 256" fill="none" aria-hidden="true">
+    <line
+      x1="208"
+      y1="128"
+      x2="128"
+      y2="208"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="32"
+    />
+    <line
+      x1="192"
+      y1="40"
+      x2="40"
+      y2="192"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="32"
+    />
+  </svg>
+);
+
 export default defineDocs({
   entry: "docs",
   search: searchConfig,
   observability: {
     console: "info",
   },
+  telemetry: {
+    siteOrigin: docsSiteOrigin,
+  },
+  codeBlocks: {
+    validate: {
+      planner: {
+        provider: "metadata",
+      },
+      runner: {
+        provider: "vercel-sandbox",
+        tokenEnv: "VERCEL_TOKEN",
+      },
+      missingEnv: "skip",
+      unsupportedLanguage: "skip",
+    },
+  },
   theme: pixelBorder({
     ui: {
-      layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 320 },
+      layout: {
+        toc: { enabled: true, depth: 3 },
+        sidebarWidth: 320,
+      },
       sidebar: { style: "floating" },
       components: {
         Prompt: {
           icon: "sparkles",
           actions: ["copy", "open"],
-          providers: ["ChatGPT", "Claude", "Cursor"],
+          providers: ["ChatGPT", "Claude", "Cursor", "T3 Chat"],
           copyIcon: "copy",
           copiedIcon: "check",
           openIcon: "arrowUpRight",
@@ -141,7 +199,10 @@ export default defineDocs({
     arrowUpRight: <ArrowUpRight size={16} />,
     "chart-no-axes-column": <ChartNoAxesColumn size={16} />,
     activity: <Activity size={16} />,
+    infrastructure: <Building2 size={16} />,
     dollarSign: <DollarSign size={16} />,
+    route: <Route size={16} />,
+    shadcn: <ShadcnIcon />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
@@ -156,49 +217,70 @@ export default defineDocs({
 
   pageActions: {
     copyMarkdown: { enabled: true },
+    connectMcp: {
+      enabled: true,
+      endpoint: "/mcp",
+      providers: ["copy", "claude-code", "cursor", "vscode", "codex"],
+      label: "Connect docs MCP",
+    },
+    installSkills: {
+      enabled: true,
+      index: "/.well-known/agent-skills/index.json",
+      command: "npx skills add farming-labs/docs",
+      label: "Install docs skills",
+    },
     alignment: "right",
     openDocs: {
       enabled: true,
+      target: "markdown",
+      prompt: "Read this documentation: {url}",
       providers: [
         {
           name: "GitHub",
+          urlTemplate: "{githubUrl}",
+          promptUrlTemplate: "{githubUrl}",
           icon: (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
             </svg>
           ),
-          urlTemplate: "{githubUrl}",
         },
         {
           name: "ChatGPT",
+          urlTemplate: "https://chatgpt.com/?q={prompt}",
+          promptUrlTemplate: "https://chatgpt.com/?q={prompt}",
           icon: (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364l2.0201-1.1638a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.4092-.6813zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0974-2.3616l2.603-1.5018 2.6032 1.5018v3.0036l-2.6032 1.5018-2.603-1.5018z" />
             </svg>
           ),
-          urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}",
-          promptUrlTemplate: "https://chatgpt.com/?q={prompt}",
         },
         {
           name: "Claude",
+          urlTemplate: "https://claude.ai/new?q={prompt}",
+          promptUrlTemplate: "https://claude.ai/new?q={prompt}",
           icon: (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4.709 15.955l4.397-10.985c.245-.648.245-.648.9-.648h2.756c.649 0 .649 0 .9.648l4.397 10.985c.232.569.232.569-.363.569h-2.392c-.636 0-.636 0-.874-.648l-.706-1.865H8.276l-.706 1.865c-.238.648-.238.648-.874.648H4.709c.245-.648-.363-.569-.363-.569z" />
               <path d="M15.045 6.891L12.289 0H14.61c.655 0 .655 0 .9.648l4.398 10.985c.231.569.231.569-.364.569h-2.391c-.637 0-.637 0-.875-.648z" />
             </svg>
           ),
-          urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}",
-          promptUrlTemplate: "https://claude.ai/new?q={prompt}",
         },
         {
           name: "Cursor",
+          urlTemplate: "https://cursor.com/link/prompt?text={prompt}",
+          promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
           icon: (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             </svg>
           ),
-          urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
-          promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
+        },
+        {
+          name: "T3 Chat",
+          urlTemplate: "https://t3.chat/new?q={prompt}",
+          promptUrlTemplate: "https://t3.chat/new?q={prompt}",
+          icon: <T3ChatIcon />,
         },
       ],
     },
@@ -214,16 +296,408 @@ export default defineDocs({
     },
   },
   agent: {
+    skills: "../skills/farming-labs",
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
       aggressiveness: 0.3,
       protectJson: true,
+    },
+    evaluations: {
+      surface: "mcp-context",
+      tokenBudget: 5_000,
+      topK: 3,
+      tasks: [
+        {
+          id: "choose-project-workflow",
+          query:
+            "Quick Start existing project or fresh auto-detects the framework and initializes Farming Labs docs with pnpm dlx",
+          topK: 5,
+          filters: { framework: "tanstackstart", version: "0.2.60" },
+          expect: {
+            scope: { framework: "tanstackstart", version: "0.2.60" },
+            relevantSources: ["/docs"],
+            allowedSources: ["/docs/installation", "/docs/cli"],
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.35,
+          },
+        },
+        {
+          id: "sync-cloud-repository-contract",
+          query:
+            "Docs Cloud Sync The Contract with cloud sync so docs.json is safe to commit and the raw key stays outside source control",
+          topK: 5,
+          expect: {
+            relevantSources: ["/docs/cloud"],
+            allowedSources: ["/docs/cloud/deploy", "/docs/guides/docs-json", "/docs/cli"],
+            maxFirstRelevantRank: 2,
+            minUsefulByteRatio: 0.35,
+            examples: [
+              {
+                source: "/docs/cloud",
+                language: "bash",
+                title: "terminal",
+                runnable: false,
+                includes: ["pnpm dlx @farming-labs/docs cloud sync"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "locate-sveltekit-config",
+          query:
+            "Configuration Framework Setup for SvelteKit in src/lib/docs.config.ts with svelteTheme contentDir and nav",
+          topK: 5,
+          filters: { framework: "sveltekit", version: "0.2.60" },
+          expect: {
+            scope: { framework: "sveltekit", version: "0.2.60" },
+            relevantSources: ["/docs/configuration"],
+            allowedSources: ["/docs/reference", "/docs/installation"],
+            maxFirstRelevantRank: 2,
+            minUsefulByteRatio: 0.35,
+          },
+        },
+        {
+          id: "prepare-monorepo-contribution",
+          query:
+            "Contributing Pull requests fork farming-labs/docs branch from main install pnpm and run pnpm --dir website dev",
+          topK: 5,
+          filters: { framework: "astro", version: "0.2.60" },
+          expect: {
+            scope: { framework: "astro", version: "0.2.60" },
+            relevantSources: ["/docs/contributing"],
+            allowedSources: ["/docs/guides/adapter-agent-conformance", "/docs/cli"],
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.35,
+            examples: [
+              {
+                source: "/docs/contributing",
+                language: "bash",
+                title: "terminal",
+                runnable: false,
+                includes: ["pnpm --dir website dev"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "author-audience-projection",
+          query:
+            "Choose An Audience in page.mdx with Human Agent and the explicit Audience only human or agent form",
+          topK: 3,
+          filters: { framework: "nuxt", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nuxt", version: "0.2.60" },
+            relevantSources: ["/docs/customization/agent-primitive"],
+            allowedSources: ["/docs/guides/agent-friendly-docs", "/docs/configuration"],
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.35,
+          },
+        },
+        {
+          id: "register-custom-mdx-component",
+          query:
+            "Create an InfoCard React component, register it in the components map, and use it from MDX without an import",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/customization/components"],
+            allowedSources: ["/docs/configuration", "/docs/themes/creating-themes"],
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.5,
+            examples: [
+              {
+                source: "/docs/customization/components",
+                language: "tsx",
+                title: "docs.config.tsx",
+                runnable: false,
+                includes: ["components: {", "InfoCard"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "configure-dynamic-og-image",
+          query:
+            "Example how the docs website uses dynamic OG in api/og/route.ts with ImageResponse width 1200 height 630",
+          topK: 5,
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/customization/og-images"],
+            allowedSources: ["/docs/configuration", "/docs/reference"],
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.5,
+            examples: [
+              {
+                source: "/docs/customization/og-images",
+                language: "tsx",
+                title: "api/og/route.ts",
+                runnable: false,
+                includes: ["new ImageResponse", "width: 1200", "height: 630"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "inspect-page-agent-frontmatter",
+          query:
+            "PageAgentFrontmatter page-frontmatter.md failureModes resolution Confirm withDocs wraps the Next.js config exact field types",
+          topK: 3,
+          filters: { framework: "astro", version: "0.2.60" },
+          expect: {
+            scope: { framework: "astro", version: "0.2.60" },
+            relevantSources: ["/docs/reference"],
+            allowedSources: ["/docs/configuration", "/docs/guides/agent-friendly-docs"],
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.45,
+            examples: [
+              {
+                source: "/docs/reference",
+                language: "md",
+                title: "page-frontmatter.md",
+                runnable: false,
+                includes: ["failureModes:", "resolution: Confirm withDocs"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "select-built-in-theme",
+          query:
+            "Themes Using a Theme with pixelBorder in docs.config.ts and the matching CSS in app/global.css",
+          topK: 5,
+          expect: {
+            relevantSources: ["/docs/themes"],
+            allowedSources: ["/docs/themes/pixel-border", "/docs/themes/creating-themes"],
+            maxFirstRelevantRank: 2,
+            minUsefulByteRatio: 0.3,
+            examples: [
+              {
+                source: "/docs/themes",
+                language: "tsx",
+                title: "docs.config.ts",
+                runnable: false,
+                includes: ["@farming-labs/theme/pixel-border", "theme: pixelBorder()"],
+                verification: "present",
+              },
+              {
+                source: "/docs/themes",
+                language: "css",
+                title: "app/global.css",
+                runnable: false,
+                includes: ["@farming-labs/theme/pixel-border/css"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "install-existing-nextjs",
+          query:
+            "Manually install @farming-labs/next without direct renderer packages, configure withDocs, and wrap the app in RootProvider",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/installation"],
+            allowedSources: ["/docs", "/docs/cli", "/docs/configuration"],
+            maxFirstRelevantRank: 1,
+            minUsefulByteRatio: 0.45,
+            examples: [
+              {
+                source: "/docs/installation",
+                language: "bash",
+                runnable: false,
+                includes: ["pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "validate-runnable-code-blocks",
+          query:
+            "Plan and validate fenced MDX code blocks with pnpm exec docs codeblocks validate --plan",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/cli"],
+            allowedSources: ["/docs/configuration", "/docs/customization/components"],
+            maxFirstRelevantRank: 1,
+          },
+        },
+        {
+          id: "configure-public-mcp",
+          query:
+            "Expose the docs MCP server over Streamable HTTP and optionally add authentication",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/customization/mcp"],
+            allowedSources: ["/docs/configuration", "/docs/cli"],
+            maxFirstRelevantRank: 1,
+          },
+        },
+        {
+          id: "generate-static-sitemaps",
+          query:
+            "Static Export command pnpm exec docs sitemap generate for public/sitemap.xml and public/sitemap.md",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/customization/sitemaps"],
+            allowedSources: ["/docs/configuration", "/docs/cli"],
+            maxFirstRelevantRank: 1,
+            examples: [
+              {
+                source: "/docs/customization/sitemaps",
+                language: "bash",
+                runnable: false,
+                includes: ["pnpm exec docs sitemap generate"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "deploy-cloud-preview",
+          query: "Use pnpm dlx @farming-labs/docs deploy --json to return a Docs Cloud preview URL",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/cloud/deploy"],
+            allowedSources: ["/docs/cloud", "/docs/guides/docs-json", "/docs/cli"],
+            maxFirstRelevantRank: 1,
+            examples: [
+              {
+                source: "/docs/cloud/deploy",
+                language: "bash",
+                runnable: false,
+                includes: ["pnpm dlx @farming-labs/docs deploy --json"],
+                verification: "present",
+              },
+            ],
+          },
+        },
+        {
+          id: "cloud-analytics-privacy",
+          query:
+            "Connect a project to Docs Cloud analytics while keeping user-authored inputs disabled",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/cloud/analytics"],
+            allowedSources: ["/docs/cloud", "/docs/customization/analytics"],
+            maxFirstRelevantRank: 1,
+          },
+        },
+        {
+          id: "author-structured-agent-contract",
+          query:
+            "Write a structured page agent contract with prerequisites, verification, rollback, and applicability",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/guides/agent-friendly-docs"],
+            allowedSources: [
+              "/docs/customization/agent-primitive",
+              "/docs/configuration",
+              "/docs/reference",
+            ],
+            maxFirstRelevantRank: 1,
+          },
+        },
+        {
+          id: "validate-adapter-agent-contract",
+          query: "Run the shared agent conformance contract for a custom framework adapter",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/guides/adapter-agent-conformance"],
+            allowedSources: ["/docs/guides/agent-friendly-docs", "/docs/customization/mcp"],
+            maxFirstRelevantRank: 1,
+            examples: [
+              {
+                source: "/docs/guides/adapter-agent-conformance",
+                language: "ts",
+                title: "src/agent-conformance.test.ts",
+                runnable: true,
+                includes: ["runDocsAgentConformance"],
+                verification: "syntax",
+              },
+            ],
+          },
+        },
+        {
+          id: "create-reusable-theme",
+          query: "Create, apply, and publish a reusable custom Farming Labs docs theme",
+          topK: 2,
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/themes/creating-themes"],
+            allowedSources: ["/docs/themes", "/docs/configuration"],
+            maxFirstRelevantRank: 2,
+          },
+        },
+        {
+          id: "configure-page-actions",
+          query:
+            "Configure Copy Markdown and Open in LLM actions with canonical page and GitHub URLs",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/customization/page-actions"],
+            allowedSources: ["/docs/configuration", "/docs/customization/agent-primitive"],
+            maxFirstRelevantRank: 1,
+          },
+        },
+        {
+          id: "configure-grounded-ask-ai",
+          query:
+            "Enable Ask AI with grounded retrieval, citations, provider credentials, and a same-origin proxy",
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/customization/ai-chat"],
+            allowedSources: ["/docs/configuration", "/docs/customization/mcp"],
+            maxFirstRelevantRank: 1,
+          },
+        },
+        {
+          id: "optimize-agent-context-budget",
+          query:
+            "Use docs-cloud-compress-v1, protectJson, and docs agent compact --all to tighten page-level agent.md",
+          tokenBudget: 3_500,
+          filters: { framework: "nextjs", version: "0.2.60" },
+          expect: {
+            scope: { framework: "nextjs", version: "0.2.60" },
+            relevantSources: ["/docs/token-efficiency"],
+            allowedSources: [
+              "/docs/cli",
+              "/docs/guides/agent-friendly-docs",
+              "/docs/customization/agent-primitive",
+            ],
+            maxFirstRelevantRank: 2,
+            minUsefulByteRatio: 0.4,
+          },
+        },
+      ],
     },
   },
   mcp: {
     enabled: true,
     name: "@farming-labs/docs",
+    version: docsPackage.version,
+    prompts: {
+      contracts: true,
+      goldenTasks: ["install-existing-nextjs", "create-reusable-theme"],
+    },
     tools: {
       listPages: true,
       readPage: true,
@@ -242,6 +716,12 @@ export default defineDocs({
       chars: 50_000,
     },
     sections: [
+      {
+        title: "Migrations",
+        description:
+          "Source-specific migration guides for moving existing documentation into Farming Labs Docs.",
+        match: "/docs/migrations/**",
+      },
       {
         title: "Guides",
         description: "Task-based guides for agent-friendly docs and discovery surfaces.",
@@ -282,22 +762,11 @@ export default defineDocs({
   ordering: "numeric",
   ai: {
     enabled: true,
+    provider: "docs-cloud",
+    stream: true,
     mode: "floating",
     position: "bottom-right",
     floatingStyle: "full-modal",
-    providers: {
-      openai: {
-        baseUrl: "https://api.openai.com/v1",
-        apiKey: process.env.OPENAI_API_KEY,
-      },
-    },
-    model: {
-      models: [
-        { id: "gpt-4o-mini", label: "GPT-4o mini (fast)", provider: "openai" },
-        { id: "gpt-4o", label: "GPT-4o (quality)", provider: "openai" },
-      ],
-      defaultModel: "gpt-4o-mini",
-    },
     aiLabel: "DocsBot",
     onActions(data) {
       console.log("[@farming-labs/docs:ask-ai-action]", data);
@@ -308,7 +777,7 @@ export default defineDocs({
       "How do I create a custom component?",
       "How do I configure the sidebar?",
       "Why is this better than other documentation frameworks?",
-      "How to create a custom component?",
+      "How do I enable Ask AI?",
     ],
   },
   sidebar: {
@@ -442,5 +911,21 @@ export default defineDocs({
     Callout,
     DocsMcpAccess,
     GuideCard,
+    MigrationCard,
+  },
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    deploy: { enabled: true },
+    analytics: {
+      enabled: true,
+      console: false,
+      includeInputs: true,
+    },
+    publish: { mode: "draft-pr", baseBranch: "main" },
+  },
+  analytics: {
+    enabled: true,
+    console: false,
+    includeInputs: true,
   },
 });

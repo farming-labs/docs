@@ -1,5 +1,8 @@
-@import "tailwindcss";
 @import "@farming-labs/theme/pixel-border/css";
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code",
@@ -36,6 +39,16 @@
 }
 
 @layer base {
+  /* Tailwind is imported after the docs theme so website utilities stay authoritative.
+   * Re-apply the theme's border default after Tailwind's preflight reset so bare
+   * border utilities inside the docs shell do not inherit the current text color. */
+  #nd-docs-layout,
+  #nd-docs-layout *,
+  #nd-docs-layout ::before,
+  #nd-docs-layout ::after {
+    border-color: var(--color-fd-border, currentColor);
+  }
+
   @supports (view-transition-name: root) {
     ::view-transition-group(root) {
       animation-timing-function: var(--expo-out);
@@ -73,6 +86,7 @@
   background: white;
   color: black;
 }
+
 /* sugar-high syntax highlighting tokens (dark code block) */
 .sh-code {
   --sh-class: #e5c07b;

@@ -1,16 +1,30 @@
 ---
 title: "Customization"
-description: "Colors, typography, sidebar, components, analytics, observability, agent primitives, robots.txt, OG images, AI chat, and page actions"
+description: "Colors, typography, sidebar, components, analytics, telemetry, observability, agent primitives, robots.txt, OG images, AI chat, and page actions"
 icon: "settings"
 order: 5
+related:
+  - /docs/configuration
+  - /docs/themes
+  - /docs/customization/components
+  - /docs/customization/agent-primitive
+  - /docs/customization/ai-chat
+agent:
+  tokenBudget: 750
 ---
 
 # Customization
 
 <Agent>
-Use this page when the user asks about this topic: Colors, typography, sidebar, components, analytics, observability, agent primitives, robots.txt, OG images, AI chat, and page actions.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Treat this page as a configuration router. Visual tokens and built-in default props belong under
+`theme.ui`, replacement MDX components use top-level `components`, and runtime features use
+top-level `ai`, `analytics`, `telemetry`, `observability`, `mcp`, `llmsTxt`, `sitemap`, and
+`pageActions` in `docs.config.ts`.
+
+The linked feature page is the source of truth because each option has different defaults and
+verification steps. A layout or CSS file is unnecessary for an option documented as config-only. A
+committed crawl policy comes from `pnpm exec docs robots generate`; audience-specific page content
+follows the Agent Primitive workflow.
 </Agent>
 
 Everything is customizable from `docs.config.ts`. No CSS files to edit, no layout files to create.
@@ -26,10 +40,11 @@ Everything is customizable from `docs.config.ts`. No CSS files to edit, no layou
 - **[Ask AI](/docs/customization/ai-chat)** — RAG-powered AI chat with configurable LLM, floating/search modes, and more
 - **[Page Actions](/docs/customization/page-actions)** — "Copy Markdown" and "Open in LLM" buttons on doc pages
 - **[Analytics](/docs/customization/analytics)** — Track page views, search, AI, feedback, page actions, agent reads, and MCP usage
+- **[Telemetry](/docs/customization/telemetry)** — Farming Labs maintainer telemetry for package adoption and coarse agent-surface usage
 - **[Observability](/docs/customization/observability)** — Trace Ask AI and MCP runs with span IDs, timing, status, previews, and errors
 - **[MCP Server](/docs/customization/mcp)** — Built-in MCP tools/resources over stdio, `/mcp`, and `/.well-known/mcp`
 - **[llms.txt](/docs/customization/llms-txt)** — Auto-generate `llms.txt` and `llms-full.txt` for LLM-friendly documentation
-- **[Sitemaps](/docs/customization/sitemaps)** — Runtime `sitemap.xml` and `sitemap.md` for crawlers and agents, plus static export generation
+- **[Sitemaps](/docs/customization/sitemaps)** — Runtime `sitemap.xml`, `sitemap.md`, and `/docs/sitemap.md` for crawlers and agents, plus static export generation
 - **Robots.txt** — Runtime agent-friendly crawl policy at `/robots.txt`; use `docs robots generate` for static export or committed policies
 
 All customization happens through the `theme` and top-level config options in `docs.config.ts`.

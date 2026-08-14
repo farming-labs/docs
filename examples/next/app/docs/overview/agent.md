@@ -168,10 +168,13 @@ export default defineDocs({
     route: "/api/docs/mcp",
     name: "My Docs MCP",
     tools: {
+      listDocs: true,
       listPages: true,
       getNavigation: true,
       searchDocs: true,
       readPage: true,
+      getCodeExamples: true,
+      getConfigSchema: true,
     },
   },
 });
@@ -181,16 +184,25 @@ export default defineDocs({
 
 | Property        | Type      | Description |
 | --------------- | --------- | ----------- |
+| `listDocs`      | `boolean` | Expose the `list_docs` tool |
 | `listPages`     | `boolean` | Expose the `list_pages` tool |
 | `getNavigation` | `boolean` | Expose the `get_navigation` tool |
 | `searchDocs`    | `boolean` | Expose the `search_docs` tool |
 | `readPage`      | `boolean` | Expose the `read_page` tool |
+| `getCodeExamples` | `boolean` | Expose the `get_code_examples` tool |
+| `getConfigSchema` | `boolean` | Expose the `get_config_schema` tool |
 
 Default MCP surface:
 
 - **HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+
+`list_docs` returns docs page summaries grouped by section. Agents can call it with no arguments
+to see the whole docs tree, or pass `section`, such as `getting-started`, before reading a page.
+
+`get_config_schema` returns structured `docs.config.ts` option metadata. Agents can call it with
+`option`, such as `mcp.tools.getConfigSchema`, or with `query` for keyword filtering.
 
 Framework notes:
 
@@ -1051,17 +1063,17 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
 | `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
 | `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
-| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. |
+| `target` | `"markdown" \| "page" \| "source" \| "github"` | URL inserted into `{url}` for built-in provider prompts. |
+| `prompt` | `string` | Prompt text for built-in providers. Defaults to `"Read this documentation: {url}"`. |
+| `urlTemplate` | `string` | Custom URL template. Supports `{prompt}`, `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. |
 
 ```ts
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
-    providers: [
-      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
-      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}" },
-    ],
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
   },
 },
 ```
@@ -1243,7 +1255,9 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | -------- | ---------------------------------------------------------- | ----------- |
 | `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
 | `GET`    | `({ request }) => Response`                                | Search / `llms.txt` endpoint handler |
+| `HEAD`   | `({ request }) => Promise<Response>`                       | Bodyless public-read handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
+| `MCP`    | `DocsMcpHttpHandlers`                                      | MCP HTTP transport handlers |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/tanstack-start/server";
@@ -1281,13 +1295,31 @@ function DocsIndexPage() {
 
 ```ts title="src/routes/api.docs.ts"
 import { createFileRoute } from "@tanstack/react-router";
+import { isDocsStandardsDiscoveryRequest } from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
+import docsConfig from "../../docs.config";
+
+async function handleUnsupportedDocsMethod(request: Request) {
+  if (
+    isDocsStandardsDiscoveryRequest(new URL(request.url), {
+      apiRoute: docsConfig.cloud?.apiRoute,
+    })
+  ) {
+    return docsServer.GET({ request });
+  }
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: { Allow: "GET, HEAD, POST" },
+  });
+}
 
 export const Route = createFileRoute("/api/docs")({
   server: {
     handlers: {
       GET: async ({ request }) => docsServer.GET({ request }),
+      HEAD: async ({ request }) => docsServer.HEAD({ request }),
       POST: async ({ request }) => docsServer.POST({ request }),
+      ANY: async ({ request }) => handleUnsupportedDocsMethod(request),
     },
   },
 });
@@ -1320,7 +1352,9 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 | -------- | ------------------------------ | ------------------------------------------------- |
 | `load`   | `(event) => Promise<PageData>` | Layout load function (use in `+layout.server.js`) |
 | `GET`    | `(event) => Response`          | Search endpoint handler                           |
+| `HEAD`   | `(event) => Promise<Response>` | Bodyless public-read handler                      |
 | `POST`   | `(event) => Promise<Response>` | AI chat endpoint handler                          |
+| `MCP`    | `DocsMcpHttpHandlers`          | MCP HTTP transport handlers                       |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/svelte/server";
@@ -1332,7 +1366,7 @@ const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });
@@ -1354,7 +1388,7 @@ Imported from `@farming-labs/svelte-theme`:
 
 ### `createDocsServer(config)`
 
-Same as SvelteKit — returns `{ load, GET, POST }`.
+Same as SvelteKit — returns `{ load, GET, HEAD, POST, MCP }`.
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
@@ -1373,7 +1407,9 @@ import { createDocsServer } from "@farming-labs/astro/server";
 | -------- | ----------------------------------------- | ----------------------------------------------------- |
 | `load`   | `(pathname: string) => Promise<PageData>` | Takes a URL pathname string, returns page data        |
 | `GET`    | `({ request }) => Response`               | Search endpoint handler for `GET /api/docs?query=...` |
+| `HEAD`   | `({ request }) => Promise<Response>`      | Bodyless public-read handler                          |
 | `POST`   | `({ request }) => Promise<Response>`      | AI chat endpoint handler with SSE streaming           |
+| `MCP`    | `DocsMcpHttpHandlers`                     | MCP HTTP transport handlers                           |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
@@ -1385,7 +1421,7 @@ const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });
@@ -1407,9 +1443,9 @@ Same pattern as SvelteKit:
 
 | Import                                       | Description              |
 | -------------------------------------------- | ------------------------ |
-| `@farming-labs/astro-theme/css`              | Default (fumadocs) theme |
-| `@farming-labs/astro-theme/pixel-border/css` | Pixel border theme       |
-| `@farming-labs/astro-theme/darksharp/css`    | Darksharp theme          |
+| `@farming-labs/theme/default/css`            | Default (fumadocs) theme |
+| `@farming-labs/theme/pixel-border/css` | Pixel border theme       |
+| `@farming-labs/theme/darksharp/css`    | Darksharp theme          |
 
 ### Theme Factories
 
@@ -1464,7 +1500,7 @@ Imported from `@farming-labs/nuxt-theme`:
 
 | Import                                  | Description              |
 | --------------------------------------- | ------------------------ |
-| `@farming-labs/nuxt-theme/fumadocs/css` | Default (fumadocs) theme |
+| `@farming-labs/theme/default/css` | Default (fumadocs) theme |
 
 ### Theme Factories
 

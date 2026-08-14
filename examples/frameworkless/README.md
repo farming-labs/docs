@@ -50,7 +50,16 @@ Current example config:
     ]
   },
   "cloud": {
-    "enabled": false,
+    "apiKey": {
+      "env": "DOCS_CLOUD_API_KEY"
+    },
+    "deploy": {
+      "enabled": false
+    },
+    "publish": {
+      "mode": "draft-pr",
+      "baseBranch": "main"
+    },
     "analytics": {
       "enabled": true,
       "console": "info",
