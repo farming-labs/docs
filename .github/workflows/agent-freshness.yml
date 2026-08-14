@@ -47,4 +47,5 @@ jobs:
           pnpm --filter @farming-labs/theme build
 
       - name: Check generated agent content freshness
-        run: pnpm --dir website exec docs agent compact --check --config docs.config.tsx
+        working-directory: website
+        run: node ../packages/docs/dist/cli/index.mjs agent compact --check --config docs.config.tsx
