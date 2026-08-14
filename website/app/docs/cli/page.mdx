@@ -760,6 +760,14 @@ pnpm exec docs doctor --agent --config docs.config.tsx
 pnpm exec docs doctor --agent --url https://docs.example.com
 pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
+Two additional flags control how hosted probes behave:
+
+- **`--timeout <ms>`** — per-probe HTTP request timeout in milliseconds (default: `15000`, valid range: `100`–`120000`). Increase this for deployments with slow cold starts.
+- **`--retries <0-5>`** — number of retries for safe `GET` and `HEAD` hosted probes (default: `1`, valid range: `0`–`5`). Mutating MCP requests are never retried automatically.
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --url https://docs.example.com --timeout 20000 --retries 2
+```
 
 Use `docs doctor --fix` or `docs doctor --agent --fix` when you want the agent doctor to
 repair issues it finds instead of only reporting them. Fix mode re-runs agent doc compaction for
