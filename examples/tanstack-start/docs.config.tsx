@@ -47,5 +47,4 @@ export default defineDocs({
     enabled: true,
     default: "dark",
   },
-  tweaks: { reader: true, author: process.env.NODE_ENV !== "production" },
 });

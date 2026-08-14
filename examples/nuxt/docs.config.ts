@@ -31,7 +31,6 @@ export default defineDocs({
     ],
   },
   themeToggle: { enabled: true, default: "dark" },
-  tweaks: { reader: true, author: process.env.NODE_ENV !== "production" },
   breadcrumb: { enabled: true },
   metadata: {
     titleTemplate: "%s – Docs",

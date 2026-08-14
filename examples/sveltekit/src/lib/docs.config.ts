@@ -39,7 +39,6 @@ export default defineDocs({
   },
   readingTime: { enabled: true, wordsPerMinute: 220 },
   themeToggle: { enabled: true, default: "dark" },
-  tweaks: { reader: true, author: process.env.NODE_ENV !== "production" },
   breadcrumb: { enabled: true },
   metadata: {
     titleTemplate: "%s – Docs",
