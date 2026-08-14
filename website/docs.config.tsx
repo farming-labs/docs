@@ -1,5 +1,6 @@
 import {
   defineDocs,
+  type DocsAgentEvaluationSurface,
   type DocsAgentEvaluationAnswerRunner,
   type DocsAgentGoldenTask,
 } from "@farming-labs/docs";
@@ -57,6 +58,36 @@ const docsSearchProvider =
   process.env.DOCS_SEARCH_PROVIDER ?? (algoliaAppId && algoliaSearchApiKey ? "algolia" : "mcp");
 const docsSiteOrigin = process.env.NEXT_PUBLIC_BASE_URL ?? "https://docs.farming-labs.dev";
 
+function resolveAgentEvaluationSurface(): DocsAgentEvaluationSurface {
+  const value = process.env.DOCS_AGENT_EVALUATION_SURFACE;
+  if (!value) return "mcp-context";
+  if (value === "mcp-context" || value === "configured-search" || value === "ask-ai-context") {
+    return value;
+  }
+  throw new Error(`Unsupported DOCS_AGENT_EVALUATION_SURFACE: ${value}`);
+}
+
+const agentEvaluationSurface = resolveAgentEvaluationSurface();
+
+function selectAgentEvaluationTasks(tasks: DocsAgentGoldenTask[]): DocsAgentGoldenTask[] {
+  const configured = process.env.DOCS_AGENT_EVALUATION_TASKS;
+  if (!configured) return tasks;
+  const requested = new Set(
+    configured
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const selected = tasks.filter((task) => requested.has(task.id));
+  const missing = [...requested].filter((id) => !selected.some((task) => task.id === id));
+  if (selected.length === 0 || missing.length > 0) {
+    throw new Error(
+      `DOCS_AGENT_EVALUATION_TASKS contains unknown task IDs: ${missing.join(", ") || configured}`,
+    );
+  }
+  return selected;
+}
+
 const searchConfig =
   docsSearchProvider === "algolia" && algoliaAppId && algoliaSearchApiKey
     ? {
@@ -98,7 +129,8 @@ function withAgentEvaluationCoverage(tasks: DocsAgentGoldenTask[]): DocsAgentGol
     ),
   );
 
-  return tasks.map((task) => ({
+  const selectedTasks = selectAgentEvaluationTasks(tasks);
+  return selectedTasks.map((task) => ({
     ...task,
     expect: {
       ...task.expect,
@@ -363,7 +395,7 @@ export default defineDocs({
       protectJson: true,
     },
     evaluations: {
-      surface: "mcp-context",
+      surface: agentEvaluationSurface,
       allowNetwork: true,
       tokenBudget: 5_000,
       topK: 3,

@@ -1854,6 +1854,24 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
                     ],
                   },
                   {
+                    path: "agent.evaluations.tasks[].expect.coverage",
+                    name: "coverage",
+                    type: "DocsAgentGoldenCoverageExpectation",
+                    description:
+                      "Applicability declarations for optional confidence-coverage dimensions.",
+                    children: [
+                      {
+                        path: "agent.evaluations.tasks[].expect.coverage.executableExamples",
+                        name: "executableExamples",
+                        type: '"applicable" | "not-applicable"',
+                        default: "applicable",
+                        values: ["applicable", "not-applicable"],
+                        description:
+                          "Whether runtime example execution meaningfully validates this task.",
+                      },
+                    ],
+                  },
+                  {
                     path: "agent.evaluations.tasks[].expect.examples",
                     name: "examples",
                     type: "DocsAgentGoldenExpectedExample[]",
