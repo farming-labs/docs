@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/theme",
-  "version": "0.1.143",
+  "version": "0.2.106",
   "description": "Theme package for @farming-labs/docs — layout, provider, MDX components, and styles",
   "keywords": [
     "docs",
@@ -33,6 +33,12 @@
       "import": "./dist/docs-client-hooks.mjs",
       "default": "./dist/docs-client-hooks.mjs"
     },
+    "./browser": {
+      "types": "./dist/browser.d.mts",
+      "import": "./dist/browser.mjs",
+      "default": "./dist/browser.mjs"
+    },
+    "./browser/css": "./styles/bundles/browser-framework.css",
     "./default": {
       "types": "./dist/default/index.d.mts",
       "import": "./dist/default/index.mjs",
@@ -88,6 +94,11 @@
       "import": "./dist/ledger/index.mjs",
       "default": "./dist/ledger/index.mjs"
     },
+    "./shadcn": {
+      "types": "./dist/shadcn/index.d.mts",
+      "import": "./dist/shadcn/index.mjs",
+      "default": "./dist/shadcn/index.mjs"
+    },
     "./threadline": {
       "types": "./dist/threadline/index.d.mts",
       "import": "./dist/threadline/index.mjs",
@@ -131,30 +142,36 @@
     "./concrete/css": "./styles/concrete.css",
     "./command-grid/css": "./styles/command-grid.css",
     "./ledger/css": "./styles/ledger.css",
+    "./shadcn/css": "./styles/shadcn.css",
     "./threadline/css": "./styles/threadline.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "node scripts/build-css-bundles.mjs && tsdown",
+    "build:css": "node scripts/build-css-bundles.mjs",
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "fumadocs-core": "^16.6.1",
-    "fumadocs-ui": "^16.6.1",
+    "fumadocs-core": "16.7.16",
+    "fumadocs-ui": "16.7.16",
     "gray-matter": "^4.0.3",
-    "sugar-high": "^0.9.5"
+    "sugar-high": "^0.9.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@farming-labs/docs": "workspace:*",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "next": ">=14.0.0",
+    "postcss": "^8.5.6",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
@@ -164,5 +181,16 @@
     "next": ">=16.0.0",
     "react": ">=19.2.0",
     "react-dom": ">=19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   }
 }

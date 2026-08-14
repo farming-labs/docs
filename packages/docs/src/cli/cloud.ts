@@ -15,22 +15,35 @@ import {
   resolveDocsContentDir,
 } from "./config.js";
 import { markCliErrorReported } from "./errors.js";
-import { detectFramework, type Framework } from "./utils.js";
+import { detectFramework, detectPackageManagerFromProject, type Framework } from "./utils.js";
 
 const DOCS_JSON_FILE = "docs.json";
 const DOCS_CLOUD_SCHEMA_URL = "https://docs.farming-labs.dev/schema/docs.json";
 const DOCS_CLOUD_DEFAULT_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
-const DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
+const DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV = "PUBLIC_DOCS_CLOUD_PROJECT_ID";
 const DOCS_CLOUD_MISSING_API_KEY_DOCS_URL =
   "https://docs.farming-labs.dev/docs/cloud/deploy#missing-api-key";
-const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
+const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
 const DEFAULT_PREVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PREVIEW_POLL_INTERVAL_MS = 2000;
 const REQUIRED_PREVIEW_API_KEY_SCOPES = ["project:read", "preview:write", "jobs:read"] as const;
+const DOCS_CLOUD_PROJECT_ID_ENVS = [
+  "PUBLIC_DOCS_CLOUD_PROJECT_ID",
+  "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+  "DOCS_CLOUD_PROJECT_ID",
+] as const;
+const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "PUBLIC_DOCS_CLOUD_API_KEY";
+const CLOUD_CHECK_TARGETS = ["deploy", "analytics", "ask-ai"] as const;
+const FUMADOCS_CONNECT_MARKER = "@farming-labs/docs cloud connect: fumadocs";
 
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue | undefined };
 type JsonRecord = Record<string, JsonValue | undefined>;
+type ApiBaseUrlResolution = {
+  url: string;
+  source: "flag" | "env" | "default";
+  env?: string;
+};
 
 type CloudAnalyticsConfig =
   | boolean
@@ -60,6 +73,7 @@ type ManagedDocsJson = {
     description?: string;
   };
   cloud?: DocsCloudConfig;
+  extensions?: JsonRecord;
 };
 
 type GitRepositoryMetadata = {
@@ -70,15 +84,29 @@ type GitRepositoryMetadata = {
   remoteUrl?: string;
 };
 
+export type ConnectedDocsProfile = {
+  engine: "fumadocs";
+  runtime: Framework;
+  appRoot: string;
+  contentRoots: string[];
+  configFiles: string[];
+  packageManager?: string;
+  confidence: "high" | "medium";
+  reason: string;
+};
+
 export interface CloudCommandOptions {
   configPath?: string;
   apiBaseUrl?: string;
   apiKey?: string;
   apiKeyEnv?: string;
   json?: boolean;
+  network?: boolean;
+  checkTargets?: CloudCheckTarget[];
   rootDir?: string;
   timeoutMs?: number;
   pollIntervalMs?: number;
+  docsInfraProfile?: ConnectedDocsProfile;
 }
 
 export interface CloudInitResult {
@@ -90,6 +118,7 @@ export interface CloudInitResult {
   configUpdated: boolean;
   docsJsonCreated: boolean;
   docsJsonUpdated: boolean;
+  docsInfraProfile?: ConnectedDocsProfile;
 }
 
 export interface MaterializeCloudConfigResult {
@@ -99,6 +128,29 @@ export interface MaterializeCloudConfigResult {
   apiKeyEnv: string;
   created: boolean;
   updated: boolean;
+}
+
+export type CloudCheckStatus = "pass" | "warn" | "fail";
+export type CloudCheckTarget = "deploy" | "analytics" | "ask-ai";
+
+export interface CloudCheckItem {
+  name: string;
+  status: CloudCheckStatus;
+  message: string;
+  details?: JsonRecord;
+}
+
+export interface CloudCheckResult {
+  ok: boolean;
+  apiBaseUrl: string;
+  configPath: string;
+  docsJsonPath: string;
+  apiKeyEnv: string;
+  analyticsProjectIdEnv?: string;
+  network: boolean;
+  targets: CloudCheckTarget[];
+  checks: CloudCheckItem[];
+  identity?: JsonRecord;
 }
 
 interface DocsConfigSnapshot {
@@ -137,6 +189,134 @@ function readPackageName(rootDir: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function readPackageJsonRecord(rootDir: string): Record<string, unknown> | undefined {
+  const packagePath = path.join(rootDir, "package.json");
+  if (!fs.existsSync(packagePath)) return undefined;
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(packagePath, "utf-8")) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function readPackageDependencies(rootDir: string): Set<string> {
+  const packageJson = readPackageJsonRecord(rootDir);
+  const names = new Set<string>();
+
+  for (const key of [
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+  ]) {
+    const dependencies = packageJson?.[key];
+    if (!isRecord(dependencies)) continue;
+
+    for (const name of Object.keys(dependencies)) {
+      names.add(name);
+    }
+  }
+
+  return names;
+}
+
+function hasFumadocsDependency(dependencies: Set<string>): boolean {
+  return [...dependencies].some(
+    (name) =>
+      name === "fumadocs-core" ||
+      name === "fumadocs-ui" ||
+      name === "fumadocs-mdx" ||
+      name === "fumadocs-openapi" ||
+      name === "fumadocs-docgen",
+  );
+}
+
+function firstExistingFile(rootDir: string, candidates: string[]): string | undefined {
+  return candidates.find((candidate) => fs.existsSync(path.join(rootDir, candidate)));
+}
+
+function hasMarkdownDescendant(rootDir: string, relativeDir: string): boolean {
+  const absoluteDir = path.join(rootDir, relativeDir);
+  if (!fs.existsSync(absoluteDir)) return false;
+
+  const queue = [absoluteDir];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    let entries: fs.Dirent[];
+
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(fullPath);
+        continue;
+      }
+
+      if (entry.isFile() && /\.(?:md|mdx)$/i.test(entry.name)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function detectFumadocsContentRoots(rootDir: string): string[] {
+  const candidates = ["content/docs", "src/content/docs", "docs", "content"];
+  const roots = candidates.filter((candidate) => hasMarkdownDescendant(rootDir, candidate));
+  return roots.filter(
+    (root) => !roots.some((other) => other !== root && other.startsWith(`${root}/`)),
+  );
+}
+
+function detectConnectedFumadocsProfile(rootDir: string): ConnectedDocsProfile | undefined {
+  const dependencies = readPackageDependencies(rootDir);
+  const sourceConfig = firstExistingFile(rootDir, [
+    "source.config.ts",
+    "source.config.tsx",
+    "source.config.js",
+    "source.config.mjs",
+    "source.config.cjs",
+  ]);
+  const sourceFile = firstExistingFile(rootDir, [
+    "lib/source.ts",
+    "lib/source.tsx",
+    "src/lib/source.ts",
+    "src/lib/source.tsx",
+  ]);
+  const contentRoots = detectFumadocsContentRoots(rootDir);
+  const hasFumadocsSignal =
+    hasFumadocsDependency(dependencies) || Boolean(sourceConfig) || Boolean(sourceFile);
+
+  if (!hasFumadocsSignal || contentRoots.length === 0) {
+    return undefined;
+  }
+
+  const framework = detectFramework(rootDir) ?? "nextjs";
+  const configFiles = [sourceConfig, sourceFile].filter((file): file is string => Boolean(file));
+  const packageManager = detectPackageManagerFromProject(rootDir)?.packageManager;
+
+  return {
+    engine: "fumadocs",
+    runtime: framework,
+    appRoot: ".",
+    contentRoots,
+    configFiles,
+    ...(packageManager ? { packageManager } : {}),
+    confidence: sourceConfig || sourceFile ? "high" : "medium",
+    reason: sourceConfig
+      ? `Detected Fumadocs source config at ${sourceConfig}.`
+      : "Detected Fumadocs dependencies and markdown content.",
+  };
 }
 
 function runGit(rootDir: string, args: string[]): string | undefined {
@@ -563,6 +743,21 @@ ${renderCloudConfigProperty("  ", apiKeyEnv)}
 `;
 }
 
+function renderFumadocsConnectDocsConfig(apiKeyEnv: string, profile: ConnectedDocsProfile): string {
+  const contentDir = profile.contentRoots[0] ?? "content/docs";
+
+  return `// ${FUMADOCS_CONNECT_MARKER}
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  contentDir: ${JSON.stringify(contentDir)},
+${renderAnalyticsConfigProperty("  ")}
+${renderCloudConfigProperty("  ", apiKeyEnv)}
+});
+`;
+}
+
 function normalizeEnvName(value: string | undefined, fallback: string): string {
   const normalized = value?.trim();
   if (!normalized) return fallback;
@@ -578,12 +773,19 @@ function ensureDocsConfigCloudInit(options: {
   rootDir: string;
   configPath?: string;
   apiKeyEnv: string;
+  docsInfraProfile?: ConnectedDocsProfile;
 }): { configPath: string; created: boolean; updated: boolean } {
   const resolvedConfigPath = tryResolveDocsConfigPath(options.rootDir, options.configPath);
   const configPath = resolvedConfigPath ?? path.join(options.rootDir, "docs.config.ts");
 
   if (!resolvedConfigPath) {
-    fs.writeFileSync(configPath, renderCloudInitDocsConfig(options.apiKeyEnv), "utf-8");
+    fs.writeFileSync(
+      configPath,
+      options.docsInfraProfile
+        ? renderFumadocsConnectDocsConfig(options.apiKeyEnv, options.docsInfraProfile)
+        : renderCloudInitDocsConfig(options.apiKeyEnv),
+      "utf-8",
+    );
     return { configPath, created: true, updated: true };
   }
 
@@ -867,6 +1069,30 @@ function resolveApiReferenceRoot(snapshot: DocsConfigSnapshot): string | undefin
   return readStringProperty(apiReferenceBlock, "path");
 }
 
+function resolveConnectedDocsProfile(params: {
+  rootDir: string;
+  snapshot: DocsConfigSnapshot;
+  existing?: ManagedDocsJson;
+}): ConnectedDocsProfile | undefined {
+  const shouldResolveConnectProfile =
+    params.snapshot.content?.includes(FUMADOCS_CONNECT_MARKER) || !params.snapshot.path;
+  if (!shouldResolveConnectProfile) return undefined;
+
+  const detectedProfile = detectConnectedFumadocsProfile(params.rootDir);
+  if (detectedProfile) return detectedProfile;
+
+  const existingProfile = params.existing?.extensions?.docsInfraProfile;
+  if (
+    isRecord(existingProfile) &&
+    existingProfile.engine === "fumadocs" &&
+    Array.isArray(existingProfile.contentRoots)
+  ) {
+    return existingProfile as ConnectedDocsProfile;
+  }
+
+  return undefined;
+}
+
 function resolveSiteConfig(
   rootDir: string,
   snapshot: DocsConfigSnapshot,
@@ -899,7 +1125,10 @@ function resolveDocsRoot(
   rootDir: string,
   snapshot: DocsConfigSnapshot,
   existing?: ManagedDocsJson,
+  docsInfraProfile?: ConnectedDocsProfile,
 ): string {
+  if (docsInfraProfile?.contentRoots[0]) return docsInfraProfile.contentRoots[0];
+
   const entry =
     snapshot.config?.entry ?? readTopLevelStringProperty(snapshot.content ?? "", "entry") ?? "docs";
   if (snapshot.config?.contentDir) return snapshot.config.contentDir;
@@ -912,10 +1141,16 @@ function resolveDocsBlock(
   rootDir: string,
   snapshot: DocsConfigSnapshot,
   existing?: ManagedDocsJson,
+  docsInfraProfile?: ConnectedDocsProfile,
 ): ManagedDocsJson["docs"] {
-  const detectedFramework = detectFramework(rootDir);
   const existingDocs = existing?.docs;
-  const runtime = detectedFramework ?? existingDocs?.runtime ?? "nextjs";
+  if (!snapshot.path && existingDocs) {
+    return existingDocs;
+  }
+
+  const detectedFramework = detectFramework(rootDir);
+  const runtime =
+    detectedFramework ?? docsInfraProfile?.runtime ?? existingDocs?.runtime ?? "nextjs";
   const hasFrameworkConfig = Boolean(snapshot.path || detectedFramework);
 
   if (!hasFrameworkConfig && existingDocs) {
@@ -929,16 +1164,57 @@ function resolveDocsBlock(
   };
 }
 
+function resolveExtensions(
+  existing: ManagedDocsJson | undefined,
+  docsInfraProfile: ConnectedDocsProfile | undefined,
+  options: { dropStaleDocsInfraProfile?: boolean } = {},
+): JsonRecord | undefined {
+  const existingExtensions = toJsonRecord(existing?.extensions);
+  if (!docsInfraProfile) {
+    if (!existingExtensions?.docsInfraProfile || options.dropStaleDocsInfraProfile === false) {
+      return existingExtensions;
+    }
+
+    const { docsInfraProfile: _staleDocsInfraProfile, ...rest } = existingExtensions;
+    return Object.keys(rest).length > 0 ? rest : undefined;
+  }
+
+  return {
+    ...existingExtensions,
+    docsInfraProfile: toJsonRecord(docsInfraProfile),
+  };
+}
+
 function materializeDocsJsonObject(params: {
   rootDir: string;
   snapshot: DocsConfigSnapshot;
   existing?: ManagedDocsJson;
+  docsInfraProfile?: ConnectedDocsProfile;
+  detectConnectedDocsProfile?: boolean;
+  dropStaleDocsInfraProfile?: boolean;
 }): ManagedDocsJson {
   const cloud = resolveCloudConfig(params.snapshot, params.existing);
-  const docsRoot = resolveDocsRoot(params.rootDir, params.snapshot, params.existing);
+  const docsInfraProfile =
+    params.docsInfraProfile ??
+    (params.detectConnectedDocsProfile === false
+      ? undefined
+      : resolveConnectedDocsProfile({
+          rootDir: params.rootDir,
+          snapshot: params.snapshot,
+          existing: params.existing,
+        }));
+  const docsRoot = resolveDocsRoot(
+    params.rootDir,
+    params.snapshot,
+    params.existing,
+    docsInfraProfile,
+  );
   const apiReferenceRoot = resolveApiReferenceRoot(params.snapshot);
   const existingContent = toJsonRecord(params.existing?.content);
   const site = resolveSiteConfig(params.rootDir, params.snapshot, params.existing);
+  const extensions = resolveExtensions(params.existing, docsInfraProfile, {
+    dropStaleDocsInfraProfile: params.dropStaleDocsInfraProfile,
+  });
 
   const content: ManagedDocsJson["content"] = {
     ...existingContent,
@@ -950,15 +1226,87 @@ function materializeDocsJsonObject(params: {
     ...params.existing,
     $schema: params.existing?.$schema ?? DOCS_CLOUD_SCHEMA_URL,
     version: 1,
-    docs: resolveDocsBlock(params.rootDir, params.snapshot, params.existing),
+    docs: resolveDocsBlock(params.rootDir, params.snapshot, params.existing, docsInfraProfile),
     content,
     ...(site ? { site } : {}),
     cloud,
+    ...(extensions ? { extensions } : {}),
   };
 }
 
 export function serializeMaterializedDocsJson(config: ManagedDocsJson): string {
   return `${JSON.stringify(config, null, 2)}\n`;
+}
+
+function withCloudInitDefaults(
+  cloud: DocsCloudConfig | undefined,
+  existingCloud: DocsCloudConfig | undefined,
+  apiKeyEnv: string,
+): DocsCloudConfig {
+  const normalized = normalizeCloudConfig(cloud);
+
+  if (!existingCloud?.apiKey?.env) {
+    normalized.apiKey = { env: apiKeyEnv };
+  }
+
+  if (!normalized.deploy) {
+    normalized.deploy = { enabled: true };
+  }
+
+  if (typeof normalized.analytics === "undefined") {
+    normalized.analytics = {
+      enabled: true,
+      console: false,
+      includeInputs: false,
+    };
+  }
+
+  return normalizeCloudConfig(normalized);
+}
+
+function writeMaterializedCloudConfig(params: {
+  rootDir: string;
+  docsJsonPath: string;
+  existing?: ManagedDocsJson;
+  snapshot: DocsConfigSnapshot;
+  docsInfraProfile?: ConnectedDocsProfile;
+  cloudInitApiKeyEnv?: string;
+  detectConnectedDocsProfile?: boolean;
+  dropStaleDocsInfraProfile?: boolean;
+}): MaterializeCloudConfigResult {
+  const config = materializeDocsJsonObject({
+    rootDir: params.rootDir,
+    snapshot: params.snapshot,
+    existing: params.existing,
+    docsInfraProfile: params.docsInfraProfile,
+    detectConnectedDocsProfile: params.detectConnectedDocsProfile,
+    dropStaleDocsInfraProfile: params.dropStaleDocsInfraProfile,
+  });
+
+  if (params.cloudInitApiKeyEnv) {
+    config.cloud = withCloudInitDefaults(
+      config.cloud,
+      params.existing?.cloud,
+      params.cloudInitApiKeyEnv,
+    );
+  }
+
+  const serialized = serializeMaterializedDocsJson(config);
+  const previous = params.existing ? fs.readFileSync(params.docsJsonPath, "utf-8") : undefined;
+  const updated = previous !== serialized;
+
+  if (updated) {
+    fs.writeFileSync(params.docsJsonPath, serialized, "utf-8");
+  }
+
+  return {
+    configPath: params.snapshot.path ?? params.docsJsonPath,
+    docsJsonPath: params.docsJsonPath,
+    config,
+    apiKeyEnv: config.cloud?.apiKey?.env ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV,
+    created: !params.existing,
+    updated,
+  };
 }
 
 export async function materializeCloudConfig(
@@ -968,32 +1316,182 @@ export async function materializeCloudConfig(
   const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
   const existing = readExistingDocsJson(docsJsonPath);
   const snapshot = await loadDocsConfigSnapshot(rootDir, options.configPath);
-  const config = materializeDocsJsonObject({ rootDir, snapshot, existing });
-  const serialized = serializeMaterializedDocsJson(config);
-  const previous = existing ? fs.readFileSync(docsJsonPath, "utf-8") : undefined;
-  const updated = previous !== serialized;
+  const useDocsJsonAsSource = Boolean(existing && !snapshot.path);
+  return writeMaterializedCloudConfig({
+    rootDir,
+    docsJsonPath,
+    existing,
+    snapshot,
+    docsInfraProfile: options.docsInfraProfile,
+    detectConnectedDocsProfile: !useDocsJsonAsSource,
+    dropStaleDocsInfraProfile: !useDocsJsonAsSource,
+  });
+}
 
-  if (updated) {
-    fs.writeFileSync(docsJsonPath, serialized, "utf-8");
+function readCombinedEnv(rootDir: string): Record<string, string> {
+  const env: Record<string, string> = {
+    ...loadProjectEnv(rootDir),
+  };
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") env[key] = value;
   }
 
+  return env;
+}
+
+function readEnvValue(env: Record<string, string>, name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  const value = env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function readFirstEnv(
+  env: Record<string, string>,
+  names: readonly string[],
+): { name: string; value: string } | undefined {
+  for (const name of names) {
+    const value = readEnvValue(env, name);
+    if (value) return { name, value };
+  }
+  return undefined;
+}
+
+function readConfiguredCloudApiKeyEnv(snapshot: DocsConfigSnapshot): string | undefined {
+  const moduleEnv = snapshot.config?.cloud?.apiKey?.env?.trim();
+  if (moduleEnv) return moduleEnv;
+
+  const apiKeyBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["cloud", "apiKey"]);
+  const staticEnv = apiKeyBlock ? readStringProperty(apiKeyBlock, "env") : undefined;
+  return staticEnv?.trim() || undefined;
+}
+
+function readAiProvider(snapshot: DocsConfigSnapshot): string | undefined {
+  const moduleProvider = (snapshot.config?.ai as { provider?: unknown } | undefined)?.provider;
+  if (typeof moduleProvider === "string" && moduleProvider.trim()) return moduleProvider.trim();
+
+  const aiBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["ai"]);
+  const staticProvider = aiBlock ? readStringProperty(aiBlock, "provider") : undefined;
+  return staticProvider?.trim() || undefined;
+}
+
+function readRuntimeAnalyticsDisabled(snapshot: DocsConfigSnapshot): boolean {
+  const moduleAnalytics = snapshot.config?.analytics;
+  if (moduleAnalytics === false) return true;
+  if (isRecord(moduleAnalytics) && moduleAnalytics.enabled === false) return true;
+
+  const staticBoolean = readTopLevelBooleanProperty(snapshot.content ?? "", "analytics");
+  if (staticBoolean === false) return true;
+
+  const analyticsBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["analytics"]);
+  const staticEnabled = analyticsBlock
+    ? readTopLevelBooleanProperty(analyticsBlock, "enabled")
+    : undefined;
+  return staticEnabled === false;
+}
+
+function isCloudAnalyticsEnabled(analytics: DocsCloudConfig["analytics"] | undefined): boolean {
+  if (analytics === false) return false;
+  if (isRecord(analytics) && analytics.enabled === false) return false;
+  return typeof analytics !== "undefined";
+}
+
+function createCheck(
+  name: string,
+  status: CloudCheckStatus,
+  message: string,
+  details?: JsonRecord,
+): CloudCheckItem {
   return {
-    configPath: snapshot.path ?? docsJsonPath,
-    docsJsonPath,
-    config,
-    apiKeyEnv: config.cloud?.apiKey?.env ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV,
-    created: !existing,
-    updated,
+    name,
+    status,
+    message,
+    ...(details ? { details } : {}),
   };
 }
 
-function resolveApiBaseUrl(options: CloudCommandOptions): string {
-  const value =
-    options.apiBaseUrl ??
-    process.env.DOCS_CLOUD_API_URL ??
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_URL ??
-    DEFAULT_DOCS_CLOUD_API_BASE_URL;
-  return value.replace(/\/+$/, "");
+function isBrowserSafeEnvName(name: string): boolean {
+  return name.startsWith("PUBLIC_") || name.startsWith("NEXT_PUBLIC_");
+}
+
+function summarizeIdentity(identity: unknown): JsonRecord | undefined {
+  if (!isRecord(identity)) return undefined;
+
+  const workspace = isRecord(identity.workspace) ? identity.workspace : undefined;
+  const apiKey = isRecord(identity.apiKey) ? identity.apiKey : undefined;
+  const scopes = readApiKeyScopes(identity);
+
+  return {
+    ...(workspace
+      ? {
+          workspace: {
+            ...(typeof workspace.id === "string" ? { id: workspace.id } : {}),
+            ...(typeof workspace.name === "string" ? { name: workspace.name } : {}),
+          },
+        }
+      : {}),
+    ...(apiKey
+      ? {
+          apiKey: {
+            ...(typeof apiKey.id === "string" ? { id: apiKey.id } : {}),
+            ...(scopes.length > 0 ? { scopes } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+function formatCheckStatus(status: CloudCheckStatus): string {
+  if (status === "pass") return pc.green("ok");
+  if (status === "warn") return pc.yellow("warn");
+  return pc.red("fail");
+}
+
+function countChecks(checks: CloudCheckItem[], status: CloudCheckStatus): number {
+  return checks.filter((check) => check.status === status).length;
+}
+
+function resolveCloudCheckTargets(options: CloudCommandOptions): Set<CloudCheckTarget> {
+  const targets = new Set(options.checkTargets);
+  if (targets.size > 0) return targets;
+  return new Set(CLOUD_CHECK_TARGETS);
+}
+
+function formatCloudCheckTargets(targets: readonly CloudCheckTarget[]): string {
+  return targets.join(", ");
+}
+
+function resolveApiBaseUrl(
+  options: CloudCommandOptions,
+  rootDir: string = process.cwd(),
+): ApiBaseUrlResolution {
+  if (options.apiBaseUrl?.trim()) {
+    return {
+      url: options.apiBaseUrl.trim().replace(/\/+$/, ""),
+      source: "flag",
+    };
+  }
+
+  const projectEnv = loadProjectEnv(rootDir);
+  for (const envName of [
+    "DOCS_CLOUD_API_URL",
+    "PUBLIC_DOCS_CLOUD_URL",
+    "NEXT_PUBLIC_DOCS_CLOUD_URL",
+  ] as const) {
+    const value = process.env[envName]?.trim() ?? projectEnv[envName]?.trim();
+    if (value) {
+      return {
+        url: value.replace(/\/+$/, ""),
+        source: "env",
+        env: envName,
+      };
+    }
+  }
+
+  return {
+    url: DEFAULT_DOCS_CLOUD_API_BASE_URL,
+    source: "default",
+  };
 }
 
 function resolveApiKey(options: CloudCommandOptions, rootDir: string, envName: string): string {
@@ -1010,6 +1508,134 @@ function resolveApiKey(options: CloudCommandOptions, rootDir: string, envName: s
   throw new Error(
     `Missing Docs Cloud API key. Set ${envName} in your shell or .env.local, or configure cloud.apiKey.env in docs.config.ts. See ${DOCS_CLOUD_MISSING_API_KEY_DOCS_URL}.`,
   );
+}
+
+function isLocalhostUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function readNestedString(value: unknown, pathSegments: readonly string[]): string | undefined {
+  let current: unknown = value;
+  for (const segment of pathSegments) {
+    if (!isRecord(current)) return undefined;
+    current = current[segment];
+  }
+
+  return typeof current === "string" && current.trim() ? current.trim() : undefined;
+}
+
+function readDocsSiteOrigin(
+  snapshot: DocsConfigSnapshot,
+  env: Record<string, string>,
+): { origin: string; source: string } | undefined {
+  const envSite = readFirstEnv(env, [
+    "PUBLIC_BASE_URL",
+    "PUBLIC_SITE_URL",
+    "NEXT_PUBLIC_BASE_URL",
+    "NEXT_PUBLIC_SITE_URL",
+    "SITE_URL",
+  ]);
+  const sitemapBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["sitemap"]);
+  const llmsTxtBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["llmsTxt"]);
+  const robotsBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["robots"]);
+  const candidates: Array<{ value?: string; source: string }> = [
+    { value: envSite?.value, source: envSite ? envSite.name : "env" },
+    { value: readNestedString(snapshot.config, ["site", "url"]), source: "site.url" },
+    { value: readNestedString(snapshot.config, ["sitemap", "baseUrl"]), source: "sitemap.baseUrl" },
+    { value: readNestedString(snapshot.config, ["llmsTxt", "baseUrl"]), source: "llmsTxt.baseUrl" },
+    { value: readNestedString(snapshot.config, ["robots", "baseUrl"]), source: "robots.baseUrl" },
+    {
+      value: sitemapBlock ? readStringProperty(sitemapBlock, "baseUrl") : undefined,
+      source: "sitemap.baseUrl",
+    },
+    {
+      value: llmsTxtBlock ? readStringProperty(llmsTxtBlock, "baseUrl") : undefined,
+      source: "llmsTxt.baseUrl",
+    },
+    {
+      value: robotsBlock ? readStringProperty(robotsBlock, "baseUrl") : undefined,
+      source: "robots.baseUrl",
+    },
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate.value) continue;
+
+    try {
+      return {
+        origin: new URL(candidate.value).origin,
+        source: candidate.source,
+      };
+    } catch {
+      // Keep looking for a valid absolute URL.
+    }
+  }
+
+  return undefined;
+}
+
+async function checkCorsPreflight(params: {
+  url: string;
+  origin: string;
+  requestHeaders: string;
+}): Promise<{
+  ok: boolean;
+  status: number;
+  allowOrigin: string | null;
+  allowMethods: string | null;
+  allowHeaders: string | null;
+}> {
+  const response = await fetch(params.url, {
+    method: "OPTIONS",
+    headers: {
+      Origin: params.origin,
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": params.requestHeaders,
+    },
+  });
+  const allowOrigin = response.headers.get("access-control-allow-origin");
+  const allowMethods = response.headers.get("access-control-allow-methods");
+  const allowHeaders = response.headers.get("access-control-allow-headers");
+  const normalizedAllowOrigin = allowOrigin?.toLowerCase();
+  const normalizedOrigin = params.origin.toLowerCase();
+
+  return {
+    ok:
+      response.ok &&
+      (normalizedAllowOrigin === "*" || normalizedAllowOrigin === normalizedOrigin) &&
+      Boolean(allowMethods?.toUpperCase().includes("POST")) &&
+      areCorsRequestHeadersAllowed(params.requestHeaders, allowHeaders),
+    status: response.status,
+    allowOrigin,
+    allowMethods,
+    allowHeaders,
+  };
+}
+
+function areCorsRequestHeadersAllowed(
+  requestHeaders: string,
+  allowHeaders: string | null,
+): boolean {
+  const requested = parseCorsHeaderList(requestHeaders);
+  if (requested.length === 0) return true;
+  if (!allowHeaders) return false;
+
+  const allowed = parseCorsHeaderList(allowHeaders);
+  if (allowed.includes("*")) return true;
+
+  return requested.every((header) => allowed.includes(header));
+}
+
+function parseCorsHeaderList(value: string): string[] {
+  return value
+    .split(",")
+    .map((header) => header.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 async function readJsonResponse(response: Response): Promise<unknown> {
@@ -1140,9 +1766,9 @@ async function fetchCloudJson(params: {
 
   if (!response.ok) {
     const requestPath = new URL(params.url).pathname;
-    if (response.status === 404 && requestPath === "/api/cloud/preview") {
+    if (response.status === 404 && requestPath === "/v1/cloud/preview") {
       throw new Error(
-        "Docs Cloud preview API is not available on this cloud host yet. The API key was validated, but the host did not expose /api/cloud/preview.",
+        "Docs Cloud preview API is not available on this cloud host yet. The API key was validated, but the host did not expose /v1/cloud/preview.",
       );
     }
 
@@ -1240,7 +1866,7 @@ async function requestPreview(params: {
   pollIntervalMs: number;
 }): Promise<{ url: string; response: unknown }> {
   const initial = await fetchCloudJson({
-    url: `${params.apiBaseUrl}/api/cloud/preview`,
+    url: `${params.apiBaseUrl}/v1/cloud/preview`,
     apiKey: params.apiKey,
     init: {
       method: "POST",
@@ -1335,6 +1961,477 @@ function createSpinner(initialMessage: string, options: { json?: boolean } = {})
   };
 }
 
+export async function checkCloudConfig(
+  options: CloudCommandOptions = {},
+): Promise<CloudCheckResult> {
+  const rootDir = options.rootDir ?? process.cwd();
+  const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
+  const existing = readExistingDocsJson(docsJsonPath);
+  const snapshot = await loadDocsConfigSnapshot(rootDir, options.configPath);
+  const config = materializeDocsJsonObject({ rootDir, snapshot, existing });
+  const serialized = serializeMaterializedDocsJson(config);
+  const previous = existing ? fs.readFileSync(docsJsonPath, "utf-8") : undefined;
+  const apiBaseUrlResolution = resolveApiBaseUrl(options, rootDir);
+  const apiBaseUrl = apiBaseUrlResolution.url;
+  const apiKeyEnv = config.cloud?.apiKey?.env ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV;
+  const env = readCombinedEnv(rootDir);
+  const siteOrigin = readDocsSiteOrigin(snapshot, env);
+  const checks: CloudCheckItem[] = [];
+  const configPath = snapshot.path ?? docsJsonPath;
+  const network = options.network !== false;
+  const explicitApiKey = options.apiKey?.trim();
+  const targetSet = resolveCloudCheckTargets(options);
+  const targets = CLOUD_CHECK_TARGETS.filter((target) => targetSet.has(target));
+  const checkDeploy = targetSet.has("deploy");
+  const checkAnalytics = targetSet.has("analytics");
+  const checkAskAi = targetSet.has("ask-ai");
+  const checkProjectEnv = checkAnalytics || checkAskAi;
+  let identity: JsonRecord | undefined;
+
+  checks.push(
+    createCheck(
+      "config",
+      snapshot.path ? "pass" : "warn",
+      snapshot.path
+        ? `Loaded ${path.relative(rootDir, snapshot.path) || "docs.config.ts"}`
+        : `No docs.config.* found; checking ${DOCS_JSON_FILE} defaults instead.`,
+    ),
+  );
+
+  checks.push(
+    createCheck(
+      "docs.json",
+      !existing ? "warn" : previous === serialized ? "pass" : "warn",
+      !existing
+        ? `${DOCS_JSON_FILE} is missing. Run docs cloud sync to materialize cloud config.`
+        : previous === serialized
+          ? `${DOCS_JSON_FILE} is in sync with docs.config.`
+          : `${DOCS_JSON_FILE} is stale. Run docs cloud sync before deploying.`,
+    ),
+  );
+
+  checks.push(
+    createCheck(
+      "cloud.apiBaseUrl",
+      isLocalhostUrl(apiBaseUrl) ? "warn" : "pass",
+      apiBaseUrlResolution.source === "default"
+        ? `Using the hosted Docs Cloud API at ${apiBaseUrl}.`
+        : isLocalhostUrl(apiBaseUrl)
+          ? `Docs Cloud API base URL is ${apiBaseUrl}; production docs should use the hosted API base URL.`
+          : `Docs Cloud API base URL is ${apiBaseUrl}.`,
+      {
+        source: apiBaseUrlResolution.source,
+        ...(apiBaseUrlResolution.env ? { env: apiBaseUrlResolution.env } : {}),
+      },
+    ),
+  );
+
+  if (checkAnalytics || checkAskAi) {
+    checks.push(
+      createCheck(
+        "docs.siteOrigin",
+        siteOrigin ? "pass" : "warn",
+        siteOrigin
+          ? `Public docs origin is ${siteOrigin.origin}.`
+          : "Could not infer the public docs origin for CORS checks. Set PUBLIC_BASE_URL, PUBLIC_SITE_URL, NEXT_PUBLIC_BASE_URL, NEXT_PUBLIC_SITE_URL, SITE_URL, or a docs config baseUrl.",
+        siteOrigin
+          ? {
+              origin: siteOrigin.origin,
+              source: siteOrigin.source,
+            }
+          : undefined,
+      ),
+    );
+  }
+
+  const apiKey = explicitApiKey || readEnvValue(env, apiKeyEnv);
+
+  if (checkDeploy) {
+    try {
+      normalizeEnvName(apiKeyEnv, DOCS_CLOUD_DEFAULT_API_KEY_ENV);
+      checks.push(createCheck("apiKey.config", "pass", `Using cloud.apiKey.env ${apiKeyEnv}.`));
+    } catch (error) {
+      checks.push(
+        createCheck(
+          "apiKey.config",
+          "fail",
+          error instanceof Error ? error.message : `Invalid API key env ${apiKeyEnv}.`,
+        ),
+      );
+    }
+
+    checks.push(
+      createCheck(
+        "apiKey.value",
+        apiKey ? "pass" : "fail",
+        apiKey
+          ? explicitApiKey
+            ? "Docs Cloud API key was provided with --api-key."
+            : `Docs Cloud API key is present in ${apiKeyEnv}.`
+          : `Missing Docs Cloud API key. Set ${apiKeyEnv} or pass --api-key.`,
+        {
+          env: apiKeyEnv,
+          source: explicitApiKey ? "flag" : apiKey ? "env" : "missing",
+        },
+      ),
+    );
+  }
+
+  checks.push(
+    createCheck(
+      "cloud.enabled",
+      config.cloud?.enabled === false ? "fail" : "pass",
+      config.cloud?.enabled === false
+        ? "Docs Cloud is disabled by cloud.enabled: false."
+        : "Docs Cloud is enabled.",
+    ),
+  );
+
+  if (checkDeploy) {
+    if (config.cloud?.deploy?.enabled === false) {
+      checks.push(
+        createCheck(
+          "deploy.enabled",
+          "fail",
+          "Docs Cloud deployment is disabled by cloud.deploy.enabled: false.",
+        ),
+      );
+    } else {
+      checks.push(createCheck("deploy.enabled", "pass", "Docs Cloud deployment is enabled."));
+    }
+
+    if (config.cloud?.preview?.enabled === false) {
+      checks.push(
+        createCheck(
+          "preview.enabled",
+          "fail",
+          "Docs Cloud preview deployment is disabled by cloud.preview.enabled: false.",
+        ),
+      );
+    }
+  }
+
+  const runtimeAnalyticsDisabled = readRuntimeAnalyticsDisabled(snapshot);
+  const cloudAnalyticsEnabled = isCloudAnalyticsEnabled(config.cloud?.analytics);
+  if (checkAnalytics) {
+    if (runtimeAnalyticsDisabled) {
+      checks.push(
+        createCheck(
+          "analytics.runtime",
+          "fail",
+          "Runtime analytics is disabled by analytics: false or analytics.enabled: false.",
+        ),
+      );
+    } else {
+      checks.push(createCheck("analytics.runtime", "pass", "Runtime analytics is not disabled."));
+    }
+
+    checks.push(
+      createCheck(
+        "analytics.cloud",
+        cloudAnalyticsEnabled ? "pass" : "warn",
+        cloudAnalyticsEnabled
+          ? "Docs Cloud analytics is enabled in cloud.analytics."
+          : "cloud.analytics is not enabled; run docs cloud init to add the recommended analytics config.",
+      ),
+    );
+  }
+
+  const projectEnv = readFirstEnv(env, DOCS_CLOUD_PROJECT_ID_ENVS);
+  const analyticsNeedsProjectId = cloudAnalyticsEnabled && !runtimeAnalyticsDisabled;
+  if (checkProjectEnv) {
+    checks.push(
+      createCheck(
+        "project.env",
+        projectEnv ? "pass" : analyticsNeedsProjectId || checkAskAi ? "fail" : "warn",
+        projectEnv
+          ? `Docs Cloud project id is present in ${projectEnv.name}.`
+          : `Missing Docs Cloud project id. Set ${DOCS_CLOUD_PROJECT_ID_ENVS.join(" or ")} for analytics and docs-cloud Ask AI.`,
+        projectEnv ? { env: projectEnv.name } : undefined,
+      ),
+    );
+  }
+
+  const aiProvider = readAiProvider(snapshot);
+  let askAiCorsMode: "none" | "direct" | "proxy" = "none";
+  if (checkAskAi) {
+    if (aiProvider === "docs-cloud") {
+      checks.push(
+        createCheck("askAi.provider", "pass", 'Ask AI is configured with provider: "docs-cloud".'),
+      );
+
+      const configuredApiKeyEnv = readConfiguredCloudApiKeyEnv(snapshot);
+      const publicApiKeyEnv =
+        configuredApiKeyEnv && isBrowserSafeEnvName(configuredApiKeyEnv)
+          ? configuredApiKeyEnv
+          : (readFirstEnv(env, [DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV])?.name ??
+            DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV);
+      const publicApiKey = readEnvValue(env, publicApiKeyEnv);
+      const publicProjectEnv = readFirstEnv(env, [DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV]);
+      const serverApiKeyEnv = configuredApiKeyEnv ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV;
+      const serverApiKey = readEnvValue(env, serverApiKeyEnv);
+
+      if (publicApiKey && publicProjectEnv) {
+        checks.push(
+          createCheck(
+            "askAi.direct",
+            "pass",
+            `Ask AI can call the Docs Cloud knowledge endpoint directly with ${publicApiKeyEnv}.`,
+            { apiKeyEnv: publicApiKeyEnv, projectIdEnv: publicProjectEnv.name },
+          ),
+        );
+        askAiCorsMode = "direct";
+      } else if (serverApiKey && projectEnv) {
+        checks.push(
+          createCheck(
+            "askAi.direct",
+            "warn",
+            `Direct browser Ask AI needs ${DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV} and ${DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV}; this app can use the local docs API route with ${serverApiKeyEnv}.`,
+            { apiKeyEnv: serverApiKeyEnv, projectIdEnv: projectEnv.name, proxy: true },
+          ),
+        );
+        askAiCorsMode = "proxy";
+      } else {
+        checks.push(
+          createCheck(
+            "askAi.direct",
+            "fail",
+            `Ask AI docs-cloud direct mode needs ${DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV} and ${DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV}.`,
+            { apiKeyEnv: publicApiKeyEnv },
+          ),
+        );
+      }
+    } else if (aiProvider) {
+      checks.push(createCheck("askAi.provider", "pass", `Ask AI provider is ${aiProvider}.`));
+    } else {
+      checks.push(
+        createCheck(
+          "askAi.provider",
+          "warn",
+          'Ask AI is not configured with provider: "docs-cloud".',
+        ),
+      );
+    }
+  }
+
+  if (checkAnalytics || checkAskAi) {
+    if (!network) {
+      checks.push(
+        createCheck(
+          "cloud.cors",
+          "warn",
+          "Skipped Docs Cloud CORS validation because --no-network was passed.",
+        ),
+      );
+    } else if (!siteOrigin) {
+      checks.push(
+        createCheck(
+          "cloud.cors",
+          "warn",
+          "Could not infer the docs site origin for CORS checks. Set PUBLIC_BASE_URL, NEXT_PUBLIC_BASE_URL, or a docs config baseUrl.",
+        ),
+      );
+    } else {
+      if (checkAnalytics) {
+        try {
+          const cors = await checkCorsPreflight({
+            url: `${apiBaseUrl}/v1/analytics/events`,
+            origin: siteOrigin.origin,
+            requestHeaders: "content-type",
+          });
+          checks.push(
+            createCheck(
+              "cors.analytics",
+              cors.ok ? "pass" : "fail",
+              cors.ok
+                ? `Analytics CORS allows ${siteOrigin.origin}.`
+                : `Analytics CORS blocked ${siteOrigin.origin}.`,
+              {
+                origin: siteOrigin.origin,
+                originSource: siteOrigin.source,
+                status: cors.status,
+                allowOrigin: cors.allowOrigin,
+                allowMethods: cors.allowMethods,
+                allowHeaders: cors.allowHeaders,
+              },
+            ),
+          );
+        } catch (error) {
+          checks.push(
+            createCheck(
+              "cors.analytics",
+              "fail",
+              error instanceof Error
+                ? `Analytics CORS check failed: ${error.message}`
+                : "Analytics CORS check failed.",
+            ),
+          );
+        }
+      }
+
+      if (checkAskAi && projectEnv && askAiCorsMode === "direct") {
+        try {
+          const cors = await checkCorsPreflight({
+            url: `${apiBaseUrl}/v1/projects/${encodeURIComponent(projectEnv.value)}/knowledge/ask`,
+            origin: siteOrigin.origin,
+            requestHeaders: "authorization, content-type",
+          });
+          checks.push(
+            createCheck(
+              "cors.askAi",
+              cors.ok ? "pass" : "fail",
+              cors.ok
+                ? `Ask AI CORS allows ${siteOrigin.origin}.`
+                : `Ask AI CORS blocked ${siteOrigin.origin}.`,
+              {
+                origin: siteOrigin.origin,
+                originSource: siteOrigin.source,
+                status: cors.status,
+                allowOrigin: cors.allowOrigin,
+                allowMethods: cors.allowMethods,
+                allowHeaders: cors.allowHeaders,
+              },
+            ),
+          );
+        } catch (error) {
+          checks.push(
+            createCheck(
+              "cors.askAi",
+              "fail",
+              error instanceof Error
+                ? `Ask AI CORS check failed: ${error.message}`
+                : "Ask AI CORS check failed.",
+            ),
+          );
+        }
+      } else if (checkAskAi && askAiCorsMode === "proxy") {
+        checks.push(
+          createCheck(
+            "cors.askAi",
+            "pass",
+            "Ask AI uses the local docs API route, so Docs Cloud browser CORS is not required.",
+            { proxy: true },
+          ),
+        );
+      }
+    }
+  }
+
+  if (checkDeploy) {
+    if (!network) {
+      checks.push(
+        createCheck(
+          "apiKey.network",
+          "warn",
+          "Skipped Docs Cloud API validation because --no-network was passed.",
+        ),
+      );
+    } else if (!apiKey) {
+      checks.push(
+        createCheck(
+          "apiKey.network",
+          "warn",
+          "Skipped Docs Cloud API validation because no API key value was available.",
+        ),
+      );
+    } else {
+      try {
+        const response = await fetchCloudJson({
+          url: `${apiBaseUrl}/v1/cloud/me`,
+          apiKey,
+        });
+        identity = summarizeIdentity(response);
+        checks.push(
+          createCheck("apiKey.network", "pass", `Validated API key with ${apiBaseUrl}.`, identity),
+        );
+
+        const scopes = readApiKeyScopes(response);
+        if (scopes.length === 0) {
+          checks.push(
+            createCheck(
+              "apiKey.scopes",
+              "warn",
+              "Docs Cloud validated the API key but did not return scope metadata.",
+            ),
+          );
+        } else {
+          const missing = REQUIRED_PREVIEW_API_KEY_SCOPES.filter(
+            (scope) => !scopes.includes(scope),
+          );
+          checks.push(
+            createCheck(
+              "apiKey.scopes",
+              missing.length === 0 ? "pass" : "fail",
+              missing.length === 0
+                ? `API key has required deploy scopes: ${REQUIRED_PREVIEW_API_KEY_SCOPES.join(", ")}.`
+                : `API key is missing required deploy scope${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}.`,
+              { scopes },
+            ),
+          );
+        }
+      } catch (error) {
+        checks.push(
+          createCheck(
+            "apiKey.network",
+            "fail",
+            error instanceof Error ? error.message : "Could not validate Docs Cloud API key.",
+          ),
+        );
+      }
+    }
+  }
+
+  return {
+    ok: countChecks(checks, "fail") === 0,
+    apiBaseUrl,
+    configPath,
+    docsJsonPath,
+    apiKeyEnv,
+    analyticsProjectIdEnv: projectEnv?.name,
+    network,
+    targets,
+    checks,
+    ...(identity ? { identity } : {}),
+  };
+}
+
+export async function runCloudCheck(options: CloudCommandOptions = {}) {
+  const result = await checkCloudConfig(options);
+
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(pc.bold("Docs Cloud check"));
+    console.log(`${pc.dim("api")} ${result.apiBaseUrl}`);
+    console.log(`${pc.dim("scope")} ${formatCloudCheckTargets(result.targets)}`);
+    console.log();
+
+    for (const check of result.checks) {
+      console.log(`${formatCheckStatus(check.status)} ${pc.bold(check.name)} ${check.message}`);
+    }
+
+    console.log();
+    if (result.ok) {
+      const warnings = countChecks(result.checks, "warn");
+      const suffix = warnings > 0 ? ` with ${warnings} warning${warnings === 1 ? "" : "s"}` : "";
+      console.log(`${pc.green("ok")} Docs Cloud check passed${suffix}.`);
+    } else {
+      const failures = countChecks(result.checks, "fail");
+      console.log(
+        `${pc.red("fail")} Docs Cloud check failed with ${failures} failed check${failures === 1 ? "" : "s"}.`,
+      );
+    }
+  }
+
+  if (!result.ok) {
+    const error = new Error("Docs Cloud check failed.");
+    markCliErrorReported(error);
+    throw error;
+  }
+
+  return result;
+}
+
 export async function syncCloudConfig(options: CloudCommandOptions = {}) {
   const result = await materializeCloudConfig(options);
 
@@ -1353,16 +2450,51 @@ export async function syncCloudConfig(options: CloudCommandOptions = {}) {
 
 export async function initCloudConfig(options: CloudCommandOptions = {}): Promise<CloudInitResult> {
   const rootDir = options.rootDir ?? process.cwd();
+  const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
+  const existingDocsJson = readExistingDocsJson(docsJsonPath);
   const apiKeyEnv = normalizeEnvName(options.apiKeyEnv, DOCS_CLOUD_DEFAULT_API_KEY_ENV);
+  const existingConfigPath = tryResolveDocsConfigPath(rootDir, options.configPath);
+  const useDocsJsonAsSource = Boolean(existingDocsJson && !existingConfigPath);
+  const docsInfraProfile =
+    options.docsInfraProfile ??
+    (existingConfigPath || existingDocsJson ? undefined : detectConnectedFumadocsProfile(rootDir));
+
+  if (useDocsJsonAsSource) {
+    const materialized = writeMaterializedCloudConfig({
+      rootDir,
+      docsJsonPath,
+      existing: existingDocsJson,
+      snapshot: {},
+      docsInfraProfile,
+      cloudInitApiKeyEnv: apiKeyEnv,
+      detectConnectedDocsProfile: false,
+      dropStaleDocsInfraProfile: false,
+    });
+
+    return {
+      configPath: materialized.configPath,
+      docsJsonPath: materialized.docsJsonPath,
+      apiKeyEnv: materialized.apiKeyEnv,
+      analyticsProjectIdEnv: DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV,
+      configCreated: false,
+      configUpdated: false,
+      docsJsonCreated: false,
+      docsJsonUpdated: materialized.updated,
+      ...(docsInfraProfile ? { docsInfraProfile } : {}),
+    };
+  }
+
   const configUpdate = ensureDocsConfigCloudInit({
     rootDir,
     configPath: options.configPath,
     apiKeyEnv,
+    docsInfraProfile,
   });
   const materialized = await materializeCloudConfig({
     ...options,
     rootDir,
     configPath: path.relative(rootDir, configUpdate.configPath),
+    docsInfraProfile,
   });
 
   return {
@@ -1374,6 +2506,7 @@ export async function initCloudConfig(options: CloudCommandOptions = {}): Promis
     configUpdated: configUpdate.updated,
     docsJsonCreated: materialized.created,
     docsJsonUpdated: materialized.updated,
+    ...(docsInfraProfile ? { docsInfraProfile } : {}),
   };
 }
 
@@ -1400,6 +2533,11 @@ export async function runCloudInit(options: CloudCommandOptions = {}) {
 
   console.log(`${pc.green("ok")} ${configAction} ${pc.cyan(relativeConfigPath)}`);
   console.log(`${pc.green("ok")} ${docsJsonAction} ${pc.cyan(relativeDocsJsonPath)}`);
+  if (result.docsInfraProfile?.engine === "fumadocs") {
+    console.log(
+      `${pc.green("ok")} Connected existing ${pc.cyan("Fumadocs")} content at ${pc.cyan(result.docsInfraProfile.contentRoots.join(", "))}`,
+    );
+  }
   console.log();
   console.log(pc.bold("Add these env vars"));
   console.log(`${pc.cyan(result.apiKeyEnv)}=${pc.dim("paste_your_docs_cloud_api_key")}`);
@@ -1442,11 +2580,11 @@ async function runCloudDeployment(options: CloudCommandOptions = {}) {
     }
 
     const apiKey = resolveApiKey(options, rootDir, materialized.apiKeyEnv);
-    const apiBaseUrl = resolveApiBaseUrl(options);
+    const apiBaseUrl = resolveApiBaseUrl(options, rootDir).url;
 
     spinner.update("Validating Docs Cloud API key");
     const identity = await fetchCloudJson({
-      url: `${apiBaseUrl}/api/cloud/me`,
+      url: `${apiBaseUrl}/v1/cloud/me`,
       apiKey,
     });
     assertPreviewApiKeyScopes(identity);
@@ -1506,6 +2644,7 @@ ${pc.bold("@farming-labs/docs cloud")}
 
 ${pc.dim("Usage:")}
   ${pc.cyan("docs cloud init")}           Add Docs Cloud config to ${pc.dim("docs.config.ts")} and ${pc.dim("docs.json")}
+  ${pc.cyan("docs cloud check")}          Validate Docs Cloud config, analytics envs, API key, and Ask AI wiring
   ${pc.cyan("docs deploy")}               Sync ${pc.dim("docs.config.ts")} to ${pc.dim("docs.json")} and deploy hosted preview docs
   ${pc.cyan("docs cloud deploy")}         Same as ${pc.cyan("docs deploy")}
   ${pc.cyan("docs preview")}              Compatibility alias for ${pc.cyan("docs deploy")}
@@ -1517,6 +2656,10 @@ ${pc.dim("Options:")}
   ${pc.cyan("--api-key-env <name>")}      Env var that stores the Docs Cloud API key
   ${pc.cyan("--api-base-url <url>")}      Override Docs Cloud API base URL
   ${pc.cyan("--api-key <key>")}           Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--analytics")}               Only check Docs Cloud analytics integration
+  ${pc.cyan("--ask-ai")}                  Only check Docs Cloud Ask AI integration
+  ${pc.cyan("--deploy")}                  Only check Docs Cloud deploy integration
+  ${pc.cyan("--no-network")}              Skip live Docs Cloud API validation for ${pc.cyan("cloud check")}
   ${pc.cyan("--json")}                    Print machine-readable output
 
 ${pc.dim("API key scopes:")}

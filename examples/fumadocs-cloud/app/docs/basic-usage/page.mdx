@@ -1,0 +1,51 @@
+---
+order: 4
+title: Basic Usage
+description: Use the local docs route for search, analytics, and Ask AI.
+icon: code
+---
+
+# Basic Usage
+
+The merged route keeps the browser API simple. Client analytics posts to the
+same-origin route:
+
+```txt
+POST /api/docs?action=analytics
+```
+
+Ask AI also goes through the same route:
+
+```txt
+POST /api/docs?action=ask-ai
+```
+
+The server SDK receives the request, reads `DOCS_CLOUD_PROJECT_ID` and
+`DOCS_CLOUD_API_KEY`, and calls the hosted Docs Cloud API.
+
+## Ask AI Request
+
+```bash
+curl -N "http://localhost:3000/api/docs?action=ask-ai" \
+  -H "content-type: application/json" \
+  -H "accept: text/event-stream" \
+  -d '{"messages":[{"role":"user","content":"How do I deploy these docs?"}]}'
+```
+
+## Custom Server Events
+
+Most reader analytics are automatic. Use the server SDK directly only for
+events that happen outside the normal docs UI:
+
+```ts
+await docsCloud.trackEvent({
+  type: "docs_import_finished",
+  path: "/docs",
+  properties: {
+    repository: "farming-labs/docs",
+  },
+});
+```
+
+Good candidates are repository imports, background sync completion, manual
+admin actions, and webhook delivery status.

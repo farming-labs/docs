@@ -9,6 +9,7 @@
  *   - `@farming-labs/theme/concrete`     → brutalist poster-style hard-edge theme
  *   - `@farming-labs/theme/hardline`     → high-contrast hard-edge theme
  *   - `@farming-labs/theme/ledger`       → Stripe Docs-inspired product docs theme
+ *   - `@farming-labs/theme/shadcn`       → compact shadcn/ui docs-inspired theme
  *   - `@farming-labs/theme/threadline`   → compact chat-docs neutral theme
  *
  * This root export provides layout helpers, the RootProvider, and re-exports
@@ -75,6 +76,7 @@ export { commandGrid, CommandGridUIDefaults } from "./command-grid/index.js";
 export { concrete, ConcreteUIDefaults } from "./concrete/index.js";
 export { hardline, HardlineUIDefaults } from "./hardline/index.js";
 export { ledger, LedgerUIDefaults } from "./ledger/index.js";
+export { shadcn, ShadcnUIDefaults } from "./shadcn/index.js";
 export { threadline, threadlinePageActions, ThreadlineUIDefaults } from "./threadline/index.js";
 
 // ─── UI primitives for custom theme layouts ───────────────────────────
@@ -87,6 +89,7 @@ export { DocsLayout } from "fumadocs-ui/layouts/docs";
 export { DocsPageClient } from "./docs-page-client.js";
 export { DocsClientHooks } from "./docs-client-hooks.js";
 export { DocsFeedback } from "./docs-feedback.js";
+export { DocsDevTools } from "./devtools.js";
 
 // ─── Page action buttons (Copy Markdown, Open in LLM) ─────────────────
 export { PageActions } from "./page-actions.js";
@@ -111,6 +114,7 @@ export { withLangInUrl } from "./i18n.js";
 // ─── Core types (re-exported for convenience) ─────────────────────────
 export type {
   DocsConfig,
+  DocsContentAudience,
   ChangelogConfig,
   ChangelogFrontmatter,
   DocsTheme,
@@ -119,13 +123,20 @@ export type {
   TypographyConfig,
   DocsNav,
   DocsMetadata,
+  DevToolsConfig,
   OGConfig,
   PageFrontmatter,
+  PageAgentAppliesTo,
+  PageAgentCommand,
+  PageAgentFailureMode,
+  PageAgentFrontmatter,
+  PageAgentVerification,
   ThemeToggleConfig,
   BreadcrumbConfig,
   SidebarConfig,
   PageActionsConfig,
   CopyMarkdownConfig,
+  CopyMarkdownFormat,
   OpenDocsConfig,
   OpenDocsProvider,
   AIConfig,
@@ -145,7 +156,8 @@ export {
   CodeBlockTabsTrigger,
   Pre,
 } from "fumadocs-ui/components/codeblock";
-export { Agent, CodeGroup } from "./mdx.js";
+export { Agent, Audience, CodeGroup, Human } from "./mdx.js";
+export type { AgentProps, AudienceProps, CodeGroupProps, HumanProps } from "./mdx.js";
 export { HoverLink } from "./hover-link.js";
 export type { HoverLinkProps } from "./hover-link.js";
 export { Prompt } from "./prompt.js";

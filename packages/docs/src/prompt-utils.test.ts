@@ -59,6 +59,16 @@ describe("resolvePromptProviderChoices", () => {
     ]);
   });
 
+  it("resolves Perplexity as a built-in prompt provider", () => {
+    expect(resolvePromptProviderChoices(undefined, ["Perplexity"])).toEqual([
+      {
+        name: "Perplexity",
+        urlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
+        iconHtml: undefined,
+      },
+    ]);
+  });
+
   it("falls back to a provider urlTemplate when no prompt template is configured", () => {
     expect(
       resolvePromptProviderChoices(
@@ -180,6 +190,16 @@ describe("serializeOpenDocsProviders", () => {
       urlTemplate: "cursor://anysphere.cursor-deeplink/prompt?text={prompt}",
       promptUrlTemplate: "cursor://anysphere.cursor-deeplink/prompt?text={prompt}",
       iconHtml: undefined,
+      target: undefined,
+      prompt: undefined,
+    });
+  });
+
+  it("serializes Perplexity as a built-in open docs provider", () => {
+    expect(serializeOpenDocsProvider("perplexity")).toEqual({
+      name: "Perplexity",
+      urlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
+      promptUrlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
       target: undefined,
       prompt: undefined,
     });

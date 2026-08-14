@@ -3,32 +3,194 @@ title: "MCP Server"
 description: "Expose your docs as MCP tools and resources over stdio, /mcp, or /.well-known/mcp"
 icon: "bot"
 order: 8
+related:
+  - /docs/configuration
+  - /docs/cli
+  - /docs/customization/agent-primitive
+  - /docs/guides/agent-friendly-docs
+  - /docs/guides/adapter-agent-conformance
+agent:
+  tokenBudget: 1300
+  task: Expose the docs MCP server over stdio or Streamable HTTP with optional explicit authentication.
+  outcome: An MCP client initializes successfully and can discover, search, and read the configured documentation resources.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The docs API and framework public forwarder are already wired.
+    - Choose stdio for local use or Streamable HTTP for a shared endpoint.
+    - Keep HTTP public by default and add security.authenticate only when the deployment requires access control.
+    - For OAuth discovery, have an authorization-server issuer URL and decide which scopes are advertised and required.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/api/docs/route.ts
+    - src/routes/$.ts
+    - src/hooks.server.ts
+    - src/middleware.ts
+    - server/middleware/docs-public.ts
+    - .cursor/mcp.json
+    - .vscode/mcp.json
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Confirm MCP routes and discovery metadata agree with docs.config.
+  sideEffects:
+    - A public HTTP MCP endpoint exposes the same documentation content as other public agent surfaces.
+    - An authentication callback can reject clients and may depend on an external identity system.
+    - OAuth protected-resource metadata remains public so clients can discover how to authenticate.
+  verification:
+    - run: pnpm exec docs doctor --agent
+      expect: MCP access and discovery/config/schema consistency pass.
+    - description: Initialize an MCP client and call list_docs followed by read_page for a known route.
+      expect: The initialize request succeeds and both tools return structured content for the configured docs corpus.
+  rollback:
+    - Set mcp.enabled to false, remove client configuration, and restore custom route or authentication wiring.
+  failureModes:
+    - symptom: The client receives 404 from /mcp or /.well-known/mcp.
+      resolution: Align mcp.route with the framework public forwarder and keep the documented aliases pointing at the canonical handler.
+    - symptom: Every HTTP request receives 401 after authentication is enabled.
+      resolution: Return a principal from security.authenticate for valid credentials and test the callback independently of MCP tools.
+    - symptom: Protected-resource metadata returns 404.
+      resolution: Configure both security.authenticate and a non-empty protectedResource.authorizationServers list, then verify the public forwarder includes the metadata route.
+    - symptom: An authenticated client receives 403 insufficient_scope.
+      resolution: Return all protectedResource.requiredScopes in the principal scopes, or narrow the endpoint-wide requirements.
 ---
 
 # MCP Server
 
 <Agent>
-Use this page when the user asks about this topic: Expose your docs as MCP tools and resources over stdio, /mcp, or /.well-known/mcp.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+MCP is enabled and public by default: `/mcp` and `/.well-known/mcp` forward to the canonical
+`/api/docs/mcp` handler. Add `mcp.security.authenticate` only for private docs; return a principal to
+continue or `null` for `401`. Add `mcp.security.protectedResource.authorizationServers` and scopes
+only when OAuth-aware clients need RFC 9728 discovery.
+
+Run `pnpm exec docs doctor --agent`, then initialize a client and call `list_docs` followed by
+`read_page` for a known route. A `404` can mean MCP is disabled, static export omitted the server
+route, or the canonical handler and public forwarder are missing or disagree; use doctor output to
+distinguish them. Repeated `401` responses mean the callback is not returning a valid principal;
+`403` with `insufficient_scope` means the principal lacks a configured required scope. Local-only
+clients can avoid HTTP routing with `pnpm exec docs mcp`.
 </Agent>
 
 `@farming-labs/docs` can expose your docs as a built-in MCP server, so AI clients can search the docs, read pages, list sections, inspect code examples, and understand config options without scraping HTML.
 
 The current built-in surface includes:
 
+- **Facets tool:** `list_search_facets` is also enabled by default. Disable it with `mcp.tools.searchFacets: false`.
+
 - `list_docs`
+
+- `list_content_changes`
+- `hydrate_content_changes`
 - `list_pages`
 - `get_navigation`
+
+- `list_search_facets`
+
+- `list_page_sections`
 - `search_docs`
 - `read_page`
+- `read_pages`
+- `submit_feedback` when machine feedback is enabled
 - `get_code_examples`
 - `get_config_schema`
+- `get_context`
+- `get_trust_metadata` when `agent.okf` is enabled
+- explicitly allowlisted `api_*` operation tools when `apiReference.mcp` is configured
 
 It also exposes resources for:
 
 - `docs://navigation`
 - one `docs://…` resource per page
+
+`read_pages` accepts up to 20 page paths and applies one shared conservative token budget, which
+reduces MCP round trips without letting a batch grow without bounds. `submit_feedback` uses the
+same `{ context?, payload }` envelope as the HTTP feedback endpoint and validates `payload` against
+`feedback.agent.schema` before calling `feedback.agent.onFeedback`.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  feedback: {
+    agent: {
+      schema: {
+        type: "object",
+        properties: { outcome: { type: "string" } },
+        required: ["outcome"],
+      },
+      async onFeedback(data) {
+        await saveAgentFeedback(data);
+      },
+    },
+  },
+});
+```
+
+## Project selected OpenAPI operations as tools
+
+`apiReference.mcp` can project API operations into MCP tools. It is deny-by-default: enabling the
+object alone exposes no operation unless its `operationId`, its `METHOD /path` selector, or its
+OpenAPI `x-farming-labs-mcp` extension explicitly allows it. Write methods need the additional
+`allowMutations: true` opt-in.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  apiReference: {
+    enabled: true,
+    mcp: {
+      operations: ["getUser", "GET /projects/{id}"],
+      baseUrl: "https://api.example.com",
+      headers: ({ security }) => ({
+        Authorization: `Bearer ${process.env.PRODUCT_API_TOKEN}`,
+        "X-Declared-Security": JSON.stringify(security),
+      }),
+      // allowMutations: true,
+    },
+  },
+});
+```
+
+Each projected tool carries its HTTP method, path, OpenAPI security requirements and referenced
+security schemes in MCP metadata. Server-owned headers are applied after tool input, so a model
+cannot replace configured credentials. Keep tokens on the server and restrict them to the smallest
+scopes required by the allowlist.
+
+<Callout type="warning" title="Public MCP tools call your API">
+  A public MCP endpoint makes every projected operation callable by public clients. Protect the MCP
+  endpoint, keep mutations disabled unless required, and use narrowly scoped service credentials.
+</Callout>
+
+## Protected authoring MCP
+
+The public docs MCP remains read-only. Run the separate local authoring server when an agent needs
+to propose documentation changes:
+
+```bash
+pnpm exec docs mcp author --branch-prefix docs/
+```
+
+Its workflow tools cover status, branch creation, hash-checked reads and writes, machine-readable
+page preview, `docs doctor`, Git diff review, and recurring-feedback analysis. Writes are restricted
+to `.md`, `.mdx`, and `.svx` files inside `contentDir`; overwriting a file requires the SHA-256 from
+the preceding read, which prevents a stale agent from replacing newer work.
+
+Draft-PR publishing is absent by default. Register it only for an operator-controlled session:
+
+```bash
+pnpm exec docs mcp author --branch-prefix docs/ --base-branch main --allow-publish
+```
+
+The publishing tool requires explicit confirmation, rejects dirty files outside `contentDir`,
+requires a matching branch prefix and authenticated GitHub CLI, then commits docs-only changes,
+pushes the branch, and opens a draft PR. `createDocsAuthoringMcpServer()` is also exported from the
+server entry for teams that place this distinct surface behind authoring-scoped OAuth. It is never
+wired into `/mcp`, `/.well-known/mcp`, or a framework public forwarder.
+
+<Callout type="warning" title="Keep authoring separate">
+  Do not expose the authoring server through the public docs MCP route. Use local stdio or a
+  separately authenticated transport with an authoring-specific OAuth scope.
+</Callout>
 
 ## Default behavior
 
@@ -67,6 +229,235 @@ export default defineDocs({
 });
 ```
 
+## HTTP security and opt-in authentication
+
+The HTTP MCP endpoint is **public by default**. Authentication only becomes required when you add
+`mcp.security.authenticate`. This lets public documentation stay zero-config while private docs can
+reuse any authentication provider that can inspect a Web `Request`.
+
+Adding `authenticate` by itself keeps the existing callback-only contract. Add
+`security.protectedResource` alongside it when OAuth-aware MCP clients should discover an
+authorization server, requested scopes, and RFC 9728 protected-resource metadata.
+
+Even for public endpoints, the HTTP transport validates a supplied `Origin` header against the
+request origin and limits POST bodies to 1 MiB by default. Origin-less requests remain supported
+for non-browser MCP clients. The body is buffered through that limit before an Origin or
+authentication callback runs, so callbacks never receive an oversized POST. These HTTP controls do
+not affect the local stdio command.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      async authenticate({ request }) {
+        const session = await getSession(request.headers);
+
+        if (!session) return null;
+
+        return {
+          id: session.user.id,
+          scopes: ["docs:read"],
+          claims: {
+            organizationId: session.user.organizationId,
+          },
+        };
+      },
+    },
+  },
+});
+```
+
+The callback result controls the request:
+
+- Return `{ id, scopes?, claims? }` to continue as an authenticated principal.
+- Return `null` to receive `401 Unauthorized`. With `protectedResource`, the response also includes
+  a Bearer `WWW-Authenticate` challenge that points to the resource metadata.
+- Return a Web `Response` to control the rejection, redirect, or challenge yourself. The framework
+  preserves its status, body, and headers instead of adding an OAuth challenge.
+- Throw to receive a sanitized `500` response; provider error details are not exposed.
+
+### OAuth protected-resource discovery
+
+Configure both `authenticate` and `protectedResource` to opt into RFC 9728 discovery and
+framework-generated Bearer challenges:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      protectedResource: {
+        authorizationServers: ["https://auth.example.com"],
+        scopesSupported: ["docs:read", "docs:search"],
+        requiredScopes: ["docs:read"],
+        resourceName: "Private product docs",
+        resourceDocumentation: "https://docs.example.com/auth/mcp",
+      },
+      async authenticate({ request, resource }) {
+        const token = await verifyAccessToken(request);
+
+        if (!token) return null;
+        if (!token.audiences.includes(resource)) return null;
+
+        return {
+          id: token.subject,
+          scopes: token.scopes,
+        };
+      },
+    },
+  },
+});
+```
+
+`protectedResource` makes the docs endpoint an OAuth resource server; it does not issue or validate
+tokens. The callback must read the Bearer token, validate its signature, issuer, expiry, and the
+exact `resource` audience supplied in the callback context, and return only scopes verified from
+that token. The `request` retains the real incoming URL, including its query string. Never pass an
+upstream token through to another service. The configured authorization server must publish RFC
+8414 or OpenID Connect discovery and support a client-registration approach your MCP clients can
+use.
+
+`authorizationServers` is required and must contain at least one HTTPS authorization-server issuer
+URL without a query or fragment; loopback HTTP is accepted for development. `scopesSupported` is
+advertised to clients. `requiredScopes` is enforced against the
+`scopes` returned by `authenticate` for every HTTP MCP request.
+
+When this configuration is active:
+
+- missing or invalid credentials that make `authenticate` return `null` receive `401` with a
+  Bearer challenge containing `resource_metadata` and the required `scope`
+- an authenticated principal missing any `requiredScopes` receives `403` with
+  `error="insufficient_scope"`
+- a `Response` returned by `authenticate` remains authoritative, so add `WWW-Authenticate` to that
+  response yourself when a custom rejection should participate in OAuth discovery
+- the stdio transport is unchanged
+
+The framework publishes a public metadata document for each MCP HTTP alias:
+
+```txt title="RFC 9728 protected-resource metadata"
+/.well-known/oauth-protected-resource/mcp
+/.well-known/oauth-protected-resource/.well-known/mcp
+/.well-known/oauth-protected-resource/api/docs/mcp
+```
+
+If `mcp.route` is customized, the last path uses that configured route instead. Each document's
+`resource` value identifies the corresponding public MCP URL, and its
+`authorization_servers`, optional `scopes_supported`, resource name, and documentation URL come
+from `protectedResource`. Metadata stays public so a client can discover how to authenticate before
+it has a token. `GET` and `HEAD` are supported, and browser discovery receives public CORS headers.
+
+Each alias is a distinct OAuth resource identifier. Configure token audience validation for the
+exact endpoint your clients use; prefer `/mcp` as the shared public endpoint unless clients require
+the canonical or well-known alias.
+
+`protectedResource` is inactive without `authenticate`: the MCP endpoint remains public and the
+metadata routes return `404`. This prevents discovery metadata from claiming that a public endpoint
+is protected.
+
+Generated TanStack Start, SvelteKit, and Astro forwarders pass `config.mcp` to
+`isDocsMcpRequest(url, config.mcp)`. Update that call when enabling protected auth in a project
+generated by an older release. The legacy one-argument form continues to match MCP endpoints but
+deliberately does not reserve OAuth metadata paths in public projects.
+
+<Callout type="warning" title="Use HTTPS for hosted OAuth">
+  Use absolute `https://` authorization-server and resource-documentation URLs in production, and
+  serve the hosted MCP endpoint over HTTPS. Plain HTTP should be limited to loopback development.
+</Callout>
+
+<Callout type="warning" title="Next.js basePath">
+  Protected MCP cannot use Next.js `basePath`: RFC 9728 inserts its well-known path at the origin
+  root, while Next.js only supports disabling `basePath` for external rewrites. Host the protected
+  docs app at the origin root, or publish the MCP proxy and protected-resource metadata at the edge.
+  For an inline MCP object, `withDocs()` detects this combination. If the MCP configuration is
+  imported, spread, or shorthand, pass the live docs config as the second argument so protected
+  rewrites and the `basePath` check use the resolved object:
+
+  ```ts title="next.config.ts"
+  import { withDocs } from "@farming-labs/next/config";
+  import docsConfig from "./docs.config";
+
+  export default withDocs({}, docsConfig);
+  ```
+</Callout>
+
+Custom low-level `DocsMcpSource` implementations receive that principal in the optional second
+argument to `getPages(locale, context)` and `getNavigation(locale, context)`. They can use scopes or
+claims to filter private content. The framework does not serialize the principal into MCP tool
+results or telemetry.
+
+Configure browser origins and the request limit independently:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      allowedOrigins: [
+        "https://docs.example.com",
+        "https://internal-tools.example.com",
+      ],
+      maxBodyBytes: 512 * 1024,
+    },
+  },
+});
+```
+
+`allowedOrigins` also accepts `"same-origin"` (the default) or an async policy callback:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      allowedOrigins: async ({ origin, request }) => {
+        const hostname = new URL(origin).hostname;
+        return (
+          origin === new URL(request.url).origin ||
+          hostname === "example.com" ||
+          hostname.endsWith(".example.com")
+        );
+      },
+    },
+  },
+});
+```
+
+### Browser CORS
+
+Cross-origin browser access is opt-in through `allowedOrigins`. When an Origin is accepted, the
+framework answers `OPTIONS` preflight without running `authenticate` and emits that exact Origin in
+`Access-Control-Allow-Origin`. It never combines wildcard Origin responses with credentials.
+
+The standard MCP request headers, including `Authorization`, `Content-Type`,
+`MCP-Protocol-Version`, and `MCP-Session-Id`, are allowed by default. Add application-specific auth
+headers explicitly:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    security: {
+      allowedOrigins: ["https://internal-tools.example.com"],
+      cors: {
+        allowedHeaders: ["X-API-Key"],
+        exposedHeaders: ["X-Docs-Version"],
+        allowCredentials: true,
+        maxAgeSeconds: 600,
+      },
+    },
+  },
+});
+```
+
+`allowCredentials` is `false` by default. Enable it only for an explicitly allowed browser Origin
+when the auth provider needs cookies or another browser credential. Set `cors: false` to keep Origin
+validation but suppress browser CORS headers.
+
+Generated routes and public forwarders include `OPTIONS`. On a manually maintained MCP route,
+export or forward `MCP.OPTIONS` alongside `GET`, `POST`, and `DELETE`.
+
+<Callout type="warning" title="Origin is not authentication">
+  Origin validation protects the browser-facing transport; it does not identify a user or agent.
+  Use `authenticate` when the documentation itself needs access control. Headers such as
+  `Signature-Agent` are content-negotiation hints and must not be treated as proof of identity.
+</Callout>
+
 ## Default HTTP Routes
 
 `/mcp` is the short public MCP endpoint in Next.js, and `/.well-known/mcp` is the discovery-friendly
@@ -96,26 +487,65 @@ export default withDocs();
 
 ```ts title="src/routes/$.ts"
 import { createFileRoute } from "@tanstack/react-router";
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
+} from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
+import docsConfig from "../../docs.config";
+
+const docsEntry = docsConfig.entry ?? "docs";
+
+async function handlePublicDocsRequest(request: Request) {
+  const url = new URL(request.url);
+  const method = request.method.toUpperCase();
+
+  if (isDocsMcpRequest(url, docsConfig.mcp)) {
+    if (method === "OPTIONS") return docsServer.MCP.OPTIONS({ request });
+    if (method === "POST") return docsServer.MCP.POST({ request });
+    if (method === "DELETE") return docsServer.MCP.DELETE({ request });
+    if (method === "GET" || method === "HEAD") return docsServer.MCP.GET({ request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
+    });
+  }
+
+  if (
+    isDocsStandardsDiscoveryRequest(url, {
+      apiRoute: docsConfig.cloud?.apiRoute,
+    })
+  ) {
+    if (method === "HEAD") return docsServer.HEAD({ request });
+    if (method === "POST") return docsServer.POST({ request });
+    return docsServer.GET({ request });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, url, request, {
+      apiRoute: docsConfig.cloud?.apiRoute,
+      sitemap: docsConfig.sitemap,
+      llms: docsConfig.llmsTxt,
+      robots: docsConfig.robots,
+    })
+  ) {
+    return method === "HEAD" ? docsServer.HEAD({ request }) : docsServer.GET({ request });
+  }
+
+  return new Response("Not Found", { status: 404 });
+}
 
 export const Route = createFileRoute("/$")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const url = new URL(request.url);
-        if (isDocsMcpRequest(url)) return docsServer.MCP.GET({ request });
-        if (isDocsPublicGetRequest("docs", url, request)) return docsServer.GET({ request });
-        return new Response("Not Found", { status: 404 });
-      },
-      POST: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url))
-          ? docsServer.MCP.POST({ request })
-          : new Response("Not Found", { status: 404 }),
-      DELETE: async ({ request }) =>
-        isDocsMcpRequest(new URL(request.url))
-          ? docsServer.MCP.DELETE({ request })
-          : new Response("Not Found", { status: 404 }),
+      GET: async ({ request }) => handlePublicDocsRequest(request),
+      HEAD: async ({ request }) => handlePublicDocsRequest(request),
+      POST: async ({ request }) => handlePublicDocsRequest(request),
+      DELETE: async ({ request }) => handlePublicDocsRequest(request),
+      OPTIONS: async ({ request }) => handlePublicDocsRequest(request),
+      ANY: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });
@@ -124,20 +554,63 @@ export const Route = createFileRoute("/$")({
 ### SvelteKit
 
 ```ts title="src/hooks.server.ts"
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
-import { GET, MCP } from "$lib/docs.server";
+import {
+  isDocsLlmsTxtPublicRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
+} from "@farming-labs/docs";
+import config from "$lib/docs.config";
+import { GET, HEAD, POST, MCP } from "$lib/docs.server";
+
+const docsEntry = config.entry ?? "docs";
 
 export async function handle({ event, resolve }) {
   const method = event.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(event.url)) {
+  if (isDocsMcpRequest(event.url, config.mcp)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: event.request });
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
-    return MCP.GET({ request: event.request });
+    if (method === "GET" || method === "HEAD") return MCP.GET({ request: event.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
+    });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest("docs", event.url, event.request)) {
+  if (
+    isDocsStandardsDiscoveryRequest(event.url, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    if (method === "HEAD") return HEAD({ url: event.url, request: event.request });
+    if (method === "POST") return POST({ url: event.url, request: event.request });
     return GET({ url: event.url, request: event.request });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    const nativeResponse = await resolve(event);
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, event.url, event.request, {
+      apiRoute: config.cloud?.apiRoute,
+      sitemap: config.sitemap,
+      llms: config.llmsTxt,
+      robots: config.robots,
+    })
+  ) {
+    return method === "HEAD"
+      ? HEAD({ url: event.url, request: event.request })
+      : GET({ url: event.url, request: event.request });
   }
 
   return resolve(event);
@@ -150,7 +623,7 @@ Your `src/lib/docs.server.ts` can keep using the normal helper:
 import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "./docs.config";
 
-export const { load, GET, POST, MCP } = createDocsServer({
+export const { load, GET, HEAD, POST, MCP } = createDocsServer({
   ...config,
 });
 ```
@@ -158,20 +631,63 @@ export const { load, GET, POST, MCP } = createDocsServer({
 ### Astro
 
 ```ts title="src/middleware.ts"
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
-import { GET, MCP } from "./lib/docs.server";
+import {
+  isDocsLlmsTxtPublicRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
+} from "@farming-labs/docs";
+import config from "./lib/docs.config";
+import { GET, HEAD, POST, MCP } from "./lib/docs.server";
+
+const docsEntry = config.entry ?? "docs";
 
 export async function onRequest(context, next) {
   const method = context.request.method.toUpperCase();
 
-  if (isDocsMcpRequest(context.url)) {
+  if (isDocsMcpRequest(context.url, config.mcp)) {
+    if (method === "OPTIONS") return MCP.OPTIONS({ request: context.request });
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
-    return MCP.GET({ request: context.request });
+    if (method === "GET" || method === "HEAD") return MCP.GET({ request: context.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE, OPTIONS" },
+    });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest("docs", context.url, context.request)) {
+  if (
+    isDocsStandardsDiscoveryRequest(context.url, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    if (method === "HEAD") return HEAD({ request: context.request });
+    if (method === "POST") return POST({ request: context.request });
     return GET({ request: context.request });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry, {
+      apiRoute: config.cloud?.apiRoute,
+    })
+  ) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, context.url, context.request, {
+      apiRoute: config.cloud?.apiRoute,
+      sitemap: config.sitemap,
+      llms: config.llmsTxt,
+      robots: config.robots,
+    })
+  ) {
+    return method === "HEAD"
+      ? HEAD({ request: context.request })
+      : GET({ request: context.request });
   }
 
   return next();
@@ -213,7 +729,7 @@ Example custom Next.js route:
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
+export const { GET, POST, DELETE, OPTIONS } = createDocsMCPAPI(docsConfig);
 
 export const revalidate = false;
 ```
@@ -221,7 +737,9 @@ export const revalidate = false;
 <Callout type="warning" title="@farming-labs/theme/api compatibility">
   `@farming-labs/theme/api` still works if you already rely on it, but prefer
   `@farming-labs/next/api` for Next.js routes going forward. The theme-level path will be
-  deprecated.
+  deprecated. If `mcp.security` is configured, pass the imported live `docsConfig` to
+  `createDocsMCPAPI`; the legacy no-argument form intentionally refuses to reconstruct executable
+  authentication callbacks from source text.
 </Callout>
 
 When `search` is configured, the MCP `search_docs` tool uses that same adapter pipeline too. That
@@ -300,6 +818,7 @@ supported. The canonical `/api/docs/mcp` route remains available too. The built-
 tool automatically falls back to simple search internally when it detects that same-route loop, so
 the route stays usable for testing and local examples.
 
+The fallback is triggered whenever the configured `search.endpoint` resolves to the same server as the incoming request **and** the endpoint path matches one of the built-in MCP aliases (`/mcp`, `/.well-known/mcp`, `/api/docs/mcp`) or the custom `mcp.route` value set in `docs.config`. When the match is detected, `search_docs` performs direct simple search instead of issuing a loopback HTTP call to itself. External MCP search endpoints — for example `https://other-service.example.com/mcp` or a path like `/external/search/mcp` that does not match any configured MCP route — are not affected and continue to proxy normally.
 ## Stdio transport
 
 The same docs graph is available locally over stdio:
@@ -329,6 +848,19 @@ https://docs.farming-labs.dev/mcp
 https://docs.farming-labs.dev/.well-known/mcp
 ```
 
+To print the MCP client setup instructions for your own Docs Cloud deployment, use `mcp setup`:
+
+```bash title="terminal"
+pnpm exec docs mcp setup --deployment <your-deployment-id>
+```
+
+The generated config connects directly to the hosted Streamable HTTP endpoint; it does not run
+another setup command or embed the secret. The default output targets Claude Code and reads
+`${DOCS_CLOUD_API_KEY}` from that client's environment. Use `--client cursor` for Cursor's
+`${env:DOCS_CLOUD_API_KEY}` syntax, or `--client vscode` for VS Code's native `servers` schema and
+secure input prompt. Add `--json` to print only the selected JSON config block, or
+`--api-base-url <url>` to target a self-hosted Docs Cloud API. See
+[CLI](/docs/cli#print-hosted-mcp-client-config-with-mcp-setup) for the full flag reference.
 <DocsMcpAccess />
 
 ### More setup docs
@@ -395,6 +927,8 @@ http://127.0.0.1:3000/.well-known/mcp
 
 The built-in HTTP route exposes the full MCP surface:
 
+- `list_search_facets`
+
 - `list_docs`
 - `list_pages`
 - `get_navigation`
@@ -402,9 +936,13 @@ The built-in HTTP route exposes the full MCP surface:
 - `read_page`
 - `get_code_examples`
 - `get_config_schema`
+- `get_context`
 
+- `list_content_changes`
+- `hydrate_content_changes`
 ## What to ask it
 
+- `list_page_sections`
 Once your MCP client is connected, these are good first checks:
 
 - `list_docs` for `getting-started` before deciding which page to read
@@ -414,6 +952,7 @@ Once your MCP client is connected, these are good first checks:
 - `list_pages` to confirm the server is loading the expected docs set
 - `get_code_examples` for runnable Next.js or pnpm snippets
 - `get_config_schema` for `mcp.tools` before editing `docs.config.ts`
+- `get_context` when you want section-level context constrained to a token budget
 
 In Cursor or VS Code, natural prompts like these work well too:
 
@@ -425,11 +964,38 @@ In Cursor or VS Code, natural prompts like these work well too:
 
 - `list_docs` returns page summaries grouped by section; pass `section` such as `getting-started` to narrow the result
 - `list_pages` returns page titles, slugs, and URLs
+
+- `list_page_sections` returns body-free section discovery metadata (ids, headings, levels, parent ids, line ranges, token estimates, and markdown URLs) for a given page
 - `get_navigation` returns the docs tree in a readable text outline
+
+- `list_search_facets` returns facet values for `framework`, `version`, `package`, and `tags`. Three optional inputs refine the request: `facet` (one of `framework | version | package | tags`) pins the response to a single field and enables cursor-based pagination; `limit` (1–100) caps the number of values returned; `cursor` is the opaque continuation token from a previous response. When the response includes `hasMore: true` on a facet, pass that facet's `nextCursor` value as `cursor` (with the same `facet` argument) to retrieve the next page of values.
+
 - `search_docs` ranks pages by title, description, and content matches
-- `read_page` accepts either a slug like `installation` or a full docs path like `/docs/installation`
+- `read_page` accepts either a slug like `installation` or a full docs path like `/docs/installation`; pass `section` for one heading and `maxChars` to cap both successful content and section-not-found output
 - `get_code_examples` returns fenced code blocks with parsed metadata like `title`, `framework`, `packageManager`, and `runnable`
 - `get_config_schema` returns `docs.config.ts` option metadata with paths, types, defaults, descriptions, and examples
+- `get_context` deterministically selects matching sections, applies optional `framework`, `version`, and `locale` scopes, and reports source anchors plus conservative UTF-8 byte accounting
+
+- `hydrate_content_changes` is called after `list_content_changes` to retrieve the full section bodies and deletion tombstones for a batch of changed documents; it accepts a `tokenBudget` parameter (default `5000`; min `4`; max `32000`) that caps the total hydrated content returned. Enable it with `mcp.tools.hydrateContentChanges: true` in `docs.config.ts`.
+For `framework`, `version`, and `locale`, a page that declares a different value is excluded. A page
+that omits a scope field is treated as general documentation and remains eligible for that scope.
+Results are ranked deterministically, with source URLs resolving equal-score ties.
+
+Declare scopes with optional top-level page frontmatter. Quote numeric versions so they remain
+strings:
+
+```md title="docs/guides/next-setup.mdx"
+---
+title: "Next.js setup"
+framework: "nextjs"
+version: "16"
+locale: "en"
+---
+```
+
+Every successful built-in tool result includes both MCP `structuredContent` validated against its
+advertised `outputSchema` and the existing text content for clients that have not adopted structured
+results yet.
 
 Example tool calls:
 
@@ -446,11 +1012,39 @@ Example tool calls:
 {
   "name": "get_code_examples",
   "arguments": {
-    "topic": "docs.config.ts",
+    "query": "docs.config.ts",
     "framework": "nextjs"
   }
 }
 ```
+
+```json title="get_context"
+{
+  "name": "get_context",
+  "arguments": {
+    "query": "configure MCP search",
+    "framework": "nextjs",
+    "version": "16",
+    "locale": "en",
+    "tokenBudget": 4000
+  }
+}
+```
+
+`tokenBudget` defaults to `4000` and accepts values from `256` through `32000`. The dependency-free
+budget strategy treats that value as a conservative UTF-8 byte ceiling: the complete assembled
+`context`, including source headers and separators, never exceeds `tokenBudget` encoded bytes. The
+response reports `strategy: "utf8-bytes"`, `maxUtf8Bytes`, `usedUtf8Bytes`,
+`remainingUtf8Bytes`, and `conservativeTokenUpperBound`; each source reports its own `utf8Bytes`.
+The upper bound intentionally overstates many tokenizer counts instead of presenting a
+tokenizer-specific estimate as a hard guarantee.
+
+Section parsing is shared by search, `read_page`, and `get_context`. It ignores headings inside
+fenced code, supports ATX headings indented by up to three spaces and Setext headings, cleans inline
+links and formatting from labels, and assigns stable `-1`, `-2`, and later suffixes to duplicate
+anchors. Anchored search hits that no longer resolve are skipped instead of being attributed to
+whole-page content. When a requested `read_page.section` is missing, `maxChars` also bounds the JSON
+error and the included list of available headings.
 
 ```json title="get_config_schema"
 {

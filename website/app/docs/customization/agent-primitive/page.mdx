@@ -1,22 +1,70 @@
 ---
 title: "Agent Primitive"
-description: "Author page-level agent context, generated AGENTS.md instructions, and machine-readable route discovery."
+description: "Author human- and agent-specific page context, generated AGENTS.md instructions, and machine-readable route discovery."
 icon: "bot"
 order: 5.65
+related:
+  - /docs/guides/agent-friendly-docs
+  - /docs/customization/mcp
+  - /docs/customization/llms-txt
+  - /docs/customization/sitemaps
+  - /docs/configuration
+agent:
+  tokenBudget: 1100
+  task: Add audience-specific agent guidance without changing the human page or exposing private data.
+  outcome: Human HTML and search exclude agent-only guidance while Markdown, Ask AI, MCP, llms-full.txt, and exports include it consistently.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The target page is MDX when it uses Agent, Human, or Audience components.
+    - Decide whether additive embedded guidance or a full sibling agent.md override is required.
+    - Remove secrets and private content because audience projection is not authorization.
+  files:
+    - app/docs/example/page.mdx
+    - app/docs/example/agent.md
+    - docs/example/page.mdx
+    - docs/example/agent.md
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  commands:
+    - run: pnpm exec docs doctor --agent
+      description: Audit audience coverage, usefulness, and discovery parity.
+  verification:
+    - description: Compare the rendered HTML page with its .md route and MCP read_page output.
+      expect: Human-only content stays in HTML, agent-only content stays in agent projections, and shared content appears in both.
+    - run: pnpm exec docs doctor --agent
+      expect: Audience coverage and agent surface checks report no new failures.
+  rollback:
+    - Remove the audience wrapper or sibling agent.md and restore the shared page content.
+  failureModes:
+    - symptom: Agent-only instructions appear in rendered HTML or public search.
+      resolution: Use a static Agent block or Audience only="agent" and verify that every surface uses the shared exposure resolver.
+    - symptom: The .md route omits the whole human-authored page.
+      resolution: Remove an accidental sibling agent.md override or copy the required contract into that override.
 ---
 
 # Agent Primitive
 
-`@farming-labs/docs` gives you two page-level primitives for agent-facing documentation:
+`@farming-labs/docs` gives you optional page-level audience controls for agent-friendly
+documentation:
 
-- `<Agent>...</Agent>` inside `page.mdx` for additive machine-only context
+- `<Agent>...</Agent>` inside `page.mdx` for additive agent-only context
+- `<Human>...</Human>` for presentation or explanation that only belongs in human-facing output
+- `<Audience only="agent">...</Audience>` or `<Audience only="human">...</Audience>` when you
+  prefer one explicit component
 - `agent.md` beside `page.mdx` for a full machine-readable override
+
+Content outside these wrappers remains shared by both audiences. Existing `<Agent>` blocks keep
+working unchanged, and you never need to add one when the same content serves both audiences well.
 
 The same page model also powers the built-in machine-readable routes:
 
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
-- in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
+- in Next.js, an unambiguous `Accept: text/markdown` on `/docs/<slug>` returns the same markdown; a mixed header containing `text/html`, `text/*`, or `*/*` stays HTML
 - in Next.js, `Signature-Agent` on `/docs/<slug>` returns the same markdown for agents that fetch canonical URLs
 - in Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
 - coding agents can fetch site-level instructions with `GET /AGENTS.md`, fall back to
@@ -26,11 +74,20 @@ The same page model also powers the built-in machine-readable routes:
 - agents can discover the configured contract with `GET /.well-known/agent.json`, fall back to
   `GET /.well-known/agent`, or use the canonical framework route at `GET /api/docs/agent/spec`
 
+- agents can fetch a machine-readable map of the active docs config with
+  `GET /api/docs?format=config` (returns `docs-config-map.v1` JSON, `X-Robots-Tag: noindex`,
+  CDN-cached at `s-maxage=3600`)
+
+- agents can discover valid filter values (framework, version, package, tags) without a text query
+  using `GET /api/docs?audience=agent&response=facets` (returns `DocsSearchFacetsResponse` with
+  `format: "docs-search-facets.v1"`, cached `max-age=60`); the agent discovery spec advertises this
+  as `search.facetsEndpoint`, `search.facetsResponseValue: "facets"`, and
+  `search.facetsResponseFormat: "docs-search-facets.v1"`
 <Callout type="info" title="Same URL, different representation">
-  `/docs/installation` stays the human HTML page by default. In Next.js, send
+  `/docs/installation` stays the human HTML page by default. In Next.js, send an unambiguous
   `Accept: text/markdown`, send `Signature-Agent`, or identify with a known AI user agent on that
-  same URL when an agent or script wants the machine-readable version without appending `.md`. In the
-  other adapters, use `/docs/installation.md` or the `format=markdown` API route.
+  same URL when an agent or script wants the machine-readable version without appending `.md`. In
+  the other adapters, use `/docs/installation.md` or the `format=markdown` API route.
 
   These reads go through the existing shared `/api/docs` handler. You do not need another
   markdown-specific API wrapper, and adding one usually makes discovery, caching, and 404 recovery
@@ -40,26 +97,95 @@ The same page model also powers the built-in machine-readable routes:
   markdown representations for the same URL. A browser can keep receiving cached HTML while an
   agent receives cached markdown for `/docs/installation`.
 
-  Successful markdown responses include a canonical `Link` response header pointing to the normal
-  docs page, so agents can read `/docs/installation.md` while still citing `/docs/installation`.
+  Successful markdown responses include canonical `Link` and `Content-Location` headers, so agents
+  can read `/docs/installation.md` while still citing `/docs/installation`. They also include an
+  `ETag`, `Content-Language` when a locale is known, and `Last-Modified` when the adapter has an exact
+  source timestamp. Date-only frontmatter is not treated as a midnight timestamp. Conditional
+  requests can reuse the available validators and receive HTTP `304` without another body.
   The body starts with YAML frontmatter for `title`, `description`, `canonical_url`, `markdown_url`,
   and `last_updated` when known, then ends with a `## Sitemap` footer that links back to the
   configured markdown sitemap.
 
-  Missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions,
+  Missing markdown pages return actionable markdown with HTTP `404`, closest-match suggestions,
   recovery instructions, links to the agent discovery spec, search endpoint, and sitemap routes.
   Very high-confidence typo matches redirect to the corrected `.md` page.
+
+  Shared and non-Next handlers can honor weighted `Accept` values. The generated Next.js canonical
+  rewrite stays conservative because it cannot compare arbitrary `q` values: use the exact `.md`
+  URL or `GET /api/docs?format=markdown&path=<slug>` for mixed HTML/Markdown accept lists.
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
-context. Use `agent.md` when the entire machine-readable page should be more operational, more
-structured, or fully different from the visible UI page.
+context. Use `Human` to remove UI-only explanation from agent context, or use `Audience` for either
+direction with one explicit API. Use `agent.md` when the entire machine-readable page should be
+more operational, more structured, or fully different from the visible UI page.
 
 <Callout type="info" title="Built in by default">
-  `Agent` is already part of the default MDX component map. You can write `<Agent>` directly in any
-  docs page without adding it to `docs.config.ts`, `mdx-components.tsx`, or a custom components map.
-  If you intentionally build your own MDX map from scratch, import it from `@farming-labs/theme` or
-  `@farming-labs/theme/mdx`.
+  `Agent`, `Human`, and `Audience` are already part of the default MDX component map. You can use
+  them directly in any docs page without adding them to `docs.config.ts`, `mdx-components.tsx`, or
+  a custom components map. If you intentionally build your own MDX map from scratch, import them
+  from `@farming-labs/theme` or `@farming-labs/theme/mdx`.
+</Callout>
+
+## Choose An Audience
+
+The short components and the explicit component are equivalent:
+
+```mdx title="page.mdx"
+# Deploy the app
+
+This setup applies to every reader.
+
+<Human>
+Use the dashboard screenshot below to find the deployment button.
+</Human>
+
+<Agent>
+Run `pnpm deploy`, then verify that the command exits with code 0.
+</Agent>
+
+<Audience only="human">
+This is the explicit form of `Human`.
+</Audience>
+
+<Audience only="agent">
+This is the explicit form of `Agent`.
+</Audience>
+```
+
+Use whichever authoring style reads best on the page. `<Agent>` remains the concise, optional
+shorthand for agent-only context, while `<Human>` is the human-only shorthand. Both shorthands have
+a fixed audience, so an `only` prop is ignored and `docs review` reports it. Use `<Audience>` when
+you want the explicit `only="human"` or `only="agent"` form. `Audience.only` accepts exactly
+`"human"` or `"agent"`. Use a static literal (a quoted prop or static quoted MDX expression).
+Runtime expressions such as `only={currentAudience}` and spread props such as
+`{...audienceProps}` are unsupported; `docs review` reports them because exports cannot resolve
+them consistently. An invalid or missing value is preserved as shared content instead of being
+silently dropped.
+
+The framework resolves the same audience policy before each content surface consumes the page:
+
+| Surface | Projection |
+| ------- | ---------- |
+| Rendered docs HTML | Human |
+| Search API without `audience=agent` | Human |
+| Search API with exact `audience=agent` | Agent |
+| Markdown routes and the markdown API format | Agent |
+| Ask AI retrieval and context | Agent |
+| MCP search, context, and page reads | Agent |
+| `llms.txt` | Discovery metadata and links; linked Markdown uses the agent projection |
+| `llms-full.txt` page bodies | Agent |
+| Static agent exports | Agent |
+| XML and Markdown sitemaps | Route metadata only; page-body audience blocks are not included |
+
+This keeps visual instructions out of agent context and implementation-only instructions out of
+the rendered page and public search without maintaining separate copies of the entire page.
+
+<Callout type="warning" title="Audience filtering is not access control">
+  Audience wrappers shape a representation; they do not authenticate a reader or protect a secret.
+  Source files and machine-readable routes can still be public. Never put credentials, private
+  customer data, internal-only URLs, or other sensitive values inside `Agent`, `Human`, `Audience`,
+  or `agent.md`. Put protected documentation behind real authorization.
 </Callout>
 
 ## Use `Agent` For Additive Context
@@ -113,7 +239,8 @@ Recommended bootstrap flow:
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when you want the concise site skill.
 3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read relevant docs pages as markdown.
-4. Use `spec.search.endpoint` when you need to find the right page first.
+4. Use `spec.search.agentEndpoint` when you need to find the right page first. Older discovery
+   documents can be handled by adding `&audience=agent` to `spec.search.endpoint`.
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy.
 7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
@@ -160,8 +287,8 @@ machine-readable page for one or more routes and write a sibling `agent.md` auto
 It uses the same resolution order as the runtime:
 
 - existing `agent.md`
-- hidden `Agent` blocks
-- normal page markdown
+- the agent projection of audience-aware page markdown
+- shared page markdown
 
 That makes it a good fit when you want to start with additive `<Agent>` context and later freeze a
 shorter, more operational machine page.
@@ -181,11 +308,11 @@ The visible UI page still renders `page.mdx`. Only the machine-readable surface 
 
 ## Audit The Agent Surface
 
-After you add `<Agent>` blocks, `agent.md`, `AGENTS.md`, `skill.md`, or discovery endpoints, use the
+After you add audience blocks, `agent.md`, `AGENTS.md`, `skill.md`, or discovery endpoints, use the
 [Doctor section of the CLI docs](/docs/cli#doctor) to audit whether the machine-facing layer is
 actually wired and visible the way you expect.
 
-That is the quickest follow-up after authoring page-level primitives. If you add an `Agent` block
+That is the quickest follow-up after authoring page-level controls. If you add an agent-only block
 or sibling `agent.md`, the doctor output should reflect stronger explicit agent-friendly page
 coverage instead of only looking correct in the UI.
 
@@ -228,10 +355,47 @@ That works especially well when:
 
 ## Agent Discovery
 
-`GET /.well-known/agent.json` is the preferred public discovery URL. `GET /.well-known/agent` is the
-public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. Next.js wires
-these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt scaffold one public forwarder
-each, so the well-known aliases share the same docs server handler.
+For standards-based discovery, `GET` or `HEAD /.well-known/api-catalog` returns an
+`application/linkset+json` [RFC 9727](https://datatracker.ietf.org/doc/html/rfc9727) catalog.
+`GET` or `HEAD /.well-known/agent-skills/index.json` returns the
+[Agent Skills v0.2 index](https://www.mintlify.com/docs/ai/skillmd). Configure `agent.skills` with a
+project-relative `SKILL.md`, skill directory, collection directory, or array of those paths. The
+runtime discovers every valid skill and publishes only non-symlink regular files from `SKILL.md`,
+`references/`, `scripts/`, and `assets/`.
+
+Standalone skill documents are indexed directly. Skills with companions use a deterministic
+`.tar.gz` artifact whose SHA-256 digest covers the exact archive bytes, while each source file stays
+available below `/.well-known/agent-skills/<name>/`. Legacy clients can use
+`/.well-known/skills/index.json`; static exports reproduce both indexes and their artifacts. MCP
+clients see the same files at `docs://skills/<name>/<path>`, with text returned as text and binary
+assets returned as base64 blobs.
+
+The optional `/.well-known/agent-card.json` route is different from skill discovery. It appears
+only when `agent.a2a` describes a real A2A interface. A preferred ordered
+`supportedInterfaces` configuration defaults each entry to protocol `1.0` over `HTTP+JSON`; the
+first entry is preferred, and the other core bindings are `JSONRPC` and `GRPC`. The generated card
+uses the strict A2A v1 shape. `interfaceUrl` remains only as a deprecated single-interface
+shorthand and retains its historical protocol `0.3` default. The preferred interface-array form
+requires explicit A2A skills; it does not turn published Agent Skill documents into callable
+capabilities automatically. A2A capability entries do not carry Agent Skill document URLs—those
+stay in the skill indexes and MCP resources. Do not configure the card merely because the site
+exposes docs, Ask AI, or MCP.
+
+`GET /.well-known/agent.json` is the preferred public discovery URL. It is a Farming Labs
+documentation-discovery extension, not an A2A Agent Card. The document identifies itself with
+`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v2.json"` and
+`format: "farming-labs-agent-manifest.v2"`. The schema uses JSON Schema Draft 2020-12, and dynamic
+responses link it with the registered HTTP `describedby` relation. Existing fields and routes remain
+available.
+
+Use `GET /.well-known/agent.json?profile=compact` for a minified first hop without expanded skill
+file inventories. The response retains discovery routes and reports each skill's `fileCount`, so an
+agent can fetch the Agent Skills index only when the task requires those companion files.
+
+`GET /.well-known/agent` is the public fallback, and `GET /api/docs/agent/spec` is the canonical
+framework route. Next.js wires these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt
+scaffold one public forwarder each, so the aliases share the same docs server handler. The separate,
+opt-in A2A document remains at `/.well-known/agent-card.json`.
 
 Agents should fetch it before choosing a transport. It tells them:
 
@@ -239,6 +403,9 @@ Agents should fetch it before choosing a transport. It tells them:
 - which locales are configured and which query parameter selects one
 - which agent-facing capabilities are enabled
 - where the shared docs API lives
+- where the RFC 9727 API catalog and hashed Agent Skills index live
+- which skills and companion files are published, including modern and legacy discovery routes
+- whether a separately implemented A2A service publishes an Agent Card
 - which agent discovery URL is the default and which public route to use as fallback
 - where to search the docs with a query
 - which markdown URL pattern to use for page reads
@@ -252,17 +419,34 @@ Agents should fetch it before choosing a transport. It tells them:
 - whether MCP is enabled, which public/well-known endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
 
+- where to fetch the machine-readable docs config map, including the format identifier
+  (`docs-config-map.v1`) and endpoint (`/api/docs?format=config`), advertised under the top-level
+  `config` field of the spec
 The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 `agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
 preference themselves. It also includes `robots.route` so agents can find the static crawl policy
 without guessing.
 
+The `search` object keeps `endpoint` as the backward-compatible human-default URL and adds
+`agentEndpoint` for agent-projected retrieval. It also declares `audienceParam: "audience"`,
+`defaultAudience: "human"`, and `supportedAudiences: ["human", "agent"]`. Only the exact lowercase
+`audience=agent` value opts into shared plus agent-only content; this is projection rather than an
+authorization boundary.
+
+The custom manifest remains supported and advertises the standards routes through
+`apiCatalog` and `skills.discovery`. Discovery responses also include an `api-catalog` HTTP
+`Link` relation so clients can start from either model.
+
+The spec also includes `api.config: "/api/docs?format=config"` and a top-level `config` object
+with `format: "docs-config-map.v1"` and `endpoint: "/api/docs?format=config"` so agents can
+discover and fetch the config map without hard-coding the route.
 The skill document is available at `GET /skill.md`, with `GET /.well-known/skill.md` as the
 well-known alias and `GET /api/docs?format=skill` as the shared API format. Put a `skill.md` file at
 the project root, beside `docs.config.ts`, when you want custom site-specific instructions. If that
 file is missing, the framework generates a short fallback from config that points agents to
 markdown, search, MCP, `llms.txt`, sitemap routes, `robots.txt`, feedback, and the reusable Skills
-CLI install command.
+CLI install command. This root site skill remains available and is also included in discovery when
+`agent.skills` publishes additional reusable skills.
 
 `AGENTS.md` is available at `GET /AGENTS.md`, with `GET /.well-known/AGENTS.md` as the well-known
 alias and `GET /api/docs?format=agents` as the shared API format. It is generated by default as a
@@ -274,13 +458,15 @@ also accepted as a compatibility alias.
 ## Choosing Between Them
 
 - Use `Agent` when the normal page should stay the source of truth and you only need extra machine context
+- Use `Human` when prose or visuals only help the rendered page and would add noise to agent context
+- Use `Audience` when you prefer an explicit `only="human"` or `only="agent"` prop
 - Use `agent.md` when the machine-readable page should become its own focused document
-- Use both patterns page-by-page; you do not need a global config flag to turn them on
+- Mix these patterns page-by-page; shared content needs no wrapper or global config flag
 
 ## Page Primitives Vs Skills
 
-`Agent` and `agent.md` are page-scoped primitives. They are the right fit when the machine context
-belongs to a single docs route.
+`Agent`, `Human`, `Audience`, and `agent.md` are page-scoped authoring controls. They are the right
+fit when audience-specific context belongs to a single docs route.
 
 Use `/AGENTS.md` when a coding agent needs site-level operating instructions for this repo or docs
 deployment. Use `/skill.md` when an agent needs a concise installable-skill style guide for this
@@ -289,7 +475,7 @@ workflows, such as setup, CLI usage, theme creation, page actions, or deeper con
 
 In practice, the two features work well together:
 
-- use `Agent` or `agent.md` to make one page more useful to agents
+- use audience wrappers or `agent.md` to tailor one page without duplicating its shared content
 - use skills when the knowledge should be bundled as a reusable workflow outside a single page
 
 This repo already publishes skills under `skills/farming-labs/`. Install them with:

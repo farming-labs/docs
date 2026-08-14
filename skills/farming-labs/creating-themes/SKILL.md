@@ -1,6 +1,7 @@
 ---
 name: creating-themes
 description: Create and share a custom theme for @farming-labs/docs. Use when building a theme with createTheme(), extendTheme(), cherry-picking built-in defaults, publishing as npm package, or adding CSS overrides. Covers ui.colors, typography, layout, sidebar, radius, ui.components like HoverLink, and package layout for publishing.
+compatibility: Requires a JavaScript or TypeScript project using @farming-labs/docs and its framework theme package. Publishing a theme requires registry credentials and network access.
 ---
 
 # @farming-labs/docs — Creating and Sharing Themes
@@ -104,7 +105,7 @@ export const myTheme = extendTheme(fumadocs(), {
 });
 ```
 
-For other frameworks use the same framework's theme package (e.g. `@farming-labs/svelte-theme`, `@farming-labs/astro-theme`, `@farming-labs/nuxt-theme`). You can extend any built-in: `fumadocs`, `darksharp`, `pixelBorder`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `commandGrid`, and `hardline`.
+For other frameworks use the same framework's theme package (e.g. `@farming-labs/svelte-theme`, `@farming-labs/astro-theme`, `@farming-labs/nuxt-theme`). You can extend any built-in: `fumadocs`, `darksharp`, `pixelBorder`, `colorful`, `greentree`, `darkbold`, `shiny`, `ledger`, `shadcn`, `concrete`, `commandGrid`, and `hardline`.
 
 **Important:** `extendTheme()` returns a theme **instance** (not a factory). Use `createTheme()` when you want a reusable preset that others call as `myTheme()`.
 
@@ -161,7 +162,7 @@ Export your own defaults so others can extend: `export { MyThemeDefaults };`.
 ### Package layout
 
 ```
-my-fumadocs-theme/
+my-docs-theme/
   src/
     index.ts       ← createTheme() and exports
     theme.css      ← optional CSS overrides
@@ -172,7 +173,7 @@ my-fumadocs-theme/
 
 ```json
 {
-  "name": "my-fumadocs-theme",
+  "name": "my-docs-theme",
   "version": "1.0.0",
   "type": "module",
   "exports": {
@@ -190,12 +191,12 @@ If the theme has no CSS, omit the `"./css"` export. If it does, users import it 
 ### How users install and use
 
 ```bash
-npm install my-fumadocs-theme
+npm install my-docs-theme
 # or pnpm add / yarn add / bun add
 ```
 
 ```ts title="docs.config.ts"
-import { myTheme } from "my-fumadocs-theme";
+import { myTheme } from "my-docs-theme";
 
 export default defineDocs({
   entry: "docs",
@@ -205,7 +206,7 @@ export default defineDocs({
 
 ```css title="app/global.css (if theme ships CSS)"
 @import "tailwindcss";
-@import "my-fumadocs-theme/css";
+@import "my-docs-theme/css";
 ```
 
 ---

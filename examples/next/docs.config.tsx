@@ -18,7 +18,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { threadline, threadlinePageActions } from "@farming-labs/theme/threadline";
+import { threadline } from "@farming-labs/theme/threadline";
 
 const typesenseBaseUrl = process.env.TYPESENSE_URL ?? process.env.TYPESENSE_BASE_URL;
 const typesenseCollection = process.env.TYPESENSE_COLLECTION ?? "docs";
@@ -76,6 +76,7 @@ const searchConfig: DocsSearchConfig | undefined =
 
 export default defineDocs({
   entry: "docs",
+  devTools: true,
   ...(searchConfig ? { search: searchConfig } : {}),
   observability: {
     console: "debug",
@@ -123,8 +124,8 @@ export default defineDocs({
   },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
       aggressiveness: 0.3,
     },
   },
@@ -141,16 +142,11 @@ export default defineDocs({
     title: "Changelog",
     description:
       "Track the latest updates, bug fixes, and shipped improvements across @farming-labs/docs.",
-    search: false,
+    search: true,
     actionsComponent: ChangelogActions,
   },
   nav: {
-    title: (
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Rocket size={14} />
-        <span className="uppercase font-mono tracking-tighter">Example Docs</span>
-      </div>
-    ),
+    title: "Example Docs",
     url: "/docs",
   },
   components: {
@@ -177,9 +173,18 @@ export default defineDocs({
   sidebar: { flat: true },
   breadcrumb: { enabled: true },
 
-  lastUpdated: false,
+  readingTime: { enabled: true, wordsPerMinute: 220 },
+  lastUpdated: { enabled: true, position: "below-title" },
 
-  pageActions: threadlinePageActions,
+  pageActions: {
+    alignment: "right",
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      target: "markdown",
+      providers: ["chatgpt", "claude", "cursor"],
+    },
+  },
   ordering: "numeric",
   metadata: {
     titleTemplate: "%s – Docs",
@@ -187,7 +192,7 @@ export default defineDocs({
   },
   themeToggle: {
     enabled: true,
-    default: "light",
+    default: "dark",
   },
   tweaks: { reader: true, author: process.env.NODE_ENV !== "production", position: "both" },
   og: {

@@ -234,6 +234,66 @@ describe("buildDocsPageStructuredData", () => {
     expect(json).not.toContain("</script>");
   });
 
+  it("represents actionable page contracts as a Schema.org HowTo", () => {
+    const data = buildDocsPageStructuredData({
+      title: "Configure MCP",
+      description: "Configure the docs endpoint.",
+      url: "/docs/mcp",
+      agent: {
+        task: "Configure authenticated MCP",
+        outcome: "Unauthenticated requests are rejected.",
+        appliesTo: { framework: "nextjs", package: ["@farming-labs/next"] },
+        prerequisites: ["An MCP endpoint is enabled"],
+        files: ["docs.config.ts"],
+        commands: [
+          {
+            run: "pnpm test",
+            cwd: "packages/next",
+            description: "Test the adapter",
+          },
+        ],
+        verification: [{ run: "curl https://docs.example.com/mcp", expect: "HTTP 401" }],
+      },
+    }) as {
+      mainEntity?: {
+        "@type": string;
+        name: string;
+        description: string;
+        about: Array<{ name: string }>;
+        supply: Array<{ "@type": string; name: string }>;
+        step: Array<{ "@type": string; position: number; name: string; text: string }>;
+      };
+    };
+
+    expect(data.mainEntity).toMatchObject({
+      "@type": "HowTo",
+      name: "Configure authenticated MCP",
+      description: "Unauthenticated requests are rejected.",
+    });
+    expect(data.mainEntity?.about.map((item) => item.name)).toEqual([
+      "framework: nextjs",
+      "package: @farming-labs/next",
+    ]);
+    expect(data.mainEntity?.supply).toEqual([
+      { "@type": "HowToSupply", name: "An MCP endpoint is enabled" },
+      { "@type": "HowToSupply", name: "docs.config.ts" },
+    ]);
+    expect(data.mainEntity?.step).toEqual([
+      {
+        "@type": "HowToStep",
+        position: 1,
+        name: "Test the adapter",
+        text: "pnpm test (from packages/next)",
+      },
+      {
+        "@type": "HowToStep",
+        position: 2,
+        name: "Verify the result",
+        text: "curl https://docs.example.com/mcp. Expected: HTTP 401",
+      },
+    ]);
+  });
+
   it("reuses existing public URL config for metadata base URL", () => {
     expect(
       resolveDocsMetadataBaseUrl({

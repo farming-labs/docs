@@ -21,9 +21,10 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type SetStateAction,
 } from "react";
+import { useRouter } from "fumadocs-core/framework";
 import { createPortal } from "react-dom";
-import { highlight } from "sugar-high";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { renderAIResponseMarkdown } from "./ai-markdown.js";
 import type {
   DocsAskAIActionData,
   DocsAskAIActionType,
@@ -50,6 +51,9 @@ interface ChatMessage {
 }
 
 type AIModelOption = { id: string; label: string };
+type AIRequestMode = "openai-chat" | "docs-cloud";
+type AIRequestHeaders = Record<string, string>;
+type AIRequestStream = boolean;
 
 interface DocsWindowHooks extends Window {
   __fdOnAIActions__?: (data: DocsAskAIActionData) => void | Promise<void>;
@@ -61,6 +65,213 @@ let aiMessageId = 0;
 function createAIMessageId(): string {
   aiMessageId += 1;
   return `ai_${Date.now().toString(36)}_${aiMessageId.toString(36)}`;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function buildAIRequestHeaders(
+  requestHeaders?: AIRequestHeaders,
+  requestStream: AIRequestStream = true,
+): HeadersInit {
+  return {
+    Accept: requestStream ? "text/event-stream, application/json" : "application/json",
+    "Content-Type": "application/json",
+    ...requestHeaders,
+  };
+}
+
+function buildAIRequestBody(options: {
+  requestMode?: AIRequestMode;
+  requestStream?: AIRequestStream;
+  question: string;
+  messages: ChatMessage[];
+  model?: string;
+}): string {
+  const messages = options.messages.map((message) => ({
+    role: message.role,
+    content: message.content,
+  }));
+
+  if (options.requestMode === "docs-cloud") {
+    return JSON.stringify({
+      question: options.question,
+      messages,
+      answerMode: "auto",
+      answerStyle: "public",
+      modelPreference: options.model,
+      stream: options.requestStream !== false,
+    });
+  }
+
+  return JSON.stringify({
+    messages,
+    model: options.model,
+    stream: options.requestStream !== false,
+  });
+}
+
+function getOpenAICompatibleDeltaContent(value: unknown): string | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const firstChoice = Array.isArray(value.choices) ? value.choices[0] : undefined;
+  if (!isPlainObject(firstChoice)) return undefined;
+  const delta = firstChoice.delta;
+  if (!isPlainObject(delta)) return undefined;
+
+  return typeof delta.content === "string" ? delta.content : undefined;
+}
+
+function getDocsCloudAnswerContent(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!isPlainObject(value)) return undefined;
+
+  for (const key of ["answer", "content", "text", "delta"]) {
+    const content = value[key];
+    if (typeof content === "string") return content;
+  }
+
+  return undefined;
+}
+
+async function readAIResponseContent(
+  response: Response,
+  onContent: (content: string) => void,
+): Promise<string> {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json().catch(() => null);
+    const answer = getDocsCloudAnswerContent(payload) ?? "";
+    if (answer) onContent(answer);
+    return answer;
+  }
+
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let assistantContent = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === "[DONE]") continue;
+      try {
+        const json = JSON.parse(data);
+        const content = getOpenAICompatibleDeltaContent(json) ?? getDocsCloudAnswerContent(json);
+        if (content) {
+          assistantContent += content;
+          onContent(assistantContent);
+        }
+      } catch {}
+    }
+  }
+
+  return assistantContent;
+}
+
+function createSmoothAIStreamRenderer(onRender: (content: string) => void) {
+  let targetContent = "";
+  let visibleContent = "";
+  let frameId: number | null = null;
+  let lastFrameAt = 0;
+  let finishing = false;
+  let cancelled = false;
+  let resolveFinish: ((content: string) => void) | undefined;
+
+  const scheduleFrame = () => {
+    if (frameId !== null || cancelled) return;
+
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      frameId = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+
+    frameId = setTimeout(() => renderFrame(Date.now()), 16) as unknown as number;
+  };
+
+  const completeIfReady = () => {
+    if (!finishing || visibleContent !== targetContent || !resolveFinish) return;
+
+    const resolve = resolveFinish;
+    resolveFinish = undefined;
+    resolve(visibleContent);
+  };
+
+  const nextRevealCount = (gap: number, elapsedMs: number): number => {
+    if (gap <= 0) return 0;
+
+    let charsPerSecond = 900;
+    if (gap > 2400) charsPerSecond = finishing ? 3600 : 3000;
+    else if (gap > 1000) charsPerSecond = finishing ? 2400 : 2000;
+    else if (gap > 220) charsPerSecond = finishing ? 1600 : 1300;
+
+    return Math.max(1, Math.min(gap, Math.ceil((charsPerSecond * elapsedMs) / 1000)));
+  };
+
+  function renderFrame(timestamp: number) {
+    frameId = null;
+    if (cancelled) return;
+
+    const elapsedMs = lastFrameAt ? Math.min(48, Math.max(8, timestamp - lastFrameAt)) : 16;
+    lastFrameAt = timestamp;
+
+    const gap = targetContent.length - visibleContent.length;
+    if (gap > 0) {
+      const nextLength = visibleContent.length + nextRevealCount(gap, elapsedMs);
+      visibleContent = targetContent.slice(0, nextLength);
+      onRender(visibleContent);
+    }
+
+    if (visibleContent.length < targetContent.length) {
+      scheduleFrame();
+      return;
+    }
+
+    completeIfReady();
+  }
+
+  return {
+    push(content: string) {
+      if (cancelled) return;
+
+      targetContent = content;
+      scheduleFrame();
+    },
+    finish(): Promise<string> {
+      finishing = true;
+
+      if (visibleContent === targetContent) {
+        return Promise.resolve(visibleContent);
+      }
+
+      return new Promise((resolve) => {
+        resolveFinish = resolve;
+        scheduleFrame();
+      });
+    },
+    cancel() {
+      cancelled = true;
+      if (frameId !== null) {
+        if (typeof window !== "undefined" && typeof window.cancelAnimationFrame === "function") {
+          window.cancelAnimationFrame(frameId);
+        } else {
+          clearTimeout(frameId);
+        }
+      }
+      frameId = null;
+    },
+  };
 }
 
 function getLastUserQuestion(messages: ChatMessage[], assistantIndex: number): string {
@@ -201,125 +412,6 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   } catch {
     return fallbackCopyText(text);
   }
-}
-
-// ─── Markdown renderer ──────────────────────────────────────────────
-
-function buildCodeBlock(lang: string, code: string): string {
-  const trimmed = code.replace(/\n$/, "");
-  // Strip newlines between sh__line spans — <pre> preserves whitespace
-  // and display:block spans already break lines, so raw \n doubles them.
-  const highlighted = highlight(trimmed).replace(/<\/span>\n<span/g, "</span><span");
-  const langLabel = lang ? `<div class="fd-ai-code-lang">${escapeHtml(lang)}</div>` : "";
-  const copyBtn = `<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest('.fd-ai-code-block').querySelector('code').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)})})(this)">Copy</button>`;
-  return (
-    `<div class="fd-ai-code-block">` +
-    `<div class="fd-ai-code-header">${langLabel}${copyBtn}</div>` +
-    `<pre><code>${highlighted}</code></pre>` +
-    `</div>`
-  );
-}
-
-function renderMarkdown(text: string): string {
-  const codeBlockTokenBoundary = String.fromCharCode(0);
-  const codeBlockTokenPattern = new RegExp(
-    `${codeBlockTokenBoundary}CB(\\d+)${codeBlockTokenBoundary}`,
-    "g",
-  );
-  const codeBlocks: string[] = [];
-
-  // Complete fences: ```lang\n...\n```
-  let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
-    codeBlocks.push(buildCodeBlock(lang, code));
-    return `\x00CB${codeBlocks.length - 1}\x00`;
-  });
-
-  // Incomplete fence (streaming): opening ``` with no closing one
-  processed = processed.replace(/```(\w*)\n([\s\S]*)$/, (_match, lang, code) => {
-    codeBlocks.push(buildCodeBlock(lang, code));
-    return `\x00CB${codeBlocks.length - 1}\x00`;
-  });
-
-  const lines = processed.split("\n");
-  const output: string[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    if (isTableRow(lines[i]) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
-      const tableLines: string[] = [lines[i]];
-      i++; // separator
-      i++; // move past separator
-      while (i < lines.length && isTableRow(lines[i])) {
-        tableLines.push(lines[i]);
-        i++;
-      }
-      output.push(renderTable(tableLines));
-      continue;
-    }
-    output.push(lines[i]);
-    i++;
-  }
-
-  let result = output.join("\n");
-
-  result = result
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/^### (.*$)/gm, "<h4>$1</h4>")
-    .replace(/^## (.*$)/gm, "<h3>$1</h3>")
-    .replace(/^# (.*$)/gm, "<h2>$1</h2>")
-    .replace(
-      /^[-*] (.*$)/gm,
-      '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">•</span><span>$1</span></div>',
-    )
-    .replace(
-      /^(\d+)\. (.*$)/gm,
-      '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">$1.</span><span>$2</span></div>',
-    )
-    .replace(/\n\n/g, '<div style="height:8px"></div>')
-    .replace(/\n/g, "<br>");
-
-  result = result.replace(codeBlockTokenPattern, (_m, idx) => codeBlocks[Number(idx)]);
-
-  return result;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function isTableRow(line: string): boolean {
-  const trimmed = line.trim();
-  return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.includes("|");
-}
-
-function isTableSeparator(line: string): boolean {
-  return /^\|[\s:]*-+[\s:]*(\|[\s:]*-+[\s:]*)*\|$/.test(line.trim());
-}
-
-function renderTable(rows: string[]): string {
-  const parseRow = (row: string) =>
-    row
-      .trim()
-      .replace(/^\|/, "")
-      .replace(/\|$/, "")
-      .split("|")
-      .map((c) => c.trim());
-
-  const headerCells = parseRow(rows[0]);
-  const thead = `<thead><tr>${headerCells.map((c) => `<th>${c}</th>`).join("")}</tr></thead>`;
-
-  const bodyRows = rows
-    .slice(1)
-    .map((row) => {
-      const cells = parseRow(row);
-      return `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
-    })
-    .join("");
-
-  return `<table>${thead}<tbody>${bodyRows}</tbody></table>`;
 }
 
 // ─── Icons ──────────────────────────────────────────────────────────
@@ -777,6 +869,9 @@ function AIFeedbackControls({
 
 function AIChat({
   api,
+  requestMode,
+  requestHeaders,
+  requestStream = true,
   messages,
   setMessages,
   aiInput,
@@ -794,6 +889,9 @@ function AIChat({
   surface = "chat",
 }: {
   api: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
+  requestStream?: AIRequestStream;
   messages: ChatMessage[];
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   aiInput: string;
@@ -823,8 +921,8 @@ function AIChat({
     selectedModel || (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
+  }, [isStreaming, messages]);
   useEffect(() => {
     aiInputRef.current?.focus();
   }, []);
@@ -857,12 +955,16 @@ function AIChat({
         });
       }
 
+      let streamRenderer: ReturnType<typeof createSmoothAIStreamRenderer> | undefined;
       try {
         const res = await fetch(api, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          headers: buildAIRequestHeaders(requestHeaders, requestStream),
+          body: buildAIRequestBody({
+            requestMode,
+            requestStream,
+            question,
+            messages: newMessages,
             model: effectiveModelId,
           }),
         });
@@ -889,47 +991,30 @@ function AIChat({
           return;
         }
 
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let assistantContent = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") continue;
-              try {
-                const json = JSON.parse(data);
-                const content = json.choices?.[0]?.delta?.content;
-                if (content) {
-                  assistantContent += content;
-                  setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
-                }
-              } catch {}
-            }
-          }
-        }
-        if (assistantContent)
-          setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
+        streamRenderer = createSmoothAIStreamRenderer((content) => {
+          setMessages([...newMessages, { ...assistantMessage, content }]);
+        });
+        const assistantContent = await readAIResponseContent(res, (content) => {
+          streamRenderer?.push(content);
+        });
+        const renderedContent = await streamRenderer.finish();
+        const finalContent = renderedContent || assistantContent;
+        if (finalContent)
+          setMessages([...newMessages, { ...assistantMessage, content: finalContent }]);
         if (analytics) {
           emitClientAnalyticsEvent({
             type: "ai_response",
             properties: {
               surface,
               questionLength: question.length,
-              responseLength: assistantContent.length,
+              responseLength: finalContent.length,
               durationMs: Math.max(0, Date.now() - startedAt),
               model: effectiveModelId,
             },
           });
         }
       } catch {
+        streamRenderer?.cancel();
         setMessages([
           ...newMessages,
           {
@@ -954,6 +1039,9 @@ function AIChat({
     [
       messages,
       api,
+      requestMode,
+      requestHeaders,
+      requestStream,
       isStreaming,
       setMessages,
       setAiInput,
@@ -1053,7 +1141,7 @@ function AIChat({
                         className={
                           isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
                         }
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                        dangerouslySetInnerHTML={{ __html: renderAIResponseMarkdown(msg.content) }}
                       />
                       {feedbackEnabled && !msg.isError && !isStreaming && (
                         <AIFeedbackControls
@@ -1140,6 +1228,9 @@ export function DocsSearchDialog({
   open,
   onOpenChange,
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
+  requestStream,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -1152,6 +1243,9 @@ export function DocsSearchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   api?: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
+  requestStream?: AIRequestStream;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
@@ -1161,6 +1255,7 @@ export function DocsSearchDialog({
   analytics?: boolean;
   feedbackEnabled?: boolean;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<"search" | "ai">("search");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -1285,7 +1380,7 @@ export function DocsSearchDialog({
           },
         });
       }
-      window.location.href = searchResults[activeIndex].url;
+      void router.push(searchResults[activeIndex].url);
     }
   };
 
@@ -1376,7 +1471,7 @@ export function DocsSearchDialog({
                           },
                         });
                       }
-                      window.location.href = result.url;
+                      void router.push(result.url);
                     }}
                     onMouseEnter={() => setActiveIndex(i)}
                     className="fd-ai-result"
@@ -1405,6 +1500,9 @@ export function DocsSearchDialog({
         {tab === "ai" && (
           <AIChat
             api={api}
+            requestMode={requestMode}
+            requestHeaders={requestHeaders}
+            requestStream={requestStream}
             messages={messages}
             setMessages={setMessages}
             aiInput={aiInput}
@@ -1485,6 +1583,9 @@ function getAnimation(style: FloatingStyle): string {
 
 export function FloatingAIChat({
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
+  requestStream,
   position = "bottom-right",
   floatingStyle = "panel",
   triggerComponentHtml,
@@ -1498,6 +1599,9 @@ export function FloatingAIChat({
   feedbackEnabled = true,
 }: {
   api?: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
+  requestStream?: AIRequestStream;
   position?: FloatingPosition;
   floatingStyle?: FloatingStyle;
   triggerComponentHtml?: string;
@@ -1563,6 +1667,9 @@ export function FloatingAIChat({
     return (
       <FullModalAIChat
         api={api}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
+        requestStream={requestStream}
         isOpen={isOpen}
         setIsOpen={setIsOpen}
         closeAI={closeFloatingAI}
@@ -1614,6 +1721,9 @@ export function FloatingAIChat({
 
           <AIChat
             api={api}
+            requestMode={requestMode}
+            requestHeaders={requestHeaders}
+            requestStream={requestStream}
             messages={messages}
             setMessages={setMessages}
             aiInput={aiInput}
@@ -1683,6 +1793,9 @@ export function FloatingAIChat({
 
 function FullModalAIChat({
   api,
+  requestMode,
+  requestHeaders,
+  requestStream,
   isOpen,
   setIsOpen,
   closeAI,
@@ -1704,6 +1817,9 @@ function FullModalAIChat({
   feedbackEnabled = true,
 }: {
   api: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
+  requestStream?: AIRequestStream;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
   closeAI: (trigger: "button" | "escape" | "overlay") => void;
@@ -1744,9 +1860,12 @@ function FullModalAIChat({
   // Auto-scroll on new messages
   useEffect(() => {
     if (listRef.current) {
-      listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+      listRef.current.scrollTo({
+        top: listRef.current.scrollHeight,
+        behavior: isStreaming ? "auto" : "smooth",
+      });
     }
-  }, [messages]);
+  }, [isStreaming, messages]);
 
   const submitQuestion = useCallback(
     async (question: string) => {
@@ -1776,12 +1895,16 @@ function FullModalAIChat({
         });
       }
 
+      let streamRenderer: ReturnType<typeof createSmoothAIStreamRenderer> | undefined;
       try {
         const res = await fetch(api, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          headers: buildAIRequestHeaders(requestHeaders, requestStream),
+          body: buildAIRequestBody({
+            requestMode,
+            requestStream,
+            question,
+            messages: newMessages,
             model: effectiveModelId,
           }),
         });
@@ -1808,47 +1931,30 @@ function FullModalAIChat({
           return;
         }
 
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let assistantContent = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") continue;
-              try {
-                const json = JSON.parse(data);
-                const content = json.choices?.[0]?.delta?.content;
-                if (content) {
-                  assistantContent += content;
-                  setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
-                }
-              } catch {}
-            }
-          }
-        }
-        if (assistantContent)
-          setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
+        streamRenderer = createSmoothAIStreamRenderer((content) => {
+          setMessages([...newMessages, { ...assistantMessage, content }]);
+        });
+        const assistantContent = await readAIResponseContent(res, (content) => {
+          streamRenderer?.push(content);
+        });
+        const renderedContent = await streamRenderer.finish();
+        const finalContent = renderedContent || assistantContent;
+        if (finalContent)
+          setMessages([...newMessages, { ...assistantMessage, content: finalContent }]);
         if (analytics) {
           emitClientAnalyticsEvent({
             type: "ai_response",
             properties: {
               surface: "full-modal",
               questionLength: question.length,
-              responseLength: assistantContent.length,
+              responseLength: finalContent.length,
               durationMs: Math.max(0, Date.now() - startedAt),
               model: effectiveModelId,
             },
           });
         }
       } catch {
+        streamRenderer?.cancel();
         setMessages([
           ...newMessages,
           {
@@ -1873,6 +1979,9 @@ function FullModalAIChat({
     [
       messages,
       api,
+      requestMode,
+      requestHeaders,
+      requestStream,
       isStreaming,
       setMessages,
       setAiInput,
@@ -1964,7 +2073,9 @@ function FullModalAIChat({
                           className={
                             isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
                           }
-                          dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                          dangerouslySetInnerHTML={{
+                            __html: renderAIResponseMarkdown(msg.content),
+                          }}
                         />
                         {msg.role === "assistant" &&
                           feedbackEnabled &&
@@ -2157,6 +2268,9 @@ export function AIModalDialog({
   open,
   onOpenChange,
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
+  requestStream,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -2169,6 +2283,9 @@ export function AIModalDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   api?: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
+  requestStream?: AIRequestStream;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
@@ -2247,6 +2364,9 @@ export function AIModalDialog({
 
         <AIChat
           api={api}
+          requestMode={requestMode}
+          requestHeaders={requestHeaders}
+          requestStream={requestStream}
           messages={messages}
           setMessages={setMessages}
           aiInput={aiInput}

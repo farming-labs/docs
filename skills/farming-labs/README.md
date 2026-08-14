@@ -5,7 +5,8 @@ This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agen
 Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task
 (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search
 adapters, changelog setup, human page feedback, `agent.compact`, agent discovery/spec routes,
-`AGENTS.md`, `skill.md`, agent feedback endpoints, API reference, MCP, `llms.txt`, sitemaps, `robots.txt`,
+RFC 9727 API catalogs, Agent Skills indexes, `AGENTS.md`, `skill.md`, agent feedback endpoints,
+API reference, MCP, `llms.txt`, sitemaps, `robots.txt`,
 JSON-LD structured data, and machine-readable markdown
 routes with embedded `Agent` blocks, generated or hand-written `agent.md` overrides, or
 `Accept: text/markdown` negotiation).
@@ -20,12 +21,15 @@ pnpm --dir examples/next dev
 Useful routes:
 
 - Agent discovery spec: `http://127.0.0.1:3000/api/docs/agent/spec`
+- API catalog: `http://127.0.0.1:3000/.well-known/api-catalog`
+- Agent Skills index: `http://127.0.0.1:3000/.well-known/agent-skills/index.json`
 - Agent instructions: `http://127.0.0.1:3000/AGENTS.md` or `http://127.0.0.1:3000/.well-known/AGENTS.md`
 - Site skill: `http://127.0.0.1:3000/skill.md` or `http://127.0.0.1:3000/.well-known/skill.md`
 - Sitemaps: `http://127.0.0.1:3000/sitemap.xml`, `http://127.0.0.1:3000/sitemap.md`, `http://127.0.0.1:3000/docs/sitemap.md`, or `http://127.0.0.1:3000/.well-known/sitemap.md`
 - Robots: `http://127.0.0.1:3000/robots.txt` after running `docs robots generate`
 - MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
+- Agent-projected search: `http://127.0.0.1:3000/api/docs?query=session&audience=agent`
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
 - Agent feedback schema: `http://127.0.0.1:3000/api/docs/agent/feedback/schema`
 - Public markdown page with embedded `Agent` block (Next.js): `http://127.0.0.1:3000/docs/quickstart.md`
@@ -38,13 +42,15 @@ Useful command:
 pnpm --dir examples/next exec docs sitemap generate --config docs.config.tsx
 pnpm --dir examples/next exec docs robots generate --config docs.config.tsx
 pnpm --dir examples/next exec docs agents generate --config docs.config.tsx
+pnpm --dir examples/next exec docs agent export --public --config docs.config.tsx
 pnpm --dir examples/next exec docs agent compact installation --config docs.config.tsx
 ```
 
-The agent discovery spec also advertises structured data support, OpenAPI schema discovery when
-`apiReference` is enabled, the sitemap routes, `robots.route`, the generated/root `AGENTS.md`, the root `skill.md` route, this Skills
-pack through `npx skills add farming-labs/docs`, and recommends the `getting-started` skill for
-first-run setup.
+The existing agent discovery spec also advertises structured data support, OpenAPI schema
+discovery when `apiReference` is enabled, the RFC 9727 API catalog, the hashed Agent Skills index,
+the sitemap routes, `robots.route`, the generated/root `AGENTS.md`, the root `skill.md` route, this
+Skills pack through `npx skills add farming-labs/docs`, and recommends the `getting-started` skill
+for first-run setup.
 
 ---
 
@@ -53,7 +59,7 @@ first-run setup.
 | Skill | Path | When to use |
 | ----- | ---- | ----------- |
 | **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework, generated changelog pages in Next.js, machine-readable markdown routes with `Agent` blocks or `agent.md` overrides, and API reference wiring from local routes or a hosted OpenAPI JSON. |
-| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `doctor` / `agent compact` / `codeblocks validate` / `sitemap generate` / `robots generate` / `mcp`, hosted `doctor --agent --url`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
+| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `doctor` / `agent export` / `agent compact` / `codeblocks validate` / `sitemap generate` / `robots generate` / `mcp`, hosted `doctor --agent --url`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, `ui.components` defaults like `HoverLink`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, `{url}.md` markdown route patterns, position, alignment, and provider defaults. |

@@ -33,11 +33,19 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
   const flags: Record<string, string | boolean | undefined> = {};
   const booleanFlags = new Set([
     "api-reference",
+    "cloud",
     "typesense",
     "algolia",
     "verbose",
     "host",
     "json",
+    "network",
+    "analytics",
+    "ask-ai",
+    "deploy",
+    "dry-run",
+    "write",
+    "allow-publish",
   ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -74,9 +82,26 @@ async function main() {
     entry: typeof flags.entry === "string" ? flags.entry : undefined,
     apiReference: typeof flags["api-reference"] === "boolean" ? flags["api-reference"] : undefined,
     apiRouteRoot: typeof flags["api-route-root"] === "string" ? flags["api-route-root"] : undefined,
+    cloud: typeof flags.cloud === "boolean" ? flags.cloud : undefined,
   };
   const mcpOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
+    setup: subcommand === "setup",
+    deploymentId: typeof flags.deployment === "string" ? flags.deployment : undefined,
+    apiBaseUrl:
+      typeof flags["api-base-url"] === "string"
+        ? flags["api-base-url"]
+        : typeof flags.url === "string"
+          ? flags.url
+          : undefined,
+    client: typeof flags.client === "string" ? flags.client : undefined,
+    json: typeof flags.json === "boolean" ? flags.json : undefined,
+  };
+  const authoringMcpOptions = {
+    configPath: typeof flags.config === "string" ? flags.config : undefined,
+    allowPublish: typeof flags["allow-publish"] === "boolean" ? flags["allow-publish"] : undefined,
+    branchPrefix: typeof flags["branch-prefix"] === "string" ? flags["branch-prefix"] : undefined,
+    baseBranch: typeof flags["base-branch"] === "string" ? flags["base-branch"] : undefined,
   };
   const devOptions = {
     verbose: typeof flags.verbose === "boolean" ? flags.verbose : undefined,
@@ -91,6 +116,7 @@ async function main() {
     typesense: typeof flags.typesense === "boolean" ? flags.typesense : undefined,
     algolia: typeof flags.algolia === "boolean" ? flags.algolia : undefined,
     baseUrl: typeof flags["base-url"] === "string" ? flags["base-url"] : undefined,
+    siteUrl: typeof flags["site-url"] === "string" ? flags["site-url"] : undefined,
     collection: typeof flags.collection === "string" ? flags.collection : undefined,
     apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
     adminApiKey: typeof flags["admin-api-key"] === "string" ? flags["admin-api-key"] : undefined,
@@ -101,6 +127,8 @@ async function main() {
     appId: typeof flags["app-id"] === "string" ? flags["app-id"] : undefined,
     indexName: typeof flags["index-name"] === "string" ? flags["index-name"] : undefined,
     searchApiKey: typeof flags["search-api-key"] === "string" ? flags["search-api-key"] : undefined,
+    syncNamespace:
+      typeof flags["sync-namespace"] === "string" ? flags["sync-namespace"] : undefined,
   };
   const cloudOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
@@ -113,6 +141,12 @@ async function main() {
     apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
     apiKeyEnv: typeof flags["api-key-env"] === "string" ? flags["api-key-env"] : undefined,
     json: typeof flags.json === "boolean" ? flags.json : undefined,
+    network: typeof flags.network === "boolean" ? flags.network : undefined,
+    checkTargets: [
+      ...(flags.deploy === true ? (["deploy"] as const) : []),
+      ...(flags.analytics === true ? (["analytics"] as const) : []),
+      ...(flags["ask-ai"] === true ? (["ask-ai"] as const) : []),
+    ],
   };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
@@ -139,15 +173,57 @@ async function main() {
   } else if (parsedCommand.command === "cloud" && subcommand === "sync") {
     const { syncCloudConfig } = await import("./cloud.js");
     await syncCloudConfig(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "check") {
+    const { runCloudCheck } = await import("./cloud.js");
+    await runCloudCheck(cloudOptions);
   } else if (parsedCommand.command === "cloud") {
     console.error(pc.red(`Unknown cloud subcommand: ${subcommand ?? "(missing)"}`));
     console.error();
     const { printCloudHelp } = await import("./cloud.js");
     printCloudHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "mcp" && subcommand === "author") {
+    const { runAuthoringMcp } = await import("./authoring.js");
+    await runAuthoringMcp(authoringMcpOptions);
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "feedback") {
+    const {
+      parseAgentFeedbackImproveArgs,
+      printAgentFeedbackImproveHelp,
+      runAgentFeedbackImprove,
+    } = await import("./feedback.js");
+    const feedbackOptions = parseAgentFeedbackImproveArgs(args.slice(2));
+    if (feedbackOptions.help) {
+      printAgentFeedbackImproveHelp();
+      return;
+    }
+    await runAgentFeedbackImprove(feedbackOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "feedback-evals") {
+    const {
+      parseAgentFeedbackEvaluationsArgs,
+      printAgentFeedbackEvaluationsHelp,
+      runAgentFeedbackEvaluations,
+    } = await import("./feedback-evals.js");
+    const evaluationOptions = parseAgentFeedbackEvaluationsArgs(args.slice(2));
+    if (evaluationOptions.help) {
+      printAgentFeedbackEvaluationsHelp();
+      return;
+    }
+    await runAgentFeedbackEvaluations(evaluationOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "propose") {
+    const {
+      parseAgentMaintenanceProposeArgs,
+      printAgentMaintenanceProposeHelp,
+      runAgentMaintenancePropose,
+    } = await import("./propose.js");
+    const proposeOptions = parseAgentMaintenanceProposeArgs(args.slice(2));
+    if (proposeOptions.help) {
+      printAgentMaintenanceProposeHelp();
+      return;
+    }
+    await runAgentMaintenancePropose(proposeOptions);
   } else if (parsedCommand.command === "agent" && subcommand === "compact") {
     const { compactAgentDocs, parseAgentCompactArgs, printAgentCompactHelp } =
       await import("./agent.js");
@@ -157,11 +233,28 @@ async function main() {
       return;
     }
     await compactAgentDocs(agentCompactOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "export") {
+    const { exportAgentBundle, parseAgentExportArgs, printAgentExportHelp } =
+      await import("./agent-export.js");
+    const agentExportOptions = parseAgentExportArgs(args.slice(2));
+    if (agentExportOptions.help) {
+      printAgentExportHelp();
+      return;
+    }
+    await exportAgentBundle(agentExportOptions);
   } else if (parsedCommand.command === "agent") {
     console.error(pc.red(`Unknown agent subcommand: ${subcommand ?? "(missing)"}`));
     console.error();
     const { printAgentCompactHelp } = await import("./agent.js");
+    const { printAgentExportHelp } = await import("./agent-export.js");
+    const { printAgentFeedbackImproveHelp } = await import("./feedback.js");
+    const { printAgentFeedbackEvaluationsHelp } = await import("./feedback-evals.js");
+    const { printAgentMaintenanceProposeHelp } = await import("./propose.js");
     printAgentCompactHelp();
+    printAgentExportHelp();
+    printAgentFeedbackImproveHelp();
+    printAgentFeedbackEvaluationsHelp();
+    printAgentMaintenanceProposeHelp();
     process.exit(1);
   } else if (parsedCommand.command === "agents" && subcommand === "generate") {
     const { generateAgents, parseAgentsGenerateArgs, printAgentsGenerateHelp } =
@@ -177,6 +270,27 @@ async function main() {
     console.error();
     const { printAgentsGenerateHelp } = await import("./agents.js");
     printAgentsGenerateHelp();
+    process.exit(1);
+  } else if (parsedCommand.command === "skills" && subcommand === "scaffold") {
+    const { parseSkillScaffoldArgs, printSkillScaffoldHelp, scaffoldSkillFromContracts } =
+      await import("./skills.js");
+    const skillOptions = parseSkillScaffoldArgs(args.slice(2));
+    if (skillOptions.help) {
+      printSkillScaffoldHelp();
+      return;
+    }
+    await scaffoldSkillFromContracts(skillOptions);
+  } else if (
+    parsedCommand.command === "skills" &&
+    (subcommand === "--help" || subcommand === "-h")
+  ) {
+    const { printSkillScaffoldHelp } = await import("./skills.js");
+    printSkillScaffoldHelp();
+  } else if (parsedCommand.command === "skills") {
+    console.error(pc.red(`Unknown skills subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printSkillScaffoldHelp } = await import("./skills.js");
+    printSkillScaffoldHelp();
     process.exit(1);
   } else if (parsedCommand.command === "doctor") {
     const { parseDoctorArgs, printDoctorHelp, runDoctor } = await import("./doctor.js");
@@ -259,7 +373,8 @@ async function main() {
       args.includes("--version") || args.some((arg) => arg.startsWith("--version="));
     const version =
       typeof flags.version === "string" ? flags.version : hasVersionFlag ? "" : undefined;
-    await downgrade({ framework, version });
+    const dryRun = flags["dry-run"] === true;
+    await downgrade({ framework, version, dryRun });
   } else if (parsedCommand.command === "upgrade") {
     const { upgrade } = await import("./upgrade.js");
     const framework =
@@ -277,7 +392,8 @@ async function main() {
           : args.includes("--latest")
             ? "latest"
             : (parsedCommand.tag ?? "latest");
-    await upgrade({ framework, tag, version });
+    const dryRun = flags["dry-run"] === true;
+    await upgrade({ framework, tag, version, dryRun });
   } else if (parsedCommand.command === "--help" || parsedCommand.command === "-h") {
     printHelp();
   } else if (parsedCommand.command === "--version" || parsedCommand.command === "-v") {
@@ -302,13 +418,14 @@ ${pc.dim("Commands:")}
   ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.json")}
   ${pc.cyan("deploy")}   Sync cloud config and deploy hosted preview docs
   ${pc.cyan("preview")}  Alias for ${pc.cyan("deploy")}
-  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
-  ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
+  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("check")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
+  ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")}, ${pc.dim("export")}, ${pc.dim("feedback")})
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
+  ${pc.cyan("skills")}   Agent Skills utilities (${pc.dim("scaffold")} from structured page contracts)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
-  ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
+  ${pc.cyan("mcp")}      Run read-only docs MCP or the separate protected authoring server
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("sitemap")}  Sitemap utilities (${pc.dim("generate")} for sitemap XML/Markdown data)
@@ -316,7 +433,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("downgrade")} Downgrade @farming-labs/* packages (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
-  Next.js, TanStack Start, SvelteKit, Astro, Nuxt
+  Next.js, TanStack Start, Farm.js, SvelteKit, Astro, Nuxt
 
 ${pc.dim("Options for init:")}
   ${pc.cyan("--template <name>")}  Bootstrap a project (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}, ${pc.dim("tanstack-start")}); use with ${pc.cyan("--name")}
@@ -326,9 +443,19 @@ ${pc.dim("Options for init:")}
   ${pc.cyan("--api-reference")}    Scaffold API reference support during ${pc.cyan("init")}
   ${pc.cyan("--no-api-reference")} Skip API reference scaffold during ${pc.cyan("init")}
   ${pc.cyan("--api-route-root <path>")}  Override the API route root scanned by ${pc.cyan("apiReference.routeRoot")} (e.g. ${pc.dim("api")}, ${pc.dim("internal-api")})
+  ${pc.cyan("--cloud")}            Add Docs Cloud infrastructure support during ${pc.cyan("init")}
+  ${pc.cyan("--no-cloud")}         Skip the Docs Cloud infrastructure prompt during ${pc.cyan("init")}
 
 ${pc.dim("Options for mcp:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+  ${pc.cyan("mcp setup --deployment <id>")} Print Docs Cloud hosted MCP setup for a deployment id
+  ${pc.cyan("--api-base-url <url>")} Override the hosted Docs Cloud API base URL for ${pc.cyan("mcp setup")}
+  ${pc.cyan("--client <name>")}     Emit native config for ${pc.dim("claude-code")}, ${pc.dim("cursor")}, or ${pc.dim("vscode")}
+  ${pc.cyan("--json")}              Print the selected MCP client JSON only for ${pc.cyan("mcp setup")}
+  ${pc.cyan("mcp author")}          Run the local docs-authoring MCP over stdio
+  ${pc.cyan("--branch-prefix <p>")} Restrict authoring branches (default: ${pc.dim("docs/")})
+  ${pc.cyan("--base-branch <name>")} Set the base used for authoring draft PRs
+  ${pc.cyan("--allow-publish")}      Explicitly register commit, push, and draft-PR publishing
 
 ${pc.dim("Options for dev:")}
   ${pc.cyan("--port <number>")}     Run the frameworkless preview on a custom port
@@ -336,17 +463,22 @@ ${pc.dim("Options for dev:")}
   ${pc.cyan("--host [host]")}       Expose the preview on your network; optionally pass a host value
   ${pc.cyan("--verbose")}           Show raw runtime logs in addition to branded CLI output
 
-${pc.dim("Options for cloud deploy:")}
+${pc.dim("Options for cloud:")}
   ${pc.cyan("cloud init")}                           Add Docs Cloud config to ${pc.dim("docs.config.ts")} and ${pc.dim("docs.json")}
   ${pc.cyan("deploy")}                               Sync ${pc.dim("docs.config.ts")} into ${pc.dim("docs.json")} and deploy hosted preview docs
   ${pc.cyan("cloud deploy")}                         Same as ${pc.cyan("deploy")}
   ${pc.cyan("preview")}                              Alias for ${pc.cyan("deploy")}
   ${pc.cyan("cloud preview")}                        Compatibility alias for ${pc.cyan("cloud deploy")}
   ${pc.cyan("cloud sync")}                           Only materialize cloud settings into ${pc.dim("docs.json")}
+  ${pc.cyan("cloud check")}                          Validate Docs Cloud config, analytics envs, API key, and Ask AI wiring
   ${pc.cyan("--config <path>")}                      Use a custom docs config path
   ${pc.cyan("--api-key-env <name>")}                 Env var that stores the Docs Cloud API key
   ${pc.cyan("--api-base-url <url>")}                 Override the Docs Cloud API base URL
   ${pc.cyan("--api-key <key>")}                      Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--analytics")}                          Only check Docs Cloud analytics integration
+  ${pc.cyan("--ask-ai")}                             Only check Docs Cloud Ask AI integration
+  ${pc.cyan("--deploy")}                             Only check Docs Cloud deploy integration
+  ${pc.cyan("--no-network")}                         Skip live Docs Cloud API validation for ${pc.cyan("cloud check")}
   ${pc.cyan("--json")}                              Print machine-readable output
   ${pc.dim("required scopes")}                       project:read, preview:write, jobs:read
 
@@ -357,11 +489,48 @@ ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact --stale")}               Refresh only stale generated ${pc.dim("agent.md")} files
   ${pc.cyan("--page <slug|path>")}                  Repeatable explicit page flag; positional page args work too
   ${pc.cyan("--include-missing")}                   With ${pc.cyan("--stale")}, also create explicit or token-budget pages missing ${pc.dim("agent.md")}
-  ${pc.cyan("--api-key <key>")}                     Token Company API key (or use ${pc.dim("TOKEN_COMPANY_API_KEY")})
-  ${pc.cyan("--api-key-env <name>")}                Custom env var name for the Token Company API key
-  ${pc.cyan("--base-url <url>")}                    Override the Token Company API base URL
+  ${pc.cyan("--api-key <key>")}                     Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--api-key-env <name>")}                Env var name for the Docs Cloud API key; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--base-url <url>")}                    Override the compression API base URL
   ${pc.cyan("--aggressiveness <0-1>")}              Compression intensity for compacted output
   ${pc.cyan("--dry-run")}                           Resolve and compress pages without writing files
+
+${pc.dim("Options for agent export:")}
+  ${pc.cyan("agent export --public")}               Export page Markdown, llms.txt, discovery, skills, AGENTS, sitemaps, robots, and a SHA-256 manifest
+  ${pc.cyan("agent export --check")}                Fail when the static Agent Bundle is stale
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for agent feedback:")}
+  ${pc.cyan("agent feedback --input <path>")}       Cluster JSON or JSONL agent feedback into improvement drafts
+  ${pc.cyan("--min-occurrences <2-100>")}           Recurrence threshold (default: 2)
+  ${pc.cyan("--write")}                             Write the report to ${pc.dim(".farming-labs/agent-feedback-improvements.json")}
+  ${pc.cyan("--output <path>")}                     Override the written report path
+  ${pc.cyan("--json")}                              Print JSON while writing
+
+${pc.dim("Options for feedback-derived evaluations:")}
+  ${pc.cyan("agent feedback-evals --write")}        Sanitize and deduplicate feedback-derived golden-task candidates
+  ${pc.cyan("--existing <path>")}                   Compare against an existing candidate registry, task list, or config JSON
+  ${pc.cyan("--results <path> --baseline <path>")} Read golden-task or doctor JSON for baseline comparison
+  ${pc.cyan("--write-baseline")}                    Create or replace an explicit evaluation baseline
+  ${pc.cyan("--check")}                             Fail CI when suite/task results regress
+  ${pc.cyan("--max-score-drop <0-100>")}            Allow a bounded suite/task score decrease
+
+${pc.dim("Options for agent maintenance proposals:")}
+  ${pc.cyan("agent propose --input <path>")}        Combine JSON/JSONL feedback, search, MCP, issue, support, and git signals
+  ${pc.cyan("--input <path>")}                      Repeat to combine multiple signal exports
+  ${pc.cyan("--min-occurrences <1-100>")}           Proposal threshold (default: 2)
+  ${pc.cyan("--write")}                             Write the draft-only report to ${pc.dim(".farming-labs/agent-maintenance-proposals.json")}
+  ${pc.cyan("--output <path>")}                     Override the written report path
+  ${pc.cyan("--json")}                              Print JSON while writing
+
+${pc.dim("Options for skills scaffold:")}
+  ${pc.cyan("skills scaffold [name]")}              Compile page agent contracts into a compact ${pc.dim("SKILL.md")} router and focused references
+  ${pc.cyan("--output <directory>")}                Write to a full skill directory; defaults to ${pc.dim("skills/<name>")}
+  ${pc.cyan("--include <route>")}                   Include a route prefix; repeat for multiple focused sections
+  ${pc.cyan("--check")}                             Fail when generated skill files are missing or stale
+  ${pc.cyan("--dry-run")}                           Preview generated skill changes without writing files
+  ${pc.cyan("--force")}                             Replace colliding user-owned files in the selected directory
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor")}                              Score the current docs app for agent-readiness
@@ -369,6 +538,12 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor --site")}                       Score the current docs app for reader-facing docs quality
   ${pc.cyan("doctor --human")}                      Alias for ${pc.cyan("doctor --site")}
   ${pc.cyan("doctor --json")}                       Print the report as JSON for CI, scripts, and automation
+  ${pc.cyan("doctor --json-output <path>")}         Write the JSON report to a file, including alongside ${pc.cyan("--ci")}
+  ${pc.cyan("doctor --ci")}                         Emit actionable GitHub annotations in GitHub Actions
+  ${pc.cyan("doctor --strict")}                     Exit with failure when any doctor check warns or fails
+  ${pc.cyan("doctor --agent --fix")}                Refresh stale generated ${pc.dim("agent.md")} files and token-budget missing outputs
+  ${pc.cyan("doctor --agent --fix --dry-run")}      Report the fix command without writing generated ${pc.dim("agent.md")} files
+  ${pc.cyan("doctor --fail-on warn|fail")}          Choose whether warnings or only failures fail CI
   ${pc.cyan("doctor agent")}                        Subcommand alias for agent scoring
   ${pc.cyan("doctor site")}                         Subcommand alias for reader-facing scoring
   ${pc.cyan("doctor human")}                        Legacy alias for reader-facing scoring
@@ -391,6 +566,8 @@ ${pc.dim("Options for search sync:")}
   ${pc.cyan("--typesense")}                        Shortcut for ${pc.cyan("--provider typesense")}
   ${pc.cyan("--algolia")}                          Shortcut for ${pc.cyan("--provider algolia")}
   ${pc.cyan("--base-url <url>")}                   Typesense base URL (or use ${pc.dim("TYPESENSE_URL")})
+  ${pc.cyan("--site-url <url>")}                   Canonical public docs URL for source provenance
+  ${pc.cyan("--sync-namespace <name>")}            Stable ownership namespace for a shared hosted index
   ${pc.cyan("--collection <name>")}                Typesense collection name (default ${pc.dim("docs")})
   ${pc.cyan("--api-key <key>")}                    Typesense search/api key (or use ${pc.dim("TYPESENSE_API_KEY")})
   ${pc.cyan("--admin-api-key <key>")}              Admin-capable sync key for Typesense/Algolia
@@ -417,17 +594,19 @@ ${pc.dim("Options for robots generate:")}
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for upgrade:")}
-  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("farmjs")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
   ${pc.cyan("--version <version>")} Install an exact version (e.g. ${pc.dim("0.1.104")})
   ${pc.cyan("--latest")}            Install latest stable (default)
   ${pc.cyan("--beta")}             Install beta versions
+  ${pc.cyan("--dry-run")}          Print the install command without changing dependencies
   ${pc.cyan("upgrade@beta")}       Shortcut for ${pc.cyan("upgrade --beta")}
   ${pc.cyan("upgrade@latest")}     Shortcut for ${pc.cyan("upgrade --latest")}
 
 ${pc.dim("Options for downgrade:")}
   ${pc.cyan("downgrade")}           Install the published version immediately below the current installed version
-  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("farmjs")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
   ${pc.cyan("--version <version>")} Install an exact lower version (e.g. ${pc.dim("0.1.103")})
+  ${pc.cyan("--dry-run")}          Print the install command without changing dependencies
 
   ${pc.cyan("-h, --help")}         Show this help message
   ${pc.cyan("-v, --version")}     Show version

@@ -6,9 +6,10 @@ import {
   type Framework,
   type PackageManager,
   detectFramework,
-  detectPackageManagerFromLockfile,
+  detectPackageManagerFromProject,
   detectGlobalCssFiles,
   detectNextAppDir,
+  formatPackageManagerDetection,
   installCommand,
   devInstallCommand,
   writeFileSafe,
@@ -29,6 +30,7 @@ export interface InitOptions {
   entry?: string;
   apiReference?: boolean;
   apiRouteRoot?: string;
+  cloud?: boolean;
 }
 
 import {
@@ -62,9 +64,17 @@ import {
   injectTanstackRootProviderIntoRoute,
   tanstackViteConfigTemplate,
   injectTanstackVitePlugins,
+  svelteViteConfigTemplate,
+  injectDocsAgentSkillsVitePlugin,
   tanstackWelcomePageTemplate,
   tanstackInstallationPageTemplate,
   tanstackQuickstartPageTemplate,
+  farmjsDocsConfigTemplate,
+  farmjsConfigTemplate,
+  injectFarmjsConfig,
+  farmjsWelcomePageTemplate,
+  farmjsInstallationPageTemplate,
+  farmjsQuickstartPageTemplate,
   svelteDocsConfigTemplate,
   svelteDocsServerTemplate,
   svelteDocsLayoutTemplate,
@@ -83,6 +93,7 @@ import {
   astroDocsConfigTemplate,
   astroDocsServerTemplate,
   astroConfigTemplate,
+  injectAstroAgentSkillsPlugin,
   astroDocsPageTemplate,
   astroDocsIndexTemplate,
   astroApiRouteTemplate,
@@ -101,6 +112,7 @@ import {
   nuxtServerApiReferenceRouteTemplate,
   nuxtDocsPageTemplate,
   nuxtConfigTemplate,
+  injectNuxtAgentSkillsPlugin,
   nuxtWelcomePageTemplate,
   nuxtInstallationPageTemplate,
   nuxtQuickstartPageTemplate,
@@ -108,6 +120,8 @@ import {
   injectNuxtCssImport,
   type TemplateConfig,
 } from "./templates.js";
+
+const DOCS_CLOUD_DASHBOARD_URL = "https://docs-app.farming-labs.dev";
 
 const COMMON_LOCALE_OPTIONS = [
   { value: "en", label: "English", hint: "en" },
@@ -212,6 +226,18 @@ function detectApiRouteRoot(
     return topLevel ?? defaultRoot;
   }
 
+  if (framework === "farmjs") {
+    const appRoot = fs.existsSync(path.join(cwd, "src", "app"))
+      ? path.join(cwd, "src", "app")
+      : path.join(cwd, "app");
+    if (fs.existsSync(path.join(appRoot, defaultRoot))) return defaultRoot;
+    return (
+      detectFromRecursiveRouteFiles(appRoot, (_entry, relativePath) =>
+        /\/?route\.(?:[cm]?[jt]sx?)$/i.test(relativePath),
+      ) ?? defaultRoot
+    );
+  }
+
   if (framework === "sveltekit") {
     const routesRoot = path.join(cwd, "src/routes");
     if (fs.existsSync(path.join(routesRoot, defaultRoot))) return defaultRoot;
@@ -247,6 +273,92 @@ function detectApiRouteRoot(
         entry.isFile(),
     ) ?? defaultRoot
   );
+}
+
+function frameworkForTemplate(template: TemplateName): Framework {
+  if (template === "next") return "nextjs";
+  if (template === "tanstack-start") return "tanstack-start";
+  if (template === "sveltekit") return "sveltekit";
+  if (template === "astro") return "astro";
+  return "nuxt";
+}
+
+export function getDocsCloudConfigPathForFramework(framework: Framework): string | undefined {
+  if (framework === "sveltekit" || framework === "astro") return "src/lib/docs.config.ts";
+  return undefined;
+}
+
+function docsCloudDeployCommand(pm: PackageManager): string {
+  if (pm === "pnpm") return "pnpm dlx @farming-labs/docs deploy";
+  if (pm === "yarn") return "npx @farming-labs/docs deploy";
+  if (pm === "bun") return "bunx @farming-labs/docs deploy";
+  return "npx @farming-labs/docs deploy";
+}
+
+function printDocsCloudOnboardingInstructions(
+  result: {
+    configPath: string;
+    docsJsonPath: string;
+    apiKeyEnv: string;
+    analyticsProjectIdEnv: string;
+  },
+  rootDir: string,
+  pm: PackageManager,
+) {
+  const relativeConfigPath =
+    path.relative(rootDir, result.configPath) || path.basename(result.configPath);
+  const relativeDocsJsonPath =
+    path.relative(rootDir, result.docsJsonPath) || path.basename(result.docsJsonPath);
+
+  p.log.success(
+    `Docs Cloud infrastructure support configured:\n` +
+      `  ${pc.green("+")} ${relativeConfigPath}\n` +
+      `  ${pc.green("+")} ${relativeDocsJsonPath}`,
+  );
+
+  console.log();
+  console.log(pc.bold("Finish Docs Cloud authentication"));
+  console.log(`1. Sign in to ${pc.cyan(DOCS_CLOUD_DASHBOARD_URL)}.`);
+  console.log("2. Open your Docs Cloud project settings and create a project API key.");
+  console.log(`3. Add the key to ${pc.cyan(".env.local")} or your shell:`);
+  console.log(`   ${pc.cyan(result.apiKeyEnv)}=${pc.dim("fl_key_...")}`);
+  console.log(`   ${pc.cyan(result.analyticsProjectIdEnv)}=${pc.dim("docs_cloud_project_id")}`);
+  console.log("4. Keep local env files out of git and use the same env names in production.");
+  console.log(`5. Deploy when ready with ${pc.cyan(docsCloudDeployCommand(pm))}.`);
+  console.log();
+}
+
+async function configureDocsCloudOnboarding(options: {
+  rootDir: string;
+  framework: Framework;
+  packageManager: PackageManager;
+  enabled?: boolean;
+}) {
+  let enabled = options.enabled;
+
+  if (typeof enabled !== "boolean") {
+    const cloudAnswer = await p.confirm({
+      message: `Do you want Docs Cloud infrastructure support? ${pc.dim("Adds cloud config and docs.json")}`,
+      initialValue: false,
+    });
+
+    if (p.isCancel(cloudAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    enabled = cloudAnswer;
+  }
+
+  if (!enabled) return;
+
+  const { initCloudConfig } = await import("./cloud.js");
+  const result = await initCloudConfig({
+    rootDir: options.rootDir,
+    configPath: getDocsCloudConfigPathForFramework(options.framework),
+  });
+
+  printDocsCloudOnboardingInstructions(result, options.rootDir, options.packageManager);
 }
 
 export async function init(options: InitOptions = {}) {
@@ -406,11 +518,26 @@ export async function init(options: InitOptions = {}) {
             ? "bun install"
             : "pnpm install";
 
+    let installSucceeded = true;
     try {
       exec(installCmd, targetDir);
     } catch {
+      installSucceeded = false;
       p.log.warn(
         `${pmFresh} install failed. Run ${pc.cyan(installCmd)} manually inside the project.`,
+      );
+    }
+
+    if (installSucceeded) {
+      await configureDocsCloudOnboarding({
+        rootDir: targetDir,
+        framework: frameworkForTemplate(template),
+        packageManager: pmFresh,
+        enabled: options.cloud,
+      });
+    } else if (options.cloud) {
+      p.log.warn(
+        `Skipping Docs Cloud onboarding until dependencies are installed. Then run ${pc.cyan("docs cloud init")}.`,
       );
     }
 
@@ -444,11 +571,13 @@ export async function init(options: InitOptions = {}) {
         ? "Next.js"
         : framework === "tanstack-start"
           ? "TanStack Start"
-          : framework === "sveltekit"
-            ? "SvelteKit"
-            : framework === "astro"
-              ? "Astro"
-              : "Nuxt";
+          : framework === "farmjs"
+            ? "Farm.js"
+            : framework === "sveltekit"
+              ? "SvelteKit"
+              : framework === "astro"
+                ? "Astro"
+                : "Nuxt";
     p.log.success(`Detected framework: ${pc.cyan(frameworkName)}`);
   } else {
     p.log.warn("Could not auto-detect a framework from " + pc.cyan("package.json") + ".");
@@ -465,6 +594,11 @@ export async function init(options: InitOptions = {}) {
           value: "tanstack-start",
           label: "TanStack Start",
           hint: "React with TanStack Router and server functions",
+        },
+        {
+          value: "farmjs",
+          label: "Farm.js",
+          hint: "React framework for product applications",
         },
         {
           value: "sveltekit",
@@ -558,6 +692,11 @@ export async function init(options: InitOptions = {}) {
       hint: "Stripe Docs-inspired product docs shell with navy code panels",
     },
     {
+      value: "shadcn",
+      label: "Shadcn Docs",
+      hint: "Compact neutral shell inspired by the shadcn/ui documentation",
+    },
+    {
       value: "greentree",
       label: "GreenTree",
       hint: "Emerald green accent, Inter font, Mintlify-inspired",
@@ -639,11 +778,13 @@ export async function init(options: InitOptions = {}) {
       ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
       : framework === "tanstack-start"
         ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
-        : framework === "sveltekit"
-          ? `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`
-          : framework === "nuxt"
-            ? `Uses ${pc.cyan("~/")} prefix (Nuxt built-in)`
-            : `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`;
+        : framework === "farmjs"
+          ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
+          : framework === "sveltekit"
+            ? `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`
+            : framework === "nuxt"
+              ? `Uses ${pc.cyan("~/")} prefix (Nuxt built-in)`
+              : `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`;
 
   const useAlias = await p.confirm({
     message: `Use path aliases for imports? ${pc.dim(aliasHint)}`,
@@ -893,15 +1034,17 @@ export async function init(options: InitOptions = {}) {
   const defaultCssPath =
     framework === "tanstack-start"
       ? "src/styles/app.css"
-      : framework === "sveltekit"
-        ? "src/app.css"
-        : framework === "astro"
-          ? "src/styles/global.css"
-          : framework === "nuxt"
-            ? "assets/css/main.css"
-            : framework === "nextjs"
-              ? `${nextAppDir}/globals.css`
-              : "app/globals.css";
+      : framework === "farmjs"
+        ? "src/app/globals.css"
+        : framework === "sveltekit"
+          ? "src/app.css"
+          : framework === "astro"
+            ? "src/styles/global.css"
+            : framework === "nuxt"
+              ? "assets/css/main.css"
+              : framework === "nextjs"
+                ? `${nextAppDir}/globals.css`
+                : "app/globals.css";
 
   if (detectedCssFiles.length === 1) {
     globalCssRelPath = detectedCssFiles[0];
@@ -976,6 +1119,8 @@ export async function init(options: InitOptions = {}) {
 
   if (framework === "tanstack-start") {
     scaffoldTanstackStart(cwd, cfg, globalCssRelPath, write, skipped, written);
+  } else if (framework === "farmjs") {
+    scaffoldFarmjs(cwd, cfg, globalCssRelPath, write, skipped, written);
   } else if (framework === "sveltekit") {
     scaffoldSvelteKit(cwd, cfg, globalCssRelPath, write, skipped, written);
   } else if (framework === "astro") {
@@ -1006,9 +1151,12 @@ export async function init(options: InitOptions = {}) {
   // Step 9: Choose package manager (existing project)
   // -----------------------------------------------------------------------
 
-  let pm = detectPackageManagerFromLockfile(cwd);
-  if (pm) {
-    p.log.info(`Detected ${pc.cyan(pm)}`);
+  const detectedPackageManager = detectPackageManagerFromProject(cwd);
+  let pm = detectedPackageManager?.packageManager ?? null;
+  if (detectedPackageManager) {
+    p.log.info(
+      `Detected ${pc.cyan(detectedPackageManager.packageManager)} from ${formatPackageManagerDetection(cwd, detectedPackageManager)}`,
+    );
   }
 
   const pmAnswerExisting = await p.select({
@@ -1033,13 +1181,23 @@ export async function init(options: InitOptions = {}) {
   const s2 = p.spinner();
   s2.start("Installing dependencies");
 
-  try {
-    if (framework === "tanstack-start") {
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start`,
-        cwd,
-      );
+  const docsRuntimeInstallCommand =
+    framework === "tanstack-start"
+      ? `${installCommand(pm)} @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start`
+      : framework === "farmjs"
+        ? `${installCommand(pm)} @farming-labs/docs @farming-labs/farmjs @farming-labs/theme`
+        : framework === "sveltekit"
+          ? `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme @farming-labs/theme`
+          : framework === "astro"
+            ? `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme @farming-labs/theme ${getAstroAdapterPkg(cfg.astroAdapter ?? "vercel")}`
+            : framework === "nuxt"
+              ? `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme @farming-labs/theme`
+              : `${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`;
 
+  try {
+    exec(docsRuntimeInstallCommand, cwd);
+
+    if (framework === "tanstack-start") {
       const devDeps = ["@tailwindcss/vite", "tailwindcss"];
       if (useAlias) {
         devDeps.push("vite-tsconfig-paths");
@@ -1051,25 +1209,7 @@ export async function init(options: InitOptions = {}) {
       if (missingDevDeps.length > 0) {
         exec(`${devInstallCommand(pm)} ${missingDevDeps.join(" ")}`, cwd);
       }
-    } else if (framework === "sveltekit") {
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme`,
-        cwd,
-      );
-    } else if (framework === "astro") {
-      const adapterPkg = getAstroAdapterPkg(cfg.astroAdapter ?? "vercel");
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme ${adapterPkg}`,
-        cwd,
-      );
-    } else if (framework === "nuxt") {
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme`,
-        cwd,
-      );
-    } else {
-      exec(`${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`, cwd);
-
+    } else if (framework === "nextjs") {
       const devDeps = [
         "@tailwindcss/postcss",
         "postcss",
@@ -1089,13 +1229,20 @@ export async function init(options: InitOptions = {}) {
     s2.stop("Failed to install dependencies");
     p.log.error(
       "Dependency installation failed. Run the install command manually:\n" +
-        `  ${pc.cyan(`${installCommand(pm)} @farming-labs/docs`)}`,
+        `  ${pc.cyan(docsRuntimeInstallCommand)}`,
     );
     p.outro(pc.yellow("Setup partially complete. Install deps and run dev server manually."));
     process.exit(1);
   }
 
   s2.stop("Dependencies installed");
+
+  await configureDocsCloudOnboarding({
+    rootDir: cwd,
+    framework,
+    packageManager: pm,
+    enabled: options.cloud,
+  });
 
   // -----------------------------------------------------------------------
   // Step 10: Start dev server
@@ -1120,24 +1267,28 @@ export async function init(options: InitOptions = {}) {
   const devCommand =
     framework === "tanstack-start"
       ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
-      : framework === "sveltekit"
-        ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
-        : framework === "astro"
-          ? { cmd: "npx", args: ["astro", "dev"], waitFor: "ready" }
-          : framework === "nuxt"
-            ? { cmd: "npx", args: ["nuxt", "dev"], waitFor: "Local" }
-            : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
+      : framework === "farmjs"
+        ? { cmd: "npx", args: ["farm", "dev"], waitFor: "Local:" }
+        : framework === "sveltekit"
+          ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
+          : framework === "astro"
+            ? { cmd: "npx", args: ["astro", "dev"], waitFor: "ready" }
+            : framework === "nuxt"
+              ? { cmd: "npx", args: ["nuxt", "dev"], waitFor: "Local" }
+              : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
 
   const defaultPort =
     framework === "tanstack-start"
       ? "5173"
-      : framework === "sveltekit"
-        ? "5173"
-        : framework === "astro"
-          ? "4321"
-          : framework === "nuxt"
-            ? "3000"
-            : "3000";
+      : framework === "farmjs"
+        ? "3000"
+        : framework === "sveltekit"
+          ? "5173"
+          : framework === "astro"
+            ? "4321"
+            : framework === "nuxt"
+              ? "3000"
+              : "3000";
 
   try {
     const child = await spawnAndWaitFor(
@@ -1174,13 +1325,15 @@ export async function init(options: InitOptions = {}) {
     const manualCmd =
       framework === "tanstack-start"
         ? "npx vite dev"
-        : framework === "sveltekit"
-          ? "npx vite dev"
-          : framework === "astro"
-            ? "npx astro dev"
-            : framework === "nuxt"
-              ? "npx nuxt dev"
-              : "pnpm dev";
+        : framework === "farmjs"
+          ? "npx farm dev"
+          : framework === "sveltekit"
+            ? "npx vite dev"
+            : framework === "astro"
+              ? "npx astro dev"
+              : framework === "nuxt"
+                ? "npx nuxt dev"
+                : "pnpm dev";
     p.log.error("Could not start dev server. Try running manually:\n" + `  ${pc.cyan(manualCmd)}`);
     p.outro(pc.yellow("Setup complete. Start the server manually."));
     process.exit(1);
@@ -1191,6 +1344,70 @@ function getScaffoldContentRoots(cfg: TemplateConfig): string[] {
   return cfg.i18n?.locales?.length
     ? cfg.i18n.locales.map((locale) => `${cfg.entry}/${locale}`)
     : [cfg.entry];
+}
+
+// ---------------------------------------------------------------------------
+// Farm.js scaffolding
+// ---------------------------------------------------------------------------
+
+function scaffoldFarmjs(
+  cwd: string,
+  cfg: TemplateConfig,
+  globalCssRelPath: string,
+  write: (rel: string, content: string, overwrite?: boolean) => void,
+  skipped: string[],
+  written: string[],
+) {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
+    write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
+  }
+
+  write("docs.config.ts", farmjsDocsConfigTemplate(cfg));
+
+  const farmConfigPath = ["farm.config.ts", "farm.config.mts", "farm.config.js", "farm.config.mjs"]
+    .map((candidate) => path.join(cwd, candidate))
+    .find((candidate) => fileExists(candidate));
+
+  if (farmConfigPath) {
+    const existing = readFileSafe(farmConfigPath);
+    const injected = existing ? injectFarmjsConfig(existing) : null;
+    const relativePath = path.relative(cwd, farmConfigPath);
+    if (injected) {
+      writeFileSafe(farmConfigPath, injected, true);
+      written.push(`${relativePath} (wrapped with withDocs)`);
+    } else {
+      skipped.push(`${relativePath} (already configured or unsupported default export)`);
+    }
+  } else {
+    write("farm.config.ts", farmjsConfigTemplate());
+  }
+
+  const globalCssAbsPath = path.join(cwd, globalCssRelPath);
+  const existingGlobalCss = readFileSafe(globalCssAbsPath);
+  if (existingGlobalCss) {
+    const injected = injectCssImport(
+      existingGlobalCss,
+      cfg.theme,
+      cfg.customThemeName,
+      globalCssRelPath,
+    );
+    if (injected) {
+      writeFileSafe(globalCssAbsPath, injected, true);
+      written.push(`${globalCssRelPath} (updated)`);
+    } else {
+      skipped.push(`${globalCssRelPath} (already configured)`);
+    }
+  } else {
+    write(globalCssRelPath, globalCssTemplate(cfg.theme, cfg.customThemeName, globalCssRelPath));
+  }
+
+  for (const base of getScaffoldContentRoots(cfg)) {
+    write(`${base}/page.md`, farmjsWelcomePageTemplate(cfg));
+    write(`${base}/installation/page.md`, farmjsInstallationPageTemplate(cfg));
+    write(`${base}/quickstart/page.md`, farmjsQuickstartPageTemplate(cfg));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1497,6 +1714,26 @@ function scaffoldSvelteKit(
   write("src/lib/docs.config.ts", svelteDocsConfigTemplate(cfg));
 
   write("src/lib/docs.server.ts", svelteDocsServerTemplate(cfg));
+  const viteConfigRel = fileExists(path.join(cwd, "vite.config.ts"))
+    ? "vite.config.ts"
+    : fileExists(path.join(cwd, "vite.config.mts"))
+      ? "vite.config.mts"
+      : fileExists(path.join(cwd, "vite.config.js"))
+        ? "vite.config.js"
+        : "vite.config.ts";
+  const viteConfigPath = path.join(cwd, viteConfigRel);
+  const existingViteConfig = readFileSafe(viteConfigPath);
+  if (!existingViteConfig) {
+    write(viteConfigRel, svelteViteConfigTemplate(), true);
+  } else {
+    const injected = injectDocsAgentSkillsVitePlugin(existingViteConfig, "./src/lib/docs.config");
+    if (injected) {
+      writeFileSafe(viteConfigPath, injected, true);
+      written.push(`${viteConfigRel} (updated)`);
+    } else {
+      skipped.push(`${viteConfigRel} (already configured)`);
+    }
+  }
   write(`src/routes/${cfg.entry}/+layout.svelte`, svelteDocsLayoutTemplate(cfg));
   write(`src/routes/${cfg.entry}/+layout.server.js`, svelteDocsLayoutServerTemplate(cfg));
   write(`src/routes/${cfg.entry}/[...slug]/+page.svelte`, svelteDocsPageTemplate(cfg));
@@ -1548,6 +1785,7 @@ function scaffoldSvelteKit(
     darkbold: "darkbold",
     shiny: "shiny",
     ledger: "ledger",
+    shadcn: "shadcn",
     greentree: "greentree",
     concrete: "concrete",
     "command-grid": "command-grid",
@@ -1603,11 +1841,23 @@ function scaffoldAstro(
   write("src/lib/docs.config.ts", astroDocsConfigTemplate(cfg));
   write("src/lib/docs.server.ts", astroDocsServerTemplate(cfg));
 
-  if (
-    !fileExists(path.join(cwd, "astro.config.mjs")) &&
-    !fileExists(path.join(cwd, "astro.config.ts"))
-  ) {
-    write("astro.config.mjs", astroConfigTemplate(cfg.astroAdapter ?? "vercel"));
+  const astroConfigRel = fileExists(path.join(cwd, "astro.config.mjs"))
+    ? "astro.config.mjs"
+    : fileExists(path.join(cwd, "astro.config.ts"))
+      ? "astro.config.ts"
+      : "astro.config.mjs";
+  const astroConfigPath = path.join(cwd, astroConfigRel);
+  const existingAstroConfig = readFileSafe(astroConfigPath);
+  if (!existingAstroConfig) {
+    write(astroConfigRel, astroConfigTemplate(cfg.astroAdapter ?? "vercel"));
+  } else {
+    const injected = injectAstroAgentSkillsPlugin(existingAstroConfig);
+    if (injected) {
+      writeFileSafe(astroConfigPath, injected, true);
+      written.push(`${astroConfigRel} (updated)`);
+    } else {
+      skipped.push(`${astroConfigRel} (already configured)`);
+    }
   }
 
   write(`src/pages/${cfg.entry}/index.astro`, astroDocsIndexTemplate(cfg));
@@ -1647,6 +1897,7 @@ function scaffoldAstro(
     darkbold: "darkbold",
     shiny: "shiny",
     ledger: "ledger",
+    shadcn: "shadcn",
     greentree: "greentree",
     concrete: "concrete",
     "command-grid": "command-grid",
@@ -1716,11 +1967,23 @@ function scaffoldNuxt(
     );
   }
 
-  if (
-    !fileExists(path.join(cwd, "nuxt.config.ts")) &&
-    !fileExists(path.join(cwd, "nuxt.config.js"))
-  ) {
-    write("nuxt.config.ts", nuxtConfigTemplate(cfg));
+  const nuxtConfigRel = fileExists(path.join(cwd, "nuxt.config.ts"))
+    ? "nuxt.config.ts"
+    : fileExists(path.join(cwd, "nuxt.config.js"))
+      ? "nuxt.config.js"
+      : "nuxt.config.ts";
+  const nuxtConfigPath = path.join(cwd, nuxtConfigRel);
+  const existingNuxtConfig = readFileSafe(nuxtConfigPath);
+  if (!existingNuxtConfig) {
+    write(nuxtConfigRel, nuxtConfigTemplate(cfg));
+  } else {
+    const injected = injectNuxtAgentSkillsPlugin(existingNuxtConfig);
+    if (injected) {
+      writeFileSafe(nuxtConfigPath, injected, true);
+      written.push(`${nuxtConfigRel} (updated)`);
+    } else {
+      skipped.push(`${nuxtConfigRel} (already configured)`);
+    }
   }
 
   const themeMapping: Record<string, string> = {
@@ -1731,6 +1994,7 @@ function scaffoldNuxt(
     darkbold: "darkbold",
     shiny: "shiny",
     ledger: "ledger",
+    shadcn: "shadcn",
     greentree: "greentree",
     concrete: "concrete",
     "command-grid": "command-grid",
@@ -1768,5 +2032,12 @@ function scaffoldNuxt(
   }
 }
 
-/** Exported for testing: ensures Next.js scaffold writes under app or src/app consistently. */
-export { scaffoldNextJs, scaffoldTanstackStart, scaffoldSvelteKit, scaffoldAstro, scaffoldNuxt };
+/** Exported for focused scaffold tests. */
+export {
+  scaffoldNextJs,
+  scaffoldTanstackStart,
+  scaffoldFarmjs,
+  scaffoldSvelteKit,
+  scaffoldAstro,
+  scaffoldNuxt,
+};

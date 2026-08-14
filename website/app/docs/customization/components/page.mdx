@@ -3,14 +3,57 @@ title: "Components"
 description: "Override built-in or add custom MDX components"
 icon: "code"
 order: 5.4
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
+  - /docs/customization/page-actions
+  - /docs/themes/creating-themes
+agent:
+  tokenBudget: 1000
+  task: Register a custom MDX component or override a built-in component without breaking page rendering.
+  outcome: The component is available in MDX, receives the intended props, and renders in the configured docs theme.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The project has a working docs.config file and an existing docs page for verification.
+    - Use docs.config.tsx when registration includes JSX.
+    - Confirm whether the requirement needs a config component override or a theme default-prop override.
+  files:
+    - components/info-card.tsx
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - app/docs/getting-started/page.mdx
+    - docs/getting-started/page.mdx
+  sideEffects:
+    - Overriding a built-in component changes every docs page that renders that MDX element.
+  verification:
+    - description: Build the docs app and render an MDX page that uses the component.
+      expect: The build succeeds, the component renders once with the documented props, and existing built-ins still work.
+  rollback:
+    - Remove the component registration and restore the previous built-in or theme defaults.
+  failureModes:
+    - symptom: MDX reports that the custom component is undefined.
+      resolution: Export the component, register the exact case-sensitive name in docs.config.tsx, and restart the dev server.
+    - symptom: The config fails to parse after adding a component.
+      resolution: Rename docs.config.ts to docs.config.tsx when the config contains JSX.
 ---
 
 # Components
 
 <Agent>
-Use this page when the user asks about this topic: Override built-in or add custom MDX components.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+For Next.js or TanStack Start, create the React component and register its exact case-sensitive name
+under top-level `components` in `docs.config.ts[x]`; MDX can then use that name without an import.
+Astro, SvelteKit, and Nuxt use their adapter-native component registration instead. Use
+`theme.ui.components` only to change default props for a built-in; a top-level entry such as
+`components.HoverLink` replaces that component across the React-rendered docs pages.
+
+Build the docs app and render one MDX page with the documented props while confirming existing
+built-ins still work. If MDX reports an undefined component, check its export and registration name
+and restart the dev server. If JSX makes the config fail to parse, rename `docs.config.ts` to
+`docs.config.tsx`. Remove a built-in override to restore the previous component; when removing a
+custom component, remove its MDX usages too.
 </Agent>
 
 Pass custom React components that become available in **all MDX files** — no imports needed.
@@ -99,11 +142,41 @@ MDX without imports or `docs.config.ts` registration:
 - `img` — images
 - `blockquote` — blockquotes
 - `hr` — horizontal rules
+- `Agent` — optional shorthand for content that only appears in agent-projected output
+- `Human` — shorthand for content that only appears in human-projected output
+- `Audience` — explicit audience wrapper with `only="human"` or `only="agent"`
 - `HoverLink` — hover-triggered popover link card with title, description, and CTA
 - `Prompt` — reusable AI prompt card with copy/open actions
 - `Tab`, `Tabs` — tabbed content
 - `CodeGroup` — Mintlify-compatible tabbed code groups powered by the built-in code block UI
 - `Callout` — callout/admonition boxes
+
+### Example: Tailor content by audience
+
+Audience wrappers are built in, so they do not need to be registered in `docs.config.ts`:
+
+```mdx title="page.mdx"
+Shared setup instructions.
+
+<Human>Use the highlighted control in the screenshot.</Human>
+
+<Agent>Run `pnpm verify` and require exit code 0.</Agent>
+
+<Audience only="human">This is the explicit form of `Human`.</Audience>
+
+<Audience only="agent">This is the explicit form of `Agent`.</Audience>
+```
+
+Rendered HTML and public search use the human projection. Markdown, Ask AI, MCP, `llms-full.txt`,
+and static agent exports use the agent projection; compact `llms.txt` links point to that Markdown.
+Sitemaps contain route metadata rather than page bodies. Content outside a wrapper is shared, and
+`<Agent>` remains entirely optional. Keep `Audience.only` as a static literal and do not pass
+audience props through a spread; `docs review` reports declarations that static outputs cannot
+resolve consistently.
+
+These wrappers are not authentication or authorization. Never place secrets in them. See
+[Agent Primitive](/docs/customization/agent-primitive) for the complete surface matrix and
+`agent.md` override behavior.
 
 ### Example: Use `CodeGroup`
 

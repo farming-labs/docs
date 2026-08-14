@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
 
-  css: ["@farming-labs/nuxt-theme/hardline/css"],
+  css: ["@farming-labs/theme/hardline/css"],
 
   build: {
     transpile: ["@farming-labs/nuxt-theme"],
@@ -9,7 +9,12 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
+      include: [
+        "@farming-labs/docs",
+        "@farming-labs/nuxt",
+        "@farming-labs/nuxt-theme",
+        "@farming-labs/theme",
+      ],
     },
   },
 

@@ -1,5 +1,5 @@
 ---
-order: 2
+order: 3
 title: Get Started
 description: Build your first authentication flow with Better Auth.
 icon: rocket

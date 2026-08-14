@@ -1,0 +1,173 @@
+---
+title: "From VitePress"
+description: "Migrate VitePress Markdown, sidebar configuration, Vue components, containers, and assets"
+icon: "file"
+order: 5
+related:
+  - /docs/migrations
+  - /docs/installation
+  - /docs/customization/sidebar
+  - /docs/customization/components
+  - /docs/configuration
+agent:
+  tokenBudget: 1650
+  task: Migrate a VitePress documentation site into Farming Labs Docs.
+  outcome: VitePress pages, navigation, assets, and portable Markdown render in a buildable Farming Labs Docs project, with Vue-only behavior explicitly replaced or tracked.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Preserve the VitePress root, .vitepress config and theme, public assets, Markdown pages, and custom Vue components.
+    - Record the published base path, rewrites, clean URL behavior, locales, and sidebar variants.
+    - Initialize the target runtime separately.
+  files:
+    - .vitepress/config.ts
+    - .vitepress/config.mts
+    - .vitepress/theme/index.ts
+    - docs.config.ts
+    - docs.config.tsx
+  commands:
+    - run: npx @farming-labs/docs init
+      description: Scaffold the selected target runtime before moving VitePress pages.
+  sideEffects:
+    - Markdown-It extensions and Vue components may be rewritten as MDX, plain Markdown, or target-native components.
+  verification:
+    - description: Build the target and compare routes, sidebar variants, containers, code groups, assets, locales, and redirects.
+      expect: Required routes resolve and no Vue-only syntax remains in content compiled by a non-Vue target.
+  rollback:
+    - Keep the VitePress build and deployment available until the target route and component comparison passes.
+  failureModes:
+    - symptom: MDX compilation fails on Vue template syntax.
+      resolution: Convert the block to portable Markdown or a component native to the selected target runtime.
+    - symptom: Published URLs gain or lose a base prefix.
+      resolution: Match the previous entry path or add tested redirects that include the old base.
+---
+
+# Migrate from VitePress
+
+VitePress content is Markdown, but it is parsed by Markdown-It and can embed Vue templates and
+components. Plain pages move easily; custom containers, code groups, theme slots, and Vue behavior
+need explicit conversion.
+
+<Callout type="warning" title="Markdown is portable; Vue templates are not">
+  Copy prose and standard Markdown first. Treat every imported or globally registered Vue component
+  as application code that must be replaced for the selected target runtime.
+</Callout>
+
+<Agent>
+Read the resolved VitePress config, not only the root file: configuration can be async, split into
+helpers, or overridden per directory. Inventory root, srcDir, base, rewrites, locales, themeConfig
+nav and sidebar, markdown plugins, and theme enhancements before moving files.
+</Agent>
+
+## 1. Inventory the source
+
+Record:
+
+- the VitePress root and optional `srcDir`
+- `.vitepress/config.*` and imported config helpers
+- `.vitepress/theme/`, globally registered components, and custom CSS
+- `themeConfig.nav` and every `themeConfig.sidebar` variant
+- `base`, `cleanUrls`, `rewrites`, and locale configuration
+- Markdown-It plugins and custom containers
+- `public/`, relative assets, and imported images
+- search, sitemap, analytics, head tags, and deployment settings
+
+## 2. Map the files
+
+| VitePress | Farming Labs Docs |
+| --- | --- |
+| Markdown root or `srcDir` | Target docs content tree |
+| `.vitepress/config.*` | `docs.config.ts` and host/runtime config |
+| `themeConfig.sidebar` | Directory hierarchy and page `order` |
+| `themeConfig.nav` | Application navigation |
+| `.vitepress/theme/index.*` | Theme selection and registered components |
+| `.vitepress/theme/custom.css` | Global CSS or theme overrides |
+| `public/**` | Target public/static directory |
+| route `rewrites` | File paths or host/runtime redirects |
+
+## 3. Preserve routing
+
+VitePress routes depend on the content root, `srcDir`, `base`, clean URLs, and rewrites. Build a
+source route list before moving files.
+
+For each page:
+
+- preserve the URL path through the destination file structure
+- keep `title`, `description`, and portable frontmatter
+- preserve explicit heading IDs used by external links
+- include the old `base` prefix in the target `entry` or redirect it
+- convert `rewrites` into actual destination paths or redirects
+
+Do not assume a file's repository path equals its published path.
+
+## 4. Rebuild nav and sidebar
+
+VitePress top navigation and sidebars are separate:
+
+1. Translate `themeConfig.nav` into the target application's top navigation.
+2. Turn sidebar groups into directories and folder landing pages.
+3. Preserve item order with numeric `order` frontmatter.
+4. Recreate per-path sidebar objects as separate content sections.
+5. Preserve collapsed/expanded intent where the target sidebar supports it.
+6. Keep external links explicit.
+
+Generated sidebar functions should be evaluated into a stable inventory before migration.
+
+## 5. Convert Markdown extensions
+
+| VitePress syntax | Target |
+| --- | --- |
+| `::: info`, `::: tip`, `::: warning`, `::: danger` | `<Callout>` or supported directive |
+| `::: details` | `<details>` and `<summary>` |
+| `::: code-group` | `<Tabs>` with code blocks |
+| line highlights and code focus metadata | Supported code fence metadata |
+| Markdown-It attributes or plugins | Portable Markdown, MDX, or an adapter plugin |
+| `<Badge>` | Text badge component or plain inline text |
+| raw Vue interpolation/directives | Static content or target-native component |
+
+Check code fences carefully because VitePress uses its own highlight and line-focus notation.
+
+## 6. Replace Vue components and theme behavior
+
+Search pages for:
+
+- `.vue` imports
+- globally registered component tags
+- Vue directives such as `v-if`, `v-for`, and `v-bind`
+- mustache interpolation
+- `<script setup>`
+- theme slots and layout overrides
+
+For an Astro or Svelte target, rewrite them as native components. For Next.js or TanStack Start,
+rewrite interactive blocks as React components. For static behavior, prefer plain Markdown.
+
+## 7. Move assets and integrations
+
+Copy `public/` to the target public/static directory and keep root-relative URLs stable. Verify
+assets imported from Markdown or Vue components separately.
+
+Recreate search, analytics, sitemap, social metadata, edit links, last-updated behavior, and
+deployment base settings through Farming Labs and the target application.
+
+## 8. Validate and recover
+
+1. Run the target production build.
+2. Compare routes after applying the old base and rewrites.
+3. Test custom containers, code groups, heading anchors, and code highlights.
+4. Inspect pages containing Vue imports or directives.
+5. Compare each sidebar variant and locale.
+6. Fetch representative pages through `.md`.
+
+If compilation fails, locate the first remaining Vue or Markdown-It-only construct and convert that
+family across the corpus. If links fail, compare against the resolved VitePress route—not only the
+source filename.
+
+## Source references
+
+- [VitePress site configuration](https://vitepress.dev/reference/site-config)
+- [VitePress sidebar](https://vitepress.dev/reference/default-theme-sidebar)
+- [VitePress Markdown extensions](https://vitepress.dev/guide/markdown)
+- [Farming Labs sidebar](/docs/customization/sidebar)
+- [Farming Labs components](/docs/customization/components)

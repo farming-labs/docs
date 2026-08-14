@@ -4,13 +4,20 @@ import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page"
 import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
-import type { DocsFeedbackData } from "@farming-labs/docs";
+import type {
+  CopyMarkdownFormat,
+  DocsFeedbackData,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
+  ReadingTimeFormat,
+} from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
-import { useWindowSearchParams } from "./client-location.js";
+import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
+import { DocsDevTools } from "./devtools.js";
 
 const agentLlmsDirectiveStyle: CSSProperties = {
   position: "absolute",
@@ -30,6 +37,11 @@ interface TOCItem {
   depth: number;
 }
 
+interface PageNavigationItem {
+  name: string;
+  url: string;
+}
+
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
   name: string;
@@ -41,6 +53,8 @@ interface SerializedProvider {
 
 interface DocsPageClientProps {
   tocEnabled: boolean;
+  /** Expose the llms.txt action in a runtime-owned header slot. */
+  showLlmsInHeader?: boolean;
   tocStyle?: "default" | "directional";
   breadcrumbEnabled?: boolean;
   changelogBasePath?: string;
@@ -51,10 +65,16 @@ interface DocsPageClientProps {
   /** Active locale (used for llms.txt links) */
   locale?: string;
   copyMarkdown?: boolean;
+  copyMarkdownFormat?: CopyMarkdownFormat;
+  copyMarkdownIncludeTitle?: boolean;
+  copyMarkdownLabel?: string;
+  copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
   openDocsProviders?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
+  connectMcp?: PageActionConnectMcpConfig;
+  installSkills?: PageActionInstallSkillsConfig;
   /** Where to render page actions relative to the title */
   pageActionsPosition?: "above-title" | "below-title" | "toc";
   /** Horizontal alignment of page action buttons */
@@ -77,6 +97,10 @@ interface DocsPageClientProps {
   readingTimeMap?: Record<string, number>;
   /** Direct reading-time override for the current page. */
   readingTime?: number | null;
+  /** Reading-time label style. */
+  readingTimeFormat?: ReadingTimeFormat;
+  previousPage?: PageNavigationItem | null;
+  nextPage?: PageNavigationItem | null;
   /** Map of pathname → serialized Schema.org JSON-LD. */
   structuredDataMap?: Record<string, string>;
   /** Direct serialized Schema.org JSON-LD override for the current page. */
@@ -88,21 +112,34 @@ interface DocsPageClientProps {
   readingTimeEnabled?: boolean;
   /** Whether to show "Last updated" at all */
   lastUpdatedEnabled?: boolean;
+  /** Label shown before the formatted last-updated date */
+  lastUpdatedLabel?: string;
   /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
   lastUpdatedPosition?: "footer" | "below-title";
   /** Whether llms.txt is enabled — shows links in footer */
   llmsTxtEnabled?: boolean;
+  /** Whether to show the local visual MDX editor. */
+  devToolsEnabled?: boolean;
+  /** Unified docs API route used by the visual MDX editor. */
+  docsApiUrl?: string;
+  /** Frontmatter titles for pages whose MDX body does not author an h1 */
+  generatedTitleMap?: Record<string, string>;
   /** Map of pathname → frontmatter description */
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
   description?: string;
+  /** The first authored paragraph already contains the frontmatter description. */
+  descriptionInBody?: boolean;
   /** Built-in page feedback prompt configuration */
   feedbackEnabled?: boolean;
   feedbackQuestion?: string;
   feedbackPlaceholder?: string;
+  feedbackRequireComment?: boolean;
   feedbackPositiveLabel?: string;
   feedbackNegativeLabel?: string;
   feedbackSubmitLabel?: string;
+  feedbackSuccessMessage?: string;
+  feedbackErrorMessage?: string;
   feedbackOnFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   analytics?: boolean;
   children: ReactNode;
@@ -326,7 +363,11 @@ function isDocsNavigationPath(pathname: string, entry: string, publicPath: strin
   return pathname === publicPath || pathname.startsWith(`${publicPath}/`);
 }
 
-function installDocsPathNavigationGuard(entry: string, publicPath: string) {
+function installDocsPathNavigationGuard(
+  entry: string,
+  publicPath: string,
+  navigate: (url: string) => void | Promise<void>,
+) {
   const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
   if (publicPath === normalizedEntry) return undefined;
 
@@ -363,7 +404,7 @@ function installDocsPathNavigationGuard(entry: string, publicPath: string) {
       }
 
       event.preventDefault();
-      window.location.assign(nextHref);
+      void navigate(nextHref);
     } catch {
       // Ignore malformed links and leave them untouched.
     }
@@ -382,9 +423,9 @@ function decodeHashTarget(hash: string): string {
   }
 }
 
-function formatReadingTimeLabel(minutes: number): string {
+function formatReadingTimeLabel(minutes: number, format: ReadingTimeFormat = "long"): string {
   const normalized = Math.max(1, Math.ceil(minutes));
-  return `${normalized} min read`;
+  return format === "short" ? `${normalized} min` : `${normalized} min read`;
 }
 
 function escapeIdSelector(value: string): string {
@@ -479,6 +520,7 @@ function findThreadlineTocActionsContainer(): HTMLElement | null {
 
 export function DocsPageClient({
   tocEnabled,
+  showLlmsInHeader = false,
   tocStyle = "default",
   breadcrumbEnabled = true,
   changelogBasePath,
@@ -486,10 +528,16 @@ export function DocsPageClient({
   publicPath,
   locale,
   copyMarkdown = false,
+  copyMarkdownFormat,
+  copyMarkdownIncludeTitle,
+  copyMarkdownLabel,
+  copyMarkdownCopiedLabel,
   openDocs = false,
   openDocsProviders,
   openDocsTarget,
   openDocsPrompt,
+  connectMcp,
+  installSkills,
   pageActionsPosition = "below-title",
   pageActionsAlignment = "left",
   githubUrl,
@@ -501,38 +549,53 @@ export function DocsPageClient({
   lastModified: lastModifiedProp,
   readingTimeMap,
   readingTime: readingTimeProp,
+  readingTimeFormat = "long",
+  previousPage,
+  nextPage,
   structuredDataMap,
   structuredData: structuredDataProp,
   readingTimeEnabled = false,
   lastUpdatedEnabled = true,
+  lastUpdatedLabel = "Last updated",
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
+  devToolsEnabled = false,
+  docsApiUrl = "/api/docs",
+  generatedTitleMap,
   descriptionMap,
   description,
+  descriptionInBody = false,
   feedbackEnabled = false,
   feedbackQuestion,
   feedbackPlaceholder,
+  feedbackRequireComment,
   feedbackPositiveLabel,
   feedbackNegativeLabel,
   feedbackSubmitLabel,
+  feedbackSuccessMessage,
+  feedbackErrorMessage,
   feedbackOnFeedback,
   analytics = false,
   children,
 }: DocsPageClientProps) {
+  const router = useRouter();
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
   const [titleControlsPortalHost, setTitleControlsPortalHost] = useState<HTMLElement | null>(null);
   const [tocActionsPortalHost, setTocActionsPortalHost] = useState<HTMLElement | null>(null);
-  const [browserPath, setBrowserPath] = useState<string | null>(null);
   const pathname = usePathname();
+  const browserPathname = useWindowPathname();
   const searchParams = useWindowSearchParams();
+  const browserSearch = searchParams.toString();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
+  const shouldShowLlmsInHeader = llmsTxtEnabled && showLlmsInHeader;
 
-  const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
-  const normalizedPath = (browserPath ?? pathname).replace(/\/$/, "") || "/";
+  const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
+  const pageTitle = generatedTitleMap?.[normalizedPath];
+  const pageDescription = description ?? descriptionMap?.[normalizedPath];
   const isChangelogRoute = !!(
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
@@ -551,14 +614,15 @@ export function DocsPageClient({
       properties: {
         entry,
         pathname: normalizedPath,
+        search: browserSearch,
         isChangelogRoute,
       },
     });
-  }, [analytics, activeLocale, entry, isChangelogRoute, normalizedPath]);
+  }, [analytics, activeLocale, browserSearch, entry, isChangelogRoute, normalizedPath]);
 
   useEffect(() => {
-    return installDocsPathNavigationGuard(entry, resolvedPublicPath);
-  }, [entry, resolvedPublicPath]);
+    return installDocsPathNavigationGuard(entry, resolvedPublicPath, (url) => router.push(url));
+  }, [entry, resolvedPublicPath, router]);
 
   const resolvedReadingTime = !isChangelogRoute
     ? readingTimeProp !== undefined
@@ -588,7 +652,7 @@ export function DocsPageClient({
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [effectiveTocEnabled, pathname]);
+  }, [children, effectiveTocEnabled, pathname]);
 
   useEffect(() => {
     const timer = requestAnimationFrame(() => {
@@ -601,11 +665,7 @@ export function DocsPageClient({
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [activeLocale, browserPath, children, entry, pathname, resolvedPublicPath]);
-
-  useEffect(() => {
-    setBrowserPath(window.location.pathname);
-  }, [pathname]);
+  }, [activeLocale, browserPathname, children, entry, pathname, resolvedPublicPath]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -760,15 +820,27 @@ export function DocsPageClient({
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
+  const lastUpdatedLabelText = lastUpdatedLabel.trim();
+  const lastUpdatedText =
+    lastUpdatedLabelText && lastModified ? `${lastUpdatedLabelText} ${lastModified}` : lastModified;
   const showFooter =
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
+  const localizedPreviousPage = previousPage?.url
+    ? { ...previousPage, url: withLangInUrl(previousPage.url, activeLocale) }
+    : null;
+  const localizedNextPage = nextPage?.url
+    ? { ...nextPage, url: withLangInUrl(nextPage.url, activeLocale) }
+    : null;
+  const showPageNavigation = !isChangelogRoute && (!!localizedPreviousPage || !!localizedNextPage);
   const readingTimeBlock =
     typeof resolvedReadingTime === "number" ? (
       <div key="reading-time" className="fd-page-meta not-prose">
         <span className="fd-page-meta-dot" aria-hidden="true">
           ·
         </span>
-        <span className="fd-page-meta-item">{formatReadingTimeLabel(resolvedReadingTime)}</span>
+        <span className="fd-page-meta-item">
+          {formatReadingTimeLabel(resolvedReadingTime, readingTimeFormat)}
+        </span>
       </div>
     ) : undefined;
 
@@ -789,7 +861,7 @@ export function DocsPageClient({
       <div key="below-title" className="fd-below-title-block not-prose">
         {showLastUpdatedBelowTitle && (
           <p key="last-updated" className="fd-last-updated-inline">
-            Last updated {lastModified}
+            {lastUpdatedText}
           </p>
         )}
         <hr key="separator" className="fd-title-separator" />
@@ -801,10 +873,16 @@ export function DocsPageClient({
           >
             <PageActions
               copyMarkdown={copyMarkdown}
+              copyMarkdownFormat={copyMarkdownFormat}
+              copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+              copyMarkdownLabel={copyMarkdownLabel}
+              copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
+              connectMcp={connectMcp}
+              installSkills={installSkills}
               alignment={pageActionsAlignment}
               variant="default"
               githubFileUrl={githubFileUrl}
@@ -817,7 +895,7 @@ export function DocsPageClient({
     ) : undefined;
 
   const decoratedChildren = children;
-  const needsTitleDecorationsPortal = !!titleDescription || !!belowTitleBlock;
+  const needsTitleDecorationsPortal = !pageTitle && (!!titleDescription || !!belowTitleBlock);
 
   useEffect(() => {
     if (!needsTitleDecorationsPortal) {
@@ -826,31 +904,74 @@ export function DocsPageClient({
     }
 
     const container = document.getElementById("nd-page");
-    const title = container?.querySelector("h1");
-    if (!title) {
+    if (!container) {
       setTitlePortalHost(null);
       return;
     }
 
     const host = document.createElement("div");
     host.className = "fd-title-decorations-host";
-    title.insertAdjacentElement("afterend", host);
+
+    const placeHost = () => {
+      const title = container.querySelector("h1");
+      if (!title) {
+        host.remove();
+        return;
+      }
+
+      let anchor: Element = title;
+
+      if (descriptionInBody) {
+        let sibling = title.nextElementSibling;
+        while (sibling) {
+          if (sibling === host || sibling.matches(".not-prose, .fd-title-decorations-host")) {
+            sibling = sibling.nextElementSibling;
+            continue;
+          }
+
+          if (sibling.matches("p")) anchor = sibling;
+          break;
+        }
+      }
+
+      if (anchor.nextElementSibling !== host) {
+        anchor.insertAdjacentElement("afterend", host);
+      }
+    };
+
+    placeHost();
+    const observer = new MutationObserver(placeHost);
+    observer.observe(container, { childList: true, subtree: true });
+    const animationFrame = window.requestAnimationFrame(placeHost);
     setTitlePortalHost(host);
 
     return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
       host.remove();
       setTitlePortalHost(null);
     };
-  }, [needsTitleDecorationsPortal, pathname]);
+  }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
+  const titleDecorations = needsTitleDecorationsPortal ? (
+    <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
+  ) : null;
   const titleDecorationsPortal =
-    needsTitleDecorationsPortal && titlePortalHost
-      ? createPortal(
-          <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />,
-          titlePortalHost,
-          "title-decorations",
-        )
+    titleDecorations && titlePortalHost
+      ? createPortal(titleDecorations, titlePortalHost, "title-decorations")
       : null;
+  const titleDecorationsFallback =
+    titleDecorations && !titlePortalHost ? (
+      <div className="fd-title-decorations-fallback" hidden>
+        {titleDecorations}
+      </div>
+    ) : null;
+  const generatedPageHeader = pageTitle ? (
+    <div className="fd-generated-page-header not-prose">
+      <h1 className="fd-page-title">{pageTitle}</h1>
+      <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
+    </div>
+  ) : null;
   const titleControlsPortal =
     showActionsInToc && titleControlsPortalHost
       ? createPortal(<ThreadlinePageControls />, titleControlsPortalHost, "title-controls")
@@ -861,10 +982,16 @@ export function DocsPageClient({
           <div className="fd-actions-toc-portal not-prose">
             <PageActions
               copyMarkdown={copyMarkdown}
+              copyMarkdownFormat={copyMarkdownFormat}
+              copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+              copyMarkdownLabel={copyMarkdownLabel}
+              copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
+              connectMcp={connectMcp}
+              installSkills={installSkills}
               alignment="left"
               variant="rail"
               githubFileUrl={githubFileUrl}
@@ -893,11 +1020,12 @@ export function DocsPageClient({
           key="llms-txt"
           href={`/llms.txt${llmsLangQuery}`}
           className="fd-agent-llms-directive"
-          style={agentLlmsDirectiveStyle}
-          tabIndex={-1}
-          aria-hidden="true"
+          data-visible-in-header={shouldShowLlmsInHeader ? "true" : undefined}
+          style={shouldShowLlmsInHeader ? undefined : agentLlmsDirectiveStyle}
+          tabIndex={shouldShowLlmsInHeader ? undefined : -1}
+          aria-hidden={shouldShowLlmsInHeader ? undefined : true}
         >
-          llms.txt
+          {shouldShowLlmsInHeader ? "LLMS.TXT" : "llms.txt"}
         </a>
       )}
       {titleControlsPortal}
@@ -909,7 +1037,7 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: !isChangelogRoute }}
+        footer={{ enabled: !isChangelogRoute && !showPageNavigation }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb
@@ -928,10 +1056,16 @@ export function DocsPageClient({
             >
               <PageActions
                 copyMarkdown={copyMarkdown}
+                copyMarkdownFormat={copyMarkdownFormat}
+                copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+                copyMarkdownLabel={copyMarkdownLabel}
+                copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
                 openDocs={openDocs}
                 providers={openDocsProviders}
                 openDocsTarget={openDocsTarget}
                 openDocsPrompt={openDocsPrompt}
+                connectMcp={connectMcp}
+                installSkills={installSkills}
                 alignment={pageActionsAlignment}
                 variant="default"
                 githubFileUrl={githubFileUrl}
@@ -942,10 +1076,16 @@ export function DocsPageClient({
           </div>
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
-        <DocsBody key="body" style={{ display: "flex", flexDirection: "column" }}>
-          <div key="content" style={{ flex: 1 }}>
+        <DocsBody
+          key="body"
+          className="fd-page-body"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
+          {generatedPageHeader}
+          <div key="content" className="fd-docs-content" style={{ flex: 1 }} data-dt-content="">
             {renderedChildren}
           </div>
+          {!generatedPageHeader && titleDecorationsFallback}
           {titleDecorationsPortal}
           {!isChangelogRoute && feedbackEnabled && (
             <DocsFeedback
@@ -955,9 +1095,12 @@ export function DocsPageClient({
               locale={activeLocale}
               question={feedbackQuestion}
               placeholder={feedbackPlaceholder}
+              requireComment={feedbackRequireComment}
               positiveLabel={feedbackPositiveLabel}
               negativeLabel={feedbackNegativeLabel}
               submitLabel={feedbackSubmitLabel}
+              successMessage={feedbackSuccessMessage}
+              errorMessage={feedbackErrorMessage}
               onFeedback={feedbackOnFeedback}
               analytics={analytics}
             />
@@ -987,13 +1130,68 @@ export function DocsPageClient({
               )}
               {showLastUpdatedInFooter && lastModified && (
                 <span key="last-updated" className="fd-last-updated-footer">
-                  Last updated {lastModified}
+                  {lastUpdatedText}
                 </span>
               )}
             </div>
           )}
+          {showPageNavigation && (
+            <nav
+              key="page-navigation"
+              className="not-prose fd-page-nav"
+              aria-label="Page navigation"
+            >
+              {localizedPreviousPage ? (
+                <a href={localizedPreviousPage.url} className="fd-page-nav-card fd-page-nav-prev">
+                  <span className="fd-page-nav-title fd-page-nav-title-prev">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    {localizedPreviousPage.name}
+                  </span>
+                  <span className="fd-page-nav-description">Previous Page</span>
+                </a>
+              ) : (
+                <div aria-hidden="true" />
+              )}
+              {localizedNextPage ? (
+                <a href={localizedNextPage.url} className="fd-page-nav-card fd-page-nav-next">
+                  <span className="fd-page-nav-title fd-page-nav-title-next">
+                    {localizedNextPage.name}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </span>
+                  <span className="fd-page-nav-description">Next Page</span>
+                </a>
+              ) : (
+                <div aria-hidden="true" />
+              )}
+            </nav>
+          )}
         </DocsBody>
       </DocsPage>
+      {devToolsEnabled && <DocsDevTools api={docsApiUrl} pathname={normalizedPath} />}
     </>
   );
 }

@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Use the Farming Labs docs website through agent discovery, AGENTS.md, markdown routes, search, llms.txt, OpenAPI schema discovery, and MCP.
+description: Use the Farming Labs docs website through standards discovery, AGENTS.md, markdown routes, search, llms.txt, OpenAPI schema discovery, and MCP.
 ---
 
 # Farming Labs Docs Website Skill
@@ -10,6 +10,10 @@ Use this skill when reading or implementing from the hosted Farming Labs docs we
 ## Start Here
 
 - Fetch `/.well-known/agent.json` first.
+- Use `/.well-known/api-catalog` for RFC 9727 API discovery.
+- Use `/.well-known/agent-skills/index.json` to discover all published skills and choose by name and description.
+- Verify each index digest against the exact artifact bytes. Skills with companion files are indexed as deterministic archives; their `SKILL.md`, `references/`, `scripts/`, and `assets/` files also remain directly readable.
+- Use `/.well-known/skills/index.json` only when a client requires the legacy discovery shape.
 - Fetch `/AGENTS.md` for coding-agent operating instructions.
 - Read `/docs.md` for the root docs page.
 - Read `/docs/{slug}.md` for page-specific markdown.
@@ -17,4 +21,4 @@ Use this skill when reading or implementing from the hosted Farming Labs docs we
 - Search with `/api/docs?query={query}` when the right page is unknown.
 - Use `/llms.txt` for a compact index and `/llms-full.txt` for full markdown context.
 - Use `/api/docs?format=openapi` for the machine-readable API schema when API routes matter.
-- Use `/mcp` or `/.well-known/mcp` when MCP is available. Prefer `list_docs` to inspect sections, `search_docs` to find a topic, `read_page` to fetch a page, `get_code_examples` to extract runnable snippets, and `get_config_schema` before editing `docs.config.ts`.
+- Use `/mcp` or `/.well-known/mcp` when MCP is available. Published skill files are resources at `docs://skills/{name}/{path}`; text files return text and binary assets return base64 blobs. Prefer `list_docs` to inspect sections, `search_docs` to find a topic, `get_context` for token-budgeted retrieval, `read_page` to fetch a known page or heading, `get_code_examples` to extract runnable snippets, and `get_config_schema` before editing `docs.config.ts`.

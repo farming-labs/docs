@@ -1,0 +1,80 @@
+---
+order: 3
+title: Installation
+description: Add the Docs Cloud route to a Fumadocs-powered app.
+icon: terminal
+---
+
+# Installation
+
+Add the packages used by this example:
+
+```bash
+pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme
+```
+
+Create a docs config:
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
+  },
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  analytics: {
+    cloud: true,
+    includeInputs: false,
+  },
+});
+```
+
+Add the merged API route:
+
+```ts title="app/api/docs/route.ts"
+import docsConfig from "@/docs.config";
+import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";
+import { createDocsAPI } from "@farming-labs/next/api";
+
+const docsCloud = createDocsCloudServer({
+  config: docsConfig,
+});
+
+export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
+export const revalidate = false;
+```
+
+Add the docs layout:
+
+```tsx title="app/docs/layout.tsx"
+import docsConfig from "@/docs.config";
+import { createNextDocsLayout, createNextDocsMetadata } from "@farming-labs/next/layout";
+
+export const metadata = createNextDocsMetadata(docsConfig);
+
+const DocsLayout = createNextDocsLayout(docsConfig);
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <DocsLayout>{children}</DocsLayout>;
+}
+```
+
+## Environment Variables
+
+Only these values are needed for the default hosted cloud:
+
+```bash
+DOCS_CLOUD_PROJECT_ID=project_...
+DOCS_CLOUD_API_KEY=fl_key_...
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_...
+```
+
+You do not need to set an analytics endpoint for the hosted cloud. The local
+docs route proxies analytics to Docs Cloud with the server API key.

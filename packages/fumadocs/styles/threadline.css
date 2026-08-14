@@ -1,7 +1,7 @@
 /* @farming-labs/theme - threadline theme CSS
  * Compact chat-docs UI with neutral shadcn-style surfaces.
  */
-@import "./presets/neutral.css";
+@import "./bundles/shared-framework.css";
 
 :root {
   --radius: 0.625rem;
@@ -141,12 +141,44 @@ body:has(#nd-docs-layout) {
 }
 
 @media (min-width: 1280px) {
-  #nd-docs-layout {
+  #nd-docs-layout:not([data-fd-framework]) {
     max-width: var(--fd-threadline-frame-width) !important;
     margin-inline: auto !important;
     grid-template-columns:
       0px var(--fd-sidebar-width, 260px) minmax(0, var(--fd-threadline-main-width))
       var(--fd-toc-width, 224px) 0px !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] {
+    width: var(--fd-threadline-frame-width) !important;
+    max-width: var(--fd-threadline-frame-width) !important;
+    margin-inline: auto !important;
+    grid-template-columns:
+      var(--fd-sidebar-width, 260px)
+      minmax(0, calc(var(--fd-threadline-main-width) + var(--fd-toc-width, 224px))) !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-main {
+    width: calc(var(--fd-threadline-main-width) + var(--fd-toc-width, 224px)) !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-sidebar {
+    top: var(--docs-header-height, 48px) !important;
+    height: calc(100dvh - var(--docs-header-height, 48px)) !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-page {
+    justify-content: flex-start !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-page:has(.fd-toc) {
+    grid-template-columns:
+      minmax(0, var(--fd-threadline-main-width))
+      var(--fd-toc-width, 224px) !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-page:not(:has(.fd-toc)) {
+    grid-template-columns: minmax(0, var(--fd-threadline-main-width)) !important;
   }
 }
 
@@ -370,7 +402,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
 .fd-page-description,
 .fd-docs-content p,
 .fd-docs-content li,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .fd-docs-content blockquote,
 .prose p,
 .prose li,
@@ -428,7 +460,7 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
   background: var(--muted) !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent) !important;
   border-radius: 0.625rem !important;
   background: color-mix(in srgb, var(--muted) 42%, transparent) !important;
@@ -436,22 +468,69 @@ aside#nd-sidebar-mobile a[data-active="true"]:hover,
   box-shadow: none !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) * {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) * {
   color: inherit;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) a {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) a {
   color: var(--fd-assistant-link) !important;
   text-decoration-color: color-mix(in srgb, var(--fd-assistant-link) 35%, transparent);
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) > svg {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) > svg {
   color: var(--muted-foreground) !important;
   fill: color-mix(in srgb, var(--muted-foreground) 18%, transparent) !important;
 }
 
-#nd-page :is([style*="--callout-color"], .fd-callout, [data-callout]) > [role="none"] {
+:is(#nd-page, #nd-docs-layout[data-fd-framework] .fd-page-body) :is([style*="--callout-color"], .fd-callout, [data-callout]) > [role="none"] {
   background: color-mix(in srgb, var(--muted-foreground) 28%, transparent) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-callout {
+  align-items: flex-start !important;
+  gap: 0.5rem !important;
+  padding: 0.75rem 0.75rem 0.75rem 0.25rem !important;
+  overflow: visible !important;
+  font-size: 0.75rem !important;
+  line-height: 1.45 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-callout-indicator {
+  position: static !important;
+  width: 0.125rem !important;
+  min-width: 0.125rem !important;
+  height: auto !important;
+  min-height: 1.5rem !important;
+  align-self: stretch !important;
+  flex: 0 0 0.125rem !important;
+  border-radius: 0.25rem !important;
+  background: color-mix(in srgb, var(--muted-foreground) 28%, transparent) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-callout-icon {
+  display: none !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-callout-content {
+  min-width: 0;
+  flex: 1;
+  color: var(--foreground) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.7 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-callout-title,
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-callout-content > p {
+  display: inline !important;
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-callout-title {
+  margin-inline-end: 0.375rem !important;
+  font-weight: 600 !important;
 }
 
 .fd-docs-content :not(pre) > code,
@@ -491,6 +570,157 @@ figure.shiki > div:first-child:has(figcaption),
   font-weight: 500 !important;
 }
 
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled {
+  border: 0 !important;
+  border-radius: 0.75rem !important;
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+  overflow: hidden;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title {
+  position: relative;
+  height: 2.375rem;
+  min-height: 2.375rem !important;
+  padding: 0 1rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    currentColor,
+    currentColor 1px,
+    transparent 1px,
+    transparent 6px
+  );
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock.fd-codeblock--titled
+  .fd-codeblock-title::before {
+  opacity: 0.05;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-content {
+  padding: 0.875rem 0 !important;
+  background: transparent !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.65 !important;
+  overflow: auto;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled pre {
+  margin: 0 !important;
+  padding: 0.15rem 0.5rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.65 !important;
+  overflow: visible;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled.shiki {
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+}
+
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock.fd-codeblock--titled.shiki {
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled pre.shiki,
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock.fd-codeblock--titled
+  pre.shiki {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled pre code {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock:not(.fd-codeblock--titled) {
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+}
+
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock:not(.fd-codeblock--titled) {
+  background: var(--fd-assistant-code-bg) !important;
+  background-color: var(--fd-assistant-code-bg) !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock:not(.fd-codeblock--titled) .fd-codeblock-content {
+  padding: 0.875rem 0 !important;
+  background: transparent !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.65 !important;
+  overflow: auto;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock:not(.fd-codeblock--titled) pre {
+  margin: 0 !important;
+  padding: 0.15rem 0.5rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.65 !important;
+  overflow: visible;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock:not(.fd-codeblock--titled) pre.shiki,
+:is(html.dark, body.dark, .dark)
+  #nd-docs-layout[data-fd-framework]
+  .fd-codeblock:not(.fd-codeblock--titled)
+  pre.shiki {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock:not(.fd-codeblock--titled) pre code {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-actions {
+  margin-inline-end: -0.5rem;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title .fd-copy-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+  opacity: 0;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled:hover .fd-codeblock-title .fd-copy-btn,
+#nd-docs-layout[data-fd-framework] .fd-codeblock.fd-codeblock--titled .fd-codeblock-title .fd-copy-btn:focus-visible {
+  opacity: 1;
+}
+
 figure.shiki > div[role="region"] {
   padding-top: 0.875rem !important;
   padding-bottom: 0.875rem !important;
@@ -516,7 +746,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
 }
 
 .fd-table-wrapper,
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent) !important;
   border-radius: 0.75rem !important;
@@ -525,7 +755,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
   overflow: hidden;
 }
 
-.fd-docs-content table,
+:is(.fd-docs-content, .prose) table,
 .prose table {
   width: 100% !important;
   border-collapse: separate !important;
@@ -538,13 +768,13 @@ figure.shiki button[aria-label*="Copy"]:hover {
   background: transparent !important;
 }
 
-.fd-docs-content thead,
+:is(.fd-docs-content, .prose) thead,
 .prose thead {
   background: color-mix(in srgb, var(--muted) 48%, transparent) !important;
 }
 
 .fd-table-wrapper th,
-.fd-docs-content th,
+:is(.fd-docs-content, .prose) th,
 .prose th {
   background: transparent !important;
   color: var(--muted-foreground) !important;
@@ -553,23 +783,33 @@ figure.shiki button[aria-label*="Copy"]:hover {
 
 .fd-table-wrapper th,
 .fd-table-wrapper td,
-.fd-docs-content th,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) th,
+:is(.fd-docs-content, .prose) td,
 .prose th,
 .prose td {
   border-color: color-mix(in srgb, var(--border) 86%, transparent) !important;
   padding: 0.75rem 1rem !important;
 }
 
-.fd-docs-content tbody tr:nth-child(even),
+:is(.fd-docs-content, .prose) tbody tr:nth-child(even),
 .prose tbody tr:nth-child(even) {
   background: color-mix(in srgb, var(--muted) 18%, transparent) !important;
 }
 
 .fd-table-wrapper td,
-.fd-docs-content td,
+:is(.fd-docs-content, .prose) td,
 .prose td {
   background: transparent !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body th {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body td {
+  font-size: 0.875rem !important;
+  line-height: 1.7 !important;
 }
 
 .fd-actions-toc-portal {
@@ -693,7 +933,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
     inset-inline-start: var(--fd-threadline-frame-gutter) !important;
     width: var(--fd-sidebar-width, 260px) !important;
     height: calc(100vh - var(--docs-header-height, 48px)) !important;
-    z-index: 102 !important;
+    z-index: 49 !important;
     pointer-events: none !important;
   }
 
@@ -710,24 +950,19 @@ figure.shiki button[aria-label*="Copy"]:hover {
     ) !important;
     width: var(--fd-toc-width, 224px) !important;
     height: calc(100vh - var(--docs-header-height, 48px)) !important;
+    z-index: 49 !important;
     pointer-events: none !important;
   }
 
   body:has(#nd-sidebar) .omni-overlay {
-    left: calc(var(--fd-threadline-frame-gutter) + var(--fd-sidebar-width, 260px)) !important;
+    left: 0 !important;
     right: 0 !important;
     width: auto !important;
   }
 
   body:has(#nd-sidebar) .omni-content {
-    left: calc(
-      var(--fd-threadline-frame-gutter) + var(--fd-sidebar-width, 260px) +
-        (var(--fd-threadline-main-width) + var(--fd-toc-width, 224px)) / 2
-    ) !important;
-    width: min(
-      720px,
-      calc(var(--fd-threadline-main-width) + var(--fd-toc-width, 224px) - 32px)
-    ) !important;
+    left: 50% !important;
+    width: min(720px, calc(100% - 1rem)) !important;
   }
 }
 
@@ -775,6 +1010,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
 }
 
 .omni-group-label {
+  display: block !important;
   color: var(--muted-foreground) !important;
   font-size: 0.6875rem !important;
   font-weight: 500 !important;
@@ -851,6 +1087,52 @@ figure.shiki button[aria-label*="Copy"]:hover {
 
 .omni-footer-inner {
   padding-top: 0.25rem !important;
+}
+
+@media (min-width: 1280px) {
+  #nd-docs-layout[data-fd-framework] .fd-toc {
+    position: sticky !important;
+    top: var(--docs-header-height, 48px) !important;
+    width: var(--fd-toc-width, 224px) !important;
+    height: calc(100dvh - var(--docs-header-height, 48px)) !important;
+    padding: 3rem 1rem 0.5rem 0 !important;
+    overflow-y: auto;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-toc-title {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+    margin: 0 0 0.75rem !important;
+    color: var(--muted-foreground) !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-toc-title svg {
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+    opacity: 1 !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-toc-list {
+    border-left: 0 !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-toc-link {
+    margin: 0 !important;
+    padding: 0.375rem 0 0.375rem 0.75rem !important;
+    border-left: 0 !important;
+    color: var(--muted-foreground) !important;
+    font-size: 0.875rem !important;
+    line-height: 1.7 !important;
+  }
+
+  #nd-docs-layout[data-fd-framework] .fd-toc-link:hover,
+  #nd-docs-layout[data-fd-framework] .fd-toc-link-active {
+    color: var(--foreground) !important;
+  }
 }
 
 .fd-page-nav {
@@ -1117,6 +1399,12 @@ figure.shiki button[aria-label*="Copy"]:hover {
   display: none !important;
 }
 
+#nd-docs-layout[data-fd-framework] .fd-page-footer {
+  display: block !important;
+  margin-top: auto !important;
+  padding-top: 1.5rem !important;
+}
+
 @media (min-width: 1280px) {
   .fd-actions-toc-host {
     display: block;
@@ -1227,11 +1515,67 @@ figure.shiki button[aria-label*="Copy"]:hover {
 
 .fd-tabs-trigger[data-state="active"],
 .fd-tab-trigger[data-state="active"],
+.fd-tab-trigger.fd-tab-active,
 [role="tab"][aria-selected="true"],
 [role="tab"][data-active="true"] {
   background: var(--background) !important;
   color: var(--foreground) !important;
   box-shadow: none !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tabs {
+  margin: 1rem 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0.75rem !important;
+  background: var(--fd-assistant-code-bg) !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tabs-list {
+  min-height: 2.3125rem !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding: 0.25rem !important;
+  border: 0 !important;
+  border-radius: 0.625rem !important;
+  background: var(--fd-assistant-code-bg) !important;
+  overflow-x: auto;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tab-trigger {
+  min-height: 1.8125rem !important;
+  padding: 0.375rem 0.5rem !important;
+  border: 0 !important;
+  border-radius: 0.5rem !important;
+  color: var(--muted-foreground) !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  line-height: 1.45 !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tab-trigger.fd-tab-active,
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tab-trigger[data-state="active"] {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tab-panel,
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-code-group-panel {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tabs .fd-codeblock {
+  margin: 0 !important;
+  border-radius: 0 0 0.75rem 0.75rem !important;
+}
+
+#nd-docs-layout[data-fd-framework] .fd-page-body .fd-tabs .fd-codeblock pre {
+  border-radius: 0 !important;
 }
 
 .fd-feedback-submit,

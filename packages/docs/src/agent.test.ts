@@ -1,17 +1,38 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { extractDocsMarkdownPromptBlocks, findDocsAudienceMdxTags } from "./audience.js";
 import {
+  acceptsDocsMarkdown,
+  AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+  API_CATALOG_MEDIA_TYPE,
+  API_CATALOG_PROFILE_URI,
   buildDocsAgentDiscoverySpec,
+  buildDocsConfigMap,
+  buildDocsDiagnostics,
   buildDocsMcpEndpointCandidates,
+  buildDocsMarkdownSectionIndex,
+  collectDocsMarkdownSections,
+  createDocsMarkdownResponse,
+  createDocsStandardsDiscoveryResponse,
   detectDocsMarkdownAgentRequest,
+  DOCS_AGENT_MANIFEST_FORMAT,
+  DOCS_AGENT_MANIFEST_SCHEMA_URI,
+  DOCS_AGENT_MANIFEST_VERSION,
+  DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+  findDocsAudienceMdxIssues,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
   isDocsAgentsRequest,
+  isDocsConfigRequest,
+  isDocsDiagnosticsRequest,
   isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
+  isDocsMarkdownSectionIndexRequest,
   isDocsPublicGetRequest,
+  isDocsStandardsDiscoveryRequest,
   isDocsSkillRequest,
   getDocsLlmsTxtMaxCharsIssue,
   matchesDocsLlmsTxtSection,
@@ -23,17 +44,23 @@ import {
   resolveDocsMarkdownRecovery,
   resolveDocsAgentFeedbackConfig,
   resolveDocsAgentFeedbackRequest,
+  resolveDocsAudienceMdxContent,
   resolveDocsAgentMdxContent,
   resolveDocsAgentsFormat,
   resolveDocsLlmsTxtFormat,
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsMarkdownCanonicalUrl,
+  resolveDocsOpenApiDiscoveryConfig,
+  resolveDocsMarkdownSectionRequest,
+  resolveDocsRequestApiRoute,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
+  selectDocsMarkdownSection,
   selectDocsLlmsTxtContent,
   toDocsMarkdownUrl,
 } from "./agent.js";
+import { resolveDocsMcpConfig } from "./mcp.js";
 
 describe("agent route helpers", () => {
   it("detects well-known agent and llms routes", () => {
@@ -43,7 +70,87 @@ describe("agent route helpers", () => {
     expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/api/docs?agent=spec"))).toBe(
       true,
     );
+    const customAgentSpec = new URL("https://example.com/api/internal/docs?agent=spec");
+    expect(isDocsAgentDiscoveryRequest(customAgentSpec)).toBe(false);
+    expect(
+      isDocsAgentDiscoveryRequest(customAgentSpec, { apiRoute: " api//internal/docs/ " }),
+    ).toBe(true);
+    expect(
+      isDocsSkillRequest(new URL("https://example.com/api/internal/docs?format=skill"), {
+        apiRoute: "/api/internal/docs",
+      }),
+    ).toBe(true);
+    expect(
+      isDocsAgentsRequest(new URL("https://example.com/api/internal/docs?format=agents"), {
+        apiRoute: "/api/internal/docs",
+      }),
+    ).toBe(true);
     expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/blog?agent=spec"))).toBe(false);
+    expect(
+      resolveDocsRequestApiRoute(
+        new URL("https://example.com/api/internal/docs?format=skill"),
+        "/api/configured/docs",
+      ),
+    ).toBe("/api/configured/docs");
+    expect(
+      resolveDocsRequestApiRoute(new URL("https://example.com/api/internal/docs?format=skill")),
+    ).toBe("/api/internal/docs");
+    for (const publicPath of [
+      "/docs/api/llms.txt",
+      "/docs-map/sitemap.md",
+      "/docs/installation.md",
+      "/docs-map/sitemap.xml",
+    ]) {
+      expect(
+        resolveDocsRequestApiRoute(new URL(`https://example.com${publicPath}?format=diagnostics`)),
+      ).toBe("/api/docs");
+      expect(
+        resolveDocsRequestApiRoute(
+          new URL(`https://example.com${publicPath}?format=diagnostics`),
+          " api//configured/docs/ ",
+        ),
+      ).toBe("/api/configured/docs");
+    }
+    expect(
+      resolveDocsRequestApiRoute(
+        new URL("https://example.com/skill.md?lang=en"),
+        "/api/configured/docs",
+      ),
+    ).toBe("/api/configured/docs");
+    expect(
+      resolveDocsRequestApiRoute(
+        new URL("https://example.com/.well-known/api-catalog?format=diagnostics"),
+        "/api/configured/docs",
+      ),
+    ).toBe("/api/configured/docs");
+    expect(
+      isDocsStandardsDiscoveryRequest(new URL("https://example.com/.well-known/api-catalog")),
+    ).toBe(true);
+    expect(
+      isDocsStandardsDiscoveryRequest(
+        new URL("https://example.com/.well-known/agent-skills/index.json"),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsStandardsDiscoveryRequest(
+        new URL("https://example.com/.well-known/agent-skills/docs/SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsStandardsDiscoveryRequest(
+        new URL("https://example.com/api/docs?format=agent-skill&name=docs"),
+      ),
+    ).toBe(true);
+    expect(isDocsConfigRequest(new URL("https://example.com/api/docs?format=config"))).toBe(true);
+    expect(isDocsConfigRequest(new URL("https://example.com/api/docs?format=markdown"))).toBe(
+      false,
+    );
+    expect(
+      isDocsDiagnosticsRequest(new URL("https://example.com/api/docs?format=diagnostics")),
+    ).toBe(true);
+    expect(isDocsDiagnosticsRequest(new URL("https://example.com/api/docs?format=config"))).toBe(
+      false,
+    );
 
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/llms.txt"))).toBe("llms");
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/api/docs?format=llms"))).toBe(
@@ -100,6 +207,433 @@ describe("agent route helpers", () => {
     expect(resolveDocsAgentsFormat(new URL("https://example.com/api/docs?format=agents"))).toBe(
       "agents",
     );
+  });
+
+  it("builds a JSON-safe docs config map with pointers and redaction", () => {
+    function submitDocsFeedback() {}
+    function authenticateMcp() {
+      return null;
+    }
+    const navTitle = {
+      $$typeof: Symbol.for("react.element"),
+      type: "div",
+      props: {},
+    };
+
+    const map = buildDocsConfigMap(
+      {
+        entry: "docs",
+        theme: {
+          name: "pixel-border",
+          ui: {
+            layout: {
+              sidebarWidth: 320,
+              toc: { enabled: true, depth: 3 },
+            },
+          },
+        },
+        nav: {
+          title: navTitle,
+          url: "/",
+        },
+        search: {
+          provider: "algolia",
+          appId: "APP_ID",
+          searchApiKey: "secret-key",
+          apiKeyEnv: "ALGOLIA_SEARCH_API_KEY",
+        },
+        feedback: {
+          enabled: true,
+          onFeedback: submitDocsFeedback,
+        },
+        llmsTxt: {
+          sections: [{ title: "Guides", match: "/docs/guides/**" }],
+        },
+        mcp: {
+          tools: { listTasks: true, readTask: true },
+          security: {
+            authenticate: authenticateMcp,
+            protectedResource: {
+              authorizationServers: ["https://auth.example.com"],
+              scopesSupported: ["docs:read"],
+            },
+          },
+        },
+        rootDir: "/tmp/site",
+        _preloadedContent: {
+          "/docs/page.mdx": "# Internal content",
+        },
+      },
+      { file: "docs.config.tsx" },
+    );
+
+    expect(map).toMatchObject({
+      schemaVersion: 1,
+      format: "docs-config-map.v1",
+      source: {
+        file: "docs.config.tsx",
+        language: "tsx",
+      },
+      values: {
+        entry: "docs",
+        theme: {
+          $kind: "theme",
+          name: "pixel-border",
+        },
+        nav: {
+          title: {
+            $kind: "jsx",
+            component: "div",
+          },
+          url: "/",
+        },
+        feedback: {
+          enabled: true,
+          onFeedback: {
+            $kind: "function",
+            name: "submitDocsFeedback",
+          },
+        },
+      },
+    });
+    expect(map.values.search).toMatchObject({
+      provider: "algolia",
+      appId: "APP_ID",
+      searchApiKey: {
+        $kind: "secret",
+        value: "[redacted]",
+      },
+      apiKeyEnv: "ALGOLIA_SEARCH_API_KEY",
+    });
+    expect(map.pointers["/entry"]).toEqual({ path: "entry", kind: "string" });
+    expect(map.pointers["/theme"]).toEqual({ path: "theme", kind: "theme" });
+    expect(map.pointers["/search/searchApiKey"]).toEqual({
+      path: "search.searchApiKey",
+      kind: "secret",
+    });
+    expect(map.pointers["/llmsTxt/sections/0/title"]).toEqual({
+      path: "llmsTxt.sections[0].title",
+      kind: "string",
+    });
+    expect(map.values.mcp).toEqual({
+      tools: { listTasks: true, readTask: true },
+      security: {
+        authenticate: { $kind: "function", name: "authenticateMcp" },
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+          scopesSupported: ["docs:read"],
+        },
+      },
+    });
+    expect(map.pointers["/mcp/tools/listTasks"]).toEqual({
+      path: "mcp.tools.listTasks",
+      kind: "boolean",
+    });
+    expect(map.values).not.toHaveProperty("rootDir");
+    expect(map.values).not.toHaveProperty("_preloadedContent");
+  });
+
+  it("builds docs diagnostics from config-derived capabilities", () => {
+    const diagnostics = buildDocsDiagnostics(
+      {
+        entry: "docs",
+        staticExport: true,
+        search: {
+          provider: "algolia",
+          appId: "APP_ID",
+          indexName: "docs",
+          searchApiKey: "search-secret",
+        },
+        ai: {
+          enabled: true,
+          mode: "floating",
+        },
+        feedback: {
+          agent: false,
+        },
+        llmsTxt: false,
+        sitemap: {
+          routePrefix: "docs",
+        },
+        robots: false,
+        apiReference: {
+          enabled: true,
+          path: "reference",
+        },
+      },
+      { adapter: "next" },
+    );
+
+    expect(diagnostics).toMatchObject({
+      schemaVersion: 1,
+      format: "docs-diagnostics.v1",
+      ok: false,
+      adapter: "next",
+      routes: {
+        docs: "/docs",
+        api: "/api/docs",
+        config: "/api/docs?format=config",
+        diagnostics: "/api/docs?format=diagnostics",
+        apiCatalog: null,
+        agentSkillsIndex: "/.well-known/agent-skills/index.json",
+        agentSkillsArtifact: "/.well-known/agent-skills/{name}/SKILL.md",
+        search: null,
+        agentSearch: null,
+        contentChanges: null,
+        askAi: null,
+        llmsTxt: null,
+        robots: null,
+        openapi: "/api/docs?format=openapi",
+        apiReference: "/reference",
+      },
+      features: {
+        staticExport: { status: "enabled" },
+        apiCatalog: {
+          status: "disabled",
+          reason: "static-export",
+          route: null,
+          transport: "GET/HEAD",
+        },
+        search: {
+          status: "disabled",
+          reason: "static-export",
+          provider: "algolia",
+          routes: { human: null, agent: null, structuredAgent: null },
+          agentEndpoint: null,
+          structuredAgentEndpoint: null,
+          explainedAgentEndpoint: null,
+          audienceParam: "audience",
+          defaultAudience: "human",
+          supportedAudiences: ["human", "agent"],
+          filterParams: {
+            framework: "framework",
+            version: "version",
+            package: "package",
+            tags: "tags",
+          },
+          responseFormat: "docs-search.v1",
+          explainParam: "explain",
+          explainValue: "true",
+          explanationField: "explanation",
+          explanationFormat: "docs-search-explanation.v1",
+          warningsField: "warnings",
+          facetParam: "facet",
+          limitParam: "limit",
+          cursorParam: "cursor",
+          nextCursorField: "nextCursor",
+          hasMoreField: "hasMore",
+          totalField: "total",
+        },
+        contentChanges: {
+          status: "disabled",
+          reason: "Runtime content-change feeds are unavailable in static exports.",
+          route: null,
+          format: "docs-content-changes.v1",
+        },
+        ai: {
+          status: "disabled",
+          reason: "static-export",
+          mode: "floating",
+        },
+        feedback: {
+          status: "enabled",
+          human: true,
+          agent: false,
+        },
+        llmsTxt: {
+          status: "disabled",
+          reason: "configured-disabled",
+        },
+        sitemap: {
+          status: "enabled",
+        },
+        robots: {
+          status: "disabled",
+        },
+        apiReference: {
+          status: "enabled",
+          route: "/reference",
+        },
+      },
+    });
+    expect(diagnostics.warnings.map((issue) => issue.code)).toContain("static-export-runtime-api");
+    expect(diagnostics.errors).toEqual([
+      {
+        severity: "error",
+        code: "ai-static-export",
+        path: "/ai/enabled",
+        message:
+          "Ask AI requires the runtime /api/docs POST handler and will not run in static export builds.",
+      },
+    ]);
+  });
+
+  it("reports the llmsTxt API catalog opt-out without disabling Agent Skills", () => {
+    const diagnostics = buildDocsDiagnostics({
+      llmsTxt: {
+        enabled: true,
+        apiCatalog: false,
+      },
+    });
+
+    expect(diagnostics.routes).toMatchObject({
+      apiCatalog: null,
+      agentSkillsIndex: "/.well-known/agent-skills/index.json",
+      llmsTxt: "/llms.txt",
+    });
+    expect(diagnostics.features.apiCatalog).toEqual({
+      status: "disabled",
+      reason: "llms-txt-api-catalog-disabled",
+      route: null,
+      transport: "GET/HEAD",
+    });
+    expect(diagnostics.features.llmsTxt.status).toBe("enabled");
+    expect(diagnostics.features.skills.status).toBe("enabled");
+  });
+
+  it("uses the configured API route throughout diagnostics", () => {
+    const diagnostics = buildDocsDiagnostics({
+      entry: "docs",
+      cloud: { apiRoute: " api//internal/docs/ " },
+      ai: { enabled: true },
+      apiReference: true,
+    });
+
+    expect(diagnostics.routes).toMatchObject({
+      api: "/api/internal/docs",
+      config: "/api/internal/docs?format=config",
+      diagnostics: "/api/internal/docs?format=diagnostics",
+      agentSpec: "/api/internal/docs?agent=spec",
+      agents: "/api/internal/docs?format=agents",
+      skill: "/api/internal/docs?format=skill",
+      search: "/api/internal/docs?query={query}",
+      agentSearch: "/api/internal/docs?query={query}&audience=agent",
+      contentChanges: "/api/internal/docs?audience=agent&response=changes",
+      askAi: "/api/internal/docs",
+      openapi: "/api/internal/docs?format=openapi",
+    });
+    expect(diagnostics.features).toMatchObject({
+      config: { route: "/api/internal/docs?format=config" },
+      diagnostics: { route: "/api/internal/docs?format=diagnostics" },
+      search: {
+        route: "/api/internal/docs?query={query}",
+        routes: {
+          human: "/api/internal/docs?query={query}",
+          agent: "/api/internal/docs?query={query}&audience=agent",
+          structuredAgent: "/api/internal/docs?query={query}&audience=agent&response=structured",
+          explainedAgent:
+            "/api/internal/docs?query={query}&audience=agent&response=structured&explain=true",
+        },
+        agentEndpoint: "/api/internal/docs?query={query}&audience=agent",
+        structuredAgentEndpoint:
+          "/api/internal/docs?query={query}&audience=agent&response=structured",
+        explainedAgentEndpoint:
+          "/api/internal/docs?query={query}&audience=agent&response=structured&explain=true",
+        audienceParam: "audience",
+        defaultAudience: "human",
+        supportedAudiences: ["human", "agent"],
+        filterParams: {
+          framework: "framework",
+          version: "version",
+          package: "package",
+          tags: "tags",
+        },
+        responseFormat: "docs-search.v1",
+        explainParam: "explain",
+        explainValue: "true",
+        explanationField: "explanation",
+        explanationFormat: "docs-search-explanation.v1",
+        warningsField: "warnings",
+        facetParam: "facet",
+        limitParam: "limit",
+        cursorParam: "cursor",
+        nextCursorField: "nextCursor",
+        hasMoreField: "hasMore",
+        totalField: "total",
+      },
+      contentChanges: {
+        status: "enabled",
+        route: "/api/internal/docs?audience=agent&response=changes",
+        format: "docs-content-changes.v1",
+        defaultAudience: "agent",
+        sinceParam: "since",
+        generationField: "indexGeneration",
+        resetRequiredField: "resetRequired",
+      },
+      ai: { route: "/api/internal/docs" },
+      apiReference: { routes: { openapi: "/api/internal/docs?format=openapi" } },
+      agents: { routes: { api: "/api/internal/docs?format=agents" } },
+      skills: { routes: { api: "/api/internal/docs?format=skill" } },
+    });
+  });
+
+  it("honors an effective API catalog diagnostics override", () => {
+    const diagnostics = buildDocsDiagnostics(
+      { llmsTxt: { apiCatalog: true } },
+      { apiCatalog: false },
+    );
+
+    expect(diagnostics.routes.apiCatalog).toBeNull();
+    expect(diagnostics.features.apiCatalog).toMatchObject({
+      status: "disabled",
+      reason: "configured-disabled",
+      route: null,
+    });
+  });
+
+  it("reports invalid search provider diagnostics without leaking configured values", () => {
+    const diagnostics = buildDocsDiagnostics(
+      {
+        entry: "docs",
+        search: {
+          provider: "typesense",
+          baseUrl: "https://search.example.com",
+        },
+      },
+      { adapter: "next" },
+    );
+
+    expect(diagnostics.ok).toBe(false);
+    expect(diagnostics.features.search).toMatchObject({
+      status: "enabled",
+      provider: "typesense",
+    });
+    expect(diagnostics.errors.map((issue) => issue.code)).toEqual([
+      "missing-search-collection",
+      "missing-search-api-key",
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain("https://search.example.com");
+  });
+
+  it("maps diagnostics mcp config without server-only imports", () => {
+    const diagnostics = buildDocsDiagnostics({
+      mcp: {
+        route: "internal/docs/mcp/",
+        tools: {
+          searchDocs: false,
+          getConfigSchema: false,
+        },
+      },
+    });
+
+    expect(diagnostics.routes.mcp).toBe("/internal/docs/mcp");
+    expect(diagnostics.features.mcp).toMatchObject({
+      status: "enabled",
+      route: "/internal/docs/mcp",
+      tools: {
+        listDocs: true,
+        listPages: true,
+        listPageSections: true,
+        readPage: true,
+        listTasks: true,
+        readTask: true,
+        searchDocs: false,
+        getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: false,
+        getContext: true,
+      },
+    });
   });
 
   it("derives section-level llms.txt routes from URL matchers", () => {
@@ -164,6 +698,17 @@ describe("agent route helpers", () => {
     expect(matchesDocsLlmsTxtSection("/docs/api", rootShallowSection!)).toBe(false);
   });
 
+  it("resolves llms.txt query formats on a custom API route", () => {
+    const url = new URL("https://example.com/api/internal/docs?format=llms-full");
+
+    expect(resolveDocsLlmsTxtRequest(url)).toBeNull();
+    expect(
+      resolveDocsLlmsTxtRequest(url, undefined, undefined, {
+        apiRoute: "api/internal/docs/",
+      }),
+    ).toEqual({ format: "llms-full", section: undefined });
+  });
+
   it("renders root and section llms.txt content with progressive disclosure", () => {
     const content = renderDocsLlmsTxt(
       [
@@ -207,6 +752,9 @@ describe("agent route helpers", () => {
 
     expect(content.llmsTxt).toContain("## Sections");
     expect(content.llmsTxt).toContain(
+      "[API catalog](https://docs.example.com/.well-known/api-catalog)",
+    );
+    expect(content.llmsTxt).toContain(
       "- [API](https://docs.example.com/docs/api/llms.txt): Endpoint reference",
     );
     expect(content.llmsTxt).toContain("- [Overview](https://docs.example.com/docs.md): Start here");
@@ -232,11 +780,94 @@ describe("agent route helpers", () => {
 
     const issue = getDocsLlmsTxtMaxCharsIssue("/llms.txt", content.llmsTxt, content.maxChars);
     expect(issue?.mode).toBe("warn");
+
+    const withoutApiCatalog = renderDocsLlmsTxt(
+      [{ url: "/docs", title: "Overview", content: "Welcome." }],
+      { baseUrl: "https://docs.example.com", apiCatalog: false },
+    ).llmsTxt;
+    expect(withoutApiCatalog).not.toContain("/.well-known/api-catalog");
+    expect(withoutApiCatalog).toContain("/.well-known/agent-skills/index.json");
+  });
+
+  it("uses the agent projection for runtime llms-full.txt content", () => {
+    const content = renderDocsLlmsTxt([
+      {
+        url: "/docs/audience",
+        title: "Audience",
+        content: "Human search text.",
+        rawContent: "Shared.\n\nHuman-only.",
+        agentFallbackRawContent: "Shared.\n\nAgent-only.",
+      },
+    ]);
+
+    expect(content.llmsFullTxt).toContain("Shared.");
+    expect(content.llmsFullTxt).toContain("Agent-only.");
+    expect(content.llmsFullTxt).not.toContain("Human-only.");
+    expect(content.llmsTxt).not.toContain("Agent-only.");
   });
 
   it("detects public docs forwarder requests without taking over api/docs", () => {
     expect(isDocsMcpRequest(new URL("https://example.com/.well-known/mcp"))).toBe(true);
     expect(isDocsMcpRequest(new URL("https://example.com/mcp"))).toBe(true);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp")),
+    ).toBe(false);
+    expect(isDocsMcpRequest(new URL("https://example.com/mcp///"))).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp///")),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource")),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp"), {
+        security: {
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+          },
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(new URL("https://example.com/.well-known/oauth-protected-resource/mcp"), {
+        enabled: false,
+        security: {
+          authenticate: async () => ({ id: "agent" }),
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+          },
+        },
+      }),
+    ).toBe(false);
+    const protectedMcp = {
+      route: "/internal/mcp",
+      security: {
+        authenticate: async () => ({ id: "agent" }),
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+        },
+      },
+    };
+    for (const route of [
+      "/internal/mcp",
+      "/.well-known/oauth-protected-resource/mcp",
+      "/.well-known/oauth-protected-resource/.well-known/mcp",
+      "/.well-known/oauth-protected-resource/internal/mcp",
+    ]) {
+      expect(isDocsMcpRequest(new URL(`https://example.com${route}`), protectedMcp)).toBe(true);
+    }
+    expect(
+      isDocsMcpRequest(
+        new URL("https://example.com/.well-known/oauth-protected-resource"),
+        protectedMcp,
+      ),
+    ).toBe(false);
+    expect(
+      isDocsMcpRequest(
+        new URL("https://example.com/.well-known/oauth-protected-resource/unknown"),
+        protectedMcp,
+      ),
+    ).toBe(false);
 
     expect(
       isDocsPublicGetRequest(
@@ -252,6 +883,19 @@ describe("agent route helpers", () => {
         new Request("https://example.com/.well-known/skill.md"),
       ),
     ).toBe(true);
+    for (const route of [
+      "/.well-known/api-catalog",
+      "/.well-known/agent-skills/index.json",
+      "/.well-known/agent-skills/docs/SKILL.md",
+    ]) {
+      expect(
+        isDocsPublicGetRequest(
+          "docs",
+          new URL(`https://example.com${route}`),
+          new Request(`https://example.com${route}`),
+        ),
+      ).toBe(true);
+    }
     expect(
       isDocsPublicGetRequest(
         "docs",
@@ -367,6 +1011,29 @@ describe("agent route helpers", () => {
     );
     expect(acceptRoute).toEqual({ requestedPath: "install" });
 
+    const htmlPreferredRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/docs/install"),
+      new Request("https://example.com/docs/install", {
+        headers: { accept: "text/html;q=1, text/markdown;q=0.5" },
+      }),
+    );
+    expect(htmlPreferredRoute).toBeNull();
+    expect(
+      acceptsDocsMarkdown(
+        new Request("https://example.com/docs/install", {
+          headers: { accept: "text/html;q=0.5, text/markdown;q=1" },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      acceptsDocsMarkdown(
+        new Request("https://example.com/docs/install", {
+          headers: { accept: "*/*;q=1, text/markdown;q=0.5" },
+        }),
+      ),
+    ).toBe(false);
+
     const signatureAgentRoute = resolveDocsMarkdownRequest(
       "docs",
       new URL("https://example.com/docs/install"),
@@ -473,6 +1140,14 @@ describe("agent route helpers", () => {
     );
     expect(apiFormatRoute).toEqual({ requestedPath: "install" });
 
+    const customApiFormatRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/api/internal/docs?format=markdown&path=install"),
+      new Request("https://example.com/api/internal/docs?format=markdown&path=install"),
+      { apiRoute: "/api/internal/docs" },
+    );
+    expect(customApiFormatRoute).toEqual({ requestedPath: "install" });
+
     const hijackRoute = resolveDocsMarkdownRequest(
       "docs",
       new URL("https://example.com/blog?format=markdown&path=install"),
@@ -490,6 +1165,911 @@ describe("agent route helpers", () => {
     expect(signatureAgentHijackRoute).toBeNull();
   });
 
+  it("builds cache-aware Markdown responses with representation metadata", async () => {
+    const request = new Request("https://example.com/docs/install.md");
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: "Install the package.",
+        lastmod: "2026-07-18",
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-location")).toBe(
+      "https://example.com/docs/install.md?lang=en",
+    );
+    expect(response.headers.get("content-language")).toBe("en");
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/install?lang=en>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
+    );
+    expect(response.headers.get("x-llms-txt")).toBe("https://example.com/llms.txt");
+    const responseDigest = createHash("sha256").update(document, "utf8").digest("base64");
+    expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
+    expect(response.headers.get("content-digest")).toBe(`sha-256=:${responseDigest}:`);
+    expect(response.headers.get("last-modified")).toBe("Sat, 18 Jul 2026 14:23:45 GMT");
+
+    const dateOnlyResponse = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+    });
+    expect(dateOnlyResponse.headers.get("last-modified")).toBeNull();
+
+    const dateOnlyConditionalResponse = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-Modified-Since": "Sun, 19 Jul 2026 00:00:00 GMT" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+    });
+    expect(dateOnlyConditionalResponse.status).toBe(200);
+
+    const notModified = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-None-Match": response.headers.get("etag") ?? "" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
+    });
+    expect(notModified.status).toBe(304);
+    expect(await notModified.text()).toBe("");
+    expect(notModified.headers.get("etag")).toBe(response.headers.get("etag"));
+
+    const dateNotModified = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-Modified-Since": "Sun, 19 Jul 2026 00:00:00 GMT" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
+    });
+    expect(dateNotModified.status).toBe(304);
+
+    const sameDayBeforeModification = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-Modified-Since": "Sat, 18 Jul 2026 12:00:00 GMT" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-18T14:23:45.000Z",
+    });
+    expect(sameDayBeforeModification.status).toBe(200);
+
+    const missing = createDocsMarkdownResponse({
+      request: new Request("https://example.com/docs/unknown.md"),
+      document: null,
+      entry: "docs",
+      requestedPath: "unknown",
+      origin: "https://example.com",
+      pages: [],
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("cache-control")).toBe("no-store");
+    expect(await missing.text()).toContain("# Docs Page Not Found");
+  });
+
+  it("collects and selects addressable Markdown sections by stable heading ids", () => {
+    const document = [
+      "---",
+      'title: "Install"',
+      "---",
+      "",
+      "# Install",
+      "",
+      "Intro.",
+      "",
+      "## Prerequisites",
+      "",
+      "Install Node.",
+      "",
+      "## Expected Results",
+      "",
+      "The dev server starts.",
+      "",
+      "### Logs",
+      "",
+      "Look for ready output.",
+      "",
+      "## Expected Results",
+      "",
+      "Duplicate heading coverage.",
+    ].join("\n");
+
+    expect(collectDocsMarkdownSections(document).map((section) => section.id)).toEqual([
+      "install",
+      "prerequisites",
+      "expected-results",
+      "logs",
+      "expected-results-1",
+    ]);
+
+    const selected = selectDocsMarkdownSection(document, {
+      section: "expected-results",
+      tokenBudget: 200,
+    });
+    expect(selected.found).toBe(true);
+    expect(selected.section?.heading).toBe("Expected Results");
+    expect(selected.document).toContain("The dev server starts.");
+    expect(selected.document).toContain("### Logs");
+    expect(selected.document).not.toContain("Duplicate heading coverage.");
+  });
+
+  it("ignores headings inside fenced code blocks when collecting Markdown sections", () => {
+    const document = [
+      "# Install",
+      "",
+      "```bash",
+      "# this is a shell comment, not a heading",
+      "pnpm dev",
+      "```",
+      "",
+      "~~~yaml",
+      "# also not a heading",
+      "name: docs",
+      "~~~",
+      "",
+      "## Expected Results",
+      "",
+      "The dev server starts.",
+    ].join("\n");
+
+    expect(collectDocsMarkdownSections(document).map((section) => section.id)).toEqual([
+      "install",
+      "expected-results",
+    ]);
+    const selected = selectDocsMarkdownSection(document, { section: "install" });
+    expect(selected.document).toContain("# this is a shell comment, not a heading");
+    expect(selected.document).toContain("## Expected Results");
+  });
+
+  it("reuses canonical search and MCP anchors for public section ids", () => {
+    const document = [
+      "# [Install the CLI](https://example.com/install)",
+      "",
+      "Use `pnpm`.",
+      "",
+      "Verify *setup*",
+      "----------------",
+      "",
+      "```bash",
+      "# not-a-section",
+      "```",
+      "",
+      "## Overview [#release-overview]",
+      "",
+      "Custom anchor.",
+      "",
+      "## Repeat",
+      "",
+      "First.",
+      "",
+      "## Repeat",
+      "",
+      "Second.",
+      "",
+      "## Repeat",
+      "",
+      "Third.",
+    ].join("\r\n");
+    const sections = collectDocsMarkdownSections(document);
+
+    expect(sections.map((section) => section.id)).toEqual([
+      "install-the-cli",
+      "verify-setup",
+      "release-overview",
+      "repeat",
+      "repeat-1",
+      "repeat-2",
+    ]);
+    expect(sections.map((section) => section.heading)).toEqual([
+      "Install the CLI",
+      "Verify setup",
+      "Overview",
+      "Repeat",
+      "Repeat",
+      "Repeat",
+    ]);
+    expect(sections.some((section) => section.heading === "not-a-section")).toBe(false);
+    for (const section of sections) {
+      expect(selectDocsMarkdownSection(document, { section: section.id })).toMatchObject({
+        found: true,
+        section: { id: section.id },
+      });
+    }
+    expect(
+      buildDocsMarkdownSectionIndex(document, {
+        canonicalUrl: "https://example.com/docs/repeated",
+        markdownUrl: "https://example.com/docs/repeated.md",
+      }).sections.map((section) => section.id),
+    ).toEqual([
+      "install-the-cli",
+      "verify-setup",
+      "release-overview",
+      "repeat",
+      "repeat-1",
+      "repeat-2",
+    ]);
+    expect(selectDocsMarkdownSection(document, { section: "repeat-1" })).toMatchObject({
+      found: true,
+      section: { id: "repeat-1" },
+      document: expect.stringContaining("Second."),
+    });
+    expect(selectDocsMarkdownSection(document, { section: "repeat-2" })).toMatchObject({
+      found: true,
+      section: { id: "repeat-2" },
+      document: expect.stringContaining("Third."),
+    });
+    expect(selectDocsMarkdownSection(document, { section: "repeat-1" }).document).not.toContain(
+      "Third.",
+    );
+  });
+
+  it("round-trips case-sensitive custom section ids without ambiguous aliases", () => {
+    const document = [
+      "## Upper [#Foo]",
+      "",
+      "Uppercase content.",
+      "",
+      "## Lower [#foo]",
+      "",
+      "Lowercase content.",
+    ].join("\n");
+    const sections = collectDocsMarkdownSections(document);
+
+    expect(sections.map((section) => section.id)).toEqual(["Foo", "foo"]);
+    expect(selectDocsMarkdownSection(document, { section: "Foo" })).toMatchObject({
+      found: true,
+      section: { id: "Foo" },
+      document: expect.stringContaining("Uppercase content."),
+    });
+    expect(selectDocsMarkdownSection(document, { section: "foo" })).toMatchObject({
+      found: true,
+      section: { id: "foo" },
+      document: expect.stringContaining("Lowercase content."),
+    });
+    expect(selectDocsMarkdownSection(document, { section: "FOO" })).toMatchObject({
+      found: false,
+    });
+  });
+
+  it("applies budget-only Markdown requests to the full document", () => {
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "Install overview.",
+          "",
+          "## Prerequisites",
+          "",
+          "Install Node.",
+          "",
+          "## Expected Results",
+          "",
+          "The docs app starts.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+
+    const selected = selectDocsMarkdownSection(document, { tokenBudget: 1_000 });
+    expect(selected).toMatchObject({
+      found: true,
+      truncated: false,
+    });
+    expect(selected.section).toBeUndefined();
+    expect(selected.document).toContain("Install overview.");
+    expect(selected.document).toContain("## Prerequisites");
+    expect(selected.document).toContain("## Expected Results");
+  });
+
+  it("excludes generated page titles so source heading anchors stay canonical", async () => {
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        description: "Install the framework.",
+        related: [{ href: "/docs/configuration" }],
+        content: [
+          "Install overview.",
+          "",
+          "## Install",
+          "",
+          "Run the installer.",
+          "",
+          "## Prerequisites",
+          "",
+          "Use Node.js 22.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+    const sections = collectDocsMarkdownSections(document);
+
+    expect(document).toContain("x_farming_labs_generated_preamble: true");
+    expect(sections.map(({ id, heading, level }) => ({ id, heading, level }))).toEqual([
+      { id: "install", heading: "Install", level: 2 },
+      { id: "prerequisites", heading: "Prerequisites", level: 2 },
+    ]);
+    expect(sections[0]?.content).toContain("## Install");
+    expect(sections[0]?.content).toContain("Run the installer.");
+    expect(sections[0]?.content).not.toContain("## Prerequisites");
+    expect(sections.map((section) => section.content).join("\n")).not.toMatch(
+      /^(?:URL|LLM index|Description|Related):|^## Sitemap$/mu,
+    );
+
+    const indexResponse = createDocsMarkdownResponse({
+      request: new Request("https://example.com/docs/install.md?sections"),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const index = (await indexResponse.json()) as ReturnType<typeof buildDocsMarkdownSectionIndex>;
+    expect(index.sections).toMatchObject([
+      { id: "install", level: 2 },
+      { id: "prerequisites", level: 2 },
+    ]);
+    expect(index.sections.every((section) => section.parentId === undefined)).toBe(true);
+
+    const sectionResponse = createDocsMarkdownResponse({
+      request: new Request("https://example.com/docs/install.md?section=install"),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const sectionBody = await sectionResponse.text();
+    expect(sectionResponse.status).toBe(200);
+    expect(sectionResponse.headers.get("x-docs-markdown-section")).toBe("install");
+    expect(sectionBody).toContain("## Install");
+    expect(sectionBody).toContain("Run the installer.");
+    expect(sectionBody).not.toContain("Install overview.");
+    expect(sectionBody).not.toContain("## Prerequisites");
+    expect(sectionBody).not.toMatch(/^(?:URL|LLM index|Description|Related):|^## Sitemap$/mu);
+  });
+
+  it("does not infer a generated preamble from authored heading and URL text", () => {
+    const document = renderDocsMarkdownDocument({
+      url: "/docs/authored",
+      title: "Authored",
+      content: "Human fallback.",
+      agentRawContent: [
+        "# Authored heading",
+        "URL: https://example.com/source",
+        "",
+        "Authored introduction.",
+        "",
+        "## Next step",
+        "",
+        "Continue here.",
+      ].join("\n"),
+    });
+
+    expect(document).not.toContain("x_farming_labs_generated_preamble: true");
+    expect(
+      collectDocsMarkdownSections(document).map(({ id, heading }) => ({ id, heading })),
+    ).toEqual([
+      { id: "authored-heading", heading: "Authored heading" },
+      { id: "next-step", heading: "Next step" },
+    ]);
+  });
+
+  it("builds compact section discovery metadata without section bodies", async () => {
+    const request = new Request(
+      "https://example.com/docs/install.md?sections&tokenBudget=80&section=ignored",
+    );
+    const document = [
+      "---",
+      'title: "Install"',
+      "---",
+      "",
+      "# Install",
+      "",
+      "Private body text that must not be copied into the index.",
+      "",
+      "## Prerequisites",
+      "",
+      "Node.js 22 and 🧑‍🌾 tools.",
+      "",
+      "### Verify",
+      "",
+      "Run the checks.",
+      "",
+      "## Recovery",
+      "",
+      "Undo the change.",
+    ].join("\n");
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-25T10:00:00.000Z",
+    });
+    const body = await response.text();
+    const index = JSON.parse(body) as ReturnType<typeof buildDocsMarkdownSectionIndex>;
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(response.headers.get("content-location")).toBe(
+      "https://example.com/docs/install.md?lang=en&sections&tokenBudget=80",
+    );
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/install?lang=en>; rel="canonical", <https://example.com/docs/install.md?lang=en>; rel="alternate"; type="text/markdown", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
+    );
+    expect(response.headers.get("x-docs-markdown-section-index")).toBe(
+      DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+    );
+    expect(response.headers.get("x-docs-markdown-section-count")).toBe("4");
+    expect(response.headers.get("x-docs-markdown-token-budget")).toBe("80");
+    const expectedSha256 = createHash("sha256").update(body, "utf8").digest("hex");
+    expect(response.headers.get("etag")).toBe(`"${expectedSha256}"`);
+    expect(response.headers.get("content-digest")).toBe(
+      `sha-256=:${createHash("sha256").update(body, "utf8").digest("base64")}:`,
+    );
+    expect(response.headers.get("last-modified")).toBe("Sat, 25 Jul 2026 10:00:00 GMT");
+    expect(index).toMatchObject({
+      schemaVersion: 2,
+      format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+      canonicalUrl: "https://example.com/docs/install?lang=en",
+      markdownUrl: "https://example.com/docs/install.md?lang=en",
+      sectionIndexUrl: "https://example.com/docs/install.md?lang=en&sections&tokenBudget=80",
+      lineNumbering: "body",
+      sectionCount: 4,
+      fetchBudget: { tokenBudget: 80 },
+      sections: [
+        {
+          id: "install",
+          heading: "Install",
+          level: 1,
+          markdownUrl: "https://example.com/docs/install.md?lang=en&section=install&tokenBudget=80",
+        },
+        {
+          id: "prerequisites",
+          heading: "Prerequisites",
+          level: 2,
+          parentId: "install",
+          markdownUrl:
+            "https://example.com/docs/install.md?lang=en&section=prerequisites&tokenBudget=80",
+        },
+        {
+          id: "verify",
+          heading: "Verify",
+          level: 3,
+          parentId: "prerequisites",
+        },
+        {
+          id: "recovery",
+          heading: "Recovery",
+          level: 2,
+          parentId: "install",
+        },
+      ],
+    });
+    expect(body).not.toContain("Private body text");
+    expect(body).not.toContain("Node.js 22");
+    expect(index.sections.every((section) => !("content" in section))).toBe(true);
+    expect(index.sections[1]?.utf8Bytes).toBe(
+      new TextEncoder().encode(
+        "## Prerequisites\n\nNode.js 22 and 🧑‍🌾 tools.\n\n### Verify\n\nRun the checks.",
+      ).byteLength,
+    );
+    expect(index.sections[1]?.estimatedTokens).toBe(
+      Math.ceil((index.sections[1]?.utf8Bytes ?? 0) / 4),
+    );
+    expect(response.headers.get("x-docs-markdown-utf8-bytes")).toBe(
+      String(new TextEncoder().encode(body).byteLength),
+    );
+
+    const notModified = createDocsMarkdownResponse({
+      request: new Request(request, {
+        headers: { "If-None-Match": response.headers.get("etag") ?? "" },
+      }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-25T10:00:00.000Z",
+    });
+    expect(notModified.status).toBe(304);
+    expect(await notModified.text()).toBe("");
+
+    const head = createDocsMarkdownResponse({
+      request: new Request(request, { method: "HEAD" }),
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+      locale: "en",
+      lastModified: "2026-07-25T10:00:00.000Z",
+    });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("etag")).toBe(response.headers.get("etag"));
+    expect(await head.text()).toBe("");
+  });
+
+  it("preserves Unicode public section ids and encodes them in fetch URLs and headers", async () => {
+    const document = [
+      "# 安装",
+      "",
+      "中文。",
+      "",
+      "## Café 配置",
+      "",
+      "内容。",
+      "",
+      "## Привет мир",
+      "",
+      "Текст.",
+    ].join("\n");
+    const sections = collectDocsMarkdownSections(document);
+
+    expect(sections.map(({ id, heading }) => ({ id, heading }))).toEqual([
+      { id: "安装", heading: "安装" },
+      { id: "café-配置", heading: "Café 配置" },
+      { id: "привет-мир", heading: "Привет мир" },
+    ]);
+    for (const section of sections) {
+      expect(selectDocsMarkdownSection(document, { section: section.id })).toMatchObject({
+        found: true,
+        section: { id: section.id, heading: section.heading },
+      });
+    }
+
+    const index = buildDocsMarkdownSectionIndex(document, {
+      canonicalUrl: "https://example.com/docs/international",
+      markdownUrl: "https://example.com/docs/international.md",
+    });
+    expect(index.sections.map((section) => section.id)).toEqual([
+      "安装",
+      "café-配置",
+      "привет-мир",
+    ]);
+    expect(index.sections[0]?.markdownUrl).toBe(
+      "https://example.com/docs/international.md?section=%E5%AE%89%E8%A3%85",
+    );
+    expect(index.sections[1]?.markdownUrl).toBe(
+      "https://example.com/docs/international.md?section=caf%C3%A9-%E9%85%8D%E7%BD%AE",
+    );
+    expect(index.sections[2]?.markdownUrl).toBe(
+      "https://example.com/docs/international.md?section=%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82-%D0%BC%D0%B8%D1%80",
+    );
+
+    const response = createDocsMarkdownResponse({
+      request: new Request(index.sections[0]?.markdownUrl ?? ""),
+      document,
+      entry: "docs",
+      requestedPath: "international",
+      origin: "https://example.com",
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section")).toBe("%E5%AE%89%E8%A3%85");
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/international#%E5%AE%89%E8%A3%85>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
+    );
+    expect(await response.text()).toContain("中文。");
+  });
+
+  it("round-trips reserved characters in explicit section ids", async () => {
+    const document = [
+      "## Hash [#foo#bar]",
+      "",
+      "Hash content.",
+      "",
+      "## Percent [#foo%23bar]",
+      "",
+      "Percent content.",
+      "",
+      "## Entity [#foo&amp;bar]",
+      "",
+      "Entity content.",
+      "",
+      "## Leading hash [##foo]",
+      "",
+      "Leading content.",
+    ].join("\n");
+    const index = buildDocsMarkdownSectionIndex(document, {
+      canonicalUrl: "https://example.com/docs/punctuation",
+      markdownUrl: "https://example.com/docs/punctuation.md",
+    });
+
+    expect(index.sections.map((section) => section.id)).toEqual([
+      "foo#bar",
+      "foo%23bar",
+      "foo&bar",
+      "#foo",
+    ]);
+    expect(index.sections.map((section) => section.markdownUrl)).toEqual([
+      "https://example.com/docs/punctuation.md?section=foo%23bar",
+      "https://example.com/docs/punctuation.md?section=foo%2523bar",
+      "https://example.com/docs/punctuation.md?section=foo%26bar",
+      "https://example.com/docs/punctuation.md?section=%23foo",
+    ]);
+    expect(index.sections.map((section) => section.canonicalUrl)).toEqual([
+      "https://example.com/docs/punctuation#foo%23bar",
+      "https://example.com/docs/punctuation#foo%2523bar",
+      "https://example.com/docs/punctuation#foo%26bar",
+      "https://example.com/docs/punctuation#%23foo",
+    ]);
+
+    for (const section of index.sections) {
+      expect(selectDocsMarkdownSection(document, { section: section.canonicalUrl })).toMatchObject({
+        found: true,
+        section: { id: section.id },
+      });
+
+      const response = createDocsMarkdownResponse({
+        request: new Request(section.markdownUrl),
+        document,
+        entry: "docs",
+        requestedPath: "punctuation",
+        origin: "https://example.com",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-docs-markdown-section")).toBe(encodeURIComponent(section.id));
+      expect(response.headers.get("link")).toBe(
+        `<${section.canonicalUrl}>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"`,
+      );
+      expect(await response.text()).toContain(`${section.heading} [#`);
+    }
+  });
+
+  it("returns an empty section index for heading-less Markdown", async () => {
+    const request = new Request("https://example.com/docs/install.md?sections");
+    const document = "Install the package without a heading.";
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+      sectionCount: 0,
+      sections: [],
+    });
+    expect(response.headers.get("x-docs-markdown-section-count")).toBe("0");
+    expect(isDocsMarkdownSectionIndexRequest(new URL(request.url))).toBe(true);
+    expect(
+      isDocsMarkdownSectionIndexRequest(
+        new URL("https://example.com/docs/install.md?sections=false"),
+      ),
+    ).toBe(false);
+    expect(
+      isDocsMarkdownSectionIndexRequest(
+        new URL("https://example.com/docs/install.md?section=install"),
+      ),
+    ).toBe(false);
+  });
+
+  it("serves one Markdown section with token and byte budget metadata", async () => {
+    const request = new Request(
+      "https://example.com/docs/install.md?section=prerequisites&tokenBudget=24",
+    );
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "Install overview.",
+          "",
+          "## Prerequisites",
+          "",
+          "Install Node.js 22 or newer.",
+          "",
+          "Install pnpm 10.",
+          "",
+          "## Expected Results",
+          "",
+          "The docs app starts.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/install#prerequisites>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
+    );
+    expect(response.headers.get("content-location")).toBe(
+      "https://example.com/docs/install.md?section=prerequisites&tokenBudget=24",
+    );
+    expect(response.headers.get("x-docs-markdown-section")).toBe("prerequisites");
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-token-budget")).toBe("24");
+    expect(response.headers.get("x-docs-markdown-estimated-tokens")).toMatch(/^\d+$/);
+    expect(body).toContain("## Prerequisites");
+    expect(body).toContain("Install Node.js 22 or newer.");
+    expect(body).not.toContain("## Expected Results");
+  });
+
+  it("truncates selected Markdown sections to a byte budget", async () => {
+    const request = new Request(
+      "https://example.com/docs/install.md?section=troubleshooting&byteBudget=120",
+    );
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "# Install",
+          "",
+          "## Troubleshooting",
+          "",
+          "First paragraph should fit.",
+          "",
+          "Second paragraph is intentionally much longer so the section response must compact it under the requested budget.",
+          "",
+          "## Next",
+          "",
+          "Do not include this.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section-truncated")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-byte-budget")).toBe("120");
+    expect(new TextEncoder().encode(body).byteLength).toBeLessThanOrEqual(120);
+    expect(body).toContain("section truncated");
+    expect(body).not.toContain("## Next");
+  });
+
+  it("applies budget-only Markdown requests to heading-less documents", async () => {
+    const request = new Request("https://example.com/docs/install.md?byteBudget=120");
+    const document = [
+      "---",
+      'title: "Install"',
+      "---",
+      "",
+      "Install the package. This page intentionally has no headings, but agents may still need a compact response.",
+    ].join("\n");
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("link")).toBe(
+      '<https://example.com/docs/install>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"; type="text/plain"',
+    );
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-section-truncated")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-byte-budget")).toBe("120");
+    expect(new TextEncoder().encode(body).byteLength).toBeLessThanOrEqual(120);
+    expect(body).not.toContain("# Markdown Section Not Found");
+  });
+
+  it("applies budget-only Markdown requests to the complete headed document", async () => {
+    const request = new Request("https://example.com/docs/install.md?byteBudget=4000");
+    const document = renderDocsMarkdownDocument(
+      {
+        url: "/docs/install",
+        title: "Install",
+        content: [
+          "Install overview.",
+          "",
+          "## Prerequisites",
+          "",
+          "Install Node.",
+          "",
+          "## Expected Results",
+          "",
+          "The docs app starts.",
+        ].join("\n"),
+      },
+      { origin: "https://example.com" },
+    );
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-docs-markdown-section")).toBe("");
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("true");
+    expect(response.headers.get("x-docs-markdown-section-truncated")).toBe("false");
+    expect(body).toContain("Install overview.");
+    expect(body).toContain("## Prerequisites");
+    expect(body).toContain("## Expected Results");
+  });
+
+  it("returns available sections when a Markdown section is not found", async () => {
+    const request = new Request("https://example.com/docs/install.md?section=missing");
+    const document = renderDocsMarkdownDocument({
+      url: "/docs/install",
+      title: "Install",
+      content: "## Prerequisites\n\nInstall Node.",
+    });
+    const response = createDocsMarkdownResponse({
+      request,
+      document,
+      entry: "docs",
+      requestedPath: "install",
+      origin: "https://example.com",
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-docs-markdown-section-found")).toBe("false");
+    expect(body).toContain("# Markdown Section Not Found");
+    expect(body).toContain("- Prerequisites (#prerequisites)");
+    expect(body).not.toContain("- Install (#install)");
+  });
+
+  it("resolves section-addressable Markdown query parameters", () => {
+    expect(
+      resolveDocsMarkdownSectionRequest(
+        new URL("https://example.com/api/docs?format=markdown&section=setup&tokens=400"),
+      ),
+    ).toEqual({ section: "setup", tokenBudget: 400, byteBudget: null });
+    expect(
+      resolveDocsMarkdownSectionRequest(new URL("https://example.com/docs/install.md")),
+    ).toBeNull();
+  });
+
   it("builds per-page markdown alternate URLs", () => {
     expect(toDocsMarkdownUrl("/docs")).toBe("/docs.md");
     expect(toDocsMarkdownUrl("/docs/install")).toBe("/docs/install.md");
@@ -500,6 +2080,7 @@ describe("agent route helpers", () => {
     expect(toDocsMarkdownUrl("/docs/install?lang=es", { locale: "fr" })).toBe(
       "/docs/install.md?lang=es",
     );
+    expect(toDocsMarkdownUrl("/docs/install#foo#bar")).toBe("/docs/install.md#foo#bar");
   });
 
   it("builds canonical Link headers for markdown mirrors", () => {
@@ -554,13 +2135,31 @@ describe("agent route helpers", () => {
     expect(document).toContain("[Missing Pages](/docs/missing-pages.md)");
     expect(document).toContain("`/docs/missing/page.md`");
     expect(document).toContain("`/.well-known/agent.json`");
-    expect(document).toContain("`/api/docs?query={query}`");
+    expect(document).toContain("`/api/docs?audience=agent&response=facets`");
+    expect(document).toContain("`/api/docs?query={query}&audience=agent&response=structured`");
+    expect(document).toContain("`framework`, `version`, `package`, or `tags`");
     expect(document).toContain("`/api/docs?format=markdown&path=missing/page`");
     expect(document).toContain("`/docs-map/sitemap.md`");
     expect(document).toContain("`/docs-map/.well-known/sitemap.md`");
     expect(document).toContain("`/docs-map/sitemap.xml`");
     expect(document).toContain("## Sitemap");
     expect(document).toContain("See the full [sitemap](/docs-map/sitemap.md)");
+
+    const customRouteDocument = renderDocsMarkdownNotFound({
+      entry: "docs",
+      apiRoute: "/api/internal/docs",
+      requestedPath: "unknown",
+      pages: [],
+    });
+    expect(customRouteDocument).toContain("`/api/internal/docs?agent=spec`");
+    expect(customRouteDocument).toContain("`/api/internal/docs?audience=agent&response=facets`");
+    expect(customRouteDocument).toContain(
+      "`/api/internal/docs?query={query}&audience=agent&response=structured`",
+    );
+    expect(customRouteDocument).toContain("`/api/internal/docs?format=markdown&path=unknown`");
+    expect(customRouteDocument).not.toContain(
+      "`/api/docs?query={query}&audience=agent&response=structured`",
+    );
   });
 
   it("resolves high-confidence markdown recovery redirects", () => {
@@ -626,6 +2225,15 @@ describe("agent route helpers", () => {
           description: "Install the framework",
           lastModified: "2026-05-27T12:30:00.000Z",
           related: [{ href: "/docs/configuration" }],
+          agent: {
+            tokenBudget: 800,
+            task: "Install the framework",
+            outcome: "The docs app starts successfully.",
+            appliesTo: { framework: "nextjs", version: ">=16" },
+            files: ["package.json"],
+            commands: ["pnpm install"],
+            verification: [{ run: "pnpm test", expect: "Tests pass" }],
+          },
           content: "Visible",
           rawContent: "Visible",
           agentFallbackRawContent: "Visible\n\nHidden",
@@ -641,13 +2249,641 @@ describe("agent route helpers", () => {
     expect(document).toContain('canonical_url: "https://docs.example.com/docs/install"');
     expect(document).toContain('markdown_url: "https://docs.example.com/docs/install.md"');
     expect(document).toContain('last_updated: "2026-05-27"');
+    expect(document).toContain("agent:\n  tokenBudget: 800");
+    expect(document).toContain('  task: "Install the framework"');
+    expect(document).toContain("## Agent Contract");
+    expect(document).toContain("- Framework: `nextjs`");
+    expect(document).toContain("- `pnpm install`");
     expect(document).toContain("LLM index: /llms.txt");
+
+    const handwrittenContract = renderDocsMarkdownDocument({
+      ...page!,
+      agentRawContent: "## Agent Contract\n\nUse the handwritten recovery procedure.",
+    });
+    expect(handwrittenContract.match(/## Agent Contract/g)).toHaveLength(1);
+    expect(handwrittenContract).toContain("Use the handwritten recovery procedure.");
+    expect(handwrittenContract).not.toContain("farming-labs:agent-contract:start");
     expect(renderDocsMarkdownDocument(page!, { llms: false })).not.toContain(
       "LLM index: /llms.txt",
     );
+
+    const contentOnlyDocument = renderDocsMarkdownDocument({
+      ...page!,
+      content: "Human-only fallback.",
+      rawContent: "Human-only fallback.",
+      agentFallbackRawContent: undefined,
+      agentContent: "Agent content-only override.",
+    });
+    expect(contentOnlyDocument).toContain("Agent content-only override.");
+    expect(contentOnlyDocument).not.toContain("Human-only fallback.");
+
+    const fallbackContentOnlyDocument = renderDocsMarkdownDocument({
+      ...page!,
+      content: "Human-only fallback.",
+      rawContent: "Human-only fallback.",
+      agentFallbackRawContent: undefined,
+      agentFallbackContent: "Agent content-only projection.",
+    });
+    expect(fallbackContentOnlyDocument).toContain("Agent content-only projection.");
+    expect(fallbackContentOnlyDocument).not.toContain("Human-only fallback.");
     expect(document).toContain("Related: /docs/configuration");
     expect(document).toContain("Hidden");
     expect(document).toContain("## Sitemap");
+  });
+
+  describe("Prompt literal extraction", () => {
+    it("preserves flow-component block grammar around paragraphs and thematic breaks", () => {
+      const extracted = extractDocsMarkdownPromptBlocks(
+        ["Before", "<Prompt>", "Run the check.", "</Prompt>", "---", "After"].join("\n"),
+      );
+
+      expect(extracted.blocks).toEqual([
+        {
+          attributes: "",
+          children: "\nRun the check.\n",
+          token: "%%PROMPT_0%%",
+        },
+      ]);
+      expect(extracted.markdown).toBe(
+        ["Before", "", "%%PROMPT_0%%", "", "---", "After"].join("\n"),
+      );
+    });
+
+    it("preserves standalone flow grammar when malformed MDX requires fallback parsing", () => {
+      const standalone = extractDocsMarkdownPromptBlocks("<Prompt>x</Prompt>\n---\n{invalid");
+      expect(standalone.markdown).toBe("%%PROMPT_0%%\n\n---\n{invalid");
+
+      const inline = extractDocsMarkdownPromptBlocks("Before <Prompt>x</Prompt> after\n{invalid");
+      expect(inline.markdown).toBe("Before %%PROMPT_0%% after\n{invalid");
+    });
+
+    it("preserves standalone flow grammar after successful parsing without changing inline Prompt", () => {
+      const lf = extractDocsMarkdownPromptBlocks("<Prompt>x</Prompt>\n---\nAfter");
+      expect(lf.markdown).toBe("%%PROMPT_0%%\n\n---\nAfter");
+
+      const crlf = extractDocsMarkdownPromptBlocks("<Prompt>x</Prompt>\r\n===\r\nAfter");
+      expect(crlf.markdown).toBe("%%PROMPT_0%%\r\n\r\n===\r\nAfter");
+
+      const inline = extractDocsMarkdownPromptBlocks("Before <Prompt>x</Prompt> after");
+      expect(inline.markdown).toBe("Before %%PROMPT_0%% after");
+    });
+
+    it("keeps flow Prompt placeholders and copied text inside Markdown containers", () => {
+      const blockquote = extractDocsMarkdownPromptBlocks(
+        ["> <Prompt>", "> Quote task", "> </Prompt>"].join("\n"),
+      );
+      expect(blockquote.markdown).toBe("> %%PROMPT_0%%");
+      expect(blockquote.blocks[0]?.children.trim()).toBe("Quote task");
+
+      const list = extractDocsMarkdownPromptBlocks(
+        ["- <Prompt>", "  List task", "  </Prompt>"].join("\n"),
+      );
+      expect(list.markdown).toBe("- %%PROMPT_0%%");
+      expect(list.blocks[0]?.children.trim()).toBe("List task");
+
+      const continuedList = extractDocsMarkdownPromptBlocks(
+        ["- Before", "  <Prompt>", "  Continued task", "  </Prompt>", "  After"].join("\n"),
+      );
+      expect(continuedList.markdown).toBe("- Before\n  %%PROMPT_0%%\n  After");
+      expect(continuedList.blocks[0]?.children.trim()).toBe("Continued task");
+
+      const continuedQuote = extractDocsMarkdownPromptBlocks(
+        ["> Before", "> <Prompt>", "> Continued quote", "> </Prompt>", "> After"].join("\n"),
+      );
+      expect(continuedQuote.markdown).toBe(["> Before", "> %%PROMPT_0%%", "> After"].join("\n"));
+      expect(continuedQuote.blocks[0]?.children.trim()).toBe("Continued quote");
+    });
+
+    it("pairs nested and sibling Prompts without truncating their literal children", () => {
+      const nested = extractDocsMarkdownPromptBlocks(
+        "<Prompt>outer <Prompt>inner</Prompt> tail</Prompt>",
+      );
+      expect(nested.blocks).toEqual([
+        {
+          attributes: "",
+          children: "outer <Prompt>inner</Prompt> tail",
+          token: "%%PROMPT_0%%",
+        },
+      ]);
+      expect(nested.markdown).toBe("%%PROMPT_0%%");
+
+      const siblings = extractDocsMarkdownPromptBlocks(
+        "<Prompt>first</Prompt>\n<Prompt>second</Prompt>",
+      );
+      expect(siblings.blocks.map((block) => block.children)).toEqual(["first", "second"]);
+      expect(siblings.markdown).toBe("%%PROMPT_0%%\n%%PROMPT_1%%");
+    });
+
+    it("recovers balanced children after an unmatched opener without consuming trailing content", () => {
+      const source = "<Prompt>unclosed\n<Prompt>valid</Prompt>\nAfter";
+      const extracted = extractDocsMarkdownPromptBlocks(source);
+
+      expect(extracted.blocks.map((block) => block.children)).toEqual(["valid"]);
+      expect(extracted.markdown).toBe("<Prompt>unclosed\n\n%%PROMPT_0%%\n\nAfter");
+      expect(extractDocsMarkdownPromptBlocks("</Prompt>\nShared.")).toEqual({
+        blocks: [],
+        markdown: "</Prompt>\nShared.",
+      });
+    });
+
+    it.each([
+      ["raw HTML blocks", "<div>\n<Prompt>raw div</Prompt>\n</div>"],
+      ["inline raw HTML", "<span><Prompt>raw span</Prompt></span>"],
+      ["raw pre blocks", "<pre>\n<Prompt>raw pre</Prompt>\n</pre>"],
+      ["raw textarea blocks", "<textarea>\n<Prompt>raw textarea</Prompt>\n</textarea>"],
+      ["raw script elements", "<script><Prompt>raw script</Prompt></script>"],
+      ["uppercase raw script elements", "<SCRIPT><Prompt>raw script</Prompt></SCRIPT>"],
+      ["uppercase raw HTML blocks", "<DIV>\n<Prompt>raw div</Prompt>\n</DIV>"],
+      ["SVG namespace roots", "<svg><Prompt>raw svg</Prompt></svg>"],
+      ["uppercase SVG namespace roots", "<SVG><Prompt>raw svg</Prompt></SVG>"],
+      ["MathML namespace roots", "<math><Prompt>raw math</Prompt></math>"],
+      ["uppercase MathML namespace roots", "<MATH><Prompt>raw math</Prompt></MATH>"],
+      ["processing instructions", "<?sample <Prompt>raw instruction</Prompt> ?>"],
+      ["CDATA", "<![CDATA[<Prompt>raw cdata</Prompt>]]>"],
+      ["declarations", "<!DOCTYPE sample <Prompt>raw declaration</Prompt>>"],
+    ])("keeps Prompt-looking text inert inside %s", (_name, source) => {
+      expect(extractDocsMarkdownPromptBlocks(source)).toEqual({
+        blocks: [],
+        markdown: source,
+      });
+    });
+
+    it("keeps Prompt live inside capitalized MDX and custom elements", () => {
+      for (const source of [
+        "<Script><Prompt>capitalized</Prompt></Script>",
+        "<Div><Prompt>capitalized div</Prompt></Div>",
+        "<script-loader><Prompt>custom</Prompt></script-loader>",
+      ]) {
+        expect(extractDocsMarkdownPromptBlocks(source).blocks).toHaveLength(1);
+      }
+    });
+
+    it("keeps Prompt JSX used as expression values out of document block extraction", () => {
+      for (const source of [
+        "{<Prompt>expression value</Prompt>}",
+        "<Card example={<Prompt>prop value</Prompt>}>Card body</Card>",
+        "<Card>{ready ? <Prompt>conditional value</Prompt> : null}</Card>",
+        "<Card render={() => <Prompt>render value</Prompt>} />",
+      ]) {
+        expect(extractDocsMarkdownPromptBlocks(source)).toEqual({
+          blocks: [],
+          markdown: source,
+        });
+      }
+
+      const directChild = extractDocsMarkdownPromptBlocks(
+        "<Card><Prompt>direct child</Prompt></Card>",
+      );
+      expect(directChild.blocks.map((block) => block.children)).toEqual(["direct child"]);
+
+      const literalOuter = extractDocsMarkdownPromptBlocks(
+        "<Prompt>outer {<Prompt>expression child</Prompt>} tail</Prompt>",
+      );
+      expect(literalOuter.blocks.map((block) => block.children)).toEqual([
+        "outer {<Prompt>expression child</Prompt>} tail",
+      ]);
+    });
+
+    it("keeps expression-contained Prompt JSX inert when malformed MDX uses fallback scanning", () => {
+      const source = [
+        "<Card example={<Prompt>prop value</Prompt>}>Card body</Card>",
+        "",
+        "<Prompt>document block</Prompt>",
+        "",
+        "{invalid",
+      ].join("\n");
+      const extracted = extractDocsMarkdownPromptBlocks(source);
+
+      expect(extracted.blocks.map((block) => block.children)).toEqual(["document block"]);
+      expect(extracted.markdown).toContain(
+        "<Card example={<Prompt>prop value</Prompt>}>Card body</Card>",
+      );
+      expect(extracted.markdown).toContain("%%PROMPT_0%%");
+    });
+
+    it("still extracts a standalone multiline Prompt HTML block", () => {
+      const extracted = extractDocsMarkdownPromptBlocks("<Prompt>\nlive\n</Prompt>");
+      expect(extracted.blocks.map((block) => block.children)).toEqual(["\nlive\n"]);
+      expect(extracted.markdown).toBe("%%PROMPT_0%%");
+
+      const bomPrefixed = extractDocsMarkdownPromptBlocks("\uFEFF<Prompt>live</Prompt>");
+      expect(bomPrefixed.blocks.map((block) => block.children)).toEqual(["live"]);
+      expect(bomPrefixed.markdown).toBe("\uFEFF%%PROMPT_0%%");
+    });
+
+    it.each([
+      "[<Prompt>shortcut</Prompt>]",
+      "![<Prompt>image shortcut</Prompt>]",
+      "[<Prompt>collapsed</Prompt>][]",
+      "![<Prompt>collapsed image</Prompt>][]",
+      "[<Prompt>full</Prompt>][missing]",
+      "![<Prompt>full image</Prompt>][missing]",
+    ])("keeps unresolved Markdown reference syntax inert: %s", (source) => {
+      expect(extractDocsMarkdownPromptBlocks(source)).toEqual({
+        blocks: [],
+        markdown: source,
+      });
+    });
+
+    it("allocates placeholders that cannot collide with authored content", () => {
+      const extracted = extractDocsMarkdownPromptBlocks(
+        "%%PROMPT_0%%\n<Prompt>first</Prompt>\n<Prompt>second</Prompt>",
+      );
+      expect(extracted.blocks.map((block) => block.token)).toEqual([
+        "%%PROMPT_1%%",
+        "%%PROMPT_2%%",
+      ]);
+    });
+  });
+
+  it("resolves Agent, Human, and Audience blocks without changing literal examples", () => {
+    const source = `Shared.
+
+<Agent audience="implementation">Agent shorthand.</Agent>
+<Agent version=">=2">Quoted greater-than attribute.</Agent>
+<Agent when={version >= 2}>Expression greater-than attribute.</Agent>
+<Human>Human shorthand.</Human>
+<Audience only="agent">Agent explicit.</Audience>
+<Audience only={'human'}>Human explicit.</Audience>
+<Audience
+  only={"agent"}
+>
+Multiline agent.
+</Audience>
+<Audience only={runtimeAudience}>Dynamic stays shared.</Audience>
+<Human><Agent>Conflicting nested content.</Agent></Human>
+<Agent />
+
+\`<Agent>inline example</Agent>\`
+
+\`\`\`mdx
+<Agent>fenced example</Agent>
+\`\`\`
+
+~~~~mdx
+<Human>tilde-fenced example</Human>
+~~~~
+
+{/* <Human>MDX comment example</Human> */}
+<!-- <Audience only="agent">HTML comment example</Audience> -->
+export const audienceExample = "<Agent>module string example</Agent>";
+export const multilineAudienceExample = {
+  value: "<Agent>multiline module string example</Agent>",
+};
+
+\`\`\`md
+\`\`\`js
+<Agent>nested fence example</Agent>
+\`\`\`
+\`\`\``;
+
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+
+    expect(human).toContain("Shared.");
+    expect(human).toContain("Human shorthand.");
+    expect(human).toContain("Human explicit.");
+    expect(human).toContain("Dynamic stays shared.");
+    expect(human).not.toContain("Agent shorthand.");
+    expect(human).not.toContain("Quoted greater-than attribute.");
+    expect(human).not.toContain("Expression greater-than attribute.");
+    expect(human).not.toContain("Agent explicit.");
+    expect(human).not.toContain("Multiline agent.");
+    expect(agent).toContain("Shared.");
+    expect(agent).toContain("Agent shorthand.");
+    expect(agent).toContain("Quoted greater-than attribute.");
+    expect(agent).toContain("Expression greater-than attribute.");
+    expect(agent).toContain("Agent explicit.");
+    expect(agent).toContain("Multiline agent.");
+    expect(agent).toContain("Dynamic stays shared.");
+    expect(agent).not.toContain("Human shorthand.");
+    expect(agent).not.toContain("Human explicit.");
+    expect(human).not.toContain("Conflicting nested content.");
+    expect(agent).not.toContain("Conflicting nested content.");
+
+    for (const projection of [human, agent]) {
+      expect(projection).toContain("`<Agent>inline example</Agent>`");
+      expect(projection).toContain("<Agent>fenced example</Agent>");
+      expect(projection).toContain("<Human>tilde-fenced example</Human>");
+      expect(projection).toContain("{/* <Human>MDX comment example</Human> */}");
+      expect(projection).toContain(
+        '<!-- <Audience only="agent">HTML comment example</Audience> -->',
+      );
+      expect(projection).toContain(
+        'export const audienceExample = "<Agent>module string example</Agent>";',
+      );
+      expect(projection).toContain('value: "<Agent>multiline module string example</Agent>",');
+      expect(projection).toContain("<Agent>nested fence example</Agent>");
+    }
+
+    expect(resolveDocsAgentMdxContent(source, "agent")).toBe(agent);
+    expect(findDocsAudienceMdxIssues(source).map((issue) => issue.code)).toEqual(["dynamic-only"]);
+  });
+
+  it.each([
+    [
+      "multiline imports",
+      `import {
+  thing,
+}
+from "<Agent>module path literal</Agent>";`,
+    ],
+    [
+      "multiline code spans",
+      "Shared `inline code starts\n<Agent>literal code example</Agent>` end.",
+    ],
+    ["escaped JSX", String.raw`\<Agent>literal escaped example\</Agent>`],
+    ["quoted JSX props", '<Example code="<Agent>literal prop example</Agent>" />'],
+    ["MDX expression strings", '{"<Agent>literal expression example</Agent>"}'],
+    [
+      "semicolonless JSX exports",
+      'export const Demo = <Example label="<Agent>literal export example</Agent>" />',
+    ],
+    ["comparison exports", "export const compare = left<right;"],
+    ["generic class exports", "export class Store extends Base<Model> {}"],
+    ["generic arrow exports", "export const identity = <T>(value: T) => value;"],
+    ["expression regex literals", String.raw`{() => /<Agent>literal regex<\/Agent>/.test(value)}`],
+    ["module regex literals", 'export const pattern = /[{"]/;'],
+    [
+      "JSX fragment exports",
+      `export const Demo = <>
+  <Agent>literal exported component</Agent>
+</>`,
+    ],
+    ["Markdown link titles", '[link](https://example.com "See <Agent>literal</Agent>")'],
+    [
+      "blockquote fences",
+      `> ~~~mdx
+> <Agent>literal blockquote fence</Agent>
+> ~~~~~`,
+    ],
+    [
+      "nested list fences",
+      `- outer
+  - ~~~mdx
+    <Agent>literal nested list fence</Agent>
+    ~~~`,
+    ],
+    ["HTML comments", "<!-- <Agent>literal HTML comment</Agent> -->"],
+    [
+      "raw script blocks",
+      `<script>
+const sample = "<Agent>literal script</Agent>";
+</script>`,
+    ],
+  ])("preserves audience-looking literals in %s", (_name, literal) => {
+    const source = `${literal}\n\n<Agent>real agent content</Agent>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe(literal);
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toBe(`${literal}\n\nreal agent content`);
+  });
+
+  it.each([
+    [
+      "fenced raw-element delimiters",
+      "```md\n<script>\n```\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    ["inline raw-element delimiters", "`<script>`\n\n<Agent>SECRET</Agent>\n\n`</script>`"],
+    ["expression raw-element delimiters", '{"<script>"}\n\n<Agent>SECRET</Agent>\n\n{"</script>"}'],
+    [
+      "module raw-element delimiters",
+      'export const open = "<script>";\n\n<Agent>SECRET</Agent>\n\nexport const close = "</script>";',
+    ],
+    [
+      "JSX prop raw-element delimiters",
+      '<Card open="<script>" />\n\n<Agent>SECRET</Agent>\n\n<Card close="</script>" />',
+    ],
+    ["escaped raw-element delimiters", "\\<script>\n\n<Agent>SECRET</Agent>\n\n\\</script>"],
+    [
+      "fenced HTML comment delimiters",
+      "```md\n<!--\n```\n\n<Agent>SECRET</Agent>\n\n```md\n-->\n```",
+    ],
+    ["escaped HTML comment delimiters", "\\<!--\n\n<Agent>SECRET</Agent>\n\n\\-->"],
+  ])("does not pair %s across live audience content", (_name, source) => {
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+
+    expect(human).not.toContain("SECRET");
+    expect(agent).toContain("SECRET");
+    expect(findDocsAudienceMdxTags(source)).toHaveLength(2);
+  });
+
+  it.each([
+    [
+      "script delimiters inside comments",
+      "<!-- <script> -->\n\n<Agent>SECRET</Agent>\n\n<!-- </script> -->",
+    ],
+    [
+      "style delimiters inside comments",
+      "<!-- <style> -->\n\n<Agent>SECRET</Agent>\n\n<!-- </style> -->",
+    ],
+    [
+      "comment delimiters inside raw script",
+      '<script>\nconst value = "<!--";\n</script>\n\n<Agent>SECRET</Agent>\n\n<div>--></div>',
+    ],
+    [
+      "arrow regex and fenced closing delimiter",
+      "{() => /<script>/.test(value)}\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "JSX prop regex and fenced closing delimiter",
+      "<Card test={() => /<script>/.test(value)} />\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "keyword-prefixed regex and fenced closing delimiter",
+      "{(() => { return /<script>/.test(value) })()}\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "Svelte directive regex and fenced closing delimiter",
+      "{#if /<script>/.test(value)}\n<Agent>SECRET</Agent>\n```md\n</script>\n```\n{/if}",
+    ],
+    [
+      "angle-bracket link destination and fenced closing delimiter",
+      "[link](<script>)\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```",
+    ],
+    [
+      "angle-bracket image destination and fenced comment closing delimiter",
+      "![image](<!--)\n\n<Agent>SECRET</Agent>\n\n```md\n-->\n```",
+    ],
+    [
+      "self-closing raw element and fenced closing delimiter",
+      '<script src="example.js" />\n\n<Agent>SECRET</Agent>\n\n```md\n</script>\n```',
+    ],
+  ])("keeps %s from swallowing live audience content", (_name, source) => {
+    expect(resolveDocsAudienceMdxContent(source, "human")).not.toContain("SECRET");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("SECRET");
+    expect(findDocsAudienceMdxTags(source)).toHaveLength(2);
+  });
+
+  it.each(["script-loader", "style-guide", "script.foo"])(
+    "does not treat the custom %s element as raw code",
+    (name) => {
+      const source = `<${name}>\n<Agent>SECRET</Agent>\n</${name}>\n<script>ok</script>`;
+      expect(resolveDocsAudienceMdxContent(source, "human")).not.toContain("SECRET");
+      expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("SECRET");
+    },
+  );
+
+  it("treats an unclosed lowercase raw element as literal content through EOF", () => {
+    const source = '<script>\nconst sample = "<Agent>literal script</Agent>";';
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe(source);
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toBe(source);
+    expect(findDocsAudienceMdxTags(source)).toEqual([]);
+  });
+
+  it("uses JSX-safe replacements for audience elements inside MDX expressions", () => {
+    const source = `<Card title={<Agent>Agent title</Agent>} subtitle={<Human>Human subtitle</Human>} />`;
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+
+    expect(human).toBe("<Card title={null} subtitle={<>Human subtitle</>} />");
+    expect(agent).toBe("<Card title={<>Agent title</>} subtitle={null} />");
+
+    const audienceWithExpressionProp =
+      "<Agent child={<Human>Ignored prop.</Human>}>Agent body.</Agent>";
+    expect(resolveDocsAudienceMdxContent(audienceWithExpressionProp, "human")).toBe("");
+    expect(resolveDocsAudienceMdxContent(audienceWithExpressionProp, "agent")).toBe("Agent body.");
+
+    const expressionAudienceWithProp =
+      "{<Agent child={<Human>Ignored prop.</Human>}>Agent body.</Agent>}";
+    expect(resolveDocsAudienceMdxContent(expressionAudienceWithProp, "human")).toBe("{null}");
+    expect(resolveDocsAudienceMdxContent(expressionAudienceWithProp, "agent")).toBe(
+      "{<>Agent body.</>}",
+    );
+
+    const nestedChildren = "{<Box><Agent>A</Agent>B<Human>H</Human></Box>}";
+    expect(resolveDocsAudienceMdxContent(nestedChildren, "human")).toBe(
+      "{<Box>{null}B<>H</></Box>}",
+    );
+    expect(resolveDocsAudienceMdxContent(nestedChildren, "agent")).toBe(
+      "{<Box><>A</>B{null}</Box>}",
+    );
+
+    const spreadAttribute = "<Card {...{ title: <Agent>A</Agent>, subtitle: <Human>H</Human> }} />";
+    expect(resolveDocsAudienceMdxContent(spreadAttribute, "human")).toBe(
+      "<Card {...{ title: null, subtitle: <>H</> }} />",
+    );
+    expect(resolveDocsAudienceMdxContent(spreadAttribute, "agent")).toBe(
+      "<Card {...{ title: <>A</>, subtitle: null }} />",
+    );
+  });
+
+  it("keeps frontmatter literals out of the audience tree without shifting Unicode offsets", () => {
+    const source = `---
+description: "😀 <Agent>frontmatter literal</Agent>"
+---
+
+<Agent>real agent content</Agent>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe(
+      '---\ndescription: "😀 <Agent>frontmatter literal</Agent>"\n---',
+    );
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("real agent content");
+
+    const blockScalar = `---
+description: |
+  ---
+  <Agent>literal YAML</Agent>
+---
+
+<Agent>real block scalar content</Agent>`;
+    expect(resolveDocsAudienceMdxContent(blockScalar, "human")).toBe(
+      "---\ndescription: |\n  ---\n  <Agent>literal YAML</Agent>\n---",
+    );
+    expect(resolveDocsAudienceMdxContent(blockScalar, "agent")).toContain(
+      "real block scalar content",
+    );
+  });
+
+  it("projects audience blocks in Svelte MDX without falling back to literal scanners", () => {
+    const source = `{#if enabled}
+{() => /<Agent>literal<\\/Agent>/.test(value)}
+<Agent when={/[}]/.test(value) && score > 1}>Svelte agent content.</Agent>
+- outer
+  - ~~~mdx
+    <Agent>literal fenced content</Agent>
+    ~~~
+[link](https://example.com "<Agent>literal title</Agent>")
+{/if}
+
+<Agent>real trailing content</Agent>`;
+
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+    expect(human).not.toContain("Svelte agent content.");
+    expect(human).not.toContain("real trailing content");
+    expect(agent).toContain("Svelte agent content.");
+    expect(agent).toContain("real trailing content");
+    for (const projection of [human, agent]) {
+      expect(projection).toContain("/<Agent>literal<\\/Agent>/");
+      expect(projection).toContain("<Agent>literal fenced content</Agent>");
+      expect(projection).toContain('"<Agent>literal title</Agent>"');
+    }
+  });
+
+  it("preserves whitespace inside protected literals while projecting audience content", () => {
+    const source = `Before
+
+
+
+\`\`\`txt
+a
+
+
+b
+\`\`\`
+
+<Agent>secret</Agent>
+
+After`;
+
+    for (const audience of ["human", "agent"] as const) {
+      expect(resolveDocsAudienceMdxContent(source, audience)).toContain("```txt\na\n\n\nb\n```");
+    }
+  });
+
+  it("treats Audience spread props as dynamic shared content", () => {
+    const source = `<Audience only="agent" {...props}>Shared fallback.</Audience>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).toBe("Shared fallback.");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toBe("Shared fallback.");
+    expect(findDocsAudienceMdxIssues(source).map((issue) => issue.code)).toEqual(["dynamic-only"]);
+
+    expect(
+      findDocsAudienceMdxIssues(
+        '<Agent only="human">Agent shorthand.</Agent><Human only="agent">Human shorthand.</Human>',
+      ).map((issue) => issue.code),
+    ).toEqual(["ignored-agent-only", "ignored-human-only"]);
+  });
+
+  it("resolves indented audience elements as live MDX components", () => {
+    const source = `- Item
+    <Agent>Agent-only nested detail.</Agent>
+
+    <Human>Human-only nested detail.</Human>`;
+
+    expect(resolveDocsAudienceMdxContent(source, "human")).not.toContain(
+      "Agent-only nested detail.",
+    );
+    expect(resolveDocsAudienceMdxContent(source, "human")).toContain("Human-only nested detail.");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).toContain("Agent-only nested detail.");
+    expect(resolveDocsAudienceMdxContent(source, "agent")).not.toContain(
+      "Human-only nested detail.",
+    );
+  });
+
+  it("does not confuse capitalized Script and Style components with raw code elements", () => {
+    const source = `<Script>
+<Agent>Agent-only script child.</Agent>
+</Script>
+<Style><Human>Human-only style child.</Human></Style>`;
+
+    const human = resolveDocsAudienceMdxContent(source, "human");
+    const agent = resolveDocsAudienceMdxContent(source, "agent");
+    expect(human).not.toContain("Agent-only script child.");
+    expect(human).toContain("Human-only style child.");
+    expect(agent).toContain("Agent-only script child.");
+    expect(agent).not.toContain("Human-only style child.");
   });
 
   it("renders the generated skill.md document", () => {
@@ -664,10 +2900,13 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
           getConfigSchema: true,
+          getContext: true,
         },
       },
       llms: {
@@ -688,8 +2927,13 @@ describe("agent route helpers", () => {
     expect(document).toContain("Base URL: https://docs.example.com");
     expect(document).toContain("/guides.md");
     expect(document).toContain("/.well-known/agent.json");
+    expect(document).toContain("/.well-known/api-catalog");
+    expect(document).toContain("/.well-known/agent-skills/index.json");
+    expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/robots.txt");
     expect(document).toContain("/api/docs?format=skill");
+    expect(document).toContain("/api/docs?query={query}&audience=agent&response=structured");
+    expect(document).toContain("framework, version, package, or tags filters");
     expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
     expect(document).toContain("API reference: /api-reference");
     expect(document).toContain("npx skills add farming-labs/docs");
@@ -709,10 +2953,13 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
           getConfigSchema: true,
+          getContext: true,
         },
       },
       feedback: {
@@ -739,8 +2986,15 @@ describe("agent route helpers", () => {
     expect(document).toContain("/guides.md");
     expect(document).toContain("/AGENTS.md");
     expect(document).toContain("/.well-known/AGENTS.md");
+    expect(document).toContain("/.well-known/api-catalog");
+    expect(document).toContain("/.well-known/agent-skills/index.json");
+    expect(document).toContain("/.well-known/agent-skills/{name}/SKILL.md");
     expect(document).toContain("/api/docs?format=agents");
+    expect(document).toContain("/api/docs?query={query}&audience=agent&response=structured");
+    expect(document).toContain("framework, version, package, or tags filters");
     expect(document).toContain("/api/docs?format=openapi");
+    expect(document).toContain("/guides/{slug}.md?sections");
+    expect(document).toContain("/guides/{slug}.md?section={id}&tokenBudget={tokens}");
     expect(document).toContain("npx @farming-labs/docs@latest upgrade --latest");
     expect(document).toContain("npx skills add farming-labs/docs");
   });
@@ -758,10 +3012,13 @@ describe("agent route helpers", () => {
           listDocs: true,
           listPages: true,
           readPage: true,
+          listTasks: true,
+          readTask: true,
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
           getConfigSchema: true,
+          getContext: true,
         },
       },
       llms: { enabled: true, siteTitle: "Docs" },
@@ -775,12 +3032,95 @@ describe("agent route helpers", () => {
       },
     });
 
+    expect(spec.$schema).toBe(DOCS_AGENT_MANIFEST_SCHEMA_URI);
+    expect(spec.format).toBe(DOCS_AGENT_MANIFEST_FORMAT);
+    expect(spec.version).toBe(DOCS_AGENT_MANIFEST_VERSION);
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.api).not.toHaveProperty("agentCard");
+    expect(spec.api.config).toBe("/api/docs?format=config");
+    expect(spec.api.diagnostics).toBe("/api/docs?format=diagnostics");
     expect(spec.api.agents).toBe("/api/docs?format=agents");
+    expect(spec.api.apiCatalog).toBe("/.well-known/api-catalog");
+    expect(spec.api.apiCatalogQuery).toBe("/api/docs?format=api-catalog");
+    expect(spec.api.agentSkillsIndex).toBe("/.well-known/agent-skills/index.json");
     expect(spec.api.openapi).toBe("/api/docs?format=openapi");
+    expect(spec.api.contentChanges).toBe("/api/docs?audience=agent&response=changes");
+    expect(spec.config).toMatchObject({
+      format: "docs-config-map.v1",
+      endpoint: "/api/docs?format=config",
+    });
     expect(spec.markdown.rootPage).toBe("/docs.md");
     expect(spec.markdown.signatureAgentHeader).toBe("Signature-Agent");
+    expect(spec.capabilities.markdownSectionDiscovery).toBe(true);
+    expect(spec.markdown.sectionDiscovery).toEqual({
+      enabled: true,
+      format: DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
+      indexParam: "sections",
+      sectionParam: "section",
+      tokenBudgetParam: "tokenBudget",
+      byteBudgetParam: "byteBudget",
+    });
+    expect(spec.markdown.resolutionOrder).toEqual([
+      "agent.md",
+      "agent audience projection",
+      "shared page markdown",
+    ]);
     expect(spec.llms.publicTxt).toBe("/llms.txt");
+    expect(spec.search).toEqual({
+      enabled: true,
+      endpoint: "/api/docs?query={query}",
+      agentEndpoint: "/api/docs?query={query}&audience=agent",
+      structuredAgentEndpoint: "/api/docs?query={query}&audience=agent&response=structured",
+      explainedAgentEndpoint:
+        "/api/docs?query={query}&audience=agent&response=structured&explain=true",
+      facetsEndpoint: "/api/docs?audience=agent&response=facets",
+      method: "GET",
+      queryParam: "query",
+      localeParam: "lang",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      facetsResponseValue: "facets",
+      responseFormat: "docs-search.v1",
+      explainParam: "explain",
+      explainValue: "true",
+      explanationField: "explanation",
+      explanationFormat: "docs-search-explanation.v1",
+      facetsResponseFormat: "docs-search-facets.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
+      facetParam: "facet",
+      limitParam: "limit",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
+    });
+    expect(spec.contentChanges).toEqual({
+      enabled: true,
+      endpoint: "/api/docs?audience=agent&response=changes",
+      method: "GET",
+      audienceParam: "audience",
+      defaultAudience: "agent",
+      supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      responseValue: "changes",
+      sinceParam: "since",
+      format: "docs-content-changes.v1",
+      generationField: "indexGeneration",
+      resetRequiredField: "resetRequired",
+      modes: ["snapshot", "delta", "reset"],
+      bodyFree: true,
+      etag: true,
+    });
     expect(spec.agents).toEqual({
       enabled: true,
       file: "AGENTS.md",
@@ -795,13 +3135,35 @@ describe("agent route helpers", () => {
     expect(spec.skills.wellKnown).toBe("/.well-known/skill.md");
     expect(spec.skills.api).toBe("/api/docs?format=skill");
     expect(spec.skills.generatedFallback).toBe(true);
+    expect(spec.skills.discovery).toEqual({
+      schema: AGENT_SKILLS_DISCOVERY_SCHEMA_URI,
+      index: "/.well-known/agent-skills/index.json",
+      artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+      archive: "/.well-known/agent-skills/{name}.tar.gz",
+      file: "/.well-known/agent-skills/{name}/{path}",
+      legacyIndex: "/.well-known/skills/index.json",
+      apiIndex: "/api/docs?format=agent-skills",
+      apiArtifact: "/api/docs?format=agent-skill&name={name}",
+      apiFile: "/api/docs?format=agent-skill-file&name={name}&path={path}",
+      digest: "sha256",
+    });
+    expect(spec.apiCatalog).toEqual({
+      enabled: true,
+      route: "/.well-known/api-catalog",
+      api: "/api/docs?format=api-catalog",
+      mediaType: API_CATALOG_MEDIA_TYPE,
+      profile: API_CATALOG_PROFILE_URI,
+    });
     expect(spec.mcp.publicEndpoints).toEqual(["/mcp", "/.well-known/mcp"]);
     expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
     expect(spec.sitemap.markdown.docsRoute).toBe("/docs/sitemap.md");
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
     expect(spec.capabilities.robots).toBe(true);
     expect(spec.capabilities.agents).toBe(true);
+    expect(spec.capabilities.apiCatalog).toBe(true);
+    expect(spec.capabilities.agentSkillsDiscovery).toBe(true);
     expect(spec.capabilities.structuredData).toBe(true);
+    expect(spec.capabilities.structuredAgentContracts).toBe(true);
     expect(spec.capabilities.apiReference).toBe(true);
     expect(spec.capabilities.openapi).toBe(true);
     expect(spec.openapi).toEqual({
@@ -821,9 +3183,302 @@ describe("agent route helpers", () => {
       enabled: true,
       format: "application/ld+json",
       schema: "https://schema.org/TechArticle",
-      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb", "mainEntity"],
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
+      agentContractType: "HowTo",
+    });
+    expect(spec.agentContract).toMatchObject({
+      enabled: true,
+      schemaVersion: "page-agent-contract.v1",
+      source: "page-frontmatter",
+      frontmatterPath: "agent",
+      markdownSection: "Agent Contract",
+      mcpField: "agent",
+      mcpTools: { list: "list_tasks", read: "read_task" },
+      usefulContractFields: ["task", "outcome"],
+    });
+  });
+
+  it("normalizes a custom API route across generated discovery resources", () => {
+    const options = {
+      origin: "https://docs.example.com",
+      apiRoute: " api//internal/docs/ ",
+      mcp: {
+        enabled: false,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: {
+          listDocs: true,
+          listPages: true,
+          readPage: true,
+          searchDocs: true,
+          getNavigation: true,
+          getCodeExamples: true,
+          getConfigSchema: true,
+          getContext: true,
+        },
+      },
+      feedback: { enabled: true },
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        urlSource: "default",
+      },
+    } as const;
+    const spec = buildDocsAgentDiscoverySpec(options);
+
+    expect(spec.api).toMatchObject({
+      docs: "/api/internal/docs",
+      config: "/api/internal/docs?format=config",
+      diagnostics: "/api/internal/docs?format=diagnostics",
+      agentSpec: "/api/internal/docs?agent=spec",
+      agentSpecQuery: "/api/internal/docs?agent=spec",
+      agents: "/api/internal/docs?format=agents",
+      apiCatalog: "/.well-known/api-catalog",
+      apiCatalogQuery: "/api/internal/docs?format=api-catalog",
+      agentSkillsIndex: "/.well-known/agent-skills/index.json",
+      openapi: "/api/internal/docs?format=openapi",
+    });
+    expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.apiCatalog.api).toBe("/api/internal/docs?format=api-catalog");
+    expect(spec.config.endpoint).toBe("/api/internal/docs?format=config");
+    expect(spec.markdown.apiPattern).toBe("/api/internal/docs?format=markdown&path={slug}");
+    expect(spec.llms).toMatchObject({
+      txt: "/api/internal/docs?format=llms",
+      full: "/api/internal/docs?format=llms-full",
+    });
+    expect(spec.sitemap.xml.api).toBe("/api/internal/docs?format=sitemap-xml");
+    expect(spec.sitemap.markdown.api).toBe("/api/internal/docs?format=sitemap-md");
+    expect(spec.search.endpoint).toBe("/api/internal/docs?query={query}");
+    expect(spec.search).toMatchObject({
+      agentEndpoint: "/api/internal/docs?query={query}&audience=agent",
+      structuredAgentEndpoint:
+        "/api/internal/docs?query={query}&audience=agent&response=structured",
+      explainedAgentEndpoint:
+        "/api/internal/docs?query={query}&audience=agent&response=structured&explain=true",
+      audienceParam: "audience",
+      defaultAudience: "human",
+      supportedAudiences: ["human", "agent"],
+      responseParam: "response",
+      structuredResponseValue: "structured",
+      responseFormat: "docs-search.v1",
+      explainParam: "explain",
+      explainValue: "true",
+      explanationField: "explanation",
+      explanationFormat: "docs-search-explanation.v1",
+      filterParams: {
+        framework: "framework",
+        version: "version",
+        package: "package",
+        tags: "tags",
+      },
+      repeatedFilterParams: ["framework", "version", "package", "tags"],
+      warningsField: "warnings",
+      facetParam: "facet",
+      limitParam: "limit",
+      cursorParam: "cursor",
+      nextCursorField: "nextCursor",
+      hasMoreField: "hasMore",
+      totalField: "total",
+    });
+    expect(spec.agents.api).toBe("/api/internal/docs?format=agents");
+    expect(spec.skills.api).toBe("/api/internal/docs?format=skill");
+    expect(spec.skills.discovery).toMatchObject({
+      index: "/.well-known/agent-skills/index.json",
+      artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+      apiIndex: "/api/internal/docs?format=agent-skills",
+      apiArtifact: "/api/internal/docs?format=agent-skill&name={name}",
+    });
+    expect(spec.openapi.url).toBe("/api/internal/docs?format=openapi");
+    expect(spec.feedback).toMatchObject({
+      schemaQuery: "/api/internal/docs?feedback=agent&schema=1",
+      submitQuery: "/api/internal/docs?feedback=agent",
+    });
+
+    const generatedSkill = renderDocsSkillDocument(options);
+    expect(generatedSkill).toContain(
+      "/api/internal/docs?query={query}&audience=agent&response=structured",
+    );
+    expect(generatedSkill).toContain("framework, version, package, or tags filters");
+    expect(generatedSkill).toContain("/api/internal/docs?format=agents");
+    expect(generatedSkill).toContain("/api/internal/docs?format=skill");
+    expect(generatedSkill).toContain("/api/internal/docs?format=openapi");
+    expect(generatedSkill).toContain("/api/internal/docs?agent=spec");
+
+    const generatedLlms = renderDocsLlmsTxt([], {
+      apiRoute: options.apiRoute,
+      openapi: options.openapi,
+    });
+    expect(generatedLlms.llmsTxt).toContain("/api/internal/docs?format=openapi");
+  });
+
+  it("preserves an explicitly configured default-looking OpenAPI URL", () => {
+    const explicitOpenApi = {
+      enabled: true,
+      url: "/api/docs?format=openapi",
+    } as const;
+    const options = {
+      origin: "https://docs.example.com",
+      apiRoute: "/api/internal/docs",
+      mcp: {
+        enabled: false,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: {
+          listDocs: true,
+          listPages: true,
+          readPage: true,
+          searchDocs: true,
+          getNavigation: true,
+          getCodeExamples: true,
+          getConfigSchema: true,
+          getContext: true,
+        },
+      },
+      openapi: explicitOpenApi,
+    } as const;
+
+    const spec = buildDocsAgentDiscoverySpec(options);
+    expect(spec.api.openapi).toBe("/api/internal/docs?format=openapi");
+    expect(spec.openapi.url).toBe("/api/docs?format=openapi");
+
+    const diagnostics = buildDocsDiagnostics(
+      {
+        cloud: { apiRoute: "/api/internal/docs" },
+        apiReference: true,
+      },
+      { openapi: explicitOpenApi },
+    );
+    expect(diagnostics.routes.openapi).toBe("/api/docs?format=openapi");
+    expect(diagnostics.features.apiReference).toMatchObject({
+      routes: { openapi: "/api/docs?format=openapi" },
+    });
+
+    for (const document of [renderDocsSkillDocument(options), renderDocsAgentsDocument(options)]) {
+      expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
+      expect(document).not.toContain("OpenAPI schema: /api/internal/docs?format=openapi");
+    }
+
+    const explicitLlms = renderDocsLlmsTxt([], {
+      apiRoute: options.apiRoute,
+      openapi: explicitOpenApi,
+    });
+    expect(explicitLlms.llmsTxt).toContain("/api/docs?format=openapi");
+    expect(explicitLlms.llmsTxt).not.toContain("/api/internal/docs?format=openapi");
+  });
+
+  it("does not infer a product target for a remote OpenAPI schema", () => {
+    expect(
+      resolveDocsOpenApiDiscoveryConfig({
+        enabled: true,
+        specUrl: "https://schemas.example.com/product.openapi.json",
+      }),
+    ).toMatchObject({
+      enabled: true,
+      source: "configured",
+      specUrl: "https://schemas.example.com/product.openapi.json",
+      catalogTargets: undefined,
+    });
+
+    expect(
+      resolveDocsOpenApiDiscoveryConfig({
+        enabled: true,
+        specUrl: "/product.openapi.json",
+      }),
+    ).toMatchObject({
+      enabled: true,
+      source: "configured",
+      catalogTargets: ["/"],
+    });
+  });
+
+  it("advertises only task tools exposed by the resolved MCP config", () => {
+    const baseTools = {
+      listDocs: true,
+      listPages: true,
+      readPage: true,
+      searchDocs: true,
+      getNavigation: true,
+      getCodeExamples: true,
+      getConfigSchema: true,
+      getContext: true,
+    };
+    const build = (mcp: Parameters<typeof buildDocsAgentDiscoverySpec>[0]["mcp"]) =>
+      buildDocsAgentDiscoverySpec({ origin: "https://docs.example.com", mcp });
+
+    expect(
+      build({
+        enabled: false,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: baseTools,
+      }).agentContract,
+    ).not.toHaveProperty("mcpTools");
+
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: { ...baseTools, listTasks: false, readTask: true },
+      }).agentContract,
+    ).toMatchObject({ mcpTools: { read: "read_task" } });
+
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: { ...baseTools, listTasks: false, readTask: false },
+      }).agentContract,
+    ).not.toHaveProperty("mcpTools");
+
+    // Resolved configs constructed against older public types omit the new
+    // flags; omission retains the runtime defaults.
+    expect(
+      build({
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: baseTools,
+      }).agentContract,
+    ).toMatchObject({ mcpTools: { list: "list_tasks", read: "read_task" } });
+  });
+
+  it("cross-lists opt-in OAuth protected-resource discovery", () => {
+    const authenticate = async () => ({ id: "reader", scopes: ["docs:read"] });
+    const spec = buildDocsAgentDiscoverySpec({
+      origin: "https://docs.example.com",
+      mcp: resolveDocsMcpConfig({
+        route: "/internal/mcp",
+        security: {
+          authenticate,
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            scopesSupported: ["docs:read"],
+            requiredScopes: ["docs:read"],
+          },
+        },
+      }),
+    });
+
+    expect(spec.mcp.canonicalEndpoint).toBe("/internal/mcp");
+    expect(spec.mcp.protectedResource).toEqual({
+      metadataEndpoints: [
+        "/.well-known/oauth-protected-resource/internal/mcp",
+        "/.well-known/oauth-protected-resource/mcp",
+        "/.well-known/oauth-protected-resource/.well-known/mcp",
+      ],
+      authorizationServers: ["https://auth.example.com"],
+      scopesSupported: ["docs:read"],
+      requiredScopes: ["docs:read"],
     });
   });
 
@@ -848,5 +3503,156 @@ describe("agent route helpers", () => {
 
     expect(resolveDocsAgentFeedbackConfig(false).enabled).toBe(false);
     expect(resolveDocsAgentFeedbackConfig({ agent: false }).enabled).toBe(false);
+  });
+});
+
+describe("standards discovery configuration", () => {
+  const mcp = {
+    enabled: false,
+    route: "/api/docs/mcp",
+    name: "docs",
+    version: "1.0.0",
+    tools: {
+      listDocs: true,
+      listPages: true,
+      readPage: true,
+      listTasks: true,
+      readTask: true,
+      searchDocs: true,
+      getNavigation: true,
+      getCodeExamples: true,
+      getConfigSchema: true,
+      getContext: true,
+    },
+  } as const;
+  const fallbackSkillDocument = `---
+name: docs
+description: Use the example documentation.
+---
+
+# Docs
+`;
+
+  it("uses top-level catalog configuration before llms configuration", async () => {
+    const fromLlms = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/api-catalog"),
+      origin: "https://docs.example.com",
+      mcp,
+      llms: { apiCatalog: false },
+      fallbackSkillDocument,
+    });
+    expect(fromLlms?.status).toBe(404);
+    expect(fromLlms?.headers.get("link")).not.toContain('rel="api-catalog"');
+
+    const skills = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/agent-skills/index.json"),
+      origin: "https://docs.example.com",
+      mcp,
+      llms: { apiCatalog: false },
+      fallbackSkillDocument,
+    });
+    expect(skills?.status).toBe(200);
+    expect(skills?.headers.get("link")).not.toContain('rel="api-catalog"');
+
+    const explicitEnable = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/api-catalog"),
+      origin: "https://docs.example.com",
+      apiCatalog: true,
+      mcp,
+      llms: { apiCatalog: false },
+      fallbackSkillDocument,
+    });
+    expect(explicitEnable?.status).toBe(200);
+
+    const explicitDisable = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/api-catalog"),
+      origin: "https://docs.example.com",
+      apiCatalog: false,
+      mcp,
+      llms: { apiCatalog: true },
+      fallbackSkillDocument,
+    });
+    expect(explicitDisable?.status).toBe(404);
+  });
+
+  it("uses a normalized custom API route throughout the generated catalog", async () => {
+    const response = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/api/internal/docs?format=api-catalog"),
+      origin: "https://docs.example.com",
+      apiRoute: " api//internal/docs/ ",
+      mcp,
+      openapi: true,
+      fallbackSkillDocument,
+    });
+    const catalog = (await response?.json()) as {
+      linkset: Array<Record<string, Array<{ href: string }> | string>>;
+    };
+
+    expect(response?.status).toBe(200);
+    expect(catalog.linkset[0].item).toContainEqual(
+      expect.objectContaining({ href: "https://docs.example.com/api/internal/docs" }),
+    );
+    expect(catalog.linkset[0].item).toContainEqual(
+      expect.objectContaining({ href: "https://docs.example.com/" }),
+    );
+    expect(catalog.linkset[0]["service-meta"]).toContainEqual(
+      expect.objectContaining({
+        href: "https://docs.example.com/api/internal/docs?format=config",
+      }),
+    );
+    expect(catalog.linkset[0]["service-desc"]).toBeUndefined();
+    expect(
+      catalog.linkset.find(
+        (context) => context.anchor === "https://docs.example.com/api/internal/docs",
+      )?.["service-desc"],
+    ).toBeUndefined();
+    expect(
+      catalog.linkset.find((context) => context.anchor === "https://docs.example.com/")?.[
+        "service-desc"
+      ],
+    ).toContainEqual(
+      expect.objectContaining({
+        href: "https://docs.example.com/api/internal/docs?format=openapi",
+      }),
+    );
+  });
+
+  it("catalogs protected-resource metadata only for an enabled protected MCP server", async () => {
+    const protectedConfig = {
+      route: "/internal/mcp",
+      security: {
+        authenticate: async () => ({ id: "reader", scopes: ["docs:read"] }),
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+          scopesSupported: ["docs:read"],
+          requiredScopes: ["docs:read"],
+        },
+      },
+    } as const;
+    const readMetadataHrefs = async (enabled: boolean) => {
+      const response = await createDocsStandardsDiscoveryResponse({
+        request: new Request("https://docs.example.com/.well-known/api-catalog"),
+        origin: "https://docs.example.com",
+        mcp: resolveDocsMcpConfig({ ...protectedConfig, enabled }),
+        fallbackSkillDocument,
+      });
+      const catalog = (await response?.json()) as {
+        linkset: Array<Record<string, Array<{ href: string }> | string>>;
+      };
+      return (catalog.linkset[0]["service-meta"] as Array<{ href: string }>).map(
+        (target) => target.href,
+      );
+    };
+
+    expect(await readMetadataHrefs(true)).toEqual(
+      expect.arrayContaining([
+        "https://docs.example.com/.well-known/oauth-protected-resource/internal/mcp",
+        "https://docs.example.com/.well-known/oauth-protected-resource/mcp",
+        "https://docs.example.com/.well-known/oauth-protected-resource/.well-known/mcp",
+      ]),
+    );
+    expect((await readMetadataHrefs(false)).some((href) => href.includes("oauth-protected"))).toBe(
+      false,
+    );
   });
 });

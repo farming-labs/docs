@@ -74,6 +74,17 @@
       .replace(/\{url\}/g, values.url);
   }
 
+  function resolveReadingTimeFormat(config, data) {
+    if (data?.readingTimeFormat === "short" || data?.readingTimeFormat === "long") {
+      return data.readingTimeFormat;
+    }
+
+    const readingTime = config?.readingTime;
+    return readingTime && typeof readingTime === "object" && readingTime.format === "short"
+      ? "short"
+      : "long";
+  }
+
   let breadcrumbEnabled = $derived.by(() => {
     const bc = config?.breadcrumb;
     if (bc === undefined || bc === true) return true;
@@ -194,7 +205,14 @@
       ? Math.max(1, Math.ceil(data.readingTime))
       : null
   );
-  let readingTimeLabel = $derived(readingTimeValue ? `${readingTimeValue} min read` : null);
+  let readingTimeFormat = $derived(resolveReadingTimeFormat(config, data));
+  let readingTimeLabel = $derived(
+    readingTimeValue
+      ? readingTimeFormat === "short"
+        ? `${readingTimeValue} min`
+        : `${readingTimeValue} min read`
+      : null
+  );
   let showReadingTimeAbove = $derived(!!readingTimeLabel && showActionsAbove);
   let showReadingTimeBelow = $derived(
     !!readingTimeLabel &&

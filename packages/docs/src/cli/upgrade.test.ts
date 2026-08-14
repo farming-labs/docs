@@ -13,8 +13,8 @@ import {
 
 describe("upgrade", () => {
   describe("PRESETS", () => {
-    it("includes next, tanstack-start, nuxt, sveltekit, astro", () => {
-      expect(PRESETS).toEqual(["next", "tanstack-start", "nuxt", "sveltekit", "astro"]);
+    it("includes every supported package preset", () => {
+      expect(PRESETS).toEqual(["next", "tanstack-start", "farmjs", "nuxt", "sveltekit", "astro"]);
     });
   });
 
@@ -35,40 +35,52 @@ describe("upgrade", () => {
       expect(pkgs).toHaveLength(3);
     });
 
-    it("nuxt has docs, nuxt, nuxt-theme", () => {
+    it("farmjs has docs, theme, and the Farm adapter", () => {
+      expect(getPackagesForFramework("farmjs")).toEqual([
+        "@farming-labs/docs",
+        "@farming-labs/theme",
+        "@farming-labs/farmjs",
+      ]);
+    });
+
+    it("nuxt has docs, nuxt, nuxt-theme, and shared theme css", () => {
       const pkgs = getPackagesForFramework("nuxt");
       expect(pkgs).toContain("@farming-labs/docs");
       expect(pkgs).toContain("@farming-labs/nuxt");
       expect(pkgs).toContain("@farming-labs/nuxt-theme");
-      expect(pkgs).toHaveLength(3);
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toHaveLength(4);
     });
 
-    it("sveltekit has docs, svelte, svelte-theme", () => {
+    it("sveltekit has docs, svelte, svelte-theme, and shared theme css", () => {
       const pkgs = getPackagesForFramework("sveltekit");
       expect(pkgs).toContain("@farming-labs/docs");
       expect(pkgs).toContain("@farming-labs/svelte");
       expect(pkgs).toContain("@farming-labs/svelte-theme");
-      expect(pkgs).toHaveLength(3);
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toHaveLength(4);
     });
 
-    it("astro has docs, astro, astro-theme", () => {
+    it("astro has docs, astro, astro-theme, and shared theme css", () => {
       const pkgs = getPackagesForFramework("astro");
       expect(pkgs).toContain("@farming-labs/docs");
       expect(pkgs).toContain("@farming-labs/astro");
       expect(pkgs).toContain("@farming-labs/astro-theme");
-      expect(pkgs).toHaveLength(3);
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toHaveLength(4);
     });
 
-    it("every framework has exactly 3 packages", () => {
+    it("every framework installs the shared theme package", () => {
       const frameworks: UpgradeFramework[] = [
         "nextjs",
         "tanstack-start",
+        "farmjs",
         "nuxt",
         "sveltekit",
         "astro",
       ];
       for (const fw of frameworks) {
-        expect(PACKAGES_BY_FRAMEWORK[fw]).toHaveLength(3);
+        expect(PACKAGES_BY_FRAMEWORK[fw]).toContain("@farming-labs/theme");
       }
     });
   });
@@ -80,6 +92,7 @@ describe("upgrade", () => {
 
     it("other frameworks map to themselves as preset", () => {
       expect(presetFromFramework("tanstack-start")).toBe("tanstack-start");
+      expect(presetFromFramework("farmjs")).toBe("farmjs");
       expect(presetFromFramework("nuxt")).toBe("nuxt");
       expect(presetFromFramework("sveltekit")).toBe("sveltekit");
       expect(presetFromFramework("astro")).toBe("astro");
@@ -93,6 +106,7 @@ describe("upgrade", () => {
       const frameworks: UpgradeFramework[] = [
         "nextjs",
         "tanstack-start",
+        "farmjs",
         "nuxt",
         "sveltekit",
         "astro",

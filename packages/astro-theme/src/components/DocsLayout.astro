@@ -108,7 +108,16 @@ function buildTypographyCSS(typo?: any): string {
     }
   }
   if (vars.length === 0) return "";
-  return `:root {\n  ${vars.join("\n  ")}\n}`;
+  const cssVars = vars.join("\n  ");
+  return `:root {
+  ${cssVars}
+}
+body:has(#nd-docs-layout) {
+  ${cssVars}
+}
+#nd-docs-layout {
+  ${cssVars}
+}`;
 }
 
 function buildLayoutCSS(layout?: any): string {
@@ -120,8 +129,9 @@ function buildLayoutCSS(layout?: any): string {
   if (layout.tocWidth) desktopVars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
   if (rootVars.length === 0 && desktopVars.length === 0) return "";
   const parts: string[] = [];
-  if (rootVars.length > 0) parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
-  if (desktopVars.length > 0) parts.push(`@media (min-width: 1024px) {\n  :root {\n    ${desktopVars.join("\n    ")}\n  }\n}`);
+  if (rootVars.length > 0) parts.push(`#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
+  if (desktopVars.length > 0)
+    parts.push(`@media (min-width: 1024px) {\n  #nd-docs-layout {\n    ${desktopVars.join("\n    ")}\n  }\n}`);
   return parts.join("\n");
 }
 
@@ -161,7 +171,7 @@ const showSearch = !staticExport;
 <script is:inline set:html={themeInitScript}></script>
 {overrideCSS && <style set:html={overrideCSS} />}
 
-<div class="fd-layout">
+<div id="nd-docs-layout" data-fd-framework="astro" class="fd-layout">
   <header class="fd-header">
     <button class="fd-menu-btn" id="fd-menu-toggle" aria-label="Toggle sidebar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">

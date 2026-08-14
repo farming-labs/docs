@@ -1,6 +1,6 @@
 /**
  * Upgrade @farming-labs/* packages to a dist-tag or exact version.
- * Detects framework from package.json by default, or use --framework (next, tanstack-start, nuxt, sveltekit, astro).
+ * Detects framework from package.json by default, or use --framework (next, tanstack-start, farmjs, nuxt, sveltekit, astro).
  */
 import path from "node:path";
 import * as p from "@clack/prompts";
@@ -47,12 +47,14 @@ export function buildUpgradeCommand(
 }
 
 export interface UpgradeOptions {
-  /** Explicit framework: next, tanstack-start, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
+  /** Explicit framework: next, tanstack-start, farmjs, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
   framework?: string;
   /** npm dist-tag to install: "latest" (default) or "beta". */
   tag?: UpgradeTag;
   /** Exact package version to install, e.g. 0.1.104. Overrides tag when provided. */
   version?: string;
+  /** Print the resolved install command without running it. */
+  dryRun?: boolean;
 }
 
 export async function upgrade(options: UpgradeOptions = {}) {
@@ -82,6 +84,12 @@ export async function upgrade(options: UpgradeOptions = {}) {
 
   p.log.step(`Upgrading ${preset} docs packages to ${target}...`);
   p.log.message(pc.dim(packages.join(", ")));
+
+  if (options.dryRun) {
+    p.log.info("Dry run. Would run:\n  " + pc.cyan(cmd));
+    p.outro(pc.green("Dry run complete. No changes made."));
+    return;
+  }
 
   try {
     exec(cmd, cwd);

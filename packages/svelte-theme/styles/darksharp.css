@@ -5,7 +5,8 @@
 
 /* ─── Color overrides (light) ─────────────────────────────────────── */
 
-:root {
+body:has(#nd-docs-layout),
+#nd-docs-layout {
   --color-fd-background: oklch(1 0 0);
   --color-fd-foreground: oklch(0.147 0.004 49.25);
   --color-fd-card: oklch(1 0 0);
@@ -26,7 +27,11 @@
 
 /* ─── Color overrides (dark) ──────────────────────────────────────── */
 
-.dark {
+html.dark body:has(#nd-docs-layout),
+body.dark:has(#nd-docs-layout),
+body:has(#nd-docs-layout.dark),
+:is(html.dark, body.dark) #nd-docs-layout,
+#nd-docs-layout.dark {
   --color-fd-background: hsl(0 0% 0%);
   --color-fd-foreground: oklch(0.985 0.001 106.423);
   --color-fd-card: hsl(0 0% 0%);
@@ -49,65 +54,69 @@
  * Sharp radius — override all rounded utilities
  * ═══════════════════════════════════════════════════════════════════ */
 
-.fd-sidebar,
-.fd-nav,
-.fd-card,
-.fd-callout,
-.fd-code-block,
-.fd-search-dialog,
-.fd-toc,
-[class*="rounded-lg"] {
+#nd-docs-layout .fd-sidebar,
+#nd-docs-layout .fd-nav,
+#nd-docs-layout .fd-card,
+#nd-docs-layout .fd-callout,
+#nd-docs-layout .fd-code-block,
+#nd-docs-layout .fd-search-dialog,
+#nd-docs-layout .fd-toc,
+#nd-docs-layout [class*="rounded-lg"] {
   border-radius: 0.2rem !important;
 }
 
-[class*="rounded-md"] {
+#nd-docs-layout [class*="rounded-md"] {
   border-radius: 0.1rem !important;
 }
 
-[class*="rounded-xl"],
-[class*="rounded-2xl"] {
+#nd-docs-layout [class*="rounded-xl"],
+#nd-docs-layout [class*="rounded-2xl"] {
   border-radius: 0.2rem !important;
 }
 
 /* ─── Tables ──────────────────────────────────────────────────────── */
 
-table {
+#nd-docs-layout table {
   border-radius: 0 !important;
   border-collapse: collapse;
 }
 
-.dark th {
+:is(html.dark, body.dark) #nd-docs-layout th,
+#nd-docs-layout.dark th {
   background: hsl(0 0% 8%);
   color: hsl(0 0% 80%);
   font-weight: 500;
 }
 
-.dark td {
+:is(html.dark, body.dark) #nd-docs-layout td,
+#nd-docs-layout.dark td {
   background: hsl(0 0% 2%);
 }
 
-.dark tr {
+:is(html.dark, body.dark) #nd-docs-layout tr,
+#nd-docs-layout.dark tr {
   border-color: hsl(0 0% 14%);
 }
 
 /* ─── Code blocks ─────────────────────────────────────────────────── */
 
-.fd-code-block,
-.fd-code-block pre {
+#nd-docs-layout .fd-code-block,
+#nd-docs-layout .fd-code-block pre {
   border-radius: 0.2rem !important;
 }
 
-.fd-code-block button {
+#nd-docs-layout .fd-code-block button {
   border-radius: 0.1rem !important;
 }
 
 /* ─── Inline code ─────────────────────────────────────────────────── */
 
-code:not(pre code) {
+#nd-docs-layout code:not(pre code) {
   border-radius: 0.1rem !important;
 }
 
-.dark code:not(pre code) {
+:is(html.dark, body.dark) #nd-docs-layout code:not(pre code),
+#nd-docs-layout.dark code:not(pre code) {
   background: hsl(0 0% 10%);
   border: 1px solid hsl(0 0% 16%);
   color: hsl(0 0% 85%);
@@ -115,118 +124,128 @@ code:not(pre code) {
 
 /* ─── Callouts ────────────────────────────────────────────────────── */
 
-.dark .fd-card,
-.dark .fd-callout {
+:is(html.dark, body.dark) #nd-docs-layout .fd-card,
+#nd-docs-layout.dark .fd-card,
+:is(html.dark, body.dark) #nd-docs-layout .fd-callout,
+#nd-docs-layout.dark .fd-callout {
   border-color: hsl(0 0% 14%);
 }
 
 /* ─── Selection ───────────────────────────────────────────────────── */
 
-::selection {
+#nd-docs-layout::selection,
+#nd-docs-layout *::selection {
   background: var(--color-fd-foreground);
   color: var(--color-fd-background);
 }
 
 /* ─── Sidebar (dark) ──────────────────────────────────────────────── */
 
-.dark .fd-sidebar {
+:is(html.dark, body.dark) #nd-docs-layout .fd-sidebar,
+#nd-docs-layout.dark .fd-sidebar {
   background: hsl(0 0% 0%);
   border-color: hsl(0 0% 12%);
 }
 
-.dark .fd-sidebar a[data-active="true"] {
+:is(html.dark, body.dark) #nd-docs-layout .fd-sidebar a[data-active="true"],
+#nd-docs-layout.dark .fd-sidebar a[data-active="true"] {
   background: hsl(0 0% 14%) !important;
   color: hsl(0 0% 96%) !important;
 }
 
-.dark .fd-sidebar a:hover {
+:is(html.dark, body.dark) #nd-docs-layout .fd-sidebar a:hover,
+#nd-docs-layout.dark .fd-sidebar a:hover {
   background: hsl(0 0% 10%);
   color: hsl(0 0% 90%);
 }
 
 /* ─── TOC ─────────────────────────────────────────────────────────── */
 
-.dark .fd-toc {
+:is(html.dark, body.dark) #nd-docs-layout .fd-toc,
+#nd-docs-layout.dark .fd-toc {
   border-color: hsl(0 0% 12%);
 }
 
 /* ─── Separator ───────────────────────────────────────────────────── */
 
-.dark hr {
+:is(html.dark, body.dark) #nd-docs-layout hr,
+#nd-docs-layout.dark hr {
   border-color: hsl(0 0% 14%);
 }
 
 /* ─── Nav cards (prev/next) ───────────────────────────────────────── */
 
-.dark .fd-nav-card {
+:is(html.dark, body.dark) #nd-docs-layout .fd-nav-card,
+#nd-docs-layout.dark .fd-nav-card {
   border-color: hsl(0 0% 14%);
 }
 
-.dark .fd-nav-card:hover {
+:is(html.dark, body.dark) #nd-docs-layout .fd-nav-card:hover,
+#nd-docs-layout.dark .fd-nav-card:hover {
   background: hsl(0 0% 8%);
   border-color: hsl(0 0% 20%);
 }
 
 /* ─── Search dialog ───────────────────────────────────────────────── */
 
-.fd-search-dialog {
+#nd-docs-layout .fd-search-dialog {
   border-radius: 0.2rem !important;
 }
 
 /* ─── AI Chat (sharp edges) ───────────────────────────────────────── */
 
-.fd-ai-dialog,
-.fd-ai-bubble-user,
-.fd-ai-bubble-ai,
-.fd-ai-input-wrap,
-.fd-ai-send-btn,
-.fd-ai-close-btn,
-.fd-ai-floating-btn,
-.fd-ai-suggestion,
-.fd-ai-result,
-.fd-ai-esc,
-.fd-ai-clear-btn,
-.fd-ai-fm-input-container,
-.fd-ai-fm-send-btn,
-.fd-ai-fm-close-btn,
-.fd-ai-fm-suggestion,
-.fd-ai-fm-trigger-btn,
-.fd-ai-code-block,
-.fd-ai-code-copy {
+#nd-docs-layout .fd-ai-dialog,
+#nd-docs-layout .fd-ai-bubble-user,
+#nd-docs-layout .fd-ai-bubble-ai,
+#nd-docs-layout .fd-ai-input-wrap,
+#nd-docs-layout .fd-ai-send-btn,
+#nd-docs-layout .fd-ai-close-btn,
+#nd-docs-layout .fd-ai-floating-btn,
+#nd-docs-layout .fd-ai-suggestion,
+#nd-docs-layout .fd-ai-result,
+#nd-docs-layout .fd-ai-esc,
+#nd-docs-layout .fd-ai-clear-btn,
+#nd-docs-layout .fd-ai-fm-input-container,
+#nd-docs-layout .fd-ai-fm-send-btn,
+#nd-docs-layout .fd-ai-fm-close-btn,
+#nd-docs-layout .fd-ai-fm-suggestion,
+#nd-docs-layout .fd-ai-fm-trigger-btn,
+#nd-docs-layout .fd-ai-code-block,
+#nd-docs-layout .fd-ai-code-copy {
   border-radius: 2px !important;
 }
 
-.fd-ai-floating-btn:hover {
+#nd-docs-layout .fd-ai-floating-btn:hover {
   box-shadow: 0 0 0 1px var(--color-fd-ring);
   transform: none;
 }
 
-.fd-ai-fm-trigger-btn:hover {
+#nd-docs-layout .fd-ai-fm-trigger-btn:hover {
   transform: none;
 }
 
 /* Custom Ask AI trigger — same as fd-ai-floating-btn for theme */
-.fd-ai-floating-trigger .ask-ai-trigger {
+#nd-docs-layout .fd-ai-floating-trigger .ask-ai-trigger {
   font-family: var(--fd-font-sans, inherit);
   border-radius: 2px !important;
 }
 
-.fd-ai-floating-trigger .ask-ai-trigger:hover {
+#nd-docs-layout .fd-ai-floating-trigger .ask-ai-trigger:hover {
   box-shadow: 0 0 0 1px var(--color-fd-ring);
   transform: none;
 }
 
-.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger {
+#nd-docs-layout .fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger {
   border-radius: 2px !important;
 }
 
-.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger:hover {
+#nd-docs-layout .fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger:hover {
   transform: none;
 }
 
 /* ─── Omni Command Palette — darksharp theme ────────────────────── */
 
-.omni-content {
+#nd-docs-layout .omni-content {
   border-radius: 0.5rem !important;
   border: 1px solid var(--color-fd-border) !important;
   background: var(--color-fd-popover) !important;
@@ -235,17 +254,17 @@ code:not(pre code) {
     0 0 0 1px rgba(255, 255, 255, 0.06) !important;
 }
 
-.omni-item {
+#nd-docs-layout .omni-item {
   border-radius: 0.25rem !important;
 }
 
-.omni-highlight {
+#nd-docs-layout .omni-highlight {
   background: color-mix(in srgb, var(--color-fd-primary) 30%, transparent) !important;
 }
 
 /* ─── Page Actions — darksharp theme ────────────────────────────── */
 
-.fd-page-action-btn {
+#nd-docs-layout .fd-page-action-btn {
   border-radius: 0.2rem !important;
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
@@ -254,43 +273,46 @@ code:not(pre code) {
   font-family: var(--fd-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
 }
 
-.fd-page-action-dropdown {
+#nd-docs-layout .fd-page-action-dropdown {
   position: relative !important;
 }
 
-.fd-page-action-menu {
+#nd-docs-layout .fd-page-action-menu {
   border-radius: 0.2rem !important;
   border: 1px solid var(--color-fd-border) !important;
   box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4) !important;
   background: var(--color-fd-popover) !important;
 }
 
-.fd-page-action-menu-item {
+#nd-docs-layout .fd-page-action-menu-item {
   border-radius: 0.1rem !important;
   font-size: 0.8125rem !important;
   color: var(--color-fd-foreground) !important;
 }
 
-.fd-page-action-menu-item:hover {
+#nd-docs-layout .fd-page-action-menu-item:hover {
   background: var(--color-fd-accent) !important;
   color: var(--color-fd-accent-foreground) !important;
 }
 
 /* ─── Feedback (darksharp theme) ─────────────────────────────────── */
 
-.fd-feedback-input,
-.fd-feedback-submit {
+#nd-docs-layout .fd-feedback-input,
+#nd-docs-layout .fd-feedback-submit {
   border-radius: 0.2rem !important;
 }
 
-.dark .fd-feedback-input {
+:is(html.dark, body.dark) #nd-docs-layout .fd-feedback-input,
+#nd-docs-layout.dark .fd-feedback-input {
   background: hsl(0 0% 4%);
 }
 
-.dark .fd-feedback-choice[data-selected="true"] {
+:is(html.dark, body.dark) #nd-docs-layout .fd-feedback-choice[data-selected="true"],
+#nd-docs-layout.dark .fd-feedback-choice[data-selected="true"] {
   background: hsl(0 0% 8%);
 }
 
-.dark .fd-feedback-status[data-status="success"] {
+:is(html.dark, body.dark) #nd-docs-layout .fd-feedback-status[data-status="success"],
+#nd-docs-layout.dark .fd-feedback-status[data-status="success"] {
   color: hsl(0 0% 90%);
 }

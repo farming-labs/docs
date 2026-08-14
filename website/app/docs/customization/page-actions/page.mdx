@@ -1,16 +1,56 @@
 ---
 title: "Page Actions"
-description: 'Add "Open in LLM" and "Copy Markdown" buttons to your doc pages'
+description: 'Add copy, LLM, MCP connection, and Agent Skills actions to docs pages'
 icon: "mousePointerClick"
 order: 5.6
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
+  - /docs/customization/ai-chat
+  - /docs/customization/mcp
+agent:
+  tokenBudget: 900
+  task: Configure copy, Open in LLM, MCP connection, and Agent Skills actions for docs pages.
+  outcome: The selected actions appear in the intended position and produce canonical Markdown, provider URLs, or copyable agent setup instructions.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Machine-readable Markdown routes work for the docs entry.
+    - Configure github.url before using provider templates that require a GitHub source URL.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+  sideEffects:
+    - Open in LLM can navigate users to an external provider with the configured prompt and page URL.
+    - Custom copy callbacks can emit analytics for copied documentation content.
+  verification:
+    - description: Open a docs page, copy Markdown, and exercise each configured external provider action.
+      expect: Copied text matches the configured format and every provider URL contains the canonical current-page target.
+  rollback:
+    - Disable pageActions or restore the previous provider, alignment, and copy settings.
+  failureModes:
+    - symptom: Copy Markdown returns HTML or an empty response.
+      resolution: Verify the page .md route and shared docs API Markdown format before changing the button.
+    - symptom: A provider opens with an unresolved template token.
+      resolution: Use only documented URL template variables and configure github.url when githubUrl is required.
 ---
 
 # Page Actions
 
 <Agent>
-Use this page when the user asks about this topic: Add "Open in LLM" and "Copy Markdown" buttons to your doc pages.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Edit top-level `pageActions` in `docs.config.ts` or `docs.config.tsx`. Enable
+`copyMarkdown` for clipboard output and `openDocs` for provider links; prefer
+`openDocs.target: "markdown"` so the prompt receives the current machine-readable page. Configure
+top-level `github` before using the `github` target or `{githubUrl}` template value.
+
+First verify the page's `.md` route, then copy Markdown and open every configured provider from that
+page. If copying returns HTML or an empty body, repair the Markdown route rather than the button. If
+a provider URL contains an unresolved token, use only the documented template placeholders and
+check the required `github.url`. To remove both actions, delete `pageActions` or set both
+`copyMarkdown: false` and `openDocs: false`.
 </Agent>
 
 Page actions are buttons rendered above or below the page title. They let users interact with page content — copy it as Markdown, or open it in an LLM provider like ChatGPT or Claude.
@@ -21,10 +61,12 @@ Page actions are buttons rendered above or below the page title. They let users 
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: { enabled: true },
+  connectMcp: true,
+  installSkills: true,
 }
 ```
 
-This adds two buttons: **Copy Markdown** and an **Open in...** dropdown.
+This adds the content actions plus **Connect MCP** and **Install skills** setup controls.
 
 ## Configuration Reference
 
@@ -79,6 +121,44 @@ pageActions: {
 
 ---
 
+## Agent setup actions
+
+### `pageActions.connectMcp`
+
+Show one-click, copyable MCP setup for the raw endpoint, Claude Code, Cursor, VS Code, and Codex.
+Relative endpoints are resolved against the deployed docs origin.
+
+```ts title="docs.config.ts"
+pageActions: {
+  connectMcp: {
+    enabled: true,
+    endpoint: "/mcp",
+    providers: ["copy", "claude-code", "cursor", "vscode", "codex"],
+    label: "Connect docs MCP",
+  },
+}
+```
+
+### `pageActions.installSkills`
+
+Read the published `/.well-known/agent-skills/index.json` catalog and offer a copyable Skills CLI
+command. You can override the index or command when the docs are hosted behind a proxy.
+
+```ts title="docs.config.ts"
+pageActions: {
+  installSkills: {
+    enabled: true,
+    index: "/.well-known/agent-skills/index.json",
+    command: "npx skills add https://docs.example.com",
+  },
+}
+```
+
+Both actions are opt-in. Keep `mcp` and `agent.skills` enabled so the copied setup resolves to live
+surfaces after deployment.
+
+---
+
 ## Copy Markdown
 
 ### `pageActions.copyMarkdown`
@@ -97,6 +177,65 @@ pageActions: {
 }
 ```
 
+The object form also lets you customize the button text.
+
+### `pageActions.copyMarkdown.label`
+
+Button label shown before the page has been copied.
+
+| Type     | Default        |
+| -------- | -------------- |
+| `string` | `"Copy page"` |
+
+### `pageActions.copyMarkdown.copiedLabel`
+
+Button label shown after a successful copy.
+
+| Type     | Default      |
+| -------- | ------------ |
+| `string` | `"Copied!"` |
+
+### `pageActions.copyMarkdown.format`
+
+Content format that the button copies to the clipboard.
+
+| Type                       | Default        |
+| -------------------------- | -------------- |
+| `"markdown" \| "text"` | `"markdown"` |
+
+- `"markdown"` — fetches the page's public `.md` route and copies its markdown source.
+- `"text"` — reads the visible text content of the rendered page without a network request.
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, format: "text" },
+}
+```
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, label: "Copy docs", copiedLabel: "Copied docs" },
+}
+```
+
+### `pageActions.copyMarkdown.includeTitle`
+
+Whether to prepend the current page title to the copied content.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `false` |
+
+When enabled:
+- In `"markdown"` format a `# Title` heading is added before the page content.
+- In `"text"` format the plain title is prepended as a first line.
+
+The title is not added if the content already begins with it.
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, includeTitle: true },
+}
+```
 ---
 
 ## Open in LLM
@@ -145,8 +284,9 @@ pageActions: {
 }
 ```
 
-Built-in provider ids are `"chatgpt"`, `"claude"`, `"cursor"`, `"gemini"`, `"copilot"`, and `"github"`.
+Built-in provider ids are `"chatgpt"`, `"claude"`, `"cursor"`, `"gemini"`, `"copilot"`, `"perplexity"`, and `"github"`.
 
+Each of these built-in presets automatically renders a monochrome provider icon in the dropdown — no `icon` field is required. You only need to supply an `icon` when using a custom `urlTemplate` provider or when you want to override the default mark for a named preset.
 ### `pageActions.openDocs.target`
 
 Controls which URL is inserted into `{url}` for the built-in provider prompt.
@@ -174,7 +314,7 @@ pageActions: {
     enabled: true,
     target: "markdown",
     prompt: "Use this documentation while editing the codebase: {url}",
-    providers: ["chatgpt", "claude", { id: "cursor", mode: "app" }],
+    providers: ["chatgpt", "claude", "perplexity", { id: "cursor", mode: "app" }],
   },
 }
 ```

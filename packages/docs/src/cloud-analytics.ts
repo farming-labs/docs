@@ -4,10 +4,10 @@ interface DocsCloudAnalyticsOptions {
   endpoint?: string;
   projectId?: string;
   apiKey?: string;
+  fetch?: typeof fetch;
 }
 
-const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT =
-  "https://docs-app.farming-labs.dev/api/analytics/events";
+const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://api.farming-labs.dev/v1/analytics/events";
 
 function normalizeRuntimeEnvValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -20,18 +20,26 @@ function readRuntimeEnv(name: string): string | undefined {
   }
 
   switch (name) {
+    case "PUBLIC_DOCS_CLOUD_PROJECT_ID":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID);
     case "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID);
     case "DOCS_CLOUD_PROJECT_ID":
       return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_PROJECT_ID);
+    case "PUBLIC_DOCS_CLOUD_ANALYTICS_KEY":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
     case "DOCS_CLOUD_ANALYTICS_KEY":
       return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_KEY);
+    case "PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
     case "DOCS_CLOUD_ANALYTICS_ENABLED":
       return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENABLED);
+    case "PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT":
+      return normalizeRuntimeEnvValue(process.env.PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT);
     case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT":
       return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT);
     case "DOCS_CLOUD_ANALYTICS_ENDPOINT":
@@ -54,20 +62,27 @@ export function resolveDocsCloudAnalyticsOptions(
 ): DocsCloudAnalyticsOptions | null {
   if (
     analytics === false ||
-    (analytics && typeof analytics === "object" && analytics.enabled === false)
+    (analytics &&
+      typeof analytics === "object" &&
+      (analytics.enabled === false || analytics.cloud === false))
   ) {
     return null;
   }
 
   const projectId =
-    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_PROJECT_ID") ??
+    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ??
+    readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
   const apiKey =
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_ANALYTICS_KEY") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_KEY");
   const enabled =
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_ENABLED");
   const endpoint =
+    readRuntimeEnv("PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT") ??
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_ENDPOINT") ??
     DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT;
@@ -209,7 +224,8 @@ export async function sendDocsCloudAnalyticsEvent(
   options: DocsCloudAnalyticsOptions,
   event: DocsAnalyticsEvent,
 ) {
-  if (typeof fetch !== "function") {
+  const fetcher = options.fetch ?? (typeof fetch === "function" ? fetch : undefined);
+  if (!fetcher) {
     return;
   }
 
@@ -221,7 +237,7 @@ export async function sendDocsCloudAnalyticsEvent(
 
   try {
     const normalizedEvent = withDocsCloudAnalyticsHints(event);
-    await fetch(endpoint, {
+    await fetcher(endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",

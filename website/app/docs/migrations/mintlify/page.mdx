@@ -1,0 +1,191 @@
+---
+title: "From Mintlify"
+description: "Migrate Mintlify MDX, docs.json navigation, components, OpenAPI, and hosted integrations"
+icon: "file"
+order: 2
+related:
+  - /docs/migrations
+  - /docs/installation
+  - /docs/configuration
+  - /docs/customization/components
+  - /docs/customization/page-actions
+agent:
+  tokenBudget: 1550
+  task: Migrate a Mintlify documentation repository into Farming Labs Docs.
+  outcome: Mintlify MDX, navigation, assets, and supported components render in a buildable Farming Labs Docs project.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - Obtain the Git repository containing docs.json or mint.json, all MDX pages, assets, snippets, and OpenAPI files.
+    - Record hosted redirects, authentication, analytics, custom domains, and dashboard-only settings.
+    - Initialize the target runtime separately from the source deployment.
+  files:
+    - docs.json
+    - mint.json
+    - docs.config.ts
+    - docs.config.tsx
+  commands:
+    - run: npx @farming-labs/docs init
+      description: Scaffold the target docs runtime before moving Mintlify content.
+  sideEffects:
+    - Mintlify navigation and components are converted to Farming Labs file structure and MDX components.
+  verification:
+    - description: Build the target and compare navigation, components, assets, API pages, redirects, and protected content.
+      expect: The build passes and all required public routes and Markdown routes resolve.
+  rollback:
+    - Leave the Mintlify production project connected until the new deployment and redirects pass verification.
+  failureModes:
+    - symptom: A Mintlify component is undefined during MDX compilation.
+      resolution: Replace it with the mapped Farming Labs component or register an equivalent custom component.
+    - symptom: A setting exists only in the Mintlify dashboard.
+      resolution: Record the behavior and recreate it explicitly in application, hosting, or Farming Labs configuration.
+---
+
+# Migrate from Mintlify
+
+Mintlify repositories already contain Markdown or MDX, so the content move is usually direct. The
+main migration work is turning `docs.json` navigation and hosted dashboard behavior into source
+controlled Farming Labs and application configuration.
+
+<Callout type="tip" title="Prefer the Git repository">
+  Use the repository connected to Mintlify. It preserves MDX, `docs.json`, snippets, assets, and
+  OpenAPI files more accurately than scraping the published website.
+</Callout>
+
+<Agent>
+Read docs.json or mint.json before moving pages. Preserve the exact navigation arrays, page paths,
+OpenAPI sources, redirects, and integrations in a migration inventory. Do not assume a dashboard
+setting exists in the repository; require the user to confirm authentication, custom domains,
+analytics, preview behavior, and protected content before cutover.
+</Agent>
+
+## 1. Inventory the source
+
+Collect:
+
+- `docs.json` or legacy `mint.json`
+- every referenced `.md` and `.mdx` page
+- `images/`, logos, favicons, fonts, and downloadable assets
+- `snippets/` and imported MDX partials
+- OpenAPI or AsyncAPI documents
+- redirects and external navigation links
+- custom React components and CSS
+- dashboard-only authentication, analytics, domain, preview, and deployment settings
+
+## 2. Map the files
+
+| Mintlify | Farming Labs Docs |
+| --- | --- |
+| `.md` and `.mdx` pages | Target docs content tree |
+| `docs.json` navigation | Directory hierarchy plus page `order` |
+| `docs.json` appearance | Theme factory and `theme.ui` overrides |
+| `images/**` and public assets | Target public/static directory |
+| `snippets/**` | Shared MDX components, copied content, or local imports |
+| OpenAPI documents | `apiReference` configuration |
+| redirects | Application or hosting redirects |
+| hosted search and AI | `search` and `ai` configuration |
+
+Keep a copy of `docs.json` as migration input, but do not rename it to `docs.config.ts`; their
+configuration models are different.
+
+## 3. Rebuild navigation
+
+Mintlify navigation can contain pages, groups, tabs, dropdowns, anchors, languages, and external
+links. Translate it in this order:
+
+1. Turn groups into content directories.
+2. Move pages into the same order and add numeric `order` frontmatter.
+3. Use folder landing pages for group introductions.
+4. Recreate top-level tabs or product areas using routes and application navigation.
+5. Preserve external links in a custom sidebar or top navigation.
+6. Map each language tree to its target locale content root.
+
+Do not rely on alphabetical ordering when `docs.json` specifies a deliberate sequence.
+
+## 4. Convert frontmatter
+
+Preserve portable fields such as `title`, `description`, `icon`, and OpenAPI operation metadata.
+Review Mintlify-only fields individually. Represent an explicit source URL through the destination
+file path or redirect rather than leaving unsupported routing fields in frontmatter.
+
+Add Farming Labs fields where useful:
+
+```yaml title="page frontmatter"
+---
+title: "Quickstart"
+description: "Install the SDK and make the first request"
+order: 2
+related:
+  - /docs/installation
+agent:
+  tokenBudget: 900
+---
+```
+
+## 5. Convert components
+
+| Mintlify pattern | Target |
+| --- | --- |
+| `<Note>`, `<Tip>`, `<Warning>`, `<Info>` | `<Callout type="...">` |
+| `<Tabs>` and `<Tab>` | Built-in `<Tabs>` and `<Tab>` |
+| `<Card>` and `<CardGroup>` | Built-in cards or a registered custom component |
+| `<CodeGroup>` | Tabs containing code blocks |
+| `<Accordion>` and `<AccordionGroup>` | Details/summary or a registered component |
+| `<Steps>` and `<Step>` | Ordered headings/list or a registered component |
+| `<Frame>` | Figure, image, and caption markup |
+| `<Snippet>` or imported partial | Local MDX import or copied shared content |
+
+Some component names overlap while their props differ. Verify every converted component with a
+production build instead of assuming identical APIs.
+
+## 6. Move assets and API definitions
+
+Copy public assets without changing their public URL when possible. Check absolute `/images/...`
+paths, relative images, dark/light variants, video, and downloadable files.
+
+For OpenAPI:
+
+1. Preserve the exact specification file or hosted URL.
+2. Configure `apiReference`.
+3. Compare operation routes and examples.
+4. Recreate API authentication and proxy behavior separately.
+
+## 7. Recreate hosted behavior
+
+Mintlify dashboard settings do not automatically move with the repository. Confirm and recreate:
+
+- custom domain and DNS
+- redirects
+- authentication and protected pages
+- analytics and consent behavior
+- search
+- Ask AI
+- preview and branch deployment
+- feedback and support links
+
+Farming Labs page actions already expose Copy Markdown and Open in LLM when configured. Verify the
+matching `.md` route rather than copying a Mintlify-specific page action component.
+
+## 8. Validate and recover
+
+Run the production build, then compare:
+
+- every path listed in Mintlify navigation
+- navigation labels, order, nesting, and language selection
+- images, snippets, cards, tabs, accordions, and code groups
+- OpenAPI operation pages
+- redirects and authentication boundaries
+- search, AI, analytics, and page actions
+
+If an MDX component fails, replace one component family at a time and keep the page route stable.
+If a dashboard behavior was missed, delay the domain cutover until it has an explicit replacement.
+
+## Source references
+
+- [Mintlify navigation](https://www.mintlify.com/docs/navigation)
+- [Mintlify components](https://www.mintlify.com/docs/components)
+- [Mintlify migration model](https://www.mintlify.com/docs/migration)
+- [Farming Labs page actions](/docs/customization/page-actions)
+- [Farming Labs configuration](/docs/configuration)

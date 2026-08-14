@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import pc from "picocolors";
 import {
   buildDocsSearchDocuments,
@@ -11,7 +12,10 @@ import type {
   DocsSearchAdapterContext,
   TypesenseDocsSearchConfig,
 } from "../types.js";
+import { resolveDocsI18n } from "../i18n.js";
+import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import {
+  loadDocsConfigModuleResultWithProjectEnv,
   loadProjectEnv,
   readTopLevelStringProperty,
   resolveDocsConfigPath,
@@ -26,6 +30,7 @@ export interface SearchSyncOptions {
   typesense?: boolean;
   algolia?: boolean;
   baseUrl?: string;
+  siteUrl?: string;
   collection?: string;
   apiKey?: string;
   adminApiKey?: string;
@@ -35,6 +40,7 @@ export interface SearchSyncOptions {
   appId?: string;
   indexName?: string;
   searchApiKey?: string;
+  syncNamespace?: string;
 }
 
 function getEnvValue(loadedEnv: Record<string, string>, key: string): string | undefined {
@@ -89,6 +95,8 @@ export function resolveTypesenseSyncConfig(
   const ollamaModel = options.ollamaModel ?? getEnvValue(loadedEnv, "TYPESENSE_OLLAMA_MODEL");
   const ollamaBaseUrl =
     options.ollamaBaseUrl ?? getEnvValue(loadedEnv, "TYPESENSE_OLLAMA_BASE_URL");
+  const syncNamespace =
+    options.syncNamespace ?? getEnvValue(loadedEnv, "DOCS_SEARCH_SYNC_NAMESPACE");
 
   if (!baseUrl) {
     throw new Error("Missing Typesense base URL. Set TYPESENSE_URL or pass --base-url.");
@@ -111,6 +119,7 @@ export function resolveTypesenseSyncConfig(
     apiKey,
     adminApiKey,
     mode,
+    ...(syncNamespace ? { syncNamespace } : {}),
     ...(mode === "hybrid"
       ? ollamaModel
         ? {
@@ -138,6 +147,8 @@ export function resolveAlgoliaSyncConfig(
   const adminApiKey = options.adminApiKey ?? getEnvValue(loadedEnv, "ALGOLIA_ADMIN_API_KEY");
   const searchApiKey =
     options.searchApiKey ?? getEnvValue(loadedEnv, "ALGOLIA_SEARCH_API_KEY") ?? adminApiKey;
+  const syncNamespace =
+    options.syncNamespace ?? getEnvValue(loadedEnv, "DOCS_SEARCH_SYNC_NAMESPACE");
 
   if (!appId) {
     throw new Error("Missing Algolia app id. Set ALGOLIA_APP_ID or pass --app-id.");
@@ -161,6 +172,7 @@ export function resolveAlgoliaSyncConfig(
     indexName,
     searchApiKey,
     adminApiKey,
+    ...(syncNamespace ? { syncNamespace } : {}),
   };
 }
 
@@ -168,38 +180,76 @@ export async function syncSearch(options: SearchSyncOptions = {}): Promise<void>
   const rootDir = process.cwd();
   const configPath = resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = readFileSync(configPath, "utf-8");
+  const configLoad = await loadDocsConfigModuleResultWithProjectEnv(rootDir, options.configPath);
+  const canonicalBaseUrl =
+    options.siteUrl ??
+    (configLoad.status === "evaluated" ? resolveDocsMetadataBaseUrl(configLoad.config) : undefined);
+  if (canonicalBaseUrl) {
+    try {
+      const parsed = new URL(canonicalBaseUrl);
+      if (
+        (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+        parsed.username ||
+        parsed.password
+      ) {
+        throw new Error();
+      }
+    } catch {
+      throw new Error(
+        "The canonical docs URL must be an absolute HTTP(S) URL without credentials.",
+      );
+    }
+  }
   const loadedEnv = loadProjectEnv(rootDir);
 
   const provider = resolveSearchSyncProvider(options, loadedEnv);
   const entry = readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = resolveDocsContentDir(rootDir, configContent, entry);
+  const i18n = configLoad.status === "evaluated" ? resolveDocsI18n(configLoad.config.i18n) : null;
+  const localizedSources = i18n
+    ? i18n.locales.map((locale) => ({
+        locale,
+        contentDir: path.join(contentDir, locale),
+      }))
+    : [{ locale: undefined, contentDir }];
+  const contexts: DocsSearchAdapterContext[] = [];
 
-  const source = createFilesystemDocsMcpSource({
-    rootDir,
-    entry,
-    contentDir,
-    siteTitle: "Documentation",
-  });
+  for (const localized of localizedSources) {
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry,
+      contentDir: localized.contentDir,
+      siteTitle: "Documentation",
+      baseUrl: canonicalBaseUrl,
+    });
+    const scannedPages = await source.getPages();
+    if (scannedPages.length === 0) continue;
+    const pages = localized.locale
+      ? scannedPages.map((page) => ({ ...page, locale: localized.locale }))
+      : scannedPages;
+    contexts.push({
+      pages,
+      documents: buildDocsSearchDocuments(pages),
+      audience: "human",
+      locale: localized.locale,
+      siteTitle: source.siteTitle,
+      baseUrl: canonicalBaseUrl,
+      indexBaseUrl: canonicalBaseUrl,
+    });
+  }
 
-  const pages = await source.getPages();
-  const documents = buildDocsSearchDocuments(pages);
-  const context: DocsSearchAdapterContext = {
-    pages,
-    documents,
-    siteTitle: source.siteTitle,
-  };
-
-  if (documents.length === 0) {
+  const documentCount = contexts.reduce((count, context) => count + context.documents.length, 0);
+  if (documentCount === 0) {
     throw new Error(`No docs content was found under ${contentDir}.`);
   }
 
   if (provider === "typesense") {
     const config = resolveTypesenseSyncConfig(options, loadedEnv);
     const adapter = createTypesenseSearchAdapter(config);
-    await adapter.index?.(context);
+    for (const context of contexts) await adapter.index?.(context);
     console.log(
       pc.green(
-        `Synced ${documents.length} docs search documents to Typesense collection "${config.collection}".`,
+        `Synced ${documentCount} docs search documents to Typesense collection "${config.collection}".`,
       ),
     );
     return;
@@ -207,10 +257,10 @@ export async function syncSearch(options: SearchSyncOptions = {}): Promise<void>
 
   const config = resolveAlgoliaSyncConfig(options, loadedEnv);
   const adapter = createAlgoliaSearchAdapter(config);
-  await adapter.index?.(context);
+  for (const context of contexts) await adapter.index?.(context);
   console.log(
     pc.green(
-      `Synced ${documents.length} docs search documents to Algolia index "${config.indexName}".`,
+      `Synced ${documentCount} docs search documents to Algolia index "${config.indexName}".`,
     ),
   );
 }

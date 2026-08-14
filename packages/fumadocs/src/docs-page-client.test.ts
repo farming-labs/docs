@@ -15,10 +15,23 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
   const ReactModule = await import("react");
 
   return {
-    DocsPage: ({ children }: { children: React.ReactNode }) =>
-      ReactModule.createElement("main", null, children),
-    DocsBody: ({ children }: { children: React.ReactNode }) =>
-      ReactModule.createElement("section", null, children),
+    DocsPage: ({
+      children,
+      footer,
+    }: {
+      children: React.ReactNode;
+      footer?: { enabled?: boolean };
+    }) =>
+      ReactModule.createElement(
+        "main",
+        { "data-footer-enabled": String(footer?.enabled ?? true) },
+        children,
+      ),
+    DocsBody: ({
+      children,
+      ...props
+    }: React.ComponentPropsWithoutRef<"section"> & { children: React.ReactNode }) =>
+      ReactModule.createElement("section", props, children),
     EditOnGitHub: ({ href }: { href: string }) =>
       ReactModule.createElement("a", { href }, "Edit on GitHub"),
   };
@@ -27,6 +40,19 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
 import { DocsPageClient } from "./docs-page-client.js";
 
 describe("DocsPageClient llms.txt footer links", () => {
+  it("exposes the shared document class contract to every React adapter", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("p", null, "Portable content"),
+      }),
+    );
+
+    expect(html).toContain('class="fd-page-body"');
+    expect(html).toContain('class="fd-docs-content"');
+  });
+
   it("uses the public llms.txt defaults instead of docs api query routes", () => {
     const html = renderToStaticMarkup(
       React.createElement(DocsPageClient, {
@@ -42,6 +68,100 @@ describe("DocsPageClient llms.txt footer links", () => {
     expect(html).toContain('href="/llms-full.txt?lang=en"');
     expect(html).toContain('class="fd-agent-llms-directive"');
     expect(html).not.toContain("/api/docs?format=llms");
+  });
+
+  it("exposes the llms.txt link only when the runtime owns a header action", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        llmsTxtEnabled: true,
+        showLlmsInHeader: true,
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-visible-in-header="true"');
+    expect(html).toContain(">LLMS.TXT</a>");
+    expect(html).not.toContain('tabindex="-1"');
+    expect(html).not.toContain('aria-hidden="true"');
+  });
+});
+
+describe("DocsPageClient generated page title", () => {
+  it("renders title, description, and below-title actions before preserved MDX content", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        generatedTitleMap: { "/docs/installation": "Installation" },
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        children: React.createElement("p", null, "Preserved content"),
+      }),
+    );
+
+    const titleIndex = html.indexOf("Installation");
+    const descriptionIndex = html.indexOf("Install the SDK.");
+    const actionsIndex = html.indexOf("Mock Actions");
+    const contentIndex = html.indexOf("Preserved content");
+
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(titleIndex).toBeLessThan(descriptionIndex);
+    expect(descriptionIndex).toBeLessThan(actionsIndex);
+    expect(actionsIndex).toBeLessThan(contentIndex);
+  });
+
+  it("keeps title decorations hidden until their client portal host is ready", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        children: React.createElement(
+          React.Fragment,
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Preserved content"),
+        ),
+      }),
+    );
+
+    expect(html).toContain('class="fd-title-decorations-fallback" hidden=""');
+    expect(html).toContain("Mock Actions");
+  });
+});
+
+describe("DocsPageClient page navigation", () => {
+  it("disables the built-in pager when custom page navigation is available", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        nextPage: { name: "Capabilities", url: "/docs/capabilities" },
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-footer-enabled="false"');
+    expect(html).toContain('class="not-prose fd-page-nav"');
+    expect(html.match(/Next Page/g)).toHaveLength(1);
+  });
+
+  it("keeps the built-in pager enabled when custom navigation is absent", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-footer-enabled="true"');
+    expect(html).not.toContain('class="not-prose fd-page-nav"');
   });
 });
 
@@ -66,6 +186,33 @@ describe("DocsPageClient structured data", () => {
     expect(html).toContain('"@type":"TechArticle"');
     expect(html).toContain('"headline":"\\u003c/script>');
     expect(html).not.toContain("</script><script>");
+  });
+});
+
+describe("DocsPageClient generated page header", () => {
+  it("renders title, description, and below-title actions before preserved page content", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        generatedTitleMap: { "/docs/installation": "Installation" },
+        descriptionMap: { "/docs/installation": "Install the framework." },
+        children: React.createElement("article", null, "Preserved page content"),
+      }),
+    );
+
+    const titleIndex = html.indexOf("Installation");
+    const descriptionIndex = html.indexOf("Install the framework.");
+    const actionsIndex = html.indexOf("Mock Actions");
+    const contentIndex = html.indexOf("Preserved page content");
+
+    expect(html).toContain('class="fd-generated-page-header not-prose"');
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(descriptionIndex).toBeGreaterThan(titleIndex);
+    expect(actionsIndex).toBeGreaterThan(descriptionIndex);
+    expect(contentIndex).toBeGreaterThan(actionsIndex);
   });
 });
 

@@ -14,6 +14,7 @@ import {
   loadDocsConfigModule,
   readBooleanProperty,
   readStringProperty,
+  readTopLevelBooleanProperty,
   readTopLevelStringProperty,
   resolveDocsConfigPath,
 } from "./config.js";
@@ -107,15 +108,27 @@ export function parseRobotsGenerateArgs(argv: string[]): ParsedRobotsGenerateArg
   return parsed;
 }
 
-function readTopLevelBooleanProperty(content: string, key: string): boolean | undefined {
-  const match = content.match(new RegExp(`\\b${key}\\b\\s*:\\s*(true|false)`));
-  return match ? match[1] === "true" : undefined;
-}
-
 function readLlmsBaseUrlFromConfig(content: string, config?: DocsConfig): string | undefined {
   if (config?.llmsTxt && typeof config.llmsTxt === "object") return config.llmsTxt.baseUrl;
   const block = extractNestedObjectLiteral(content, ["llmsTxt"]);
   return block ? readStringProperty(block, "baseUrl") : undefined;
+}
+
+function isApiCatalogEnabled(content: string, config?: DocsConfig): boolean {
+  const staticExport =
+    config?.staticExport ?? readTopLevelBooleanProperty(content, "staticExport") ?? false;
+  if (staticExport) return false;
+  if (config?.llmsTxt && typeof config.llmsTxt === "object") {
+    return config.llmsTxt.apiCatalog !== false;
+  }
+
+  const block = extractNestedObjectLiteral(content, ["llmsTxt"]);
+  return block ? readBooleanProperty(block, "apiCatalog") !== false : true;
+}
+
+function isAgentCardEnabled(content: string, config?: DocsConfig): boolean {
+  if (config) return Boolean(config.agent?.a2a);
+  return Boolean(extractNestedObjectLiteral(content, ["agent", "a2a"]));
 }
 
 function readSitemapConfigFromStatic(content: string): boolean | DocsSitemapConfig | undefined {
@@ -199,6 +212,8 @@ export async function generateRobots(options: RobotsGenerateOptions = {}): Promi
   const sitemap = config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? true;
   const sitemapBaseUrl = typeof sitemap === "object" ? sitemap.baseUrl : undefined;
   const llmsBaseUrl = readLlmsBaseUrlFromConfig(configContent, config);
+  const apiCatalog = isApiCatalogEnabled(configContent, config);
+  const agentCard = isAgentCardEnabled(configContent, config);
   const configuredRobots = resolveConfiguredRobots(configContent, config);
 
   if (configuredRobots === false) {
@@ -218,6 +233,8 @@ export async function generateRobots(options: RobotsGenerateOptions = {}): Promi
   const relativeRobotsPath = path.relative(rootDir, robotsPath).replace(/\\/g, "/");
   const generatedBlock = renderDocsRobotsGeneratedBlock({
     entry,
+    apiCatalog,
+    agentCard,
     sitemap,
     baseUrl: robots.baseUrl,
     robots,

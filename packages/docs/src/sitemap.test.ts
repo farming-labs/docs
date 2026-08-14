@@ -36,6 +36,13 @@ describe("docs sitemap helpers", () => {
     expect(
       resolveDocsSitemapRequest(new URL("https://example.com/api/docs?format=sitemap-md"), false),
     ).toBe("markdown");
+    expect(
+      resolveDocsSitemapRequest(
+        new URL("https://example.com/api/internal/docs?format=sitemap-xml"),
+        true,
+        { apiRoute: "/api/internal/docs" },
+      ),
+    ).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"), false)).toBeNull();
   });
 
@@ -79,6 +86,19 @@ describe("docs sitemap helpers", () => {
     expect(response?.headers.get("content-type")).toContain("application/xml");
     expect(response?.headers.get("etag")).toBeTruthy();
     expect(await response?.text()).toContain("<urlset");
+  });
+
+  it("creates query-format responses on a custom API route", async () => {
+    const response = createDocsSitemapResponse({
+      request: new Request("https://docs.example.com/api/internal/docs?format=sitemap-md"),
+      apiRoute: "/api/internal/docs",
+      sitemap: true,
+      entry: "docs",
+      pages: [{ url: "/docs", title: "Home" }],
+    });
+
+    expect(response?.headers.get("content-type")).toContain("text/markdown");
+    expect(await response?.text()).toContain("# Documentation Sitemap");
   });
 
   it("looks up stable page freshness from a sitemap manifest", () => {

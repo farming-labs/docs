@@ -48,6 +48,31 @@ model DocsFeedback {
   @@index([slug])
 }
 
+model DocsTelemetryEvent {
+  id                    String   @id @default(cuid())
+  eventType             String
+  identityHash          String?
+  packageName           String?
+  packageVersion        String?
+  framework             String?
+  runtimeName           String?
+  siteOrigin            String?
+  deploymentProvider    String?
+  deploymentEnvironment String?
+  deploymentId          String?
+  features              Json?
+  properties            Json?
+  payload               Json
+  createdAt             DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([eventType])
+  @@index([framework])
+  @@index([identityHash])
+  @@index([siteOrigin])
+  @@index([packageName, packageVersion])
+}
+
 model CloudWaitlistEntry {
   id         String   @id @default(cuid())
   email      String   @unique

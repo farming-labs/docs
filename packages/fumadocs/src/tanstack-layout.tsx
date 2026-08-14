@@ -1,5 +1,5 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, type HTMLAttributes, type ReactNode } from "react";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -8,14 +8,22 @@ import type {
   FontStyle,
   AIConfig,
   OpenDocsConfig,
+  CopyMarkdownConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
 } from "@farming-labs/docs";
-import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
+import {
+  applySidebarFolderIndexBehavior,
+  resolveDocsAnalyticsConfig,
+} from "@farming-labs/docs/browser";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
+import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
-import { resolveReadingTimeOptions } from "./reading-time.js";
+import { resolveReadingTimeOptions } from "./reading-time-options.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
+import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
@@ -39,6 +47,11 @@ interface FolderNode {
 }
 
 type TreeNode = PageNode | FolderNode;
+
+type FrameworkContainerProps = HTMLAttributes<HTMLDivElement> & {
+  "data-fd-framework"?: string;
+  "data-fd-browser-adapter"?: string;
+};
 
 interface TreeRoot {
   name: string;
@@ -92,13 +105,37 @@ function resolveTreeIcons(tree: TreeRoot, registry: Record<string, unknown> | un
   };
 }
 
+function applyFlatSidebarLayout(tree: TreeRoot, flat: boolean): TreeRoot {
+  if (!flat) return tree;
+
+  function mapNode(node: TreeNode): TreeNode {
+    if (node.type === "page") return node;
+    return {
+      ...node,
+      collapsible: false,
+      defaultOpen: true,
+      children: node.children.map(mapNode),
+    };
+  }
+
+  return {
+    ...tree,
+    children: tree.children.map(mapNode),
+  };
+}
+
 export interface TanstackDocsLayoutProps {
   config: DocsConfig;
   tree: TreeRoot;
+  /** Enables browser-adapter shell affordances that are not part of a theme preset. */
+  browserRuntime?: boolean;
   locale?: string;
   description?: string;
+  descriptionInBody?: boolean;
   readingTime?: number | null;
   lastModified?: string;
+  previousPage?: { name: string; url: string } | null;
+  nextPage?: { name: string; url: string } | null;
   structuredData?: string;
   editOnGithubUrl?: string;
   children: ReactNode;
@@ -219,7 +256,9 @@ function buildTypographyCSS(typo?: TypographyConfig): string {
   }
 
   if (vars.length === 0) return "";
-  return `:root {\n  ${vars.join("\n  ")}\n}`;
+  return `:root,
+body:has(#nd-docs-layout),
+#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
 }
 
 function TypographyStyle({ typography }: { typography?: TypographyConfig }) {
@@ -254,7 +293,7 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
   const parts: string[] = [];
 
   if (rootVars.length > 0) {
-    parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+    parts.push(`:root,\n#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
   }
 
   if (desktopRootVars.length > 0) {
@@ -284,10 +323,13 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   const defaults = {
     enabled: false,
     question: "How is this guide?",
-    placeholder: "Leave your feedback...",
+    placeholder: "Share what could be clearer...",
+    requireComment: false,
     positiveLabel: "Good",
     negativeLabel: "Bad",
     submitLabel: "Submit",
+    successMessage: "Thanks for the feedback.",
+    errorMessage: "Could not send feedback. Please try again.",
   };
 
   if (feedback === undefined || feedback === false) return defaults;
@@ -297,18 +339,24 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     feedback.enabled !== undefined ||
     feedback.question !== undefined ||
     feedback.placeholder !== undefined ||
+    feedback.requireComment !== undefined ||
     feedback.positiveLabel !== undefined ||
     feedback.negativeLabel !== undefined ||
     feedback.submitLabel !== undefined ||
+    feedback.successMessage !== undefined ||
+    feedback.errorMessage !== undefined ||
     feedback.onFeedback !== undefined;
 
   return {
     enabled: feedback.enabled === true || (feedback.enabled !== false && hasHumanFeedbackConfig),
     question: feedback.question ?? defaults.question,
     placeholder: feedback.placeholder ?? defaults.placeholder,
+    requireComment: feedback.requireComment ?? defaults.requireComment,
     positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
     negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
     submitLabel: feedback.submitLabel ?? defaults.submitLabel,
+    successMessage: feedback.successMessage ?? defaults.successMessage,
+    errorMessage: feedback.errorMessage ?? defaults.errorMessage,
   };
 }
 
@@ -326,10 +374,14 @@ function ForcedThemeScript({ theme }: { theme: string }) {
 export function TanstackDocsLayout({
   config,
   tree,
+  browserRuntime = false,
   locale,
   description,
+  descriptionInBody,
   readingTime,
   lastModified,
+  previousPage,
+  nextPage,
   structuredData,
   editOnGithubUrl,
   children,
@@ -339,6 +391,7 @@ export function TanstackDocsLayout({
   const tocStyle = tocConfig?.style as "default" | "directional" | undefined;
   const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
   const docsApiUrl = withLangInUrl("/api/docs", locale);
+  const aiClientRequest = resolveDocsCloudAIClientRequest(config, docsApiUrl);
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
   const navUrl = withLangInUrl(config.nav?.url ?? `/${config.entry ?? "docs"}`, locale);
 
@@ -368,7 +421,21 @@ export function TanstackDocsLayout({
 
   const pageActions = config.pageActions;
   const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
+  const copyMarkdownConfig =
+    pageActions?.copyMarkdown && typeof pageActions.copyMarkdown === "object"
+      ? (pageActions.copyMarkdown as CopyMarkdownConfig)
+      : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
+  const connectMcp = resolveBool(pageActions?.connectMcp)
+    ? pageActions?.connectMcp && typeof pageActions.connectMcp === "object"
+      ? (pageActions.connectMcp as PageActionConnectMcpConfig)
+      : {}
+    : undefined;
+  const installSkills = resolveBool(pageActions?.installSkills)
+    ? pageActions?.installSkills && typeof pageActions.installSkills === "object"
+      ? (pageActions.installSkills as PageActionInstallSkillsConfig)
+      : {}
+    : undefined;
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
 
@@ -376,13 +443,19 @@ export function TanstackDocsLayout({
   const lastUpdatedEnabled =
     lastUpdatedRaw !== false &&
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
+  const lastUpdatedLabel =
+    typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.label ?? "Last updated") : "Last updated";
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
-  const readingTimeEnabled = resolveReadingTimeOptions(config.readingTime).enabled;
+  const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
+  const readingTimeEnabled = readingTimeOptions.enabled;
 
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
+  const frameworkContainerProps: FrameworkContainerProps | undefined = browserRuntime
+    ? { "data-fd-framework": "", "data-fd-browser-adapter": "" }
+    : undefined;
 
   const openDocsConfig =
     pageActions?.openDocs && typeof pageActions.openDocs === "object"
@@ -421,18 +494,21 @@ export function TanstackDocsLayout({
   const i18n = (config as DocsConfig & { i18n?: { locales?: string[]; defaultLocale?: string } })
     .i18n;
   const resolvedTree = resolveTreeIcons(
-    locale
-      ? localizeTreeUrls(
-          applySidebarFolderIndexBehavior(tree, {
+    applyFlatSidebarLayout(
+      locale
+        ? localizeTreeUrls(
+            applySidebarFolderIndexBehavior(tree, {
+              sidebar: config.sidebar,
+              defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
+            }),
+            locale,
+          )
+        : applySidebarFolderIndexBehavior(tree, {
             sidebar: config.sidebar,
-            defaultBehavior: "link",
+            defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
           }),
-          locale,
-        )
-      : applySidebarFolderIndexBehavior(tree, {
-          sidebar: config.sidebar,
-          defaultBehavior: "link",
-        }),
+      !!sidebarFlat,
+    ),
     config.icons as Record<string, unknown> | undefined,
   );
 
@@ -470,6 +546,7 @@ export function TanstackDocsLayout({
       nav={{ title: navTitle, url: navUrl }}
       themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
       sidebar={finalSidebarProps}
+      containerProps={frameworkContainerProps}
       {...(aiMode === "sidebar-icon" && aiEnabled
         ? {
             searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
@@ -480,6 +557,7 @@ export function TanstackDocsLayout({
       <TypographyStyle typography={typography} />
       <LayoutStyle layout={layoutDimensions} />
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+      {browserRuntime && config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
       {!staticExport && (
         <Suspense fallback={null}>
           <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
@@ -489,7 +567,10 @@ export function TanstackDocsLayout({
         <Suspense fallback={null}>
           <DocsAIFeatures
             mode={aiMode}
-            api={docsApiUrl}
+            api={aiClientRequest.api}
+            requestMode={aiClientRequest.requestMode}
+            requestHeaders={aiClientRequest.requestHeaders}
+            requestStream={aiClientRequest.requestStream}
             locale={locale}
             position={aiPosition}
             floatingStyle={aiFloatingStyle}
@@ -505,31 +586,46 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
+          showLlmsInHeader={browserRuntime && config.theme?.name === "fumadocs-pixel-border"}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}
           locale={locale}
           copyMarkdown={copyMarkdownEnabled}
+          copyMarkdownFormat={copyMarkdownConfig?.format}
+          copyMarkdownIncludeTitle={copyMarkdownConfig?.includeTitle}
+          copyMarkdownLabel={copyMarkdownConfig?.label}
+          copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
           openDocs={openDocsEnabled}
           openDocsProviders={openDocsProviders}
           openDocsTarget={openDocsConfig?.target}
           openDocsPrompt={openDocsConfig?.prompt}
+          connectMcp={connectMcp}
+          installSkills={installSkills}
           pageActionsPosition={pageActionsPosition}
           pageActionsAlignment={pageActionsAlignment}
           editOnGithubUrl={editOnGithubUrl}
           lastUpdatedEnabled={lastUpdatedEnabled}
+          lastUpdatedLabel={lastUpdatedLabel}
           lastUpdatedPosition={lastUpdatedPosition}
           lastModified={lastModified}
+          previousPage={previousPage}
+          nextPage={nextPage}
           readingTimeEnabled={readingTimeEnabled}
+          readingTimeFormat={readingTimeOptions.format}
           readingTime={typeof readingTime === "number" ? readingTime : undefined}
           llmsTxtEnabled={llmsTxtEnabled}
           description={description}
+          descriptionInBody={descriptionInBody}
           feedbackEnabled={feedbackConfig.enabled}
           feedbackQuestion={feedbackConfig.question}
           feedbackPlaceholder={feedbackConfig.placeholder}
+          feedbackRequireComment={feedbackConfig.requireComment}
           feedbackPositiveLabel={feedbackConfig.positiveLabel}
           feedbackNegativeLabel={feedbackConfig.negativeLabel}
           feedbackSubmitLabel={feedbackConfig.submitLabel}
+          feedbackSuccessMessage={feedbackConfig.successMessage}
+          feedbackErrorMessage={feedbackConfig.errorMessage}
           analytics={analyticsEnabled}
         >
           {children}

@@ -1,6 +1,7 @@
 ---
 name: page-actions
-description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, provider presets, target markdown/page/source/github, prompts, custom urlTemplate placeholders, alignment, or position (above-title, below-title).
+description: Configure @farming-labs/docs page actions for Copy Markdown, Open in LLM, one-click MCP connection, and Agent Skills installation. Use for copyMarkdown, openDocs, connectMcp, installSkills, providers, prompts, alignment, or position.
+compatibility: Requires a JavaScript or TypeScript project using @farming-labs/docs. Open-in-LLM and source actions require browser access to their configured public URLs.
 ---
 
 # @farming-labs/docs — Page Actions
@@ -17,10 +18,12 @@ Page actions are buttons rendered above or below the page title. They let users 
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: { enabled: true },
+  connectMcp: true,
+  installSkills: true,
 }
 ```
 
-This adds **Copy Markdown** and an **Open in...** dropdown with default providers.
+This adds content actions and copyable agent setup controls.
 
 ---
 
@@ -81,6 +84,27 @@ pageActions: {
   copyMarkdown: { enabled: true },
 }
 ```
+
+---
+
+## One-click agent setup
+
+Use `connectMcp` to copy setup for the raw endpoint, Claude Code, Cursor, VS Code, or Codex. Use
+`installSkills` to discover `/.well-known/agent-skills/index.json` and copy the Skills CLI command.
+
+```ts
+pageActions: {
+  connectMcp: {
+    endpoint: "/mcp",
+    providers: ["copy", "claude-code", "cursor", "vscode", "codex"],
+  },
+  installSkills: {
+    index: "/.well-known/agent-skills/index.json",
+  },
+}
+```
+
+Both are opt-in. Keep the corresponding `mcp` and `agent.skills` surfaces enabled.
 
 ---
 

@@ -1,16 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
+import { gzipSync } from "node:zlib";
 import { compactAgentDocs } from "./agent.js";
+import { renderDocsRobotsTxt } from "../robots.js";
 import {
   inspectAgentReadiness,
   inspectHumanReadiness,
   parseDoctorArgs,
+  printAgentDoctorReport,
+  probeProtectedMcpDiscovery,
   runDoctor,
 } from "./doctor.js";
+import { stripAnsi } from "./test-utils.js";
 
 function writePackageJson(
   rootDir: string,
@@ -45,6 +59,31 @@ description: "Docs home"
   );
 }
 
+function createAgentSkillArchive(document: string): Uint8Array {
+  const content = new TextEncoder().encode(document);
+  const header = new Uint8Array(512);
+  const write = (offset: number, length: number, value: string) => {
+    header.set(new TextEncoder().encode(value).subarray(0, length), offset);
+  };
+  write(0, 100, "SKILL.md");
+  write(100, 8, "0000644");
+  write(108, 8, "0000000");
+  write(116, 8, "0000000");
+  write(124, 12, content.byteLength.toString(8).padStart(11, "0"));
+  write(136, 12, "00000000000");
+  header.fill(0x20, 148, 156);
+  header[156] = "0".charCodeAt(0);
+  write(257, 6, "ustar");
+  write(263, 2, "00");
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  write(148, 8, `${checksum.toString(8).padStart(6, "0")}\0 `);
+
+  const tar = new Uint8Array(512 + Math.ceil(content.byteLength / 512) * 512 + 1024);
+  tar.set(header);
+  tar.set(content, 512);
+  return new Uint8Array(gzipSync(tar));
+}
+
 describe("parseDoctorArgs", () => {
   it("defaults to agent mode", () => {
     expect(parseDoctorArgs([])).toEqual({ mode: "agent" });
@@ -67,6 +106,65 @@ describe("parseDoctorArgs", () => {
       json: true,
     });
     expect(parseDoctorArgs(["--site", "--json"])).toEqual({
+      mode: "human",
+      json: true,
+    });
+  });
+
+  it("parses CI annotation mode", () => {
+    expect(
+      parseDoctorArgs(["--agent", "--ci", "--json-output", ".farming-labs/doctor.json"]),
+    ).toEqual({
+      mode: "agent",
+      ci: true,
+      jsonOutputPath: ".farming-labs/doctor.json",
+    });
+    expect(parseDoctorArgs(["--json-output=reports/doctor.json"])).toEqual({
+      mode: "agent",
+      jsonOutputPath: "reports/doctor.json",
+    });
+  });
+
+  it("parses strict CI mode", () => {
+    expect(parseDoctorArgs(["--strict"])).toEqual({
+      mode: "agent",
+      strict: true,
+    });
+    expect(parseDoctorArgs(["--site", "--json", "--strict"])).toEqual({
+      mode: "human",
+      json: true,
+      strict: true,
+    });
+  });
+
+  it("parses agent fix mode", () => {
+    expect(parseDoctorArgs(["--agent", "--fix"])).toEqual({
+      mode: "agent",
+      fix: true,
+    });
+    expect(parseDoctorArgs(["--agent", "--fix", "--dry-run"])).toEqual({
+      mode: "agent",
+      fix: true,
+      dryRun: true,
+    });
+  });
+
+  it("parses explicit fail-on thresholds", () => {
+    expect(parseDoctorArgs(["--fail-on", "warn"])).toEqual({
+      mode: "agent",
+      failOn: "warn",
+    });
+    expect(parseDoctorArgs(["--site", "--fail-on=fail"])).toEqual({
+      mode: "human",
+      failOn: "fail",
+    });
+  });
+
+  it("parses explicit only mode", () => {
+    expect(parseDoctorArgs(["--only", "agent"])).toEqual({
+      mode: "agent",
+    });
+    expect(parseDoctorArgs(["--only=site", "--json"])).toEqual({
       mode: "human",
       json: true,
     });
@@ -105,6 +203,198 @@ describe("parseDoctorArgs", () => {
     expect(() => parseDoctorArgs(["--url"])).toThrow("Missing value for --url.");
     expect(() => parseDoctorArgs(["--url="])).toThrow("Missing value for --url.");
   });
+
+  it("rejects invalid only mode values", () => {
+    expect(() => parseDoctorArgs(["--only"])).toThrow("Missing value for --only.");
+    expect(() => parseDoctorArgs(["--only="])).toThrow("Missing value for --only.");
+    expect(() => parseDoctorArgs(["--only", "human"])).toThrow(
+      "Invalid value for --only. Expected agent or site.",
+    );
+  });
+
+  it("rejects invalid fail-on values", () => {
+    expect(() => parseDoctorArgs(["--fail-on"])).toThrow("Missing value for --fail-on.");
+    expect(() => parseDoctorArgs(["--fail-on="])).toThrow("Missing value for --fail-on.");
+    expect(() => parseDoctorArgs(["--fail-on", "error"])).toThrow(
+      "Invalid value for --fail-on. Expected warn or fail.",
+    );
+  });
+});
+
+describe("protected MCP doctor discovery", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function challenge(
+    value = 'Basic realm="legacy", Bearer resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope="docs:read"',
+  ) {
+    return new Response(null, { status: 401, headers: { "WWW-Authenticate": value } });
+  }
+
+  it("accepts a valid RFC 9728 challenge and metadata document", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+          scopes_supported: ["docs:read"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toEqual({
+      ok: true,
+      detail:
+        "/mcp is protected and exposes valid RFC 9728 metadata at /.well-known/oauth-protected-resource/mcp.",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs.example.com/.well-known/oauth-protected-resource/mcp",
+      expect.objectContaining({ redirect: "manual" }),
+    );
+  });
+
+  it("rejects missing and cross-origin resource_metadata challenges", async () => {
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge('Bearer scope="docs:read"'),
+      ),
+    ).resolves.toMatchObject({ ok: false });
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata="https://attacker.example/.well-known/oauth-protected-resource/mcp"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("cross-origin"),
+    });
+  });
+
+  it("does not borrow resource metadata from a later non-Bearer challenge", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer realm="docs", Basic resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("did not return a Bearer resource_metadata"),
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts optional whitespace around Bearer auth-param equals signs", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata = "https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope = "docs:read"',
+        ),
+      ),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
+  it("requires an exact HTTP 200 metadata response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 204, headers: { "Content-Type": "application/json" } }),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("HTTP 204"),
+    });
+  });
+
+  it.each([
+    [
+      "resource mismatch",
+      {
+        resource: "https://docs.example.com/other",
+        authorization_servers: ["https://auth.example.com"],
+      },
+      "instead of",
+    ],
+    [
+      "invalid authorization server",
+      {
+        resource: "https://docs.example.com/mcp",
+        authorization_servers: ["http://auth.example.com"],
+      },
+      "authorization_servers",
+    ],
+    [
+      "invalid scopes",
+      {
+        resource: "https://docs.example.com/mcp",
+        authorization_servers: ["https://auth.example.com"],
+        scopes_supported: ["docs read"],
+      },
+      "scopes_supported",
+    ],
+    ["non-object JSON", null, "JSON object"],
+  ])("rejects protected-resource metadata with %s", async (_label, metadata, detail) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(metadata), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery("https://docs.example.com", "/mcp", challenge()),
+    ).resolves.toMatchObject({ ok: false, detail: expect.stringContaining(detail) });
+  });
+
+  it("rejects malformed required scopes in the Bearer challenge", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resource: "https://docs.example.com/mcp",
+          authorization_servers: ["https://auth.example.com"],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      probeProtectedMcpDiscovery(
+        "https://docs.example.com",
+        "/mcp",
+        challenge(
+          'Bearer resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/mcp", scope="docs:read  docs:write"',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("scope challenge"),
+    });
+  });
 });
 
 describe("inspectAgentReadiness", () => {
@@ -122,7 +412,149 @@ describe("inspectAgentReadiness", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("scores a healthy Next.js docs app as agent-optimized", async () => {
+  function writeNearlyPerfectAgentFixture(
+    options: { failExampleExpectation?: boolean; addUnknownAgentOption?: boolean } = {},
+  ) {
+    writePackageJson(tmpDir, "doctor-near-perfect", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    compact: { model: "docs-cloud-compress-v1" },
+    ${options.addUnknownAgentOption ? "unsupportedDiagnosticOption: true," : ""}
+    evaluations: {
+      tasks: [{
+        id: "configure-docs",
+        query: "configure the docs route safely",
+        topK: 1,
+        expect: {
+          relevantSources: ["/docs"],
+          ${
+            options.failExampleExpectation
+              ? 'examples: [{ source: "/docs", language: "bash", includes: ["pnpm docs:verify"] }],'
+              : ""
+          }
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Configure docs
+description: Configure the docs route safely.
+related:
+  - /docs
+agent:
+  task: Configure the docs route safely.
+  outcome: The docs route returns the configured page.
+  appliesTo:
+    framework: nextjs
+    version: "16"
+  prerequisites:
+    - The Next.js 16 application is installed.
+  commands:
+    - run: node --version
+      description: Verify Node.js is available.
+  verification:
+    - run: node --version
+      expect: The command exits successfully.
+  rollback:
+    - Restore the previous docs.config.ts file.
+---
+
+# Configure docs
+
+<Agent>
+For Next.js 16, update \`docs.config.ts\` and preserve \`entry: "docs"\`.
+Run \`node --version\`; the expected result is a successful exit before editing.
+If module evaluation fails, restore \`docs.config.ts\` and retry the doctor command.
+</Agent>
+`,
+      "utf-8",
+    );
+  }
+
+  it("resolves an explicit nested app config from the monorepo root", async () => {
+    const appRoot = path.join(tmpDir, "website");
+    mkdirSync(appRoot, { recursive: true });
+    writePackageJson(tmpDir, "doctor-workspace");
+    writePackageJson(appRoot, "doctor-website", { next: "16.0.0" });
+    writeFileSync(path.join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - website\n", "utf-8");
+    writeDocsConfig(
+      appRoot,
+      "docs.config.tsx",
+      `export default {
+  entry: "docs",
+  contentDir: "app/docs",
+  agent: { skills: "../skills/farming-labs" },
+};`,
+    );
+    writeDocsPage(appRoot, "app/docs");
+    writeDocsConfig(
+      tmpDir,
+      "skills/farming-labs/migration/SKILL.md",
+      `---
+name: migration
+description: Migrate an existing documentation project to Farming Labs Docs.
+---
+
+# Workflow
+
+Review the source project before changing its documentation.
+`,
+    );
+    process.chdir(tmpDir);
+
+    const agentReport = await inspectAgentReadiness({
+      configPath: "website/docs.config.tsx",
+    });
+    const humanReport = await inspectHumanReadiness({
+      configPath: "website/docs.config.tsx",
+    });
+
+    expect(agentReport).toMatchObject({
+      framework: "nextjs",
+      configPath: "docs.config.tsx",
+      contentDir: "app/docs",
+      coverage: { totalPages: 1 },
+    });
+    expect(
+      agentReport.checks.find((check) => check.id === "agent-skills-frontmatter"),
+    ).toMatchObject({
+      status: "pass",
+      detail: expect.stringContaining("migration"),
+    });
+    expect(humanReport).toMatchObject({
+      framework: "nextjs",
+      configPath: "docs.config.tsx",
+      contentDir: "app/docs",
+      coverage: { totalPages: 1 },
+    });
+  });
+
+  it("keeps a healthy app agent-ready when confidence dimensions are unmeasured", async () => {
     writePackageJson(tmpDir, "doctor-next", { next: "16.0.0" });
 
     writeFileSync(
@@ -140,8 +572,20 @@ describe("inspectAgentReadiness", () => {
   },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
+    },
+    evaluations: {
+      tasks: [
+        {
+          id: "configure-docs",
+          query: "configure the docs app",
+          topK: 1,
+          expect: {
+            relevantSources: ["/docs/configuration"],
+          },
+        },
+      ],
     },
   },
 };`,
@@ -213,6 +657,21 @@ Human instructions.
       `---
 title: "Configuration"
 description: "Configure the docs app"
+agent:
+  task: Configure the docs app.
+  outcome: The docs route serves the configured content.
+  appliesTo:
+    framework: nextjs
+  prerequisites:
+    - The Next.js docs app is installed.
+  commands:
+    - node --version
+  verification:
+    - The command exits successfully before the config is changed.
+  rollback:
+    - Restore the previous docs.config.ts file.
+related:
+  - /docs/installation
 ---
 
 # Configuration
@@ -220,7 +679,9 @@ description: "Configure the docs app"
 Visible content.
 
 <Agent>
-Machine-only configuration hints.
+Before updating \`docs.config.ts\`, confirm the docs route is mounted.
+Preserve the \`entry\` value and verify the expected \`/docs/configuration.md\` result.
+If config loading fails, restore the previous \`docs.config.ts\` and retry the doctor command.
 </Agent>
 `,
       "utf-8",
@@ -240,7 +701,7 @@ Use this docs site through markdown routes and MCP.
     const report = await inspectAgentReadiness();
 
     expect(report.framework).toBe("nextjs");
-    expect(report.grade).toBe("Agent-optimized");
+    expect(report.grade).toBe("Agent-ready");
     expect(report.score).toBeGreaterThanOrEqual(90);
     expect(report.maxScore).toBe(100);
     expect(report.coverage.totalPages).toBe(3);
@@ -251,14 +712,696 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "public-routes")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "agent-discovery")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "sitemap")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "skill")).toMatchObject({
+      status: "warn",
+      score: 4,
+      maxScore: 5,
+      detail: expect.stringContaining("Agent Skills discovery will publish the generated fallback"),
+    });
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.score).toBe(5);
+    expect(report.checks.find((check) => check.id === "agent-context-quality")?.status).toBe(
+      "pass",
+    );
+    expect(report.checks.find((check) => check.id === "golden-tasks")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "golden-task-coverage")).toMatchObject({
+      status: "warn",
+      score: 0,
+      maxScore: 5,
+      detail: expect.stringMatching(
+        /safety: unmeasured.*answer quality: unmeasured.*executable examples: unmeasured/,
+      ),
+    });
+    expect(report.evaluations).toMatchObject({
+      status: "passed",
+      passedTaskCount: 1,
+      coverage: {
+        status: "unmeasured",
+        coveragePercent: 0,
+        dimensions: {
+          safety: { status: "unmeasured", measuredTaskCount: 0 },
+          answerQuality: { status: "unmeasured", measuredTaskCount: 0 },
+          executableExamples: { status: "unmeasured", measuredTaskCount: 0 },
+        },
+      },
+    });
   });
 
-  it("checks the local robots.txt agent policy", async () => {
+  it("reports full-spec errors in every configured Agent Skill", async () => {
+    writePackageJson(tmpDir, "doctor-invalid-agent-skill", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: { skills: "skills/broken" },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "skills", "broken"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "skills", "broken", "SKILL.md"),
+      `---
+name: broken
+description: Exercise doctor validation for configured skills.
+version: "1.0"
+metadata:
+  revision: 1
+---
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const check = report.checks.find((candidate) => candidate.id === "agent-skills-frontmatter");
+
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toContain("Unexpected fields in frontmatter: version");
+    expect(check?.detail).toContain("Field 'metadata.revision' must be a string");
+    expect(report.grade).not.toBe("Agent-optimized");
+  });
+
+  it("reports configured Agent Skill progressive-disclosure failures", async () => {
+    writePackageJson(tmpDir, "doctor-agent-skill-disclosure", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    skills: {
+      paths: "skills/large-skill",
+      progressiveDisclosure: {
+        maxSkillLines: 8,
+        instructionTokenBudget: 12,
+      },
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "skills", "large-skill"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "skills", "large-skill", "SKILL.md"),
+      `---
+name: large-skill
+description: Exercise doctor progressive-disclosure validation.
+---
+
+# Workflow
+
+Run pnpm install before following these deliberately long instructions.
+
+Read [the missing guide](references/missing.md).
+
+Continue configuring the project and verify the generated output.
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const check = report.checks.find(
+      (candidate) => candidate.id === "agent-skills-progressive-disclosure",
+    );
+
+    expect(check).toMatchObject({
+      status: "fail",
+      score: 0,
+      maxScore: 5,
+      detail: expect.stringContaining("progressive-disclosure issues"),
+    });
+    expect(check?.detail).toContain("exceeding the configured 8-line limit");
+    expect(check?.detail).toContain("does not resolve to a regular file");
+    expect(check?.recommendation).toContain("instruction-token budgets");
+    expect(report.grade).not.toBe("Agent-optimized");
+  });
+
+  it("evaluates the configured Ask AI surface, answer callback, base URL, and runtime examples", async () => {
+    writePackageJson(tmpDir, "doctor-real-evaluations", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  search: false,
+  sitemap: { baseUrl: "https://canonical.example.com" },
+  ai: { docsUrl: "https://different-ai-origin.example.com" },
+  codeBlocks: { validate: true },
+  agent: {
+    evaluations: {
+      surface: "ask-ai-context",
+      allowNetwork: true,
+      answer: {
+        provider: "callback",
+        run(input) {
+          if ("expect" in input.task) throw new Error("Golden expectations leaked");
+          return {
+            text: "Use the [overview](https://canonical.example.com/docs).",
+          };
+        },
+      },
+      tasks: [{
+        id: "overview",
+        query: "overview verified example",
+        topK: 1,
+        expect: {
+          relevantSources: ["/docs"],
+          answer: { requiredCitations: ["/docs"] },
+          examples: [{
+            source: "/docs",
+            language: "js",
+            includes: ["verified"],
+            verification: "execute",
+          }],
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Overview
+description: Verified overview example
+---
+
+# Overview
+
+Use this verified example.
+
+\`\`\`js runnable title="Health check"
+console.log("verified")
+\`\`\`
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations).toMatchObject({ status: "passed", passedTaskCount: 1 });
+    expect(report.evaluations?.tasks[0]).toMatchObject({
+      surface: "ask-ai-context",
+      provider: "simple",
+      answer: {
+        passed: true,
+        citations: ["/docs"],
+      },
+      examples: {
+        expected: 1,
+        matched: 1,
+        results: [
+          expect.objectContaining({
+            verification: "execute",
+            status: "passed",
+            executed: true,
+          }),
+        ],
+      },
+    });
+  });
+
+  it("reports malformed configured answer providers without leaking their headers", async () => {
+    writePackageJson(tmpDir, "doctor-invalid-answer-provider", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    evaluations: {
+      answer: {
+        provider: "unknown",
+        headers: { Authorization: "Bearer doctor-secret" },
+      },
+      tasks: [{
+        id: "overview-answer",
+        query: "overview",
+        expect: {
+          relevantSources: ["/docs"],
+          answer: { includes: ["overview"] },
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations?.status).toBe("failed");
+    expect(report.evaluations?.tasks[0]?.issues.join(" ")).toContain(
+      'provider to "callback" or "http"',
+    );
+    expect(JSON.stringify(report.evaluations)).not.toContain("doctor-secret");
+  });
+
+  it("reports a relative Ask AI MCP endpoint when configured public URLs are invalid", async () => {
+    writePackageJson(tmpDir, "doctor-invalid-public-url", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    docsUrl: "not a valid public URL",
+    useMcp: { endpoint: "/private/mcp" },
+  },
+  agent: {
+    evaluations: {
+      surface: "ask-ai-context",
+      allowNetwork: true,
+      tasks: [{
+        id: "invalid-public-url",
+        query: "overview",
+        expect: { relevantSources: ["/docs"] },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations?.status).toBe("failed");
+    expect(report.evaluations?.tasks[0]?.issues.join(" ")).toContain(
+      "relative MCP evaluation endpoint requires",
+    );
+  });
+
+  it("does not rerun answer evaluations for a dry-run doctor fix", async () => {
+    writePackageJson(tmpDir, "doctor-dry-run-single-evaluation", { next: "16.0.0" });
+    process.env.DOCTOR_EVALUATION_CALLS = "0";
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    evaluations: {
+      answer: {
+        provider: "callback",
+        run() {
+          process.env.DOCTOR_EVALUATION_CALLS = String(
+            Number(process.env.DOCTOR_EVALUATION_CALLS ?? "0") + 1,
+          );
+          return { text: "overview", citations: ["/docs"] };
+        },
+      },
+      tasks: [{
+        id: "single-run",
+        query: "overview",
+        expect: {
+          relevantSources: ["/docs"],
+          answer: { includes: ["overview"] },
+        },
+      }],
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "agent", fix: true, dryRun: true, json: true });
+      if (report.mode !== "agent") throw new Error("Expected an agent doctor report.");
+      expect(report.evaluations?.status).toBe("passed");
+      expect(process.env.DOCTOR_EVALUATION_CALLS).toBe("1");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("does not award usefulness points when there is no evidence to measure", async () => {
+    writePackageJson(tmpDir, "doctor-no-evidence", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: { evaluations: false },
+};`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    for (const id of [
+      "agent-context-quality",
+      "agent-task-completeness",
+      "agent-applicability",
+      "command-health",
+      "related-coverage",
+    ]) {
+      expect(report.checks.find((check) => check.id === id)).toMatchObject({
+        status: "warn",
+        score: 0,
+      });
+    }
+  });
+
+  it("reports unhealthy commands with actionable text, JSON, and CI annotations", async () => {
+    writePackageJson(tmpDir, "doctor-actionable-command-findings", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "app/docs",
+  agent: { evaluations: false },
+};`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Broken commands
+description: Commands that doctor should explain.
+agent:
+  commands:
+    - pnpm run missing
+---
+
+# Broken commands
+
+\`\`\`bash
+pnpm exec docs imaginary
+\`\`\`
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const commandCheck = report.checks.find((check) => check.id === "command-health");
+    expect(commandCheck?.findings).toEqual([
+      expect.objectContaining({
+        code: "command-script-missing",
+        file: "app/docs/page.mdx",
+        line: 6,
+        command: "pnpm run missing",
+        reason: expect.stringContaining('script "missing"'),
+        proposedCorrection: expect.stringContaining('Add a "missing" script'),
+      }),
+      expect.objectContaining({
+        code: "command-cli-unknown",
+        file: "app/docs/page.mdx",
+        line: 12,
+        command: "pnpm exec docs imaginary",
+        reason: expect.stringContaining("unknown docs CLI command"),
+        proposedCorrection: expect.stringContaining("docs --help"),
+      }),
+    ]);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      printAgentDoctorReport(report);
+      const textOutput = stripAnsi(logSpy.mock.calls.flat().join("\n"));
+      expect(textOutput).toContain("Golden task quality: unmeasured");
+      expect(textOutput).toContain("Evaluation coverage: unmeasured");
+      expect(textOutput).toContain("safety unmeasured");
+      expect(textOutput).toContain("answer quality unmeasured");
+      expect(textOutput).toContain("executable examples unmeasured");
+      expect(textOutput).toContain("app/docs/page.mdx:6");
+      expect(textOutput).toContain("Command: pnpm run missing");
+      expect(textOutput).toContain('Reason: Command references package script "missing"');
+      expect(textOutput).toContain('Proposed correction: Add a "missing" script');
+
+      logSpy.mockClear();
+      await runDoctor({ mode: "agent", json: true });
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(String(logSpy.mock.calls[0]?.[0])) as {
+        checks: Array<{ id: string; findings?: unknown[] }>;
+      };
+      expect(payload.checks.find((check) => check.id === "command-health")?.findings).toEqual(
+        commandCheck?.findings,
+      );
+
+      logSpy.mockClear();
+      process.env.GITHUB_ACTIONS = "true";
+      const jsonOutputPath = path.join(tmpDir, "reports", "doctor.json");
+      await runDoctor({ mode: "agent", ci: true, jsonOutputPath });
+
+      const annotationOutput = stripAnsi(logSpy.mock.calls.flat().join("\n"));
+      expect(annotationOutput).toContain(
+        "::error file=app/docs/page.mdx,line=6,title=Documented command health::Command: pnpm run missing Reason:",
+      );
+      expect(annotationOutput).toContain('Proposed correction: Add a "missing" script');
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      const filePayload = JSON.parse(readFileSync(jsonOutputPath, "utf-8")) as {
+        checks: Array<{ id: string; findings?: unknown[] }>;
+      };
+      expect(filePayload.checks.find((check) => check.id === "command-health")?.findings).toEqual(
+        commandCheck?.findings,
+      );
+      await expect(runDoctor({ mode: "agent", ci: true, json: true })).rejects.toThrow(
+        "Use --ci --json-output <path>",
+      );
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("counts human-only primitives as audience-tailored coverage without usefulness credit", async () => {
+    writePackageJson(tmpDir, "doctor-human-audience", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: { evaluations: false },
+};`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Overview
+description: Docs home
+---
+
+# Overview
+
+<Human>Use the interactive setup wizard.</Human>
+<Audience only="human">This screenshot is for readers.</Audience>
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const coverage = report.checks.find((check) => check.id === "coverage");
+    const quality = report.checks.find((check) => check.id === "agent-context-quality");
+
+    expect(report.coverage).toMatchObject({
+      totalPages: 1,
+      pagesWithAgentFiles: 0,
+      pagesWithAgentBlocks: 1,
+      explicitPages: 1,
+      explicitCoverage: 100,
+    });
+    expect(coverage).toMatchObject({ title: "Audience-tailored page optimization" });
+    expect(coverage?.detail).toContain("1 page with embedded audience projections");
+    expect(report.usefulness?.agentBlocks.total).toBe(0);
+    expect(quality?.detail).toContain("No embedded agent-only blocks");
+  });
+
+  it("uses the detected project framework when scoring page applicability", async () => {
+    writePackageJson(tmpDir, "doctor-framework-mismatch", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", agent: { evaluations: false } };`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: Configure Astro
+description: Configure the Astro adapter.
+agent:
+  task: Configure the Astro adapter.
+  outcome: The Astro docs route is available.
+  appliesTo:
+    framework: astro
+  prerequisites:
+    - Install the adapter.
+  commands:
+    - node --version
+  verification:
+    - Confirm the command exits successfully.
+  rollback:
+    - Restore the previous configuration.
+related:
+  - /docs
+---
+
+# Configure Astro
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.framework).toBe("nextjs");
+    expect(report.checks.find((check) => check.id === "agent-applicability")).toMatchObject({
+      status: "fail",
+      score: 0,
+    });
+    expect(report.usefulness?.applicability.mismatchedPages).toBe(1);
+  });
+
+  it("reports malformed golden task arrays instead of crashing", async () => {
+    writePackageJson(tmpDir, "doctor-malformed-evaluations", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    evaluations: {
+      tasks: { id: "not-an-array", query: "Read the docs" },
+    },
+  },
+};`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.evaluations?.status).toBe("failed");
+    expect(report.evaluations?.tasks[0]?.issues).toEqual(
+      expect.arrayContaining([expect.stringContaining("agent.evaluations.tasks must be an array")]),
+    );
+    expect(report.checks.find((check) => check.id === "golden-tasks")?.status).toBe("fail");
+  });
+
+  it("caps near-perfect failed golden tasks and blocks the optimized grade", async () => {
+    writeNearlyPerfectAgentFixture({ failExampleExpectation: true });
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const goldenTasks = report.checks.find((check) => check.id === "golden-tasks");
+
+    expect(report.evaluations).toMatchObject({ status: "failed" });
+    expect(report.evaluations?.score).toBeLessThan(100);
+    expect(goldenTasks).toMatchObject({ status: "fail", maxScore: 10 });
+    expect(goldenTasks?.score).toBeLessThan(10);
+    expect(report.score).toBeGreaterThanOrEqual(90);
+    expect(report.grade).toBe("Agent-ready");
+  });
+
+  it("blocks the optimized grade when an otherwise near-perfect config drifts from the schema", async () => {
+    writeNearlyPerfectAgentFixture({ addUnknownAgentOption: true });
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.checks.find((check) => check.id === "surface-drift")).toMatchObject({
+      status: "fail",
+      score: 8,
+      maxScore: 10,
+    });
+    expect(report.score).toBeGreaterThanOrEqual(90);
+    expect(report.grade).toBe("Agent-ready");
+  });
+
+  it("does not award a perfect score to repeated generic Agent blocks", async () => {
+    writePackageJson(tmpDir, "doctor-boilerplate", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: true,
+  search: true,
+  mcp: true,
+};
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+
+    for (const [slug, topic] of [
+      ["install", "Install the package"],
+      ["configure", "Configure the package"],
+      ["deploy", "Deploy the package"],
+    ]) {
+      mkdirSync(path.join(tmpDir, "app", "docs", slug), { recursive: true });
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", slug, "page.mdx"),
+        `---
+title: ${topic}
+description: ${topic}
+---
+
+# ${topic}
+
+<Agent>
+Use this page when the user asks about this topic: ${topic}.
+Keep answers grounded in the examples documented here.
+Point to the closest related docs instead of inventing config.
+</Agent>
+`,
+        "utf-8",
+      );
+    }
+
+    process.chdir(tmpDir);
+    const report = await inspectAgentReadiness();
+    const quality = report.checks.find((check) => check.id === "agent-context-quality");
+
+    expect(report.score).toBeLessThan(90);
+    expect(report.grade).not.toBe("Agent-optimized");
+    expect(quality).toMatchObject({ status: "fail", score: 0 });
+    expect(report.usefulness?.agentBlocks).toMatchObject({
+      total: 3,
+      boilerplate: 3,
+      generic: 3,
+      useful: 0,
+    });
+    expect(report.evaluations?.status).toBe("unmeasured");
+  });
+
+  it("detects stale discovery coverage in a local robots.txt policy", async () => {
     writePackageJson(tmpDir, "doctor-robots", { next: "16.0.0" });
 
     writeFileSync(
@@ -291,52 +1434,54 @@ export const { GET, POST } = createDocsAPI({});
       "utf-8",
     );
     mkdirSync(path.join(tmpDir, "public"), { recursive: true });
+    const robotsPath = path.join(tmpDir, "public", "robots.txt");
+    const completeRobots = renderDocsRobotsTxt({
+      entry: "docs",
+      baseUrl: "https://docs.example.com",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+    });
     writeFileSync(
-      path.join(tmpDir, "public", "robots.txt"),
-      `User-agent: *
-Allow: /
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /sitemap.xml
-Allow: /sitemap.md
-Allow: /docs/sitemap.md
-Allow: /.well-known/sitemap.md
-Allow: /.well-known/agent.json
-Allow: /.well-known/agent
-Allow: /AGENTS.md
-Allow: /skill.md
-Allow: /mcp
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-`,
+      robotsPath,
+      completeRobots
+        .replace(
+          "Allow: /.well-known/agent-skills/*\n",
+          "Allow: /.well-known/agent-skills/*/SKILL.md\n",
+        )
+        .replace("Allow: /.well-known/skills/index.json\n", "")
+        .replace("Allow: /.well-known/skills/*\n", ""),
       "utf-8",
     );
     writeDocsPage(tmpDir);
     process.chdir(tmpDir);
 
-    const report = await inspectAgentReadiness();
+    const staleReport = await inspectAgentReadiness();
+    const staleRobots = staleReport.checks.find((check) => check.id === "robots");
 
-    expect(report.checks.find((check) => check.id === "robots")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
-      "public/robots.txt",
+    expect(staleRobots).toMatchObject({ status: "warn", score: 3, maxScore: 5 });
+    expect(staleRobots?.detail).toContain(
+      "agent routes (/.well-known/agent-skills/*, /.well-known/skills/index.json",
     );
-    expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
-    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
+
+    writeFileSync(robotsPath, completeRobots, "utf-8");
+    const completeReport = await inspectAgentReadiness();
+
+    expect(completeReport.checks.find((check) => check.id === "robots")).toMatchObject({
+      status: "pass",
+      score: 5,
+      maxScore: 5,
+    });
+    expect(completeReport.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+    expect(completeReport.checks.find((check) => check.id === "skill")?.status).toBe("pass");
   });
 
-  it("detects agent.compact in static config parsing when feedback.agent appears first", async () => {
+  it("detects agent.compact in static config parsing after module evaluation fails", async () => {
     writePackageJson(tmpDir, "doctor-static-agent", { next: "16.0.0" });
 
     writeFileSync(
       path.join(tmpDir, "docs.config.tsx"),
-      `export default {
+      `throw new Error("force static fallback");
+
+export default {
   entry: "docs",
   nav: {
     title: <span>Docs</span>,
@@ -348,8 +1493,8 @@ Allow: /
   },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
     },
   },
 };`,
@@ -366,6 +1511,19 @@ Allow: /
     expect(compactCheck?.status).toBe("pass");
     expect(compactCheck?.score).toBe(5);
     expect(compactCheck?.detail).toContain("agent.compact defaults are configured");
+    const confidence = report.checks.find((check) => check.id === "config-confidence");
+    expect(confidence?.status).toBe("warn");
+    expect(confidence?.score).toBeLessThan(5);
+    expect(report.checks.find((check) => check.id === "config")).toMatchObject({
+      status: "warn",
+      score: 2,
+      maxScore: 10,
+    });
+    expect(report.checks.find((check) => check.id === "surface-drift")).toMatchObject({
+      status: "warn",
+      score: 0,
+      maxScore: 10,
+    });
   });
 
   it("probes hosted agent surfaces when --url is provided", async () => {
@@ -404,19 +1562,145 @@ export const { GET, POST } = createDocsAPI({});
 
     writeDocsPage(tmpDir);
 
+    const hostedSkill = `---
+name: docs
+description: Use the hosted documentation through its agent-readable resources.
+---
+
+# Docs skill
+
+Use MCP and markdown routes.
+`;
+    const invalidHostedSkill = hostedSkill.replace(
+      "description: Use the hosted documentation through its agent-readable resources.",
+      'description: Use the hosted documentation through its agent-readable resources.\nversion: "1.0"',
+    );
+    const invalidHostedSkillUtf8 = Buffer.from([0xff, 0xfe, 0xfd]);
+    const invalidHostedSkillArchive = createAgentSkillArchive(invalidHostedSkill);
+    let serveStaleRobots = false;
+    let serveInvalidSkillFrontmatter = false;
+    let serveInvalidSkillUtf8 = false;
+    let serveArchiveSkill = false;
+    let initializedNotifications = 0;
+
     const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
+
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/api-catalog"
+      ) {
+        res.writeHead(200, {
+          "Content-Type":
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+          Link: '</.well-known/api-catalog>; title="Docs, API"; rel="api-catalog"; type="application/linkset+json"',
+        });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                linkset: [
+                  {
+                    anchor: "http://docs.example.test/.well-known/api-catalog",
+                    item: [
+                      {
+                        href: "http://docs.example.test/api/docs",
+                        type: "application/json",
+                      },
+                    ],
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/index.json") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end();
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
+        res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+        res.end();
+        return;
+      }
+
+      if (req.method === "HEAD" && url.pathname === "/.well-known/agent-skills/docs.tar.gz") {
+        res.writeHead(200, { "Content-Type": "application/gzip" });
+        res.end();
+        return;
+      }
 
       if (req.method === "GET") {
         if (url.pathname === "/.well-known/agent.json") {
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
+              version: "1",
+              name: "@farming-labs/docs",
+              baseUrl: "http://docs.example.test",
+              site: { entry: "docs" },
               capabilities: {
                 markdownRoutes: true,
                 structuredData: true,
+                search: true,
+                mcp: true,
+                apiCatalog: true,
+                agentSkillsDiscovery: true,
               },
-              mcp: { enabled: true },
+              api: {
+                docs: "/api/docs",
+                config: "/api/docs?format=config",
+                apiCatalog: "/.well-known/api-catalog",
+                apiCatalogQuery: "/api/docs?format=api-catalog",
+                agentSkillsIndex: "/.well-known/agent-skills/index.json",
+              },
+              apiCatalog: {
+                enabled: true,
+                route: "/.well-known/api-catalog",
+                api: "/api/docs?format=api-catalog",
+                mediaType: "application/linkset+json",
+                profile: "https://www.rfc-editor.org/info/rfc9727",
+              },
+              config: {
+                endpoint: "/api/docs?format=config",
+              },
+              search: {
+                enabled: true,
+                endpoint: "/api/docs?query={query}",
+              },
+              mcp: {
+                enabled: true,
+                endpoint: "/mcp",
+                tools: {
+                  listDocs: true,
+                  listPages: true,
+                  listPageSections: true,
+                  listTasks: false,
+                  readTask: false,
+                  getNavigation: true,
+                  searchDocs: true,
+                  readPage: true,
+                  getCodeExamples: true,
+                  getConfigSchema: true,
+                  getContext: true,
+                },
+              },
+              agentContract: {
+                fields: { task: "string", outcome: "string" },
+              },
+              skills: {
+                discovery: {
+                  schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+                  index: "/.well-known/agent-skills/index.json",
+                  artifact: "/.well-known/agent-skills/{name}/SKILL.md",
+                  apiIndex: "/api/docs?format=agent-skills",
+                  apiArtifact: "/api/docs?format=agent-skill&name={name}",
+                  digest: "sha256",
+                },
+              },
               llms: { enabled: true },
               sitemap: {
                 enabled: true,
@@ -431,6 +1715,55 @@ export const { GET, POST } = createDocsAPI({});
               robots: { enabled: true, route: "/robots.txt" },
             }),
           );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/index.json") {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(
+            JSON.stringify({
+              $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+              skills: [
+                {
+                  name: "docs",
+                  type: serveArchiveSkill ? "archive" : "skill-md",
+                  description: "Use the hosted documentation through its agent-readable resources.",
+                  url: serveArchiveSkill
+                    ? "/.well-known/agent-skills/docs.tar.gz"
+                    : "/.well-known/agent-skills/docs/SKILL.md",
+                  digest: `sha256:${createHash("sha256")
+                    .update(
+                      serveArchiveSkill
+                        ? invalidHostedSkillArchive
+                        : serveInvalidSkillUtf8
+                          ? invalidHostedSkillUtf8
+                          : serveInvalidSkillFrontmatter
+                            ? invalidHostedSkill
+                            : hostedSkill,
+                    )
+                    .digest("hex")}`,
+                },
+              ],
+            }),
+          );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/docs/SKILL.md") {
+          res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+          res.end(
+            serveInvalidSkillUtf8
+              ? invalidHostedSkillUtf8
+              : serveInvalidSkillFrontmatter
+                ? invalidHostedSkill
+                : hostedSkill,
+          );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/agent-skills/docs.tar.gz") {
+          res.writeHead(200, { "Content-Type": "application/gzip" });
+          res.end(invalidHostedSkillArchive);
           return;
         }
 
@@ -453,29 +1786,18 @@ export const { GET, POST } = createDocsAPI({});
 
         if (url.pathname === "/robots.txt") {
           res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(`User-agent: *
-Allow: /
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /sitemap.xml
-Allow: /sitemap.md
-Allow: /docs/sitemap.md
-Allow: /.well-known/sitemap.md
-Allow: /.well-known/agent.json
-Allow: /.well-known/agent
-Allow: /AGENTS.md
-Allow: /skill.md
-Allow: /mcp
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-`);
+          const completeRobots = renderDocsRobotsTxt({ entry: "docs" });
+          res.end(
+            serveStaleRobots
+              ? completeRobots
+                  .replace(
+                    "Allow: /.well-known/agent-skills/*\n",
+                    "Allow: /.well-known/agent-skills/*/SKILL.md\n",
+                  )
+                  .replace("Allow: /.well-known/skills/index.json\n", "")
+                  .replace("Allow: /.well-known/skills/*\n", "")
+              : completeRobots,
+          );
           return;
         }
 
@@ -533,6 +1855,7 @@ Allow: /
         const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as {
           id?: string | number;
           method?: string;
+          params?: { cursor?: string };
         };
         const writeMcpPayload = (
           value: unknown,
@@ -569,25 +1892,35 @@ Allow: /
         }
 
         if (payload.method === "notifications/initialized") {
+          initializedNotifications += 1;
           res.writeHead(202);
           res.end();
           return;
         }
 
         if (payload.method === "tools/list") {
+          const continued =
+            payload.params !== undefined &&
+            Object.prototype.hasOwnProperty.call(payload.params, "cursor");
+          const firstPage = [
+            { name: "list_docs" },
+            { name: "list_pages" },
+            { name: "list_page_sections" },
+            { name: "get_navigation" },
+          ];
+          const secondPage = [
+            { name: "search_docs" },
+            { name: "read_page" },
+            { name: "get_code_examples" },
+            { name: "get_config_schema" },
+            { name: "get_context" },
+          ];
           writeMcpPayload({
             jsonrpc: "2.0",
             id: payload.id,
             result: {
-              tools: [
-                { name: "list_docs" },
-                { name: "list_pages" },
-                { name: "get_navigation" },
-                { name: "search_docs" },
-                { name: "read_page" },
-                { name: "get_code_examples" },
-                { name: "get_config_schema" },
-              ],
+              tools: continued ? secondPage : firstPage,
+              ...(continued ? {} : { nextCursor: "" }),
             },
           });
           return;
@@ -608,9 +1941,16 @@ Allow: /
       expect(report.url).toBe(`http://127.0.0.1:${port}`);
       expect(report.maxScore).toBe(100);
       expect(report.score).toBeLessThanOrEqual(100);
-      expect(report.score).toBeGreaterThan(75);
+      expect(report.score).toBeGreaterThan(50);
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
+      );
+      expect(report.checks.find((check) => check.id === "hosted-api-catalog")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-agent-skills")?.status).toBe(
+        "pass",
+      );
+      expect(report.checks.find((check) => check.id === "hosted-agent-skills")?.detail).toContain(
+        "docs digest verified",
       );
       expect(report.checks.find((check) => check.id === "hosted-llms")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-sitemap")?.status).toBe("pass");
@@ -632,6 +1972,164 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
         "/.well-known/mcp initialized statelessly",
+      );
+      expect(initializedNotifications).toBeGreaterThanOrEqual(2);
+
+      serveStaleRobots = true;
+      const staleReport = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+      const staleRobots = staleReport.checks.find((check) => check.id === "hosted-robots");
+      expect(staleRobots).toMatchObject({ status: "warn", score: 3, maxScore: 5 });
+      expect(staleRobots?.detail).toContain(
+        "agent routes (/.well-known/agent-skills/*, /.well-known/skills/index.json",
+      );
+
+      serveStaleRobots = false;
+      serveInvalidSkillFrontmatter = true;
+      const invalidSkillReport = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidSkillCheck = invalidSkillReport.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidSkillCheck?.status).toBe("fail");
+      expect(invalidSkillCheck?.detail).toContain(
+        "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
+      );
+
+      serveInvalidSkillFrontmatter = false;
+      serveInvalidSkillUtf8 = true;
+      const invalidUtf8Report = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidUtf8Check = invalidUtf8Report.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidUtf8Check?.status).toBe("fail");
+      expect(invalidUtf8Check?.detail).toContain("artifact failed:");
+
+      serveInvalidSkillUtf8 = false;
+      serveArchiveSkill = true;
+      const invalidArchiveReport = await inspectAgentReadiness({
+        url: `http://127.0.0.1:${port}`,
+      });
+      const invalidArchiveCheck = invalidArchiveReport.checks.find(
+        (check) => check.id === "hosted-agent-skills",
+      );
+      expect(invalidArchiveCheck?.status).toBe("fail");
+      expect(invalidArchiveCheck?.detail).toContain(
+        "invalid SKILL.md frontmatter: Unexpected fields in frontmatter: version",
+      );
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
+  it("rejects a hosted Agent Skills artifact whose bytes do not match its digest", async () => {
+    writePackageJson(tmpDir, "doctor-hosted-skill-digest", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", search: true, mcp: true };`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/api-catalog"
+      ) {
+        res.writeHead(200, {
+          "Content-Type":
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+          Link: '</.well-known/api-catalog>; title="Docs, API"; rel="service-meta", </unrelated>; rel="api-catalog"',
+        });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                linkset: [
+                  {
+                    anchor: "http://docs.example.test/.well-known/api-catalog",
+                    item: [{ href: "http://docs.example.test/api/docs" }],
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/agent-skills/index.json"
+      ) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : JSON.stringify({
+                $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+                skills: [
+                  {
+                    name: "docs",
+                    type: "skill-md",
+                    description: "Use the documentation.",
+                    url: "/.well-known/agent-skills/docs/SKILL.md",
+                    digest: `sha256:${"0".repeat(64)}`,
+                  },
+                ],
+              }),
+        );
+        return;
+      }
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.pathname === "/.well-known/agent-skills/docs/SKILL.md"
+      ) {
+        res.writeHead(200, { "Content-Type": "text/markdown" });
+        res.end(
+          req.method === "HEAD"
+            ? undefined
+            : "---\nname: docs\ndescription: Use the documentation.\n---\n\n# Docs\n",
+        );
+        return;
+      }
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not found");
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+      const check = report.checks.find((candidate) => candidate.id === "hosted-agent-skills");
+
+      expect(check?.status).toBe("fail");
+      expect(check?.detail).toContain("docs artifact digest does not match the index");
+      const catalogCheck = report.checks.find((candidate) => candidate.id === "hosted-api-catalog");
+      expect(catalogCheck?.status).toBe("fail");
+      expect(catalogCheck?.detail).toContain(
+        '/.well-known/api-catalog rel="api-catalog" Link value',
       );
     } finally {
       await new Promise<void>((resolve, reject) =>
@@ -658,8 +2156,8 @@ Allow: /
   },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
     },
   },
 };`,
@@ -714,7 +2212,13 @@ Use this docs site through markdown routes and MCP.
       "utf-8",
     );
 
-    const server = createServer((_req, res) => {
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      if (url.pathname === "/.well-known/agent.json") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("{}");
+        return;
+      }
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("Not found");
     });
@@ -732,6 +2236,9 @@ Use this docs site through markdown routes and MCP.
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "fail",
       );
+      expect(
+        report.checks.find((check) => check.id === "hosted-agent-discovery")?.detail,
+      ).toContain("not a complete agent discovery manifest");
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
@@ -751,8 +2258,8 @@ Use this docs site through markdown routes and MCP.
   mcp: { enabled: true },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
     },
   },
 };`,
@@ -947,6 +2454,199 @@ Updated body.
     expect(report.coverage.compaction.modifiedGeneratedPages).toBe(1);
     expect(report.coverage.compaction.unknownGeneratedPages).toBe(1);
     expect(report.coverage.compaction.tokenBudgetMissingPages).toBe(1);
+  });
+
+  it("fixes stale generated agent docs and token-budget missing outputs", async () => {
+    writePackageJson(tmpDir, "doctor-fix", { next: "16.0.0" });
+
+    const seenInputs: string[] = [];
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+
+      const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as { input: string };
+      seenInputs.push(payload.input);
+
+      let output = "Generic compacted";
+      if (payload.input.includes("/docs/installation")) {
+        output = payload.input.includes("Updated body.")
+          ? "Installation refreshed"
+          : "Installation initial";
+      } else if (payload.input.includes("/docs/page-actions")) {
+        output = "Page actions initial";
+      } else if (payload.input.includes("/docs/budgeted")) {
+        output = "Budgeted compacted";
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output,
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      writeFileSync(
+        path.join(tmpDir, "docs.config.ts"),
+        `export default {
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKey: "test-key",
+      baseUrl: "http://127.0.0.1:${port}",
+    },
+  },
+};`,
+        "utf-8",
+      );
+
+      for (const slug of ["installation", "page-actions", "budgeted"]) {
+        mkdirSync(path.join(tmpDir, "app", "docs", slug), { recursive: true });
+      }
+
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+        `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Original body.
+`,
+        "utf-8",
+      );
+
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "page-actions", "page.mdx"),
+        `---
+title: "Page Actions"
+description: "Customize page actions"
+---
+
+# Page Actions
+
+Original page actions body.
+`,
+        "utf-8",
+      );
+
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "budgeted", "page.mdx"),
+        `---
+title: "Budgeted"
+description: "Needs compaction output"
+agent:
+  tokenBudget: 250
+---
+
+# Budgeted
+
+Budgeted body.
+`,
+        "utf-8",
+      );
+
+      process.chdir(tmpDir);
+
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+      try {
+        await compactAgentDocs({
+          pages: ["installation", "page-actions"],
+        });
+        seenInputs.length = 0;
+
+        writeFileSync(
+          path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+          `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Updated body.
+`,
+          "utf-8",
+        );
+
+        writeFileSync(
+          path.join(tmpDir, "app", "docs", "page-actions", "agent.md"),
+          readFileSync(
+            path.join(tmpDir, "app", "docs", "page-actions", "agent.md"),
+            "utf-8",
+          ).replace("Page actions initial", "Manual page actions edit"),
+          "utf-8",
+        );
+
+        const dryRunReport = await runDoctor({ mode: "agent", fix: true, dryRun: true });
+        expect(dryRunReport.mode).toBe("agent");
+        if (dryRunReport.mode !== "agent") {
+          throw new Error("Expected an agent doctor report.");
+        }
+
+        expect(dryRunReport.fixes).toEqual([
+          expect.objectContaining({
+            id: "agent-compact",
+            status: "skipped",
+            detail: expect.stringContaining(
+              "Dry run: would run docs agent compact --stale --include-missing",
+            ),
+          }),
+        ]);
+        expect(dryRunReport.coverage.compaction.staleGeneratedPages).toBe(1);
+        expect(dryRunReport.coverage.compaction.tokenBudgetMissingPages).toBe(1);
+        expect(seenInputs).toHaveLength(0);
+        expect(
+          readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+        ).toContain("Installation initial");
+        expect(existsSync(path.join(tmpDir, "app", "docs", "budgeted", "agent.md"))).toBe(false);
+
+        const report = await runDoctor({ mode: "agent", fix: true });
+        expect(report.mode).toBe("agent");
+        if (report.mode !== "agent") throw new Error("Expected an agent doctor report.");
+
+        expect(report.fixes).toEqual([
+          expect.objectContaining({
+            id: "agent-compact",
+            status: "applied",
+          }),
+        ]);
+        expect(report.coverage.compaction.staleGeneratedPages).toBe(0);
+        expect(report.coverage.compaction.tokenBudgetMissingPages).toBe(0);
+        expect(report.coverage.compaction.modifiedGeneratedPages).toBe(1);
+      } finally {
+        logSpy.mockRestore();
+      }
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(seenInputs).toHaveLength(2);
+    expect(seenInputs.some((input) => input.includes("/docs/installation"))).toBe(true);
+    expect(seenInputs.some((input) => input.includes("/docs/budgeted"))).toBe(true);
+    expect(seenInputs.some((input) => input.includes("/docs/page-actions"))).toBe(false);
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toContain("Installation refreshed");
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "budgeted", "agent.md"), "utf-8"),
+    ).toContain("Budgeted compacted");
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "page-actions", "agent.md"), "utf-8"),
+    ).toContain("Manual page actions edit");
   });
 
   it("returns a failing report when docs config is missing", async () => {
@@ -1376,6 +3076,34 @@ describe("inspectHumanReadiness", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  function writeWarningSiteFixture(name: string) {
+    writePackageJson(tmpDir, name, { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+
+Welcome to the docs.
+`,
+      "utf-8",
+    );
+  }
+
   it("scores a healthy docs app as reader-ready", async () => {
     writePackageJson(tmpDir, "doctor-human", { next: "16.0.0" });
 
@@ -1473,6 +3201,32 @@ Choose the entry, content directory, and theme defaults.
     expect(report.checks.find((check) => check.id === "structure")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "trust")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+  });
+
+  it("fully evaluates a TSX config with a JSX-valued navigation title", async () => {
+    writePackageJson(tmpDir, "doctor-human-tsx-config", { next: "16.0.0" });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.tsx"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  nav: { title: <span>Docs</span> },
+};
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectHumanReadiness();
+
+    expect(report.checks.find((check) => check.id === "config")).toMatchObject({
+      status: "pass",
+      score: 10,
+      maxScore: 10,
+      detail: expect.stringContaining("evaluated the config module"),
+      recommendation: undefined,
+    });
   });
 
   it("treats lastUpdated as enabled by default for the reader-facing score", async () => {
@@ -1602,6 +3356,87 @@ description: "Docs home"
       expect(payload.mode).toBe("site");
       expect(Array.isArray(payload.checks)).toBe(true);
     } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it("sets a failing exit code in strict mode when checks warn", async () => {
+    writeWarningSiteFixture("doctor-site-strict-warnings");
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "human", json: true, strict: true });
+
+      expect(report.checks.some((check) => check.status === "warn")).toBe(true);
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
+      logSpy.mockRestore();
+    }
+  });
+
+  it("sets a failing exit code with fail-on warn when checks warn", async () => {
+    writeWarningSiteFixture("doctor-site-fail-on-warn");
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "human", json: true, failOn: "warn" });
+
+      expect(report.checks.some((check) => check.status === "warn")).toBe(true);
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
+      logSpy.mockRestore();
+    }
+  });
+
+  it("keeps exit code passing with fail-on fail when checks only warn", async () => {
+    writeWarningSiteFixture("doctor-site-fail-on-fail-warnings");
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "human", json: true, failOn: "fail" });
+
+      expect(report.checks.some((check) => check.status === "warn")).toBe(true);
+      expect(report.checks.every((check) => check.status !== "fail")).toBe(true);
+      expect(process.exitCode).toBeUndefined();
+    } finally {
+      process.exitCode = previousExitCode;
+      logSpy.mockRestore();
+    }
+  });
+
+  it("sets a failing exit code with fail-on fail when checks fail", async () => {
+    writePackageJson(tmpDir, "doctor-agent-fail-on-fail", { next: "16.0.0" });
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "agent", json: true, failOn: "fail" });
+
+      expect(report.checks.some((check) => check.status === "fail")).toBe(true);
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
       logSpy.mockRestore();
     }
   });

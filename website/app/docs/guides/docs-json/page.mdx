@@ -9,14 +9,28 @@ related:
   - /docs/configuration
   - /docs/cli
 order: 2
+agent:
+  tokenBudget: 850
 ---
 
 # docs.json
 
 <Agent>
-Use this page when the user asks about this topic: How the shared docs.json contract separates docs structure from Docs Cloud services.
-Keep answers grounded in the exact options, routes, commands, and examples documented here.
-If the request moves beyond this page, point to the closest related docs instead of inventing config.
+Treat `docs.json` as a serializable repository contract. Keep `$schema`, `version`, `docs.mode`,
+`docs.runtime`, and `docs.root` explicit; use `content.docsRoot` and `content.apiReferenceRoot` for
+content locations. Only JSON-safe Cloud settings such as `cloud.analytics`, `cloud.publish`,
+`cloud.ai`, and hosted publication state belong here. Keep theme helpers and callbacks such as
+`analytics.onEvent` in `docs.config.ts`, CSS imports in the framework stylesheet, and secret values
+in environment variables. `docs.json` may name an environment variable but must not contain its
+secret value.
+
+For a config-backed Cloud project, `pnpm dlx @farming-labs/docs cloud sync` materializes the
+generated `docs.json`, which should describe the intended framework or frameworkless root without a
+raw API key. For SvelteKit or Astro, the command needs `--config src/lib/docs.config.ts`.
+`cloud.enabled: false` retains the local contract while disabling Cloud operations; otherwise the
+field is normally omitted. If the JSON drifts from executable config, regenerate and review it
+rather than hand-copying function-valued options. A frameworkless `pnpm exec docs dev` preview
+currently uses the Next.js runtime even though `docs.runtime` remains explicit for future runtimes.
 </Agent>
 
 Use `docs.json` when you want a repo-level contract for frameworkless docs or for connecting
@@ -65,6 +79,65 @@ For a framework-owned docs app:
 `runtime` tells you which docs runtime is responsible for rendering it, and it is meant to stay an
 explicit choice in the contract rather than being implied.
 
+## OpenAPI entries
+
+Each entry in `content.openapi[]` describes one API reference. Fields:
+
+| Field             | Type       | Description                                                                                                      |
+| ----------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| `name`            | `string`   | Display name for this API reference.                                                                             |
+| `path`            | `string`   | Path or URL of the OpenAPI document. Relative paths resolve from the project root; absolute URLs load remotely. |
+| `route`           | `string`   | Public route where the API reference is rendered (e.g. `"/api-reference"`).                                     |
+| `catalogTargets`  | `string[]` | Product API base URLs described by this OpenAPI document. See below.                                             |
+| `navigationLabel` | `string`   | Optional label for the sidebar navigation entry.                                                                 |
+
+### `catalogTargets` — when to set it
+
+`catalogTargets` declares which product API base URLs the OpenAPI document describes. The runtime
+uses these to populate the RFC 9727 `/.well-known/api-catalog` endpoint, associating the OpenAPI
+document with each URL via `service-desc`.
+
+**You only need `catalogTargets` when `path` is an absolute remote URL.** For remotely hosted
+schemas, the schema URL is not the same as the API URL, so the runtime has no way to infer a target
+automatically.
+
+- Same-origin or relative `path` values default to `["/"]` — no extra configuration needed.
+- Absolute remote `path` values (e.g. `https://schemas.example.com/product.json`) have no default. Set `catalogTargets` explicitly.
+- An explicit empty array `[]` disables catalog association entirely.
+
+```json title="docs.json — remote schema with catalog target"
+{
+  "content": {
+    "openapi": [
+      {
+        "name": "Core API",
+        "path": "https://schemas.example.com/product.openapi.json",
+        "route": "/api-reference",
+        "catalogTargets": [
+          "https://api.acme.dev/v1"
+        ]
+      }
+    ]
+  }
+}
+```
+
+For a local schema file, omit `catalogTargets`:
+
+```json title="docs.json — local schema (no catalogTargets needed)"
+{
+  "content": {
+    "openapi": [
+      {
+        "name": "Core API",
+        "path": "api/openapi.json",
+        "route": "/api-reference"
+      }
+    ]
+  }
+}
+```
+
 ## Cloud Services
 
 Hosted features live under `cloud`:
@@ -96,6 +169,10 @@ This keeps product packaging separate from docs structure:
 - `frameworkless` is an authoring mode
 - `nextjs` is a runtime
 - Docs Cloud is the hosted layer that can add preview, publish, AI, and deploy services
+
+Theme names, CSS imports, and component styling belong in `docs.config.ts` and the framework theme
+packages. Keep `docs.json` focused on repo shape and hosted Cloud services so the contract stays
+runtime-neutral.
 
 ## Cloud Analytics
 

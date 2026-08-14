@@ -26,11 +26,13 @@ describe("parseFlags", () => {
       "darksharp",
       "--entry",
       "docs",
+      "--cloud",
     ]);
     expect(flags.template).toBe("astro");
     expect(flags.name).toBe("my-app");
     expect(flags.theme).toBe("darksharp");
     expect(flags.entry).toBe("docs");
+    expect(flags.cloud).toBe(true);
   });
 
   it("parses api reference flags", () => {
@@ -40,9 +42,36 @@ describe("parseFlags", () => {
     expect(flags.other).toBe(false);
   });
 
+  it("parses --no-cloud", () => {
+    expect(parseFlags(["init", "--no-cloud"]).cloud).toBe(false);
+  });
+
   it("parses mcp flags", () => {
-    const flags = parseFlags(["mcp", "--config", "src/lib/docs.config.ts"]);
+    const flags = parseFlags(["mcp", "--config", "src/lib/docs.config.ts", "--client", "cursor"]);
     expect(flags.config).toBe("src/lib/docs.config.ts");
+    expect(flags.client).toBe("cursor");
+  });
+
+  it("parses protected authoring and feedback flags", () => {
+    expect(
+      parseFlags([
+        "mcp",
+        "author",
+        "--allow-publish",
+        "--branch-prefix",
+        "docs/",
+        "--base-branch",
+        "main",
+      ]),
+    ).toMatchObject({
+      "allow-publish": true,
+      "branch-prefix": "docs/",
+      "base-branch": "main",
+    });
+    expect(parseFlags(["agent", "feedback", "--write", "--json"])).toMatchObject({
+      write: true,
+      json: true,
+    });
   });
 
   it("parses search sync provider flags", () => {
@@ -68,6 +97,13 @@ describe("parseFlags", () => {
     expect(flags.json).toBe(true);
   });
 
+  it("parses cloud check target flags", () => {
+    const flags = parseFlags(["cloud", "check", "--analytics", "--ask-ai", "--deploy"]);
+    expect(flags.analytics).toBe(true);
+    expect(flags["ask-ai"]).toBe(true);
+    expect(flags.deploy).toBe(true);
+  });
+
   it("parses dev flags including verbose and hostname aliases", () => {
     const flags = parseFlags(["dev", "--verbose", "--port", "4010", "--host", "0.0.0.0"]);
     expect(flags.verbose).toBe(true);
@@ -81,8 +117,9 @@ describe("parseFlags", () => {
   });
 
   it("parses boolean values in --key=value form", () => {
-    const flags = parseFlags(["--api-reference=false", "--theme=colorful"]);
+    const flags = parseFlags(["--api-reference=false", "--cloud=true", "--theme=colorful"]);
     expect(flags["api-reference"]).toBe(false);
+    expect(flags.cloud).toBe(true);
     expect(flags.theme).toBe("colorful");
   });
 
@@ -100,6 +137,11 @@ describe("parseFlags", () => {
   it("parses upgrade option: version", () => {
     expect(parseFlags(["upgrade", "--version", "0.1.104"]).version).toBe("0.1.104");
     expect(parseFlags(["upgrade", "--version=0.1.104-beta.1"]).version).toBe("0.1.104-beta.1");
+  });
+
+  it("parses package version dry-run flag", () => {
+    expect(parseFlags(["upgrade", "--dry-run"])["dry-run"]).toBe(true);
+    expect(parseFlags(["downgrade", "--version", "0.1.104", "--dry-run"])["dry-run"]).toBe(true);
   });
 
   it("returns empty object for empty argv", () => {

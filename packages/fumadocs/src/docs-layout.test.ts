@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
+import { shadcn } from "./shadcn/index.js";
 
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
@@ -81,7 +82,17 @@ describe("createDocsLayout pageActions", () => {
     mkdirSync(join(tmpDir, "app", "docs"), { recursive: true });
     writeFileSync(
       join(tmpDir, "app", "docs", "page.mdx"),
-      "---\ntitle: Home\n---\n\n# Home\n",
+      `---
+title: Home
+agent:
+  task: Configure the docs home
+  outcome: The home page renders.
+  commands:
+    - pnpm dev
+---
+
+# Home
+`,
       "utf-8",
     );
     process.chdir(tmpDir);
@@ -97,7 +108,13 @@ describe("createDocsLayout pageActions", () => {
       entry: "docs",
       pageActions: {
         alignment: "right",
-        copyMarkdown: { enabled: true },
+        copyMarkdown: {
+          enabled: true,
+          format: "text",
+          includeTitle: true,
+          label: "Copy docs",
+          copiedLabel: "Copied docs",
+        },
         openDocs: { enabled: true },
       },
     });
@@ -109,9 +126,94 @@ describe("createDocsLayout pageActions", () => {
 
     expect(props).toBeTruthy();
     expect(props?.copyMarkdown).toBe(true);
+    expect(props?.copyMarkdownFormat).toBe("text");
+    expect(props?.copyMarkdownIncludeTitle).toBe(true);
+    expect(props?.copyMarkdownLabel).toBe("Copy docs");
+    expect(props?.copyMarkdownCopiedLabel).toBe("Copied docs");
     expect(props?.openDocs).toBe(true);
     expect(props?.pageActionsAlignment).toBe("right");
     expect(props?.pageActionsPosition).toBe("below-title");
+  });
+
+  it("does not opt Next.js layouts into browser-adapter header actions", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "fumadocs-pixel-border" } as any,
+      llmsTxt: true,
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBeUndefined();
+  });
+
+  it("generates frontmatter titles only when the MDX body does not author an h1", () => {
+    const pages = {
+      generated: ["---", "title: Generated", "---", "", "Body without a heading."],
+      fenced: ["---", "title: Fenced", "---", "", "```md", "# Example heading", "```"],
+      markdown: ["---", "title: Markdown", "---", "", "# Markdown"],
+      html: ["---", "title: HTML", "---", "", "<h1>HTML</h1>"],
+      setext: ["---", "title: Setext", "---", "", "Setext", "======"],
+    };
+
+    for (const [slug, lines] of Object.entries(pages)) {
+      mkdirSync(join(tmpDir, "app", "docs", slug), { recursive: true });
+      writeFileSync(join(tmpDir, "app", "docs", slug, "page.mdx"), lines.join("\n"), "utf-8");
+    }
+
+    const Layout = createDocsLayout({ entry: "docs", theme: shadcn() });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props?.generatedTitleMap).toEqual({
+      "/docs/generated": "Generated",
+      "/docs/fenced": "Fenced",
+    });
+  });
+
+  it("does not change title rendering for non-Shadcn themes", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "generated", "page.mdx"),
+      "---\ntitle: Generated\n---\n\nBody without a heading.",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs" });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props?.generatedTitleMap).toEqual({});
+  });
+
+  it("uses a readable Shadcn folder label for Introduction landing pages", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "statewire", "authoring-js"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "page.mdx"),
+      "---\ntitle: Introduction\n---\n\n# Introduction\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "authoring-js", "page.mdx"),
+      "---\ntitle: Authoring JavaScript\n---\n\n# Authoring JavaScript\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: shadcn(),
+    });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const pageTree = findDocsLayoutTree(tree) as {
+      children?: Array<{ type?: string; name?: string; index?: { name?: string } }>;
+    } | null;
+    const statewire = pageTree?.children?.find((node) => node.type === "folder");
+
+    expect(statewire).toMatchObject({
+      type: "folder",
+      name: "Statewire",
+    });
+    expect(statewire?.index).toBeUndefined();
   });
 
   it("enables llms.txt footer links by default", () => {
@@ -158,6 +260,8 @@ describe("createDocsLayout pageActions", () => {
     expect(map?.["/docs"]).toContain('"@type":"TechArticle"');
     expect(map?.["/docs"]).toContain('"url":"https://docs.example.com/docs"');
     expect(map?.["/docs"]).toContain('"headline":"Home"');
+    expect(map?.["/docs"]).toContain('"@type":"HowTo"');
+    expect(map?.["/docs"]).toContain('"name":"Configure the docs home"');
   });
 
   it("does not add an extra display: contents wrapper above the docs layout root", () => {
@@ -254,6 +358,82 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.openDocs).toBe(false);
   });
 
+  it("passes required feedback comments through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      feedback: {
+        requireComment: true,
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackRequireComment).toBe(true);
+  });
+
+  it("passes feedback status messages through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      feedback: {
+        successMessage: "Thanks, we logged this.",
+        errorMessage: "Feedback could not be recorded.",
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackSuccessMessage).toBe("Thanks, we logged this.");
+    expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
+  });
+
+  it("passes the configured feedback placeholder through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      feedback: {
+        placeholder: "Tell us what felt unclear.",
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackPlaceholder).toBe("Tell us what felt unclear.");
+  });
+
+  it("passes the configured last-updated label through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      lastUpdated: {
+        label: "Updated",
+        position: "below-title",
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.lastUpdatedEnabled).toBe(true);
+    expect(props?.lastUpdatedLabel).toBe("Updated");
+    expect(props?.lastUpdatedPosition).toBe("below-title");
+  });
+
   it("keeps reading time disabled when the config is unconfigured", () => {
     const Layout = createDocsLayout({
       entry: "docs",
@@ -319,6 +499,58 @@ describe("createDocsLayout pageActions", () => {
     });
   });
 
+  it("passes the configured reading-time label format through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: { enabled: true, format: "short" },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeFormat).toBe("short");
+  });
+
+  it("includes code examples in reading-time estimates when configured", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "code-heavy"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "code-heavy", "page.mdx"),
+      [
+        "---",
+        "title: Code Heavy",
+        "---",
+        "",
+        "# Code Heavy",
+        "",
+        "Short intro.",
+        "",
+        "```ts",
+        "const readingTime = { includeCode: true };",
+        "export default readingTime;",
+        "```",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: { enabled: true, wordsPerMinute: 3, includeCode: true },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeMap).toMatchObject({
+      "/docs/code-heavy": 4,
+    });
+  });
+
   it("lets per-page frontmatter override a disabled global reading-time config", () => {
     mkdirSync(join(tmpDir, "app", "docs", "guide"), { recursive: true });
     writeFileSync(
@@ -344,7 +576,7 @@ describe("createDocsLayout pageActions", () => {
     });
   });
 
-  it("ignores Agent-only content when computing reading time", () => {
+  it("uses the human audience projection when computing reading time", () => {
     mkdirSync(join(tmpDir, "app", "docs", "agent-safe"), { recursive: true });
     writeFileSync(
       join(tmpDir, "app", "docs", "agent-safe", "page.mdx"),
@@ -357,9 +589,15 @@ describe("createDocsLayout pageActions", () => {
         "",
         "Short human summary.",
         "",
+        "<Human>",
+        "Visible guidance adds exactly ten useful words for human readers here.",
+        "</Human>",
+        "",
         "<Agent>",
         "These extra machine-only instructions should not count toward visible reading time even if they are verbose and packed with many additional words for testing purposes.",
         "</Agent>",
+        "",
+        '<Audience only="agent">More agent-only words must remain excluded from the visible estimate.</Audience>',
       ].join("\n"),
       "utf-8",
     );
@@ -376,7 +614,7 @@ describe("createDocsLayout pageActions", () => {
 
     expect(props).toBeTruthy();
     expect(props?.readingTimeMap).toMatchObject({
-      "/docs/agent-safe": 1,
+      "/docs/agent-safe": 2,
     });
   });
 
@@ -463,6 +701,87 @@ describe("createDocsLayout pageActions", () => {
         }),
       ],
     });
+  });
+
+  it("renders Shadcn folder landing pages as section labels unless links are requested", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "authentication", "email"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "authentication", "page.mdx"),
+      "---\ntitle: Authentication\n---\n\n# Authentication\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "authentication", "email", "page.mdx"),
+      "---\ntitle: Email\n---\n\n# Email\n",
+      "utf-8",
+    );
+
+    const ShadcnLayout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "shadcn" },
+    });
+    const linkedShadcnLayout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "shadcn" },
+      sidebar: { folderIndexBehavior: "link" },
+    });
+
+    const shadcnTree = findDocsLayoutTree(
+      ShadcnLayout({ children: React.createElement("div", null, "child") }),
+    );
+    const linkedShadcnTree = findDocsLayoutTree(
+      linkedShadcnLayout({ children: React.createElement("div", null, "child") }),
+    );
+    const shadcnAuthentication = (
+      (shadcnTree?.children ?? []) as Array<Record<string, unknown>>
+    ).find((entry) => entry.name === "Authentication");
+    const linkedAuthentication = (
+      (linkedShadcnTree?.children ?? []) as Array<Record<string, unknown>>
+    ).find((entry) => entry.name === "Authentication");
+
+    expect(shadcnAuthentication).toMatchObject({
+      type: "folder",
+      index: undefined,
+      url: undefined,
+      children: [
+        expect.objectContaining({
+          type: "page",
+          name: "Email",
+          url: "/docs/authentication/email",
+        }),
+      ],
+    });
+    expect(linkedAuthentication).toMatchObject({
+      type: "folder",
+      index: expect.objectContaining({
+        type: "page",
+        name: "Authentication",
+        url: "/docs/authentication",
+      }),
+    });
+  });
+
+  it("uses the folder slug for generic Shadcn introduction section labels", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "statewire", "authoring"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "page.mdx"),
+      "---\ntitle: Introduction\n---\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "statewire", "authoring", "page.mdx"),
+      "---\ntitle: Authoring\n---\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs", theme: { name: "shadcn" } });
+    const tree = findDocsLayoutTree(
+      Layout({ children: React.createElement("div", null, "child") }),
+    );
+
+    expect(
+      (tree?.children as Array<Record<string, unknown>>).find((item) => item.name === "Statewire"),
+    ).toMatchObject({ type: "folder" });
   });
 
   it("applies sidebar.folderIndexBehaviorOverrides selectively", () => {

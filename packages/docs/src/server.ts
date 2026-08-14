@@ -41,27 +41,156 @@ export {
 } from "./review.js";
 export type { ResolvedDocsReviewConfig } from "./review.js";
 export {
+  DEFAULT_DOCS_MCP_CORS_ALLOWED_HEADERS,
+  DEFAULT_DOCS_MCP_CORS_EXPOSED_HEADERS,
+  DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS,
+  DEFAULT_DOCS_MCP_CONTENT_CHANGE_POLL_INTERVAL_MS,
+  DEFAULT_DOCS_MCP_MAX_BODY_BYTES,
+  DOCS_MCP_CONTENT_CHANGES_CURRENT_URI,
+  DOCS_MCP_CONTENT_CHANGES_URI_TEMPLATE,
+  DOCS_CONFIG_SCHEMA_OPTIONS,
   createDocsMcpHttpHandler,
   createDocsMcpServer,
   createFilesystemDocsMcpSource,
+  getDocsConfigSchema,
   normalizeDocsMcpRoute,
   resolveDocsMcpConfig,
+  resolveDocsMcpPromptsConfig,
   runDocsMcpStdio,
 } from "./mcp.js";
 export {
+  createDocsAuthoringMcpServer,
+  readDocsAuthoringFile,
+  runDocsAuthoringMcpStdio,
+  writeDocsAuthoringFile,
+} from "./authoring-mcp.js";
+export type { DocsAuthoringFileState, DocsAuthoringMcpOptions } from "./authoring-mcp.js";
+export {
+  DOCS_AGENT_FEEDBACK_IMPROVEMENT_FORMAT,
+  analyzeDocsAgentFeedback,
+  readDocsAgentFeedbackFile,
+} from "./agent-feedback-loop.js";
+export type {
+  DocsAgentFeedbackCluster,
+  DocsAgentFeedbackImprovementOptions,
+  DocsAgentFeedbackImprovementReport,
+  DocsAgentFeedbackIssueDraft,
+} from "./agent-feedback-loop.js";
+export { createDocsCloudRouteHandler, createDocsCloudServer } from "./docs-cloud-server.js";
+export { createDocsCloudAskAIResponse, isDocsCloudAskAIProvider } from "./cloud-ask-ai.js";
+export type {
+  DocsCloudAskAIOptions,
+  DocsCloudPublicConfig,
+  DocsCloudRouteHandlerOptions,
+  DocsCloudRouteHandlers,
+  DocsCloudRuntimeEnv,
+  DocsCloudRuntimeValue,
+  DocsCloudServer,
+  DocsCloudServerOptions,
+  DocsCloudTrackEventOptions,
+} from "./docs-cloud-server.js";
+export type { DocsCloudAskAIConfig, DocsCloudAskAIResponseOptions } from "./cloud-ask-ai.js";
+export {
+  buildDocsContentSnapshot,
   buildDocsSearchDocuments,
+  buildDocsRetrievalDigestProjection,
   buildDocsAskAIContext,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
   createMcpSearchAdapter,
   createSimpleSearchAdapter,
   createTypesenseSearchAdapter,
+  enrichDocsSearchDocumentsWithProvenance,
   formatDocsAskAIPackageHints,
   inferDocsAskAIPackageHints,
+  normalizeDocsSearchFilters,
+  DocsSearchRequestError,
   performDocsSearch,
+  performDocsSearchWithMetadata,
+  resolveDocsSearchAudience,
+  resolveDocsSearchError,
+  resolveDocsSearchFilters,
+  resolveDocsSearchRequest,
+  resolveDocsRetrievalLastModified,
   resolveAskAISearchRequestConfig,
+  resolveLocalDocsMcpSearchConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
+export { DocsPaginationCursorError } from "./pagination.js";
+export type {
+  BuildDocsContentSnapshotOptions,
+  DocsLocalMcpSearchRuntimeConfig,
+  DocsLocalMcpSearchRuntimeInput,
+  DocsSearchRequestResolutionOptions,
+  EnrichDocsSearchDocumentsWithProvenanceOptions,
+  PerformDocsSearchOptions,
+} from "./search.js";
+export {
+  createDocsContentChangeFeed,
+  createDocsContentChangesHttpResponse,
+  DOCS_CONTENT_CHANGES_FORMAT,
+  DOCS_CONTENT_CHANGES_RESPONSE_VALUE,
+  DOCS_CONTENT_SNAPSHOT_FORMAT,
+  isDocsContentChangeGeneration,
+  isDocsContentChangesRequest,
+  resolveDocsContentChangesConfig,
+  resolveDocsContentChangesRequest,
+  DocsContentChangesRequestError,
+} from "./content-changes.js";
+export type {
+  DocsContentChangeFeed,
+  DocsContentChangesRequest,
+  DocsResolvedContentChangesConfig,
+  ResolveDocsContentChangesOptions,
+} from "./content-changes.js";
+export {
+  DEFAULT_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  DOCS_CONTENT_CHANGE_HYDRATION_FORMAT,
+  hydrateDocsContentChanges,
+  MAX_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+  MIN_DOCS_CONTENT_CHANGE_HYDRATION_TOKEN_BUDGET,
+} from "./content-change-hydration.js";
+export type {
+  DocsContentChangeHydrationBudget,
+  DocsContentChangeHydrationContent,
+  DocsContentChangeHydrationResponse,
+  DocsContentChangeHydrationSection,
+  DocsContentChangeHydrationTombstone,
+  HydrateDocsContentChangesOptions,
+} from "./content-change-hydration.js";
+export { runDocsGoldenTasks } from "./agent-evals.js";
+export {
+  resolveConfiguredAgentSkills,
+  resolveConfiguredAgentSkillsSync,
+} from "./agent-skills-server.js";
+export type { ResolveConfiguredAgentSkillsOptions } from "./agent-skills-server.js";
+export { renderDocsAgentSkillsBundle } from "./agent-skills-vite.js";
+export type {
+  DocsGoldenAnswerMetrics,
+  DocsGoldenCitationMetrics,
+  DocsGoldenEvaluationCoverage,
+  DocsGoldenEvaluationCoverageStatus,
+  DocsGoldenEvaluationDimensionCoverage,
+  DocsGoldenEvaluationQuality,
+  DocsGoldenEvaluationStatus,
+  DocsGoldenExampleMetrics,
+  DocsGoldenExampleResult,
+  DocsGoldenExpectedExample,
+  DocsGoldenRetrievedSource,
+  DocsGoldenRetrievalMetrics,
+  DocsGoldenSafetyCaseKind,
+  DocsGoldenSafetyCaseResult,
+  DocsGoldenSafetyMetrics,
+  DocsGoldenQueryVariantResult,
+  DocsGoldenSelectionMetrics,
+  DocsGoldenTask,
+  DocsGoldenTaskExpectation,
+  DocsGoldenTaskFilters,
+  DocsGoldenTaskReport,
+  DocsGoldenTasksReport,
+  DocsGoldenUsageMetrics,
+  RunDocsGoldenTasksOptions,
+} from "./agent-evals.js";
 export {
   DEFAULT_OPEN_DOCS_PROMPT,
   DEFAULT_OPEN_DOCS_PROVIDER_IDS,
@@ -76,6 +205,8 @@ export {
   serializeOpenDocsProvider,
   serializeOpenDocsProviders,
 } from "./prompt-utils.js";
+export { extractDocsMarkdownPromptBlocks } from "./audience.js";
+export type { DocsMarkdownPromptBlock, ExtractedDocsMarkdownPromptBlocks } from "./audience.js";
 export {
   DEFAULT_SITEMAP_MANIFEST_PATH,
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
@@ -101,9 +232,13 @@ export type {
   DocsSitemapResolvedConfig,
 } from "./sitemap.js";
 export type {
+  CreateDocsMcpServerOptions,
+  DocsMcpAgentContractSummary,
   DocsMcpCodeExample,
   DocsMcpConfigSchema,
   DocsMcpConfigSchemaOption,
+  DocsMcpContextResult,
+  DocsMcpContextSource,
   DocsMcpDocsList,
   DocsMcpDocsPageSummary,
   DocsMcpDocsSection,
@@ -111,8 +246,18 @@ export type {
   DocsMcpNavigationNode,
   DocsMcpNavigationTree,
   DocsMcpPage,
+  DocsMcpPageSectionIndex,
+  DocsMcpPageSectionList,
+  DocsMcpPaginatedDocsList,
+  DocsMcpPagination,
+  DocsMcpRequestContext,
+  DocsMcpResolvedCorsConfig,
   DocsMcpResolvedConfig,
+  DocsMcpResolvedPromptsConfig,
+  DocsMcpResolvedProtectedResourceConfig,
+  DocsMcpResolvedSecurityConfig,
   DocsMcpSource,
+  DocsMcpTaskSummary,
 } from "./mcp.js";
 export type {
   PromptAction,
@@ -121,15 +266,62 @@ export type {
   SerializedOpenDocsProvider,
 } from "./prompt-utils.js";
 export type {
+  DocsAgentEvaluationAnswerInput,
+  DocsAgentEvaluationAnswerProvider,
+  DocsAgentEvaluationAnswerRequest,
+  DocsAgentEvaluationAnswerResult,
+  DocsAgentEvaluationAnswerRunner,
+  DocsAgentEvaluationSourceReference,
+  DocsAgentEvaluationSurface,
+  DocsAgentEvaluationTaskInput,
+  DocsAgentGoldenAnswerExpectation,
+  DocsAgentGoldenAuthenticatedContentExpectation,
+  DocsAgentGoldenExampleVerification,
+  DocsAgentGoldenFreshnessExpectation,
+  DocsAgentGoldenPromptInjectionExpectation,
+  DocsAgentGoldenQueryVariant,
+  DocsAgentGoldenQueryVariantKind,
+  DocsAgentGoldenSafetyExpectation,
   DocsSearchAdapter,
   DocsSearchAdapterContext,
   DocsSearchAdapterFactory,
+  DocsSearchAdapterPage,
   DocsAskAIMcpConfig,
   DocsSearchConfig,
   DocsSearchDocument,
+  DocsSearchAmbiguityDecision,
+  DocsSearchAmbiguityDecisionStatus,
+  DocsSearchAmbiguityResolution,
+  DocsSearchExplanation,
+  DocsSearchFilterDecision,
+  DocsSearchFilterDecisionOutcome,
+  DocsSearchFilterField,
+  DocsSearchFilterInput,
+  DocsSearchFilters,
+  DocsSearchMatchedTerm,
+  DocsSearchMatchField,
   DocsSearchQuery,
+  DocsSearchRankingReason,
+  DocsSearchRankingReasonCode,
+  DocsSearchRankingStrategy,
+  DocsSearchRequest,
+  DocsPaginatedSearchResponse,
+  DocsContentChangeDocument,
+  DocsAgentContentChangesConfig,
+  DocsContentChangedDocument,
+  DocsContentChangesResponse,
+  DocsContentChangeSnapshotContext,
+  DocsContentChangeSnapshotLoader,
+  DocsContentChangeSnapshotSaver,
+  DocsContentSnapshot,
+  DocsContentSnapshotDocument,
+  DocsRetrievalSourceProvenance,
+  DocsRetrievalSourceScope,
   DocsSearchResult,
+  DocsSearchResponse,
   DocsSearchSourcePage,
+  DocsSearchWarning,
+  DocsSearchWarningCode,
   McpDocsSearchConfig,
   DocsAskAIFeedbackConfig,
   DocsAskAIFeedbackData,
@@ -145,6 +337,8 @@ export type {
   DocsAgentTraceEventType,
   DocsAgentTraceStatus,
 } from "./types.js";
+
+export { digestDocsRetrievalContent, isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 export type {
   DocsAgentTraceContext,
   ResolvedDocsAnalyticsConfig,

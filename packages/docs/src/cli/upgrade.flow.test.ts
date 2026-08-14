@@ -25,6 +25,7 @@ vi.mock("./utils.js", async () => {
   return {
     ...actual,
     detectFramework: vi.fn(),
+    detectPackageManagerFromProject: vi.fn(),
     detectPackageManagerFromLockfile: vi.fn(),
     exec: vi.fn(),
     fileExists: vi.fn(),
@@ -32,6 +33,18 @@ vi.mock("./utils.js", async () => {
 });
 
 import { upgrade } from "./upgrade.js";
+
+function packageManagerDetection(packageManager: "npm" | "pnpm" | "yarn" | "bun") {
+  return {
+    packageManager,
+    directory: process.cwd(),
+    filePath: join(
+      process.cwd(),
+      `${packageManager === "pnpm" ? "pnpm-lock.yaml" : "package.json"}`,
+    ),
+    source: "lockfile" as const,
+  };
+}
 
 describe("upgrade package manager selection", () => {
   let exitMock: { mockRestore: () => void };
@@ -48,6 +61,7 @@ describe("upgrade package manager selection", () => {
 
     vi.mocked(utils.fileExists).mockReset();
     vi.mocked(utils.detectFramework).mockReset();
+    vi.mocked(utils.detectPackageManagerFromProject).mockReset();
     vi.mocked(utils.detectPackageManagerFromLockfile).mockReset();
     vi.mocked(utils.exec).mockReset();
 
@@ -68,7 +82,9 @@ describe("upgrade package manager selection", () => {
     const prompts = await import("@clack/prompts");
     const utils = await import("./utils.js");
 
-    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
 
     await upgrade({ tag: "latest" });
 
@@ -83,7 +99,7 @@ describe("upgrade package manager selection", () => {
     const prompts = await import("@clack/prompts");
     const utils = await import("./utils.js");
 
-    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue(null);
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(null);
     vi.mocked(prompts.select).mockResolvedValueOnce("bun" as never);
 
     await upgrade({ tag: "latest" });
@@ -109,7 +125,9 @@ describe("upgrade package manager selection", () => {
     const utils = await import("./utils.js");
 
     vi.mocked(utils.detectFramework).mockReturnValue("tanstack-start");
-    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
 
     await upgrade({ tag: "latest" });
 
@@ -119,10 +137,28 @@ describe("upgrade package manager selection", () => {
     );
   });
 
+  it("upgrades Farm.js when the framework is detected", async () => {
+    const utils = await import("./utils.js");
+
+    vi.mocked(utils.detectFramework).mockReturnValue("farmjs");
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
+
+    await upgrade({ tag: "latest" });
+
+    expect(utils.exec).toHaveBeenCalledWith(
+      "pnpm add @farming-labs/docs@latest @farming-labs/theme@latest @farming-labs/farmjs@latest",
+      process.cwd(),
+    );
+  });
+
   it("upgrades to an exact version when requested", async () => {
     const utils = await import("./utils.js");
 
-    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
 
     await upgrade({ version: "0.1.104" });
 
@@ -132,10 +168,30 @@ describe("upgrade package manager selection", () => {
     );
   });
 
+  it("prints the install command without executing when dry-run is enabled", async () => {
+    const prompts = await import("@clack/prompts");
+    const utils = await import("./utils.js");
+
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
+
+    await upgrade({ tag: "latest", dryRun: true });
+
+    expect(utils.exec).not.toHaveBeenCalled();
+    expect(prompts.log.info).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "pnpm add @farming-labs/docs@latest @farming-labs/theme@latest @farming-labs/next@latest",
+      ),
+    );
+  });
+
   it("rejects invalid exact versions", async () => {
     const utils = await import("./utils.js");
 
-    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
 
     await expect(upgrade({ version: "latest" })).rejects.toThrow("process.exit");
 
@@ -167,7 +223,9 @@ describe("upgrade package manager selection", () => {
 
       vi.mocked(utils.fileExists).mockImplementation((filePath: string) => existsSync(filePath));
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+        packageManagerDetection("pnpm"),
+      );
 
       await upgrade({ tag: "latest" });
 

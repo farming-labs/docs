@@ -9,5 +9,6 @@ packages:
   - "packages/nuxt"
   - "packages/nuxt-theme"
   - "packages/tanstack-start"
+  - "packages/farmjs"
   - "examples/*"
   - "website"

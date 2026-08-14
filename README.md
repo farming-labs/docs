@@ -1,19 +1,21 @@
 # @farming-labs/docs
 
-AI-native documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
+AI-native documentation for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt.
 
 Write MDX or Markdown, configure the docs site in TypeScript, and ship a polished documentation
 experience for humans, IDEs, and agents without maintaining a pile of routing boilerplate.
 
 ## Core Features
 
-- Framework adapters for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt
+- Framework adapters for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt
 - One `docs.config.ts` file for routing, theme, search, metadata, feedback, and AI surfaces
 - Built-in themes with shared MDX components such as `Callout`, `Tabs`, `HoverLink`, and `Prompt`
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
-- Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps, `robots.txt`, `skill.md`, agent discovery, and MCP
+- Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps,
+  `robots.txt`, RFC 9727 API catalogs, Agent Skills discovery, `skill.md`, agent discovery, and MCP
+- Complete static Agent Bundles with `docs agent export --public` and deterministic SHA-256 manifests
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 - Agent and reader-facing docs scoring with `docs doctor --agent` and `docs doctor --site`
 
@@ -58,6 +60,15 @@ Next.js projects also wrap `next.config.ts`:
 import { withDocs } from "@farming-labs/next/config";
 
 export default withDocs();
+```
+
+Farm.js projects wrap `farm.config.ts`:
+
+```ts
+import { defineConfig } from "@farm.js/core";
+import { withDocs } from "@farming-labs/farmjs/config";
+
+export default withDocs(defineConfig({}));
 ```
 
 And import the theme CSS:
@@ -109,92 +120,61 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 - `/.well-known/sitemap.md`
 - `/skill.md`
 - `/.well-known/skill.md`
+- `/.well-known/agent-skills/index.json`
+- `/.well-known/agent-skills/<name>/SKILL.md`
+- `/.well-known/agent-skills/<name>.tar.gz` for skills with companion files
+- `/.well-known/skills/index.json` for legacy clients
+- `/.well-known/agent-card.json` when an A2A service is explicitly configured
+- `/.well-known/api-catalog`
 - `/.well-known/agent.json`
 - `/.well-known/agent`
 - `/mcp`
 - `/.well-known/mcp`
 - `/docs/<slug>.md`
-- `/docs/<slug>` with `Accept: text/markdown`
+- `/docs/<slug>` with an unambiguous `Accept: text/markdown`
 - `/docs/<slug>` with `Signature-Agent`
 - Schema.org JSON-LD on each docs page
 - generated `robots.txt` via `docs robots generate`
 
 The canonical API routes remain available under `/api/docs`, including `/api/docs?format=skill`,
 `/api/docs/mcp`, and `/api/docs/agent/spec`.
-Canonical Next.js markdown reads with `Accept: text/markdown` or `Signature-Agent` are handled by
-that same shared `/api/docs` route, so apps do not need a second markdown-only API wrapper.
+Canonical Next.js markdown reads with an unambiguous `Accept: text/markdown` or `Signature-Agent`
+are handled by that same shared `/api/docs` route, so apps do not need a second markdown-only API
+wrapper. For mixed HTML/Markdown accept lists, use the exact `.md` or `format=markdown` route.
 The agent discovery JSON also includes structured-data capability metadata plus `robots.enabled`,
 `robots.route`, and `robots.defaultRoute` so agents can find page metadata and the static crawl
-policy without guessing.
+policy without guessing. The existing `/.well-known/agent.json` manifest remains available and
+cross-links the [RFC 9727 API catalog](https://datatracker.ietf.org/doc/html/rfc9727) and
+[Agent Skills index](https://www.mintlify.com/docs/ai/skillmd). Dynamic responses also advertise
+these discovery resources with HTTP `Link` headers.
 
-For a custom site-specific skill, place `skill.md` at the project root beside `docs.config.ts`.
-When it is missing, the framework serves a generated fallback based on the docs config.
-
-Enable `sitemap` when you also want crawler-friendly XML and agent-friendly Markdown maps:
-
-```ts
-sitemap: {
-  enabled: true,
-  baseUrl: "https://docs.example.com",
-},
-```
-
-For static hosting, run `pnpm exec docs sitemap generate` before your framework build so
-`public/sitemap.xml`, `public/sitemap.md`, `public/.well-known/sitemap.md`, and the internal
-`.farming-labs/sitemap-manifest.json` stay fresh.
-
-Run `pnpm exec docs robots generate` when you also want a committed `robots.txt` policy. Existing
-files are preserved by default; use `--append` to add the generated block or `--force` to replace
-the file.
-
-## Agent Compaction
-
-Use `docs agent compact` when you want to generate or refresh sibling `agent.md` files from
-resolved docs pages.
-
-```bash
-pnpm exec docs agent compact installation
-pnpm exec docs agent compact --changed
-pnpm exec docs agent compact --stale
-pnpm exec docs agent compact --stale --include-missing
-```
-
-Optional defaults live in `docs.config.ts`:
+Publish one skill, a skill directory, or every skill below a collection directory with
+`agent.skills`. Paths are resolved from the project root and must stay inside the workspace:
 
 ```ts
-agent: {
-  compact: {
-    apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+export default defineDocs({
+  agent: {
+    skills: ["./skills/getting-started/SKILL.md", "./skills/product"],
   },
-},
+});
 ```
 
-Per-page token budgets live in frontmatter:
+Each published skill includes `SKILL.md` plus safe regular files below `references/`, `scripts/`,
+and `assets/`. Skills with companion files use a deterministic archive so the discovery digest is
+stable; every file is also available directly and as a `docs://skills/<name>/<path>` MCP resource.
+The existing project-root `skill.md` remains the site skill and is published alongside configured
+skills. Configure `agent.a2a` only when the site fronts a real A2A interface; docs and MCP routes
+alone do not make an A2A endpoint. New configurations should use ordered `supportedInterfaces`
+(first is preferred), which default to A2A `1.0` over `HTTP+JSON`. The generated card uses the
+strict v1 shape. The single-interface `interfaceUrl` form remains as a deprecated compatibility
+shorthand. Configure its capabilities, media modes, A2A skills, and optional security metadata to
+match the service; Agent Skill document and artifact URLs remain in skill discovery and MCP.
 
-```md
----
-title: "Installation"
-agent:
-  tokenBudget: 777
----
-```
-
-That page-level `agent.tokenBudget` override beats global `agent.compact.maxOutputTokens` defaults
-and CLI `--max-output-tokens` for the same page. If the page already has a sibling `agent.md`, the
-command compacts that file. Otherwise it compacts the generated machine-readable page first and
-writes a new sibling `agent.md`.
-
-Generated files carry hidden provenance metadata so the CLI can detect drift later:
-
-- `docs agent compact --changed` compacts only docs pages whose source files changed in the current
-  git working tree, including staged, unstaged, and untracked docs changes
-- `docs agent compact --stale` refreshes only stale generated `agent.md` files
-- `docs agent compact --stale --include-missing` also creates missing `agent.md` files for
-  explicitly requested pages or pages that define `agent.tokenBudget`
-- hand-edited generated `agent.md` files are treated as modified and skipped by `--stale`
-
-The generated `agent.md` becomes the machine-readable source for `.md` routes,
-`GET /api/docs?format=markdown&path=...`, and MCP `read_page()`.
+Static Agent Bundles publish the same modern and legacy skill indexes, artifacts, companion files,
+and optional Agent Card as the runtime. They intentionally omit the API catalog: a generic
+`public/` or `static/` directory cannot guarantee RFC 9727's required profiled
+`application/linkset+json` response type. Use a dynamic adapter or configure and publish that route
+through host-specific routing when the catalog is required.
 
 ## Agent Health Check
 
@@ -214,75 +194,30 @@ Expected output looks like:
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 92/105 (Agent-ready)
+Score: 82% (Agent-ready)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 10/41 pages (24%)
+Useful Agent blocks: 8/14 • 6/12 actionable pages task-complete
+Golden tasks: 3/4 passed (88/100)
 ```
 
-The command checks the agent surface end to end:
+The command checks docs config resolution, content discovery, API route wiring, public agent routes,
+`llms.txt`, sitemap routes, `robots.txt`, `skill.md`, MCP, search, feedback, page metadata, and
+generated `agent.md` freshness. Its usefulness checks also detect repeated or generic `<Agent>`
+blocks, incomplete task guidance, framework/version ambiguity, stale commands, missing related
+pages, low-confidence config loading, and drift between discovery, config, and the public schema.
 
-- docs config resolution
-- docs content discovery
-- docs API route wiring
-- public agent routes
-- agent discovery spec
-- `llms.txt`
-- `sitemap.xml` / `sitemap.md`
-- `robots.txt`
-- `skill.md`
-- MCP
-- search
-- agent feedback
-- page metadata
-- explicit agent-friendly pages
-- generated `agent.md` freshness and `agent.compact` defaults
+Configure `agent.evaluations.tasks` to run golden tasks for retrieval recall, citations,
+framework/version selection, verified examples, generated answers, and context-budget usage.
+Evaluations use the local `mcp-context` surface by default and make no implicit model or network
+request. Projects can opt into their configured search or Ask AI context pipeline, an answer
+callback or HTTP endpoint, and explicit runtime example verification. Managed external search,
+HTTP answer requests, and runtime example execution require `allowNetwork: true`; an empty task
+list is reported as unmeasured instead of receiving credit. Configured retrieval is bounded by
+`searchTimeoutMs`, which defaults to 30 seconds per task.
 
-It is not required to run the framework, but it is very useful before claiming a docs site is
-agent-ready or agent-optimized, and it works well as a CI check for the machine-facing docs layer.
-
-Add `--url` after deploying when you want to test the public agent surface too:
-
-```bash
-pnpm exec docs doctor --agent --url https://docs.example.com
-pnpm exec docs doctor --agent --url https://docs.example.com --json
-```
-
-Hosted checks request `/.well-known/agent.json`, `/llms.txt`, `/llms-full.txt`, sitemap routes,
-the robots route from the discovery spec, `/skill.md`, `/.well-known/skill.md`, one representative
-`.md` page route, `/mcp`, and `/.well-known/mcp`.
-For MCP, the doctor performs an HTTP initialize handshake, checks the session header, and verifies
-the built-in docs tools are exposed. With hosted checks enabled, the agent score is out of `145`
-instead of `105`.
-
-`docs doctor --site` focuses on the reader-facing surface instead:
-
-- docs config resolution
-- docs content discovery
-- navigation coverage
-- page descriptions
-- page structure
-- search
-- trust signals (`github` / `lastUpdated`)
-- reader feedback
-- reading-time cues
-
-Use `--json` when the result needs to feed another system instead of a person reading the terminal:
-
-```bash
-pnpm exec docs doctor --agent --json
-pnpm exec docs doctor --site --json
-```
-
-That JSON form is useful for:
-
-- CI quality gates
-- GitHub Actions summaries or PR comments
-- dashboards that track docs quality over time
-- automation that reruns `docs agent compact --stale`
-- other agents that need structured readiness signals instead of terminal text
-
-The JSON report itself is written to stdout. Separate loader notices, such as config fallback
-warnings, are outside the JSON payload.
+Hosted checks request the public agent routes and verify the MCP initialize handshake. Use `--json`
+when the result needs to feed CI, dashboards, GitHub Actions summaries, or another system.
 
 ## Common Tasks
 
@@ -299,14 +234,8 @@ Use the full docs for feature-specific setup:
 
 ## Agent Skills
 
-This repo includes installable Agent Skills for assistants working with `@farming-labs/docs`.
-
-```bash
-npx skills add farming-labs/docs
-```
-
-Skills live in [`skills/farming-labs`](./skills/farming-labs) and cover setup, CLI usage,
-configuration, themes, Ask AI, and page actions.
+Installable Agent Skills live in [`skills/farming-labs`](./skills/farming-labs) and cover setup,
+CLI usage, configuration, themes, Ask AI, and page actions.
 
 ## Development
 

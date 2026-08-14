@@ -9,6 +9,47 @@ related:
   - /docs/customization/mcp
   - /docs/configuration
   - /docs/cli
+agent:
+  tokenBudget: 950
+  task: Generate and verify XML and Markdown sitemaps for runtime and static docs deployments.
+  outcome: Canonical sitemap routes or generated files list the expected docs pages with valid links and configured freshness metadata.
+  appliesTo:
+    framework: [nextjs, tanstackstart, sveltekit, astro, nuxt]
+    version: ">=0.2.60"
+    package: "@farming-labs/docs"
+  prerequisites:
+    - The docs content tree and public base URL are configured.
+    - Decide whether the deployment serves runtime routes or needs generated public files.
+  files:
+    - docs.config.ts
+    - docs.config.tsx
+    - src/lib/docs.config.ts
+    - .farming-labs/sitemap-manifest.json
+    - public/sitemap.xml
+    - public/sitemap.md
+    - public/docs/sitemap.md
+    - static/sitemap.xml
+    - static/sitemap.md
+    - static/docs/sitemap.md
+  commands:
+    - run: pnpm exec docs sitemap generate
+      description: Generate the manifest and static sitemap artifacts.
+    - run: pnpm exec docs sitemap generate --check
+      description: Fail when committed sitemap artifacts are stale.
+  sideEffects:
+    - Static generation writes the sitemap manifest and public sitemap files.
+  verification:
+    - run: pnpm exec docs sitemap generate --check
+      expect: Generated sitemap artifacts match the current docs tree.
+    - description: Fetch sitemap.xml, sitemap.md, /docs/sitemap.md, and /.well-known/sitemap.md from a running site.
+      expect: Each route returns the configured format and links to known canonical docs pages.
+  rollback:
+    - Restore the previous sitemap config and regenerate or remove only the sitemap artifacts it owned.
+  failureModes:
+    - symptom: The check reports stale generated files.
+      resolution: Regenerate from the same docs config and commit the manifest and public output together.
+    - symptom: Sitemap URLs use the wrong origin or prefix.
+      resolution: Correct sitemap.baseUrl or routePrefix, regenerate, and verify every advertised alias.
 ---
 
 # Sitemaps
@@ -190,6 +231,23 @@ The CLI resolves dates in this order:
 2. the filesystem modified date for the page source file
 3. no date, if neither source is available
 
+At runtime the docs server applies an additional, higher-priority source before falling back to the filesystem:
+
+1. the date from the bundled `.farm-docs-last-modified.json` manifest (when present)
+2. the last git commit date for the page source file (CLI generation)
+3. the filesystem modified date for the page source file
+4. no date, if none of the above is available
+
+The bundled manifest is a versioned JSON file with the shape `{ version: 1, pages: Record<path, ISO-date> }`. When the docs server finds this file in the content directory, it reads the manifest-provided date for each page first and only falls back to `stat.mtime` when no manifest entry exists. This makes the last-modified date stable across deployments and CI runs, because the bundled dates reflect the original Git history rather than the time files were copied during a redeploy.
+
+For preloaded adapters (Astro, SvelteKit, Nuxt, TanStack Start), include the manifest alongside your content files so the runtime can read it in serverless and static-friendly environments:
+
+```ts title="docs.server.ts"
+const contentFiles = import.meta.glob(
+  ["/docs/**/*.{md,mdx}", "/.farm-docs-last-modified.json"],
+  { query: "?raw", import: "default", eager: true },
+) as Record<string, string>;
+```
 Git dates are preferred because they are stable across machines and CI runs. Filesystem dates are a
 fallback for new files, generated content, or projects that are not in a git checkout.
 

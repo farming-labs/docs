@@ -2,7 +2,14 @@
  * Inspired by better-auth.com — pixel-perfect borders, clean dark UI.
  * Uses the "black" color preset as the base.
  */
-@import "./presets/black.css";
+@import "./bundles/shared-framework.css";
+
+#nd-docs-layout[data-fd-framework] {
+  --fd-framework-page-justify: stretch;
+  --fd-framework-page-columns-with-toc: minmax(0, calc(100% - var(--fd-toc-width, 268px)))
+    var(--fd-toc-width, 268px);
+  --fd-framework-article-padding: 56px 32px 24px;
+}
 
 :root {
   --color-fd-background: oklch(1 0 0);
@@ -150,14 +157,41 @@ code:not(pre code) {
   }
 }
 
-/* ─── Docs grid: sidebar (sticky left, full height) | content | TOC ─────── */
+/* ─── Default docs: comfortable article gutters ─────────────────── */
 @media (min-width: 768px) {
-  #nd-docs-layout,
-  [style*="fd-sidebar-col"] {
+  #nd-docs-layout:not([data-fd-framework]) article#nd-page {
+    padding-inline: 2rem;
+  }
+}
+
+@media (max-width: 1279px) {
+  #nd-docs-layout:not([data-fd-framework]) {
+    --fd-toc-popover-height: 0px !important;
+  }
+
+  #nd-docs-layout:not([data-fd-framework]) #nd-toc,
+  #nd-docs-layout:not([data-fd-framework]) [data-toc-popover] {
+    display: none !important;
+  }
+}
+
+/* Keep the native Clerk bend from overpainting the straight rail segment. */
+#nd-toc a > div.bottom-1\.5 {
+  bottom: 0.375rem;
+}
+
+#nd-toc a > div.top-1\.5 {
+  top: 0.375rem;
+}
+
+/* ─── Docs grid: sidebar (sticky left, full height) | content | TOC ─────── */
+@media (min-width: 1024px) {
+  #nd-docs-layout:not([data-fd-framework]),
+  #nd-docs-layout:not([data-fd-framework]) [style*="fd-sidebar-col"] {
     grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
   }
   /* Sidebar stretches to end and sticks on scroll; no max-height so content isn't clipped */
-  #nd-docs-layout aside#nd-sidebar {
+  #nd-docs-layout:not([data-fd-framework]) aside#nd-sidebar {
     position: sticky;
     top: 0;
     align-self: start;
@@ -167,7 +201,7 @@ code:not(pre code) {
 }
 
 @media (min-width: 1024px) {
-  #nd-docs-layout.grid {
+  #nd-docs-layout.grid:not([data-fd-framework]) {
     grid-template:
       "sidebar header toc"
       "sidebar toc-popover toc"
@@ -175,23 +209,23 @@ code:not(pre code) {
       var(--fd-sidebar-col) minmax(0, 1fr) var(--fd-toc-width) !important;
   }
 
-  #nd-docs-layout [data-sidebar-placeholder] {
+  #nd-docs-layout:not([data-fd-framework]) [data-sidebar-placeholder] {
     justify-self: stretch;
   }
 
-  #nd-docs-layout article#nd-page {
+  #nd-docs-layout:not([data-fd-framework]) article#nd-page {
     max-width: none;
     margin-inline: 0;
   }
 
-  #nd-docs-layout article#nd-page > .prose {
+  #nd-docs-layout:not([data-fd-framework]) article#nd-page > .prose {
     max-width: none;
   }
 }
 
 /* ─── Mobile: ensure sidebar drawer/content isn't clipped ───────────────── */
 @media (max-width: 767px) {
-  #nd-docs-layout aside#nd-sidebar {
+  #nd-docs-layout:not([data-fd-framework]) aside#nd-sidebar {
     max-height: none;
     overflow-y: visible;
   }
@@ -358,6 +392,10 @@ table {
   overflow: hidden;
 }
 
+.fd-table-wrapper {
+  border-radius: 0 !important;
+}
+
 th {
   background: var(--color-fd-muted);
   color: var(--color-fd-foreground);
@@ -376,7 +414,8 @@ tr:last-child td {
 /* ─── Code blocks: single border, rounded-none (light + dark) ───────── */
 
 /* Target the fumadocs CodeBlock figure (shiki class) */
-figure.shiki {
+figure.shiki,
+.fd-codeblock {
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
   overflow: hidden;
@@ -384,27 +423,33 @@ figure.shiki {
 }
 
 /* Copy button inside code blocks */
-figure.shiki button {
+figure.shiki button,
+.fd-copy-btn {
   border-radius: 0 !important;
 }
 
 /* Code block title bar */
-figure.shiki > div:first-child {
+figure.shiki > div:first-child,
+.fd-codeblock-title {
   border-radius: 0 !important;
 }
 
 /* ─── Tabs (package manager / code tabs) — light + dark ────────────── */
 
-[role="tablist"] {
+[role="tablist"],
+.fd-tabs,
+.fd-tabs-list {
   border-radius: 0 !important;
 }
 
 [role="tablist"] button,
-[role="tab"] {
+[role="tab"],
+.fd-tab-trigger {
   border-radius: 0 !important;
 }
 
-[role="tabpanel"] {
+[role="tabpanel"],
+.fd-tab-panel {
   border-radius: 0 !important;
 }
 
@@ -425,7 +470,10 @@ div:has(> [role="tablist"]) {
 
 /* ─── Callouts: visible border (light + dark) ──────────────────────── */
 
-[class*="bg-fd-card"] {
+[class*="bg-fd-card"],
+.fd-callout,
+[data-callout],
+[style*="--callout-color"] {
   border-color: var(--color-fd-border);
 }
 
@@ -446,13 +494,6 @@ article a[class*="border"]:hover {
 [role="dialog"] {
   border-radius: 0 !important;
   border-color: var(--fd-pixel-modal-border) !important;
-}
-
-/* ─── TOC right panel (light + dark) ───────────────────────────────── */
-
-nav[class*="toc"],
-[class*="fd-toc"] {
-  border-color: var(--color-fd-border);
 }
 
 /* ─── Separator/Divider (hr) — light + dark ─────────────────────────── */
@@ -965,7 +1006,7 @@ hr {
 }
 
 .omni-search-input {
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif);
 }
 
 .omni-group-label {
@@ -975,6 +1016,15 @@ hr {
 
 .omni-footer-inner {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
+}
+
+.omni-footer-hint svg {
+  border-radius: 0 !important;
+}
+
+.omni-filter-menu,
+.omni-filter-option {
+  border-radius: 0 !important;
 }
 
 .omni-highlight {

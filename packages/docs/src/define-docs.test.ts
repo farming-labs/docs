@@ -6,6 +6,7 @@ describe("defineDocs", () => {
     const onCopyClick = vi.fn();
     const onFeedback = vi.fn();
     const onAgentFeedback = vi.fn();
+    const authenticateMcp = vi.fn();
     const actionsComponent = { type: "div" };
 
     const config = defineDocs({
@@ -29,6 +30,14 @@ describe("defineDocs", () => {
       mcp: {
         enabled: true,
         route: "/api/docs/mcp",
+        security: {
+          authenticate: authenticateMcp,
+          protectedResource: {
+            authorizationServers: ["https://auth.example.com"],
+            scopesSupported: ["docs:read"],
+            requiredScopes: ["docs:read"],
+          },
+        },
       },
       changelog: {
         enabled: true,
@@ -57,6 +66,14 @@ describe("defineDocs", () => {
     expect(config.mcp).toEqual({
       enabled: true,
       route: "/api/docs/mcp",
+      security: {
+        authenticate: authenticateMcp,
+        protectedResource: {
+          authorizationServers: ["https://auth.example.com"],
+          scopesSupported: ["docs:read"],
+          requiredScopes: ["docs:read"],
+        },
+      },
     });
     expect(config.changelog).toEqual({
       enabled: true,
@@ -76,6 +93,10 @@ describe("defineDocs", () => {
         console: "info",
         onEvent: onAnalyticsEvent,
       },
+      telemetry: {
+        enabled: true,
+        endpoint: "https://telemetry.example.com/events",
+      },
       observability: {
         console: "debug",
         onEvent: onObservabilityEvent,
@@ -85,6 +106,10 @@ describe("defineDocs", () => {
     expect(config.analytics).toEqual({
       console: "info",
       onEvent: onAnalyticsEvent,
+    });
+    expect(config.telemetry).toEqual({
+      enabled: true,
+      endpoint: "https://telemetry.example.com/events",
     });
     expect(config.observability).toEqual({
       console: "debug",

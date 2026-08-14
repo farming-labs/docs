@@ -249,14 +249,14 @@ export default function CloudPage() {
               <div className="-mb-px mt-7 flex flex-col items-stretch gap-3 sm:mt-8 sm:items-start sm:flex-row sm:items-center">
                 <a
                   href="/docs"
-                  className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[11px] uppercase tracking-[0.24em] text-white transition-all hover:bg-black/90 hover:no-underline sm:w-auto sm:justify-start dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+                  className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[11px] uppercase tracking-wide text-white transition-all hover:bg-black/90 hover:no-underline sm:w-auto sm:justify-start dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
                 >
                   Read Docs
                   <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
                 </a>
                 <a
                   href="#enterprise-support"
-                  className="group inline-flex w-full items-center justify-center gap-2 border border-b-black/25 border-black/10 bg-white/80 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.24em] text-black/65 transition-all hover:border-black/20 hover:border-b-black/35 hover:bg-black/[0.03] hover:text-black hover:no-underline sm:w-auto sm:justify-start dark:border-white/10 dark:border-b-white/25 dark:bg-black/40 dark:text-white/65 dark:hover:border-white/20 dark:hover:border-b-white/35 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                  className="group inline-flex w-full items-center justify-center gap-2 border border-b-black/25 border-black/10 bg-white/80 px-5 py-3 font-mono text-[11px] uppercase tracking-wide text-black/65 transition-all hover:border-black/20 hover:border-b-black/35 hover:bg-black/[0.03] hover:text-black hover:no-underline sm:w-auto sm:justify-start dark:border-white/10 dark:border-b-white/25 dark:bg-black/40 dark:text-white/65 dark:hover:border-white/20 dark:hover:border-b-white/35 dark:hover:bg-white/[0.05] dark:hover:text-white"
                 >
                   Enterprise support
                   <Headset className="size-3.5" strokeWidth={1.8} />
@@ -722,12 +722,19 @@ function CloudFooterSection() {
           </div>
 
           <div className="flex w-full max-w-full flex-col items-start gap-3 sm:items-end sm:justify-center">
-            <div className="flex w-full max-w-full items-center justify-start gap-6 sm:justify-end">
+            <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-x-6 gap-y-3 sm:justify-end">
               <Link
                 href="/docs"
                 className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
               >
                 Documentation
+              </Link>
+              <Link
+                href="https://status.farming-labs.dev"
+                target="_blank"
+                className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+              >
+                Status
               </Link>
               <Link
                 href="/cloud#enterprise-support"

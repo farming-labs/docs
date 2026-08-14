@@ -13,6 +13,11 @@ export const Route = createFileRoute("/docs/$")({
         if (isDocsPublicGetRequest("docs", url, request)) return docsServer.GET({ request });
         return undefined;
       },
+      HEAD: async ({ request }) => {
+        const url = new URL(request.url);
+        if (isDocsPublicGetRequest("docs", url, request)) return docsServer.HEAD({ request });
+        return undefined;
+      },
     },
   },
   loader: async ({ location }) => {

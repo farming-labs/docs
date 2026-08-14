@@ -5,21 +5,49 @@ You are reading the machine-oriented override for `/docs/customization/agent-pri
 Use this page when you need the page-level authoring contract for agent-facing docs in
 `@farming-labs/docs`.
 
-## The Two Primitives
+## Audience Controls
 
 1. `Agent`
    - Embed `<Agent>...</Agent>` inside `page.mdx`
    - Hidden in the normal docs UI
-   - Included in `.md` output and MCP fallback when there is no sibling `agent.md`
+   - Included in agent-projected output when there is no sibling `agent.md`
 
-2. `agent.md`
+2. `Human`
+   - Embed `<Human>...</Human>` inside `page.mdx`
+   - Included in rendered HTML and public search
+   - Removed from agent-projected output
+
+3. `Audience`
+   - Use `<Audience only="agent">...</Audience>` as the explicit form of `Agent`
+   - Use `<Audience only="human">...</Audience>` as the explicit form of `Human`
+   - Only static `"agent"` and `"human"` values are supported; `docs review` reports dynamic values and spread props
+   - Invalid or missing values remain shared rather than being silently deleted
+
+4. `agent.md`
    - Place a sibling `agent.md` beside `page.mdx`
    - Becomes the full machine-readable output for that page
    - Preferred by MCP `read_page("/docs/customization/agent-primitive")`
 
+Content without an audience wrapper is shared. `Agent` remains an optional shorthand and does not
+support `only="human"`; use `Human` or `Audience` for human-only content.
+
+## Projection Contract
+
+Use the human projection for rendered docs HTML and public docs search. Use the agent projection
+for Markdown routes and API responses, Ask AI retrieval/context, MCP, `llms-full.txt`, and static
+agent exports. The compact `llms.txt` file contains discovery metadata and links to agent-projected
+Markdown rather than page bodies. Sitemaps contain route metadata rather than page bodies, so
+audience blocks do not appear in them.
+
+Audience filtering is content shaping, not authentication or authorization. Do not put secrets or
+private data in any audience block or `agent.md`; machine-readable routes and source files can be
+public.
+
 ## When To Choose Which
 
 - Choose `Agent` when the human page should stay canonical and only needs extra machine context
+- Choose `Human` when a visual explanation or UI note should not consume agent context
+- Choose `Audience` when one explicit component is easier to scan than two shorthands
 - Choose `agent.md` when agents need a shorter, stricter, or more operational document
 
 ## Automation
@@ -27,8 +55,8 @@ Use this page when you need the page-level authoring contract for agent-facing d
 If the team wants to generate or refresh page-level `agent.md` files automatically, use
 `docs agent compact`.
 
-- it resolves the same page-level machine document with this order: `agent.md`, embedded `Agent`
-  blocks, then page markdown
+- it resolves the same page-level machine document with this order: `agent.md`, the agent
+  projection of audience-aware page markdown, then shared page markdown
 - it writes sibling `agent.md` files that become the new `.md`, docs API, and MCP source
 - it is useful when authors start with `<Agent>` blocks and later want a shorter, fully
   machine-focused document
@@ -48,21 +76,33 @@ pnpm exec docs agent compact --all
 - API route: `/api/docs?format=markdown&path=customization/agent-primitive`
 - MCP read target: `/docs/customization/agent-primitive`
 
-After adding or changing page-level primitives, see [the CLI docs](/docs/cli.md) and the `Doctor`
+After adding or changing page-level audience controls, see [the CLI docs](/docs/cli) and the `Doctor`
 section for the audit workflow. Use it to confirm the machine-facing layer is actually discoverable
-and to watch the `Explicit agent-friendly pages` metric improve as more routes gain `<Agent>`
-blocks or sibling `agent.md` files.
+and to watch the explicit audience coverage improve as more routes gain audience blocks or sibling
+`agent.md` files.
 
 ## Let Agents Discover The Spec
 
+Use `GET` or `HEAD /.well-known/api-catalog` for RFC 9727 API discovery. Use `GET` or
+`HEAD /.well-known/agent-skills/index.json` for Agent Skills discovery; each entry points to the
+exact `SKILL.md` bytes covered by its `sha256:` digest.
+
 Fetch `GET /.well-known/agent.json` before choosing how to read or report on the docs. If that is
 unavailable, fall back to `GET /.well-known/agent` and then `GET /api/docs/agent/spec`.
+
+This is the Farming Labs documentation-discovery extension. Verify
+`$schema: "https://docs.farming-labs.dev/schema/agent-manifest.v1.json"` and
+`format: "farming-labs-agent-manifest.v1"` before consuming it. Dynamic responses also associate
+the Draft 2020-12 schema with `Link: <...>; rel="describedby"; type="application/schema+json"`.
+Do not parse this document as A2A; an explicitly configured A2A service uses the separate,
+opt-in `/.well-known/agent-card.json` route.
 
 The spec is generated from `docs.config` and includes:
 
 - site title, description, docs entry, and base URL
 - configured locales and the `lang`/`locale` query parameters
-- capability flags for markdown, structured data, MCP, search, feedback, `AGENTS.md`, skills, `llms.txt`, and sitemap
+- capability flags for the API catalog, Agent Skills discovery, markdown, structured data, MCP,
+  search, feedback, `AGENTS.md`, skills, `llms.txt`, and sitemap
 - shared docs API route
 - search endpoint and query parameter
 - markdown route patterns, `Accept: text/markdown`, and `Signature-Agent` support
@@ -71,6 +111,7 @@ The spec is generated from `docs.config` and includes:
 - `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
 - `AGENTS.md` route, well-known alias, API format, compatibility aliases, and root file convention
 - `skill.md` route, well-known alias, API format, and root file convention
+- RFC 9727 catalog and Agent Skills index/artifact routes
 - Skills CLI install command and recommended skill metadata
 - MCP enabled state, endpoint, server name, version, and tool toggles
 - agent feedback enabled state, schema route, and submit route
@@ -158,7 +199,7 @@ Install them with:
 npx skills add farming-labs/docs
 ```
 
-Use the page-level primitives in this doc when the context belongs to a single route.
+Use the page-level audience controls in this doc when the context belongs to a single route.
 Use a skill when the task spans multiple pages or product areas such as:
 
 - setup and installation
@@ -172,5 +213,6 @@ Relevant skills in this repo include `getting-started`, `cli`, `configuration`, 
 
 ## Authoring Reminder
 
-Do not duplicate whole pages into `<Agent>` blocks. Keep `Agent` additive and concise.
+Do not duplicate whole pages into `<Agent>` blocks. Keep `Agent` additive and concise. Use `Human`
+for UI-only explanation, and leave content unwrapped when it serves both audiences.
 Use `agent.md` when the machine-readable page needs to diverge substantially.

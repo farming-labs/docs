@@ -13,6 +13,7 @@ type PresetKey =
   | "pixel-border"
   | "shiny"
   | "ledger"
+  | "shadcn"
   | "darkbold";
 type SidebarStyle = "default" | "bordered" | "floating";
 type TocStyle = "default" | "directional";
@@ -146,7 +147,7 @@ const PRESETS: Record<
       ring: "#fbfbfa",
     },
     sidebar: "bordered",
-    toc: { style: "default" },
+    toc: { style: "directional" },
     radius: "0px",
   },
   shiny: {
@@ -188,6 +189,26 @@ const PRESETS: Record<
     sidebar: "bordered",
     toc: { style: "default" },
     radius: "0.5rem",
+  },
+  shadcn: {
+    label: "Shadcn Docs",
+    desc: "Compact neutral shadcn/ui docs shell",
+    cssImport: "@farming-labs/theme/shadcn/css",
+    themeImport: { from: "@farming-labs/theme/shadcn", name: "shadcn" },
+    colors: {
+      primary: "#000000",
+      primaryForeground: "#fafafa",
+      background: "#ffffff",
+      foreground: "#000000",
+      muted: "#f5f5f5",
+      mutedForeground: "#737373",
+      border: "#e5e5e5",
+      card: "#ffffff",
+      ring: "#a3a3a3",
+    },
+    sidebar: "bordered",
+    toc: { style: "default" },
+    radius: "0.625rem",
   },
   darkbold: {
     label: "DarkBold",
@@ -1286,10 +1307,10 @@ export function ThemeCustomizer() {
           floatingStyle={state.ai.floatingStyle}
           suggestedQuestions={[
             "How do I get started?",
-            "What to create my own theme?",
+            "How do I create my own theme?",
             "How do I create a custom component?",
             "How do I configure the sidebar?",
-            "How to add custom components?",
+            "How do I customize colors?",
           ]}
           aiLabel="DocsBot"
           models={[
@@ -1309,7 +1330,7 @@ export function ThemeCustomizer() {
             });
           }}
           style={
-            ["shiny", "colorful", "default", "ledger"].includes(state.preset)
+            ["shiny", "colorful", "default", "ledger", "shadcn"].includes(state.preset)
               ? {
                   borderRadius: "14px",
                   background: "var(--color-fd-secondary, #fafafa)",

@@ -14,9 +14,12 @@ export interface DocsFeedbackProps {
   locale?: string;
   question?: string;
   placeholder?: string;
+  requireComment?: boolean;
   positiveLabel?: string;
   negativeLabel?: string;
   submitLabel?: string;
+  successMessage?: string;
+  errorMessage?: string;
   onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   analytics?: boolean;
 }
@@ -89,6 +92,23 @@ function buildFeedbackPayload(
   };
 }
 
+function buildFeedbackAnalyticsProperties(data: DocsFeedbackData) {
+  return {
+    feedbackKind: "page",
+    value: data.value,
+    feedbackValue: data.value,
+    hasComment: Boolean(data.comment),
+    commentLength: data.comment?.length ?? 0,
+    title: data.title,
+    description: data.description,
+    url: data.url,
+    pathname: data.pathname,
+    path: data.path,
+    entry: data.entry,
+    slug: data.slug,
+  };
+}
+
 function ThumbUpIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -136,10 +156,13 @@ export function DocsFeedback({
   entry,
   locale,
   question = "How is this guide?",
-  placeholder = "Leave your feedback...",
+  placeholder = "Share what could be clearer...",
+  requireComment = false,
   positiveLabel = "Good",
   negativeLabel = "Bad",
   submitLabel = "Submit",
+  successMessage = "Thanks for the feedback.",
+  errorMessage = "Could not send feedback. Please try again.",
   onFeedback,
   analytics = false,
 }: DocsFeedbackProps) {
@@ -148,6 +171,7 @@ export function DocsFeedback({
   const [status, setStatus] = useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
   const showForm = selected !== null;
+  const commentRequired = requireComment && comment.trim().length === 0;
   const submitButtonLabel = status === "submitted" ? "Submitted" : submitLabel;
 
   useEffect(() => {
@@ -160,37 +184,45 @@ export function DocsFeedback({
     setSelected(value);
     if (status !== "idle") setStatus("idle");
     if (analytics) {
+      const slug = resolveSlug(entry, normalizedPathname);
       emitClientAnalyticsEvent({
         type: "feedback_select",
         locale,
         path: normalizedPathname,
+        input: {
+          feedbackValue: value,
+        },
         properties: {
+          feedbackKind: "page",
           value,
-          slug: resolveSlug(entry, normalizedPathname),
+          feedbackValue: value,
+          entry,
+          pathname: normalizedPathname,
+          path: normalizedPathname,
+          slug,
         },
       });
     }
   }
 
   async function handleSubmit() {
-    if (!selected || status === "submitting") return;
+    if (!selected || status === "submitting" || commentRequired) return;
 
     setStatus("submitting");
+    const payload = buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale);
 
     try {
-      const payload = buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale);
       await emitFeedback(payload, onFeedback);
       if (analytics) {
         emitClientAnalyticsEvent({
           type: "feedback_submit",
           locale,
           path: normalizedPathname,
-          properties: {
-            value: payload.value,
-            slug: payload.slug,
-            hasComment: Boolean(payload.comment),
-            commentLength: payload.comment?.length ?? 0,
+          input: {
+            feedbackValue: payload.value,
+            feedbackComment: payload.comment,
           },
+          properties: buildFeedbackAnalyticsProperties(payload),
         });
       }
       setStatus("submitted");
@@ -200,12 +232,11 @@ export function DocsFeedback({
           type: "feedback_error",
           locale,
           path: normalizedPathname,
-          properties: {
-            value: selected,
-            slug: resolveSlug(entry, normalizedPathname),
-            hasComment: Boolean(comment.trim()),
-            commentLength: comment.trim().length,
+          input: {
+            feedbackValue: payload.value,
+            feedbackComment: payload.comment,
           },
+          properties: buildFeedbackAnalyticsProperties(payload),
         });
       }
       setStatus("error");
@@ -250,6 +281,8 @@ export function DocsFeedback({
             className="fd-feedback-input"
             aria-label="Additional feedback"
             placeholder={placeholder}
+            required={requireComment}
+            aria-required={requireComment}
             value={comment}
             disabled={status === "submitting"}
             onChange={(event) => {
@@ -261,7 +294,7 @@ export function DocsFeedback({
             <button
               type="button"
               className="fd-page-action-btn fd-feedback-submit"
-              disabled={status === "submitting" || status === "submitted"}
+              disabled={status === "submitting" || status === "submitted" || commentRequired}
               onClick={() => void handleSubmit()}
             >
               {status === "submitting" && (
@@ -277,13 +310,13 @@ export function DocsFeedback({
                 role="status"
                 aria-live="polite"
               >
-                Thanks for the feedback.
+                {successMessage}
               </p>
             )}
           </div>
           {status === "error" && (
             <p className="fd-feedback-status" data-status="error" role="status" aria-live="polite">
-              Could not send feedback. Please try again.
+              {errorMessage}
             </p>
           )}
         </div>

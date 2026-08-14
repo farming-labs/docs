@@ -1,0 +1,49 @@
+---
+order: 1
+title: Introduction
+description: A Fumadocs setup that uses the shared Docs Cloud route.
+icon: book
+---
+
+# Fumadocs Cloud Example
+
+This example shows how a Fumadocs-powered Next.js docs site can use the
+`@farming-labs/docs` and `@farming-labs/next` infrastructure without building a
+separate cloud integration layer.
+
+The important part is the merged route:
+
+```ts title="app/api/docs/route.ts"
+import docsConfig from "@/docs.config";
+import { createDocsCloudServer } from "@farming-labs/docs/cloud/server";
+import { createDocsAPI } from "@farming-labs/next/api";
+
+const docsCloud = createDocsCloudServer({
+  config: docsConfig,
+});
+
+export const { GET, POST } = createDocsAPI(docsConfig, docsCloud);
+export const revalidate = false;
+```
+
+That single route keeps local docs features and hosted Docs Cloud features
+together:
+
+- normal docs search and markdown endpoints
+- same-origin client analytics
+- server-side Ask AI proxying
+- Docs Cloud public config checks
+- optional custom server tracking through the server SDK
+
+<MyNote type="tip">
+The browser never receives `DOCS_CLOUD_API_KEY`. Client analytics posts to the
+same-origin docs route, and the server SDK forwards the event to Docs Cloud.
+</MyNote>
+
+## Explore the Example
+
+- [Quickstart](/docs/quickstart)
+- [Installation](/docs/installation)
+- [Basic Usage](/docs/basic-usage)
+- [Concepts](/docs/concepts)
+- [Integrations](/docs/integrations)

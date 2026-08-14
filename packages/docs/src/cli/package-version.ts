@@ -4,20 +4,37 @@ import {
   type Framework,
   type PackageManager,
   detectFramework,
-  detectPackageManagerFromLockfile,
+  detectPackageManagerFromProject,
+  formatPackageManagerDetection,
   installCommand,
 } from "./utils.js";
 
-export const PRESETS = ["next", "tanstack-start", "nuxt", "sveltekit", "astro"] as const;
+export const PRESETS = ["next", "tanstack-start", "farmjs", "nuxt", "sveltekit", "astro"] as const;
 export type PresetName = (typeof PRESETS)[number];
 export type UpgradeFramework = Framework;
 
 export const PACKAGES_BY_FRAMEWORK: Record<UpgradeFramework, string[]> = {
   nextjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/next"],
   "tanstack-start": ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/tanstack-start"],
-  nuxt: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
-  sveltekit: ["@farming-labs/docs", "@farming-labs/svelte", "@farming-labs/svelte-theme"],
-  astro: ["@farming-labs/docs", "@farming-labs/astro", "@farming-labs/astro-theme"],
+  farmjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/farmjs"],
+  nuxt: [
+    "@farming-labs/docs",
+    "@farming-labs/nuxt",
+    "@farming-labs/nuxt-theme",
+    "@farming-labs/theme",
+  ],
+  sveltekit: [
+    "@farming-labs/docs",
+    "@farming-labs/svelte",
+    "@farming-labs/svelte-theme",
+    "@farming-labs/theme",
+  ],
+  astro: [
+    "@farming-labs/docs",
+    "@farming-labs/astro",
+    "@farming-labs/astro-theme",
+    "@farming-labs/theme",
+  ],
 };
 
 export function presetFromFramework(fw: UpgradeFramework): PresetName {
@@ -80,8 +97,8 @@ export function resolveDocsPackageFramework(
   const detected = detectFramework(cwd);
   if (!detected) {
     p.log.error(
-      "Could not detect a supported framework (Next.js, TanStack Start, Nuxt, SvelteKit, Astro). Use " +
-        pc.cyan("--framework <next|tanstack-start|nuxt|sveltekit|astro>") +
+      "Could not detect a supported framework (Next.js, TanStack Start, Farm.js, Nuxt, SvelteKit, Astro). Use " +
+        pc.cyan("--framework <next|tanstack-start|farmjs|nuxt|sveltekit|astro>") +
         " to specify.",
     );
     process.exit(1);
@@ -97,10 +114,12 @@ export async function resolveDocsPackageManager(
   cwd: string,
   command: "upgrade" | "downgrade",
 ): Promise<PackageManager> {
-  const detected = detectPackageManagerFromLockfile(cwd);
+  const detected = detectPackageManagerFromProject(cwd);
   if (detected) {
-    p.log.info(`Detected ${pc.cyan(detected)} from lockfile`);
-    return detected;
+    p.log.info(
+      `Detected ${pc.cyan(detected.packageManager)} from ${formatPackageManagerDetection(cwd, detected)}`,
+    );
+    return detected.packageManager;
   }
 
   const pmAnswer = await p.select({
