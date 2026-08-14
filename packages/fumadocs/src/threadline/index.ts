@@ -64,7 +64,6 @@ const ThreadlineUIDefaults = {
       copiedIcon: "check",
       openIcon: "arrowUpRight",
     },
-    Tabs: { style: "default" },
   },
 };
 
