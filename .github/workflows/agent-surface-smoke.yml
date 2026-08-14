@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/agent-readiness-warning-baseline.json"
+      - ".github/agent-readiness-preview-warning-baseline.json"
       - ".github/workflows/agent-surface-smoke.yml"
       - "packages/docs/src/**"
       - "scripts/check-agent-readiness-report.mjs"
@@ -18,6 +19,7 @@ on:
     branches: [main]
     paths:
       - ".github/agent-readiness-warning-baseline.json"
+      - ".github/agent-readiness-preview-warning-baseline.json"
       - ".github/workflows/agent-surface-smoke.yml"
       - "packages/docs/src/**"
       - "scripts/check-agent-readiness-report.mjs"
@@ -158,6 +160,7 @@ jobs:
       DOCS_SMOKE_BASE_URL: ${{ github.event_name == 'deployment_status' && github.event.deployment_status.environment_url || inputs.base_url || 'https://docs.farming-labs.dev' }}
       DOCS_SMOKE_EXPECT_SKILLS: ask-ai,cli,configuration,creating-themes,getting-started,page-actions
       DOCS_SMOKE_VALIDATE_SKILL_FRONTMATTER: "1"
+      DOCS_READINESS_WARNING_BASELINE: ${{ github.event_name == 'deployment_status' && '.github/agent-readiness-preview-warning-baseline.json' || '.github/agent-readiness-warning-baseline.json' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -186,7 +189,7 @@ jobs:
           node ../packages/docs/dist/cli/index.mjs doctor --agent --ci --fail-on fail --config docs.config.tsx --url "${DOCS_SMOKE_BASE_URL}" --json-output .farming-labs/readiness/hosted.json
 
       - name: Enforce readiness warning baseline
-        run: node scripts/check-agent-readiness-report.mjs website/.farming-labs/readiness/hosted.json .github/agent-readiness-warning-baseline.json
+        run: node scripts/check-agent-readiness-report.mjs website/.farming-labs/readiness/hosted.json "${DOCS_READINESS_WARNING_BASELINE}"
 
       - name: Smoke-test deployed agent surfaces
         run: |

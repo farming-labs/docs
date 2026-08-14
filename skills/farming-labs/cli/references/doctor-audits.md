@@ -84,6 +84,10 @@ For pull requests, run doctor once with the local `mcp-context` surface, persist
 known warnings are being repaired: reject unexpected warnings, and make each temporary warning
 required so CI tells maintainers when the baseline is stale and can be removed.
 
+Keep preview-only warnings in a separate baseline. A preview exception must never weaken the
+scheduled production policy, and transient allowances should remain optional so a healthy retry is
+not treated as a stale-baseline failure.
+
 For scheduled production checks, exercise both `configured-search` and `ask-ai-context` against the
 deployed origin in separate jobs. Keep the general hosted doctor probe and the deeper discovery,
 Agent Skills, search, Markdown, cache, and MCP smoke test as independent evidence, and retain their
