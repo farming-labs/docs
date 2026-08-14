@@ -2465,6 +2465,20 @@ describe("MCP context and schema APIs", () => {
       expect(findSchemaOption(schema.options, path), path).toBeDefined();
     }
   });
+
+  it("publishes golden-task coverage applicability schema", () => {
+    const schema = getDocsConfigSchema();
+    expect(
+      findSchemaOption(
+        schema.options,
+        "agent.evaluations.tasks[].expect.coverage.executableExamples",
+      ),
+    ).toMatchObject({
+      type: '"applicable" | "not-applicable"',
+      default: "applicable",
+      values: ["applicable", "not-applicable"],
+    });
+  });
 });
 
 describe("createFilesystemDocsMcpSource", () => {

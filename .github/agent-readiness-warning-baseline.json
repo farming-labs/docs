@@ -1,15 +1,4 @@
 {
   "version": 1,
-  "allowedWarnings": [
-    {
-      "id": "compact",
-      "reason": "Reviewed compaction state for the four intentional hand-authored files is tracked by the compaction review change.",
-      "required": true
-    },
-    {
-      "id": "golden-task-coverage",
-      "reason": "Executable-example applicability is tracked by the evaluation coverage change.",
-      "required": true
-    }
-  ]
+  "allowedWarnings": []
 }
