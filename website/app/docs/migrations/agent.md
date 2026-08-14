@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:29ca683e3e2ef580
+sourceHash=fnv1a64:d65cb9b52018b5c1
 settingsHash=fnv1a64:e50e89e221226fc3
 outputHash=fnv1a64:16b6b9153ee159ac
-generatedAt=2026-07-30T09:43:36.512Z
+generatedAt=2026-08-14T12:45:38.782Z
 -->
 # Migrations
 

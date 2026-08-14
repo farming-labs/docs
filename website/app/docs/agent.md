@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:2321702e61600830
+sourceHash=fnv1a64:59c67ee6d2cf86cb
 settingsHash=fnv1a64:0a67cd1f3384201a
 outputHash=fnv1a64:5a773c15e735f864
-generatedAt=2026-07-30T09:43:36.518Z
+generatedAt=2026-08-14T12:45:38.380Z
 -->
 # Introduction
 

@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:aed0a86292aa62e3
+sourceHash=fnv1a64:69c5a7b4e0778750
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:65b300952ebb86ca
-generatedAt=2026-07-30T09:43:36.479Z
+generatedAt=2026-08-14T12:45:38.681Z
 -->
 # Typography
 

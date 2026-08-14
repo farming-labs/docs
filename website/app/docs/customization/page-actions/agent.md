@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:831d9861d392899c
+sourceHash=fnv1a64:f232a73ce7fd95a0
 settingsHash=fnv1a64:72be2461542d7a95
 outputHash=fnv1a64:64fef2cb27439f75
-generatedAt=2026-07-30T09:43:36.472Z
+generatedAt=2026-08-14T12:45:38.632Z
 -->
 # Page Actions
 

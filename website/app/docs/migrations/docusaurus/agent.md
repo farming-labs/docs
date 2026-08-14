@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:bb132a4f2e66b397
+sourceHash=fnv1a64:cb1a64a72b2b5b3a
 settingsHash=fnv1a64:dbac89e9f25094c8
 outputHash=fnv1a64:abf1331eb2fcdb2d
-generatedAt=2026-07-30T09:43:36.501Z
+generatedAt=2026-08-14T12:45:38.798Z
 -->
 # From Docusaurus
 

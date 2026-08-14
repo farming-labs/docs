@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:db22ce532e615b91
+sourceHash=fnv1a64:8474cf95b5a961dd
 settingsHash=fnv1a64:e50e89e221226fc3
 outputHash=fnv1a64:c95a0dd048e26147
-generatedAt=2026-08-05T14:32:10.755Z
+generatedAt=2026-08-14T12:45:38.405Z
 -->
 URL: /docs/cli
 LLM index: /llms.txt

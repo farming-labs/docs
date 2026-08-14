@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:1c6f4d02c0da8d32
+sourceHash=fnv1a64:bee96ff137ec7085
 settingsHash=fnv1a64:72be2461542d7a95
 outputHash=fnv1a64:d63cfdc9326dd1b7
-generatedAt=2026-07-30T09:43:36.708Z
+generatedAt=2026-08-14T12:45:39.313Z
 -->
 # Token Efficiency
 
