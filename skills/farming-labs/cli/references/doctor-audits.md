@@ -21,6 +21,7 @@ pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --ci --json-output .farming-labs/doctor.json
 pnpm exec docs doctor --agent --config docs.config.tsx
 pnpm exec docs doctor --agent --url https://docs.example.com
+pnpm exec docs doctor --agent --url https://docs.example.com --timeout 20000 --retries 2
 pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
@@ -69,6 +70,10 @@ With `--url`, doctor additionally checks:
 - root and well-known `skill.md`
 - a representative `.md` page
 - `/mcp`, `/.well-known/mcp`, and hosted MCP subdomain aliases
+
+Hosted probes allow 15 seconds per request and retry one failed safe `GET` or `HEAD` request by
+default. Use `--timeout <milliseconds>` for slower cold starts and `--retries <0-5>` to tune safe
+probe retries. Mutating MCP requests are never retried automatically.
 
 For MCP, doctor initializes Streamable HTTP, checks session behavior, lists tools, and expects the
 core docs tools. Hosted evidence adds checks without changing the normalized 100-point scale.
