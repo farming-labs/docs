@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/agent-freshness.yml"
+      - "website/.farming-labs/agent-compaction-reviews.json"
       - "packages/docs/src/cli/agent.ts"
       - "packages/docs/src/cli/agent.test.ts"
       - "website/app/docs/**"
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/agent-freshness.yml"
+      - "website/.farming-labs/agent-compaction-reviews.json"
       - "packages/docs/src/cli/agent.ts"
       - "packages/docs/src/cli/agent.test.ts"
       - "website/app/docs/**"

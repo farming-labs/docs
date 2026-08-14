@@ -171,9 +171,20 @@ describe("parseDoctorArgs", () => {
   });
 
   it("parses hosted URL probes", () => {
-    expect(parseDoctorArgs(["--agent", "--url", "https://docs.example.com"])).toEqual({
+    expect(
+      parseDoctorArgs([
+        "--agent",
+        "--url",
+        "https://docs.example.com",
+        "--timeout",
+        "20000",
+        "--retries=2",
+      ]),
+    ).toEqual({
       mode: "agent",
       url: "https://docs.example.com",
+      hostedTimeoutMs: 20000,
+      hostedRetries: 2,
     });
     expect(parseDoctorArgs(["--url=https://docs.example.com", "--json"])).toEqual({
       mode: "agent",
@@ -202,6 +213,18 @@ describe("parseDoctorArgs", () => {
   it("rejects missing URL values", () => {
     expect(() => parseDoctorArgs(["--url"])).toThrow("Missing value for --url.");
     expect(() => parseDoctorArgs(["--url="])).toThrow("Missing value for --url.");
+  });
+
+  it("rejects invalid hosted probe controls", () => {
+    expect(() => parseDoctorArgs(["--timeout", "99"])).toThrow(
+      "Invalid value for --timeout. Expected a value between 100 and 120000.",
+    );
+    expect(() => parseDoctorArgs(["--retries=6"])).toThrow(
+      "Invalid value for --retries. Expected a value between 0 and 5.",
+    );
+    expect(() => parseDoctorArgs(["--retries", "eventually"])).toThrow(
+      "Invalid value for --retries. Expected an integer.",
+    );
   });
 
   it("rejects invalid only mode values", () => {
@@ -1582,6 +1605,7 @@ Use MCP and markdown routes.
     let serveInvalidSkillUtf8 = false;
     let serveArchiveSkill = false;
     let initializedNotifications = 0;
+    let llmsTxtRequests = 0;
 
     const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -1768,6 +1792,14 @@ Use MCP and markdown routes.
         }
 
         if (url.pathname === "/llms.txt" || url.pathname === "/llms-full.txt") {
+          if (url.pathname === "/llms.txt") {
+            llmsTxtRequests += 1;
+            if (llmsTxtRequests === 1) {
+              res.writeHead(503, { "Content-Type": "text/plain" });
+              res.end("warming up");
+              return;
+            }
+          }
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(`# Docs\n\n${url.pathname}`);
           return;
@@ -1953,6 +1985,7 @@ Use MCP and markdown routes.
         "docs digest verified",
       );
       expect(report.checks.find((check) => check.id === "hosted-llms")?.status).toBe("pass");
+      expect(llmsTxtRequests).toBeGreaterThanOrEqual(2);
       expect(report.checks.find((check) => check.id === "hosted-sitemap")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
@@ -2454,6 +2487,21 @@ Updated body.
     expect(report.coverage.compaction.modifiedGeneratedPages).toBe(1);
     expect(report.coverage.compaction.unknownGeneratedPages).toBe(1);
     expect(report.coverage.compaction.tokenBudgetMissingPages).toBe(1);
+
+    await compactAgentDocs({
+      review: true,
+      reviewedBy: "docs-team",
+      reviewReason: "Preserve reviewed task-specific agent guidance.",
+      pages: ["page-actions", "handwritten"],
+    });
+    const reviewedReport = await inspectAgentReadiness();
+    const reviewedCompactCheck = reviewedReport.checks.find((check) => check.id === "compact");
+    expect(reviewedCompactCheck?.detail).toContain("2 reviewed");
+    expect(reviewedCompactCheck?.detail).toContain("0 invalid reviews");
+    expect(reviewedReport.coverage.compaction.reviewedGeneratedPages).toBe(2);
+    expect(reviewedReport.coverage.compaction.invalidReviewedPages).toBe(0);
+    expect(reviewedReport.coverage.compaction.modifiedGeneratedPages).toBe(0);
+    expect(reviewedReport.coverage.compaction.unknownGeneratedPages).toBe(0);
   });
 
   it("fixes stale generated agent docs and token-budget missing outputs", async () => {

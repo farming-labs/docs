@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/server";
@@ -98,7 +99,12 @@ import {
   resolveDocsContentDir,
   resolveDocsProjectRoot,
 } from "./config.js";
-import { compactAgentDocs, inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
+import {
+  compactAgentDocs,
+  inspectAgentCompactionState,
+  loadAgentCompactionReviews,
+  scanDocsPageTargets,
+} from "./agent.js";
 import type { AgentCompactOptions } from "./agent.js";
 import { resolveGoldenEvaluationInput } from "./golden-evaluations.js";
 import { detectFramework, type Framework } from "./utils.js";
@@ -108,6 +114,13 @@ type AgentDoctorGrade = "Agent-optimized" | "Agent-ready" | "Promising" | "Needs
 type HumanDoctorGrade = "Human-optimized" | "Reader-ready" | "Promising" | "Needs work";
 type DoctorMode = "agent" | "human";
 type DoctorFailOn = "warn" | "fail";
+
+const DEFAULT_HOSTED_TIMEOUT_MS = 15_000;
+const DEFAULT_HOSTED_RETRIES = 1;
+const hostedProbeOptions = new AsyncLocalStorage<{
+  timeoutMs: number;
+  retries: number;
+}>();
 
 export interface DoctorOptions {
   configPath?: string;
@@ -120,6 +133,10 @@ export interface DoctorOptions {
   strict?: boolean;
   failOn?: DoctorFailOn;
   url?: string;
+  /** Timeout for each hosted HTTP probe. */
+  hostedTimeoutMs?: number;
+  /** Retry count for safe hosted GET and HEAD probes. */
+  hostedRetries?: number;
   fix?: boolean;
   dryRun?: boolean;
 }
@@ -162,6 +179,9 @@ export interface AgentDoctorCoverage {
 
 export interface AgentDoctorCompactionCoverage {
   freshGeneratedPages: number;
+  reviewedGeneratedPages: number;
+  invalidReviewedPages: number;
+  orphanedReviews: number;
   staleGeneratedPages: number;
   modifiedGeneratedPages: number;
   unknownGeneratedPages: number;
@@ -259,6 +279,25 @@ function parseDoctorOnlyMode(value: string): DoctorMode {
 function parseDoctorFailOn(value: string): DoctorFailOn {
   if (value === "warn" || value === "fail") return value;
   throw new Error("Invalid value for --fail-on. Expected warn or fail.");
+}
+
+function parseDoctorInteger(
+  flag: "--timeout" | "--retries",
+  value: string,
+  bounds: { min: number; max: number },
+): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`Invalid value for ${flag}. Expected an integer.`);
+  }
+
+  const parsed = Number(value);
+  if (parsed < bounds.min || parsed > bounds.max) {
+    throw new Error(
+      `Invalid value for ${flag}. Expected a value between ${bounds.min} and ${bounds.max}.`,
+    );
+  }
+
+  return parsed;
 }
 
 export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
@@ -392,6 +431,50 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg.startsWith("--timeout=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --timeout.");
+      }
+      parsed.hostedTimeoutMs = parseDoctorInteger("--timeout", value, {
+        min: 100,
+        max: 120_000,
+      });
+      continue;
+    }
+
+    if (arg === "--timeout") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --timeout.");
+      }
+      parsed.hostedTimeoutMs = parseDoctorInteger("--timeout", value, {
+        min: 100,
+        max: 120_000,
+      });
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--retries=")) {
+      const value = parseInlineFlag(arg).value;
+      if (value === undefined || value === "") {
+        throw new Error("Missing value for --retries.");
+      }
+      parsed.hostedRetries = parseDoctorInteger("--retries", value, { min: 0, max: 5 });
+      continue;
+    }
+
+    if (arg === "--retries") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --retries.");
+      }
+      parsed.hostedRetries = parseDoctorInteger("--retries", value, { min: 0, max: 5 });
+      index += 1;
+      continue;
+    }
+
     if (arg === "--config") {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) {
@@ -443,6 +526,8 @@ ${pc.dim("Options:")}
   ${pc.cyan("--dry-run")}          With ${pc.cyan("--fix")}, report the compaction command without writing files
   ${pc.cyan("--fail-on <level>")}  Exit with failure on ${pc.cyan("warn")} or only on ${pc.cyan("fail")}
   ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
+  ${pc.cyan("--timeout <ms>")}     Set each hosted probe timeout (default: ${pc.dim(String(DEFAULT_HOSTED_TIMEOUT_MS))})
+  ${pc.cyan("--retries <count>")}  Retry safe hosted GET/HEAD probes (default: ${pc.dim(String(DEFAULT_HOSTED_RETRIES))})
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("-h, --help")}         Show this help message
 `);
@@ -1103,6 +1188,9 @@ function buildCoverage(
     explicitCoverage,
     compaction: {
       freshGeneratedPages: 0,
+      reviewedGeneratedPages: 0,
+      invalidReviewedPages: 0,
+      orphanedReviews: 0,
       staleGeneratedPages: 0,
       modifiedGeneratedPages: 0,
       unknownGeneratedPages: 0,
@@ -1139,22 +1227,37 @@ function buildCompactionCoverage(
 
   const coverage: AgentDoctorCompactionCoverage = {
     freshGeneratedPages: 0,
+    reviewedGeneratedPages: 0,
+    invalidReviewedPages: 0,
+    orphanedReviews: 0,
     staleGeneratedPages: 0,
     modifiedGeneratedPages: 0,
     unknownGeneratedPages: 0,
     tokenBudgetMissingPages: 0,
     otherMissingPages: 0,
   };
+  const reviewRecords = loadAgentCompactionReviews(rootDir, defaults.reviewManifestPath);
+  const inspectionDefaults: AgentCompactOptions = { ...defaults, reviewRecords };
+  const targetRoutes = new Set(targets.map((target) => target.url));
+  coverage.orphanedReviews = reviewRecords.filter(
+    (review) => !targetRoutes.has(review.route),
+  ).length;
 
   for (const page of pages) {
     const target = targetsBySlug.get(page.slug);
     if (!target) continue;
 
-    const state = inspectAgentCompactionState(page, target, defaults);
+    const state = inspectAgentCompactionState(page, target, inspectionDefaults);
 
     switch (state.status) {
       case "fresh":
         coverage.freshGeneratedPages += 1;
+        break;
+      case "reviewed":
+        coverage.reviewedGeneratedPages += 1;
+        break;
+      case "review-invalid":
+        coverage.invalidReviewedPages += 1;
         break;
       case "stale":
         coverage.staleGeneratedPages += 1;
@@ -1181,12 +1284,24 @@ function compactionFreshnessScore(
   compactConfigured: boolean,
 ): { status: DoctorStatus; score: number; recommendation?: string } {
   const hasActionableIssues =
+    coverage.invalidReviewedPages > 0 ||
+    coverage.orphanedReviews > 0 ||
     coverage.staleGeneratedPages > 0 ||
     coverage.modifiedGeneratedPages > 0 ||
     coverage.tokenBudgetMissingPages > 0;
 
   if (hasActionableIssues) {
     const recommendations: string[] = [];
+    if (coverage.invalidReviewedPages > 0) {
+      recommendations.push(
+        "Inspect every changed source/settings/output hash, then rerun docs agent compact --review with an explicit reviewer and rationale only when the preserved agent.md remains correct.",
+      );
+    }
+    if (coverage.orphanedReviews > 0) {
+      recommendations.push(
+        "Remove or replace orphaned entries in the agent compaction review manifest.",
+      );
+    }
     if (coverage.staleGeneratedPages > 0) {
       recommendations.push(
         "Run docs agent compact --stale to refresh stale generated agent.md files.",
@@ -1217,7 +1332,7 @@ function compactionFreshnessScore(
     };
   }
 
-  if (coverage.freshGeneratedPages > 0) {
+  if (coverage.freshGeneratedPages > 0 || coverage.reviewedGeneratedPages > 0) {
     return {
       status: "pass",
       score: compactConfigured ? 5 : 4,
@@ -1368,21 +1483,39 @@ function toMarkdownRoute(pageUrl?: string): string | undefined {
   return normalized.endsWith(".md") ? normalized : `${normalized}.md`;
 }
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit = {},
-  timeoutMs = 8000,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  const options = hostedProbeOptions.getStore();
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_HOSTED_TIMEOUT_MS;
+  const retries = options?.retries ?? DEFAULT_HOSTED_RETRIES;
+  const method = init.method?.toUpperCase() ?? "GET";
+  const retryableMethod = method === "GET" || method === "HEAD";
 
-  try {
-    return await fetch(url, {
-      ...init,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
+  for (let attempt = 0; ; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: controller.signal,
+      });
+      const retryableStatus =
+        response.status === 408 ||
+        response.status === 425 ||
+        response.status === 429 ||
+        response.status >= 500;
+
+      if (retryableMethod && retryableStatus && attempt < retries) {
+        await response.body?.cancel().catch(() => undefined);
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      if (!retryableMethod || attempt >= retries) throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 
@@ -3033,6 +3166,9 @@ export async function inspectAgentReadiness(
         explicitCoverage: 0,
         compaction: {
           freshGeneratedPages: 0,
+          reviewedGeneratedPages: 0,
+          invalidReviewedPages: 0,
+          orphanedReviews: 0,
           staleGeneratedPages: 0,
           modifiedGeneratedPages: 0,
           unknownGeneratedPages: 0,
@@ -3830,7 +3966,7 @@ export async function inspectAgentReadiness(
       compactionResult.status,
       compactionResult.score,
       5,
-      `${compactionCoverage.freshGeneratedPages} fresh, ${compactionCoverage.staleGeneratedPages} stale, ${compactionCoverage.modifiedGeneratedPages} modified, ${compactionCoverage.unknownGeneratedPages} unknown, ${compactionCoverage.tokenBudgetMissingPages} token-budget missing, and ${compactionCoverage.otherMissingPages} other missing page${compactionCoverage.otherMissingPages === 1 ? "" : "s"} across compactable docs pages.` +
+      `${compactionCoverage.freshGeneratedPages} fresh, ${compactionCoverage.reviewedGeneratedPages} reviewed, ${compactionCoverage.invalidReviewedPages} invalid reviews, ${compactionCoverage.orphanedReviews} orphaned reviews, ${compactionCoverage.staleGeneratedPages} stale, ${compactionCoverage.modifiedGeneratedPages} modified, ${compactionCoverage.unknownGeneratedPages} unknown, ${compactionCoverage.tokenBudgetMissingPages} token-budget missing, and ${compactionCoverage.otherMissingPages} other missing page${compactionCoverage.otherMissingPages === 1 ? "" : "s"} across compactable docs pages.` +
         (compactConfigured
           ? " agent.compact defaults are configured."
           : " No agent.compact defaults were found in docs config."),
@@ -3875,19 +4011,25 @@ export async function inspectAgentReadiness(
   const formatDimensionCoverage = (
     label: string,
     dimension: typeof evaluationCoverage.dimensions.safety,
-  ) =>
-    `${label}: ${dimension.status} (${dimension.measuredTaskCount}/${dimension.totalTaskCount} tasks)`;
+  ) => {
+    if (dimension.status === "not-applicable") {
+      return `${label}: not applicable (${dimension.notApplicableTaskCount} tasks)`;
+    }
+    return `${label}: ${dimension.status} (${dimension.measuredTaskCount}/${dimension.applicableTaskCount} applicable tasks${dimension.notApplicableTaskCount > 0 ? `, ${dimension.notApplicableTaskCount} not applicable` : ""})`;
+  };
+  const evaluationCoveragePassed =
+    evaluationCoverage.status === "measured" || evaluationCoverage.status === "not-applicable";
   checks.push(
     makeCheck(
       "golden-task-coverage",
       "Golden evaluation coverage",
-      evaluationCoverage.status === "measured" ? "pass" : "warn",
+      evaluationCoveragePassed ? "pass" : "warn",
       Math.round((evaluationCoverage.coveragePercent / 100) * 5),
       5,
-      `${evaluationCoverage.status} coverage across optional confidence dimensions (${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%): ${formatDimensionCoverage("safety", evaluationCoverage.dimensions.safety)}; ${formatDimensionCoverage("answer quality", evaluationCoverage.dimensions.answerQuality)}; ${formatDimensionCoverage("executable examples", evaluationCoverage.dimensions.executableExamples)}.`,
-      evaluationCoverage.status === "measured"
+      `${evaluationCoverage.status} coverage across optional confidence dimensions (${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.applicableTaskDimensions} applicable task-dimensions, ${evaluationCoverage.notApplicableTaskDimensions} not applicable, ${evaluationCoverage.coveragePercent}%): ${formatDimensionCoverage("safety", evaluationCoverage.dimensions.safety)}; ${formatDimensionCoverage("answer quality", evaluationCoverage.dimensions.answerQuality)}; ${formatDimensionCoverage("executable examples", evaluationCoverage.dimensions.executableExamples)}.`,
+      evaluationCoveragePassed
         ? undefined
-        : "Add golden-task safety expectations, actual-answer assertions, and execute-level example checks so each confidence dimension is measured explicitly.",
+        : "Add golden-task safety expectations, actual-answer assertions, and execute-level example checks for applicable tasks; explicitly mark example execution not-applicable only when it would not meaningfully validate the task.",
     ),
   );
 
@@ -3913,7 +4055,15 @@ export async function inspectAgentReadiness(
     ),
   );
 
-  const hosted = options.url ? await buildHostedAgentChecks(options.url, pages) : undefined;
+  const hosted = options.url
+    ? await hostedProbeOptions.run(
+        {
+          timeoutMs: options.hostedTimeoutMs ?? DEFAULT_HOSTED_TIMEOUT_MS,
+          retries: options.hostedRetries ?? DEFAULT_HOSTED_RETRIES,
+        },
+        () => buildHostedAgentChecks(options.url!, pages),
+      )
+    : undefined;
   if (hosted) {
     checks.push(...hosted.checks);
   }
@@ -4254,11 +4404,11 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
     );
     const evaluationCoverage = report.evaluations.coverage;
     console.log(
-      `${pc.bold("Evaluation coverage:")} ${evaluationCoverage.status} ${pc.dim(`(${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%)`)} ${pc.dim("•")} safety ${evaluationCoverage.dimensions.safety.status} ${pc.dim("•")} answer quality ${evaluationCoverage.dimensions.answerQuality.status} ${pc.dim("•")} executable examples ${evaluationCoverage.dimensions.executableExamples.status}`,
+      `${pc.bold("Evaluation coverage:")} ${evaluationCoverage.status} ${pc.dim(`(${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.applicableTaskDimensions} applicable task-dimensions, ${evaluationCoverage.notApplicableTaskDimensions} not applicable, ${evaluationCoverage.coveragePercent}%)`)} ${pc.dim("•")} safety ${evaluationCoverage.dimensions.safety.status} ${pc.dim("•")} answer quality ${evaluationCoverage.dimensions.answerQuality.status} ${pc.dim("•")} executable examples ${evaluationCoverage.dimensions.executableExamples.status}`,
     );
   }
   console.log(
-    `${pc.bold("Generated agent.md freshness:")} ${report.coverage.compaction.freshGeneratedPages} fresh ${pc.dim("•")} ${report.coverage.compaction.staleGeneratedPages} stale ${pc.dim("•")} ${report.coverage.compaction.modifiedGeneratedPages} modified ${pc.dim("•")} ${report.coverage.compaction.tokenBudgetMissingPages} token-budget missing`,
+    `${pc.bold("Generated agent.md freshness:")} ${report.coverage.compaction.freshGeneratedPages} fresh ${pc.dim("•")} ${report.coverage.compaction.reviewedGeneratedPages} reviewed ${pc.dim("•")} ${report.coverage.compaction.invalidReviewedPages} invalid reviews ${pc.dim("•")} ${report.coverage.compaction.staleGeneratedPages} stale ${pc.dim("•")} ${report.coverage.compaction.modifiedGeneratedPages} modified ${pc.dim("•")} ${report.coverage.compaction.tokenBudgetMissingPages} token-budget missing`,
   );
 
   if (report.fixes && report.fixes.length > 0) {
@@ -4420,13 +4570,18 @@ async function runAgentDoctorFixes(
     compaction.staleGeneratedPages > 0 || compaction.tokenBudgetMissingPages > 0;
 
   if (!shouldRunCompaction) {
-    if (compaction.modifiedGeneratedPages > 0 || compaction.unknownGeneratedPages > 0) {
+    if (
+      compaction.invalidReviewedPages > 0 ||
+      compaction.orphanedReviews > 0 ||
+      compaction.modifiedGeneratedPages > 0 ||
+      compaction.unknownGeneratedPages > 0
+    ) {
       fixes.push({
         id: "agent-compact",
         title: "agent compact",
         status: "skipped",
         detail:
-          "Only modified or unknown generated agent.md files need attention; doctor --fix leaves those for manual review.",
+          "Only invalid/orphaned reviews or modified/unknown agent.md files need attention; doctor --fix leaves those for manual review.",
       });
     }
 

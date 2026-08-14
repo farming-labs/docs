@@ -501,6 +501,7 @@ ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact --changed")}             Compact only docs pages changed in the current git working tree
   ${pc.cyan("agent compact --stale")}               Refresh only stale generated ${pc.dim("agent.md")} files
   ${pc.cyan("agent compact --check")}               Fail when generated ${pc.dim("agent.md")} files are stale or required files are missing
+  ${pc.cyan("agent compact --review <page...>")}    Record hash-bound human review without rewriting ${pc.dim("agent.md")}
   ${pc.cyan("--page <slug|path>")}                  Repeatable explicit page flag; positional page args work too
   ${pc.cyan("--include-missing")}                   With ${pc.cyan("--stale")}, also create explicit or token-budget pages missing ${pc.dim("agent.md")}
   ${pc.cyan("--api-key <key>")}                     Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
@@ -558,6 +559,8 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor --agent --fix")}                Refresh stale generated ${pc.dim("agent.md")} files and token-budget missing outputs
   ${pc.cyan("doctor --agent --fix --dry-run")}      Report the fix command without writing generated ${pc.dim("agent.md")} files
   ${pc.cyan("doctor --fail-on warn|fail")}          Choose whether warnings or only failures fail CI
+  ${pc.cyan("doctor --timeout <ms>")}               Set each hosted probe timeout (default: ${pc.dim("15000")})
+  ${pc.cyan("doctor --retries <0-5>")}              Retry safe hosted GET/HEAD probes (default: ${pc.dim("1")})
   ${pc.cyan("doctor agent")}                        Subcommand alias for agent scoring
   ${pc.cyan("doctor site")}                         Subcommand alias for reader-facing scoring
   ${pc.cyan("doctor human")}                        Legacy alias for reader-facing scoring

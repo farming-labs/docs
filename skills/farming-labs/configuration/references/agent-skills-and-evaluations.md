@@ -176,6 +176,9 @@ agent: {
           includes: ["pnpm add @farming-labs/docs"],
         }],
         minUsefulByteRatio: 0.7,
+        coverage: {
+          executableExamples: "applicable",
+        },
       },
     }],
   },
@@ -197,6 +200,12 @@ falling back. Answer scoring needs an explicit callback or HTTP answer provider.
 verification accepts `"present"`, `"syntax"`, or `"execute"`; execution also needs network
 permission and enabled code-block validation. No tasks means `unmeasured`.
 
+Runtime example execution is applicable by default. Set
+`expect.coverage.executableExamples: "not-applicable"` only when executing an example would not
+meaningfully validate that task. Not-applicable tasks are reported separately and excluded from
+the executable-example coverage denominator. A task cannot combine `"not-applicable"` with an
+example whose verification is `"execute"`.
+
 ## Agent compaction
 
 ```ts
@@ -206,6 +215,7 @@ agent: {
     model: "docs-cloud-compress-v1",
     aggressiveness: 0.3,
     protectJson: true,
+    reviewManifestPath: ".farming-labs/agent-compaction-reviews.json",
   },
 }
 ```
@@ -220,8 +230,14 @@ Supported defaults include `apiKeyEnv`, `baseUrl`, `model`, `aggressiveness`,
 - When the page budget is below `minOutputTokens`, the CLI clamps the minimum down.
 - `--changed` uses staged, unstaged, and untracked docs changes.
 - `--stale` refreshes generated files whose source or compaction settings changed.
+- `--review` records an auditable, hash-bound checkpoint for an intentional modified or
+  hand-authored `agent.md`; the default manifest is
+  `.farming-labs/agent-compaction-reviews.json`. A reviewed entry is invalidated by source,
+  settings, or output changes and then fails `--check` until a person inspects and reviews it
+  again.
 
 ```bash
 pnpm exec docs agent compact installation --dry-run
 pnpm exec docs agent compact --stale --include-missing
+pnpm exec docs agent compact --review --reviewed-by "docs-team" --reason "Preserve reviewed guidance" /docs/configuration
 ```

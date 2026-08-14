@@ -42,6 +42,8 @@ import type {
   DocsAgentEvaluationAnswerResult,
   DocsAgentEvaluationSurface,
   DocsAgentGoldenAnswerExpectation,
+  DocsAgentGoldenCoverageApplicability,
+  DocsAgentGoldenCoverageExpectation,
   DocsAgentGoldenAuthenticatedContentExpectation,
   DocsAgentGoldenExpectedExample,
   DocsAgentGoldenFreshnessExpectation,
@@ -82,7 +84,11 @@ const EXECUTABLE_LANGUAGES = new Set([
 ]);
 
 export type DocsGoldenEvaluationStatus = "unmeasured" | "passed" | "failed";
-export type DocsGoldenEvaluationCoverageStatus = "measured" | "partially-measured" | "unmeasured";
+export type DocsGoldenEvaluationCoverageStatus =
+  | "measured"
+  | "partially-measured"
+  | "unmeasured"
+  | "not-applicable";
 
 export type DocsGoldenTaskFilters = DocsAgentGoldenTaskFilters;
 export type DocsGoldenExpectedExample = DocsAgentGoldenExpectedExample;
@@ -250,6 +256,9 @@ export interface DocsGoldenTaskReport {
   selection: DocsGoldenSelectionMetrics;
   examples: DocsGoldenExampleMetrics;
   usage: DocsGoldenUsageMetrics;
+  coverageApplicability: {
+    executableExamples: DocsAgentGoldenCoverageApplicability;
+  };
   issues: string[];
 }
 
@@ -280,6 +289,8 @@ export interface DocsGoldenEvaluationQuality {
 export interface DocsGoldenEvaluationDimensionCoverage {
   status: DocsGoldenEvaluationCoverageStatus;
   measuredTaskCount: number;
+  applicableTaskCount: number;
+  notApplicableTaskCount: number;
   totalTaskCount: number;
   coveragePercent: number;
 }
@@ -287,6 +298,8 @@ export interface DocsGoldenEvaluationDimensionCoverage {
 export interface DocsGoldenEvaluationCoverage {
   status: DocsGoldenEvaluationCoverageStatus;
   measuredTaskDimensions: number;
+  applicableTaskDimensions: number;
+  notApplicableTaskDimensions: number;
   totalTaskDimensions: number;
   coveragePercent: number;
   dimensions: {
@@ -781,6 +794,27 @@ function normalizeRuntimeExamples(
   });
 }
 
+function normalizeRuntimeCoverageExpectation(
+  value: unknown,
+  path: string,
+  issues: string[],
+): DocsAgentGoldenCoverageExpectation | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    issues.push(`${path} must be an object.`);
+    return {};
+  }
+
+  return {
+    executableExamples: normalizeRuntimeEnum(
+      value.executableExamples,
+      `${path}.executableExamples`,
+      issues,
+      ["applicable", "not-applicable"] as const,
+    ),
+  };
+}
+
 function normalizeGoldenTaskInput(
   value: unknown,
   index: number,
@@ -853,6 +887,11 @@ function normalizeGoldenTaskInput(
     { minimum: 0, maximum: 1 },
   );
   const examples = normalizeRuntimeExamples(expectation.examples, `${expectPath}.examples`, issues);
+  const coverage = normalizeRuntimeCoverageExpectation(
+    expectation.coverage,
+    `${expectPath}.coverage`,
+    issues,
+  );
   const scope = normalizeRuntimeFilters(expectation.scope, `${expectPath}.scope`, issues);
   const answer = normalizeRuntimeAnswerExpectation(
     expectation.answer,
@@ -864,6 +903,14 @@ function normalizeGoldenTaskInput(
     `${expectPath}.safety`,
     issues,
   );
+  if (
+    coverage?.executableExamples === "not-applicable" &&
+    examples?.some((example) => resolveExampleVerification(example) === "execute")
+  ) {
+    issues.push(
+      `${expectPath}.coverage.executableExamples cannot be not-applicable when an example uses verification: execute.`,
+    );
+  }
 
   const forbidden = forbiddenSources ?? [];
   for (const [name, sources] of [
@@ -901,6 +948,7 @@ function normalizeGoldenTaskInput(
         maxFirstRelevantRank,
         minUsefulByteRatio,
         examples,
+        coverage,
         scope,
         answer,
         safety,
@@ -3419,6 +3467,9 @@ async function evaluateTask(
     selection,
     examples,
     usage,
+    coverageApplicability: {
+      executableExamples: task.expect.coverage?.executableExamples ?? "applicable",
+    },
     issues,
   };
 }
@@ -3432,17 +3483,29 @@ function buildGoldenEvaluationCoverage(
   tasks: readonly DocsGoldenTaskReport[],
 ): DocsGoldenEvaluationCoverage {
   const totalTaskCount = tasks.length;
-  const dimension = (measuredTaskCount: number): DocsGoldenEvaluationDimensionCoverage => {
+  const dimension = (
+    measuredTaskCount: number,
+    notApplicableTaskCount = 0,
+  ): DocsGoldenEvaluationDimensionCoverage => {
+    const applicableTaskCount = totalTaskCount - notApplicableTaskCount;
     const coveragePercent =
-      totalTaskCount === 0 ? 0 : Math.round((measuredTaskCount / totalTaskCount) * 100);
+      totalTaskCount === 0
+        ? 0
+        : applicableTaskCount === 0
+          ? 100
+          : Math.round((measuredTaskCount / applicableTaskCount) * 100);
     return {
       status:
-        measuredTaskCount === 0
-          ? "unmeasured"
-          : measuredTaskCount === totalTaskCount
-            ? "measured"
-            : "partially-measured",
+        totalTaskCount > 0 && applicableTaskCount === 0
+          ? "not-applicable"
+          : measuredTaskCount === 0
+            ? "unmeasured"
+            : measuredTaskCount === applicableTaskCount
+              ? "measured"
+              : "partially-measured",
       measuredTaskCount,
+      applicableTaskCount,
+      notApplicableTaskCount,
       totalTaskCount,
       coveragePercent,
     };
@@ -3457,6 +3520,8 @@ function buildGoldenEvaluationCoverage(
       tasks.filter((task) =>
         task.examples.results.some((result) => result.verification === "execute"),
       ).length,
+      tasks.filter((task) => task.coverageApplicability.executableExamples === "not-applicable")
+        .length,
     ),
   };
   const dimensionValues = Object.values(dimensions);
@@ -3464,20 +3529,34 @@ function buildGoldenEvaluationCoverage(
     (total, value) => total + value.measuredTaskCount,
     0,
   );
+  const applicableTaskDimensions = dimensionValues.reduce(
+    (total, value) => total + value.applicableTaskCount,
+    0,
+  );
+  const notApplicableTaskDimensions = dimensionValues.reduce(
+    (total, value) => total + value.notApplicableTaskCount,
+    0,
+  );
   const totalTaskDimensions = totalTaskCount * dimensionValues.length;
   const coveragePercent =
     totalTaskDimensions === 0
       ? 0
-      : Math.round((measuredTaskDimensions / totalTaskDimensions) * 100);
+      : applicableTaskDimensions === 0
+        ? 100
+        : Math.round((measuredTaskDimensions / applicableTaskDimensions) * 100);
 
   return {
     status:
-      coveragePercent === 100
-        ? "measured"
-        : coveragePercent === 0
-          ? "unmeasured"
-          : "partially-measured",
+      totalTaskDimensions > 0 && applicableTaskDimensions === 0
+        ? "not-applicable"
+        : coveragePercent === 100
+          ? "measured"
+          : coveragePercent === 0
+            ? "unmeasured"
+            : "partially-measured",
     measuredTaskDimensions,
+    applicableTaskDimensions,
+    notApplicableTaskDimensions,
     totalTaskDimensions,
     coveragePercent,
     dimensions,
