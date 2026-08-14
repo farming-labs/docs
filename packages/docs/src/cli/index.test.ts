@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { parseCommandAlias, parseFlags } from "./index.js";
 
@@ -183,5 +185,22 @@ describe("parseCommandAlias", () => {
 
   it("ignores unknown upgrade dist-tags", () => {
     expect(parseCommandAlias("upgrade@nightly")).toEqual({ command: "upgrade@nightly" });
+  });
+});
+
+describe("agent command help", () => {
+  it("prints successful group help for long and short help flags", () => {
+    const cliPath = path.resolve(import.meta.dirname, "../../dist/cli/index.mjs");
+
+    for (const flag of ["--help", "-h"]) {
+      const output = execFileSync(process.execPath, [cliPath, "agent", flag], {
+        encoding: "utf8",
+      });
+
+      expect(output).toContain("docs agent");
+      expect(output).toContain("feedback-evals");
+      expect(output).toContain("propose");
+      expect(output).not.toContain("Unknown agent subcommand");
+    }
   });
 });

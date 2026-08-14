@@ -791,6 +791,35 @@ pnpm exec docs doctor --agent
     });
   });
 
+  it("recognizes the supported agent feedback and maintenance command paths", () => {
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page(
+            "agent-commands",
+            `# Agent commands
+
+\`\`\`bash
+pnpm exec docs agent feedback --input feedback.json
+pnpm exec docs agent feedback-evals --results doctor.json --baseline baseline.json --check
+pnpm exec docs agent propose --input signals.jsonl --write
+\`\`\``,
+          ),
+          actionable: false,
+        },
+      ],
+    });
+
+    expect(report.findings.filter((finding) => finding.category === "command")).toEqual([]);
+    expect(report.metrics.commands).toEqual({
+      total: 3,
+      healthy: 3,
+      unhealthy: 0,
+      unverified: 0,
+    });
+  });
+
   it("validates common workspace selectors and separates unresolved commands", () => {
     mkdirSync(path.join(rootDir, "packages", "app"), { recursive: true });
     writeFileSync(
