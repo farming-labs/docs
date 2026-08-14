@@ -882,6 +882,21 @@ Useful built-in tool calls:
 Framework notes:
 
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
+
+When the Farm application lives inside a monorepo or needs to compile documentation from a shared
+location outside its own directory, pass `contentRoots` to `withDocs`:
+
+```ts title="farm.config.ts"
+import { withDocs } from "@farming-labs/farmjs";
+
+export default withDocs({}, {
+  contentRoots: ["../shared-docs"],
+});
+```
+
+`contentRoots` accepts an array of paths relative to the Farm application root. Each resolved path
+is added to the dev server's `server.fs.allow` list so the MDX plugin can compile content from
+repository-owned or shared documentation directories.
 - **TanStack Start:** the current `init` scaffold adds one `src/routes/$.ts` public forwarder for `/api/docs/mcp`, `/mcp`, `/.well-known/mcp`, `llms.txt`, agent discovery, and `.md` routes
 - **SvelteKit:** the current `init` scaffold adds one `src/hooks.server.ts` public forwarder for `/api/docs/mcp`, `/mcp`, `/.well-known/mcp`, `llms.txt`, agent discovery, and `.md` routes
 - **Astro:** the current `init` scaffold adds one `src/middleware.ts` public forwarder for `/api/docs/mcp`, `/mcp`, `/.well-known/mcp`, `llms.txt`, agent discovery, and `.md` routes
