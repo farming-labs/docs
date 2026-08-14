@@ -176,6 +176,9 @@ agent: {
           includes: ["pnpm add @farming-labs/docs"],
         }],
         minUsefulByteRatio: 0.7,
+        coverage: {
+          executableExamples: "applicable",
+        },
       },
     }],
   },
@@ -196,6 +199,12 @@ Non-simple providers require `allowNetwork: true`. Provider failures and timeout
 falling back. Answer scoring needs an explicit callback or HTTP answer provider. Example
 verification accepts `"present"`, `"syntax"`, or `"execute"`; execution also needs network
 permission and enabled code-block validation. No tasks means `unmeasured`.
+
+Runtime example execution is applicable by default. Set
+`expect.coverage.executableExamples: "not-applicable"` only when executing an example would not
+meaningfully validate that task. Not-applicable tasks are reported separately and excluded from
+the executable-example coverage denominator. A task cannot combine `"not-applicable"` with an
+example whose verification is `"execute"`.
 
 ## Agent compaction
 

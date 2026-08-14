@@ -3297,6 +3297,18 @@ export interface DocsAgentGoldenTaskExpectation {
   answer?: DocsAgentGoldenAnswerExpectation;
   /** Adversarial retrieval and answer-safety assertions. */
   safety?: DocsAgentGoldenSafetyExpectation;
+  /** Declare whether runtime example execution is meaningful for this task's confidence coverage. */
+  coverage?: DocsAgentGoldenCoverageExpectation;
+}
+
+export type DocsAgentGoldenCoverageApplicability = "applicable" | "not-applicable";
+
+export interface DocsAgentGoldenCoverageExpectation {
+  /**
+   * Exclude runtime execution from this task's coverage denominator only when executing an
+   * example would not meaningfully validate the task. Defaults to `"applicable"`.
+   */
+  executableExamples?: DocsAgentGoldenCoverageApplicability;
 }
 
 export interface DocsAgentGoldenPromptInjectionExpectation {

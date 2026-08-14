@@ -442,7 +442,7 @@ export function createDocsSitemapResponse({
   const headers = new Headers({
     "Content-Type":
       format === "xml" ? "application/xml; charset=utf-8" : "text/markdown; charset=utf-8",
-    "Cache-Control": "public, max-age=0, must-revalidate",
+    "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
     ETag: hashString(body),
   });
   const lastModified = newestLastmod(nextManifest.pages);
