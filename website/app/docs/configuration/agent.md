@@ -138,6 +138,20 @@ Agent Skills discovery remains available in both cases.
 4. Use customization and theme pages once routing and content structure are stable.
 5. Use markdown routes, sitemaps, `robots.txt`, `agent.compact`, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
 
+## Executable evaluation fixture
+
+Use this deterministic runnable block when agent evaluations need to verify the configured code-block runner without credentials or external services:
+
+```js title="codeblocks-smoke.js" runnable
+const metadata = { framework: "nextjs", runnable: true };
+
+if (!metadata.runnable) {
+  throw new Error("Expected runnable metadata");
+}
+
+console.log("metadata ok");
+```
+
 ## Output style
 
 - Prefer short, exact config examples.
