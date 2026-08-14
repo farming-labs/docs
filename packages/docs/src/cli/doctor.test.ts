@@ -2454,6 +2454,21 @@ Updated body.
     expect(report.coverage.compaction.modifiedGeneratedPages).toBe(1);
     expect(report.coverage.compaction.unknownGeneratedPages).toBe(1);
     expect(report.coverage.compaction.tokenBudgetMissingPages).toBe(1);
+
+    await compactAgentDocs({
+      review: true,
+      reviewedBy: "docs-team",
+      reviewReason: "Preserve reviewed task-specific agent guidance.",
+      pages: ["page-actions", "handwritten"],
+    });
+    const reviewedReport = await inspectAgentReadiness();
+    const reviewedCompactCheck = reviewedReport.checks.find((check) => check.id === "compact");
+    expect(reviewedCompactCheck?.detail).toContain("2 reviewed");
+    expect(reviewedCompactCheck?.detail).toContain("0 invalid reviews");
+    expect(reviewedReport.coverage.compaction.reviewedGeneratedPages).toBe(2);
+    expect(reviewedReport.coverage.compaction.invalidReviewedPages).toBe(0);
+    expect(reviewedReport.coverage.compaction.modifiedGeneratedPages).toBe(0);
+    expect(reviewedReport.coverage.compaction.unknownGeneratedPages).toBe(0);
   });
 
   it("fixes stale generated agent docs and token-budget missing outputs", async () => {

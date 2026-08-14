@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "reviews": [
+    {
+      "route": "/docs/configuration",
+      "sourceHash": "fnv1a64:67d7e2763afbf5a4",
+      "settingsHash": "fnv1a64:aa433a28ef4afd1f",
+      "outputHash": "fnv1a64:d404f870b0ddaafa",
+      "reviewedAt": "2026-08-14T15:49:25.027Z",
+      "reviewedBy": "farming-labs/docs maintainers",
+      "reason": "Preserve the detailed machine-oriented configuration contract."
+    },
+    {
+      "route": "/docs/customization/agent-primitive",
+      "sourceHash": "fnv1a64:c8aa1b291752bf79",
+      "settingsHash": "fnv1a64:3fa80ff29bd1598e",
+      "outputHash": "fnv1a64:d733ee51a757a5ec",
+      "reviewedAt": "2026-08-14T15:49:27.379Z",
+      "reviewedBy": "farming-labs/docs maintainers",
+      "reason": "Preserve the canonical audience projection, discovery, feedback, and Agent Skills operating guide."
+    },
+    {
+      "route": "/docs/customization/mcp",
+      "sourceHash": "fnv1a64:120a971d05404387",
+      "settingsHash": "fnv1a64:4d5874ba9e62babc",
+      "outputHash": "fnv1a64:0b4119aece602f67",
+      "reviewedAt": "2026-08-14T15:49:22.702Z",
+      "reviewedBy": "farming-labs/docs maintainers",
+      "reason": "Preserve reviewed operator-only authoring MCP and publishing safety guidance."
+    },
+    {
+      "route": "/docs/customization/sidebar",
+      "sourceHash": "fnv1a64:4cfd6a1ea869d828",
+      "settingsHash": "fnv1a64:063b4c9a14696a17",
+      "outputHash": "fnv1a64:b6bb2f7c8d8f3184",
+      "reviewedAt": "2026-08-14T15:49:29.748Z",
+      "reviewedBy": "farming-labs/docs maintainers",
+      "reason": "Preserve the intentionally scoped sidebar answer guide."
+    }
+  ]
+}

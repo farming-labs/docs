@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import matter from "gray-matter";
@@ -39,6 +48,24 @@ const DEFAULT_COMPRESSION_AGGRESSIVENESS = 0.3;
 const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const MAX_COMPRESSION_INPUT_CHARACTERS = 200_000;
 const INDEX_PAGE_BASENAMES = new Set(["index", "page", "+page"]);
+export const DEFAULT_AGENT_COMPACTION_REVIEW_MANIFEST_PATH =
+  ".farming-labs/agent-compaction-reviews.json";
+export const AGENT_COMPACTION_REVIEW_MANIFEST_VERSION = 1;
+
+export interface AgentCompactionReview {
+  route: string;
+  sourceHash: string;
+  settingsHash: string;
+  outputHash: string;
+  reviewedAt: string;
+  reviewedBy: string;
+  reason: string;
+}
+
+export interface AgentCompactionReviewManifest {
+  version: number;
+  reviews: AgentCompactionReview[];
+}
 
 export interface AgentCompactOptions {
   configPath?: string;
@@ -57,6 +84,12 @@ export interface AgentCompactOptions {
   includeMissing?: boolean;
   dryRun?: boolean;
   check?: boolean;
+  review?: boolean;
+  reviewedBy?: string;
+  reviewReason?: string;
+  reviewManifestPath?: string;
+  /** Resolved review records used internally by doctor and compaction inspection. */
+  reviewRecords?: AgentCompactionReview[];
 }
 
 export interface ParsedAgentCompactArgs extends AgentCompactOptions {
@@ -77,6 +110,8 @@ export type AgentCompactionStateKind =
   | "stale"
   | "modified"
   | "stale-modified"
+  | "reviewed"
+  | "review-invalid"
   | "missing"
   | "unknown";
 
@@ -86,6 +121,8 @@ export interface AgentCompactionState {
   pageOptions: AgentCompactOptions;
   sourceDocument: string;
   provenance?: GeneratedAgentProvenance;
+  review?: AgentCompactionReview;
+  reviewMismatches?: Array<"source" | "settings" | "output">;
   tokenBudget?: number;
 }
 
@@ -142,6 +179,11 @@ export function parseAgentCompactArgs(argv: string[]): ParsedAgentCompactArgs {
 
     if (arg === "--check") {
       parsed.check = true;
+      continue;
+    }
+
+    if (arg === "--review") {
+      parsed.review = true;
       continue;
     }
 
@@ -220,6 +262,15 @@ export function parseAgentCompactArgs(argv: string[]): ParsedAgentCompactArgs {
       case "protect-json":
         parsed.protectJson = parseBooleanFlag(value);
         break;
+      case "reviewed-by":
+        parsed.reviewedBy = value;
+        break;
+      case "reason":
+        parsed.reviewReason = value;
+        break;
+      case "review-manifest":
+        parsed.reviewManifestPath = value;
+        break;
       default:
         throw new Error(`Unknown agent compact flag: --${key}.`);
     }
@@ -236,6 +287,121 @@ function normalizeUrlPath(value: string): string {
   const normalized = value.replace(/\/+/g, "/");
   if (normalized === "/") return normalized;
   return normalized.replace(/\/+$/, "");
+}
+
+function resolveReviewManifestPath(rootDir: string, configuredPath?: string): string {
+  const relativePath = configuredPath?.trim() || DEFAULT_AGENT_COMPACTION_REVIEW_MANIFEST_PATH;
+  if (path.isAbsolute(relativePath)) {
+    throw new Error("Agent compaction reviewManifestPath must be project-relative.");
+  }
+
+  const resolved = path.resolve(rootDir, relativePath);
+  const relative = path.relative(rootDir, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Agent compaction reviewManifestPath must stay inside the project root.");
+  }
+  return resolved;
+}
+
+function normalizeReviewRecord(value: unknown, index: number): AgentCompactionReview {
+  const pathLabel = `reviews[${index}]`;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${pathLabel} must be an object.`);
+  }
+  const record = value as Record<string, unknown>;
+  const readString = (key: keyof AgentCompactionReview): string => {
+    const field = record[key];
+    if (typeof field !== "string" || !field.trim()) {
+      throw new Error(`${pathLabel}.${key} must be a non-empty string.`);
+    }
+    return field.trim();
+  };
+  const route = normalizeUrlPath(readString("route"));
+  if (!route.startsWith("/") || route.includes("?") || route.includes("#")) {
+    throw new Error(`${pathLabel}.route must be an absolute docs route without query or hash.`);
+  }
+  const sourceHash = readString("sourceHash");
+  const settingsHash = readString("settingsHash");
+  const outputHash = readString("outputHash");
+  for (const [key, hash] of Object.entries({ sourceHash, settingsHash, outputHash })) {
+    if (!/^fnv1a64:[0-9a-f]{16}$/u.test(hash)) {
+      throw new Error(`${pathLabel}.${key} must be an fnv1a64 content hash.`);
+    }
+  }
+  const reviewedAt = readString("reviewedAt");
+  if (!Number.isFinite(Date.parse(reviewedAt))) {
+    throw new Error(`${pathLabel}.reviewedAt must be an ISO-compatible timestamp.`);
+  }
+
+  return {
+    route,
+    sourceHash,
+    settingsHash,
+    outputHash,
+    reviewedAt,
+    reviewedBy: readString("reviewedBy"),
+    reason: readString("reason"),
+  };
+}
+
+export function loadAgentCompactionReviews(
+  rootDir: string,
+  configuredPath?: string,
+): AgentCompactionReview[] {
+  const manifestPath = resolveReviewManifestPath(rootDir, configuredPath);
+  if (!existsSync(manifestPath)) return [];
+  const manifestStat = lstatSync(manifestPath);
+  if (manifestStat.isSymbolicLink() || !manifestStat.isFile()) {
+    throw new Error("Agent compaction review manifest must be a regular non-symlink file.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  } catch (error) {
+    throw new Error(
+      `Could not parse agent compaction review manifest ${path.relative(rootDir, manifestPath)}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Agent compaction review manifest must be a JSON object.");
+  }
+  const manifest = parsed as Record<string, unknown>;
+  if (manifest.version !== AGENT_COMPACTION_REVIEW_MANIFEST_VERSION) {
+    throw new Error(
+      `Agent compaction review manifest version must be ${AGENT_COMPACTION_REVIEW_MANIFEST_VERSION}.`,
+    );
+  }
+  if (!Array.isArray(manifest.reviews)) {
+    throw new Error("Agent compaction review manifest reviews must be an array.");
+  }
+
+  const reviews = manifest.reviews.map(normalizeReviewRecord);
+  const routes = new Set<string>();
+  for (const review of reviews) {
+    if (routes.has(review.route)) {
+      throw new Error(`Agent compaction review route is duplicated: ${review.route}.`);
+    }
+    routes.add(review.route);
+  }
+  return reviews;
+}
+
+function writeAgentCompactionReviews(
+  rootDir: string,
+  configuredPath: string | undefined,
+  reviews: AgentCompactionReview[],
+): string {
+  const manifestPath = resolveReviewManifestPath(rootDir, configuredPath);
+  const manifest: AgentCompactionReviewManifest = {
+    version: AGENT_COMPACTION_REVIEW_MANIFEST_VERSION,
+    reviews: [...reviews].sort((left, right) => left.route.localeCompare(right.route)),
+  };
+  mkdirSync(path.dirname(manifestPath), { recursive: true });
+  const temporaryPath = `${manifestPath}.tmp-${process.pid}`;
+  writeFileSync(temporaryPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+  renameSync(temporaryPath, manifestPath);
+  return manifestPath;
 }
 
 function normalizeRequestedPage(entry: string, rawValue: string): string {
@@ -439,6 +605,7 @@ function readAgentCompactConfig(content: string): AgentCompactOptions {
     maxOutputTokens: readNumberProperty(compactBlock, "maxOutputTokens"),
     minOutputTokens: readNumberProperty(compactBlock, "minOutputTokens"),
     protectJson: readBooleanProperty(compactBlock, "protectJson"),
+    reviewManifestPath: readStringProperty(compactBlock, "reviewManifestPath"),
   };
 }
 
@@ -463,6 +630,7 @@ function readAgentCompactConfigFromModule(config: DocsConfig): AgentCompactOptio
     maxOutputTokens: compact.maxOutputTokens,
     minOutputTokens: compact.minOutputTokens,
     protectJson: compact.protectJson,
+    reviewManifestPath: compact.reviewManifestPath,
   };
 }
 
@@ -604,6 +772,33 @@ export function inspectAgentCompactionState(
 
   const sourceKind = resolveSourceKindForCompaction(target, currentDocument);
   const sourceDocument = buildSourceDocumentForCompaction(page, sourceKind);
+  const review = defaults.reviewRecords?.find(
+    (candidate) => normalizeUrlPath(candidate.route) === normalizeUrlPath(target.url),
+  );
+
+  if (review) {
+    const reviewMismatches: Array<"source" | "settings" | "output"> = [];
+    if (hashGeneratedAgentContent(buildResolvedPageSourceDocument(page)) !== review.sourceHash) {
+      reviewMismatches.push("source");
+    }
+    if (buildCompactionSettingsHash(pageOptions) !== review.settingsHash) {
+      reviewMismatches.push("settings");
+    }
+    if (hashGeneratedAgentContent(currentDocument.content) !== review.outputHash) {
+      reviewMismatches.push("output");
+    }
+
+    return {
+      status: reviewMismatches.length === 0 ? "reviewed" : "review-invalid",
+      sourceKind,
+      pageOptions,
+      sourceDocument,
+      provenance: currentDocument.provenance,
+      review,
+      reviewMismatches,
+      tokenBudget,
+    };
+  }
 
   if (!currentDocument.provenance) {
     return {
@@ -839,6 +1034,10 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   );
   const configDefaults = mergeAgentCompactOptions(cloudApiKeyDefaults, compactDefaults);
   const resolvedOptions = mergeAgentCompactOptions(configDefaults, options);
+  resolvedOptions.reviewRecords = loadAgentCompactionReviews(
+    rootDir,
+    resolvedOptions.reviewManifestPath,
+  );
   const entry =
     normalizePathSegment(
       loadedConfigModule?.config.entry ??
@@ -860,6 +1059,12 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   if (resolvedOptions.includeMissing && !resolvedOptions.stale) {
     throw new Error("Use --include-missing together with --stale.");
   }
+  if (
+    (resolvedOptions.reviewedBy || resolvedOptions.reviewReason) &&
+    resolvedOptions.review !== true
+  ) {
+    throw new Error("Use --reviewed-by and --reason together with --review.");
+  }
 
   const requestedPages = resolvedOptions.pages?.filter((value) => value.trim().length > 0) ?? [];
   if (
@@ -868,6 +1073,7 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
       resolvedOptions.stale ||
       resolvedOptions.changed ||
       resolvedOptions.includeMissing ||
+      resolvedOptions.review ||
       resolvedOptions.dryRun ||
       requestedPages.length > 0)
   ) {
@@ -876,11 +1082,31 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
     );
   }
   if (
+    resolvedOptions.review &&
+    (resolvedOptions.all ||
+      resolvedOptions.stale ||
+      resolvedOptions.changed ||
+      resolvedOptions.includeMissing ||
+      resolvedOptions.check)
+  ) {
+    throw new Error("Use --review with explicit page arguments, not selection or check flags.");
+  }
+  if (resolvedOptions.review && requestedPages.length === 0) {
+    throw new Error("Pass at least one explicit docs page with --review.");
+  }
+  if (resolvedOptions.review && !resolvedOptions.reviewedBy?.trim()) {
+    throw new Error("Pass --reviewed-by <name> with --review.");
+  }
+  if (resolvedOptions.review && !resolvedOptions.reviewReason?.trim()) {
+    throw new Error("Pass --reason <text> with --review.");
+  }
+  if (
     !resolvedOptions.all &&
     requestedPages.length === 0 &&
     !resolvedOptions.stale &&
     !resolvedOptions.changed &&
-    !resolvedOptions.check
+    !resolvedOptions.check &&
+    !resolvedOptions.review
   ) {
     throw new Error(
       "Pass --all, --changed, --stale, or at least one docs page slug/path to compact.",
@@ -918,8 +1144,50 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
     throw new Error("No compactable docs pages matched the request.");
   }
 
+  if (resolvedOptions.review) {
+    const reviewsByRoute = new Map(
+      (resolvedOptions.reviewRecords ?? []).map((review) => [review.route, review] as const),
+    );
+    for (const { page, target } of filteredPages) {
+      const currentDocument = readCurrentAgentDocument(target);
+      if (!currentDocument) {
+        throw new Error(`Cannot review ${page.url}: ${target.agentPath} does not exist.`);
+      }
+      reviewsByRoute.set(page.url, {
+        route: page.url,
+        sourceHash: hashGeneratedAgentContent(buildResolvedPageSourceDocument(page)),
+        settingsHash: buildCompactionSettingsHash(
+          buildPageOptions(resolvedOptions, target.pagePath).pageOptions,
+        ),
+        outputHash: hashGeneratedAgentContent(currentDocument.content),
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: resolvedOptions.reviewedBy!.trim(),
+        reason: resolvedOptions.reviewReason!.trim(),
+      });
+    }
+    if (resolvedOptions.dryRun) {
+      console.log(
+        pc.green(
+          `Dry run: would record ${filteredPages.length} reviewed agent.md page${filteredPages.length === 1 ? "" : "s"}.`,
+        ),
+      );
+      return;
+    }
+    const manifestPath = writeAgentCompactionReviews(rootDir, resolvedOptions.reviewManifestPath, [
+      ...reviewsByRoute.values(),
+    ]);
+    console.log(
+      pc.green(
+        `Recorded ${filteredPages.length} reviewed agent.md page${filteredPages.length === 1 ? "" : "s"} in ${path.relative(rootDir, manifestPath)}.`,
+      ),
+    );
+    return;
+  }
+
   if (resolvedOptions.check) {
     let fresh = 0;
+    let reviewed = 0;
+    let reviewInvalid = 0;
     let stale = 0;
     let modified = 0;
     let unknown = 0;
@@ -929,6 +1197,8 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
     for (const { page, target } of filteredPages) {
       const state = inspectAgentCompactionState(page, target, resolvedOptions);
       if (state.status === "fresh") fresh += 1;
+      else if (state.status === "reviewed") reviewed += 1;
+      else if (state.status === "review-invalid") reviewInvalid += 1;
       else if (state.status === "stale") stale += 1;
       else if (state.status === "modified" || state.status === "stale-modified") modified += 1;
       else if (state.status === "unknown") unknown += 1;
@@ -936,10 +1206,15 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
       else optionalMissing += 1;
     }
 
-    const summary = `${fresh} fresh, ${stale} stale, ${modified} modified, ${unknown} unknown, ${requiredMissing} required missing, and ${optionalMissing} optional missing`;
-    if (stale > 0 || requiredMissing > 0) {
+    const targetRoutes = new Set(filteredPages.map(({ target }) => normalizeUrlPath(target.url)));
+    const orphanedReviews = (resolvedOptions.reviewRecords ?? []).filter(
+      (review) => !targetRoutes.has(normalizeUrlPath(review.route)),
+    ).length;
+
+    const summary = `${fresh} fresh, ${reviewed} reviewed, ${reviewInvalid} invalid reviews, ${orphanedReviews} orphaned reviews, ${stale} stale, ${modified} modified, ${unknown} unknown, ${requiredMissing} required missing, and ${optionalMissing} optional missing`;
+    if (reviewInvalid > 0 || orphanedReviews > 0 || stale > 0 || requiredMissing > 0) {
       throw new Error(
-        `Agent compaction freshness check failed: ${summary}. Run docs agent compact --stale --include-missing, then review generated changes.`,
+        `Agent compaction freshness check failed: ${summary}. Refresh stale output, or re-review intentional agent.md content after inspecting every changed hash.`,
       );
     }
 
@@ -962,6 +1237,16 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
     if (resolvedOptions.stale) {
       if (state.status === "fresh") {
         skippedFresh += 1;
+        continue;
+      }
+
+      if (state.status === "reviewed") {
+        skippedFresh += 1;
+        continue;
+      }
+
+      if (state.status === "review-invalid") {
+        skippedModified += 1;
         continue;
       }
 
@@ -1065,6 +1350,7 @@ ${pc.dim("Examples:")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale --include-missing")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --check")}
+  ${pc.cyan('npx @farming-labs/docs@latest agent compact --review --reviewed-by "docs-team" --reason "Preserve operator guidance" /docs/configuration')}
 
 ${pc.dim("Per-page override:")}
   Add ${pc.cyan("agent.tokenBudget")} to a page frontmatter block to override the compact output target for that page.
@@ -1076,6 +1362,10 @@ ${pc.dim("Options:")}
   ${pc.cyan("--stale")}                  Re-compact only stale generated agent.md files
   ${pc.cyan("--include-missing")}        With ${pc.cyan("--stale")}, also create missing agent.md files for explicit pages or pages that define ${pc.cyan("agent.tokenBudget")}
   ${pc.cyan("--check")}                  Check generated agent.md freshness without an API key, network request, or file write
+  ${pc.cyan("--review")}                 Record hash-bound human review for explicit existing agent.md pages without rewriting them
+  ${pc.cyan("--reviewed-by <name>")}      Reviewer recorded with ${pc.cyan("--review")}
+  ${pc.cyan("--reason <text>")}           Review rationale recorded with ${pc.cyan("--review")}
+  ${pc.cyan("--review-manifest <path>")} Project-relative review manifest path
   ${pc.cyan("--config <path>")}          Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("--api-key <key>")}          Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
   ${pc.cyan("--api-key-env <name>")}     Env var name for the Docs Cloud API key; prefer ${pc.dim("cloud.apiKey.env")}

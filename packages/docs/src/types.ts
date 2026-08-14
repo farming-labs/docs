@@ -3253,6 +3253,8 @@ export interface DocsAgentCompactConfig {
    * Preserve JSON objects during compression when supported by the provider.
    */
   protectJson?: boolean;
+  /** Project-relative JSON manifest for hash-bound reviewed compaction exceptions. */
+  reviewManifestPath?: string;
 }
 
 export interface DocsAgentGoldenTaskFilters {
