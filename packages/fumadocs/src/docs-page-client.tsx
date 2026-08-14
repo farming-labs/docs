@@ -645,7 +645,7 @@ export function DocsPageClient({
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [effectiveTocEnabled, pathname]);
+  }, [children, effectiveTocEnabled, pathname]);
 
   useEffect(() => {
     const timer = requestAnimationFrame(() => {
@@ -897,8 +897,7 @@ export function DocsPageClient({
     }
 
     const container = document.getElementById("nd-page");
-    const title = container?.querySelector("h1");
-    if (!title) {
+    if (!container) {
       setTitlePortalHost(null);
       return;
     }
@@ -907,6 +906,12 @@ export function DocsPageClient({
     host.className = "fd-title-decorations-host";
 
     const placeHost = () => {
+      const title = container.querySelector("h1");
+      if (!title) {
+        host.remove();
+        return;
+      }
+
       let anchor: Element = title;
 
       if (descriptionInBody) {
@@ -927,10 +932,9 @@ export function DocsPageClient({
       }
     };
 
-    title.insertAdjacentElement("afterend", host);
     placeHost();
     const observer = new MutationObserver(placeHost);
-    observer.observe(title.parentElement ?? title, { childList: true });
+    observer.observe(container, { childList: true, subtree: true });
     const animationFrame = window.requestAnimationFrame(placeHost);
     setTitlePortalHost(host);
 
@@ -940,7 +944,7 @@ export function DocsPageClient({
       host.remove();
       setTitlePortalHost(null);
     };
-  }, [descriptionInBody, needsTitleDecorationsPortal, pathname]);
+  }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
     <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
@@ -949,7 +953,12 @@ export function DocsPageClient({
     titleDecorations && titlePortalHost
       ? createPortal(titleDecorations, titlePortalHost, "title-decorations")
       : null;
-  const titleDecorationsFallback = titleDecorations && !titlePortalHost ? titleDecorations : null;
+  const titleDecorationsFallback =
+    titleDecorations && !titlePortalHost ? (
+      <div className="fd-title-decorations-fallback" hidden>
+        {titleDecorations}
+      </div>
+    ) : null;
   const generatedPageHeader = pageTitle ? (
     <div className="fd-generated-page-header not-prose">
       <h1 className="fd-page-title">{pageTitle}</h1>

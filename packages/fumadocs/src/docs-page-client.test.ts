@@ -112,6 +112,27 @@ describe("DocsPageClient generated page title", () => {
     expect(descriptionIndex).toBeLessThan(actionsIndex);
     expect(actionsIndex).toBeLessThan(contentIndex);
   });
+
+  it("keeps title decorations hidden until their client portal host is ready", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        children: React.createElement(
+          React.Fragment,
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Preserved content"),
+        ),
+      }),
+    );
+
+    expect(html).toContain('class="fd-title-decorations-fallback" hidden=""');
+    expect(html).toContain("Mock Actions");
+  });
 });
 
 describe("DocsPageClient page navigation", () => {
