@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/server";
@@ -109,6 +110,13 @@ type HumanDoctorGrade = "Human-optimized" | "Reader-ready" | "Promising" | "Need
 type DoctorMode = "agent" | "human";
 type DoctorFailOn = "warn" | "fail";
 
+const DEFAULT_HOSTED_TIMEOUT_MS = 15_000;
+const DEFAULT_HOSTED_RETRIES = 1;
+const hostedProbeOptions = new AsyncLocalStorage<{
+  timeoutMs: number;
+  retries: number;
+}>();
+
 export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
@@ -120,6 +128,10 @@ export interface DoctorOptions {
   strict?: boolean;
   failOn?: DoctorFailOn;
   url?: string;
+  /** Timeout for each hosted HTTP probe. */
+  hostedTimeoutMs?: number;
+  /** Retry count for safe hosted GET and HEAD probes. */
+  hostedRetries?: number;
   fix?: boolean;
   dryRun?: boolean;
 }
@@ -261,6 +273,25 @@ function parseDoctorFailOn(value: string): DoctorFailOn {
   throw new Error("Invalid value for --fail-on. Expected warn or fail.");
 }
 
+function parseDoctorInteger(
+  flag: "--timeout" | "--retries",
+  value: string,
+  bounds: { min: number; max: number },
+): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`Invalid value for ${flag}. Expected an integer.`);
+  }
+
+  const parsed = Number(value);
+  if (parsed < bounds.min || parsed > bounds.max) {
+    throw new Error(
+      `Invalid value for ${flag}. Expected a value between ${bounds.min} and ${bounds.max}.`,
+    );
+  }
+
+  return parsed;
+}
+
 export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
   const parsed: ParsedDoctorArgs = {};
 
@@ -392,6 +423,50 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg.startsWith("--timeout=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --timeout.");
+      }
+      parsed.hostedTimeoutMs = parseDoctorInteger("--timeout", value, {
+        min: 100,
+        max: 120_000,
+      });
+      continue;
+    }
+
+    if (arg === "--timeout") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --timeout.");
+      }
+      parsed.hostedTimeoutMs = parseDoctorInteger("--timeout", value, {
+        min: 100,
+        max: 120_000,
+      });
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--retries=")) {
+      const value = parseInlineFlag(arg).value;
+      if (value === undefined || value === "") {
+        throw new Error("Missing value for --retries.");
+      }
+      parsed.hostedRetries = parseDoctorInteger("--retries", value, { min: 0, max: 5 });
+      continue;
+    }
+
+    if (arg === "--retries") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --retries.");
+      }
+      parsed.hostedRetries = parseDoctorInteger("--retries", value, { min: 0, max: 5 });
+      index += 1;
+      continue;
+    }
+
     if (arg === "--config") {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) {
@@ -443,6 +518,8 @@ ${pc.dim("Options:")}
   ${pc.cyan("--dry-run")}          With ${pc.cyan("--fix")}, report the compaction command without writing files
   ${pc.cyan("--fail-on <level>")}  Exit with failure on ${pc.cyan("warn")} or only on ${pc.cyan("fail")}
   ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
+  ${pc.cyan("--timeout <ms>")}     Set each hosted probe timeout (default: ${pc.dim(String(DEFAULT_HOSTED_TIMEOUT_MS))})
+  ${pc.cyan("--retries <count>")}  Retry safe hosted GET/HEAD probes (default: ${pc.dim(String(DEFAULT_HOSTED_RETRIES))})
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("-h, --help")}         Show this help message
 `);
@@ -1368,21 +1445,39 @@ function toMarkdownRoute(pageUrl?: string): string | undefined {
   return normalized.endsWith(".md") ? normalized : `${normalized}.md`;
 }
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit = {},
-  timeoutMs = 8000,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  const options = hostedProbeOptions.getStore();
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_HOSTED_TIMEOUT_MS;
+  const retries = options?.retries ?? DEFAULT_HOSTED_RETRIES;
+  const method = init.method?.toUpperCase() ?? "GET";
+  const retryableMethod = method === "GET" || method === "HEAD";
 
-  try {
-    return await fetch(url, {
-      ...init,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
+  for (let attempt = 0; ; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: controller.signal,
+      });
+      const retryableStatus =
+        response.status === 408 ||
+        response.status === 425 ||
+        response.status === 429 ||
+        response.status >= 500;
+
+      if (retryableMethod && retryableStatus && attempt < retries) {
+        await response.body?.cancel().catch(() => undefined);
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      if (!retryableMethod || attempt >= retries) throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 
@@ -3919,7 +4014,15 @@ export async function inspectAgentReadiness(
     ),
   );
 
-  const hosted = options.url ? await buildHostedAgentChecks(options.url, pages) : undefined;
+  const hosted = options.url
+    ? await hostedProbeOptions.run(
+        {
+          timeoutMs: options.hostedTimeoutMs ?? DEFAULT_HOSTED_TIMEOUT_MS,
+          retries: options.hostedRetries ?? DEFAULT_HOSTED_RETRIES,
+        },
+        () => buildHostedAgentChecks(options.url!, pages),
+      )
+    : undefined;
   if (hosted) {
     checks.push(...hosted.checks);
   }

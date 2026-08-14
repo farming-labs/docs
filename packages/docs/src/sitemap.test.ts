@@ -84,6 +84,9 @@ describe("docs sitemap helpers", () => {
     });
 
     expect(response?.headers.get("content-type")).toContain("application/xml");
+    expect(response?.headers.get("cache-control")).toBe(
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+    );
     expect(response?.headers.get("etag")).toBeTruthy();
     expect(await response?.text()).toContain("<urlset");
   });
