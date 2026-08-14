@@ -100,6 +100,7 @@ import {
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 import farmDocsBrowserCss from "./browser-css.generated.js";
+import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 export { createFarmjsApiReference } from "./api-reference.js";
 
 const FARM_DOCS_BROWSER_CSS_PATH = "/__farm_docs/browser.css";
@@ -308,7 +309,8 @@ function navigationItemUrl(item: FarmDocsNavigationItem, entry: string): string 
 function navTreeFromNavigation(config: Record<string, any>, entry: string): NavTree | null {
   const configured = config.navigation?.sidebar;
   if (!Array.isArray(configured) || configured.length === 0) return null;
-  const defaultOpen = config.theme?.name === "fumadocs-pixel-border";
+  const flat = config.sidebar?.flat === true;
+  const defaultOpen = flat || config.theme?.name === "fumadocs-pixel-border";
 
   function toNode(item: FarmDocsNavigationItem): NavNode | null {
     const children = item.children ?? item.items ?? [];
@@ -321,6 +323,7 @@ function navTreeFromNavigation(config: Record<string, any>, entry: string): NavT
         type: "folder",
         name,
         ...(defaultOpen ? { defaultOpen: true } : {}),
+        ...(flat ? { collapsible: false } : {}),
         ...(item.icon ? { icon: item.icon } : {}),
         ...(url
           ? {
@@ -453,13 +456,13 @@ function navTreeFromMap(
   interface DirInfo {
     parts: string[];
     title: string;
-    url: string;
+    url?: string;
     icon?: string;
     folderIndexBehavior?: "link" | "toggle" | "hidden";
     order: number;
   }
 
-  const dirs: DirInfo[] = [];
+  const pages: DirInfo[] = [];
 
   for (const key of Object.keys(contentMap)) {
     if (!key.startsWith(dirPrefix)) continue;
@@ -467,22 +470,26 @@ function navTreeFromMap(
     const rel = key.slice(dirPrefix.length);
     const segments = rel.split("/");
     const fileName = segments.pop()!;
+    if (fileName === "agent.md" || (!fileName.endsWith(".md") && !fileName.endsWith(".mdx"))) {
+      continue;
+    }
+
     const base = fileName.replace(/\.(md|mdx)$/, "");
-    if (base !== "page" && base !== "index") continue;
+    const isIndex = base === "page" || base === "index";
 
     const { data } = matter(contentMap[key]);
-    const dirParts = segments;
-    const slug = dirParts.join("/");
+    const pageParts = isIndex ? segments : [...segments, base];
+    const slug = pageParts.join("/");
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
     const fallbackTitle =
-      dirParts.length > 0
-        ? dirParts[dirParts.length - 1]
+      pageParts.length > 0
+        ? pageParts[pageParts.length - 1]
             .replace(/-/g, " ")
             .replace(/\b\w/g, (char) => char.toUpperCase())
         : "Documentation";
 
-    dirs.push({
-      parts: dirParts,
+    pages.push({
+      parts: pageParts,
       title: (data.title as string) ?? fallbackTitle,
       url,
       icon: data.icon as string | undefined,
@@ -491,18 +498,18 @@ function navTreeFromMap(
     });
   }
 
-  dirs.sort((a, b) => {
+  pages.sort((a, b) => {
     if (a.parts.length !== b.parts.length) return a.parts.length - b.parts.length;
     return a.parts.join("/").localeCompare(b.parts.join("/"));
   });
 
   const children: NavNode[] = [];
-  const rootInfo = dirs.find((dir) => dir.parts.length === 0);
+  const rootInfo = pages.find((page) => page.parts.length === 0);
   if (rootInfo) {
     children.push({
       type: "page",
       name: rootInfo.title,
-      url: rootInfo.url,
+      url: rootInfo.url!,
       icon: rootInfo.icon,
     });
   }
@@ -523,12 +530,33 @@ function navTreeFromMap(
   function buildLevel(parentParts: string[]): NavNode[] {
     const depth = parentParts.length;
 
-    const directChildren = dirs.filter((dir) => {
-      if (dir.parts.length !== depth + 1) return false;
-      for (let index = 0; index < depth; index++) {
-        if (dir.parts[index] !== parentParts[index]) return false;
-      }
-      return true;
+    const directSlugs = Array.from(
+      new Set(
+        pages
+          .filter((page) => {
+            if (page.parts.length <= depth) return false;
+            return parentParts.every((part, index) => page.parts[index] === part);
+          })
+          .map((page) => page.parts[depth]),
+      ),
+    );
+
+    const directChildren = directSlugs.map((slug) => {
+      const parts = [...parentParts, slug];
+      const page = pages.find(
+        (candidate) =>
+          candidate.parts.length === parts.length &&
+          candidate.parts.every((part, index) => part === parts[index]),
+      );
+      return {
+        parts,
+        title:
+          page?.title ?? slug.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()),
+        url: page?.url,
+        icon: page?.icon,
+        folderIndexBehavior: page?.folderIndexBehavior,
+        order: page?.order ?? Infinity,
+      };
     });
 
     const slugOrder = findSlugOrder(parentParts);
@@ -545,9 +573,9 @@ function navTreeFromMap(
       }
 
       return ordered.map((child) => {
-        const hasGrandChildren = dirs.some((dir) => {
-          if (dir.parts.length <= child.parts.length) return false;
-          return child.parts.every((part, index) => dir.parts[index] === part);
+        const hasGrandChildren = pages.some((page) => {
+          if (page.parts.length <= child.parts.length) return false;
+          return child.parts.every((part, index) => page.parts[index] === part);
         });
 
         if (hasGrandChildren) {
@@ -555,7 +583,16 @@ function navTreeFromMap(
             type: "folder",
             name: child.title,
             icon: child.icon,
-            index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+            ...(child.url
+              ? {
+                  index: {
+                    type: "page" as const,
+                    name: child.title,
+                    url: child.url,
+                    icon: child.icon,
+                  },
+                }
+              : {}),
             folderIndexBehavior: child.folderIndexBehavior,
             children: buildLevel(child.parts),
           } satisfies NavNode;
@@ -564,7 +601,7 @@ function navTreeFromMap(
         return {
           type: "page",
           name: child.title,
-          url: child.url,
+          url: child.url!,
           icon: child.icon,
         } satisfies NavNode;
       });
@@ -575,9 +612,9 @@ function navTreeFromMap(
     }
 
     return directChildren.map((child) => {
-      const hasGrandChildren = dirs.some((dir) => {
-        if (dir.parts.length <= child.parts.length) return false;
-        return child.parts.every((part, index) => dir.parts[index] === part);
+      const hasGrandChildren = pages.some((page) => {
+        if (page.parts.length <= child.parts.length) return false;
+        return child.parts.every((part, index) => page.parts[index] === part);
       });
 
       if (hasGrandChildren) {
@@ -585,7 +622,16 @@ function navTreeFromMap(
           type: "folder",
           name: child.title,
           icon: child.icon,
-          index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+          ...(child.url
+            ? {
+                index: {
+                  type: "page" as const,
+                  name: child.title,
+                  url: child.url,
+                  icon: child.icon,
+                },
+              }
+            : {}),
           folderIndexBehavior: child.folderIndexBehavior,
           children: buildLevel(child.parts),
         } satisfies NavNode;
@@ -594,7 +640,7 @@ function navTreeFromMap(
       return {
         type: "page",
         name: child.title,
-        url: child.url,
+        url: child.url!,
         icon: child.icon,
       } satisfies NavNode;
     });
@@ -2407,7 +2453,7 @@ function normalizedPublicRoute(value: unknown, fallback: string): string {
   return `/${normalized.replace(/^\/+|\/+$/g, "")}`;
 }
 
-function isHtmlDocsPageRequest(config: Record<string, any>, request: Request): boolean {
+function isDocsPageRequest(config: Record<string, any>, request: Request): boolean {
   const method = request.method.toUpperCase();
   if (method !== "GET" && method !== "HEAD") return false;
 
@@ -2418,7 +2464,11 @@ function isHtmlDocsPageRequest(config: Record<string, any>, request: Request): b
     docsPath === "/"
       ? !pathname.endsWith(".md")
       : pathname === docsPath || pathname.startsWith(`${docsPath}/`);
-  if (!isPagePath || pathname.endsWith(".md")) return false;
+  return isPagePath && !pathname.endsWith(".md");
+}
+
+function isHtmlDocsPageRequest(config: Record<string, any>, request: Request): boolean {
+  if (!isDocsPageRequest(config, request)) return false;
 
   const accept = request.headers.get("accept")?.toLowerCase() ?? "";
   return !accept.includes("text/markdown");
@@ -2474,6 +2524,23 @@ function runtimeFontPreloads(fonts: FarmDocsRuntimeFonts | undefined): {
   };
 }
 
+function resolveDefaultTheme(
+  config: DocsConfig & Record<string, any>,
+): "light" | "dark" | "system" {
+  const toggle = config.themeToggle;
+  const value = toggle && typeof toggle === "object" ? toggle.default : undefined;
+  return value === "light" || value === "dark" || value === "system" ? value : "system";
+}
+
+function renderThemeBootstrap(config: DocsConfig & Record<string, any>): string {
+  const defaultTheme = resolveDefaultTheme(config);
+  const toggle = config.themeToggle;
+  const allowStoredTheme =
+    toggle !== false && !(toggle && typeof toggle === "object" && toggle.enabled === false);
+
+  return `<script>(()=>{try{const fallback=${JSON.stringify(defaultTheme)};const stored=${allowStoredTheme ? 'localStorage.getItem("theme")' : "null"};const selected=stored==="light"||stored==="dark"||stored==="system"?stored:fallback;const resolved=selected==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):selected;const root=document.documentElement;root.classList.remove("light","dark");root.classList.add(resolved);root.style.colorScheme=resolved}catch{}})()</script>`;
+}
+
 function renderFarmDocsDocument(input: {
   config: DocsConfig & Record<string, any>;
   data: DocsServerLoadResult;
@@ -2489,9 +2556,11 @@ function renderFarmDocsDocument(input: {
   const rootClasses = runtimeFontClasses(input.fonts);
   const rootStyle = runtimeFontStyle(input.fonts);
   const fontPreloads = runtimeFontPreloads(input.fonts).markup;
+  const defaultTheme = resolveDefaultTheme(config);
+  const fallbackTheme = defaultTheme === "dark" ? "dark" : "light";
 
   return `<!doctype html>
-<html class="dark" lang="${escapeDocumentText(data.locale ?? "en")}" data-docs-theme="${escapeDocumentText(themeName)}" data-farm-docs-runtime="true">
+<html class="${fallbackTheme}" lang="${escapeDocumentText(data.locale ?? "en")}" data-docs-theme="${escapeDocumentText(themeName)}" data-farm-docs-runtime="true">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -2499,6 +2568,7 @@ function renderFarmDocsDocument(input: {
   <title>${escapeDocumentText(data.title)}</title>
   ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
   ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
+  ${renderThemeBootstrap(config)}
   ${fontPreloads}
   <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
   ${input.stylesheets
@@ -2543,6 +2613,36 @@ export function createFarmDocsRuntimeHandler(
           },
         },
       );
+    }
+
+    if (
+      request.method.toUpperCase() === "GET" &&
+      request.headers.get(FARM_DOCS_NAVIGATION_HEADER) === "1" &&
+      isDocsPageRequest(runtimeConfig, request)
+    ) {
+      try {
+        const data = await docsServer.load({ pathname: url.pathname });
+        return Response.json(
+          { data },
+          {
+            headers: {
+              "Cache-Control": "no-store",
+              Vary: FARM_DOCS_NAVIGATION_HEADER,
+            },
+          },
+        );
+      } catch (error) {
+        const status =
+          error &&
+          typeof error === "object" &&
+          typeof (error as { status?: unknown }).status === "number"
+            ? (error as { status: number }).status
+            : 500;
+        if (status === 404) {
+          return Response.json({ error: "Documentation page not found." }, { status });
+        }
+        throw error;
+      }
     }
 
     if (!isHtmlDocsPageRequest(runtimeConfig, request)) {

@@ -964,7 +964,7 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
   const parts: string[] = [];
 
   if (rootVars.length > 0) {
-    parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+    parts.push(`:root,\n#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
   }
 
   if (desktopRootVars.length > 0) {

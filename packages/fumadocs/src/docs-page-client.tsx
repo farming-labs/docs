@@ -358,7 +358,11 @@ function isDocsNavigationPath(pathname: string, entry: string, publicPath: strin
   return pathname === publicPath || pathname.startsWith(`${publicPath}/`);
 }
 
-function installDocsPathNavigationGuard(entry: string, publicPath: string) {
+function installDocsPathNavigationGuard(
+  entry: string,
+  publicPath: string,
+  navigate: (url: string) => void | Promise<void>,
+) {
   const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
   if (publicPath === normalizedEntry) return undefined;
 
@@ -395,7 +399,7 @@ function installDocsPathNavigationGuard(entry: string, publicPath: string) {
       }
 
       event.preventDefault();
-      window.location.assign(nextHref);
+      void navigate(nextHref);
     } catch {
       // Ignore malformed links and leave them untouched.
     }
@@ -567,6 +571,7 @@ export function DocsPageClient({
   analytics = false,
   children,
 }: DocsPageClientProps) {
+  const router = useRouter();
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
@@ -609,8 +614,8 @@ export function DocsPageClient({
   }, [analytics, activeLocale, browserSearch, entry, isChangelogRoute, normalizedPath]);
 
   useEffect(() => {
-    return installDocsPathNavigationGuard(entry, resolvedPublicPath);
-  }, [entry, resolvedPublicPath]);
+    return installDocsPathNavigationGuard(entry, resolvedPublicPath, (url) => router.push(url));
+  }, [entry, resolvedPublicPath, router]);
 
   const resolvedReadingTime = !isChangelogRoute
     ? readingTimeProp !== undefined
@@ -640,7 +645,7 @@ export function DocsPageClient({
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [effectiveTocEnabled, pathname]);
+  }, [children, effectiveTocEnabled, pathname]);
 
   useEffect(() => {
     const timer = requestAnimationFrame(() => {
@@ -892,8 +897,7 @@ export function DocsPageClient({
     }
 
     const container = document.getElementById("nd-page");
-    const title = container?.querySelector("h1");
-    if (!title) {
+    if (!container) {
       setTitlePortalHost(null);
       return;
     }
@@ -902,6 +906,12 @@ export function DocsPageClient({
     host.className = "fd-title-decorations-host";
 
     const placeHost = () => {
+      const title = container.querySelector("h1");
+      if (!title) {
+        host.remove();
+        return;
+      }
+
       let anchor: Element = title;
 
       if (descriptionInBody) {
@@ -922,10 +932,9 @@ export function DocsPageClient({
       }
     };
 
-    title.insertAdjacentElement("afterend", host);
     placeHost();
     const observer = new MutationObserver(placeHost);
-    observer.observe(title.parentElement ?? title, { childList: true });
+    observer.observe(container, { childList: true, subtree: true });
     const animationFrame = window.requestAnimationFrame(placeHost);
     setTitlePortalHost(host);
 
@@ -935,7 +944,7 @@ export function DocsPageClient({
       host.remove();
       setTitlePortalHost(null);
     };
-  }, [descriptionInBody, needsTitleDecorationsPortal, pathname]);
+  }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
     <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
@@ -944,7 +953,12 @@ export function DocsPageClient({
     titleDecorations && titlePortalHost
       ? createPortal(titleDecorations, titlePortalHost, "title-decorations")
       : null;
-  const titleDecorationsFallback = titleDecorations && !titlePortalHost ? titleDecorations : null;
+  const titleDecorationsFallback =
+    titleDecorations && !titlePortalHost ? (
+      <div className="fd-title-decorations-fallback" hidden>
+        {titleDecorations}
+      </div>
+    ) : null;
   const generatedPageHeader = pageTitle ? (
     <div className="fd-generated-page-header not-prose">
       <h1 className="fd-page-title">{pageTitle}</h1>
@@ -1016,7 +1030,7 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: !isChangelogRoute }}
+        footer={{ enabled: !isChangelogRoute && !showPageNavigation }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb
@@ -1055,9 +1069,13 @@ export function DocsPageClient({
           </div>
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
-        <DocsBody key="body" style={{ display: "flex", flexDirection: "column" }}>
+        <DocsBody
+          key="body"
+          className="fd-page-body"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
           {generatedPageHeader}
-          <div key="content" style={{ flex: 1 }}>
+          <div key="content" className="fd-docs-content" style={{ flex: 1 }}>
             {renderedChildren}
           </div>
           {!generatedPageHeader && titleDecorationsFallback}

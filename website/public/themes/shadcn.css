@@ -13,11 +13,41 @@
   --fd-framework-article-padding: 32px 0 64px;
 }
 
-#nd-docs-layout:not([data-fd-framework]) article#nd-page {
+#nd-docs-layout:not([data-fd-framework]) article#nd-page,
+#nd-docs-layout[data-fd-browser-adapter] article#nd-page {
   width: 100%;
   max-width: calc(var(--fd-content-width, 640px) + 64px);
   padding: 32px 32px 64px;
   justify-self: center;
+}
+
+#nd-docs-layout[data-fd-browser-adapter] .fd-below-title-block {
+  margin: 0.75rem 0 2.5rem;
+}
+
+#nd-docs-layout[data-fd-browser-adapter] .fd-title-separator {
+  margin: 0 0 0.75rem;
+}
+
+#nd-docs-layout[data-fd-browser-adapter] .fd-page-actions,
+#nd-docs-layout[data-fd-browser-adapter] [data-page-actions] {
+  margin: 0 0 0.625rem;
+}
+
+#nd-docs-layout[data-fd-browser-adapter] .fd-page-meta {
+  margin: 0;
+}
+
+@media (max-width: 1279px) {
+  #nd-docs-layout[data-fd-browser-adapter] {
+    --fd-toc-width: 0px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #nd-docs-layout[data-fd-browser-adapter] {
+    --fd-sidebar-width: 0px !important;
+  }
 }
 
 :root {
@@ -136,10 +166,10 @@ button[data-search-full],
 [data-search-full],
 .fd-sidebar-search-btn,
 .fd-search-trigger-mobile {
-  min-height: 2rem;
-  border: 0 !important;
+  min-height: 2.25rem;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
   border-radius: calc(var(--radius) * 0.8) !important;
-  background: var(--fd-shadcn-control) !important;
+  background: color-mix(in oklab, var(--fd-shadcn-control) 82%, transparent) !important;
   color: var(--color-fd-muted-foreground) !important;
   box-shadow: none !important;
   font-size: 0.8125rem !important;
@@ -154,14 +184,101 @@ button[data-search-full]:hover,
   color: var(--color-fd-foreground) !important;
 }
 
+#nd-docs-layout .fd-sidebar-search-ai-row {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-search-btn {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem !important;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-search-btn > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  opacity: 0.72;
+}
+
+#nd-docs-layout
+  .fd-sidebar-search-ai-row
+  .fd-sidebar-search-btn
+  > span:not(.fd-sidebar-search-kbd) {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button[data-search-full] > :is(div, span):has(> kbd),
+[data-search-full] > :is(div, span):has(> kbd),
+.fd-sidebar-search-kbd {
+  display: inline-flex !important;
+  min-width: 0 !important;
+  height: 1.375rem !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.125rem !important;
+  margin-inline-start: auto !important;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 0.55) !important;
+  background: var(--color-fd-background) !important;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    inset 0 -1px 0 color-mix(in oklab, var(--color-fd-border) 70%, transparent) !important;
+  padding: 0 0.375rem !important;
+  line-height: 1 !important;
+}
+
 button[data-search-full] kbd,
 [data-search-full] kbd,
 .fd-sidebar-search-kbd kbd {
+  min-width: 0 !important;
   border: 0 !important;
   background: transparent !important;
   color: var(--color-fd-muted-foreground) !important;
+  font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace) !important;
   font-size: 0.6875rem !important;
   font-weight: 500 !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-ai-btn {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 0.8) !important;
+  background: color-mix(in oklab, var(--fd-shadcn-control) 82%, transparent) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  box-shadow: none !important;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row .fd-sidebar-ai-btn:hover {
+  border-color: var(--color-fd-border) !important;
+  background: var(--fd-shadcn-control-hover) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+#nd-docs-layout .fd-sidebar-search-ai-row :is(.fd-sidebar-search-btn, .fd-sidebar-ai-btn):focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
 }
 
 aside#nd-sidebar,
@@ -555,6 +672,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 }
 
 .fd-docs-content article h2,
+.fd-page-body h2,
 #nd-page h2,
 .fd-docs-content h2 {
   color: var(--color-fd-foreground) !important;
@@ -562,10 +680,11 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   font-weight: 600 !important;
   letter-spacing: -0.015em !important;
   line-height: 1.4 !important;
-  margin-top: 2.25rem;
+  margin: 2.75rem 0 1rem !important;
 }
 
 .fd-docs-content article h3,
+.fd-page-body h3,
 #nd-page h3,
 .fd-docs-content h3 {
   color: var(--color-fd-foreground) !important;
@@ -573,6 +692,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   font-weight: 600 !important;
   letter-spacing: -0.01em !important;
   line-height: 1.45 !important;
+  margin: 2rem 0 0.75rem !important;
 }
 
 #nd-page :is(h1, h2, h3, h4) > a.peer,
@@ -602,13 +722,36 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 }
 
 .fd-docs-content,
+.fd-page-body,
 #nd-page .prose {
   color: var(--color-fd-foreground);
   font-size: 0.9375rem;
   line-height: 1.75;
 }
 
+#nd-docs-layout :is(.fd-docs-content, .fd-page-body, #nd-page .prose) p {
+  margin: 0 0 1.25rem;
+}
+
+#nd-docs-layout
+  :is(.fd-docs-content, .fd-page-body, #nd-page .prose)
+  :is(ul, ol):not(:where(.not-prose, .not-prose *)) {
+  margin: 0 0 1.5rem;
+}
+
+#nd-docs-layout
+  :is(.fd-docs-content, .fd-page-body, #nd-page .prose)
+  li:not(:where(.not-prose, .not-prose *))
+  + li {
+  margin-top: 0.5rem;
+}
+
+#nd-docs-layout :is(.fd-docs-content, .fd-page-body, #nd-page .prose) .fd-table-wrapper {
+  margin: 1.25rem 0 2.5rem !important;
+}
+
 .fd-docs-content :is(p, li, td, blockquote),
+.fd-page-body :is(p, li, td, blockquote),
 #nd-page .prose :is(p, li, td, blockquote) {
   color: var(--color-fd-foreground);
   line-height: 1.75;
@@ -635,7 +778,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 .fd-page-nav-card,
 .fd-page-nav a,
 #nd-page > div[class~="@container"] > a {
-  border: 0 !important;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
   border-radius: calc(var(--radius) * 0.8) !important;
   background: var(--fd-shadcn-control) !important;
   color: var(--color-fd-foreground) !important;
@@ -674,7 +817,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 0.75rem !important;
-  margin-top: 1.5rem !important;
+  margin-top: 2.25rem !important;
   padding-top: 0 !important;
   border-top: 0 !important;
 }
@@ -688,12 +831,34 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 #nd-page > div[class~="@container"] > a {
   display: flex !important;
   min-width: 0;
-  min-height: 4rem !important;
+  min-height: 4.75rem !important;
   flex-direction: column !important;
   justify-content: center !important;
-  gap: 0.125rem !important;
-  padding: 0.75rem !important;
+  gap: 0.375rem !important;
+  padding: 0.875rem 1rem !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%) !important;
   text-decoration: none !important;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms,
+    box-shadow 150ms !important;
+}
+
+.fd-page-nav-card:hover,
+.fd-page-nav a:hover,
+#nd-page > div[class~="@container"] > a:hover {
+  border-color: var(--color-fd-border) !important;
+  background: color-mix(in oklab, var(--color-fd-accent) 72%, var(--color-fd-card)) !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 7%) !important;
+}
+
+.fd-page-nav-card:focus-visible,
+.fd-page-nav a:focus-visible,
+#nd-page > div[class~="@container"] > a:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
 }
 
 .fd-page-nav-next,
@@ -703,11 +868,21 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 
 .fd-page-nav-title,
 #nd-page > div[class~="@container"] > a > div:first-child {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
   min-height: 0 !important;
   color: var(--color-fd-foreground) !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
   line-height: 1.35 !important;
+}
+
+.fd-page-nav-title svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: 0 0 auto;
+  color: var(--color-fd-muted-foreground);
 }
 
 .fd-page-nav-description,
@@ -814,7 +989,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   outline-offset: -2px !important;
 }
 
-:is(.fd-docs-content, #nd-page .prose)
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose)
   [data-orientation="horizontal"]:has(> [role="tablist"]) {
   overflow: hidden;
   border: 1px solid var(--fd-shadcn-soft-border) !important;
@@ -823,15 +998,18 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   box-shadow: none !important;
 }
 
-:is(.fd-docs-content, #nd-page .prose)
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose)
   [data-orientation="horizontal"]:has(> [role="tablist"])
   > [role="tabpanel"] {
   background: var(--color-fd-card) !important;
 }
 
 .fd-docs-content pre,
+.fd-page-body pre,
 .fd-docs-content .shiki,
+.fd-page-body .shiki,
 .fd-docs-content [data-codeblock],
+.fd-page-body [data-codeblock],
 figure.shiki,
 .fd-codeblock,
 .fd-ai-code-block {
@@ -869,6 +1047,7 @@ figure.shiki,
 }
 
 .fd-docs-content pre,
+.fd-page-body pre,
 figure.shiki pre,
 .fd-codeblock pre {
   background: transparent !important;
@@ -877,19 +1056,28 @@ figure.shiki pre,
 
 /* Compact code surfaces modeled after the current shadcn docs. */
 figure.shiki,
-.fd-docs-content figure.shiki {
-  margin-block: 1.25rem !important;
-  border: 0 !important;
-  border-radius: calc(var(--radius) * 1.8) !important;
+.fd-docs-content figure.shiki,
+.fd-page-body figure.shiki {
+  margin: 1.5rem 0 2rem !important;
+  border: 1px solid var(--fd-shadcn-soft-border) !important;
+  border-radius: calc(var(--radius) * 0.9) !important;
   background: var(--fd-shadcn-code) !important;
   padding-block: 0 !important;
 }
 
+/* Framework browser shells intentionally clear Shiki backgrounds so token
+ * colors can be themed. Restore only the code surface at equal specificity. */
+:is(html.dark, body.dark) #nd-docs-layout[data-fd-framework] figure.shiki,
+#nd-docs-layout[data-fd-framework].dark figure.shiki {
+  background: var(--fd-shadcn-code) !important;
+}
+
 figure.shiki pre,
-.fd-docs-content figure.shiki pre {
+.fd-docs-content figure.shiki pre,
+.fd-page-body figure.shiki pre {
   max-width: 100%;
   margin: 0 !important;
-  padding: 0.625rem 0.75rem !important;
+  padding: 0.75rem 0 !important;
   overflow-x: auto !important;
   overscroll-behavior-inline: contain;
   scrollbar-color: color-mix(in oklab, var(--color-fd-foreground) 18%, transparent)
@@ -898,16 +1086,18 @@ figure.shiki pre,
 }
 
 figure.shiki pre > code,
-.fd-docs-content figure.shiki pre > code {
+.fd-docs-content figure.shiki pre > code,
+.fd-page-body figure.shiki pre > code {
   font-family: var(--fd-font-mono, "Geist Mono", ui-monospace, monospace) !important;
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
   font-variant-ligatures: none;
-  line-height: 1.75 !important;
+  line-height: 1.6 !important;
   tab-size: 2;
 }
 
 figure.shiki pre > code > :is(.line, [data-line]) {
-  min-height: 1.53125rem;
+  min-height: 1.3rem;
+  padding-inline: 1rem 3rem !important;
 }
 
 figure.shiki pre > code > :is(.line, [data-line])[data-highlighted-line] {
@@ -1068,7 +1258,8 @@ article :not(pre) > code,
 
 @media (max-width: 767px) {
   figure.shiki pre,
-  .fd-docs-content figure.shiki pre {
+  .fd-docs-content figure.shiki pre,
+  .fd-page-body figure.shiki pre {
     padding: 0.625rem 0.75rem !important;
   }
 }
@@ -1128,8 +1319,8 @@ article :not(pre) > code,
   font-weight: 600;
 }
 
-:is(.fd-docs-content, #nd-page .prose) blockquote {
-  margin: 1.25rem 0 !important;
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) blockquote {
+  margin: 1.5rem 0 2rem !important;
   border-inline-start: 2px solid var(--color-fd-border) !important;
   background: transparent !important;
   color: var(--color-fd-muted-foreground) !important;
@@ -1137,19 +1328,19 @@ article :not(pre) > code,
   padding: 0.125rem 0 0.125rem 1rem !important;
 }
 
-:is(.fd-docs-content, #nd-page .prose) blockquote :is(p, li) {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) blockquote :is(p, li) {
   color: inherit !important;
 }
 
-:is(.fd-docs-content, #nd-page .prose) details {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) details {
   overflow: hidden;
-  margin: 1rem 0;
+  margin: 1.5rem 0 2rem;
   border: 1px solid var(--fd-shadcn-soft-border);
   border-radius: calc(var(--radius) * 1.2);
   background: var(--color-fd-card);
 }
 
-:is(.fd-docs-content, #nd-page .prose) details > summary {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) details > summary {
   min-height: 2.75rem;
   cursor: pointer;
   color: var(--color-fd-card-foreground);
@@ -1159,19 +1350,19 @@ article :not(pre) > code,
   transition: background-color 150ms ease;
 }
 
-:is(.fd-docs-content, #nd-page .prose) details > summary:hover {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) details > summary:hover {
   background: color-mix(in oklab, var(--color-fd-accent) 55%, transparent);
 }
 
-:is(.fd-docs-content, #nd-page .prose) details[open] > summary {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) details[open] > summary {
   border-bottom: 1px solid var(--fd-shadcn-soft-border);
 }
 
-:is(.fd-docs-content, #nd-page .prose) details > :not(summary) {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) details > :not(summary) {
   margin-inline: 1rem;
 }
 
-:is(.fd-docs-content, #nd-page .prose)
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose)
   [data-orientation="vertical"][class~="divide-y"] {
   overflow: hidden;
   border: 1px solid var(--fd-shadcn-soft-border) !important;
@@ -1180,7 +1371,7 @@ article :not(pre) > code,
   box-shadow: none !important;
 }
 
-:is(.fd-docs-content, #nd-page .prose)
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose)
   [data-orientation="vertical"][class~="divide-y"]
   [data-radix-collection-item] {
   min-height: 2.75rem;
@@ -1190,7 +1381,7 @@ article :not(pre) > code,
   transition: background-color 150ms ease;
 }
 
-:is(.fd-docs-content, #nd-page .prose)
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose)
   [data-orientation="vertical"][class~="divide-y"]
   [data-radix-collection-item]:hover {
   background: color-mix(in oklab, var(--color-fd-accent) 55%, transparent) !important;
@@ -1211,7 +1402,7 @@ article :not(pre) > code,
   box-shadow: 0 0 0 4px var(--color-fd-background);
 }
 
-:is(.fd-docs-content, #nd-page .prose) kbd {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) kbd {
   display: inline-flex;
   min-width: 1.5rem;
   min-height: 1.5rem;
@@ -1228,7 +1419,8 @@ article :not(pre) > code,
   box-shadow: 0 1px 0 color-mix(in oklab, var(--color-fd-border) 80%, transparent);
 }
 
-:is(.fd-docs-content, #nd-page .prose) hr {
+:is(.fd-docs-content, .fd-page-body, #nd-page .prose) hr {
+  margin: 3rem 0 !important;
   border-color: var(--fd-shadcn-soft-border) !important;
 }
 
@@ -1666,7 +1858,8 @@ article :not(pre) > code,
     --fd-framework-article-padding: 24px 16px 48px;
   }
 
-  #nd-docs-layout:not([data-fd-framework]) article#nd-page {
+  #nd-docs-layout:not([data-fd-framework]) article#nd-page,
+  #nd-docs-layout[data-fd-browser-adapter] article#nd-page {
     max-width: 100%;
     padding: 24px 16px 48px;
   }
@@ -1685,6 +1878,7 @@ article :not(pre) > code,
   }
 
   .fd-docs-content,
+  .fd-page-body,
   #nd-page .prose {
     font-size: 0.9375rem;
   }

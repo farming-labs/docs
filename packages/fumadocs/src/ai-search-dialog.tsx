@@ -21,6 +21,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type SetStateAction,
 } from "react";
+import { useRouter } from "fumadocs-core/framework";
 import { createPortal } from "react-dom";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { renderAIResponseMarkdown } from "./ai-markdown.js";
@@ -1254,6 +1255,7 @@ export function DocsSearchDialog({
   analytics?: boolean;
   feedbackEnabled?: boolean;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<"search" | "ai">("search");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -1378,7 +1380,7 @@ export function DocsSearchDialog({
           },
         });
       }
-      window.location.href = searchResults[activeIndex].url;
+      void router.push(searchResults[activeIndex].url);
     }
   };
 
@@ -1469,7 +1471,7 @@ export function DocsSearchDialog({
                           },
                         });
                       }
-                      window.location.href = result.url;
+                      void router.push(result.url);
                     }}
                     onMouseEnter={() => setActiveIndex(i)}
                     className="fd-ai-result"

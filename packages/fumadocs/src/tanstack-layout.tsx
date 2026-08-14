@@ -50,6 +50,7 @@ type TreeNode = PageNode | FolderNode;
 
 type FrameworkContainerProps = HTMLAttributes<HTMLDivElement> & {
   "data-fd-framework"?: string;
+  "data-fd-browser-adapter"?: string;
 };
 
 interface TreeRoot {
@@ -94,6 +95,25 @@ function resolveTreeIcons(tree: TreeRoot, registry: Record<string, unknown> | un
             icon: resolveTreeIcon(node.index.icon, registry),
           }
         : undefined,
+      children: node.children.map(mapNode),
+    };
+  }
+
+  return {
+    ...tree,
+    children: tree.children.map(mapNode),
+  };
+}
+
+function applyFlatSidebarLayout(tree: TreeRoot, flat: boolean): TreeRoot {
+  if (!flat) return tree;
+
+  function mapNode(node: TreeNode): TreeNode {
+    if (node.type === "page") return node;
+    return {
+      ...node,
+      collapsible: false,
+      defaultOpen: true,
       children: node.children.map(mapNode),
     };
   }
@@ -273,7 +293,7 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
   const parts: string[] = [];
 
   if (rootVars.length > 0) {
-    parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+    parts.push(`:root,\n#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
   }
 
   if (desktopRootVars.length > 0) {
@@ -434,7 +454,7 @@ export function TanstackDocsLayout({
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
   const frameworkContainerProps: FrameworkContainerProps | undefined = browserRuntime
-    ? { "data-fd-framework": "" }
+    ? { "data-fd-framework": "", "data-fd-browser-adapter": "" }
     : undefined;
 
   const openDocsConfig =
@@ -474,18 +494,21 @@ export function TanstackDocsLayout({
   const i18n = (config as DocsConfig & { i18n?: { locales?: string[]; defaultLocale?: string } })
     .i18n;
   const resolvedTree = resolveTreeIcons(
-    locale
-      ? localizeTreeUrls(
-          applySidebarFolderIndexBehavior(tree, {
+    applyFlatSidebarLayout(
+      locale
+        ? localizeTreeUrls(
+            applySidebarFolderIndexBehavior(tree, {
+              sidebar: config.sidebar,
+              defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
+            }),
+            locale,
+          )
+        : applySidebarFolderIndexBehavior(tree, {
             sidebar: config.sidebar,
             defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
           }),
-          locale,
-        )
-      : applySidebarFolderIndexBehavior(tree, {
-          sidebar: config.sidebar,
-          defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
-        }),
+      !!sidebarFlat,
+    ),
     config.icons as Record<string, unknown> | undefined,
   );
 
