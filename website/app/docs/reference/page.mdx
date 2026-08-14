@@ -787,6 +787,26 @@ then `read_task` for the full normalized contract (also available as Markdown th
 Framework notes:
 
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
+
+### `FarmDocsAdapterOptions`
+
+Options accepted by the second argument of `withDocs(farmConfig, options)` in `@farming-labs/farmjs`.
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `enabled` | `boolean` | `true` | Enable the docs runtime |
+| `configPath` | `string` | auto-detected | Path to `docs.config.ts`, relative to the Farm application directory |
+| `config` | `Partial<DocsConfig>` | — | Inline docs config overrides |
+| `codeBlockThemes` | `FarmDocsCodeBlockThemes` | — | Shiki themes used to compile Markdown and MDX code blocks |
+| `contentRoots` | `string[]` | — | Additional documentation roots outside the Farm application directory. Each path is resolved relative to the application root and added to the dev server's `server.fs.allow` list so the MDX plugin can compile content from shared or repository-owned locations. |
+
+```ts title="farm.config.ts"
+import { withDocs } from "@farming-labs/farmjs";
+
+export default withDocs({}, {
+  contentRoots: ["../shared-docs"],
+});
+```
 - **TanStack Start / SvelteKit / Astro / Nuxt:** use the generated public forwarder for MCP aliases, or add an equivalent framework hook/middleware that forwards to the built-in `MCP` handler
 - **Custom routes:** set `mcp.route` in `docs.config` and update the framework public forwarder so the configured path and the actual endpoint stay aligned
 
