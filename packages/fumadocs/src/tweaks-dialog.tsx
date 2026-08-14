@@ -20,9 +20,6 @@ import {
   type TweaksPresetKey,
   type TweaksState,
 } from "./tweaks-runtime.js";
-import { SidebarCollapseTrigger } from "fumadocs-ui/components/sidebar/base";
-
-
 export type TweaksKnob = "color" | "density" | "radius" | "preset" | "font-family";
 
 const DEFAULT_KNOBS: ReadonlyArray<TweaksKnob> = [
@@ -223,9 +220,14 @@ function TweaksChipGroup<T extends string>({
 }
 
 function TweaksSlider({
-  label, value, min,
-  max, step, format,
-  onChange, disabled
+  label,
+  value,
+  min,
+  max,
+  step,
+  format,
+  onChange,
+  disabled,
 }: {
   label: string;
   value: number;
@@ -234,7 +236,7 @@ function TweaksSlider({
   step: number;
   format: (v: number) => string;
   onChange: (next: number) => void;
-  disabled?: boolean
+  disabled?: boolean;
 }) {
   return (
     <div className="fd-tweaks-row">
@@ -282,7 +284,9 @@ function buildCreateThemeSnippet(state: TweaksState): string {
   if (state.radius) lines.push(`    radius: ${JSON.stringify(state.radius)},`);
 
   if (state.fontFamily) {
-    lines.push(`    typography: { font: { style: { sans: ${JSON.stringify(state.fontFamily)} } } },`);
+    lines.push(
+      `    typography: { font: { style: { sans: ${JSON.stringify(state.fontFamily)} } } },`,
+    );
   }
 
   const layoutBits: string[] = [];
@@ -368,7 +372,6 @@ function TweaksCodeExport({ state }: { state: TweaksState }) {
       window.setTimeout(() => setCopied(false), 1600);
     });
   }, [code]);
-
 
   return (
     <div className="fd-tweaks-export">
@@ -521,9 +524,7 @@ function TweaksSelect<T extends string>({
           data-open={isOpen || undefined}
           onClick={handleToggle}
         >
-          <span className="fd-tweaks-select-trigger-label">
-            {selected?.label ?? "Default"}
-          </span>
+          <span className="fd-tweaks-select-trigger-label">{selected?.label ?? "Default"}</span>
           <svg
             width="10"
             height="10"
@@ -573,7 +574,6 @@ function TweaksSelect<T extends string>({
   );
 }
 
-
 interface TweaksDialogProps {
   open: boolean;
   onClose: () => void;
@@ -611,32 +611,32 @@ function TweaksDialog({
   const [side, setSide] = useState<"left" | "right">(state.dialogSide ?? "right");
   const [dragX, setDragX] = useState(0);
   const dragRef = useRef({ startX: 0, active: false });
-  const [ tocInvisibe, setTocInvisible ] = useState(false);
-  const [ sidebarInvisible, setSidebarInvisible ] = useState(false);
+  const [tocInvisibe, setTocInvisible] = useState(false);
+  const [sidebarInvisible, setSidebarInvisible] = useState(false);
 
   useEffect(() => {
-    const windowWidth = window?.matchMedia("(min-width: 1200px)")
-    setTocInvisible(!windowWidth.matches)
+    const windowWidth = window?.matchMedia("(min-width: 1200px)");
+    setTocInvisible(!windowWidth.matches);
 
-    const handler = (e: MediaQueryListEvent) => setTocInvisible(!e.matches)
-    windowWidth.addEventListener("change", handler)
+    const handler = (e: MediaQueryListEvent) => setTocInvisible(!e.matches);
+    windowWidth.addEventListener("change", handler);
 
     return () => {
-        windowWidth.removeEventListener("change", handler)
-    }
-  }, [])
+      windowWidth.removeEventListener("change", handler);
+    };
+  }, []);
 
   useEffect(() => {
-    const windowWidth = window?.matchMedia("(min-width: 767px)")
-    setSidebarInvisible(!windowWidth.matches)
+    const windowWidth = window?.matchMedia("(min-width: 767px)");
+    setSidebarInvisible(!windowWidth.matches);
 
-    const handler = (e: MediaQueryListEvent) => setSidebarInvisible(!e.matches)
-    windowWidth.addEventListener("change", handler)
+    const handler = (e: MediaQueryListEvent) => setSidebarInvisible(!e.matches);
+    windowWidth.addEventListener("change", handler);
 
     return () => {
-        windowWidth.removeEventListener("change", handler)
-    }
-  }, [])
+      windowWidth.removeEventListener("change", handler);
+    };
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -683,7 +683,7 @@ function TweaksDialog({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Click outside the dialog closes it. 
+  // Click outside the dialog closes it.
   useEffect(() => {
     if (!open) return;
 
@@ -715,11 +715,13 @@ function TweaksDialog({
       <div
         ref={dialogRef}
         className="fd-tweaks-dialog"
-        role="dialog"  
+        role="dialog"
         aria-modal="true"
         aria-label={title}
         data-side={side}
-        style={dragX !== 0 ? { transform: `translateX(${dragX}px)`, transition: "none" } : undefined}
+        style={
+          dragX !== 0 ? { transform: `translateX(${dragX}px)`, transition: "none" } : undefined
+        }
       >
         <div
           className="fd-tweaks-header"
@@ -781,9 +783,7 @@ function TweaksDialog({
           {knobs.includes("font-family") && (
             <TweaksSelect<string>
               label="Font"
-              value={
-                fontOptions.find((o) => o.value === state.fontFamily)?.value ?? ""
-              }
+              value={fontOptions.find((o) => o.value === state.fontFamily)?.value ?? ""}
               options={fontOptions}
               onChange={(fontFamily) => onPatch({ fontFamily })}
             />
@@ -800,9 +800,7 @@ function TweaksDialog({
                     label={COLOR_KEY_LABELS[key]}
                     value={state.colors?.[key]}
                     fallback={DEFAULT_FALLBACKS[key]}
-                    onChange={(next) =>
-                      onPatch({ colors: { ...state.colors, [key]: next } })
-                    }
+                    onChange={(next) => onPatch({ colors: { ...state.colors, [key]: next } })}
                   />
                 ))}
               </div>
@@ -830,7 +828,7 @@ function TweaksDialog({
               />
               <TweaksSlider
                 label="TOC width"
-                value={parsePxWidth(state.tocWidth , 224)}
+                value={parsePxWidth(state.tocWidth, 224)}
                 min={160}
                 max={320}
                 step={4}
@@ -914,12 +912,7 @@ export function TweaksSidebarTrigger({ label = "Tweaks" }: TweaksSidebarTriggerP
   }, []);
   if (!mounted) return null;
   return (
-    <TweaksTrigger
-      variant="sidebar"
-      label={label}
-      open={open}
-      onClick={() => setOpen(!open)}
-    />
+    <TweaksTrigger variant="sidebar" label={label} open={open} onClick={() => setOpen(!open)} />
   );
 }
 
@@ -947,7 +940,7 @@ export function TweaksAutoPortalTrigger({ label = "Tweaks" }: TweaksAutoPortalTr
       if (!toggle || !toggle.parentElement) return false;
 
       // If injected, setContainer and bail, else create and inject slot
-      const slot = document.querySelector<HTMLElement>(`.${PORTAL_CONTAINER_CLASS}`)
+      const slot = document.querySelector<HTMLElement>(`.${PORTAL_CONTAINER_CLASS}`);
       if (slot) {
         // Refresh radius in case the host theme switched.
         const radius = window.getComputedStyle(toggle).borderRadius || "0px";
@@ -960,15 +953,15 @@ export function TweaksAutoPortalTrigger({ label = "Tweaks" }: TweaksAutoPortalTr
 
         const slot = document.createElement("span");
         slot.className = PORTAL_CONTAINER_CLASS;
-        slot.style.display = "inline-flex"; 
+        slot.style.display = "inline-flex";
         slot.style.alignItems = "center";
         slot.style.setProperty("--fd-tweaks-trigger-radius-match", radius);
-      
+
         toggle.before(slot);
 
         setContainer(slot);
         return true;
-    }
+      }
     }
 
     // Initial attach attempt.
@@ -997,12 +990,7 @@ export function TweaksAutoPortalTrigger({ label = "Tweaks" }: TweaksAutoPortalTr
   if (!container) return null;
 
   return createPortal(
-    <TweaksTrigger
-      variant="sidebar"
-      label={label}
-      open={open}
-      onClick={() => setOpen(!open)}
-    />,
+    <TweaksTrigger variant="sidebar" label={label} open={open} onClick={() => setOpen(!open)} />,
     container,
   );
 }

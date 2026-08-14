@@ -265,7 +265,9 @@ export const TWEAKS_DEFAULT_FONT_OPTIONS: ReadonlyArray<{ label: string; value: 
   { label: "Mono", value: "ui-monospace, Menlo, Monaco, monospace" },
 ];
 
-export function readSavedTweaks(storageKey: string = TWEAKS_DEFAULT_STORAGE_KEY): TweaksState | null {
+export function readSavedTweaks(
+  storageKey: string = TWEAKS_DEFAULT_STORAGE_KEY,
+): TweaksState | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(storageKey);
@@ -428,7 +430,8 @@ function clearRadiusOverride(): void {
  * the viewport crosses those thresholds.
  */
 
-let lastLayoutOptions: { sidebarWidth?: string; contentWidth?: string; tocWidth?: string } | null = null;
+let lastLayoutOptions: { sidebarWidth?: string; contentWidth?: string; tocWidth?: string } | null =
+  null;
 let layoutMediaCleanup: (() => void) | null = null;
 
 function applyLayoutOverride(options: {
@@ -446,7 +449,7 @@ function applyLayoutOverride(options: {
     style.id = LAYOUT_OVERRIDE_STYLE_ID;
     document.head.appendChild(style);
   }
-  const rules: string[] =           [];
+  const rules: string[] = [];
   if (options.sidebarWidth) {
     const sidebarVisible = window.matchMedia("(min-width: 767px)").matches;
     if (sidebarVisible) {
@@ -459,9 +462,7 @@ function applyLayoutOverride(options: {
     }
   }
   if (options.contentWidth) {
-    rules.push(
-      `:root { --fd-content-width: ${options.contentWidth} !important; }`,
-    );
+    rules.push(`:root { --fd-content-width: ${options.contentWidth} !important; }`);
     rules.push(
       `article#nd-page, article#nd-page > .prose {` +
         ` max-width: ${options.contentWidth} !important;` +
