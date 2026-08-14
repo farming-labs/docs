@@ -88,6 +88,7 @@ const runGroundedEvaluationAnswer: DocsAgentEvaluationAnswerRunner = ({
 };
 
 function withAgentEvaluationCoverage(tasks: DocsAgentGoldenTask[]): DocsAgentGoldenTask[] {
+  const executableExampleTaskIds = new Set(["execute-codeblocks-smoke"]);
   const evaluationCitationAllowlist = Array.from(
     new Set(
       tasks.flatMap((task) => [
@@ -117,6 +118,10 @@ function withAgentEvaluationCoverage(tasks: DocsAgentGoldenTask[]): DocsAgentGol
         rejectConflictingFrameworkVersions: true,
         deletedSectionTombstones: ["/docs/removed-agent-surface"],
         ...task.expect.safety,
+      },
+      coverage: {
+        ...task.expect.coverage,
+        executableExamples: executableExampleTaskIds.has(task.id) ? "applicable" : "not-applicable",
       },
     },
   }));
