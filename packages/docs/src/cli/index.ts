@@ -188,6 +188,11 @@ async function main() {
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
+  } else if (
+    parsedCommand.command === "agent" &&
+    (subcommand === "--help" || subcommand === "-h")
+  ) {
+    printAgentHelp();
   } else if (parsedCommand.command === "agent" && subcommand === "feedback") {
     const {
       parseAgentFeedbackImproveArgs,
@@ -245,16 +250,7 @@ async function main() {
   } else if (parsedCommand.command === "agent") {
     console.error(pc.red(`Unknown agent subcommand: ${subcommand ?? "(missing)"}`));
     console.error();
-    const { printAgentCompactHelp } = await import("./agent.js");
-    const { printAgentExportHelp } = await import("./agent-export.js");
-    const { printAgentFeedbackImproveHelp } = await import("./feedback.js");
-    const { printAgentFeedbackEvaluationsHelp } = await import("./feedback-evals.js");
-    const { printAgentMaintenanceProposeHelp } = await import("./propose.js");
-    printAgentCompactHelp();
-    printAgentExportHelp();
-    printAgentFeedbackImproveHelp();
-    printAgentFeedbackEvaluationsHelp();
-    printAgentMaintenanceProposeHelp();
+    printAgentHelp();
     process.exit(1);
   } else if (parsedCommand.command === "agents" && subcommand === "generate") {
     const { generateAgents, parseAgentsGenerateArgs, printAgentsGenerateHelp } =
@@ -404,6 +400,23 @@ async function main() {
     printHelp();
     process.exit(1);
   }
+}
+
+export function printAgentHelp() {
+  console.log(`${pc.bold("docs agent")} — Agent documentation utilities
+
+Usage:
+  docs agent <command> [options]
+
+Commands:
+  ${pc.cyan("compact")}         Generate or refresh page-level ${pc.dim("agent.md")} files
+  ${pc.cyan("export")}          Export or check a static Agent Bundle
+  ${pc.cyan("feedback")}        Cluster recurring agent feedback into improvement drafts
+  ${pc.cyan("feedback-evals")}  Create reviewed evaluation candidates and regression baselines
+  ${pc.cyan("propose")}         Combine recurring signals into maintenance proposals
+
+Run ${pc.cyan("docs agent <command> --help")} for command-specific options.
+`);
 }
 
 function printHelp() {
