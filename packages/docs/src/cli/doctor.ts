@@ -1445,10 +1445,7 @@ function toMarkdownRoute(pageUrl?: string): string | undefined {
   return normalized.endsWith(".md") ? normalized : `${normalized}.md`;
 }
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit = {},
-): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
   const options = hostedProbeOptions.getStore();
   const timeoutMs = options?.timeoutMs ?? DEFAULT_HOSTED_TIMEOUT_MS;
   const retries = options?.retries ?? DEFAULT_HOSTED_RETRIES;
