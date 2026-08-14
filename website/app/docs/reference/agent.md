@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:4d985abdc02e6e10
+sourceHash=fnv1a64:7b1e836b3fdb970d
 settingsHash=fnv1a64:aa433a28ef4afd1f
 outputHash=fnv1a64:173fd105503fea58
-generatedAt=2026-08-04T11:40:37.014Z
+generatedAt=2026-08-14T12:45:38.933Z
 -->
 # API Reference
 URL: /docs/reference

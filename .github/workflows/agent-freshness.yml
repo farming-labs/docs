@@ -1,0 +1,50 @@
+name: Agent content freshness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/agent-freshness.yml"
+      - "packages/docs/src/cli/agent.ts"
+      - "packages/docs/src/cli/agent.test.ts"
+      - "website/app/docs/**"
+      - "website/docs.config.tsx"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/agent-freshness.yml"
+      - "packages/docs/src/cli/agent.ts"
+      - "packages/docs/src/cli/agent.test.ts"
+      - "website/app/docs/**"
+      - "website/docs.config.tsx"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build config dependencies
+        run: |
+          pnpm --filter @farming-labs/docs build
+          pnpm --filter @farming-labs/theme build
+
+      - name: Check generated agent content freshness
+        run: pnpm --dir website exec docs agent compact --check --config docs.config.tsx

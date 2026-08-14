@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:f401761e288f0bf5
+sourceHash=fnv1a64:16f85bc74cf45618
 settingsHash=fnv1a64:3fa80ff29bd1598e
 outputHash=fnv1a64:34ab5873e4b3807d
-generatedAt=2026-07-30T09:43:36.457Z
+generatedAt=2026-08-14T12:45:38.585Z
 -->
 # llms.txt
 

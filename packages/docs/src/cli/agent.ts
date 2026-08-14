@@ -37,6 +37,7 @@ const DEFAULT_COMPRESSION_BASE_URL = "https://api.farming-labs.dev";
 const DEFAULT_COMPRESSION_MODEL = "docs-cloud-compress-v1";
 const DEFAULT_COMPRESSION_AGGRESSIVENESS = 0.3;
 const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
+const MAX_COMPRESSION_INPUT_CHARACTERS = 200_000;
 const INDEX_PAGE_BASENAMES = new Set(["index", "page", "+page"]);
 
 export interface AgentCompactOptions {
@@ -55,6 +56,7 @@ export interface AgentCompactOptions {
   stale?: boolean;
   includeMissing?: boolean;
   dryRun?: boolean;
+  check?: boolean;
 }
 
 export interface ParsedAgentCompactArgs extends AgentCompactOptions {
@@ -135,6 +137,11 @@ export function parseAgentCompactArgs(argv: string[]): ParsedAgentCompactArgs {
 
     if (arg === "--dry-run") {
       parsed.dryRun = true;
+      continue;
+    }
+
+    if (arg === "--check") {
+      parsed.check = true;
       continue;
     }
 
@@ -648,7 +655,7 @@ export function inspectAgentCompactionState(
   };
 }
 
-function protectForCompression(input: string): string {
+function protectForCompression(input: string, protectInlineCode = true): string {
   const segments: string[] = [];
   const stash = (value: string) => {
     const token = `__DOCS_SAFE_${segments.length}__`;
@@ -659,7 +666,9 @@ function protectForCompression(input: string): string {
   let result = input;
   result = result.replace(/```[\s\S]*?```/g, stash);
   result = result.replace(/\[[^\]]+\]\([^)]+\)/g, stash);
-  result = result.replace(/`[^`\n]+`/g, stash);
+  if (protectInlineCode) {
+    result = result.replace(/`[^`\n]+`/g, stash);
+  }
   result = result.replace(/^(URL|Description|Related):[^\n]*$/gm, stash);
   result = result.replace(/https?:\/\/[^\s)]+/g, stash);
 
@@ -670,8 +679,24 @@ function protectForCompression(input: string): string {
   return result;
 }
 
+function buildCompressionInput(input: string): string {
+  const fullyProtected = protectForCompression(input);
+  if (fullyProtected.length <= MAX_COMPRESSION_INPUT_CHARACTERS) {
+    return fullyProtected;
+  }
+
+  const withoutInlineCodeProtection = protectForCompression(input, false);
+  if (withoutInlineCodeProtection.length <= MAX_COMPRESSION_INPUT_CHARACTERS) {
+    return withoutInlineCodeProtection;
+  }
+
+  throw new Error(
+    `Docs Cloud compression input is ${withoutInlineCodeProtection.length} characters after adaptive protection; the maximum is ${MAX_COMPRESSION_INPUT_CHARACTERS}. Split or shorten the source page before compacting it.`,
+  );
+}
+
 function sanitizeCompressedOutput(output: string): string {
-  return output.replace(/<\/?docs_safe>/g, "");
+  return output.replace(/<\/?docs_safe>/g, "").replace(/[ \t]+$/gm, "");
 }
 
 async function compressDocument(
@@ -688,7 +713,7 @@ async function compressDocument(
 
   const payload = {
     model: options.model ?? DEFAULT_COMPRESSION_MODEL,
-    input: protectForCompression(input),
+    input: buildCompressionInput(input),
     compression_settings: {
       aggressiveness,
       ...(options.maxOutputTokens !== undefined
@@ -838,10 +863,24 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
 
   const requestedPages = resolvedOptions.pages?.filter((value) => value.trim().length > 0) ?? [];
   if (
+    resolvedOptions.check &&
+    (resolvedOptions.all ||
+      resolvedOptions.stale ||
+      resolvedOptions.changed ||
+      resolvedOptions.includeMissing ||
+      resolvedOptions.dryRun ||
+      requestedPages.length > 0)
+  ) {
+    throw new Error(
+      "Use --check by itself; it inspects every compactable docs page without writing.",
+    );
+  }
+  if (
     !resolvedOptions.all &&
     requestedPages.length === 0 &&
     !resolvedOptions.stale &&
-    !resolvedOptions.changed
+    !resolvedOptions.changed &&
+    !resolvedOptions.check
   ) {
     throw new Error(
       "Pass --all, --changed, --stale, or at least one docs page slug/path to compact.",
@@ -863,6 +902,7 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   const targets = scanDocsPageTargets(rootDir, contentDir, entry);
   const selectAll =
     resolvedOptions.all === true ||
+    resolvedOptions.check === true ||
     (resolvedOptions.stale === true && requestedPages.length === 0) ||
     (resolvedOptions.changed === true && requestedPages.length === 0);
   const selectedPages = resolveSelectedPages(pages, targets, entry, requestedPages, selectAll);
@@ -876,6 +916,35 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
       return;
     }
     throw new Error("No compactable docs pages matched the request.");
+  }
+
+  if (resolvedOptions.check) {
+    let fresh = 0;
+    let stale = 0;
+    let modified = 0;
+    let unknown = 0;
+    let requiredMissing = 0;
+    let optionalMissing = 0;
+
+    for (const { page, target } of filteredPages) {
+      const state = inspectAgentCompactionState(page, target, resolvedOptions);
+      if (state.status === "fresh") fresh += 1;
+      else if (state.status === "stale") stale += 1;
+      else if (state.status === "modified" || state.status === "stale-modified") modified += 1;
+      else if (state.status === "unknown") unknown += 1;
+      else if (state.tokenBudget !== undefined) requiredMissing += 1;
+      else optionalMissing += 1;
+    }
+
+    const summary = `${fresh} fresh, ${stale} stale, ${modified} modified, ${unknown} unknown, ${requiredMissing} required missing, and ${optionalMissing} optional missing`;
+    if (stale > 0 || requiredMissing > 0) {
+      throw new Error(
+        `Agent compaction freshness check failed: ${summary}. Run docs agent compact --stale --include-missing, then review generated changes.`,
+      );
+    }
+
+    console.log(pc.green(`Agent compaction freshness check passed: ${summary}.`));
+    return;
   }
 
   let created = 0;
@@ -995,6 +1064,7 @@ ${pc.dim("Examples:")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --changed")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale --include-missing")}
+  ${pc.cyan("npx @farming-labs/docs@latest agent compact --check")}
 
 ${pc.dim("Per-page override:")}
   Add ${pc.cyan("agent.tokenBudget")} to a page frontmatter block to override the compact output target for that page.
@@ -1005,6 +1075,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--changed")}                Compact only docs pages changed in the current git working tree
   ${pc.cyan("--stale")}                  Re-compact only stale generated agent.md files
   ${pc.cyan("--include-missing")}        With ${pc.cyan("--stale")}, also create missing agent.md files for explicit pages or pages that define ${pc.cyan("agent.tokenBudget")}
+  ${pc.cyan("--check")}                  Check generated agent.md freshness without an API key, network request, or file write
   ${pc.cyan("--config <path>")}          Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("--api-key <key>")}          Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
   ${pc.cyan("--api-key-env <name>")}     Env var name for the Docs Cloud API key; prefer ${pc.dim("cloud.apiKey.env")}

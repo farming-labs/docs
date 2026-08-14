@@ -79,6 +79,13 @@ describe("parseAgentCompactArgs", () => {
     });
   });
 
+  it("parses the non-writing freshness check", () => {
+    expect(parseAgentCompactArgs(["--check"])).toEqual({
+      check: true,
+      pages: [],
+    });
+  });
+
   it("parses changed compaction flags", () => {
     expect(parseAgentCompactArgs(["--changed", "installation"])).toEqual({
       changed: true,
@@ -506,6 +513,83 @@ Body.
     expect(logs.some((line) => line.includes("Dry run complete: 1 page processed."))).toBe(true);
   });
 
+  it("keeps large reference pages below the compression service input limit", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs", "reference"), { recursive: true });
+
+    const inlineOptions = Array.from(
+      { length: 4_000 },
+      (_, index) => `- \`option-${index}\`: Configuration value ${index}.`,
+    ).join("\n");
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "reference", "page.mdx"),
+      `---
+title: "Reference"
+description: "Configuration reference"
+---
+
+# Reference
+
+[Read the docs](https://docs.example.com/reference).
+
+\`\`\`json title="config.json"
+{ "safe": true }
+\`\`\`
+
+${inlineOptions}
+`,
+      "utf-8",
+    );
+
+    let requestInput = "";
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      requestInput = (JSON.parse(Buffer.concat(chunks).toString("utf-8")) as { input: string })
+        .input;
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: "Reference compacted",
+          original_input_tokens: 40_000,
+          output_tokens: 1_800,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        pages: ["reference"],
+        dryRun: true,
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(requestInput.length).toBeLessThanOrEqual(200_000);
+    expect(requestInput).toContain('<docs_safe>```json title="config.json"');
+    expect(requestInput).toContain(
+      "<docs_safe>[Read the docs](https://docs.example.com/reference)</docs_safe>",
+    );
+    expect(requestInput).toContain("`option-0`");
+    expect(requestInput).not.toContain("<docs_safe>`option-0`</docs_safe>");
+  });
+
   it("reads the root cloud API key env with compact defaults from docs.config.ts", async () => {
     process.env.CUSTOM_COMPRESSION_KEY = "config-key";
 
@@ -883,7 +967,7 @@ Body.
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
-          output: "<docs_safe>Clean output</docs_safe>",
+          output: "<docs_safe>Clean output</docs_safe>  \nTrailing line\t",
           original_input_tokens: 10,
           output_tokens: 5,
         }),
@@ -908,7 +992,7 @@ Body.
 
     expectGeneratedAgentFile(
       path.join(tmpDir, "app", "docs", "installation", "agent.md"),
-      "Clean output",
+      "Clean output\nTrailing line",
       "resolved-page",
     );
   });
@@ -1044,6 +1128,87 @@ Updated body.
         line.includes("Compaction complete: 1 page processed (0 created, 1 overwritten)."),
       ),
     ).toBe(true);
+  });
+
+  it("checks generated freshness without an API key or network request", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    const pagePath = path.join(tmpDir, "app", "docs", "installation", "page.mdx");
+    writeFileSync(
+      pagePath,
+      `---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 500
+---
+
+# Installation
+
+First body.
+`,
+      "utf-8",
+    );
+
+    const server = createServer(async (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: "Initial compacted",
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        pages: ["installation"],
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    delete process.env.DOCS_CLOUD_API_KEY;
+    await expect(compactAgentDocs({ check: true })).resolves.toBeUndefined();
+    expect(
+      logs.some((line) =>
+        line.includes(
+          "Agent compaction freshness check passed: 1 fresh, 0 stale, 0 modified, 0 unknown, 0 required missing, and 0 optional missing.",
+        ),
+      ),
+    ).toBe(true);
+
+    writeFileSync(
+      pagePath,
+      `---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 500
+---
+
+# Installation
+
+Updated body.
+`,
+      "utf-8",
+    );
+
+    await expect(compactAgentDocs({ check: true })).rejects.toThrow(
+      "Agent compaction freshness check failed: 0 fresh, 1 stale",
+    );
   });
 
   it("skips modified generated agent.md files during --stale runs", async () => {

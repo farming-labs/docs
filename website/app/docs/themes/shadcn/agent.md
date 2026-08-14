@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:2240d36d42c2710a
+sourceHash=fnv1a64:49626196cddb16c7
 settingsHash=fnv1a64:ea29d93dde491bab
 outputHash=fnv1a64:44f89535b30a6f07
-generatedAt=2026-08-04T11:33:24.654Z
+generatedAt=2026-08-14T12:45:39.242Z
 -->
 ---
 title: "Shadcn"

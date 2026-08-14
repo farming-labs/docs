@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:55193de1b9e2bc41
+sourceHash=fnv1a64:b3ce971f1e640c96
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:cc0e1afd72d1fd95
-generatedAt=2026-07-30T09:43:36.700Z
+generatedAt=2026-08-14T12:45:39.176Z
 -->
 # Hardline
 

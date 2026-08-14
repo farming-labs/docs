@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:c0aa0c8f647006f7
+sourceHash=fnv1a64:69c2b01877d26ee6
 settingsHash=fnv1a64:72be2461542d7a95
 outputHash=fnv1a64:5a926dd8952106a9
-generatedAt=2026-07-30T09:43:36.467Z
+generatedAt=2026-08-14T12:45:38.600Z
 -->
 # Observability
 

@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:c66d67f7961842ef
+sourceHash=fnv1a64:c961ad4ca8c68060
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:3ef315ed2e252ae5
-generatedAt=2026-07-30T09:43:36.448Z
+generatedAt=2026-08-14T12:45:38.549Z
 -->
 # Colors
 

@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:916c97c0861f44ee
+sourceHash=fnv1a64:f1961d315bcd1197
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:974a02e90d406493
-generatedAt=2026-07-30T09:43:36.704Z
+generatedAt=2026-08-14T12:45:39.261Z
 -->
 # Shiny
 
