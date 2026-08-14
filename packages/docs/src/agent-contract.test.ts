@@ -122,34 +122,34 @@ describe("page agent contracts", () => {
     expect(yaml).toMatchInlineSnapshot(`
       "agent:
         tokenBudget: 900
-        task: \"Configure authenticated MCP\"
-        outcome: \"The MCP endpoint rejects unauthenticated requests.\"
+        task: "Configure authenticated MCP"
+        outcome: "The MCP endpoint rejects unauthenticated requests."
         appliesTo:
           framework:
-            - \"nextjs\"
+            - "nextjs"
           version:
-            - \">=16\"
+            - ">=16"
           package:
-            - \"@farming-labs/next\"
+            - "@farming-labs/next"
         prerequisites:
-          - \"An MCP route is enabled\"
+          - "An MCP route is enabled"
         files:
-          - \"docs.config.ts\"
+          - "docs.config.ts"
         commands:
-          - \"pnpm test\"
-          - run: \"pnpm typecheck\"
-            cwd: \"website\"
-            description: \"Check the integration\"
+          - "pnpm test"
+          - run: "pnpm typecheck"
+            cwd: "website"
+            description: "Check the integration"
         sideEffects:
-          - \"Requires a valid session for MCP requests\"
+          - "Requires a valid session for MCP requests"
         verification:
-          - run: \"curl https://docs.example.com/mcp\"
-            expect: \"HTTP 401\"
+          - run: "curl https://docs.example.com/mcp"
+            expect: "HTTP 401"
         rollback:
-          - \"Remove the authenticate callback\"
+          - "Remove the authenticate callback"
         failureModes:
-          - symptom: \"Every request returns 401\"
-            resolution: \"Verify the callback returns an identity object\""
+          - symptom: "Every request returns 401"
+            resolution: "Verify the callback returns an identity object""
     `);
 
     const markdown = renderPageAgentContractMarkdown(input);

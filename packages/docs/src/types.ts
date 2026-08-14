@@ -307,12 +307,33 @@ export interface PageAgentFailureMode {
   resolution?: string;
 }
 
+export type DocsAccessClaimValue = string | number | boolean | readonly string[];
+
+/** Declarative, deny-by-default authorization requirements for agent-facing page surfaces. */
+export interface DocsPageAccessPolicy {
+  /** Require an authenticated principal even when no scopes or claims are listed. */
+  visibility?: "public" | "authenticated";
+  /** Every listed scope must be present on the principal. */
+  scopes?: readonly string[];
+  /** Every listed claim must match; arrays match when at least one value overlaps. */
+  claims?: Readonly<Record<string, DocsAccessClaimValue>>;
+}
+
+/** Identity used when evaluating page access outside the MCP transport. */
+export interface DocsAccessPrincipal {
+  id: string;
+  scopes?: readonly string[];
+  claims?: Readonly<Record<string, unknown>>;
+}
+
 export interface PageAgentFrontmatter {
   /**
    * Approximate output token target for machine-readable compaction on this page.
    * Used by `docs agent compact` as a per-page override.
    */
   tokenBudget?: number;
+  /** Authorization requirements shared by Markdown, search, llms.txt, sync, export, and MCP. */
+  access?: DocsPageAccessPolicy;
   /** Concrete task the page helps an agent complete. */
   task?: string;
   /** Observable end state the agent should reach. */
@@ -344,6 +365,44 @@ export interface PageSidebarFrontmatter {
   folderIndexBehavior?: SidebarFolderIndexBehavior;
 }
 
+export type DocsOkfStatus = "draft" | "stable" | "deprecated";
+
+export interface DocsOkfSource {
+  resource: string;
+  id?: string;
+  title?: string;
+  author?: string;
+  usage_count?: number;
+  last_modified?: string;
+  usage_window?: { start?: string; end?: string };
+}
+
+export interface DocsOkfActorTimestamp {
+  by: string;
+  at: string;
+}
+
+/** Authored OKF v0.2 trust metadata. Missing fields are derived conservatively at runtime. */
+export interface DocsOkfTrustMetadataInput {
+  sources?: readonly DocsOkfSource[];
+  generated?: DocsOkfActorTimestamp;
+  verified?: readonly DocsOkfActorTimestamp[];
+  status?: DocsOkfStatus;
+  stale_after?: string;
+}
+
+export type DocsOkfTrustTier = "unverified" | "machine-confirmed" | "human-reviewed";
+
+export interface DocsOkfTrustMetadata {
+  sources: DocsOkfSource[];
+  generated: DocsOkfActorTimestamp;
+  verified: DocsOkfActorTimestamp[];
+  status: DocsOkfStatus;
+  stale_after?: string;
+  trust_tier: DocsOkfTrustTier;
+  stale: boolean;
+}
+
 export interface PageFrontmatter {
   title: string;
   description?: string;
@@ -351,6 +410,8 @@ export interface PageFrontmatter {
   related?: DocsRelatedItem[];
   /** Per-page agent-oriented metadata used by machine-readable docs features. */
   agent?: PageAgentFrontmatter;
+  /** OKF v0.2 source, generation, verification, lifecycle, and staleness metadata. */
+  okf?: DocsOkfTrustMetadataInput;
   /** Per-page sidebar metadata used when building the docs navigation tree. */
   sidebar?: PageSidebarFrontmatter;
   /** Override or disable the estimated reading time for this page. */
@@ -784,6 +845,10 @@ export interface PageActionsConfig {
   copyMarkdown?: boolean | CopyMarkdownConfig;
   /** "Open in …" dropdown with LLM / tool providers */
   openDocs?: boolean | OpenDocsConfig;
+  /** One-click MCP connection instructions for supported coding agents. */
+  connectMcp?: boolean | PageActionConnectMcpConfig;
+  /** Agent Skills discovery and install dialog backed by the published skills index. */
+  installSkills?: boolean | PageActionInstallSkillsConfig;
   /**
    * Where to render the page action buttons relative to the page title.
    *
@@ -803,6 +868,30 @@ export interface PageActionsConfig {
    * @default "left"
    */
   alignment?: "left" | "right";
+}
+
+export type PageActionMcpProvider = "copy" | "claude-code" | "cursor" | "vscode" | "codex";
+
+export interface PageActionConnectMcpConfig {
+  /** Show the connection menu. @default true */
+  enabled?: boolean;
+  /** Public MCP route or absolute URL. @default "/mcp" */
+  endpoint?: string;
+  /** Connection targets shown in the menu. */
+  providers?: readonly PageActionMcpProvider[];
+  /** Trigger label. @default "Connect MCP" */
+  label?: string;
+}
+
+export interface PageActionInstallSkillsConfig {
+  /** Show the skills install dialog. @default true */
+  enabled?: boolean;
+  /** Agent Skills index route or absolute URL. */
+  index?: string;
+  /** Override the install command copied by the dialog. */
+  command?: string;
+  /** Trigger label. @default "Install skills" */
+  label?: string;
 }
 
 export type DocsAnalyticsSource = "client" | "server" | "mcp";
@@ -1370,6 +1459,13 @@ export interface DocsMcpToolsConfig {
   listPageSections?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */
   readPage?: boolean;
+  /** Expose a budget-aware `read_pages` tool for fetching several pages in one round trip. */
+  readPages?: boolean;
+  /**
+   * Expose `submit_feedback` when machine feedback is enabled. The tool validates
+   * payloads against `feedback.agent.schema` before invoking the configured callback.
+   */
+  submitFeedback?: boolean;
   /** Expose a `list_tasks` tool for pages with actionable agent contracts. */
   listTasks?: boolean;
   /** Expose a `read_task` tool that returns a page's full agent contract. */
@@ -1396,6 +1492,8 @@ export interface DocsMcpToolsConfig {
   getConfigSchema?: boolean;
   /** Expose deterministic `get_context` retrieval with a conservative UTF-8 byte ceiling. */
   getContext?: boolean;
+  /** Expose OKF v0.2 source, verification, lifecycle, and staleness metadata. */
+  getTrustMetadata?: boolean;
 }
 
 /** Built-in MCP prompt templates projected from documentation contracts and golden tasks. */
@@ -1417,7 +1515,7 @@ export interface DocsMcpPromptsConfig {
 }
 
 /** Authenticated identity returned by an MCP authentication callback. */
-export interface DocsMcpAuthPrincipal {
+export interface DocsMcpAuthPrincipal extends DocsAccessPrincipal {
   /** Stable identifier for the authenticated user, service, or agent. */
   id: string;
   /** Optional authorization scopes that source adapters can inspect. */
@@ -1557,6 +1655,7 @@ export interface DocsSearchSourcePage {
   description?: string;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
+  okf?: DocsOkfTrustMetadataInput;
   sourcePath?: string;
   lastModified?: string;
   lastmod?: string;
@@ -1802,6 +1901,8 @@ export interface DocsSearchResult {
   section?: string;
   /** Canonical, scope-aware provenance when supplied or recoverable locally. */
   source?: DocsRetrievalSourceProvenance;
+  /** OKF v0.2 trust metadata for the selected source. */
+  trust?: DocsOkfTrustMetadata;
   /** Present only when the caller opts into retrieval explanations. */
   explanation?: DocsSearchExplanation;
 }
@@ -2979,6 +3080,53 @@ export interface ChangelogConfig {
 
 export type ApiReferenceRenderer = "fumadocs" | "scalar";
 
+export interface DocsOpenApiMcpCredentialContext {
+  operationId: string;
+  method: string;
+  path: string;
+  security: readonly Record<string, readonly string[]>[];
+}
+
+export type DocsOpenApiMcpHeaders =
+  | Readonly<Record<string, string>>
+  | ((
+      context: DocsOpenApiMcpCredentialContext,
+    ) => Readonly<Record<string, string>> | Promise<Readonly<Record<string, string>>>);
+
+export type DocsOpenApiMcpHostResolver = (
+  hostname: string,
+) => readonly string[] | Promise<readonly string[]>;
+
+/** Explicit, deny-by-default projection of OpenAPI operations into MCP tools. */
+export interface DocsOpenApiMcpConfig {
+  /** Enable operation projection. No tools are exposed until an operation is explicitly allowed. */
+  enabled?: boolean;
+  /** Allowed operationIds or `METHOD /path` selectors. */
+  operations?: readonly string[];
+  /** Override the first OpenAPI server URL used for requests. */
+  baseUrl?: string;
+  /** Allow POST, PUT, PATCH, or DELETE operations. Defaults to false. */
+  allowMutations?: boolean;
+  /** Server-owned credentials added after user input is parsed. */
+  headers?: DocsOpenApiMcpHeaders;
+  /** Per-operation request timeout. @default 10000 */
+  timeoutMs?: number;
+  /** Permit plain HTTP destinations. Disabled by default. */
+  allowInsecureHttp?: boolean;
+  /** Permit loopback, private, link-local, and reserved network destinations. Disabled by default. */
+  allowPrivateNetwork?: boolean;
+  /** Server-owned DNS resolver used before every request and redirect. */
+  resolveHost?: DocsOpenApiMcpHostResolver;
+  /** Number of validated redirects to follow. @default 0 */
+  maxRedirects?: number;
+  /** Maximum downstream response bytes buffered into an MCP result. @default 1000000 */
+  maxResponseBytes?: number;
+  /** Per-principal operation calls allowed in a rolling minute. @default 60 */
+  requestsPerMinute?: number;
+  /** Concurrent downstream operation calls allowed per principal. @default 4 */
+  maxConcurrentRequests?: number;
+}
+
 export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
@@ -3037,6 +3185,11 @@ export interface ApiReferenceConfig {
    * - TanStack Start / SvelteKit / Astro / Nuxt: `"scalar"`
    */
   renderer?: ApiReferenceRenderer;
+  /**
+   * Explicitly expose selected OpenAPI operations as MCP tools. This is deny-by-default:
+   * set `operations`, or mark an operation with `x-farming-labs-mcp.enabled: true`.
+   */
+  mcp?: boolean | DocsOpenApiMcpConfig;
   /**
    * Filesystem route root to scan for API handlers.
    *
@@ -3625,6 +3778,8 @@ export type DocsAgentA2AConfig = DocsAgentA2ABaseConfig &
   (DocsAgentA2ASingleInterfaceConfig | DocsAgentA2AInterfacesConfig);
 
 export interface DocsAgentConfig {
+  /** Publish OKF v0.2 trust metadata and a machine-readable knowledge bundle. */
+  okf?: boolean | DocsOkfConfig;
   /**
    * Defaults for `docs agent compact`.
    */
@@ -3644,6 +3799,17 @@ export interface DocsAgentConfig {
   contentChanges?: boolean | DocsAgentContentChangesConfig;
   /** Opt in to an A2A Agent Card for a separately implemented A2A service. */
   a2a?: DocsAgentA2AConfig;
+}
+
+export interface DocsOkfConfig extends DocsOkfTrustMetadataInput {
+  /** Enable OKF projection. @default true when configured */
+  enabled?: boolean;
+  /** Public bundle route. @default "/.well-known/okf.json" */
+  route?: string;
+  /** Generator actor used when a page has no authored `okf.generated`. */
+  generatedBy?: string;
+  /** Derive `stale_after` this many days after the best page timestamp. */
+  staleAfterDays?: number;
 }
 
 export interface DocsAgentContentChangesConfig {

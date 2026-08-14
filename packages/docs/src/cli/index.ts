@@ -44,6 +44,8 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
     "ask-ai",
     "deploy",
     "dry-run",
+    "write",
+    "allow-publish",
   ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -94,6 +96,12 @@ async function main() {
           : undefined,
     client: typeof flags.client === "string" ? flags.client : undefined,
     json: typeof flags.json === "boolean" ? flags.json : undefined,
+  };
+  const authoringMcpOptions = {
+    configPath: typeof flags.config === "string" ? flags.config : undefined,
+    allowPublish: typeof flags["allow-publish"] === "boolean" ? flags["allow-publish"] : undefined,
+    branchPrefix: typeof flags["branch-prefix"] === "string" ? flags["branch-prefix"] : undefined,
+    baseBranch: typeof flags["base-branch"] === "string" ? flags["base-branch"] : undefined,
   };
   const devOptions = {
     verbose: typeof flags.verbose === "boolean" ? flags.verbose : undefined,
@@ -174,9 +182,48 @@ async function main() {
     const { printCloudHelp } = await import("./cloud.js");
     printCloudHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "mcp" && subcommand === "author") {
+    const { runAuthoringMcp } = await import("./authoring.js");
+    await runAuthoringMcp(authoringMcpOptions);
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "feedback") {
+    const {
+      parseAgentFeedbackImproveArgs,
+      printAgentFeedbackImproveHelp,
+      runAgentFeedbackImprove,
+    } = await import("./feedback.js");
+    const feedbackOptions = parseAgentFeedbackImproveArgs(args.slice(2));
+    if (feedbackOptions.help) {
+      printAgentFeedbackImproveHelp();
+      return;
+    }
+    await runAgentFeedbackImprove(feedbackOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "feedback-evals") {
+    const {
+      parseAgentFeedbackEvaluationsArgs,
+      printAgentFeedbackEvaluationsHelp,
+      runAgentFeedbackEvaluations,
+    } = await import("./feedback-evals.js");
+    const evaluationOptions = parseAgentFeedbackEvaluationsArgs(args.slice(2));
+    if (evaluationOptions.help) {
+      printAgentFeedbackEvaluationsHelp();
+      return;
+    }
+    await runAgentFeedbackEvaluations(evaluationOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "propose") {
+    const {
+      parseAgentMaintenanceProposeArgs,
+      printAgentMaintenanceProposeHelp,
+      runAgentMaintenancePropose,
+    } = await import("./propose.js");
+    const proposeOptions = parseAgentMaintenanceProposeArgs(args.slice(2));
+    if (proposeOptions.help) {
+      printAgentMaintenanceProposeHelp();
+      return;
+    }
+    await runAgentMaintenancePropose(proposeOptions);
   } else if (parsedCommand.command === "agent" && subcommand === "compact") {
     const { compactAgentDocs, parseAgentCompactArgs, printAgentCompactHelp } =
       await import("./agent.js");
@@ -200,8 +247,14 @@ async function main() {
     console.error();
     const { printAgentCompactHelp } = await import("./agent.js");
     const { printAgentExportHelp } = await import("./agent-export.js");
+    const { printAgentFeedbackImproveHelp } = await import("./feedback.js");
+    const { printAgentFeedbackEvaluationsHelp } = await import("./feedback-evals.js");
+    const { printAgentMaintenanceProposeHelp } = await import("./propose.js");
     printAgentCompactHelp();
     printAgentExportHelp();
+    printAgentFeedbackImproveHelp();
+    printAgentFeedbackEvaluationsHelp();
+    printAgentMaintenanceProposeHelp();
     process.exit(1);
   } else if (parsedCommand.command === "agents" && subcommand === "generate") {
     const { generateAgents, parseAgentsGenerateArgs, printAgentsGenerateHelp } =
@@ -366,13 +419,13 @@ ${pc.dim("Commands:")}
   ${pc.cyan("deploy")}   Sync cloud config and deploy hosted preview docs
   ${pc.cyan("preview")}  Alias for ${pc.cyan("deploy")}
   ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("check")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
-  ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} page context, ${pc.dim("export")} static bundles)
+  ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")}, ${pc.dim("export")}, ${pc.dim("feedback")})
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("skills")}   Agent Skills utilities (${pc.dim("scaffold")} from structured page contracts)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
-  ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
+  ${pc.cyan("mcp")}      Run read-only docs MCP or the separate protected authoring server
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("sitemap")}  Sitemap utilities (${pc.dim("generate")} for sitemap XML/Markdown data)
@@ -399,6 +452,10 @@ ${pc.dim("Options for mcp:")}
   ${pc.cyan("--api-base-url <url>")} Override the hosted Docs Cloud API base URL for ${pc.cyan("mcp setup")}
   ${pc.cyan("--client <name>")}     Emit native config for ${pc.dim("claude-code")}, ${pc.dim("cursor")}, or ${pc.dim("vscode")}
   ${pc.cyan("--json")}              Print the selected MCP client JSON only for ${pc.cyan("mcp setup")}
+  ${pc.cyan("mcp author")}          Run the local docs-authoring MCP over stdio
+  ${pc.cyan("--branch-prefix <p>")} Restrict authoring branches (default: ${pc.dim("docs/")})
+  ${pc.cyan("--base-branch <name>")} Set the base used for authoring draft PRs
+  ${pc.cyan("--allow-publish")}      Explicitly register commit, push, and draft-PR publishing
 
 ${pc.dim("Options for dev:")}
   ${pc.cyan("--port <number>")}     Run the frameworkless preview on a custom port
@@ -442,6 +499,29 @@ ${pc.dim("Options for agent export:")}
   ${pc.cyan("agent export --public")}               Export page Markdown, llms.txt, discovery, skills, AGENTS, sitemaps, robots, and a SHA-256 manifest
   ${pc.cyan("agent export --check")}                Fail when the static Agent Bundle is stale
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for agent feedback:")}
+  ${pc.cyan("agent feedback --input <path>")}       Cluster JSON or JSONL agent feedback into improvement drafts
+  ${pc.cyan("--min-occurrences <2-100>")}           Recurrence threshold (default: 2)
+  ${pc.cyan("--write")}                             Write the report to ${pc.dim(".farming-labs/agent-feedback-improvements.json")}
+  ${pc.cyan("--output <path>")}                     Override the written report path
+  ${pc.cyan("--json")}                              Print JSON while writing
+
+${pc.dim("Options for feedback-derived evaluations:")}
+  ${pc.cyan("agent feedback-evals --write")}        Sanitize and deduplicate feedback-derived golden-task candidates
+  ${pc.cyan("--existing <path>")}                   Compare against an existing candidate registry, task list, or config JSON
+  ${pc.cyan("--results <path> --baseline <path>")} Read golden-task or doctor JSON for baseline comparison
+  ${pc.cyan("--write-baseline")}                    Create or replace an explicit evaluation baseline
+  ${pc.cyan("--check")}                             Fail CI when suite/task results regress
+  ${pc.cyan("--max-score-drop <0-100>")}            Allow a bounded suite/task score decrease
+
+${pc.dim("Options for agent maintenance proposals:")}
+  ${pc.cyan("agent propose --input <path>")}        Combine JSON/JSONL feedback, search, MCP, issue, support, and git signals
+  ${pc.cyan("--input <path>")}                      Repeat to combine multiple signal exports
+  ${pc.cyan("--min-occurrences <1-100>")}           Proposal threshold (default: 2)
+  ${pc.cyan("--write")}                             Write the draft-only report to ${pc.dim(".farming-labs/agent-maintenance-proposals.json")}
+  ${pc.cyan("--output <path>")}                     Override the written report path
+  ${pc.cyan("--json")}                              Print JSON while writing
 
 ${pc.dim("Options for skills scaffold:")}
   ${pc.cyan("skills scaffold [name]")}              Compile page agent contracts into a compact ${pc.dim("SKILL.md")} router and focused references

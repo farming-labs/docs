@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { remarkStandaloneCodeLabels } from "./vite.js";
+import {
+  remarkStandaloneCodeLabels,
+  resolveFarmDocsCodeBlockThemes,
+  resolveFarmDocsViteContentRoots,
+} from "./vite.js";
 
 const paragraphLabel = (value: string) => ({
   type: "paragraph",
@@ -34,5 +38,44 @@ describe("remarkStandaloneCodeLabels", () => {
     expect(tree.children).toHaveLength(1);
     expect(tree.children[0]).toMatchObject({ type: "code", lang: "bash" });
     expect(tree.children[0]).not.toHaveProperty("meta");
+  });
+});
+
+describe("resolveFarmDocsCodeBlockThemes", () => {
+  it("preserves the Farm adapter defaults", () => {
+    expect(resolveFarmDocsCodeBlockThemes()).toEqual({
+      light: "github-light",
+      dark: "github-dark",
+    });
+  });
+
+  it("allows a Farm app to opt into Vesper without replacing the MDX pipeline", () => {
+    expect(
+      resolveFarmDocsCodeBlockThemes({
+        light: "github-light-default",
+        dark: "vesper",
+      }),
+    ).toEqual({
+      light: "github-light-default",
+      dark: "vesper",
+    });
+  });
+});
+
+describe("resolveFarmDocsViteContentRoots", () => {
+  it("allows a nested Farm application to compile repository-owned documentation", () => {
+    const applicationRoot = new URL("../../../fixtures/site", import.meta.url).pathname;
+    const roots = resolveFarmDocsViteContentRoots(applicationRoot);
+
+    expect(roots).toContain(applicationRoot);
+    expect(roots).toContain(new URL("../../../", import.meta.url).pathname.replace(/\/$/, ""));
+  });
+
+  it("resolves explicit external content roots from the application directory", () => {
+    const applicationRoot = new URL("../../../fixtures/site", import.meta.url).pathname;
+
+    expect(resolveFarmDocsViteContentRoots(applicationRoot, ["../shared-docs"])).toContain(
+      new URL("../../../fixtures/shared-docs", import.meta.url).pathname.replace(/\/$/, ""),
+    );
   });
 });

@@ -58,7 +58,8 @@ pnpm exec docs agent export --public --config src/lib/docs.config.ts
 - `--check` resolves the same outputs without writing.
 - Pages use sibling `agent.md`, then the agent audience projection.
 - Exports include page Markdown, llms files, discovery JSON, hashed skills/direct companions,
-  skills and AGENTS aliases, sitemaps, and robots.
+  skills and AGENTS aliases, sitemaps, robots, and `/.well-known/okf.json` when `agent.okf` is
+  enabled.
 - Manifests include deterministic SHA-256 hashes.
 - Static discovery disables search, MCP, feedback, API reference, and OpenAPI.
 - RFC 9727 API catalog output is intentionally omitted because generic static hosting cannot

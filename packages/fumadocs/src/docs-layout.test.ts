@@ -135,16 +135,16 @@ agent:
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
-  it("passes the theme name through for theme-owned structural styling", () => {
+  it("does not opt Next.js layouts into browser-adapter header actions", () => {
     const Layout = createDocsLayout({
       entry: "docs",
       theme: { name: "fumadocs-pixel-border" } as any,
+      llmsTxt: true,
     });
 
     const tree = Layout({ children: React.createElement("div", null, "child") });
-    const props = findDocsPageClientProps(tree);
 
-    expect(props?.themeName).toBe("fumadocs-pixel-border");
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBeUndefined();
   });
 
   it("generates frontmatter titles only when the MDX body does not author an h1", () => {

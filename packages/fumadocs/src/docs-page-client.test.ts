@@ -15,10 +15,23 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
   const ReactModule = await import("react");
 
   return {
-    DocsPage: ({ children }: { children: React.ReactNode }) =>
-      ReactModule.createElement("main", null, children),
-    DocsBody: ({ children }: { children: React.ReactNode }) =>
-      ReactModule.createElement("section", null, children),
+    DocsPage: ({
+      children,
+      footer,
+    }: {
+      children: React.ReactNode;
+      footer?: { enabled?: boolean };
+    }) =>
+      ReactModule.createElement(
+        "main",
+        { "data-footer-enabled": String(footer?.enabled ?? true) },
+        children,
+      ),
+    DocsBody: ({
+      children,
+      ...props
+    }: React.ComponentPropsWithoutRef<"section"> & { children: React.ReactNode }) =>
+      ReactModule.createElement("section", props, children),
     EditOnGitHub: ({ href }: { href: string }) =>
       ReactModule.createElement("a", { href }, "Edit on GitHub"),
   };
@@ -27,6 +40,19 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
 import { DocsPageClient } from "./docs-page-client.js";
 
 describe("DocsPageClient llms.txt footer links", () => {
+  it("exposes the shared document class contract to every React adapter", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("p", null, "Portable content"),
+      }),
+    );
+
+    expect(html).toContain('class="fd-page-body"');
+    expect(html).toContain('class="fd-docs-content"');
+  });
+
   it("uses the public llms.txt defaults instead of docs api query routes", () => {
     const html = renderToStaticMarkup(
       React.createElement(DocsPageClient, {
@@ -44,13 +70,13 @@ describe("DocsPageClient llms.txt footer links", () => {
     expect(html).not.toContain("/api/docs?format=llms");
   });
 
-  it("exposes the llms.txt link as a visible pixel-border header action", () => {
+  it("exposes the llms.txt link only when the runtime owns a header action", () => {
     const html = renderToStaticMarkup(
       React.createElement(DocsPageClient, {
         tocEnabled: false,
         breadcrumbEnabled: false,
         llmsTxtEnabled: true,
-        themeName: "fumadocs-pixel-border",
+        showLlmsInHeader: true,
         children: React.createElement("article", null, "Docs"),
       }),
     );
@@ -85,6 +111,57 @@ describe("DocsPageClient generated page title", () => {
     expect(titleIndex).toBeLessThan(descriptionIndex);
     expect(descriptionIndex).toBeLessThan(actionsIndex);
     expect(actionsIndex).toBeLessThan(contentIndex);
+  });
+
+  it("keeps title decorations hidden until their client portal host is ready", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        children: React.createElement(
+          React.Fragment,
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Preserved content"),
+        ),
+      }),
+    );
+
+    expect(html).toContain('class="fd-title-decorations-fallback" hidden=""');
+    expect(html).toContain("Mock Actions");
+  });
+});
+
+describe("DocsPageClient page navigation", () => {
+  it("disables the built-in pager when custom page navigation is available", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        nextPage: { name: "Capabilities", url: "/docs/capabilities" },
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-footer-enabled="false"');
+    expect(html).toContain('class="not-prose fd-page-nav"');
+    expect(html.match(/Next Page/g)).toHaveLength(1);
+  });
+
+  it("keeps the built-in pager enabled when custom navigation is absent", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('data-footer-enabled="true"');
+    expect(html).not.toContain('class="not-prose fd-page-nav"');
   });
 });
 

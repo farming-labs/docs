@@ -1,5 +1,5 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, type HTMLAttributes, type ReactNode } from "react";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -9,6 +9,8 @@ import type {
   AIConfig,
   OpenDocsConfig,
   CopyMarkdownConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
 } from "@farming-labs/docs";
 import {
   applySidebarFolderIndexBehavior,
@@ -45,6 +47,11 @@ interface FolderNode {
 }
 
 type TreeNode = PageNode | FolderNode;
+
+type FrameworkContainerProps = HTMLAttributes<HTMLDivElement> & {
+  "data-fd-framework"?: string;
+  "data-fd-browser-adapter"?: string;
+};
 
 interface TreeRoot {
   name: string;
@@ -98,9 +105,30 @@ function resolveTreeIcons(tree: TreeRoot, registry: Record<string, unknown> | un
   };
 }
 
+function applyFlatSidebarLayout(tree: TreeRoot, flat: boolean): TreeRoot {
+  if (!flat) return tree;
+
+  function mapNode(node: TreeNode): TreeNode {
+    if (node.type === "page") return node;
+    return {
+      ...node,
+      collapsible: false,
+      defaultOpen: true,
+      children: node.children.map(mapNode),
+    };
+  }
+
+  return {
+    ...tree,
+    children: tree.children.map(mapNode),
+  };
+}
+
 export interface TanstackDocsLayoutProps {
   config: DocsConfig;
   tree: TreeRoot;
+  /** Enables browser-adapter shell affordances that are not part of a theme preset. */
+  browserRuntime?: boolean;
   locale?: string;
   description?: string;
   descriptionInBody?: boolean;
@@ -265,7 +293,7 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
   const parts: string[] = [];
 
   if (rootVars.length > 0) {
-    parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+    parts.push(`:root,\n#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
   }
 
   if (desktopRootVars.length > 0) {
@@ -346,6 +374,7 @@ function ForcedThemeScript({ theme }: { theme: string }) {
 export function TanstackDocsLayout({
   config,
   tree,
+  browserRuntime = false,
   locale,
   description,
   descriptionInBody,
@@ -397,6 +426,16 @@ export function TanstackDocsLayout({
       ? (pageActions.copyMarkdown as CopyMarkdownConfig)
       : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
+  const connectMcp = resolveBool(pageActions?.connectMcp)
+    ? pageActions?.connectMcp && typeof pageActions.connectMcp === "object"
+      ? (pageActions.connectMcp as PageActionConnectMcpConfig)
+      : {}
+    : undefined;
+  const installSkills = resolveBool(pageActions?.installSkills)
+    ? pageActions?.installSkills && typeof pageActions.installSkills === "object"
+      ? (pageActions.installSkills as PageActionInstallSkillsConfig)
+      : {}
+    : undefined;
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
 
@@ -414,6 +453,9 @@ export function TanstackDocsLayout({
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
+  const frameworkContainerProps: FrameworkContainerProps | undefined = browserRuntime
+    ? { "data-fd-framework": "", "data-fd-browser-adapter": "" }
+    : undefined;
 
   const openDocsConfig =
     pageActions?.openDocs && typeof pageActions.openDocs === "object"
@@ -452,18 +494,21 @@ export function TanstackDocsLayout({
   const i18n = (config as DocsConfig & { i18n?: { locales?: string[]; defaultLocale?: string } })
     .i18n;
   const resolvedTree = resolveTreeIcons(
-    locale
-      ? localizeTreeUrls(
-          applySidebarFolderIndexBehavior(tree, {
+    applyFlatSidebarLayout(
+      locale
+        ? localizeTreeUrls(
+            applySidebarFolderIndexBehavior(tree, {
+              sidebar: config.sidebar,
+              defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
+            }),
+            locale,
+          )
+        : applySidebarFolderIndexBehavior(tree, {
             sidebar: config.sidebar,
             defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
           }),
-          locale,
-        )
-      : applySidebarFolderIndexBehavior(tree, {
-          sidebar: config.sidebar,
-          defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
-        }),
+      !!sidebarFlat,
+    ),
     config.icons as Record<string, unknown> | undefined,
   );
 
@@ -501,6 +546,7 @@ export function TanstackDocsLayout({
       nav={{ title: navTitle, url: navUrl }}
       themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
       sidebar={finalSidebarProps}
+      containerProps={frameworkContainerProps}
       {...(aiMode === "sidebar-icon" && aiEnabled
         ? {
             searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
@@ -511,7 +557,7 @@ export function TanstackDocsLayout({
       <TypographyStyle typography={typography} />
       <LayoutStyle layout={layoutDimensions} />
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-      {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
+      {browserRuntime && config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
       {!staticExport && (
         <Suspense fallback={null}>
           <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
@@ -540,7 +586,7 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
-          themeName={config.theme?.name}
+          showLlmsInHeader={browserRuntime && config.theme?.name === "fumadocs-pixel-border"}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}
@@ -554,6 +600,8 @@ export function TanstackDocsLayout({
           openDocsProviders={openDocsProviders}
           openDocsTarget={openDocsConfig?.target}
           openDocsPrompt={openDocsConfig?.prompt}
+          connectMcp={connectMcp}
+          installSkills={installSkills}
           pageActionsPosition={pageActionsPosition}
           pageActionsAlignment={pageActionsAlignment}
           editOnGithubUrl={editOnGithubUrl}

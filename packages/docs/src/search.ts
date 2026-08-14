@@ -22,6 +22,7 @@ import type {
   DocsSearchResult,
   DocsSearchSourcePage,
   DocsSearchWarning,
+  DocsAccessPrincipal,
   DocsSearchChunkingConfig,
   DocsContentSnapshot,
   DocsRetrievalSourceProvenance,
@@ -29,6 +30,7 @@ import type {
   McpDocsSearchConfig,
   TypesenseDocsSearchConfig,
 } from "./types.js";
+import { filterDocsPagesByAccess } from "./access.js";
 import { digestDocsRetrievalContent, isDocsRetrievalCanonicalUrl } from "./retrieval-digest.js";
 import {
   createDocsPaginationCursor,
@@ -58,6 +60,7 @@ import {
   stripDocsGeneratedAgentContractMarkers,
 } from "./markdown-sections.js";
 import { isDocsMcpResourcePath } from "./mcp-auth.js";
+import { resolveDocsOkfTrustMetadata } from "./okf.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const MAX_STRUCTURED_SEARCH_LIMIT = 25;
@@ -1441,6 +1444,8 @@ export interface BuildDocsContentSnapshotOptions {
   baseUrl?: string;
   /** @internal Precomputed complete-corpus generation for composed callers. */
   indexGeneration?: string;
+  /** Authenticated identity used to scope protected pages. */
+  principal?: DocsAccessPrincipal;
 }
 
 /**
@@ -1452,12 +1457,13 @@ export interface BuildDocsContentSnapshotOptions {
 export async function buildDocsContentSnapshot(
   options: BuildDocsContentSnapshotOptions,
 ): Promise<DocsContentSnapshot> {
+  const pages = filterDocsPagesByAccess(options.pages, options.principal);
   const audience = resolveDocsSearchAudience(options.audience);
   const search = normalizeDocsSearchConfig(options.search);
   const digestCache = new Map<DocsSearchSourcePage, string>();
   const indexGeneration =
     options.indexGeneration ??
-    (await buildDocsSearchIndexGeneration(options.pages, {
+    (await buildDocsSearchIndexGeneration(pages, {
       audience,
       chunking: search.chunking,
       locale: options.locale,
@@ -1465,7 +1471,7 @@ export async function buildDocsContentSnapshot(
       digestCache,
     }));
   const documents = await Promise.all(
-    options.pages.map(async (page) => {
+    pages.map(async (page) => {
       const localizedPage = localizeDocsSearchPage(page, options.locale);
       const source = await buildDocsRetrievalSource(page, localizedPage.url, {
         audience,
@@ -1966,6 +1972,7 @@ async function enrichDocsSearchResultsWithSources(options: {
       if (page) {
         return {
           ...resultWithoutSource,
+          trust: resolveDocsOkfTrustMetadata(page),
           source: await buildDocsRetrievalSource(page, result.url, {
             audience: options.audience,
             chunking: options.chunking,
@@ -4503,6 +4510,8 @@ async function maybeSyncSearchIndex(
 
 export interface PerformDocsSearchOptions {
   pages: DocsSearchSourcePage[];
+  /** Authenticated identity used to scope protected pages before local or hosted indexing. */
+  principal?: DocsAccessPrincipal;
   /** @internal Complete corpus used for generation when `pages` is pre-scoped by a caller. */
   generationPages?: DocsSearchSourcePage[];
   /** @internal Precomputed complete-corpus generation for structured callers. */
@@ -4600,7 +4609,12 @@ async function performDocsSearchInternal(
   const audience = resolveDocsSearchAudience(options.audience);
   const filters = normalizeDocsSearchFilters(options.filters);
   const hasFilters = hasDocsSearchFilters(filters);
-  const corpusPages = options.pages.map((page) => localizeDocsSearchPage(page, options.locale));
+  const accessiblePages = filterDocsPagesByAccess(options.pages, options.principal);
+  const accessibleGenerationPages = filterDocsPagesByAccess(
+    options.generationPages ?? options.pages,
+    options.principal,
+  );
+  const corpusPages = accessiblePages.map((page) => localizeDocsSearchPage(page, options.locale));
   const indexBaseUrl =
     options.syncBaseUrl === null ? undefined : (options.syncBaseUrl ?? options.baseUrl);
   const scopedPages = hasFilters
@@ -4651,7 +4665,7 @@ async function performDocsSearchInternal(
   const getCurrentIndexGeneration = () => {
     currentIndexGeneration ??= options.indexGeneration
       ? Promise.resolve(options.indexGeneration)
-      : buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
+      : buildDocsSearchIndexGeneration(accessibleGenerationPages, {
           audience,
           chunking: search.chunking,
           locale: options.locale,
@@ -4666,7 +4680,7 @@ async function performDocsSearchInternal(
     hostedIndexGeneration ??=
       audience === "human"
         ? getCurrentIndexGeneration()
-        : buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
+        : buildDocsSearchIndexGeneration(accessibleGenerationPages, {
             audience: "human",
             chunking: search.chunking,
             locale: options.locale,
@@ -5031,6 +5045,8 @@ export interface BuildDocsSearchFacetsOptions {
   limit?: number;
   /** @internal Precomputed complete-corpus generation for composed callers. */
   indexGeneration?: string;
+  /** Authenticated identity used to scope protected pages. */
+  principal?: DocsAccessPrincipal;
 }
 
 function docsSearchPageMatchesFacetFilters(
@@ -5126,12 +5142,13 @@ export async function buildDocsSearchFacets(
   if (options.cursor !== undefined && options.facet === undefined) {
     throw new DocsSearchRequestError("Facet continuation cursors require a `facet` field.");
   }
-  const pages = options.pages
+  const accessiblePages = filterDocsPagesByAccess(options.pages, options.principal);
+  const pages = accessiblePages
     .map((page) => localizeDocsSearchPage(page, options.locale))
     .map((page) => ({ scope: resolveDocsSearchPageScope(page) }));
   const indexGeneration =
     options.indexGeneration ??
-    (await buildDocsSearchIndexGeneration(options.pages, {
+    (await buildDocsSearchIndexGeneration(accessiblePages, {
       audience,
       chunking: search.chunking,
       locale: options.locale,
@@ -5385,12 +5402,15 @@ export async function performDocsSearchWithMetadata(
       : DEFAULT_SEARCH_LIMIT;
   const indexGeneration =
     options.indexGeneration ??
-    (await buildDocsSearchIndexGeneration(options.generationPages ?? options.pages, {
-      audience,
-      chunking: search.chunking,
-      locale: options.locale,
-      baseUrl: options.baseUrl,
-    }));
+    (await buildDocsSearchIndexGeneration(
+      filterDocsPagesByAccess(options.generationPages ?? options.pages, options.principal),
+      {
+        audience,
+        chunking: search.chunking,
+        locale: options.locale,
+        baseUrl: options.baseUrl,
+      },
+    ));
   const normalizedFilters = Object.fromEntries(
     SEARCH_FILTER_FIELDS.flatMap((field) => {
       const values = filters[field];

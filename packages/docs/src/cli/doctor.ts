@@ -66,6 +66,7 @@ import {
 } from "../agent-skills-archive.js";
 import { httpLinkHeaderHasTargetRelation } from "../http-link.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
+import { resolveDocsOkfConfig, resolveDocsOkfTrustMetadata } from "../okf.js";
 import { isDocsMcpOAuthScopeToken, normalizeDocsMcpAuthorizationServerUrls } from "../mcp-auth.js";
 import {
   createFilesystemDocsMcpSource,
@@ -3887,6 +3888,28 @@ export async function inspectAgentReadiness(
       evaluationCoverage.status === "measured"
         ? undefined
         : "Add golden-task safety expectations, actual-answer assertions, and execute-level example checks so each confidence dimension is measured explicitly.",
+    ),
+  );
+
+  const okfConfig = resolveDocsOkfConfig(config?.agent?.okf);
+  const staleOkfPages = okfConfig.enabled
+    ? pages.filter((page) => resolveDocsOkfTrustMetadata(page, okfConfig).stale)
+    : [];
+  checks.push(
+    makeCheck(
+      "okf-trust",
+      "OKF trust metadata",
+      staleOkfPages.length > 0 ? "warn" : "pass",
+      staleOkfPages.length > 0 ? 1 : 2,
+      2,
+      !okfConfig.enabled
+        ? "OKF export is optional and not configured."
+        : staleOkfPages.length === 0
+          ? `OKF v0.2 trust metadata is enabled at ${okfConfig.route}; ${pages.length} page${pages.length === 1 ? "" : "s"} passed the configured staleness policy.`
+          : `${staleOkfPages.length}/${pages.length} OKF document${staleOkfPages.length === 1 ? " is" : "s are"} beyond stale_after.`,
+      staleOkfPages.length > 0
+        ? "Review or regenerate stale pages, then update okf.verified or stale_after with an auditable timestamp."
+        : undefined,
     ),
   );
 

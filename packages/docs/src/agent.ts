@@ -1,6 +1,10 @@
 import type {
   DocsConfig,
+  DocsAccessPrincipal,
   DocsAgentContentChangesConfig,
+  DocsOkfConfig,
+  DocsOkfTrustMetadata,
+  DocsOkfTrustMetadataInput,
   DocsRobotsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
@@ -12,8 +16,11 @@ import type {
   LlmsTxtMaxCharsMode,
   LlmsTxtSectionConfig,
   PageAgentFrontmatter,
+  DocsPageAccessPolicy,
   ResolvedDocsRelatedLink,
 } from "./types.js";
+import { filterDocsPagesByAccess, isDocsPageAccessAllowed } from "./access.js";
+import { resolveDocsOkfConfig, resolveDocsOkfTrustMetadata } from "./okf.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import {
@@ -238,6 +245,8 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
   listPages: true,
   listPageSections: true,
   readPage: true,
+  readPages: true,
+  submitFeedback: true,
   listTasks: true,
   readTask: true,
   searchDocs: true,
@@ -634,6 +643,7 @@ export interface DocsLlmsTxtPageInput {
   agentRawContent?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
+  agent?: PageAgentFrontmatter;
 }
 
 export interface DocsLlmsTxtGeneratedSection extends DocsLlmsTxtResolvedSection {
@@ -739,6 +749,8 @@ export interface DocsMarkdownPage {
   markdownUrl?: string;
   lastModified?: string;
   lastmod?: string;
+  sourcePath?: string;
+  okf?: DocsOkfTrustMetadataInput;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
   content: string;
@@ -751,6 +763,7 @@ export interface DocsMarkdownPage {
 
 export interface DocsMarkdownDocumentOptions {
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
+  okf?: boolean | DocsOkfConfig;
   origin?: string;
   sitemap?: boolean | DocsSitemapConfig;
 }
@@ -860,6 +873,10 @@ export interface DocsMarkdownResponseOptions extends DocsMarkdownNotFoundOptions
   /** Exact source modification timestamp. Date-only values are intentionally ignored. */
   lastModified?: string | Date | null;
   cacheControl?: string;
+  /** Page policy evaluated before any body or recovery metadata is returned. */
+  access?: DocsPageAccessPolicy;
+  /** Authenticated identity; omitted public requests fail closed for protected pages. */
+  principal?: DocsAccessPrincipal;
 }
 
 const DOCS_MARKDOWN_SECTION_MAX_BUDGET = 1_000_000;
@@ -2160,6 +2177,7 @@ export function renderDocsLlmsTxt(
   pages: DocsLlmsTxtPageInput[],
   options: DocsLlmsDiscoveryConfig = {},
 ): DocsLlmsTxtGeneratedContent {
+  pages = filterDocsPagesByAccess(pages);
   const siteTitle = options.siteTitle ?? "Documentation";
   const siteDescription = options.siteDescription;
   const baseUrl = options.baseUrl ?? "";
@@ -2980,6 +2998,7 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl,
   markdownUrl,
   lastUpdated,
+  trust,
   agent,
   generatedPreamble,
 }: {
@@ -2988,6 +3007,7 @@ function renderDocsMarkdownFrontmatter({
   canonicalUrl: string;
   markdownUrl: string;
   lastUpdated?: string;
+  trust?: DocsOkfTrustMetadata;
   agent?: PageAgentFrontmatter;
   generatedPreamble?: boolean;
 }): string {
@@ -2998,6 +3018,7 @@ function renderDocsMarkdownFrontmatter({
     `canonical_url: ${toYamlString(canonicalUrl)}`,
     `markdown_url: ${toYamlString(markdownUrl)}`,
     ...(lastUpdated ? [`last_updated: ${toYamlString(lastUpdated)}`] : []),
+    ...(trust ? [`okf: ${JSON.stringify(trust)}`] : []),
     ...(generatedPreamble ? [`${DOCS_MARKDOWN_GENERATED_PREAMBLE_FIELD}: true`] : []),
     ...renderPageAgentFrontmatterYamlLines(agent),
     "---",
@@ -3388,16 +3409,23 @@ function resolveDocsMarkdownPageMetadata(
   page: DocsMarkdownPage,
   options?: DocsMarkdownDocumentOptions,
 ): Parameters<typeof renderDocsMarkdownFrontmatter>[0] {
+  const canonicalUrl = resolveDocsMarkdownMetadataUrl(page.url, options?.origin);
+  const okfEnabled = resolveDocsOkfConfig(options?.okf).enabled || page.okf !== undefined;
   return {
     title: page.title,
     description: page.description,
-    canonicalUrl: resolveDocsMarkdownMetadataUrl(page.url, options?.origin),
+    canonicalUrl,
     markdownUrl: resolveDocsMarkdownMetadataUrl(
       page.markdownUrl ?? toDocsMarkdownUrl(page.url),
       options?.origin,
     ),
     lastUpdated: normalizeDocsMarkdownLastUpdated(page.lastmod ?? page.lastModified),
     agent: page.agent,
+    ...(okfEnabled
+      ? {
+          trust: resolveDocsOkfTrustMetadata({ ...page, canonicalUrl }, options?.okf),
+        }
+      : {}),
   };
 }
 
@@ -3551,7 +3579,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     entry = "docs",
     requestedPath,
     origin = new URL(request.url).origin,
-    pages,
+    pages: rawPages,
     sitemap,
     locale,
   } = options;
@@ -3561,11 +3589,26 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
   const contentLocation =
     options.contentLocation ?? resolveDocsMarkdownContentLocation(canonicalUrl);
   const varyHeader = getDocsMarkdownVaryHeader(request);
+  const llmsTxtUrl = new URL(DEFAULT_LLMS_TXT_ROUTE, origin).toString();
+  const discoveryLink = `<${llmsTxtUrl}>; rel="describedby"; type="text/plain"`;
   const baseSharedHeaders: Record<string, string> = {
     "X-Robots-Tag": "noindex",
+    "X-Llms-Txt": llmsTxtUrl,
     ...(locale ? { "Content-Language": locale } : {}),
     ...(varyHeader ? { Vary: varyHeader } : {}),
   };
+  const pages = rawPages ? filterDocsPagesByAccess(rawPages, options.principal) : undefined;
+
+  if (!isDocsPageAccessAllowed(options.access, options.principal)) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: {
+        ...baseSharedHeaders,
+        "Cache-Control": "private, no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
+  }
 
   if (!document) {
     const recovery = resolveDocsMarkdownRecovery({ entry, requestedPath, pages, sitemap });
@@ -3575,7 +3618,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
         headers: {
           ...baseSharedHeaders,
           "Content-Location": contentLocation,
-          Link: `<${canonicalUrl}>; rel="canonical"`,
+          Link: `<${canonicalUrl}>; rel="canonical", ${discoveryLink}`,
           "Cache-Control": "no-store",
           Location: new URL(recovery.redirect.markdownUrl, request.url).toString(),
         },
@@ -3596,7 +3639,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
         headers: {
           ...baseSharedHeaders,
           "Content-Location": contentLocation,
-          Link: `<${canonicalUrl}>; rel="canonical"`,
+          Link: `<${canonicalUrl}>; rel="canonical", ${discoveryLink}`,
           "Cache-Control": "no-store",
           "Content-Type": "text/markdown; charset=utf-8",
         },
@@ -3626,7 +3669,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
     const responseHeaders: Record<string, string> = {
       ...baseSharedHeaders,
       "Content-Location": sectionIndexContentLocation,
-      Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown"`,
+      Link: `<${canonicalUrl}>; rel="canonical", <${contentLocation}>; rel="alternate"; type="text/markdown", ${discoveryLink}`,
       "Cache-Control": options.cacheControl ?? "public, max-age=0, s-maxage=3600",
       "Content-Type": "application/json; charset=utf-8",
       "X-Docs-Markdown-Section-Index": DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
@@ -3687,7 +3730,7 @@ export function createDocsMarkdownResponse(options: DocsMarkdownResponseOptions)
   const responseHeaders: Record<string, string> = {
     ...baseSharedHeaders,
     "Content-Location": sectionContentLocation,
-    Link: `<${sectionCanonicalUrl}>; rel="canonical"`,
+    Link: `<${sectionCanonicalUrl}>; rel="canonical", ${discoveryLink}`,
     "Cache-Control":
       sectionResult?.found === false
         ? "no-store"
@@ -4341,6 +4384,12 @@ export function buildDocsAgentDiscoverySpec({
     format: DOCS_AGENT_MANIFEST_FORMAT,
     version: DOCS_AGENT_MANIFEST_VERSION,
     name: "@farming-labs/docs",
+    profile: "full",
+    profiles: {
+      default: "full",
+      full: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+      compact: `${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}?profile=compact`,
+    },
     baseUrl: origin,
     site: {
       title: llms?.siteTitle ?? "Documentation",
@@ -4662,6 +4711,26 @@ export function buildDocsAgentDiscoverySpec({
       doNotAssumeFeedbackPayloadShape: true,
     },
   };
+}
+
+/** Remove first-hop file inventories while retaining every discovery route and capability. */
+export function compactDocsAgentDiscoverySpec<
+  T extends {
+    skills: { published: Array<Record<string, unknown> & { files: readonly unknown[] }> };
+  },
+>(spec: T): T {
+  return {
+    ...spec,
+    profile: "compact",
+    skills: {
+      ...spec.skills,
+      published: spec.skills.published.map((skill) => ({
+        ...skill,
+        fileCount: skill.files.length,
+        files: [],
+      })),
+    },
+  } as T;
 }
 
 export function acceptsDocsMarkdown(request: Request): boolean {

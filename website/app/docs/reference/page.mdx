@@ -290,7 +290,7 @@ array of `DocsConfigMapPointer` entries. Sensitive config values are redacted be
 | Header | Value |
 | ------ | ----- |
 | `Content-Type` | `application/json; charset=utf-8` |
-| `Cache-Control` | `public, max-age=0, s-maxage=3600` |
+| `Cache-Control` | `public, max-age=0, s-maxage=3600, stale-while-revalidate=86400` |
 | `X-Robots-Tag` | `noindex` |
 
 ### Agent discovery spec
@@ -299,9 +299,14 @@ The agent discovery spec (`GET /.well-known/agent.json`) now includes:
 
 ```json
 {
-  "$schema": "https://docs.farming-labs.dev/schema/agent-manifest.v1.json",
-  "format": "farming-labs-agent-manifest.v1",
-  "version": "1",
+  "$schema": "https://docs.farming-labs.dev/schema/agent-manifest.v2.json",
+  "format": "farming-labs-agent-manifest.v2",
+  "version": "2",
+  "profile": "full",
+  "profiles": {
+    "full": "/.well-known/agent.json",
+    "compact": "/.well-known/agent.json?profile=compact"
+  },
   "api": {
     "config": "/api/docs?format=config"
   },
@@ -315,11 +320,15 @@ The agent discovery spec (`GET /.well-known/agent.json`) now includes:
 Agents that read the discovery spec can use `spec.config.endpoint` and `spec.config.format` to
 fetch and identify the config map without hard-coding the route.
 
+Agents with a small first-hop budget can request `?profile=compact`. The compact response is
+minified and replaces each published skill's companion-file inventory with `fileCount`; agents can
+then follow `skills.discovery.index` only when they need the expanded catalog.
+
 The root `$schema` and `format` identify this as the Farming Labs manifest extension. Dynamic
 manifest responses keep `Content-Type: application/json` and add:
 
 ```http
-Link: <https://docs.farming-labs.dev/schema/agent-manifest.v1.json>; rel="describedby"; type="application/schema+json"
+Link: <https://docs.farming-labs.dev/schema/agent-manifest.v2.json>; rel="describedby"; type="application/schema+json"
 ```
 
 This is intentionally distinct from the opt-in A2A v1 Agent Card at
@@ -814,16 +823,67 @@ Framework notes:
 
 See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 
+### `createDocsAuthoringMcpServer(options)`
+
+Server-only factory for the separate protected authoring MCP. It is not registered by
+`createDocsMcpServer` and is never added to public framework routes.
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `rootDir` | `string` | required | Git project root |
+| `contentDir` | `string` | `entry` | Only directory authoring tools may change |
+| `entry` | `string` | `"docs"` | Docs route/content fallback |
+| `branchPrefix` | `string` | `"docs/"` | Required prefix for created and published branches |
+| `doctorCommand` | command argv tuple | — | Shell-free command executed by `authoring_run_doctor` |
+| `allowPublish` | `boolean` | `false` | Register commit/push/draft-PR publication |
+| `baseBranch` | `string` | repository default | Draft PR base branch |
+
+Use `runDocsAuthoringMcpStdio()` or `docs mcp author` for local stdio. If a team wraps the factory
+in HTTP, the transport must require an authoring-specific OAuth scope. Public docs MCP remains
+read-only.
+
 ---
 
 ## `DocsAgentConfig`
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `okf` | `boolean \| DocsOkfConfig` | Publish OKF v0.2 trust metadata in Markdown, search, MCP, doctor, and Static Agent Bundles |
 | `compact` | `DocsAgentCompactConfig` | Defaults for `docs agent compact` |
 | `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Offline-by-default golden tasks used by `docs doctor` and `docs review` |
 | `skills` | `DocsAgentSkillsInput` | Project or workspace skills published by the runtime, Static Agent Bundle, and MCP |
 | `a2a` | `DocsAgentA2AConfig` | Opt-in Agent Card metadata for a real A2A interface |
+
+### `agent.okf` and `DocsOkfConfig`
+
+OKF metadata makes provenance and freshness explicit for machine readers. `agent.okf: true` derives
+conservative defaults; an object can provide corpus defaults and a staleness policy.
+
+```ts title="docs.config.ts"
+agent: {
+  okf: {
+    generatedBy: "software:docs-build",
+    staleAfterDays: 90,
+    verified: [{ by: "human:docs-team", at: "2026-08-01" }],
+  },
+},
+```
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `enabled` | `boolean` | `true` inside the object | Enable OKF projection |
+| `route` | `string` | `"/.well-known/okf.json"` | Static knowledge-bundle route |
+| `generatedBy` | `string` | `"software:@farming-labs/docs"` | Generator actor for derived records |
+| `staleAfterDays` | `number` | — | Derive `stale_after` from the best page timestamp |
+| `sources` | `DocsOkfSource[]` | derived per page | Default source provenance |
+| `generated` | `{ by, at }` | derived | Explicit generation record |
+| `verified` | `{ by, at }[]` | `[]` | Verification records; a `human:` actor produces `human-reviewed` trust |
+| `status` | `"draft" \| "stable" \| "deprecated"` | `"stable"` | Knowledge lifecycle status |
+| `stale_after` | `string` | derived when configured | Explicit expiry date |
+
+Pages can override these fields with `okf` frontmatter. `docs agent export --public` writes the
+JSON bundle, Markdown frontmatter carries the resolved trust object, local search results expose a
+`trust` field, MCP adds `get_trust_metadata`, and `docs doctor --agent` reports expired pages.
 ### `agent.contentChanges` and `DocsAgentContentChangesConfig`
 
 Body-free runtime document synchronization feed. Enabled by default on server-rendered adapters; always disabled (`false`) in static bundles produced by `docs agent export`.
@@ -1567,6 +1627,7 @@ deployed elsewhere and already exposes an `openapi.json`.
 | `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |
 | `exclude`   | `string[]` | `[]`              | Route entries to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative values like `"hello"` / `"hello/route.ts"` |
+| `mcp`       | `boolean \| DocsOpenApiMcpConfig` | `false` | Deny-by-default projection of selected OpenAPI operations into MCP tools |
 
 ```ts title="docs.config.ts"
 apiReference: {
@@ -1587,6 +1648,32 @@ apiReference: {
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
 from the hosted spec instead.
+
+### `DocsOpenApiMcpConfig`
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `operations` | `readonly string[]` | `[]` | Allowed `operationId` or `METHOD /path` selectors |
+| `baseUrl` | `string` | first OpenAPI server | API origin used for operation requests |
+| `allowMutations` | `boolean` | `false` | Permit allowlisted POST, PUT, PATCH, and DELETE operations |
+| `headers` | `Record<string, string> \| callback` | — | Server-owned credentials resolved for each operation |
+| `timeoutMs` | `number` | `10000` | Request timeout |
+| `allowInsecureHttp` | `boolean` | `false` | Permit plain HTTP destinations for explicitly trusted development environments |
+| `allowPrivateNetwork` | `boolean` | `false` | Permit loopback, private, link-local, and reserved destinations |
+| `resolveHost` | `callback` | Node DNS | Server-owned DNS resolver used to validate every destination |
+| `maxRedirects` | `number` | `0` | Validated redirects to follow; redirects are blocked by default |
+| `maxResponseBytes` | `number` | `1000000` | Maximum response bytes read into an MCP result |
+| `requestsPerMinute` | `number` | `60` | Per-principal, per-operation request budget |
+| `maxConcurrentRequests` | `number` | `4` | Per-principal, per-operation concurrency budget |
+
+An operation can also opt in with `x-farming-labs-mcp: true`. Security requirements and only the
+referenced `components.securitySchemes` are included in the tool metadata. Credentials remain
+server-owned and are applied after parsed tool parameters.
+
+Every request and redirect is DNS-checked before egress. HTTPS, public-network destinations,
+bounded response streaming, rate limits, and concurrency limits are enforced by default. Development
+servers on private networks must opt in explicitly; never enable those exceptions for untrusted
+OpenAPI documents or model-supplied destinations.
 
 This does not remove the framework route requirement on non-Next adapters. TanStack Start,
 SvelteKit, Astro, and Nuxt still need their `/{path}` handler files so the docs app has a route
@@ -1866,6 +1953,11 @@ Notes:
 | --------- | ------------------------------------- | ----------- |
 | `context` | `DocsAgentFeedbackContext \| undefined` | Optional docs/page transport context |
 | `payload` | `Record<string, unknown>`             | Agent feedback payload validated by `feedback.agent.schema` |
+
+`analyzeDocsAgentFeedback()` converts recurring failed reports into evidence clusters, golden-task
+drafts, issue drafts, and a draft docs PR description. `readDocsAgentFeedbackFile()` accepts JSON
+arrays/objects and JSON Lines. Both are exported from `@farming-labs/docs/server`; the CLI wrapper
+is `docs agent feedback --input <path> [--write]`.
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -2492,6 +2584,7 @@ Page-level metadata for machine-readable docs workflows.
 | Property        | Type | Description |
 | --------------- | ---- | ----------- |
 | `tokenBudget`   | `number` | Approximate output token target for `docs agent compact` on this page |
+| `access`        | `DocsPageAccessPolicy` | Deny-by-default scopes and claims for agent-facing page surfaces |
 | `task`          | `string` | Concrete task the page helps an agent complete |
 | `outcome`       | `string` | Observable end state that indicates completion |
 | `appliesTo`     | `{ framework?, version?, package? }` | Applicability values; each accepts a string or string array |
@@ -2509,6 +2602,14 @@ title: "Installation"
 description: "Install the framework"
 agent:
   tokenBudget: 777
+  access:
+    visibility: authenticated
+    scopes:
+      - docs:private
+    claims:
+      role:
+        - admin
+        - editor
   task: Install the framework
   outcome: The docs route renders locally.
   appliesTo:
@@ -2536,6 +2637,11 @@ Notes:
 
 - `agent.tokenBudget` overrides global `agent.compact.maxOutputTokens` defaults and CLI
   `--max-output-tokens` for that one page
+- `agent.access.visibility: authenticated` requires a principal; every listed scope and claim must
+  match, while claim arrays accept any overlapping value
+- protected pages are omitted from public Markdown discovery, `llms.txt`, search/Ask AI, content
+  sync, unauthenticated MCP results, and static agent bundles; application HTML authorization remains
+  the host application's responsibility
 - structured fields are normalized into served Markdown frontmatter, a deterministic
   `## Agent Contract` section, search/Ask AI context, Schema.org `HowTo` JSON-LD, and MCP task tools
 - MCP list-page results contain only `hasContract`, `task`, `outcome`, and `appliesTo`; call

@@ -28,6 +28,8 @@ import type {
   PageFrontmatter,
   OpenDocsConfig,
   CopyMarkdownConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
@@ -36,7 +38,6 @@ import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
-import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -963,7 +964,7 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
   const parts: string[] = [];
 
   if (rootVars.length > 0) {
-    parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+    parts.push(`:root,\n#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
   }
 
   if (desktopRootVars.length > 0) {
@@ -1043,6 +1044,16 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
       ? (pageActions.copyMarkdown as CopyMarkdownConfig)
       : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
+  const connectMcp = resolveBool(pageActions?.connectMcp)
+    ? pageActions?.connectMcp && typeof pageActions.connectMcp === "object"
+      ? (pageActions.connectMcp as PageActionConnectMcpConfig)
+      : {}
+    : undefined;
+  const installSkills = resolveBool(pageActions?.installSkills)
+    ? pageActions?.installSkills && typeof pageActions.installSkills === "object"
+      ? (pageActions.installSkills as PageActionInstallSkillsConfig)
+      : {}
+    : undefined;
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
 
@@ -1197,7 +1208,6 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-        {config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
         {!staticExport && (
           <Suspense fallback={null}>
             <DocsCommandSearch
@@ -1233,7 +1243,6 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         <Suspense fallback={children}>
           <DocsPageClient
             tocEnabled={tocEnabled}
-            themeName={config.theme?.name}
             tocStyle={tocStyle}
             breadcrumbEnabled={breadcrumbEnabled}
             changelogBasePath={changelogBasePath}
@@ -1249,6 +1258,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             openDocsProviders={openDocsProviders as any}
             openDocsTarget={openDocsConfig?.target}
             openDocsPrompt={openDocsConfig?.prompt}
+            connectMcp={connectMcp}
+            installSkills={installSkills}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
             githubUrl={githubUrl}

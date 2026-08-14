@@ -9,6 +9,13 @@
 
 import type { DocsConfig } from "./types.js";
 
+export {
+  filterDocsPagesByAccess,
+  isDocsAgentPageAccessible,
+  isDocsPageAccessAllowed,
+  normalizeDocsPageAccessPolicy,
+} from "./access.js";
+
 export { defineDocs } from "./define-docs.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
@@ -83,6 +90,39 @@ export {
   upsertPageAgentContractMarkdown,
 } from "./agent-contract.js";
 export type { PageAgentFrontmatterIssue } from "./agent-contract.js";
+export {
+  buildDocsAgentFeedbackEvaluationCandidates,
+  compareDocsAgentFeedbackEvaluationBaseline,
+  createDocsAgentFeedbackEvaluationBaseline,
+  DOCS_AGENT_FEEDBACK_EVALUATION_BASELINE_FORMAT,
+  DOCS_AGENT_FEEDBACK_EVALUATION_CANDIDATES_FORMAT,
+  DOCS_AGENT_FEEDBACK_EVALUATION_REGRESSION_FORMAT,
+} from "./agent-feedback-evaluations.js";
+export type {
+  BuildDocsAgentFeedbackEvaluationCandidatesOptions,
+  CompareDocsAgentFeedbackEvaluationOptions,
+  DocsAgentFeedbackEvaluationBaseline,
+  DocsAgentFeedbackEvaluationCandidate,
+  DocsAgentFeedbackEvaluationCandidateRegistry,
+  DocsAgentFeedbackEvaluationDuplicate,
+  DocsAgentFeedbackEvaluationRegression,
+  DocsAgentFeedbackEvaluationRegressionReport,
+  DocsAgentFeedbackEvaluationTaskBaseline,
+} from "./agent-feedback-evaluations.js";
+export {
+  analyzeDocsAgentMaintenanceSignals,
+  DOCS_AGENT_MAINTENANCE_PROPOSAL_FORMAT,
+  parseDocsAgentMaintenanceSignals,
+} from "./agent-maintenance.js";
+export type {
+  AnalyzeDocsAgentMaintenanceSignalsOptions,
+  DocsAgentMaintenanceIssueDraft,
+  DocsAgentMaintenanceProposal,
+  DocsAgentMaintenanceProposalReport,
+  DocsAgentMaintenanceSeverity,
+  DocsAgentMaintenanceSignal,
+  DocsAgentMaintenanceSignalSource,
+} from "./agent-maintenance.js";
 export {
   applySidebarFolderIndexBehavior,
   resolvePageSidebarFolderIndexBehavior,
@@ -171,6 +211,7 @@ export {
   DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
   DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
   buildDocsAgentDiscoverySpec,
+  compactDocsAgentDiscoverySpec,
   buildDocsAgentSkillsIndex,
   buildDocsLegacySkillsIndex,
   buildDocsA2AAgentCard,
@@ -428,6 +469,9 @@ export type {
   ChangelogFrontmatter,
   ApiReferenceConfig,
   ApiReferenceRenderer,
+  DocsOpenApiMcpConfig,
+  DocsOpenApiMcpCredentialContext,
+  DocsOpenApiMcpHeaders,
   DocsI18nConfig,
   DocsMcpAllowedOrigins,
   DocsMcpAuthPrincipal,
@@ -504,11 +548,21 @@ export type {
   PageTwitter,
   DocsRelatedItem,
   ResolvedDocsRelatedLink,
+  DocsAccessClaimValue,
+  DocsAccessPrincipal,
+  DocsPageAccessPolicy,
   PageAgentAppliesTo,
   PageAgentCommand,
   PageAgentFailureMode,
   PageAgentFrontmatter,
   PageAgentVerification,
+  DocsOkfActorTimestamp,
+  DocsOkfConfig,
+  DocsOkfSource,
+  DocsOkfStatus,
+  DocsOkfTrustMetadata,
+  DocsOkfTrustMetadataInput,
+  DocsOkfTrustTier,
   UIConfig,
   FontStyle,
   TypographyConfig,
@@ -524,6 +578,9 @@ export type {
   SidebarPageNode,
   SidebarFolderNode,
   PageActionsConfig,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
+  PageActionMcpProvider,
   CopyMarkdownConfig,
   CopyMarkdownFormat,
   OpenDocsConfig,
@@ -640,6 +697,23 @@ export {
   isDocsRetrievalCanonicalUrl,
   sha256DocsContent,
 } from "./retrieval-digest.js";
+export {
+  DEFAULT_DOCS_OKF_ROUTE,
+  DOCS_OKF_BUNDLE_FORMAT,
+  DOCS_OKF_VERSION,
+  buildDocsOkfBundle,
+  normalizeDocsOkfTrustMetadataInput,
+  resolveDocsOkfConfig,
+  resolveDocsOkfTrustMetadata,
+} from "./okf.js";
+export { resolveDocsOpenApiMcpBaseUrl, resolveDocsOpenApiMcpOperations } from "./openapi-mcp.js";
+export type { DocsOpenApiMcpOperation, DocsOpenApiMcpParameter } from "./openapi-mcp.js";
+export type {
+  DocsOkfBundle,
+  DocsOkfKnowledgeDocument,
+  DocsOkfPageLike,
+  DocsOkfResolvedConfig,
+} from "./okf.js";
 export {
   createDocsCacheableResponse,
   formatDocsContentDigest,

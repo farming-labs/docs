@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "fumadocs-core/framework";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { useWindowSearchParams } from "./client-location.js";
@@ -366,6 +367,7 @@ export function DocsCommandSearch({
   locale?: string;
   analytics?: boolean;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -654,9 +656,9 @@ export function DocsCommandSearch({
       saveRecent(item);
       setOpen(false);
       if (item.url.startsWith("http")) window.open(item.url, "_blank", "noopener");
-      else window.location.href = item.url;
+      else void router.push(item.url);
     },
-    [activeLocale, analytics, query.length, saveRecent],
+    [activeLocale, analytics, query.length, router, saveRecent],
   );
 
   const displayItems = useMemo(() => {

@@ -4,7 +4,13 @@ import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page"
 import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
-import type { CopyMarkdownFormat, DocsFeedbackData, ReadingTimeFormat } from "@farming-labs/docs";
+import type {
+  CopyMarkdownFormat,
+  DocsFeedbackData,
+  PageActionConnectMcpConfig,
+  PageActionInstallSkillsConfig,
+  ReadingTimeFormat,
+} from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
@@ -46,8 +52,8 @@ interface SerializedProvider {
 
 interface DocsPageClientProps {
   tocEnabled: boolean;
-  /** Active theme preset name, used for theme-specific structural affordances. */
-  themeName?: string;
+  /** Expose the llms.txt action in a runtime-owned header slot. */
+  showLlmsInHeader?: boolean;
   tocStyle?: "default" | "directional";
   breadcrumbEnabled?: boolean;
   changelogBasePath?: string;
@@ -66,6 +72,8 @@ interface DocsPageClientProps {
   openDocsProviders?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
+  connectMcp?: PageActionConnectMcpConfig;
+  installSkills?: PageActionInstallSkillsConfig;
   /** Where to render page actions relative to the title */
   pageActionsPosition?: "above-title" | "below-title" | "toc";
   /** Horizontal alignment of page action buttons */
@@ -350,7 +358,11 @@ function isDocsNavigationPath(pathname: string, entry: string, publicPath: strin
   return pathname === publicPath || pathname.startsWith(`${publicPath}/`);
 }
 
-function installDocsPathNavigationGuard(entry: string, publicPath: string) {
+function installDocsPathNavigationGuard(
+  entry: string,
+  publicPath: string,
+  navigate: (url: string) => void | Promise<void>,
+) {
   const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
   if (publicPath === normalizedEntry) return undefined;
 
@@ -387,7 +399,7 @@ function installDocsPathNavigationGuard(entry: string, publicPath: string) {
       }
 
       event.preventDefault();
-      window.location.assign(nextHref);
+      void navigate(nextHref);
     } catch {
       // Ignore malformed links and leave them untouched.
     }
@@ -503,7 +515,7 @@ function findThreadlineTocActionsContainer(): HTMLElement | null {
 
 export function DocsPageClient({
   tocEnabled,
-  themeName,
+  showLlmsInHeader = false,
   tocStyle = "default",
   breadcrumbEnabled = true,
   changelogBasePath,
@@ -519,6 +531,8 @@ export function DocsPageClient({
   openDocsProviders,
   openDocsTarget,
   openDocsPrompt,
+  connectMcp,
+  installSkills,
   pageActionsPosition = "below-title",
   pageActionsAlignment = "left",
   githubUrl,
@@ -557,6 +571,7 @@ export function DocsPageClient({
   analytics = false,
   children,
 }: DocsPageClientProps) {
+  const router = useRouter();
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
@@ -569,7 +584,7 @@ export function DocsPageClient({
   const activeLocale = resolveClientLocale(searchParams, locale);
   const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
-  const showLlmsInHeader = llmsTxtEnabled && themeName === "fumadocs-pixel-border";
+  const shouldShowLlmsInHeader = llmsTxtEnabled && showLlmsInHeader;
 
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
   const pageTitle = generatedTitleMap?.[normalizedPath];
@@ -599,8 +614,8 @@ export function DocsPageClient({
   }, [analytics, activeLocale, browserSearch, entry, isChangelogRoute, normalizedPath]);
 
   useEffect(() => {
-    return installDocsPathNavigationGuard(entry, resolvedPublicPath);
-  }, [entry, resolvedPublicPath]);
+    return installDocsPathNavigationGuard(entry, resolvedPublicPath, (url) => router.push(url));
+  }, [entry, resolvedPublicPath, router]);
 
   const resolvedReadingTime = !isChangelogRoute
     ? readingTimeProp !== undefined
@@ -630,7 +645,7 @@ export function DocsPageClient({
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [effectiveTocEnabled, pathname]);
+  }, [children, effectiveTocEnabled, pathname]);
 
   useEffect(() => {
     const timer = requestAnimationFrame(() => {
@@ -859,6 +874,8 @@ export function DocsPageClient({
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
+              connectMcp={connectMcp}
+              installSkills={installSkills}
               alignment={pageActionsAlignment}
               variant="default"
               githubFileUrl={githubFileUrl}
@@ -880,8 +897,7 @@ export function DocsPageClient({
     }
 
     const container = document.getElementById("nd-page");
-    const title = container?.querySelector("h1");
-    if (!title) {
+    if (!container) {
       setTitlePortalHost(null);
       return;
     }
@@ -890,6 +906,12 @@ export function DocsPageClient({
     host.className = "fd-title-decorations-host";
 
     const placeHost = () => {
+      const title = container.querySelector("h1");
+      if (!title) {
+        host.remove();
+        return;
+      }
+
       let anchor: Element = title;
 
       if (descriptionInBody) {
@@ -910,10 +932,9 @@ export function DocsPageClient({
       }
     };
 
-    title.insertAdjacentElement("afterend", host);
     placeHost();
     const observer = new MutationObserver(placeHost);
-    observer.observe(title.parentElement ?? title, { childList: true });
+    observer.observe(container, { childList: true, subtree: true });
     const animationFrame = window.requestAnimationFrame(placeHost);
     setTitlePortalHost(host);
 
@@ -923,7 +944,7 @@ export function DocsPageClient({
       host.remove();
       setTitlePortalHost(null);
     };
-  }, [descriptionInBody, needsTitleDecorationsPortal, pathname]);
+  }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
     <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
@@ -932,7 +953,12 @@ export function DocsPageClient({
     titleDecorations && titlePortalHost
       ? createPortal(titleDecorations, titlePortalHost, "title-decorations")
       : null;
-  const titleDecorationsFallback = titleDecorations && !titlePortalHost ? titleDecorations : null;
+  const titleDecorationsFallback =
+    titleDecorations && !titlePortalHost ? (
+      <div className="fd-title-decorations-fallback" hidden>
+        {titleDecorations}
+      </div>
+    ) : null;
   const generatedPageHeader = pageTitle ? (
     <div className="fd-generated-page-header not-prose">
       <h1 className="fd-page-title">{pageTitle}</h1>
@@ -957,6 +983,8 @@ export function DocsPageClient({
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
+              connectMcp={connectMcp}
+              installSkills={installSkills}
               alignment="left"
               variant="rail"
               githubFileUrl={githubFileUrl}
@@ -985,12 +1013,12 @@ export function DocsPageClient({
           key="llms-txt"
           href={`/llms.txt${llmsLangQuery}`}
           className="fd-agent-llms-directive"
-          data-visible-in-header={showLlmsInHeader ? "true" : undefined}
-          style={showLlmsInHeader ? undefined : agentLlmsDirectiveStyle}
-          tabIndex={showLlmsInHeader ? undefined : -1}
-          aria-hidden={showLlmsInHeader ? undefined : true}
+          data-visible-in-header={shouldShowLlmsInHeader ? "true" : undefined}
+          style={shouldShowLlmsInHeader ? undefined : agentLlmsDirectiveStyle}
+          tabIndex={shouldShowLlmsInHeader ? undefined : -1}
+          aria-hidden={shouldShowLlmsInHeader ? undefined : true}
         >
-          {showLlmsInHeader ? "LLMS.TXT" : "llms.txt"}
+          {shouldShowLlmsInHeader ? "LLMS.TXT" : "llms.txt"}
         </a>
       )}
       {titleControlsPortal}
@@ -1002,7 +1030,7 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: false }}
+        footer={{ enabled: !isChangelogRoute && !showPageNavigation }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb
@@ -1029,6 +1057,8 @@ export function DocsPageClient({
                 providers={openDocsProviders}
                 openDocsTarget={openDocsTarget}
                 openDocsPrompt={openDocsPrompt}
+                connectMcp={connectMcp}
+                installSkills={installSkills}
                 alignment={pageActionsAlignment}
                 variant="default"
                 githubFileUrl={githubFileUrl}
@@ -1039,9 +1069,13 @@ export function DocsPageClient({
           </div>
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
-        <DocsBody key="body" style={{ display: "flex", flexDirection: "column" }}>
+        <DocsBody
+          key="body"
+          className="fd-page-body"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
           {generatedPageHeader}
-          <div key="content" style={{ flex: 1 }}>
+          <div key="content" className="fd-docs-content" style={{ flex: 1 }}>
             {renderedChildren}
           </div>
           {!generatedPageHeader && titleDecorationsFallback}

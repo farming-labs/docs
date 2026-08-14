@@ -37,6 +37,18 @@ export default withDocs(defineConfig({}), {
 });
 ```
 
+Code highlighting is compiled by the adapter's MDX pipeline. Pick a specific
+Shiki palette at that boundary without replacing the rest of the adapter:
+
+```ts
+export default withDocs(defineConfig({}), {
+  codeBlockThemes: {
+    light: "github-light-default",
+    dark: "vesper",
+  },
+});
+```
+
 Import the selected theme from the application-owned global stylesheet. This
 also gives the application a normal place for project-specific overrides:
 

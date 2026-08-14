@@ -219,6 +219,8 @@ describe("resolveDocsMcpConfig", () => {
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -229,6 +231,7 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
       prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
@@ -252,6 +255,8 @@ describe("resolveDocsMcpConfig", () => {
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -262,6 +267,7 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
       prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
@@ -289,6 +295,8 @@ describe("resolveDocsMcpConfig", () => {
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -299,6 +307,7 @@ describe("resolveDocsMcpConfig", () => {
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
       prompts: DEFAULT_RESOLVED_MCP_PROMPTS,
       security: {
@@ -535,6 +544,140 @@ describe("resolveDocsMcpConfig", () => {
   });
 });
 
+describe("P1 trust and OpenAPI tools", () => {
+  it("publishes OKF trust and executes only allowlisted OpenAPI operations", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://api.example.com/v1/users/42?expand=teams");
+      expect(init?.method).toBe("GET");
+      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer server-secret");
+      return Response.json({ id: 42, name: "Ada" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const server = await createDocsMcpServer({
+      source: {
+        entry: "docs",
+        siteTitle: "Trust Docs",
+        getPages: () => [
+          {
+            slug: "install",
+            url: "/docs/install",
+            title: "Install",
+            content: "Install content",
+            lastmod: "2026-01-01",
+            okf: {
+              verified: [{ by: "human:docs-team", at: "2026-01-02" }],
+            },
+          },
+        ],
+        getNavigation: () => ({ name: "Docs", children: [] }),
+      },
+      okf: { staleAfterDays: 30 },
+      openapi: {
+        config: {
+          enabled: true,
+          operations: ["getUser"],
+          headers: { Authorization: "Bearer server-secret" },
+          resolveHost: async () => ["93.184.216.34"],
+        },
+        document: {
+          openapi: "3.1.0",
+          servers: [{ url: "https://api.example.com/v1" }],
+          paths: {
+            "/users/{id}": {
+              get: {
+                operationId: "getUser",
+                parameters: [
+                  { name: "id", in: "path", required: true },
+                  { name: "expand", in: "query" },
+                ],
+              },
+            },
+          },
+        },
+      },
+    });
+    const client = new Client({ name: "p1-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.map((tool) => tool.name)).toEqual(
+        expect.arrayContaining(["get_trust_metadata", "api_getUser"]),
+      );
+      const trust = await client.callTool({
+        name: "get_trust_metadata",
+        arguments: { path: "install" },
+      });
+      expect(JSON.stringify(trust)).toContain('"trust_tier":"human-reviewed"');
+
+      const result = await client.callTool({
+        name: "api_getUser",
+        arguments: { parameters: { id: 42, expand: "teams" } },
+      });
+      expect(JSON.stringify(result)).toContain('"name":"Ada"');
+      expect(fetchMock).toHaveBeenCalledOnce();
+    } finally {
+      await client.close();
+      await server.close();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("page access policies", () => {
+  const source = {
+    getPages: () => [
+      { slug: "public", url: "/docs/public", title: "Public", content: "Public content" },
+      {
+        slug: "private",
+        url: "/docs/private",
+        title: "Private",
+        content: "Private MCP sentinel",
+        agent: { access: { scopes: ["docs:private"] } },
+      },
+    ],
+    getNavigation: () => ({
+      name: "Docs",
+      children: [
+        { type: "page" as const, name: "Public", url: "/docs/public" },
+        { type: "page" as const, name: "Private", url: "/docs/private" },
+      ],
+    }),
+  };
+
+  it.each([
+    ["public", undefined, ["/docs/public"]],
+    [
+      "authorized",
+      { transport: "http" as const, auth: { id: "agent", scopes: ["docs:private"] } },
+      ["/docs/private", "/docs/public"],
+    ],
+  ])("filters MCP pages and navigation for %s requests", async (_label, requestContext, urls) => {
+    const server = await createDocsMcpServer({ source, requestContext });
+    const client = new Client({ name: "access-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const listed = await client.callTool({ name: "list_pages", arguments: {} });
+      const navigation = await client.callTool({ name: "get_navigation", arguments: {} });
+      expect(JSON.stringify(listed)).not.toContain("Private MCP sentinel");
+      const listedUrls = JSON.stringify(listed).match(/\/docs\/(?:private|public)/g) ?? [];
+      expect([...new Set(listedUrls)].sort()).toEqual(urls);
+      expect(JSON.stringify(navigation).includes("/docs/private")).toBe(
+        requestContext !== undefined,
+      );
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+});
+
 describe("MCP contract prompts", () => {
   const contractPage: DocsMcpPage = {
     slug: "installation",
@@ -701,6 +844,116 @@ describe("MCP contract prompts", () => {
         evaluations: { tasks: [goldenTask] },
       }),
     ).rejects.toThrow(/no configured golden task/i);
+  });
+});
+
+describe("agent-ready MCP write and batch tools", () => {
+  const source = {
+    entry: "docs",
+    siteTitle: "Batch Docs",
+    getPages: () => [
+      {
+        slug: "first",
+        url: "/docs/first",
+        title: "First",
+        content: "# First\n\nFirst page content.",
+      },
+      {
+        slug: "second",
+        url: "/docs/second",
+        title: "Second",
+        content: "# Second\n\nSecond page content.",
+      },
+    ],
+    getNavigation: () => ({ name: "Docs", children: [] }),
+  };
+
+  it("reads several pages under one shared token budget", async () => {
+    const server = await createDocsMcpServer({ source });
+    const client = new Client({ name: "batch-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.map((tool) => tool.name)).toContain("read_pages");
+      const result = await client.callTool({
+        name: "read_pages",
+        arguments: {
+          paths: ["first", "/docs/second", "missing"],
+          tokenBudget: 256,
+        },
+      });
+      expect(result.structuredContent).toMatchObject({
+        format: "docs-read-pages.v1",
+        requestedCount: 3,
+        resultCount: 2,
+        errors: [{ path: "missing", error: expect.stringContaining("No docs page matched") }],
+        pages: [
+          { requestedPath: "first", document: expect.stringContaining("First page content") },
+          {
+            requestedPath: "/docs/second",
+            document: expect.stringContaining("Second page content"),
+          },
+        ],
+      });
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("validates submit_feedback with the configured schema before delivery", async () => {
+    const onFeedback = vi.fn();
+    const server = await createDocsMcpServer({
+      source,
+      feedback: {
+        agent: {
+          schema: {
+            type: "object",
+            properties: { outcome: { type: "string" } },
+            required: ["outcome"],
+            additionalProperties: false,
+          },
+          onFeedback,
+        },
+      },
+    });
+    const client = new Client({ name: "feedback-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.map((tool) => tool.name)).toContain("submit_feedback");
+      const invalid = await client.callTool({
+        name: "submit_feedback",
+        arguments: { payload: {} },
+      });
+      expect(invalid.isError).toBe(true);
+      expect(onFeedback).not.toHaveBeenCalled();
+
+      const valid = await client.callTool({
+        name: "submit_feedback",
+        arguments: {
+          context: { page: "/docs/first" },
+          payload: { outcome: "The example was useful." },
+        },
+      });
+      expect(valid.structuredContent).toEqual({
+        accepted: true,
+        message: "Feedback accepted.",
+      });
+      expect(onFeedback).toHaveBeenCalledWith({
+        context: { page: "/docs/first", source: "mcp" },
+        payload: { outcome: "The example was useful." },
+      });
+    } finally {
+      await client.close();
+      await server.close();
+    }
   });
 });
 

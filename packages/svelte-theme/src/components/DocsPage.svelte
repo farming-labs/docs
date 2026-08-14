@@ -347,7 +347,9 @@
     {/if}
 
     <div class="fd-page-body">
-      {@render children()}
+      <div class="fd-docs-content">
+        {@render children()}
+      </div>
     </div>
 
     <footer class="fd-page-footer">

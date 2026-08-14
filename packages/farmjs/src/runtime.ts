@@ -8,6 +8,9 @@ export const FARM_DOCS_ADAPTER_ID = "@farming-labs/farmjs" as const;
  */
 export const FARM_DOCS_ADAPTER_PROTOCOL = 1 as const;
 
+/** Internal request marker used by the client runtime for page-data navigation. */
+export const FARM_DOCS_NAVIGATION_HEADER = "x-farm-docs-navigation" as const;
+
 export interface FarmDocsRuntimeAdapter {
   id: typeof FARM_DOCS_ADAPTER_ID;
   protocol: typeof FARM_DOCS_ADAPTER_PROTOCOL;

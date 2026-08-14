@@ -52,6 +52,28 @@ describe("parseFlags", () => {
     expect(flags.client).toBe("cursor");
   });
 
+  it("parses protected authoring and feedback flags", () => {
+    expect(
+      parseFlags([
+        "mcp",
+        "author",
+        "--allow-publish",
+        "--branch-prefix",
+        "docs/",
+        "--base-branch",
+        "main",
+      ]),
+    ).toMatchObject({
+      "allow-publish": true,
+      "branch-prefix": "docs/",
+      "base-branch": "main",
+    });
+    expect(parseFlags(["agent", "feedback", "--write", "--json"])).toMatchObject({
+      write: true,
+      json: true,
+    });
+  });
+
   it("parses search sync provider flags", () => {
     const flags = parseFlags(["search", "sync", "--typesense", "--collection", "docs"]);
     expect(flags.typesense).toBe(true);

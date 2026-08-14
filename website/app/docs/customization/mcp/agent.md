@@ -42,3 +42,10 @@ route, or the canonical handler and public forwarder are missing or disagree; us
 distinguish them. Repeated `401` responses mean the callback is not returning a valid principal;
 `403` with `insufficient_scope` means the principal lacks a configured required scope. Local-only
 clients can avoid HTTP routing with `pnpm exec docs mcp`.
+
+The public docs MCP never contains write tools. For an operator-controlled authoring session, run
+`pnpm exec docs mcp author --branch-prefix docs/`. It restricts reads and writes to documentation
+files under `contentDir`, requires a current SHA-256 before overwriting, and exposes branch,
+preview, doctor, diff, and feedback-analysis tools. Draft-PR publishing is not registered unless the
+operator also passes `--allow-publish`; keep that server on local stdio or behind a separate
+authoring-scoped OAuth transport.

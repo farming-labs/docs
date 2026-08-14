@@ -1,6 +1,10 @@
 import { createElement } from "react";
+import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDocsServer, createFarmDocsRuntimeHandler } from "./server.js";
+import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 
 const config = {
   entry: "docs",
@@ -82,6 +86,99 @@ Build a Farm application.
     });
   });
 
+  it("keeps configured navigation groups open for flat sidebars", async () => {
+    const server = createDocsServer({
+      ...config,
+      sidebar: { flat: true },
+      navigation: {
+        sidebar: [
+          {
+            label: "Start",
+            children: [{ label: "Guide", slug: "guide" }],
+          },
+        ],
+      },
+      _preloadedContent: {
+        "/docs/guide/page.md": "# Guide",
+      },
+    } as any);
+
+    const page = await server.load({ pathname: "/docs/guide" });
+
+    expect(page.tree.children[0]).toMatchObject({
+      type: "folder",
+      name: "Start",
+      collapsible: false,
+      defaultOpen: true,
+    });
+  });
+
+  it("includes standalone Markdown pages and file-only folders in bundled navigation", async () => {
+    const server = createDocsServer({
+      ...config,
+      ordering: [
+        { slug: "capabilities" },
+        { slug: "api", children: [{ slug: "v1" }, { slug: "v0-core" }] },
+      ],
+      _preloadedContent: {
+        "/docs/page.md": config._preloadedContent["/docs/page.md"],
+        "/docs/capabilities.md": `---\ntitle: Capabilities\n---\n# Capabilities`,
+        "/docs/api/v0-core.md": `---\ntitle: v0 parity\n---\n# v0 parity`,
+        "/docs/api/v1.md": `---\ntitle: API v1\n---\n# API v1`,
+      },
+    });
+
+    const page = await server.load({ pathname: "/docs" });
+
+    expect(page.tree.children).toMatchObject([
+      { type: "page", name: "Introduction", url: "/docs" },
+      { type: "page", name: "Capabilities", url: "/docs/capabilities" },
+      {
+        type: "folder",
+        name: "Api",
+        children: [
+          { type: "page", name: "API v1", url: "/docs/api/v1" },
+          { type: "page", name: "v0 parity", url: "/docs/api/v0-core" },
+        ],
+      },
+    ]);
+  });
+
+  it("includes standalone Markdown pages and file-only folders in filesystem navigation", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-flat-navigation-"));
+    const contentDir = path.join(rootDir, "docs");
+
+    try {
+      mkdirSync(path.join(contentDir, "api"), { recursive: true });
+      writeFileSync(path.join(contentDir, "page.md"), `---\ntitle: Introduction\n---\n# Intro`);
+      writeFileSync(
+        path.join(contentDir, "capabilities.md"),
+        `---\ntitle: Capabilities\norder: 1\n---\n# Capabilities`,
+      );
+      writeFileSync(path.join(contentDir, "api", "v1.md"), `---\ntitle: API v1\n---\n# API v1`);
+
+      const server = createDocsServer({
+        entry: "docs",
+        contentDir,
+        rootDir,
+        ordering: "numeric",
+      });
+      const page = await server.load({ pathname: "/docs" });
+
+      expect(page.tree.children).toMatchObject([
+        { type: "page", name: "Introduction", url: "/docs" },
+        { type: "page", name: "Capabilities", url: "/docs/capabilities" },
+        {
+          type: "folder",
+          name: "Api",
+          children: [{ type: "page", name: "API v1", url: "/docs/api/v1" }],
+        },
+      ]);
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
   it("derives Edit on GitHub from the configured content directory", async () => {
     const server = createDocsServer({
       ...config,
@@ -118,6 +215,44 @@ Build a Farm application.
     );
   });
 
+  it("uses bundled Git dates instead of deployment file mtimes", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-last-modified-"));
+    const contentDir = path.join(rootDir, "docs");
+    const pagePath = path.join(contentDir, "page.md");
+
+    try {
+      mkdirSync(contentDir, { recursive: true });
+      writeFileSync(pagePath, "# Farm Docs\n");
+      utimesSync(
+        pagePath,
+        new Date("2018-10-20T00:00:00.000Z"),
+        new Date("2018-10-20T00:00:00.000Z"),
+      );
+      writeFileSync(
+        path.join(contentDir, ".farm-docs-last-modified.json"),
+        JSON.stringify({
+          version: 1,
+          pages: { "page.md": "2026-08-09T04:25:45+03:00" },
+        }),
+      );
+
+      const server = createDocsServer({
+        entry: "docs",
+        contentDir,
+        rootDir,
+        nav: { title: "Farm Docs" },
+        sitemap: true,
+      });
+      const page = await server.load({ pathname: "/docs" });
+      const sitemap = await server.handle(new Request("https://farm.example/sitemap.xml"));
+
+      expect(page.lastModified).toBe("August 9, 2026");
+      expect(await sitemap?.text()).toContain("<lastmod>2026-08-09</lastmod>");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
   it("handles docs endpoints and falls through for application routes", async () => {
     const server = createDocsServer(config);
 
@@ -150,6 +285,62 @@ Build a Farm application.
 });
 
 describe("createFarmDocsRuntimeHandler", () => {
+  it("returns page data for client-side documentation navigation", async () => {
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...config,
+        _preloadedContent: {
+          ...config._preloadedContent,
+          "/docs/guides.md": `---\ntitle: Guides\n---\n# Guides`,
+        },
+      },
+      {
+        clientEntry: "/farm-client.js",
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+        }),
+      },
+    );
+
+    const response = await handler(
+      new Request("https://farm.example/docs/guides", {
+        headers: {
+          Accept: "application/json",
+          [FARM_DOCS_NAVIGATION_HEADER]: "1",
+        },
+      }),
+    );
+    const payload = await response?.json();
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("content-type")).toContain("application/json");
+    expect(response?.headers.get("cache-control")).toBe("no-store");
+    expect(payload).toMatchObject({
+      data: {
+        title: "Guides",
+        url: "/docs/guides",
+        sourcePath: "/docs/guides.md",
+      },
+    });
+  });
+
+  it("serves the bundled adapter CSS without a runtime filesystem dependency", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/__farm_docs/browser.css"));
+    const css = await response?.text();
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("content-type")).toContain("text/css");
+    expect(css?.length).toBeGreaterThan(100_000);
+    expect(css).toContain(".\\[\\&_svg\\]\\:size-4");
+  });
+
   it("loads the adapter base CSS before host theme stylesheets", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",
@@ -167,6 +358,31 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(html).toContain('<link rel="stylesheet" href="/src/app/globals.css">');
     expect(html?.indexOf("/__farm_docs/browser.css")).toBeLessThan(
       html?.indexOf("/src/app/globals.css") ?? -1,
+    );
+  });
+
+  it("resolves the stored theme before loading documentation styles", async () => {
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...config,
+        themeToggle: { enabled: true, default: "light" },
+      },
+      {
+        clientEntry: "/farm-client.js",
+        stylesheets: ["/src/app/globals.css"],
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+        }),
+      },
+    );
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response?.text();
+
+    expect(html).toContain('<html class="light"');
+    expect(html).toContain('localStorage.getItem("theme")');
+    expect(html?.indexOf('localStorage.getItem("theme")')).toBeLessThan(
+      html?.indexOf("/__farm_docs/browser.css") ?? -1,
     );
   });
 

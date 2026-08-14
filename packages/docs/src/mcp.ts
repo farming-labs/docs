@@ -32,6 +32,7 @@ import type {
 import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { resolveDocsAudienceMdxContent } from "./audience.js";
+import { filterDocsPagesByAccess } from "./access.js";
 import {
   hasStructuredPageAgentContract,
   normalizePageAgentFrontmatter,
@@ -41,7 +42,9 @@ import {
 import {
   DOCS_MARKDOWN_SECTION_INDEX_FORMAT,
   buildDocsMarkdownSectionIndex,
+  resolveDocsAgentFeedbackConfig,
   toDocsMarkdownUrl,
+  validateDocsAgentFeedbackPayload,
   type DocsMarkdownSectionIndex,
 } from "./agent.js";
 import {
@@ -92,6 +95,18 @@ export type {
   HydrateDocsContentChangesOptions,
 } from "./content-change-hydration.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
+import {
+  buildDocsOkfBundle,
+  normalizeDocsOkfTrustMetadataInput,
+  resolveDocsOkfConfig,
+} from "./okf.js";
+import {
+  acquireDocsOpenApiMcpBudget,
+  readDocsOpenApiMcpResponse,
+  resolveDocsOpenApiMcpBaseUrl,
+  resolveDocsOpenApiMcpOperations,
+} from "./openapi-mcp.js";
+import { validateDocsOpenApiMcpUrl } from "./openapi-mcp-node.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
   isDocsMcpProtectedResourceMetadataPath,
@@ -119,6 +134,10 @@ import type {
   DocsAgentContentChangesConfig,
   DocsAgentEvaluationsConfig,
   DocsAgentGoldenTask,
+  DocsOkfConfig,
+  DocsOkfTrustMetadataInput,
+  DocsOpenApiMcpConfig,
+  DocsAgentFeedbackContext,
   DocsContentChangesResponse,
   DocsMcpAllowedOrigins,
   DocsMcpAuthPrincipal,
@@ -132,6 +151,7 @@ import type {
   DocsSearchSourcePage,
   DocsTelemetryConfig,
   DocsTelemetryFramework,
+  FeedbackConfig,
   OrderingItem,
   PageAgentFrontmatter,
 } from "./types.js";
@@ -147,6 +167,7 @@ export interface DocsMcpPage {
   sourcePath?: string;
   lastmod?: string;
   lastModified?: string;
+  okf?: DocsOkfTrustMetadataInput;
   locale?: string;
   framework?: string;
   version?: string;
@@ -340,6 +361,8 @@ export interface DocsMcpContextResult {
 
 export interface DocsMcpContextOptions {
   pages: readonly DocsMcpPage[];
+  /** Authenticated identity used to retain authorized pages during retrieval. */
+  principal?: DocsMcpAuthPrincipal;
   query: string;
   framework?: string;
   version?: string;
@@ -376,6 +399,23 @@ export type DocsMcpNavigationNode = DocsMcpPageNode | DocsMcpFolderNode;
 export interface DocsMcpNavigationTree {
   name: string;
   children: DocsMcpNavigationNode[];
+}
+
+function filterDocsMcpNavigation(
+  tree: DocsMcpNavigationTree,
+  allowedUrls: ReadonlySet<string>,
+): DocsMcpNavigationTree {
+  const filterNodes = (nodes: readonly DocsMcpNavigationNode[]): DocsMcpNavigationNode[] =>
+    nodes.flatMap((node): DocsMcpNavigationNode[] => {
+      if (node.type === "page") return allowedUrls.has(node.url) ? [node] : [];
+      const children = filterNodes(node.children);
+      const index = node.index && allowedUrls.has(node.index.url) ? node.index : undefined;
+      const { index: _unfilteredIndex, ...folder } = node;
+      return children.length > 0 || index
+        ? [{ ...folder, ...(index ? { index } : {}), children }]
+        : [];
+    });
+  return { ...tree, children: filterNodes(tree.children) };
 }
 
 export interface DocsMcpSource {
@@ -441,6 +481,10 @@ export interface DocsMcpResolvedConfig {
     /** Optional so manually constructed resolved configs from older releases remain assignable. */
     listPageSections?: boolean;
     readPage: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    readPages?: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    submitFeedback?: boolean;
     listTasks?: boolean;
     readTask?: boolean;
     searchDocs: boolean;
@@ -454,6 +498,8 @@ export interface DocsMcpResolvedConfig {
     getCodeExamples: boolean;
     getConfigSchema: boolean;
     getContext: boolean;
+    /** Optional so manually constructed resolved configs from older releases remain assignable. */
+    getTrustMetadata?: boolean;
   };
   /** Resolved built-in prompt projection. Optional for legacy constructed values. */
   prompts?: DocsMcpResolvedPromptsConfig;
@@ -490,6 +536,17 @@ export interface CreateDocsMcpServerOptions {
   contentChanges?: boolean | DocsAgentContentChangesConfig;
   /** Golden-task definitions available for explicit, expectation-blind prompt projection. */
   evaluations?: boolean | DocsAgentEvaluationsConfig;
+  /** OKF v0.2 trust metadata projected into page output and the trust tool. */
+  okf?: boolean | DocsOkfConfig;
+  /** Explicit deny-by-default OpenAPI operation projection. */
+  openapi?: {
+    config?: DocsOpenApiMcpConfig;
+    document:
+      | Record<string, unknown>
+      | (() => Record<string, unknown> | Promise<Record<string, unknown>>);
+  };
+  /** Agent feedback schema and callback used by the opt-in `submit_feedback` tool. */
+  feedback?: boolean | FeedbackConfig;
   /** @internal Shared feed instance keeps HTTP and MCP snapshot history aligned. */
   contentChangeFeed?: DocsContentChangeFeed;
   /** @internal Check interval while at least one 2026 content subscription is open. */
@@ -519,6 +576,8 @@ const DOCS_MCP_RESOURCE_CACHE_TTL_MS = 60 * 1_000;
 const DEFAULT_MCP_CONTEXT_TOKEN_BUDGET = 4_000;
 const MIN_MCP_CONTEXT_TOKEN_BUDGET = 256;
 const MAX_MCP_CONTEXT_TOKEN_BUDGET = 32_000;
+const DEFAULT_MCP_READ_PAGES_TOKEN_BUDGET = 8_000;
+const MAX_MCP_READ_PAGES_COUNT = 20;
 const DOCS_MCP_PROTOCOL_LIST_PAGE_SIZE = 10;
 const DOCS_MCP_TOOL_LIST_PAGE_SIZE = 25;
 const DOCS_MCP_PAGINATION_META_KEY = "dev.farming-labs/pagination";
@@ -752,6 +811,54 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
       "Agent synchronization, reusable skills, compaction defaults, and offline-by-default usefulness evaluations.",
     docs: "/docs/getting-started/agent-ready-docs",
     children: [
+      {
+        path: "agent.okf",
+        name: "okf",
+        type: "boolean | DocsOkfConfig",
+        default: false,
+        description:
+          "Publish Open Knowledge Format v0.2 source, generation, verification, lifecycle, and staleness metadata.",
+        children: [
+          {
+            path: "agent.okf.route",
+            name: "route",
+            type: "string",
+            default: "/.well-known/okf.json",
+            description: "Public route used by static Agent Bundle export.",
+          },
+          {
+            path: "agent.okf.generatedBy",
+            name: "generatedBy",
+            type: "string",
+            default: "software:@farming-labs/docs",
+            description: "Generator actor used when a page omits okf.generated.",
+          },
+          {
+            path: "agent.okf.staleAfterDays",
+            name: "staleAfterDays",
+            type: "number",
+            description: "Derive stale_after this many days after the best page timestamp.",
+          },
+          {
+            path: "agent.okf.sources",
+            name: "sources",
+            type: "readonly DocsOkfSource[]",
+            description: "Default source provenance inherited by pages without authored sources.",
+          },
+          {
+            path: "agent.okf.verified",
+            name: "verified",
+            type: "readonly DocsOkfActorTimestamp[]",
+            description: "Default machine or human verification records.",
+          },
+          {
+            path: "agent.okf.status",
+            name: "status",
+            type: '"draft" | "stable" | "deprecated"',
+            description: "Default lifecycle status for knowledge documents.",
+          },
+        ],
+      },
       {
         path: "agent.contentChanges",
         name: "contentChanges",
@@ -1955,7 +2062,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
     path: "pageActions",
     name: "pageActions",
     type: "PageActionsConfig",
-    description: "Copy Markdown and Open in LLM actions for docs pages.",
+    description: "Copy, Open in LLM, MCP connection, and Agent Skills setup actions.",
     docs: "/docs/customization/page-actions",
     children: [
       {
@@ -1992,6 +2099,20 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Prompt text prepended to the provider URL when opening docs.",
           },
         ],
+      },
+      {
+        path: "pageActions.connectMcp",
+        name: "connectMcp",
+        type: "boolean | PageActionConnectMcpConfig",
+        description:
+          "Show copyable MCP setup for Claude Code, Cursor, VS Code, Codex, or a raw endpoint.",
+      },
+      {
+        path: "pageActions.installSkills",
+        name: "installSkills",
+        type: "boolean | PageActionInstallSkillsConfig",
+        description:
+          "Discover the published Agent Skills index and provide a copyable skills install command.",
       },
     ],
   },
@@ -2381,6 +2502,21 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Expose the read_page tool.",
           },
           {
+            path: "mcp.tools.readPages",
+            name: "readPages",
+            type: "boolean",
+            default: true,
+            description: "Expose the budget-aware read_pages batch tool.",
+          },
+          {
+            path: "mcp.tools.submitFeedback",
+            name: "submitFeedback",
+            type: "boolean",
+            default: true,
+            description:
+              "Expose submit_feedback when feedback.agent is enabled and validate payloads with its configured schema.",
+          },
+          {
             path: "mcp.tools.getCodeExamples",
             name: "getCodeExamples",
             type: "boolean",
@@ -2401,6 +2537,13 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             default: true,
             description:
               "Expose deterministic get_context retrieval with a conservative UTF-8 byte ceiling.",
+          },
+          {
+            path: "mcp.tools.getTrustMetadata",
+            name: "getTrustMetadata",
+            type: "boolean",
+            default: true,
+            description: "Expose OKF v0.2 trust metadata when agent.okf is enabled.",
           },
         ],
       },
@@ -2433,6 +2576,48 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         type: "string[]",
         description:
           "Product API base URLs that the OpenAPI document describes in the RFC 9727 catalog.",
+      },
+      {
+        path: "apiReference.mcp",
+        name: "mcp",
+        type: "boolean | DocsOpenApiMcpConfig",
+        default: false,
+        description:
+          "Project explicitly allowlisted OpenAPI operations into server-executed MCP tools.",
+        children: [
+          {
+            path: "apiReference.mcp.operations",
+            name: "operations",
+            type: "readonly string[]",
+            description: "Allowed operationIds or METHOD /path selectors; empty exposes nothing.",
+          },
+          {
+            path: "apiReference.mcp.baseUrl",
+            name: "baseUrl",
+            type: "string",
+            description: "Override the first OpenAPI server URL used for tool requests.",
+          },
+          {
+            path: "apiReference.mcp.allowMutations",
+            name: "allowMutations",
+            type: "boolean",
+            default: false,
+            description: "Permit explicitly allowlisted write operations.",
+          },
+          {
+            path: "apiReference.mcp.headers",
+            name: "headers",
+            type: "DocsOpenApiMcpHeaders",
+            description: "Server-owned credential headers applied after model-provided input.",
+          },
+          {
+            path: "apiReference.mcp.timeoutMs",
+            name: "timeoutMs",
+            type: "number",
+            default: 10000,
+            description: "Per-operation HTTP timeout.",
+          },
+        ],
       },
     ],
   },
@@ -2623,6 +2808,45 @@ const readPageInputSchema = z.object({
   locale: z.string().trim().min(1).max(128).optional(),
   section: z.string().trim().min(1).optional(),
   maxChars: z.number().int().min(256).max(1_000_000).optional(),
+});
+
+const trustMetadataInputSchema = z.object({
+  path: z.string().trim().min(1).optional(),
+  locale: z.string().trim().min(1).max(128).optional(),
+});
+
+const openApiOperationInputSchema = z.object({
+  parameters: z.record(z.string(), z.unknown()).optional(),
+  body: z.unknown().optional(),
+});
+
+const readPagesInputSchema = z.object({
+  paths: z
+    .array(z.string().trim().min(1))
+    .min(1)
+    .max(MAX_MCP_READ_PAGES_COUNT)
+    .describe("Page slugs or URL paths to read in the requested order."),
+  locale: z.string().trim().min(1).max(128).optional(),
+  tokenBudget: z
+    .number()
+    .int()
+    .min(MIN_MCP_CONTEXT_TOKEN_BUDGET)
+    .max(MAX_MCP_CONTEXT_TOKEN_BUDGET)
+    .optional(),
+  maxCharsPerPage: z.number().int().min(256).max(1_000_000).optional(),
+});
+
+const submitFeedbackInputSchema = z.object({
+  context: z
+    .object({
+      page: z.string().optional(),
+      url: z.string().optional(),
+      slug: z.string().optional(),
+      locale: z.string().optional(),
+      source: z.string().optional(),
+    })
+    .optional(),
+  payload: z.record(z.string(), z.unknown()),
 });
 
 const listPageSectionsInputSchema = z.object({
@@ -2984,6 +3208,7 @@ const searchResultOutputSchema = z.object({
   score: z.number().optional(),
   section: z.string().optional(),
   source: retrievalSourceOutputSchema.optional(),
+  trust: z.record(z.string(), z.unknown()).optional(),
 });
 const searchFiltersOutputSchema = z.object({
   framework: z.array(z.string()).optional(),
@@ -3171,6 +3396,40 @@ const readPageOutputSchema = z.object({
   totalChars: z.number().int().nonnegative(),
   truncated: z.boolean(),
 });
+const trustMetadataOutputSchema = z.object({
+  format: z.literal("open-knowledge-format.v0.2"),
+  spec_version: z.literal("0.2"),
+  generated: z.object({ by: z.string(), at: z.string() }),
+  documents: z.array(z.record(z.string(), z.unknown())),
+});
+const openApiOperationOutputSchema = z.object({
+  operationId: z.string(),
+  status: z.number().int(),
+  ok: z.boolean(),
+  contentType: z.string().optional(),
+  responseTruncated: z.boolean().optional(),
+  body: z.unknown(),
+});
+const readPagesOutputSchema = z.object({
+  format: z.literal("docs-read-pages.v1"),
+  budget: z.object({
+    requestedTokens: z.number().int().positive(),
+    strategy: z.literal("utf8-bytes"),
+    maxUtf8Bytes: z.number().int().positive(),
+    usedUtf8Bytes: z.number().int().nonnegative(),
+    remainingUtf8Bytes: z.number().int().nonnegative(),
+    truncated: z.boolean(),
+  }),
+  resultCount: z.number().int().nonnegative(),
+  requestedCount: z.number().int().positive(),
+  pages: z.array(readPageOutputSchema.extend({ requestedPath: z.string() })),
+  errors: z.array(z.object({ path: z.string(), error: z.string() })),
+  remainingPaths: z.array(z.string()),
+});
+const submitFeedbackOutputSchema = z.object({
+  accepted: z.literal(true),
+  message: z.string(),
+});
 const pageSectionMetadataOutputSchema = z.object({
   id: z.string(),
   heading: z.string(),
@@ -3270,6 +3529,8 @@ export function resolveDocsMcpConfig(
         listPages: true,
         listPageSections: true,
         readPage: true,
+        readPages: true,
+        submitFeedback: true,
         listTasks: true,
         readTask: true,
         searchDocs: true,
@@ -3280,6 +3541,7 @@ export function resolveDocsMcpConfig(
         getCodeExamples: true,
         getConfigSchema: true,
         getContext: true,
+        getTrustMetadata: true,
       },
       prompts: resolveDocsMcpPromptsConfig(),
       security: resolveDocsMcpSecurityConfig(),
@@ -3298,6 +3560,8 @@ export function resolveDocsMcpConfig(
       listPages: config.tools?.listPages ?? true,
       listPageSections: config.tools?.listPageSections ?? true,
       readPage: config.tools?.readPage ?? true,
+      readPages: config.tools?.readPages ?? true,
+      submitFeedback: config.tools?.submitFeedback ?? true,
       listTasks: config.tools?.listTasks ?? true,
       readTask: config.tools?.readTask ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
@@ -3308,6 +3572,7 @@ export function resolveDocsMcpConfig(
       getCodeExamples: config.tools?.getCodeExamples ?? true,
       getConfigSchema: config.tools?.getConfigSchema ?? true,
       getContext: config.tools?.getContext ?? true,
+      getTrustMetadata: config.tools?.getTrustMetadata ?? true,
     },
     prompts: resolveDocsMcpPromptsConfig(config.prompts),
     security: resolveDocsMcpSecurityConfig(config.security),
@@ -4104,6 +4369,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     contentChangesConfig.enabled && resolved.tools.listContentChanges !== false;
   const contentChangeHydrationEnabled =
     contentChangesEnabled && resolved.tools.hydrateContentChanges !== false;
+  const agentFeedback = resolveDocsAgentFeedbackConfig(options.feedback);
   const cacheScope: CacheScope = options.requestContext?.auth ? "private" : "public";
   const server = new McpServer(
     {
@@ -4172,12 +4438,22 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   };
   const telemetryFramework = options.telemetryFramework ?? "mcp";
 
-  function getSourcePages(locale?: string) {
-    return options.source.getPages(resolveSourceLocale(locale), options.requestContext);
+  async function getSourcePages(locale?: string) {
+    return getResolvedSourcePages(resolveSourceLocale(locale));
   }
 
-  function getSourceNavigation(locale?: string) {
-    return options.source.getNavigation(resolveSourceLocale(locale), options.requestContext);
+  async function getResolvedSourcePages(locale?: string) {
+    const pages = await options.source.getPages(locale, options.requestContext);
+    return filterDocsPagesByAccess(pages, options.requestContext?.auth);
+  }
+
+  async function getSourceNavigation(locale?: string) {
+    const resolvedLocale = resolveSourceLocale(locale);
+    const [tree, pages] = await Promise.all([
+      options.source.getNavigation(resolvedLocale, options.requestContext),
+      getResolvedSourcePages(resolvedLocale),
+    ]);
+    return filterDocsMcpNavigation(tree, new Set(pages.map((page) => page.url)));
   }
 
   function resolveSourceLocale(locale?: string) {
@@ -4203,6 +4479,17 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   const defaultPages = dedupePages(await getSourcePages());
   const defaultTree = await getSourceNavigation();
   const defaultSkills = await getSourceSkills();
+  const okfConfig = resolveDocsOkfConfig(options.okf);
+  const openapiDocument = options.openapi
+    ? typeof options.openapi.document === "function"
+      ? await options.openapi.document()
+      : options.openapi.document
+    : undefined;
+  const openapiConfig = options.openapi?.config;
+  const openapiOperations =
+    openapiDocument && openapiConfig
+      ? resolveDocsOpenApiMcpOperations(openapiDocument, openapiConfig)
+      : [];
   const prompts = resolved.prompts ?? resolveDocsMcpPromptsConfig();
   const contractPromptDefinitions = prompts.enabled
     ? resolveDocsMcpContractPromptDefinitions(defaultPages, prompts.contracts, options.source.entry)
@@ -4216,6 +4503,211 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     // listChanged would require a live mutation path and subscription notification
     // that this static catalog intentionally does not expose.
     server.server.registerCapabilities({ prompts: { listChanged: false } });
+  }
+
+  if (okfConfig.enabled && resolved.tools.getTrustMetadata !== false) {
+    registerTool(
+      "get_trust_metadata",
+      {
+        title: "Get documentation trust metadata",
+        description:
+          "Return OKF v0.2 sources, generation, verification, lifecycle status, trust tier, and staleness for one page or the docs corpus.",
+        inputSchema: trustMetadataInputSchema,
+        outputSchema: trustMetadataOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ path: requestedPath, locale }) => {
+        const pages = dedupePages(await getSourcePages(locale));
+        const selected = requestedPath
+          ? pages.filter((page) =>
+              Boolean(findDocsPage([page], requestedPath, options.source.entry)),
+            )
+          : pages;
+        if (requestedPath && selected.length === 0) {
+          return {
+            content: [{ type: "text", text: `No docs page matched "${requestedPath}".` }],
+            isError: true,
+          };
+        }
+        const bundle = buildDocsOkfBundle(selected, okfConfig);
+        trackMcpTool("get_trust_metadata", { locale, resultCount: bundle.documents.length });
+        return createStructuredTextResult(bundle);
+      },
+    );
+  }
+
+  for (const operation of openapiOperations) {
+    registerTool(
+      operation.toolName,
+      {
+        title: operation.title,
+        description:
+          operation.description ??
+          `${operation.method} ${operation.path} (${operation.operationId})`,
+        inputSchema: openApiOperationInputSchema,
+        outputSchema: openApiOperationOutputSchema,
+        annotations: {
+          readOnlyHint: operation.readOnly,
+          destructiveHint: operation.destructive,
+          idempotentHint: operation.idempotent,
+          openWorldHint: true,
+        },
+        _meta: {
+          "dev.farming-labs/openapi": {
+            operationId: operation.operationId,
+            method: operation.method,
+            path: operation.path,
+            security: operation.security,
+            securitySchemes: operation.securitySchemes,
+          },
+        },
+      },
+      async ({ parameters = {}, body }) => {
+        if (!openapiDocument || !openapiConfig) {
+          throw new ProtocolError(ProtocolErrorCode.InternalError, "OpenAPI MCP is unavailable.");
+        }
+        const baseUrl = resolveDocsOpenApiMcpBaseUrl(openapiDocument, openapiConfig);
+        if (!baseUrl) {
+          throw new ProtocolError(
+            ProtocolErrorCode.InvalidParams,
+            `OpenAPI operation ${operation.operationId} has no server URL. Configure apiReference.mcp.baseUrl.`,
+          );
+        }
+        let requestPath = operation.path;
+        const query = new URLSearchParams();
+        const requestHeaders = new Headers({ Accept: "application/json, text/plain, */*" });
+        const requestCookies = new URLSearchParams();
+        for (const parameter of operation.parameters) {
+          const value = parameters[parameter.name];
+          if (value === undefined || value === null || value === "") {
+            if (parameter.required) {
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Missing required ${parameter.in} parameter: ${parameter.name}`,
+                  },
+                ],
+                isError: true,
+              };
+            }
+            continue;
+          }
+          const values = Array.isArray(value) ? value : [value];
+          if (parameter.in === "path") {
+            requestPath = requestPath.replaceAll(
+              `{${parameter.name}}`,
+              encodeURIComponent(String(values[0])),
+            );
+          } else if (parameter.in === "query") {
+            for (const item of values) query.append(parameter.name, String(item));
+          } else if (parameter.in === "header") {
+            requestHeaders.set(parameter.name, String(values[0]));
+          } else if (parameter.in === "cookie") {
+            requestCookies.set(parameter.name, String(values[0]));
+          }
+        }
+        const requestUrl = new URL(
+          requestPath.replace(/^\/+/, ""),
+          `${baseUrl.replace(/\/+$/u, "")}/`,
+        );
+        for (const [name, value] of query) requestUrl.searchParams.append(name, value);
+        try {
+          await validateDocsOpenApiMcpUrl(requestUrl, openapiConfig);
+        } catch (error) {
+          throw new ProtocolError(
+            ProtocolErrorCode.InvalidParams,
+            error instanceof Error ? error.message : "OpenAPI MCP destination was blocked.",
+          );
+        }
+        const configuredHeaders =
+          typeof openapiConfig.headers === "function"
+            ? await openapiConfig.headers({
+                operationId: operation.operationId,
+                method: operation.method,
+                path: operation.path,
+                security: operation.security,
+              })
+            : openapiConfig.headers;
+        for (const [name, value] of Object.entries(configuredHeaders ?? {})) {
+          requestHeaders.set(name, value);
+        }
+        if (requestCookies.size > 0) {
+          requestHeaders.set(
+            "Cookie",
+            [...requestCookies].map(([name, value]) => `${name}=${value}`).join("; "),
+          );
+        }
+        if (body !== undefined) requestHeaders.set("Content-Type", "application/json");
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), openapiConfig.timeoutMs ?? 10_000);
+        const budgetKey = `${options.requestContext?.auth?.id ?? "anonymous"}:${operation.operationId}`;
+        let releaseBudget: (() => void) | undefined;
+        try {
+          releaseBudget = acquireDocsOpenApiMcpBudget(budgetKey, openapiConfig);
+          let response: Response | undefined;
+          let destination = requestUrl;
+          const maxRedirects = Math.max(0, openapiConfig.maxRedirects ?? 0);
+          for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+            response = await fetch(destination, {
+              method: operation.method,
+              headers: requestHeaders,
+              ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+              redirect: "manual",
+              signal: controller.signal,
+            });
+            if (![301, 302, 303, 307, 308].includes(response.status)) break;
+            const location = response.headers.get("location");
+            if (!location || redirectCount >= maxRedirects) {
+              throw new ProtocolError(
+                ProtocolErrorCode.InvalidRequest,
+                "OpenAPI MCP redirect blocked. Increase maxRedirects to follow validated redirects.",
+              );
+            }
+            destination = new URL(location, destination);
+            try {
+              await validateDocsOpenApiMcpUrl(destination, openapiConfig);
+            } catch (error) {
+              throw new ProtocolError(
+                ProtocolErrorCode.InvalidRequest,
+                error instanceof Error ? error.message : "OpenAPI MCP redirect was blocked.",
+              );
+            }
+          }
+          if (!response)
+            throw new ProtocolError(ProtocolErrorCode.InternalError, "No API response.");
+          const contentType = response.headers.get("content-type") ?? undefined;
+          const { text, truncated } = await readDocsOpenApiMcpResponse(
+            response,
+            openapiConfig.maxResponseBytes,
+          );
+          let responseBody: unknown = text;
+          if (contentType?.includes("json") && text && !truncated) {
+            try {
+              responseBody = JSON.parse(text);
+            } catch {
+              responseBody = text;
+            }
+          }
+          const result = {
+            operationId: operation.operationId,
+            status: response.status,
+            ok: response.ok,
+            ...(contentType ? { contentType } : {}),
+            ...(truncated ? { responseTruncated: true } : {}),
+            body: responseBody,
+          };
+          trackMcpTool(operation.toolName, { resultCount: 1 });
+          return {
+            ...createStructuredTextResult(result),
+            ...(response.ok ? {} : { isError: true }),
+          };
+        } finally {
+          releaseBudget?.();
+          clearTimeout(timeout);
+        }
+      },
+    );
   }
 
   for (const definition of contractPromptDefinitions) {
@@ -4314,12 +4806,11 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       );
     }
     const resolvedLocale = resolveSourceLocale(locale);
-    const pages = dedupePages(
-      await options.source.getPages(resolvedLocale, options.requestContext),
-    );
+    const pages = dedupePages(await getResolvedSourcePages(resolvedLocale));
     try {
       const result = await contentChangeFeed.resolve({
         pages: toSearchSourcePages(pages),
+        principal: options.requestContext?.auth,
         search: options.search,
         audience: "agent",
         locale: resolvedLocale,
@@ -4613,7 +5104,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
 
         try {
           const allPages = toPageSummaries(
-            dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
+            dedupePages(await getResolvedSourcePages(resolvedLocale)),
           ).sort(compareDocsMcpPageSummaries);
           const page = paginateDocsMcpItems(allPages, {
             kind: "mcp.tool/list_pages",
@@ -4713,7 +5204,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
 
         try {
           const allDocs = listDocsBySection(
-            dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
+            dedupePages(await getResolvedSourcePages(resolvedLocale)),
             {
               section,
               entry: options.source.entry,
@@ -4821,7 +5312,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
 
         try {
           const allTasks = listDocsTasks(
-            dedupePages(await options.source.getPages(resolvedLocale, options.requestContext)),
+            dedupePages(await getResolvedSourcePages(resolvedLocale)),
             {
               query,
               framework,
@@ -5260,11 +5751,10 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(
-            await options.source.getPages(resolvedLocale, options.requestContext),
-          );
+          const pages = dedupePages(await getResolvedSourcePages(resolvedLocale));
           const facets = await buildDocsSearchFacets({
             pages: toSearchSourcePages(pages),
+            principal: options.requestContext?.auth,
             search: toolSearchConfig ?? true,
             audience: resolvedAudience,
             filters,
@@ -5400,11 +5890,10 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(
-            await options.source.getPages(resolvedLocale, options.requestContext),
-          );
+          const pages = dedupePages(await getResolvedSourcePages(resolvedLocale));
           const searchResponse = await performDocsSearchWithMetadata({
             pages: toSearchSourcePages(pages),
+            principal: options.requestContext?.auth,
             query,
             search: toolSearchConfig ?? true,
             audience: resolvedAudience,
@@ -5645,11 +6134,10 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(
-            await options.source.getPages(resolvedLocale, options.requestContext),
-          );
+          const pages = dedupePages(await getResolvedSourcePages(resolvedLocale));
           const result = await buildDocsMcpContext({
             pages,
+            principal: options.requestContext?.auth,
             query,
             framework,
             version,
@@ -5771,9 +6259,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         });
 
         try {
-          const pages = dedupePages(
-            await options.source.getPages(resolvedLocale, options.requestContext),
-          );
+          const pages = dedupePages(await getResolvedSourcePages(resolvedLocale));
           const page = findDocsPage(pages, requestedPath, options.source.entry);
 
           if (!page) {
@@ -5940,6 +6426,129 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           });
           throw error;
         }
+      },
+    );
+  }
+
+  if (resolved.tools.readPages !== false) {
+    registerTool(
+      "read_pages",
+      {
+        title: "Read several docs pages",
+        description:
+          "Read up to 20 documentation pages in one round trip. Results preserve request order and share a conservative UTF-8 token budget.",
+        inputSchema: readPagesInputSchema,
+        outputSchema: readPagesOutputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({
+        paths: requestedPaths,
+        locale,
+        tokenBudget = DEFAULT_MCP_READ_PAGES_TOKEN_BUDGET,
+        maxCharsPerPage,
+      }) => {
+        const pages = dedupePages(await getSourcePages(locale));
+        const maxUtf8Bytes = tokenBudget * 4;
+        let usedUtf8Bytes = 0;
+        let processedCount = 0;
+        let truncated = false;
+        const results: Array<z.infer<typeof readPageOutputSchema> & { requestedPath: string }> = [];
+        const errors: Array<{ path: string; error: string }> = [];
+
+        for (const requestedPath of requestedPaths) {
+          if (usedUtf8Bytes >= maxUtf8Bytes) {
+            truncated = true;
+            break;
+          }
+
+          processedCount += 1;
+          const page = findDocsPage(pages, requestedPath, options.source.entry);
+          if (!page) {
+            errors.push({ path: requestedPath, error: `No docs page matched "${requestedPath}".` });
+            continue;
+          }
+
+          const fullDocument = renderPageDocument(page);
+          const perPage = limitDocsMcpText(fullDocument, maxCharsPerPage);
+          const remainingUtf8Bytes = maxUtf8Bytes - usedUtf8Bytes;
+          const budgeted = limitDocsMcpUtf8Bytes(perPage.text, remainingUtf8Bytes);
+          const document = budgeted.text;
+          const documentBytes = docsMcpUtf8Bytes(document);
+          usedUtf8Bytes += documentBytes;
+          const pageTruncated = perPage.truncated || budgeted.truncated;
+          truncated ||= pageTruncated;
+
+          results.push({
+            requestedPath,
+            page: toStructuredDocsMcpPage(page),
+            document,
+            chars: document.length,
+            totalChars: fullDocument.length,
+            truncated: pageTruncated,
+          });
+        }
+
+        const result = {
+          format: "docs-read-pages.v1" as const,
+          budget: {
+            requestedTokens: tokenBudget,
+            strategy: "utf8-bytes" as const,
+            maxUtf8Bytes,
+            usedUtf8Bytes,
+            remainingUtf8Bytes: Math.max(0, maxUtf8Bytes - usedUtf8Bytes),
+            truncated: truncated || processedCount < requestedPaths.length,
+          },
+          resultCount: results.length,
+          requestedCount: requestedPaths.length,
+          pages: results,
+          errors,
+          remainingPaths: requestedPaths.slice(processedCount),
+        };
+        trackMcpTool("read_pages", { locale, resultCount: results.length });
+        return createStructuredTextResult(result);
+      },
+    );
+  }
+
+  if (resolved.tools.submitFeedback !== false && agentFeedback.enabled) {
+    registerTool(
+      "submit_feedback",
+      {
+        title: "Submit documentation feedback",
+        description:
+          "Submit machine-readable documentation feedback. The payload is validated against the site's configured agent feedback schema before delivery.",
+        inputSchema: submitFeedbackInputSchema,
+        outputSchema: submitFeedbackOutputSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+        _meta: {
+          "dev.farming-labs/feedbackSchema": agentFeedback.schema,
+        },
+      },
+      async ({ context, payload }) => {
+        const validationError = validateDocsAgentFeedbackPayload(
+          payload,
+          agentFeedback.payloadSchema,
+        );
+        if (validationError) {
+          return {
+            content: [{ type: "text", text: validationError }],
+            isError: true,
+          };
+        }
+
+        const feedbackContext: DocsAgentFeedbackContext = {
+          ...context,
+          source: context?.source ?? "mcp",
+        };
+        await agentFeedback.onFeedback?.({
+          ...(Object.keys(feedbackContext).length > 0 ? { context: feedbackContext } : {}),
+          payload,
+        });
+        trackMcpTool("submit_feedback", { locale: feedbackContext.locale, resultCount: 1 });
+        return createStructuredTextResult({
+          accepted: true as const,
+          message: "Feedback accepted.",
+        });
       },
     );
   }
@@ -6252,9 +6861,12 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     context: DocsMcpRequestContext,
   ): Promise<DocsMcpContentGenerationState> {
     const locale = options.source.resolveLocale?.(undefined, context);
-    const pages = dedupePages(await options.source.getPages(locale, context));
+    const pages = dedupePages(
+      filterDocsPagesByAccess(await options.source.getPages(locale, context), context.auth),
+    );
     const result = await contentChangeFeed.resolve({
       pages: toSearchSourcePages(pages),
+      principal: context.auth,
       search: options.search,
       audience: "agent",
       locale,
@@ -6514,9 +7126,15 @@ export async function runDocsMcpStdio(options: CreateDocsMcpServerOptions): Prom
 
     const readState = async (): Promise<DocsMcpContentGenerationState> => {
       const locale = options.source.resolveLocale?.(undefined, requestContext);
-      const pages = dedupePages(await options.source.getPages(locale, requestContext));
+      const pages = dedupePages(
+        filterDocsPagesByAccess(
+          await options.source.getPages(locale, requestContext),
+          requestContext.auth,
+        ),
+      );
       const result = await contentChangeFeed.resolve({
         pages: toSearchSourcePages(pages),
+        principal: requestContext.auth,
         search: options.search,
         audience: "agent",
         locale,
@@ -7159,6 +7777,7 @@ function scanFilesystemDocsPages(
         description: data.description as string | undefined,
         relatedInput: data.related,
         agent: normalizePageAgentFrontmatter(data.agent),
+        okf: normalizeDocsOkfTrustMetadataInput(data.okf),
         icon: data.icon as string | undefined,
         sourcePath: path.relative(rootDir, full).replace(/\\/g, "/"),
         lastmod: normalizeFrontmatterLastmod(data.lastmod),
@@ -8339,6 +8958,7 @@ export async function buildDocsMcpContext(
   const searchResults = await performDocsSearch({
     pages: scopedPages.map((page) => searchPageBySource.get(page)!),
     generationPages: allSearchPages,
+    principal: options.principal,
     query: options.query,
     search: {
       enabled: true,

@@ -10,14 +10,14 @@
     "preview": "nuxt preview"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.2.98",
-    "@farming-labs/nuxt": "0.2.98",
-    "@farming-labs/nuxt-theme": "0.2.98",
-    "@farming-labs/theme": "0.2.98",
+    "@farming-labs/docs": "0.2.104",
+    "@farming-labs/nuxt": "0.2.104",
+    "@farming-labs/nuxt-theme": "0.2.104",
+    "@farming-labs/theme": "0.2.104",
     "three": "^0.180.0"
   },
   "devDependencies": {
-    "nuxt": "^3.21.8",
+    "nuxt": "^3.21.11",
     "typescript": "^5.9.3",
     "vue": "^3.5.0"
   }

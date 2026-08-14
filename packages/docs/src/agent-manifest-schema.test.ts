@@ -4,7 +4,7 @@ import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
-import { buildDocsAgentDiscoverySpec } from "./agent.js";
+import { buildDocsAgentDiscoverySpec, compactDocsAgentDiscoverySpec } from "./agent.js";
 import { exportAgentBundle } from "./cli/agent-export.js";
 import { resolveDocsMcpConfig } from "./mcp.js";
 
@@ -95,6 +95,45 @@ describe("Farming Labs agent manifest schema", () => {
     });
     expect(manifest.api).not.toHaveProperty("agentCard");
     expectValid(manifest);
+  });
+
+  it("publishes a compact first-hop profile without skill file inventories", () => {
+    const full = buildManifest({
+      publishedSkills: [
+        {
+          name: "example",
+          description: "Example skill",
+          type: "skill-md",
+          url: "/.well-known/agent-skills/example/SKILL.md",
+          digest: `sha256:${"a".repeat(64)}`,
+          content: "# Example",
+          sha256: "a".repeat(64),
+          skillDocument: "# Example",
+          files: [
+            {
+              path: "references/setup.md",
+              url: "/.well-known/agent-skills/example/references/setup.md",
+              mediaType: "text/markdown; charset=utf-8",
+              content: "# Setup",
+              sha256: "b".repeat(64),
+              digest: `sha256:${"b".repeat(64)}`,
+            },
+          ],
+        },
+      ],
+    });
+    const compact = compactDocsAgentDiscoverySpec(full);
+
+    expect(compact).toMatchObject({
+      profile: "compact",
+      profiles: {
+        full: "/.well-known/agent.json",
+        compact: "/.well-known/agent.json?profile=compact",
+      },
+      skills: { published: [{ name: "example", fileCount: 1, files: [] }] },
+    });
+    expect(JSON.stringify(compact).length).toBeLessThan(JSON.stringify(full).length);
+    expectValid(compact);
   });
 
   it("keeps the published v1 schema immutable and valid for v1 manifests", () => {

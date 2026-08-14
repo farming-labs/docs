@@ -555,6 +555,49 @@ curl "http://127.0.0.1:3000/docs/installation.md"
 See [Configuration](/docs/configuration) for `agent.compact`, and [Token Efficiency](/docs/token-efficiency)
 for when you should use compaction instead of writing `agent.md` by hand.
 
+## Feedback-derived evaluations
+
+Use `agent feedback-evals` after `agent feedback` to create review-required golden-task candidates:
+
+```bash title="terminal"
+pnpm exec docs agent feedback-evals --write
+pnpm exec docs agent feedback-evals --existing existing-tasks.json --write
+```
+
+The command sanitizes feedback text, deduplicates candidates, and writes
+`.farming-labs/agent-evaluation-candidates.json`. It never changes `docs.config` or publishes the
+candidates automatically.
+
+The same command can create an explicit baseline from `docs doctor --agent --json-output` results
+and enforce it in CI:
+
+```bash title="terminal"
+pnpm exec docs agent feedback-evals --results doctor.json --baseline baseline.json --write-baseline
+pnpm exec docs agent feedback-evals --results doctor.json --baseline baseline.json --check
+```
+
+`--check` fails for suite/task score regressions, pass-to-fail changes, missing baseline tasks, and
+new failing tasks. `--max-score-drop` provides an optional numeric tolerance.
+
+## Agent maintenance proposals
+
+Use `agent propose` to combine recurring evidence from feedback, search, Ask AI, MCP, issues,
+support, and git into one ranked maintenance report:
+
+```bash title="terminal"
+pnpm exec docs agent propose --input .farming-labs/agent-feedback-improvements.json
+pnpm exec docs agent propose --input search.jsonl --input support.json --write
+```
+
+Inputs can be JSON or JSON Lines. Generic signals use `source`, `summary`, and optional `page`,
+`topic`, `task`, `severity`, and `count` fields. Reuse `topic` to connect evidence from different
+sources. The command prints JSON unless `--write` is present; written reports default to
+`.farming-labs/agent-maintenance-proposals.json`.
+
+The report contains ranked proposals, issue drafts, golden-task candidates, and a PR draft. It is
+always proposal-only: evidence is treated as untrusted data, no documentation or external system is
+modified, and human review is required before publication.
+
 ## Agents Generate
 
 Generate committed `AGENTS.md` files for coding agents and static exports:

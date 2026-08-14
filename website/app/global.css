@@ -86,6 +86,7 @@
   background: white;
   color: black;
 }
+
 /* sugar-high syntax highlighting tokens (dark code block) */
 .sh-code {
   --sh-class: #e5c07b;

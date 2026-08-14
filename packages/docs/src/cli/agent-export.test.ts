@@ -41,7 +41,7 @@ describe("agent export cli", () => {
   });
 
   function writeProject(
-    options: { staticExport?: boolean; llms?: boolean; apiRoute?: string } = {},
+    options: { staticExport?: boolean; llms?: boolean; apiRoute?: string; okf?: boolean } = {},
   ) {
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
@@ -66,6 +66,7 @@ describe("agent export cli", () => {
   search: true,
   mcp: true,
   feedback: { agent: true },
+  ${options.okf ? "agent: { okf: true }," : ""}
   apiReference: true,
 };
 `,
@@ -130,6 +131,38 @@ pnpm add example
 
   it("requires explicit publication outside check mode", async () => {
     await expect(exportAgentBundle()).rejects.toThrow("Pass --public");
+  });
+
+  it("exports an OKF v0.2 bundle and page trust frontmatter when enabled", async () => {
+    writeProject({ okf: true });
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+
+    const bundle = JSON.parse(
+      readFileSync(path.join(tmpDir, "public", ".well-known", "okf.json"), "utf-8"),
+    );
+    expect(bundle).toMatchObject({
+      format: "open-knowledge-format.v0.2",
+      spec_version: "0.2",
+      documents: [
+        expect.objectContaining({
+          url: "https://docs.example.com/docs",
+          trust: expect.objectContaining({ trust_tier: "unverified", stale: false }),
+        }),
+        expect.objectContaining({
+          url: "https://docs.example.com/docs/guides/install",
+        }),
+      ],
+    });
+    expect(readFileSync(path.join(tmpDir, "public", "docs.md"), "utf-8")).toContain(
+      'okf: {"sources":',
+    );
+
+    const manifest = JSON.parse(
+      readFileSync(path.join(tmpDir, ".farming-labs", "agent-bundle-manifest.json"), "utf-8"),
+    ) as AgentBundleManifest;
+    expect(manifest.files.find((file) => file.path === ".well-known/okf.json")?.kind).toBe("okf");
   });
 
   it("exports a complete deterministic bundle and validates it", async () => {
@@ -271,6 +304,40 @@ pnpm add example
     await expect(exportAgentBundle({ check: true })).rejects.toThrow(
       "Static Agent Bundle is stale",
     );
+  });
+
+  it("omits access-protected pages from public static agent bundles", async () => {
+    writeProject();
+    writeFileSync(
+      path.join(tmpDir, "docs", "guides", "install", "page.mdx"),
+      `---
+title: "Private install"
+description: "Internal installation runbook"
+agent:
+  access:
+    scopes:
+      - docs:private
+---
+
+# Private install
+
+STATIC PRIVATE SENTINEL
+`,
+      "utf-8",
+    );
+    process.chdir(tmpDir);
+
+    await exportAgentBundle({ public: true });
+
+    expect(existsSync(path.join(tmpDir, "public", "docs", "guides", "install.md"))).toBe(false);
+    expect(readFileSync(path.join(tmpDir, "public", "llms-full.txt"), "utf-8")).not.toContain(
+      "STATIC PRIVATE SENTINEL",
+    );
+    const bundle = readFileSync(
+      path.join(tmpDir, "public", ".well-known", "agent-bundle.json"),
+      "utf-8",
+    );
+    expect(bundle).not.toContain("/docs/guides/install");
   });
 
   it("uses SvelteKit static and preserves already-public custom policy files", async () => {

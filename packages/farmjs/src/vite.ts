@@ -17,6 +17,35 @@ import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption } from "vite";
 
+export interface FarmDocsCodeBlockThemes {
+  /** Shiki theme used in light mode. */
+  light?: string;
+  /** Shiki theme used in dark mode. */
+  dark?: string;
+}
+
+export interface FarmDocsMdxOptions {
+  /** Shiki themes used while compiling Markdown and MDX code blocks. */
+  codeBlockThemes?: FarmDocsCodeBlockThemes;
+  /** Additional content roots that the development server may compile. */
+  contentRoots?: string[];
+}
+
+const DEFAULT_CODE_BLOCK_THEMES = {
+  light: "github-light",
+  dark: "github-dark",
+} as const;
+
+export function resolveFarmDocsCodeBlockThemes(themes: FarmDocsCodeBlockThemes = {}): {
+  light: string;
+  dark: string;
+} {
+  return {
+    light: themes.light ?? DEFAULT_CODE_BLOCK_THEMES.light,
+    dark: themes.dark ?? DEFAULT_CODE_BLOCK_THEMES.dark,
+  };
+}
+
 export function createCanonicalDocsRemarkHeading(): ReturnType<typeof createFumadocsRemarkHeading> {
   return (root, file) => {
     isolateDocsMarkdownPromptReferences(root, file.value);
@@ -93,6 +122,44 @@ function findWorkspaceRoot(startDir: string): string | null {
     if (parent === current) return null;
     current = parent;
   }
+}
+
+function findRepositoryRoot(startDir: string): string {
+  let current = path.resolve(startDir);
+
+  while (true) {
+    if (
+      fs.existsSync(path.join(current, ".git")) ||
+      fs.existsSync(path.join(current, "pnpm-workspace.yaml"))
+    ) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) return path.resolve(startDir);
+    current = parent;
+  }
+}
+
+/**
+ * Keep external documentation sources importable when the Farm application is
+ * nested inside a repository, while retaining explicit escape hatches for
+ * content that intentionally lives elsewhere.
+ */
+export function resolveFarmDocsViteContentRoots(
+  appRoot: string = process.cwd(),
+  contentRoots: string[] = [],
+): string[] {
+  const normalizedAppRoot = path.resolve(appRoot);
+  return Array.from(
+    new Set(
+      [
+        normalizedAppRoot,
+        findRepositoryRoot(normalizedAppRoot),
+        ...contentRoots.map((root) => path.resolve(normalizedAppRoot, root)),
+      ].map(normalizePath),
+    ),
+  );
 }
 
 function resolveWorkspaceAliases() {
@@ -201,8 +268,9 @@ function resolveWorkspaceAliases() {
   ];
 }
 
-export function docsMdx(): PluginOption {
+export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
+  const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
 
   return [
     {
@@ -211,6 +279,11 @@ export function docsMdx(): PluginOption {
       config() {
         return {
           ...(aliases.length > 0 ? { resolve: { alias: aliases } } : {}),
+          server: {
+            fs: {
+              allow: resolveFarmDocsViteContentRoots(process.cwd(), options.contentRoots),
+            },
+          },
           ssr: {
             noExternal: ["@farming-labs/docs", "@farming-labs/theme"],
           },
@@ -227,10 +300,7 @@ export function docsMdx(): PluginOption {
         remarkCodeGroup,
         createCanonicalDocsRemarkHeading,
       ],
-      rehypePlugins: [
-        rehypeToc,
-        [rehypeCode, { themes: { dark: "github-dark", light: "github-light" } }],
-      ],
+      rehypePlugins: [rehypeToc, [rehypeCode, { themes: codeBlockThemes }]],
     }),
   ];
 }

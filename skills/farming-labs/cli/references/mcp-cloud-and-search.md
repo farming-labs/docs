@@ -6,6 +6,7 @@ search-index synchronization.
 ## Contents
 
 - [Local MCP](#local-mcp)
+- [Protected authoring MCP](#protected-authoring-mcp)
 - [Hosted MCP client setup](#hosted-mcp-client-setup)
 - [Docs Cloud](#docs-cloud)
 - [Search sync](#search-sync)
@@ -29,6 +30,23 @@ pnpm exec docs mcp --config src/lib/docs.config.ts
 Core tools include page/task listing, navigation, search, section-aware reading, code examples,
 config schema, and budgeted context. Use the `configuration` skill for MCP HTTP route,
 authentication, or tool configuration.
+
+## Protected authoring MCP
+
+Run a separate local authoring surface:
+
+```bash
+pnpm exec docs mcp author --branch-prefix docs/
+```
+
+It provides status, branch, hash-checked docs reads/writes, agent Markdown preview, doctor, diff, and
+feedback-analysis tools. Paths must stay inside `contentDir`; existing files require the SHA-256
+returned by `authoring_read_doc`.
+
+Publishing is absent unless the operator starts the server with `--allow-publish`. With that flag,
+the draft-PR tool still requires explicit confirmation, a matching branch prefix, docs-only dirty
+files, and authenticated `gh`. Never forward this server through the public MCP aliases. Use local
+stdio or place `createDocsAuthoringMcpServer()` behind an authoring-scoped OAuth transport.
 
 ## Hosted MCP client setup
 
