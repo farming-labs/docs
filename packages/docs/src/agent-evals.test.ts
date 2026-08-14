@@ -134,24 +134,32 @@ describe("runDocsGoldenTasks", () => {
       coverage: {
         status: "unmeasured",
         measuredTaskDimensions: 0,
+        applicableTaskDimensions: 0,
+        notApplicableTaskDimensions: 0,
         totalTaskDimensions: 0,
         coveragePercent: 0,
         dimensions: {
           safety: {
             status: "unmeasured",
             measuredTaskCount: 0,
+            applicableTaskCount: 0,
+            notApplicableTaskCount: 0,
             totalTaskCount: 0,
             coveragePercent: 0,
           },
           answerQuality: {
             status: "unmeasured",
             measuredTaskCount: 0,
+            applicableTaskCount: 0,
+            notApplicableTaskCount: 0,
             totalTaskCount: 0,
             coveragePercent: 0,
           },
           executableExamples: {
             status: "unmeasured",
             measuredTaskCount: 0,
+            applicableTaskCount: 0,
+            notApplicableTaskCount: 0,
             totalTaskCount: 0,
             coveragePercent: 0,
           },
@@ -176,6 +184,8 @@ describe("runDocsGoldenTasks", () => {
     expect(report.coverage).toMatchObject({
       status: "unmeasured",
       measuredTaskDimensions: 0,
+      applicableTaskDimensions: 3,
+      notApplicableTaskDimensions: 0,
       totalTaskDimensions: 3,
       dimensions: {
         safety: { status: "unmeasured", measuredTaskCount: 0 },
@@ -226,6 +236,66 @@ describe("runDocsGoldenTasks", () => {
     expect(result.usage.conservativeTokenUpperBound).toBe(result.usage.usedUtf8Bytes);
     expect(result.usage.usedUtf8Bytes).toBeLessThanOrEqual(result.usage.tokenBudget);
     expect(result.score).toBe(100);
+  });
+
+  it("excludes explicitly not-applicable runtime execution from coverage", async () => {
+    const report = await runDocsGoldenTasks(pages, [
+      {
+        ...passingTask,
+        id: "documentation-only-example",
+        expect: {
+          ...passingTask.expect,
+          coverage: { executableExamples: "not-applicable" },
+        },
+      },
+    ]);
+
+    expect(report.status).toBe("passed");
+    expect(report.coverage).toMatchObject({
+      status: "unmeasured",
+      measuredTaskDimensions: 0,
+      applicableTaskDimensions: 2,
+      notApplicableTaskDimensions: 1,
+      totalTaskDimensions: 3,
+      coveragePercent: 0,
+      dimensions: {
+        executableExamples: {
+          status: "not-applicable",
+          measuredTaskCount: 0,
+          applicableTaskCount: 0,
+          notApplicableTaskCount: 1,
+          totalTaskCount: 1,
+          coveragePercent: 100,
+        },
+      },
+    });
+    expect(report.tasks[0].coverageApplicability.executableExamples).toBe("not-applicable");
+  });
+
+  it("rejects execute expectations declared not applicable", async () => {
+    const report = await runDocsGoldenTasks(pages, [
+      {
+        ...passingTask,
+        id: "conflicting-example-applicability",
+        expect: {
+          ...passingTask.expect,
+          examples: passingTask.expect.examples?.map((example) => ({
+            ...example,
+            verification: "execute" as const,
+          })),
+          coverage: { executableExamples: "not-applicable" },
+        },
+      },
+    ]);
+
+    expect(report.status).toBe("failed");
+    expect(report.tasks[0].issues).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "coverage.executableExamples cannot be not-applicable when an example uses verification: execute",
+        ),
+      ]),
+    );
   });
 
   it("keeps an empty safety declaration unmeasured", async () => {

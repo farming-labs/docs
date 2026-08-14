@@ -3875,19 +3875,25 @@ export async function inspectAgentReadiness(
   const formatDimensionCoverage = (
     label: string,
     dimension: typeof evaluationCoverage.dimensions.safety,
-  ) =>
-    `${label}: ${dimension.status} (${dimension.measuredTaskCount}/${dimension.totalTaskCount} tasks)`;
+  ) => {
+    if (dimension.status === "not-applicable") {
+      return `${label}: not applicable (${dimension.notApplicableTaskCount} tasks)`;
+    }
+    return `${label}: ${dimension.status} (${dimension.measuredTaskCount}/${dimension.applicableTaskCount} applicable tasks${dimension.notApplicableTaskCount > 0 ? `, ${dimension.notApplicableTaskCount} not applicable` : ""})`;
+  };
+  const evaluationCoveragePassed =
+    evaluationCoverage.status === "measured" || evaluationCoverage.status === "not-applicable";
   checks.push(
     makeCheck(
       "golden-task-coverage",
       "Golden evaluation coverage",
-      evaluationCoverage.status === "measured" ? "pass" : "warn",
+      evaluationCoveragePassed ? "pass" : "warn",
       Math.round((evaluationCoverage.coveragePercent / 100) * 5),
       5,
-      `${evaluationCoverage.status} coverage across optional confidence dimensions (${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%): ${formatDimensionCoverage("safety", evaluationCoverage.dimensions.safety)}; ${formatDimensionCoverage("answer quality", evaluationCoverage.dimensions.answerQuality)}; ${formatDimensionCoverage("executable examples", evaluationCoverage.dimensions.executableExamples)}.`,
-      evaluationCoverage.status === "measured"
+      `${evaluationCoverage.status} coverage across optional confidence dimensions (${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.applicableTaskDimensions} applicable task-dimensions, ${evaluationCoverage.notApplicableTaskDimensions} not applicable, ${evaluationCoverage.coveragePercent}%): ${formatDimensionCoverage("safety", evaluationCoverage.dimensions.safety)}; ${formatDimensionCoverage("answer quality", evaluationCoverage.dimensions.answerQuality)}; ${formatDimensionCoverage("executable examples", evaluationCoverage.dimensions.executableExamples)}.`,
+      evaluationCoveragePassed
         ? undefined
-        : "Add golden-task safety expectations, actual-answer assertions, and execute-level example checks so each confidence dimension is measured explicitly.",
+        : "Add golden-task safety expectations, actual-answer assertions, and execute-level example checks for applicable tasks; explicitly mark example execution not-applicable only when it would not meaningfully validate the task.",
     ),
   );
 
@@ -4254,7 +4260,7 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
     );
     const evaluationCoverage = report.evaluations.coverage;
     console.log(
-      `${pc.bold("Evaluation coverage:")} ${evaluationCoverage.status} ${pc.dim(`(${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.totalTaskDimensions} task-dimensions, ${evaluationCoverage.coveragePercent}%)`)} ${pc.dim("•")} safety ${evaluationCoverage.dimensions.safety.status} ${pc.dim("•")} answer quality ${evaluationCoverage.dimensions.answerQuality.status} ${pc.dim("•")} executable examples ${evaluationCoverage.dimensions.executableExamples.status}`,
+      `${pc.bold("Evaluation coverage:")} ${evaluationCoverage.status} ${pc.dim(`(${evaluationCoverage.measuredTaskDimensions}/${evaluationCoverage.applicableTaskDimensions} applicable task-dimensions, ${evaluationCoverage.notApplicableTaskDimensions} not applicable, ${evaluationCoverage.coveragePercent}%)`)} ${pc.dim("•")} safety ${evaluationCoverage.dimensions.safety.status} ${pc.dim("•")} answer quality ${evaluationCoverage.dimensions.answerQuality.status} ${pc.dim("•")} executable examples ${evaluationCoverage.dimensions.executableExamples.status}`,
     );
   }
   console.log(
