@@ -187,7 +187,8 @@ jobs:
         run: |
           mkdir -p .farming-labs/readiness
           for attempt in 1 2 3; do
-            if node ../packages/docs/dist/cli/index.mjs doctor --agent --ci --fail-on fail --config docs.config.tsx --url "${DOCS_SMOKE_BASE_URL}" --json-output .farming-labs/readiness/hosted.json; then
+            if node ../packages/docs/dist/cli/index.mjs doctor --agent --ci --fail-on fail --config docs.config.tsx --url "${DOCS_SMOKE_BASE_URL}" --json-output .farming-labs/readiness/hosted.json &&
+              node ../scripts/check-agent-readiness-report.mjs .farming-labs/readiness/hosted.json "../${DOCS_READINESS_WARNING_BASELINE}"; then
               break
             fi
             if [ "${attempt}" -eq 3 ]; then
