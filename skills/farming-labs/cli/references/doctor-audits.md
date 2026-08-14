@@ -8,6 +8,7 @@ endpoint conformance.
 - [Commands](#commands)
 - [Agent audit coverage](#agent-audit-coverage)
 - [Hosted probes](#hosted-probes)
+- [CI and production monitoring](#ci-and-production-monitoring)
 - [Interpreting results](#interpreting-results)
 - [Verification and recovery](#verification-and-recovery)
 
@@ -75,6 +76,19 @@ core docs tools. Hosted evidence adds checks without changing the normalized 100
 
 Hosted JSON IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
 `hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.
+
+## CI and production monitoring
+
+For pull requests, run doctor once with the local `mcp-context` surface, persist the report with
+`--json-output`, and upload that file even when the job fails. Use a checked warning baseline when
+known warnings are being repaired: reject unexpected warnings, and make each temporary warning
+required so CI tells maintainers when the baseline is stale and can be removed.
+
+For scheduled production checks, exercise both `configured-search` and `ask-ai-context` against the
+deployed origin in separate jobs. Keep the general hosted doctor probe and the deeper discovery,
+Agent Skills, search, Markdown, cache, and MCP smoke test as independent evidence, and retain their
+JSON/log artifacts for incident review. Deployment-triggered checks should run only against public
+origins, never authenticated preview URLs without an explicit credential design.
 
 ## Interpreting results
 

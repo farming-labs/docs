@@ -1,6 +1,32 @@
 name: Agent surface smoke
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/agent-readiness-warning-baseline.json"
+      - ".github/workflows/agent-surface-smoke.yml"
+      - "packages/docs/src/**"
+      - "scripts/check-agent-readiness-report.mjs"
+      - "scripts/check-agent-readiness-report.test.mjs"
+      - "scripts/smoke-agent-surfaces.mjs"
+      - "scripts/smoke-agent-surfaces.test.mjs"
+      - "skills/farming-labs/**"
+      - "website/app/docs/**"
+      - "website/docs.config.tsx"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/agent-readiness-warning-baseline.json"
+      - ".github/workflows/agent-surface-smoke.yml"
+      - "packages/docs/src/**"
+      - "scripts/check-agent-readiness-report.mjs"
+      - "scripts/check-agent-readiness-report.test.mjs"
+      - "scripts/smoke-agent-surfaces.mjs"
+      - "scripts/smoke-agent-surfaces.test.mjs"
+      - "skills/farming-labs/**"
+      - "website/app/docs/**"
+      - "website/docs.config.tsx"
   deployment_status:
   schedule:
     - cron: "17 6 * * *"
@@ -16,12 +42,114 @@ permissions:
   contents: read
 
 jobs:
+  local-readiness:
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOCS_AGENT_EVALUATION_SURFACE: mcp-context
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build config dependencies
+        run: |
+          pnpm --filter @farming-labs/docs build
+          pnpm --filter @farming-labs/theme build
+
+      - name: Test readiness policy
+        run: node --test scripts/check-agent-readiness-report.test.mjs
+
+      - name: Generate local agent-readiness report
+        working-directory: website
+        run: |
+          mkdir -p .farming-labs/readiness
+          node ../packages/docs/dist/cli/index.mjs doctor --agent --ci --fail-on fail --config docs.config.tsx --json-output .farming-labs/readiness/local.json
+
+      - name: Enforce readiness warning baseline
+        run: node scripts/check-agent-readiness-report.mjs website/.farming-labs/readiness/local.json .github/agent-readiness-warning-baseline.json
+
+      - name: Upload local readiness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-readiness-local
+          path: website/.farming-labs/readiness/local.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  production-evaluations:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        surface: [configured-search, ask-ai-context]
+    env:
+      DOCS_AGENT_EVALUATION_SURFACE: ${{ matrix.surface }}
+      DOCS_AGENT_EVALUATION_TASKS: author-structured-agent-contract
+      DOCS_SEARCH_PROVIDER: mcp
+      NEXT_PUBLIC_BASE_URL: ${{ inputs.base_url || 'https://docs.farming-labs.dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build config dependencies
+        run: |
+          pnpm --filter @farming-labs/docs build
+          pnpm --filter @farming-labs/theme build
+
+      - name: Generate production ${{ matrix.surface }} report
+        working-directory: website
+        run: |
+          mkdir -p .farming-labs/readiness
+          node ../packages/docs/dist/cli/index.mjs doctor --agent --ci --fail-on fail --config docs.config.tsx --json-output ".farming-labs/readiness/${DOCS_AGENT_EVALUATION_SURFACE}.json"
+
+      - name: Enforce readiness warning baseline
+        run: node scripts/check-agent-readiness-report.mjs "website/.farming-labs/readiness/${DOCS_AGENT_EVALUATION_SURFACE}.json" .github/agent-readiness-warning-baseline.json
+
+      - name: Upload production evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-readiness-${{ matrix.surface }}
+          path: website/.farming-labs/readiness/${{ matrix.surface }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
   smoke:
     # Every docs-website deployment is protected by Vercel SSO. Deployment events
     # therefore exercise only the public docs-cloud project, while scheduled and
     # manual runs continue to verify the production origin.
     if: >-
-      github.event_name != 'deployment_status' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event.deployment_status.state == 'success' &&
       endsWith(github.event.deployment.environment, ' – farming-labs-docs-docs-cloud'))
     runs-on: ubuntu-latest
@@ -44,10 +172,35 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build the Agent Skills validator
-        run: pnpm --filter @farming-labs/docs build
+        run: |
+          pnpm --filter @farming-labs/docs build
+          pnpm --filter @farming-labs/theme build
 
       - name: Test the smoke validator
         run: node --test scripts/smoke-agent-surfaces.test.mjs
 
+      - name: Generate hosted agent-readiness report
+        working-directory: website
+        run: |
+          mkdir -p .farming-labs/readiness
+          node ../packages/docs/dist/cli/index.mjs doctor --agent --ci --fail-on fail --config docs.config.tsx --url "${DOCS_SMOKE_BASE_URL}" --json-output .farming-labs/readiness/hosted.json
+
+      - name: Enforce readiness warning baseline
+        run: node scripts/check-agent-readiness-report.mjs website/.farming-labs/readiness/hosted.json .github/agent-readiness-warning-baseline.json
+
       - name: Smoke-test deployed agent surfaces
-        run: node scripts/smoke-agent-surfaces.mjs
+        run: |
+          mkdir -p .farming-labs/readiness
+          set -o pipefail
+          node scripts/smoke-agent-surfaces.mjs 2>&1 | tee .farming-labs/readiness/surface-smoke.log
+
+      - name: Upload hosted readiness reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-readiness-hosted
+          path: |
+            website/.farming-labs/readiness/hosted.json
+            .farming-labs/readiness/surface-smoke.log
+          if-no-files-found: warn
+          retention-days: 14
