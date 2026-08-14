@@ -41,7 +41,6 @@ const HardlineUIDefaults = {
     Callout: { variant: "outline", icon: true },
     CodeBlock: { showCopyButton: true },
     HoverLink: { linkLabel: "Open page", showIndicator: true },
-    Tabs: { style: "underline" as const },
   },
 };
 

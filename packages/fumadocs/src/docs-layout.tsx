@@ -1101,6 +1101,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // When staticExport is true (e.g. Cloudflare Pages), no server → disable search and AI
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
+  const devToolsEnabled =
+    !staticExport &&
+    (config.devTools === true ||
+      (typeof config.devTools === "object" && config.devTools.enabled !== false));
   // AI features — resolved from config, rendered automatically
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !staticExport && !!aiConfig?.enabled;
@@ -1275,6 +1279,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             readingTimeMap={readingTimeMap}
             structuredDataMap={structuredDataMap}
             llmsTxtEnabled={llmsTxtEnabled}
+            devToolsEnabled={devToolsEnabled}
+            docsApiUrl={docsApiUrl}
             generatedTitleMap={generatedTitleMap}
             descriptionMap={descriptionMap}
             feedbackEnabled={feedbackConfig.enabled}
