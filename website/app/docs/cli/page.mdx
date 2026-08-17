@@ -476,6 +476,19 @@ Selection notes:
 - only folder-based pages can be written automatically, because the command needs a sibling
   `agent.md` target
 
+- `--review <page...>` records a hash-bound human review for one or more pages without rewriting
+  `agent.md` or calling the compressor; requires explicit page arguments plus `--reviewed-by` and
+  `--reason`
+- `--review-manifest <path>` overrides the project-relative manifest location used to store review
+  entries (default: `.farming-labs/agent-compaction-reviews.json`)
+
+A reviewed entry binds the resolved page source, compaction settings, and `agent.md` body to the
+reviewer and reason. If any of those hashes drift, `--check` and `docs doctor --agent` report the
+entry as invalid until the page is deliberately reviewed again.
+
+```bash title="terminal"
+pnpm exec docs agent compact --review --reviewed-by "docs-team" --reason "Preserve operator guidance" /docs/configuration
+```
 Recommended config defaults:
 
 ```ts title="docs.config.ts"

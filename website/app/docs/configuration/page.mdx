@@ -1852,6 +1852,21 @@ Supported fields:
 - `minOutputTokens`
 - `protectJson`
 
+- `reviewManifestPath`
+
+`reviewManifestPath` sets the project-relative path to the JSON manifest used by
+`docs agent compact --review` to store hash-bound reviewed exceptions. The default is
+`.farming-labs/agent-compaction-reviews.json`. Set it when your project stores the manifest at a
+custom location:
+
+```ts title="docs.config.ts"
+agent: {
+  compact: {
+    reviewManifestPath: ".farming-labs/agent-compaction-reviews.json",
+  },
+},
+```
+
 <Callout type="info" title="What changes after compaction">
   `docs agent compact` creates missing `agent.md` files and overwrites existing ones. The written
   `agent.md` becomes the machine-readable source for `.md` routes,

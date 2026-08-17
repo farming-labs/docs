@@ -9,6 +9,14 @@ related:
   - /docs/customization/llms-txt
   - /docs/customization/mcp
 agent:
+
+When a hand-authored or intentionally modified `agent.md` should be preserved long-term, record a
+hash-bound review with `--review`. The review manifest (default
+`.farming-labs/agent-compaction-reviews.json`) stores the resolved source, settings, and output
+hashes together with the reviewer and reason. `docs doctor --agent` and `docs agent compact --check`
+accept matching reviewed entries but fail when any hash drifts (source, settings, or `agent.md`
+body), or when a manifest entry no longer matches any compactable page. Re-reviewing requires an
+explicit `--review` run after the drift is inspected and accepted.
   tokenBudget: 900
   task: Reduce agent context usage while preserving the evidence needed to implement and verify a docs task.
   outcome: Retrieval returns the relevant page and executable evidence within the configured UTF-8 context budget.
