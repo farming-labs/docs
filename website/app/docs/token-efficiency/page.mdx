@@ -9,14 +9,6 @@ related:
   - /docs/customization/llms-txt
   - /docs/customization/mcp
 agent:
-
-When a hand-authored or intentionally modified `agent.md` should be preserved long-term, record a
-hash-bound review with `--review`. The review manifest (default
-`.farming-labs/agent-compaction-reviews.json`) stores the resolved source, settings, and output
-hashes together with the reviewer and reason. `docs doctor --agent` and `docs agent compact --check`
-accept matching reviewed entries but fail when any hash drifts (source, settings, or `agent.md`
-body), or when a manifest entry no longer matches any compactable page. Re-reviewing requires an
-explicit `--review` run after the drift is inspected and accepted.
   tokenBudget: 900
   task: Reduce agent context usage while preserving the evidence needed to implement and verify a docs task.
   outcome: Retrieval returns the relevant page and executable evidence within the configured UTF-8 context budget.
@@ -72,6 +64,14 @@ generated sibling `agent.md` replaces only machine-readable page output; the ren
 remains unchanged. If a compacted result drops required evidence or lowers the relevant page below
 an overview, restore the prior `agent.md`, improve its contract and retrieval metadata, and rerun
 the task before raising compaction aggressiveness.
+
+When a hand-authored or intentionally modified `agent.md` should be preserved long-term, record a
+hash-bound review with `--review`. The review manifest (default
+`.farming-labs/agent-compaction-reviews.json`) stores the resolved source, settings, and output
+hashes together with the reviewer and reason. `docs doctor --agent` and `docs agent compact --check`
+accept matching reviewed entries but fail when any hash drifts (source, settings, or `agent.md`
+body), or when a manifest entry no longer matches any compactable page. Re-reviewing requires an
+explicit `--review` run after the drift is inspected and accepted.
 </Agent>
 
 AI tools like Cursor, Copilot, and Claude read your project files to help you write code. Every file they read costs **tokens** — the units that determine response speed, API cost, and how much of your project fits in a single conversation.
