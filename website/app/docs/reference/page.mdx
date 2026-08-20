@@ -9,10 +9,6 @@ related:
   - /docs/installation
   - /docs/customization/mcp
 agent:
-
-| Property | Type | Default | Description |
-| -------- | ---- | ------- | ----------- |
-| `reviewManifestPath` | `string` | `.farming-labs/agent-compaction-reviews.json` | Project-relative path to the JSON manifest for hash-bound reviewed compaction exceptions. Overridable per-run with `--review-manifest`. |
   tokenBudget: 1800
   task: Select and configure the exact typed Farming Labs docs option required by a project.
   outcome: The chosen defineDocs option has the documented type and default and the resolved runtime exposes matching behavior.
@@ -2679,6 +2675,9 @@ Notes:
   tree, including staged, unstaged, and untracked docs changes
 - `docs agent compact --stale --include-missing` will also create missing `agent.md` files for
   pages that define `agent.tokenBudget`
+- `agent.compact.reviewManifestPath` (default `.farming-labs/agent-compaction-reviews.json`) sets
+  the project-relative path to the JSON manifest for hash-bound reviewed compaction exceptions;
+  override per run with `--review-manifest`
 - inherited `minOutputTokens` is clamped down to `tokenBudget` when needed so the compression API
   never receives `min_output_tokens > max_output_tokens`
 
