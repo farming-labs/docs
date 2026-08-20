@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServer } from "node:http";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
@@ -1229,6 +1229,64 @@ Updated body.
     await expect(compactAgentDocs({ check: true })).rejects.toThrow(
       "Agent compaction freshness check failed: 0 fresh, 0 reviewed, 0 invalid reviews, 0 orphaned reviews, 1 stale",
     );
+  });
+
+  it("keeps generated content fresh when only the page file mtime changes", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    const pagePath = path.join(tmpDir, "app", "docs", "installation", "page.mdx");
+    writeFileSync(
+      pagePath,
+      `---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 500
+---
+
+# Installation
+
+Body.
+`,
+      "utf-8",
+    );
+
+    const server = createServer(async (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: "Initial compacted",
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        pages: ["installation"],
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    // A fresh checkout resets every file's mtime; that alone must not flag drift.
+    const shifted = new Date(Date.now() + 400 * 24 * 60 * 60 * 1000);
+    utimesSync(pagePath, shifted, shifted);
+
+    delete process.env.DOCS_CLOUD_API_KEY;
+    await expect(compactAgentDocs({ check: true })).resolves.toBeUndefined();
   });
 
   it("records reviewed agent.md hashes and fails when reviewed content or source drifts", async () => {

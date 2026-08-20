@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:1a9be43e00ba06ca
+sourceHash=fnv1a64:a910a0ceb75b0ed1
 settingsHash=fnv1a64:f146078e2605e9a5
 outputHash=fnv1a64:09583f805cb9d574
-generatedAt=2026-08-14T12:45:38.894Z
+generatedAt=2026-08-20T10:20:45.448Z
 -->
 # From Starlight
 

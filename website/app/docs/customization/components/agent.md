@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:a6c99c7c5dd5505d
+sourceHash=fnv1a64:5c3143c5a326a02e
 settingsHash=fnv1a64:063b4c9a14696a17
 outputHash=fnv1a64:359366d4cee9d620
-generatedAt=2026-08-14T12:45:38.567Z
+generatedAt=2026-08-20T10:20:45.310Z
 -->
 # Components
 

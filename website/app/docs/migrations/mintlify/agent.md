@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:d754ee9cd3292bb8
+sourceHash=fnv1a64:d6c92a8a6a7e2fa5
 settingsHash=fnv1a64:f146078e2605e9a5
 outputHash=fnv1a64:0c1d2236f001482f
-generatedAt=2026-08-14T12:45:38.847Z
+generatedAt=2026-08-20T10:20:45.440Z
 -->
 # From Mintlify
 

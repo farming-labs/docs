@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:40480511b9483fbf
+sourceHash=fnv1a64:1eb3fc02f91739e4
 settingsHash=fnv1a64:cd874ef828c34e2e
 outputHash=fnv1a64:45e7a29e8e2d6424
-generatedAt=2026-08-14T12:45:38.909Z
+generatedAt=2026-08-20T10:20:45.450Z
 -->
 # From VitePress
 

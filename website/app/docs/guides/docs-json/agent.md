@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:ab69aa297661d3d3
+sourceHash=fnv1a64:e4672a145ab7496a
 settingsHash=fnv1a64:1b5212557ba75927
 outputHash=fnv1a64:1e47ea690d0acfae
-generatedAt=2026-08-14T12:45:38.750Z
+generatedAt=2026-08-20T10:20:45.420Z
 -->
 # docs.json
 

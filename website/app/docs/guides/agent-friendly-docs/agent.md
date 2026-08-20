@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:4d12e10b1ac9e077
+sourceHash=fnv1a64:d065d00a89874ed0
 settingsHash=fnv1a64:4d5874ba9e62babc
 outputHash=fnv1a64:61659a4471a71139
-generatedAt=2026-08-14T12:45:38.718Z
+generatedAt=2026-08-20T10:20:45.416Z
 -->
 # How to Write Agent-Friendly Docs
 

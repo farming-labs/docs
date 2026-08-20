@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:2fa85c7d0af1647a
+sourceHash=fnv1a64:b53016c05f2ce795
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:fd28ea196ce8fcc0
-generatedAt=2026-08-14T12:45:39.004Z
+generatedAt=2026-08-20T10:20:45.746Z
 -->
 # Command Grid
 

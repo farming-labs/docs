@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:c8e8eed91a75f7a3
+sourceHash=fnv1a64:7d3ea2e43cae0eb0
 settingsHash=fnv1a64:7a85fb928fd52635
 outputHash=fnv1a64:e4b62340e869277c
-generatedAt=2026-08-14T12:45:39.076Z
+generatedAt=2026-08-20T10:20:45.754Z
 -->
 # Creating Your Own Theme
 

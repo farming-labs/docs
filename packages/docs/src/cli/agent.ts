@@ -686,11 +686,15 @@ function buildPageOptions(
 }
 
 function buildResolvedPageSourceDocument(page: DocsMcpPage): string {
+  // Filesystem mtimes differ across checkouts, so the mtime-derived lastModified
+  // fallback must not leak into compaction source hashes; only explicit
+  // frontmatter lastmod may contribute a last_updated line.
   return stripGeneratedPageAgentContractMarkdown(
     renderDocsMarkdownDocument({
       ...page,
       agentContent: undefined,
       agentRawContent: undefined,
+      lastModified: undefined,
     }),
   );
 }
