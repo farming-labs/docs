@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:81bdb3af1e955ea8
+sourceHash=fnv1a64:2ac86bd1ef7c6b27
 settingsHash=fnv1a64:156231f9a09bd12a
 outputHash=fnv1a64:37de327de919bc44
-generatedAt=2026-08-14T12:45:38.879Z
+generatedAt=2026-08-20T10:20:45.445Z
 -->
 # From Nextra
 

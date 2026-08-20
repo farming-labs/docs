@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:1cf49d919b1b69af
+sourceHash=fnv1a64:eb28de07cc138d5a
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:10efb89ec97603ba
-generatedAt=2026-08-14T12:45:39.099Z
+generatedAt=2026-08-20T10:20:45.758Z
 -->
 # DarkBold
 

@@ -2,40 +2,67 @@
   "version": 1,
   "reviews": [
     {
+      "route": "/docs/cli",
+      "sourceHash": "fnv1a64:ff98ba0ac661af3e",
+      "settingsHash": "fnv1a64:e50e89e221226fc3",
+      "outputHash": "fnv1a64:c95a0dd048e26147",
+      "reviewedAt": "2026-08-20T10:21:22.767Z",
+      "reviewedBy": "Kinfe123",
+      "reason": "Preserve the curated compacted output that passes the golden-task quality gates: #485/#487 added agent-compact review-workflow coverage to these source pages, and a cloud re-compaction regressed golden tasks from 22/22 to 9/22, so the curated agent.md is kept until the new coverage is folded in by a reviewed curation pass."
+    },
+    {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:67d7e2763afbf5a4",
+      "sourceHash": "fnv1a64:036bc04f1a1943f6",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
       "outputHash": "fnv1a64:d404f870b0ddaafa",
-      "reviewedAt": "2026-08-14T15:49:25.027Z",
-      "reviewedBy": "farming-labs/docs maintainers",
-      "reason": "Preserve the detailed machine-oriented configuration contract."
+      "reviewedAt": "2026-08-20T10:21:05.808Z",
+      "reviewedBy": "Kinfe123",
+      "reason": "Re-reviewed after #485 documented agent.compact.reviewManifestPath in the source page: the preserved machine-oriented configuration contract covers agent.compact at the defaults level, so its guidance remains correct without enumerating the new option. Hash also shifted because compaction source hashing no longer embeds mtime-derived last_updated dates."
     },
     {
       "route": "/docs/customization/agent-primitive",
-      "sourceHash": "fnv1a64:c8aa1b291752bf79",
+      "sourceHash": "fnv1a64:28b9ad19a979f2f4",
       "settingsHash": "fnv1a64:3fa80ff29bd1598e",
       "outputHash": "fnv1a64:d733ee51a757a5ec",
-      "reviewedAt": "2026-08-14T15:49:27.379Z",
-      "reviewedBy": "farming-labs/docs maintainers",
-      "reason": "Preserve the canonical audience projection, discovery, feedback, and Agent Skills operating guide."
+      "reviewedAt": "2026-08-20T10:21:13.546Z",
+      "reviewedBy": "Kinfe123",
+      "reason": "Re-recorded after compaction source hashing stopped embedding mtime-derived last_updated dates; page sources are unchanged since the 2026-08-14 review, and the intentionally preserved agent.md content (audience projection and Agent Skills guide, operator-only authoring MCP safety guidance, scoped sidebar answer guide) still matches its source."
     },
     {
       "route": "/docs/customization/mcp",
-      "sourceHash": "fnv1a64:120a971d05404387",
+      "sourceHash": "fnv1a64:724e794e76a6d24e",
       "settingsHash": "fnv1a64:4d5874ba9e62babc",
       "outputHash": "fnv1a64:0b4119aece602f67",
-      "reviewedAt": "2026-08-14T15:49:22.702Z",
-      "reviewedBy": "farming-labs/docs maintainers",
-      "reason": "Preserve reviewed operator-only authoring MCP and publishing safety guidance."
+      "reviewedAt": "2026-08-20T10:21:13.548Z",
+      "reviewedBy": "Kinfe123",
+      "reason": "Re-recorded after compaction source hashing stopped embedding mtime-derived last_updated dates; page sources are unchanged since the 2026-08-14 review, and the intentionally preserved agent.md content (audience projection and Agent Skills guide, operator-only authoring MCP safety guidance, scoped sidebar answer guide) still matches its source."
     },
     {
       "route": "/docs/customization/sidebar",
-      "sourceHash": "fnv1a64:4cfd6a1ea869d828",
+      "sourceHash": "fnv1a64:34bc2c22bac145f1",
       "settingsHash": "fnv1a64:063b4c9a14696a17",
       "outputHash": "fnv1a64:b6bb2f7c8d8f3184",
-      "reviewedAt": "2026-08-14T15:49:29.748Z",
-      "reviewedBy": "farming-labs/docs maintainers",
-      "reason": "Preserve the intentionally scoped sidebar answer guide."
+      "reviewedAt": "2026-08-20T10:21:13.549Z",
+      "reviewedBy": "Kinfe123",
+      "reason": "Re-recorded after compaction source hashing stopped embedding mtime-derived last_updated dates; page sources are unchanged since the 2026-08-14 review, and the intentionally preserved agent.md content (audience projection and Agent Skills guide, operator-only authoring MCP safety guidance, scoped sidebar answer guide) still matches its source."
+    },
+    {
+      "route": "/docs/reference",
+      "sourceHash": "fnv1a64:083bdfc462e36413",
+      "settingsHash": "fnv1a64:aa433a28ef4afd1f",
+      "outputHash": "fnv1a64:173fd105503fea58",
+      "reviewedAt": "2026-08-20T10:21:22.777Z",
+      "reviewedBy": "Kinfe123",
+      "reason": "Preserve the curated compacted output that passes the golden-task quality gates: #485/#487 added agent-compact review-workflow coverage to these source pages, and a cloud re-compaction regressed golden tasks from 22/22 to 9/22, so the curated agent.md is kept until the new coverage is folded in by a reviewed curation pass."
+    },
+    {
+      "route": "/docs/token-efficiency",
+      "sourceHash": "fnv1a64:723305a70b3f23f3",
+      "settingsHash": "fnv1a64:72be2461542d7a95",
+      "outputHash": "fnv1a64:d63cfdc9326dd1b7",
+      "reviewedAt": "2026-08-20T10:21:22.778Z",
+      "reviewedBy": "Kinfe123",
+      "reason": "Preserve the curated compacted output that passes the golden-task quality gates: #485/#487 added agent-compact review-workflow coverage to these source pages, and a cloud re-compaction regressed golden tasks from 22/22 to 9/22, so the curated agent.md is kept until the new coverage is folded in by a reviewed curation pass."
     }
   ]
 }

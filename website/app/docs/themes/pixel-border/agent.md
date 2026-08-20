@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:f777b1eacb30bd21
+sourceHash=fnv1a64:d83cd5953ab45dba
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:fb4a7dc49297d5e8
-generatedAt=2026-08-14T12:45:39.224Z
+generatedAt=2026-08-20T10:20:45.770Z
 -->
 # Pixel Border
 

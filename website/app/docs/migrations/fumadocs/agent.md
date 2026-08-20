@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:5c085ce3b80716d0
+sourceHash=fnv1a64:ba443015bda70c53
 settingsHash=fnv1a64:ab89fb28872d1850
 outputHash=fnv1a64:ceb94ed92d52e0d2
-generatedAt=2026-08-14T12:45:38.814Z
+generatedAt=2026-08-20T10:20:45.435Z
 -->
 # From Fumadocs
 

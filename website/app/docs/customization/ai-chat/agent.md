@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:2f11c9729fea733b
+sourceHash=fnv1a64:90a70f0c0a38a3ce
 settingsHash=fnv1a64:7a85fb928fd52635
 outputHash=fnv1a64:ded084b41bf41852
-generatedAt=2026-08-14T12:45:38.514Z
+generatedAt=2026-08-20T10:20:45.282Z
 -->
 # Ask AI
 

@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:beba09c58afaecfc
+sourceHash=fnv1a64:eb1bb0dc77715047
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:ce62f61e9051808e
-generatedAt=2026-08-14T12:45:39.203Z
+generatedAt=2026-08-20T10:20:45.766Z
 -->
 # Ledger
 

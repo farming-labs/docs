@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:b8008eca9537395e
+sourceHash=fnv1a64:61844429143e125d
 settingsHash=fnv1a64:cd874ef828c34e2e
 outputHash=fnv1a64:1d89b214573ca5cb
-generatedAt=2026-08-14T12:45:38.831Z
+generatedAt=2026-08-20T10:20:45.437Z
 -->
 # From GitBook
 

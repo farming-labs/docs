@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:018b273ee81c6a2b
+sourceHash=fnv1a64:af3df0c736fda380
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:8ac9a34d7b0c2434
-generatedAt=2026-08-14T12:45:39.157Z
+generatedAt=2026-08-20T10:20:45.763Z
 -->
 # GreenTree
 

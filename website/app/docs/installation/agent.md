@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:85177fbaa1b81ffe
+sourceHash=fnv1a64:fa9ae05c7f2c8a21
 settingsHash=fnv1a64:7a85fb928fd52635
 outputHash=fnv1a64:71ccadee7aea1a56
-generatedAt=2026-08-14T12:45:38.767Z
+generatedAt=2026-08-20T10:20:45.429Z
 -->
 # Installation
 

@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:a88e536390348978
+sourceHash=fnv1a64:fdd94c82eb0cdb59
 settingsHash=fnv1a64:4b53757ce3e12a9b
 outputHash=fnv1a64:bf8874a303153bea
-generatedAt=2026-08-14T12:45:38.863Z
+generatedAt=2026-08-20T10:20:45.442Z
 -->
 # From Material for MkDocs
 

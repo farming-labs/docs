@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:0df67fe4d790f27e
+sourceHash=fnv1a64:4f98b04c6461ce6d
 settingsHash=fnv1a64:b2106dff2d4f1f98
 outputHash=fnv1a64:75c3aeaa240cd419
-generatedAt=2026-08-14T12:45:38.950Z
+generatedAt=2026-08-20T10:20:45.768Z
 -->
 # Themes
 URL: /docs/themes

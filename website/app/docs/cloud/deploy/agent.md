@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:71b392aaea120dba
+sourceHash=fnv1a64:21f42c17384037d9
 settingsHash=fnv1a64:063b4c9a14696a17
 outputHash=fnv1a64:c156b3ca29676945
-generatedAt=2026-08-14T12:45:38.462Z
+generatedAt=2026-08-20T10:20:45.224Z
 -->
 # Deploy
 
