@@ -25,18 +25,31 @@ function patchHistoryEvents() {
   window.__fdHistoryPatched = true;
 }
 
-function subscribe(onStoreChange: () => void) {
+export function subscribeToWindowLocation(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
 
   patchHistoryEvents();
 
-  const notify = () => onStoreChange();
+  let active = true;
+  let notificationQueued = false;
+  const notify = () => {
+    if (notificationQueued) return;
+    notificationQueued = true;
+
+    // Routers can update history during React's commit phase. Notify subscribers
+    // once that commit completes while still updating before the browser paints.
+    queueMicrotask(() => {
+      notificationQueued = false;
+      if (active) onStoreChange();
+    });
+  };
 
   window.addEventListener("popstate", notify);
   window.addEventListener("hashchange", notify);
   window.addEventListener("fd-location-change", notify);
 
   return () => {
+    active = false;
     window.removeEventListener("popstate", notify);
     window.removeEventListener("hashchange", notify);
     window.removeEventListener("fd-location-change", notify);
@@ -54,10 +67,10 @@ function getPathnameSnapshot() {
 }
 
 export function useWindowSearchParams(): URLSearchParams {
-  const search = useSyncExternalStore(subscribe, getSearchSnapshot, () => "");
+  const search = useSyncExternalStore(subscribeToWindowLocation, getSearchSnapshot, () => "");
   return new URLSearchParams(search);
 }
 
 export function useWindowPathname(): string {
-  return useSyncExternalStore(subscribe, getPathnameSnapshot, () => "");
+  return useSyncExternalStore(subscribeToWindowLocation, getPathnameSnapshot, () => "");
 }

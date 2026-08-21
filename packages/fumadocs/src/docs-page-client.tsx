@@ -1,7 +1,15 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
 import type {
@@ -627,24 +635,20 @@ export function DocsPageClient({
   const effectiveTocEnabled = isChangelogRoute ? false : tocEnabled;
   const effectiveBreadcrumbEnabled = isChangelogRoute ? false : breadcrumbEnabled;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!effectiveTocEnabled) return;
 
-    const timer = requestAnimationFrame(() => {
-      const container = document.getElementById("nd-page");
-      if (!container) return;
+    const container = document.getElementById("nd-page");
+    if (!container) return;
 
-      const headings = container.querySelectorAll("h2[id], h3[id], h4[id]");
-      const items: TOCItem[] = Array.from(headings).map((el) => ({
-        title: el.textContent?.replace(/^#\s*/, "") || "",
-        url: `#${el.id}`,
-        depth: parseInt(el.tagName[1], 10),
-      }));
+    const headings = container.querySelectorAll("h2[id], h3[id], h4[id]");
+    const items: TOCItem[] = Array.from(headings).map((el) => ({
+      title: el.textContent?.replace(/^#\s*/, "") || "",
+      url: `#${el.id}`,
+      depth: parseInt(el.tagName[1], 10),
+    }));
 
-      setToc(items);
-    });
-
-    return () => cancelAnimationFrame(timer);
+    setToc(items);
   }, [children, effectiveTocEnabled, pathname]);
 
   useEffect(() => {
@@ -731,7 +735,7 @@ export function DocsPageClient({
         )
       : undefined);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!showActionsInToc) {
       setTocActionsPortalHost(null);
       return;
@@ -782,7 +786,7 @@ export function DocsPageClient({
     };
   }, [pathname, showActionsInToc, toc.length]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!showActionsInToc) {
       setTitleControlsPortalHost(null);
       return;
@@ -890,7 +894,7 @@ export function DocsPageClient({
   const decoratedChildren = children;
   const needsTitleDecorationsPortal = !pageTitle && (!!titleDescription || !!belowTitleBlock);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!needsTitleDecorationsPortal) {
       setTitlePortalHost(null);
       return;
