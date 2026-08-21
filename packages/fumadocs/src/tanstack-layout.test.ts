@@ -322,7 +322,7 @@ describe("TanstackDocsLayout", () => {
     expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(false);
   });
 
-  it("enables browser-owned header actions for the browser runtime", () => {
+  it("enables browser-owned actions without opting into framework CSS", () => {
     const tree = TanstackDocsLayout({
       config: {
         entry: "docs",
@@ -336,7 +336,6 @@ describe("TanstackDocsLayout", () => {
 
     expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
     expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
-      "data-fd-framework": "",
       "data-fd-browser-adapter": "",
     });
   });
