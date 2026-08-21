@@ -12,6 +12,7 @@ import {
   type ComponentPropsWithoutRef,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { subscribeToWindowLocation } from "./client-location.js";
 import { TanstackDocsLayout, type TanstackDocsLayoutProps } from "./tanstack-layout.js";
 
 export type BrowserDocsLayoutProps = Omit<TanstackDocsLayoutProps, "browserRuntime">;
@@ -22,12 +23,6 @@ export function BrowserDocsLayout(props: BrowserDocsLayoutProps) {
 }
 
 type FumadocsProviderProps = ComponentPropsWithoutRef<typeof FumadocsRootProvider>;
-
-declare global {
-  interface Window {
-    __fdBrowserHistoryPatched?: boolean;
-  }
-}
 
 export interface BrowserRootProviderProps extends FumadocsProviderProps {
   /** Path rendered by the server, used to keep hydration deterministic. */
@@ -51,33 +46,6 @@ const defaultBrowserNavigation: BrowserNavigationAdapter = {
 };
 
 const BrowserNavigationContext = createContext<BrowserNavigationAdapter>(defaultBrowserNavigation);
-
-function patchHistoryEvents() {
-  if (typeof window === "undefined" || window.__fdBrowserHistoryPatched) return;
-
-  for (const method of ["pushState", "replaceState"] as const) {
-    const original = window.history[method];
-    window.history[method] = function patchedHistoryMethod(...args) {
-      const result = original.apply(this, args);
-      window.dispatchEvent(new Event("fd-location-change"));
-      return result;
-    };
-  }
-
-  window.__fdBrowserHistoryPatched = true;
-}
-
-function subscribeToLocation(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  patchHistoryEvents();
-
-  window.addEventListener("popstate", onStoreChange);
-  window.addEventListener("fd-location-change", onStoreChange);
-  return () => {
-    window.removeEventListener("popstate", onStoreChange);
-    window.removeEventListener("fd-location-change", onStoreChange);
-  };
-}
 
 function getBrowserPathname() {
   return typeof window === "undefined" ? "/" : window.location.pathname;
@@ -145,7 +113,7 @@ export function BrowserRootProvider({
   ...props
 }: BrowserRootProviderProps) {
   const useBrowserPathname = () =>
-    useSyncExternalStore(subscribeToLocation, getBrowserPathname, () => initialPathname);
+    useSyncExternalStore(subscribeToWindowLocation, getBrowserPathname, () => initialPathname);
 
   return (
     <BrowserNavigationContext.Provider value={navigation}>

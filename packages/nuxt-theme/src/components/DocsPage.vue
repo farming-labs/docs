@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import Breadcrumb from "./Breadcrumb.vue";
 import TableOfContents from "./TableOfContents.vue";
