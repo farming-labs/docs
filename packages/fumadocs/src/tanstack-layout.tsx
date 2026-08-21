@@ -48,8 +48,7 @@ interface FolderNode {
 
 type TreeNode = PageNode | FolderNode;
 
-type FrameworkContainerProps = HTMLAttributes<HTMLDivElement> & {
-  "data-fd-framework"?: string;
+type BrowserContainerProps = HTMLAttributes<HTMLDivElement> & {
   "data-fd-browser-adapter"?: string;
 };
 
@@ -453,8 +452,8 @@ export function TanstackDocsLayout({
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
-  const frameworkContainerProps: FrameworkContainerProps | undefined = browserRuntime
-    ? { "data-fd-framework": "", "data-fd-browser-adapter": "" }
+  const browserContainerProps: BrowserContainerProps | undefined = browserRuntime
+    ? { "data-fd-browser-adapter": "" }
     : undefined;
 
   const openDocsConfig =
@@ -546,7 +545,7 @@ export function TanstackDocsLayout({
       nav={{ title: navTitle, url: navUrl }}
       themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
       sidebar={finalSidebarProps}
-      containerProps={frameworkContainerProps}
+      containerProps={browserContainerProps}
       {...(aiMode === "sidebar-icon" && aiEnabled
         ? {
             searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
