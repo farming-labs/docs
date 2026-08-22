@@ -47,6 +47,7 @@ import { Callout } from "@/components/ui/callout";
 import { DocsMcpAccess } from "@/components/ui/docs-mcp-access";
 import { GuideCard } from "@/components/ui/guide-card";
 import { MigrationCard } from "@/components/ui/migration-card";
+import { MigrationSourceIcon } from "@/components/ui/migration-source-icon";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 import docsPackage from "../packages/docs/package.json";
 
@@ -294,6 +295,14 @@ export default defineDocs({
     dollarSign: <DollarSign size={16} />,
     route: <Route size={16} />,
     shadcn: <ShadcnIcon />,
+    docusaurus: <MigrationSourceIcon source="docusaurus" />,
+    mintlify: <MigrationSourceIcon source="mintlify" />,
+    nextra: <MigrationSourceIcon source="nextra" />,
+    fumadocs: <MigrationSourceIcon source="fumadocs" />,
+    vitepress: <MigrationSourceIcon source="vitepress" />,
+    starlight: <MigrationSourceIcon source="starlight" />,
+    gitbook: <MigrationSourceIcon source="gitbook" />,
+    mkdocs: <MigrationSourceIcon source="mkdocs" />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
