@@ -41,7 +41,6 @@ const ConcreteUIDefaults = {
     Callout: { variant: "outline", icon: true },
     CodeBlock: { showCopyButton: true },
     HoverLink: { linkLabel: "View doc", showIndicator: false },
-    Tabs: { style: "default" as const },
   },
 };
 
