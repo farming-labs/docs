@@ -150,6 +150,13 @@ Top-level configuration object passed to `defineDocs()`.
 | `changelog`   | `boolean \| ChangelogConfig`                    | `false`          | Generated changelog feed and entry pages from dated MDX entries                      |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
 | `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
+### `ThemeToggleConfig`
+
+| Property  | Type                                  | Default        | Description |
+| --------- | ------------------------------------- | -------------- | ----------- |
+| `enabled` | `boolean`                             | `true`         | Show or hide the theme switcher |
+| `default` | `"light" \| "dark" \| "system"`       | `"system"`     | When `enabled` is `false`, this value is applied as a **forced** theme (hiding the switcher). When the toggle is enabled, it is used as the **initial** theme that visitors can still change. `"system"` skips forced and default derivation in both cases. |
+| `mode`    | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle mode presented to the user |
 | `og`          | `OGConfig`                                      | —                | Open Graph image config                                                              |
 
 ---
