@@ -1238,6 +1238,7 @@ themeToggle: { mode: "light-dark-system" },
 | --------- | ------------------------------------- | -------------- | ---------------------------------- |
 | `enabled` | `boolean`                             | `true`         | Show/hide the theme toggle         |
 | `default` | `"light" \| "dark" \| "system"`       | `"system"`     | Forced theme when toggle is hidden |
+When `enabled` is `false`, the configured `default` value (`"light"` or `"dark"`) is applied as a **forced** theme and the switcher is hidden entirely. When the toggle is enabled (the default), the same `default` value is used as the **initial** theme that visitors can still change. Setting `default: "system"` skips forced and default theme derivation in both cases, deferring to the operating-system preference.
 | `mode`    | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle mode                        |
 
 ## GitHub / Edit on GitHub
