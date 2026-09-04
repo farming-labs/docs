@@ -1492,7 +1492,13 @@ function isRetryableEvaluationSearchError(error: unknown): boolean {
   }
 
   const message = typeof error.message === "string" ? error.message : "";
-  if (/\b(?:408|425|429|5\d\d)\b/u.test(message)) return true;
+  if (
+    /\b(?:HTTP(?: status)?|status(?: code)?|response code)\s*[:=]?\s*(?:408|425|429|5\d\d)\b/iu.test(
+      message,
+    )
+  ) {
+    return true;
+  }
   return error.cause !== error && isRetryableEvaluationSearchError(error.cause);
 }
 
