@@ -64,9 +64,9 @@ Use this machine-oriented page when the user needs implementation guidance for `
   and `ask-ai-context` measures the production Ask AI retrieval/context assembly path.
 - Non-simple search providers and the built-in HTTP answer provider require
   `agent.evaluations.allowNetwork: true`. Provider failures fail the task instead of falling back to
-  local search. Configured retrieval also fails at `searchTimeoutMs`, which defaults to 30 seconds
-  per task. Optional HTTP authentication belongs in `answer.headers`; header values are never
-  included in reports.
+  local search. `searchTimeoutMs` defaults to 30 seconds per retrieval attempt; transient timeouts,
+  fetch failures, rate limits, and server errors are retried twice with bounded backoff. Optional
+  HTTP authentication belongs in `answer.headers`; header values are never included in reports.
 - An answer provider is opt-in. Use `{ provider: "callback", run }` for explicit user code or
   `{ provider: "http", endpoint, headers?, timeoutMs? }` for the managed HTTP contract. Add
   `expect.answer` only when answer text and answer citations should be scored; context citations are

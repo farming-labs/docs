@@ -3059,9 +3059,19 @@ async function readMcpResponsePayload(response: Response) {
   return normalizeMcpSsePayload(text);
 }
 
+class DocsSearchHttpError extends Error {
+  readonly status: number;
+
+  constructor(response: Response, message: string) {
+    super(`${message} (${response.status} ${response.statusText})`);
+    this.name = "DocsSearchHttpError";
+    this.status = response.status;
+  }
+}
+
 function ensureOk(response: Response, message: string) {
   if (response.ok) return;
-  throw new Error(`${message} (${response.status} ${response.statusText})`);
+  throw new DocsSearchHttpError(response, message);
 }
 
 function ensureJsonRpcOk(payload: unknown, message: string) {
@@ -3866,8 +3876,8 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
       signal: context.signal,
     });
 
-    const initializePayload = await readMcpResponsePayload(initializeResponse);
     ensureOk(initializeResponse, "MCP search initialization failed");
+    const initializePayload = await readMcpResponsePayload(initializeResponse);
     ensureJsonRpcOk(initializePayload, "MCP search initialization failed");
 
     const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
@@ -3938,8 +3948,8 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
           signal: context.signal,
         });
 
-        const payload = await readMcpResponsePayload(searchResponse);
         ensureOk(searchResponse, "MCP search request failed");
+        const payload = await readMcpResponsePayload(searchResponse);
         ensureJsonRpcOk(payload, "MCP search request failed");
 
         const parsed = readMcpSearchToolPayload(payload) as McpSearchToolData;

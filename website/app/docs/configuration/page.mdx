@@ -1681,8 +1681,9 @@ Choose the surface globally with `agent.evaluations.surface` or override it on o
 Non-simple configured search providers require `allowNetwork: true`. Provider errors fail the task
 instead of silently substituting local search, so the report always identifies the surface and
 provider it actually measured. `searchTimeoutMs` bounds each configured-search or Ask AI retrieval
-and defaults to 30 seconds; the timeout aborts framework-managed requests and is also exposed to
-custom adapters as `context.signal`. The evaluator records actual UTF-8 usage for every surface. MCP and
+attempt and defaults to 30 seconds. Transient timeouts, fetch failures, rate limits, and server
+errors are retried twice with bounded backoff; other provider errors fail immediately. Each timeout
+aborts framework-managed requests and is also exposed to custom adapters as `context.signal`. The evaluator records actual UTF-8 usage for every surface. MCP and
 configured-search contexts enforce the byte ceiling directly; Ask AI uses its production character
 limit and fails the budget check if the resulting UTF-8 payload exceeds the configured ceiling.
 

@@ -3,21 +3,21 @@
   "reviews": [
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:ff98ba0ac661af3e",
+      "sourceHash": "fnv1a64:c6b16ea956736363",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
       "outputHash": "fnv1a64:c95a0dd048e26147",
-      "reviewedAt": "2026-08-20T10:21:22.767Z",
+      "reviewedAt": "2026-09-04T09:42:24.212Z",
       "reviewedBy": "Kinfe123",
-      "reason": "Preserve the curated compacted output that passes the golden-task quality gates: #485/#487 added agent-compact review-workflow coverage to these source pages, and a cloud re-compaction regressed golden tasks from 22/22 to 9/22, so the curated agent.md is kept until the new coverage is folded in by a reviewed curation pass."
+      "reason": "Reviewed the evaluation retry documentation: the CLI and reference summaries remain accurate, and the configuration summary now reflects per-attempt timeouts plus two transient retries."
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:036bc04f1a1943f6",
+      "sourceHash": "fnv1a64:deb172b215e402b7",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:d404f870b0ddaafa",
-      "reviewedAt": "2026-08-20T10:21:05.808Z",
+      "outputHash": "fnv1a64:d02d5fedea16c02f",
+      "reviewedAt": "2026-09-04T09:42:24.218Z",
       "reviewedBy": "Kinfe123",
-      "reason": "Re-reviewed after #485 documented agent.compact.reviewManifestPath in the source page: the preserved machine-oriented configuration contract covers agent.compact at the defaults level, so its guidance remains correct without enumerating the new option. Hash also shifted because compaction source hashing no longer embeds mtime-derived last_updated dates."
+      "reason": "Reviewed the evaluation retry documentation: the CLI and reference summaries remain accurate, and the configuration summary now reflects per-attempt timeouts plus two transient retries."
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -48,12 +48,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:083bdfc462e36413",
+      "sourceHash": "fnv1a64:e90f1c62e51677bc",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
       "outputHash": "fnv1a64:173fd105503fea58",
-      "reviewedAt": "2026-08-20T10:21:22.777Z",
+      "reviewedAt": "2026-09-04T09:42:24.227Z",
       "reviewedBy": "Kinfe123",
-      "reason": "Preserve the curated compacted output that passes the golden-task quality gates: #485/#487 added agent-compact review-workflow coverage to these source pages, and a cloud re-compaction regressed golden tasks from 22/22 to 9/22, so the curated agent.md is kept until the new coverage is folded in by a reviewed curation pass."
+      "reason": "Reviewed the evaluation retry documentation: the CLI and reference summaries remain accurate, and the configuration summary now reflects per-attempt timeouts plus two transient retries."
     },
     {
       "route": "/docs/token-efficiency",

@@ -1075,7 +1075,7 @@ transports do not implement A2A.
 | `topK` | `number` | `5` | Default ranked retrieval depth |
 | `surface` | `"mcp-context" \| "configured-search" \| "ask-ai-context"` | `"mcp-context"` | Retrieval/context surface measured by the suite |
 | `allowNetwork` | `boolean` | `false` | Allow framework-managed external search, HTTP answers, and runtime example execution |
-| `searchTimeoutMs` | `number` | `30000` | Per-task timeout for configured-search and Ask AI retrieval |
+| `searchTimeoutMs` | `number` | `30000` | Per-attempt timeout for configured-search and Ask AI retrieval; transient failures are retried twice |
 | `answer` | `DocsAgentEvaluationAnswerProvider` | — | Opt-in callback or HTTP provider for actual-answer evaluation |
 | `tasks` | `DocsAgentGoldenTask[]` | `[]` | Representative tasks; an empty list is reported as unmeasured |
 
