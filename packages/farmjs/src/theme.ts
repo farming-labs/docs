@@ -16,7 +16,7 @@ export function resolveThemeSwitch(toggle: boolean | ThemeToggleConfig | undefin
   };
 }
 
-export function themeFromConfig(config: DocsConfig) {
+export function themeOptionsFromConfig(config: DocsConfig) {
   const themeToggle = resolveThemeSwitch(config.themeToggle);
   const toggleConfig = typeof config?.themeToggle === "object" ? config.themeToggle : undefined;
   const forcedTheme =

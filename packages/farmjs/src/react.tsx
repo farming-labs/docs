@@ -25,7 +25,7 @@ import {
   type FarmDocsNavigationEnvironment,
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
-import { themeFromConfig } from "./theme.js";
+import { themeOptionsFromConfig } from "./theme.js";
 interface MdxModule {
   default: ComponentType<any>;
 }
@@ -91,7 +91,7 @@ export function FarmDocsPage({
     | undefined;
   const Content = module?.default ?? null;
 
-  const nextThemes = themeFromConfig(config);
+  const nextThemes = themeOptionsFromConfig(config);
   if (!Content) {
     return (
       <BrowserRootProvider initialPathname={data.url} navigation={navigation} theme={nextThemes}>
