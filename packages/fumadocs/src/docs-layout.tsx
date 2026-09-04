@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { Suspense, type ReactNode } from "react";
+import { cloneElement, isValidElement, Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
 import {
   applySidebarFolderIndexBehavior,
@@ -83,13 +83,18 @@ function getNextAppDir(root: string): string {
   return "app";
 }
 
+function withStableReactKey(node: ReactNode, key: string): ReactNode {
+  return isValidElement(node) && node.key === null ? cloneElement(node, { key }) : node;
+}
+
 /** Resolve a frontmatter `icon` string to a ReactNode via the icon registry. */
 function resolveIcon(
   iconKey: string | undefined,
   registry: Record<string, unknown> | undefined,
 ): ReactNode | undefined {
   if (!iconKey || !registry) return undefined;
-  return (registry[iconKey] as ReactNode) ?? undefined;
+  const icon = (registry[iconKey] as ReactNode) ?? undefined;
+  return withStableReactKey(icon, iconKey);
 }
 
 /** Read frontmatter from a page.mdx file. */
@@ -1165,11 +1170,22 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
-    const sidebarFooter = sidebarProps.footer as ReactNode;
+    const sidebarFooter = withStableReactKey(
+      sidebarProps.footer as ReactNode,
+      "docs-sidebar-footer",
+    );
+    finalSidebarProps.banner = withStableReactKey(
+      sidebarProps.banner as ReactNode,
+      "docs-sidebar-banner",
+    );
+    finalSidebarProps.footer = sidebarFooter;
 
     if (i18n) {
       finalSidebarProps.footer = (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div
+          key="docs-sidebar-footer"
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+        >
           {sidebarFooter}
           <Suspense fallback={null}>
             <LocaleThemeControl

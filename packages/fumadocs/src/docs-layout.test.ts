@@ -281,6 +281,40 @@ agent:
     ).toBeUndefined();
   });
 
+  it("adds stable React keys to sidebar content", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "guides"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "guides", "page.mdx"),
+      "---\ntitle: Guides\nicon: guide\n---\n\n# Guides\n",
+      "utf-8",
+    );
+    const registeredIcon = React.createElement("span", null, "Guide");
+    const banner = React.createElement("div", null, "Release notes");
+    const footer = React.createElement("div", null, "Theme control");
+    const Layout = createDocsLayout({
+      entry: "docs",
+      icons: { guide: registeredIcon },
+      sidebar: { banner, footer },
+    });
+
+    const layout = Layout({ children: React.createElement("div", null, "child") });
+    const tree = findDocsLayoutTree(layout);
+    const children = tree?.children as Array<Record<string, unknown>> | undefined;
+    const guides = children?.find((entry) => entry.name === "Guides");
+    const icon = guides?.icon;
+    const sidebar = (
+      layout.props as { sidebar?: { banner?: React.ReactNode; footer?: React.ReactNode } }
+    ).sidebar;
+
+    expect(React.isValidElement(icon)).toBe(true);
+    expect((icon as React.ReactElement).key).toBe("guide");
+    expect((sidebar?.banner as React.ReactElement).key).toBe("docs-sidebar-banner");
+    expect((sidebar?.footer as React.ReactElement).key).toBe("docs-sidebar-footer");
+    expect(registeredIcon.key).toBeNull();
+    expect(banner.key).toBeNull();
+    expect(footer.key).toBeNull();
+  });
+
   it("supports boolean shorthand, custom providers, and above-title placement", () => {
     const Layout = createDocsLayout({
       entry: "docs",
