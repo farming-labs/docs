@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
-import type { DocsConfig, FeedbackConfig } from "@farming-labs/docs";
+import type { DocsConfig, FeedbackConfig, ThemeToggleConfig } from "@farming-labs/docs";
 import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
 import {
   BrowserDocsLayout,
@@ -25,7 +25,7 @@ import {
   type FarmDocsNavigationEnvironment,
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
-
+import { themeFromConfig } from "./theme.js";
 interface MdxModule {
   default: ComponentType<any>;
 }
@@ -91,11 +91,13 @@ export function FarmDocsPage({
     | undefined;
   const Content = module?.default ?? null;
 
+  const nextThemes = themeFromConfig(config);
   if (!Content) {
     return (
-      <BrowserRootProvider initialPathname={data.url} navigation={navigation}>
+      <BrowserRootProvider initialPathname={data.url} navigation={navigation} theme={nextThemes}>
         <BrowserDocsLayout config={resolvedConfig} tree={data.tree} locale={data.locale}>
           <article style={{ padding: "2rem" }}>
+            {" "}
             <h1>Page module missing</h1>
             <p>Expected a compiled MDX module at `{data.sourcePath}`.</p>
           </article>
@@ -105,7 +107,7 @@ export function FarmDocsPage({
   }
 
   return (
-    <BrowserRootProvider initialPathname={data.url} navigation={navigation}>
+    <BrowserRootProvider initialPathname={data.url} navigation={navigation} theme={nextThemes}>
       <DocsClientHooks
         onCopyClick={resolvedConfig.onCopyClick}
         analytics={resolvedConfig.analytics}
