@@ -5,12 +5,15 @@ import { themeOptionsFromConfig } from "./theme.ts";
 const config = (themeToggle: DocsConfig["themeToggle"]) => ({ themeToggle }) as DocsConfig;
 
 describe("themeOptionsFromConfig", () => {
-  it("forces the configured theme when the toggle is disabled", () => {
-    expect(themeOptionsFromConfig(config({ enabled: false, default: "dark" }))).toEqual({
-      forcedTheme: "dark",
-      defaultTheme: undefined,
-    });
-  });
+  it.each(["light", "dark"] as const)(
+    "forces the configured %s theme when the toggle is disabled",
+    (theme) => {
+      expect(themeOptionsFromConfig(config({ enabled: false, default: theme }))).toEqual({
+        forcedTheme: theme,
+        defaultTheme: undefined,
+      });
+    },
+  );
 
   it("uses the configured theme as the default when the toggle is enabled", () => {
     expect(themeOptionsFromConfig(config({ default: "dark" }))).toEqual({
@@ -26,15 +29,15 @@ describe("themeOptionsFromConfig", () => {
     });
   });
 
-  it("derives nothing when the toggle is disabled without a default", () => {
-    expect(themeOptionsFromConfig(config(false))).toEqual({
+  it("derives nothing when an object toggle is disabled without a default", () => {
+    expect(themeOptionsFromConfig(config({ enabled: false }))).toEqual({
       forcedTheme: undefined,
       defaultTheme: undefined,
     });
   });
 
-  it("derives nothing when the toggle is unconfigured", () => {
-    expect(themeOptionsFromConfig(config(undefined))).toEqual({
+  it.each([false, true, undefined])("derives nothing from %s", (themeToggle) => {
+    expect(themeOptionsFromConfig(config(themeToggle))).toEqual({
       forcedTheme: undefined,
       defaultTheme: undefined,
     });
