@@ -67,7 +67,8 @@
       "serialize-javascript": "^7.0.3",
       "shell-quote@<=1.8.4": "1.9.0",
       "svgo": "^4.0.2",
-      "fast-uri": "3.1.5",
+      "browserslist@<=4.28.6": "4.28.8",
+      "fast-uri": "3.1.6",
       "sharp": "0.35.3",
       "hono": "4.12.25",
       "rollup": "^4.59.0",
@@ -80,7 +81,8 @@
       "@farm.js/core>vite": "6.4.3",
       "readdir-glob>minimatch": "10.2.4",
       "glob@10>minimatch": "10.2.4",
-      "glob@13>minimatch": "^10.2.3"
+      "glob@13>minimatch": "^10.2.3",
+      "toml@<4.2.0": "4.2.0"
     }
   }
 }

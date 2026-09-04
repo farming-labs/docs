@@ -25,6 +25,7 @@ import {
   type FarmDocsNavigationEnvironment,
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
+import { themeOptionsFromConfig } from "./theme.js";
 
 interface MdxModule {
   default: ComponentType<any>;
@@ -91,9 +92,10 @@ export function FarmDocsPage({
     | undefined;
   const Content = module?.default ?? null;
 
+  const themeOptions = themeOptionsFromConfig(config);
   if (!Content) {
     return (
-      <BrowserRootProvider initialPathname={data.url} navigation={navigation}>
+      <BrowserRootProvider initialPathname={data.url} navigation={navigation} theme={themeOptions}>
         <BrowserDocsLayout config={resolvedConfig} tree={data.tree} locale={data.locale}>
           <article style={{ padding: "2rem" }}>
             <h1>Page module missing</h1>
@@ -105,7 +107,7 @@ export function FarmDocsPage({
   }
 
   return (
-    <BrowserRootProvider initialPathname={data.url} navigation={navigation}>
+    <BrowserRootProvider initialPathname={data.url} navigation={navigation} theme={themeOptions}>
       <DocsClientHooks
         onCopyClick={resolvedConfig.onCopyClick}
         analytics={resolvedConfig.analytics}
