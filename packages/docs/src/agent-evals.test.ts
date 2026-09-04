@@ -1769,6 +1769,7 @@ Use the scoped integration.
   });
 
   it("fails configured provider errors instead of falling back to simple search", async () => {
+    let calls = 0;
     const report = await runDocsGoldenTasks(
       pages,
       [
@@ -1786,6 +1787,7 @@ Use the scoped integration.
           adapter: {
             name: "broken-search",
             async search() {
+              calls += 1;
               throw new Error("fixture provider unavailable");
             },
           },
@@ -1793,9 +1795,55 @@ Use the scoped integration.
       },
     );
 
+    expect(calls).toBe(1);
     expect(report.status).toBe("failed");
     expect(report.tasks[0]).toMatchObject({ provider: "unavailable", sources: [] });
     expect(report.tasks[0].issues.join(" ")).toContain("fixture provider unavailable");
+  });
+
+  it("retries transient configured provider failures", async () => {
+    let calls = 0;
+    const report = await runDocsGoldenTasks(
+      pages,
+      [
+        {
+          id: "transient-search",
+          query: "legacy middleware authentication",
+          surface: "configured-search",
+          topK: 1,
+          expect: { relevantSources: ["/docs/auth-v15"] },
+        },
+      ],
+      {
+        allowNetwork: true,
+        searchTimeoutMs: 10,
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "transient-search",
+            async search() {
+              calls += 1;
+              if (calls === 1) throw new TypeError("fetch failed");
+              if (calls === 2) {
+                throw new Error("MCP search request failed (503 Service Unavailable)");
+              }
+              return [
+                {
+                  id: "remote-v15",
+                  url: "/docs/auth-v15",
+                  content: "Remote legacy authentication result",
+                  type: "page" as const,
+                },
+              ];
+            },
+          },
+        },
+      },
+    );
+
+    expect(calls).toBe(3);
+    expect(report.status).toBe("passed");
+    expect(report.tasks[0]).toMatchObject({ provider: "custom", passed: true });
   });
 
   it("fails closed on malformed runtime search provider values", async () => {
@@ -1854,7 +1902,7 @@ Use the scoped integration.
   });
 
   it("times out configured providers and aborts their adapter context", async () => {
-    let observedSignal: AbortSignal | undefined;
+    const observedSignals: AbortSignal[] = [];
     const report = await runDocsGoldenTasks(
       pages,
       [{ ...passingTask, surface: "configured-search" }],
@@ -1866,7 +1914,7 @@ Use the scoped integration.
           adapter: {
             name: "stalled",
             search(_query, context) {
-              observedSignal = context.signal;
+              if (context.signal) observedSignals.push(context.signal);
               return new Promise(() => undefined);
             },
           },
@@ -1874,7 +1922,8 @@ Use the scoped integration.
       },
     );
 
-    expect(observedSignal?.aborted).toBe(true);
+    expect(observedSignals).toHaveLength(3);
+    expect(observedSignals.every((signal) => signal.aborted)).toBe(true);
     expect(report.status).toBe("failed");
     expect(report.tasks[0].issues.join(" ")).toContain("timed out after 10ms");
   });

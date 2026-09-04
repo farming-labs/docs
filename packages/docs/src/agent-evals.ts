@@ -60,6 +60,7 @@ import type {
 
 const DEFAULT_TOP_K = 5;
 const DEFAULT_TOKEN_BUDGET = 4_000;
+const DEFAULT_SEARCH_RETRIES = 2;
 const CONTEXT_SEPARATOR = "\n\n---\n\n";
 const STATIC_CODE_PLAN_CONFIG = resolveDocsCodeBlocksValidateConfig(true);
 const STATIC_JITI = createJiti(import.meta.url, { fsCache: false, moduleCache: false });
@@ -366,7 +367,7 @@ export interface RunDocsGoldenTasksOptions {
   rootDir?: string;
   /** Permit external configured search or HTTP answer calls. @default false */
   allowNetwork?: boolean;
-  /** Per-task configured-search/Ask-AI retrieval timeout in milliseconds. @default 30000 */
+  /** Per-attempt configured-search/Ask-AI retrieval timeout in milliseconds. @default 30000 */
   searchTimeoutMs?: number;
   /** Project code-block validation config used only by explicit execute expectations. */
   codeBlocksValidate?: boolean | DocsCodeBlocksValidateConfig;
@@ -1458,6 +1459,72 @@ function assertEvaluationSearchAllowed(
   }
 }
 
+class EvaluationSearchTimeoutError extends Error {
+  constructor(provider: string, timeoutMs: number) {
+    super(`The ${provider} search provider timed out after ${timeoutMs}ms.`);
+    this.name = "EvaluationSearchTimeoutError";
+  }
+}
+
+function isRetryableEvaluationSearchError(error: unknown): boolean {
+  if (error instanceof EvaluationSearchTimeoutError) return true;
+  if (
+    error instanceof TypeError &&
+    /\b(?:fetch|network|socket|connection)\b/iu.test(error.message)
+  ) {
+    return true;
+  }
+  if (!isRecord(error)) return false;
+
+  const status = typeof error.status === "number" ? error.status : undefined;
+  if (
+    status === 408 ||
+    status === 425 ||
+    status === 429 ||
+    (status !== undefined && status >= 500 && status <= 599)
+  ) {
+    return true;
+  }
+
+  const code = typeof error.code === "string" ? error.code : "";
+  if (/^(?:ECONNABORTED|ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH|ETIMEDOUT)$/u.test(code)) {
+    return true;
+  }
+
+  const message = typeof error.message === "string" ? error.message : "";
+  if (/\b(?:408|425|429|5\d\d)\b/u.test(message)) return true;
+  return error.cause !== error && isRetryableEvaluationSearchError(error.cause);
+}
+
+async function runEvaluationSearchAttempt<T>(options: {
+  provider: string;
+  timeoutMs: number;
+  run: (signal: AbortSignal) => Promise<T>;
+}): Promise<T> {
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let timeoutError: EvaluationSearchTimeoutError | undefined;
+  const timedOut = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      timeoutError = new EvaluationSearchTimeoutError(options.provider, options.timeoutMs);
+      controller.abort();
+      reject(timeoutError);
+    }, options.timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => options.run(controller.signal)),
+      timedOut,
+    ]).catch((error: unknown) => {
+      if (timeoutError) throw timeoutError;
+      throw error;
+    });
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 async function runEvaluationSearchWithTimeout<T>(options: {
   provider: string;
   timeoutMs?: number;
@@ -1472,29 +1539,16 @@ async function runEvaluationSearchWithTimeout<T>(options: {
     throw new Error("The agent evaluation searchTimeoutMs must be a positive finite number.");
   }
   const timeoutMs = normalizePositiveInteger(options.timeoutMs, 30_000, 300_000);
-  const controller = new AbortController();
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  let timeoutError: Error | undefined;
-  const timedOut = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => {
-      timeoutError = new Error(
-        `The ${options.provider} search provider timed out after ${timeoutMs}ms.`,
-      );
-      controller.abort();
-      reject(timeoutError);
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([
-      Promise.resolve().then(() => options.run(controller.signal)),
-      timedOut,
-    ]).catch((error: unknown) => {
-      if (timeoutError) throw timeoutError;
-      throw error;
-    });
-  } finally {
-    if (timeout) clearTimeout(timeout);
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await runEvaluationSearchAttempt({ ...options, timeoutMs });
+    } catch (error) {
+      if (attempt >= DEFAULT_SEARCH_RETRIES || !isRetryableEvaluationSearchError(error)) {
+        throw error;
+      }
+      const retryDelayMs = Math.min(1_000, Math.max(1, Math.floor(timeoutMs / 100)) * 2 ** attempt);
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
   }
 }
 

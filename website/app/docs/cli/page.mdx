@@ -748,7 +748,8 @@ default. Opt-in `configured-search` and `ask-ai-context` surfaces fail closed wh
 provider fails. Framework-managed external search, HTTP answer requests, and runtime example
 execution require `allowNetwork: true`; callbacks are explicit user code, and runtime examples
 execute only when both the task and `codeBlocks.validate` request it. Configured retrieval uses the
-per-task `searchTimeoutMs` limit, which defaults to 30 seconds.
+per-attempt `searchTimeoutMs` limit, which defaults to 30 seconds, and retries transient failures
+twice with bounded backoff.
 
 The doctor separates **golden-task quality** (pass/fail rate across configured expectations) from **evaluation coverage** (which evaluation dimensions are exercised). The three coverage dimensions — safety, answer quality, and executable examples — each report `unmeasured` until at least one configured task explicitly exercises them, and `partially-measured` when only a subset of tasks do. A new `golden-task-coverage` check reports `warn` when any dimension is unmeasured or partially measured. Because incomplete coverage blocks the top grade, a site with unmeasured dimensions scores as **Agent-ready** at most, even when quality is perfect — **Agent-optimized** requires full evaluation coverage.
 Common forms:
