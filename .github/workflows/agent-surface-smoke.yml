@@ -158,7 +158,9 @@ jobs:
     timeout-minutes: 10
     env:
       DOCS_SMOKE_BASE_URL: ${{ github.event_name == 'deployment_status' && github.event.deployment_status.environment_url || inputs.base_url || 'https://docs.farming-labs.dev' }}
+      DOCS_SMOKE_CONCURRENCY: "3"
       DOCS_SMOKE_EXPECT_SKILLS: ask-ai,cli,configuration,creating-themes,getting-started,page-actions
+      DOCS_SMOKE_TIMEOUT_MS: "30000"
       DOCS_SMOKE_VALIDATE_SKILL_FRONTMATTER: "1"
       DOCS_READINESS_WARNING_BASELINE: ${{ github.event_name == 'deployment_status' && '.github/agent-readiness-preview-warning-baseline.json' || '.github/agent-readiness-warning-baseline.json' }}
     steps:

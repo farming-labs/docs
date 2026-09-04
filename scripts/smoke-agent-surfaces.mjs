@@ -19,8 +19,9 @@ const LEGACY_SKILLS_INDEX_ROUTE = "/.well-known/skills/index.json";
 const AGENT_CARD_ROUTE = "/.well-known/agent-card.json";
 const MCP_ROUTES = ["/mcp", "/.well-known/mcp"];
 const MCP_PROTOCOL_VERSIONS = ["2025-11-25", "2026-07-28"];
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_ATTEMPTS = 3;
+const DEFAULT_CONCURRENCY = 3;
 const MAX_RESPONSE_BYTES = 20 * 1024 * 1024;
 const TAR_BLOCK_BYTES = 512;
 const TAR_NAME_BYTES = 100;
@@ -1758,15 +1759,35 @@ function createRecorder(log) {
   };
 }
 
+async function runConcurrently(tasks, concurrency) {
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < tasks.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      await tasks[index]();
+    }
+  }
+
+  const workerCount = Math.min(concurrency, tasks.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+}
+
 export async function runAgentSurfaceSmoke(options = {}) {
   const baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const attempts = options.attempts ?? DEFAULT_ATTEMPTS;
+  const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
   const expectedSkillNames = new Set(options.expectedSkillNames ?? []);
   const maxResponseBytes = options.maxResponseBytes ?? MAX_RESPONSE_BYTES;
   assert(
     Number.isSafeInteger(maxResponseBytes) && maxResponseBytes > 0,
     "Response size limit must be a positive safe integer",
+  );
+  assert(
+    Number.isSafeInteger(concurrency) && concurrency > 0,
+    "Concurrency limit must be a positive safe integer",
   );
   const log = options.log ?? console.log;
   const request = createRequester({
@@ -1783,18 +1804,24 @@ export async function runAgentSurfaceSmoke(options = {}) {
   const manifest = await recorder.check("agent manifest /.well-known/agent.json", () =>
     validateManifestEndpoint(request, "/.well-known/agent.json"),
   );
-  await Promise.all([
-    recorder.check("agent manifest /.well-known/agent", () =>
-      validateManifestEndpoint(request, "/.well-known/agent"),
-    ),
-    recorder.check("agent manifest /api/docs/agent/spec", () =>
-      validateManifestEndpoint(request, "/api/docs/agent/spec"),
-    ),
-    recorder.check("Farming Labs agent manifest schema", () =>
-      validateAgentManifestSchema(request),
-    ),
-    recorder.check("RFC 9727 API catalog", () => validateApiCatalog(request)),
-  ]);
+  await runConcurrently(
+    [
+      () =>
+        recorder.check("agent manifest /.well-known/agent", () =>
+          validateManifestEndpoint(request, "/.well-known/agent"),
+        ),
+      () =>
+        recorder.check("agent manifest /api/docs/agent/spec", () =>
+          validateManifestEndpoint(request, "/api/docs/agent/spec"),
+        ),
+      () =>
+        recorder.check("Farming Labs agent manifest schema", () =>
+          validateAgentManifestSchema(request),
+        ),
+      () => recorder.check("RFC 9727 API catalog", () => validateApiCatalog(request)),
+    ],
+    concurrency,
+  );
 
   const modernIndex = await recorder.check("Agent Skills v0.2 index", async () => {
     const result = await readJson(request, AGENT_SKILLS_INDEX_ROUTE);
@@ -1815,12 +1842,14 @@ export async function runAgentSurfaceSmoke(options = {}) {
   );
 
   if (modernIndex) {
-    await Promise.all(
-      modernIndex.map((skill) =>
-        recorder.check(`Agent Skill artifact ${skill.name}`, () =>
-          validateModernSkillArtifact(request, baseUrl, skill),
-        ),
+    await runConcurrently(
+      modernIndex.map(
+        (skill) => () =>
+          recorder.check(`Agent Skill artifact ${skill.name}`, () =>
+            validateModernSkillArtifact(request, baseUrl, skill),
+          ),
       ),
+      concurrency,
     );
   }
 
@@ -1833,12 +1862,14 @@ export async function runAgentSurfaceSmoke(options = {}) {
     for (const file of manifestFiles) {
       expectedFileDigests.set(`${file.name}/${file.path}`, file.digest);
     }
-    await Promise.all(
-      manifestFiles.map((file) =>
-        recorder.check(`Agent Skill file ${file.name}/${file.path}`, () =>
-          validateManifestSkillFile(request, baseUrl, file),
-        ),
+    await runConcurrently(
+      manifestFiles.map(
+        (file) => () =>
+          recorder.check(`Agent Skill file ${file.name}/${file.path}`, () =>
+            validateManifestSkillFile(request, baseUrl, file),
+          ),
       ),
+      concurrency,
     );
   }
 
@@ -1854,12 +1885,14 @@ export async function runAgentSurfaceSmoke(options = {}) {
     return files;
   });
   if (legacyFiles) {
-    await Promise.all(
-      legacyFiles.map((file) =>
-        recorder.check(`legacy Agent Skill file ${file.name}/${file.path}`, () =>
-          validateLegacySkillFile(request, file, expectedFileDigests),
-        ),
+    await runConcurrently(
+      legacyFiles.map(
+        (file) => () =>
+          recorder.check(`legacy Agent Skill file ${file.name}/${file.path}`, () =>
+            validateLegacySkillFile(request, file, expectedFileDigests),
+          ),
       ),
+      concurrency,
     );
   }
 
@@ -1869,14 +1902,16 @@ export async function runAgentSurfaceSmoke(options = {}) {
     await request(AGENT_CARD_ROUTE, {}, [404]);
   });
 
-  await Promise.all(
+  await runConcurrently(
     MCP_ROUTES.flatMap((route) =>
-      MCP_PROTOCOL_VERSIONS.map((protocolVersion) =>
-        recorder.check(`MCP ${protocolVersion} ${route}`, () =>
-          validateMcp(request, route, protocolVersion),
-        ),
+      MCP_PROTOCOL_VERSIONS.map(
+        (protocolVersion) => () =>
+          recorder.check(`MCP ${protocolVersion} ${route}`, () =>
+            validateMcp(request, route, protocolVersion),
+          ),
       ),
     ),
+    concurrency,
   );
   if (manifest) {
     const canonicalMcp = readAdvertisedValue(manifest, ["mcp", "canonicalEndpoint"]);
@@ -1885,75 +1920,91 @@ export async function runAgentSurfaceSmoke(options = {}) {
         ? `MCP ${canonicalMcp}`
         : "advertised canonical MCP endpoint";
       await recorder.check(label, async () =>
-        Promise.all(
-          MCP_PROTOCOL_VERSIONS.map((protocolVersion) =>
-            validateMcp(
-              request,
-              resolveSameOriginTarget(baseUrl, canonicalMcp, "canonical MCP endpoint"),
-              protocolVersion,
-            ),
+        runConcurrently(
+          MCP_PROTOCOL_VERSIONS.map(
+            (protocolVersion) => () =>
+              validateMcp(
+                request,
+                resolveSameOriginTarget(baseUrl, canonicalMcp, "canonical MCP endpoint"),
+                protocolVersion,
+              ),
           ),
+          concurrency,
         ),
       );
     }
   }
 
-  await Promise.all([
-    recorder.check("well-known site skill", () =>
-      validateWellKnownText(request, "/.well-known/skill.md", "text/markdown", "name:"),
-    ),
-    recorder.check("well-known AGENTS.md", () =>
-      validateWellKnownText(request, "/.well-known/AGENTS.md", "text/markdown"),
-    ),
-    recorder.check("well-known AGENT.md", () =>
-      validateWellKnownText(request, "/.well-known/AGENT.md", "text/markdown"),
-    ),
-    recorder.check("well-known llms.txt", () =>
-      validateWellKnownText(request, "/.well-known/llms.txt", "text/plain"),
-    ),
-    recorder.check("well-known llms-full.txt", () =>
-      validateWellKnownText(request, "/.well-known/llms-full.txt", "text/plain"),
-    ),
-    recorder.check("well-known Markdown sitemap", () =>
-      validateWellKnownText(request, "/.well-known/sitemap.md", "text/markdown"),
-    ),
-  ]);
+  await runConcurrently(
+    [
+      () =>
+        recorder.check("well-known site skill", () =>
+          validateWellKnownText(request, "/.well-known/skill.md", "text/markdown", "name:"),
+        ),
+      () =>
+        recorder.check("well-known AGENTS.md", () =>
+          validateWellKnownText(request, "/.well-known/AGENTS.md", "text/markdown"),
+        ),
+      () =>
+        recorder.check("well-known AGENT.md", () =>
+          validateWellKnownText(request, "/.well-known/AGENT.md", "text/markdown"),
+        ),
+      () =>
+        recorder.check("well-known llms.txt", () =>
+          validateWellKnownText(request, "/.well-known/llms.txt", "text/plain"),
+        ),
+      () =>
+        recorder.check("well-known llms-full.txt", () =>
+          validateWellKnownText(request, "/.well-known/llms-full.txt", "text/plain"),
+        ),
+      () =>
+        recorder.check("well-known Markdown sitemap", () =>
+          validateWellKnownText(request, "/.well-known/sitemap.md", "text/markdown"),
+        ),
+    ],
+    concurrency,
+  );
 
   if (manifest) {
     const advertisedChecks = [
-      recorder.check("advertised config endpoint", () =>
-        validateAdvertisedJsonFormat(
-          request,
-          baseUrl,
-          manifest,
-          ["config", "endpoint"],
-          readAdvertisedValue(manifest, ["config", "format"]),
-          "config endpoint",
+      () =>
+        recorder.check("advertised config endpoint", () =>
+          validateAdvertisedJsonFormat(
+            request,
+            baseUrl,
+            manifest,
+            ["config", "endpoint"],
+            readAdvertisedValue(manifest, ["config", "format"]),
+            "config endpoint",
+          ),
         ),
-      ),
-      recorder.check("advertised diagnostics endpoint", () =>
-        validateAdvertisedJsonFormat(
-          request,
-          baseUrl,
-          manifest,
-          ["api", "diagnostics"],
-          "docs-diagnostics.v1",
-          "diagnostics endpoint",
+      () =>
+        recorder.check("advertised diagnostics endpoint", () =>
+          validateAdvertisedJsonFormat(
+            request,
+            baseUrl,
+            manifest,
+            ["api", "diagnostics"],
+            "docs-diagnostics.v1",
+            "diagnostics endpoint",
+          ),
         ),
-      ),
-      recorder.check("advertised Markdown negotiation", () =>
-        validateMarkdownNegotiation(request, baseUrl, manifest),
-      ),
-      recorder.check("advertised robots.txt", () =>
-        validateAdvertisedRobots(request, baseUrl, manifest),
-      ),
-      recorder.check("advertised XML sitemap", () =>
-        validateAdvertisedXmlSitemap(request, baseUrl, manifest),
-      ),
+      () =>
+        recorder.check("advertised Markdown negotiation", () =>
+          validateMarkdownNegotiation(request, baseUrl, manifest),
+        ),
+      () =>
+        recorder.check("advertised robots.txt", () =>
+          validateAdvertisedRobots(request, baseUrl, manifest),
+        ),
+      () =>
+        recorder.check("advertised XML sitemap", () =>
+          validateAdvertisedXmlSitemap(request, baseUrl, manifest),
+        ),
     ];
 
     if (asRecord(manifest.feedback)?.enabled === true) {
-      advertisedChecks.push(
+      advertisedChecks.push(() =>
         recorder.check("advertised feedback schema", () =>
           validateAdvertisedFeedbackSchema(request, baseUrl, manifest),
         ),
@@ -1961,32 +2012,34 @@ export async function runAgentSurfaceSmoke(options = {}) {
     }
     if (asRecord(manifest.search)?.enabled === true) {
       advertisedChecks.push(
-        recorder.check("advertised human search", () =>
-          validateAdvertisedSearch(
-            request,
-            baseUrl,
-            manifest,
-            ["search", "endpoint"],
-            "human search endpoint",
+        () =>
+          recorder.check("advertised human search", () =>
+            validateAdvertisedSearch(
+              request,
+              baseUrl,
+              manifest,
+              ["search", "endpoint"],
+              "human search endpoint",
+            ),
           ),
-        ),
-        recorder.check("advertised agent search", () =>
-          validateAdvertisedSearch(
-            request,
-            baseUrl,
-            manifest,
-            ["search", "agentEndpoint"],
-            "agent search endpoint",
+        () =>
+          recorder.check("advertised agent search", () =>
+            validateAdvertisedSearch(
+              request,
+              baseUrl,
+              manifest,
+              ["search", "agentEndpoint"],
+              "agent search endpoint",
+            ),
           ),
-        ),
       );
     }
     for (const spec of advertisedTextSurfaceSpecs(manifest)) {
-      advertisedChecks.push(
+      advertisedChecks.push(() =>
         recorder.check(spec.label, () => validateAdvertisedTextSurface(request, baseUrl, spec)),
       );
     }
-    await Promise.all(advertisedChecks);
+    await runConcurrently(advertisedChecks, concurrency);
   }
 
   if (recorder.failures.length > 0) {
@@ -2010,6 +2063,7 @@ async function main() {
       expectedSkillNames,
       timeoutMs: parsePositiveInteger(process.env.DOCS_SMOKE_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
       attempts: parsePositiveInteger(process.env.DOCS_SMOKE_ATTEMPTS, DEFAULT_ATTEMPTS),
+      concurrency: parsePositiveInteger(process.env.DOCS_SMOKE_CONCURRENCY, DEFAULT_CONCURRENCY),
     });
   } catch (error) {
     console.error(

@@ -123,6 +123,7 @@ function cachedResponse(method, body, requestHeaders, options = {}) {
 function createFixtureFetch(options = {}) {
   const calls = [];
   const streamState = { aborted: false, cancelled: false, pulls: 0 };
+  const concurrencyState = { active: 0, max: 0 };
   const canonicalBaseUrl = options.canonicalBaseUrl ?? BASE_URL;
   const archiveBytes = options.invalidArchiveFrontmatter ? invalidPortableArchive : portableArchive;
   const archiveDigest = digest(archiveBytes);
@@ -598,17 +599,26 @@ Sitemap: ${BASE_URL}/sitemap.xml
   }
 
   async function fixtureFetch(input, init = {}) {
-    const requestedUrl = new URL(input);
-    const result = await fixtureResponse(input, init);
-    const finalUrl =
-      options.crossOriginRedirectPath === requestedUrl.pathname
-        ? new URL(requestedUrl.pathname, "https://redirect.example.net").href
-        : requestedUrl.href;
-    Object.defineProperty(result, "url", { configurable: true, value: finalUrl });
-    return result;
+    concurrencyState.active += 1;
+    concurrencyState.max = Math.max(concurrencyState.max, concurrencyState.active);
+    try {
+      if (options.responseDelayMs) {
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, options.responseDelayMs));
+      }
+      const requestedUrl = new URL(input);
+      const result = await fixtureResponse(input, init);
+      const finalUrl =
+        options.crossOriginRedirectPath === requestedUrl.pathname
+          ? new URL(requestedUrl.pathname, "https://redirect.example.net").href
+          : requestedUrl.href;
+      Object.defineProperty(result, "url", { configurable: true, value: finalUrl });
+      return result;
+    } finally {
+      concurrencyState.active -= 1;
+    }
   }
 
-  return { calls, fetch: fixtureFetch, streamState };
+  return { calls, concurrencyState, fetch: fixtureFetch, streamState };
 }
 
 async function expectAgentCardFailure(options, expectedMessage) {
@@ -681,6 +691,34 @@ test("smoke-checks deployed discovery, skills, MCP, and well-known aliases", asy
   assert(fixture.calls.some((call) => call.pathname === "/sitemap.xml"));
   assert(fixture.calls.some((call) => call.ifNoneMatch));
   assert(fixture.calls.every((call) => call.acceptEncoding === "identity"));
+});
+
+test("caps concurrent deployment requests", async () => {
+  const fixture = createFixtureFetch({ responseDelayMs: 2 });
+  const result = await runAgentSurfaceSmoke({
+    attempts: 1,
+    baseUrl: BASE_URL,
+    concurrency: 2,
+    expectedSkillNames: ["portable"],
+    fetchImpl: fixture.fetch,
+    log() {},
+  });
+
+  assert.equal(result.passed, true);
+  assert.equal(fixture.concurrencyState.max, 2);
+});
+
+test("rejects invalid concurrency limits", async () => {
+  await assert.rejects(
+    runAgentSurfaceSmoke({
+      attempts: 1,
+      baseUrl: BASE_URL,
+      concurrency: 0,
+      fetchImpl: createFixtureFetch().fetch,
+      log() {},
+    }),
+    /Concurrency limit must be a positive safe integer/u,
+  );
 });
 
 test("rejects stale typed API catalog Link metadata", async () => {
