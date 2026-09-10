@@ -56,7 +56,7 @@
 .omni-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 9998;
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(2px);
   animation: omni-fade-in 150ms ease-out;
@@ -65,7 +65,7 @@
 .omni-content {
   --omni-content-top: clamp(5rem, 16vh, 7rem);
   position: fixed;
-  z-index: 51;
+  z-index: 9999;
   top: var(--omni-content-top);
   left: 50%;
   transform: translateX(-50%);
