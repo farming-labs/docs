@@ -1467,15 +1467,37 @@ export default { mcp: sharedMcp };
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": [
-        "app/docs/**/*",
-        "skill.md",
-        "AGENTS.md",
-        "AGENT.md",
-        ".farming-labs/sitemap-manifest.json",
-      ],
-      "/api/docs/mcp": ["app/docs/**/*", "skill.md"],
+      "/api/docs": ["app/docs/**/*", ".farming-labs/sitemap-manifest.json"],
+      "/api/docs/mcp": ["app/docs/**/*"],
     });
+  });
+
+  it("snapshots root agent documents into the skills bundle instead of tracing them", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    writeFileSync(join(tmpDir, "AGENTS.md"), "# Root Agent Instructions\n", "utf8");
+    writeFileSync(
+      join(tmpDir, "skill.md"),
+      "---\nname: docs\ndescription: Use the root skill.\n---\n",
+      "utf8",
+    );
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    const bundle = readFileSync(
+      join(realpathSync(tmpDir), ".docs", "agent-skills-bundle.mjs"),
+      "utf8",
+    );
+    expect(bundle).toContain("bundledRootDocuments");
+    expect(bundle).toContain("# Root Agent Instructions");
+    expect(bundle).toContain("Use the root skill.");
+    for (const includes of Object.values(
+      nextConfig.outputFileTracingIncludes as Record<string, string[]>,
+    )) {
+      expect(includes).not.toContain("AGENTS.md");
+      expect(includes).not.toContain("AGENT.md");
+      expect(includes).not.toContain("skill.md");
+    }
   });
 
   it("bundles configured Agent Skills for both docs and MCP production handlers", () => {
@@ -1957,14 +1979,8 @@ version: "1.0"
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": [
-        "website/app/docs/**/*",
-        "skill.md",
-        "AGENTS.md",
-        "AGENT.md",
-        ".farming-labs/sitemap-manifest.json",
-      ],
-      "/api/docs/mcp": ["website/app/docs/**/*", "skill.md"],
+      "/api/docs": ["website/app/docs/**/*", ".farming-labs/sitemap-manifest.json"],
+      "/api/docs/mcp": ["website/app/docs/**/*"],
     });
   });
 

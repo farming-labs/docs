@@ -225,6 +225,8 @@ interface DocsAPIOptions {
   agent?: DocsConfig["agent"];
   /** @internal Build-time Agent Skills snapshot supplied by framework adapters. */
   _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
+  /** @internal Build-time root document snapshot (skill.md, AGENTS.md, AGENT.md) supplied by framework adapters. */
+  _preloadedRootDocuments?: Readonly<Record<string, string>>;
 }
 
 interface DocsMCPAPIOptions {
@@ -245,6 +247,8 @@ interface DocsMCPAPIOptions {
   feedback?: DocsConfig["feedback"];
   /** @internal Build-time Agent Skills snapshot supplied by framework adapters. */
   _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
+  /** @internal Build-time root document snapshot (skill.md, AGENTS.md, AGENT.md) supplied by framework adapters. */
+  _preloadedRootDocuments?: Readonly<Record<string, string>>;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -2499,7 +2503,11 @@ function renderAgentsDocument({
   return lines.join("\n");
 }
 
-function createRootDocumentReader(rootDir: string, fileNames: readonly string[]) {
+function createRootDocumentReader(
+  rootDir: string,
+  fileNames: readonly string[],
+  preloadedDocuments?: Readonly<Record<string, string>>,
+) {
   let cached:
     | {
         path: string;
@@ -2528,6 +2536,12 @@ function createRootDocumentReader(rootDir: string, fileNames: readonly string[])
     }
 
     cached = undefined;
+    if (preloadedDocuments) {
+      for (const fileName of fileNames) {
+        const content = preloadedDocuments[fileName];
+        if (typeof content === "string") return content;
+      }
+    }
     return null;
   };
 }
@@ -3885,8 +3899,16 @@ function generateLlmsTxt(
  */
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
-  const readRootSkillDocument = createRootDocumentReader(root, ["skill.md"]);
-  const readRootAgentsDocument = createRootDocumentReader(root, ["AGENTS.md", "AGENT.md"]);
+  const readRootSkillDocument = createRootDocumentReader(
+    root,
+    ["skill.md"],
+    options?._preloadedRootDocuments,
+  );
+  const readRootAgentsDocument = createRootDocumentReader(
+    root,
+    ["AGENTS.md", "AGENT.md"],
+    options?._preloadedRootDocuments,
+  );
   let publishedAgentSkills: Promise<DocsPublishedAgentSkill[]> | undefined;
   function getPublishedAgentSkills(): Promise<DocsPublishedAgentSkill[]> {
     if (!publishedAgentSkills) {
@@ -5025,7 +5047,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
  */
 export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const rootDir = options.rootDir ?? process.cwd();
-  const readRootSkillDocument = createRootDocumentReader(rootDir, ["skill.md"]);
+  const readRootSkillDocument = createRootDocumentReader(
+    rootDir,
+    ["skill.md"],
+    options._preloadedRootDocuments,
+  );
   const entry = options.entry ?? readEntry(rootDir);
   const appDir = getNextAppDir(rootDir);
   const contentDir = options.contentDir ?? path.join(appDir, entry);

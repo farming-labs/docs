@@ -747,13 +747,35 @@ function readAgentSkillPaths(root: string, configPath: string): string[] {
   return configured;
 }
 
+const ROOT_DOCUMENT_FILES = ["skill.md", "AGENTS.md", "AGENT.md"] as const;
+
+/**
+ * Snapshot the project-root agent documents into the skills bundle. Tracing
+ * them by bare filename is not an option: Turbopack matches such globs at any
+ * depth, which drags `node_modules/next/AGENTS.md` into the trace through the
+ * pnpm workspace symlink and breaks Vercel output materialization.
+ */
+function readRootDocumentsSnapshot(root: string): Record<string, string> | undefined {
+  const documents: Record<string, string> = {};
+  for (const fileName of ROOT_DOCUMENT_FILES) {
+    const filePath = join(root, fileName);
+    if (!existsSync(filePath)) continue;
+    try {
+      documents[fileName] = readFileSync(filePath, "utf8");
+    } catch {
+      // unreadable root document; runtime falls back to the generated one
+    }
+  }
+  return Object.keys(documents).length > 0 ? documents : undefined;
+}
+
 function writeAgentSkillsBundle(
   root: string,
   configuredSkills: NonNullable<DocsConfig["agent"]>["skills"],
 ): string {
   const bundlePath = join(root, AGENT_SKILLS_BUNDLE_PATH);
   const skills = resolveConfiguredAgentSkillsSync(configuredSkills, { rootDir: root });
-  const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(skills)}`;
+  const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(skills, readRootDocumentsSnapshot(root))}`;
 
   mkdirSync(dirname(bundlePath), { recursive: true });
   if (!existsSync(bundlePath) || readFileSync(bundlePath, "utf8") !== source) {
@@ -2734,9 +2756,6 @@ export function withDocs(
     (nextConfig.outputFileTracingIncludes as Record<string, string[] | undefined> | undefined) ??
     {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
-  const skillTraceFile = "skill.md";
-  const agentsTraceFile = "AGENTS.md";
-  const agentTraceFile = "AGENT.md";
   const sitemapManifestTraceFile = DEFAULT_SITEMAP_MANIFEST_PATH;
   const docsContentRoot = isAbsolute(docsContentDir) ? docsContentDir : join(root, docsContentDir);
 
@@ -2780,18 +2799,11 @@ export function withDocs(
       ...new Set([
         ...(existingTracingIncludes["/api/docs"] ?? []),
         docsTraceGlob,
-        skillTraceFile,
-        agentsTraceFile,
-        agentTraceFile,
         sitemapManifestTraceFile,
       ]),
     ],
     [DEFAULT_MCP_ROUTE]: [
-      ...new Set([
-        ...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []),
-        docsTraceGlob,
-        skillTraceFile,
-      ]),
+      ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),
     ],
   };
 
