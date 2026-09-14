@@ -777,9 +777,9 @@ function writeAgentSkillsBundle(
   const skills = resolveConfiguredAgentSkillsSync(configuredSkills, { rootDir: root });
   const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(skills, readRootDocumentsSnapshot(root))}`;
 
-  mkdirSync(dirname(bundlePath), { recursive: true });
+  makeGeneratedDir(dirname(bundlePath));
   if (!existsSync(bundlePath) || readFileSync(bundlePath, "utf8") !== source) {
-    writeFileSync(bundlePath, source, "utf8");
+    writeGeneratedFile(bundlePath, source);
   }
 
   return bundlePath;
@@ -1454,8 +1454,32 @@ function resolveManagedChangelogSourceLayoutPath(
 
 function removeManagedFile(filePath: string) {
   if (isManagedGeneratedFile(filePath)) {
-    rmSync(filePath, { force: true });
+    withReadOnlyFsGuard(filePath, () => rmSync(filePath, { force: true }));
   }
+}
+
+const READ_ONLY_FS_CODES = new Set(["EROFS", "EACCES", "EPERM"]);
+
+/** Generation must not take down config evaluation on read-only filesystems; the build already shipped these files. */
+function withReadOnlyFsGuard<T>(target: string, mutate: () => T): T | undefined {
+  try {
+    return mutate();
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | null)?.code;
+    if (!code || !READ_ONLY_FS_CODES.has(code)) throw error;
+    console.warn(
+      `[docs] Skipped generating ${target} (${code}): filesystem is read-only; using existing files.`,
+    );
+    return undefined;
+  }
+}
+
+function makeGeneratedDir(dirPath: string) {
+  withReadOnlyFsGuard(dirPath, () => mkdirSync(dirPath, { recursive: true }));
+}
+
+function writeGeneratedFile(filePath: string, content: string) {
+  withReadOnlyFsGuard(filePath, () => writeFileSync(filePath, content, "utf8"));
 }
 
 type ResolvedNextMcpConfig = {
@@ -2417,18 +2441,20 @@ export function withDocs(
       ? docsConfigPath
       : `./${docsConfigPath}`;
 
-  ensureDocsReviewWorkflow({
-    rootDir: root,
-    configPath: docsConfigPath,
-    configContent: existsSync(docsConfigAbsolutePath)
-      ? readFileSync(docsConfigAbsolutePath, "utf-8")
-      : undefined,
-    log: process.env.NODE_ENV === "test" ? undefined : (message) => console.log(message),
-  });
+  withReadOnlyFsGuard(".github/workflows/docs-review.yml", () =>
+    ensureDocsReviewWorkflow({
+      rootDir: root,
+      configPath: docsConfigPath,
+      configContent: existsSync(docsConfigAbsolutePath)
+        ? readFileSync(docsConfigAbsolutePath, "utf-8")
+        : undefined,
+      log: process.env.NODE_ENV === "test" ? undefined : (message) => console.log(message),
+    }),
+  );
 
   // ── 1. Auto-generate mdx-components.tsx if missing ──────────────
   if (!hasFile(root, "mdx-components")) {
-    writeFileSync(join(root, "mdx-components.tsx"), MDX_COMPONENTS_TEMPLATE);
+    writeGeneratedFile(join(root, "mdx-components.tsx"), MDX_COMPONENTS_TEMPLATE);
   }
 
   // ── 2. Auto-generate app/{entry}/layout.tsx if missing (or src/app when using src dir) ──
@@ -2439,12 +2465,12 @@ export function withDocs(
   const docsContentDir = configuredContentDir ?? join(appDir, entry);
   const layoutDir = join(root, appDir, entry);
   if (!existsSync(layoutDir)) {
-    mkdirSync(layoutDir, { recursive: true });
+    makeGeneratedDir(layoutDir);
   }
 
   const docsLayoutPath = join(layoutDir, "layout.tsx");
   if (!hasFile(layoutDir, "layout") || isManagedGeneratedFile(docsLayoutPath)) {
-    writeFileSync(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
+    writeGeneratedFile(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
   }
 
   // ── 3. Auto-generate app/api/docs/route.ts if missing (skip for static export) ──
@@ -2460,8 +2486,8 @@ export function withDocs(
     !isStaticExport &&
     (!existingDocsApiRoutePath || isManagedGeneratedFile(existingDocsApiRoutePath))
   ) {
-    mkdirSync(docsApiRouteDir, { recursive: true });
-    writeFileSync(docsApiRoutePath, DOCS_API_ROUTE_TEMPLATE);
+    makeGeneratedDir(docsApiRouteDir);
+    writeGeneratedFile(docsApiRoutePath, DOCS_API_ROUTE_TEMPLATE);
   }
 
   const sitemap = readSitemapConfig(root);
@@ -2473,8 +2499,8 @@ export function withDocs(
     !isStaticExport &&
     !hasFile(docsMcpRouteDir, "route")
   ) {
-    mkdirSync(docsMcpRouteDir, { recursive: true });
-    writeFileSync(join(docsMcpRouteDir, "route.ts"), DOCS_MCP_ROUTE_TEMPLATE);
+    makeGeneratedDir(docsMcpRouteDir);
+    writeGeneratedFile(join(docsMcpRouteDir, "route.ts"), DOCS_MCP_ROUTE_TEMPLATE);
   }
 
   // ── 3.1. Auto-generate API reference route/page ───────────────────
@@ -2495,12 +2521,12 @@ export function withDocs(
         !hasFile(apiReferenceBaseDir, "layout") ||
         isManagedGeneratedFile(apiReferenceLayoutPath)
       ) {
-        mkdirSync(apiReferenceBaseDir, { recursive: true });
-        writeFileSync(apiReferenceLayoutPath, API_REFERENCE_LAYOUT_TEMPLATE);
+        makeGeneratedDir(apiReferenceBaseDir);
+        writeGeneratedFile(apiReferenceLayoutPath, API_REFERENCE_LAYOUT_TEMPLATE);
       }
       if (!hasFile(apiReferencePageDir, "page") || isManagedGeneratedFile(apiReferencePagePath)) {
-        mkdirSync(apiReferencePageDir, { recursive: true });
-        writeFileSync(apiReferencePagePath, API_REFERENCE_PAGE_TEMPLATE);
+        makeGeneratedDir(apiReferencePageDir);
+        writeGeneratedFile(apiReferencePagePath, API_REFERENCE_PAGE_TEMPLATE);
       }
     } else {
       removeManagedFile(apiReferenceLayoutPath);
@@ -2509,8 +2535,8 @@ export function withDocs(
         !hasFile(apiReferenceRouteDir, "route") ||
         isManagedGeneratedFile(apiReferenceRoutePath)
       ) {
-        mkdirSync(apiReferenceRouteDir, { recursive: true });
-        writeFileSync(apiReferenceRoutePath, API_REFERENCE_ROUTE_TEMPLATE);
+        makeGeneratedDir(apiReferenceRouteDir);
+        writeGeneratedFile(apiReferenceRoutePath, API_REFERENCE_ROUTE_TEMPLATE);
       }
     }
   }
@@ -2551,11 +2577,11 @@ export function withDocs(
       removeManagedFile(join(legacyChangelogBaseDir, "__changelog.generated.tsx"));
     }
 
-    mkdirSync(changelogBaseDir, { recursive: true });
+    makeGeneratedDir(changelogBaseDir);
     removeManagedFile(join(changelogBaseDir, "__changelog.generated.tsx"));
 
     if (!hasFile(changelogBaseDir, "page") || isManagedGeneratedFile(changelogIndexPath)) {
-      writeFileSync(
+      writeGeneratedFile(
         changelogIndexPath,
         buildChangelogIndexPageSource(
           root,
@@ -2574,8 +2600,8 @@ export function withDocs(
       }
     } else {
       if (!hasFile(changelogEntryDir, "page") || isManagedGeneratedFile(changelogEntryPath)) {
-        mkdirSync(changelogEntryDir, { recursive: true });
-        writeFileSync(
+        makeGeneratedDir(changelogEntryDir);
+        writeGeneratedFile(
           changelogEntryPath,
           buildChangelogEntryPageSource(
             root,
@@ -2593,8 +2619,8 @@ export function withDocs(
           !hasFile(changelogSourceLayoutDir, "layout") ||
           isManagedGeneratedFile(changelogSourceLayoutPath)
         ) {
-          mkdirSync(changelogSourceLayoutDir, { recursive: true });
-          writeFileSync(changelogSourceLayoutPath, CHANGELOG_SOURCE_LAYOUT_TEMPLATE);
+          makeGeneratedDir(changelogSourceLayoutDir);
+          writeGeneratedFile(changelogSourceLayoutPath, CHANGELOG_SOURCE_LAYOUT_TEMPLATE);
         }
       }
     }
