@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   writeFileSync,
+  readdirSync,
   rmSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
+  statSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -1497,6 +1500,32 @@ export default { mcp: sharedMcp };
       expect(includes).not.toContain("AGENTS.md");
       expect(includes).not.toContain("AGENT.md");
       expect(includes).not.toContain("skill.md");
+    }
+  });
+
+  it("keeps evaluating next.config when the filesystem is read-only", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    withDocs({});
+
+    const setWritable = (writable: boolean) => {
+      const walk = (target: string) => {
+        const stats = statSync(target);
+        if (stats.isDirectory()) {
+          for (const entry of readdirSync(target)) walk(join(target, entry));
+          chmodSync(target, writable ? 0o755 : 0o555);
+          return;
+        }
+        chmodSync(target, writable ? 0o644 : 0o444);
+      };
+      walk(tmpDir);
+    };
+
+    setWritable(false);
+    try {
+      expect(() => withDocs({})).not.toThrow();
+    } finally {
+      setWritable(true);
     }
   });
 
