@@ -2398,7 +2398,8 @@ title: "Introduction"
       entry: "docs",
       _preloadedRootDocuments: {
         "AGENTS.md": "# Bundled Agent Instructions\n\nUse the bundled workflow.\n",
-        "skill.md": "---\nname: docs\ndescription: Use the bundled skill.\n---\n\n# Bundled Skill\n",
+        "skill.md":
+          "---\nname: docs\ndescription: Use the bundled skill.\n---\n\n# Bundled Skill\n",
       },
     });
 
