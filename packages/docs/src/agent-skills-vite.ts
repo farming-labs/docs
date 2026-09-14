@@ -63,11 +63,19 @@ function serializeSkill(skill: DocsPublishedAgentSkill): SerializedSkill {
   };
 }
 
+function serializeSnapshotLiteral(value: unknown): string {
+  return JSON.stringify(value).replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029");
+}
+
 /** Render a self-contained virtual module without relying on Node at runtime. */
-export function renderDocsAgentSkillsBundle(skills: readonly DocsPublishedAgentSkill[]): string {
-  const snapshot = JSON.stringify(skills.map(serializeSkill))
-    .replaceAll("\u2028", "\\u2028")
-    .replaceAll("\u2029", "\\u2029");
+export function renderDocsAgentSkillsBundle(
+  skills: readonly DocsPublishedAgentSkill[],
+  rootDocuments?: Readonly<Record<string, string>>,
+): string {
+  const snapshot = serializeSnapshotLiteral(skills.map(serializeSkill));
+  const rootDocumentsSnapshot = rootDocuments
+    ? serializeSnapshotLiteral(rootDocuments)
+    : "undefined";
 
   return `const snapshot = ${snapshot};
 function decodeBase64(value) {
@@ -84,6 +92,7 @@ export const bundledAgentSkills = snapshot.map((skill) => ({
   content: hydrateContent(skill.content),
   files: skill.files.map((file) => ({ ...file, content: hydrateContent(file.content) })),
 }));
+export const bundledRootDocuments = ${rootDocumentsSnapshot};
 `;
 }
 

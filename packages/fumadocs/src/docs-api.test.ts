@@ -2376,6 +2376,45 @@ Use the newly revised product workflow.
     readFileSpy.mockRestore();
   });
 
+  it("falls back to preloaded root documents when the files are absent at runtime", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-preloaded-root-docs-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      _preloadedRootDocuments: {
+        "AGENTS.md": "# Bundled Agent Instructions\n\nUse the bundled workflow.\n",
+        "skill.md": "---\nname: docs\ndescription: Use the bundled skill.\n---\n\n# Bundled Skill\n",
+      },
+    });
+
+    const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
+    expect(agentsApi.status).toBe(200);
+    expect(await agentsApi.text()).toContain("# Bundled Agent Instructions");
+
+    const skillApi = await GET(new Request("http://localhost/api/docs?format=skill"));
+    expect(skillApi.status).toBe(200);
+    expect(await skillApi.text()).toContain("Bundled Skill");
+
+    writeFileSync(join(rootDir, "AGENTS.md"), "# On-Disk Agent Instructions\n");
+    const fromDisk = await GET(new Request("http://localhost/api/docs?format=agents"));
+    expect(await fromDisk.text()).toContain("# On-Disk Agent Instructions");
+  });
+
   it("uses the human audience projection for normal search", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-search-route-"));
     tempDirs.push(rootDir);

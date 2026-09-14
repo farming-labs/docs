@@ -8,3 +8,10 @@ import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
  * resolver when the build plugin is not installed.
  */
 export const bundledAgentSkills: readonly DocsPublishedAgentSkill[] | undefined = undefined;
+
+/**
+ * Build-time snapshot of the project-root agent documents (`skill.md`,
+ * `AGENTS.md`, `AGENT.md`), keyed by filename. Replaced together with
+ * `bundledAgentSkills`; consumers fall back to the filesystem when undefined.
+ */
+export const bundledRootDocuments: Readonly<Record<string, string>> | undefined = undefined;
