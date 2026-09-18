@@ -37,7 +37,6 @@ const ColorfulUIDefaults = {
     Callout: { variant: "soft", icon: true },
     CodeBlock: { showCopyButton: true },
     HoverLink: { linkLabel: "Open page", showIndicator: false },
-    Tabs: { style: "default" },
   },
 };
 
