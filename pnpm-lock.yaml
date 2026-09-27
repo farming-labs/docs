@@ -93,16 +93,16 @@ importers:
         version: 10.0.8(@aws-sdk/credential-provider-web-identity@3.972.73)(@sveltejs/kit@2.57.1(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.51.3)(vite@7.3.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)))(svelte@5.51.3)(typescript@5.9.3)(vite@7.3.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)))(astro@6.4.8(@types/node@24.13.3)(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.4.1)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(rollup@4.59.0)(svelte@5.51.3)(vue-router@4.6.4(vue@3.5.41(typescript@5.9.3)))(vue@3.5.41(typescript@5.9.3))(ws@8.21.0)
       '@farming-labs/astro':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))
+        version: link:../../packages/astro
       '@farming-labs/astro-theme':
         specifier: 0.2.107
-        version: 0.2.107(astro@6.4.8(@types/node@24.13.3)(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.4.1)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))(react@19.2.4)
+        version: link:../../packages/astro-theme
       '@farming-labs/docs':
         specifier: 0.2.107
-        version: 0.2.107(react@19.2.4)(supports-color@10.2.2)
+        version: link:../../packages/docs
       '@farming-labs/theme':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.8.0(react@19.2.4))(next@16.2.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+        version: link:../../packages/fumadocs
       astro:
         specifier: 6.4.8
         version: 6.4.8(@types/node@24.13.3)(@vercel/functions@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.4.1)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0)
@@ -114,13 +114,13 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.107
-        version: 0.2.107(react@19.2.4)(supports-color@10.2.2)
+        version: link:../../packages/docs
       '@farming-labs/next':
         specifier: 0.2.107
-        version: 0.2.107(1ca0405ee12f38326ca6c099d01339e0)
+        version: link:../../packages/next
       '@farming-labs/theme':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.19.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+        version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.4)
@@ -163,13 +163,13 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.107
-        version: 0.2.107(react@19.2.4)(supports-color@10.2.2)
+        version: link:../../packages/docs
       '@farming-labs/next':
         specifier: 0.2.107
-        version: 0.2.107(1ca0405ee12f38326ca6c099d01339e0)
+        version: link:../../packages/next
       '@farming-labs/theme':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.19.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+        version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.4)
@@ -218,16 +218,16 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.107
-        version: 0.2.107(react@19.2.4)(supports-color@10.2.2)
+        version: link:../../packages/docs
       '@farming-labs/nuxt':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))
+        version: link:../../packages/nuxt
       '@farming-labs/nuxt-theme':
         specifier: 0.2.107
-        version: 0.2.107(nuxt@3.21.11(9ccb03da632d9ec5e9180da4bb279fd6))(react@19.2.4)(vue@3.5.41(typescript@5.9.3))
+        version: link:../../packages/nuxt-theme
       '@farming-labs/theme':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.8.0(react@19.2.4))(next@16.2.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+        version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -246,16 +246,16 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.107
-        version: 0.2.107(react@19.2.4)(supports-color@10.2.2)
+        version: link:../../packages/docs
       '@farming-labs/svelte':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))
+        version: link:../../packages/svelte
       '@farming-labs/svelte-theme':
         specifier: 0.2.107
-        version: 0.2.107(react@19.2.4)(svelte@5.51.3)
+        version: link:../../packages/svelte-theme
       '@farming-labs/theme':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.8.0(react@19.2.4))(next@16.2.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+        version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -283,13 +283,13 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.107
-        version: 0.2.107(react@19.2.4)(supports-color@10.2.2)
+        version: link:../../packages/docs
       '@farming-labs/tanstack-start':
         specifier: 0.2.107
-        version: 0.2.107(a2dd9fe0c8aa882bc463be70ee087d85)
+        version: link:../../packages/tanstack-start
       '@farming-labs/theme':
         specifier: 0.2.107
-        version: 0.2.107(@farming-labs/docs@0.2.107(react@19.2.4))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.2.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+        version: link:../../packages/fumadocs
       '@tanstack/react-router':
         specifier: ^1.0.0
         version: 1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
