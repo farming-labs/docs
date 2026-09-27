@@ -77,7 +77,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@farm.js/core": "^0.1.0-beta.19",
+    "@farm.js/core": "^0.1.0-beta.106",
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
     "@types/node": "^22.10.0",
@@ -90,7 +90,7 @@
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farm.js/core": "^0.1.0-beta.19",
+    "@farm.js/core": "^0.1.0-beta.106",
     "@farming-labs/docs": "*",
     "@farming-labs/theme": "*",
     "react": "^18.2.0 || ^19.0.0",
