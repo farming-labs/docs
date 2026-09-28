@@ -75,7 +75,8 @@ All references are one hop from this file.
   needs authentication.
 - Keep `mcp.route` synchronized with non-Next public forwarders.
 - Keep raw API keys out of config. Store only environment-variable names.
-- Use a hosted OpenAPI `specUrl` instead of local route scanning when the API lives elsewhere.
+- Use an OpenAPI `specUrl` instead of local route scanning when a JSON or YAML contract already
+  exists locally or remotely.
 - Preserve custom `components`, `icons`, callbacks, search adapters, and theme options unless the
   request changes them.
 

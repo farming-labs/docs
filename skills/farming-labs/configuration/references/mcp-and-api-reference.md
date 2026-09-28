@@ -177,8 +177,8 @@ Point a client or inspector at `http://127.0.0.1:3000/mcp`.
 
 ## API reference
 
-Use local route scanning for an API in the same project; use `specUrl` for an externally hosted
-OpenAPI document.
+Use local route scanning for an API in the same project; use `specUrl` for an existing local or
+remote OpenAPI JSON or YAML document.
 
 ```ts
 apiReference: {
@@ -186,6 +186,14 @@ apiReference: {
   path: "api-reference",
   routeRoot: "api",
   exclude: ["/api/internal/health", "internal/debug"],
+}
+```
+
+```ts
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  specUrl: "./openapi.yaml",
 }
 ```
 

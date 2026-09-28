@@ -1,6 +1,7 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildApiReferenceHtmlDocumentAsync,
@@ -86,6 +87,17 @@ describe("resolveApiReferenceOpenApiDiscovery", () => {
         catalogTargets: [],
       }),
     ).toMatchObject({ catalogTargets: [] });
+  });
+
+  it("does not publish a project-relative source path in discovery", () => {
+    const discovery = resolveApiReferenceOpenApiDiscovery({
+      enabled: true,
+      specUrl: "./openapi.yaml",
+    });
+
+    expect(discovery.source).toBe("configured");
+    expect(discovery.specUrl).toBeUndefined();
+    expect(discovery.catalogTargets).toBeUndefined();
   });
 });
 
@@ -231,6 +243,114 @@ describe("buildApiReferenceOpenApiDocument", () => {
         },
       });
     }
+  });
+
+  it("loads project-relative OpenAPI JSON and YAML files", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-files-"));
+    tempDirs.push(rootDir);
+    const jsonPath = join(rootDir, "openapi.json");
+    writeFileSync(
+      jsonPath,
+      JSON.stringify({
+        openapi: "3.1.0",
+        info: { title: "Local JSON", version: "1.0.0" },
+        paths: {
+          "/json-health": {
+            get: { summary: "JSON health", responses: { "200": { description: "OK" } } },
+          },
+        },
+      }),
+      "utf-8",
+    );
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info:",
+        "  title: Local YAML",
+        '  version: "1.0.0"',
+        "paths:",
+        "  /yaml-health:",
+        "    get:",
+        "      summary: YAML health",
+        "      responses:",
+        '        "200":',
+        "          description: OK",
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    for (const [specUrl, title, route] of [
+      ["openapi.json", "Local JSON", "/json-health"],
+      ["./openapi.yaml", "Local YAML", "/yaml-health"],
+      [pathToFileURL(jsonPath).href, "Local JSON", "/json-health"],
+    ] as const) {
+      const config = defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl },
+      });
+      const syncDocument = buildApiReferenceOpenApiDocument(config, {
+        framework: "next",
+        rootDir,
+      });
+      const asyncDocument = await buildApiReferenceOpenApiDocumentAsync(config, {
+        framework: "astro",
+        rootDir,
+      });
+
+      for (const document of [syncDocument, asyncDocument]) {
+        expect(document).toMatchObject({
+          openapi: "3.1.0",
+          info: { title, version: "1.0.0" },
+          paths: { [route]: { get: expect.any(Object) } },
+        });
+      }
+    }
+  });
+
+  it("loads a hosted OpenAPI YAML document", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          [
+            'openapi: "3.1.0"',
+            "info:",
+            "  title: Remote YAML",
+            '  version: "2.0.0"',
+            "paths:",
+            "  /pets:",
+            "    get:",
+            "      responses:",
+            '        "200":',
+            "          description: OK",
+            "",
+          ].join("\n"),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/yaml" },
+          },
+        ),
+      ),
+    );
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "https://example.com/openapi.yaml",
+      },
+    });
+    const document = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "sveltekit",
+    });
+
+    expect(document).toMatchObject({
+      openapi: "3.1.0",
+      info: { title: "Remote YAML", version: "2.0.0" },
+      paths: { "/pets": { get: expect.any(Object) } },
+    });
   });
 
   it("adds fallback tags to hosted OpenAPI operations when they are missing", async () => {

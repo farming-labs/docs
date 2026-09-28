@@ -126,7 +126,7 @@ TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt require `contentDir` (path t
 ## Optional generated pages
 
 - **API reference:** Read [references/api-reference.md](references/api-reference.md) when enabling
-  local route scanning, a hosted OpenAPI document, or non-Next handler routes.
+  local route scanning, a local/remote OpenAPI JSON or YAML document, or non-Next handler routes.
 - **Changelog:** Read [references/changelog.md](references/changelog.md) when adding the generated
   Next.js release feed and dated entry pages.
 

@@ -1,6 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { readFile } from "node:fs/promises";
+import { basename, extname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
+import { parse as parseYaml } from "yaml";
 import type {
   ApiReferenceRenderer,
   ApiReferenceConfig,
@@ -154,7 +157,7 @@ export function resolveApiReferenceOpenApiDiscovery(
     url: options.route ?? DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
     urlSource: options.route === undefined ? "default" : "configured",
     source: config.specUrl ? "configured" : "generated",
-    specUrl: config.specUrl,
+    specUrl: isLocalSpecSource(config.specUrl) ? undefined : config.specUrl,
     apiReferencePath: `/${config.path}`,
     catalogTargets,
   };
@@ -185,6 +188,20 @@ function normalizeApiReferenceCatalogTargets(value?: string[]): string[] | undef
 
 function isRequestRelativeSpecUrl(value?: string): boolean {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
+}
+
+function isRemoteSpecUrl(value: string): boolean {
+  return /^(?:https?:)?\/\//i.test(value);
+}
+
+function isLocalSpecSource(value?: string): boolean {
+  if (!value) return false;
+  if (value.startsWith("file:")) return true;
+  return (
+    !isRemoteSpecUrl(value) &&
+    !isRequestRelativeSpecUrl(value) &&
+    !/^[a-z][a-z\d+.-]*:/i.test(value)
+  );
 }
 
 export function buildApiReferencePageTitle(config: DocsConfig, title = "API Reference"): string {
@@ -605,6 +622,19 @@ export function buildApiReferenceOpenApiDocument(
 ): Record<string, unknown> {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
   if (apiReference.specUrl) {
+    if (isLocalSpecSource(apiReference.specUrl)) {
+      try {
+        const document = readLocalOpenApiDocument(apiReference.specUrl, options.rootDir);
+        return normalizeConfiguredOpenApiDocument(document, config, options.baseUrl);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return buildUnavailableOpenApiDocument(
+          config,
+          `Unable to load the configured OpenAPI document. ${message}`,
+        );
+      }
+    }
+
     return buildUnavailableOpenApiDocument(
       config,
       `Remote OpenAPI specs require the async API reference builder. Use the framework route helper or buildApiReferenceOpenApiDocumentAsync().`,
@@ -625,13 +655,15 @@ export async function buildApiReferenceOpenApiDocumentAsync(
   }
 
   try {
-    const document = await fetchRemoteOpenApiDocument(apiReference.specUrl, options.baseUrl);
-    return normalizeRemoteOpenApiDocument(document, config, options.baseUrl);
+    const document = isLocalSpecSource(apiReference.specUrl)
+      ? await readLocalOpenApiDocumentAsync(apiReference.specUrl, options.rootDir)
+      : await fetchRemoteOpenApiDocument(apiReference.specUrl, options.baseUrl);
+    return normalizeConfiguredOpenApiDocument(document, config, options.baseUrl);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return buildUnavailableOpenApiDocument(
       config,
-      `Unable to load the remote OpenAPI JSON. ${message}`,
+      `Unable to load the configured OpenAPI document. ${message}`,
     );
   }
 }
@@ -727,7 +759,7 @@ async function fetchRemoteOpenApiDocument(
 
   const response = await fetch(url, {
     headers: {
-      accept: "application/json",
+      accept: "application/json, application/yaml, application/x-yaml, text/yaml, text/x-yaml",
     },
   });
 
@@ -740,25 +772,94 @@ async function fetchRemoteOpenApiDocument(
     throw new Error("The remote endpoint returned an empty response.");
   }
 
+  return parseOpenApiDocument(body, specUrl, response.headers.get("content-type"), "remote");
+}
+
+function readLocalOpenApiDocument(
+  specUrl: string,
+  rootDir = process.cwd(),
+): Record<string, unknown> {
+  const filePath = resolveLocalOpenApiFilePath(specUrl, rootDir);
+  const body = readFileSync(filePath, "utf-8");
+  if (!body.trim()) {
+    throw new Error(`The local OpenAPI file is empty: ${filePath}`);
+  }
+
+  return parseOpenApiDocument(body, filePath, undefined, "local");
+}
+
+async function readLocalOpenApiDocumentAsync(
+  specUrl: string,
+  rootDir = process.cwd(),
+): Promise<Record<string, unknown>> {
+  const filePath = resolveLocalOpenApiFilePath(specUrl, rootDir);
+  const body = await readFile(filePath, "utf-8");
+  if (!body.trim()) {
+    throw new Error(`The local OpenAPI file is empty: ${filePath}`);
+  }
+
+  return parseOpenApiDocument(body, filePath, undefined, "local");
+}
+
+function resolveLocalOpenApiFilePath(specUrl: string, rootDir: string): string {
+  return specUrl.startsWith("file:") ? fileURLToPath(new URL(specUrl)) : resolve(rootDir, specUrl);
+}
+
+function parseOpenApiDocument(
+  body: string,
+  source: string,
+  contentType: string | null | undefined,
+  sourceKind: "local" | "remote",
+): Record<string, unknown> {
+  const extension = getOpenApiSourceExtension(source);
+  const normalizedContentType = contentType?.split(";", 1)[0]?.trim().toLowerCase();
+  const format =
+    normalizedContentType?.includes("yaml") || extension === ".yaml" || extension === ".yml"
+      ? "yaml"
+      : normalizedContentType?.includes("json") || extension === ".json"
+        ? "json"
+        : "auto";
   let parsed: unknown;
+
   try {
-    parsed = JSON.parse(body);
+    if (format === "yaml") {
+      parsed = parseYaml(body);
+    } else if (format === "json") {
+      parsed = JSON.parse(body);
+    } else {
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        parsed = parseYaml(body);
+      }
+    }
   } catch {
-    throw new Error("The remote endpoint did not return valid JSON.");
+    const location = sourceKind === "remote" ? "remote endpoint" : "local file";
+    const verb = sourceKind === "remote" ? "return" : "contain";
+    const expectedFormat = format === "auto" ? "JSON or YAML" : format.toUpperCase();
+    throw new Error(`The ${location} did not ${verb} valid ${expectedFormat}.`);
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("The remote endpoint returned a JSON value instead of an OpenAPI object.");
+    throw new Error("The configured source contains a value instead of an OpenAPI object.");
   }
 
   if (!("openapi" in parsed) && !("swagger" in parsed)) {
-    throw new Error("The remote JSON does not look like an OpenAPI document.");
+    throw new Error("The configured source does not look like an OpenAPI document.");
   }
 
   return parsed as Record<string, unknown>;
 }
 
-function normalizeRemoteOpenApiDocument(
+function getOpenApiSourceExtension(source: string): string {
+  try {
+    return extname(new URL(source, "https://farming-labs.invalid").pathname).toLowerCase();
+  } catch {
+    return extname(source).toLowerCase();
+  }
+}
+
+function normalizeConfiguredOpenApiDocument(
   document: Record<string, unknown>,
   config: DocsConfig,
   baseUrl?: string,

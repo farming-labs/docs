@@ -174,7 +174,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `llmsTxt`     | `boolean \| LlmsTxtConfig`     | `true`          | Generated root and optional section-level `llms.txt` files with markdown page links |
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
-| `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
+| `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or local/remote OpenAPI JSON and YAML |
 | `sitemap`     | `boolean \| DocsSitemapConfig` | `true`          | Generated `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` |
 | `robots`     | `boolean \| DocsRobotsConfig`  | `true`          | Runtime/generated `robots.txt` policy for docs and agent-readable routes |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
@@ -973,10 +973,10 @@ Set `review: false` to opt out of review and workflow generation.
 ## API Reference
 
 Use `apiReference` to generate an API reference from either your framework route handlers or a
-hosted OpenAPI JSON document.
+local/remote OpenAPI JSON or YAML document.
 
-Use route scanning when your API lives in the same app. Use `specUrl` when your backend is hosted
-elsewhere and already exposes an `openapi.json`.
+Use route scanning when your API lives in the same app and no contract exists. Use `specUrl` for an
+existing project-relative file, absolute URL, or request-relative URL.
 
 <Callout type="info" title="Current support">
   `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
@@ -992,10 +992,10 @@ elsewhere and already exposes an `openapi.json`.
   framework route handler that serves `/{path}`.
 </Callout>
 
-<Callout type="tip" title="Hosted API? Use specUrl">
-  If your docs app and backend are deployed separately, set `apiReference.specUrl` to a hosted
-  `openapi.json`. This keeps the API reference in your docs UI without requiring local route files
-  for the actual backend.
+<Callout type="tip" title="Existing contract? Use specUrl">
+  Set `apiReference.specUrl` to a checked-in file such as `./openapi.yaml`, a hosted JSON/YAML URL,
+  or a request-relative URL. This keeps the API reference in your docs UI without requiring
+  framework route scanning.
 </Callout>
 
 ```ts title="docs.config.ts"
@@ -1011,8 +1011,22 @@ export default defineDocs({
 });
 ```
 
-If your backend lives somewhere else, point the API reference at a hosted `openapi.json` instead of
-scanning local route files:
+If you already keep an OpenAPI contract in the repository, point the API reference at it instead
+of scanning framework route files:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    specUrl: "./openapi.yaml",
+  },
+  theme: fumadocs(),
+});
+```
+
+The same option accepts a hosted document:
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -1030,12 +1044,12 @@ export default defineDocs({
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enables generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated reference lives |
-| `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
+| `specUrl`   | `string`   | —                 | Project-relative file, `file:` URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document. When set, framework route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` are supported too |
 | `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored because the reference is rendered
-from the remote spec.
+from the configured document.
 
 That does not change the framework routing requirements:
 

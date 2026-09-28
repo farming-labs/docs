@@ -1,7 +1,7 @@
 # API reference setup
 
 Use this reference when `apiReference` should generate an API reference from framework route
-handlers or a hosted OpenAPI document.
+handlers or a local/remote OpenAPI JSON or YAML document.
 
 ## Local route scanning
 
@@ -32,7 +32,23 @@ Route scanning conventions:
 - **Astro:** `src/pages/api/**/*.ts` or `.js`
 - **Nuxt:** `server/api/**/*.ts` or `.js`
 
-## Hosted OpenAPI
+## OpenAPI document sources
+
+Use a project-relative path for a checked-in JSON or YAML document:
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    specUrl: "./openapi.yaml",
+  },
+  theme: fumadocs(),
+});
+```
+
+Use an absolute or request-relative URL for a hosted JSON or YAML document:
 
 ```ts
 export default defineDocs({
@@ -46,8 +62,9 @@ export default defineDocs({
 });
 ```
 
-`specUrl` disables local route scanning. TanStack Start, SvelteKit, Astro, and Nuxt still need the
-`/{path}` handler because it serves the generated page.
+`specUrl` disables framework route scanning. Project-relative files resolve from the project root.
+TanStack Start, SvelteKit, Astro, and Nuxt still need the `/{path}` handler because it serves the
+generated page.
 
 Minimal non-Next handler files:
 
