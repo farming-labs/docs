@@ -1641,6 +1641,12 @@ for an existing project-relative file, absolute URL, or request-relative URL.
   URLs, and request-relative URLs such as `/api/openapi.json`.
 </Callout>
 
+<Callout type="info" title="Contract validation and source limits">
+  Sources must use Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Invalid operations and duplicate
+  `operationId` values are rejected before rendering. Remote responses time out after 10 seconds
+  and cannot exceed 5 MiB.
+</Callout>
+
 <Callout type="info" title="Agent schema discovery">
   When `apiReference` is enabled, the shared docs API also serves
   `GET /api/docs?format=openapi`. The agent discovery spec advertises that OpenAPI schema URL, and
@@ -1683,7 +1689,8 @@ apiReference: {
 ```
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
-from the configured document instead.
+from the configured document instead. Project-relative sources must remain inside the project
+root; use an explicit `file:` URL for a trusted local contract outside it.
 
 ### `DocsOpenApiMcpConfig`
 

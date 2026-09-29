@@ -1,9 +1,10 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { basename, extname, join, relative, resolve } from "node:path";
+import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
 import { parse as parseYaml } from "yaml";
+import { assertValidOpenApiContract } from "./openapi-contract.js";
 import type {
   ApiReferenceRenderer,
   ApiReferenceConfig,
@@ -75,6 +76,8 @@ const METHOD_RE =
   /export\s+(?:async\s+function|function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD|ALL)\b/g;
 const METHOD_NAMES: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
 export const DEFAULT_API_REFERENCE_OPENAPI_ROUTE = "/api/docs?format=openapi";
+export const OPENAPI_SPEC_FETCH_TIMEOUT_MS = 10_000;
+export const OPENAPI_SPEC_MAX_BYTES = 5 * 1024 * 1024;
 
 function normalizePathSegment(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
@@ -757,22 +760,94 @@ async function fetchRemoteOpenApiDocument(
     );
   }
 
-  const response = await fetch(url, {
-    headers: {
-      accept: "application/json, application/yaml, application/x-yaml, text/yaml, text/x-yaml",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Received ${response.status} ${response.statusText}`.trim());
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("`apiReference.specUrl` must use HTTP or HTTPS for remote documents.");
   }
 
-  const body = await response.text();
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), OPENAPI_SPEC_FETCH_TIMEOUT_MS);
+  let response: Response;
+  let body: string;
+
+  try {
+    response = await fetch(url, {
+      headers: {
+        accept: "application/json, application/yaml, application/x-yaml, text/yaml, text/x-yaml",
+      },
+      redirect: "follow",
+      signal: abortController.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Received ${response.status} ${response.statusText}`.trim());
+    }
+
+    if (response.url) {
+      const responseUrl = new URL(response.url);
+      if (responseUrl.protocol !== "http:" && responseUrl.protocol !== "https:") {
+        throw new Error("The remote OpenAPI endpoint redirected to a non-HTTP URL.");
+      }
+    }
+
+    body = await readOpenApiResponseBody(response);
+  } catch (error) {
+    if (abortController.signal.aborted) {
+      throw new Error(
+        `The remote OpenAPI endpoint did not respond within ${OPENAPI_SPEC_FETCH_TIMEOUT_MS / 1_000} seconds.`,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
   if (!body.trim()) {
     throw new Error("The remote endpoint returned an empty response.");
   }
 
   return parseOpenApiDocument(body, specUrl, response.headers.get("content-type"), "remote");
+}
+
+async function readOpenApiResponseBody(response: Response): Promise<string> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength) {
+    const declaredBytes = Number(contentLength);
+    if (Number.isFinite(declaredBytes) && declaredBytes > OPENAPI_SPEC_MAX_BYTES) {
+      throw new Error(
+        `The remote OpenAPI document exceeds the ${formatByteLimit(OPENAPI_SPEC_MAX_BYTES)} size limit.`,
+      );
+    }
+  }
+
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let receivedBytes = 0;
+  let body = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      receivedBytes += value.byteLength;
+      if (receivedBytes > OPENAPI_SPEC_MAX_BYTES) {
+        await reader.cancel();
+        throw new Error(
+          `The remote OpenAPI document exceeds the ${formatByteLimit(OPENAPI_SPEC_MAX_BYTES)} size limit.`,
+        );
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return body;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function formatByteLimit(bytes: number): string {
+  return `${bytes / (1024 * 1024)} MiB`;
 }
 
 function readLocalOpenApiDocument(
@@ -802,7 +877,19 @@ async function readLocalOpenApiDocumentAsync(
 }
 
 function resolveLocalOpenApiFilePath(specUrl: string, rootDir: string): string {
-  return specUrl.startsWith("file:") ? fileURLToPath(new URL(specUrl)) : resolve(rootDir, specUrl);
+  if (specUrl.startsWith("file:")) return fileURLToPath(new URL(specUrl));
+
+  const resolvedRoot = resolve(rootDir);
+  const filePath = resolve(resolvedRoot, specUrl);
+  const realRoot = realpathSync(resolvedRoot);
+  const realFilePath = realpathSync(filePath);
+  const relativePath = relative(realRoot, realFilePath);
+  if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || isAbsolute(relativePath)) {
+    throw new Error(
+      "Project-relative OpenAPI files must stay inside the project root. Use an explicit `file:` URL for an external local file.",
+    );
+  }
+  return realFilePath;
 }
 
 function parseOpenApiDocument(
@@ -844,11 +931,9 @@ function parseOpenApiDocument(
     throw new Error("The configured source contains a value instead of an OpenAPI object.");
   }
 
-  if (!("openapi" in parsed) && !("swagger" in parsed)) {
-    throw new Error("The configured source does not look like an OpenAPI document.");
-  }
-
-  return parsed as Record<string, unknown>;
+  const document = parsed as Record<string, unknown>;
+  assertValidOpenApiContract(document);
+  return document;
 }
 
 function getOpenApiSourceExtension(source: string): string {

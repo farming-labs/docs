@@ -223,6 +223,11 @@ When `specUrl` is set, local `routeRoot` and `exclude` are ignored. The shared A
 `GET /api/docs?format=openapi`; discovery, llms, AGENTS.md, and skill.md advertise it. Static Next
 export skips the generated API route.
 
+Contracts must use Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Invalid operations and duplicate
+`operationId` values are rejected before rendering. Remote responses time out after 10 seconds and
+are limited to 5 MiB. Project-relative files must remain inside the project root; use an explicit
+`file:` URL only for a trusted local contract outside it.
+
 ## OpenAPI operations as MCP tools
 
 `apiReference.mcp` is deny-by-default. Allow operations by `operationId`, `METHOD /path`, or the

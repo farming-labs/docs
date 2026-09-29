@@ -3153,6 +3153,9 @@ export interface ApiReferenceConfig {
    * - absolute URLs like `https://example.com/openapi.yaml`
    * - request-relative URLs like `/api/openapi.json` in Next.js
    *
+   * Documents must use Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Remote
+   * responses have a 10-second timeout and a 5 MiB size limit.
+   *
    * @example
    * ```ts
    * apiReference: {

@@ -2573,14 +2573,15 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
     type: "boolean | ApiReferenceConfig",
     default: false,
     description:
-      "Generated API reference pages from framework route conventions or a hosted OpenAPI document.",
+      "Generated API reference pages from framework route conventions or a local/remote OpenAPI document.",
     docs: "/docs/customization/api-reference",
     children: [
       {
         path: "apiReference.specUrl",
         name: "specUrl",
         type: "string",
-        description: "Remote OpenAPI JSON URL when the backend owns the schema.",
+        description:
+          "Project-relative file, explicit file: URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document.",
       },
       {
         path: "apiReference.path",

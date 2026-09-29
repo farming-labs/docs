@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:722f5525ab3837a7",
+      "sourceHash": "fnv1a64:8b54b81cd49576c1",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:c61d9305548a8cc9",
-      "reviewedAt": "2026-09-29T01:16:39.138Z",
+      "outputHash": "fnv1a64:e7e92aaf02051978",
+      "reviewedAt": "2026-09-29T01:36:01.681Z",
       "reviewedBy": "farming-labs-docs",
-      "reason": "Reviewed the OpenAPI source-loading update; compact guidance now covers local and remote JSON/YAML sources while preserving the verified page summaries."
+      "reason": "Reviewed the OpenAPI validation and source-safety update; compact guidance now matches supported version families, duplicate operation validation, remote fetch limits, and project-root containment."
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:44c0a46b530adc47",
+      "sourceHash": "fnv1a64:1abd713ab71377a4",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:7ac4f6c6dc77ec1a",
-      "reviewedAt": "2026-09-29T01:16:39.149Z",
+      "outputHash": "fnv1a64:e449770772b52b6f",
+      "reviewedAt": "2026-09-29T01:36:01.707Z",
       "reviewedBy": "farming-labs-docs",
-      "reason": "Reviewed the OpenAPI source-loading update; compact guidance now covers local and remote JSON/YAML sources while preserving the verified page summaries."
+      "reason": "Reviewed the OpenAPI validation and source-safety update; compact guidance now matches supported version families, duplicate operation validation, remote fetch limits, and project-root containment."
     },
     {
       "route": "/docs/token-efficiency",

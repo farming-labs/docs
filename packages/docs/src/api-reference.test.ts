@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -9,6 +9,8 @@ import {
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
   DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+  OPENAPI_SPEC_FETCH_TIMEOUT_MS,
+  OPENAPI_SPEC_MAX_BYTES,
   resolveApiReferenceOpenApiDiscovery,
   resolveApiReferenceRenderer,
 } from "./api-reference.js";
@@ -23,6 +25,7 @@ afterEach(() => {
   }
 
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe("resolveApiReferenceOpenApiDiscovery", () => {
@@ -353,6 +356,142 @@ describe("buildApiReferenceOpenApiDocument", () => {
     });
   });
 
+  it("rejects unsupported OpenAPI versions and duplicate operation IDs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            openapi: "4.0.0",
+            paths: {
+              "/projects": { get: { operationId: "listResources" } },
+              "/teams": { get: { operationId: "listResources" } },
+            },
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    const document = await buildApiReferenceOpenApiDocumentAsync(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "https://example.com/openapi.json" },
+      }),
+      { framework: "next" },
+    );
+
+    expect(document.info).toMatchObject({
+      description: expect.stringContaining("OpenAPI 4.0.0 is not supported"),
+    });
+  });
+
+  it("limits remote OpenAPI response size using declared and streamed bytes", async () => {
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: { enabled: true, specUrl: "https://example.com/openapi.json" },
+    });
+    const oversizedDescription = expect.stringContaining("exceeds the 5 MiB size limit");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("{}", {
+          headers: { "Content-Length": String(OPENAPI_SPEC_MAX_BYTES + 1) },
+        }),
+      ),
+    );
+    const declared = await buildApiReferenceOpenApiDocumentAsync(config, { framework: "next" });
+    expect(declared.info).toMatchObject({ description: oversizedDescription });
+
+    const oversizedChunk = new Uint8Array(OPENAPI_SPEC_MAX_BYTES + 1);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(oversizedChunk);
+              controller.close();
+            },
+          }),
+        ),
+      ),
+    );
+    const streamed = await buildApiReferenceOpenApiDocumentAsync(config, { framework: "next" });
+    expect(streamed.info).toMatchObject({ description: oversizedDescription });
+  });
+
+  it("times out remote OpenAPI requests", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        (_input: URL | RequestInfo, init?: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted")));
+          }),
+      ),
+    );
+
+    const promise = buildApiReferenceOpenApiDocumentAsync(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "https://example.com/openapi.json" },
+      }),
+      { framework: "next" },
+    );
+    await vi.advanceTimersByTimeAsync(OPENAPI_SPEC_FETCH_TIMEOUT_MS);
+
+    await expect(promise).resolves.toMatchObject({
+      info: { description: expect.stringContaining("did not respond within 10 seconds") },
+    });
+  });
+
+  it("keeps project-relative files inside the project root", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "docs-api-ref-boundary-"));
+    tempDirs.push(workspace);
+    const rootDir = join(workspace, "project");
+    mkdirSync(rootDir);
+    const externalPath = join(workspace, "external.json");
+    writeFileSync(
+      externalPath,
+      JSON.stringify({ openapi: "3.1.0", info: { title: "External", version: "1" }, paths: {} }),
+    );
+
+    const relativeDocument = buildApiReferenceOpenApiDocument(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "../external.json" },
+      }),
+      { framework: "next", rootDir },
+    );
+    expect(relativeDocument.info).toMatchObject({
+      description: expect.stringContaining("must stay inside the project root"),
+    });
+
+    symlinkSync(externalPath, join(rootDir, "linked.json"));
+    const linkedDocument = buildApiReferenceOpenApiDocument(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "./linked.json" },
+      }),
+      { framework: "next", rootDir },
+    );
+    expect(linkedDocument.info).toMatchObject({
+      description: expect.stringContaining("must stay inside the project root"),
+    });
+
+    const explicitDocument = await buildApiReferenceOpenApiDocumentAsync(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: pathToFileURL(externalPath).href },
+      }),
+      { framework: "next", rootDir },
+    );
+    expect(explicitDocument.info).toMatchObject({ title: "External", version: "1" });
+  });
+
   it("adds fallback tags to hosted OpenAPI operations when they are missing", async () => {
     vi.stubGlobal(
       "fetch",
@@ -387,10 +526,12 @@ describe("buildApiReferenceOpenApiDocument", () => {
   });
 
   it("resolves request-relative spec URLs against the request origin", async () => {
-    const fetchMock = vi.fn().mockImplementation(async (input: URL | string) => {
-      expect(String(input)).toBe("https://example.com/api/openapi.json");
-      return createRemoteOpenApiResponse();
-    });
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async (input: URL | string, _init?: RequestInit) => {
+        expect(String(input)).toBe("https://example.com/api/openapi.json");
+        return createRemoteOpenApiResponse();
+      });
     vi.stubGlobal("fetch", fetchMock);
 
     const config = defineDocs({
@@ -418,6 +559,10 @@ describe("buildApiReferenceOpenApiDocument", () => {
       },
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      redirect: "follow",
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it("uses the provided request origin for generated local route references", () => {

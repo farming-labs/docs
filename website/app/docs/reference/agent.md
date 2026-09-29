@@ -96,7 +96,10 @@ Top-level configuration object passed to `defineDocs()`:
 
 Set `specUrl` to a project-relative JSON/YAML file, a `file:` URL, an absolute HTTP(S) URL, or a
 request-relative URL such as `/api/openapi.json`. Setting it disables framework route scanning.
-Local filesystem paths are not published through discovery metadata.
+Local filesystem paths are not published through discovery metadata. Sources must use Swagger 2.0
+or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Remote responses time out after 10 seconds and cannot exceed 5
+MiB. Project-relative sources must stay inside the project root; an explicit `file:` URL opts into
+a trusted external local file.
 
 Page-level metadata for machine-readable docs workflows:
 
