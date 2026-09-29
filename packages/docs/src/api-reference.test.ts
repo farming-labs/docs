@@ -15,6 +15,8 @@ import {
   resolveApiReferenceRenderer,
 } from "./api-reference.js";
 import { defineDocs } from "./define-docs.js";
+import { buildNormalizedOpenApiModel } from "./openapi-operations.js";
+import { OPENAPI_BUNDLED_REFERENCES_EXTENSION } from "./openapi-references.js";
 
 const tempDirs: string[] = [];
 
@@ -312,6 +314,148 @@ describe("buildApiReferenceOpenApiDocument", () => {
     }
   });
 
+  it("bundles local OpenAPI references into a normalized operation model", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-refs-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "paths"));
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info:",
+        "  title: Referenced API",
+        '  version: "1.0.0"',
+        "paths:",
+        "  /pets:",
+        "    $ref: ./paths/pets.yaml#/Pets",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(rootDir, "paths", "pets.yaml"),
+      [
+        "Pets:",
+        "  get:",
+        "    operationId: listPets",
+        "    tags: [Pets]",
+        "    responses:",
+        '      "200":',
+        "        $ref: ../responses.yaml#/PetList",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(rootDir, "responses.yaml"),
+      [
+        "PetList:",
+        "  description: Pet list",
+        "  content:",
+        "    application/json:",
+        "      schema:",
+        "        $ref: '#/PetListSchema'",
+        "      example:",
+        "        - id: pet-1",
+        "PetListSchema:",
+        "  type: array",
+        "  items:",
+        "    type: object",
+        "",
+      ].join("\n"),
+    );
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: { enabled: true, specUrl: "./openapi.yaml" },
+    });
+    const syncDocument = buildApiReferenceOpenApiDocument(config, {
+      framework: "next",
+      rootDir,
+    });
+    const asyncDocument = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "astro",
+      rootDir,
+    });
+
+    for (const document of [syncDocument, asyncDocument]) {
+      expect(document).toHaveProperty(OPENAPI_BUNDLED_REFERENCES_EXTENSION);
+      expect(JSON.stringify(document)).not.toContain("./paths/pets.yaml");
+      expect(JSON.stringify(document)).not.toContain("../responses.yaml");
+      expect(buildNormalizedOpenApiModel(document).operations[0]).toMatchObject({
+        operationId: "listPets",
+        selector: "GET /pets",
+        tags: ["Pets"],
+        responses: [
+          {
+            status: "200",
+            content: [
+              {
+                mediaType: "application/json",
+                examples: [{ value: [{ id: "pet-1" }] }],
+              },
+            ],
+          },
+        ],
+      });
+    }
+  });
+
+  it("caches repeated remote reference documents within a build", async () => {
+    const fetchMock = vi.fn(async (input: URL | string) => {
+      const url = String(input);
+      if (url === "https://example.com/openapi.json") {
+        return new Response(
+          JSON.stringify({
+            openapi: "3.1.0",
+            info: { title: "Cached refs", version: "1" },
+            paths: {
+              "/pets": {
+                get: {
+                  operationId: "listPets",
+                  responses: {
+                    "200": {
+                      description: "OK",
+                      content: {
+                        "application/json": {
+                          schema: { $ref: "./schemas.json#/PetList" },
+                          examples: { pet: { $ref: "./schemas.json#/PetExample" } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url === "https://example.com/schemas.json") {
+        return new Response(
+          JSON.stringify({
+            PetList: { type: "array", items: { type: "object" } },
+            PetExample: { value: [{ id: "pet-1" }] },
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const document = await buildApiReferenceOpenApiDocumentAsync(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "https://example.com/openapi.json" },
+      }),
+      { framework: "next" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(buildNormalizedOpenApiModel(document).operations[0]?.examples).toEqual([
+      expect.objectContaining({ name: "pet", value: [{ id: "pet-1" }] }),
+    ]);
+  });
+
   it("loads a hosted OpenAPI YAML document", async () => {
     vi.stubGlobal(
       "fetch",
@@ -490,6 +634,82 @@ describe("buildApiReferenceOpenApiDocument", () => {
       { framework: "next", rootDir },
     );
     expect(explicitDocument.info).toMatchObject({ title: "External", version: "1" });
+  });
+
+  it("keeps references from project-relative documents inside the project root", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "docs-api-ref-ref-boundary-"));
+    tempDirs.push(workspace);
+    const rootDir = join(workspace, "project");
+    mkdirSync(rootDir);
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info: { title: Boundary, version: '1' }",
+        "paths: {}",
+        "components:",
+        "  schemas:",
+        "    Secret:",
+        "      $ref: ../external.yaml#/Secret",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(join(workspace, "external.yaml"), "Secret:\n  type: string\n");
+
+    const document = buildApiReferenceOpenApiDocument(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "./openapi.yaml" },
+      }),
+      { framework: "next", rootDir },
+    );
+
+    expect(document.info).toMatchObject({
+      description: expect.stringContaining("must stay inside the project root"),
+    });
+  });
+
+  it("does not let a remote reference chain read local files", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-remote-file-"));
+    tempDirs.push(rootDir);
+    const secretPath = join(rootDir, "secret.yaml");
+    writeFileSync(secretPath, "Secret:\n  type: string\n");
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info: { title: Remote chain, version: '1' }",
+        "paths: {}",
+        "components:",
+        "  schemas:",
+        "    Secret:",
+        "      $ref: https://example.com/schema.json#/Secret",
+        "",
+      ].join("\n"),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            Secret: { $ref: `${pathToFileURL(secretPath).href}#/Secret` },
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    const document = await buildApiReferenceOpenApiDocumentAsync(
+      defineDocs({
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "./openapi.yaml" },
+      }),
+      { framework: "next", rootDir },
+    );
+
+    expect(document.info).toMatchObject({
+      description: expect.stringContaining("cannot load local file references"),
+    });
   });
 
   it("adds fallback tags to hosted OpenAPI operations when they are missing", async () => {

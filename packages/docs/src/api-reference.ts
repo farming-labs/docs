@@ -1,10 +1,13 @@
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
 import { parse as parseYaml } from "yaml";
 import { assertValidOpenApiContract } from "./openapi-contract.js";
+import { buildNormalizedOpenApiModel } from "./openapi-operations.js";
+import { resolveOpenApiReferences, resolveOpenApiReferencesSync } from "./openapi-references.js";
+import type { OpenApiReferenceDocument } from "./openapi-references.js";
 import type {
   ApiReferenceRenderer,
   ApiReferenceConfig,
@@ -760,6 +763,24 @@ async function fetchRemoteOpenApiDocument(
     );
   }
 
+  const entry = await fetchOpenApiReferenceDocument(url, true);
+  return resolveOpenApiReferences(entry.document as Record<string, unknown>, {
+    sourceUri: entry.uri,
+    loadDocument: async (referenceUrl) => {
+      if (referenceUrl.protocol !== "http:" && referenceUrl.protocol !== "https:") {
+        throw new Error(
+          `Remote OpenAPI documents cannot load non-HTTP references: ${referenceUrl.href}`,
+        );
+      }
+      return fetchOpenApiReferenceDocument(referenceUrl, false);
+    },
+  });
+}
+
+async function fetchOpenApiReferenceDocument(
+  url: URL,
+  validateContract: boolean,
+): Promise<OpenApiReferenceDocument> {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("`apiReference.specUrl` must use HTTP or HTTPS for remote documents.");
   }
@@ -805,7 +826,17 @@ async function fetchRemoteOpenApiDocument(
     throw new Error("The remote endpoint returned an empty response.");
   }
 
-  return parseOpenApiDocument(body, specUrl, response.headers.get("content-type"), "remote");
+  const sourceUri = response.url || url.href;
+  return {
+    uri: sourceUri,
+    document: parseOpenApiDocument(
+      body,
+      sourceUri,
+      response.headers.get("content-type"),
+      "remote",
+      validateContract,
+    ),
+  };
 }
 
 async function readOpenApiResponseBody(response: Response): Promise<string> {
@@ -855,12 +886,17 @@ function readLocalOpenApiDocument(
   rootDir = process.cwd(),
 ): Record<string, unknown> {
   const filePath = resolveLocalOpenApiFilePath(specUrl, rootDir);
-  const body = readFileSync(filePath, "utf-8");
-  if (!body.trim()) {
-    throw new Error(`The local OpenAPI file is empty: ${filePath}`);
-  }
-
-  return parseOpenApiDocument(body, filePath, undefined, "local");
+  const document = readOpenApiFileDocument(filePath, true);
+  const trustedRoot = specUrl.startsWith("file:") ? undefined : realpathSync(resolve(rootDir));
+  return resolveOpenApiReferencesSync(document as Record<string, unknown>, {
+    sourceUri: pathToFileURL(filePath).href,
+    loadDocument: (referenceUrl) => {
+      if (referenceUrl.protocol === "http:" || referenceUrl.protocol === "https:") {
+        throw new Error("Remote OpenAPI references require the async API reference builder.");
+      }
+      return readOpenApiFileReference(referenceUrl, trustedRoot);
+    },
+  });
 }
 
 async function readLocalOpenApiDocumentAsync(
@@ -868,12 +904,69 @@ async function readLocalOpenApiDocumentAsync(
   rootDir = process.cwd(),
 ): Promise<Record<string, unknown>> {
   const filePath = resolveLocalOpenApiFilePath(specUrl, rootDir);
-  const body = await readFile(filePath, "utf-8");
-  if (!body.trim()) {
-    throw new Error(`The local OpenAPI file is empty: ${filePath}`);
-  }
+  const document = await readOpenApiFileDocumentAsync(filePath, true);
+  const trustedRoot = specUrl.startsWith("file:") ? undefined : realpathSync(resolve(rootDir));
+  return resolveOpenApiReferences(document as Record<string, unknown>, {
+    sourceUri: pathToFileURL(filePath).href,
+    loadDocument: async (referenceUrl, fromUrl) => {
+      if (referenceUrl.protocol === "http:" || referenceUrl.protocol === "https:") {
+        return fetchOpenApiReferenceDocument(referenceUrl, false);
+      }
+      if (fromUrl.protocol === "http:" || fromUrl.protocol === "https:") {
+        throw new Error(
+          `Remote OpenAPI documents cannot load local file references: ${referenceUrl.href}`,
+        );
+      }
+      return readOpenApiFileReferenceAsync(referenceUrl, trustedRoot);
+    },
+  });
+}
 
-  return parseOpenApiDocument(body, filePath, undefined, "local");
+function readOpenApiFileReference(url: URL, trustedRoot?: string): OpenApiReferenceDocument {
+  if (url.protocol !== "file:") {
+    throw new Error(`Local OpenAPI documents cannot load this reference: ${url.href}`);
+  }
+  const filePath = resolveReferencedOpenApiFilePath(url, trustedRoot);
+  return { uri: pathToFileURL(filePath).href, document: readOpenApiFileDocument(filePath, false) };
+}
+
+async function readOpenApiFileReferenceAsync(
+  url: URL,
+  trustedRoot?: string,
+): Promise<OpenApiReferenceDocument> {
+  if (url.protocol !== "file:") {
+    throw new Error(`Local OpenAPI documents cannot load this reference: ${url.href}`);
+  }
+  const filePath = resolveReferencedOpenApiFilePath(url, trustedRoot);
+  return {
+    uri: pathToFileURL(filePath).href,
+    document: await readOpenApiFileDocumentAsync(filePath, false),
+  };
+}
+
+function readOpenApiFileDocument(filePath: string, validateContract: boolean): unknown {
+  assertOpenApiFileSize(filePath);
+  const body = readFileSync(filePath, "utf-8");
+  if (!body.trim()) throw new Error(`The local OpenAPI file is empty: ${filePath}`);
+  return parseOpenApiDocument(body, filePath, undefined, "local", validateContract);
+}
+
+async function readOpenApiFileDocumentAsync(
+  filePath: string,
+  validateContract: boolean,
+): Promise<unknown> {
+  assertOpenApiFileSize(filePath);
+  const body = await readFile(filePath, "utf-8");
+  if (!body.trim()) throw new Error(`The local OpenAPI file is empty: ${filePath}`);
+  return parseOpenApiDocument(body, filePath, undefined, "local", validateContract);
+}
+
+function assertOpenApiFileSize(filePath: string): void {
+  if (statSync(filePath).size > OPENAPI_SPEC_MAX_BYTES) {
+    throw new Error(
+      `The local OpenAPI document exceeds the ${formatByteLimit(OPENAPI_SPEC_MAX_BYTES)} size limit: ${filePath}`,
+    );
+  }
 }
 
 function resolveLocalOpenApiFilePath(specUrl: string, rootDir: string): string {
@@ -881,7 +974,17 @@ function resolveLocalOpenApiFilePath(specUrl: string, rootDir: string): string {
 
   const resolvedRoot = resolve(rootDir);
   const filePath = resolve(resolvedRoot, specUrl);
-  const realRoot = realpathSync(resolvedRoot);
+  return resolveContainedOpenApiFilePath(filePath, realpathSync(resolvedRoot));
+}
+
+function resolveReferencedOpenApiFilePath(url: URL, trustedRoot?: string): string {
+  const filePath = fileURLToPath(url);
+  return trustedRoot
+    ? resolveContainedOpenApiFilePath(filePath, trustedRoot)
+    : realpathSync(filePath);
+}
+
+function resolveContainedOpenApiFilePath(filePath: string, realRoot: string): string {
   const realFilePath = realpathSync(filePath);
   const relativePath = relative(realRoot, realFilePath);
   if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || isAbsolute(relativePath)) {
@@ -897,7 +1000,8 @@ function parseOpenApiDocument(
   source: string,
   contentType: string | null | undefined,
   sourceKind: "local" | "remote",
-): Record<string, unknown> {
+  validateContract = true,
+): unknown {
   const extension = getOpenApiSourceExtension(source);
   const normalizedContentType = contentType?.split(";", 1)[0]?.trim().toLowerCase();
   const format =
@@ -927,13 +1031,12 @@ function parseOpenApiDocument(
     throw new Error(`The ${location} did not ${verb} valid ${expectedFormat}.`);
   }
 
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+  if (validateContract && (!parsed || typeof parsed !== "object" || Array.isArray(parsed))) {
     throw new Error("The configured source contains a value instead of an OpenAPI object.");
   }
 
-  const document = parsed as Record<string, unknown>;
-  assertValidOpenApiContract(document);
-  return document;
+  if (validateContract) assertValidOpenApiContract(parsed as Record<string, unknown>);
+  return parsed;
 }
 
 function getOpenApiSourceExtension(source: string): string {
@@ -954,8 +1057,9 @@ function normalizeConfiguredOpenApiDocument(
     document.info && typeof document.info === "object" && !Array.isArray(document.info)
       ? (document.info as Record<string, unknown>)
       : {};
+  const model = buildNormalizedOpenApiModel(document);
   const normalizedPaths = normalizeRemoteOpenApiPaths(document.paths);
-  const normalizedTags = normalizeRemoteOpenApiTags(document.tags, normalizedPaths);
+  const normalizedTags = normalizeRemoteOpenApiTags(document.tags, normalizedPaths, model.tags);
   const normalizedServers = isRequestRelativeSpecUrl(apiReference.specUrl)
     ? [{ url: baseUrl ?? "/" }]
     : document.servers;
@@ -996,7 +1100,16 @@ function normalizeRemoteOpenApiPaths(
       ...(pathItem as Record<string, unknown>),
     };
 
-    for (const method of ["get", "post", "put", "patch", "delete", "options", "head"] as const) {
+    for (const method of [
+      "get",
+      "post",
+      "put",
+      "patch",
+      "delete",
+      "options",
+      "head",
+      "trace",
+    ] as const) {
       const operation = normalizedPathItem[method];
       if (!operation || typeof operation !== "object" || Array.isArray(operation)) {
         continue;
@@ -1034,6 +1147,7 @@ function inferRemoteOpenApiTag(routePath: string): string {
 function normalizeRemoteOpenApiTags(
   value: unknown,
   paths: Record<string, Record<string, unknown>> | undefined,
+  modelTags: readonly string[] = [],
 ): Array<Record<string, unknown>> {
   const existingTags = Array.isArray(value)
     ? value.filter((tag): tag is Record<string, unknown> => !!tag && typeof tag === "object")
@@ -1046,9 +1160,27 @@ function normalizeRemoteOpenApiTags(
     tagsByName.set(name, tag);
   }
 
+  for (const name of modelTags) {
+    if (!tagsByName.has(name)) {
+      tagsByName.set(name, {
+        name,
+        description: `${name} endpoints`,
+      });
+    }
+  }
+
   if (paths) {
     for (const pathItem of Object.values(paths)) {
-      for (const method of ["get", "post", "put", "patch", "delete", "options", "head"] as const) {
+      for (const method of [
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+        "trace",
+      ] as const) {
         const operation = pathItem[method];
         if (!operation || typeof operation !== "object" || Array.isArray(operation)) {
           continue;

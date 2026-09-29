@@ -30,6 +30,17 @@ export type {
   ApiReferenceRoute,
   ResolvedApiReferenceConfig,
 } from "./api-reference.js";
+export { OPENAPI_OPERATION_METHODS, buildNormalizedOpenApiModel } from "./openapi-operations.js";
+export type {
+  NormalizedOpenApiExample,
+  NormalizedOpenApiMediaType,
+  NormalizedOpenApiModel,
+  NormalizedOpenApiOperation,
+  NormalizedOpenApiParameter,
+  NormalizedOpenApiRequestBody,
+  NormalizedOpenApiResponse,
+  OpenApiOperationMethod,
+} from "./openapi-operations.js";
 export {
   buildDocsReviewWorkflow,
   buildDocsReviewWorkflowPathFilters,

@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:8b54b81cd49576c1",
+      "sourceHash": "fnv1a64:0fc813162ba1b559",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:e7e92aaf02051978",
-      "reviewedAt": "2026-09-29T01:36:01.681Z",
+      "outputHash": "fnv1a64:07a454416f6e7689",
+      "reviewedAt": "2026-09-29T02:05:01.138Z",
       "reviewedBy": "farming-labs-docs",
-      "reason": "Reviewed the OpenAPI validation and source-safety update; compact guidance now matches supported version families, duplicate operation validation, remote fetch limits, and project-root containment."
+      "reason": "Document reviewed OpenAPI reference bundling, limits, and normalized operation APIs"
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:1abd713ab71377a4",
+      "sourceHash": "fnv1a64:41887c9f15db8801",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:e449770772b52b6f",
-      "reviewedAt": "2026-09-29T01:36:01.707Z",
+      "outputHash": "fnv1a64:1d7f28b95fef3b56",
+      "reviewedAt": "2026-09-29T02:05:01.147Z",
       "reviewedBy": "farming-labs-docs",
-      "reason": "Reviewed the OpenAPI validation and source-safety update; compact guidance now matches supported version families, duplicate operation validation, remote fetch limits, and project-root containment."
+      "reason": "Document reviewed OpenAPI reference bundling, limits, and normalized operation APIs"
     },
     {
       "route": "/docs/token-efficiency",
