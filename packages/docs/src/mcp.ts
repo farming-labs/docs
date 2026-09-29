@@ -2584,6 +2584,26 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
           "Project-relative file, explicit file: URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document.",
       },
       {
+        path: "apiReference.overlays",
+        name: "overlays",
+        type: "string[]",
+        description:
+          "Ordered OpenAPI Overlay 1.0/1.1 JSON or YAML sources applied to the single specUrl before reference resolution.",
+      },
+      {
+        path: "apiReference.versions",
+        name: "versions",
+        type: "Record<string, ApiReferenceVersionConfig>",
+        description:
+          "Named OpenAPI sources with stable version routes and optional per-version overlays.",
+      },
+      {
+        path: "apiReference.defaultVersion",
+        name: "defaultVersion",
+        type: "string",
+        description: "Explicit default key required when apiReference.versions is configured.",
+      },
+      {
         path: "apiReference.path",
         name: "path",
         type: "string",

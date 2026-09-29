@@ -3172,6 +3172,7 @@ After`;
       source: "generated",
       specUrl: null,
       apiReferencePath: "/api-reference",
+      versions: [],
       format: "OpenAPI 3.1",
     });
     expect(spec.robots).toEqual({
@@ -3368,6 +3369,60 @@ After`;
     });
     expect(explicitLlms.llmsTxt).toContain("/api/docs?format=openapi");
     expect(explicitLlms.llmsTxt).not.toContain("/api/internal/docs?format=openapi");
+  });
+
+  it("publishes versioned OpenAPI identities through custom discovery routes", () => {
+    const openapi = {
+      enabled: true,
+      url: "/api/docs?format=openapi",
+      urlSource: "default",
+      source: "configured",
+      apiReferencePath: "/api-reference",
+      versions: [
+        {
+          id: "v1",
+          label: "Version 1",
+          default: false,
+          url: "/api/docs?format=openapi&version=v1",
+          apiReferencePath: "/api-reference/v1",
+        },
+        {
+          id: "v2",
+          label: "Version 2",
+          default: true,
+          url: "/api/docs?format=openapi&version=v2",
+          apiReferencePath: "/api-reference/v2",
+        },
+      ],
+    } as const;
+    const spec = buildDocsAgentDiscoverySpec({
+      origin: "https://docs.example.com",
+      apiRoute: "/api/internal/docs",
+      mcp: resolveDocsMcpConfig(false),
+      openapi,
+    });
+    expect(spec.openapi.versions).toEqual([
+      expect.objectContaining({
+        id: "v1",
+        url: "/api/internal/docs?format=openapi&version=v1",
+        apiReferencePath: "/api-reference/v1",
+      }),
+      expect.objectContaining({
+        id: "v2",
+        default: true,
+        url: "/api/internal/docs?format=openapi&version=v2",
+      }),
+    ]);
+
+    const llms = renderDocsLlmsTxt([], {
+      apiRoute: "/api/internal/docs",
+      baseUrl: "https://docs.example.com",
+      openapi,
+    });
+    expect(llms.llmsTxt).toContain(
+      "https://docs.example.com/api/internal/docs?format=openapi&version=v1",
+    );
+    expect(llms.llmsTxt).toContain("https://docs.example.com/api-reference/v2");
   });
 
   it("does not infer a product target for a remote OpenAPI schema", () => {

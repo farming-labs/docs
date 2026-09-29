@@ -58,7 +58,11 @@ Use this machine-oriented page when the user needs implementation guidance for `
   build can load at most 32 documents, and remote requests time out after 10 seconds.
   Project-relative sources and their local references cannot leave the project root; use an
   explicit `file:` URL for a trusted external local file. Named anchors and `$dynamicRef` are not
-  resolved yet.
+  resolved yet. For multiple contracts, use URL-safe `versions` keys plus one explicit
+  `defaultVersion`; do not combine them with `specUrl`. Each version is available at
+  `/{path}/{version}` and `?format=openapi&version={version}`. Use ordered `overlays` for a single
+  source or per-version overlays for versioned sources. Overlay 1.0.x/1.1.x targets use RFC 9535
+  JSONPath and are applied before reference resolution; invalid or unmatched targets are reported.
 
 - When the user asks about runtime document synchronization or incremental content updates, point to `agent.contentChanges`. Enabled by default on server-rendered adapters; always `false` in static bundles produced by `docs agent export`. The endpoint is `GET /api/docs?audience=agent&response=changes` and returns a `docs-content-changes.v1` payload with `indexGeneration`, `mode` (`snapshot`, `delta`, or `reset`), `resetRequired`, `documentCount`, and `added`/`modified`/`removed` arrays. Supply `since=<indexGeneration>` from a previous response to receive a delta. ETag and `If-None-Match` conditional requests are supported.
 

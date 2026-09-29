@@ -1047,17 +1047,56 @@ export default defineDocs({
 });
 ```
 
+For multiple contract versions, use stable version keys and choose one explicit default. Each
+version is rendered at `/{path}/{version}` and served from the shared schema endpoint with
+`?format=openapi&version={version}`:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    versions: {
+      v1: { specUrl: "./openapi/v1.yaml", label: "Version 1" },
+      v2: {
+        specUrl: "./openapi/v2.yaml",
+        label: "Version 2",
+        overlays: ["./openapi/public.overlay.yaml"],
+      },
+    },
+    defaultVersion: "v2",
+  },
+  theme: fumadocs(),
+});
+```
+
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enables generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated reference lives |
 | `specUrl`   | `string`   | —                 | Project-relative file, `file:` URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document. When set, framework route scanning is skipped |
+| `overlays`  | `readonly string[]` | `[]` | Ordered OpenAPI Overlay 1.0/1.1 sources applied to the single `specUrl` before `$ref` resolution |
+| `versions`  | `Record<string, ApiReferenceVersionConfig>` | — | Named sources with stable URL-safe identifiers, labels, and optional per-version overlays |
+| `defaultVersion` | `string` | — | Required key from `versions`; selects the unversioned default route and schema response |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` are supported too |
 | `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored because the reference is rendered
 from the configured document. Project-relative paths must remain inside the project root; use an
 explicit `file:` URL when a trusted local contract intentionally lives elsewhere.
+
+`versions` cannot be combined with the single-source `specUrl` or top-level `overlays`. Version
+identifiers may contain letters, numbers, dots, underscores, and hyphens. Farming Labs publishes
+every version in agent discovery, `llms.txt`, and the RFC 9727 API catalog while keeping the
+unversioned API reference and schema endpoint as aliases for `defaultVersion`.
+
+Overlay files may be local or remote JSON/YAML documents using OpenAPI Overlay 1.0.x or 1.1.x.
+They are applied in array order and action order before references are bundled. Targets use RFC
+9535 JSONPath. Invalid documents, invalid selectors, unmatched targets, incompatible merge values,
+and a final result that is no longer a valid OpenAPI contract produce an unavailable-contract
+diagnostic instead of silently rendering a partial result. The same timeout, 5 MiB size limit, and
+project-root containment rules used for contracts also apply to overlays.
 
 Relative and absolute `$ref` values may target local or remote JSON/YAML documents. Farming Labs
 validates JSON Pointer fragments, rewrites external references into a self-contained bundle, and

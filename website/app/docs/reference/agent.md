@@ -106,6 +106,18 @@ local file. Named anchors and `$dynamicRef` are not resolved yet. Server integra
 the stable operation IDs/slugs, tags, parameters, schemas, examples, servers, and security metadata
 used by OpenAPI-backed projections.
 
+For multiple contracts, set `apiReference.versions` to a record of URL-safe version keys and set
+`apiReference.defaultVersion` to one of those keys. Do not combine `versions` with `specUrl` or
+top-level `overlays`. Each version is rendered at `/{path}/{version}` and served at
+`/api/docs?format=openapi&version={version}`; unversioned routes resolve the default. Discovery,
+llms, and the RFC 9727 API catalog publish every version.
+
+Use ordered `apiReference.overlays` with a single `specUrl`, or `overlays` inside an individual
+version. Local and remote JSON/YAML Overlay 1.0.x and 1.1.x documents are supported. Actions run in
+declared order, target RFC 9535 JSONPath nodes, and apply before `$ref` resolution. Invalid overlay
+documents, selectors, unmatched targets, incompatible merges, and invalid final contracts are
+reported. Overlay sources inherit contract timeout, size, and project-root containment rules.
+
 Page-level metadata for machine-readable docs workflows:
 
 | Property | Type | Description |

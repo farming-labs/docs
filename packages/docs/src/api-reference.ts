@@ -5,12 +5,15 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
 import { parse as parseYaml } from "yaml";
 import { assertValidOpenApiContract } from "./openapi-contract.js";
+import { applyOpenApiOverlayDocuments } from "./openapi-overlays.js";
+import type { OpenApiOverlayDocumentSource } from "./openapi-overlays.js";
 import { buildNormalizedOpenApiModel } from "./openapi-operations.js";
 import { resolveOpenApiReferences, resolveOpenApiReferencesSync } from "./openapi-references.js";
 import type { OpenApiReferenceDocument } from "./openapi-references.js";
 import type {
   ApiReferenceRenderer,
   ApiReferenceConfig,
+  ApiReferenceVersionConfig,
   DocsConfig,
   DocsOpenApiMcpConfig,
   DocsTheme,
@@ -43,11 +46,31 @@ export interface ResolvedApiReferenceConfig {
   enabled: boolean;
   path: string;
   specUrl?: string;
+  overlays: string[];
+  versions: ResolvedApiReferenceVersion[];
+  defaultVersion?: string;
   catalogTargets?: string[];
   renderer?: ApiReferenceRenderer;
   mcp?: DocsOpenApiMcpConfig;
   routeRoot: string;
   exclude: string[];
+}
+
+export interface ResolvedApiReferenceVersion {
+  id: string;
+  label: string;
+  specUrl: string;
+  overlays: string[];
+  default: boolean;
+}
+
+export interface ApiReferenceOpenApiVersionDiscovery {
+  id: string;
+  label: string;
+  default: boolean;
+  url: string;
+  apiReferencePath: string;
+  specUrl?: string;
 }
 
 export interface ApiReferenceOpenApiDiscovery {
@@ -58,12 +81,14 @@ export interface ApiReferenceOpenApiDiscovery {
   specUrl?: string;
   apiReferencePath?: string;
   catalogTargets?: string[];
+  versions?: ApiReferenceOpenApiVersionDiscovery[];
 }
 
-interface BuildApiReferenceOptions {
+export interface BuildApiReferenceOptions {
   framework: ApiReferenceFramework;
   rootDir?: string;
   baseUrl?: string;
+  version?: string;
 }
 
 interface BuildApiReferenceHtmlOptions extends BuildApiReferenceOptions {
@@ -94,6 +119,9 @@ export function resolveApiReferenceConfig(
       enabled: true,
       path: "api-reference",
       specUrl: undefined,
+      overlays: [],
+      versions: [],
+      defaultVersion: undefined,
       catalogTargets: undefined,
       renderer: undefined,
       mcp: undefined,
@@ -107,6 +135,9 @@ export function resolveApiReferenceConfig(
       enabled: false,
       path: "api-reference",
       specUrl: undefined,
+      overlays: [],
+      versions: [],
+      defaultVersion: undefined,
       catalogTargets: undefined,
       renderer: undefined,
       mcp: undefined,
@@ -115,15 +146,105 @@ export function resolveApiReferenceConfig(
     };
   }
 
+  const specUrl = normalizeRemoteSpecUrl(value.specUrl);
+  const overlays = normalizeOpenApiOverlaySources(value.overlays, "apiReference.overlays");
+  const { versions, defaultVersion } = resolveApiReferenceVersions(value);
+  if (versions.length > 0 && specUrl) {
+    throw new Error("`apiReference.versions` cannot be combined with `apiReference.specUrl`.");
+  }
+  if (versions.length > 0 && overlays.length > 0) {
+    throw new Error(
+      "`apiReference.versions` cannot be combined with top-level `apiReference.overlays`; configure overlays on each version instead.",
+    );
+  }
+
   return {
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
-    specUrl: normalizeRemoteSpecUrl(value.specUrl),
+    specUrl,
+    overlays,
+    versions,
+    defaultVersion,
     catalogTargets: normalizeApiReferenceCatalogTargets(value.catalogTargets),
     renderer: normalizeApiReferenceRenderer(value.renderer),
     mcp: resolveOpenApiMcpConfig(value.mcp),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
+  };
+}
+
+function normalizeOpenApiOverlaySources(
+  value: readonly string[] | undefined,
+  location: string,
+): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error(`\`${location}\` must be an array of sources.`);
+  return value.map((source, index) => {
+    if (typeof source !== "string" || !source.trim()) {
+      throw new Error(`\`${location}[${index}]\` must be a non-empty string.`);
+    }
+    return source.trim();
+  });
+}
+
+function resolveApiReferenceVersions(value: ApiReferenceConfig): {
+  versions: ResolvedApiReferenceVersion[];
+  defaultVersion?: string;
+} {
+  if (value.versions === undefined) {
+    if (value.defaultVersion !== undefined) {
+      throw new Error("`apiReference.defaultVersion` requires `apiReference.versions`.");
+    }
+    return { versions: [] };
+  }
+  if (!value.versions || typeof value.versions !== "object" || Array.isArray(value.versions)) {
+    throw new Error("`apiReference.versions` must be an object keyed by version identifier.");
+  }
+
+  const entries = Object.entries(value.versions);
+  if (entries.length === 0) throw new Error("`apiReference.versions` must not be empty.");
+  const defaultVersion = value.defaultVersion?.trim();
+  if (!defaultVersion) {
+    throw new Error("`apiReference.defaultVersion` is required when versions are configured.");
+  }
+  if (!Object.prototype.hasOwnProperty.call(value.versions, defaultVersion)) {
+    throw new Error(
+      `\`apiReference.defaultVersion\` references unknown version \`${defaultVersion}\`.`,
+    );
+  }
+
+  const versions = entries.map(([id, rawVersion]) =>
+    resolveApiReferenceVersionConfig(id, rawVersion, defaultVersion),
+  );
+  return { versions, defaultVersion };
+}
+
+function resolveApiReferenceVersionConfig(
+  rawId: string,
+  value: ApiReferenceVersionConfig,
+  defaultVersion: string,
+): ResolvedApiReferenceVersion {
+  const id = rawId.trim();
+  if (!id || !/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/.test(id)) {
+    throw new Error(
+      `OpenAPI version identifier \`${rawId}\` must be URL-safe and contain only letters, numbers, dots, underscores, or hyphens.`,
+    );
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`\`apiReference.versions.${id}\` must be an object.`);
+  }
+  const specUrl = normalizeRemoteSpecUrl(value.specUrl);
+  if (!specUrl) throw new Error(`\`apiReference.versions.${id}.specUrl\` is required.`);
+  const label = value.label?.trim() || id;
+  return {
+    id,
+    label,
+    specUrl,
+    overlays: normalizeOpenApiOverlaySources(
+      value.overlays,
+      `apiReference.versions.${id}.overlays`,
+    ),
+    default: id === defaultVersion,
   };
 }
 
@@ -154,19 +275,71 @@ export function resolveApiReferenceOpenApiDiscovery(
 ): ApiReferenceOpenApiDiscovery {
   const config = resolveApiReferenceConfig(value);
   if (!config.enabled) return { enabled: false };
+  const defaultVersion = resolveApiReferenceVersion(config);
+  const selectedSpecUrl = defaultVersion?.specUrl ?? config.specUrl;
   const catalogTargets =
     config.catalogTargets ??
-    (!config.specUrl || isRequestRelativeSpecUrl(config.specUrl) ? ["/"] : undefined);
+    (!selectedSpecUrl || isRequestRelativeSpecUrl(selectedSpecUrl) ? ["/"] : undefined);
+  const route = options.route ?? DEFAULT_API_REFERENCE_OPENAPI_ROUTE;
+  const versions =
+    config.versions.length > 0
+      ? config.versions.map((version) => ({
+          id: version.id,
+          label: version.label,
+          default: version.default,
+          url: appendUrlSearchParam(route, "version", version.id),
+          apiReferencePath: `/${config.path}/${encodeURIComponent(version.id)}`,
+          specUrl: isLocalSpecSource(version.specUrl) ? undefined : version.specUrl,
+        }))
+      : undefined;
 
   return {
     enabled: true,
-    url: options.route ?? DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+    url: route,
     urlSource: options.route === undefined ? "default" : "configured",
-    source: config.specUrl ? "configured" : "generated",
-    specUrl: isLocalSpecSource(config.specUrl) ? undefined : config.specUrl,
+    source: selectedSpecUrl ? "configured" : "generated",
+    specUrl: isLocalSpecSource(selectedSpecUrl) ? undefined : selectedSpecUrl,
     apiReferencePath: `/${config.path}`,
     catalogTargets,
+    versions,
   };
+}
+
+function appendUrlSearchParam(url: string, name: string, value: string): string {
+  const [withoutHash, hash] = url.split("#", 2);
+  const separator = withoutHash.includes("?") ? "&" : "?";
+  return `${withoutHash}${separator}${encodeURIComponent(name)}=${encodeURIComponent(value)}${
+    hash === undefined ? "" : `#${hash}`
+  }`;
+}
+
+export function resolveApiReferenceVersion(
+  config: ResolvedApiReferenceConfig,
+  requestedVersion?: string,
+): ResolvedApiReferenceVersion | undefined {
+  if (config.versions.length === 0) return undefined;
+  const versionId = requestedVersion?.trim() || config.defaultVersion;
+  return config.versions.find((version) => version.id === versionId);
+}
+
+export function resolveApiReferenceVersionFromPathname(
+  value: DocsConfig["apiReference"],
+  pathname: string,
+): ResolvedApiReferenceVersion | undefined {
+  const config = resolveApiReferenceConfig(value);
+  if (config.versions.length === 0) return undefined;
+  const pathSegments = normalizePathSegment(config.path).split("/").filter(Boolean);
+  const pathnameSegments = pathname.split("/").filter(Boolean);
+  if (!pathSegments.every((segment, index) => pathnameSegments[index] === segment)) {
+    return undefined;
+  }
+  const rawVersion = pathnameSegments[pathSegments.length];
+  if (!rawVersion) return undefined;
+  try {
+    return resolveApiReferenceVersion(config, decodeURIComponent(rawVersion));
+  } catch {
+    return undefined;
+  }
 }
 
 export function isApiReferenceOpenApiRequest(url: URL): boolean {
@@ -627,11 +800,31 @@ export function buildApiReferenceOpenApiDocument(
   options: BuildApiReferenceOptions,
 ): Record<string, unknown> {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
-  if (apiReference.specUrl) {
-    if (isLocalSpecSource(apiReference.specUrl)) {
+  const selectedVersion = resolveApiReferenceVersion(apiReference, options.version);
+  if (apiReference.versions.length > 0 && !selectedVersion) {
+    return buildUnavailableOpenApiDocument(
+      config,
+      `Unknown OpenAPI version \`${options.version}\`. Available versions: ${apiReference.versions
+        .map((version) => version.id)
+        .join(", ")}.`,
+    );
+  }
+  const specUrl = selectedVersion?.specUrl ?? apiReference.specUrl;
+  const overlays = selectedVersion?.overlays ?? apiReference.overlays;
+  if (specUrl) {
+    if (isLocalSpecSource(specUrl)) {
       try {
-        const document = readLocalOpenApiDocument(apiReference.specUrl, options.rootDir);
-        return normalizeConfiguredOpenApiDocument(document, config, options.baseUrl);
+        if (overlays.some((overlay) => !isLocalSpecSource(overlay))) {
+          throw new Error("Remote OpenAPI overlays require the async API reference builder.");
+        }
+        const document = readLocalOpenApiDocument(specUrl, options.rootDir, overlays);
+        return normalizeConfiguredOpenApiDocument(
+          document,
+          config,
+          options.baseUrl,
+          specUrl,
+          selectedVersion,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         return buildUnavailableOpenApiDocument(
@@ -656,15 +849,32 @@ export async function buildApiReferenceOpenApiDocumentAsync(
   options: BuildApiReferenceOptions,
 ): Promise<Record<string, unknown>> {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
-  if (!apiReference.specUrl) {
+  const selectedVersion = resolveApiReferenceVersion(apiReference, options.version);
+  if (apiReference.versions.length > 0 && !selectedVersion) {
+    return buildUnavailableOpenApiDocument(
+      config,
+      `Unknown OpenAPI version \`${options.version}\`. Available versions: ${apiReference.versions
+        .map((version) => version.id)
+        .join(", ")}.`,
+    );
+  }
+  const specUrl = selectedVersion?.specUrl ?? apiReference.specUrl;
+  const overlays = selectedVersion?.overlays ?? apiReference.overlays;
+  if (!specUrl) {
     return buildApiReferenceOpenApiDocument(config, options);
   }
 
   try {
-    const document = isLocalSpecSource(apiReference.specUrl)
-      ? await readLocalOpenApiDocumentAsync(apiReference.specUrl, options.rootDir)
-      : await fetchRemoteOpenApiDocument(apiReference.specUrl, options.baseUrl);
-    return normalizeConfiguredOpenApiDocument(document, config, options.baseUrl);
+    const document = isLocalSpecSource(specUrl)
+      ? await readLocalOpenApiDocumentAsync(specUrl, options.rootDir, overlays, options.baseUrl)
+      : await fetchRemoteOpenApiDocument(specUrl, options.baseUrl, overlays, options.rootDir);
+    return normalizeConfiguredOpenApiDocument(
+      document,
+      config,
+      options.baseUrl,
+      specUrl,
+      selectedVersion,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return buildUnavailableOpenApiDocument(
@@ -724,6 +934,8 @@ function buildApiReferenceHtmlDocumentFromDocument(
 ): string {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
   const title = options.title ?? "API Reference";
+  const version = resolveApiReferenceVersion(apiReference, options.version);
+  const basePath = `/${apiReference.path}${version ? `/${encodeURIComponent(version.id)}` : ""}`;
 
   return getHtmlDocument({
     pageTitle: buildApiReferencePageTitle(config, title),
@@ -733,7 +945,7 @@ function buildApiReferenceHtmlDocumentFromDocument(
     layout: "modern",
     customCss: buildApiReferenceScalarCss(config),
     pathRouting: {
-      basePath: `/${apiReference.path}`,
+      basePath,
     },
     showSidebar: true,
     defaultOpenFirstTag: true,
@@ -751,6 +963,8 @@ function buildApiReferenceHtmlDocumentFromDocument(
 async function fetchRemoteOpenApiDocument(
   specUrl: string,
   baseUrl?: string,
+  overlays: readonly string[] = [],
+  rootDir = process.cwd(),
 ): Promise<Record<string, unknown>> {
   let url: URL;
   try {
@@ -764,7 +978,13 @@ async function fetchRemoteOpenApiDocument(
   }
 
   const entry = await fetchOpenApiReferenceDocument(url, true);
-  return resolveOpenApiReferences(entry.document as Record<string, unknown>, {
+  const overlaidDocument = await applyConfiguredOpenApiOverlaysAsync(
+    entry.document as Record<string, unknown>,
+    overlays,
+    rootDir,
+    baseUrl,
+  );
+  return resolveOpenApiReferences(overlaidDocument, {
     sourceUri: entry.uri,
     loadDocument: async (referenceUrl) => {
       if (referenceUrl.protocol !== "http:" && referenceUrl.protocol !== "https:") {
@@ -884,11 +1104,17 @@ function formatByteLimit(bytes: number): string {
 function readLocalOpenApiDocument(
   specUrl: string,
   rootDir = process.cwd(),
+  overlays: readonly string[] = [],
 ): Record<string, unknown> {
   const filePath = resolveLocalOpenApiFilePath(specUrl, rootDir);
   const document = readOpenApiFileDocument(filePath, true);
   const trustedRoot = specUrl.startsWith("file:") ? undefined : realpathSync(resolve(rootDir));
-  return resolveOpenApiReferencesSync(document as Record<string, unknown>, {
+  const overlaidDocument = applyConfiguredOpenApiOverlaysSync(
+    document as Record<string, unknown>,
+    overlays,
+    rootDir,
+  );
+  return resolveOpenApiReferencesSync(overlaidDocument, {
     sourceUri: pathToFileURL(filePath).href,
     loadDocument: (referenceUrl) => {
       if (referenceUrl.protocol === "http:" || referenceUrl.protocol === "https:") {
@@ -902,11 +1128,19 @@ function readLocalOpenApiDocument(
 async function readLocalOpenApiDocumentAsync(
   specUrl: string,
   rootDir = process.cwd(),
+  overlays: readonly string[] = [],
+  baseUrl?: string,
 ): Promise<Record<string, unknown>> {
   const filePath = resolveLocalOpenApiFilePath(specUrl, rootDir);
   const document = await readOpenApiFileDocumentAsync(filePath, true);
   const trustedRoot = specUrl.startsWith("file:") ? undefined : realpathSync(resolve(rootDir));
-  return resolveOpenApiReferences(document as Record<string, unknown>, {
+  const overlaidDocument = await applyConfiguredOpenApiOverlaysAsync(
+    document as Record<string, unknown>,
+    overlays,
+    rootDir,
+    baseUrl,
+  );
+  return resolveOpenApiReferences(overlaidDocument, {
     sourceUri: pathToFileURL(filePath).href,
     loadDocument: async (referenceUrl, fromUrl) => {
       if (referenceUrl.protocol === "http:" || referenceUrl.protocol === "https:") {
@@ -920,6 +1154,63 @@ async function readLocalOpenApiDocumentAsync(
       return readOpenApiFileReferenceAsync(referenceUrl, trustedRoot);
     },
   });
+}
+
+function applyConfiguredOpenApiOverlaysSync(
+  document: Record<string, unknown>,
+  overlays: readonly string[],
+  rootDir: string,
+): Record<string, unknown> {
+  if (overlays.length === 0) return document;
+  const loaded = overlays.map((source): OpenApiOverlayDocumentSource => {
+    if (!isLocalSpecSource(source)) {
+      throw new Error("Remote OpenAPI overlays require the async API reference builder.");
+    }
+    const filePath = resolveLocalOpenApiFilePath(source, rootDir);
+    return {
+      source,
+      document: readOpenApiFileDocument(filePath, false),
+    };
+  });
+  const result = applyOpenApiOverlayDocuments(document, loaded);
+  assertValidOpenApiContract(result);
+  return result;
+}
+
+async function applyConfiguredOpenApiOverlaysAsync(
+  document: Record<string, unknown>,
+  overlays: readonly string[],
+  rootDir: string,
+  baseUrl?: string,
+): Promise<Record<string, unknown>> {
+  if (overlays.length === 0) return document;
+  const loaded = await Promise.all(
+    overlays.map(async (source): Promise<OpenApiOverlayDocumentSource> => {
+      if (isLocalSpecSource(source)) {
+        const filePath = resolveLocalOpenApiFilePath(source, rootDir);
+        return {
+          source,
+          document: await readOpenApiFileDocumentAsync(filePath, false),
+        };
+      }
+
+      let url: URL;
+      try {
+        url = baseUrl ? new URL(source, baseUrl) : new URL(source);
+      } catch {
+        throw new Error(
+          baseUrl
+            ? `OpenAPI overlay \`${source}\` must be an absolute URL or a request-relative path.`
+            : `OpenAPI overlay \`${source}\` must be an absolute URL.`,
+        );
+      }
+      const entry = await fetchOpenApiReferenceDocument(url, false);
+      return { source, document: entry.document };
+    }),
+  );
+  const result = applyOpenApiOverlayDocuments(document, loaded);
+  assertValidOpenApiContract(result);
+  return result;
 }
 
 function readOpenApiFileReference(url: URL, trustedRoot?: string): OpenApiReferenceDocument {
@@ -1051,8 +1342,9 @@ function normalizeConfiguredOpenApiDocument(
   document: Record<string, unknown>,
   config: DocsConfig,
   baseUrl?: string,
+  specUrl?: string,
+  version?: ResolvedApiReferenceVersion,
 ): Record<string, unknown> {
-  const apiReference = resolveApiReferenceConfig(config.apiReference);
   const info =
     document.info && typeof document.info === "object" && !Array.isArray(document.info)
       ? (document.info as Record<string, unknown>)
@@ -1060,7 +1352,7 @@ function normalizeConfiguredOpenApiDocument(
   const model = buildNormalizedOpenApiModel(document);
   const normalizedPaths = normalizeRemoteOpenApiPaths(document.paths);
   const normalizedTags = normalizeRemoteOpenApiTags(document.tags, normalizedPaths, model.tags);
-  const normalizedServers = isRequestRelativeSpecUrl(apiReference.specUrl)
+  const normalizedServers = isRequestRelativeSpecUrl(specUrl)
     ? [{ url: baseUrl ?? "/" }]
     : document.servers;
 
@@ -1078,6 +1370,15 @@ function normalizeConfiguredOpenApiDocument(
     servers: normalizedServers,
     paths: normalizedPaths,
     tags: normalizedTags,
+    ...(version
+      ? {
+          "x-farming-labs-api-version": {
+            id: version.id,
+            label: version.label,
+            default: version.default,
+          },
+        }
+      : {}),
   };
 }
 

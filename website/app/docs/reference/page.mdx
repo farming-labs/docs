@@ -1659,6 +1659,9 @@ for an existing project-relative file, absolute URL, or request-relative URL.
 | `renderer`  | `"fumadocs" \| "scalar"` | framework-aware | Which renderer to use: `"fumadocs"` is bundled by `@farming-labs/next`; `"scalar"` is bundled by `@farming-labs/docs` and the other adapters. Defaults to `"fumadocs"` for Next.js and `"scalar"` for other frameworks |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
 | `specUrl`   | `string`   | —                 | Project-relative file, `file:` URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document. When set, framework route scanning is skipped |
+| `overlays`  | `readonly string[]` | `[]` | Ordered OpenAPI Overlay 1.0/1.1 JSON/YAML sources for the single `specUrl` |
+| `versions`  | `Readonly<Record<string, ApiReferenceVersionConfig>>` | — | Named OpenAPI sources with stable routes, labels, and optional per-version overlays |
+| `defaultVersion` | `string` | — | Required key from `versions`; selects the default unversioned response |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |
 | `exclude`   | `string[]` | `[]`              | Route entries to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative values like `"hello"` / `"hello/route.ts"` |
 | `mcp`       | `boolean \| DocsOpenApiMcpConfig` | `false` | Deny-by-default projection of selected OpenAPI operations into MCP tools |
@@ -1688,9 +1691,37 @@ apiReference: {
 },
 ```
 
+```ts title="docs.config.ts"
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  versions: {
+    v1: { specUrl: "./openapi/v1.yaml", label: "Version 1" },
+    v2: {
+      specUrl: "./openapi/v2.yaml",
+      label: "Version 2",
+      overlays: ["./openapi/public.overlay.yaml"],
+    },
+  },
+  defaultVersion: "v2",
+},
+```
+
 When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
 from the configured document instead. Project-relative sources must remain inside the project
 root; use an explicit `file:` URL for a trusted local contract outside it.
+
+`versions` is mutually exclusive with `specUrl` and top-level `overlays`. Every version has a
+stable `/{path}/{version}` UI route and `GET /api/docs?format=openapi&version={version}` schema
+identity. The unversioned routes use `defaultVersion`. Discovery, `llms.txt`, and the API catalog
+publish all version identities.
+
+Overlay sources support local files, `file:` URLs, absolute HTTP(S) URLs, and request-relative
+URLs. Farming Labs supports OpenAPI Overlay 1.0.x and 1.1.x, applies overlays and actions in their
+declared order, and evaluates targets with RFC 9535 JSONPath before `$ref` bundling. Invalid overlay
+documents, invalid or unmatched targets, incompatible updates, and invalid final OpenAPI contracts
+are reported as source diagnostics. Overlay sources use the same timeout, size, and local
+containment protections as OpenAPI sources.
 
 `$ref` supports internal and external URI references with JSON Pointer fragments. External local
 or remote JSON/YAML documents are fetched once per build and rewritten into the returned OpenAPI

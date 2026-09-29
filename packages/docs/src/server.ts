@@ -15,6 +15,8 @@ export {
   resolveApiReferenceConfig,
   resolveApiReferenceRenderer,
   resolveApiReferenceOpenApiDiscovery,
+  resolveApiReferenceVersion,
+  resolveApiReferenceVersionFromPathname,
   isApiReferenceOpenApiRequest,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
@@ -26,9 +28,12 @@ export {
 export type {
   ApiReferenceFramework,
   ApiReferenceOpenApiDiscovery,
+  ApiReferenceOpenApiVersionDiscovery,
   ApiReferenceRenderer,
   ApiReferenceRoute,
+  BuildApiReferenceOptions,
   ResolvedApiReferenceConfig,
+  ResolvedApiReferenceVersion,
 } from "./api-reference.js";
 export { OPENAPI_OPERATION_METHODS, buildNormalizedOpenApiModel } from "./openapi-operations.js";
 export type {
