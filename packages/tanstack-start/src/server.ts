@@ -74,6 +74,7 @@ import {
   renderDocsPageStructuredDataJson,
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
+  withDocsOpenApiOperationCounts,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@farming-labs/docs";
 import {
@@ -937,7 +938,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
   const llmsCache = new Map<
     string | undefined,
-    { apiRoute: string; content: ReturnType<typeof renderDocsLlmsTxt> }
+    { apiRoute: string; baseUrl: string; content: ReturnType<typeof renderDocsLlmsTxt> }
   >();
 
   function trackTelemetryRequest(request: Request) {
@@ -961,21 +962,26 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     });
   }
 
-  function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>, apiRoute: string) {
+  async function getLlmsContent(
+    ctx: ReturnType<typeof resolveContextFromPath>,
+    apiRoute: string,
+    baseUrl: string,
+  ) {
     const cached = llmsCache.get(ctx.locale);
-    if (cached?.apiRoute === apiRoute) return cached.content;
+    if (cached?.apiRoute === apiRoute && cached.baseUrl === baseUrl) return cached.content;
 
-    const next = renderDocsLlmsTxt(getSearchIndex(ctx), {
+    const operationPages = await getApiOperationSearchPages(ctx, baseUrl);
+    const next = renderDocsLlmsTxt([...getSearchIndex(ctx), ...operationPages], {
       siteTitle: llmsTitle,
       siteDescription: llmsDesc,
       baseUrl: llmsBaseUrl,
       apiRoute,
       maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
       sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-      openapi: openapiDiscovery,
+      openapi: withDocsOpenApiOperationCounts(openapiDiscovery, operationPages),
       apiCatalog: apiCatalogEnabled,
     } as any);
-    llmsCache.set(ctx.locale, { apiRoute, content: next });
+    llmsCache.set(ctx.locale, { apiRoute, baseUrl, content: next });
     return next;
   }
 
@@ -1004,7 +1010,11 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       : null;
   }
 
-  function createDiscoveryOptions(origin: string, apiRoute: string) {
+  function createDiscoveryOptions(
+    origin: string,
+    apiRoute: string,
+    openapi: Parameters<typeof withDocsOpenApiOperationCounts>[0] = openapiDiscovery,
+  ) {
     return {
       origin,
       entry,
@@ -1027,7 +1037,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       },
       sitemap: config.sitemap,
       robots: config.robots,
-      openapi: openapiDiscovery,
+      openapi,
       markdown: {
         acceptHeader: true,
       },
@@ -1099,7 +1109,22 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     }
 
     const discoveryApiRoute = requestApiRoute;
-    const discoveryOptions = createDiscoveryOptions(url.origin, discoveryApiRoute);
+    const standardsRequest = resolveDocsStandardsDiscoveryRequest(url, {
+      apiRoute: discoveryApiRoute,
+    });
+    const needsOperationDiscovery =
+      standardsRequest?.kind === "api-catalog" ||
+      isDocsAgentDiscoveryRequest(url, { apiRoute: discoveryApiRoute });
+    const discoveryOperationPages = needsOperationDiscovery
+      ? await getApiOperationSearchPages(ctx, markdownMetadataBaseUrl || url.origin)
+      : [];
+    const discoveryOptions = createDiscoveryOptions(
+      url.origin,
+      discoveryApiRoute,
+      needsOperationDiscovery
+        ? withDocsOpenApiOperationCounts(openapiDiscovery, discoveryOperationPages)
+        : openapiDiscovery,
+    );
     const standardsDiscoveryResponse = await resolveStandardsResponse(
       event.request,
       url,
@@ -1329,7 +1354,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         });
       }
 
-      const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx, requestApiRoute), llmsRequest);
+      const selected = selectDocsLlmsTxtContent(
+        await getLlmsContent(ctx, requestApiRoute, markdownMetadataBaseUrl || url.origin),
+        llmsRequest,
+      );
       if (!selected) {
         return new Response("Not Found", {
           status: 404,

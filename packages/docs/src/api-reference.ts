@@ -87,6 +87,7 @@ export interface ApiReferenceOpenApiVersionDiscovery {
   url: string;
   apiReferencePath: string;
   specUrl?: string;
+  operationCount?: number;
 }
 
 export interface ApiReferenceOpenApiDiscovery {
@@ -97,6 +98,7 @@ export interface ApiReferenceOpenApiDiscovery {
   specUrl?: string;
   apiReferencePath?: string;
   catalogTargets?: string[];
+  operationCount?: number;
   versions?: ApiReferenceOpenApiVersionDiscovery[];
 }
 

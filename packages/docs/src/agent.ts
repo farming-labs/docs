@@ -404,6 +404,8 @@ export interface DocsOpenApiDiscoveryConfig {
   apiReferencePath?: string;
   /** Product API targets described by this OpenAPI document. */
   catalogTargets?: readonly string[];
+  /** Total number of normalized operations projected into documentation surfaces. */
+  operationCount?: number;
   versions?: readonly DocsOpenApiVersionDiscoveryConfig[];
 }
 
@@ -414,6 +416,8 @@ export interface DocsOpenApiVersionDiscoveryConfig {
   url: string;
   apiReferencePath: string;
   specUrl?: string;
+  /** Number of normalized operations projected for this version. */
+  operationCount?: number;
 }
 
 export interface DocsOpenApiResolvedDiscoveryConfig {
@@ -426,6 +430,8 @@ export interface DocsOpenApiResolvedDiscoveryConfig {
   apiReferencePath?: string;
   /** Product API targets described by this OpenAPI document. */
   catalogTargets?: readonly string[];
+  /** Total number of normalized operations projected into documentation surfaces. */
+  operationCount?: number;
   versions?: readonly DocsOpenApiVersionDiscoveryConfig[];
 }
 
@@ -2166,6 +2172,11 @@ function resolveDocsResourceUrl(baseUrl: string, url: string): string {
   return `${baseUrl}${normalized}`;
 }
 
+function formatOpenApiOperationCount(count: number | undefined): string | undefined {
+  if (count === undefined) return undefined;
+  return `${count.toLocaleString("en-US")} ${count === 1 ? "operation" : "operations"}`;
+}
+
 function renderLlmsFullTxtPages(pages: DocsLlmsTxtPageInput[], baseUrl: string): string {
   let content = "";
   for (const page of pages) {
@@ -2250,6 +2261,8 @@ export function renderDocsLlmsTxt(
       baseUrl,
       openapiUrl,
     )}): Machine-readable API schema for tool use and API clients`;
+    const operationCount = formatOpenApiOperationCount(openapi.operationCount);
+    if (operationCount) llmsTxt += `; ${operationCount}`;
     if (openapi.apiReferencePath) {
       llmsTxt += `; rendered API reference at ${resolveDocsResourceUrl(
         baseUrl,
@@ -2258,10 +2271,11 @@ export function renderDocsLlmsTxt(
     }
     llmsTxt += "\n";
     for (const version of openapi.versions ?? []) {
+      const versionOperationCount = formatOpenApiOperationCount(version.operationCount);
       llmsTxt += `- [OpenAPI schema – ${version.label}](${resolveDocsResourceUrl(
         baseUrl,
         resolveDocsOpenApiVersionUrl(openapi, version, resolvedApiRoute),
-      )}): Version \`${version.id}\`${version.default ? " (default)" : ""}; rendered API reference at ${resolveDocsResourceUrl(baseUrl, version.apiReferencePath)}\n`;
+      )}): Version \`${version.id}\`${version.default ? " (default)" : ""}${versionOperationCount ? `; ${versionOperationCount}` : ""}; rendered API reference at ${resolveDocsResourceUrl(baseUrl, version.apiReferencePath)}\n`;
     }
     llmsTxt += "\n";
   }
@@ -2440,15 +2454,23 @@ export async function createDocsStandardsDiscoveryResponse({
                         default: true,
                         url: openapiUrl ?? `${resolvedApiRoute}?format=openapi`,
                         apiReferencePath: openapiConfig.apiReferencePath ?? "/api-reference",
+                        operationCount: openapiConfig.operationCount,
                       },
                     ]
                 ).map((version) => ({
                   route: resolveDocsOpenApiVersionUrl(openapiConfig, version, resolvedApiRoute),
+                  title: `${
+                    openapiConfig.versions?.length
+                      ? `OpenAPI schema – ${version.label}`
+                      : "OpenAPI schema"
+                  }${
+                    formatOpenApiOperationCount(version.operationCount)
+                      ? ` — ${formatOpenApiOperationCount(version.operationCount)}`
+                      : ""
+                  }`,
                   targets: openapiConfig.catalogTargets!.map((route) => ({
                     route,
-                    title: openapiConfig.versions?.length
-                      ? `Product API – ${version.label}`
-                      : "Product API",
+                    title: "Product API",
                   })),
                 }))
               : [],
@@ -4596,6 +4618,9 @@ export function buildDocsAgentDiscoverySpec({
       source: openapiConfig.source ?? null,
       specUrl: openapiConfig.specUrl ?? null,
       apiReferencePath: openapiConfig.apiReferencePath ?? null,
+      ...(openapiConfig.operationCount !== undefined
+        ? { operationCount: openapiConfig.operationCount }
+        : {}),
       versions:
         openapiConfig.versions?.map((version) => ({
           ...version,
@@ -4882,7 +4907,26 @@ export function resolveDocsOpenApiDiscoveryConfig(
     specUrl: openapi.specUrl,
     apiReferencePath: openapi.apiReferencePath,
     catalogTargets,
+    operationCount: openapi.operationCount,
     versions: openapi.versions?.map((version) => ({ ...version })),
+  };
+}
+
+/** Attach operation totals from the same normalized pages used by search and Markdown. */
+export function withDocsOpenApiOperationCounts(
+  openapi: boolean | DocsOpenApiDiscoveryConfig | undefined,
+  operationPages: readonly DocsSearchSourcePage[],
+): DocsOpenApiResolvedDiscoveryConfig {
+  const resolved = resolveDocsOpenApiDiscoveryConfig(openapi);
+  if (!resolved.enabled) return resolved;
+
+  return {
+    ...resolved,
+    operationCount: operationPages.length,
+    versions: resolved.versions?.map((version) => ({
+      ...version,
+      operationCount: operationPages.filter((page) => page.version === version.id).length,
+    })),
   };
 }
 

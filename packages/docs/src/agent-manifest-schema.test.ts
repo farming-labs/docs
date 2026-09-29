@@ -136,6 +136,42 @@ describe("Farming Labs agent manifest schema", () => {
     expectValid(compact);
   });
 
+  it("validates OpenAPI operation totals for the contract and each version", () => {
+    const manifest = buildManifest({
+      openapi: {
+        enabled: true,
+        operationCount: 3,
+        versions: [
+          {
+            id: "v1",
+            label: "Version 1",
+            default: false,
+            url: "/api/docs?format=openapi&version=v1",
+            apiReferencePath: "/api-reference/v1",
+            operationCount: 1,
+          },
+          {
+            id: "v2",
+            label: "Version 2",
+            default: true,
+            url: "/api/docs?format=openapi&version=v2",
+            apiReferencePath: "/api-reference/v2",
+            operationCount: 2,
+          },
+        ],
+      },
+    });
+
+    expect(manifest.openapi).toMatchObject({
+      operationCount: 3,
+      versions: [
+        expect.objectContaining({ id: "v1", operationCount: 1 }),
+        expect.objectContaining({ id: "v2", operationCount: 2 }),
+      ],
+    });
+    expectValid(manifest);
+  });
+
   it("keeps the published v1 schema immutable and valid for v1 manifests", () => {
     expect(legacySchema).toMatchObject({
       $schema: "https://json-schema.org/draft/2020-12/schema",

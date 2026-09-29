@@ -744,6 +744,48 @@
         "apiReferencePath": {
           "$ref": "#/$defs/nullableString"
         },
+        "operationCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "label": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "default": {
+                "type": "boolean"
+              },
+              "url": {
+                "$ref": "#/$defs/route"
+              },
+              "apiReferencePath": {
+                "$ref": "#/$defs/route"
+              },
+              "specUrl": {
+                "type": "string"
+              },
+              "operationCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "default",
+              "url",
+              "apiReferencePath"
+            ]
+          }
+        },
         "format": {
           "const": "OpenAPI 3.1"
         }
