@@ -1759,8 +1759,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         maxResults,
       },
     });
+    const operationPages = await getApiOperationSearchPages(
+      ctx,
+      markdownMetadataBaseUrl || requestUrl.origin,
+    );
     const retrieval = await buildDocsAskAIContext({
-      pages: getSearchIndex(ctx),
+      pages: [...getSearchIndex(ctx), ...operationPages],
       query: lastUserMessage.content,
       search: resolveAskAISearchRequestConfig({
         search: config.search,

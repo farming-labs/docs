@@ -3592,6 +3592,100 @@ export const auth = betterAuth({
     }
   });
 
+  it("retrieves normalized OpenAPI operations through the configured Ask AI search pipeline", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-openapi-ask-ai-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Documentation\n");
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info:",
+        "  title: Orchard API",
+        '  version: "2026-09"',
+        "paths:",
+        "  /orchards/{orchardId}/harvests:",
+        "    post:",
+        "      operationId: scheduleHarvest",
+        "      summary: Schedule a precision harvest",
+        "      responses:",
+        '        "202":',
+        "          description: Harvest scheduled",
+        "",
+      ].join("\n"),
+    );
+
+    let sawOperationPage = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response("data: {}\n\n", {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      }),
+    ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        apiReference: { enabled: true, specUrl: "./openapi.yaml" },
+        search: {
+          provider: "custom",
+          adapter: {
+            name: "operation-aware-search",
+            async search(_query, context) {
+              const operationPage = context.pages.find((page) => page.type === "api");
+              sawOperationPage = Boolean(operationPage);
+              return operationPage
+                ? [
+                    {
+                      id: "openapi-operation",
+                      url: operationPage.url,
+                      content: operationPage.title,
+                      description: operationPage.description,
+                      type: "page" as const,
+                    },
+                  ]
+                : [];
+            },
+          },
+        },
+        ai: {
+          enabled: true,
+          apiKey: "test-key",
+          baseUrl: "https://llm.example/v1",
+          model: "test-model",
+        },
+      });
+      const response = await POST(
+        new Request("https://docs.example.com/api/docs", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How do I schedule a precision harvest?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(sawOperationPage).toBe(true);
+      const init = vi.mocked(globalThis.fetch).mock.calls[0]?.[1];
+      const upstreamBody = JSON.parse(String(init?.body)) as {
+        messages?: Array<{ role?: string; content?: string }>;
+      };
+      const systemMessage = upstreamBody.messages?.find((message) => message.role === "system");
+      expect(systemMessage?.content).toContain("Schedule a precision harvest");
+      expect(systemMessage?.content).toContain("POST /orchards/{orchardId}/harvests");
+      expect(systemMessage?.content).toContain("Operation ID: scheduleHarvest");
+      expect(systemMessage?.content).toContain("Harvest scheduled");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("keeps upstream Ask AI fetch error details out of API responses", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-fetch-error-"));
     tempDirs.push(rootDir);
