@@ -204,6 +204,97 @@ Welcome to the docs.
     expect(preflight.headers.get("access-control-allow-origin")).toBe("http://localhost");
   });
 
+  it("projects OpenAPI operations into read-only MCP discovery and reading", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-api-reference-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Introduction\n");
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info:",
+        "  title: Widget API",
+        '  version: "1.0.0"',
+        "paths:",
+        "  /widgets:",
+        "    get:",
+        "      operationId: listWidgets",
+        "      summary: List widgets",
+        "      responses:",
+        '        "200":',
+        "          description: Widget collection",
+        "",
+      ].join("\n"),
+    );
+
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "./openapi.yaml",
+      },
+    });
+    const call = (id: number, method: string, params: Record<string, unknown>) =>
+      POST(
+        new Request("http://localhost/api/docs/mcp", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            "mcp-protocol-version": "2025-11-25",
+          },
+          body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+        }),
+      );
+
+    const toolsPayload = await parseMcpPayload<{
+      result?: { tools?: Array<{ name?: string }> };
+    }>(await call(1, "tools/list", {}));
+    expect(toolsPayload.result?.tools?.some((tool) => tool.name?.startsWith("api_"))).toBe(false);
+
+    const listPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          pages?: Array<{ url?: string; title?: string; type?: string }>;
+        };
+      };
+    }>(
+      await call(2, "tools/call", {
+        name: "list_pages",
+        arguments: {},
+      }),
+    );
+    const operation = listPayload.result?.structuredContent?.pages?.find(
+      (page) => page.type === "api",
+    );
+    expect(operation).toMatchObject({
+      title: "List widgets",
+      type: "api",
+    });
+    expect(operation?.url).toMatch(/^\/api-reference\/operations\/list-widgets-[a-z0-9]+$/);
+
+    const readPayload = await parseMcpPayload<{
+      result?: {
+        structuredContent?: {
+          page?: { url?: string; type?: string };
+          document?: string;
+        };
+      };
+    }>(
+      await call(3, "tools/call", {
+        name: "read_page",
+        arguments: { path: operation?.url },
+      }),
+    );
+    expect(readPayload.result?.structuredContent).toMatchObject({
+      page: { url: operation?.url, type: "api" },
+      document: expect.stringContaining("`GET /widgets`"),
+    });
+  });
+
   it("publishes preloaded Agent Skills through MCP without runtime filesystem access", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-preloaded-skills-"));
     tempDirs.push(rootDir);

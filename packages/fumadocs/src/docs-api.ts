@@ -5143,10 +5143,37 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
       return [rootSkill, ...configured];
     },
   };
+  const apiReferenceBaseUrl =
+    options.baseUrl?.trim() || resolveDocsMetadataBaseUrl(options as DocsConfig) || undefined;
+  const apiOperationPagesByBaseUrl = new Map<
+    string,
+    ReturnType<typeof buildApiReferenceOperationPagesAsync>
+  >();
+  function getApiOperationPages(baseUrl?: string) {
+    const key = baseUrl ?? "__default__";
+    const cached = apiOperationPagesByBaseUrl.get(key);
+    if (cached) return cached;
+
+    const pages = buildApiReferenceOperationPagesAsync(options as DocsConfig, {
+      framework: "next",
+      rootDir,
+      baseUrl,
+    });
+    apiOperationPagesByBaseUrl.set(key, pages);
+    return pages;
+  }
   const mcpApiReference = resolveApiReferenceConfig(options.apiReference).mcp;
 
   const handlers = createDocsMcpHttpHandler({
     source,
+    apiReference: {
+      getPages(_locale, context) {
+        const baseUrl =
+          apiReferenceBaseUrl ||
+          (context?.request ? new URL(context.request.url).origin : undefined);
+        return getApiOperationPages(baseUrl);
+      },
+    },
     mcp: mcpConfig,
     okf: options.agent?.okf,
     openapi: mcpApiReference
@@ -5156,10 +5183,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
             buildApiReferenceOpenApiDocumentAsync(options as DocsConfig, {
               framework: "next",
               rootDir,
-              baseUrl:
-                options.baseUrl?.trim() ||
-                resolveDocsMetadataBaseUrl(options as DocsConfig) ||
-                undefined,
+              baseUrl: apiReferenceBaseUrl,
             }),
         }
       : undefined,

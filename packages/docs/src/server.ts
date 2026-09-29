@@ -254,6 +254,7 @@ export type {
 export type {
   CreateDocsMcpServerOptions,
   DocsMcpAgentContractSummary,
+  DocsMcpApiReferenceSource,
   DocsMcpCodeExample,
   DocsMcpConfigSchema,
   DocsMcpConfigSchemaOption,
