@@ -359,6 +359,21 @@ describe("resolveDocsMcpConfig", () => {
     });
   });
 
+  it("publishes every supported OpenAPI specUrl source in the config schema", () => {
+    expect(getDocsConfigSchema({ option: "apiReference.specUrl" })).toMatchObject({
+      resultCount: 1,
+      options: [
+        {
+          path: "apiReference.specUrl",
+          type: "string",
+          description: expect.stringMatching(
+            /Project-relative.*file:.*HTTP\(S\).*request-relative/,
+          ),
+        },
+      ],
+    });
+  });
+
   it("publishes the list_page_sections tool toggle in the config schema", () => {
     expect(getDocsConfigSchema({ option: "mcp.tools.listPageSections" })).toMatchObject({
       resultCount: 1,

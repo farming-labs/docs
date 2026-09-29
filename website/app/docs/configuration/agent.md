@@ -52,7 +52,10 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`. Set `specUrl` to a project-relative
   JSON/YAML file, a `file:` URL, or an absolute/request-relative JSON/YAML URL when an OpenAPI
-  contract already exists; otherwise use framework route scanning.
+  contract already exists; otherwise use framework route scanning. Contract sources must use
+  Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Remote sources time out after 10 seconds and are
+  limited to 5 MiB. Project-relative sources cannot leave the project root; use an explicit
+  `file:` URL for a trusted external local file.
 
 - When the user asks about runtime document synchronization or incremental content updates, point to `agent.contentChanges`. Enabled by default on server-rendered adapters; always `false` in static bundles produced by `docs agent export`. The endpoint is `GET /api/docs?audience=agent&response=changes` and returns a `docs-content-changes.v1` payload with `indexGeneration`, `mode` (`snapshot`, `delta`, or `reset`), `resetRequired`, `documentCount`, and `added`/`modified`/`removed` arrays. Supply `since=<indexGeneration>` from a previous response to receive a delta. ETag and `If-None-Match` conditional requests are supported.
 

@@ -998,6 +998,12 @@ existing project-relative file, absolute URL, or request-relative URL.
   framework route scanning.
 </Callout>
 
+<Callout type="info" title="Validated and bounded">
+  Contract sources must use Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Farming Labs rejects
+  malformed operations and duplicate `operationId` values before rendering. Remote responses time
+  out after 10 seconds and cannot exceed 5 MiB.
+</Callout>
+
 ```ts title="docs.config.ts"
 export default defineDocs({
   entry: "docs",
@@ -1049,7 +1055,8 @@ export default defineDocs({
 | `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored because the reference is rendered
-from the configured document.
+from the configured document. Project-relative paths must remain inside the project root; use an
+explicit `file:` URL when a trusted local contract intentionally lives elsewhere.
 
 That does not change the framework routing requirements:
 
