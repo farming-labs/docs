@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocalDocsTelemetryOrigin, normalizeDocsTelemetryOrigin } from "@farming-labs/docs";
 import { Prisma } from "@prisma/client";
-import { Activity, AlertTriangle, Database, Fingerprint, Globe2 } from "lucide-react";
+import { Activity, AlertTriangle, ChevronDown, Database, Fingerprint, Globe2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,8 @@ type RawGroupCount = {
   count: number | bigint;
   lastSeenAt: Date | null;
 };
+
+const SITE_PAGE_SIZE = 24;
 
 type RecentTelemetryEvent = {
   id: string;
@@ -79,6 +81,33 @@ function readLimit(value: string | string[] | undefined): number {
   const parsed = Number.parseInt(readFirst(value) ?? "", 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return 100;
   return Math.min(parsed, 500);
+}
+
+function readSiteLimit(value: string | string[] | undefined): number {
+  const parsed = Number.parseInt(readFirst(value) ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return SITE_PAGE_SIZE;
+  return parsed;
+}
+
+function buildTelemetryHref(
+  searchParams: Record<string, string | string[] | undefined>,
+  updates: Record<string, string>,
+): string {
+  const nextParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) {
+      for (const item of value) nextParams.append(key, item);
+    } else if (value !== undefined) {
+      nextParams.set(key, value);
+    }
+  }
+
+  for (const [key, value] of Object.entries(updates)) {
+    nextParams.set(key, value);
+  }
+
+  return `/telemetry?${nextParams.toString()}`;
 }
 
 function readDashboardToken(): string | undefined {
@@ -137,7 +166,7 @@ function toRawGroupCounts(groups: RawGroupCount[]): GroupCount[] {
   }));
 }
 
-async function loadTelemetryData(limit: number): Promise<TelemetryData> {
+async function loadTelemetryData(limit: number, siteLimit: number): Promise<TelemetryData> {
   if (!process.env.DATABASE_URL) {
     return {
       status: "not-configured",
@@ -286,18 +315,20 @@ async function loadTelemetryData(limit: number): Promise<TelemetryData> {
       LIMIT 24
     `;
 
+    const sites = toGroupCounts(topSiteGroups, "siteOrigin", "unknown");
+
     return {
       status: "ready",
       totalEvents,
       eventsLast24h,
       uniqueIdentities: distinctIdentities.length,
-      uniqueSites: distinctSites.length - excludedSiteOrigins.length,
+      uniqueSites: sites.length,
       recentEvents,
       eventTypes: toGroupCounts(eventTypeGroups, "eventType", "unknown"),
       frameworks: toGroupCounts(frameworkGroups, "framework", "unknown"),
       packageVersions: toGroupCounts(packageVersionGroups, "packageVersion", "unknown"),
       deploymentProviders: toGroupCounts(deploymentProviderGroups, "deploymentProvider", "unknown"),
-      topSites: toGroupCounts(topSiteGroups, "siteOrigin", "unknown").slice(0, 24),
+      topSites: sites.slice(0, siteLimit),
       topIdentities: toGroupCounts(topIdentityGroups, "identityHash", "unknown").slice(0, 24),
       featureFlags: toRawGroupCounts(featureFlagGroups),
       agentSurfaces: toRawGroupCounts(agentSurfaceGroups),
@@ -374,12 +405,16 @@ function GroupTable({
   keyLabel = "Name",
   className = "",
   truncateKey = false,
+  totalCount,
+  loadMoreHref,
 }: {
   title: string;
   groups: GroupCount[];
   keyLabel?: string;
   className?: string;
   truncateKey?: boolean;
+  totalCount?: number;
+  loadMoreHref?: string;
 }) {
   return (
     <section
@@ -429,6 +464,22 @@ function GroupTable({
           </tbody>
         </table>
       </div>
+      {typeof totalCount === "number" ? (
+        <div className="flex flex-col gap-3 border-t border-neutral-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
+          <p className="font-mono text-[11px] text-neutral-500 dark:text-white/45">
+            Showing {formatNumber(groups.length)} of {formatNumber(totalCount)} sites
+          </p>
+          {loadMoreHref ? (
+            <a
+              className="inline-flex min-h-9 items-center justify-center gap-2 border border-neutral-300 bg-white px-3 py-2 font-mono text-[11px] font-medium text-neutral-800 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:border-white/15 dark:bg-black dark:text-white/80 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:focus-visible:outline-white"
+              href={loadMoreHref}
+            >
+              Load {formatNumber(Math.min(SITE_PAGE_SIZE, totalCount - groups.length))} more
+              <ChevronDown className="size-3.5" strokeWidth={1.8} />
+            </a>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -477,11 +528,18 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
   assertDashboardAccess(params);
 
   const limit = readLimit(params.limit);
-  const data = await loadTelemetryData(limit);
+  const siteLimit = readSiteLimit(params.sites);
+  const data = await loadTelemetryData(limit, siteLimit);
 
   if (data.status !== "ready") {
     return <StatusPanel data={data} />;
   }
+
+  const nextSiteLimit = Math.min(data.uniqueSites, data.topSites.length + SITE_PAGE_SIZE);
+  const loadMoreSitesHref =
+    data.topSites.length < data.uniqueSites
+      ? buildTelemetryHref(params, { sites: String(nextSiteLimit) })
+      : undefined;
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-neutral-50 text-neutral-950 dark:bg-black dark:text-white">
@@ -527,6 +585,8 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
             groups={data.topSites}
             keyLabel="Site origin"
             className="xl:col-span-2 2xl:col-span-3"
+            totalCount={data.uniqueSites}
+            loadMoreHref={loadMoreSitesHref}
           />
           <GroupTable
             title="Top identity hashes"
