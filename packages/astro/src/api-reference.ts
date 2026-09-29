@@ -1,9 +1,10 @@
 import {
   buildApiReferenceHtmlDocumentAsync,
+  createApiReferenceOperationMarkdownResponse,
   resolveApiReferenceConfig,
   resolveApiReferenceVersionFromPathname,
 } from "@farming-labs/docs/server";
-import type { DocsConfig } from "@farming-labs/docs";
+import { resolveDocsMetadataBaseUrl, type DocsConfig } from "@farming-labs/docs";
 
 export function createAstroApiReference(config: DocsConfig & Record<string, any>) {
   return async (context?: { url?: URL; request?: Request }) => {
@@ -15,6 +16,18 @@ export function createAstroApiReference(config: DocsConfig & Record<string, any>
     const rootDir = typeof config.rootDir === "string" ? config.rootDir : process.cwd();
     const requestUrl =
       context?.url ?? (context?.request ? new URL(context.request.url) : undefined);
+    if (context?.request && requestUrl) {
+      const markdownResponse = await createApiReferenceOperationMarkdownResponse(config, {
+        request: context.request,
+        framework: "astro",
+        rootDir,
+        baseUrl: requestUrl.origin,
+        origin: resolveDocsMetadataBaseUrl(config) || requestUrl.origin,
+        sitemap: config.sitemap,
+        okf: config.agent?.okf,
+      });
+      if (markdownResponse) return markdownResponse;
+    }
     const version = requestUrl
       ? resolveApiReferenceVersionFromPathname(config.apiReference, requestUrl.pathname)
       : undefined;

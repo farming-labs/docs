@@ -1,9 +1,10 @@
 import {
   buildApiReferenceHtmlDocumentAsync,
+  createApiReferenceOperationMarkdownResponse,
   resolveApiReferenceConfig,
   resolveApiReferenceVersionFromPathname,
 } from "@farming-labs/docs/server";
-import type { DocsConfig } from "@farming-labs/docs";
+import { resolveDocsMetadataBaseUrl, type DocsConfig } from "@farming-labs/docs";
 
 export function createFarmjsApiReference(config: DocsConfig & Record<string, any>) {
   return async (event?: { request?: Request; url?: URL } | Request) => {
@@ -18,6 +19,18 @@ export function createFarmjsApiReference(config: DocsConfig & Record<string, any
       event instanceof Request
         ? new URL(event.url)
         : (event?.url ?? (request ? new URL(request.url) : undefined));
+    if (request && requestUrl) {
+      const markdownResponse = await createApiReferenceOperationMarkdownResponse(config, {
+        request,
+        framework: "farmjs",
+        rootDir,
+        baseUrl: requestUrl.origin,
+        origin: resolveDocsMetadataBaseUrl(config) || requestUrl.origin,
+        sitemap: config.sitemap,
+        okf: config.agent?.okf,
+      });
+      if (markdownResponse) return markdownResponse;
+    }
     const version = requestUrl
       ? resolveApiReferenceVersionFromPathname(config.apiReference, requestUrl.pathname)
       : undefined;

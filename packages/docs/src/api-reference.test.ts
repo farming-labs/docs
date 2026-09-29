@@ -9,6 +9,7 @@ import {
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceOperationPagesAsync,
+  createApiReferenceOperationMarkdownResponse,
   DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
   OPENAPI_SPEC_FETCH_TIMEOUT_MS,
   OPENAPI_SPEC_MAX_BYTES,
@@ -1268,6 +1269,47 @@ describe("buildApiReferenceOperationPagesAsync", () => {
     expect(pages[1]?.content).toContain("`GET /widgets`");
     expect(pages[1]?.content).toContain("`limit` (query, optional");
     expect(pages[1]?.content).toContain("### 200");
+
+    const operationUrl = pages[1]?.url;
+    expect(operationUrl).toBeTruthy();
+    const markdownResponse = await createApiReferenceOperationMarkdownResponse(config, {
+      request: new Request(`https://docs.example.com${operationUrl}.md`),
+      framework: "astro",
+      rootDir,
+      baseUrl: "https://docs.example.com",
+      locale: "fr",
+    });
+    expect(markdownResponse?.status).toBe(200);
+    expect(markdownResponse?.headers.get("content-type")).toContain("text/markdown");
+    expect(markdownResponse?.headers.get("content-location")).toBe(
+      `https://docs.example.com${operationUrl}.md`,
+    );
+    expect(markdownResponse?.headers.get("link")).toContain(
+      `<https://docs.example.com${operationUrl}>; rel="canonical"`,
+    );
+    expect(markdownResponse?.headers.get("etag")).toBeTruthy();
+    const markdown = await markdownResponse?.text();
+    expect(markdown).toContain(`canonical_url: "https://docs.example.com${operationUrl}"`);
+    expect(markdown).toContain(`markdown_url: "https://docs.example.com${operationUrl}.md"`);
+    expect(markdown).toContain("`GET /widgets`");
+
+    const sharedApiResponse = await createApiReferenceOperationMarkdownResponse(config, {
+      request: new Request(
+        `https://docs.example.com/api/docs?format=markdown&path=${encodeURIComponent(operationUrl ?? "")}`,
+      ),
+      framework: "astro",
+      rootDir,
+      baseUrl: "https://docs.example.com",
+    });
+    expect(sharedApiResponse?.status).toBe(200);
+
+    await expect(
+      createApiReferenceOperationMarkdownResponse(config, {
+        request: new Request(`https://docs.example.com${operationUrl}`),
+        framework: "astro",
+        rootDir,
+      }),
+    ).resolves.toBeNull();
   });
 
   it("returns no projected pages when API reference is disabled", async () => {

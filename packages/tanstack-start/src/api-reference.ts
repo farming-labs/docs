@@ -1,9 +1,10 @@
 import {
   buildApiReferenceHtmlDocumentAsync,
+  createApiReferenceOperationMarkdownResponse,
   resolveApiReferenceConfig,
   resolveApiReferenceVersionFromPathname,
 } from "@farming-labs/docs/server";
-import type { DocsConfig } from "@farming-labs/docs";
+import { resolveDocsMetadataBaseUrl, type DocsConfig } from "@farming-labs/docs";
 
 export function createTanstackApiReference(config: DocsConfig & Record<string, any>) {
   return async (event?: { request?: Request }) => {
@@ -14,6 +15,18 @@ export function createTanstackApiReference(config: DocsConfig & Record<string, a
 
     const rootDir = typeof config.rootDir === "string" ? config.rootDir : process.cwd();
     const requestUrl = event?.request ? new URL(event.request.url) : undefined;
+    if (event?.request && requestUrl) {
+      const markdownResponse = await createApiReferenceOperationMarkdownResponse(config, {
+        request: event.request,
+        framework: "tanstack-start",
+        rootDir,
+        baseUrl: requestUrl.origin,
+        origin: resolveDocsMetadataBaseUrl(config) || requestUrl.origin,
+        sitemap: config.sitemap,
+        okf: config.agent?.okf,
+      });
+      if (markdownResponse) return markdownResponse;
+    }
     const version = requestUrl
       ? resolveApiReferenceVersionFromPathname(config.apiReference, requestUrl.pathname)
       : undefined;

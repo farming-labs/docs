@@ -21,6 +21,7 @@ export {
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceOperationPagesAsync,
+  createApiReferenceOperationMarkdownResponse,
   buildApiReferenceHtmlDocument,
   buildApiReferenceHtmlDocumentAsync,
   buildApiReferencePageTitle,
@@ -34,6 +35,7 @@ export type {
   ApiReferenceRoute,
   BuildApiReferenceOptions,
   BuildApiReferenceOperationPagesOptions,
+  CreateApiReferenceOperationMarkdownResponseOptions,
   ResolvedApiReferenceConfig,
   ResolvedApiReferenceVersion,
 } from "./api-reference.js";
