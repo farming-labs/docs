@@ -820,6 +820,34 @@ pnpm exec docs agent propose --input signals.jsonl --write
     });
   });
 
+  it("recognizes OpenAPI diff commands and their alias", () => {
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [
+        {
+          ...page(
+            "openapi-commands",
+            `# OpenAPI commands
+
+\`\`\`bash
+pnpm exec docs openapi diff old.yaml new.yaml --fail-on breaking
+pnpm exec docs api diff --base old.json --head new.yaml --json
+\`\`\``,
+          ),
+          actionable: false,
+        },
+      ],
+    });
+
+    expect(report.findings.filter((finding) => finding.category === "command")).toEqual([]);
+    expect(report.metrics.commands).toEqual({
+      total: 2,
+      healthy: 2,
+      unhealthy: 0,
+      unverified: 0,
+    });
+  });
+
   it("validates common workspace selectors and separates unresolved commands", () => {
     mkdirSync(path.join(rootDir, "packages", "app"), { recursive: true });
     writeFileSync(

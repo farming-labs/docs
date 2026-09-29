@@ -204,3 +204,19 @@ describe("agent command help", () => {
     }
   });
 });
+
+describe("openapi command help", () => {
+  it("prints successful group help for long and short help flags", () => {
+    const cliPath = path.resolve(import.meta.dirname, "../../dist/cli/index.mjs");
+
+    for (const flag of ["--help", "-h"]) {
+      const output = execFileSync(process.execPath, [cliPath, "openapi", flag], {
+        encoding: "utf8",
+      });
+
+      expect(output).toContain("docs openapi diff");
+      expect(output).toContain("farming-labs-openapi-diff.v1");
+      expect(output).not.toContain("Unknown OpenAPI subcommand");
+    }
+  });
+});

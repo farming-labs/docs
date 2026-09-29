@@ -52,7 +52,9 @@ After a mutating command, run `pnpm exec docs doctor --agent`; the expected resu
 `docs.config.ts`, `docs.config.tsx`, or `src/lib/docs.config.ts` with no hard failure for an enabled
 agent surface. For SvelteKit or Astro, append `--config src/lib/docs.config.ts`. Prefer `--dry-run`
 for upgrade or compaction previews and `--check` for generated agent bundles, sitemaps, robots, or
-AGENTS files where the command documents that flag.
+AGENTS files where the command documents that flag. Before releasing an API contract, run
+`pnpm exec docs openapi diff <baseline> <current>`; it exits non-zero on breaking changes by
+default.
 
 If `pnpm` cannot find `docs`, install dependencies or switch to the published `pnpm dlx` form. If
 the wrong config is loaded, return to the project root or pass the command's documented
@@ -69,6 +71,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 
 - **`skills scaffold`** — compile structured page `agent` contracts into an installable Agent Skill
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
+- **`openapi diff`** — compare local or remote OpenAPI contracts and gate breaking changes
 - **`review`** — review docs changes locally or in GitHub Actions
 - **`codeblocks validate`** — plan and validate runnable MDX code fences
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
@@ -686,6 +689,46 @@ Add the check to CI when generated skill files are committed:
   }
 }
 ```
+
+## OpenAPI contract diffs
+
+Use `docs openapi diff` to compare a baseline contract with the contract you plan to ship. Both
+sources may be project-relative or absolute JSON/YAML files, `file:` URLs, or HTTP(S) URLs. External
+OpenAPI references are loaded using the same bounded resolver as the API reference.
+
+```bash title="terminal"
+pnpm exec docs openapi diff api/openapi.v1.yaml api/openapi.yaml
+pnpm exec docs openapi diff --base api/openapi.v1.json --head api/openapi.yaml
+pnpm exec docs api diff api/openapi.v1.yaml api/openapi.yaml --json
+```
+
+The report groups changes as breaking or non-breaking. It checks operations, operation IDs,
+parameters, request bodies, response statuses and media types, security requirements, servers,
+deprecation, and structural schema compatibility including types, enums, required properties,
+properties, items, constraints, and compositions. Description, title, example, and other
+annotation-only edits do not count as contract changes.
+
+Flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--base`, `--baseline <source>` | Name the baseline source instead of using the first positional argument. |
+| `--head`, `--current <source>` | Name the current source instead of using the second positional argument. |
+| `--base-url <url>` | Resolve request-relative remote sources against a deployment origin. |
+| `--fail-on breaking\|any\|never` | Choose which report result exits non-zero. Defaults to `breaking`. |
+| `--json` | Print the stable `farming-labs-openapi-diff.v1` JSON report. |
+
+For a pull-request check, compare the contract from the target branch with the generated or
+committed contract in the checkout:
+
+```bash title="terminal"
+pnpm exec docs openapi diff .baseline/openapi.yaml api/openapi.yaml --fail-on breaking
+```
+
+Exit code `0` means the selected policy passed. Exit code `1` means the report violated
+`--fail-on` or the contracts could not be loaded and validated. The human report never executes an
+API operation. JSON output includes source summaries, stable change kinds, selectors, counts, and
+the complete ordered change list for CI annotations or release tooling.
 
 ## Doctor
 

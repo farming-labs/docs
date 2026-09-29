@@ -46,11 +46,12 @@ configuration, then rerun `--plan` before executing validation again.
 - Use `agent compact --stale` for generated page context and `agent export --check` for bundles.
 - Use `doctor --agent` for site-wide readiness, `doctor --api` for OpenAPI contract and projection
   diagnostics, and `review --ci` for changed documentation.
+- Use `openapi diff <baseline> <current>` to reject breaking API changes; add `--json` for CI.
 - Use `mcp` for local stdio clients; hosted clients should connect to the configured HTTP route.
 
 For a published release use `pnpm dlx @farming-labs/docs <command>`; use `pnpm exec docs <command>` only after installing dependencies. For non-interactive scaffold: `init --template <framework> --name <dir>`; omit `--name` to be prompted. Plain `init` asks whether to modify the current app or create a fresh project.
 
-After a mutating command run `pnpm exec docs doctor --agent`; expected result is a loaded `docs.config.ts`, `docs.config.tsx`, or `src/lib/docs.config.ts` with no hard failure. After changing `apiReference`, also run `pnpm exec docs doctor --api`; it validates local or remote JSON/YAML sources, references, versions, overlays, renderer compatibility, and generated operation projections without executing operations. For SvelteKit or Astro append `--config src/lib/docs.config.ts`. Prefer `--dry-run` for upgrade/compaction previews and `--check` for generated bundles, sitemaps, robots, or AGENTS files.
+After a mutating command run `pnpm exec docs doctor --agent`; expected result is a loaded `docs.config.ts`, `docs.config.tsx`, or `src/lib/docs.config.ts` with no hard failure. After changing `apiReference`, also run `pnpm exec docs doctor --api`; it validates local or remote JSON/YAML sources, references, versions, overlays, renderer compatibility, and generated operation projections without executing operations. Before publishing a contract, run `pnpm exec docs openapi diff <baseline> <current>`; it loads local or remote JSON/YAML sources and exits non-zero on breaking changes by default. For SvelteKit or Astro append `--config src/lib/docs.config.ts`. Prefer `--dry-run` for upgrade/compaction previews and `--check` for generated bundles, sitemaps, robots, or AGENTS files.
 
 If `pnpm` cannot find `docs`, install dependencies or use `pnpm dlx`. If the wrong config loads, return to project root or pass `--config <path>`; do not copy flags between unrelated subcommands.
 
@@ -62,6 +63,7 @@ If `pnpm` cannot find `docs`, install dependencies or use `pnpm dlx`. If the wro
 - `agents generate` — write root and static `AGENTS.md` instructions
 - `skills scaffold` — compile structured page `agent` contracts into an installable Agent Skill
 - `doctor` — audit agent readiness, reader quality, or OpenAPI contract health
+- `openapi diff` — compare OpenAPI contracts and gate breaking changes
 - `review` — review docs changes locally or in GitHub Actions
 - `codeblocks validate` — plan and validate runnable MDX code fences
 - `mcp` — run the built-in docs MCP server over stdio
