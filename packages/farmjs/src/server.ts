@@ -82,6 +82,7 @@ import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@
 import {
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceOperationPagesAsync,
+  createApiReferenceOperationMarkdownResponse,
   createDocsMcpHttpHandler,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
@@ -1505,6 +1506,25 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     });
     if (robotsResponse) return robotsResponse;
 
+    const operationMarkdownResponse = await createApiReferenceOperationMarkdownResponse(
+      config as DocsConfig,
+      {
+        request: event.request,
+        framework: "farmjs",
+        rootDir,
+        baseUrl: url.origin,
+        origin: markdownMetadataBaseUrl || url.origin,
+        locale: ctx.locale,
+        apiRoute: discoveryApiRoute,
+        pages: getSearchIndex(ctx),
+        operationPages: () =>
+          getApiOperationSearchPages(ctx, markdownMetadataBaseUrl || url.origin),
+        sitemap: config.sitemap,
+        okf: config.agent?.okf,
+      },
+    );
+    if (operationMarkdownResponse) return operationMarkdownResponse;
+
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, event.request, {
       apiRoute: discoveryApiRoute,
     });
@@ -2392,6 +2412,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       pathname === apiPath ||
       pathname.startsWith(`${apiPath}/`) ||
       pathname === apiReferencePath ||
+      pathname.startsWith(`${apiReferencePath}/`) ||
       publicDocsPaths.has(pathname) ||
       pathname.startsWith("/.well-known/agent-skills/");
 

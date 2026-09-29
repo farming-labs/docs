@@ -105,6 +105,7 @@ import type {
 import {
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceOperationPagesAsync,
+  createApiReferenceOperationMarkdownResponse,
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
   readDocsSitemapManifest,
@@ -4650,6 +4651,25 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         manifest: readDocsSitemapManifest(root, sitemapConfig),
       });
       if (sitemapResponse) return sitemapResponse;
+
+      const operationMarkdownResponse = await createApiReferenceOperationMarkdownResponse(
+        apiReferenceDocsConfig,
+        {
+          request,
+          framework: "next",
+          rootDir: root,
+          baseUrl: url.origin,
+          origin: markdownMetadataBaseUrl || url.origin,
+          locale: ctx.locale,
+          apiRoute: requestApiRoute,
+          pages: getIndexes(ctx).map((page) => withPublicDocsUrl(page, ctx)),
+          operationPages: () =>
+            getApiOperationSearchPages(ctx, markdownMetadataBaseUrl || url.origin),
+          sitemap: sitemapConfig,
+          okf: options?.agent?.okf,
+        },
+      );
+      if (operationMarkdownResponse) return operationMarkdownResponse;
 
       const markdownRequest =
         resolveMarkdownRequest(entry, url, request) ??

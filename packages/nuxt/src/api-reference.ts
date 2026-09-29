@@ -1,10 +1,11 @@
 import {
   buildApiReferenceHtmlDocumentAsync,
+  createApiReferenceOperationMarkdownResponse,
   resolveApiReferenceConfig,
   resolveApiReferenceVersionFromPathname,
 } from "@farming-labs/docs/server";
-import type { DocsConfig } from "@farming-labs/docs";
-import { eventHandler, getRequestURL } from "h3";
+import { resolveDocsMetadataBaseUrl, type DocsConfig } from "@farming-labs/docs";
+import { eventHandler, getRequestURL, toWebRequest } from "h3";
 
 export function defineApiReferenceHandler(config: DocsConfig & Record<string, any>) {
   return eventHandler(async (event) => {
@@ -15,6 +16,16 @@ export function defineApiReferenceHandler(config: DocsConfig & Record<string, an
 
     const rootDir = typeof config.rootDir === "string" ? config.rootDir : process.cwd();
     const requestUrl = getRequestURL(event);
+    const markdownResponse = await createApiReferenceOperationMarkdownResponse(config, {
+      request: toWebRequest(event),
+      framework: "nuxt",
+      rootDir,
+      baseUrl: requestUrl.origin,
+      origin: resolveDocsMetadataBaseUrl(config) || requestUrl.origin,
+      sitemap: config.sitemap,
+      okf: config.agent?.okf,
+    });
+    if (markdownResponse) return markdownResponse;
     const version = resolveApiReferenceVersionFromPathname(
       config.apiReference,
       requestUrl.pathname,

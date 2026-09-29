@@ -1967,6 +1967,81 @@ function buildDocsMarkdownRewrites(entry: string, docsPath: string): NextRewrite
   ];
 }
 
+function buildApiReferenceMarkdownRewrites(
+  apiReference: ReturnType<typeof readApiReferenceConfig>,
+): NextRewrite[] {
+  if (!apiReference.enabled) return [];
+
+  const basePath = `/${apiReference.path}`;
+  const markdownAcceptHeader = {
+    type: "header",
+    key: "accept",
+    value: MARKDOWN_ACCEPT_HEADER_VALUE,
+  };
+  const markdownSignatureAgentHeader = {
+    type: "header",
+    key: "signature-agent",
+    value: ".+",
+  };
+  const markdownAgentUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownBotLikeUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownTraditionalBotUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownSecFetchModeHeader = {
+    type: "header",
+    key: "sec-fetch-mode",
+  };
+  const routes = [
+    {
+      source: `${basePath}/operations/:operation`,
+      path: `${apiReference.path}/operations/:operation`,
+    },
+    {
+      source: `${basePath}/:version/operations/:operation`,
+      path: `${apiReference.path}/:version/operations/:operation`,
+    },
+  ];
+
+  return routes.flatMap((route) => [
+    {
+      source: `${route.source}.md`,
+      destination: `/api/docs?format=markdown&path=${route.path}`,
+    },
+    {
+      source: route.source,
+      has: [markdownAcceptHeader],
+      destination: `/api/docs?format=markdown&path=${route.path}`,
+    },
+    {
+      source: route.source,
+      has: [markdownSignatureAgentHeader],
+      destination: `/api/docs?format=markdown&path=${route.path}`,
+    },
+    {
+      source: route.source,
+      has: [markdownAgentUserAgentHeader],
+      destination: `/api/docs?format=markdown&path=${route.path}`,
+    },
+    {
+      source: route.source,
+      has: [markdownBotLikeUserAgentHeader],
+      missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
+      destination: `/api/docs?format=markdown&path=${route.path}`,
+    },
+  ]);
+}
+
 function buildAgentSpecRewrites(): NextRewrite[] {
   return [
     {
@@ -2346,6 +2421,7 @@ function buildHiddenFolderRedirects(docsDir: string, docsPath: string): NextRedi
 function mergeDocsMarkdownRewrites(
   entry: string,
   docsPath: string,
+  apiReference: ReturnType<typeof readApiReferenceConfig>,
   mcp: {
     enabled: boolean;
     route: string;
@@ -2375,6 +2451,7 @@ function mergeDocsMarkdownRewrites(
     ...buildSitemapRewrites(sitemap),
     ...buildRobotsRewrites(robots),
     ...buildDocsMarkdownRewrites(entry, docsPath),
+    ...buildApiReferenceMarkdownRewrites(apiReference),
     ...buildDocsPathRewrites(entry, docsPath),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
@@ -2796,6 +2873,7 @@ export function withDocs(
       return mergeDocsMarkdownRewrites(
         entry,
         docsPath,
+        apiReference,
         mcp,
         sitemap,
         agentFeedback,

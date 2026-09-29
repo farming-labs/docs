@@ -1,11 +1,17 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { ApiReference } from "@scalar/nextjs-api-reference";
-import type { DocsConfig, FontStyle, TypographyConfig } from "@farming-labs/docs";
+import {
+  resolveDocsMetadataBaseUrl,
+  type DocsConfig,
+  type FontStyle,
+  type TypographyConfig,
+} from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferencePageTitle,
   buildApiReferenceScalarCss,
+  createApiReferenceOperationMarkdownResponse,
   resolveApiReferenceConfig,
   resolveApiReferenceRenderer,
   resolveApiReferenceVersion,
@@ -864,6 +870,18 @@ export function createNextApiReference(config: DocsConfig) {
     }
 
     const requestUrl = request ? new URL(request.url) : undefined;
+    if (request && requestUrl) {
+      const markdownResponse = await createApiReferenceOperationMarkdownResponse(config, {
+        request,
+        framework: "next",
+        rootDir: process.cwd(),
+        baseUrl: getOriginFromRequest(request),
+        origin: resolveDocsMetadataBaseUrl(config) || getOriginFromRequest(request),
+        sitemap: config.sitemap,
+        okf: config.agent?.okf,
+      });
+      if (markdownResponse) return markdownResponse;
+    }
     const version =
       (requestUrl
         ? resolveApiReferenceVersionFromPathname(config.apiReference, requestUrl.pathname)

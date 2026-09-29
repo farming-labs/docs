@@ -109,6 +109,7 @@ import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@
 import {
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceOperationPagesAsync,
+  createApiReferenceOperationMarkdownResponse,
   createDocsCloudAskAIResponse,
   createDocsMcpHttpHandler,
   isDocsCloudAskAIProvider,
@@ -1321,6 +1322,25 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       robots: config.robots,
     });
     if (robotsResponse) return robotsResponse;
+
+    const operationMarkdownResponse = await createApiReferenceOperationMarkdownResponse(
+      config as DocsConfig,
+      {
+        request: event.request,
+        framework: "sveltekit",
+        rootDir,
+        baseUrl: event.url.origin,
+        origin: markdownMetadataBaseUrl || event.url.origin,
+        locale: ctx.locale,
+        apiRoute: discoveryApiRoute,
+        pages: getSearchIndex(ctx),
+        operationPages: () =>
+          getApiOperationSearchPages(ctx, markdownMetadataBaseUrl || event.url.origin),
+        sitemap: config.sitemap,
+        okf: config.agent?.okf,
+      },
+    );
+    if (operationMarkdownResponse) return operationMarkdownResponse;
 
     const markdownRequest = resolveDocsMarkdownRequest(entry, event.url, event.request, {
       apiRoute: discoveryApiRoute,

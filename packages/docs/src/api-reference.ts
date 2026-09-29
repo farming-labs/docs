@@ -4,6 +4,14 @@ import { basename, extname, isAbsolute, join, relative, resolve, sep } from "nod
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
 import { parse as parseYaml } from "yaml";
+import {
+  acceptsDocsMarkdown,
+  createDocsMarkdownResponse,
+  detectDocsMarkdownAgentRequest,
+  hasDocsMarkdownSignatureAgent,
+  renderDocsMarkdownDocument,
+  toDocsMarkdownUrl,
+} from "./agent.js";
 import { assertValidOpenApiContract } from "./openapi-contract.js";
 import { applyOpenApiOverlayDocuments } from "./openapi-overlays.js";
 import type { OpenApiOverlayDocumentSource } from "./openapi-overlays.js";
@@ -21,7 +29,9 @@ import type {
   ApiReferenceVersionConfig,
   DocsConfig,
   DocsOpenApiMcpConfig,
+  DocsOkfConfig,
   DocsSearchSourcePage,
+  DocsSitemapConfig,
   DocsTheme,
 } from "./types.js";
 
@@ -103,6 +113,22 @@ export interface BuildApiReferenceOperationPagesOptions extends Omit<
 > {
   /** Locale attached to generated search records in localized documentation sites. */
   locale?: string;
+}
+
+export interface CreateApiReferenceOperationMarkdownResponseOptions extends BuildApiReferenceOperationPagesOptions {
+  request: Request;
+  /** Shared Docs API pathname used by query-form Markdown requests. @default "/api/docs" */
+  apiRoute?: string;
+  /** Public metadata origin. Defaults to `baseUrl`, then the request origin. */
+  origin?: string;
+  /** Authored pages included in Markdown recovery suggestions. */
+  pages?: DocsSearchSourcePage[];
+  /** Reuse a cached operation projection when the adapter already maintains one. */
+  operationPages?:
+    | DocsSearchSourcePage[]
+    | (() => DocsSearchSourcePage[] | Promise<DocsSearchSourcePage[]>);
+  sitemap?: boolean | DocsSitemapConfig;
+  okf?: boolean | DocsOkfConfig;
 }
 
 interface BuildApiReferenceHtmlOptions extends BuildApiReferenceOptions {
@@ -954,6 +980,113 @@ export async function buildApiReferenceOperationPagesAsync(
   );
 
   return pagesByVersion.flat();
+}
+
+function normalizeApiReferenceMarkdownPath(value: string): string {
+  const trimmed = value.trim().replace(/\.md$/i, "");
+  if (!trimmed) return "/";
+  return `/${trimmed.replace(/^\/+|\/+$/g, "")}`.replace(/\/{2,}/g, "/");
+}
+
+function isApiReferenceOperationPath(pathname: string, apiReferencePath: string): boolean {
+  const basePath = `/${normalizePathSegment(apiReferencePath)}`;
+  if (!pathname.startsWith(`${basePath}/`)) return false;
+  const segments = pathname.slice(basePath.length + 1).split("/");
+  return (
+    (segments.length === 2 && segments[0] === "operations" && Boolean(segments[1])) ||
+    (segments.length === 3 && segments[1] === "operations" && Boolean(segments[0] && segments[2]))
+  );
+}
+
+function resolveApiReferenceOperationMarkdownPath(
+  request: Request,
+  apiReferencePath: string,
+  apiRoute = "/api/docs",
+): string | null {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+
+  const url = new URL(request.url);
+  const pathname = normalizeApiReferenceMarkdownPath(url.pathname);
+  const normalizedApiRoute = normalizeApiReferenceMarkdownPath(apiRoute);
+  if (pathname === normalizedApiRoute && url.searchParams.get("format")?.trim() === "markdown") {
+    const requestedPath = normalizeApiReferenceMarkdownPath(
+      url.searchParams.get("path")?.trim() ?? "",
+    );
+    return isApiReferenceOperationPath(requestedPath, apiReferencePath) ? requestedPath : null;
+  }
+
+  if (url.pathname.toLowerCase().endsWith(".md")) {
+    return isApiReferenceOperationPath(pathname, apiReferencePath) ? pathname : null;
+  }
+
+  const requestsMarkdown =
+    acceptsDocsMarkdown(request) ||
+    hasDocsMarkdownSignatureAgent(request) ||
+    detectDocsMarkdownAgentRequest(request).detected;
+  return requestsMarkdown && isApiReferenceOperationPath(pathname, apiReferencePath)
+    ? pathname
+    : null;
+}
+
+/**
+ * Resolve a public per-operation Markdown request using the same generated projection as search,
+ * Ask AI, and MCP. Returns `null` when the request is not an API operation Markdown route.
+ */
+export async function createApiReferenceOperationMarkdownResponse(
+  config: DocsConfig,
+  options: CreateApiReferenceOperationMarkdownResponseOptions,
+): Promise<Response | null> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  if (!apiReference.enabled) return null;
+
+  const requestedPath = resolveApiReferenceOperationMarkdownPath(
+    options.request,
+    apiReference.path,
+    options.apiRoute,
+  );
+  if (!requestedPath) return null;
+
+  const requestUrl = new URL(options.request.url);
+  const origin = options.origin ?? options.baseUrl ?? requestUrl.origin;
+  const operationPages = options.operationPages
+    ? await (typeof options.operationPages === "function"
+        ? options.operationPages()
+        : options.operationPages)
+    : await buildApiReferenceOperationPagesAsync(config, {
+        framework: options.framework,
+        rootDir: options.rootDir,
+        baseUrl: options.baseUrl ?? requestUrl.origin,
+        locale: options.locale,
+      });
+  const page = operationPages.find(
+    (candidate) => normalizeApiReferenceMarkdownPath(candidate.url) === requestedPath,
+  );
+  const canonicalPath = page?.canonicalUrl ?? page?.url ?? requestedPath;
+  const canonicalUrl = new URL(canonicalPath, origin).toString();
+  const contentLocation = new URL(toDocsMarkdownUrl(page?.url ?? requestedPath), origin).toString();
+  const relativeRequestedPath = requestedPath
+    .slice(`/${apiReference.path}`.length)
+    .replace(/^\/+/, "");
+
+  return createDocsMarkdownResponse({
+    request: options.request,
+    apiRoute: options.apiRoute,
+    document: page
+      ? renderDocsMarkdownDocument(page, {
+          origin,
+          sitemap: options.sitemap,
+          okf: options.okf,
+        })
+      : null,
+    entry: apiReference.path,
+    requestedPath: relativeRequestedPath,
+    origin,
+    locale: options.locale,
+    canonicalUrl,
+    contentLocation,
+    pages: [...(options.pages ?? []), ...operationPages],
+    sitemap: options.sitemap,
+  });
 }
 
 function renderApiReferenceOperationMarkdown(

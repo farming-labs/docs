@@ -364,6 +364,34 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(page).toContain("createNextApiReferencePage");
   });
 
+  it("routes API operation Markdown requests through the shared docs handler", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const rewrites = getBeforeFilesRewrites(await readRewrites(withDocs({})));
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/api-reference/operations/:operation.md",
+          destination: "/api/docs?format=markdown&path=api-reference/operations/:operation",
+        }),
+        expect.objectContaining({
+          source: "/api-reference/:version/operations/:operation.md",
+          destination:
+            "/api/docs?format=markdown&path=api-reference/:version/operations/:operation",
+        }),
+        expect.objectContaining({
+          source: "/api-reference/:version/operations/:operation",
+          has: [MARKDOWN_ACCEPT_HEADER],
+          destination:
+            "/api/docs?format=markdown&path=api-reference/:version/operations/:operation",
+        }),
+      ]),
+    );
+  });
+
   it("generates the Scalar route when renderer is explicitly set to scalar", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_SCALAR_API_REFERENCE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
