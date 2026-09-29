@@ -108,12 +108,14 @@ import {
 import type { AgentCompactOptions } from "./agent.js";
 import { resolveGoldenEvaluationInput } from "./golden-evaluations.js";
 import { detectFramework, type Framework } from "./utils.js";
+import { inspectApiReferenceHealth, type ApiDoctorReport } from "./api-doctor.js";
 
 type DoctorStatus = "pass" | "warn" | "fail";
 type AgentDoctorGrade = "Agent-optimized" | "Agent-ready" | "Promising" | "Needs work";
 type HumanDoctorGrade = "Human-optimized" | "Reader-ready" | "Promising" | "Needs work";
-type DoctorMode = "agent" | "human";
+type DoctorMode = "agent" | "human" | "api";
 type DoctorFailOn = "warn" | "fail";
+type DoctorReport = AgentDoctorReport | HumanDoctorReport | ApiDoctorReport;
 
 const DEFAULT_HOSTED_TIMEOUT_MS = 15_000;
 const DEFAULT_HOSTED_RETRIES = 1;
@@ -273,7 +275,8 @@ function parseInlineFlag(arg: string): { key: string; value?: string } {
 function parseDoctorOnlyMode(value: string): DoctorMode {
   if (value === "agent") return "agent";
   if (value === "site") return "human";
-  throw new Error("Invalid value for --only. Expected agent or site.");
+  if (value === "api") return "api";
+  throw new Error("Invalid value for --only. Expected agent, site, or api.");
 }
 
 function parseDoctorFailOn(value: string): DoctorFailOn {
@@ -313,6 +316,11 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
 
     if (arg === "--agent" || arg === "agent") {
       parsed.mode = "agent";
+      continue;
+    }
+
+    if (arg === "--api" || arg === "api") {
+      parsed.mode = "api";
       continue;
     }
 
@@ -503,6 +511,7 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor
   pnpm exec docs doctor --agent
   pnpm exec docs doctor --site
+  pnpm exec docs doctor --api
   pnpm exec docs doctor --agent --json
   pnpm exec docs doctor --agent --strict
   pnpm exec docs doctor --agent --fix
@@ -512,12 +521,14 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor --only site
   pnpm exec docs doctor agent
   pnpm exec docs doctor site
+  pnpm exec docs doctor api
 
 ${pc.dim("Options:")}
   ${pc.cyan("--agent")}            Score agent-readiness for the current docs app (default)
   ${pc.cyan("--site")}             Score reader-facing docs quality for the current docs app
+  ${pc.cyan("--api")}              Validate OpenAPI sources, identities, renderers, and projections
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
-  ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
+  ${pc.cyan("--only <mode>")}      Run one doctor suite: ${pc.cyan("agent")}, ${pc.cyan("site")}, or ${pc.cyan("api")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
   ${pc.cyan("--json-output <path>")} Write the JSON report to a file; use with ${pc.cyan("--ci")} to keep annotation stdout valid
   ${pc.cyan("--ci")}               Emit actionable GitHub annotations when running in GitHub Actions
@@ -525,7 +536,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--fix")}              Refresh stale generated agent.md files and token-budget missing outputs
   ${pc.cyan("--dry-run")}          With ${pc.cyan("--fix")}, report the compaction command without writing files
   ${pc.cyan("--fail-on <level>")}  Exit with failure on ${pc.cyan("warn")} or only on ${pc.cyan("fail")}
-  ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
+  ${pc.cyan("--url <url>")}        Probe hosted agent surfaces or resolve request-relative API sources
   ${pc.cyan("--timeout <ms>")}     Set each hosted probe timeout (default: ${pc.dim(String(DEFAULT_HOSTED_TIMEOUT_MS))})
   ${pc.cyan("--retries <count>")}  Retry safe hosted GET/HEAD probes (default: ${pc.dim(String(DEFAULT_HOSTED_RETRIES))})
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
@@ -4478,7 +4489,47 @@ export function printHumanDoctorReport(report: HumanDoctorReport) {
   }
 }
 
-function serializeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport) {
+export function printApiDoctorReport(report: ApiDoctorReport) {
+  console.log(`${pc.bold("@farming-labs/docs doctor")} ${pc.dim("—")} ${pc.bold("api")}`);
+  console.log();
+  console.log(
+    `${pc.bold("Framework:")} ${report.framework} ${pc.dim("•")} ${pc.bold("Renderer:")} ${report.renderer ?? "-"}`,
+  );
+  console.log(
+    `${pc.bold("Contracts:")} ${report.sourceCount} ${pc.dim("•")} ${pc.bold("Operations:")} ${report.operationCount}${report.defaultVersion ? ` ${pc.dim("•")} ${pc.bold("Default version:")} ${report.defaultVersion}` : ""}`,
+  );
+  console.log();
+
+  for (const check of report.checks) {
+    console.log(`${formatStatus(check.status)} ${check.title}`);
+    console.log(`  ${check.detail}`);
+  }
+
+  if (report.sources.length > 0) {
+    console.log();
+    console.log(pc.bold("Contracts"));
+    for (const source of report.sources) {
+      const suffix =
+        source.status === "pass"
+          ? `${source.specificationVersion ?? "OpenAPI"} ${pc.dim("•")} ${source.operationCount} operations ${pc.dim("•")} ${source.overlays} overlays`
+          : (source.diagnostic ?? "Unable to load contract");
+      console.log(
+        `${formatStatus(source.status)} ${source.label}${source.default ? pc.dim(" (default)") : ""}`,
+      );
+      console.log(`  ${source.source} ${pc.dim("•")} ${suffix}`);
+    }
+  }
+
+  if (report.recommendations.length > 0) {
+    console.log();
+    console.log(pc.bold("Next steps"));
+    for (const recommendation of report.recommendations) {
+      console.log(`- ${recommendation}`);
+    }
+  }
+}
+
+function serializeDoctorJsonReport(report: DoctorReport) {
   if (report.mode === "human") {
     return {
       ...report,
@@ -4489,11 +4540,11 @@ function serializeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport
   return report;
 }
 
-export function printDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport) {
+export function printDoctorJsonReport(report: DoctorReport) {
   console.log(JSON.stringify(serializeDoctorJsonReport(report), null, 2));
 }
 
-function writeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport, outputPath: string) {
+function writeDoctorJsonReport(report: DoctorReport, outputPath: string) {
   const resolvedPath = path.resolve(process.cwd(), outputPath);
   mkdirSync(path.dirname(resolvedPath), { recursive: true });
   writeFileSync(
@@ -4511,7 +4562,7 @@ function escapeGitHubAnnotationProperty(value: string): string {
   return escapeGitHubAnnotationData(value).replaceAll(":", "%3A").replaceAll(",", "%2C");
 }
 
-function emitDoctorGitHubAnnotations(report: AgentDoctorReport | HumanDoctorReport) {
+function emitDoctorGitHubAnnotations(report: DoctorReport) {
   if (process.env.GITHUB_ACTIONS !== "true" || report.mode !== "agent") return;
 
   for (const check of report.checks) {
@@ -4535,18 +4586,15 @@ function emitDoctorGitHubAnnotations(report: AgentDoctorReport | HumanDoctorRepo
   }
 }
 
-function hasNonPassingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport) {
+function hasNonPassingDoctorCheck(report: DoctorReport) {
   return report.checks.some((check) => check.status !== "pass");
 }
 
-function hasFailingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport) {
+function hasFailingDoctorCheck(report: DoctorReport) {
   return report.checks.some((check) => check.status === "fail");
 }
 
-function applyDoctorExitCode(
-  report: AgentDoctorReport | HumanDoctorReport,
-  options: DoctorOptions,
-) {
+function applyDoctorExitCode(report: DoctorReport, options: DoctorOptions) {
   const failOn = options.failOn ?? (options.strict ? "warn" : undefined);
   if (!failOn) {
     return;
@@ -4642,6 +4690,28 @@ export async function runDoctor(options: DoctorOptions = {}) {
     throw new Error(
       "doctor --ci and --json cannot share stdout. Use --ci --json-output <path> to emit GitHub annotations and persist the JSON report in one run.",
     );
+  }
+
+  if (options.mode === "api") {
+    if (options.fix) {
+      throw new Error("doctor --fix is currently only supported with --agent.");
+    }
+
+    const report = await inspectApiReferenceHealth({
+      configPath: options.configPath,
+      baseUrl: options.url,
+    });
+    applyDoctorExitCode(report, options);
+    if (options.jsonOutputPath) {
+      writeDoctorJsonReport(report, options.jsonOutputPath);
+    }
+    if (options.json) {
+      printDoctorJsonReport(report);
+      return report;
+    }
+    printApiDoctorReport(report);
+    if (options.ci) emitDoctorGitHubAnnotations(report);
+    return report;
   }
 
   if (options.mode === "human") {

@@ -551,6 +551,7 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor")}                              Score the current docs app for agent-readiness
   ${pc.cyan("doctor --agent")}                      Same as ${pc.cyan("doctor")}; explicit agent scoring mode
   ${pc.cyan("doctor --site")}                       Score the current docs app for reader-facing docs quality
+  ${pc.cyan("doctor --api")}                        Validate OpenAPI sources, identities, renderers, and generated projections
   ${pc.cyan("doctor --human")}                      Alias for ${pc.cyan("doctor --site")}
   ${pc.cyan("doctor --json")}                       Print the report as JSON for CI, scripts, and automation
   ${pc.cyan("doctor --json-output <path>")}         Write the JSON report to a file, including alongside ${pc.cyan("--ci")}
@@ -563,6 +564,7 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor --retries <0-5>")}              Retry safe hosted GET/HEAD probes (default: ${pc.dim("1")})
   ${pc.cyan("doctor agent")}                        Subcommand alias for agent scoring
   ${pc.cyan("doctor site")}                         Subcommand alias for reader-facing scoring
+  ${pc.cyan("doctor api")}                          Subcommand alias for OpenAPI diagnostics
   ${pc.cyan("doctor human")}                        Legacy alias for reader-facing scoring
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 

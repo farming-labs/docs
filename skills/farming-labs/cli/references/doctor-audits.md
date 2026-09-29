@@ -18,6 +18,8 @@ endpoint conformance.
 pnpm exec docs doctor
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
+pnpm exec docs doctor --api
+pnpm exec docs doctor --api --json --fail-on fail
 pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --ci --json-output .farming-labs/doctor.json
 pnpm exec docs doctor --agent --config docs.config.tsx
@@ -26,10 +28,26 @@ pnpm exec docs doctor --agent --url https://docs.example.com --timeout 20000 --r
 pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
-Positional `doctor agent` and `doctor site` are also accepted.
+Positional `doctor agent`, `doctor site`, and `doctor api` are also accepted.
 
-Use `--agent` for machine-facing readiness and `--site` for reader-facing quality. Use `--url`
-only after local checks when the user wants deployed verification.
+Use `--agent` for machine-facing readiness, `--site` for reader-facing quality, and `--api` for
+OpenAPI contract health. With API mode, `--url` supplies the origin needed by request-relative
+sources or overlays; it does not execute API operations.
+
+## API audit coverage
+
+`docs doctor --api` checks:
+
+- evaluated `apiReference` configuration and explicit version defaults
+- local or remote JSON/YAML source loading and supported OpenAPI versions
+- reference resolution and ordered Overlay 1.0/1.1 application
+- duplicate or unstable normalized operation IDs and slugs
+- Fumadocs/Scalar renderer compatibility with the detected framework
+- parity between normalized operation counts and the shared search, Ask AI, Markdown, and read-only
+  MCP document projection
+
+The API suite supports `--json`, `--json-output`, `--strict`, and `--fail-on warn|fail`. It is
+diagnostics-only; `--fix` remains limited to agent compaction.
 
 ## Agent audit coverage
 
