@@ -104,6 +104,7 @@ import type {
 } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
+  buildApiReferenceOperationPagesAsync,
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
   readDocsSitemapManifest,
@@ -4143,6 +4144,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   const indexesByLocale = new Map<string, DocsSearchSourcePage[]>();
+  const apiOperationPagesByLocale = new Map<string, Promise<DocsSearchSourcePage[]>>();
   const llmsCache = new BoundedRouteCache<ReturnType<typeof renderDocsLlmsTxt>>(
     MAX_LLMS_CACHE_ROUTES_PER_LOCALE,
   );
@@ -4182,6 +4184,20 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     }
 
     indexesByLocale.set(key, next);
+    return next;
+  }
+
+  function getApiOperationSearchPages(ctx: DocsContext, baseUrl: string) {
+    const key = `${ctx.locale ?? "__default__"}\0${baseUrl}`;
+    const cached = apiOperationPagesByLocale.get(key);
+    if (cached) return cached;
+    const next = buildApiReferenceOperationPagesAsync(apiReferenceDocsConfig, {
+      framework: "next",
+      rootDir: root,
+      baseUrl,
+      locale: ctx.locale,
+    });
+    apiOperationPagesByLocale.set(key, next);
     return next;
   }
 
@@ -4823,8 +4839,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           headers: { "Content-Type": "application/json" },
         });
       }
+      const operationPages = await getApiOperationSearchPages(
+        ctx,
+        markdownMetadataBaseUrl || url.origin,
+      );
       const searchOptions = {
-        pages: getIndexes(ctx),
+        pages: [...getIndexes(ctx), ...operationPages],
         query: query ?? "",
         search: resolveSearchRequestConfig(searchConfig, request.url, {
           localMcp: rawMcpConfig,

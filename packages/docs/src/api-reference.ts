@@ -8,6 +8,11 @@ import { assertValidOpenApiContract } from "./openapi-contract.js";
 import { applyOpenApiOverlayDocuments } from "./openapi-overlays.js";
 import type { OpenApiOverlayDocumentSource } from "./openapi-overlays.js";
 import { buildNormalizedOpenApiModel } from "./openapi-operations.js";
+import type {
+  NormalizedOpenApiMediaType,
+  NormalizedOpenApiOperation,
+  NormalizedOpenApiParameter,
+} from "./openapi-operations.js";
 import { resolveOpenApiReferences, resolveOpenApiReferencesSync } from "./openapi-references.js";
 import type { OpenApiReferenceDocument } from "./openapi-references.js";
 import type {
@@ -16,6 +21,7 @@ import type {
   ApiReferenceVersionConfig,
   DocsConfig,
   DocsOpenApiMcpConfig,
+  DocsSearchSourcePage,
   DocsTheme,
 } from "./types.js";
 
@@ -89,6 +95,14 @@ export interface BuildApiReferenceOptions {
   rootDir?: string;
   baseUrl?: string;
   version?: string;
+}
+
+export interface BuildApiReferenceOperationPagesOptions extends Omit<
+  BuildApiReferenceOptions,
+  "version"
+> {
+  /** Locale attached to generated search records in localized documentation sites. */
+  locale?: string;
 }
 
 interface BuildApiReferenceHtmlOptions extends BuildApiReferenceOptions {
@@ -881,6 +895,155 @@ export async function buildApiReferenceOpenApiDocumentAsync(
       config,
       `Unable to load the configured OpenAPI document. ${message}`,
     );
+  }
+}
+
+/**
+ * Build deterministic, operation-level source pages from every configured OpenAPI version.
+ *
+ * These pages are framework-neutral projections used by documentation search and other
+ * read-only knowledge surfaces. They never inherit MCP execution headers or credentials.
+ */
+export async function buildApiReferenceOperationPagesAsync(
+  config: DocsConfig,
+  options: BuildApiReferenceOperationPagesOptions,
+): Promise<DocsSearchSourcePage[]> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  if (!apiReference.enabled) return [];
+
+  const versions =
+    apiReference.versions.length > 0
+      ? apiReference.versions
+      : ([undefined] as Array<ResolvedApiReferenceVersion | undefined>);
+  const pagesByVersion = await Promise.all(
+    versions.map(async (version) => {
+      const document = await buildApiReferenceOpenApiDocumentAsync(config, {
+        ...options,
+        version: version?.id,
+      });
+      const model = buildNormalizedOpenApiModel(document);
+      const basePath = `/${apiReference.path}${
+        version ? `/${encodeURIComponent(version.id)}` : ""
+      }`;
+
+      return model.operations.map((operation) => {
+        const url = `${basePath}/operations/${encodeURIComponent(operation.slug)}`;
+        const content = renderApiReferenceOperationMarkdown(operation, {
+          apiTitle: model.title,
+          apiVersion: version?.label ?? model.version,
+          specificationVersion: model.specificationVersion,
+        });
+        const description = operation.summary ?? operation.description ?? operation.selector;
+
+        return {
+          title: operation.title,
+          url,
+          canonicalUrl: url,
+          content,
+          description,
+          rawContent: content,
+          agentContent: content,
+          agentRawContent: content,
+          type: "api" as const,
+          ...(options.locale ? { locale: options.locale } : {}),
+          ...(version?.id || model.version ? { version: version?.id ?? model.version } : {}),
+          tags: Array.from(new Set(["openapi", operation.method.toLowerCase(), ...operation.tags])),
+        } satisfies DocsSearchSourcePage;
+      });
+    }),
+  );
+
+  return pagesByVersion.flat();
+}
+
+function renderApiReferenceOperationMarkdown(
+  operation: NormalizedOpenApiOperation,
+  metadata: { apiTitle: string; apiVersion: string; specificationVersion: string },
+): string {
+  const lines = [
+    `# ${operation.title}`,
+    "",
+    `\`${operation.method} ${operation.path}\``,
+    "",
+    `- Operation ID: \`${operation.operationId}\``,
+    `- API: ${metadata.apiTitle}`,
+    `- API version: ${metadata.apiVersion}`,
+    `- OpenAPI: ${metadata.specificationVersion}`,
+  ];
+
+  if (operation.tags.length > 0) lines.push(`- Tags: ${operation.tags.join(", ")}`);
+  if (operation.deprecated) lines.push("- Deprecated: yes");
+  if (operation.description && operation.description !== operation.title) {
+    lines.push("", operation.description);
+  }
+  if (operation.servers.length > 0) {
+    lines.push("", "## Servers", "", ...operation.servers.map((server) => `- ${server}`));
+  }
+  if (operation.parameters.length > 0) {
+    lines.push("", "## Parameters", "");
+    for (const parameter of operation.parameters) {
+      lines.push(renderApiReferenceParameter(parameter));
+    }
+  }
+  if (operation.requestBody) {
+    lines.push("", "## Request body", "");
+    if (operation.requestBody.description) lines.push(operation.requestBody.description, "");
+    lines.push(`Required: ${operation.requestBody.required ? "yes" : "no"}`);
+    appendApiReferenceMediaTypes(lines, operation.requestBody.content);
+  }
+  if (operation.responses.length > 0) {
+    lines.push("", "## Responses", "");
+    for (const response of operation.responses) {
+      lines.push(`### ${response.status}`, "", response.description ?? "No response description.");
+      appendApiReferenceMediaTypes(lines, response.content);
+      lines.push("");
+    }
+  }
+  if (operation.security.length > 0) {
+    lines.push("", "## Security", "");
+    for (const requirement of operation.security) {
+      const schemes = Object.entries(requirement).map(([name, scopes]) =>
+        scopes.length > 0 ? `${name} (${scopes.join(", ")})` : name,
+      );
+      lines.push(`- ${schemes.join(" and ")}`);
+    }
+  }
+
+  return `${lines.join("\n").trim()}\n`;
+}
+
+function renderApiReferenceParameter(parameter: NormalizedOpenApiParameter): string {
+  const details = [parameter.in, parameter.required ? "required" : "optional"];
+  const schema = renderApiReferenceSchema(parameter.schema);
+  if (schema) details.push(schema);
+  return `- \`${parameter.name}\` (${details.join(", ")})${
+    parameter.description ? ` — ${parameter.description}` : ""
+  }`;
+}
+
+function appendApiReferenceMediaTypes(lines: string[], content: NormalizedOpenApiMediaType[]) {
+  for (const media of content) {
+    lines.push("", `- Content type: \`${media.mediaType}\``);
+    const schema = renderApiReferenceSchema(media.schema);
+    if (schema) lines.push(`  Schema: \`${schema}\``);
+    for (const example of media.examples) {
+      const value = renderApiReferenceSchema(example.value);
+      lines.push(`  Example ${example.name}: ${value ? `\`${value}\`` : "available"}`);
+    }
+  }
+}
+
+function renderApiReferenceSchema(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
+    return String(value);
+  }
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized.length > 500 ? `${serialized.slice(0, 497)}...` : serialized;
+  } catch {
+    return undefined;
   }
 }
 

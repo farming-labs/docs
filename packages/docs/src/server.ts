@@ -20,6 +20,7 @@ export {
   isApiReferenceOpenApiRequest,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
+  buildApiReferenceOperationPagesAsync,
   buildApiReferenceHtmlDocument,
   buildApiReferenceHtmlDocumentAsync,
   buildApiReferencePageTitle,
@@ -32,6 +33,7 @@ export type {
   ApiReferenceRenderer,
   ApiReferenceRoute,
   BuildApiReferenceOptions,
+  BuildApiReferenceOperationPagesOptions,
   ResolvedApiReferenceConfig,
   ResolvedApiReferenceVersion,
 } from "./api-reference.js";
