@@ -52,6 +52,7 @@ import {
   resolveDocsLlmsTxtSections,
   resolveDocsMarkdownCanonicalUrl,
   resolveDocsOpenApiDiscoveryConfig,
+  withDocsOpenApiOperationCounts,
   resolveDocsMarkdownSectionRequest,
   resolveDocsRequestApiRoute,
   resolveDocsSkillFormat,
@@ -3371,13 +3372,14 @@ After`;
     expect(explicitLlms.llmsTxt).not.toContain("/api/internal/docs?format=openapi");
   });
 
-  it("publishes versioned OpenAPI identities through custom discovery routes", () => {
+  it("keeps versioned OpenAPI routes and operation counts aligned across discovery surfaces", async () => {
     const openapi = {
       enabled: true,
       url: "/api/docs?format=openapi",
       urlSource: "default",
       source: "configured",
       apiReferencePath: "/api-reference",
+      catalogTargets: ["/"],
       versions: [
         {
           id: "v1",
@@ -3395,34 +3397,75 @@ After`;
         },
       ],
     } as const;
+    const operationPages = [
+      {
+        title: "List legacy widgets",
+        url: "/api-reference/v1/operations/list-widgets",
+        content: "# List legacy widgets",
+        version: "v1",
+      },
+      {
+        title: "List current widgets",
+        url: "/api-reference/v2/operations/list-widgets",
+        content: "# List current widgets",
+        version: "v2",
+      },
+      {
+        title: "Create current widget",
+        url: "/api-reference/v2/operations/create-widget",
+        content: "# Create current widget",
+        version: "v2",
+      },
+    ];
+    const countedOpenapi = withDocsOpenApiOperationCounts(openapi, operationPages);
     const spec = buildDocsAgentDiscoverySpec({
       origin: "https://docs.example.com",
       apiRoute: "/api/internal/docs",
       mcp: resolveDocsMcpConfig(false),
-      openapi,
+      openapi: countedOpenapi,
     });
+    expect(spec.openapi.operationCount).toBe(3);
     expect(spec.openapi.versions).toEqual([
       expect.objectContaining({
         id: "v1",
         url: "/api/internal/docs?format=openapi&version=v1",
         apiReferencePath: "/api-reference/v1",
+        operationCount: 1,
       }),
       expect.objectContaining({
         id: "v2",
         default: true,
         url: "/api/internal/docs?format=openapi&version=v2",
+        operationCount: 2,
       }),
     ]);
 
-    const llms = renderDocsLlmsTxt([], {
+    const llms = renderDocsLlmsTxt(operationPages, {
       apiRoute: "/api/internal/docs",
       baseUrl: "https://docs.example.com",
-      openapi,
+      openapi: countedOpenapi,
     });
     expect(llms.llmsTxt).toContain(
       "https://docs.example.com/api/internal/docs?format=openapi&version=v1",
     );
     expect(llms.llmsTxt).toContain("https://docs.example.com/api-reference/v2");
+    expect(llms.llmsTxt).toContain("Version `v1`; 1 operation");
+    expect(llms.llmsTxt).toContain("Version `v2` (default); 2 operations");
+    expect(llms.llmsTxt).toContain(
+      "[Create current widget](https://docs.example.com/api-reference/v2/operations/create-widget.md)",
+    );
+
+    const catalogResponse = await createDocsStandardsDiscoveryResponse({
+      request: new Request("https://docs.example.com/.well-known/api-catalog"),
+      origin: "https://docs.example.com",
+      mcp: resolveDocsMcpConfig(false),
+      openapi: countedOpenapi,
+      fallbackSkillDocument: "",
+    });
+    expect(catalogResponse?.status).toBe(200);
+    const catalog = await catalogResponse?.json();
+    expect(JSON.stringify(catalog)).toContain("OpenAPI schema – Version 1 — 1 operation");
+    expect(JSON.stringify(catalog)).toContain("OpenAPI schema – Version 2 — 2 operations");
   });
 
   it("does not infer a product target for a remote OpenAPI schema", () => {

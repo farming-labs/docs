@@ -78,6 +78,7 @@ import {
   resolveDocsAgentContractMcpTools,
   resolvePageSidebarFolderIndexBehavior,
   selectDocsLlmsTxtContent,
+  withDocsOpenApiOperationCounts,
   createDocsSitemapResponse,
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   resolveDocsSitemapConfig,
@@ -347,7 +348,7 @@ interface AgentSpecOptions {
   llms: LlmsTxtOptions & { enabled: boolean };
   sitemap?: boolean | DocsSitemapConfig;
   robots?: boolean | DocsRobotsConfig;
-  openapi: ReturnType<typeof resolveApiReferenceOpenApiDiscovery>;
+  openapi: ReturnType<typeof withDocsOpenApiOperationCounts>;
   publishedSkills?: readonly DocsPublishedAgentSkill[];
   agentCard?: DocsAgentA2AConfig;
 }
@@ -4289,10 +4290,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return null;
   }
 
-  function getLlmsContent(ctx: DocsContext, apiRoute: string) {
-    const cached = llmsCache.get(ctx.locale, apiRoute);
+  async function getLlmsContent(ctx: DocsContext, apiRoute: string, baseUrl: string) {
+    const cacheKey = `${apiRoute}\0${baseUrl}`;
+    const cached = llmsCache.get(ctx.locale, cacheKey);
     if (cached) return cached;
-    const next = generateLlmsTxt(getIndexes(ctx), {
+    const operationPages = await getApiOperationSearchPages(ctx, baseUrl);
+    const next = generateLlmsTxt([...getIndexes(ctx), ...operationPages], {
       siteTitle: llmsConfig.siteTitle ?? "Documentation",
       siteDescription: llmsConfig.siteDescription,
       baseUrl: llmsConfig.baseUrl ?? "",
@@ -4300,9 +4303,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       maxChars: llmsConfig.maxChars,
       sections: llmsConfig.sections,
       apiCatalog: apiCatalogEnabled,
-      openapi: openapiDiscovery,
+      openapi: withDocsOpenApiOperationCounts(openapiDiscovery, operationPages),
     } as any);
-    llmsCache.set(ctx.locale, apiRoute, next);
+    llmsCache.set(ctx.locale, cacheKey, next);
     return next;
   }
 
@@ -4351,7 +4354,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return next;
   }
 
-  async function resolveStandardsResponse(request: Request, url: URL): Promise<Response | null> {
+  async function resolveStandardsResponse(
+    request: Request,
+    url: URL,
+    ctx?: DocsContext,
+  ): Promise<Response | null> {
     const apiRoute = resolveDocsRequestApiRoute(url, configuredApiRouteInput);
     const resolved = resolveDocsStandardsDiscoveryRequest(url, { apiRoute });
     if (!resolved) return null;
@@ -4359,6 +4366,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     const method = request.method.toUpperCase();
     const needsSkill = (method === "GET" || method === "HEAD") && resolved.kind !== "api-catalog";
     const fallbackSkillDocument = needsSkill ? getGeneratedSkillDocument(url.origin, apiRoute) : "";
+    const operationPages =
+      ctx && resolved.kind === "api-catalog"
+        ? await getApiOperationSearchPages(ctx, markdownMetadataBaseUrl || url.origin)
+        : [];
 
     return createDocsStandardsDiscoveryResponse({
       request,
@@ -4379,7 +4390,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       llms: llmsConfig,
       sitemap: sitemapConfig,
       robots: robotsConfig,
-      openapi: openapiDiscovery,
+      openapi:
+        resolved.kind === "api-catalog"
+          ? withDocsOpenApiOperationCounts(openapiDiscovery, operationPages)
+          : openapiDiscovery,
       markdown: {
         acceptHeader: true,
         signatureAgentHeader: true,
@@ -4429,7 +4443,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         );
       }
 
-      const standardsResponse = await resolveStandardsResponse(request, url);
+      const standardsResponse = await resolveStandardsResponse(request, url, ctx);
       if (standardsResponse) return standardsResponse;
 
       if (resolveAgentSpecRequest(url)) {
@@ -4444,6 +4458,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             method: requestMethod,
           },
         });
+        const operationPages = await getApiOperationSearchPages(
+          ctx,
+          markdownMetadataBaseUrl || url.origin,
+        );
         const fullSpec = buildAgentSpec({
           origin: url.origin,
           entry,
@@ -4457,7 +4475,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           llms: llmsConfig,
           sitemap: sitemapConfig,
           robots: robotsConfig,
-          openapi: openapiDiscovery,
+          openapi: withDocsOpenApiOperationCounts(openapiDiscovery, operationPages),
           publishedSkills: [
             await resolveDocsPublishedAgentSkill({
               preferredDocument: readRootSkillDocument(),
@@ -4789,7 +4807,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         }
 
         const selected = selectDocsLlmsTxtContent(
-          getLlmsContent(ctx, requestApiRoute),
+          await getLlmsContent(ctx, requestApiRoute, markdownMetadataBaseUrl || url.origin),
           llmsRequest,
         );
         if (!selected) {

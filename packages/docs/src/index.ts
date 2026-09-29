@@ -275,6 +275,7 @@ export {
   resolveDocsLlmsTxtSections,
   resolveDocsLlmsTxtFormat,
   resolveDocsOpenApiDiscoveryConfig,
+  withDocsOpenApiOperationCounts,
   selectDocsLlmsTxtContent,
   resolveDocsSkillFormat,
   resolveDocsPublishedAgentSkill,

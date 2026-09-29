@@ -582,6 +582,61 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     ]);
   });
 
+  it("projects the same OpenAPI operations into llms, discovery, and the API catalog", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          openapi: "3.1.0",
+          info: { title: "Widget API", version: "1.0.0" },
+          paths: {
+            "/widgets": {
+              get: {
+                operationId: "listWidgets",
+                summary: "List widgets",
+                responses: { "200": { description: "Widget collection" } },
+              },
+            },
+          },
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    try {
+      const { createDocsServer } = await loadCreateDocsServer();
+      const server = createDocsServer({
+        entry: "docs",
+        apiReference: {
+          enabled: true,
+          specUrl: "https://schemas.example.com/widgets.json",
+          catalogTargets: ["https://api.example.com/v1"],
+        },
+        _preloadedContent: { "/docs/page.md": "# Home\n" },
+      });
+
+      const request = async (path: string) => {
+        const url = new URL(path, "https://docs.example.com");
+        return server.GET({ request: new Request(url), url });
+      };
+
+      const llms = await (await request("/llms.txt")).text();
+      expect(llms).toContain("[List widgets](/api-reference/operations/list-widgets-");
+      expect(llms).toContain(
+        "Machine-readable API schema for tool use and API clients; 1 operation",
+      );
+
+      const manifest = (await (await request("/.well-known/agent.json")).json()) as {
+        openapi: { operationCount?: number };
+      };
+      expect(manifest.openapi.operationCount).toBe(1);
+
+      const catalog = await (await request("/.well-known/api-catalog")).text();
+      expect(catalog).toContain("OpenAPI schema — 1 operation");
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("applies the same audience policy to search and agent outputs", async () => {
     const { createDocsServer } = await loadCreateDocsServer();
     const server = createDocsServer({
