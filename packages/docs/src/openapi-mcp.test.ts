@@ -93,6 +93,48 @@ describe("OpenAPI MCP projection", () => {
     expect(resolveDocsOpenApiMcpBaseUrl(document, {})).toBe("https://api.example.com/v1");
   });
 
+  it("projects referenced path items and parameters through the shared model", () => {
+    const referenced = {
+      openapi: "3.1.0",
+      paths: { "/pets/{id}": { $ref: "#/components/pathItems/Pet" } },
+      components: {
+        pathItems: {
+          Pet: {
+            get: {
+              operationId: "getPet",
+              parameters: [{ $ref: "#/components/parameters/PetId" }],
+              responses: { "200": { description: "OK" } },
+            },
+          },
+        },
+        parameters: {
+          PetId: { name: "id", in: "path", required: true },
+        },
+      },
+    };
+
+    expect(
+      resolveDocsOpenApiMcpOperations(referenced, {
+        enabled: true,
+        operations: ["GET /pets/{id}"],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        operationId: "getPet",
+        parameters: [{ name: "id", in: "path", required: true }],
+      }),
+    ]);
+  });
+
+  it("derives Swagger 2.0 base URLs", () => {
+    expect(
+      resolveDocsOpenApiMcpBaseUrl(
+        { swagger: "2.0", host: "api.example.com", basePath: "/v1", schemes: ["https"] },
+        {},
+      ),
+    ).toBe("https://api.example.com/v1");
+  });
+
   it("blocks private destinations and insecure HTTP by default", async () => {
     await expect(
       validateDocsOpenApiMcpUrl(new URL("https://api.example.com"), {

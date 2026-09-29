@@ -97,9 +97,14 @@ Top-level configuration object passed to `defineDocs()`:
 Set `specUrl` to a project-relative JSON/YAML file, a `file:` URL, an absolute HTTP(S) URL, or a
 request-relative URL such as `/api/openapi.json`. Setting it disables framework route scanning.
 Local filesystem paths are not published through discovery metadata. Sources must use Swagger 2.0
-or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Remote responses time out after 10 seconds and cannot exceed 5
-MiB. Project-relative sources must stay inside the project root; an explicit `file:` URL opts into
-a trusted external local file.
+or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Internal and external `$ref` URI references with JSON Pointer
+fragments are bundled once per build. Each document is limited to 5 MiB, a build can load at most
+32 documents, and remote requests time out after 10 seconds. Project-relative sources and their
+references must stay inside the project root; an explicit `file:` URL opts into a trusted external
+local file. Named anchors and `$dynamicRef` are not resolved yet. Server integrations can import
+`buildNormalizedOpenApiModel` and `NormalizedOpenApi*` types from `@farming-labs/docs/server` for
+the stable operation IDs/slugs, tags, parameters, schemas, examples, servers, and security metadata
+used by OpenAPI-backed projections.
 
 Page-level metadata for machine-readable docs workflows:
 

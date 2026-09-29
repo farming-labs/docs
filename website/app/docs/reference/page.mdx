@@ -1643,8 +1643,8 @@ for an existing project-relative file, absolute URL, or request-relative URL.
 
 <Callout type="info" title="Contract validation and source limits">
   Sources must use Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Invalid operations and duplicate
-  `operationId` values are rejected before rendering. Remote responses time out after 10 seconds
-  and cannot exceed 5 MiB.
+  `operationId` values are rejected before rendering. Each local or remote document is limited to
+  5 MiB, a build can load at most 32 documents, and remote requests time out after 10 seconds.
 </Callout>
 
 <Callout type="info" title="Agent schema discovery">
@@ -1691,6 +1691,21 @@ apiReference: {
 When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
 from the configured document instead. Project-relative sources must remain inside the project
 root; use an explicit `file:` URL for a trusted local contract outside it.
+
+`$ref` supports internal and external URI references with JSON Pointer fragments. External local
+or remote JSON/YAML documents are fetched once per build and rewritten into the returned OpenAPI
+document, so downstream renderers and projections receive a self-contained contract. References
+from project-relative entry documents stay inside the project root. The synchronous builder cannot
+load HTTP(S) references; use `buildApiReferenceOpenApiDocumentAsync()` or a framework route for
+mixed local/remote contracts. Named anchors and `$dynamicRef` resolution are not supported yet.
+
+### Normalized OpenAPI operation model
+
+Server integrations can import `buildNormalizedOpenApiModel` and its `NormalizedOpenApi*` types
+from `@farming-labs/docs/server`. The additive API produces stable operation IDs and slugs, method
+and path selectors, tags, parameters, request bodies, responses, schemas, examples, servers, and
+the security schemes used by each operation. Farming Labs uses the same model for OpenAPI-backed
+MCP tools, keeping renderer and agent projections aligned.
 
 ### `DocsOpenApiMcpConfig`
 

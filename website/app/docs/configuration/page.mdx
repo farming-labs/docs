@@ -1000,8 +1000,9 @@ existing project-relative file, absolute URL, or request-relative URL.
 
 <Callout type="info" title="Validated and bounded">
   Contract sources must use Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Farming Labs rejects
-  malformed operations and duplicate `operationId` values before rendering. Remote responses time
-  out after 10 seconds and cannot exceed 5 MiB.
+  malformed operations and duplicate `operationId` values before rendering. Local and remote
+  `$ref` documents are bundled once per build, with at most 32 documents and 5 MiB per document.
+  Remote requests time out after 10 seconds.
 </Callout>
 
 ```ts title="docs.config.ts"
@@ -1057,6 +1058,13 @@ export default defineDocs({
 When `specUrl` is set, `routeRoot` and `exclude` are ignored because the reference is rendered
 from the configured document. Project-relative paths must remain inside the project root; use an
 explicit `file:` URL when a trusted local contract intentionally lives elsewhere.
+
+Relative and absolute `$ref` values may target local or remote JSON/YAML documents. Farming Labs
+validates JSON Pointer fragments, rewrites external references into a self-contained bundle, and
+caches each referenced document for that build. Project-relative entry documents cannot use a
+reference to escape the project root. The synchronous builder supports local references only; use
+the async builder or a framework route for a local document that references HTTP(S). Named anchors
+and `$dynamicRef` resolution are not supported yet.
 
 That does not change the framework routing requirements:
 

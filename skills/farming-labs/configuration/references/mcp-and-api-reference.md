@@ -224,9 +224,17 @@ When `specUrl` is set, local `routeRoot` and `exclude` are ignored. The shared A
 export skips the generated API route.
 
 Contracts must use Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Invalid operations and duplicate
-`operationId` values are rejected before rendering. Remote responses time out after 10 seconds and
-are limited to 5 MiB. Project-relative files must remain inside the project root; use an explicit
-`file:` URL only for a trusted local contract outside it.
+`operationId` values are rejected before rendering. Internal and external `$ref` URI references
+with JSON Pointer fragments are bundled and cached per build. Each document is limited to 5 MiB,
+a build can load at most 32 documents, and remote requests time out after 10 seconds.
+Project-relative files and their references must remain inside the project root; use an explicit
+`file:` URL only for a trusted local contract outside it. The synchronous builder only loads local
+references; framework routes use the async builder and can load HTTP(S) references. Named anchors
+and `$dynamicRef` are not resolved yet.
+
+Server integrations can import `buildNormalizedOpenApiModel` and its `NormalizedOpenApi*` types
+from `@farming-labs/docs/server`. The shared model exposes stable operation IDs and slugs, selectors,
+tags, parameters, request bodies, responses, schemas, examples, servers, and security metadata.
 
 ## OpenAPI operations as MCP tools
 
