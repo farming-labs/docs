@@ -296,6 +296,30 @@ async function main() {
       return;
     }
     await runDoctor(doctorOptions);
+  } else if (
+    (parsedCommand.command === "openapi" || parsedCommand.command === "api") &&
+    subcommand === "diff"
+  ) {
+    const { parseOpenApiDiffArgs, printOpenApiDiffHelp, runOpenApiDiff } =
+      await import("./openapi-diff.js");
+    const diffOptions = parseOpenApiDiffArgs(args.slice(2));
+    if (diffOptions.help) {
+      printOpenApiDiffHelp();
+      return;
+    }
+    await runOpenApiDiff(diffOptions);
+  } else if (
+    (parsedCommand.command === "openapi" || parsedCommand.command === "api") &&
+    (subcommand === "--help" || subcommand === "-h")
+  ) {
+    const { printOpenApiDiffHelp } = await import("./openapi-diff.js");
+    printOpenApiDiffHelp();
+  } else if (parsedCommand.command === "openapi" || parsedCommand.command === "api") {
+    console.error(pc.red(`Unknown OpenAPI subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printOpenApiDiffHelp } = await import("./openapi-diff.js");
+    printOpenApiDiffHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "review") {
     const { parseReviewArgs, printReviewHelp, runReview } = await import("./review.js");
     const reviewOptions = parseReviewArgs(args.slice(1));
@@ -436,6 +460,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("skills")}   Agent Skills utilities (${pc.dim("scaffold")} from structured page contracts)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
+  ${pc.cyan("openapi")}  OpenAPI utilities (${pc.dim("diff")} for breaking-change detection)
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
   ${pc.cyan("mcp")}      Run read-only docs MCP or the separate protected authoring server
@@ -567,6 +592,12 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor api")}                          Subcommand alias for OpenAPI diagnostics
   ${pc.cyan("doctor human")}                        Legacy alias for reader-facing scoring
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for OpenAPI diff:")}
+  ${pc.cyan("openapi diff <baseline> <current>")}   Compare local or remote JSON/YAML contracts
+  ${pc.cyan("--base <source> --head <source>")}     Named source arguments; ${pc.cyan("api diff")} is an alias
+  ${pc.cyan("--fail-on <policy>")}                  Exit policy: ${pc.dim("breaking")}, ${pc.dim("any")}, or ${pc.dim("never")}
+  ${pc.cyan("--json")}                              Print stable ${pc.dim("farming-labs-openapi-diff.v1")} JSON
 
 ${pc.dim("Options for review:")}
   ${pc.cyan("review")}                              Review docs changed in git

@@ -253,6 +253,8 @@ const DEFAULT_DOCS_COMMANDS = [
   "agent propose",
   "agents generate",
   "doctor",
+  "openapi diff",
+  "api diff",
   "review",
   "codeblocks validate",
   "code-blocks validate",

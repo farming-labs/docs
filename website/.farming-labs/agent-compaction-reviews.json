@@ -3,12 +3,12 @@
   "reviews": [
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:6e278238079f8684",
+      "sourceHash": "fnv1a64:c45c026992d71265",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
-      "outputHash": "fnv1a64:1eb58deb7193cc23",
-      "reviewedAt": "2026-09-29T22:42:01.783Z",
-      "reviewedBy": "farming-labs-docs",
-      "reason": "Document docs doctor --api diagnostics and preserve the reviewed CLI summary after verifying the new contract-health workflow."
+      "outputHash": "fnv1a64:49601cc147b931c3",
+      "reviewedAt": "2026-09-29T23:49:27.857Z",
+      "reviewedBy": "docs-team",
+      "reason": "Document the OpenAPI breaking-change diff command and CI exit behavior while preserving the retrieval-tested CLI summary."
     },
     {
       "route": "/docs/configuration",

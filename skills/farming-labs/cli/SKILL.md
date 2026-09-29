@@ -1,6 +1,6 @@
 ---
 name: cli
-description: Use the @farming-labs/docs CLI to scaffold projects or Agent Skills, upgrade, downgrade, deploy, audit, review, export or compact agent docs, validate code blocks, generate discovery files, sync search indexes, and run MCP. Use for init, deploy, upgrade, downgrade, doctor, review, agent export, agent compact, skills scaffold, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags.
+description: Use the @farming-labs/docs CLI to scaffold projects or Agent Skills, upgrade, downgrade, deploy, audit, compare OpenAPI contracts, review, export or compact agent docs, validate code blocks, generate discovery files, sync search indexes, and run MCP. Use for init, deploy, upgrade, downgrade, doctor, openapi diff, api diff, review, agent export, agent compact, skills scaffold, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, and their flags.
 compatibility: Requires Node.js and npm, pnpm, Yarn, or Bun. Package installation, hosted deployment, and external search commands require network access and provider credentials.
 ---
 
@@ -47,6 +47,7 @@ All references are one hop from this file.
 | Code-fence execution planning and docs PR review | [Validation and review](references/validation-and-review.md) |
 | Sitemap, Agent Bundle, compaction, Agent Skill scaffolding, AGENTS.md, or robots.txt generation | [Agent and static outputs](references/agent-and-static-outputs.md) |
 | Agent/site readiness audits, hosted probes, JSON reports | [Doctor audits](references/doctor-audits.md) |
+| Local or CI OpenAPI breaking-change comparison | [OpenAPI diffs](references/openapi-diffs.md) |
 
 ## Common commands
 
@@ -56,6 +57,7 @@ pnpm dlx @farming-labs/docs@latest upgrade --dry-run
 pnpm exec docs review --ci
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --api
+pnpm exec docs openapi diff api/openapi.v1.yaml api/openapi.yaml
 pnpm exec docs skills scaffold --dry-run
 pnpm exec docs agent export --check
 pnpm exec docs sitemap generate --check
@@ -68,6 +70,8 @@ pnpm exec docs sitemap generate --check
 - Use `downgrade --version` only for a lower version; use `upgrade --version` for a newer one.
 - Use `docs review` for changed documentation, `docs doctor --agent` for whole-site readiness, and
   `docs doctor --api` for OpenAPI contract and projection diagnostics.
+- Use `openapi diff <baseline> <current>` before publishing an API contract; it fails on breaking
+  changes by default. Use `--json` for CI integrations.
 - Use `agent export --check`, `sitemap generate --check`, `robots generate --check`, or
   `agents generate --check` to validate committed static outputs.
 - Use `codeblocks validate --plan` before executing runnable documentation examples.

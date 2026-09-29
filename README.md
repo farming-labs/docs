@@ -214,6 +214,20 @@ pages, low-confidence config loading, and drift between discovery, config, and t
 The API mode is diagnostics-only and uses the same JSON and `--fail-on warn|fail` policies as the
 other suites.
 
+## OpenAPI Contract Diffs
+
+Compare local or remote OpenAPI JSON/YAML contracts before shipping an API change:
+
+```bash
+pnpm exec docs openapi diff api/openapi.v1.yaml api/openapi.yaml
+pnpm exec docs openapi diff --base https://api.example.com/openapi.json --head api/openapi.yaml --json
+```
+
+The command resolves external references, reports operation and schema compatibility changes, and
+exits non-zero on breaking changes by default. Use `--fail-on any` to reject every contract change
+or `--fail-on never` for report-only workflows. Structured output uses the stable
+`farming-labs-openapi-diff.v1` format.
+
 Configure `agent.evaluations.tasks` to run golden tasks for retrieval recall, citations,
 framework/version selection, verified examples, generated answers, and context-budget usage.
 Evaluations use the local `mcp-context` surface by default and make no implicit model or network
