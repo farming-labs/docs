@@ -50,7 +50,9 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - `sitemap` for XML and Markdown maps with canonical URLs and freshness dates
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
-- When they ask about generated API docs, use `apiReference`.
+- When they ask about generated API docs, use `apiReference`. Set `specUrl` to a project-relative
+  JSON/YAML file, a `file:` URL, or an absolute/request-relative JSON/YAML URL when an OpenAPI
+  contract already exists; otherwise use framework route scanning.
 
 - When the user asks about runtime document synchronization or incremental content updates, point to `agent.contentChanges`. Enabled by default on server-rendered adapters; always `false` in static bundles produced by `docs agent export`. The endpoint is `GET /api/docs?audience=agent&response=changes` and returns a `docs-content-changes.v1` payload with `indexGeneration`, `mode` (`snapshot`, `delta`, or `reset`), `resetRequired`, `documentCount`, and `added`/`modified`/`removed` arrays. Supply `since=<indexGeneration>` from a previous response to receive a delta. ETag and `If-None-Match` conditional requests are supported.
 

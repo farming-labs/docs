@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:deb172b215e402b7",
+      "sourceHash": "fnv1a64:722f5525ab3837a7",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:d02d5fedea16c02f",
-      "reviewedAt": "2026-09-04T09:42:24.218Z",
-      "reviewedBy": "Kinfe123",
-      "reason": "Reviewed the evaluation retry documentation: the CLI and reference summaries remain accurate, and the configuration summary now reflects per-attempt timeouts plus two transient retries."
+      "outputHash": "fnv1a64:c61d9305548a8cc9",
+      "reviewedAt": "2026-09-29T01:16:39.138Z",
+      "reviewedBy": "farming-labs-docs",
+      "reason": "Reviewed the OpenAPI source-loading update; compact guidance now covers local and remote JSON/YAML sources while preserving the verified page summaries."
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -47,13 +47,22 @@
       "reason": "Re-recorded after compaction source hashing stopped embedding mtime-derived last_updated dates; page sources are unchanged since the 2026-08-14 review, and the intentionally preserved agent.md content (audience projection and Agent Skills guide, operator-only authoring MCP safety guidance, scoped sidebar answer guide) still matches its source."
     },
     {
+      "route": "/docs/guides/agent-friendly-docs",
+      "sourceHash": "fnv1a64:1417c876829fd6c3",
+      "settingsHash": "fnv1a64:4d5874ba9e62babc",
+      "outputHash": "fnv1a64:723c75eb102d9d85",
+      "reviewedAt": "2026-09-29T01:16:39.151Z",
+      "reviewedBy": "farming-labs-docs",
+      "reason": "Reviewed the OpenAPI source-loading update; compact guidance now covers local and remote JSON/YAML sources while preserving the verified page summaries."
+    },
+    {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:e90f1c62e51677bc",
+      "sourceHash": "fnv1a64:44c0a46b530adc47",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:173fd105503fea58",
-      "reviewedAt": "2026-09-04T09:42:24.227Z",
-      "reviewedBy": "Kinfe123",
-      "reason": "Reviewed the evaluation retry documentation: the CLI and reference summaries remain accurate, and the configuration summary now reflects per-attempt timeouts plus two transient retries."
+      "outputHash": "fnv1a64:7ac4f6c6dc77ec1a",
+      "reviewedAt": "2026-09-29T01:16:39.149Z",
+      "reviewedBy": "farming-labs-docs",
+      "reason": "Reviewed the OpenAPI source-loading update; compact guidance now covers local and remote JSON/YAML sources while preserving the verified page summaries."
     },
     {
       "route": "/docs/token-efficiency",

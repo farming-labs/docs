@@ -3131,7 +3131,7 @@ export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
    * Supported adapters can generate references from framework route handlers
-   * or a hosted OpenAPI JSON document.
+   * or a local/remote OpenAPI JSON or YAML document.
    * @default false
    */
   enabled?: boolean;
