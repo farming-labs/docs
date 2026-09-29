@@ -640,6 +640,94 @@ describe("P1 trust and OpenAPI tools", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("discovers and reads API operations without enabling executable API tools", async () => {
+    const operationUrl = "/api-reference/v1/operations/list-widgets-a1b2c3";
+    const operationDocument = `# List widgets
+
+\`GET /widgets\`
+
+Returns the widgets visible to the caller.
+`;
+    const server = await createDocsMcpServer({
+      source: {
+        entry: "docs",
+        siteTitle: "API Docs",
+        getPages: () => [
+          {
+            slug: "introduction",
+            url: "/docs",
+            title: "Introduction",
+            content: "# Introduction",
+          },
+        ],
+        getNavigation: () => ({ name: "API Docs", children: [] }),
+      },
+      apiReference: {
+        getPages: () => [
+          {
+            title: "List widgets",
+            url: operationUrl,
+            canonicalUrl: operationUrl,
+            content: operationDocument,
+            rawContent: operationDocument,
+            agentContent: operationDocument,
+            agentRawContent: operationDocument,
+            type: "api",
+            version: "v1",
+            tags: ["openapi", "get", "Widgets"],
+          },
+        ],
+      },
+    });
+    const client = new Client({ name: "api-reading-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.map((tool) => tool.name)).toEqual(
+        expect.arrayContaining(["list_pages", "search_docs", "read_page"]),
+      );
+      expect(tools.tools.some((tool) => tool.name.startsWith("api_"))).toBe(false);
+
+      const resources = await client.listResources();
+      expect(resources.resources.map((resource) => resource.uri)).toContain(
+        "docs://api-reference/v1/operations/list-widgets-a1b2c3",
+      );
+
+      const listed = await client.callTool({ name: "list_pages", arguments: {} });
+      expect(listed.structuredContent).toMatchObject({
+        pages: [
+          expect.objectContaining({
+            url: operationUrl,
+            title: "List widgets",
+            type: "api",
+          }),
+          expect.anything(),
+        ],
+      });
+
+      const searched = await client.callTool({
+        name: "search_docs",
+        arguments: { query: "visible widgets" },
+      });
+      expect(JSON.stringify(searched.structuredContent)).toContain(operationUrl);
+
+      const read = await client.callTool({
+        name: "read_page",
+        arguments: { path: operationUrl },
+      });
+      expect(read.structuredContent).toMatchObject({
+        page: { url: operationUrl, type: "api", version: "v1" },
+        document: operationDocument,
+      });
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
 });
 
 describe("page access policies", () => {

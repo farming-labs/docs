@@ -160,6 +160,7 @@ export interface DocsMcpPage {
   slug: string;
   url: string;
   title: string;
+  type?: DocsSearchSourcePage["type"];
   description?: string;
   related?: DocsSearchSourcePage["related"];
   agent?: PageAgentFrontmatter;
@@ -222,6 +223,7 @@ export interface DocsMcpDocsPageSummary {
   slug: string;
   url: string;
   title: string;
+  type?: DocsSearchSourcePage["type"];
   description?: string;
   agent?: DocsMcpAgentContractSummary;
   icon?: string;
@@ -439,6 +441,14 @@ export interface DocsMcpSource {
   ): readonly DocsPublishedAgentSkill[] | Promise<readonly DocsPublishedAgentSkill[]>;
 }
 
+export interface DocsMcpApiReferenceSource {
+  /** Generated operation documents exposed only through read-only MCP resources and tools. */
+  getPages(
+    locale?: string,
+    context?: DocsMcpRequestContext,
+  ): readonly DocsSearchSourcePage[] | Promise<readonly DocsSearchSourcePage[]>;
+}
+
 /** Request-scoped identity available to custom MCP sources. */
 export interface DocsMcpRequestContext {
   transport: "http" | "stdio";
@@ -524,6 +534,8 @@ export interface DocsMcpHttpHandlers {
 
 export interface CreateDocsMcpServerOptions {
   source: DocsMcpSource;
+  /** Read-only API operation projection. This never enables executable OpenAPI tools. */
+  apiReference?: DocsMcpApiReferenceSource;
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
   analytics?: boolean | DocsAnalyticsConfig;
@@ -3067,6 +3079,7 @@ const pageSummaryOutputSchema = z.object({
   slug: z.string(),
   url: z.string(),
   title: z.string(),
+  type: z.enum(["page", "api", "code", "changelog"]).optional(),
   description: z.string().optional(),
   agent: pageAgentContractSummaryOutputSchema.optional(),
   icon: z.string().optional(),
@@ -3418,6 +3431,7 @@ const readPageOutputSchema = z.object({
     slug: z.string(),
     url: z.string(),
     title: z.string(),
+    type: z.enum(["page", "api", "code", "changelog"]).optional(),
     description: z.string().optional(),
     related: z.array(relatedLinkOutputSchema).optional(),
     icon: z.string().optional(),
@@ -4388,6 +4402,23 @@ function renderDocsMcpGoldenPrompt(
   return lines.join("\n");
 }
 
+async function resolveDocsMcpSourcePages(
+  options: CreateDocsMcpServerOptions,
+  locale?: string,
+  context: DocsMcpRequestContext | undefined = options.requestContext,
+): Promise<DocsMcpPage[]> {
+  const [sourcePages, apiReferencePages] = await Promise.all([
+    options.source.getPages(locale, context),
+    options.apiReference?.getPages(locale, context) ?? [],
+  ]);
+  const projectedApiPages = apiReferencePages.map((page) => ({
+    ...page,
+    slug: normalizePathSegment(page.url),
+    type: page.type ?? ("api" as const),
+  }));
+  return dedupePages([...sourcePages, ...projectedApiPages]);
+}
+
 export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): Promise<McpServer> {
   const resolved = resolveDocsMcpConfig(options.mcp, {
     defaultName: options.defaultName ?? options.source.siteTitle ?? DEFAULT_MCP_NAME,
@@ -4482,7 +4513,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
   }
 
   async function getResolvedSourcePages(locale?: string) {
-    const pages = await options.source.getPages(locale, options.requestContext);
+    const pages = await resolveDocsMcpSourcePages(options, locale);
     return filterDocsPagesByAccess(pages, options.requestContext?.auth);
   }
 
@@ -6901,7 +6932,10 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
   ): Promise<DocsMcpContentGenerationState> {
     const locale = options.source.resolveLocale?.(undefined, context);
     const pages = dedupePages(
-      filterDocsPagesByAccess(await options.source.getPages(locale, context), context.auth),
+      filterDocsPagesByAccess(
+        await resolveDocsMcpSourcePages(options, locale, context),
+        context.auth,
+      ),
     );
     const result = await contentChangeFeed.resolve({
       pages: toSearchSourcePages(pages),
@@ -7167,7 +7201,7 @@ export async function runDocsMcpStdio(options: CreateDocsMcpServerOptions): Prom
       const locale = options.source.resolveLocale?.(undefined, requestContext);
       const pages = dedupePages(
         filterDocsPagesByAccess(
-          await options.source.getPages(locale, requestContext),
+          await resolveDocsMcpSourcePages(options, locale, requestContext),
           requestContext.auth,
         ),
       );
@@ -8141,6 +8175,7 @@ function toPageSummaries(pages: DocsMcpPage[]) {
     slug: page.slug,
     url: page.url,
     title: page.title,
+    type: page.type,
     description: page.description,
     icon: page.icon,
     agent: toAgentContractSummary(page.agent),
@@ -8152,6 +8187,7 @@ function toDocsListPageSummary(page: DocsMcpPage): DocsMcpDocsPageSummary {
     slug: page.slug,
     url: page.url,
     title: page.title,
+    type: page.type,
     description: page.description,
     agent: toAgentContractSummary(page.agent),
     icon: page.icon,
@@ -8791,6 +8827,7 @@ function toStructuredDocsMcpPage(page: DocsMcpPage) {
     slug: page.slug,
     url: page.url,
     title: page.title,
+    type: page.type,
     description: page.description,
     related: page.related,
     icon: page.icon,

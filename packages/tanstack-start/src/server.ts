@@ -2099,6 +2099,17 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         return [rootSkill, ...(await getPublishedAgentSkills())];
       },
     },
+    apiReference: {
+      getPages(locale, context) {
+        const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
+        const baseUrl =
+          markdownMetadataBaseUrl ||
+          (context?.request
+            ? new URL(context.request.url).origin
+            : llmsBaseUrl || "http://localhost");
+        return getApiOperationSearchPages(ctx, baseUrl);
+      },
+    },
     mcp: config.mcp,
     okf: config.agent?.okf,
     openapi: mcpApiReference

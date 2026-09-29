@@ -2,11 +2,13 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import pc from "picocolors";
 import {
+  buildApiReferenceOperationPagesAsync,
   createFilesystemDocsMcpSource,
   resolveConfiguredAgentSkills,
   resolveDocsMcpConfig,
   runDocsMcpStdio,
 } from "../server.js";
+import type { ApiReferenceFramework } from "../api-reference.js";
 import { resolveDocsPublishedAgentSkill } from "../agent.js";
 import { resolveDocsMetadataBaseUrl } from "../metadata.js";
 import type { DocsMcpConfig } from "../types.js";
@@ -21,6 +23,7 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
+import { detectFramework } from "./utils.js";
 
 interface RunMcpOptions {
   configPath?: string;
@@ -39,6 +42,11 @@ const HOSTED_MCP_CLIENT_LABELS: Record<HostedMcpClient, string> = {
   cursor: "Cursor",
   vscode: "VS Code",
 };
+
+function resolveApiReferenceFramework(rootDir: string): ApiReferenceFramework | undefined {
+  const framework = detectFramework(rootDir);
+  return framework === "nextjs" ? "next" : (framework ?? undefined);
+}
 
 export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
   if (options.setup) {
@@ -96,9 +104,23 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
       return [rootSkill, ...configured];
     },
   };
+  const apiReferenceFramework = resolveApiReferenceFramework(rootDir);
+  const apiOperationPages =
+    loadedConfig && apiReferenceFramework
+      ? buildApiReferenceOperationPagesAsync(loadedConfig, {
+          framework: apiReferenceFramework,
+          rootDir,
+          baseUrl: resolveDocsMetadataBaseUrl(loadedConfig),
+        })
+      : undefined;
 
   await runDocsMcpStdio({
     source,
+    apiReference: apiOperationPages
+      ? {
+          getPages: () => apiOperationPages,
+        }
+      : undefined,
     mcp: resolvedMcp,
     contentChanges: loadedConfig?.agent?.contentChanges,
     evaluations: loadedConfig?.agent?.evaluations,
