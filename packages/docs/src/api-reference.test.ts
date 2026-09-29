@@ -13,9 +13,11 @@ import {
   OPENAPI_SPEC_MAX_BYTES,
   resolveApiReferenceOpenApiDiscovery,
   resolveApiReferenceRenderer,
+  resolveApiReferenceVersionFromPathname,
 } from "./api-reference.js";
 import { defineDocs } from "./define-docs.js";
 import { buildNormalizedOpenApiModel } from "./openapi-operations.js";
+import { applyOpenApiOverlayDocuments } from "./openapi-overlays.js";
 import { OPENAPI_BUNDLED_REFERENCES_EXTENSION } from "./openapi-references.js";
 
 const tempDirs: string[] = [];
@@ -103,6 +105,60 @@ describe("resolveApiReferenceOpenApiDiscovery", () => {
     expect(discovery.source).toBe("configured");
     expect(discovery.specUrl).toBeUndefined();
     expect(discovery.catalogTargets).toBeUndefined();
+  });
+
+  it("publishes stable identities for every configured API version", () => {
+    const config = {
+      enabled: true,
+      versions: {
+        v1: { specUrl: "./openapi-v1.yaml", label: "Version 1" },
+        v2: { specUrl: "https://schemas.example.com/v2.yaml" },
+      },
+      defaultVersion: "v2",
+    } as const;
+
+    expect(resolveApiReferenceOpenApiDiscovery(config)).toMatchObject({
+      source: "configured",
+      specUrl: "https://schemas.example.com/v2.yaml",
+      apiReferencePath: "/api-reference",
+      versions: [
+        {
+          id: "v1",
+          label: "Version 1",
+          default: false,
+          url: "/api/docs?format=openapi&version=v1",
+          apiReferencePath: "/api-reference/v1",
+          specUrl: undefined,
+        },
+        {
+          id: "v2",
+          label: "v2",
+          default: true,
+          url: "/api/docs?format=openapi&version=v2",
+          apiReferencePath: "/api-reference/v2",
+          specUrl: "https://schemas.example.com/v2.yaml",
+        },
+      ],
+    });
+    expect(resolveApiReferenceVersionFromPathname(config, "/api-reference/v1/pets")).toMatchObject({
+      id: "v1",
+    });
+  });
+
+  it("requires one explicit valid default for versioned sources", () => {
+    expect(() =>
+      resolveApiReferenceOpenApiDiscovery({
+        enabled: true,
+        versions: { v1: { specUrl: "./openapi.yaml" } },
+      }),
+    ).toThrow("defaultVersion");
+    expect(() =>
+      resolveApiReferenceOpenApiDiscovery({
+        enabled: true,
+        versions: { "bad/version": { specUrl: "./openapi.yaml" } },
+        defaultVersion: "bad/version",
+      }),
+    ).toThrow("URL-safe");
   });
 });
 
@@ -312,6 +368,230 @@ describe("buildApiReferenceOpenApiDocument", () => {
         });
       }
     }
+  });
+
+  it("selects named API versions and marks their normalized documents", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-versions-"));
+    tempDirs.push(rootDir);
+    for (const version of ["v1", "v2"] as const) {
+      writeFileSync(
+        join(rootDir, `${version}.yaml`),
+        [
+          'openapi: "3.1.0"',
+          `info: { title: API ${version}, version: '${version}' }`,
+          "paths:",
+          `  /${version}/pets:`,
+          "    get:",
+          `      operationId: listPets${version.toUpperCase()}`,
+          "      responses:",
+          "        '200': { description: OK }",
+          "",
+        ].join("\n"),
+      );
+    }
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        versions: {
+          v1: { specUrl: "./v1.yaml", label: "Version 1" },
+          v2: { specUrl: "./v2.yaml", label: "Version 2" },
+        },
+        defaultVersion: "v2",
+      },
+    });
+
+    const defaultDocument = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "next",
+      rootDir,
+    });
+    const v1Document = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "next",
+      rootDir,
+      version: "v1",
+    });
+
+    expect(defaultDocument).toMatchObject({
+      info: { title: "API v2" },
+      "x-farming-labs-api-version": { id: "v2", label: "Version 2", default: true },
+    });
+    expect(v1Document).toMatchObject({
+      info: { title: "API v1" },
+      "x-farming-labs-api-version": { id: "v1", label: "Version 1", default: false },
+    });
+    const html = await buildApiReferenceHtmlDocumentAsync(config, {
+      framework: "astro",
+      rootDir,
+      version: "v1",
+    });
+    expect(html).toContain("/api-reference/v1");
+  });
+
+  it("applies Overlay 1.0 and 1.1 documents sequentially before resolving references", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-overlays-"));
+    tempDirs.push(rootDir);
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info: { title: Overlay API, version: '1' }",
+        "paths:",
+        "  /pets:",
+        "    get:",
+        "      summary: Original",
+        "      tags: [public]",
+        "      responses:",
+        "        '200': { description: OK }",
+        "  /copied: {}",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(rootDir, "first.overlay.yaml"),
+      [
+        'overlay: "1.0.0"',
+        "info: { title: First overlay, version: '1' }",
+        "actions:",
+        "  - target: $['paths']['/pets']['get']",
+        "    update:",
+        "      summary: First",
+        "      tags: [beta]",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(rootDir, "second.overlay.yaml"),
+      [
+        'overlay: "1.1.0"',
+        "info: { title: Second overlay, version: '1' }",
+        "actions:",
+        "  - target: $['paths']['/pets']['get']['summary']",
+        "    update: Final",
+        "  - target: $['paths']['/copied']",
+        "    copy: $['paths']['/pets']",
+        "",
+      ].join("\n"),
+    );
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "./openapi.yaml",
+        overlays: ["./first.overlay.yaml", "./second.overlay.yaml"],
+      },
+    });
+
+    for (const document of [
+      buildApiReferenceOpenApiDocument(config, { framework: "next", rootDir }),
+      await buildApiReferenceOpenApiDocumentAsync(config, { framework: "astro", rootDir }),
+    ]) {
+      expect(document).toMatchObject({
+        paths: {
+          "/pets": { get: { summary: "Final", tags: ["public", "beta"] } },
+          "/copied": { get: { summary: "Final" } },
+        },
+      });
+    }
+  });
+
+  it("reports invalid and unmatched Overlay targets", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-overlay-errors-"));
+    tempDirs.push(rootDir);
+    writeFileSync(
+      join(rootDir, "openapi.json"),
+      JSON.stringify({
+        openapi: "3.1.0",
+        info: { title: "Overlay API", version: "1" },
+        paths: {},
+      }),
+    );
+    writeFileSync(
+      join(rootDir, "bad.overlay.yaml"),
+      [
+        'overlay: "1.1.0"',
+        "info: { title: Bad overlay, version: '1' }",
+        "actions:",
+        "  - target: $['paths']['/missing']",
+        "    update: { summary: Missing }",
+        "",
+      ].join("\n"),
+    );
+
+    const document = buildApiReferenceOpenApiDocument(
+      defineDocs({
+        entry: "docs",
+        apiReference: {
+          enabled: true,
+          specUrl: "./openapi.json",
+          overlays: ["./bad.overlay.yaml"],
+        },
+      }),
+      { framework: "next", rootDir },
+    );
+    expect(document.info).toMatchObject({
+      description: expect.stringContaining("did not match any nodes"),
+    });
+
+    writeFileSync(
+      join(rootDir, "bad.overlay.yaml"),
+      [
+        'overlay: "1.1.0"',
+        "info: { title: Bad overlay, version: '1' }",
+        "actions:",
+        "  - target: $['paths'",
+        "    update: { summary: Invalid }",
+        "",
+      ].join("\n"),
+    );
+    const invalidDocument = buildApiReferenceOpenApiDocument(
+      defineDocs({
+        entry: "docs",
+        apiReference: {
+          enabled: true,
+          specUrl: "./openapi.json",
+          overlays: ["./bad.overlay.yaml"],
+        },
+      }),
+      { framework: "next", rootDir },
+    );
+    expect(invalidDocument.info).toMatchObject({
+      description: expect.stringContaining("invalid RFC 9535 JSONPath"),
+    });
+  });
+
+  it("rejects mixed target types and invalid copy expressions in Overlay 1.1", () => {
+    const document = {
+      openapi: "3.1.0",
+      info: { title: "Overlay API", version: "1" },
+      tags: [],
+      paths: {},
+    };
+
+    expect(() =>
+      applyOpenApiOverlayDocuments(document, [
+        {
+          source: "mixed.overlay.json",
+          document: {
+            overlay: "1.1.0",
+            info: { title: "Mixed targets", version: "1" },
+            actions: [{ target: "$['info','tags']", update: {} }],
+          },
+        },
+      ]),
+    ).toThrow("must select only objects, only arrays, or only primitives");
+
+    expect(() =>
+      applyOpenApiOverlayDocuments(document, [
+        {
+          source: "copy.overlay.json",
+          document: {
+            overlay: "1.1.0",
+            info: { title: "Invalid copy", version: "1" },
+            actions: [{ target: "$.paths", copy: "info" }],
+          },
+        },
+      ]),
+    ).toThrow("`copy` must start with `$`");
   });
 
   it("bundles local OpenAPI references into a normalized operation model", async () => {

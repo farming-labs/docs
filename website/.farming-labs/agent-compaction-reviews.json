@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:0fc813162ba1b559",
+      "sourceHash": "fnv1a64:0583b638c968ccca",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:07a454416f6e7689",
-      "reviewedAt": "2026-09-29T02:05:01.138Z",
-      "reviewedBy": "farming-labs-docs",
-      "reason": "Document reviewed OpenAPI reference bundling, limits, and normalized operation APIs"
+      "outputHash": "fnv1a64:4de476f84bf6d4d0",
+      "reviewedAt": "2026-09-29T03:26:03.601Z",
+      "reviewedBy": "docs-team",
+      "reason": "Document versioned OpenAPI sources and Overlay 1.0/1.1 behavior"
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:41887c9f15db8801",
+      "sourceHash": "fnv1a64:57572840702fed61",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:1d7f28b95fef3b56",
-      "reviewedAt": "2026-09-29T02:05:01.147Z",
-      "reviewedBy": "farming-labs-docs",
-      "reason": "Document reviewed OpenAPI reference bundling, limits, and normalized operation APIs"
+      "outputHash": "fnv1a64:194014bcffeb6c81",
+      "reviewedAt": "2026-09-29T03:26:03.609Z",
+      "reviewedBy": "docs-team",
+      "reason": "Document versioned OpenAPI sources and Overlay 1.0/1.1 behavior"
     },
     {
       "route": "/docs/token-efficiency",

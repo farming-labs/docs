@@ -725,6 +725,11 @@ function buildAgentSpec({
       source: openapi.source ?? null,
       specUrl: openapi.specUrl ?? null,
       apiReferencePath: openapi.apiReferencePath ?? null,
+      versions:
+        openapi.versions?.map((version) => ({
+          ...version,
+          url: `${apiRoute}?format=openapi&version=${encodeURIComponent(version.id)}`,
+        })) ?? [],
       format: "OpenAPI 3.1",
     },
     search: {
@@ -4505,6 +4510,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           framework: "next",
           rootDir: root,
           baseUrl: url.origin,
+          version: url.searchParams.get("version")?.trim() || undefined,
         });
 
         return new Response(JSON.stringify(document, null, 2), {

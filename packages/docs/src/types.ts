@@ -3080,6 +3080,18 @@ export interface ChangelogConfig {
 
 export type ApiReferenceRenderer = "fumadocs" | "scalar";
 
+export interface ApiReferenceVersionConfig {
+  /** OpenAPI JSON or YAML source for this stable version identifier. */
+  specUrl: string;
+  /** Human-readable version label. Defaults to the version identifier. */
+  label?: string;
+  /**
+   * Ordered OpenAPI Overlay JSON or YAML sources applied before references are resolved.
+   * Supports the same local, `file:`, absolute HTTP(S), and request-relative forms as `specUrl`.
+   */
+  overlays?: readonly string[];
+}
+
 export interface DocsOpenApiMcpCredentialContext {
   operationId: string;
   method: string;
@@ -3165,6 +3177,21 @@ export interface ApiReferenceConfig {
    * ```
    */
   specUrl?: string;
+  /**
+   * Ordered OpenAPI Overlay 1.0 or 1.1 documents applied to `specUrl` before references resolve.
+   * Use per-version `overlays` when `versions` is configured.
+   */
+  overlays?: readonly string[];
+  /**
+   * Named OpenAPI sources. Keys are stable URL-safe version identifiers and each version is
+   * rendered at `/{path}/{version}` and exposed through the OpenAPI discovery endpoint.
+   * Cannot be combined with the legacy single `specUrl` or top-level `overlays` fields.
+   */
+  versions?: Readonly<Record<string, ApiReferenceVersionConfig>>;
+  /**
+   * Explicit default key from `versions`. Required whenever `versions` is configured.
+   */
+  defaultVersion?: string;
   /**
    * Product API base URLs described by the OpenAPI document.
    *

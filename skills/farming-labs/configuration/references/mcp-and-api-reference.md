@@ -205,6 +205,24 @@ apiReference: {
 }
 ```
 
+Use stable keys and one explicit default for multiple versions. Configure ordered overlays on the
+version they modify:
+
+```ts
+apiReference: {
+  enabled: true,
+  versions: {
+    v1: { specUrl: "./openapi/v1.yaml", label: "Version 1" },
+    v2: {
+      specUrl: "./openapi/v2.yaml",
+      label: "Version 2",
+      overlays: ["./openapi/public.overlay.yaml"],
+    },
+  },
+  defaultVersion: "v2",
+}
+```
+
 Supported local conventions:
 
 | Framework | Routes |
@@ -231,6 +249,17 @@ Project-relative files and their references must remain inside the project root;
 `file:` URL only for a trusted local contract outside it. The synchronous builder only loads local
 references; framework routes use the async builder and can load HTTP(S) references. Named anchors
 and `$dynamicRef` are not resolved yet.
+
+`versions` cannot be combined with `specUrl` or top-level `overlays`. Version identifiers are
+URL-safe and render at `/{path}/{version}`; schemas use
+`/api/docs?format=openapi&version={version}`. The unversioned routes use `defaultVersion`, and all
+versions are published through discovery, llms, and the API catalog.
+
+OpenAPI Overlay 1.0.x and 1.1.x JSON/YAML files may be local or remote. Farming Labs applies the
+configured list and each overlay's actions in order, evaluates RFC 9535 JSONPath targets, and then
+resolves `$ref` values. Invalid documents, selectors, unmatched targets, incompatible merges, and
+invalid final contracts are reported. Overlay loading uses the same timeout, size, and project-root
+containment rules as contract loading.
 
 Server integrations can import `buildNormalizedOpenApiModel` and its `NormalizedOpenApi*` types
 from `@farming-labs/docs/server`. The shared model exposes stable operation IDs and slugs, selectors,

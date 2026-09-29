@@ -1205,6 +1205,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         framework: "sveltekit",
         rootDir,
         baseUrl: event.url.origin,
+        version: event.url.searchParams.get("version")?.trim() || undefined,
       });
 
       return new Response(JSON.stringify(document, null, 2), {

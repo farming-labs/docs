@@ -8,6 +8,8 @@ import {
   buildApiReferenceScalarCss,
   resolveApiReferenceConfig,
   resolveApiReferenceRenderer,
+  resolveApiReferenceVersion,
+  resolveApiReferenceVersionFromPathname,
 } from "@farming-labs/docs/server";
 import {
   SidebarTabsDropdown,
@@ -417,13 +419,13 @@ function buildOpenApiPaths(routes: ApiReferenceRoute[]): Record<string, Record<s
 
 export function buildNextOpenApiDocument(config: DocsConfig): Record<string, unknown> {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
-  if (apiReference.specUrl) {
+  if (apiReference.specUrl || apiReference.versions.length > 0) {
     return {
       openapi: "3.1.0",
       info: {
         title: "API Reference",
         description:
-          "Remote OpenAPI specs are resolved at request time through the Next.js API reference renderer.",
+          "Configured OpenAPI specs are resolved at request time through the Next.js API reference renderer.",
         version: "0.0.0",
       },
       servers: [{ url: "/" }],
@@ -861,15 +863,25 @@ export function createNextApiReference(config: DocsConfig) {
       });
     }
 
+    const requestUrl = request ? new URL(request.url) : undefined;
+    const version =
+      (requestUrl
+        ? resolveApiReferenceVersionFromPathname(config.apiReference, requestUrl.pathname)
+        : undefined) ?? resolveApiReferenceVersion(apiReference);
     const document = await buildApiReferenceOpenApiDocumentAsync(config, {
       framework: "next",
       rootDir: process.cwd(),
       baseUrl: getOriginFromRequest(request),
+      version: version?.id,
     });
+    const basePath = `/${apiReference.path}${version ? `/${encodeURIComponent(version.id)}` : ""}`;
 
     return ApiReference({
-      pageTitle: buildApiReferencePageTitle(config, "API Reference"),
-      title: "API Reference",
+      pageTitle: buildApiReferencePageTitle(
+        config,
+        version ? `API Reference – ${version.label}` : "API Reference",
+      ),
+      title: version ? `API Reference – ${version.label}` : "API Reference",
       content: document,
       theme: "deepSpace",
       layout: "modern",
@@ -878,7 +890,7 @@ export function createNextApiReference(config: DocsConfig) {
       hideDarkModeToggle: isThemeToggleHidden(config),
       customCss: buildApiReferenceScalarCss(config),
       pathRouting: {
-        basePath: `/${apiReference.path}`,
+        basePath,
       },
       showSidebar: true,
       defaultOpenFirstTag: true,
@@ -920,9 +932,15 @@ export function createNextApiReferencePage(config: DocsConfig) {
       import("fumadocs-openapi/ui"),
       import("fumadocs-ui/layouts/notebook/page"),
     ]);
-    const { info, pages, server, source } = await getNextApiReferenceSourceState(config);
     const resolvedParams = props?.params ? await props.params : undefined;
     const slug = resolvedParams?.slug ?? [];
+    const apiReference = resolveApiReferenceConfig(config.apiReference);
+    const version = resolveApiReferenceVersion(apiReference, slug[0]);
+    const pageSlug = version ? slug.slice(1) : slug;
+    const { info, pages, server, source } = await getNextApiReferenceSourceState(
+      config,
+      version?.id,
+    );
 
     if (pages.length === 0) {
       return (
@@ -938,7 +956,7 @@ export function createNextApiReferencePage(config: DocsConfig) {
       );
     }
 
-    const page = slug.length === 0 ? pages[0] : source.getPage(slug);
+    const page = pageSlug.length === 0 ? pages[0] : source.getPage(pageSlug);
     if (!page || typeof page.data?.getAPIPageProps !== "function") {
       notFound();
     }
@@ -949,7 +967,7 @@ export function createNextApiReferencePage(config: DocsConfig) {
       },
     });
     const currentPageIndex =
-      slug.length === 0 ? 0 : pages.findIndex((entry) => entry.url === page.url);
+      pageSlug.length === 0 ? 0 : pages.findIndex((entry) => entry.url === page.url);
     const previousPage = currentPageIndex > 0 ? pages[currentPageIndex - 1] : undefined;
     const nextPage =
       currentPageIndex >= 0 && currentPageIndex < pages.length - 1
@@ -1018,12 +1036,21 @@ export function createNextApiReferencePage(config: DocsConfig) {
 }
 
 export function createNextApiReferenceLayout(config: DocsConfig) {
-  return async function NextApiReferenceLayout(props: { children: React.ReactNode }) {
+  return async function NextApiReferenceLayout(props: {
+    children: React.ReactNode;
+    params?: Promise<{ slug?: string[] }> | { slug?: string[] };
+  }) {
     const { DocsLayout } = await import("fumadocs-ui/layouts/notebook");
-    const { apiReference, primaryServerUrl, source } = await getNextApiReferenceSourceState(config);
+    const resolvedParams = props.params ? await props.params : undefined;
+    const configuredApiReference = resolveApiReferenceConfig(config.apiReference);
+    const version = resolveApiReferenceVersion(configuredApiReference, resolvedParams?.slug?.[0]);
+    const { apiReference, primaryServerUrl, source } = await getNextApiReferenceSourceState(
+      config,
+      version?.id,
+    );
     const sidebarTree = flattenApiReferencePageTreeForSidebar(source.getPageTree());
     const docsUrl = getDocsUrl(config);
-    const apiUrl = `/${apiReference.path}`;
+    const apiUrl = `/${apiReference.path}${version ? `/${encodeURIComponent(version.id)}` : ""}`;
     const themeSwitch = resolveApiReferenceThemeSwitch(config.themeToggle);
     const themeStyle = resolveApiReferenceThemeStyle(config);
     const banner = mergeBanner(
@@ -1054,8 +1081,10 @@ export function createNextApiReferenceLayout(config: DocsConfig) {
 
 export async function getNextApiReferenceSourceState(
   config: DocsConfig,
+  versionId?: string,
 ): Promise<NextApiReferenceSourceState> {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
+  const version = resolveApiReferenceVersion(apiReference, versionId);
   const [{ createOpenAPI, openapiPlugin, openapiSource }, { loader }] = await Promise.all([
     import("fumadocs-openapi/server"),
     import("fumadocs-core/source"),
@@ -1065,6 +1094,7 @@ export async function getNextApiReferenceSourceState(
     framework: "next",
     rootDir: process.cwd(),
     baseUrl,
+    version: version?.id,
   });
 
   const server = createOpenAPI({
@@ -1095,7 +1125,7 @@ export async function getNextApiReferenceSourceState(
       },
     }),
     {
-      baseUrl: `/${apiReference.path}`,
+      baseUrl: `/${apiReference.path}${version ? `/${encodeURIComponent(version.id)}` : ""}`,
       plugins: [openapiPlugin()],
     },
   );

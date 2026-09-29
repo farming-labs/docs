@@ -404,6 +404,16 @@ export interface DocsOpenApiDiscoveryConfig {
   apiReferencePath?: string;
   /** Product API targets described by this OpenAPI document. */
   catalogTargets?: readonly string[];
+  versions?: readonly DocsOpenApiVersionDiscoveryConfig[];
+}
+
+export interface DocsOpenApiVersionDiscoveryConfig {
+  id: string;
+  label: string;
+  default: boolean;
+  url: string;
+  apiReferencePath: string;
+  specUrl?: string;
 }
 
 export interface DocsOpenApiResolvedDiscoveryConfig {
@@ -416,6 +426,7 @@ export interface DocsOpenApiResolvedDiscoveryConfig {
   apiReferencePath?: string;
   /** Product API targets described by this OpenAPI document. */
   catalogTargets?: readonly string[];
+  versions?: readonly DocsOpenApiVersionDiscoveryConfig[];
 }
 
 export type DocsConfigMapJsonPrimitive = string | number | boolean | null;
@@ -2185,10 +2196,8 @@ export function renderDocsLlmsTxt(
   const apiCatalogEnabled = options.apiCatalog ?? true;
   const sections = resolveDocsLlmsTxtSections(options);
   const openapi = resolveDocsOpenApiDiscoveryConfig(options.openapi);
-  const openapiUrl = resolveDocsOpenApiDiscoveryUrl(
-    openapi,
-    resolveDocsDiscoveryApiRoute(options.apiRoute),
-  );
+  const resolvedApiRoute = resolveDocsDiscoveryApiRoute(options.apiRoute);
+  const openapiUrl = resolveDocsOpenApiDiscoveryUrl(openapi, resolvedApiRoute);
   const matchedPageUrls = new Set<string>();
 
   const generatedSections = sections.map((section) => {
@@ -2247,7 +2256,14 @@ export function renderDocsLlmsTxt(
         openapi.apiReferencePath,
       )}`;
     }
-    llmsTxt += "\n\n";
+    llmsTxt += "\n";
+    for (const version of openapi.versions ?? []) {
+      llmsTxt += `- [OpenAPI schema – ${version.label}](${resolveDocsResourceUrl(
+        baseUrl,
+        resolveDocsOpenApiVersionUrl(openapi, version, resolvedApiRoute),
+      )}): Version \`${version.id}\`${version.default ? " (default)" : ""}; rendered API reference at ${resolveDocsResourceUrl(baseUrl, version.apiReferencePath)}\n`;
+    }
+    llmsTxt += "\n";
   }
   if (rootPages.length > 0 || generatedSections.length === 0) {
     llmsTxt += "## Pages\n\n";
@@ -2415,15 +2431,26 @@ export async function createDocsStandardsDiscoveryResponse({
           feedbackRoutes: feedback?.enabled ? [feedbackRoute, feedbackSchemaRoute] : [],
           openapiDefinitions:
             openapiConfig.enabled && openapiConfig.catalogTargets?.length
-              ? [
-                  {
-                    route: openapiUrl ?? `${resolvedApiRoute}?format=openapi`,
-                    targets: openapiConfig.catalogTargets.map((route) => ({
-                      route,
-                      title: "Product API",
-                    })),
-                  },
-                ]
+              ? (openapiConfig.versions?.length
+                  ? openapiConfig.versions
+                  : [
+                      {
+                        id: "default",
+                        label: "Product API",
+                        default: true,
+                        url: openapiUrl ?? `${resolvedApiRoute}?format=openapi`,
+                        apiReferencePath: openapiConfig.apiReferencePath ?? "/api-reference",
+                      },
+                    ]
+                ).map((version) => ({
+                  route: resolveDocsOpenApiVersionUrl(openapiConfig, version, resolvedApiRoute),
+                  targets: openapiConfig.catalogTargets!.map((route) => ({
+                    route,
+                    title: openapiConfig.versions?.length
+                      ? `Product API – ${version.label}`
+                      : "Product API",
+                  })),
+                }))
               : [],
           apiReferenceRoute:
             openapiConfig.enabled && openapiConfig.apiReferencePath
@@ -4083,6 +4110,12 @@ function appendDocsOpenApiRouteLines(lines: string[], context: DocsAgentDocument
   if (context.openapiConfig.apiReferencePath) {
     lines.push(`- API reference: ${context.openapiConfig.apiReferencePath}`);
   }
+  for (const version of context.openapiConfig.versions ?? []) {
+    lines.push(
+      `- OpenAPI ${version.label}${version.default ? " (default)" : ""}: ${version.url}`,
+      `- API reference ${version.label}: ${version.apiReferencePath}`,
+    );
+  }
 }
 
 function appendDocsSitemapRouteLines(lines: string[], context: DocsAgentDocumentContext): void {
@@ -4563,6 +4596,11 @@ export function buildDocsAgentDiscoverySpec({
       source: openapiConfig.source ?? null,
       specUrl: openapiConfig.specUrl ?? null,
       apiReferencePath: openapiConfig.apiReferencePath ?? null,
+      versions:
+        openapiConfig.versions?.map((version) => ({
+          ...version,
+          url: resolveDocsOpenApiVersionUrl(openapiConfig, version, resolvedApiRoute),
+        })) ?? [],
       format: "OpenAPI 3.1",
     },
     search: {
@@ -4844,6 +4882,7 @@ export function resolveDocsOpenApiDiscoveryConfig(
     specUrl: openapi.specUrl,
     apiReferencePath: openapi.apiReferencePath,
     catalogTargets,
+    versions: openapi.versions?.map((version) => ({ ...version })),
   };
 }
 
@@ -4854,6 +4893,21 @@ function resolveDocsOpenApiDiscoveryUrl(
   return openapi.urlSource === "default" && openapi.url === DEFAULT_OPENAPI_SCHEMA_ROUTE
     ? `${apiRoute}?format=openapi`
     : openapi.url;
+}
+
+function resolveDocsOpenApiVersionUrl(
+  openapi: DocsOpenApiResolvedDiscoveryConfig,
+  version: DocsOpenApiVersionDiscoveryConfig,
+  apiRoute: string,
+): string {
+  if (
+    openapi.urlSource === "default" &&
+    openapi.url === DEFAULT_OPENAPI_SCHEMA_ROUTE &&
+    version.url.startsWith(`${DEFAULT_OPENAPI_SCHEMA_ROUTE}&`)
+  ) {
+    return `${apiRoute}?format=openapi&${version.url.slice(DEFAULT_OPENAPI_SCHEMA_ROUTE.length + 1)}`;
+  }
+  return version.url;
 }
 
 function compactSkillText(value: string): string {

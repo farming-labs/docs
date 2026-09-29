@@ -3894,6 +3894,7 @@ description: "Start building quickly"
       source: "generated",
       specUrl: null,
       apiReferencePath: "/api-reference",
+      versions: [],
       format: "OpenAPI 3.1",
     });
     expect(spec.markdown).toMatchObject({

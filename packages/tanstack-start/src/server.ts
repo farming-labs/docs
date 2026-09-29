@@ -1153,6 +1153,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         framework: "tanstack-start",
         rootDir,
         baseUrl: url.origin,
+        version: url.searchParams.get("version")?.trim() || undefined,
       });
 
       return new Response(JSON.stringify(document, null, 2), {
