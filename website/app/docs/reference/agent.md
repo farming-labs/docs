@@ -90,6 +90,13 @@ Top-level configuration object passed to `defineDocs()`:
 | `icons` | `Record<string, unknown>` | — | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
 | `components` | `Record<string, unknown>` | — | Custom MDX component overrides including built-ins like `HoverLink` and `Prompt` |
 | `analytics` | `boolean \| DocsAnalyticsConfig` | `false` | Product/usage event stream for docs UI, search, AI, feedback, agent reads |
+| `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generate an API reference from framework routes or an OpenAPI contract |
+
+### `ApiReferenceConfig.specUrl`
+
+Set `specUrl` to a project-relative JSON/YAML file, a `file:` URL, an absolute HTTP(S) URL, or a
+request-relative URL such as `/api/openapi.json`. Setting it disables framework route scanning.
+Local filesystem paths are not published through discovery metadata.
 
 Page-level metadata for machine-readable docs workflows:
 

@@ -46,7 +46,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
 | `mcp`         | `boolean \| DocsMcpConfig`                      | enabled          | Built-in MCP server over stdio and `/api/docs/mcp`                                   |
-| `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
+| `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or local/remote OpenAPI JSON and YAML |
 | `changelog`   | `boolean \| ChangelogConfig`                    | `false`          | Generated changelog feed and entry pages from dated MDX entries                      |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
 | `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
@@ -426,10 +426,11 @@ Notes:
 
 ## `ApiReferenceConfig`
 
-Generates API reference pages from framework route conventions or a hosted OpenAPI JSON document.
+Generates API reference pages from framework route conventions or a local/remote OpenAPI JSON or
+YAML document.
 
-Use route scanning when the API lives in the same project. Use `specUrl` when the backend is
-deployed elsewhere and already exposes an `openapi.json`.
+Use route scanning when the API lives in the same project and no contract exists. Use `specUrl`
+for an existing project-relative file, absolute URL, or request-relative URL.
 
 <Callout type="info" title="Current support">
   `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
@@ -445,16 +446,16 @@ deployed elsewhere and already exposes an `openapi.json`.
   framework route handler for `/{path}`.
 </Callout>
 
-<Callout type="tip" title="Remote spec mode">
-  `specUrl` is the easiest option when your docs app does not contain the backend route files.
-  Point it at a hosted `openapi.json` and keep the same themed API reference UI.
+<Callout type="tip" title="OpenAPI document mode">
+  `specUrl` accepts project-relative JSON/YAML files such as `./openapi.yaml`, hosted JSON/YAML
+  URLs, and request-relative URLs such as `/api/openapi.json`.
 </Callout>
 
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
-| `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
+| `specUrl`   | `string`   | —                 | Project-relative file, `file:` URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document. When set, framework route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |
 | `exclude`   | `string[]` | `[]`              | Route entries to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative values like `"hello"` / `"hello/route.ts"` |
 
@@ -471,12 +472,20 @@ apiReference: {
 apiReference: {
   enabled: true,
   path: "api-reference",
+  specUrl: "./openapi.yaml",
+},
+```
+
+```ts title="docs.config.ts"
+apiReference: {
+  enabled: true,
+  path: "api-reference",
   specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
 },
 ```
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
-from the hosted spec instead.
+from the configured document instead.
 
 This does not remove the framework route requirement on non-Next adapters. TanStack Start,
 SvelteKit, Astro, and Nuxt still need their `/{path}` handler files so the docs app has a route

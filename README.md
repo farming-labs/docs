@@ -11,7 +11,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - One `docs.config.ts` file for routing, theme, search, metadata, feedback, and AI surfaces
 - Built-in themes with shared MDX components such as `Callout`, `Tabs`, `HoverLink`, and `Prompt`
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
-- Generated API reference from framework route handlers or a hosted OpenAPI JSON document
+- Generated API reference from framework route handlers or local/remote OpenAPI JSON and YAML
 - Next.js changelog pages from dated MDX entries
 - Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps,
   `robots.txt`, RFC 9727 API catalogs, Agent Skills discovery, `skill.md`, agent discovery, and MCP

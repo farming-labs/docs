@@ -3131,7 +3131,7 @@ export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
    * Supported adapters can generate references from framework route handlers
-   * or a hosted OpenAPI JSON document.
+   * or a local/remote OpenAPI JSON or YAML document.
    * @default false
    */
   enabled?: boolean;
@@ -3142,13 +3142,15 @@ export interface ApiReferenceConfig {
    */
   path?: string;
   /**
-   * URL to a remote OpenAPI JSON document.
+   * Source for an OpenAPI JSON or YAML document.
    *
-   * When provided, the API reference is generated from this hosted spec instead
+   * When provided, the API reference is generated from this document instead
    * of scanning local framework route files.
    *
    * Supports:
-   * - absolute URLs like `https://example.com/openapi.json`
+   * - project-relative files like `./openapi.yaml` or `api/openapi.json`
+   * - `file:` URLs for explicit absolute local files
+   * - absolute URLs like `https://example.com/openapi.yaml`
    * - request-relative URLs like `/api/openapi.json` in Next.js
    *
    * @example
