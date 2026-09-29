@@ -343,7 +343,7 @@ export async function inspectApiReferenceHealth(
         ),
   );
 
-  const rendererCompatible = renderer === "scalar" || framework === "nextjs";
+  const rendererCompatible = renderer !== "fumadocs" || framework === "nextjs";
   checks.push(
     rendererCompatible
       ? makeCheck(
@@ -356,8 +356,8 @@ export async function inspectApiReferenceHealth(
           "renderer",
           "Renderer compatibility",
           "fail",
-          `The fumadocs renderer is only available for Next.js; ${framework} uses Scalar.`,
-          'Set apiReference.renderer to "scalar" for this framework.',
+          `The fumadocs renderer is only available for Next.js; ${framework} supports the Farming Labs and Scalar renderers.`,
+          'Set apiReference.renderer to "farming-labs" or "scalar" for this framework.',
         ),
   );
 

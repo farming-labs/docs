@@ -231,9 +231,7 @@ function renderApiReferenceConfig(cfg: TemplateConfig, indent = "  "): string {
   const apiReference = cfg.apiReference;
   if (!apiReference) return "";
 
-  const rendererLine = cfg.framework === "nextjs" ? `${indent}  renderer: "fumadocs",\n` : "";
-
-  return `${indent}apiReference: {\n${indent}  enabled: true,\n${indent}  path: "${apiReference.path}",\n${rendererLine}${indent}  routeRoot: "${apiReference.routeRoot}",\n${indent}},\n`;
+  return `${indent}apiReference: {\n${indent}  enabled: true,\n${indent}  path: "${apiReference.path}",\n${indent}  renderer: "farming-labs",\n${indent}  routeRoot: "${apiReference.routeRoot}",\n${indent}},\n`;
 }
 
 function toLocaleImportName(locale: string): string {

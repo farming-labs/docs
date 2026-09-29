@@ -51,18 +51,28 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`. Set `specUrl` to a project-relative
-  JSON/YAML file, a `file:` URL, or an absolute/request-relative JSON/YAML URL when an OpenAPI
-  contract already exists; otherwise use framework route scanning. Contract sources must use
-  Swagger 2.0 or OpenAPI 3.0.x, 3.1.x, or 3.2.x. Internal and external `$ref` URI references with
-  JSON Pointer fragments are bundled and cached per build. Each document is limited to 5 MiB, a
-  build can load at most 32 documents, and remote requests time out after 10 seconds.
-  Project-relative sources and their local references cannot leave the project root; use an
-  explicit `file:` URL for a trusted external local file. Named anchors and `$dynamicRef` are not
-  resolved yet. For multiple contracts, use URL-safe `versions` keys plus one explicit
-  `defaultVersion`; do not combine them with `specUrl`. Each version is available at
-  `/{path}/{version}` and `?format=openapi&version={version}`. Use ordered `overlays` for a single
-  source or per-version overlays for versioned sources. Overlay 1.0.x/1.1.x targets use RFC 9535
-  JSONPath and are applied before reference resolution; invalid or unmatched targets are reported.
+  JSON/YAML file or URL when a contract exists; otherwise use framework route scanning. The native
+  `"farming-labs"` renderer is the cross-framework default and uses the normalized operation model
+  for search, versions, schemas, responses, auth metadata, and cURL. Scalar remains available on
+  every framework and Fumadocs on Next.js. Contracts may use Swagger 2.0 or OpenAPI 3.0–3.2;
+  bounded internal/external `$ref` documents are bundled per build and project-relative files stay
+  inside the project root. Use URL-safe `versions` with one `defaultVersion`, or ordered Overlay
+  1.0/1.1 sources applied before reference resolution; invalid sources and targets are reported.
+
+### Executable evaluation fixture
+
+Use this deterministic runnable block when agent evaluations need to verify the configured
+code-block runner without credentials or external services:
+
+```js title="codeblocks-smoke.js" runnable
+const metadata = { framework: "nextjs", runnable: true };
+
+if (!metadata.runnable) {
+  throw new Error("Expected runnable metadata");
+}
+
+console.log("metadata ok");
+```
 
 - When the user asks about runtime document synchronization or incremental content updates, point to `agent.contentChanges`. Enabled by default on server-rendered adapters; always `false` in static bundles produced by `docs agent export`. The endpoint is `GET /api/docs?audience=agent&response=changes` and returns a `docs-content-changes.v1` payload with `indexGeneration`, `mode` (`snapshot`, `delta`, or `reset`), `resetRequired`, `documentCount`, and `added`/`modified`/`removed` arrays. Supply `since=<indexGeneration>` from a previous response to receive a delta. ETag and `If-None-Match` conditional requests are supported.
 
@@ -123,6 +133,7 @@ Agent Skills discovery remains available in both cases.
 ## Framework notes
 
 - Next.js uses `withDocs()` and can expose page-level `.md`, `Accept: text/markdown`, and `Signature-Agent` markdown routes automatically.
+- Farm.js serves docs and API-reference routes through `withDocs()`.
 - TanStack Start, SvelteKit, Astro, and Nuxt use the shared docs API markdown mode through their framework-specific docs route setup.
 - Do not switch frameworks unless the user explicitly asks to migrate.
 
@@ -149,20 +160,6 @@ Agent Skills discovery remains available in both cases.
 3. Move to `search`, `ai`, `mcp`, `pageActions`, `llmsTxt`, `sitemap`, or `robots` only after the base project shape is correct.
 4. Use customization and theme pages once routing and content structure are stable.
 5. Use markdown routes, sitemaps, `robots.txt`, `agent.compact`, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
-
-## Executable evaluation fixture
-
-Use this deterministic runnable block when agent evaluations need to verify the configured code-block runner without credentials or external services:
-
-```js title="codeblocks-smoke.js" runnable
-const metadata = { framework: "nextjs", runnable: true };
-
-if (!metadata.runnable) {
-  throw new Error("Expected runnable metadata");
-}
-
-console.log("metadata ok");
-```
 
 ## Output style
 

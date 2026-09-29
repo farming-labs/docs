@@ -8,6 +8,7 @@ import {
   type TypographyConfig,
 } from "@farming-labs/docs";
 import {
+  buildApiReferenceHtmlDocumentAsync,
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferencePageTitle,
   buildApiReferenceScalarCss,
@@ -886,6 +887,20 @@ export function createNextApiReference(config: DocsConfig) {
       (requestUrl
         ? resolveApiReferenceVersionFromPathname(config.apiReference, requestUrl.pathname)
         : undefined) ?? resolveApiReferenceVersion(apiReference);
+    const renderer = resolveApiReferenceRenderer(config.apiReference, "next");
+    if (renderer === "farming-labs") {
+      const html = await buildApiReferenceHtmlDocumentAsync(config, {
+        framework: "next",
+        rootDir: process.cwd(),
+        baseUrl: getOriginFromRequest(request),
+        version: version?.id,
+      });
+      return new Response(html, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      });
+    }
     const document = await buildApiReferenceOpenApiDocumentAsync(config, {
       framework: "next",
       rootDir: process.cwd(),
@@ -1163,6 +1178,8 @@ export async function getNextApiReferenceSourceState(
   };
 }
 
-export function getNextApiReferenceMode(config: DocsConfig): "fumadocs" | "scalar" {
+export function getNextApiReferenceMode(
+  config: DocsConfig,
+): "farming-labs" | "fumadocs" | "scalar" {
   return resolveApiReferenceRenderer(config.apiReference, "next");
 }

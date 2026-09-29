@@ -805,7 +805,7 @@ function readOgEndpoint(root: string): string | undefined {
 function readApiReferenceConfig(root: string): {
   enabled: boolean;
   path: string;
-  renderer: "fumadocs" | "scalar";
+  renderer: "farming-labs" | "fumadocs" | "scalar";
   routeRoot: string;
 } {
   for (const ext of FILE_EXTS) {
@@ -817,12 +817,22 @@ function readApiReferenceConfig(root: string): {
 
       const directFalse = content.match(/apiReference\s*:\s*false/);
       if (directFalse) {
-        return { enabled: false, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
+        return {
+          enabled: false,
+          path: "api-reference",
+          renderer: "farming-labs",
+          routeRoot: "api",
+        };
       }
 
       const directTrue = content.match(/apiReference\s*:\s*true/);
       if (directTrue) {
-        return { enabled: true, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
+        return {
+          enabled: true,
+          path: "api-reference",
+          renderer: "farming-labs",
+          routeRoot: "api",
+        };
       }
 
       const block = extractObjectLiteral(content, "apiReference");
@@ -830,21 +840,33 @@ function readApiReferenceConfig(root: string): {
 
       const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
       const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
-      const rendererMatch = block.match(/renderer\s*:\s*["'](fumadocs|scalar)["']/);
+      const rendererMatch = block.match(/renderer\s*:\s*["'](farming-labs|fumadocs|scalar)["']/);
       const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
 
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
         path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api-reference",
-        renderer: (rendererMatch?.[1] as "fumadocs" | "scalar" | undefined) ?? "fumadocs",
+        renderer:
+          (rendererMatch?.[1] as "farming-labs" | "fumadocs" | "scalar" | undefined) ??
+          "farming-labs",
         routeRoot: routeRootMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api",
       };
     } catch {
-      return { enabled: false, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
+      return {
+        enabled: false,
+        path: "api-reference",
+        renderer: "farming-labs",
+        routeRoot: "api",
+      };
     }
   }
 
-  return { enabled: false, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
+  return {
+    enabled: false,
+    path: "api-reference",
+    renderer: "farming-labs",
+    routeRoot: "api",
+  };
 }
 
 function readChangelogConfig(root: string): {
