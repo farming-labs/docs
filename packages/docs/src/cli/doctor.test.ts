@@ -168,6 +168,18 @@ describe("parseDoctorArgs", () => {
       mode: "human",
       json: true,
     });
+    expect(parseDoctorArgs(["--only=api", "--json"])).toEqual({
+      mode: "api",
+      json: true,
+    });
+  });
+
+  it("parses API mode aliases", () => {
+    expect(parseDoctorArgs(["--api"])).toEqual({ mode: "api" });
+    expect(parseDoctorArgs(["api", "--config=docs.config.ts"])).toEqual({
+      mode: "api",
+      configPath: "docs.config.ts",
+    });
   });
 
   it("parses hosted URL probes", () => {
@@ -231,7 +243,7 @@ describe("parseDoctorArgs", () => {
     expect(() => parseDoctorArgs(["--only"])).toThrow("Missing value for --only.");
     expect(() => parseDoctorArgs(["--only="])).toThrow("Missing value for --only.");
     expect(() => parseDoctorArgs(["--only", "human"])).toThrow(
-      "Invalid value for --only. Expected agent or site.",
+      "Invalid value for --only. Expected agent, site, or api.",
     );
   });
 

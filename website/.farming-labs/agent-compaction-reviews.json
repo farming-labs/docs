@@ -3,12 +3,12 @@
   "reviews": [
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:c6b16ea956736363",
+      "sourceHash": "fnv1a64:6e278238079f8684",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
-      "outputHash": "fnv1a64:c95a0dd048e26147",
-      "reviewedAt": "2026-09-04T09:42:24.212Z",
-      "reviewedBy": "Kinfe123",
-      "reason": "Reviewed the evaluation retry documentation: the CLI and reference summaries remain accurate, and the configuration summary now reflects per-attempt timeouts plus two transient retries."
+      "outputHash": "fnv1a64:1eb58deb7193cc23",
+      "reviewedAt": "2026-09-29T22:42:01.783Z",
+      "reviewedBy": "farming-labs-docs",
+      "reason": "Document docs doctor --api diagnostics and preserve the reviewed CLI summary after verifying the new contract-health workflow."
     },
     {
       "route": "/docs/configuration",

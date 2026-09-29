@@ -890,11 +890,29 @@ export async function buildApiReferenceOpenApiDocumentAsync(
   config: DocsConfig,
   options: BuildApiReferenceOptions,
 ): Promise<Record<string, unknown>> {
+  try {
+    return await loadApiReferenceOpenApiDocumentAsync(config, options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return buildUnavailableOpenApiDocument(
+      config,
+      `Unable to load the configured OpenAPI document. ${message}`,
+    );
+  }
+}
+
+/**
+ * Load the resolved OpenAPI document without replacing diagnostics with an unavailable schema.
+ * This is used by CLI health checks that need the original parsing, reference, and overlay error.
+ */
+export async function loadApiReferenceOpenApiDocumentAsync(
+  config: DocsConfig,
+  options: BuildApiReferenceOptions,
+): Promise<Record<string, unknown>> {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
   const selectedVersion = resolveApiReferenceVersion(apiReference, options.version);
   if (apiReference.versions.length > 0 && !selectedVersion) {
-    return buildUnavailableOpenApiDocument(
-      config,
+    throw new Error(
       `Unknown OpenAPI version \`${options.version}\`. Available versions: ${apiReference.versions
         .map((version) => version.id)
         .join(", ")}.`,
@@ -906,24 +924,16 @@ export async function buildApiReferenceOpenApiDocumentAsync(
     return buildApiReferenceOpenApiDocument(config, options);
   }
 
-  try {
-    const document = isLocalSpecSource(specUrl)
-      ? await readLocalOpenApiDocumentAsync(specUrl, options.rootDir, overlays, options.baseUrl)
-      : await fetchRemoteOpenApiDocument(specUrl, options.baseUrl, overlays, options.rootDir);
-    return normalizeConfiguredOpenApiDocument(
-      document,
-      config,
-      options.baseUrl,
-      specUrl,
-      selectedVersion,
-    );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return buildUnavailableOpenApiDocument(
-      config,
-      `Unable to load the configured OpenAPI document. ${message}`,
-    );
-  }
+  const document = isLocalSpecSource(specUrl)
+    ? await readLocalOpenApiDocumentAsync(specUrl, options.rootDir, overlays, options.baseUrl)
+    : await fetchRemoteOpenApiDocument(specUrl, options.baseUrl, overlays, options.rootDir);
+  return normalizeConfiguredOpenApiDocument(
+    document,
+    config,
+    options.baseUrl,
+    specUrl,
+    selectedVersion,
+  );
 }
 
 /**

@@ -181,10 +181,14 @@ through host-specific routing when the catalog is required.
 Use `docs doctor --agent` when you want to inspect the machine-facing quality of the docs site.
 Use `docs doctor --site` when you want a reader-facing audit of navigation, descriptions,
 structure, trust signals, and feedback.
+Use `docs doctor --api` when you want to validate OpenAPI sources, references, overlays,
+normalized operation identities, renderer compatibility, and generated operation projections.
 
 ```bash
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
+pnpm exec docs doctor --api
+pnpm exec docs doctor --api --json --fail-on fail
 pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --url https://docs.example.com
 ```
@@ -206,6 +210,8 @@ The command checks docs config resolution, content discovery, API route wiring, 
 generated `agent.md` freshness. Its usefulness checks also detect repeated or generic `<Agent>`
 blocks, incomplete task guidance, framework/version ambiguity, stale commands, missing related
 pages, low-confidence config loading, and drift between discovery, config, and the public schema.
+The API mode is diagnostics-only and uses the same JSON and `--fail-on warn|fail` policies as the
+other suites.
 
 Configure `agent.evaluations.tasks` to run golden tasks for retrieval recall, citations,
 framework/version selection, verified examples, generated answers, and context-budget usage.

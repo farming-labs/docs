@@ -55,6 +55,7 @@ pnpm dlx @farming-labs/docs@latest init
 pnpm dlx @farming-labs/docs@latest upgrade --dry-run
 pnpm exec docs review --ci
 pnpm exec docs doctor --agent
+pnpm exec docs doctor --api
 pnpm exec docs skills scaffold --dry-run
 pnpm exec docs agent export --check
 pnpm exec docs sitemap generate --check
@@ -65,7 +66,8 @@ pnpm exec docs sitemap generate --check
 - Use `init` for a new docs app or to add docs to an existing supported app.
 - Use `upgrade --dry-run` before changing Farming Labs packages in a monorepo.
 - Use `downgrade --version` only for a lower version; use `upgrade --version` for a newer one.
-- Use `docs review` for changed documentation and `docs doctor --agent` for whole-site readiness.
+- Use `docs review` for changed documentation, `docs doctor --agent` for whole-site readiness, and
+  `docs doctor --api` for OpenAPI contract and projection diagnostics.
 - Use `agent export --check`, `sitemap generate --check`, `robots generate --check`, or
   `agents generate --check` to validate committed static outputs.
 - Use `codeblocks validate --plan` before executing runnable documentation examples.
