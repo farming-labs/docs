@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import pc from "picocolors";
 import {
+  buildApiReferenceOperationPagesAsync,
   buildDocsSearchDocuments,
   createAlgoliaSearchAdapter,
   createFilesystemDocsMcpSource,
@@ -21,8 +22,15 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
+import { detectFramework } from "./utils.js";
+import type { ApiReferenceFramework } from "../api-reference.js";
 
 type SearchSyncProvider = "typesense" | "algolia";
+
+function resolveApiReferenceFramework(rootDir: string): ApiReferenceFramework | undefined {
+  const framework = detectFramework(rootDir);
+  return framework === "nextjs" ? "next" : (framework ?? undefined);
+}
 
 export interface SearchSyncOptions {
   configPath?: string;
@@ -213,6 +221,15 @@ export async function syncSearch(options: SearchSyncOptions = {}): Promise<void>
       }))
     : [{ locale: undefined, contentDir }];
   const contexts: DocsSearchAdapterContext[] = [];
+  const apiReferenceFramework = resolveApiReferenceFramework(rootDir);
+  const apiOperationPages =
+    configLoad.status === "evaluated" && apiReferenceFramework
+      ? await buildApiReferenceOperationPagesAsync(configLoad.config, {
+          framework: apiReferenceFramework,
+          rootDir,
+          baseUrl: canonicalBaseUrl,
+        })
+      : [];
 
   for (const localized of localizedSources) {
     const source = createFilesystemDocsMcpSource({
@@ -223,10 +240,16 @@ export async function syncSearch(options: SearchSyncOptions = {}): Promise<void>
       baseUrl: canonicalBaseUrl,
     });
     const scannedPages = await source.getPages();
-    if (scannedPages.length === 0) continue;
-    const pages = localized.locale
-      ? scannedPages.map((page) => ({ ...page, locale: localized.locale }))
-      : scannedPages;
+    const projectedApiPages = localized.locale
+      ? apiOperationPages.map((page) => ({ ...page, locale: localized.locale }))
+      : apiOperationPages;
+    const pages = [
+      ...(localized.locale
+        ? scannedPages.map((page) => ({ ...page, locale: localized.locale }))
+        : scannedPages),
+      ...projectedApiPages,
+    ];
+    if (pages.length === 0) continue;
     contexts.push({
       pages,
       documents: buildDocsSearchDocuments(pages),

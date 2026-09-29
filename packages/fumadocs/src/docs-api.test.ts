@@ -858,6 +858,58 @@ Install and configure the docs framework.
     expect(payload[0]?.content).toContain("Quickstart");
   });
 
+  it("indexes normalized OpenAPI operations in built-in search", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-openapi-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Documentation\n");
+    writeFileSync(
+      join(rootDir, "openapi.yaml"),
+      [
+        'openapi: "3.1.0"',
+        "info:",
+        "  title: Orchard API",
+        '  version: "2026-09"',
+        "paths:",
+        "  /orchards/{orchardId}/harvests:",
+        "    post:",
+        "      operationId: scheduleHarvest",
+        "      summary: Schedule a precision harvest",
+        "      responses:",
+        '        "202":',
+        "          description: Harvest scheduled",
+        "",
+      ].join("\n"),
+    );
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiReference: { enabled: true, specUrl: "./openapi.yaml" },
+    });
+    const response = await GET(
+      new Request("https://docs.example.com/api/docs?query=precision%20harvest"),
+    );
+    const payload = (await response.json()) as Array<{
+      url: string;
+      content: string;
+      description?: string;
+      type: string;
+    }>;
+
+    expect(payload).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringMatching(/^\/api-reference\/operations\/schedule-harvest-[a-z0-9]+/),
+          content: "Schedule a precision harvest",
+          type: "page",
+        }),
+      ]),
+    );
+    expect(payload.some((result) => result.description?.includes("POST /orchards"))).toBe(true);
+  });
+
   it("filters regular docs metadata and returns opt-in structured agent warnings", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-scoped-search-route-"));
     tempDirs.push(rootDir);

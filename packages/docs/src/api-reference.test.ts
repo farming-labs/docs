@@ -8,6 +8,7 @@ import {
   buildApiReferenceScalarCss,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
+  buildApiReferenceOperationPagesAsync,
   DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
   OPENAPI_SPEC_FETCH_TIMEOUT_MS,
   OPENAPI_SPEC_MAX_BYTES,
@@ -1196,6 +1197,85 @@ describe("buildApiReferenceOpenApiDocument", () => {
     expect(css).toContain("--scalar-radius: 0px;");
     expect(css).toContain("--scalar-button-1-color: #0b0b0b;");
     expect(css).toContain("var(--scalar-theme-foreground) 10%");
+  });
+});
+
+describe("buildApiReferenceOperationPagesAsync", () => {
+  it("projects every configured API version into deterministic operation search pages", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-operation-pages-"));
+    tempDirs.push(rootDir);
+    for (const [version, summary] of [
+      ["v1", "List legacy widgets"],
+      ["v2", "List current widgets"],
+    ] as const) {
+      writeFileSync(
+        join(rootDir, `${version}.yaml`),
+        [
+          'openapi: "3.1.0"',
+          "info:",
+          "  title: Widget API",
+          `  version: "${version}"`,
+          "servers:",
+          "  - url: https://api.example.com",
+          "paths:",
+          "  /widgets:",
+          "    get:",
+          `      operationId: listWidgets${version.toUpperCase()}`,
+          `      summary: ${summary}`,
+          "      tags: [Widgets]",
+          "      parameters:",
+          "        - name: limit",
+          "          in: query",
+          "          schema: { type: integer }",
+          "      responses:",
+          '        "200":',
+          "          description: Widget collection",
+          "",
+        ].join("\n"),
+      );
+    }
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        path: "reference",
+        versions: {
+          v1: { specUrl: "./v1.yaml", label: "Version 1" },
+          v2: { specUrl: "./v2.yaml", label: "Version 2" },
+        },
+        defaultVersion: "v2",
+      },
+    });
+    const pages = await buildApiReferenceOperationPagesAsync(config, {
+      framework: "astro",
+      rootDir,
+      baseUrl: "https://docs.example.com",
+      locale: "fr",
+    });
+
+    expect(pages).toHaveLength(2);
+    expect(pages[0]?.url).toMatch(/^\/reference\/v1\/operations\/list-widgets-v1-[a-z0-9]+$/);
+    expect(pages[1]?.url).toMatch(/^\/reference\/v2\/operations\/list-widgets-v2-[a-z0-9]+$/);
+    expect(pages[1]).toMatchObject({
+      title: "List current widgets",
+      canonicalUrl: pages[1]?.url,
+      description: "List current widgets",
+      type: "api",
+      locale: "fr",
+      version: "v2",
+      tags: ["openapi", "get", "Widgets"],
+    });
+    expect(pages[1]?.content).toContain("`GET /widgets`");
+    expect(pages[1]?.content).toContain("`limit` (query, optional");
+    expect(pages[1]?.content).toContain("### 200");
+  });
+
+  it("returns no projected pages when API reference is disabled", async () => {
+    await expect(
+      buildApiReferenceOperationPagesAsync(defineDocs({ entry: "docs", apiReference: false }), {
+        framework: "next",
+      }),
+    ).resolves.toEqual([]);
   });
 });
 

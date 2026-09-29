@@ -105,9 +105,10 @@ import {
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
 } from "@farming-labs/docs";
-import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
+import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
+  buildApiReferenceOperationPagesAsync,
   createDocsMcpHttpHandler,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
@@ -874,6 +875,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
   // ─── Search index ──────────────────────────────────────────
   const searchIndexByEntry = new Map<string, ContentPage[]>();
+  const apiOperationPagesByLocale = new Map<
+    string,
+    ReturnType<typeof buildApiReferenceOperationPagesAsync>
+  >();
 
   function getSearchIndex(ctx: ReturnType<typeof resolveContextFromPath>) {
     const key = ctx.locale ?? "__default__";
@@ -884,6 +889,23 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       : loadDocsContent(ctx.contentDirAbs, entry);
     searchIndexByEntry.set(key, index);
     return index;
+  }
+
+  function getApiOperationSearchPages(
+    ctx: ReturnType<typeof resolveContextFromPath>,
+    baseUrl: string,
+  ) {
+    const key = `${ctx.locale ?? "__default__"}\0${baseUrl}`;
+    const cached = apiOperationPagesByLocale.get(key);
+    if (cached) return cached;
+    const next = buildApiReferenceOperationPagesAsync(config as DocsConfig, {
+      framework: "astro",
+      rootDir,
+      baseUrl,
+      locale: ctx.locale,
+    });
+    apiOperationPagesByLocale.set(key, next);
+    return next;
   }
 
   // ─── llms.txt content builder ────────────────────────────────
@@ -1382,8 +1404,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         headers: { "Content-Type": "application/json" },
       });
     }
+    const operationPages = await getApiOperationSearchPages(
+      ctx,
+      markdownMetadataBaseUrl || url.origin,
+    );
     const searchOptions = {
-      pages: getSearchIndex(ctx),
+      pages: [...getSearchIndex(ctx), ...operationPages],
       query: query ?? "",
       search: resolveSearchRequestConfig(config.search, context.request.url, {
         localMcp: config.mcp,
