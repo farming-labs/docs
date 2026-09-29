@@ -5026,9 +5026,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const ctx = resolveContextFromRequest(request);
+      const operationPages = await getApiOperationSearchPages(
+        ctx,
+        markdownMetadataBaseUrl || url.origin,
+      );
       return handleAskAI(
         request,
-        getIndexes(ctx),
+        [...getIndexes(ctx), ...operationPages],
         aiConfig,
         cloudConfig,
         resolveAskAISearchRequestConfig({
