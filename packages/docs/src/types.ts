@@ -3078,7 +3078,7 @@ export interface ChangelogConfig {
   actionsComponent?: unknown;
 }
 
-export type ApiReferenceRenderer = "fumadocs" | "scalar";
+export type ApiReferenceRenderer = "farming-labs" | "fumadocs" | "scalar";
 
 export interface ApiReferenceVersionConfig {
   /** OpenAPI JSON or YAML source for this stable version identifier. */
@@ -3209,12 +3209,11 @@ export interface ApiReferenceConfig {
   /**
    * Which renderer to use for the API reference UI.
    *
+   * - `"farming-labs"` uses the framework-neutral renderer backed by the normalized operation model
    * - `"fumadocs"` uses the Fumadocs OpenAPI renderer bundled by `@farming-labs/next`
    * - `"scalar"` uses the Scalar renderer bundled by `@farming-labs/docs` and the adapters
    *
-   * Defaults are framework-aware:
-   * - Next.js: `"fumadocs"`
-   * - TanStack Start / SvelteKit / Astro / Nuxt: `"scalar"`
+   * @default "farming-labs"
    */
   renderer?: ApiReferenceRenderer;
   /**

@@ -1620,21 +1620,29 @@ Use route scanning when the API lives in the same project and no contract exists
 for an existing project-relative file, absolute URL, or request-relative URL.
 
 <Callout type="info" title="Current support">
-  `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
-  **Nuxt**.
+  `apiReference` is supported in **Next.js**, **TanStack Start**, **Farm.js**, **SvelteKit**,
+  **Astro**, and **Nuxt**.
 </Callout>
 
 <Callout type="info" title="Renderer dependencies are bundled">
-  You do not need to install `fumadocs-openapi`, `fumadocs-ui`, `@scalar/core`, or related packages separately. The `"fumadocs"` renderer is bundled by `@farming-labs/next`; the `"scalar"` renderer is bundled by `@farming-labs/docs` and the other framework adapters.
+  The native `"farming-labs"` renderer has no extra renderer dependency and is the default on every
+  framework. You do not need to install `fumadocs-openapi`, `fumadocs-ui`, `@scalar/core`, or
+  related packages separately. Set `renderer: "scalar"` on any framework or
+  `renderer: "fumadocs"` on Next.js to use the bundled alternatives.
 </Callout>
 <Callout type="info" title="Important">
   `apiReference` in `docs.config` controls scanning, theming, `routeRoot`, and `exclude`.
 
   In **Next.js**, `withDocs()` also generates the route automatically.
 
-  In **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**, you must additionally add the
-  framework route handler for `/{path}`.
+  **Farm.js** serves the route through `withDocs()`. In **TanStack Start**, **SvelteKit**,
+  **Astro**, and **Nuxt**, you must additionally add the framework route handler for `/{path}`.
 </Callout>
+
+The native renderer uses the same normalized operation model as Markdown, Ask AI, search, and MCP.
+It includes operation search and grouping, stable operation permalinks, version switching,
+parameters, request and response schemas, authentication metadata, copyable cURL examples, and
+responsive light/dark UI. It documents requests but does not execute them in the browser.
 
 <Callout type="tip" title="OpenAPI document mode">
   `specUrl` accepts project-relative JSON/YAML files such as `./openapi.yaml`, hosted JSON/YAML
@@ -1656,7 +1664,7 @@ for an existing project-relative file, absolute URL, or request-relative URL.
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
-| `renderer`  | `"fumadocs" \| "scalar"` | framework-aware | Which renderer to use: `"fumadocs"` is bundled by `@farming-labs/next`; `"scalar"` is bundled by `@farming-labs/docs` and the other adapters. Defaults to `"fumadocs"` for Next.js and `"scalar"` for other frameworks |
+| `renderer`  | `"farming-labs" \| "fumadocs" \| "scalar"` | `"farming-labs"` | Which renderer to use. Scalar works on every framework; Fumadocs is available on Next.js |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
 | `specUrl`   | `string`   | —                 | Project-relative file, `file:` URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document. When set, framework route scanning is skipped |
 | `overlays`  | `readonly string[]` | `[]` | Ordered OpenAPI Overlay 1.0/1.1 JSON/YAML sources for the single `specUrl` |
@@ -1680,6 +1688,17 @@ apiReference: {
   enabled: true,
   path: "api-reference",
   specUrl: "./openapi.yaml",
+  renderer: "farming-labs",
+},
+```
+
+Pin an alternate renderer when you want its existing presentation:
+
+```ts title="docs.config.ts"
+apiReference: {
+  enabled: true,
+  specUrl: "./openapi.yaml",
+  renderer: "scalar", // or "fumadocs" in Next.js
 },
 ```
 
@@ -1764,9 +1783,10 @@ bounded response streaming, rate limits, and concurrency limits are enforced by 
 servers on private networks must opt in explicitly; never enable those exceptions for untrusted
 OpenAPI documents or model-supplied destinations.
 
-This does not remove the framework route requirement on non-Next adapters. TanStack Start,
-SvelteKit, Astro, and Nuxt still need their `/{path}` handler files so the docs app has a route
-that serves the generated API reference page.
+This does not remove the framework route requirement on adapters that do not own the application
+server. Next.js and Farm.js serve the route through `withDocs()`. TanStack Start, SvelteKit, Astro,
+and Nuxt still need their `/{path}` handler files so the docs app has a route that serves the
+generated API reference page.
 
 When `output: "export"` is used in Next.js, the generated API reference route is skipped automatically because it requires a server route handler.
 
@@ -1774,6 +1794,7 @@ Scanned route conventions:
 
 - **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
 - **TanStack Start:** `src/routes/api.*.ts` and nested route files inside the configured route root
+- **Farm.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
 - **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
 - **Astro:** `src/pages/api/**/*.ts` or `.js`
 - **Nuxt:** `server/api/**/*.ts` or `.js`

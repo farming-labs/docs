@@ -394,7 +394,7 @@ describe("docsConfigTemplate", () => {
     });
     expect(out).toContain("apiReference:");
     expect(out).toContain('path: "api-reference"');
-    expect(out).toContain('renderer: "fumadocs"');
+    expect(out).toContain('renderer: "farming-labs"');
     expect(out).toContain('routeRoot: "internal-api"');
   });
 });

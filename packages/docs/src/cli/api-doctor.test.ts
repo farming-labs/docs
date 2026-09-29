@@ -107,7 +107,7 @@ actions:
       mode: "api",
       framework: "astro",
       enabled: true,
-      renderer: "scalar",
+      renderer: "farming-labs",
       defaultVersion: "v2",
       sourceCount: 2,
       operationCount: 3,
@@ -127,12 +127,12 @@ actions:
   });
 
   it.each([
-    ["nextjs", { next: "16.0.0" }, "fumadocs"],
-    ["tanstack-start", { "@tanstack/react-start": "1.0.0" }, "scalar"],
-    ["farmjs", { "@farm.js/core": "1.0.0" }, "scalar"],
-    ["sveltekit", { "@sveltejs/kit": "2.0.0" }, "scalar"],
-    ["astro", { astro: "5.0.0" }, "scalar"],
-    ["nuxt", { nuxt: "4.0.0" }, "scalar"],
+    ["nextjs", { next: "16.0.0" }, "farming-labs"],
+    ["tanstack-start", { "@tanstack/react-start": "1.0.0" }, "farming-labs"],
+    ["farmjs", { "@farm.js/core": "1.0.0" }, "farming-labs"],
+    ["sveltekit", { "@sveltejs/kit": "2.0.0" }, "farming-labs"],
+    ["astro", { astro: "5.0.0" }, "farming-labs"],
+    ["nuxt", { nuxt: "4.0.0" }, "farming-labs"],
   ] as const)(
     "uses a compatible default renderer for %s",
     async (framework, dependencies, renderer) => {
@@ -210,7 +210,7 @@ actions:
 
     expect(report.checks.find((check) => check.id === "renderer")).toMatchObject({
       status: "fail",
-      recommendation: 'Set apiReference.renderer to "scalar" for this framework.',
+      recommendation: 'Set apiReference.renderer to "farming-labs" or "scalar" for this framework.',
     });
   });
 

@@ -3836,7 +3836,7 @@ function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | unde
       const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
       const specUrlMatch = block.match(/specUrl\s*:\s*["']([^"']+)["']/);
       const catalogTargetsMatch = block.match(/catalogTargets\s*:\s*\[([\s\S]*?)\]/);
-      const rendererMatch = block.match(/renderer\s*:\s*["'](fumadocs|scalar)["']/);
+      const rendererMatch = block.match(/renderer\s*:\s*["'](farming-labs|fumadocs|scalar)["']/);
       const excludeMatch = block.match(/exclude\s*:\s*\[([\s\S]*?)\]/);
       const catalogTargets =
         catalogTargetsMatch?.[1] === undefined
@@ -3851,7 +3851,9 @@ function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | unde
               .map((match) => match[1])
               .filter(Boolean);
       const renderer =
-        rendererMatch?.[1] === "fumadocs" || rendererMatch?.[1] === "scalar"
+        rendererMatch?.[1] === "farming-labs" ||
+        rendererMatch?.[1] === "fumadocs" ||
+        rendererMatch?.[1] === "scalar"
           ? rendererMatch[1]
           : undefined;
 

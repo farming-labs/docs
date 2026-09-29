@@ -149,6 +149,16 @@ const DOCS_CONFIG_WITH_SCALAR_API_REFERENCE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_FUMADOCS_API_REFERENCE = `export default {
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+  },
+};
+`;
+
 const DOCS_CONFIG_WITH_MCP = `export default {
   entry: "docs",
   mcp: {
@@ -349,8 +359,20 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
   });
 
-  it("generates Fumadocs API reference files when enabled in docs.config", () => {
+  it("generates the native API reference route by default", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(false);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(false);
+  });
+
+  it("generates Fumadocs API reference files when explicitly selected", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_FUMADOCS_API_REFERENCE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
@@ -1383,7 +1405,7 @@ export default { mcp: sharedMcp };
 
     withDocs({});
 
-    expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/page.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/route.ts"))).toBe(true);
   });
 
   it("generates a layout that re-exports the package-owned docs layout", () => {

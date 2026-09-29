@@ -92,6 +92,18 @@ Top-level configuration object passed to `defineDocs()`:
 | `analytics` | `boolean \| DocsAnalyticsConfig` | `false` | Product/usage event stream for docs UI, search, AI, feedback, agent reads |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generate an API reference from framework routes or an OpenAPI contract |
 
+### `ApiReferenceConfig.renderer`
+
+`renderer` accepts `"farming-labs"`, `"scalar"`, or `"fumadocs"`. The native
+`"farming-labs"` renderer is the default on Next.js, TanStack Start, Farm.js, SvelteKit, Astro,
+and Nuxt. It renders the shared normalized operation model with searchable grouped navigation,
+version switching, stable operation permalinks, parameters, schemas, responses, authentication
+metadata, and copyable cURL examples. It documents requests but does not execute them in the
+browser. Use `"scalar"` as a bundled alternate on any framework or `"fumadocs"` on Next.js.
+
+Next.js and Farm.js serve the configured API-reference route through `withDocs()`. TanStack Start,
+SvelteKit, Astro, and Nuxt still require their generated `/{path}` route handlers.
+
 ### `ApiReferenceConfig.specUrl`
 
 Set `specUrl` to a project-relative JSON/YAML file, a `file:` URL, an absolute HTTP(S) URL, or a

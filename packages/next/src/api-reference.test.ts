@@ -147,13 +147,13 @@ describe("withNextApiReferenceBanner", () => {
 });
 
 describe("getNextApiReferenceMode", () => {
-  it("defaults to fumadocs for Next.js", () => {
+  it("defaults to the Farming Labs renderer for Next.js", () => {
     expect(
       getNextApiReferenceMode({
         entry: "docs",
         apiReference: true,
       }),
-    ).toBe("fumadocs");
+    ).toBe("farming-labs");
   });
 
   it("respects an explicit scalar renderer override", () => {
@@ -167,6 +167,18 @@ describe("getNextApiReferenceMode", () => {
       }),
     ).toBe("scalar");
   });
+
+  it("preserves the explicit Fumadocs renderer override", () => {
+    expect(
+      getNextApiReferenceMode({
+        entry: "docs",
+        apiReference: {
+          enabled: true,
+          renderer: "fumadocs",
+        },
+      }),
+    ).toBe("fumadocs");
+  });
 });
 
 describe("createNextApiReference", () => {
@@ -179,6 +191,21 @@ describe("createNextApiReference", () => {
     const response = await handler();
 
     expect(response.status).toBe(404);
+  });
+
+  it("serves the native API reference as HTML by default", async () => {
+    const handler = createNextApiReference({
+      entry: "docs",
+      apiReference: true,
+    });
+
+    const response = await handler(new Request("https://docs.example.com/api-reference"));
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    expect(html).toContain('meta name="generator" content="@farming-labs/docs"');
+    expect(html).toContain('id="fl-api-search"');
   });
 });
 

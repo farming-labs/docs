@@ -15,6 +15,7 @@ import {
 import { assertValidOpenApiContract } from "./openapi-contract.js";
 import { applyOpenApiOverlayDocuments } from "./openapi-overlays.js";
 import type { OpenApiOverlayDocumentSource } from "./openapi-overlays.js";
+import { renderNativeApiReferenceHtml } from "./native-api-reference.js";
 import { buildNormalizedOpenApiModel } from "./openapi-operations.js";
 import type {
   NormalizedOpenApiMediaType,
@@ -298,17 +299,17 @@ function resolveOpenApiMcpConfig(
 }
 
 function normalizeApiReferenceRenderer(value?: string): ApiReferenceRenderer | undefined {
-  if (value === "fumadocs" || value === "scalar") return value;
+  if (value === "farming-labs" || value === "fumadocs" || value === "scalar") return value;
   return undefined;
 }
 
 export function resolveApiReferenceRenderer(
   value: DocsConfig["apiReference"],
-  framework: ApiReferenceFramework,
+  _framework: ApiReferenceFramework,
 ): ApiReferenceRenderer {
   const config = resolveApiReferenceConfig(value);
   if (config.renderer) return config.renderer;
-  return framework === "next" ? "fumadocs" : "scalar";
+  return "farming-labs";
 }
 
 export function resolveApiReferenceOpenApiDiscovery(
@@ -1241,9 +1242,45 @@ function buildApiReferenceHtmlDocumentFromDocument(
   document: Record<string, unknown>,
 ): string {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
-  const title = options.title ?? "API Reference";
   const version = resolveApiReferenceVersion(apiReference, options.version);
   const basePath = `/${apiReference.path}${version ? `/${encodeURIComponent(version.id)}` : ""}`;
+  const renderer = resolveApiReferenceRenderer(config.apiReference, options.framework);
+
+  if (renderer === "farming-labs") {
+    const model = buildNormalizedOpenApiModel(document);
+    const info =
+      document.info && typeof document.info === "object" && !Array.isArray(document.info)
+        ? (document.info as Record<string, unknown>)
+        : undefined;
+    const title = options.title ?? model.title;
+    const openApiUrl = version
+      ? appendUrlSearchParam(DEFAULT_API_REFERENCE_OPENAPI_ROUTE, "version", version.id)
+      : DEFAULT_API_REFERENCE_OPENAPI_ROUTE;
+    return renderNativeApiReferenceHtml({
+      model,
+      pageTitle: buildApiReferencePageTitle(
+        config,
+        version ? `${title} – ${version.label}` : title,
+      ),
+      title: version ? `${title} – ${version.label}` : title,
+      description:
+        typeof info?.description === "string" && info.description.trim()
+          ? info.description
+          : config.metadata?.description,
+      basePath,
+      openApiUrl,
+      activeVersion: version?.id,
+      versions: apiReference.versions.map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        href: `/${apiReference.path}/${encodeURIComponent(entry.id)}`,
+        active: entry.id === version?.id,
+      })),
+      theme: resolveTheme(config),
+    });
+  }
+
+  const title = options.title ?? "API Reference";
 
   return getHtmlDocument({
     pageTitle: buildApiReferencePageTitle(config, title),

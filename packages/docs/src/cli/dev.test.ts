@@ -236,12 +236,8 @@ title: "Home"
       path.join(projectRoot, ".docs/site/app/layout.tsx"),
       "utf-8",
     );
-    const apiReferenceLayout = fs.readFileSync(
-      path.join(projectRoot, ".docs/site/app/api-reference/layout.tsx"),
-      "utf-8",
-    );
-    const apiReferencePage = fs.readFileSync(
-      path.join(projectRoot, ".docs/site/app/api-reference/[[...slug]]/page.tsx"),
+    const apiReferenceRoute = fs.readFileSync(
+      path.join(projectRoot, ".docs/site/app/api-reference/[[...slug]]/route.ts"),
       "utf-8",
     );
     const openApiRoute = fs.readFileSync(
@@ -252,11 +248,10 @@ title: "Home"
     expect(docsConfig).toContain("apiReference:");
     expect(docsConfig).toContain('path: "api-reference"');
     expect(docsConfig).toContain('specUrl: "/api/docs/openapi"');
-    expect(docsConfig).toContain('renderer: "fumadocs"');
+    expect(docsConfig).toContain('renderer: "farming-labs"');
     expect(rootLayout).toContain("@farming-labs/next/api-reference.css");
-    expect(apiReferenceLayout).toContain("createNextApiReferenceLayout");
-    expect(apiReferencePage).toContain("createNextApiReferencePage");
-    expect(apiReferencePage).not.toContain("@farming-labs/next/api-reference.css");
+    expect(apiReferenceRoute).toContain("createNextApiReference");
+    expect(apiReferenceRoute).not.toContain("@farming-labs/next/api-reference.css");
     expect(openApiRoute).toContain('import { parse } from "yaml"');
     expect(openApiRoute).toContain(
       'const specPath = path.resolve(projectRoot, "api/openapi.yaml")',

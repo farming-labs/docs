@@ -1136,6 +1136,8 @@ describe("buildApiReferenceOpenApiDocument", () => {
 
       expect(html).toContain("Remote Pets");
       expect(html).toContain("/pets");
+      expect(html).toContain('meta name="generator" content="@farming-labs/docs"');
+      expect(html).toContain('id="fl-api-search"');
     }
   });
 
@@ -1322,12 +1324,20 @@ describe("buildApiReferenceOperationPagesAsync", () => {
 });
 
 describe("resolveApiReferenceRenderer", () => {
-  it("defaults to fumadocs for Next.js and scalar elsewhere", () => {
-    expect(resolveApiReferenceRenderer(true, "next")).toBe("fumadocs");
-    expect(resolveApiReferenceRenderer(true, "astro")).toBe("scalar");
+  it("defaults to the Farming Labs renderer for every framework", () => {
+    for (const framework of [
+      "next",
+      "tanstack-start",
+      "farmjs",
+      "sveltekit",
+      "astro",
+      "nuxt",
+    ] as const) {
+      expect(resolveApiReferenceRenderer(true, framework)).toBe("farming-labs");
+    }
   });
 
-  it("respects an explicit renderer override", () => {
+  it("preserves explicit Scalar and Fumadocs renderer overrides", () => {
     expect(
       resolveApiReferenceRenderer(
         {
@@ -1337,5 +1347,14 @@ describe("resolveApiReferenceRenderer", () => {
         "next",
       ),
     ).toBe("scalar");
+    expect(
+      resolveApiReferenceRenderer(
+        {
+          enabled: true,
+          renderer: "fumadocs",
+        },
+        "next",
+      ),
+    ).toBe("fumadocs");
   });
 });

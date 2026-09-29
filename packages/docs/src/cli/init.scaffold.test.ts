@@ -159,7 +159,7 @@ describe("scaffoldNextJs (app dir consistency)", () => {
 
     const config = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
     expect(config).toContain("apiReference:");
-    expect(config).toContain('renderer: "fumadocs"');
+    expect(config).toContain('renderer: "farming-labs"');
 
     const route = fs.readFileSync(
       path.join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"),

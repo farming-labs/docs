@@ -918,7 +918,7 @@ function renderDocsConfigFile(options: {
     ? `  apiReference: {
     enabled: true,
     path: ${JSON.stringify(options.apiReference.path)},
-    renderer: "fumadocs",
+    renderer: "farming-labs",
     specUrl: ${JSON.stringify(options.apiReference.specUrl)},
 ${catalogTargetsLine}  },
 `
@@ -976,28 +976,13 @@ function renderManagedAnalyticsBlock(analytics: ManagedCloudAnalyticsConfig | un
   return `  analytics: {\n${properties.join("\n")}\n  },\n`;
 }
 
-function renderManagedApiReferenceLayout(): string {
+function renderManagedApiReferenceRoute(): string {
   return `import docsConfig from "@/docs.config";
-import { createNextApiReferenceLayout } from "@farming-labs/next/api-reference";
+import { createNextApiReference } from "@farming-labs/next/api-reference";
 
-const ApiReferenceLayout = createNextApiReferenceLayout(docsConfig);
+export const GET = createNextApiReference(docsConfig);
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return <ApiReferenceLayout>{children}</ApiReferenceLayout>;
-}
-`;
-}
-
-function renderManagedApiReferencePage(): string {
-  return `import docsConfig from "@/docs.config";
-import { createNextApiReferencePage } from "@farming-labs/next/api-reference";
-
-const ApiReferencePage = createNextApiReferencePage(docsConfig);
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-export default ApiReferencePage;
+export const revalidate = false;
 `;
 }
 
@@ -1550,10 +1535,9 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
 
   if (project.apiReferenceSpec) {
     fs.rmSync(apiReferenceDir, { recursive: true, force: true });
-    writeFileIfChanged(path.join(apiReferenceDir, "layout.tsx"), renderManagedApiReferenceLayout());
     writeFileIfChanged(
-      path.join(apiReferenceDir, "[[...slug]]", "page.tsx"),
-      renderManagedApiReferencePage(),
+      path.join(apiReferenceDir, "[[...slug]]", "route.ts"),
+      renderManagedApiReferenceRoute(),
     );
 
     if (project.apiReferenceSpec.sourcePath) {

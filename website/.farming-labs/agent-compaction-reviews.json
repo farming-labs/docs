@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:0583b638c968ccca",
+      "sourceHash": "fnv1a64:fe16d960961507e2",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:4de476f84bf6d4d0",
-      "reviewedAt": "2026-09-29T03:26:03.601Z",
+      "outputHash": "fnv1a64:dad7ea38416f42be",
+      "reviewedAt": "2026-09-29T23:22:20.530Z",
       "reviewedBy": "docs-team",
-      "reason": "Document versioned OpenAPI sources and Overlay 1.0/1.1 behavior"
+      "reason": "Document the native Farming Labs API renderer default and preserve the runnable configuration evaluation fixture inside its retrieval section."
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:57572840702fed61",
+      "sourceHash": "fnv1a64:4311ede6e972df6f",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:194014bcffeb6c81",
-      "reviewedAt": "2026-09-29T03:26:03.609Z",
+      "outputHash": "fnv1a64:8999f2cd737cc00d",
+      "reviewedAt": "2026-09-29T23:11:14.806Z",
       "reviewedBy": "docs-team",
-      "reason": "Document versioned OpenAPI sources and Overlay 1.0/1.1 behavior"
+      "reason": "Document the native Farming Labs API renderer default, its normalized operation UI, framework route ownership, and preserved Scalar/Fumadocs alternatives."
     },
     {
       "route": "/docs/token-efficiency",
