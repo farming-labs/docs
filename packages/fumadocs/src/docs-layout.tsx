@@ -79,7 +79,12 @@ interface ChangelogTreeEntry {
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function getNextAppDir(root: string): string {
-  if (fs.existsSync(path.join(root, "src", "app"))) return "src/app";
+  if (
+    fs.existsSync(
+      /*! turbopackIgnore: true */ path.join(/*! turbopackIgnore: true */ root, "src", "app"),
+    )
+  )
+    return "src/app";
   return "app";
 }
 
@@ -100,7 +105,7 @@ function resolveIcon(
 /** Read frontmatter from a page.mdx file. */
 function readFrontmatter(filePath: string): Record<string, unknown> {
   try {
-    const { data } = matter(fs.readFileSync(filePath, "utf-8"));
+    const { data } = matter(fs.readFileSync(/*! turbopackIgnore: true */ filePath, "utf-8"));
     return data;
   } catch {
     return {};
@@ -155,16 +160,21 @@ function isWithinDir(candidate: string, target: string): boolean {
 }
 
 function isExcludedDir(dir: string, excludedDirs: string[]): boolean {
-  const resolved = path.resolve(dir);
+  const resolved = path.resolve(/*! turbopackIgnore: true */ dir);
   return excludedDirs.some((excluded) => isWithinDir(resolved, excluded));
 }
 
 function hasChildPages(dir: string, excludedDirs: string[]): boolean {
-  if (!fs.existsSync(dir)) return false;
-  for (const name of fs.readdirSync(dir)) {
-    const full = path.join(dir, name);
+  if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return false;
+  for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
+    const full = path.join(/*! turbopackIgnore: true */ dir, name);
     if (isExcludedDir(full, excludedDirs)) continue;
-    if (fs.statSync(full).isDirectory() && fs.existsSync(path.join(full, "page.mdx"))) {
+    if (
+      fs.statSync(/*! turbopackIgnore: true */ full).isDirectory() &&
+      fs.existsSync(
+        /*! turbopackIgnore: true */ path.join(/*! turbopackIgnore: true */ full, "page.mdx"),
+      )
+    ) {
       return true;
     }
   }
@@ -214,11 +224,18 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
   function resolveContentDir(localeValue?: string) {
     if (!contentDir) {
       const appDir = getNextAppDir(process.cwd());
-      return path.join(process.cwd(), appDir, entryBase, ...(localeValue ? [localeValue] : []));
+      return path.join(
+        /*! turbopackIgnore: true */ process.cwd(),
+        appDir,
+        entryBase,
+        ...(localeValue ? [localeValue] : []),
+      );
     }
 
-    const base = path.isAbsolute(contentDir) ? contentDir : path.join(process.cwd(), contentDir);
-    return localeValue ? path.join(base, localeValue) : base;
+    const base = path.isAbsolute(contentDir)
+      ? contentDir
+      : path.join(/*! turbopackIgnore: true */ process.cwd(), contentDir);
+    return localeValue ? path.join(/*! turbopackIgnore: true */ base, localeValue) : base;
   }
 
   if (!i18n) {
@@ -277,9 +294,9 @@ function getExcludedDocsDirs(config: DocsConfig, ctx: DocsLocaleContext): string
 
   const dir = path.isAbsolute(changelog.contentDir)
     ? changelog.contentDir
-    : path.join(ctx.docsDir, changelog.contentDir);
+    : path.join(/*! turbopackIgnore: true */ ctx.docsDir, changelog.contentDir);
 
-  return [path.resolve(dir)];
+  return [path.resolve(/*! turbopackIgnore: true */ dir)];
 }
 
 function readChangelogTreeEntries(
@@ -291,20 +308,24 @@ function readChangelogTreeEntries(
 
   const changelogDir = path.isAbsolute(changelog.contentDir)
     ? changelog.contentDir
-    : path.join(ctx.docsDir, changelog.contentDir);
+    : path.join(/*! turbopackIgnore: true */ ctx.docsDir, changelog.contentDir);
 
-  if (!fs.existsSync(changelogDir)) return [];
+  if (!fs.existsSync(/*! turbopackIgnore: true */ changelogDir)) return [];
 
   const entries: ChangelogTreeEntry[] = [];
 
-  for (const name of fs.readdirSync(changelogDir)) {
+  for (const name of fs.readdirSync(/*! turbopackIgnore: true */ changelogDir)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
 
-    const entryDir = path.join(changelogDir, name);
-    if (!fs.existsSync(entryDir) || !fs.statSync(entryDir).isDirectory()) continue;
+    const entryDir = path.join(/*! turbopackIgnore: true */ changelogDir, name);
+    if (
+      !fs.existsSync(/*! turbopackIgnore: true */ entryDir) ||
+      !fs.statSync(/*! turbopackIgnore: true */ entryDir).isDirectory()
+    )
+      continue;
 
-    const pagePath = path.join(entryDir, "page.mdx");
-    if (!fs.existsSync(pagePath)) continue;
+    const pagePath = path.join(/*! turbopackIgnore: true */ entryDir, "page.mdx");
+    if (!fs.existsSync(/*! turbopackIgnore: true */ pagePath)) continue;
 
     const data = readFrontmatter(pagePath);
     if (data.draft === true) continue;
@@ -361,8 +382,12 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
   const rootChildren: TreeNode[] = [];
   const excludedDirs = getExcludedDocsDirs(config, ctx);
 
-  if (fs.existsSync(path.join(docsDir, "page.mdx"))) {
-    const data = readFrontmatter(path.join(docsDir, "page.mdx"));
+  if (
+    fs.existsSync(
+      /*! turbopackIgnore: true */ path.join(/*! turbopackIgnore: true */ docsDir, "page.mdx"),
+    )
+  ) {
+    const data = readFrontmatter(path.join(/*! turbopackIgnore: true */ docsDir, "page.mdx"));
     if (data.hidden !== true) {
       rootChildren.push({
         type: "page",
@@ -379,12 +404,12 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
     baseSlug: string[],
     slugOrder?: OrderingItem[],
   ): TreeNode | null {
-    const full = path.join(dir, name);
+    const full = path.join(/*! turbopackIgnore: true */ dir, name);
     if (isExcludedDir(full, excludedDirs)) return null;
-    if (!fs.statSync(full).isDirectory()) return null;
+    if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) return null;
 
-    const pagePath = path.join(full, "page.mdx");
-    if (!fs.existsSync(pagePath)) return null;
+    const pagePath = path.join(/*! turbopackIgnore: true */ full, "page.mdx");
+    if (!fs.existsSync(/*! turbopackIgnore: true */ pagePath)) return null;
 
     const data = readFrontmatter(pagePath);
     const slug = [...baseSlug, name];
@@ -423,8 +448,8 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
   }
 
   function scanDir(dir: string, baseSlug: string[], slugOrder?: OrderingItem[]): TreeNode[] {
-    if (!fs.existsSync(dir)) return [];
-    const entries = fs.readdirSync(dir).sort();
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return [];
+    const entries = fs.readdirSync(/*! turbopackIgnore: true */ dir).sort();
 
     if (slugOrder) {
       const nodes: TreeNode[] = [];
@@ -433,12 +458,14 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
       for (const item of slugOrder) {
         if (!entries.includes(item.slug)) continue;
-        if (isExcludedDir(path.join(dir, item.slug), excludedDirs)) continue;
+        if (isExcludedDir(path.join(/*! turbopackIgnore: true */ dir, item.slug), excludedDirs))
+          continue;
         const node = buildNode(dir, item.slug, baseSlug, item.children);
         if (node) nodes.push(node);
       }
       for (const name of entries) {
-        if (isExcludedDir(path.join(dir, name), excludedDirs)) continue;
+        if (isExcludedDir(path.join(/*! turbopackIgnore: true */ dir, name), excludedDirs))
+          continue;
         if (slugMap.has(name)) continue;
         const node = buildNode(dir, name, baseSlug);
         if (node) nodes.push(node);
@@ -449,11 +476,11 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
     if (ordering === "numeric") {
       const nodes: { order: number; node: TreeNode }[] = [];
       for (const name of entries) {
-        const full = path.join(dir, name);
+        const full = path.join(/*! turbopackIgnore: true */ dir, name);
         if (isExcludedDir(full, excludedDirs)) continue;
-        if (!fs.statSync(full).isDirectory()) continue;
-        const pagePath = path.join(full, "page.mdx");
-        if (!fs.existsSync(pagePath)) continue;
+        if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) continue;
+        const pagePath = path.join(/*! turbopackIgnore: true */ full, "page.mdx");
+        if (!fs.existsSync(/*! turbopackIgnore: true */ pagePath)) continue;
         const data = readFrontmatter(pagePath);
         const order = typeof data.order === "number" ? data.order : Infinity;
         const node = buildNode(dir, name, baseSlug);
@@ -468,7 +495,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
     const nodes: TreeNode[] = [];
     for (const name of entries) {
-      if (isExcludedDir(path.join(dir, name), excludedDirs)) continue;
+      if (isExcludedDir(path.join(/*! turbopackIgnore: true */ dir, name), excludedDirs)) continue;
       const node = buildNode(dir, name, baseSlug);
       if (node) nodes.push(node);
     }
@@ -541,19 +568,19 @@ function buildLastModifiedMap(config: DocsConfig, ctx: DocsLocaleContext): Recor
   }
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
     if (isExcludedDir(dir, excludedDirs)) return;
 
-    const pagePath = path.join(dir, "page.mdx");
-    if (fs.existsSync(pagePath)) {
+    const pagePath = path.join(/*! turbopackIgnore: true */ dir, "page.mdx");
+    if (fs.existsSync(/*! turbopackIgnore: true */ pagePath)) {
       const url = publicDocsRoute(ctx, slugParts);
-      const stat = fs.statSync(pagePath);
+      const stat = fs.statSync(/*! turbopackIgnore: true */ pagePath);
       map[url] = formatDate(stat.mtime);
     }
 
-    for (const name of fs.readdirSync(dir)) {
-      const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) {
+    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
+      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
         scan(full, [...slugParts, name]);
       }
     }
@@ -573,11 +600,11 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
   const excludedDirs = getExcludedDocsDirs(config, ctx);
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
     if (isExcludedDir(dir, excludedDirs)) return;
 
-    const pagePath = path.join(dir, "page.mdx");
-    if (fs.existsSync(pagePath)) {
+    const pagePath = path.join(/*! turbopackIgnore: true */ dir, "page.mdx");
+    if (fs.existsSync(/*! turbopackIgnore: true */ pagePath)) {
       const data = readFrontmatter(pagePath);
       const desc = data.description as string | undefined;
       if (desc) {
@@ -586,9 +613,9 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
       }
     }
 
-    for (const name of fs.readdirSync(dir)) {
-      const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) {
+    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
+      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
         scan(full, [...slugParts, name]);
       }
     }
@@ -611,21 +638,21 @@ function buildGeneratedTitleMap(
   const excludedDirs = getExcludedDocsDirs(config, ctx);
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
     if (isExcludedDir(dir, excludedDirs)) return;
 
     const pagePath = findDocsPageFile(dir);
     if (pagePath) {
-      const source = fs.readFileSync(pagePath, "utf-8");
+      const source = fs.readFileSync(/*! turbopackIgnore: true */ pagePath, "utf-8");
       const { data } = matter(source);
       if (typeof data.title === "string" && !hasAuthoredPageTitle(source)) {
         map[publicDocsRoute(ctx, slugParts)] = data.title;
       }
     }
 
-    for (const name of fs.readdirSync(dir)) {
-      const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) {
+    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
+      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
         scan(full, [...slugParts, name]);
       }
     }
@@ -649,12 +676,12 @@ function buildReadingTimeMap(
   const excludedDirs = getExcludedDocsDirs(config, ctx);
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
     if (isExcludedDir(dir, excludedDirs)) return;
 
-    const pagePath = path.join(dir, "page.mdx");
-    if (fs.existsSync(pagePath)) {
-      const source = fs.readFileSync(pagePath, "utf-8");
+    const pagePath = path.join(/*! turbopackIgnore: true */ dir, "page.mdx");
+    if (fs.existsSync(/*! turbopackIgnore: true */ pagePath)) {
+      const source = fs.readFileSync(/*! turbopackIgnore: true */ pagePath, "utf-8");
       const { data, content } = matter(source);
       const humanContent = resolveDocsAudienceMdxContent(content, "human");
       const minutes = resolvePageReadingTime(data as PageFrontmatter, humanContent, options);
@@ -665,9 +692,9 @@ function buildReadingTimeMap(
       }
     }
 
-    for (const name of fs.readdirSync(dir)) {
-      const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) {
+    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
+      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
         scan(full, [...slugParts, name]);
       }
     }
@@ -678,7 +705,9 @@ function buildReadingTimeMap(
 }
 
 function findDocsPageFile(dir: string): string | undefined {
-  return ["page.mdx", "page.md"].map((fileName) => path.join(dir, fileName)).find(fs.existsSync);
+  return ["page.mdx", "page.md"]
+    .map((fileName) => path.join(/*! turbopackIgnore: true */ dir, fileName))
+    .find((candidate) => fs.existsSync(/*! turbopackIgnore: true */ candidate));
 }
 
 function buildStructuredDataMap(
@@ -691,12 +720,12 @@ function buildStructuredDataMap(
   const baseUrl = resolveDocsMetadataBaseUrl(config);
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
     if (isExcludedDir(dir, excludedDirs)) return;
 
     const pagePath = findDocsPageFile(dir);
     if (pagePath) {
-      const source = fs.readFileSync(pagePath, "utf-8");
+      const source = fs.readFileSync(/*! turbopackIgnore: true */ pagePath, "utf-8");
       const { data } = matter(source);
       const route = publicDocsRoute(ctx, slugParts);
       const title =
@@ -704,7 +733,7 @@ function buildStructuredDataMap(
           ? data.title
           : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
       const description = typeof data.description === "string" ? data.description : undefined;
-      const stat = fs.statSync(pagePath);
+      const stat = fs.statSync(/*! turbopackIgnore: true */ pagePath);
 
       map[route] = renderDocsPageStructuredDataJson({
         title,
@@ -717,9 +746,9 @@ function buildStructuredDataMap(
       });
     }
 
-    for (const name of fs.readdirSync(dir)) {
-      const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) {
+    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
+      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
         scan(full, [...slugParts, name]);
       }
     }

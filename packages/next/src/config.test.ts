@@ -1523,6 +1523,28 @@ export default { mcp: sharedMcp };
       "/api/docs": ["app/docs/**/*", ".farming-labs/sitemap-manifest.json"],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
+    expect(nextConfig.outputFileTracingExcludes).toMatchObject({
+      "/api/docs": ["next.config.js", "next.config.mjs", "next.config.ts"],
+      "/api/docs/mcp": ["next.config.js", "next.config.mjs", "next.config.ts"],
+    });
+  });
+
+  it("preserves user output-file tracing exclusions for docs api routes", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({
+      outputFileTracingExcludes: {
+        "/api/docs": ["private-fixtures/**/*"],
+        "/api/other": ["other-fixtures/**/*"],
+      },
+    });
+
+    expect(nextConfig.outputFileTracingExcludes).toMatchObject({
+      "/api/docs": ["private-fixtures/**/*", "next.config.js", "next.config.mjs", "next.config.ts"],
+      "/api/docs/mcp": ["next.config.js", "next.config.mjs", "next.config.ts"],
+      "/api/other": ["other-fixtures/**/*"],
+    });
   });
 
   it("snapshots root agent documents into the skills bundle instead of tracing them", () => {

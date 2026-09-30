@@ -99,7 +99,10 @@ function truncatePaginationDescription(value: string, maxLength = 110) {
 
 function extractChangelogToc(sourcePath: string): TOCItem[] {
   try {
-    const content = readFileSync(join(process.cwd(), sourcePath), "utf-8");
+    const content = readFileSync(
+      /*! turbopackIgnore: true */ join(/*! turbopackIgnore: true */ process.cwd(), sourcePath),
+      "utf-8",
+    );
     return collectDocsMarkdownSections(content)
       .filter((heading) => heading.level >= 2 && heading.level <= 4 && heading.heading)
       .map((heading) => ({

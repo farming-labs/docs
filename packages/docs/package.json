@@ -34,6 +34,11 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./runtime": {
+      "types": "./dist/runtime.d.mts",
+      "import": "./dist/runtime.mjs",
+      "default": "./dist/runtime.mjs"
+    },
     "./markdown-rendering": {
       "types": "./dist/markdown-rendering.d.mts",
       "import": "./dist/markdown-rendering.mjs",

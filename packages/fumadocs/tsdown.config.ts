@@ -42,4 +42,21 @@ export default defineConfig({
   dts: true,
   clean: true,
   outDir: "dist",
+  outputOptions: {
+    // Keep the marker through Rolldown, then emit the exact directive consumed
+    // by Next's production tracer.
+    legalComments: "inline",
+    plugins: [
+      {
+        name: "preserve-turbopack-ignore-directives",
+        renderChunk(code) {
+          if (!code.includes("/*! turbopackIgnore: true */")) return null;
+          return {
+            code: code.replaceAll("/*! turbopackIgnore: true */", "/* turbopackIgnore: true */"),
+            map: null,
+          };
+        },
+      },
+    ],
+  },
 });
