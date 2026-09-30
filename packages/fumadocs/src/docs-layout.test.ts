@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
@@ -262,6 +262,43 @@ agent:
     expect(map?.["/docs"]).toContain('"headline":"Home"');
     expect(map?.["/docs"]).toContain('"@type":"HowTo"');
     expect(map?.["/docs"]).toContain('"name":"Configure the docs home"');
+  });
+
+  it("uses sitemap manifest dates for page chrome and structured data", () => {
+    const pagePath = join(tmpDir, "app", "docs", "page.mdx");
+    const copiedMtime = new Date("2018-10-20T01:46:40.000Z");
+    utimesSync(pagePath, copiedMtime, copiedMtime);
+    mkdirSync(join(tmpDir, ".farming-labs"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, ".farming-labs", "sitemap-manifest.json"),
+      JSON.stringify({
+        version: 1,
+        generatedAt: "2026-09-30T00:00:00.000Z",
+        entry: "docs",
+        pages: [
+          {
+            url: "/docs",
+            markdownUrl: "/docs.md",
+            title: "Home",
+            lastmod: "2026-09-29",
+            lastmodSource: "git",
+          },
+        ],
+      }),
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+    });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = findDocsPageClientProps(tree);
+    const lastModifiedMap = props?.lastModifiedMap as Record<string, string> | undefined;
+    const structuredDataMap = props?.structuredDataMap as Record<string, string> | undefined;
+
+    expect(lastModifiedMap?.["/docs"]).toBe("September 29, 2026");
+    expect(structuredDataMap?.["/docs"]).toContain('"dateModified":"2026-09-29T00:00:00.000Z"');
+    expect(structuredDataMap?.["/docs"]).not.toContain("2018-10-20");
   });
 
   it("does not add an extra display: contents wrapper above the docs layout root", () => {

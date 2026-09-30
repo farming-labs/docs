@@ -906,6 +906,72 @@ Welcome to the docs.
     });
   });
 
+  it("uses stable sitemap timestamps instead of copied deployment mtimes", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-stable-timestamps-"));
+    tempDirs.push(rootDir);
+
+    const docsDir = join(rootDir, "app", "docs");
+    mkdirSync(docsDir, { recursive: true });
+    const pagePath = join(docsDir, "page.mdx");
+    const agentPath = join(docsDir, "agent.md");
+    writeFileSync(
+      pagePath,
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Human timestamp content.
+`,
+    );
+    writeFileSync(agentPath, "Agent stable timestamp marker.\n");
+    const copiedMtime = new Date("2018-10-20T01:46:40.000Z");
+    utimesSync(pagePath, copiedMtime, copiedMtime);
+    utimesSync(agentPath, copiedMtime, copiedMtime);
+
+    mkdirSync(join(rootDir, ".farming-labs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, ".farming-labs", "sitemap-manifest.json"),
+      JSON.stringify({
+        version: 1,
+        generatedAt: "2026-09-30T00:00:00.000Z",
+        entry: "docs",
+        pages: [
+          {
+            url: "/docs",
+            markdownUrl: "/docs.md",
+            title: "Introduction",
+            lastmod: "2026-09-29",
+            lastmodSource: "git",
+          },
+        ],
+      }),
+    );
+
+    const { GET } = createDocsAPI({ rootDir, entry: "docs" });
+    const markdown = await GET(new Request("http://localhost/api/docs?format=markdown&path=docs"));
+    expect(markdown.headers.get("last-modified")).toBe("Tue, 29 Sep 2026 00:00:00 GMT");
+
+    const search = await GET(
+      new Request(
+        "http://localhost/api/docs?query=stable%20timestamp%20marker&audience=agent&response=structured",
+      ),
+    );
+    const searchPayload = (await search.json()) as {
+      results: Array<{ source?: { lastModified?: string } }>;
+    };
+    expect(searchPayload.results[0]?.source?.lastModified).toBe("2026-09-29T00:00:00.000Z");
+
+    const changes = await GET(
+      new Request("http://localhost/api/docs?audience=agent&response=changes"),
+    );
+    const changesPayload = (await changes.json()) as {
+      added: Array<{ lastModified?: string }>;
+    };
+    expect(changesPayload.added[0]?.lastModified).toBe("2026-09-29T00:00:00.000Z");
+  });
+
   it("uses built-in simple search when no search config is provided", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-default-search-route-"));
     tempDirs.push(rootDir);
