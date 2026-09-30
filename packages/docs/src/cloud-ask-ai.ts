@@ -1,4 +1,5 @@
 import { emitDocsAnalyticsEvent } from "./analytics.js";
+import { readDocsJsonBody } from "./http-body.js";
 import type { AIConfig, DocsAnalyticsConfig, DocsCloudConfig } from "./types.js";
 
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
@@ -324,10 +325,9 @@ export async function createDocsCloudAskAIResponse(
   const requestStartedAt = Date.now();
   const requestProperties = analyticsProperties(request);
 
-  let body: DocsChatBody;
-  try {
-    body = (await request.json()) as DocsChatBody;
-  } catch {
+  const parsedBody = await readDocsJsonBody(request);
+  if (!parsedBody.ok) {
+    const status = parsedBody.reason === "request_too_large" ? 413 : 400;
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_ai_error",
       source: "server",
@@ -336,13 +336,19 @@ export async function createDocsCloudAskAIResponse(
       locale: options.locale,
       properties: {
         ...requestProperties,
-        reason: "invalid_json",
+        reason: parsedBody.reason,
         provider: "docs-cloud",
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
     });
-    return jsonError("Invalid JSON body. Expected { messages: [...] }.", 400);
+    return jsonError(
+      parsedBody.reason === "request_too_large"
+        ? `Request body exceeds the ${parsedBody.maxBodyBytes} byte limit.`
+        : "Invalid JSON body. Expected { messages: [...] }.",
+      status,
+    );
   }
+  const body = parsedBody.value as DocsChatBody;
 
   const question = resolveQuestion(body);
   const messages = Array.isArray(body.messages) ? body.messages : undefined;
