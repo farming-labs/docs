@@ -54,7 +54,8 @@ agent surface. For SvelteKit or Astro, append `--config src/lib/docs.config.ts`.
 for upgrade or compaction previews and `--check` for generated agent bundles, sitemaps, robots, or
 AGENTS files where the command documents that flag. Before releasing an API contract, run
 `pnpm exec docs openapi diff <baseline> <current>`; it exits non-zero on breaking changes by
-default.
+default. Generate a typed client with
+`pnpm exec docs openapi sdk <source> --output <path>` and verify committed output with `--check`.
 
 If `pnpm` cannot find `docs`, install dependencies or switch to the published `pnpm dlx` form. If
 the wrong config is loaded, return to the project root or pass the command's documented
@@ -72,6 +73,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`skills scaffold`** — compile structured page `agent` contracts into an installable Agent Skill
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
 - **`openapi diff`** — compare local or remote OpenAPI contracts and gate breaking changes
+- **`openapi sdk`** — generate a typed TypeScript fetch client from an OpenAPI contract
 - **`review`** — review docs changes locally or in GitHub Actions
 - **`codeblocks validate`** — plan and validate runnable MDX code fences
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
@@ -729,6 +731,56 @@ Exit code `0` means the selected policy passed. Exit code `1` means the report v
 `--fail-on` or the contracts could not be loaded and validated. The human report never executes an
 API operation. JSON output includes source summaries, stable change kinds, selectors, counts, and
 the complete ordered change list for CI annotations or release tooling.
+
+## Typed OpenAPI SDK generation
+
+Use `docs openapi sdk` to generate a dependency-free TypeScript fetch client from a local or
+remote JSON/YAML contract. The shorter `docs api sdk` form is an alias. External references are
+resolved with the same bounded loader used by the native API reference and OpenAPI diff command.
+
+```bash title="terminal"
+pnpm exec docs openapi sdk api/openapi.yaml --output src/generated/api-client.ts
+pnpm exec docs api sdk --source https://api.example.com/openapi.json --out src/generated/api-client.ts
+pnpm exec docs openapi sdk api/openapi.yaml --output src/generated/api-client.ts --check
+```
+
+The generated module includes:
+
+- TypeScript types for component schemas, operation inputs, and successful responses.
+- A fetch-based client with deterministic method names from OpenAPI operation IDs.
+- Path, query, header, cookie, and request-body serialization.
+- Configurable runtime base URL, fetch implementation, and default or per-request headers.
+- `ApiError` values containing the HTTP status, parsed response data, and response headers.
+
+Generation is deterministic and does not add timestamps. Authentication is not inferred or
+embedded; pass credentials through `headers` when constructing the client or for an individual
+request.
+
+Flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--source <source>` | Name the contract instead of using the positional argument. |
+| `--output`, `--out <path>` | Write the TypeScript module inside the project root. Required. |
+| `--client-name <name>` | Override the generated client class name. |
+| `--base-url <url>` | Override the default URL derived from the first absolute OpenAPI server. |
+| `--source-base-url <url>` | Resolve a request-relative remote source against an origin. |
+| `--check` | Exit non-zero when the output is missing or stale, without writing. |
+| `--dry-run` | Print generated TypeScript without writing. |
+| `--force` | Replace an existing file that does not contain the Farming Labs generated marker. |
+
+Add a freshness gate when the generated client is committed:
+
+```json title="package.json"
+{
+  "scripts": {
+    "check:api-sdk": "docs openapi sdk api/openapi.yaml --output src/generated/api-client.ts --check"
+  }
+}
+```
+
+Without `--force`, the command refuses to overwrite user-authored files. Review a non-generated
+target before opting into replacement.
 
 ## Doctor
 
