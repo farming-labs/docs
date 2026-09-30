@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:4311ede6e972df6f",
+      "sourceHash": "fnv1a64:4c9d1db0ee6269f6",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:8999f2cd737cc00d",
-      "reviewedAt": "2026-09-29T23:11:14.806Z",
+      "outputHash": "fnv1a64:234fb79b2a88eaff",
+      "reviewedAt": "2026-09-30T00:40:37.078Z",
       "reviewedBy": "docs-team",
-      "reason": "Document the native Farming Labs API renderer default, its normalized operation UI, framework route ownership, and preserved Scalar/Fumadocs alternatives."
+      "reason": "Document the native interactive API console"
     },
     {
       "route": "/docs/token-efficiency",
