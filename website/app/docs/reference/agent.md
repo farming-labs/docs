@@ -98,8 +98,12 @@ Top-level configuration object passed to `defineDocs()`:
 `"farming-labs"` renderer is the default on Next.js, TanStack Start, Farm.js, SvelteKit, Astro,
 and Nuxt. It renders the shared normalized operation model with searchable grouped navigation,
 version switching, stable operation permalinks, parameters, schemas, responses, authentication
-metadata, and copyable cURL examples. It documents requests but does not execute them in the
-browser. Use `"scalar"` as a bundled alternate on any framework or `"fumadocs"` on Next.js.
+metadata, copyable cURL examples, and a browser-based **Try it** console. The console supports
+server, path/query/header parameter, JSON/raw body, browser credential, bearer/basic, and API-key
+inputs; credentials stay in memory. Mutating methods require explicit confirmation and cross-origin
+APIs must allow the docs origin through CORS. Relative servers resolve against the docs origin. Use
+`"scalar"` as a bundled alternate on any framework or `"fumadocs"` on Next.js; those renderers keep
+their own request tooling.
 
 Next.js and Farm.js serve the configured API-reference route through `withDocs()`. TanStack Start,
 SvelteKit, Astro, and Nuxt still require their generated `/{path}` route handlers.

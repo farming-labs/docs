@@ -188,6 +188,7 @@ function renderOperation(
 ): string {
   const markdownUrl = `${options.basePath}/operations/${encodeURIComponent(operation.slug)}.md`;
   const curl = buildCurlExample(operation, options.model.servers);
+  const consoleMarkup = renderApiConsole(operation, options.model.servers);
   const searchText = operationSearchText(operation);
   const description = operation.description?.trim();
   return `<article id="operation-${escapeAttribute(operation.slug)}" class="fl-api-operation" data-operation data-search="${escapeAttribute(searchText)}">
@@ -213,15 +214,169 @@ function renderOperation(
         ${renderResponses(operation.responses)}
         ${renderSecurity(operation)}
       </div>
-      <aside class="fl-api-code-panel" aria-label="Request example">
+      <aside class="fl-api-code-panel" aria-label="Request example and interactive console" data-console-root>
         <div class="fl-api-code-header">
-          <span>cURL</span>
-          <button type="button" class="fl-api-copy" data-copy="${escapeAttribute(curl)}" aria-label="Copy cURL request">Copy</button>
+          <div class="fl-api-code-tabs" role="tablist" aria-label="Request tools">
+            <button id="example-tab-${escapeAttribute(operation.slug)}" type="button" role="tab" aria-selected="true" aria-controls="example-panel-${escapeAttribute(operation.slug)}" tabindex="0" data-console-tab="example">cURL</button>
+            <button id="console-tab-${escapeAttribute(operation.slug)}" type="button" role="tab" aria-selected="false" aria-controls="console-panel-${escapeAttribute(operation.slug)}" tabindex="-1" data-console-tab="console">Try it</button>
+          </div>
+          <button type="button" class="fl-api-copy" data-copy="${escapeAttribute(curl)}" data-example-copy aria-label="Copy cURL request">Copy</button>
         </div>
-        <pre><code>${escapeHtml(curl)}</code></pre>
+        <div id="example-panel-${escapeAttribute(operation.slug)}" role="tabpanel" aria-labelledby="example-tab-${escapeAttribute(operation.slug)}" data-console-panel="example">
+          <pre><code>${escapeHtml(curl)}</code></pre>
+        </div>
+        <div id="console-panel-${escapeAttribute(operation.slug)}" role="tabpanel" aria-labelledby="console-tab-${escapeAttribute(operation.slug)}" data-console-panel="console" hidden>
+          ${consoleMarkup}
+        </div>
       </aside>
     </div>
   </article>`;
+}
+
+function renderApiConsole(operation: NormalizedOpenApiOperation, modelServers: string[]): string {
+  const server = operation.servers[0] ?? modelServers[0] ?? "";
+  const requestBody = operation.requestBody;
+  const requestMedia = requestBody?.content[0];
+  const bodyExample = requestMedia ? mediaTypeExample(requestMedia) : undefined;
+  const mutating = !["GET", "HEAD", "OPTIONS"].includes(operation.method);
+  return `<form class="fl-api-console" data-api-console data-method="${escapeAttribute(operation.method)}" data-path="${escapeAttribute(operation.path)}" novalidate>
+    <div class="fl-api-console-intro">
+      <div>
+        <span class="fl-api-console-kicker">Browser request</span>
+        <strong>${escapeHtml(operation.method)} ${escapeHtml(operation.path)}</strong>
+      </div>
+      <span class="fl-api-console-state" data-console-state data-state="idle">Ready</span>
+    </div>
+    <label class="fl-api-field">
+      <span>Server URL or path <em>required</em></span>
+      <input name="server" type="text" value="${escapeAttribute(server)}" placeholder="https://api.example.com" required spellcheck="false" autocomplete="url" />
+    </label>
+    ${renderConsoleParameters(operation.parameters)}
+    ${renderConsoleAuthentication(operation)}
+    ${requestBody ? renderConsoleRequestBody(requestBody.content, requestBody.required, bodyExample) : ""}
+    <label class="fl-api-field fl-api-field--inline">
+      <span>Browser credentials</span>
+      <select name="credentials" aria-label="Browser credentials mode">
+        <option value="same-origin">Same origin</option>
+        <option value="include">Include cookies</option>
+        <option value="omit">Omit cookies</option>
+      </select>
+    </label>
+    ${mutating ? `<label class="fl-api-console-confirm"><input type="checkbox" data-console-confirm /><span>I understand this request may change data.</span></label>` : ""}
+    <div class="fl-api-console-actions">
+      <button class="fl-api-console-send" type="submit" data-console-send${mutating ? " disabled" : ""}>Send request</button>
+      <button class="fl-api-console-cancel" type="button" data-console-cancel hidden>Cancel</button>
+      <span data-console-message role="status" aria-live="polite"></span>
+    </div>
+    <div class="fl-api-console-error" data-console-error role="alert" hidden></div>
+    <section class="fl-api-console-response" data-console-response aria-label="API response" tabindex="-1" hidden>
+      <div class="fl-api-console-response-header">
+        <div>
+          <span class="fl-api-console-status" data-response-status></span>
+          <span data-response-duration></span>
+        </div>
+        <button type="button" class="fl-api-copy" data-response-copy aria-label="Copy response body">Copy</button>
+      </div>
+      <div class="fl-api-console-response-meta">
+        <code data-response-url></code>
+        <span data-response-type></span>
+      </div>
+      <details class="fl-api-console-response-headers">
+        <summary>Response headers${chevronIcon()}</summary>
+        <pre><code data-response-headers></code></pre>
+      </details>
+      <pre class="fl-api-console-response-body"><code data-response-body></code></pre>
+    </section>
+    <p class="fl-api-console-note">Requests run in this browser. Cross-origin APIs must allow this docs origin through CORS. Credentials stay in memory and are never saved by Farming Labs.</p>
+  </form>`;
+}
+
+function renderConsoleParameters(parameters: NormalizedOpenApiParameter[]): string {
+  const editable = parameters.filter((parameter) => parameter.in !== "cookie");
+  const cookies = parameters.filter((parameter) => parameter.in === "cookie");
+  if (editable.length === 0 && cookies.length === 0) return "";
+  return `<fieldset class="fl-api-console-group">
+    <legend>Parameters</legend>
+    ${editable.map(renderConsoleParameter).join("")}
+    ${cookies.length > 0 ? `<p class="fl-api-console-hint">Cookie parameters (${cookies.map((parameter) => `<code>${escapeHtml(parameter.name)}</code>`).join(", ")}) are browser-managed. Choose <strong>Include cookies</strong> below when the API uses them.</p>` : ""}
+  </fieldset>`;
+}
+
+function renderConsoleParameter(parameter: NormalizedOpenApiParameter): string {
+  const schema = asRecord(parameter.schema);
+  const type = schemaType(schema);
+  const value = parameterExample(parameter);
+  const common = `name="parameter" data-param-name="${escapeAttribute(parameter.name)}" data-param-location="${escapeAttribute(parameter.in)}" data-param-array="${type === "array" ? "true" : "false"}"${parameter.required ? " required" : ""}`;
+  const control =
+    type === "boolean"
+      ? `<select ${common}><option value="">Select…</option><option value="true"${value === true ? " selected" : ""}>true</option><option value="false"${value === false ? " selected" : ""}>false</option></select>`
+      : `<input ${common} type="${type === "number" || type === "integer" ? "number" : "text"}"${value !== undefined ? ` value="${escapeAttribute(formatInputValue(value))}"` : ""} placeholder="${escapeAttribute(parameterPlaceholder(parameter, type))}" spellcheck="false" autocomplete="off" />`;
+  return `<label class="fl-api-field">
+    <span><code>${escapeHtml(parameter.name)}</code> <small>${escapeHtml(parameter.in)}</small>${parameter.required ? " <em>required</em>" : ""}</span>
+    ${control}
+    ${parameter.description ? `<small class="fl-api-field-help">${escapeHtml(parameter.description)}</small>` : ""}
+  </label>`;
+}
+
+function renderConsoleAuthentication(operation: NormalizedOpenApiOperation): string {
+  const schemes = Object.entries(operation.securitySchemes);
+  if (operation.security.length === 0 || schemes.length === 0) return "";
+  return `<fieldset class="fl-api-console-group">
+    <legend>Authentication</legend>
+    ${schemes.map(([name, scheme]) => renderConsoleSecurityScheme(name, scheme)).join("")}
+    <p class="fl-api-console-hint">Authentication values are used only for this request and are not persisted.</p>
+  </fieldset>`;
+}
+
+function renderConsoleSecurityScheme(name: string, value: unknown): string {
+  const scheme = asRecord(value) ?? {};
+  const type = typeof scheme.type === "string" ? scheme.type.toLocaleLowerCase() : "";
+  const httpScheme = typeof scheme.scheme === "string" ? scheme.scheme.toLocaleLowerCase() : "";
+  const location = typeof scheme.in === "string" ? scheme.in : "header";
+  const parameterName = typeof scheme.name === "string" ? scheme.name : name;
+  if (type === "http" && httpScheme === "basic") {
+    return `<div class="fl-api-auth-pair" data-auth-basic>
+      <label class="fl-api-field"><span>${escapeHtml(name)} username</span><input type="text" data-auth-username autocomplete="username" /></label>
+      <label class="fl-api-field"><span>${escapeHtml(name)} password</span><input type="password" data-auth-password autocomplete="current-password" /></label>
+    </div>`;
+  }
+  if (type === "apikey") {
+    if (location === "cookie") {
+      return `<p class="fl-api-console-hint"><strong>${escapeHtml(name)}</strong> uses the browser-managed <code>${escapeHtml(parameterName)}</code> cookie. Choose <strong>Include cookies</strong> below.</p>`;
+    }
+    return `<label class="fl-api-field">
+      <span>${escapeHtml(name)} <small>${escapeHtml(location)} · ${escapeHtml(parameterName)}</small></span>
+      <input type="password" data-auth-api-key data-auth-location="${escapeAttribute(location)}" data-auth-name="${escapeAttribute(parameterName)}" autocomplete="off" />
+    </label>`;
+  }
+  const tokenPrefix =
+    type === "http" && httpScheme && httpScheme !== "bearer" ? httpScheme : "Bearer";
+  return `<label class="fl-api-field">
+    <span>${escapeHtml(name)} token</span>
+    <input type="password" data-auth-token data-auth-prefix="${escapeAttribute(tokenPrefix)}" autocomplete="off" placeholder="Paste access token" />
+  </label>`;
+}
+
+function renderConsoleRequestBody(
+  content: NormalizedOpenApiMediaType[],
+  required: boolean,
+  bodyExample: unknown,
+): string {
+  const mediaTypes =
+    content.length > 0 ? content : [{ mediaType: "application/json", examples: [] }];
+  return `<fieldset class="fl-api-console-group">
+    <legend>Request body${required ? " · required" : ""}</legend>
+    <label class="fl-api-field fl-api-field--inline">
+      <span>Content type</span>
+      <select name="content-type">
+        ${mediaTypes.map((media) => `<option value="${escapeAttribute(media.mediaType)}">${escapeHtml(media.mediaType)}</option>`).join("")}
+      </select>
+    </label>
+    <label class="fl-api-field">
+      <span>Body${required ? " <em>required</em>" : ""}</span>
+      <textarea name="request-body" rows="8"${required ? " required" : ""} spellcheck="false" placeholder="Request body">${bodyExample === undefined ? "" : escapeHtml(formatRequestBody(bodyExample, mediaTypes[0]?.mediaType))}</textarea>
+    </label>
+  </fieldset>`;
 }
 
 function renderParameters(parameters: NormalizedOpenApiParameter[]): string {
@@ -365,6 +520,100 @@ function buildCurlExample(operation: NormalizedOpenApiOperation, modelServers: s
     parts.push(`  --data ${shellQuote(example === undefined ? "{}" : safeJson(example))}`);
   }
   return parts.join(" \\\n");
+}
+
+function mediaTypeExample(media: NormalizedOpenApiMediaType): unknown {
+  const example = media.examples.find((entry) => entry.value !== undefined)?.value;
+  return example === undefined ? schemaExample(media.schema) : example;
+}
+
+function parameterExample(parameter: NormalizedOpenApiParameter): unknown {
+  const example = parameter.examples.find((entry) => entry.value !== undefined)?.value;
+  if (example !== undefined) return example;
+  const schema = asRecord(parameter.schema);
+  if (!schema) return undefined;
+  if (Object.hasOwn(schema, "example")) return schema.example;
+  if (Object.hasOwn(schema, "default")) return schema.default;
+  if (Object.hasOwn(schema, "const")) return schema.const;
+  return Array.isArray(schema.enum) ? schema.enum[0] : undefined;
+}
+
+function schemaExample(schema: unknown, depth = 0): unknown {
+  if (depth > 5) return undefined;
+  const record = asRecord(schema);
+  if (!record) return undefined;
+  if (Object.hasOwn(record, "example")) return record.example;
+  if (Object.hasOwn(record, "default")) return record.default;
+  if (Object.hasOwn(record, "const")) return record.const;
+  if (Array.isArray(record.enum) && record.enum.length > 0) return record.enum[0];
+  const composed = [record.oneOf, record.anyOf, record.allOf].find(
+    (value) => Array.isArray(value) && value.length > 0,
+  );
+  if (Array.isArray(composed)) return schemaExample(composed[0], depth + 1);
+  const type = schemaType(record);
+  if (type === "array") {
+    const item = schemaExample(record.items, depth + 1);
+    return item === undefined ? [] : [item];
+  }
+  if (type === "object" || asRecord(record.properties)) {
+    const properties = asRecord(record.properties) ?? {};
+    return Object.fromEntries(
+      Object.entries(properties).map(([name, value]) => [
+        name,
+        schemaExample(value, depth + 1) ?? placeholderSchemaValue(value),
+      ]),
+    );
+  }
+  return placeholderSchemaValue(record);
+}
+
+function placeholderSchemaValue(schema: unknown): unknown {
+  const type = schemaType(asRecord(schema));
+  if (type === "string") return "string";
+  if (type === "number" || type === "integer") return 0;
+  if (type === "boolean") return false;
+  if (type === "array") return [];
+  if (type === "object") return {};
+  return undefined;
+}
+
+function schemaType(schema: Record<string, unknown> | undefined): string {
+  if (!schema) return "string";
+  if (typeof schema.type === "string") return schema.type;
+  if (Array.isArray(schema.type)) {
+    return schema.type.find((entry) => typeof entry === "string" && entry !== "null") ?? "string";
+  }
+  if (schema.items !== undefined) return "array";
+  if (schema.properties !== undefined || schema.additionalProperties !== undefined) return "object";
+  return "string";
+}
+
+function parameterPlaceholder(parameter: NormalizedOpenApiParameter, type: string): string {
+  if (type === "array") return "Comma-separated values";
+  if (parameter.in === "path") return parameter.name;
+  return `Optional ${type}`;
+}
+
+function formatInputValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map((entry) => String(entry)).join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function formatRequestBody(value: unknown, mediaType?: string): string {
+  if (typeof value === "string" && !isJsonMediaType(mediaType)) return value;
+  return safeJson(value);
+}
+
+function isJsonMediaType(mediaType?: string): boolean {
+  const normalized = mediaType?.toLocaleLowerCase() ?? "";
+  return normalized.includes("json") || normalized.includes("+json");
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 }
 
 function operationSearchText(operation: NormalizedOpenApiOperation): string {
@@ -556,9 +805,64 @@ td code { font-size: 12px; }
 .fl-api-chip--danger { color: #dc2626; }
 .fl-api-code-panel { position: sticky; top: 84px; overflow: hidden; border: 1px solid var(--fl-border); border-radius: var(--fl-radius); background: #0c0c0f; color: #f4f4f5; }
 .fl-api-code-header { min-height: 38px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #29292f; color: #a1a1aa; font: 10px/1 var(--fl-mono); text-transform: uppercase; letter-spacing: .08em; }
-.fl-api-code-header > span { padding-left: 12px; }
+.fl-api-code-tabs { align-self: stretch; display: flex; align-items: stretch; }
+.fl-api-code-tabs button { position: relative; min-width: 70px; padding: 0 12px; border: 0; border-right: 1px solid #29292f; background: transparent; color: #a1a1aa; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.fl-api-code-tabs button[aria-selected="true"] { background: #151519; color: #f4f4f5; }
+.fl-api-code-tabs button[aria-selected="true"]::after { content: ""; position: absolute; right: 10px; bottom: -1px; left: 10px; height: 2px; background: var(--fl-primary); }
+.fl-api-code-tabs button:hover, .fl-api-code-tabs button:focus-visible { color: #f4f4f5; outline: 2px solid var(--fl-primary); outline-offset: -2px; }
 .fl-api-code-panel .fl-api-copy { color: #a1a1aa; border-left-color: #29292f; }
 .fl-api-code-panel pre, .fl-api-schema pre { margin: 0; overflow: auto; padding: 16px; font-size: 12px; line-height: 1.7; }
+.fl-api-console { display: grid; gap: 16px; max-height: min(76vh, 780px); overflow-y: auto; padding: 16px; background: #0c0c0f; color: #f4f4f5; }
+.fl-api-console-intro, .fl-api-console-response-header, .fl-api-console-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fl-api-console-intro > div { min-width: 0; display: grid; gap: 5px; }
+.fl-api-console-intro strong { overflow-wrap: anywhere; font: 600 12px/1.45 var(--fl-mono); }
+.fl-api-console-kicker, .fl-api-console-group legend { color: #a1a1aa; font: 10px/1.3 var(--fl-mono); text-transform: uppercase; letter-spacing: .08em; }
+.fl-api-console-state { flex: 0 0 auto; padding: 4px 7px; border: 1px solid #3f3f46; color: #a1a1aa; font: 10px/1 var(--fl-mono); }
+.fl-api-console-state[data-state="sending"] { border-color: #6366f1; color: #a5b4fc; }
+.fl-api-console-state[data-state="success"] { border-color: #22c55e; color: #86efac; }
+.fl-api-console-state[data-state="error"] { border-color: #ef4444; color: #fca5a5; }
+.fl-api-console-group { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid #29292f; }
+.fl-api-console-group legend { padding: 0 6px; }
+.fl-api-field { display: grid; gap: 6px; min-width: 0; color: #d4d4d8; font: 11px/1.35 var(--fl-mono); }
+.fl-api-field > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; }
+.fl-api-field > span small { color: #71717a; font-size: 9px; text-transform: uppercase; }
+.fl-api-field em { color: #fca5a5; font-size: 9px; font-style: normal; text-transform: uppercase; }
+.fl-api-field input, .fl-api-field select, .fl-api-field textarea { width: 100%; min-width: 0; border: 1px solid #3f3f46; border-radius: calc(var(--fl-radius) * .55); background: #151519; color: #f4f4f5; font: 12px/1.45 var(--fl-mono); }
+.fl-api-field input, .fl-api-field select { height: 36px; padding: 0 10px; }
+.fl-api-field textarea { resize: vertical; min-height: 112px; padding: 10px; tab-size: 2; }
+.fl-api-field input::placeholder, .fl-api-field textarea::placeholder { color: #71717a; }
+.fl-api-field input:focus, .fl-api-field select:focus, .fl-api-field textarea:focus { border-color: #818cf8; outline: 2px solid color-mix(in srgb, #6366f1 45%, transparent); outline-offset: 0; }
+.fl-api-field--inline { grid-template-columns: minmax(120px, .7fr) minmax(0, 1fr); align-items: center; }
+.fl-api-field-help, .fl-api-console-hint, .fl-api-console-note { color: #a1a1aa; font-size: 10px; line-height: 1.5; }
+.fl-api-console-hint, .fl-api-console-note { margin: 0; }
+.fl-api-console-hint code { color: #d4d4d8; }
+.fl-api-auth-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fl-api-console-confirm { display: flex; align-items: flex-start; gap: 8px; color: #fcd34d; font: 10px/1.45 var(--fl-mono); }
+.fl-api-console-confirm input { margin: 1px 0 0; accent-color: #6366f1; }
+.fl-api-console-actions { justify-content: flex-start; min-height: 36px; }
+.fl-api-console-actions button { min-height: 34px; padding: 0 12px; border: 1px solid #3f3f46; border-radius: calc(var(--fl-radius) * .55); cursor: pointer; font: 600 11px/1 var(--fl-mono); }
+.fl-api-console-send { background: var(--fl-primary); color: var(--fl-primary-fg); border-color: var(--fl-primary) !important; }
+.fl-api-console-send:hover:not(:disabled), .fl-api-console-send:focus-visible { filter: brightness(1.08); outline: 2px solid #a5b4fc; outline-offset: 2px; }
+.fl-api-console-send:disabled { cursor: not-allowed; opacity: .45; }
+.fl-api-console-cancel { background: transparent; color: #d4d4d8; }
+.fl-api-console-actions > span { color: #a1a1aa; font: 10px/1.4 var(--fl-mono); }
+.fl-api-console-error { padding: 10px 12px; border: 1px solid #7f1d1d; background: #2a1013; color: #fecaca; font: 11px/1.5 var(--fl-mono); }
+.fl-api-console-response { min-width: 0; border: 1px solid #3f3f46; outline: none; }
+.fl-api-console-response:focus-visible { border-color: #818cf8; box-shadow: 0 0 0 2px #6366f1; }
+.fl-api-console-response-header { min-height: 38px; border-bottom: 1px solid #29292f; }
+.fl-api-console-response-header > div { display: flex; align-items: center; gap: 8px; padding-left: 11px; color: #a1a1aa; font: 10px/1 var(--fl-mono); }
+.fl-api-console-status { color: #86efac; font-weight: 700; }
+.fl-api-console-status[data-ok="false"] { color: #fca5a5; }
+.fl-api-console-response-meta { display: grid; gap: 4px; padding: 9px 11px; border-bottom: 1px solid #29292f; color: #a1a1aa; font: 9px/1.4 var(--fl-mono); }
+.fl-api-console-response-meta code { overflow: hidden; color: #d4d4d8; text-overflow: ellipsis; white-space: nowrap; }
+.fl-api-console-response-headers { border-bottom: 1px solid #29292f; }
+.fl-api-console-response-headers summary { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; color: #a1a1aa; cursor: pointer; font: 10px/1.3 var(--fl-mono); list-style: none; }
+.fl-api-console-response-headers summary::-webkit-details-marker { display: none; }
+.fl-api-console-response-headers summary svg { width: 14px; transition: transform .15s ease; }
+.fl-api-console-response-headers[open] summary svg { transform: rotate(180deg); }
+.fl-api-console-response-headers pre { max-height: 180px; padding: 11px; border-top: 1px solid #29292f; color: #d4d4d8; }
+.fl-api-console-response-body { max-height: 340px; min-height: 72px; color: #f4f4f5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fl-api-console-note { padding-top: 2px; border-top: 1px solid #29292f; }
 .fl-api-response-list { display: grid; border: 1px solid var(--fl-border); }
 .fl-api-response + .fl-api-response { border-top: 1px solid var(--fl-border); }
 .fl-api-response > summary, .fl-api-schema > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer; list-style: none; }
@@ -581,7 +885,7 @@ td code { font-size: 12px; }
 .fl-api-live-region { position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 :focus-visible { outline: 2px solid var(--fl-primary); outline-offset: 2px; }
 @media (max-width: 980px) { .fl-api-layout { grid-template-columns: 230px minmax(0, 1fr); } .fl-api-operation-grid { grid-template-columns: 1fr; } .fl-api-code-panel { position: relative; top: 0; } }
-@media (max-width: 720px) { .fl-api-topbar { padding-inline: 12px; } .fl-api-brand > span:last-child, .fl-api-version-control > span, .fl-api-action { display: none; } .fl-api-layout { display: block; } .fl-api-sidebar { position: relative; top: 0; width: 100%; height: auto; max-height: 52vh; border-right: 0; border-bottom: 1px solid var(--fl-border); } .fl-api-hero { padding: 32px 18px; } .fl-api-operations { padding-inline: 18px; } .fl-api-operation-grid { gap: 22px; } .fl-api-servers { grid-template-columns: auto minmax(0, 1fr); } .fl-api-servers .fl-api-copy { display: none; } }
+@media (max-width: 720px) { .fl-api-topbar { padding-inline: 12px; } .fl-api-brand > span:last-child, .fl-api-version-control > span, .fl-api-action { display: none; } .fl-api-layout { display: block; } .fl-api-sidebar { position: relative; top: 0; width: 100%; height: auto; max-height: 52vh; border-right: 0; border-bottom: 1px solid var(--fl-border); } .fl-api-hero { padding: 32px 18px; } .fl-api-operations { padding-inline: 18px; } .fl-api-operation-grid { gap: 22px; } .fl-api-servers { grid-template-columns: auto minmax(0, 1fr); } .fl-api-servers .fl-api-copy { display: none; } .fl-api-field--inline, .fl-api-auth-pair { grid-template-columns: 1fr; } .fl-api-console { max-height: none; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 `;
 }
@@ -626,6 +930,171 @@ function buildClientScript(): string {
     try { localStorage.setItem('farming-labs-api-theme', next); } catch {}
   });
   try { const saved = localStorage.getItem('farming-labs-api-theme'); if (saved === 'dark' || saved === 'light') root.dataset.theme = saved; } catch {}
+  const activateConsoleTab = (consoleRoot, tab) => {
+    const tabs = Array.from(consoleRoot.querySelectorAll('[data-console-tab]'));
+    const panels = Array.from(consoleRoot.querySelectorAll('[data-console-panel]'));
+    for (const candidate of tabs) {
+      const active = candidate.dataset.consoleTab === tab;
+      candidate.setAttribute('aria-selected', String(active));
+      candidate.tabIndex = active ? 0 : -1;
+    }
+    for (const panel of panels) panel.hidden = panel.dataset.consolePanel !== tab;
+    const exampleCopy = consoleRoot.querySelector('[data-example-copy]');
+    if (exampleCopy instanceof HTMLElement) exampleCopy.hidden = tab !== 'example';
+  };
+  for (const consoleRoot of document.querySelectorAll('[data-console-root]')) {
+    const tabs = Array.from(consoleRoot.querySelectorAll('[data-console-tab]'));
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => activateConsoleTab(consoleRoot, tab.dataset.consoleTab || 'example'));
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const current = tabs.indexOf(tab);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        const nextTab = tabs[next];
+        if (nextTab instanceof HTMLElement) {
+          activateConsoleTab(consoleRoot, nextTab.dataset.consoleTab || 'example');
+          nextTab.focus();
+        }
+      });
+    }
+  }
+  const setConsoleState = (form, state, label) => {
+    const badge = form.querySelector('[data-console-state]');
+    if (badge instanceof HTMLElement) { badge.dataset.state = state; badge.textContent = label; }
+  };
+  const encodeBasicCredentials = (value) => {
+    const bytes = new TextEncoder().encode(value);
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  };
+  const appendQueryValue = (searchParams, name, value, array) => {
+    const values = array ? value.split(',').map((entry) => entry.trim()).filter(Boolean) : [value];
+    for (const entry of values) searchParams.append(name, entry);
+  };
+  const formatResponseBody = (value, contentType) => {
+    if (!value) return '(empty response)';
+    if (!contentType.includes('json') && !contentType.includes('+json')) return value;
+    try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
+  };
+  for (const form of document.querySelectorAll('[data-api-console]')) {
+    if (!(form instanceof HTMLFormElement)) continue;
+    let controller;
+    const send = form.querySelector('[data-console-send]');
+    const cancel = form.querySelector('[data-console-cancel]');
+    const confirm = form.querySelector('[data-console-confirm]');
+    const message = form.querySelector('[data-console-message]');
+    const error = form.querySelector('[data-console-error]');
+    const responsePanel = form.querySelector('[data-console-response]');
+    if (confirm instanceof HTMLInputElement && send instanceof HTMLButtonElement) {
+      confirm.addEventListener('change', () => { send.disabled = !confirm.checked; });
+    }
+    cancel?.addEventListener('click', () => controller?.abort());
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity() || !(send instanceof HTMLButtonElement)) return;
+      if (error instanceof HTMLElement) { error.hidden = true; error.textContent = ''; }
+      if (responsePanel instanceof HTMLElement) responsePanel.hidden = true;
+      const originalLabel = send.textContent || 'Send request';
+      send.disabled = true;
+      send.textContent = 'Sending…';
+      if (cancel instanceof HTMLElement) cancel.hidden = false;
+      if (message instanceof HTMLElement) message.textContent = 'Request in progress';
+      setConsoleState(form, 'sending', 'Sending');
+      controller = new AbortController();
+      const started = performance.now();
+      try {
+        const serverInput = form.elements.namedItem('server');
+        if (!(serverInput instanceof HTMLInputElement)) throw new Error('Server URL is required.');
+        const server = new URL(serverInput.value, window.location.origin);
+        if (server.protocol !== 'http:' && server.protocol !== 'https:') throw new Error('Server URL must use HTTP or HTTPS.');
+        let operationPath = form.dataset.path || '/';
+        const headers = new Headers();
+        const query = [];
+        for (const input of form.querySelectorAll('[data-param-name]')) {
+          if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) continue;
+          const value = input.value.trim();
+          if (!value) continue;
+          const name = input.dataset.paramName || '';
+          const location = input.dataset.paramLocation;
+          if (location === 'path') operationPath = operationPath.split('{' + name + '}').join(encodeURIComponent(value));
+          else if (location === 'query') query.push([name, value, input.dataset.paramArray === 'true']);
+          else if (location === 'header') headers.set(name, value);
+        }
+        server.hash = '';
+        server.search = '';
+        server.pathname = server.pathname.replace(/\\/+$/, '') + '/' + operationPath.replace(/^\\/+/, '');
+        const url = server;
+        for (const [name, value, array] of query) appendQueryValue(url.searchParams, name, value, array);
+        for (const auth of form.querySelectorAll('[data-auth-token]')) {
+          if (auth instanceof HTMLInputElement && auth.value) headers.set('authorization', (auth.dataset.authPrefix || 'Bearer') + ' ' + auth.value);
+        }
+        for (const auth of form.querySelectorAll('[data-auth-api-key]')) {
+          if (!(auth instanceof HTMLInputElement) || !auth.value) continue;
+          const name = auth.dataset.authName || '';
+          if (auth.dataset.authLocation === 'query') url.searchParams.append(name, auth.value);
+          else headers.set(name, auth.value);
+        }
+        const basic = form.querySelector('[data-auth-basic]');
+        const username = basic?.querySelector('[data-auth-username]');
+        const password = basic?.querySelector('[data-auth-password]');
+        if (username instanceof HTMLInputElement && password instanceof HTMLInputElement && (username.value || password.value)) {
+          headers.set('authorization', 'Basic ' + encodeBasicCredentials(username.value + ':' + password.value));
+        }
+        const bodyInput = form.elements.namedItem('request-body');
+        const contentTypeInput = form.elements.namedItem('content-type');
+        let body;
+        if (bodyInput instanceof HTMLTextAreaElement && bodyInput.value.trim()) {
+          body = bodyInput.value;
+          const contentType = contentTypeInput instanceof HTMLSelectElement ? contentTypeInput.value : 'application/json';
+          if (contentType.toLocaleLowerCase().includes('json') || contentType.toLocaleLowerCase().includes('+json')) body = JSON.stringify(JSON.parse(body));
+          headers.set('content-type', contentType);
+        }
+        const credentialsInput = form.elements.namedItem('credentials');
+        const credentials = credentialsInput instanceof HTMLSelectElement ? credentialsInput.value : 'same-origin';
+        const response = await fetch(url, {
+          method: form.dataset.method || 'GET',
+          headers,
+          body,
+          credentials,
+          signal: controller.signal,
+        });
+        const rawBody = await response.text();
+        const contentType = response.headers.get('content-type') || 'unknown content type';
+        const formattedBody = formatResponseBody(rawBody, contentType.toLocaleLowerCase());
+        const duration = Math.round(performance.now() - started);
+        const status = form.querySelector('[data-response-status]');
+        const durationTarget = form.querySelector('[data-response-duration]');
+        const urlTarget = form.querySelector('[data-response-url]');
+        const typeTarget = form.querySelector('[data-response-type]');
+        const headersTarget = form.querySelector('[data-response-headers]');
+        const bodyTarget = form.querySelector('[data-response-body]');
+        const copy = form.querySelector('[data-response-copy]');
+        if (status instanceof HTMLElement) { status.textContent = response.status + ' ' + response.statusText; status.dataset.ok = String(response.ok); }
+        if (durationTarget instanceof HTMLElement) durationTarget.textContent = duration + ' ms';
+        if (urlTarget instanceof HTMLElement) { urlTarget.textContent = url.href; urlTarget.title = url.href; }
+        if (typeTarget instanceof HTMLElement) typeTarget.textContent = contentType;
+        if (headersTarget instanceof HTMLElement) headersTarget.textContent = Array.from(response.headers.entries()).map(([name, value]) => name + ': ' + value).join('\\n') || '(no exposed response headers)';
+        if (bodyTarget instanceof HTMLElement) bodyTarget.textContent = formattedBody;
+        if (copy instanceof HTMLButtonElement) copy.dataset.copy = formattedBody;
+        if (responsePanel instanceof HTMLElement) { responsePanel.hidden = false; responsePanel.focus({ preventScroll: true }); }
+        setConsoleState(form, response.ok ? 'success' : 'error', response.ok ? 'Complete' : 'HTTP error');
+        if (message instanceof HTMLElement) message.textContent = response.ok ? 'Request completed' : 'Request completed with an error status';
+      } catch (requestError) {
+        const aborted = requestError instanceof DOMException && requestError.name === 'AbortError';
+        const detail = aborted ? 'Request cancelled.' : requestError instanceof Error ? requestError.message : 'The request could not be sent.';
+        setConsoleState(form, aborted ? 'idle' : 'error', aborted ? 'Cancelled' : 'Failed');
+        if (message instanceof HTMLElement) message.textContent = aborted ? 'Request cancelled' : 'Request failed';
+        if (error instanceof HTMLElement) { error.hidden = false; error.textContent = detail; }
+      } finally {
+        controller = undefined;
+        send.textContent = originalLabel;
+        send.disabled = confirm instanceof HTMLInputElement ? !confirm.checked : false;
+        if (cancel instanceof HTMLElement) cancel.hidden = true;
+      }
+    });
+  }
   document.addEventListener('click', async (event) => {
     const button = event.target instanceof Element ? event.target.closest('[data-copy]') : null;
     if (!(button instanceof HTMLButtonElement)) return;
@@ -639,7 +1108,7 @@ function buildClientScript(): string {
     } catch {
       button.textContent = 'Failed';
       if (copyStatus) copyStatus.textContent = 'Could not copy to clipboard';
-      setTimeout(() => { button.textContent = original; }, 1600);
+      setTimeout(() => { button.textContent = original; if (copyStatus) copyStatus.textContent = ''; }, 1600);
     }
   });
 })();`;

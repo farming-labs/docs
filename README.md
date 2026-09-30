@@ -12,7 +12,8 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Built-in themes with shared MDX components such as `Callout`, `Tabs`, `HoverLink`, and `Prompt`
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Native, searchable API reference from framework routes or local/remote OpenAPI JSON and YAML,
-  with versions, overlays, normalized operations, and bundled Scalar/Fumadocs alternatives
+  with versions, overlays, normalized operations, an interactive browser console, and bundled
+  Scalar/Fumadocs alternatives
 - Next.js changelog pages from dated MDX entries
 - Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps,
   `robots.txt`, RFC 9727 API catalogs, Agent Skills discovery, `skill.md`, agent discovery, and MCP

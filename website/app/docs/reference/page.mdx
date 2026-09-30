@@ -1642,7 +1642,25 @@ for an existing project-relative file, absolute URL, or request-relative URL.
 The native renderer uses the same normalized operation model as Markdown, Ask AI, search, and MCP.
 It includes operation search and grouping, stable operation permalinks, version switching,
 parameters, request and response schemas, authentication metadata, copyable cURL examples, and
-responsive light/dark UI. It documents requests but does not execute them in the browser.
+responsive light/dark UI. Each operation also includes a **Try it** tab that executes requests in
+the browser and renders status, timing, response headers, and formatted response bodies.
+
+The request console starts from the operation's first server, parameters, media type, and schema
+examples. Readers can change the server, path/query/header parameters, request body, browser
+credential mode, and supported bearer, basic, or API-key authentication values before sending.
+Authentication values stay in memory and are never persisted by Farming Labs. Cookie parameters
+remain browser-managed; choose **Include cookies** when the target API relies on them. POST, PUT,
+PATCH, and DELETE operations require an explicit confirmation before **Send request** is enabled.
+
+<Callout type="warning" title="Browser security still applies">
+  Cross-origin APIs must allow the docs origin through CORS. A relative server URL resolves against
+  the current docs origin, so replace it with an absolute API URL when a remotely loaded contract
+  uses a server path relative to its own host. The console supports JSON and raw request bodies;
+  specialized multipart file controls are not generated yet.
+</Callout>
+
+The interactive console is part of the native `"farming-labs"` renderer. Selecting `"scalar"` or
+`"fumadocs"` preserves that renderer's own request tooling and presentation.
 
 <Callout type="tip" title="OpenAPI document mode">
   `specUrl` accepts project-relative JSON/YAML files such as `./openapi.yaml`, hosted JSON/YAML
