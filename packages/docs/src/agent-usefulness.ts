@@ -255,6 +255,8 @@ const DEFAULT_DOCS_COMMANDS = [
   "doctor",
   "openapi diff",
   "api diff",
+  "openapi sdk",
+  "api sdk",
   "review",
   "codeblocks validate",
   "code-blocks validate",

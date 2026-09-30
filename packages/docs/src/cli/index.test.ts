@@ -214,8 +214,9 @@ describe("openapi command help", () => {
         encoding: "utf8",
       });
 
-      expect(output).toContain("docs openapi diff");
-      expect(output).toContain("farming-labs-openapi-diff.v1");
+      expect(output).toContain("docs openapi");
+      expect(output).toContain("diff");
+      expect(output).toContain("sdk");
       expect(output).not.toContain("Unknown OpenAPI subcommand");
     }
   });

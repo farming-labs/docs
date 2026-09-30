@@ -820,7 +820,7 @@ pnpm exec docs agent propose --input signals.jsonl --write
     });
   });
 
-  it("recognizes OpenAPI diff commands and their alias", () => {
+  it("recognizes OpenAPI diff and SDK commands and their aliases", () => {
     const report = analyzeAgentUsefulness({
       rootDir,
       pages: [
@@ -832,6 +832,8 @@ pnpm exec docs agent propose --input signals.jsonl --write
 \`\`\`bash
 pnpm exec docs openapi diff old.yaml new.yaml --fail-on breaking
 pnpm exec docs api diff --base old.json --head new.yaml --json
+pnpm exec docs openapi sdk openapi.yaml --output src/api-client.ts
+pnpm exec docs api sdk --source openapi.json --out src/api-client.ts --check
 \`\`\``,
           ),
           actionable: false,
@@ -841,8 +843,8 @@ pnpm exec docs api diff --base old.json --head new.yaml --json
 
     expect(report.findings.filter((finding) => finding.category === "command")).toEqual([]);
     expect(report.metrics.commands).toEqual({
-      total: 2,
-      healthy: 2,
+      total: 4,
+      healthy: 4,
       unhealthy: 0,
       unverified: 0,
     });

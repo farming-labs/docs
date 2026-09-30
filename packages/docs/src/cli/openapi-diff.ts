@@ -1,8 +1,5 @@
-import { existsSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import pc from "picocolors";
-import { loadApiReferenceOpenApiDocumentAsync } from "../api-reference.js";
 import {
   buildNormalizedOpenApiModel,
   type NormalizedOpenApiMediaType,
@@ -10,7 +7,7 @@ import {
   type NormalizedOpenApiParameter,
   type NormalizedOpenApiResponse,
 } from "../openapi-operations.js";
-import type { DocsConfig } from "../types.js";
+import { displayOpenApiCliSource, loadOpenApiCliSource } from "./openapi-source.js";
 
 export type OpenApiDiffSeverity = "breaking" | "non-breaking";
 export type OpenApiDiffFailOn = "breaking" | "any" | "never";
@@ -129,12 +126,12 @@ export async function runOpenApiDiff(options: OpenApiDiffOptions): Promise<OpenA
   }
   const rootDir = path.resolve(options.rootDir ?? process.cwd());
   const [baseline, current] = await Promise.all([
-    loadDiffSource(options.baseline, rootDir, options.baseUrl),
-    loadDiffSource(options.current, rootDir, options.baseUrl),
+    loadOpenApiCliSource(options.baseline, { rootDir, baseUrl: options.baseUrl }),
+    loadOpenApiCliSource(options.current, { rootDir, baseUrl: options.baseUrl }),
   ]);
-  const report = compareOpenApiDocuments(baseline.document, current.document, {
-    baselineSource: displaySource(options.baseline),
-    currentSource: displaySource(options.current),
+  const report = compareOpenApiDocuments(baseline, current, {
+    baselineSource: displayOpenApiCliSource(options.baseline),
+    currentSource: displayOpenApiCliSource(options.current),
   });
 
   if (options.json) console.log(JSON.stringify(report, null, 2));
@@ -780,23 +777,6 @@ function normalizeSchemaValue(
   );
 }
 
-async function loadDiffSource(source: string, rootDir: string, baseUrl?: string) {
-  const localPath = path.isAbsolute(source) ? source : path.resolve(rootDir, source);
-  const specUrl =
-    existsSync(localPath) && path.isAbsolute(source) ? pathToFileURL(localPath).href : source;
-  const config: DocsConfig = {
-    entry: "docs",
-    apiReference: { enabled: true, specUrl },
-  };
-  return {
-    document: await loadApiReferenceOpenApiDocumentAsync(config, {
-      framework: "next",
-      rootDir,
-      baseUrl,
-    }),
-  };
-}
-
 function summarizeSource(
   source: string,
   model: ReturnType<typeof buildNormalizedOpenApiModel>,
@@ -956,18 +936,4 @@ function resolvePointer(document: Record<string, unknown>, pointer: string): unk
     current = record[token.replaceAll("~1", "/").replaceAll("~0", "~")];
   }
   return current;
-}
-
-function displaySource(source: string): string {
-  if (!/^https?:/i.test(source)) return source;
-  try {
-    const url = new URL(source);
-    url.username = url.username ? "redacted" : "";
-    url.password = url.password ? "redacted" : "";
-    url.search = "";
-    url.hash = "";
-    return url.href;
-  } catch {
-    return "remote OpenAPI source";
-  }
 }

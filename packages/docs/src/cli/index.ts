@@ -310,15 +310,27 @@ async function main() {
     await runOpenApiDiff(diffOptions);
   } else if (
     (parsedCommand.command === "openapi" || parsedCommand.command === "api") &&
+    subcommand === "sdk"
+  ) {
+    const { parseOpenApiSdkArgs, printOpenApiSdkHelp, runOpenApiSdk } =
+      await import("./openapi-sdk.js");
+    const sdkOptions = parseOpenApiSdkArgs(args.slice(2));
+    if (sdkOptions.help) {
+      printOpenApiSdkHelp();
+      return;
+    }
+    await runOpenApiSdk(sdkOptions);
+  } else if (
+    (parsedCommand.command === "openapi" || parsedCommand.command === "api") &&
     (subcommand === "--help" || subcommand === "-h")
   ) {
-    const { printOpenApiDiffHelp } = await import("./openapi-diff.js");
-    printOpenApiDiffHelp();
+    const { printOpenApiHelp } = await import("./openapi.js");
+    printOpenApiHelp();
   } else if (parsedCommand.command === "openapi" || parsedCommand.command === "api") {
     console.error(pc.red(`Unknown OpenAPI subcommand: ${subcommand ?? "(missing)"}`));
     console.error();
-    const { printOpenApiDiffHelp } = await import("./openapi-diff.js");
-    printOpenApiDiffHelp();
+    const { printOpenApiHelp } = await import("./openapi.js");
+    printOpenApiHelp();
     process.exit(1);
   } else if (parsedCommand.command === "review") {
     const { parseReviewArgs, printReviewHelp, runReview } = await import("./review.js");
@@ -460,7 +472,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("skills")}   Agent Skills utilities (${pc.dim("scaffold")} from structured page contracts)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
-  ${pc.cyan("openapi")}  OpenAPI utilities (${pc.dim("diff")} for breaking-change detection)
+  ${pc.cyan("openapi")}  OpenAPI utilities (${pc.dim("diff")} and typed ${pc.dim("sdk")} generation)
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
   ${pc.cyan("mcp")}      Run read-only docs MCP or the separate protected authoring server
@@ -598,6 +610,13 @@ ${pc.dim("Options for OpenAPI diff:")}
   ${pc.cyan("--base <source> --head <source>")}     Named source arguments; ${pc.cyan("api diff")} is an alias
   ${pc.cyan("--fail-on <policy>")}                  Exit policy: ${pc.dim("breaking")}, ${pc.dim("any")}, or ${pc.dim("never")}
   ${pc.cyan("--json")}                              Print stable ${pc.dim("farming-labs-openapi-diff.v1")} JSON
+
+${pc.dim("Options for OpenAPI SDK generation:")}
+  ${pc.cyan("openapi sdk <source> --output <path>")} Generate a typed TypeScript fetch client
+  ${pc.cyan("--client-name <name>")}                Override the generated client class name
+  ${pc.cyan("--base-url <url>")}                    Override the generated default API URL
+  ${pc.cyan("--check | --dry-run")}                 Check freshness or preview without writing
+  ${pc.cyan("--force")}                             Replace a reviewed non-generated output file
 
 ${pc.dim("Options for review:")}
   ${pc.cyan("review")}                              Review docs changed in git

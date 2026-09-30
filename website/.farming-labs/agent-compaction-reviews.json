@@ -3,12 +3,12 @@
   "reviews": [
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:c45c026992d71265",
+      "sourceHash": "fnv1a64:a6c8dbf9346b4ae3",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
-      "outputHash": "fnv1a64:49601cc147b931c3",
-      "reviewedAt": "2026-09-29T23:49:27.857Z",
+      "outputHash": "fnv1a64:1b5c90455efb0c05",
+      "reviewedAt": "2026-09-30T00:10:47.741Z",
       "reviewedBy": "docs-team",
-      "reason": "Document the OpenAPI breaking-change diff command and CI exit behavior while preserving the retrieval-tested CLI summary."
+      "reason": "Document typed OpenAPI SDK generation"
     },
     {
       "route": "/docs/configuration",
