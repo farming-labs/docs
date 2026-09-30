@@ -40,6 +40,7 @@ export {
   resolveDocsTelemetryConfig,
 } from "./telemetry.js";
 export { resolveChangelogConfig } from "./changelog.js";
+export { formatDocsLastModifiedDate } from "./date.js";
 export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
 export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";

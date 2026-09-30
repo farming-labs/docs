@@ -2404,6 +2404,8 @@ lastUpdated: {
 | `position` | `"footer" \| "below-title"` | `"footer"`       | Render beside "Edit on GitHub" or below the page title   |
 
 Set `label` to an empty string to display only the formatted date with no prefix text.
+Dates are formatted against UTC, so the displayed calendar day stays the same across local,
+serverless, and edge deployment timezones.
 
 ## Reading Time
 
