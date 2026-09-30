@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { CompileOptions } from "@mdx-js/mdx";
 import mdx from "@mdx-js/rollup";
 import {
   applyDocsMarkdownHeadingAnchors,
@@ -270,7 +271,7 @@ function resolveWorkspaceAliases() {
 
 export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
-  const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
+  const compileOptions = createFarmDocsMdxCompileOptions(options);
 
   return [
     {
@@ -292,15 +293,27 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
     },
     mdx({
       include: /\.(md|mdx)$/,
-      remarkPlugins: [
-        remarkGfm,
-        remarkFrontmatter,
-        [remarkMdxFrontmatter, { name: "metadata" }],
-        remarkStandaloneCodeLabels,
-        remarkCodeGroup,
-        createCanonicalDocsRemarkHeading,
-      ],
-      rehypePlugins: [rehypeToc, [rehypeCode, { themes: codeBlockThemes }]],
+      ...compileOptions,
     }),
   ];
+}
+
+/** Shared MDX transforms used by Vite and the build-time edge compiler. */
+export function createFarmDocsMdxCompileOptions(
+  options: FarmDocsMdxOptions = {},
+): Pick<CompileOptions, "remarkPlugins" | "rehypePlugins"> {
+  const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
+  const remarkPlugins: NonNullable<CompileOptions["remarkPlugins"]> = [
+    remarkGfm,
+    remarkFrontmatter,
+    [remarkMdxFrontmatter, { name: "metadata" }],
+    remarkStandaloneCodeLabels,
+    remarkCodeGroup,
+    createCanonicalDocsRemarkHeading,
+  ];
+  const rehypePlugins: NonNullable<CompileOptions["rehypePlugins"]> = [
+    rehypeToc,
+    [rehypeCode, { themes: codeBlockThemes }],
+  ];
+  return { remarkPlugins, rehypePlugins };
 }

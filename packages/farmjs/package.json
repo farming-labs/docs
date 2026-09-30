@@ -43,6 +43,11 @@
       "import": "./dist/server.js",
       "default": "./dist/server.js"
     },
+    "./edge-compiler": {
+      "types": "./dist/edge-compiler.d.ts",
+      "import": "./dist/edge-compiler.js",
+      "default": "./dist/edge-compiler.js"
+    },
     "./api-reference": {
       "types": "./dist/api-reference.d.ts",
       "import": "./dist/api-reference.js",
@@ -67,6 +72,7 @@
     "typecheck": "pnpm run generate:browser-css && tsc --noEmit"
   },
   "dependencies": {
+    "@mdx-js/mdx": "^3.1.1",
     "@mdx-js/rollup": "^3.1.1",
     "@scalar/core": "^0.4.3",
     "fumadocs-core": "16.7.16",
