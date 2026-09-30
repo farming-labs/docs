@@ -16,6 +16,7 @@ describe("withDocs", () => {
           server: "@farming-labs/farmjs/server",
           react: "@farming-labs/farmjs/react",
           vite: "@farming-labs/farmjs/vite",
+          edgeCompiler: "@farming-labs/farmjs/edge-compiler",
         },
       },
     });

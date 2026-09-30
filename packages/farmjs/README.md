@@ -66,6 +66,31 @@ same theme. This is the same unified CSS entrypoint used by the Next.js,
 TanStack Start, SvelteKit, Astro, and Nuxt integrations. The adapter does not
 ship or inject a second Farm-specific theme stylesheet.
 
+## Edge deployments
+
+Farm edge targets use the adapter's build-time compiler automatically. It
+precompiles pages, client-navigation data, CSS, Markdown, search, sitemap,
+robots, and agent-discovery responses so the deployed Worker does not import
+the Node server runtime.
+
+The snapshot cannot preserve features that need live server callbacks or
+mutable sessions. Disable the default MCP and production telemetry surfaces in
+an edge-specific docs configuration:
+
+```ts
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  mcp: false,
+  telemetry: false,
+});
+```
+
+An edge build also stops with an actionable error when Ask AI, feedback,
+analytics, observability, i18n, or a function-backed custom search provider is
+enabled. Use a Node target when those runtime features are required.
+
 ## Server wrapper
 
 `withDocs()` is the normal integration. The lower-level server wrapper is
@@ -97,6 +122,7 @@ pipeline without taking over application routes. The server also exposes
 | `@farming-labs/farmjs/content` | Content and navigation utilities |
 | `@farming-labs/farmjs/vite` | MDX compilation plugin |
 | `@farming-labs/farmjs/runtime` | Versioned Farm runtime contract |
+| `@farming-labs/farmjs/edge-compiler` | Build-time edge snapshot compiler used by Farm |
 | `@farming-labs/farmjs/api-reference` | Farm API-reference handler |
 
 ## License

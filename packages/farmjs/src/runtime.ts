@@ -17,6 +17,7 @@ export interface FarmDocsRuntimeAdapter {
   server: "@farming-labs/farmjs/server";
   react: "@farming-labs/farmjs/react";
   vite: "@farming-labs/farmjs/vite";
+  edgeCompiler: "@farming-labs/farmjs/edge-compiler";
 }
 
 /** Serializable runtime descriptor placed in Farm's resolved docs config. */
@@ -26,4 +27,5 @@ export const farmDocsRuntimeAdapter: FarmDocsRuntimeAdapter = Object.freeze({
   server: "@farming-labs/farmjs/server",
   react: "@farming-labs/farmjs/react",
   vite: "@farming-labs/farmjs/vite",
+  edgeCompiler: "@farming-labs/farmjs/edge-compiler",
 });
