@@ -9,7 +9,7 @@ overrides:
   next: 16.2.11
   astro: 6.4.8
   '@sveltejs/kit': ^2.57.1
-  h3: ^1.15.6
+  h3: ^1.15.9
   effect: ^3.20.0
   esbuild@>=0.17.0 <0.28.1: 0.28.1
   devalue: 5.8.1
@@ -661,8 +661,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       h3:
-        specifier: ^1.15.6
-        version: 1.15.8
+        specifier: ^1.15.9
+        version: 1.15.9
       shiki:
         specifier: ^3.2.1
         version: 3.22.0
@@ -6283,8 +6283,8 @@ packages:
     resolution: {integrity: sha512-O1Ld7Dr+nqPnmGpdhzLmMTQ4vAsD+rHwMm1NLUmoUFFymBOMKxCCrtDxqdBRYXdeEPEi3SyoR4TizJLQrnKBNA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  h3@1.15.8:
-    resolution: {integrity: sha512-iOH6Vl8mGd9nNfu9C0IZ+GuOAfJHcyf3VriQxWaSWIB76Fg4BnFuk4cxBxjmQSSxJS664+pgjP6e7VBnUzFfcg==}
+  h3@1.15.9:
+    resolution: {integrity: sha512-H7UPnyIupUOYUQu7f2x7ABVeMyF/IbJjqn20WSXpMdnQB260luADUkSgJU7QTWLutq8h3tUayMQ1DdbSYX5LkA==}
 
   h3@2.0.1-rc.16:
     resolution: {integrity: sha512-h+pjvyujdo9way8qj6FUbhaQcHlR8FEq65EhTX9ViT5pK8aLj68uFl4hBkF+hsTJAH+H1END2Yv6hTIsabGfag==}
@@ -10817,7 +10817,7 @@ snapshots:
       es-module-lexer: 2.0.0
       esbuild: 0.28.1
       fast-glob: 3.3.3
-      h3: 1.15.8
+      h3: 1.15.9
       image-size: 2.0.2
       intl-messageformat: 11.2.12
       marked: 12.0.2
@@ -11007,7 +11007,7 @@ snapshots:
       '@farming-labs/docs': 0.2.107(react@19.2.4)(supports-color@10.2.2)
       '@scalar/core': 0.4.3
       gray-matter: 4.0.3
-      h3: 1.15.8
+      h3: 1.15.9
       shiki: 3.22.0
 
   '@farming-labs/orm-d1@0.0.62':
@@ -12180,7 +12180,7 @@ snapshots:
       errx: 0.1.2
       escape-string-regexp: 5.0.0
       exsolve: 1.1.1
-      h3: 1.15.8
+      h3: 1.15.9
       impound: 1.1.6(esbuild@0.28.1)(rolldown@1.2.11)(rollup@4.59.0)(vite@8.1.5(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
       klona: 2.0.6
       mocked-exports: 0.1.1
@@ -12255,7 +12255,7 @@ snapshots:
       errx: 0.1.2
       escape-string-regexp: 5.0.0
       exsolve: 1.1.1
-      h3: 1.15.8
+      h3: 1.15.9
       impound: 1.1.6(esbuild@0.28.1)(rolldown@1.2.11)(rollup@4.59.0)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
       klona: 2.0.6
       mocked-exports: 0.1.1
@@ -16684,7 +16684,7 @@ snapshots:
     dependencies:
       duplexer: 0.1.2
 
-  h3@1.15.8:
+  h3@1.15.9:
     dependencies:
       cookie-es: 1.2.2
       crossws: 0.3.5
@@ -17359,7 +17359,7 @@ snapshots:
       crossws: 0.4.10(srvx@0.11.22)
       defu: 6.1.7
       get-port-please: 3.2.0
-      h3: 1.15.8
+      h3: 1.15.9
       http-shutdown: 1.2.2
       jiti: 2.7.0
       mlly: 1.8.2
@@ -18116,7 +18116,7 @@ snapshots:
       crossws: 0.4.12(srvx@1.0.5)
       db0: 0.4.1
       env-runner: 0.2.3
-      h3: 1.15.8
+      h3: 1.15.9
       hookable: 6.1.1
       nf3: 0.3.24
       ocache: 0.3.0
@@ -18157,7 +18157,7 @@ snapshots:
       exsolve: 1.1.1
       globby: 16.2.0
       gzip-size: 7.0.0
-      h3: 1.15.8
+      h3: 1.15.9
       hookable: 5.5.3
       httpxy: 0.5.3
       ioredis: 5.11.1
@@ -18267,7 +18267,7 @@ snapshots:
       exsolve: 1.1.1
       globby: 16.2.0
       gzip-size: 7.0.0
-      h3: 1.15.8
+      h3: 1.15.9
       hookable: 5.5.3
       httpxy: 0.5.3
       ioredis: 5.11.1
@@ -18419,7 +18419,7 @@ snapshots:
       errx: 0.1.2
       escape-string-regexp: 5.0.0
       exsolve: 1.1.1
-      h3: 1.15.8
+      h3: 1.15.9
       hookable: 5.5.3
       ignore: 7.0.6
       impound: 1.1.6(esbuild@0.28.1)(rolldown@1.2.11)(rollup@4.59.0)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -18549,7 +18549,7 @@ snapshots:
       errx: 0.1.2
       escape-string-regexp: 5.0.0
       exsolve: 1.1.1
-      h3: 1.15.8
+      h3: 1.15.9
       hookable: 5.5.3
       ignore: 7.0.6
       impound: 1.1.6(esbuild@0.28.1)(rolldown@1.2.11)(rollup@4.59.0)(vite@8.1.5(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -20660,7 +20660,7 @@ snapshots:
       anymatch: 3.1.3
       chokidar: 5.0.0
       destr: 2.0.5
-      h3: 1.15.8
+      h3: 1.15.9
       lru-cache: 11.5.1
       node-fetch-native: 1.6.7
       ofetch: 1.5.1
@@ -20675,7 +20675,7 @@ snapshots:
       anymatch: 3.1.3
       chokidar: 5.0.0
       destr: 2.0.5
-      h3: 1.15.8
+      h3: 1.15.9
       lru-cache: 11.5.1
       node-fetch-native: 1.6.7
       ofetch: 1.5.1
