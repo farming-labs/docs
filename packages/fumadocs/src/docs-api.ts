@@ -82,6 +82,7 @@ import {
   createDocsSitemapResponse,
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   resolveDocsSitemapConfig,
+  resolveDocsSitemapPageLastmod,
   isDocsConfigRequest,
   isDocsContentChangesRequest,
   isDocsDiagnosticsRequest,
@@ -103,6 +104,7 @@ import type {
   FeedbackConfig,
   DocsPublishedAgentSkill,
   DocsAgentA2AConfig,
+  DocsSitemapManifest,
 } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
@@ -242,6 +244,7 @@ interface DocsMCPAPIOptions {
   nav?: { title?: unknown };
   ordering?: "alphabetical" | "numeric" | OrderingItem[];
   mcp?: boolean | DocsMcpConfig;
+  sitemap?: boolean | DocsSitemapConfig;
   search?: boolean | DocsSearchConfig;
   analytics?: boolean | DocsAnalyticsConfig;
   telemetry?: boolean | DocsTelemetryConfig;
@@ -269,6 +272,32 @@ const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
 const DEFAULT_MCP_WELL_KNOWN_ROUTE = "/.well-known/mcp";
 const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
+
+type TimestampedDocsPage = {
+  url: string;
+  lastModified?: string;
+  agentContent?: string;
+  agentRawContent?: string;
+  agentLastModified?: string;
+};
+
+function withSitemapLastModified<T extends TimestampedDocsPage>(
+  page: T,
+  manifest: DocsSitemapManifest | null,
+): T {
+  const lastmod = resolveDocsSitemapPageLastmod(manifest, page.url);
+  if (!lastmod) return page;
+
+  const lastModified = `${lastmod}T00:00:00.000Z`;
+  const hasExplicitAgentSource =
+    page.agentRawContent !== undefined || page.agentContent !== undefined;
+
+  return {
+    ...page,
+    lastModified,
+    ...(hasExplicitAgentSource ? { agentLastModified: lastModified } : {}),
+  };
+}
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
@@ -3923,6 +3952,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const llmsConfig = resolveLlmsTxtConfig(options?.llmsTxt, readLlmsTxtConfig(root));
   const apiCatalogEnabled = options?.apiCatalog ?? llmsConfig.apiCatalog ?? true;
   const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
+  const sitemapManifest = readDocsSitemapManifest(root, sitemapConfig);
   const robotsConfig = options?.robots ?? readRobotsConfig(root);
   const markdownMetadataBaseUrl = resolveDocsMetadataBaseUrl({
     ...options,
@@ -4155,8 +4185,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       next = [...next, ...changelogPages];
     }
 
-    indexesByLocale.set(key, next);
-    return next;
+    const timestamped = next.map((page) => withSitemapLastModified(page, sitemapManifest));
+    indexesByLocale.set(key, timestamped);
+    return timestamped;
   }
 
   function getApiOperationSearchPages(ctx: DocsContext, baseUrl: string) {
@@ -4210,7 +4241,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     }
 
     for (const source of getMarkdownSources(ctx)) {
-      const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
+      const resolvedPage = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
+      const page = resolvedPage
+        ? withSitemapLastModified(resolvedPage, sitemapManifest)
+        : undefined;
       if (page) {
         return {
           document: renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
@@ -4638,7 +4672,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         siteTitle: llmsConfig.siteTitle ?? "Documentation",
         baseUrl: llmsConfig.baseUrl ?? url.origin,
         pages: getIndexes(ctx),
-        manifest: readDocsSitemapManifest(root, sitemapConfig),
+        manifest: sitemapManifest,
       });
       if (sitemapResponse) return sitemapResponse;
 
@@ -5096,6 +5130,8 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const appDir = getNextAppDir(rootDir);
   const contentDir = options.contentDir ?? path.join(/*! turbopackIgnore: true */ appDir, entry);
   const mcpConfig = options.mcp ?? readMcpConfig(rootDir, { rejectRuntimeSecurity: true });
+  const sitemapConfig = options.sitemap ?? readSitemapConfig(rootDir);
+  const sitemapManifest = readDocsSitemapManifest(rootDir, sitemapConfig);
   const contentChangeFeed = createDocsContentChangeFeed(options.agent?.contentChanges);
   const navTitle =
     typeof options.nav?.title === "string" && options.nav.title.trim().length > 0
@@ -5122,6 +5158,10 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   });
   const source = {
     ...filesystemSource,
+    async getPages() {
+      const pages = await filesystemSource.getPages();
+      return pages.map((page) => withSitemapLastModified(page, sitemapManifest));
+    },
     async getSkills() {
       const configured = await getConfiguredAgentSkills();
       const preferredDocument = readRootSkillDocument();

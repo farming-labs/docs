@@ -14,9 +14,11 @@ import {
   resolveDocsAudienceMdxContent,
   resolveDocsAnalyticsConfig,
   resolveDocsMetadataBaseUrl,
+  resolveDocsSitemapPageLastmod,
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
+import { readDocsSitemapManifest } from "@farming-labs/docs/runtime";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -30,6 +32,7 @@ import type {
   CopyMarkdownConfig,
   PageActionConnectMcpConfig,
   PageActionInstallSkillsConfig,
+  DocsSitemapManifest,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
@@ -554,7 +557,23 @@ function localizeTreeUrls(tree: TreeRoot, locale?: string): TreeRoot {
  * Scan all page.mdx files under the docs entry directory and build
  * a map of URL pathname → formatted last-modified date string.
  */
-function buildLastModifiedMap(config: DocsConfig, ctx: DocsLocaleContext): Record<string, string> {
+function resolveManifestLastmod(
+  manifest: DocsSitemapManifest | null,
+  ctx: DocsLocaleContext,
+  url: string,
+): string | undefined {
+  return (
+    (ctx.locale
+      ? resolveDocsSitemapPageLastmod(manifest, `${url}?lang=${encodeURIComponent(ctx.locale)}`)
+      : undefined) ?? resolveDocsSitemapPageLastmod(manifest, url)
+  );
+}
+
+function buildLastModifiedMap(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+  manifest: DocsSitemapManifest | null,
+): Record<string, string> {
   const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
   const excludedDirs = getExcludedDocsDirs(config, ctx);
@@ -574,8 +593,11 @@ function buildLastModifiedMap(config: DocsConfig, ctx: DocsLocaleContext): Recor
     const pagePath = path.join(/*! turbopackIgnore: true */ dir, "page.mdx");
     if (fs.existsSync(/*! turbopackIgnore: true */ pagePath)) {
       const url = publicDocsRoute(ctx, slugParts);
-      const stat = fs.statSync(/*! turbopackIgnore: true */ pagePath);
-      map[url] = formatDate(stat.mtime);
+      const manifestLastmod = resolveManifestLastmod(manifest, ctx, url);
+      const modified = manifestLastmod
+        ? new Date(`${manifestLastmod}T00:00:00`)
+        : fs.statSync(/*! turbopackIgnore: true */ pagePath).mtime;
+      map[url] = formatDate(modified);
     }
 
     for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
@@ -713,6 +735,7 @@ function findDocsPageFile(dir: string): string | undefined {
 function buildStructuredDataMap(
   config: DocsConfig,
   ctx: DocsLocaleContext,
+  manifest: DocsSitemapManifest | null,
 ): Record<string, string> {
   const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
@@ -733,7 +756,10 @@ function buildStructuredDataMap(
           ? data.title
           : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
       const description = typeof data.description === "string" ? data.description : undefined;
-      const stat = fs.statSync(/*! turbopackIgnore: true */ pagePath);
+      const manifestLastmod = resolveManifestLastmod(manifest, ctx, route);
+      const dateModified = manifestLastmod
+        ? `${manifestLastmod}T00:00:00.000Z`
+        : fs.statSync(/*! turbopackIgnore: true */ pagePath).mtime.toISOString();
 
       map[route] = renderDocsPageStructuredDataJson({
         title,
@@ -741,7 +767,7 @@ function buildStructuredDataMap(
         url: withLangInUrl(route, ctx.locale),
         baseUrl,
         entry: ctx.entryPath,
-        dateModified: stat.mtime.toISOString(),
+        dateModified,
         agent: normalizePageAgentFrontmatter(data.agent),
       });
     }
@@ -1021,6 +1047,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
 
   const localeContext = resolveDocsLocaleContext(config, options?.locale);
+  const sitemapManifest = readDocsSitemapManifest(process.cwd(), config.sitemap);
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
   const activeLocale = localeContext.locale ?? i18n?.defaultLocale;
   const docsApiUrl = withLangInUrl("/api/docs", activeLocale);
@@ -1177,7 +1204,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   }
 
   // Build last-modified map by scanning all page.mdx files
-  const lastModifiedMap = buildLastModifiedMap(config, localeContext);
+  const lastModifiedMap = buildLastModifiedMap(config, localeContext, sitemapManifest);
 
   // Build description map from frontmatter
   const descriptionMap = buildDescriptionMap(config, localeContext);
@@ -1188,7 +1215,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     wordsPerMinute: readingTimeWordsPerMinute,
     includeCode: readingTimeIncludeCode,
   });
-  const structuredDataMap = buildStructuredDataMap(config, localeContext);
+  const structuredDataMap = buildStructuredDataMap(config, localeContext, sitemapManifest);
   const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
