@@ -3823,7 +3823,7 @@ export function createFilesystemDocsMcpSource(
   const rootDir = options.rootDir ?? process.cwd();
   const entry = normalizePathSegment(options.entry ?? "docs") || "docs";
   const contentDir = options.contentDir ?? entry;
-  const contentDirAbs = path.resolve(rootDir, contentDir);
+  const contentDirAbs = path.resolve(/*! turbopackIgnore: true */ rootDir, contentDir);
   const cache = new Map<string, ScannedDocsMcpPage[]>();
   const navigationCache = new Map<string, DocsMcpNavigationTree>();
 
@@ -7748,22 +7748,22 @@ function stripMarkdownForMcp(content: string): string {
 
 function resolveFilesystemDocsPageSource(dir: string): string | undefined {
   return ["page.mdx", "page.md", "page.svx"]
-    .map((fileName) => path.join(dir, fileName))
-    .find((candidate) => fs.existsSync(candidate));
+    .map((fileName) => path.join(/*! turbopackIgnore: true */ dir, fileName))
+    .find((candidate) => fs.existsSync(/*! turbopackIgnore: true */ candidate));
 }
 
 function hasVisibleDescendantFilesystemDocsPage(dir: string): boolean {
   let entries: string[];
   try {
-    entries = fs.readdirSync(dir);
+    entries = fs.readdirSync(/*! turbopackIgnore: true */ dir);
   } catch {
     return false;
   }
 
   for (const name of entries.sort()) {
-    const full = path.join(dir, name);
+    const full = path.join(/*! turbopackIgnore: true */ dir, name);
     try {
-      if (!fs.statSync(full).isDirectory()) continue;
+      if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) continue;
     } catch {
       continue;
     }
@@ -7771,7 +7771,7 @@ function hasVisibleDescendantFilesystemDocsPage(dir: string): boolean {
     const pageSource = resolveFilesystemDocsPageSource(full);
     if (pageSource) {
       try {
-        const data = matter(fs.readFileSync(pageSource, "utf-8")).data;
+        const data = matter(fs.readFileSync(/*! turbopackIgnore: true */ pageSource, "utf-8")).data;
         const hiddenFolderIndex = resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
         if (data.hidden !== true && !hiddenFolderIndex) return true;
       } catch {
@@ -7800,12 +7800,12 @@ function scanFilesystemDocsPages(
   const pages: Array<ScannedDocsMcpPage & { relatedInput?: unknown }> = [];
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
 
-    const entries = fs.readdirSync(dir).sort();
+    const entries = fs.readdirSync(/*! turbopackIgnore: true */ dir).sort();
     for (const name of entries) {
-      const full = path.join(dir, name);
-      const stat = fs.statSync(full);
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
+      const stat = fs.statSync(/*! turbopackIgnore: true */ full);
 
       if (stat.isDirectory()) {
         scan(full, [...slugParts, name]);
@@ -7815,7 +7815,7 @@ function scanFilesystemDocsPages(
       if (name === "agent.md") continue;
       if (!name.endsWith(".md") && !name.endsWith(".mdx") && !name.endsWith(".svx")) continue;
 
-      const raw = fs.readFileSync(full, "utf-8");
+      const raw = fs.readFileSync(/*! turbopackIgnore: true */ full, "utf-8");
       const { data, content } = matter(raw);
       const baseName = name.replace(/\.(md|mdx|svx)$/, "");
       const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
@@ -7877,16 +7877,18 @@ function scanFilesystemDocsPages(
 }
 
 function readFilesystemAgentDoc(dir: string) {
-  const agentPath = path.join(dir, "agent.md");
-  if (!fs.existsSync(agentPath)) return undefined;
+  const agentPath = path.join(/*! turbopackIgnore: true */ dir, "agent.md");
+  if (!fs.existsSync(/*! turbopackIgnore: true */ agentPath)) return undefined;
 
-  const raw = stripGeneratedAgentProvenance(fs.readFileSync(agentPath, "utf-8"));
+  const raw = stripGeneratedAgentProvenance(
+    fs.readFileSync(/*! turbopackIgnore: true */ agentPath, "utf-8"),
+  );
   const { content } = matter(raw);
   const agentContent = resolveDocsAudienceMdxContent(content, "agent");
   return {
     agentContent: stripMarkdownForMcp(agentContent),
     agentRawContent: agentContent,
-    agentLastModified: fs.statSync(agentPath).mtime.toISOString(),
+    agentLastModified: fs.statSync(/*! turbopackIgnore: true */ agentPath).mtime.toISOString(),
   };
 }
 

@@ -29,24 +29,36 @@ function isInside(parent: string, candidate: string): boolean {
 }
 
 function findWorkspaceRoot(rootDir: string): string {
-  let current = realpathSync(rootDir);
+  let current = realpathSync(/*! turbopackIgnore: true */ rootDir);
   for (;;) {
     if (
-      existsSync(path.join(current, ".git")) ||
-      existsSync(path.join(current, "pnpm-workspace.yaml")) ||
-      existsSync(path.join(current, "pnpm-workspace.yml"))
+      existsSync(
+        /*! turbopackIgnore: true */ path.join(/*! turbopackIgnore: true */ current, ".git"),
+      ) ||
+      existsSync(
+        /*! turbopackIgnore: true */ path.join(
+          /*! turbopackIgnore: true */ current,
+          "pnpm-workspace.yaml",
+        ),
+      ) ||
+      existsSync(
+        /*! turbopackIgnore: true */ path.join(
+          /*! turbopackIgnore: true */ current,
+          "pnpm-workspace.yml",
+        ),
+      )
     ) {
       return current;
     }
     const parent = path.dirname(current);
-    if (parent === current) return realpathSync(rootDir);
+    if (parent === current) return realpathSync(/*! turbopackIgnore: true */ rootDir);
     current = parent;
   }
 }
 
 async function pathExists(candidate: string): Promise<boolean> {
   try {
-    await access(candidate);
+    await access(/*! turbopackIgnore: true */ candidate);
     return true;
   } catch {
     return false;
@@ -54,13 +66,13 @@ async function pathExists(candidate: string): Promise<boolean> {
 }
 
 async function findWorkspaceRootAsync(rootDir: string): Promise<string> {
-  const resolvedRoot = await realpath(rootDir);
+  const resolvedRoot = await realpath(/*! turbopackIgnore: true */ rootDir);
   let current = resolvedRoot;
   for (;;) {
     if (
-      (await pathExists(path.join(current, ".git"))) ||
-      (await pathExists(path.join(current, "pnpm-workspace.yaml"))) ||
-      (await pathExists(path.join(current, "pnpm-workspace.yml")))
+      (await pathExists(path.join(/*! turbopackIgnore: true */ current, ".git"))) ||
+      (await pathExists(path.join(/*! turbopackIgnore: true */ current, "pnpm-workspace.yaml"))) ||
+      (await pathExists(path.join(/*! turbopackIgnore: true */ current, "pnpm-workspace.yml")))
     ) {
       return current;
     }
@@ -88,14 +100,14 @@ function resolveSafeConfiguredPath(
   rootDir: string,
   workspaceRoot: string,
 ): string {
-  const candidate = path.resolve(rootDir, configuredPath);
-  if (!existsSync(candidate)) {
+  const candidate = path.resolve(/*! turbopackIgnore: true */ rootDir, configuredPath);
+  if (!existsSync(/*! turbopackIgnore: true */ candidate)) {
     throw new Error(`Configured Agent Skill path does not exist: ${configuredPath}`);
   }
-  if (lstatSync(candidate).isSymbolicLink()) {
+  if (lstatSync(/*! turbopackIgnore: true */ candidate).isSymbolicLink()) {
     throw new Error(`Configured Agent Skill paths may not be symlinks: ${configuredPath}`);
   }
-  const resolved = realpathSync(candidate);
+  const resolved = realpathSync(/*! turbopackIgnore: true */ candidate);
   if (!isInside(workspaceRoot, resolved)) {
     throw new Error(`Agent Skill symlink escapes the workspace: ${configuredPath}`);
   }
@@ -107,14 +119,14 @@ async function resolveSafeConfiguredPathAsync(
   rootDir: string,
   workspaceRoot: string,
 ): Promise<string> {
-  const candidate = path.resolve(rootDir, configuredPath);
+  const candidate = path.resolve(/*! turbopackIgnore: true */ rootDir, configuredPath);
   if (!(await pathExists(candidate))) {
     throw new Error(`Configured Agent Skill path does not exist: ${configuredPath}`);
   }
-  if ((await lstat(candidate)).isSymbolicLink()) {
+  if ((await lstat(/*! turbopackIgnore: true */ candidate)).isSymbolicLink()) {
     throw new Error(`Configured Agent Skill paths may not be symlinks: ${configuredPath}`);
   }
-  const resolved = await realpath(candidate);
+  const resolved = await realpath(/*! turbopackIgnore: true */ candidate);
   if (!isInside(workspaceRoot, resolved)) {
     throw new Error(`Agent Skill symlink escapes the workspace: ${configuredPath}`);
   }
@@ -131,14 +143,14 @@ function collectSkillDocuments(
   if (depth > MAX_COLLECTION_DEPTH) {
     throw new Error(`Agent Skill collection exceeds ${MAX_COLLECTION_DEPTH} directory levels.`);
   }
-  const resolved = realpathSync(candidate);
+  const resolved = realpathSync(/*! turbopackIgnore: true */ candidate);
   if (!isInside(workspaceRoot, resolved)) {
     throw new Error(`Agent Skill symlink escapes the workspace: ${candidate}`);
   }
   if (visited.has(resolved)) return;
   visited.add(resolved);
 
-  const info = statSync(resolved);
+  const info = statSync(/*! turbopackIgnore: true */ resolved);
   if (info.isFile()) {
     if (path.basename(resolved) !== "SKILL.md") {
       throw new Error(`Agent Skill file must be named SKILL.md: ${candidate}`);
@@ -150,9 +162,9 @@ function collectSkillDocuments(
     throw new Error(`Agent Skill path must be a regular file or directory: ${candidate}`);
   }
 
-  const directSkill = path.join(resolved, "SKILL.md");
-  if (existsSync(directSkill)) {
-    const directInfo = lstatSync(directSkill);
+  const directSkill = path.join(/*! turbopackIgnore: true */ resolved, "SKILL.md");
+  if (existsSync(/*! turbopackIgnore: true */ directSkill)) {
+    const directInfo = lstatSync(/*! turbopackIgnore: true */ directSkill);
     if (!directInfo.isFile() || directInfo.isSymbolicLink()) {
       throw new Error(`Agent Skill SKILL.md must be a non-symlink regular file: ${directSkill}`);
     }
@@ -160,9 +172,9 @@ function collectSkillDocuments(
     return;
   }
 
-  for (const entry of readdirSync(resolved, { withFileTypes: true }).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  )) {
+  for (const entry of readdirSync(/*! turbopackIgnore: true */ resolved, {
+    withFileTypes: true,
+  }).sort((a, b) => a.name.localeCompare(b.name))) {
     if (
       IGNORED_COLLECTION_DIRECTORIES.has(entry.name) ||
       entry.name.startsWith(".") ||
@@ -170,7 +182,7 @@ function collectSkillDocuments(
     ) {
       continue;
     }
-    const entryPath = path.join(resolved, entry.name);
+    const entryPath = path.join(/*! turbopackIgnore: true */ resolved, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`Agent Skill collections may not contain symlinks: ${entryPath}`);
     } else if (entry.isDirectory() || entry.isFile()) {
@@ -193,14 +205,14 @@ async function collectSkillDocumentsAsync(
   if (depth > MAX_COLLECTION_DEPTH) {
     throw new Error(`Agent Skill collection exceeds ${MAX_COLLECTION_DEPTH} directory levels.`);
   }
-  const resolved = await realpath(candidate);
+  const resolved = await realpath(/*! turbopackIgnore: true */ candidate);
   if (!isInside(workspaceRoot, resolved)) {
     throw new Error(`Agent Skill symlink escapes the workspace: ${candidate}`);
   }
   if (visited.has(resolved)) return;
   visited.add(resolved);
 
-  const info = await stat(resolved);
+  const info = await stat(/*! turbopackIgnore: true */ resolved);
   if (info.isFile()) {
     if (path.basename(resolved) !== "SKILL.md") {
       throw new Error(`Agent Skill file must be named SKILL.md: ${candidate}`);
@@ -212,9 +224,9 @@ async function collectSkillDocumentsAsync(
     throw new Error(`Agent Skill path must be a regular file or directory: ${candidate}`);
   }
 
-  const directSkill = path.join(resolved, "SKILL.md");
+  const directSkill = path.join(/*! turbopackIgnore: true */ resolved, "SKILL.md");
   if (await pathExists(directSkill)) {
-    const directInfo = await lstat(directSkill);
+    const directInfo = await lstat(/*! turbopackIgnore: true */ directSkill);
     if (!directInfo.isFile() || directInfo.isSymbolicLink()) {
       throw new Error(`Agent Skill SKILL.md must be a non-symlink regular file: ${directSkill}`);
     }
@@ -222,7 +234,7 @@ async function collectSkillDocumentsAsync(
     return;
   }
 
-  const entries = await readdir(resolved, { withFileTypes: true });
+  const entries = await readdir(/*! turbopackIgnore: true */ resolved, { withFileTypes: true });
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (
       IGNORED_COLLECTION_DIRECTORIES.has(entry.name) ||
@@ -231,7 +243,7 @@ async function collectSkillDocumentsAsync(
     ) {
       continue;
     }
-    const entryPath = path.join(resolved, entry.name);
+    const entryPath = path.join(/*! turbopackIgnore: true */ resolved, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`Agent Skill collections may not contain symlinks: ${entryPath}`);
     } else if (entry.isDirectory() || entry.isFile()) {
@@ -319,10 +331,10 @@ function readCompanionFiles(
         `Agent Skill companion tree exceeds ${MAX_COLLECTION_DEPTH} levels: ${skillDir}`,
       );
     }
-    for (const entry of readdirSync(absoluteDir, { withFileTypes: true }).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    )) {
-      const absolutePath = path.join(absoluteDir, entry.name);
+    for (const entry of readdirSync(/*! turbopackIgnore: true */ absoluteDir, {
+      withFileTypes: true,
+    }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const absolutePath = path.join(/*! turbopackIgnore: true */ absoluteDir, entry.name);
       const relativePath = path.posix.join(relativeDir, entry.name);
       if (entry.isSymbolicLink()) {
         throw new Error(`Agent Skill companion files may not be symlinks: ${absolutePath}`);
@@ -334,8 +346,8 @@ function readCompanionFiles(
       if (!entry.isFile()) {
         throw new Error(`Unsafe filesystem entry in Agent Skill: ${absolutePath}`);
       }
-      const executable = (statSync(absolutePath).mode & 0o111) !== 0;
-      const content = readFileSync(absolutePath);
+      const executable = (statSync(/*! turbopackIgnore: true */ absolutePath).mode & 0o111) !== 0;
+      const content = readFileSync(/*! turbopackIgnore: true */ absolutePath);
       if (content.byteLength > MAX_FILE_BYTES) {
         throw new Error(`Agent Skill file exceeds ${MAX_FILE_BYTES} bytes: ${absolutePath}`);
       }
@@ -359,9 +371,9 @@ function readCompanionFiles(
   }
 
   for (const directory of [...COMPANION_DIRECTORIES].sort()) {
-    const absoluteDir = path.join(skillDir, directory);
-    if (!existsSync(absoluteDir)) continue;
-    const info = lstatSync(absoluteDir);
+    const absoluteDir = path.join(/*! turbopackIgnore: true */ skillDir, directory);
+    if (!existsSync(/*! turbopackIgnore: true */ absoluteDir)) continue;
+    const info = lstatSync(/*! turbopackIgnore: true */ absoluteDir);
     if (info.isSymbolicLink() || !info.isDirectory()) {
       throw new Error(`Agent Skill ${directory}/ must be a non-symlink directory: ${absoluteDir}`);
     }
@@ -384,9 +396,11 @@ async function readCompanionFilesAsync(
         `Agent Skill companion tree exceeds ${MAX_COLLECTION_DEPTH} levels: ${skillDir}`,
       );
     }
-    const entries = await readdir(absoluteDir, { withFileTypes: true });
+    const entries = await readdir(/*! turbopackIgnore: true */ absoluteDir, {
+      withFileTypes: true,
+    });
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      const absolutePath = path.join(absoluteDir, entry.name);
+      const absolutePath = path.join(/*! turbopackIgnore: true */ absoluteDir, entry.name);
       const relativePath = path.posix.join(relativeDir, entry.name);
       if (entry.isSymbolicLink()) {
         throw new Error(`Agent Skill companion files may not be symlinks: ${absolutePath}`);
@@ -398,8 +412,9 @@ async function readCompanionFilesAsync(
       if (!entry.isFile()) {
         throw new Error(`Unsafe filesystem entry in Agent Skill: ${absolutePath}`);
       }
-      const executable = ((await stat(absolutePath)).mode & 0o111) !== 0;
-      const content = await readFile(absolutePath);
+      const executable =
+        ((await stat(/*! turbopackIgnore: true */ absolutePath)).mode & 0o111) !== 0;
+      const content = await readFile(/*! turbopackIgnore: true */ absolutePath);
       if (content.byteLength > MAX_FILE_BYTES) {
         throw new Error(`Agent Skill file exceeds ${MAX_FILE_BYTES} bytes: ${absolutePath}`);
       }
@@ -423,9 +438,9 @@ async function readCompanionFilesAsync(
   }
 
   for (const directory of [...COMPANION_DIRECTORIES].sort()) {
-    const absoluteDir = path.join(skillDir, directory);
+    const absoluteDir = path.join(/*! turbopackIgnore: true */ skillDir, directory);
     if (!(await pathExists(absoluteDir))) continue;
-    const info = await lstat(absoluteDir);
+    const info = await lstat(/*! turbopackIgnore: true */ absoluteDir);
     if (info.isSymbolicLink() || !info.isDirectory()) {
       throw new Error(`Agent Skill ${directory}/ must be a non-symlink directory: ${absoluteDir}`);
     }
@@ -510,7 +525,7 @@ function createDeterministicTarGzipAsync(
 
 function publishSkillDocumentSync(skillPath: string): DocsPublishedAgentSkill {
   const skillDir = path.dirname(skillPath);
-  const skillDocument = readFileSync(skillPath, "utf8");
+  const skillDocument = readFileSync(/*! turbopackIgnore: true */ skillPath, "utf8");
   const skillDocumentBytes = Buffer.byteLength(skillDocument, "utf8");
   if (skillDocumentBytes > MAX_FILE_BYTES) {
     throw new Error(`Agent Skill SKILL.md exceeds ${MAX_FILE_BYTES} bytes: ${skillPath}`);
@@ -540,7 +555,7 @@ function publishSkillDocumentSync(skillPath: string): DocsPublishedAgentSkill {
 
 async function publishSkillDocumentAsync(skillPath: string): Promise<DocsPublishedAgentSkill> {
   const skillDir = path.dirname(skillPath);
-  const skillDocument = await readFile(skillPath, "utf8");
+  const skillDocument = await readFile(/*! turbopackIgnore: true */ skillPath, "utf8");
   const skillDocumentBytes = Buffer.byteLength(skillDocument, "utf8");
   if (skillDocumentBytes > MAX_FILE_BYTES) {
     throw new Error(`Agent Skill SKILL.md exceeds ${MAX_FILE_BYTES} bytes: ${skillPath}`);
@@ -591,8 +606,10 @@ export function resolveConfiguredAgentSkillPathsSync(
   const configuredPaths = getDocsAgentSkillsConfiguredPaths(input);
   if (configuredPaths.length === 0) return [];
 
-  const rootDir = realpathSync(options.rootDir ?? process.cwd());
-  const workspaceRoot = realpathSync(options.workspaceRoot ?? findWorkspaceRoot(rootDir));
+  const rootDir = realpathSync(/*! turbopackIgnore: true */ options.rootDir ?? process.cwd());
+  const workspaceRoot = realpathSync(
+    /*! turbopackIgnore: true */ options.workspaceRoot ?? findWorkspaceRoot(rootDir),
+  );
   if (!isInside(workspaceRoot, rootDir)) {
     throw new Error("Agent Skill rootDir must stay inside the configured workspace root.");
   }
@@ -629,11 +646,11 @@ export async function resolveConfiguredAgentSkills(
   const configuredPaths = getDocsAgentSkillsConfiguredPaths(input);
   if (configuredPaths.length === 0) return [];
 
-  const rootDir = await realpath(options.rootDir ?? process.cwd());
+  const rootDir = await realpath(/*! turbopackIgnore: true */ options.rootDir ?? process.cwd());
   const workspaceRoot =
     options.workspaceRoot === undefined
       ? await findWorkspaceRootAsync(rootDir)
-      : await realpath(options.workspaceRoot);
+      : await realpath(/*! turbopackIgnore: true */ options.workspaceRoot);
   if (!isInside(workspaceRoot, rootDir)) {
     throw new Error("Agent Skill rootDir must stay inside the configured workspace root.");
   }

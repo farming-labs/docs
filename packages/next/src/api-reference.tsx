@@ -17,7 +17,7 @@ import {
   resolveApiReferenceRenderer,
   resolveApiReferenceVersion,
   resolveApiReferenceVersionFromPathname,
-} from "@farming-labs/docs/server";
+} from "@farming-labs/docs/runtime";
 import {
   SidebarTabsDropdown,
   type SidebarTabWithProps,
@@ -65,7 +65,10 @@ const METHOD_RE =
   /export\s+(?:async\s+function|function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g;
 
 function getNextAppDir(root: string): string {
-  if (existsSync(join(root, "src", "app"))) return "src/app";
+  if (
+    existsSync(/*! turbopackIgnore: true */ join(/*! turbopackIgnore: true */ root, "src", "app"))
+  )
+    return "src/app";
   return "app";
 }
 
@@ -104,10 +107,10 @@ function resolveNextApiRouteRoot(
     routeRoot === "src/app" ||
     routeRoot.startsWith("src/app/")
   ) {
-    return join(root, ...routeRoot.split("/"));
+    return join(/*! turbopackIgnore: true */ root, ...routeRoot.split("/"));
   }
 
-  return join(root, getNextAppDir(root), ...routeRoot.split("/"));
+  return join(/*! turbopackIgnore: true */ root, getNextAppDir(root), ...routeRoot.split("/"));
 }
 
 function shouldExcludeRoute(
@@ -191,13 +194,13 @@ function extractMethods(source: string): HttpMethod[] {
 }
 
 function scanRouteFiles(dir: string): string[] {
-  if (!existsSync(dir)) return [];
+  if (!existsSync(/*! turbopackIgnore: true */ dir)) return [];
 
   const results: string[] = [];
 
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    const stats = statSync(full);
+  for (const name of readdirSync(/*! turbopackIgnore: true */ dir)) {
+    const full = join(/*! turbopackIgnore: true */ dir, name);
+    const stats = statSync(/*! turbopackIgnore: true */ full);
 
     if (stats.isDirectory()) {
       results.push(...scanRouteFiles(full));
@@ -324,7 +327,7 @@ function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
   const routes: ApiReferenceRoute[] = [];
 
   for (const file of files) {
-    const source = readFileSync(file, "utf-8");
+    const source = readFileSync(/*! turbopackIgnore: true */ file, "utf-8");
     const methods = extractMethods(source);
     if (methods.length === 0) continue;
 

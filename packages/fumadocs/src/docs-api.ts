@@ -115,7 +115,7 @@ import {
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
   type DocsMcpPage,
-} from "@farming-labs/docs/server";
+} from "@farming-labs/docs/runtime";
 import {
   buildDocsAskAIContext,
   buildDocsSearchFacets,
@@ -1065,10 +1065,10 @@ function validateAgentFeedbackPayload(
 
 function readEntry(root: string): string {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (fs.existsSync(configPath)) {
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (fs.existsSync(/*! turbopackIgnore: true */ configPath)) {
       try {
-        const content = fs.readFileSync(configPath, "utf-8");
+        const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
         const match = content.match(/entry\s*:\s*["']([^"']+)["']/);
         if (match) return match[1];
       } catch {
@@ -1081,10 +1081,10 @@ function readEntry(root: string): string {
 
 function readI18nConfig(root: string): DocsI18nConfig | null {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (!fs.existsSync(configPath)) continue;
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
     try {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
       if (!content.includes("i18n")) continue;
 
       const localesMatch = content.match(/i18n\s*:\s*\{[\s\S]*?locales\s*:\s*\[([^\]]+)\]/);
@@ -1117,10 +1117,10 @@ function readI18nConfig(root: string): DocsI18nConfig | null {
  */
 function readAIConfig(root: string): AIOptions {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (fs.existsSync(configPath)) {
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (fs.existsSync(/*! turbopackIgnore: true */ configPath)) {
       try {
-        const content = fs.readFileSync(configPath, "utf-8");
+        const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
 
         // Check if AI is enabled
         if (!content.includes("ai:") && !content.includes("ai :")) {
@@ -1169,11 +1169,11 @@ function readAIConfig(root: string): AIOptions {
 
 function readCloudConfig(root: string): DocsConfig["cloud"] | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (!fs.existsSync(configPath)) continue;
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
 
     try {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
       const sanitized = stripCommentsAndStrings(content);
       const configObject = extractRootConfigObject(content, sanitized);
       const scopedContent = configObject?.content ?? content;
@@ -1216,11 +1216,11 @@ function readMcpConfig(
   options: ReadMcpConfigOptions = {},
 ): boolean | DocsMcpConfig | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (!fs.existsSync(configPath)) continue;
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
 
     try {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
       const sanitized = stripCommentsAndStrings(content);
       const configObject = extractRootConfigObject(content, sanitized);
       const scopedContent = configObject?.content ?? content;
@@ -1532,22 +1532,22 @@ function stripMdx(content: string): string {
 
 function resolveDocsSearchPageSource(dir: string): string | undefined {
   return ["page.mdx", "page.md"]
-    .map((fileName) => path.join(dir, fileName))
-    .find((candidate) => fs.existsSync(candidate));
+    .map((fileName) => path.join(/*! turbopackIgnore: true */ dir, fileName))
+    .find((candidate) => fs.existsSync(/*! turbopackIgnore: true */ candidate));
 }
 
 function hasVisibleDescendantDocsSearchPage(dir: string): boolean {
   let entries: string[];
   try {
-    entries = fs.readdirSync(dir);
+    entries = fs.readdirSync(/*! turbopackIgnore: true */ dir);
   } catch {
     return false;
   }
 
   for (const name of entries.sort()) {
-    const full = path.join(dir, name);
+    const full = path.join(/*! turbopackIgnore: true */ dir, name);
     try {
-      if (!fs.statSync(full).isDirectory()) continue;
+      if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) continue;
     } catch {
       continue;
     }
@@ -1555,7 +1555,7 @@ function hasVisibleDescendantDocsSearchPage(dir: string): boolean {
     const pageSource = resolveDocsSearchPageSource(full);
     if (pageSource) {
       try {
-        const data = matter(fs.readFileSync(pageSource, "utf-8")).data;
+        const data = matter(fs.readFileSync(/*! turbopackIgnore: true */ pageSource, "utf-8")).data;
         const hiddenFolderIndex = resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
         if (data.hidden !== true && !hiddenFolderIndex) return true;
       } catch {
@@ -1574,7 +1574,7 @@ function isHiddenFolderIndexPageDir(dir: string): boolean {
   if (!pageSource) return false;
 
   try {
-    const data = matter(fs.readFileSync(pageSource, "utf-8")).data;
+    const data = matter(fs.readFileSync(/*! turbopackIgnore: true */ pageSource, "utf-8")).data;
     return (
       resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden" &&
       hasVisibleDescendantDocsSearchPage(dir)
@@ -1585,17 +1585,19 @@ function isHiddenFolderIndexPageDir(dir: string): boolean {
 }
 
 function readAudienceAgentDoc(dir: string) {
-  const agentPath = path.join(dir, "agent.md");
-  if (!fs.existsSync(agentPath)) return undefined;
+  const agentPath = path.join(/*! turbopackIgnore: true */ dir, "agent.md");
+  if (!fs.existsSync(/*! turbopackIgnore: true */ agentPath)) return undefined;
 
   try {
-    const raw = stripGeneratedAgentProvenance(fs.readFileSync(agentPath, "utf-8"));
+    const raw = stripGeneratedAgentProvenance(
+      fs.readFileSync(/*! turbopackIgnore: true */ agentPath, "utf-8"),
+    );
     const { content } = matter(raw);
     const agentRawContent = resolveDocsAudienceMdxContent(content, "agent");
     return {
       agentContent: stripMdx(agentRawContent),
       agentRawContent,
-      agentLastModified: fs.statSync(agentPath).mtime.toISOString(),
+      agentLastModified: fs.statSync(/*! turbopackIgnore: true */ agentPath).mtime.toISOString(),
     };
   } catch {
     return undefined;
@@ -1619,7 +1621,7 @@ function scanDocsDir(
   const indexes: Array<DocsSearchSourcePage & { relatedInput?: unknown }> = [];
 
   function isExcluded(dir: string) {
-    const resolved = path.resolve(dir);
+    const resolved = path.resolve(/*! turbopackIgnore: true */ dir);
     return excludedDirs.some((excluded) => {
       const relative = path.relative(excluded, resolved);
       return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
@@ -1627,13 +1629,13 @@ function scanDocsDir(
   }
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
     if (isExcluded(dir)) return;
 
     const pageSource = resolveDocsSearchPageSource(dir);
     if (pageSource) {
       try {
-        const raw = fs.readFileSync(pageSource, "utf-8");
+        const raw = fs.readFileSync(/*! turbopackIgnore: true */ pageSource, "utf-8");
         const { data } = matter(raw);
         const hiddenFolderIndex =
           resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden" &&
@@ -1672,7 +1674,7 @@ function scanDocsDir(
             url,
             sourcePath: pageSource.replace(/\\/g, "/"),
             lastmod: normalizeFrontmatterLastmod(data.lastmod),
-            lastModified: fs.statSync(pageSource).mtime.toISOString(),
+            lastModified: fs.statSync(/*! turbopackIgnore: true */ pageSource).mtime.toISOString(),
             locale,
             framework,
             version,
@@ -1687,15 +1689,15 @@ function scanDocsDir(
 
     let entries: string[];
     try {
-      entries = fs.readdirSync(dir);
+      entries = fs.readdirSync(/*! turbopackIgnore: true */ dir);
     } catch {
       return;
     }
 
     for (const name of entries.sort()) {
-      const full = path.join(dir, name);
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
       try {
-        if (fs.statSync(full).isDirectory()) {
+        if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
           scan(full, [...slugParts, name]);
         }
       } catch {
@@ -1715,35 +1717,37 @@ function scanChangelogDir(
   locale?: string,
   publicPath = `/${normalizePathSegment(entryPath) || "docs"}`,
 ): DocsSearchSourcePage[] {
-  if (!fs.existsSync(changelogDir)) return [];
+  if (!fs.existsSync(/*! turbopackIgnore: true */ changelogDir)) return [];
 
   const indexes: Array<DocsSearchSourcePage & { relatedInput?: unknown }> = [];
   let entries: string[];
 
   try {
-    entries = fs.readdirSync(changelogDir).sort().reverse();
+    entries = fs.readdirSync(/*! turbopackIgnore: true */ changelogDir).sort().reverse();
   } catch {
     return indexes;
   }
 
   for (const name of entries) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
-    const entryDir = path.join(changelogDir, name);
+    const entryDir = path.join(/*! turbopackIgnore: true */ changelogDir, name);
     let isDirectory = false;
 
     try {
-      isDirectory = fs.existsSync(entryDir) && fs.statSync(entryDir).isDirectory();
+      isDirectory =
+        fs.existsSync(/*! turbopackIgnore: true */ entryDir) &&
+        fs.statSync(/*! turbopackIgnore: true */ entryDir).isDirectory();
     } catch {
       continue;
     }
 
     if (!isDirectory) continue;
 
-    const pagePath = path.join(entryDir, "page.mdx");
-    if (!fs.existsSync(pagePath)) continue;
+    const pagePath = path.join(/*! turbopackIgnore: true */ entryDir, "page.mdx");
+    if (!fs.existsSync(/*! turbopackIgnore: true */ pagePath)) continue;
 
     try {
-      const raw = fs.readFileSync(pagePath, "utf-8");
+      const raw = fs.readFileSync(/*! turbopackIgnore: true */ pagePath, "utf-8");
       const { data, content: fileContent } = matter(raw);
       if (data.draft === true) continue;
 
@@ -1770,7 +1774,7 @@ function scanChangelogDir(
         url,
         sourcePath: pagePath.replace(/\\/g, "/"),
         lastmod: normalizeFrontmatterLastmod(data.lastmod),
-        lastModified: fs.statSync(pagePath).mtime.toISOString(),
+        lastModified: fs.statSync(/*! turbopackIgnore: true */ pagePath).mtime.toISOString(),
         locale,
         type: "changelog",
         version: typeof data.version === "string" ? data.version : undefined,
@@ -2023,11 +2027,11 @@ function withPublicDocsUrl<T extends { url: string }>(page: T, ctx: DocsContext)
 
 function readDocsPath(root: string): string | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (!fs.existsSync(configPath)) continue;
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
 
     try {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
       const match = content.match(/docsPath\s*:\s*["']([^"']*)["']/);
       if (match) return match[1];
     } catch {
@@ -2526,16 +2530,16 @@ function createRootDocumentReader(
 
   return function readRootDocument(): string | null {
     for (const fileName of fileNames) {
-      const candidate = path.join(rootDir, fileName);
+      const candidate = path.join(/*! turbopackIgnore: true */ rootDir, fileName);
       try {
-        const stats = fs.statSync(candidate);
+        const stats = fs.statSync(/*! turbopackIgnore: true */ candidate);
         if (!stats.isFile()) continue;
         const signature = [stats.dev, stats.ino, stats.size, stats.mtimeMs, stats.ctimeMs].join(
           ":",
         );
         if (cached?.path === candidate && cached.signature === signature) return cached.content;
 
-        const content = fs.readFileSync(candidate, "utf-8");
+        const content = fs.readFileSync(/*! turbopackIgnore: true */ candidate, "utf-8");
         cached = { path: candidate, signature, content };
         return content;
       } catch {
@@ -3683,10 +3687,10 @@ type LlmsTxtOptions = LlmsTxtConfig;
 
 function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (fs.existsSync(configPath)) {
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (fs.existsSync(/*! turbopackIgnore: true */ configPath)) {
       try {
-        const content = fs.readFileSync(configPath, "utf-8");
+        const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
         const sanitized = stripCommentsAndStrings(content);
         const configObject = extractRootConfigObject(content, sanitized);
         const scopedContent = configObject?.content ?? content;
@@ -3759,11 +3763,11 @@ function resolveLlmsTxtConfig(
 
 function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (!fs.existsSync(configPath)) continue;
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
 
     try {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
       if (!content.includes("sitemap")) return undefined;
       if (/sitemap\s*:\s*false/.test(content)) return false;
       if (/sitemap\s*:\s*true/.test(content)) return true;
@@ -3790,11 +3794,11 @@ function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefine
 
 function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (!fs.existsSync(configPath)) continue;
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
 
     try {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
       if (!content.includes("robots")) return undefined;
       if (/robots\s*:\s*false/.test(content)) return false;
       if (/robots\s*:\s*true/.test(content)) return true;
@@ -3821,11 +3825,11 @@ function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined 
 
 function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(root, `docs.config.${ext}`);
-    if (!fs.existsSync(configPath)) continue;
+    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
+    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
 
     try {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
       if (!content.includes("apiReference")) return undefined;
       if (/apiReference\s*:\s*false/.test(content)) return false;
       if (/apiReference\s*:\s*true/.test(content)) return true;
@@ -3933,7 +3937,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const analytics = options?.analytics;
   const observability = options?.observability;
   const appDir = getNextAppDir(root);
-  const contentDir = options?.contentDir ?? path.join(appDir, entry);
+  const contentDir = options?.contentDir ?? path.join(/*! turbopackIgnore: true */ appDir, entry);
   const changelogConfig = resolveChangelogConfig(options?.changelog);
   const agentFeedbackConfig = resolveAgentFeedbackConfig(options?.feedback);
 
@@ -4063,27 +4067,29 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     const relativeCandidates = new Set<string>();
 
     if (path.isAbsolute(contentDir)) {
-      return [locale ? path.join(contentDir, locale) : contentDir];
+      return [locale ? path.join(/*! turbopackIgnore: true */ contentDir, locale) : contentDir];
     }
 
     relativeCandidates.add(contentDir);
-    relativeCandidates.add(path.join("app", entry));
-    relativeCandidates.add(path.join("src", "app", entry));
+    relativeCandidates.add(path.join("app", /*! turbopackIgnore: true */ entry));
+    relativeCandidates.add(path.join("src", "app", /*! turbopackIgnore: true */ entry));
 
     const rootCandidates = new Set<string>([root]);
     rootCandidates.add(process.cwd());
     if (path.basename(root) === "server") {
-      rootCandidates.add(path.resolve(root, "..", ".."));
+      rootCandidates.add(path.resolve(/*! turbopackIgnore: true */ root, "..", ".."));
     } else {
-      rootCandidates.add(path.join(root, ".next", "server"));
-      rootCandidates.add(path.join(root, ".next-build", "server"));
+      rootCandidates.add(path.join(/*! turbopackIgnore: true */ root, ".next", "server"));
+      rootCandidates.add(path.join(/*! turbopackIgnore: true */ root, ".next-build", "server"));
     }
 
     const resolved = new Set<string>();
     for (const base of rootCandidates) {
       for (const relative of relativeCandidates) {
-        const candidate = path.join(base, relative);
-        resolved.add(locale ? path.join(candidate, locale) : candidate);
+        const candidate = path.join(/*! turbopackIgnore: true */ base, relative);
+        resolved.add(
+          locale ? path.join(/*! turbopackIgnore: true */ candidate, locale) : candidate,
+        );
       }
     }
 
@@ -4117,7 +4123,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       return [changelogConfig.contentDir];
     }
 
-    return docsDirs.map((docsDir) => path.join(docsDir, changelogConfig.contentDir));
+    return docsDirs.map((docsDir) =>
+      path.join(/*! turbopackIgnore: true */ docsDir, changelogConfig.contentDir),
+    );
   }
 
   function isWithinDir(candidate: string, target: string) {
@@ -4235,7 +4243,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         : normalizedRequest.slice(normalizedEntry.length).replace(/^\/+/, "");
 
     for (const docsDir of ctx.docsDirs) {
-      const candidateDir = relativeSlug ? path.join(docsDir, ...relativeSlug.split("/")) : docsDir;
+      const candidateDir = relativeSlug
+        ? path.join(/*! turbopackIgnore: true */ docsDir, ...relativeSlug.split("/"))
+        : docsDir;
       if (isHiddenFolderIndexPageDir(candidateDir)) return null;
     }
 
@@ -5124,7 +5134,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   );
   const entry = options.entry ?? readEntry(rootDir);
   const appDir = getNextAppDir(rootDir);
-  const contentDir = options.contentDir ?? path.join(appDir, entry);
+  const contentDir = options.contentDir ?? path.join(/*! turbopackIgnore: true */ appDir, entry);
   const mcpConfig = options.mcp ?? readMcpConfig(rootDir, { rejectRuntimeSecurity: true });
   const contentChangeFeed = createDocsContentChangeFeed(options.agent?.contentChanges);
   const navTitle =

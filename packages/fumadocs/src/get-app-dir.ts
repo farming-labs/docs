@@ -7,6 +7,11 @@ import path from "node:path";
  * Use this so docs layout and API resolve MDX content in the same place the CLI generated it.
  */
 export function getNextAppDir(root: string): string {
-  if (fs.existsSync(path.join(root, "src", "app"))) return "src/app";
+  if (
+    fs.existsSync(
+      /*! turbopackIgnore: true */ path.join(/*! turbopackIgnore: true */ root, "src", "app"),
+    )
+  )
+    return "src/app";
   return "app";
 }

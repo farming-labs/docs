@@ -2880,6 +2880,9 @@ export function withDocs(
   const existingTracingIncludes =
     (nextConfig.outputFileTracingIncludes as Record<string, string[] | undefined> | undefined) ??
     {};
+  const existingTracingExcludes =
+    (nextConfig.outputFileTracingExcludes as Record<string, string[] | undefined> | undefined) ??
+    {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
   const sitemapManifestTraceFile = DEFAULT_SITEMAP_MANIFEST_PATH;
   const docsContentRoot = isAbsolute(docsContentDir) ? docsContentDir : join(root, docsContentDir);
@@ -2930,6 +2933,25 @@ export function withDocs(
     ],
     [DEFAULT_MCP_ROUTE]: [
       ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),
+    ],
+  };
+  nextConfig.outputFileTracingExcludes = {
+    ...existingTracingExcludes,
+    "/api/docs": [
+      ...new Set([
+        ...(existingTracingExcludes["/api/docs"] ?? []),
+        "next.config.js",
+        "next.config.mjs",
+        "next.config.ts",
+      ]),
+    ],
+    [DEFAULT_MCP_ROUTE]: [
+      ...new Set([
+        ...(existingTracingExcludes[DEFAULT_MCP_ROUTE] ?? []),
+        "next.config.js",
+        "next.config.mjs",
+        "next.config.ts",
+      ]),
     ],
   };
 
