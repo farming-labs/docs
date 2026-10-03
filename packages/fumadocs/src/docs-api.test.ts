@@ -11,6 +11,7 @@ import type {
   DocsPublishedAgentSkill,
 } from "@farming-labs/docs";
 import {
+  DEFAULT_DOCS_JSON_BODY_MAX_BYTES,
   DOCS_AGENT_MANIFEST_FORMAT,
   DOCS_AGENT_MANIFEST_SCHEMA_MEDIA_TYPE,
   DOCS_AGENT_MANIFEST_SCHEMA_URI,
@@ -5146,6 +5147,65 @@ description: "Start building quickly"
     expect(await response.json()).toEqual({
       error: "Agent feedback body must include a payload object",
     });
+  });
+
+  it("rejects oversized agent feedback bodies before invoking the callback", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-body-limit-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    const onFeedback = vi.fn();
+    const { POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: { agent: { enabled: true, onFeedback } },
+    });
+    const response = await POST(
+      new Request("http://localhost/api/docs/agent/feedback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ payload: { value: "x".repeat(DEFAULT_DOCS_JSON_BODY_MAX_BYTES) } }),
+      }),
+    );
+
+    expect(response.status).toBe(413);
+    expect(onFeedback).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      code: "request_too_large",
+      maxBodyBytes: DEFAULT_DOCS_JSON_BODY_MAX_BYTES,
+    });
+  });
+
+  it("rejects oversized Ask AI bodies before calling the provider", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-ask-ai-body-limit-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn() as typeof fetch;
+    try {
+      const { POST } = createDocsAPI({ rootDir, entry: "docs", ai: { enabled: true } });
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "x".repeat(DEFAULT_DOCS_JSON_BODY_MAX_BYTES) }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(413);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      await expect(response.json()).resolves.toMatchObject({
+        code: "request_too_large",
+        maxBodyBytes: DEFAULT_DOCS_JSON_BODY_MAX_BYTES,
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("rejects agent feedback payloads that do not satisfy the configured schema", async () => {

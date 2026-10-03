@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDocsCloudAskAIResponse, isDocsCloudAskAIProvider } from "./cloud-ask-ai.js";
+import { DEFAULT_DOCS_JSON_BODY_MAX_BYTES } from "./http-body.js";
 
 async function readResponseText(response: Response): Promise<string> {
   return await response.text();
@@ -18,6 +19,22 @@ function createAskRequest(body: unknown, headers?: HeadersInit): Request {
 }
 
 describe("Docs Cloud Ask AI server helper", () => {
+  it("rejects oversized request bodies before calling upstream", async () => {
+    const fetchMock = vi.fn();
+    const response = await createDocsCloudAskAIResponse(
+      createAskRequest({
+        messages: [{ role: "user", content: "x".repeat(DEFAULT_DOCS_JSON_BODY_MAX_BYTES) }],
+      }),
+      { fetch: fetchMock as typeof fetch },
+    );
+
+    expect(response.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining(String(DEFAULT_DOCS_JSON_BODY_MAX_BYTES)),
+    });
+  });
+
   it("detects the docs-cloud provider only when Ask AI is enabled", () => {
     expect(isDocsCloudAskAIProvider({ enabled: true, provider: "docs-cloud" })).toBe(true);
     expect(isDocsCloudAskAIProvider({ enabled: false, provider: "docs-cloud" })).toBe(false);

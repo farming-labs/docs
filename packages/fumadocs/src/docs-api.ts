@@ -87,12 +87,13 @@ import {
   isDocsDiagnosticsRequest,
   resolveDocsContentChangesConfig,
   stripGeneratedAgentProvenance,
+  parseDocsAgentFeedbackData,
+  readDocsJsonBody,
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
   DocsAgentTraceEventInput,
   DocsAnalyticsConfig,
-  DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
   DocsConfig,
   DocsI18nConfig,
@@ -879,59 +880,6 @@ function buildAgentSpec({
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function normalizeAgentFeedbackContext(value: unknown): DocsAgentFeedbackContext | undefined {
-  if (!isPlainObject(value)) return undefined;
-
-  const context: DocsAgentFeedbackContext = {};
-  if (typeof value.page === "string") context.page = value.page;
-  if (typeof value.url === "string") context.url = value.url;
-  if (typeof value.slug === "string") context.slug = value.slug;
-  if (typeof value.locale === "string") context.locale = value.locale;
-  if (typeof value.source === "string") context.source = value.source;
-
-  return Object.keys(context).length > 0 ? context : undefined;
-}
-
-async function parseAgentFeedbackData(
-  request: Request,
-): Promise<{ ok: true; data: DocsAgentFeedbackData } | { ok: false; response: Response }> {
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return {
-      ok: false,
-      response: Response.json({ error: "Agent feedback body must be valid JSON" }, { status: 400 }),
-    };
-  }
-
-  if (!isPlainObject(body)) {
-    return {
-      ok: false,
-      response: Response.json({ error: "Agent feedback body must be an object" }, { status: 400 }),
-    };
-  }
-
-  if (!isPlainObject(body.payload)) {
-    return {
-      ok: false,
-      response: Response.json(
-        { error: "Agent feedback body must include a payload object" },
-        { status: 400 },
-      ),
-    };
-  }
-
-  return {
-    ok: true,
-    data: {
-      context: normalizeAgentFeedbackContext(body.context),
-      payload: body.payload,
-    },
-  };
 }
 
 function buildAgentFeedbackAnalyticsProperties(
@@ -2903,10 +2851,9 @@ async function handleAskAI(
   });
 
   // ── Parse request ──────────────────────────────────────────────
-  let body: { messages?: ChatMessage[]; model?: string; stream?: boolean };
-  try {
-    body = await request.json();
-  } catch {
+  const parsedBody = await readDocsJsonBody(request);
+  if (!parsedBody.ok) {
+    const status = parsedBody.reason === "request_too_large" ? 413 : 400;
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_ai_error",
       source: "server",
@@ -2915,16 +2862,29 @@ async function handleAskAI(
       locale: analyticsContext.locale,
       properties: {
         ...requestAnalyticsProperties,
-        reason: "invalid_json",
+        reason: parsedBody.reason,
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
     });
-    await emitRunError("invalid_json", { status: 400 });
+    await emitRunError(parsedBody.reason, { status });
     return Response.json(
-      { error: "Invalid JSON body. Expected { messages: [...] }" },
-      { status: 400 },
+      {
+        error:
+          parsedBody.reason === "request_too_large"
+            ? `Request body exceeds the ${parsedBody.maxBodyBytes} byte limit`
+            : "Invalid JSON body. Expected { messages: [...] }",
+        ...(parsedBody.reason === "request_too_large"
+          ? { code: parsedBody.reason, maxBodyBytes: parsedBody.maxBodyBytes }
+          : {}),
+      },
+      { status },
     );
   }
+  const body = parsedBody.value as {
+    messages?: ChatMessage[];
+    model?: string;
+    stream?: boolean;
+  };
 
   const messages = body.messages;
   const shouldStreamResponse =
@@ -4989,7 +4949,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           );
         }
 
-        const parsed = await parseAgentFeedbackData(request);
+        const parsed = await parseDocsAgentFeedbackData(request);
         if (!parsed.ok) {
           await emitDocsAnalyticsEvent(analytics, {
             type: "agent_feedback_error",
@@ -4999,7 +4959,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             properties: {
               ...requestAnalyticsProperties,
               feedbackKind: "agent",
-              reason: "invalid_body",
+              reason: parsed.response.status === 413 ? "request_too_large" : "invalid_body",
             },
           });
           return parsed.response;

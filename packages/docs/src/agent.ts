@@ -20,6 +20,7 @@ import type {
   ResolvedDocsRelatedLink,
 } from "./types.js";
 import { filterDocsPagesByAccess, isDocsPageAccessAllowed } from "./access.js";
+import { readDocsJsonBody } from "./http-body.js";
 import { resolveDocsOkfConfig, resolveDocsOkfTrustMetadata } from "./okf.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
@@ -1834,16 +1835,27 @@ function normalizeDocsAgentFeedbackContext(value: unknown): DocsAgentFeedbackCon
 export async function parseDocsAgentFeedbackData(
   request: Request,
 ): Promise<{ ok: true; data: DocsAgentFeedbackData } | { ok: false; response: Response }> {
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
+  const parsed = await readDocsJsonBody(request);
+  if (!parsed.ok) {
+    if (parsed.reason === "request_too_large") {
+      return {
+        ok: false,
+        response: Response.json(
+          {
+            error: `Request body exceeds the ${parsed.maxBodyBytes} byte limit`,
+            code: parsed.reason,
+            maxBodyBytes: parsed.maxBodyBytes,
+          },
+          { status: 413 },
+        ),
+      };
+    }
     return {
       ok: false,
       response: Response.json({ error: "Agent feedback body must be valid JSON" }, { status: 400 }),
     };
   }
+  const body = parsed.value;
 
   if (!isPlainObject(body)) {
     return {

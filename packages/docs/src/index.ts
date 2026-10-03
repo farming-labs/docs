@@ -10,6 +10,11 @@
 import type { DocsConfig } from "./types.js";
 
 export {
+  DEFAULT_DOCS_JSON_BODY_MAX_BYTES,
+  readDocsJsonBody,
+  type DocsJsonBodyResult,
+} from "./http-body.js";
+export {
   filterDocsPagesByAccess,
   isDocsAgentPageAccessible,
   isDocsPageAccessAllowed,
