@@ -2,22 +2,28 @@
   "version": 1,
   "exceptions": [
     {
-      "advisory": "GHSA-w3rx-r6r6-pgpr",
-      "package": "image-size",
-      "expires": "2026-10-01",
-      "reason": "No patched npm release exists as of 2026-09-05. The dependency is transitive through @farm.js/core; affected image parsing remains limited to project-owned build inputs while upstream remediation is tracked."
-    },
-    {
-      "advisory": "GHSA-5p2g-fcmc-qvqq",
-      "package": "image-size",
-      "expires": "2026-10-01",
-      "reason": "No patched npm release exists as of 2026-09-05. The dependency is transitive through @farm.js/core; affected image parsing remains limited to project-owned build inputs while upstream remediation is tracked."
-    },
-    {
       "advisory": "GHSA-ggr8-5vv4-36mx",
       "package": "deepmerge-ts",
-      "expires": "2026-09-15",
-      "reason": "Transitive through prisma > @prisma/config, which pins deepmerge-ts 7.x; the patched 8.0.0 is a major bump upstream has not adopted. Stack exhaustion requires merging attacker-controlled recursive object graphs, but the dependency only merges project-owned Prisma config at build time."
+      "expires": "2026-11-03",
+      "reason": "Transitive through prisma > @prisma/config, which still pins deepmerge-ts 7.x as of 2026-10-03; forcing the patched 8.x major could break Prisma config loading. Stack exhaustion requires recursive object graphs, while this dependency only merges project-owned Prisma configuration at build time."
+    },
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "expires": "2026-11-03",
+      "reason": "No patched npm release exists as of 2026-10-03; 3.0.3 remains latest. Usage is transitive through build-time globbing in Nuxt, Farm.js, and TanStack tooling and does not process untrusted runtime patterns."
+    },
+    {
+      "advisory": "GHSA-ch52-4w7c-c8xp",
+      "package": "http-cache-semantics",
+      "expires": "2026-11-03",
+      "reason": "No patched npm release exists as of 2026-10-03; 4.2.0 remains latest. The dependency is transitive through Astro build tooling, and this project does not use it for shared cross-user application response caching."
+    },
+    {
+      "advisory": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "expires": "2026-11-03",
+      "reason": "No patched npm release exists as of 2026-10-03; 1.4.0 remains latest. The dependency is transitive through Nuxt local-listener certificate tooling and is not used to verify application signatures at runtime."
     }
   ]
 }
