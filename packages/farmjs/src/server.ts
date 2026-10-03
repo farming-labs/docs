@@ -26,6 +26,7 @@ import {
   emitDocsTelemetryAgentSurfaceEvent,
   emitDocsTelemetryProjectEvent,
   formatDocsAskAIPackageHints,
+  formatDocsLastModifiedDate,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
   getDocsAgentManifestLinkHeader,
@@ -951,14 +952,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       raw = result.raw;
       relPath = result.relPath;
       const manifestLastmod = resolveDocsSitemapPageLastmod(preloadedSitemapManifest, currentUrl);
-      const lastModifiedDate = manifestLastmod
-        ? new Date(`${manifestLastmod}T00:00:00`)
-        : new Date();
-      lastModified = lastModifiedDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      lastModified = formatDocsLastModifiedDate(manifestLastmod ?? new Date())!;
       lastModifiedIso = manifestLastmod ? `${manifestLastmod}T00:00:00.000Z` : undefined;
     } else {
       let filePath: string | null = null;
@@ -1006,11 +1000,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           filePath,
           readFarmDocsLastModifiedManifest(ctx.contentDirAbs),
         ) ?? stat.mtime.toISOString();
-      lastModified = new Date(lastModifiedIso).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      lastModified = formatDocsLastModifiedDate(lastModifiedIso)!;
     }
 
     const { data, content } = matter(raw);
