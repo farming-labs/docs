@@ -12,7 +12,7 @@
     "@farming-labs/docs": "0.2.116",
     "@farming-labs/next": "0.2.116",
     "@farming-labs/theme": "0.2.116",
-    "next": "16.2.11",
+    "next": "16.3.8",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
