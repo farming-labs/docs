@@ -19,6 +19,7 @@ overrides:
   brace-expansion@>=4.0.0 <5.0.9: 5.0.9
   js-yaml@>=3.0.0 <3.15.1: 3.15.1
   js-yaml@>=4.0.0 <4.3.1: 4.3.1
+  yaml@>=2.0.0 <2.8.3: ^2.8.3
   nanoid@>=3.0.0 <3.3.18: 3.3.18
   nanoid@>=4.0.0 <5.1.16: 5.1.16
   nuxt@>=3.21.7 <3.21.10: 3.21.11
@@ -413,7 +414,7 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@10.2.2)
       yaml:
-        specifier: ^2.8.2
+        specifier: ^2.8.3
         version: 2.9.0
       zod:
         specifier: ^4.3.6
@@ -9851,13 +9852,8 @@ packages:
     resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
     engines: {node: '>=18'}
 
-  yaml@2.8.0:
-    resolution: {integrity: sha512-4lLa/EcQCB0cJkyts+FpIRx5G/llPxfP6VQU5KByHEhLxY3IJCH0f0Hy1MHI8sClTvsIb8qwRJ6R/ZdlDJ/leQ==}
-    engines: {node: '>= 14.6'}
-    hasBin: true
-
-  yaml@2.8.2:
-    resolution: {integrity: sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A==}
+  yaml@2.8.3:
+    resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
     engines: {node: '>= 14.6'}
     hasBin: true
 
@@ -13693,7 +13689,7 @@ snapshots:
       vue: 3.5.41(typescript@5.9.3)
       vue-router: 4.6.4(vue@3.5.41(typescript@5.9.3))
       whatwg-mimetype: 4.0.0
-      yaml: 2.8.0
+      yaml: 2.8.3
       zod: 4.1.11
     transitivePeerDependencies:
       - '@vue/composition-api'
@@ -13832,12 +13828,12 @@ snapshots:
     dependencies:
       '@scalar/helpers': 0.0.12
       '@scalar/openapi-parser': 0.22.3
-      yaml: 2.8.0
+      yaml: 2.8.3
 
   '@scalar/json-magic@0.6.1':
     dependencies:
       '@scalar/helpers': 0.0.12
-      yaml: 2.8.0
+      yaml: 2.8.3
 
   '@scalar/nextjs-api-reference@0.10.3(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.19.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
     dependencies:
@@ -13862,7 +13858,7 @@ snapshots:
       microdiff: 1.6.0
       nanoid: 5.1.16
       type-fest: 5.0.0
-      yaml: 2.8.0
+      yaml: 2.8.3
       zod: 4.1.11
     transitivePeerDependencies:
       - supports-color
@@ -13886,7 +13882,7 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.18.0)
       jsonpointer: 5.0.1
       leven: 4.1.0
-      yaml: 2.8.0
+      yaml: 2.8.3
 
   '@scalar/openapi-types@0.5.0':
     dependencies:
@@ -13986,7 +13982,7 @@ snapshots:
       github-slugger: 2.0.0
       type-fest: 5.0.0
       vue: 3.5.41(typescript@5.9.3)
-      yaml: 2.8.0
+      yaml: 2.8.3
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -19464,7 +19460,7 @@ snapshots:
       toml: 4.2.0
       unified: 11.0.5
       unist-util-mdx-define: 1.1.2
-      yaml: 2.8.2
+      yaml: 2.8.3
 
   remark-mdx@3.1.1(supports-color@10.2.2):
     dependencies:
@@ -21233,9 +21229,7 @@ snapshots:
 
   yallist@5.0.0: {}
 
-  yaml@2.8.0: {}
-
-  yaml@2.8.2: {}
+  yaml@2.8.3: {}
 
   yaml@2.9.0: {}
 
