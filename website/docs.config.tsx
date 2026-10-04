@@ -317,18 +317,6 @@ export default defineDocs({
 
   pageActions: {
     copyMarkdown: { enabled: true },
-    connectMcp: {
-      enabled: true,
-      endpoint: "/mcp",
-      providers: ["copy", "claude-code", "cursor", "vscode", "codex"],
-      label: "Connect docs MCP",
-    },
-    installSkills: {
-      enabled: true,
-      index: "/.well-known/agent-skills/index.json",
-      command: "npx skills add farming-labs/docs",
-      label: "Install docs skills",
-    },
     alignment: "right",
     openDocs: {
       enabled: true,
