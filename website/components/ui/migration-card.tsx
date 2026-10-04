@@ -1,9 +1,26 @@
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import {
+  MigrationSourceIcon,
+  type MigrationSourceSlug,
+} from "@/components/ui/migration-source-icon";
+
+const migrationSourceByName = {
+  Docusaurus: "docusaurus",
+  Mintlify: "mintlify",
+  Nextra: "nextra",
+  Fumadocs: "fumadocs",
+  VitePress: "vitepress",
+  Starlight: "starlight",
+  GitBook: "gitbook",
+  "Material for MkDocs": "mkdocs",
+} as const satisfies Record<string, MigrationSourceSlug>;
+
+type MigrationSourceName = keyof typeof migrationSourceByName;
 
 interface MigrationCardProps {
   href: string;
-  name: string;
+  name: MigrationSourceName;
   description: string;
   sourceType: "Git-based" | "Hosted";
   effort: "Low" | "Medium";
@@ -18,46 +35,34 @@ export function MigrationCard({
   effort,
   preserves,
 }: MigrationCardProps) {
+  const source = migrationSourceByName[name];
+
   return (
     <Link
       href={href}
-      className="group relative flex min-h-56 flex-col overflow-hidden border border-black/10 bg-black/[0.018] p-5 text-black no-underline transition-colors hover:border-black/20 hover:bg-black/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/45 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-white/[0.018] dark:text-white dark:hover:border-white/20 dark:hover:bg-white/[0.04] dark:focus-visible:ring-white/55 dark:focus-visible:ring-offset-black"
+      className="group flex h-full min-h-52 flex-col border border-black/10 bg-black/[0.012] p-5 text-black no-underline transition-[background-color,border-color,transform] duration-200 hover:border-black/20 hover:bg-black/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/45 focus-visible:ring-offset-2 active:translate-y-px dark:border-white/10 dark:bg-white/[0.012] dark:text-white dark:hover:border-white/20 dark:hover:bg-white/[0.03] dark:focus-visible:ring-white/55 dark:focus-visible:ring-offset-black"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/25 to-transparent dark:via-white/25"
-      />
-
-      <div className="flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.14em] text-black/45 dark:text-white/45">
-        <span>{sourceType}</span>
-        <span className="border border-black/10 px-2 py-1 dark:border-white/10">
-          {effort} effort
-        </span>
-      </div>
-
-      <div className="mt-5">
-        <h2 className="text-xl font-semibold tracking-tight">{name}</h2>
-        <p className="mt-2 text-sm leading-6 text-black/60 dark:text-white/58">{description}</p>
-      </div>
-
-      <ul className="mt-5 flex flex-wrap gap-2" aria-label={`What the ${name} guide preserves`}>
-        {preserves.map((item) => (
-          <li
-            key={item}
-            className="inline-flex items-center gap-1.5 border border-black/8 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-black/50 dark:border-white/10 dark:text-white/48"
-          >
-            <Check aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
-            {item}
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-auto flex items-center justify-between border-t border-black/8 pt-4 font-mono text-[11px] uppercase tracking-[0.12em] dark:border-white/10">
-        <span>Open migration guide</span>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center bg-black/[0.045] text-black/70 dark:bg-white/[0.06] dark:text-white/70">
+            <MigrationSourceIcon source={source} className="size-4" />
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-black/45 dark:text-white/45">
+            {sourceType} · {effort} effort
+          </span>
+        </div>
         <ArrowRight
           aria-hidden="true"
-          className="h-4 w-4 transition-transform group-hover:translate-x-1"
+          className="size-4 shrink-0 text-black/35 transition-transform duration-200 group-hover:translate-x-0.5 dark:text-white/35"
         />
+      </div>
+
+      <h3 className="mt-5 text-xl font-semibold tracking-tight">{name}</h3>
+      <p className="mt-2 text-sm leading-6 text-black/60 dark:text-white/58">{description}</p>
+
+      <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-5 text-xs text-black/48 dark:text-white/45">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em]">Preserves</span>
+        <span>{preserves.join(" · ")}</span>
       </div>
     </Link>
   );
