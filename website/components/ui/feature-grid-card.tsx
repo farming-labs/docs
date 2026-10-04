@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-import { FrameJunctions } from "@/components/ui/frame-junctions";
 
 export function FeatureGridCard({
   title,
@@ -16,7 +15,7 @@ export function FeatureGridCard({
   chips: readonly string[];
 }) {
   return (
-    <div className="relative isolate flex h-full flex-col border border-black/10 bg-black/[0.012] p-5 dark:border-white/10 dark:bg-white/[0.012] sm:p-6">
+    <div className="flex h-full flex-col border border-black/10 bg-black/[0.012] p-5 dark:border-white/10 dark:bg-white/[0.012] sm:p-6">
       <div className="flex items-center justify-between gap-4">
         <Icon className="size-5 stroke-[1.6] text-black/70 dark:text-white/70" />
         <p className="text-right font-mono text-[10px] uppercase tracking-[0.12em] text-black/40 dark:text-white/40">
@@ -37,8 +36,6 @@ export function FeatureGridCard({
           <li key={chip}>{chip}</li>
         ))}
       </ul>
-
-      <FrameJunctions />
     </div>
   );
 }

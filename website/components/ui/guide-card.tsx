@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FrameJunctions } from "@/components/ui/frame-junctions";
 
 interface GuideCardProps {
   href: string;
@@ -30,7 +29,7 @@ export function GuideCard({
     <Link
       href={href}
       className={cn(
-        "not-prose group relative isolate my-4 block border border-black/10 bg-black/[0.012] no-underline transition-[background-color,border-color,transform] duration-200 hover:border-black/20 hover:bg-black/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/45 focus-visible:ring-offset-2 active:translate-y-px dark:border-white/10 dark:bg-white/[0.012] dark:hover:border-white/20 dark:hover:bg-white/[0.03] dark:focus-visible:ring-white/55 dark:focus-visible:ring-offset-black",
+        "not-prose group my-3 block border border-black/10 bg-black/[0.012] no-underline transition-[background-color,border-color,transform] duration-200 hover:border-black/20 hover:bg-black/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/45 focus-visible:ring-offset-2 active:translate-y-px dark:border-white/10 dark:bg-white/[0.012] dark:hover:border-white/20 dark:hover:bg-white/[0.03] dark:focus-visible:ring-white/55 dark:focus-visible:ring-offset-black",
         featured ? "px-6 py-6 sm:px-7 sm:py-7" : "px-5 py-5 sm:px-6 sm:py-6",
       )}
     >
@@ -82,8 +81,6 @@ export function GuideCard({
           ))}
         </ul>
       ) : null}
-
-      <FrameJunctions />
     </Link>
   );
 }
