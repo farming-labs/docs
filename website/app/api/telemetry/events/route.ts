@@ -14,6 +14,7 @@ const MAX_TELEMETRY_BODY_BYTES = 32_768;
 const TELEMETRY_RATE_LIMIT_WINDOW_MS = 60_000;
 const TELEMETRY_GLOBAL_RATE_LIMIT_MAX_REQUESTS = 2_000;
 const TELEMETRY_IDENTITY_RATE_LIMIT_MAX_REQUESTS = 120;
+const TELEMETRY_PAGE_VIEW_RATE_LIMIT_MAX_REQUESTS = 1_000;
 const TELEMETRY_RATE_LIMIT_MAX_KEYS = 4_096;
 const TELEMETRY_IDENTITY_HASH_VERSION = "v1";
 
@@ -39,6 +40,38 @@ function readNestedRecord(value: unknown, key: string) {
   if (!isRecord(value)) return undefined;
   const next = value[key];
   return isRecord(next) ? next : undefined;
+}
+
+function isAgentUserAgent(userAgent: string | null): boolean {
+  if (!userAgent) return false;
+
+  return /cursor|codex|chatgpt|gptbot|oai-searchbot|openai-search|github[- ]?copilot|claude(?:bot|-user)?|anthropic|perplexity(?:bot|-user)?|google-extended|googlebot|apis-google|bingbot|msnbot|duckduckbot|applebot|bytespider|bytedance|ccbot|common crawl|ahrefsbot|semrushbot|bot|crawler|spider|slurp|facebookexternalhit|ia_archiver/i.test(
+    userAgent,
+  );
+}
+
+function classifyTelemetryTraffic(
+  eventType: string,
+  userAgent: string | null,
+): "human" | "agent" | "system" {
+  const normalizedType = eventType
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, "_");
+
+  if (
+    normalizedType === "agent_surface_used" ||
+    normalizedType.startsWith("agent_") ||
+    normalizedType.startsWith("mcp_")
+  ) {
+    return "agent";
+  }
+
+  if (normalizedType === "page_view") {
+    return isAgentUserAgent(userAgent) ? "agent" : "human";
+  }
+
+  return "system";
 }
 
 function isPrismaSchemaMissing(error: unknown) {
@@ -272,7 +305,12 @@ export async function POST(request: Request) {
     const identityRateLimitKey = createTelemetryIdentityRateLimitKey(eventBody, eventType);
     if (
       identityRateLimitKey &&
-      isTelemetryRateLimited(identityRateLimitKey, TELEMETRY_IDENTITY_RATE_LIMIT_MAX_REQUESTS)
+      isTelemetryRateLimited(
+        identityRateLimitKey,
+        eventType === "page_view"
+          ? TELEMETRY_PAGE_VIEW_RATE_LIMIT_MAX_REQUESTS
+          : TELEMETRY_IDENTITY_RATE_LIMIT_MAX_REQUESTS,
+      )
     ) {
       return NextResponse.json({ error: "Telemetry rate limit exceeded" }, { status: 429 });
     }
@@ -298,7 +336,15 @@ export async function POST(request: Request) {
       deploymentId,
     });
 
-    const event = eventBody as unknown as DocsTelemetryEvent;
+    const trafficType = classifyTelemetryTraffic(eventType, request.headers.get("user-agent"));
+    const classifiedProperties = {
+      ...properties,
+      trafficType,
+    };
+    const event = {
+      ...eventBody,
+      properties: classifiedProperties,
+    } as unknown as DocsTelemetryEvent;
     const data = {
       eventType,
       identityHash,
@@ -311,7 +357,7 @@ export async function POST(request: Request) {
       deploymentEnvironment,
       deploymentId,
       features: features as unknown as Prisma.InputJsonValue,
-      properties: properties as unknown as Prisma.InputJsonValue,
+      properties: classifiedProperties as Prisma.InputJsonValue,
       payload: event as unknown as Prisma.InputJsonValue,
     };
 

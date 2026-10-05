@@ -117,7 +117,9 @@ export function createNextDocsLayout(config: DocsConfig) {
     framework: "next",
   });
 
-  const DocsLayout = createDocsLayout(withNextApiReferenceBanner(config));
+  const DocsLayout = createDocsLayout(withNextApiReferenceBanner(config), {
+    telemetryFramework: "next",
+  });
 
   return function NextDocsLayout({ children }: { children: React.ReactNode }) {
     const docsCloud = resolveNextDocsCloudClientOptions(config);

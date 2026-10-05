@@ -26,6 +26,7 @@ import type {
   TypographyConfig,
   FontStyle,
   AIConfig,
+  DocsTelemetryFramework,
   OrderingItem,
   PageFrontmatter,
   OpenDocsConfig,
@@ -1040,7 +1041,10 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
 
 // ─── createDocsLayout ────────────────────────────────────────────────
 
-export function createDocsLayout(config: DocsConfig, options?: { locale?: string }) {
+export function createDocsLayout(
+  config: DocsConfig,
+  options?: { locale?: string; telemetryFramework?: DocsTelemetryFramework },
+) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = (tocConfig as any)?.style as "default" | "directional" | undefined;
@@ -1359,6 +1363,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             feedbackSuccessMessage={feedbackConfig.successMessage}
             feedbackErrorMessage={feedbackConfig.errorMessage}
             analytics={analyticsEnabled}
+            telemetry={config.telemetry}
+            telemetryFramework={options?.telemetryFramework}
           >
             {children}
           </DocsPageClient>

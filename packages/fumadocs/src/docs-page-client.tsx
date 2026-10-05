@@ -15,10 +15,13 @@ import { usePathname, useRouter } from "fumadocs-core/framework";
 import type {
   CopyMarkdownFormat,
   DocsFeedbackData,
+  DocsTelemetryConfig,
+  DocsTelemetryFramework,
   PageActionConnectMcpConfig,
   PageActionInstallSkillsConfig,
   ReadingTimeFormat,
 } from "@farming-labs/docs";
+import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
 import { PageActions } from "./page-actions.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
@@ -145,6 +148,8 @@ interface DocsPageClientProps {
   feedbackErrorMessage?: string;
   feedbackOnFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   analytics?: boolean;
+  telemetry?: boolean | DocsTelemetryConfig;
+  telemetryFramework?: DocsTelemetryFramework;
   children: ReactNode;
 }
 
@@ -577,6 +582,8 @@ export function DocsPageClient({
   feedbackErrorMessage,
   feedbackOnFeedback,
   analytics = false,
+  telemetry,
+  telemetryFramework,
   children,
 }: DocsPageClientProps) {
   const router = useRouter();
@@ -608,6 +615,7 @@ export function DocsPageClient({
 
   useEffect(() => {
     if (!analytics) return;
+
     emitClientAnalyticsEvent({
       type: "page_view",
       locale: activeLocale,
@@ -620,6 +628,14 @@ export function DocsPageClient({
       },
     });
   }, [analytics, activeLocale, browserSearch, entry, isChangelogRoute, normalizedPath]);
+
+  useEffect(() => {
+    emitDocsTelemetryPageViewEvent(telemetry, {
+      framework: telemetryFramework,
+      path: normalizedPath,
+      locale: activeLocale,
+    });
+  }, [activeLocale, normalizedPath, telemetry, telemetryFramework]);
 
   useEffect(() => {
     return installDocsPathNavigationGuard(entry, resolvedPublicPath, (url) => router.push(url));

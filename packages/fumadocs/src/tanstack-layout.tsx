@@ -9,6 +9,7 @@ import type {
   AIConfig,
   OpenDocsConfig,
   CopyMarkdownConfig,
+  DocsTelemetryFramework,
   PageActionConnectMcpConfig,
   PageActionInstallSkillsConfig,
 } from "@farming-labs/docs";
@@ -128,6 +129,8 @@ export interface TanstackDocsLayoutProps {
   tree: TreeRoot;
   /** Enables browser-adapter shell affordances that are not part of a theme preset. */
   browserRuntime?: boolean;
+  /** Framework label included with privacy-preserving maintainer page-view telemetry. */
+  telemetryFramework?: DocsTelemetryFramework;
   locale?: string;
   description?: string;
   descriptionInBody?: boolean;
@@ -374,6 +377,7 @@ export function TanstackDocsLayout({
   config,
   tree,
   browserRuntime = false,
+  telemetryFramework,
   locale,
   description,
   descriptionInBody,
@@ -626,6 +630,8 @@ export function TanstackDocsLayout({
           feedbackSuccessMessage={feedbackConfig.successMessage}
           feedbackErrorMessage={feedbackConfig.errorMessage}
           analytics={analyticsEnabled}
+          telemetry={config.telemetry}
+          telemetryFramework={telemetryFramework}
         >
           {children}
         </DocsPageClient>

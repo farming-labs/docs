@@ -31,6 +31,24 @@ type RawGroupCount = {
   lastSeenAt: Date | null;
 };
 
+type SiteTrafficCount = {
+  key: string;
+  human: number;
+  agent: number;
+  system: number;
+  total: number;
+  lastSeenAt: Date | null;
+};
+
+type RawSiteTrafficCount = {
+  key: string | null;
+  human: number | bigint;
+  agent: number | bigint;
+  system: number | bigint;
+  total: number | bigint;
+  lastSeenAt: Date | null;
+};
+
 const SITE_PAGE_SIZE = 24;
 
 type RecentTelemetryEvent = {
@@ -61,7 +79,7 @@ type TelemetryData =
       frameworks: GroupCount[];
       packageVersions: GroupCount[];
       deploymentProviders: GroupCount[];
-      topSites: GroupCount[];
+      topSites: SiteTrafficCount[];
       topIdentities: GroupCount[];
       featureFlags: GroupCount[];
       agentSurfaces: GroupCount[];
@@ -166,6 +184,21 @@ function toRawGroupCounts(groups: RawGroupCount[]): GroupCount[] {
   }));
 }
 
+function toNumber(value: number | bigint): number {
+  return typeof value === "bigint" ? Number(value) : value;
+}
+
+function toSiteTrafficCounts(groups: RawSiteTrafficCount[]): SiteTrafficCount[] {
+  return groups.map((group) => ({
+    key: group.key ?? "unknown",
+    human: toNumber(group.human),
+    agent: toNumber(group.agent),
+    system: toNumber(group.system),
+    total: toNumber(group.total),
+    lastSeenAt: group.lastSeenAt,
+  }));
+}
+
 async function loadTelemetryData(limit: number, siteLimit: number): Promise<TelemetryData> {
   if (!process.env.DATABASE_URL) {
     return {
@@ -256,12 +289,37 @@ async function loadTelemetryData(limit: number, siteLimit: number): Promise<Tele
       _count: { _all: true },
       _max: { createdAt: true },
     });
-    const topSiteGroups = await prisma.docsTelemetryEvent.groupBy({
-      by: ["siteOrigin"],
-      where: { ...visibleTelemetryWhere, siteOrigin: { not: null } },
-      _count: { _all: true },
-      _max: { createdAt: true },
-    });
+    const topSiteGroups = await prisma.$queryRaw<RawSiteTrafficCount[]>`
+      WITH classified AS (
+        SELECT
+          "DocsTelemetryEvent"."siteOrigin" AS key,
+          "DocsTelemetryEvent"."createdAt" AS "createdAt",
+          CASE
+            WHEN LOWER(COALESCE("DocsTelemetryEvent"."properties"::jsonb ->> 'trafficType', '')) IN ('agent', 'bot')
+              OR "DocsTelemetryEvent"."eventType" = 'agent_surface_used'
+              OR "DocsTelemetryEvent"."eventType" ~ '^agent_'
+              OR "DocsTelemetryEvent"."eventType" ~ '^mcp_'
+              THEN 'agent'
+            WHEN LOWER(COALESCE("DocsTelemetryEvent"."properties"::jsonb ->> 'trafficType', '')) = 'human'
+              OR "DocsTelemetryEvent"."eventType" = 'page_view'
+              THEN 'human'
+            ELSE 'system'
+          END AS "trafficType"
+        FROM "DocsTelemetryEvent"
+        WHERE "DocsTelemetryEvent"."siteOrigin" IS NOT NULL
+        ${visibleTelemetrySql}
+      )
+      SELECT
+        key,
+        COUNT(*) FILTER (WHERE "trafficType" = 'human')::int AS human,
+        COUNT(*) FILTER (WHERE "trafficType" = 'agent')::int AS agent,
+        COUNT(*) FILTER (WHERE "trafficType" = 'system')::int AS system,
+        COUNT(*)::int AS total,
+        MAX("createdAt") AS "lastSeenAt"
+      FROM classified
+      GROUP BY key
+      ORDER BY total DESC, key ASC
+    `;
     const topIdentityGroups = await prisma.docsTelemetryEvent.groupBy({
       by: ["identityHash"],
       where: { ...visibleTelemetryWhere, identityHash: { not: null } },
@@ -315,7 +373,7 @@ async function loadTelemetryData(limit: number, siteLimit: number): Promise<Tele
       LIMIT 24
     `;
 
-    const sites = toGroupCounts(topSiteGroups, "siteOrigin", "unknown");
+    const sites = toSiteTrafficCounts(topSiteGroups);
 
     return {
       status: "ready",
@@ -484,6 +542,90 @@ function GroupTable({
   );
 }
 
+function SiteTrafficTable({
+  sites,
+  totalCount,
+  loadMoreHref,
+}: {
+  sites: SiteTrafficCount[];
+  totalCount: number;
+  loadMoreHref?: string;
+}) {
+  return (
+    <section className="border border-neutral-200 bg-white xl:col-span-2 2xl:col-span-3 dark:border-white/10 dark:bg-black">
+      <div className="flex flex-col gap-1 border-b border-neutral-200 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between dark:border-white/10">
+        <h2 className="text-sm font-semibold text-neutral-950 dark:text-white">Site traffic</h2>
+        <p className="text-xs text-neutral-500 dark:text-white/45">
+          Human views start with this release; older runtime events remain system traffic.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px] table-fixed text-left text-sm">
+          <thead className="bg-neutral-50 text-[10px] uppercase tracking-wider text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
+            <tr>
+              <th className="px-4 py-2 font-medium">Site origin</th>
+              <th className="w-28 px-4 py-2 text-right font-medium">Human views</th>
+              <th className="w-28 px-4 py-2 text-right font-medium">Agent requests</th>
+              <th className="w-28 px-4 py-2 text-right font-medium">System events</th>
+              <th className="w-24 px-4 py-2 text-right font-medium">Total</th>
+              <th className="w-40 px-4 py-2 text-right font-medium">Last seen</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100 dark:divide-white/10">
+            {sites.length > 0 ? (
+              sites.map((site) => (
+                <tr key={site.key}>
+                  <td
+                    className="px-4 py-2 font-mono text-xs text-neutral-700 dark:text-white/70"
+                    title={site.key}
+                  >
+                    <span className="block truncate">{site.key}</span>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-xs text-neutral-950 dark:text-white">
+                    {formatNumber(site.human)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-xs text-neutral-950 dark:text-white">
+                    {formatNumber(site.agent)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-xs text-neutral-500 dark:text-white/45">
+                    {formatNumber(site.system)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-xs text-neutral-950 dark:text-white">
+                    {formatNumber(site.total)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-xs text-neutral-500 dark:text-white/45">
+                    {formatDate(site.lastSeenAt)}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="px-4 py-4 text-sm text-neutral-500 dark:text-white/45" colSpan={6}>
+                  No sites.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-col gap-3 border-t border-neutral-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
+        <p className="font-mono text-[11px] text-neutral-500 dark:text-white/45">
+          Showing {formatNumber(sites.length)} of {formatNumber(totalCount)} sites
+        </p>
+        {loadMoreHref ? (
+          <a
+            className="inline-flex min-h-9 items-center justify-center gap-2 border border-neutral-300 bg-white px-3 py-2 font-mono text-[11px] font-medium text-neutral-800 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:border-white/15 dark:bg-black dark:text-white/80 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:focus-visible:outline-white"
+            href={loadMoreHref}
+          >
+            Load {formatNumber(Math.min(SITE_PAGE_SIZE, totalCount - sites.length))} more
+            <ChevronDown className="size-3.5" strokeWidth={1.8} />
+          </a>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function PageRails() {
   return (
     <div className="pointer-events-none fixed inset-0 z-0 hidden lg:block">
@@ -580,11 +722,8 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
           <GroupTable title="Deployment providers" groups={data.deploymentProviders} />
           <GroupTable title="Agent surfaces" groups={data.agentSurfaces} />
           <GroupTable title="Feature flags" groups={data.featureFlags} />
-          <GroupTable
-            title="Top sites"
-            groups={data.topSites}
-            keyLabel="Site origin"
-            className="xl:col-span-2 2xl:col-span-3"
+          <SiteTrafficTable
+            sites={data.topSites}
             totalCount={data.uniqueSites}
             loadMoreHref={loadMoreSitesHref}
           />

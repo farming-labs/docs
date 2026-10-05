@@ -7,6 +7,7 @@
   import { page } from "$app/stores";
   import { env as publicEnv } from "$env/dynamic/public";
   import { onMount } from "svelte";
+  import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
   import {
     emitSvelteDocsClientAnalyticsEvent,
     installSvelteDocsAnalytics,
@@ -86,6 +87,7 @@
   });
 
   let lastAnalyticsPageKey = "";
+  let lastTelemetryPageKey = "";
 
   function emitPageView(url) {
     if (typeof window === "undefined") return;
@@ -113,6 +115,17 @@
           ...(document.title ? { title: document.title } : {}),
         },
       });
+
+      const telemetryPageKey = `${pathname}|${locale ?? ""}`;
+      if (telemetryPageKey !== lastTelemetryPageKey) {
+        lastTelemetryPageKey = telemetryPageKey;
+        emitDocsTelemetryPageViewEvent(config?.telemetry, {
+          framework: "sveltekit",
+          siteOrigin: window.location.origin,
+          path: pathname,
+          locale: locale ?? undefined,
+        });
+      }
     }, 0);
   }
 
