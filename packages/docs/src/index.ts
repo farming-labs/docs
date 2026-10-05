@@ -37,6 +37,7 @@ export {
   emitDocsTelemetryAgentSurfaceEvent,
   emitDocsTelemetryEvent,
   emitDocsTelemetryMcpToolEvent,
+  emitDocsTelemetryPageViewEvent,
   emitDocsTelemetryProjectEvent,
   getDocsTelemetryFeatures,
   inferDocsTelemetryAgentSurface,
@@ -740,6 +741,7 @@ export type {
   DocsTelemetryAgentSurfaceRequestOptions,
   DocsTelemetryContext,
   DocsTelemetryAgentSurfaceContext,
+  DocsTelemetryPageViewContext,
   ResolvedDocsTelemetryConfig,
 } from "./telemetry.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";

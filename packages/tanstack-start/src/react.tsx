@@ -39,7 +39,12 @@ export function TanstackDocsPage({
 
   if (!Content) {
     return (
-      <TanstackDocsLayout config={config} tree={data.tree} locale={data.locale}>
+      <TanstackDocsLayout
+        config={config}
+        tree={data.tree}
+        locale={data.locale}
+        telemetryFramework="tanstack-start"
+      >
         <article style={{ padding: "2rem" }}>
           <h1>Page module missing</h1>
           <p>Expected a compiled MDX module at `{data.sourcePath}`.</p>
@@ -69,6 +74,7 @@ export function TanstackDocsPage({
         config={config}
         tree={data.tree}
         locale={data.locale}
+        telemetryFramework="tanstack-start"
         description={data.description}
         readingTime={data.readingTime}
         lastModified={data.lastModified}

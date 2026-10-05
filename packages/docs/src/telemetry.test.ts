@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   emitDocsTelemetryEvent,
   emitDocsTelemetryMcpToolEvent,
+  emitDocsTelemetryPageViewEvent,
   emitDocsTelemetryProjectEvent,
   getDocsTelemetryFeatures,
   inferDocsTelemetryAgentSurface,
@@ -113,6 +114,94 @@ describe("telemetry", () => {
         },
       },
     });
+  });
+
+  it("emits sanitized browser page views by default for public sites", async () => {
+    process.env.NODE_ENV = "test";
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(null, { status: 202 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://docs.example.com",
+      },
+    });
+    vi.stubGlobal("document", {});
+
+    emitDocsTelemetryPageViewEvent(undefined, {
+      framework: "next",
+      path: "/docs/getting-started",
+      locale: "en",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(init).toMatchObject({
+      credentials: "omit",
+      mode: "no-cors",
+      headers: {
+        "content-type": "text/plain;charset=UTF-8",
+      },
+    });
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      event: {
+        type: "page_view",
+        framework: "next",
+        site: { origin: "https://docs.example.com" },
+        features: {},
+        properties: {
+          trafficType: "human",
+          path: "/docs/getting-started",
+          locale: "en",
+        },
+      },
+    });
+    expect(String(init?.body)).not.toContain("referrer");
+    expect(String(init?.body)).not.toContain("userAgent");
+  });
+
+  it("honors browser telemetry opt-out for page views", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(null, { status: 202 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://docs.example.com",
+      },
+    });
+    vi.stubGlobal("document", {});
+
+    emitDocsTelemetryPageViewEvent(false, {
+      framework: "next",
+      path: "/docs",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not let a configured public origin mask a local browser page view", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(null, { status: 202 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("window", {
+      location: {
+        origin: "http://localhost:3200",
+      },
+    });
+    vi.stubGlobal("document", {});
+
+    emitDocsTelemetryPageViewEvent(
+      { siteOrigin: "https://docs.example.com" },
+      { framework: "next", path: "/docs" },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it.each([

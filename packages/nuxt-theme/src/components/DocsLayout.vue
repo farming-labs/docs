@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useHead } from "#app";
+import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
 import SearchDialog from "./SearchDialog.vue";
 import FloatingAIChat from "./FloatingAIChat.vue";
 import ThemeToggle from "./ThemeToggle.vue";
@@ -27,6 +28,30 @@ const props = withDefaults(
 );
 
 const route = useRoute();
+let lastTelemetryPageKey = "";
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (typeof window === "undefined") return;
+
+    const locale =
+      (route.query.lang as string | undefined) ??
+      (route.query.locale as string | undefined) ??
+      undefined;
+    const pageKey = `${route.path}|${locale ?? ""}`;
+    if (pageKey === lastTelemetryPageKey) return;
+    lastTelemetryPageKey = pageKey;
+
+    emitDocsTelemetryPageViewEvent(props.config?.telemetry, {
+      framework: "nuxt",
+      siteOrigin: window.location.origin,
+      path: route.path.replace(/\/$/, "") || "/",
+      locale,
+    });
+  },
+  { immediate: true },
+);
 const localeConfig = computed(() => props.config?.i18n as
   | { locales?: string[]; defaultLocale?: string }
   | undefined);

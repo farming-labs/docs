@@ -68,7 +68,12 @@ export function FarmDocsPageRenderer({
   if (!Content) {
     return (
       <BrowserRootProvider initialPathname={data.url} navigation={navigation} theme={themeOptions}>
-        <BrowserDocsLayout config={resolvedConfig} tree={data.tree} locale={data.locale}>
+        <BrowserDocsLayout
+          config={resolvedConfig}
+          tree={data.tree}
+          locale={data.locale}
+          telemetryFramework="farmjs"
+        >
           <article style={{ padding: "2rem" }}>
             <h1>Page module missing</h1>
             <p>Expected a compiled MDX module at `{data.sourcePath}`.</p>
@@ -99,6 +104,7 @@ export function FarmDocsPageRenderer({
         config={resolvedConfig}
         tree={data.tree}
         locale={data.locale}
+        telemetryFramework="farmjs"
         description={data.descriptionInBody ? undefined : data.description}
         descriptionInBody={data.descriptionInBody}
         readingTime={data.readingTime}

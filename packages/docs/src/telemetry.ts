@@ -42,6 +42,13 @@ export interface DocsTelemetryAgentSurfaceContext extends DocsTelemetryContext {
   surface: DocsTelemetryAgentSurface;
 }
 
+export interface DocsTelemetryPageViewContext {
+  framework?: DocsTelemetryFramework;
+  siteOrigin?: string;
+  path?: string;
+  locale?: string;
+}
+
 export interface DocsTelemetryAgentSurfaceRequestOptions {
   entry: string;
   llmsTxt?: DocsConfig["llmsTxt"];
@@ -447,8 +454,9 @@ export async function emitDocsTelemetryEvent(
 
   try {
     const ingestKey = readRuntimeEnv("DOCS_TELEMETRY_INGEST_KEY");
+    const browserRequest = isBrowserRuntime() && !ingestKey;
     const headers: Record<string, string> = {
-      "content-type": "application/json",
+      "content-type": browserRequest ? "text/plain;charset=UTF-8" : "application/json",
     };
 
     if (ingestKey) {
@@ -460,6 +468,7 @@ export async function emitDocsTelemetryEvent(
       headers,
       body: JSON.stringify({ event: eventToSend }),
       keepalive: true,
+      ...(browserRequest ? { credentials: "omit", mode: "no-cors" } : {}),
     });
   } catch {
     // Telemetry should never affect docs runtime behavior.
@@ -493,6 +502,54 @@ export function emitDocsTelemetryProjectEvent(
   sent.set(key, now + PROJECT_TELEMETRY_CACHE_TTL_MS);
 
   void emitDocsTelemetryEvent(config.telemetry, event);
+}
+
+/**
+ * Emit a privacy-preserving browser page view for the maintainer telemetry dashboard.
+ *
+ * Page views include only the public site origin, pathname, locale, framework, and package
+ * metadata. They never include a query string, referrer, visitor id, IP address, or user agent.
+ */
+export function emitDocsTelemetryPageViewEvent(
+  telemetry: boolean | DocsTelemetryConfig | undefined,
+  context: DocsTelemetryPageViewContext = {},
+): void {
+  if (
+    telemetry === false ||
+    (telemetry && typeof telemetry === "object" && telemetry.enabled === false)
+  ) {
+    return;
+  }
+
+  const runtimeSiteOrigin =
+    context.siteOrigin ?? (typeof window !== "undefined" ? window.location?.origin : undefined);
+  if (isBlockedDocsTelemetryOrigin(runtimeSiteOrigin)) return;
+
+  const configuredSiteOrigin =
+    telemetry && typeof telemetry === "object" ? telemetry.siteOrigin : undefined;
+  const siteOrigin = configuredSiteOrigin ?? runtimeSiteOrigin;
+  const event = createDocsTelemetryEvent(
+    { telemetry },
+    {
+      type: "page_view",
+      features: {},
+      properties: {
+        trafficType: "human",
+        ...(context.path ? { path: context.path.slice(0, 2_048) } : {}),
+        ...(context.locale ? { locale: context.locale.slice(0, 80) } : {}),
+      },
+    },
+    {
+      framework: context.framework,
+      siteOrigin,
+    },
+  );
+  if (!event) return;
+
+  const clientTelemetry =
+    telemetry && typeof telemetry === "object" ? { ...telemetry, enabled: true } : true;
+
+  void emitDocsTelemetryEvent(clientTelemetry, event);
 }
 
 export function emitDocsTelemetryAgentSurfaceEvent(

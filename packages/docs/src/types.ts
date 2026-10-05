@@ -1053,6 +1053,7 @@ export type DocsTelemetryFramework =
 
 export type DocsTelemetryEventType =
   | "project_detected"
+  | "page_view"
   | "agent_surface_used"
   | "mcp_request"
   | "mcp_tool_used"

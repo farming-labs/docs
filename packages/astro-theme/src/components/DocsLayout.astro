@@ -166,12 +166,22 @@ const staticExport = !!(config as { staticExport?: boolean }).staticExport;
 const aiConfig = config?.ai;
 const showFloatingAI = !staticExport && aiConfig?.mode === "floating" && !!aiConfig?.enabled;
 const showSearch = !staticExport;
+const telemetryConfig =
+  config?.telemetry && typeof config.telemetry === "object" ? config.telemetry : undefined;
+const telemetryEnabled = config?.telemetry !== false && telemetryConfig?.enabled !== false;
 ---
 
 <script is:inline set:html={themeInitScript}></script>
 {overrideCSS && <style set:html={overrideCSS} />}
 
-<div id="nd-docs-layout" data-fd-framework="astro" class="fd-layout">
+<div
+  id="nd-docs-layout"
+  data-fd-framework="astro"
+  data-fd-telemetry-enabled={String(telemetryEnabled)}
+  data-fd-telemetry-endpoint={telemetryConfig?.endpoint}
+  data-fd-telemetry-site-origin={telemetryConfig?.siteOrigin}
+  class="fd-layout"
+>
   <header class="fd-header">
     <button class="fd-menu-btn" id="fd-menu-toggle" aria-label="Toggle sidebar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -423,6 +433,43 @@ const showSearch = !staticExport;
 )}
 
 <script>
+  import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
+
+  function emitMaintainerPageView() {
+    const root = document.getElementById("nd-docs-layout");
+    if (!root) return;
+
+    const url = new URL(window.location.href);
+    const locale = url.searchParams.get("lang") ?? url.searchParams.get("locale") ?? undefined;
+    const pageKey = `${url.pathname}|${locale ?? ""}`;
+    const target = window as typeof window & { __fdTelemetryPageViewKey__?: string };
+    if (target.__fdTelemetryPageViewKey__ === pageKey) return;
+    target.__fdTelemetryPageViewKey__ = pageKey;
+
+    const telemetry =
+      root.dataset.fdTelemetryEnabled === "false"
+        ? false
+        : {
+            enabled: true,
+            ...(root.dataset.fdTelemetryEndpoint
+              ? { endpoint: root.dataset.fdTelemetryEndpoint }
+              : {}),
+            ...(root.dataset.fdTelemetrySiteOrigin
+              ? { siteOrigin: root.dataset.fdTelemetrySiteOrigin }
+              : {}),
+          };
+
+    emitDocsTelemetryPageViewEvent(telemetry, {
+      framework: "astro",
+      siteOrigin: window.location.origin,
+      path: url.pathname.replace(/\/$/, "") || "/",
+      locale,
+    });
+  }
+
+  document.addEventListener("astro:page-load", emitMaintainerPageView);
+  emitMaintainerPageView();
+
   // Sidebar toggle
   const menuBtn = document.getElementById('fd-menu-toggle');
   const sidebar = document.getElementById('fd-sidebar');
