@@ -186,7 +186,10 @@ describe("createFarmDocsNavigator", () => {
           finishPrepare = resolve;
         }),
     );
-    const test = harness(async () => Response.json({ data: page("/docs/guides", "Guides") }), prepare);
+    const test = harness(
+      async () => Response.json({ data: page("/docs/guides", "Guides") }),
+      prepare,
+    );
 
     const navigation = test.navigator.navigate("/docs/guides", {
       history: "push",
