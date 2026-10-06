@@ -20,7 +20,10 @@ function page(url: string, title: string): DocsServerLoadResult {
   };
 }
 
-function harness(fetchImpl: FarmDocsNavigationEnvironment["fetch"]) {
+function harness(
+  fetchImpl: FarmDocsNavigationEnvironment["fetch"],
+  prepare?: (page: DocsServerLoadResult) => Promise<void>,
+) {
   let href = "https://docs.example/docs";
   const assigned: string[] = [];
   const history: Array<{ mode: "push" | "replace"; url: string }> = [];
@@ -48,6 +51,7 @@ function harness(fetchImpl: FarmDocsNavigationEnvironment["fetch"]) {
     config: { entry: "docs" } as DocsConfig,
     data: page("/docs", "Overview"),
     environment,
+    prepare,
     onData: (nextPage, target) => data.push({ page: nextPage, scrollTarget: target?.href ?? null }),
   });
 
@@ -172,5 +176,92 @@ describe("createFarmDocsNavigator", () => {
     expect(test.history).toEqual([{ mode: "push", url: "https://docs.example/docs#install" }]);
     expect(test.scroll).toEqual(["https://docs.example/docs#install"]);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("prepares a page before showing it or writing history", async () => {
+    let finishPrepare: (() => void) | undefined;
+    const prepare = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishPrepare = resolve;
+        }),
+    );
+    const test = harness(
+      async () => Response.json({ data: page("/docs/guides", "Guides") }),
+      prepare,
+    );
+
+    const navigation = test.navigator.navigate("/docs/guides", {
+      history: "push",
+      scroll: true,
+      fallback: "assign",
+    });
+    await vi.waitFor(() => expect(prepare).toHaveBeenCalledOnce());
+
+    expect(prepare.mock.calls[0]?.[0]).toMatchObject({ url: "/docs/guides" });
+    expect(test.data).toEqual([]);
+    expect(test.history).toEqual([]);
+    expect(test.pending).toEqual([true]);
+
+    finishPrepare?.();
+    await navigation;
+
+    expect(test.data[0]?.page.title).toBe("Guides");
+    expect(test.history).toEqual([{ mode: "push", url: "https://docs.example/docs/guides" }]);
+    expect(test.pending).toEqual([true, false]);
+  });
+
+  it("falls back to a full navigation when a page cannot be prepared", async () => {
+    const test = harness(
+      async () => Response.json({ data: page("/docs/guides", "Guides") }),
+      async () => {
+        throw new Error("chunk failed");
+      },
+    );
+
+    await test.navigator.navigate("/docs/guides", {
+      history: "push",
+      scroll: true,
+      fallback: "assign",
+    });
+
+    expect(test.assigned).toEqual(["https://docs.example/docs/guides"]);
+    expect(test.data).toEqual([]);
+    expect(test.history).toEqual([]);
+  });
+
+  it("never shows an older page that finishes preparing after a newer one", async () => {
+    const finish = new Map<string, () => void>();
+    const test = harness(
+      async (url) => {
+        const pathname = new URL(url).pathname;
+        return Response.json({ data: page(pathname, pathname) });
+      },
+      (next) =>
+        new Promise<void>((resolve) => {
+          finish.set(next.url, resolve);
+        }),
+    );
+
+    const first = test.navigator.navigate("/docs/slow", {
+      history: "push",
+      scroll: true,
+      fallback: "assign",
+    });
+    await vi.waitFor(() => expect(finish.has("/docs/slow")).toBe(true));
+    const second = test.navigator.navigate("/docs/fast", {
+      history: "push",
+      scroll: true,
+      fallback: "assign",
+    });
+    await vi.waitFor(() => expect(finish.has("/docs/fast")).toBe(true));
+
+    finish.get("/docs/fast")?.();
+    await second;
+    finish.get("/docs/slow")?.();
+    await first;
+
+    expect(test.data.map((entry) => entry.page.url)).toEqual(["/docs/fast"]);
+    expect(test.history).toEqual([{ mode: "push", url: "https://docs.example/docs/fast" }]);
   });
 });

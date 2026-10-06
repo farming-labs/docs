@@ -56,6 +56,8 @@ export function createFarmDocsNavigator(input: {
   config: DocsConfig;
   data: DocsServerLoadResult;
   environment: FarmDocsNavigationEnvironment;
+  /** Load what a page needs before it is shown, such as its compiled Markdown. */
+  prepare?(data: DocsServerLoadResult): Promise<void>;
   onData(data: DocsServerLoadResult, scrollTarget: URL | null): void;
 }): FarmDocsNavigator {
   let currentData = input.data;
@@ -106,6 +108,8 @@ export function createFarmDocsNavigator(input: {
       if (!payload.data?.sourcePath || typeof payload.data.url !== "string") {
         throw new Error("Farm docs navigation returned an invalid page payload.");
       }
+      if (disposed || request?.id !== nextRequest.id) return;
+      await input.prepare?.(payload.data);
       if (disposed || request?.id !== nextRequest.id) return;
 
       if (options.history !== "none") input.environment.updateHistory(options.history, url);

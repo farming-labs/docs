@@ -270,6 +270,8 @@ interface FarmDocsRuntimeFonts {
 
 interface FarmDocsReactModule {
   FarmDocsPage: ComponentType<{ config: DocsConfig; data: DocsServerLoadResult }>;
+  /** Loads the page's compiled Markdown, which FarmDocsPage renders synchronously. */
+  loadFarmDocsPageModule?(data: DocsServerLoadResult): Promise<void>;
 }
 
 export interface FarmDocsRuntimeHandlerOptions {
@@ -2747,6 +2749,7 @@ export function createFarmDocsRuntimeHandler(
     const reactModule = options.loadReactModule
       ? await options.loadReactModule()
       : ((await import("./react.js")) as FarmDocsReactModule);
+    await reactModule.loadFarmDocsPageModule?.(data);
     const markup = await renderFarmDocsMarkup(
       createElement(reactModule.FarmDocsPage, {
         config: runtimeConfig,
