@@ -78,14 +78,17 @@
       "image-size@>=1.2.0 <=2.0.2": "2.0.4",
       "smol-toml@<=1.7.0": "1.9.0",
       "postcss@<=8.5.17": "8.5.18",
-      "seroval@<=1.5.2": "1.5.3",
+      "seroval@<=1.6.2": "1.6.8",
       "ip-address@<=10.3.0": "10.4.0",
       "ws": "^8.21.0",
       "@farm.js/core>vite": "6.4.3",
       "readdir-glob>minimatch": "10.2.4",
       "glob@10>minimatch": "10.2.4",
       "glob@13>minimatch": "^10.2.3",
-      "toml@<4.2.0": "4.2.0"
+      "toml@<4.2.0": "4.2.0",
+      "tinypool@<2.1.2": "2.2.0",
+      "vue@<3.5.42": "3.5.43",
+      "source-map-js@<1.2.2": "1.2.2"
     }
   }
 }
