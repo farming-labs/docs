@@ -324,6 +324,30 @@ describe("createFarmDocsRuntimeHandler", () => {
     });
   });
 
+  it("loads a page's compiled Markdown before rendering it", async () => {
+    const loaded: string[] = [];
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        async loadFarmDocsPageModule(data) {
+          await Promise.resolve();
+          loaded.push(data.sourcePath);
+        },
+        // Renders only what was loaded first, the way the adapter's page does.
+        FarmDocsPage: ({ data }) =>
+          createElement("main", null, loaded.includes(data.sourcePath) ? data.title : "missing"),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response?.text();
+
+    expect(response?.status).toBe(200);
+    expect(loaded).toHaveLength(1);
+    expect(html).toContain("<main>");
+    expect(html).not.toContain("missing");
+  });
+
   it("serves the bundled adapter CSS without a runtime filesystem dependency", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",

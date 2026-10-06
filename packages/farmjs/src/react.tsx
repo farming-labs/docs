@@ -1,35 +1,31 @@
-import {
-  startTransition,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ComponentType,
-} from "react";
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import type { DocsConfig } from "@farming-labs/docs";
 import type { BrowserNavigationAdapter } from "@farming-labs/theme/browser";
 import type { DocsServerLoadResult } from "./server.js";
-import { normalizeDocsModuleKey, resolveDocsModule } from "./module-map.js";
 import {
   createFarmDocsNavigator,
   type FarmDocsNavigationEnvironment,
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
 import { FarmDocsPageRenderer } from "./page.js";
+import { createFarmDocsPageModules, type FarmDocsMdxModule } from "./page-modules.js";
 
-interface MdxModule {
-  default: ComponentType<any>;
-}
-
-const rawDocModules = import.meta.glob("/**/*.{md,mdx}", {
-  eager: true,
-});
-
-const docModules = Object.fromEntries(
-  Object.entries(rawDocModules).map(([key, value]) => [normalizeDocsModuleKey(key), value]),
+// One chunk per Markdown page, loaded only for the page being shown. An eager
+// glob here put every page of the site in the bundle of every page that
+// hydrates docs.
+const pageModules = createFarmDocsPageModules(
+  import.meta.glob<FarmDocsMdxModule>("/**/*.{md,mdx}"),
 );
+
+/**
+ * Load the compiled Markdown a page renders. Call it before rendering
+ * FarmDocsPage for that page; the server does before rendering, and the
+ * browser before hydrating or showing a page it navigated to.
+ */
+export function loadFarmDocsPageModule(data: DocsServerLoadResult): Promise<void> {
+  return pageModules.load(data);
+}
 
 export function FarmDocsPage({
   config,
@@ -40,9 +36,7 @@ export function FarmDocsPage({
   data: DocsServerLoadResult;
   navigation?: BrowserNavigationAdapter;
 }) {
-  const module = resolveDocsModule(docModules, data.sourcePath, data.entry) as
-    | MdxModule
-    | undefined;
+  const module = pageModules.get(data);
   return (
     <FarmDocsPageRenderer
       config={config}
@@ -110,6 +104,7 @@ function FarmDocsClient({ config, data }: { config: DocsConfig; data: DocsServer
         config,
         data,
         environment: navigationEnvironment,
+        prepare: loadFarmDocsPageModule,
         onData(nextData, scrollTarget) {
           pendingScrollRef.current = scrollTarget;
           startTransition(() => setRuntimeData(nextData));
@@ -162,15 +157,17 @@ function FarmDocsClient({ config, data }: { config: DocsConfig; data: DocsServer
   return <FarmDocsPage config={config} data={runtimeData} navigation={navigation} />;
 }
 
-export function hydrateFarmDocs(input: {
+export async function hydrateFarmDocs(input: {
   config: DocsConfig;
   data: DocsServerLoadResult;
   container?: Element | null;
-}): Root {
+}): Promise<Root> {
   const container = input.container ?? document.getElementById("farm-docs-root");
   if (!container) {
     throw new Error("Farm docs hydration root was not found.");
   }
 
+  // Hydrate with the page's Markdown in hand, so the first render matches the server's.
+  await loadFarmDocsPageModule(input.data);
   return hydrateRoot(container, <FarmDocsClient config={input.config} data={input.data} />);
 }
