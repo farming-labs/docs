@@ -159,6 +159,20 @@ const DOCS_CONFIG_WITH_FUMADOCS_API_REFERENCE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_FUMADOCS_RENDERER_OPTIONS = `import { fumadocsRenderer } from "@farming-labs/next/fumadocs-renderer";
+
+export default {
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: fumadocsRenderer({
+      playground: { enabled: true },
+    }),
+  },
+};
+`;
+
 const DOCS_CONFIG_WITH_MCP = `export default {
   entry: "docs",
   mcp: {
@@ -384,6 +398,22 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const page = readFileSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"), "utf-8");
     expect(page).toContain('import "@farming-labs/next/api-reference.css";');
     expect(page).toContain("createNextApiReferencePage");
+  });
+
+  it("generates Fumadocs API reference files for typed renderer options", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      DOCS_CONFIG_WITH_FUMADOCS_RENDERER_OPTIONS,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
   });
 
   it("routes API operation Markdown requests through the shared docs handler", async () => {

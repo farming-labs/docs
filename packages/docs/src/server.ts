@@ -32,6 +32,8 @@ export type {
   ApiReferenceOpenApiDiscovery,
   ApiReferenceOpenApiVersionDiscovery,
   ApiReferenceRenderer,
+  ApiReferenceRendererConfig,
+  ApiReferenceRendererInput,
   ApiReferenceRoute,
   BuildApiReferenceOptions,
   BuildApiReferenceOperationPagesOptions,

@@ -841,6 +841,11 @@ function readApiReferenceConfig(root: string): {
       const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
       const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
       const rendererMatch = block.match(/renderer\s*:\s*["'](farming-labs|fumadocs|scalar)["']/);
+      const rendererConfig = extractObjectLiteral(block, "renderer");
+      const rendererConfigNameMatch = rendererConfig?.match(
+        /name\s*:\s*["'](farming-labs|fumadocs|scalar)["']/,
+      );
+      const usesFumadocsRendererHelper = /renderer\s*:\s*fumadocsRenderer\s*\(/.test(block);
       const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
 
       return {
@@ -848,6 +853,8 @@ function readApiReferenceConfig(root: string): {
         path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api-reference",
         renderer:
           (rendererMatch?.[1] as "farming-labs" | "fumadocs" | "scalar" | undefined) ??
+          (rendererConfigNameMatch?.[1] as "farming-labs" | "fumadocs" | "scalar" | undefined) ??
+          (usesFumadocsRendererHelper ? "fumadocs" : undefined) ??
           "farming-labs",
         routeRoot: routeRootMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api",
       };

@@ -29,6 +29,11 @@
       "default": "./dist/api-reference.mjs"
     },
     "./api-reference.css": "./styles/api-reference.css",
+    "./fumadocs-renderer": {
+      "types": "./dist/fumadocs-renderer.d.mts",
+      "import": "./dist/fumadocs-renderer.mjs",
+      "default": "./dist/fumadocs-renderer.mjs"
+    },
     "./api": {
       "types": "./dist/api.d.mts",
       "import": "./dist/api.mjs",

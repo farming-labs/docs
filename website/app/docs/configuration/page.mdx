@@ -998,8 +998,42 @@ existing project-relative file, absolute URL, or request-relative URL.
   normalized operation model with searchable navigation, version switching, copyable cURL
   examples, schemas, parameters, responses, and accessible light/dark controls. Set
   `renderer: "scalar"` on any framework or `renderer: "fumadocs"` on Next.js to keep either
-  bundled alternate renderer.
+  bundled alternate renderer. Next.js can also use `fumadocsRenderer()` to pass typed playground
+  and runtime options to the Fumadocs renderer.
 </Callout>
+
+Configure the Fumadocs playground on Next.js without mixing renderer behavior into `theme`:
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocsRenderer } from "@farming-labs/next/fumadocs-renderer";
+import { fumadocs } from "@farming-labs/theme";
+import { authProviders } from "./app/api-reference/auth-providers";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  apiReference: {
+    enabled: true,
+    specUrl: "./openapi.yaml",
+    renderer: fumadocsRenderer({
+      playground: {
+        enabled: true,
+        authProviders,
+      },
+      oauthRedirectUrl: "/api/docs/oauth",
+      proxyUrl: "/api/docs/proxy",
+      showResponseSchema: true,
+      schemaUI: { showExample: true },
+    }),
+  },
+});
+```
+
+`fumadocsRenderer()` accepts the upstream Fumadocs `createOpenAPIPage()` options plus
+`proxyUrl` and `disableCache` from `createOpenAPI()`. `authProviders`, field transforms, and custom
+renderers run in the browser; keep them in client-safe modules and never include secrets. A
+configured proxy or OAuth redirect URL must point to a route implemented by the application.
 
 <Callout type="tip" title="Existing contract? Use specUrl">
   Set `apiReference.specUrl` to a checked-in file such as `./openapi.yaml`, a hosted JSON/YAML URL,

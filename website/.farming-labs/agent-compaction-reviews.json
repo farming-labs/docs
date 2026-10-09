@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:1ba2465f25912b8e",
+      "sourceHash": "fnv1a64:251ef3a6d773bcbd",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:dad7ea38416f42be",
-      "reviewedAt": "2026-10-09T16:40:19.545Z",
+      "outputHash": "fnv1a64:7feae5a2ff7111fb",
+      "reviewedAt": "2026-10-09T20:39:08.296Z",
       "reviewedBy": "docs-team",
-      "reason": "Revalidated after the source docs clarified UTC last-updated formatting; the preserved compact guidance remains accurate because that display-only clarification does not change the configuration or API-reference agent contract."
+      "reason": "Reviewed the new typed Fumadocs renderer options; the preserved agent guidance now documents renderer objects, playground/auth configuration, client-visible secret handling, and application-owned proxy/OAuth routes."
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:a0c5fc62fc2a488f",
+      "sourceHash": "fnv1a64:fa39e7bb59db1df1",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:234fb79b2a88eaff",
-      "reviewedAt": "2026-10-09T16:40:19.554Z",
+      "outputHash": "fnv1a64:743e449e1163566c",
+      "reviewedAt": "2026-10-09T20:39:08.315Z",
       "reviewedBy": "docs-team",
-      "reason": "Revalidated after the source docs clarified UTC last-updated formatting; the preserved compact guidance remains accurate because that display-only clarification does not change the configuration or API-reference agent contract."
+      "reason": "Reviewed the new typed Fumadocs renderer options; the preserved agent guidance now documents renderer objects, playground/auth configuration, client-visible secret handling, and application-owned proxy/OAuth routes."
     },
     {
       "route": "/docs/token-efficiency",

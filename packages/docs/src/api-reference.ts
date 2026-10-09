@@ -25,8 +25,10 @@ import type {
 import { resolveOpenApiReferences, resolveOpenApiReferencesSync } from "./openapi-references.js";
 import type { OpenApiReferenceDocument } from "./openapi-references.js";
 import type {
-  ApiReferenceRenderer,
   ApiReferenceConfig,
+  ApiReferenceRenderer,
+  ApiReferenceRendererConfig,
+  ApiReferenceRendererInput,
   ApiReferenceVersionConfig,
   DocsConfig,
   DocsOpenApiMcpConfig,
@@ -36,7 +38,7 @@ import type {
   DocsTheme,
 } from "./types.js";
 
-export type { ApiReferenceRenderer };
+export type { ApiReferenceRenderer, ApiReferenceRendererConfig, ApiReferenceRendererInput };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -68,6 +70,7 @@ export interface ResolvedApiReferenceConfig {
   defaultVersion?: string;
   catalogTargets?: string[];
   renderer?: ApiReferenceRenderer;
+  rendererOptions?: Readonly<Record<string, unknown>>;
   mcp?: DocsOpenApiMcpConfig;
   routeRoot: string;
   exclude: string[];
@@ -167,6 +170,7 @@ export function resolveApiReferenceConfig(
       defaultVersion: undefined,
       catalogTargets: undefined,
       renderer: undefined,
+      rendererOptions: undefined,
       mcp: undefined,
       routeRoot: "api",
       exclude: [],
@@ -183,6 +187,7 @@ export function resolveApiReferenceConfig(
       defaultVersion: undefined,
       catalogTargets: undefined,
       renderer: undefined,
+      rendererOptions: undefined,
       mcp: undefined,
       routeRoot: "api",
       exclude: [],
@@ -201,6 +206,8 @@ export function resolveApiReferenceConfig(
     );
   }
 
+  const renderer = normalizeApiReferenceRenderer(value.renderer);
+
   return {
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
@@ -209,7 +216,8 @@ export function resolveApiReferenceConfig(
     versions,
     defaultVersion,
     catalogTargets: normalizeApiReferenceCatalogTargets(value.catalogTargets),
-    renderer: normalizeApiReferenceRenderer(value.renderer),
+    renderer: renderer?.name,
+    rendererOptions: renderer?.options,
     mcp: resolveOpenApiMcpConfig(value.mcp),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
@@ -298,9 +306,27 @@ function resolveOpenApiMcpConfig(
   return value === true ? { enabled: true } : { ...value, enabled: value.enabled !== false };
 }
 
-function normalizeApiReferenceRenderer(value?: string): ApiReferenceRenderer | undefined {
-  if (value === "farming-labs" || value === "fumadocs" || value === "scalar") return value;
-  return undefined;
+function isApiReferenceRenderer(value: unknown): value is ApiReferenceRenderer {
+  return value === "farming-labs" || value === "fumadocs" || value === "scalar";
+}
+
+function normalizeApiReferenceRenderer(
+  value?: ApiReferenceRendererInput,
+): ApiReferenceRendererConfig | undefined {
+  if (isApiReferenceRenderer(value)) return { name: value };
+  if (!value || typeof value !== "object" || !isApiReferenceRenderer(value.name)) {
+    return undefined;
+  }
+  if (
+    value.options !== undefined &&
+    (!value.options || typeof value.options !== "object" || Array.isArray(value.options))
+  ) {
+    return undefined;
+  }
+  return {
+    name: value.name,
+    options: value.options,
+  };
 }
 
 export function resolveApiReferenceRenderer(

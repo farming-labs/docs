@@ -478,6 +478,8 @@ export type {
   ChangelogFrontmatter,
   ApiReferenceConfig,
   ApiReferenceRenderer,
+  ApiReferenceRendererConfig,
+  ApiReferenceRendererInput,
   ApiReferenceVersionConfig,
   DocsOpenApiMcpConfig,
   DocsOpenApiMcpCredentialContext,

@@ -1,4 +1,5 @@
 import { defineDocs, type DocsSearchConfig } from "@farming-labs/docs";
+import { fumadocsRenderer } from "@farming-labs/next/fumadocs-renderer";
 import { MyNote } from "./app/components/my-note";
 import { ChangelogActions } from "./app/components/changelog-actions";
 import {
@@ -131,7 +132,10 @@ export default defineDocs({
   apiReference: {
     enabled: true,
     path: "api-reference",
-    renderer: "fumadocs",
+    renderer: fumadocsRenderer({
+      playground: { enabled: true },
+      schemaUI: { showExample: true },
+    }),
     exclude: ["/api/docs", "/api/docs/mcp", "/api/search", "/api/og"],
   },
   changelog: {

@@ -13,6 +13,7 @@ import {
   DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
   OPENAPI_SPEC_FETCH_TIMEOUT_MS,
   OPENAPI_SPEC_MAX_BYTES,
+  resolveApiReferenceConfig,
   resolveApiReferenceOpenApiDiscovery,
   resolveApiReferenceRenderer,
   resolveApiReferenceVersionFromPathname,
@@ -1352,6 +1353,34 @@ describe("resolveApiReferenceRenderer", () => {
         {
           enabled: true,
           renderer: "fumadocs",
+        },
+        "next",
+      ),
+    ).toBe("fumadocs");
+  });
+
+  it("normalizes renderer objects while preserving their adapter options", () => {
+    const config = resolveApiReferenceConfig({
+      enabled: true,
+      renderer: {
+        name: "fumadocs",
+        options: {
+          playground: { enabled: false },
+          oauthRedirectUrl: "/api/docs/oauth",
+        },
+      },
+    });
+
+    expect(config.renderer).toBe("fumadocs");
+    expect(config.rendererOptions).toEqual({
+      playground: { enabled: false },
+      oauthRedirectUrl: "/api/docs/oauth",
+    });
+    expect(
+      resolveApiReferenceRenderer(
+        {
+          enabled: true,
+          renderer: { name: "fumadocs", options: { playground: { enabled: false } } },
         },
         "next",
       ),
