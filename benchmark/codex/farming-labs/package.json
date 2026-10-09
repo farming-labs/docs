@@ -9,9 +9,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.2.119",
-    "@farming-labs/next": "0.2.119",
-    "@farming-labs/theme": "0.2.119",
+    "@farming-labs/docs": "0.2.120",
+    "@farming-labs/next": "0.2.120",
+    "@farming-labs/theme": "0.2.120",
     "next": "16.3.8",
     "react": "19.2.3",
     "react-dom": "19.2.3"
