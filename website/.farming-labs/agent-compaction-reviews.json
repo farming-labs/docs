@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:fe16d960961507e2",
+      "sourceHash": "fnv1a64:1ba2465f25912b8e",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
       "outputHash": "fnv1a64:dad7ea38416f42be",
-      "reviewedAt": "2026-09-29T23:22:20.530Z",
+      "reviewedAt": "2026-10-09T16:40:19.545Z",
       "reviewedBy": "docs-team",
-      "reason": "Document the native Farming Labs API renderer default and preserve the runnable configuration evaluation fixture inside its retrieval section."
+      "reason": "Revalidated after the source docs clarified UTC last-updated formatting; the preserved compact guidance remains accurate because that display-only clarification does not change the configuration or API-reference agent contract."
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:4c9d1db0ee6269f6",
+      "sourceHash": "fnv1a64:a0c5fc62fc2a488f",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
       "outputHash": "fnv1a64:234fb79b2a88eaff",
-      "reviewedAt": "2026-09-30T00:40:37.078Z",
+      "reviewedAt": "2026-10-09T16:40:19.554Z",
       "reviewedBy": "docs-team",
-      "reason": "Document the native interactive API console"
+      "reason": "Revalidated after the source docs clarified UTC last-updated formatting; the preserved compact guidance remains accurate because that display-only clarification does not change the configuration or API-reference agent contract."
     },
     {
       "route": "/docs/token-efficiency",
