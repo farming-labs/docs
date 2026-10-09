@@ -26,6 +26,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import DocsClientCallbacks from "./client-callbacks.js";
+import FumadocsOpenAPIPage from "./fumadocs-api-page.js";
 
 export { resolveApiReferenceConfig };
 
@@ -800,38 +801,6 @@ export function flattenApiReferencePageTreeForSidebar(tree: any) {
   };
 }
 
-function renderApiReferenceOperationLayout(slots: {
-  header: ReactNode;
-  description: ReactNode;
-  apiExample: ReactNode;
-  apiPlayground: ReactNode;
-  authSchemes: ReactNode;
-  parameters: ReactNode;
-  body: ReactNode;
-  responses: ReactNode;
-  callbacks: ReactNode;
-}) {
-  return (
-    <div className="fd-api-reference-operation">
-      <div className="fd-api-reference-operation-main">
-        {slots.header}
-        {slots.apiPlayground}
-        {slots.description ? (
-          <div className="fd-api-reference-operation-description">{slots.description}</div>
-        ) : null}
-        {slots.authSchemes}
-        {slots.parameters}
-        {slots.body}
-        {slots.responses}
-        {slots.callbacks}
-      </div>
-      {slots.apiExample ? (
-        <div className="fd-api-reference-operation-example">{slots.apiExample}</div>
-      ) : null}
-    </div>
-  );
-}
-
 export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
   if (!apiReference.enabled) return config;
@@ -964,19 +933,14 @@ export function createNextApiReferencePage(config: DocsConfig) {
   return async function NextApiReferencePage(props?: {
     params?: Promise<{ slug?: string[] }> | { slug?: string[] };
   }) {
-    const [{ createAPIPage }, { DocsDescription, DocsPage, DocsTitle }] = await Promise.all([
-      import("fumadocs-openapi/ui"),
-      import("fumadocs-ui/layouts/notebook/page"),
-    ]);
+    const { DocsDescription, DocsPage, DocsTitle } =
+      await import("fumadocs-ui/layouts/notebook/page");
     const resolvedParams = props?.params ? await props.params : undefined;
     const slug = resolvedParams?.slug ?? [];
     const apiReference = resolveApiReferenceConfig(config.apiReference);
     const version = resolveApiReferenceVersion(apiReference, slug[0]);
     const pageSlug = version ? slug.slice(1) : slug;
-    const { info, pages, server, source } = await getNextApiReferenceSourceState(
-      config,
-      version?.id,
-    );
+    const { info, pages, source } = await getNextApiReferenceSourceState(config, version?.id);
 
     if (pages.length === 0) {
       return (
@@ -993,15 +957,10 @@ export function createNextApiReferencePage(config: DocsConfig) {
     }
 
     const page = pageSlug.length === 0 ? pages[0] : source.getPage(pageSlug);
-    if (!page || typeof page.data?.getAPIPageProps !== "function") {
+    if (!page || typeof page.data?.getOpenAPIPageProps !== "function") {
       notFound();
     }
 
-    const APIPage = (createAPIPage as any)(server, {
-      content: {
-        renderOperationLayout: renderApiReferenceOperationLayout,
-      },
-    });
     const currentPageIndex =
       pageSlug.length === 0 ? 0 : pages.findIndex((entry) => entry.url === page.url);
     const previousPage = currentPageIndex > 0 ? pages[currentPageIndex - 1] : undefined;
@@ -1024,7 +983,7 @@ export function createNextApiReferencePage(config: DocsConfig) {
             : info.description}
         </DocsDescription>
         <div className="fd-api-reference-body">
-          <APIPage {...page.data.getAPIPageProps()} />
+          <FumadocsOpenAPIPage {...page.data.getOpenAPIPageProps()} />
         </div>
         {previousPage || nextPage ? (
           <nav className="fd-api-reference-pagination" aria-label="API reference pagination">
@@ -1134,21 +1093,21 @@ export async function getNextApiReferenceSourceState(
   });
 
   const server = createOpenAPI({
-    input: async () => ({
+    input: {
       main: document as any,
-    }),
+    },
   });
   const info = getOpenApiInfo(document);
   const source = loader(
     await openapiSource(server, {
       per: "operation",
       groupBy: "tag",
-      name(output: any, dereferenced: any) {
+      name(this: { document?: Record<string, any> }, output: any) {
         if (output.type !== "operation") {
           return slugifyApiReferencePageName(output.item.name);
         }
 
-        const pathItem = dereferenced.paths?.[output.item.path];
+        const pathItem = this.document?.paths?.[output.item.path];
         const operation = pathItem?.[output.item.method];
         const summary =
           typeof operation?.summary === "string" && operation.summary.trim()
