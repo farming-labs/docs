@@ -33,14 +33,14 @@
     "unicornstudio-react": "latest"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.2.1",
     "@types/mdx": "^2.0.13",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "postcss": "^8.5.6",
     "prisma": "^6.19.2",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3"
   }
 }

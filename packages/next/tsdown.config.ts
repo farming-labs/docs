@@ -9,6 +9,7 @@ export default defineConfig({
     "src/changelog-rail-search.tsx",
     "src/client-callbacks.tsx",
     "src/config.ts",
+    "src/fumadocs-api-page.tsx",
     "src/layout.tsx",
     "src/mdx-plugins/remark-heading.ts",
     "src/mdx-plugins/remark-code-group.ts",

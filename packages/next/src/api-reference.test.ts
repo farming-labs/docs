@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -7,8 +7,13 @@ import {
   createNextApiReference,
   flattenApiReferencePageTreeForSidebar,
   getNextApiReferenceMode,
+  getNextApiReferenceSourceState,
   withNextApiReferenceBanner,
 } from "./api-reference.js";
+
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ host: "docs.example.com" }),
+}));
 
 describe("buildNextOpenApiDocument", () => {
   let tmpDir: string;
@@ -128,6 +133,46 @@ export async function GET() {
           summary: "User endpoint",
         },
       },
+    });
+  });
+
+  it("builds Fumadocs v12 page props from generated operations", async () => {
+    mkdirSync(join(tmpDir, "app", "api", "plants"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "api", "plants", "route.ts"),
+      `/** List plants */
+export async function GET() {
+  return Response.json([]);
+}
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const state = await getNextApiReferenceSourceState({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        renderer: "fumadocs",
+      },
+    });
+    const page = state.pages[0];
+
+    expect(state.pages).toHaveLength(1);
+    expect(page?.data.getOpenAPIPageProps).toBeTypeOf("function");
+    expect(page?.data.getOpenAPIPageProps()).toMatchObject({
+      payload: {
+        bundled: {
+          openapi: expect.stringMatching(/^3\./),
+        },
+      },
+      operations: [
+        {
+          path: "/api/plants",
+          method: "get",
+        },
+      ],
     });
   });
 });
