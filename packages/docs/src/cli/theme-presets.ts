@@ -188,7 +188,7 @@ export const BUILT_IN_THEME_PRESETS = [
   {
     value: "junction",
     label: "Junction",
-    hint: "Dashed rails, square junction marks, and compact technical typography",
+    hint: "Blueprint canvas, dark navigation spine, and numbered sections",
     factory: "junction",
     nextImport: "@farming-labs/theme/junction",
     svelteImport: "@farming-labs/svelte-theme/junction",

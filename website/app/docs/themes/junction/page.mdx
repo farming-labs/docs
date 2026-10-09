@@ -1,6 +1,6 @@
 ---
 title: "Junction"
-description: "Rail-based technical theme with dashed structure and square junction marks"
+description: "Blueprint technical theme with a dark navigation spine and numbered sections"
 icon: "route"
 order: 4.8
 related:
@@ -15,11 +15,11 @@ agent:
 # Junction Theme
 
 <Agent>
-Apply `junction` from the framework's matching theme package and pair it with `@farming-labs/theme/junction/css`. Verify dashed header, sidebar, and TOC rails; blue structural active states; full-width heading separators; and the top-right/bottom-left junction marks on technical surfaces.
+Apply `junction` from the framework's matching theme package and pair it with `@farming-labs/theme/junction/css`. Verify the blueprint grid, dark navigation spine, electric-blue structural rails, numbered sections, paper-like article panel, and near-black code surfaces.
 Junction is available for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt. If the factory does not resolve, use the matching framework theme package. If the structure is absent but colors load, verify the shared `/junction/css` import.
 </Agent>
 
-Junction is a light-first technical documentation preset influenced by engineering diagrams and the structured rail language used on [Jevia](https://jevia.dev). It uses dashed layout boundaries, compact Geist typography, square geometry, and a restrained blue signal color without copying another site's branding or content.
+Junction is a blueprint-inspired technical documentation preset influenced by engineering diagrams and the structured edge language used on [Jevia](https://jevia.dev). It combines a dark navigation spine, electric-blue rails, oversized editorial headings, numbered sections, and a pale grid canvas without copying another site's branding or content.
 
 ## Next.js, TanStack Start, and Farm.js
 
@@ -58,21 +58,22 @@ Import the shared visual layer for every framework:
 
 | Property | Value |
 | --- | --- |
-| Primary | `#0057ff` |
-| Background | `#fbfbf8` light, `#090909` dark |
-| Border radius | `0.125rem` |
-| Content width | 840px |
-| Sidebar width | 248px |
-| TOC width | 224px |
-| Header height | 56px |
+| Primary | `#145cff` |
+| Background | `#edf4ff` light, `#07111f` dark |
+| Border radius | `0px` |
+| Content width | 920px |
+| Sidebar width | 264px |
+| TOC width | 240px |
+| Header height | 60px |
 
 ## Design Language
 
-- Dashed header, sidebar, TOC, and section rails establish the page structure.
-- Small square marks identify visual junctions without wrapping every section in a card.
+- A pale blueprint grid separates the content canvas from the near-black navigation spine.
+- Electric-blue structural rails frame the header, sidebar, article, and TOC.
+- Oversized page titles and numbered section markers make long technical pages easy to scan.
 - Mono typography is reserved for navigation, controls, tables, and technical metadata.
-- Code panels stay near-black in both color modes for predictable contrast.
-- Active navigation uses a blue structural rail instead of a large filled pill.
+- Code panels stay near-black in both color modes and use a cyan signal rail.
+- Active navigation becomes a solid blue status bar with a cyan position marker.
 - Reduced-motion preferences disable nonessential transitions and animation.
 
 ## Customizing
@@ -81,7 +82,7 @@ Import the shared visual layer for every framework:
 theme: junction({
   ui: {
     colors: { primary: "#7c3aed" },
-    layout: { contentWidth: 900, sidebarWidth: 264 },
+    layout: { contentWidth: 960, sidebarWidth: 280 },
   },
 }),
 ```

@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import { junction } from "./index.js";
 
 describe("junction theme", () => {
-  it("uses the compact cross-framework layout contract", () => {
+  it("uses the blueprint cross-framework layout contract", () => {
     expect(junction()).toMatchObject({
       name: "junction",
       ui: {
-        radius: "0.125rem",
+        radius: "0px",
         layout: {
-          contentWidth: 840,
-          sidebarWidth: 248,
-          tocWidth: 224,
-          header: { height: 56, sticky: true },
+          contentWidth: 920,
+          sidebarWidth: 264,
+          tocWidth: 240,
+          header: { height: 60, sticky: true },
         },
         sidebar: { style: "bordered" },
       },
@@ -27,8 +27,8 @@ describe("junction theme", () => {
         },
       }).ui,
     ).toMatchObject({
-      colors: { primary: "#7c3aed", background: "#fbfbf8" },
-      layout: { contentWidth: 900, sidebarWidth: 248 },
+      colors: { primary: "#7c3aed", background: "#edf4ff" },
+      layout: { contentWidth: 900, sidebarWidth: 264 },
     });
   });
 });

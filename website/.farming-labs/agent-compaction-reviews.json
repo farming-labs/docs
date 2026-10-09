@@ -3,12 +3,12 @@
   "reviews": [
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:140b646169d9af52",
+      "sourceHash": "fnv1a64:29dc10571fba8250",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
       "outputHash": "fnv1a64:1b5c90455efb0c05",
-      "reviewedAt": "2026-10-09T21:47:44.999Z",
+      "reviewedAt": "2026-10-09T23:13:12.283Z",
       "reviewedBy": "docs-team",
-      "reason": "Reviewed the Junction theme and framework-filtered preset additions; the preserved CLI agent guidance remains accurate because it describes theme selection generically while the source page owns the concrete preset matrix."
+      "reason": "Reviewed the Junction visual-system rewrite; the preserved CLI agent guidance remains accurate because it describes theme selection generically while the source page owns the concrete preset descriptions."
     },
     {
       "route": "/docs/configuration",

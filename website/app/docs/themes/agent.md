@@ -1,10 +1,10 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:f1365c2a841b8ec8
+sourceHash=fnv1a64:9de8a42e8afba5f6
 settingsHash=fnv1a64:b2106dff2d4f1f98
-outputHash=fnv1a64:47eadcb34d3719ea
-generatedAt=2026-10-09T22:04:43.599Z
+outputHash=fnv1a64:96ac54bdd0b8d244
+generatedAt=2026-10-09T23:22:26.212Z
 -->
 # Themes
 URL: /docs/themes
@@ -47,6 +47,6 @@ export default defineDocs({
 | [Command Grid](/docs/themes/command-grid) | `@farming-labs/theme/command-grid` | Paper-grid command documentation shell |
 | [Hardline](/docs/themes/hardline) | `@farming-labs/theme/hardline` | Square corners and bold borders |
 | [Threadline](/docs/themes/threadline) | `@farming-labs/theme/threadline` | Compact chat and agent docs shell; React adapters only |
-| [Junction](/docs/themes/junction) | `@farming-labs/theme/junction` | Dashed rails, square junction marks, and compact technical typography |
+| [Junction](/docs/themes/junction) | `@farming-labs/theme/junction` | Blueprint canvas, dark navigation spine, and numbered sections |
 
 Junction supports Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt. Use the matching framework factory package and always pair it with `@farming-labs/theme/junction/css`. DarkBold, Shiny, and Threadline are limited to the React adapters and must not be offered in native SvelteKit, Astro, or Nuxt scaffolds.

@@ -103,10 +103,10 @@ export default defineDocs({
     key: "junction",
     name: "Junction",
     description:
-      "Rail-based technical docs with dashed structure, square junction marks, and a restrained blue signal color.",
+      "Blueprint technical docs with a dark navigation spine, electric-blue rails, and numbered sections.",
     cssImport: '@import "@farming-labs/theme/junction/css";',
-    colors: ["#0057ff", "#fbfbf8", "#111111", "#d8d8d0"],
-    accent: "#0057ff",
+    colors: ["#145cff", "#edf4ff", "#06111f", "#7ce7ff"],
+    accent: "#145cff",
     previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { junction } from "@farming-labs/theme/junction";

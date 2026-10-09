@@ -233,23 +233,23 @@ const PRESETS: Record<
   },
   junction: {
     label: "Junction",
-    desc: "Dashed rails and compact technical structure",
+    desc: "Blueprint canvas with a dark navigation spine",
     cssImport: "@farming-labs/theme/junction/css",
     themeImport: { from: "@farming-labs/theme/junction", name: "junction" },
     colors: {
-      primary: "#0057ff",
+      primary: "#145cff",
       primaryForeground: "#ffffff",
-      background: "#fbfbf8",
-      foreground: "#111111",
-      muted: "#efefea",
-      mutedForeground: "#666660",
-      border: "#d8d8d0",
-      card: "#ffffff",
-      ring: "#0057ff",
+      background: "#edf4ff",
+      foreground: "#081425",
+      muted: "#dbe7f8",
+      mutedForeground: "#53657e",
+      border: "#9eb8d8",
+      card: "#fbfdff",
+      ring: "#145cff",
     },
     sidebar: "bordered",
     toc: { style: "directional" },
-    radius: "0.125rem",
+    radius: "0px",
   },
 };
 
@@ -1361,11 +1361,11 @@ export function ThemeCustomizer() {
           style={
             state.preset === "junction"
               ? {
-                  borderRadius: "2px",
-                  background: "var(--color-fd-secondary, #f1f1ec)",
-                  color: "var(--color-fd-foreground, #111111)",
-                  boxShadow: "none",
-                  borderColor: "var(--color-fd-border, #d8d8d0)",
+                  borderRadius: "0",
+                  background: "var(--fd-junction-sidebar, #06111f)",
+                  color: "var(--fd-junction-sidebar-text, #dceaff)",
+                  boxShadow: "4px 4px 0 rgb(20 92 255 / 18%)",
+                  borderColor: "var(--fd-junction-blue, #145cff)",
                 }
               : ["shiny", "colorful", "default", "ledger", "shadcn"].includes(state.preset)
                 ? {
