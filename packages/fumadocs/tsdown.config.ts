@@ -36,6 +36,7 @@ export default defineConfig({
     "src/ledger/index.ts",
     "src/shadcn/index.ts",
     "src/threadline/index.ts",
+    "src/junction/index.ts",
   ],
   format: "esm",
   unbundle: true,

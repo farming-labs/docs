@@ -243,6 +243,10 @@ function resolveWorkspaceAliases() {
       replacement: `${themeSrc}/threadline/index.ts`,
     },
     {
+      find: /^@farming-labs\/theme\/junction$/,
+      replacement: `${themeSrc}/junction/index.ts`,
+    },
+    {
       find: /^@farming-labs\/theme\/command-grid$/,
       replacement: `${themeSrc}/command-grid/index.ts`,
     },

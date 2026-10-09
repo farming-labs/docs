@@ -1635,23 +1635,25 @@ workflow. Set `review.ci.name` when the GitHub check should use a name other tha
 
 ## Available Themes
 
-The init CLI offers several built-in themes plus an option to create your own:
+The init CLI filters built-in themes to presets supported by the detected framework:
 
-| Theme          | Description                                                |
-| -------------- | ---------------------------------------------------------- |
-| `fumadocs`     | Clean, neutral docs theme (default)                        |
-| `darksharp`    | All-black, sharp corners, no rounded edges                 |
-| `pixel-border` | Refined dark UI inspired by better-auth.com                |
-| `colorful`     | Fumadocs-style neutral theme with description support      |
-| `greentree`    | Emerald green accent, Inter font, Mintlify-inspired        |
-| `ledger`       | Stripe Docs-inspired product docs shell with navy code panels |
-| `shadcn`       | Compact neutral shell inspired by the shadcn/ui documentation |
-| `command-grid` | Mono-first paper-grid preset inspired by the better-cmdk landing page |
-| `concrete`     | Brutalist poster-style theme with offset shadows            |
-| `hardline`     | Hard-edge theme with square corners and bold borders        |
-| `darkbold`     | Pure monochrome, Geist typography, clean minimalism        |
-| `shiny`        | Glossy, modern look with subtle shimmer effects            |
-| **Create your own theme** | Scaffolds `themes/<name>.ts` and `themes/<name>.css`; you’re prompted for the theme name (default `my-theme`). See [Creating your own theme](/docs/themes/creating-themes). |
+| Theme          | Availability | Description                                                |
+| -------------- | ------------ | ---------------------------------------------------------- |
+| `fumadocs`     | All frameworks | Clean, neutral docs theme (default)                      |
+| `darksharp`    | All frameworks | All-black, sharp corners, no rounded edges               |
+| `pixel-border` | All frameworks | Refined dark UI inspired by better-auth.com              |
+| `colorful`     | All frameworks | Fumadocs-style neutral theme with description support    |
+| `greentree`    | All frameworks | Emerald green accent, Inter font, Mintlify-inspired      |
+| `ledger`       | All frameworks | Product docs shell with navy code panels                 |
+| `shadcn`       | All frameworks | Compact neutral shell inspired by shadcn/ui documentation |
+| `command-grid` | All frameworks | Mono-first paper-grid preset inspired by better-cmdk     |
+| `concrete`     | All frameworks | Brutalist poster-style theme with offset shadows         |
+| `hardline`     | All frameworks | Hard-edge theme with square corners and bold borders     |
+| `junction`     | All frameworks | Dashed rails, square junction marks, and compact technical typography |
+| `darkbold`     | React adapters | Pure monochrome, Geist typography, clean minimalism      |
+| `shiny`        | React adapters | Glossy, modern look with subtle shimmer effects          |
+| `threadline`   | React adapters | Compact neutral shell for chat and agent docs            |
+| **Create your own theme** | All frameworks | Scaffolds `themes/<name>.ts` and `themes/<name>.css`; you’re prompted for the theme name (default `my-theme`). See [Creating your own theme](/docs/themes/creating-themes). |
 
 ## What it does (Existing project)
 
@@ -2111,7 +2113,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 | ----------------------- | --------------------------------------------------------------------------- |
 | `--template <name>`     | Bootstrap a project: `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Use with `--name`. |
 | `--name <project>`      | Project folder name when using `--template`; prompt if omitted (e.g. `my-docs`) |
-| `--theme <name>`        | Skip theme prompt: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `darkbold`, `shiny`, `ledger`, `shadcn`, `greentree`, `concrete`, `command-grid`, `hardline` |
+| `--theme <name>`        | Skip theme prompt: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `darkbold`, `shiny`, `ledger`, `shadcn`, `greentree`, `concrete`, `command-grid`, `hardline`, `threadline`, `junction` |
 | `--entry <path>`        | Skip entry path prompt (e.g. `--entry docs`)                                |
 
 **Starting from scratch?** Use `--template` with `--name <project>`. The CLI bootstraps a project with the given name, installs dependencies, and then you run `cd <project> && pnpm run dev` to start.

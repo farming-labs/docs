@@ -123,6 +123,10 @@ function resolveWorkspaceAliases() {
       replacement: `${themeSrc}/shadcn/index.ts`,
     },
     {
+      find: /^@farming-labs\/theme\/junction$/,
+      replacement: `${themeSrc}/junction/index.ts`,
+    },
+    {
       find: /^@farming-labs\/theme\/search$/,
       replacement: `${themeSrc}/search.ts`,
     },

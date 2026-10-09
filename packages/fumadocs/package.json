@@ -104,6 +104,11 @@
       "import": "./dist/threadline/index.mjs",
       "default": "./dist/threadline/index.mjs"
     },
+    "./junction": {
+      "types": "./dist/junction/index.d.mts",
+      "import": "./dist/junction/index.mjs",
+      "default": "./dist/junction/index.mjs"
+    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -139,6 +144,7 @@
     "./ledger/css": "./styles/ledger.css",
     "./shadcn/css": "./styles/shadcn.css",
     "./threadline/css": "./styles/threadline.css",
+    "./junction/css": "./styles/junction.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"

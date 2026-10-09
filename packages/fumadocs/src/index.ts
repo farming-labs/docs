@@ -11,6 +11,7 @@
  *   - `@farming-labs/theme/ledger`       → Stripe Docs-inspired product docs theme
  *   - `@farming-labs/theme/shadcn`       → compact shadcn/ui docs-inspired theme
  *   - `@farming-labs/theme/threadline`   → compact chat-docs neutral theme
+ *   - `@farming-labs/theme/junction`     → rail-based technical docs theme
  *
  * This root export provides layout helpers, the RootProvider, and re-exports
  * the base `fumadocs()` preset from `/default` for backward compatibility.
@@ -78,6 +79,7 @@ export { hardline, HardlineUIDefaults } from "./hardline/index.js";
 export { ledger, LedgerUIDefaults } from "./ledger/index.js";
 export { shadcn, ShadcnUIDefaults } from "./shadcn/index.js";
 export { threadline, threadlinePageActions, ThreadlineUIDefaults } from "./threadline/index.js";
+export { junction, JunctionUIDefaults } from "./junction/index.js";
 
 // ─── UI primitives for custom theme layouts ───────────────────────────
 // These are the building blocks theme authors use to compose custom layouts

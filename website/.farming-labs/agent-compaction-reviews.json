@@ -3,12 +3,12 @@
   "reviews": [
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:a6c8dbf9346b4ae3",
+      "sourceHash": "fnv1a64:140b646169d9af52",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
       "outputHash": "fnv1a64:1b5c90455efb0c05",
-      "reviewedAt": "2026-09-30T00:10:47.741Z",
+      "reviewedAt": "2026-10-09T21:47:44.999Z",
       "reviewedBy": "docs-team",
-      "reason": "Document typed OpenAPI SDK generation"
+      "reason": "Reviewed the Junction theme and framework-filtered preset additions; the preserved CLI agent guidance remains accurate because it describes theme selection generically while the source page owns the concrete preset matrix."
     },
     {
       "route": "/docs/configuration",

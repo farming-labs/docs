@@ -32,3 +32,5 @@ export declare const ledger: (overrides?: { ui?: Record<string, unknown> }) => D
 export declare const LedgerUIDefaults: Record<string, unknown>;
 export declare const shadcn: (overrides?: { ui?: Record<string, unknown> }) => DocsTheme;
 export declare const ShadcnUIDefaults: Record<string, unknown>;
+export declare const junction: (overrides?: { ui?: Record<string, unknown> }) => DocsTheme;
+export declare const JunctionUIDefaults: Record<string, unknown>;

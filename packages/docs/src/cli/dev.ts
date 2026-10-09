@@ -13,6 +13,7 @@ import {
   tsconfigTemplate,
   type TemplateConfig,
 } from "./templates.js";
+import { BUILT_IN_THEME_PRESETS } from "./theme-presets.js";
 import { detectPackageManagerFromProject, type PackageManager } from "./utils.js";
 
 const PRIMARY_MANAGED_CONFIG_FILE = "docs.json";
@@ -46,23 +47,8 @@ const RUNTIME_FRAMEWORK_VALUES = [
 ] as const;
 type RuntimeFrameworkName = (typeof RUNTIME_FRAMEWORK_VALUES)[number];
 
-type ThemePresetName =
-  | "default"
-  | "fumadocs"
-  | "darksharp"
-  | "pixel-border"
-  | "colorful"
-  | "darkbold"
-  | "shiny"
-  | "ledger"
-  | "shadcn"
-  | "greentree"
-  | "concrete"
-  | "command-grid"
-  | "hardline";
-
 interface ManagedThemePreset {
-  configName: ThemePresetName;
+  configName: string;
   templateTheme: TemplateConfig["theme"];
   importPath: string;
   factory: string;
@@ -160,86 +146,28 @@ type NextDevEvent =
   | { type: "warning"; message: string }
   | { type: "error"; message: string };
 
-const THEME_PRESETS: Record<string, ManagedThemePreset> = {
-  default: {
-    configName: "default",
-    templateTheme: "fumadocs",
-    importPath: "@farming-labs/theme",
-    factory: "fumadocs",
-  },
-  fumadocs: {
-    configName: "fumadocs",
-    templateTheme: "fumadocs",
-    importPath: "@farming-labs/theme",
-    factory: "fumadocs",
-  },
-  darksharp: {
-    configName: "darksharp",
-    templateTheme: "darksharp",
-    importPath: "@farming-labs/theme/darksharp",
-    factory: "darksharp",
-  },
-  "pixel-border": {
-    configName: "pixel-border",
-    templateTheme: "pixel-border",
-    importPath: "@farming-labs/theme/pixel-border",
-    factory: "pixelBorder",
-  },
-  colorful: {
-    configName: "colorful",
-    templateTheme: "colorful",
-    importPath: "@farming-labs/theme/colorful",
-    factory: "colorful",
-  },
-  darkbold: {
-    configName: "darkbold",
-    templateTheme: "darkbold",
-    importPath: "@farming-labs/theme/darkbold",
-    factory: "darkbold",
-  },
-  shiny: {
-    configName: "shiny",
-    templateTheme: "shiny",
-    importPath: "@farming-labs/theme/shiny",
-    factory: "shiny",
-  },
-  ledger: {
-    configName: "ledger",
-    templateTheme: "ledger",
-    importPath: "@farming-labs/theme/ledger",
-    factory: "ledger",
-  },
-  shadcn: {
-    configName: "shadcn",
-    templateTheme: "shadcn",
-    importPath: "@farming-labs/theme/shadcn",
-    factory: "shadcn",
-  },
-  greentree: {
-    configName: "greentree",
-    templateTheme: "greentree",
-    importPath: "@farming-labs/theme/greentree",
-    factory: "greentree",
-  },
-  concrete: {
-    configName: "concrete",
-    templateTheme: "concrete",
-    importPath: "@farming-labs/theme/concrete",
-    factory: "concrete",
-  },
-  "command-grid": {
-    configName: "command-grid",
-    templateTheme: "command-grid",
-    importPath: "@farming-labs/theme/command-grid",
-    factory: "commandGrid",
-  },
-  hardline: {
-    configName: "hardline",
-    templateTheme: "hardline",
-    importPath: "@farming-labs/theme/hardline",
-    factory: "hardline",
-  },
-};
+const THEME_PRESETS: Record<string, ManagedThemePreset> = Object.fromEntries([
+  [
+    "default",
+    {
+      configName: "default",
+      templateTheme: "fumadocs",
+      importPath: "@farming-labs/theme",
+      factory: "fumadocs",
+    },
+  ],
+  ...BUILT_IN_THEME_PRESETS.filter((preset) =>
+    preset.frameworks.some((framework) => framework === "nextjs"),
+  ).map((preset) => [
+    preset.value,
+    {
+      configName: preset.value,
+      templateTheme: preset.value,
+      importPath: preset.nextImport,
+      factory: preset.factory,
+    },
+  ]),
+]);
 
 const managedConfigSchema = z
   .object({

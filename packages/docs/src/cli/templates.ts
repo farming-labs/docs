@@ -1,4 +1,5 @@
 import path from "node:path";
+import { getThemeInfo } from "./theme-presets.js";
 
 // ---------------------------------------------------------------------------
 // File templates for the init CLI.
@@ -32,122 +33,6 @@ export interface TemplateConfig {
     path: string;
     routeRoot: string;
   };
-}
-
-// ---------------------------------------------------------------------------
-// Theme info
-// ---------------------------------------------------------------------------
-
-interface ThemeInfo {
-  factory: string;
-  nextImport: string;
-  svelteImport: string;
-  astroImport: string;
-  nuxtImport: string;
-  nextCssImport: string;
-}
-
-const THEME_INFO: Record<string, ThemeInfo> = {
-  fumadocs: {
-    factory: "fumadocs",
-    nextImport: "@farming-labs/theme",
-    svelteImport: "@farming-labs/svelte-theme",
-    astroImport: "@farming-labs/astro-theme",
-    nuxtImport: "@farming-labs/nuxt-theme",
-    nextCssImport: "default",
-  },
-  darksharp: {
-    factory: "darksharp",
-    nextImport: "@farming-labs/theme/darksharp",
-    svelteImport: "@farming-labs/svelte-theme/darksharp",
-    astroImport: "@farming-labs/astro-theme/darksharp",
-    nuxtImport: "@farming-labs/nuxt-theme/darksharp",
-    nextCssImport: "darksharp",
-  },
-  "pixel-border": {
-    factory: "pixelBorder",
-    nextImport: "@farming-labs/theme/pixel-border",
-    svelteImport: "@farming-labs/svelte-theme/pixel-border",
-    astroImport: "@farming-labs/astro-theme/pixel-border",
-    nuxtImport: "@farming-labs/nuxt-theme/pixel-border",
-    nextCssImport: "pixel-border",
-  },
-  colorful: {
-    factory: "colorful",
-    nextImport: "@farming-labs/theme/colorful",
-    svelteImport: "@farming-labs/svelte-theme/colorful",
-    astroImport: "@farming-labs/astro-theme/colorful",
-    nuxtImport: "@farming-labs/nuxt-theme/colorful",
-    nextCssImport: "colorful",
-  },
-  darkbold: {
-    factory: "darkbold",
-    nextImport: "@farming-labs/theme/darkbold",
-    svelteImport: "@farming-labs/svelte-theme/darkbold",
-    astroImport: "@farming-labs/astro-theme/darkbold",
-    nuxtImport: "@farming-labs/nuxt-theme/darkbold",
-    nextCssImport: "darkbold",
-  },
-  shiny: {
-    factory: "shiny",
-    nextImport: "@farming-labs/theme/shiny",
-    svelteImport: "@farming-labs/svelte-theme/shiny",
-    astroImport: "@farming-labs/astro-theme/shiny",
-    nuxtImport: "@farming-labs/nuxt-theme/shiny",
-    nextCssImport: "shiny",
-  },
-  ledger: {
-    factory: "ledger",
-    nextImport: "@farming-labs/theme/ledger",
-    svelteImport: "@farming-labs/svelte-theme/ledger",
-    astroImport: "@farming-labs/astro-theme/ledger",
-    nuxtImport: "@farming-labs/nuxt-theme/ledger",
-    nextCssImport: "ledger",
-  },
-  shadcn: {
-    factory: "shadcn",
-    nextImport: "@farming-labs/theme/shadcn",
-    svelteImport: "@farming-labs/svelte-theme/shadcn",
-    astroImport: "@farming-labs/astro-theme/shadcn",
-    nuxtImport: "@farming-labs/nuxt-theme/shadcn",
-    nextCssImport: "shadcn",
-  },
-  greentree: {
-    factory: "greentree",
-    nextImport: "@farming-labs/theme/greentree",
-    svelteImport: "@farming-labs/svelte-theme/greentree",
-    astroImport: "@farming-labs/astro-theme/greentree",
-    nuxtImport: "@farming-labs/nuxt-theme/greentree",
-    nextCssImport: "greentree",
-  },
-  concrete: {
-    factory: "concrete",
-    nextImport: "@farming-labs/theme/concrete",
-    svelteImport: "@farming-labs/svelte-theme/concrete",
-    astroImport: "@farming-labs/astro-theme/concrete",
-    nuxtImport: "@farming-labs/nuxt-theme/concrete",
-    nextCssImport: "concrete",
-  },
-  "command-grid": {
-    factory: "commandGrid",
-    nextImport: "@farming-labs/theme/command-grid",
-    svelteImport: "@farming-labs/svelte-theme/command-grid",
-    astroImport: "@farming-labs/astro-theme/command-grid",
-    nuxtImport: "@farming-labs/nuxt-theme/command-grid",
-    nextCssImport: "command-grid",
-  },
-  hardline: {
-    factory: "hardline",
-    nextImport: "@farming-labs/theme/hardline",
-    svelteImport: "@farming-labs/svelte-theme/hardline",
-    astroImport: "@farming-labs/astro-theme/hardline",
-    nuxtImport: "@farming-labs/nuxt-theme/hardline",
-    nextCssImport: "hardline",
-  },
-};
-
-function getThemeInfo(theme: string): ThemeInfo {
-  return THEME_INFO[theme] ?? THEME_INFO.fumadocs;
 }
 
 function getThemeCssImport(theme: string): string {

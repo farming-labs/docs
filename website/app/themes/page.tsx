@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import CodeBlock from "@/components/ui/code-block";
 import { useIsDark } from "@/components/ui/animated-bg-black";
 
@@ -98,6 +98,25 @@ export default defineDocs({
 });`,
     globalCss: `@import "tailwindcss";
 @import "@farming-labs/theme/shiny/css";`,
+  },
+  {
+    key: "junction",
+    name: "Junction",
+    description:
+      "Rail-based technical docs with dashed structure, square junction marks, and a restrained blue signal color.",
+    cssImport: '@import "@farming-labs/theme/junction/css";',
+    colors: ["#0057ff", "#fbfbf8", "#111111", "#d8d8d0"],
+    accent: "#0057ff",
+    previewEnabled: true,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { junction } from "@farming-labs/theme/junction";
+
+export default defineDocs({
+  entry: "docs",
+  theme: junction(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/junction/css";`,
   },
   {
     key: "threadline",
@@ -254,15 +273,41 @@ export default defineDocs({
 type Theme = (typeof themes)[number];
 
 function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (e.key !== "Tab") return;
+
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable || focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
     return () => {
       document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
     };
   }, [onClose]);
 
@@ -271,9 +316,16 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
       <div
         className="absolute inset-0 bg-black/50 dark:bg-black/80 backdrop-blur-sm"
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto rounded-none border border-none bg-transparent dark:bg-black/90 shadow-xl dark:shadow-none">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="theme-code-dialog-title"
+        className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto rounded-none border border-none bg-transparent dark:bg-black/90 shadow-xl dark:shadow-none"
+      >
         <div className="flex items-center justify-between mb-4 p-4 border-b border-neutral-200/10 dark:border-none">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -285,11 +337,17 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
                 />
               ))}
             </div>
-            <span className="text-xs font-mono uppercase tracking-wide text-neutral-500 text-white/60 dark:text-white/60">
+            <span
+              id="theme-code-dialog-title"
+              className="text-xs font-mono uppercase tracking-wide text-neutral-500 text-white/60 dark:text-white/60"
+            >
               {theme.name}
             </span>
           </div>
           <button
+            ref={closeButtonRef}
+            type="button"
+            aria-label={`Close ${theme.name} code dialog`}
             onClick={onClose}
             className="p-1.5 text-neutral-200 hover:text-neutral-400 dark:text-white/40 dark:hover:text-white transition-colors cursor-pointer"
           >

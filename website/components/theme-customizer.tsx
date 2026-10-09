@@ -14,7 +14,8 @@ type PresetKey =
   | "shiny"
   | "ledger"
   | "shadcn"
-  | "darkbold";
+  | "darkbold"
+  | "junction";
 type SidebarStyle = "default" | "bordered" | "floating";
 type TocStyle = "default" | "directional";
 
@@ -229,6 +230,26 @@ const PRESETS: Record<
     sidebar: "default",
     toc: { style: "default" },
     radius: "0.5rem",
+  },
+  junction: {
+    label: "Junction",
+    desc: "Dashed rails and compact technical structure",
+    cssImport: "@farming-labs/theme/junction/css",
+    themeImport: { from: "@farming-labs/theme/junction", name: "junction" },
+    colors: {
+      primary: "#0057ff",
+      primaryForeground: "#ffffff",
+      background: "#fbfbf8",
+      foreground: "#111111",
+      muted: "#efefea",
+      mutedForeground: "#666660",
+      border: "#d8d8d0",
+      card: "#ffffff",
+      ring: "#0057ff",
+    },
+    sidebar: "bordered",
+    toc: { style: "directional" },
+    radius: "0.125rem",
   },
 };
 
@@ -997,6 +1018,7 @@ export function ThemeCustomizer() {
   const themeParam = searchParams.get("theme") as PresetKey | null;
   const [state, setState] = useState<ThemeState>(() => buildInitialState());
   const [hasCustomized, setHasCustomized] = useState(false);
+  const [hasColorOverrides, setHasColorOverrides] = useState(false);
   const [presetCSS, setPresetCSS] = useState("");
   const appliedRef = useRef(false);
 
@@ -1020,6 +1042,7 @@ export function ThemeCustomizer() {
       }));
       setOpen(true);
       setHasCustomized(true);
+      setHasColorOverrides(false);
       loadPresetCSS(themeParam);
     }
   }, [themeParam, loadPresetCSS]);
@@ -1044,6 +1067,7 @@ export function ThemeCustomizer() {
         ai: { ...s.ai, mode: p.ai?.mode ?? "floating" },
       }));
       setHasCustomized(true);
+      setHasColorOverrides(false);
       loadPresetCSS(key);
     },
     [loadPresetCSS],
@@ -1051,6 +1075,7 @@ export function ThemeCustomizer() {
 
   const setColor = useCallback((field: keyof Colors, value: string) => {
     setHasCustomized(true);
+    setHasColorOverrides(true);
     setState((s) => {
       const next = { ...s, colors: { ...s.colors, [field]: value } };
       if (field === "primary") {
@@ -1122,7 +1147,10 @@ export function ThemeCustomizer() {
 
   const cssCode = useMemo(() => generateCSS(state), [state]);
   const configCode = useMemo(() => generateConfig(state), [state]);
-  const colorCSS = useMemo(() => buildColorCSS(state.colors), [state.colors]);
+  const colorCSS = useMemo(
+    () => (hasColorOverrides ? buildColorCSS(state.colors) : ""),
+    [hasColorOverrides, state.colors],
+  );
   const configCSS = useMemo(() => buildConfigCSS(state), [state]);
 
   // Live theme toggle: switch light/dark mode when config changes
@@ -1277,6 +1305,7 @@ export function ThemeCustomizer() {
 
   const handleReset = useCallback(() => {
     setHasCustomized(false);
+    setHasColorOverrides(false);
     setPresetCSS("");
     setState(buildInitialState());
     document.documentElement.classList.remove("light");
@@ -1330,19 +1359,27 @@ export function ThemeCustomizer() {
             });
           }}
           style={
-            ["shiny", "colorful", "default", "ledger", "shadcn"].includes(state.preset)
+            state.preset === "junction"
               ? {
-                  borderRadius: "14px",
-                  background: "var(--color-fd-secondary, #fafafa)",
-                  color: "var(--color-fd-foreground, #0a0a0a)",
+                  borderRadius: "2px",
+                  background: "var(--color-fd-secondary, #f1f1ec)",
+                  color: "var(--color-fd-foreground, #111111)",
                   boxShadow: "none",
-                  borderColor: "var(--color-fd-border, #e5e5e5)",
+                  borderColor: "var(--color-fd-border, #d8d8d0)",
                 }
-              : {
-                  background: "var(--color-fd-secondary, #0a0a0b)",
-                  boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
-                  borderColor: "var(--color-fd-border, #262626)",
-                }
+              : ["shiny", "colorful", "default", "ledger", "shadcn"].includes(state.preset)
+                ? {
+                    borderRadius: "14px",
+                    background: "var(--color-fd-secondary, #fafafa)",
+                    color: "var(--color-fd-foreground, #0a0a0a)",
+                    boxShadow: "none",
+                    borderColor: "var(--color-fd-border, #e5e5e5)",
+                  }
+                : {
+                    background: "var(--color-fd-secondary, #0a0a0b)",
+                    boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
+                    borderColor: "var(--color-fd-border, #262626)",
+                  }
           }
           className={cn(
             "fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group",
@@ -1428,6 +1465,7 @@ export function ThemeCustomizer() {
                   Reset
                 </span>
                 <button
+                  aria-label="Close theme customizer"
                   onClick={() => setOpen(false)}
                   className="size-7 rounded-none flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[5%] transition-colors cursor-pointer"
                 >

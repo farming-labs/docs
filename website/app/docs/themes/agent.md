@@ -1,45 +1,14 @@
 <!-- @farming-labs/docs:generated
 version=1
 sourceKind=resolved-page
-sourceHash=fnv1a64:4f98b04c6461ce6d
+sourceHash=fnv1a64:f1365c2a841b8ec8
 settingsHash=fnv1a64:b2106dff2d4f1f98
-outputHash=fnv1a64:75c3aeaa240cd419
-generatedAt=2026-08-20T10:20:45.768Z
+outputHash=fnv1a64:d393b97012c677ea
+generatedAt=2026-10-09T21:46:59.943Z
 -->
 # Themes
 URL: /docs/themes
 Description: Built-in themes and how to create your own
 Related: /docs/themes/creating-themes, /docs/configuration, /docs/customization/colors, /docs/customization/typography
 
-Select factory and package subpath as a pair—e.g., `pixelBorder` from `@farming-labs/theme/pixel-border` with `theme: pixelBorder()`—then import `@farming-labs/theme/pixel-border/css` globally. Use `createTheme()` for custom factories and `extendTheme()` to derive from a preset. If visuals don't change, fix the CSS entrypoint; if the factory can't be resolved, copy its exact export and import path from the table below.
-
-## Using a Theme
-
-```tsx title="docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/theme/pixel-border";
-
-export default defineDocs({
-  entry: "docs",
-  theme: pixelBorder(),
-});
-```
-
-```css title="app/global.css"
-@import "tailwindcss";
-@import "@farming-labs/theme/pixel-border/css";
-```
-
-## Built-in Themes
-
-| Theme | Import | Description |
-|---|---|---|
-| [Default](/docs/themes/default) | `@farming-labs/theme` | Neutral colors, standard radius |
-| [Colorful](/docs/themes/colorful) | `@farming-labs/theme/colorful` | Warm amber accent, Inter typography |
-| [Darksharp](/docs/themes/darksharp) | `@farming-labs/theme/darksharp` | All-black, sharp corners |
-| [Pixel Border](/docs/themes/pixel-border) | `@farming-labs/theme/pixel-border` | Inspired by better-auth.com |
-| [Shiny](/docs/themes/shiny) | `@farming-labs/theme/shiny` | Clerk-inspired, purple accents |
-| [Threadline](/docs/themes/threadline) | `@farming-labs/theme/threadline` | Compact neutral shell for chat and agent docs |
-| [DarkBold](/docs/themes/darkbold) | `@farming-labs/theme/darkbold` | Pure monochrome, Geist typography |
-| [GreenTree](/docs/themes/greentree) | `@farming-labs/theme/greentree` | Mintlify-inspired, emerald green accent |
-| [Concrete](/docs/themes/concrete) | `@farming-labs/theme/concrete` | Gray architectural surfaces |
+Select a factory and its package subpath as a pair, then import the matching shared CSS globally. Use `createTheme()` for a custom theme and `extendTheme()` to derive from a preset. All-framework presets include Junction, whose factory is `junction` from `@farming-labs/theme/junction` and whose CSS is `@farming-labs/theme/junction/css`. Junction uses dashed structural rails, compact technical typography, square geometry, and a restrained blue signal color. React-only presets are DarkBold, Shiny, and Threadline; do not offer them in native SvelteKit, Astro, or Nuxt scaffolds.

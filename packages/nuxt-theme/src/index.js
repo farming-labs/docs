@@ -21,3 +21,4 @@ export { concrete, ConcreteUIDefaults } from "./themes/concrete.js";
 export { hardline, HardlineUIDefaults } from "./themes/hardline.js";
 export { ledger, LedgerUIDefaults } from "./themes/ledger.js";
 export { shadcn, ShadcnUIDefaults } from "./themes/shadcn.js";
+export { junction, JunctionUIDefaults } from "./themes/junction.js";

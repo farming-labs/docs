@@ -120,6 +120,7 @@ import {
   injectNuxtCssImport,
   type TemplateConfig,
 } from "./templates.js";
+import { getFrameworkThemeCssName, getThemeOptions } from "./theme-presets.js";
 
 const DOCS_CLOUD_DASHBOARD_URL = "https://docs-app.farming-labs.dev";
 
@@ -656,66 +657,7 @@ export async function init(options: InitOptions = {}) {
   // -----------------------------------------------------------------------
 
   const themeOptions = [
-    {
-      value: "fumadocs",
-      label: "Fumadocs (Default)",
-      hint: "Clean, modern docs theme with sidebar, search, and dark mode",
-    },
-    {
-      value: "darksharp",
-      label: "Darksharp",
-      hint: "All-black, sharp edges, zero-radius look",
-    },
-    {
-      value: "pixel-border",
-      label: "Pixel Border",
-      hint: "Rounded borders, pixel-perfect spacing, refined sidebar",
-    },
-    {
-      value: "colorful",
-      label: "Colorful",
-      hint: "Fumadocs-style neutral theme with description support",
-    },
-    {
-      value: "darkbold",
-      label: "DarkBold",
-      hint: "Pure monochrome, Geist typography, clean minimalism",
-    },
-    {
-      value: "shiny",
-      label: "Shiny",
-      hint: "Glossy, modern look with subtle shimmer effects",
-    },
-    {
-      value: "ledger",
-      label: "Ledger",
-      hint: "Stripe Docs-inspired product docs shell with navy code panels",
-    },
-    {
-      value: "shadcn",
-      label: "Shadcn Docs",
-      hint: "Compact neutral shell inspired by the shadcn/ui documentation",
-    },
-    {
-      value: "greentree",
-      label: "GreenTree",
-      hint: "Emerald green accent, Inter font, Mintlify-inspired",
-    },
-    {
-      value: "concrete",
-      label: "Concrete",
-      hint: "Brutalist poster-style theme with offset shadows and loud contrast",
-    },
-    {
-      value: "command-grid",
-      label: "Command Grid",
-      hint: "Paper-grid docs shell inspired by better-cmdk",
-    },
-    {
-      value: "hardline",
-      label: "Hardline",
-      hint: "Hard-edge theme with square corners and bold borders",
-    },
+    ...getThemeOptions(framework),
     {
       value: "custom",
       label: "Create your own theme",
@@ -1777,22 +1719,7 @@ function scaffoldSvelteKit(
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
 
-  const themeMapping: Record<string, string> = {
-    fumadocs: "fumadocs",
-    darksharp: "darksharp",
-    "pixel-border": "pixel-border",
-    colorful: "colorful",
-    darkbold: "darkbold",
-    shiny: "shiny",
-    ledger: "ledger",
-    shadcn: "shadcn",
-    greentree: "greentree",
-    concrete: "concrete",
-    "command-grid": "command-grid",
-    hardline: "hardline",
-    default: "fumadocs",
-  };
-  const cssTheme = themeMapping[cfg.theme] || "fumadocs";
+  const cssTheme = getFrameworkThemeCssName(cfg.theme);
 
   if (existingGlobalCss) {
     const injected =
@@ -1889,22 +1816,7 @@ function scaffoldAstro(
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
 
-  const themeMapping: Record<string, string> = {
-    fumadocs: "fumadocs",
-    darksharp: "darksharp",
-    "pixel-border": "pixel-border",
-    colorful: "colorful",
-    darkbold: "darkbold",
-    shiny: "shiny",
-    ledger: "ledger",
-    shadcn: "shadcn",
-    greentree: "greentree",
-    concrete: "concrete",
-    "command-grid": "command-grid",
-    hardline: "hardline",
-    default: "fumadocs",
-  };
-  const cssTheme = themeMapping[cfg.theme] || "fumadocs";
+  const cssTheme = getFrameworkThemeCssName(cfg.theme);
 
   if (existingGlobalCss) {
     const injected =
@@ -1986,22 +1898,7 @@ function scaffoldNuxt(
     }
   }
 
-  const themeMapping: Record<string, string> = {
-    fumadocs: "fumadocs",
-    darksharp: "darksharp",
-    "pixel-border": "pixel-border",
-    colorful: "colorful",
-    darkbold: "darkbold",
-    shiny: "shiny",
-    ledger: "ledger",
-    shadcn: "shadcn",
-    greentree: "greentree",
-    concrete: "concrete",
-    "command-grid": "command-grid",
-    hardline: "hardline",
-    default: "fumadocs",
-  };
-  const cssTheme = themeMapping[cfg.theme] || "fumadocs";
+  const cssTheme = getFrameworkThemeCssName(cfg.theme);
 
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);

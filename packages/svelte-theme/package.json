@@ -47,6 +47,9 @@
       ],
       "shadcn": [
         "./src/themes/shadcn.d.ts"
+      ],
+      "junction": [
+        "./src/themes/junction.d.ts"
       ]
     }
   },
@@ -103,6 +106,11 @@
       "import": "./src/themes/shadcn.js",
       "default": "./src/themes/shadcn.js"
     },
+    "./junction": {
+      "types": "./src/themes/junction.d.ts",
+      "import": "./src/themes/junction.js",
+      "default": "./src/themes/junction.js"
+    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
@@ -127,7 +135,9 @@
     "./styles/ledger.css": "./styles/ledger.css",
     "./ledger/css": "./styles/ledger-bundle.css",
     "./styles/shadcn.css": "./styles/shadcn.css",
-    "./shadcn/css": "./styles/shadcn-bundle.css"
+    "./shadcn/css": "./styles/shadcn-bundle.css",
+    "./styles/junction.css": "./styles/junction.css",
+    "./junction/css": "./styles/junction-bundle.css"
   },
   "scripts": {
     "build": "echo 'Svelte components are shipped as source'",
