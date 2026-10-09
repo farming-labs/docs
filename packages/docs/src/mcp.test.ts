@@ -372,6 +372,14 @@ describe("resolveDocsMcpConfig", () => {
         },
       ],
     });
+    expect(getDocsConfigSchema({ option: "apiReference.renderer.options" })).toMatchObject({
+      options: [
+        expect.objectContaining({
+          path: "apiReference.renderer.options",
+          type: "Record<string, unknown>",
+        }),
+      ],
+    });
   });
 
   it("publishes the list_page_sections tool toggle in the config schema", () => {

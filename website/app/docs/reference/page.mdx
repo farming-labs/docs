@@ -1628,7 +1628,8 @@ for an existing project-relative file, absolute URL, or request-relative URL.
   The native `"farming-labs"` renderer has no extra renderer dependency and is the default on every
   framework. You do not need to install `fumadocs-openapi`, `fumadocs-ui`, `@scalar/core`, or
   related packages separately. Set `renderer: "scalar"` on any framework or
-  `renderer: "fumadocs"` on Next.js to use the bundled alternatives.
+  `renderer: "fumadocs"` on Next.js to use the bundled alternatives. Use the Next.js
+  `fumadocsRenderer()` helper when the Fumadocs renderer needs playground or runtime options.
 </Callout>
 <Callout type="info" title="Important">
   `apiReference` in `docs.config` controls scanning, theming, `routeRoot`, and `exclude`.
@@ -1682,7 +1683,7 @@ The interactive console is part of the native `"farming-labs"` renderer. Selecti
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
-| `renderer`  | `"farming-labs" \| "fumadocs" \| "scalar"` | `"farming-labs"` | Which renderer to use. Scalar works on every framework; Fumadocs is available on Next.js |
+| `renderer`  | `ApiReferenceRendererInput` | `"farming-labs"` | Renderer name or `{ name, options }` object. Scalar works on every framework; Fumadocs and its typed `fumadocsRenderer()` helper are available on Next.js |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
 | `specUrl`   | `string`   | —                 | Project-relative file, `file:` URL, absolute HTTP(S) URL, or request-relative URL for an OpenAPI JSON/YAML document. When set, framework route scanning is skipped |
 | `overlays`  | `readonly string[]` | `[]` | Ordered OpenAPI Overlay 1.0/1.1 JSON/YAML sources for the single `specUrl` |
@@ -1719,6 +1720,32 @@ apiReference: {
   renderer: "scalar", // or "fumadocs" in Next.js
 },
 ```
+
+Pass typed Fumadocs playground and runtime options on Next.js:
+
+```ts title="docs.config.ts"
+import { fumadocsRenderer } from "@farming-labs/next/fumadocs-renderer";
+import { authProviders } from "./app/api-reference/auth-providers";
+
+apiReference: {
+  enabled: true,
+  specUrl: "./openapi.yaml",
+  renderer: fumadocsRenderer({
+    playground: {
+      enabled: true,
+      authProviders,
+    },
+    oauthRedirectUrl: "/api/docs/oauth",
+    proxyUrl: "/api/docs/proxy",
+    showResponseSchema: true,
+    schemaUI: { showExample: true },
+  }),
+},
+```
+
+The helper accepts Fumadocs `createOpenAPIPage()` options together with the `proxyUrl` and
+`disableCache` server options. Browser-side providers and callbacks must not contain secrets. Proxy
+and OAuth URLs must point to application-owned routes.
 
 ```ts title="docs.config.ts"
 apiReference: {

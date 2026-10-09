@@ -29,6 +29,8 @@ import DocsClientCallbacks from "./client-callbacks.js";
 import FumadocsOpenAPIPage from "./fumadocs-api-page.js";
 
 export { resolveApiReferenceConfig };
+export { fumadocsRenderer } from "./fumadocs-renderer.js";
+export type { FumadocsApiReferenceRendererOptions } from "./fumadocs-renderer.js";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -1092,10 +1094,15 @@ export async function getNextApiReferenceSourceState(
     version: version?.id,
   });
 
+  const fumadocsOptions =
+    apiReference.renderer === "fumadocs" ? apiReference.rendererOptions : undefined;
   const server = createOpenAPI({
     input: {
       main: document as any,
     },
+    disableCache:
+      typeof fumadocsOptions?.disableCache === "boolean" ? fumadocsOptions.disableCache : undefined,
+    proxyUrl: typeof fumadocsOptions?.proxyUrl === "string" ? fumadocsOptions.proxyUrl : undefined,
   });
   const info = getOpenApiInfo(document);
   const source = loader(

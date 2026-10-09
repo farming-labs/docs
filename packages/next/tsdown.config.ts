@@ -10,6 +10,7 @@ export default defineConfig({
     "src/client-callbacks.tsx",
     "src/config.ts",
     "src/fumadocs-api-page.tsx",
+    "src/fumadocs-renderer.ts",
     "src/layout.tsx",
     "src/mdx-plugins/remark-heading.ts",
     "src/mdx-plugins/remark-code-group.ts",

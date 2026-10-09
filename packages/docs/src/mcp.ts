@@ -2629,6 +2629,29 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
           "Product API base URLs that the OpenAPI document describes in the RFC 9727 catalog.",
       },
       {
+        path: "apiReference.renderer",
+        name: "renderer",
+        type: "ApiReferenceRenderer | { name: ApiReferenceRenderer; options?: Record<string, unknown> }",
+        default: "farming-labs",
+        description:
+          "Renderer name or renderer object with adapter-specific options. Next.js provides fumadocsRenderer() from @farming-labs/next/fumadocs-renderer for typed Fumadocs options.",
+        children: [
+          {
+            path: "apiReference.renderer.name",
+            name: "name",
+            type: '"farming-labs" | "fumadocs" | "scalar"',
+            description: "Renderer implementation to use.",
+          },
+          {
+            path: "apiReference.renderer.options",
+            name: "options",
+            type: "Record<string, unknown>",
+            description:
+              "Options forwarded to the selected renderer; prefer the framework adapter's typed helper.",
+          },
+        ],
+      },
+      {
         path: "apiReference.mcp",
         name: "mcp",
         type: "boolean | DocsOpenApiMcpConfig",

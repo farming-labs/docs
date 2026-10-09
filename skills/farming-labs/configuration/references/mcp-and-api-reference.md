@@ -184,7 +184,25 @@ The native `"farming-labs"` renderer is the default on Next.js, TanStack Start, 
 SvelteKit, Astro, and Nuxt. It uses the normalized operation model for searchable navigation,
 version switching, schemas, parameters, responses, authentication metadata, and copyable cURL
 examples. Set `renderer: "scalar"` on any framework or `renderer: "fumadocs"` on Next.js to use
-one of the bundled alternate renderers.
+one of the bundled alternate renderers. For typed Fumadocs playground and runtime options, import
+`fumadocsRenderer()` from `@farming-labs/next/fumadocs-renderer`:
+
+```ts
+import { fumadocsRenderer } from "@farming-labs/next/fumadocs-renderer";
+
+apiReference: {
+  enabled: true,
+  specUrl: "./openapi.yaml",
+  renderer: fumadocsRenderer({
+    playground: { authProviders },
+    oauthRedirectUrl: "/api/docs/oauth",
+    proxyUrl: "/api/docs/proxy",
+  }),
+}
+```
+
+Fumadocs provider callbacks run in the browser. Keep them client-safe and secret-free. Proxy and
+OAuth URLs must point to routes implemented by the application.
 
 ```ts
 apiReference: {

@@ -1,7 +1,10 @@
 "use client";
 
-import { createOpenAPIPage } from "fumadocs-openapi/ui";
+import type { DocsConfig } from "@farming-labs/docs";
+import docsConfig from "@farming-labs/next-internal-docs-config";
+import { createOpenAPIPage, type CreateOpenAPIPageOptions } from "fumadocs-openapi/ui";
 import type { ReactNode } from "react";
+import type { FumadocsApiReferenceRendererOptions } from "./fumadocs-renderer.js";
 
 function renderApiReferenceOperationLayout(slots: {
   header: ReactNode;
@@ -35,11 +38,29 @@ function renderApiReferenceOperationLayout(slots: {
   );
 }
 
+export function resolveFumadocsOpenAPIPageOptions(config: DocsConfig): CreateOpenAPIPageOptions {
+  const renderer =
+    config.apiReference && typeof config.apiReference === "object"
+      ? config.apiReference.renderer
+      : undefined;
+  const options =
+    renderer && typeof renderer === "object" && renderer.name === "fumadocs"
+      ? (renderer.options as FumadocsApiReferenceRendererOptions | undefined)
+      : undefined;
+  const pageOptions = { ...options };
+  delete pageOptions.disableCache;
+  delete pageOptions.proxyUrl;
+
+  return {
+    ...pageOptions,
+    content: {
+      renderOperationLayout: renderApiReferenceOperationLayout,
+      ...pageOptions.content,
+    },
+  };
+}
+
 /** Client boundary for Fumadocs OpenAPI's interactive renderer. */
-const FumadocsOpenAPIPage = createOpenAPIPage({
-  content: {
-    renderOperationLayout: renderApiReferenceOperationLayout,
-  },
-});
+const FumadocsOpenAPIPage = createOpenAPIPage(resolveFumadocsOpenAPIPageOptions(docsConfig));
 
 export default FumadocsOpenAPIPage;

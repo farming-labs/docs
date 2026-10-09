@@ -54,7 +54,10 @@ Use this machine-oriented page when the user needs implementation guidance for `
   JSON/YAML file or URL when a contract exists; otherwise use framework route scanning. The native
   `"farming-labs"` renderer is the cross-framework default and uses the normalized operation model
   for search, versions, schemas, responses, auth metadata, and cURL. Scalar remains available on
-  every framework and Fumadocs on Next.js. Contracts may use Swagger 2.0 or OpenAPI 3.0–3.2;
+  every framework and Fumadocs on Next.js. On Next.js, use `fumadocsRenderer()` from
+  `@farming-labs/next/fumadocs-renderer` to pass typed `playground`, `oauthRedirectUrl`, `proxyUrl`,
+  schema UI, and other upstream renderer options. Browser-side providers must not contain secrets.
+  Contracts may use Swagger 2.0 or OpenAPI 3.0–3.2;
   bounded internal/external `$ref` documents are bundled per build and project-relative files stay
   inside the project root. Use URL-safe `versions` with one `defaultVersion`, or ordered Overlay
   1.0/1.1 sources applied before reference resolution; invalid sources and targets are reported.

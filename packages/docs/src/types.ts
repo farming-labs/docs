@@ -3081,6 +3081,21 @@ export interface ChangelogConfig {
 
 export type ApiReferenceRenderer = "farming-labs" | "fumadocs" | "scalar";
 
+/** Renderer selection with renderer-specific options supplied by a framework adapter. */
+export interface ApiReferenceRendererConfig {
+  /** Renderer implementation to use. */
+  name: ApiReferenceRenderer;
+  /**
+   * Options forwarded to the selected renderer.
+   *
+   * Use the framework adapter's typed renderer helper when available. For example,
+   * Next.js exports `fumadocsRenderer()` from `@farming-labs/next/fumadocs-renderer`.
+   */
+  options?: Readonly<Record<string, unknown>>;
+}
+
+export type ApiReferenceRendererInput = ApiReferenceRenderer | ApiReferenceRendererConfig;
+
 export interface ApiReferenceVersionConfig {
   /** OpenAPI JSON or YAML source for this stable version identifier. */
   specUrl: string;
@@ -3213,10 +3228,14 @@ export interface ApiReferenceConfig {
    * - `"farming-labs"` uses the framework-neutral renderer backed by the normalized operation model
    * - `"fumadocs"` uses the Fumadocs OpenAPI renderer bundled by `@farming-labs/next`
    * - `"scalar"` uses the Scalar renderer bundled by `@farming-labs/docs` and the adapters
+   * - `{ name, options }` selects a renderer and forwards adapter-specific options
+   *
+   * Next.js provides `fumadocsRenderer()` from `@farming-labs/next/fumadocs-renderer` for typed
+   * Fumadocs playground and runtime options.
    *
    * @default "farming-labs"
    */
-  renderer?: ApiReferenceRenderer;
+  renderer?: ApiReferenceRendererInput;
   /**
    * Explicitly expose selected OpenAPI operations as MCP tools. This is deny-by-default:
    * set `operations`, or mark an operation with `x-farming-labs-mcp.enabled: true`.

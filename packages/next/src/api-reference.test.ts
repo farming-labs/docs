@@ -10,6 +10,8 @@ import {
   getNextApiReferenceSourceState,
   withNextApiReferenceBanner,
 } from "./api-reference.js";
+import { resolveFumadocsOpenAPIPageOptions } from "./fumadocs-api-page.js";
+import { fumadocsRenderer } from "./fumadocs-renderer.js";
 
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ host: "docs.example.com" }),
@@ -154,12 +156,19 @@ export async function GET() {
       entry: "docs",
       apiReference: {
         enabled: true,
-        renderer: "fumadocs",
+        renderer: fumadocsRenderer({
+          disableCache: true,
+          proxyUrl: "/api/docs/proxy",
+        }),
       },
     });
     const page = state.pages[0];
 
     expect(state.pages).toHaveLength(1);
+    expect(state.server.options).toMatchObject({
+      disableCache: true,
+      proxyUrl: "/api/docs/proxy",
+    });
     expect(page?.data.getOpenAPIPageProps).toBeTypeOf("function");
     expect(page?.data.getOpenAPIPageProps()).toMatchObject({
       payload: {
@@ -174,6 +183,38 @@ export async function GET() {
         },
       ],
     });
+  });
+
+  it("forwards typed Fumadocs page and playground options to the client renderer", () => {
+    const transformAuthInputs = vi.fn((fields) => fields);
+    const renderer = fumadocsRenderer({
+      disableCache: true,
+      oauthRedirectUrl: "/api/docs/oauth",
+      playground: {
+        enabled: false,
+        transformAuthInputs,
+      },
+      schemaUI: {
+        showExample: true,
+      },
+    });
+
+    const options = resolveFumadocsOpenAPIPageOptions({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        renderer,
+      },
+    });
+
+    expect(renderer).toMatchObject({ name: "fumadocs" });
+    expect(options).toMatchObject({
+      oauthRedirectUrl: "/api/docs/oauth",
+      playground: { enabled: false, transformAuthInputs },
+      schemaUI: { showExample: true },
+    });
+    expect(options).not.toHaveProperty("disableCache");
+    expect(options.content?.renderOperationLayout).toBeTypeOf("function");
   });
 });
 
