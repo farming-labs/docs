@@ -2588,7 +2588,7 @@ Estimated reading-time label shown on docs pages.
 
 | Property         | Type      | Default | Description |
 | ---------------- | --------- | ------- | ----------- |
-| `enabled`        | `boolean` | `true`  | Show the computed read-time label when `readingTime` is configured |
+| `enabled`        | `boolean` | `false` | Explicitly opt in to the computed read-time label |
 | `wordsPerMinute` | `number`  | `220`   | Word-count rate used for the estimate |
 | `format`         | `"long" \| "short"` | `"long"` | Label style: `3 min read` for `"long"` or `3 min` for `"short"` |
 | `includeCode`    | `boolean`           | `false`  | Whether fenced and inline code blocks count toward the reading time estimate. Disabled by default so the label reflects human prose. Set to `true` for code-heavy guides. |
@@ -2603,7 +2603,7 @@ readingTime: {
 
 Notes:
 
-- `readingTime` is **disabled by default** until you configure it in `DocsConfig`
+- `readingTime` is **disabled by default**; an options object must include `enabled: true`
 - the estimate strips code blocks, inline code, links, images, HTML, and URLs before counting
 
 - set `includeCode: true` to preserve fenced and inline code word counts in the estimate (useful for code-heavy guides where examples make up a significant portion of the page)

@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:251ef3a6d773bcbd",
+      "sourceHash": "fnv1a64:e1e963b8e63f4ef9",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
       "outputHash": "fnv1a64:7feae5a2ff7111fb",
-      "reviewedAt": "2026-10-09T20:39:08.296Z",
+      "reviewedAt": "2026-10-10T01:20:23.131Z",
       "reviewedBy": "docs-team",
-      "reason": "Reviewed the new typed Fumadocs renderer options; the preserved agent guidance now documents renderer objects, playground/auth configuration, client-visible secret handling, and application-owned proxy/OAuth routes."
+      "reason": "Confirmed the curated agent guidance already requires readingTime.enabled: true; the runtime and human reference now match that explicit opt-in contract."
     },
     {
       "route": "/docs/customization/agent-primitive",
@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:fa39e7bb59db1df1",
+      "sourceHash": "fnv1a64:22fda9730a1fa133",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
       "outputHash": "fnv1a64:743e449e1163566c",
-      "reviewedAt": "2026-10-09T20:39:08.315Z",
+      "reviewedAt": "2026-10-10T01:20:23.142Z",
       "reviewedBy": "docs-team",
-      "reason": "Reviewed the new typed Fumadocs renderer options; the preserved agent guidance now documents renderer objects, playground/auth configuration, client-visible secret handling, and application-owned proxy/OAuth routes."
+      "reason": "Confirmed the curated agent guidance already requires readingTime.enabled: true; the runtime and human reference now match that explicit opt-in contract."
     },
     {
       "route": "/docs/token-efficiency",

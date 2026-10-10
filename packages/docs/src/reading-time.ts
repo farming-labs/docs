@@ -62,7 +62,7 @@ export function resolveReadingTimeOptions(
   }
 
   return {
-    enabled: readingTime.enabled !== false,
+    enabled: readingTime.enabled === true,
     wordsPerMinute:
       typeof readingTime.wordsPerMinute === "number" && Number.isFinite(readingTime.wordsPerMinute)
         ? readingTime.wordsPerMinute
