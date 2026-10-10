@@ -2471,6 +2471,7 @@ export default defineDocs({
 Default behavior:
 
 - the feature is **opt-in**
+- an options object does not enable the feature unless it includes `enabled: true`
 - the estimate uses `220` words per minute unless you override it
 - labels render as `5 min read` by default; set `format: "short"` to render `5 min`
 - fenced code blocks, inline code, links, images, and raw HTML are stripped before counting words

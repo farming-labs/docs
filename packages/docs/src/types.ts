@@ -2256,7 +2256,8 @@ export type ReadingTimeFormat = "long" | "short";
 export interface ReadingTimeConfig {
   /**
    * Whether to show the estimated reading time.
-   * @default true
+   * This must be set to `true` to opt in when using an options object.
+   * @default false
    */
   enabled?: boolean;
   /**

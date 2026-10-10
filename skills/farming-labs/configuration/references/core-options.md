@@ -175,8 +175,8 @@ readingTime: {
 }
 ```
 
-It is off by default. Page frontmatter can set `readingTime: false`, `true`, or a numeric minute
-override and wins over global config.
+It is off by default, and an options object must include `enabled: true` to opt in. Page frontmatter
+can set `readingTime: false`, `true`, or a numeric minute override and wins over global config.
 
 ### GitHub
 

@@ -73,6 +73,15 @@ describe("reading time helpers", () => {
     });
   });
 
+  it("requires an explicit opt-in for reading-time option objects", () => {
+    expect(resolveReadingTimeOptions({})).toMatchObject({ enabled: false });
+    expect(resolveReadingTimeOptions({ wordsPerMinute: 180 })).toMatchObject({
+      enabled: false,
+      wordsPerMinute: 180,
+    });
+    expect(resolveReadingTimeOptions({ enabled: true })).toMatchObject({ enabled: true });
+  });
+
   it("resolves short reading-time labels from config", () => {
     expect(resolveReadingTimeOptions({ enabled: true, format: "short" })).toMatchObject({
       enabled: true,

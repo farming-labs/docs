@@ -826,14 +826,14 @@ function hasGithubIntegration(config: DocsConfig | undefined, content: string): 
 function hasReadingTimeSurface(config: DocsConfig | undefined, content: string): boolean {
   const current = config?.readingTime;
   if (current === true) return true;
-  if (current && typeof current === "object") return current.enabled !== false;
+  if (current && typeof current === "object") return current.enabled === true;
 
   const topLevelBoolean = readTopLevelBooleanProperty(content, "readingTime");
   if (typeof topLevelBoolean === "boolean") return topLevelBoolean;
 
   const block = extractNestedObjectLiteral(content, ["readingTime"]);
   if (!block) return false;
-  return readBooleanProperty(block, "enabled") ?? true;
+  return readBooleanProperty(block, "enabled") === true;
 }
 
 function hasAgentCompactDefaults(config: DocsConfig | undefined, content: string): boolean {

@@ -536,6 +536,22 @@ agent:
     expect(props?.readingTimeMap).toEqual({});
   });
 
+  it("keeps reading time disabled until an options object explicitly opts in", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: { wordsPerMinute: 180 },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeEnabled).toBe(false);
+    expect(props?.readingTimeMap).toEqual({});
+  });
+
   it("passes computed reading time through to DocsPageClient when enabled", () => {
     mkdirSync(join(tmpDir, "app", "docs", "installation"), { recursive: true });
     writeFileSync(

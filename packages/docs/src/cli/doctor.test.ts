@@ -3329,6 +3329,31 @@ Welcome to the docs.
     expect(trustCheck?.detail).toBe("Edit links and last-updated metadata are configured.");
   });
 
+  it("does not treat reading-time options as enabled without an explicit opt-in", async () => {
+    writePackageJson(tmpDir, "doctor-human-opt-in-reading-time", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  readingTime: {
+    wordsPerMinute: 180,
+  },
+};`,
+      "utf-8",
+    );
+
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectHumanReadiness();
+    const readingTimeCheck = report.checks.find((check) => check.id === "reading-time");
+
+    expect(readingTimeCheck?.status).toBe("warn");
+    expect(readingTimeCheck?.detail).toBe("Reading time is not enabled.");
+  });
+
   it("prints agent reports as JSON for automation consumers", async () => {
     writePackageJson(tmpDir, "doctor-agent-json", { next: "16.0.0" });
 
