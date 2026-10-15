@@ -2345,72 +2345,12 @@ function readDocsPageFrontmatter(filePath: string): Record<string, unknown> {
   }
 }
 
-function resolveDocsPageOrder(dir: string): number {
-  const pageSource = resolveDocsPageSourceFile(dir);
-  if (!pageSource) return Number.POSITIVE_INFINITY;
-
-  const data = readDocsPageFrontmatter(pageSource);
-  return typeof data.order === "number" ? data.order : Number.POSITIVE_INFINITY;
-}
-
 function resolveDocsPageFolderIndexBehavior(data: Record<string, unknown>): string | undefined {
   const sidebar = data.sidebar;
   if (!sidebar || typeof sidebar !== "object") return undefined;
 
   const value = (sidebar as { folderIndexBehavior?: unknown }).folderIndexBehavior;
   return value === "link" || value === "toggle" || value === "hidden" ? value : undefined;
-}
-
-function listSortedDocsChildDirectories(dir: string): string[] {
-  let entries: string[];
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return [];
-  }
-
-  return entries
-    .map((name) => ({ name, fullPath: join(dir, name) }))
-    .filter(({ fullPath }) => {
-      try {
-        return statSync(fullPath).isDirectory();
-      } catch {
-        return false;
-      }
-    })
-    .sort((left, right) => {
-      const leftOrder = resolveDocsPageOrder(left.fullPath);
-      const rightOrder = resolveDocsPageOrder(right.fullPath);
-      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
-      return left.name.localeCompare(right.name);
-    })
-    .map(({ name }) => name);
-}
-
-function findFirstVisibleDocsChildSlug(dir: string, slugParts: string[]): string[] | undefined {
-  for (const name of listSortedDocsChildDirectories(dir)) {
-    const childDir = join(dir, name);
-    const childSlugParts = [...slugParts, name];
-    const pageSource = resolveDocsPageSourceFile(childDir);
-
-    if (!pageSource) {
-      const descendant = findFirstVisibleDocsChildSlug(childDir, childSlugParts);
-      if (descendant) return descendant;
-      continue;
-    }
-
-    const data = readDocsPageFrontmatter(pageSource);
-    const folderIndexBehavior = resolveDocsPageFolderIndexBehavior(data);
-    if (data.hidden === true || folderIndexBehavior === "hidden") {
-      const descendant = findFirstVisibleDocsChildSlug(childDir, childSlugParts);
-      if (descendant) return descendant;
-      continue;
-    }
-
-    return childSlugParts;
-  }
-
-  return undefined;
 }
 
 function publicDocsRoute(docsPath: string, slugParts: string[] = []): string {
@@ -2421,29 +2361,89 @@ function publicDocsRoute(docsPath: string, slugParts: string[] = []): string {
 
 function buildHiddenFolderRedirects(docsDir: string, docsPath: string): NextRedirect[] {
   const redirects: NextRedirect[] = [];
+  // Scope these snapshots to one config evaluation so subsequent evaluations
+  // still observe content edits, additions and deletions.
+  const frontmatterByDir = new Map<string, Record<string, unknown> | undefined>();
+  const childrenByDir = new Map<string, string[]>();
+  const firstVisibleByDir = new Map<string, string[] | undefined>();
+
+  function frontmatter(dir: string): Record<string, unknown> | undefined {
+    if (!frontmatterByDir.has(dir)) {
+      const source = resolveDocsPageSourceFile(dir);
+      frontmatterByDir.set(dir, source ? readDocsPageFrontmatter(source) : undefined);
+    }
+    return frontmatterByDir.get(dir);
+  }
+
+  function childDirectories(dir: string): string[] {
+    const cached = childrenByDir.get(dir);
+    if (cached) return cached;
+
+    const children: { name: string; order: number }[] = [];
+    try {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = join(dir, entry.name);
+        try {
+          if (entry.isSymbolicLink() ? !statSync(fullPath).isDirectory() : !entry.isDirectory())
+            continue;
+        } catch {
+          continue;
+        }
+        const order = frontmatter(fullPath)?.order;
+        children.push({
+          name: entry.name,
+          order: typeof order === "number" ? order : Number.POSITIVE_INFINITY,
+        });
+      }
+    } catch {
+      // Keep unreadable or missing folders out of redirect generation.
+    }
+
+    const names = children
+      .sort((left, right) => {
+        if (left.order !== right.order) return left.order - right.order;
+        return left.name.localeCompare(right.name);
+      })
+      .map(({ name }) => name);
+    childrenByDir.set(dir, names);
+    return names;
+  }
+
+  function firstVisibleChild(dir: string, slugParts: string[]): string[] | undefined {
+    if (firstVisibleByDir.has(dir)) return firstVisibleByDir.get(dir);
+
+    let destination: string[] | undefined;
+    for (const name of childDirectories(dir)) {
+      const childDir = join(dir, name);
+      const childSlugParts = [...slugParts, name];
+      const data = frontmatter(childDir);
+      if (!data || data.hidden === true || resolveDocsPageFolderIndexBehavior(data) === "hidden") {
+        destination = firstVisibleChild(childDir, childSlugParts);
+        if (!destination) continue;
+      } else {
+        destination = childSlugParts;
+      }
+      break;
+    }
+
+    firstVisibleByDir.set(dir, destination);
+    return destination;
+  }
 
   function scan(dir: string, slugParts: string[]) {
-    if (!existsSync(dir)) return;
-
-    const pageSource = resolveDocsPageSourceFile(dir);
-    if (pageSource) {
-      const data = readDocsPageFrontmatter(pageSource);
-      if (resolveDocsPageFolderIndexBehavior(data) === "hidden") {
-        const destinationSlug = findFirstVisibleDocsChildSlug(dir, slugParts);
-        if (destinationSlug && destinationSlug.join("/") !== slugParts.join("/")) {
-          const source = publicDocsRoute(docsPath, slugParts);
-          const destination = publicDocsRoute(docsPath, destinationSlug);
-
-          redirects.push({
-            source,
-            destination,
-            permanent: false,
-          });
-        }
+    const data = frontmatter(dir);
+    if (data && resolveDocsPageFolderIndexBehavior(data) === "hidden") {
+      const destinationSlug = firstVisibleChild(dir, slugParts);
+      if (destinationSlug && destinationSlug.join("/") !== slugParts.join("/")) {
+        redirects.push({
+          source: publicDocsRoute(docsPath, slugParts),
+          destination: publicDocsRoute(docsPath, destinationSlug),
+          permanent: false,
+        });
       }
     }
 
-    for (const name of listSortedDocsChildDirectories(dir)) {
+    for (const name of childDirectories(dir)) {
       scan(join(dir, name), [...slugParts, name]);
     }
   }
