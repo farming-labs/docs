@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import matter from "gray-matter";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { cloneElement, isValidElement, Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
@@ -44,6 +43,7 @@ import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-tim
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
+import { createDocsContentReader, type DocsContentReader } from "./docs-content-reader.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -107,17 +107,15 @@ function resolveIcon(
 }
 
 /** Read frontmatter from a page.mdx file. */
-function readFrontmatter(filePath: string): Record<string, unknown> {
+function readFrontmatter(reader: DocsContentReader, filePath: string): Record<string, unknown> {
   try {
-    const { data } = matter(fs.readFileSync(/*! turbopackIgnore: true */ filePath, "utf-8"));
-    return data;
+    return reader.page(filePath).data;
   } catch {
     return {};
   }
 }
 
-function hasAuthoredPageTitle(source: string): boolean {
-  const { content } = matter(source);
+function hasAuthoredPageTitle(content: string): boolean {
   const lines = content.split(/\r?\n/);
   let fence: "`" | "~" | undefined;
   let previousTextLine = "";
@@ -168,17 +166,11 @@ function isExcludedDir(dir: string, excludedDirs: string[]): boolean {
   return excludedDirs.some((excluded) => isWithinDir(resolved, excluded));
 }
 
-function hasChildPages(dir: string, excludedDirs: string[]): boolean {
-  if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return false;
-  for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
+function hasChildPages(reader: DocsContentReader, dir: string, excludedDirs: string[]): boolean {
+  for (const name of reader.directory(dir).directories) {
     const full = path.join(/*! turbopackIgnore: true */ dir, name);
     if (isExcludedDir(full, excludedDirs)) continue;
-    if (
-      fs.statSync(/*! turbopackIgnore: true */ full).isDirectory() &&
-      fs.existsSync(
-        /*! turbopackIgnore: true */ path.join(/*! turbopackIgnore: true */ full, "page.mdx"),
-      )
-    ) {
+    if (reader.directory(full).files.has("page.mdx")) {
       return true;
     }
   }
@@ -306,6 +298,7 @@ function getExcludedDocsDirs(config: DocsConfig, ctx: DocsLocaleContext): string
 function readChangelogTreeEntries(
   config: DocsConfig,
   ctx: DocsLocaleContext,
+  reader: DocsContentReader,
 ): ChangelogTreeEntry[] {
   const changelog = resolveChangelogConfig(config.changelog);
   if (!changelog.enabled) return [];
@@ -314,24 +307,16 @@ function readChangelogTreeEntries(
     ? changelog.contentDir
     : path.join(/*! turbopackIgnore: true */ ctx.docsDir, changelog.contentDir);
 
-  if (!fs.existsSync(/*! turbopackIgnore: true */ changelogDir)) return [];
-
   const entries: ChangelogTreeEntry[] = [];
 
-  for (const name of fs.readdirSync(/*! turbopackIgnore: true */ changelogDir)) {
+  for (const name of reader.directory(changelogDir).directories) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
 
     const entryDir = path.join(/*! turbopackIgnore: true */ changelogDir, name);
-    if (
-      !fs.existsSync(/*! turbopackIgnore: true */ entryDir) ||
-      !fs.statSync(/*! turbopackIgnore: true */ entryDir).isDirectory()
-    )
-      continue;
-
     const pagePath = path.join(/*! turbopackIgnore: true */ entryDir, "page.mdx");
-    if (!fs.existsSync(/*! turbopackIgnore: true */ pagePath)) continue;
+    if (!reader.directory(entryDir).files.has("page.mdx")) continue;
 
-    const data = readFrontmatter(pagePath);
+    const data = readFrontmatter(reader, pagePath);
     if (data.draft === true) continue;
 
     entries.push({
@@ -351,12 +336,13 @@ function readChangelogTreeEntries(
 function buildChangelogTree(
   config: DocsConfig,
   ctx: DocsLocaleContext,
+  reader: DocsContentReader,
   flat = false,
 ): FolderNode | null {
   const changelog = resolveChangelogConfig(config.changelog);
   if (!changelog.enabled) return null;
 
-  const entries = readChangelogTreeEntries(config, ctx);
+  const entries = readChangelogTreeEntries(config, ctx, reader);
   if (entries.length === 0) return null;
 
   const url = publicDocsRoute(ctx, [changelog.path]);
@@ -379,19 +365,23 @@ function buildChangelogTree(
   };
 }
 
-function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
+function buildTree(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+  reader: DocsContentReader,
+  flat = false,
+) {
   const docsDir = ctx.docsDir;
   const icons = config.icons as Record<string, unknown> | undefined;
   const ordering = config.ordering;
   const rootChildren: TreeNode[] = [];
   const excludedDirs = getExcludedDocsDirs(config, ctx);
 
-  if (
-    fs.existsSync(
-      /*! turbopackIgnore: true */ path.join(/*! turbopackIgnore: true */ docsDir, "page.mdx"),
-    )
-  ) {
-    const data = readFrontmatter(path.join(/*! turbopackIgnore: true */ docsDir, "page.mdx"));
+  if (reader.directory(docsDir).files.has("page.mdx")) {
+    const data = readFrontmatter(
+      reader,
+      path.join(/*! turbopackIgnore: true */ docsDir, "page.mdx"),
+    );
     if (data.hidden !== true) {
       rootChildren.push({
         type: "page",
@@ -410,18 +400,16 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
   ): TreeNode | null {
     const full = path.join(/*! turbopackIgnore: true */ dir, name);
     if (isExcludedDir(full, excludedDirs)) return null;
-    if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) return null;
-
     const pagePath = path.join(/*! turbopackIgnore: true */ full, "page.mdx");
-    if (!fs.existsSync(/*! turbopackIgnore: true */ pagePath)) return null;
+    if (!reader.directory(full).files.has("page.mdx")) return null;
 
-    const data = readFrontmatter(pagePath);
+    const data = readFrontmatter(reader, pagePath);
     const slug = [...baseSlug, name];
     const url = publicDocsRoute(ctx, slug);
     const icon = resolveIcon(data.icon as string | undefined, icons);
     const displayName = (data.title as string) ?? name.replace(/-/g, " ");
     const folderName = resolveSidebarFolderName(config.theme?.name, name, displayName);
-    const hasChildren = hasChildPages(full, excludedDirs);
+    const hasChildren = hasChildPages(reader, full, excludedDirs);
 
     if (data.hidden === true) {
       if (!hasChildren) return null;
@@ -452,8 +440,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
   }
 
   function scanDir(dir: string, baseSlug: string[], slugOrder?: OrderingItem[]): TreeNode[] {
-    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return [];
-    const entries = fs.readdirSync(/*! turbopackIgnore: true */ dir).sort();
+    const entries = reader.directory(dir).directories;
 
     if (slugOrder) {
       const nodes: TreeNode[] = [];
@@ -482,10 +469,9 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
       for (const name of entries) {
         const full = path.join(/*! turbopackIgnore: true */ dir, name);
         if (isExcludedDir(full, excludedDirs)) continue;
-        if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) continue;
         const pagePath = path.join(/*! turbopackIgnore: true */ full, "page.mdx");
-        if (!fs.existsSync(/*! turbopackIgnore: true */ pagePath)) continue;
-        const data = readFrontmatter(pagePath);
+        if (!reader.directory(full).files.has("page.mdx")) continue;
+        const data = readFrontmatter(reader, pagePath);
         const order = typeof data.order === "number" ? data.order : Infinity;
         const node = buildNode(dir, name, baseSlug);
         if (node) nodes.push({ order, node });
@@ -508,7 +494,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
   const rootSlugOrder = Array.isArray(ordering) ? ordering : undefined;
   rootChildren.push(...scanDir(docsDir, [], rootSlugOrder));
-  const changelogTree = buildChangelogTree(config, ctx, flat);
+  const changelogTree = buildChangelogTree(config, ctx, reader, flat);
   if (changelogTree) {
     if (rootChildren.length > 0) {
       rootChildren.push({
@@ -552,12 +538,22 @@ function localizeTreeUrls(tree: TreeRoot, locale?: string): TreeRoot {
   };
 }
 
-// ─── Last Modified Map ───────────────────────────────────────────────
+/** Keep consumer sidebar mutations local to the current render. */
+function cloneTree(tree: TreeRoot): TreeRoot {
+  function cloneNode(node: TreeNode): TreeNode {
+    if (node.type !== "folder") return { ...node };
+    return {
+      ...node,
+      index: node.index ? { ...node.index } : undefined,
+      children: node.children.map(cloneNode),
+    };
+  }
 
-/**
- * Scan all page.mdx files under the docs entry directory and build
- * a map of URL pathname → formatted last-modified date string.
- */
+  return { ...tree, children: tree.children.map(cloneNode) };
+}
+
+// ─── Page metadata ──────────────────────────────────────────────────
+
 function resolveManifestLastmod(
   manifest: DocsSitemapManifest | null,
   ctx: DocsLocaleContext,
@@ -570,187 +566,43 @@ function resolveManifestLastmod(
   );
 }
 
-function buildLastModifiedMap(
+/** Read each page once for all metadata, sharing the reader with navigation. */
+function buildPageMaps(
   config: DocsConfig,
   ctx: DocsLocaleContext,
+  reader: DocsContentReader,
   manifest: DocsSitemapManifest | null,
-): Record<string, string> {
-  const docsDir = ctx.docsDir;
-  const map: Record<string, string> = {};
-  const excludedDirs = getExcludedDocsDirs(config, ctx);
-
-  function formatDate(date: Date): string {
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
-
-  function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
-    if (isExcludedDir(dir, excludedDirs)) return;
-
-    const pagePath = path.join(/*! turbopackIgnore: true */ dir, "page.mdx");
-    if (fs.existsSync(/*! turbopackIgnore: true */ pagePath)) {
-      const url = publicDocsRoute(ctx, slugParts);
-      const manifestLastmod = resolveManifestLastmod(manifest, ctx, url);
-      const modified = manifestLastmod
-        ? new Date(`${manifestLastmod}T00:00:00`)
-        : fs.statSync(/*! turbopackIgnore: true */ pagePath).mtime;
-      map[url] = formatDate(modified);
-    }
-
-    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
-      const full = path.join(/*! turbopackIgnore: true */ dir, name);
-      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
-        scan(full, [...slugParts, name]);
-      }
-    }
-  }
-
-  scan(docsDir, []);
-  return map;
-}
-
-/**
- * Scan all page.mdx files and build a map of URL pathname → description
- * from the frontmatter `description` field.
- */
-function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record<string, string> {
-  const docsDir = ctx.docsDir;
-  const map: Record<string, string> = {};
-  const excludedDirs = getExcludedDocsDirs(config, ctx);
-
-  function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
-    if (isExcludedDir(dir, excludedDirs)) return;
-
-    const pagePath = path.join(/*! turbopackIgnore: true */ dir, "page.mdx");
-    if (fs.existsSync(/*! turbopackIgnore: true */ pagePath)) {
-      const data = readFrontmatter(pagePath);
-      const desc = data.description as string | undefined;
-      if (desc) {
-        const url = publicDocsRoute(ctx, slugParts);
-        map[url] = desc;
-      }
-    }
-
-    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
-      const full = path.join(/*! turbopackIgnore: true */ dir, name);
-      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
-        scan(full, [...slugParts, name]);
-      }
-    }
-  }
-
-  scan(docsDir, []);
-  return map;
-}
-
-/**
- * Build titles only for pages whose MDX body does not already author an h1.
- * This lets the page frame render the frontmatter title exactly once.
- */
-function buildGeneratedTitleMap(
-  config: DocsConfig,
-  ctx: DocsLocaleContext,
-): Record<string, string> {
-  const docsDir = ctx.docsDir;
-  const map: Record<string, string> = {};
-  const excludedDirs = getExcludedDocsDirs(config, ctx);
-
-  function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
-    if (isExcludedDir(dir, excludedDirs)) return;
-
-    const pagePath = findDocsPageFile(dir);
-    if (pagePath) {
-      const source = fs.readFileSync(/*! turbopackIgnore: true */ pagePath, "utf-8");
-      const { data } = matter(source);
-      if (typeof data.title === "string" && !hasAuthoredPageTitle(source)) {
-        map[publicDocsRoute(ctx, slugParts)] = data.title;
-      }
-    }
-
-    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
-      const full = path.join(/*! turbopackIgnore: true */ dir, name);
-      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
-        scan(full, [...slugParts, name]);
-      }
-    }
-  }
-
-  scan(docsDir, []);
-  return map;
-}
-
-function buildReadingTimeMap(
-  config: DocsConfig,
-  ctx: DocsLocaleContext,
   options: {
+    lastUpdated: boolean;
     enabledByDefault: boolean;
     wordsPerMinute: number;
     includeCode: boolean;
   },
-): Record<string, number> {
-  const docsDir = ctx.docsDir;
-  const map: Record<string, number> = {};
-  const excludedDirs = getExcludedDocsDirs(config, ctx);
-
-  function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
-    if (isExcludedDir(dir, excludedDirs)) return;
-
-    const pagePath = path.join(/*! turbopackIgnore: true */ dir, "page.mdx");
-    if (fs.existsSync(/*! turbopackIgnore: true */ pagePath)) {
-      const source = fs.readFileSync(/*! turbopackIgnore: true */ pagePath, "utf-8");
-      const { data, content } = matter(source);
-      const humanContent = resolveDocsAudienceMdxContent(content, "human");
-      const minutes = resolvePageReadingTime(data as PageFrontmatter, humanContent, options);
-
-      if (typeof minutes === "number") {
-        const url = publicDocsRoute(ctx, slugParts);
-        map[url] = minutes;
-      }
-    }
-
-    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
-      const full = path.join(/*! turbopackIgnore: true */ dir, name);
-      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
-        scan(full, [...slugParts, name]);
-      }
-    }
-  }
-
-  scan(docsDir, []);
-  return map;
-}
-
-function findDocsPageFile(dir: string): string | undefined {
-  return ["page.mdx", "page.md"]
-    .map((fileName) => path.join(/*! turbopackIgnore: true */ dir, fileName))
-    .find((candidate) => fs.existsSync(/*! turbopackIgnore: true */ candidate));
-}
-
-function buildStructuredDataMap(
-  config: DocsConfig,
-  ctx: DocsLocaleContext,
-  manifest: DocsSitemapManifest | null,
-): Record<string, string> {
-  const docsDir = ctx.docsDir;
-  const map: Record<string, string> = {};
+) {
+  const lastModifiedMap: Record<string, string> = {};
+  const descriptionMap: Record<string, string> = {};
+  const generatedTitleMap: Record<string, string> = {};
+  const readingTimeMap: Record<string, number> = {};
+  const structuredDataMap: Record<string, string> = {};
   const excludedDirs = getExcludedDocsDirs(config, ctx);
   const baseUrl = resolveDocsMetadataBaseUrl(config);
+  const dateFormatter = options.lastUpdated
+    ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : undefined;
 
   function scan(dir: string, slugParts: string[]) {
-    if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
     if (isExcludedDir(dir, excludedDirs)) return;
+    const { directories, files } = reader.directory(dir);
+    const fileName = files.has("page.mdx")
+      ? "page.mdx"
+      : files.has("page.md")
+        ? "page.md"
+        : undefined;
 
-    const pagePath = findDocsPageFile(dir);
-    if (pagePath) {
-      const source = fs.readFileSync(/*! turbopackIgnore: true */ pagePath, "utf-8");
-      const { data } = matter(source);
+    if (fileName) {
+      const { data, content, modifiedAt } = reader.page(
+        path.join(/*! turbopackIgnore: true */ dir, fileName),
+      );
       const route = publicDocsRoute(ctx, slugParts);
       const title =
         typeof data.title === "string"
@@ -758,31 +610,58 @@ function buildStructuredDataMap(
           : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
       const description = typeof data.description === "string" ? data.description : undefined;
       const manifestLastmod = resolveManifestLastmod(manifest, ctx, route);
-      const dateModified = manifestLastmod
-        ? `${manifestLastmod}T00:00:00.000Z`
-        : fs.statSync(/*! turbopackIgnore: true */ pagePath).mtime.toISOString();
 
-      map[route] = renderDocsPageStructuredDataJson({
+      if (
+        config.theme?.name === "shadcn" &&
+        typeof data.title === "string" &&
+        !hasAuthoredPageTitle(content)
+      ) {
+        generatedTitleMap[route] = data.title;
+      }
+
+      // Preserve the existing MDX-only metadata behavior for these page features.
+      if (fileName === "page.mdx") {
+        if (dateFormatter) {
+          lastModifiedMap[route] = dateFormatter.format(
+            manifestLastmod ? new Date(`${manifestLastmod}T00:00:00`) : modifiedAt,
+          );
+        }
+        if (description) descriptionMap[route] = description;
+
+        // Page overrides still apply when reading time is globally disabled.
+        // Avoid parsing audience blocks when the result needs no word count.
+        const estimateReadingTime =
+          (options.enabledByDefault || Object.hasOwn(data, "readingTime")) &&
+          data.readingTime !== false &&
+          !(typeof data.readingTime === "number" && Number.isFinite(data.readingTime));
+        const minutes = resolvePageReadingTime(
+          data as Partial<PageFrontmatter>,
+          estimateReadingTime ? resolveDocsAudienceMdxContent(content, "human") : "",
+          options,
+        );
+        if (typeof minutes === "number") readingTimeMap[route] = minutes;
+      }
+
+      structuredDataMap[route] = renderDocsPageStructuredDataJson({
         title,
         description,
         url: withLangInUrl(route, ctx.locale),
         baseUrl,
         entry: ctx.entryPath,
-        dateModified,
+        dateModified: manifestLastmod
+          ? `${manifestLastmod}T00:00:00.000Z`
+          : modifiedAt.toISOString(),
         agent: normalizePageAgentFrontmatter(data.agent),
       });
     }
 
-    for (const name of fs.readdirSync(/*! turbopackIgnore: true */ dir)) {
-      const full = path.join(/*! turbopackIgnore: true */ dir, name);
-      if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
-        scan(full, [...slugParts, name]);
-      }
+    for (const name of directories) {
+      scan(path.join(/*! turbopackIgnore: true */ dir, name), [...slugParts, name]);
     }
   }
 
-  scan(docsDir, []);
-  return map;
+  scan(ctx.docsDir, []);
+  return { lastModifiedMap, descriptionMap, generatedTitleMap, readingTimeMap, structuredDataMap };
 }
 
 // ─── createDocsMetadata ──────────────────────────────────────────────
@@ -1051,7 +930,6 @@ export function createDocsLayout(
   const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
 
   const localeContext = resolveDocsLocaleContext(config, options?.locale);
-  const sitemapManifest = readDocsSitemapManifest(process.cwd(), config.sitemap);
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
   const activeLocale = localeContext.locale ?? i18n?.defaultLocale;
   const docsApiUrl = withLangInUrl("/api/docs", activeLocale);
@@ -1207,27 +1085,45 @@ export function createDocsLayout(
       rawModelConfig.defaultModel ?? rawModelConfig.models?.[0]?.id ?? aiDefaultModelId;
   }
 
-  // Build last-modified map by scanning all page.mdx files
-  const lastModifiedMap = buildLastModifiedMap(config, localeContext, sitemapManifest);
+  function prepareContent() {
+    const reader = createDocsContentReader();
+    const sitemapManifest = readDocsSitemapManifest(process.cwd(), config.sitemap);
+    const maps = buildPageMaps(config, localeContext, reader, sitemapManifest, {
+      lastUpdated: lastUpdatedEnabled,
+      enabledByDefault: readingTimeEnabledByDefault,
+      wordsPerMinute: readingTimeWordsPerMinute,
+      includeCode: readingTimeIncludeCode,
+    });
+    const tree = applySidebarFolderIndexBehavior(
+      buildTree(config, localeContext, reader, !!sidebarFlat),
+      {
+        sidebar: config.sidebar,
+        defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
+      },
+    );
+    return { ...maps, localizedTree: i18n ? localizeTreeUrls(tree, activeLocale) : tree };
+  }
 
-  // Build description map from frontmatter
-  const descriptionMap = buildDescriptionMap(config, localeContext);
-  const generatedTitleMap =
-    config.theme?.name === "shadcn" ? buildGeneratedTitleMap(config, localeContext) : {};
-  const readingTimeMap = buildReadingTimeMap(config, localeContext, {
-    enabledByDefault: readingTimeEnabledByDefault,
-    wordsPerMinute: readingTimeWordsPerMinute,
-    includeCode: readingTimeIncludeCode,
-  });
-  const structuredDataMap = buildStructuredDataMap(config, localeContext, sitemapManifest);
-  const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
+  // A Next production build renders this layout for many pages. Reuse its
+  // prepared content within this layout instance instead of rescanning the site
+  // for every page. Development creates a fresh snapshot to pick up edits,
+  // additions and deletions without needing to restart the dev server.
+  let productionContent: ReturnType<typeof prepareContent> | undefined;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
-    const tree = applySidebarFolderIndexBehavior(buildTree(config, localeContext, !!sidebarFlat), {
-      sidebar: config.sidebar,
-      defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
-    });
-    const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
+    const {
+      lastModifiedMap,
+      descriptionMap,
+      generatedTitleMap,
+      readingTimeMap,
+      structuredDataMap,
+      localizedTree: preparedTree,
+    } = process.env.NODE_ENV === "production"
+      ? (productionContent ??= prepareContent())
+      : prepareContent();
+    const localizedTree = cloneTree(preparedTree);
+    const readingTimeEnabled =
+      readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
     const sidebarFooter = withStableReactKey(
