@@ -3,7 +3,7 @@ import {
   encodeDocsHeadingTocUrls,
   isolateDocsMarkdownPromptReferences,
   withDocsMarkdownRenderableHeadings,
-} from "@farming-labs/docs";
+} from "./core.js";
 import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 
 export default function remarkHeading(

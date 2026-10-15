@@ -1,1 +1,1 @@
-export { remarkCodeGroup as default } from "@farming-labs/docs/server";
+export { remarkCodeGroup as default } from "./core.js";

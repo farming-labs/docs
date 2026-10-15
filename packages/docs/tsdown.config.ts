@@ -6,6 +6,7 @@ export default defineConfig({
     "src/server.ts",
     "src/runtime.ts",
     "src/markdown-rendering.ts",
+    "src/mdx.ts",
     "src/agent-skills-spec.ts",
     "src/agent-skills-bundle.ts",
     "src/agent-skills-vite.ts",
