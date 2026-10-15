@@ -1508,7 +1508,12 @@ function makeGeneratedDir(dirPath: string) {
 }
 
 function writeGeneratedFile(filePath: string, content: string) {
-  withReadOnlyFsGuard(filePath, () => writeFileSync(filePath, content, "utf8"));
+  withReadOnlyFsGuard(filePath, () => {
+    // Next can evaluate its config more than once during a build. Preserve the
+    // timestamp of unchanged modules so they do not invalidate compiler caches.
+    if (existsSync(filePath) && readFileSync(filePath, "utf8") === content) return;
+    writeFileSync(filePath, content, "utf8");
+  });
 }
 
 type ResolvedNextMcpConfig = {
