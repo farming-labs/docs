@@ -1,5 +1,6 @@
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
 import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -99,8 +100,145 @@ agent:
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     process.chdir(originalCwd);
     rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it.each([1, 32])("reads each page once across %i production page renders", (pageCount) => {
+    vi.stubEnv("NODE_ENV", "production");
+    const docsDir = join(process.cwd(), "app", "docs");
+    for (let i = 0; i < pageCount; i++) {
+      const pageDir = join(docsDir, `page-${i}`);
+      mkdirSync(pageDir);
+      writeFileSync(join(pageDir, "page.mdx"), `---\ntitle: Page ${i}\norder: ${i}\n---\nBody.\n`);
+    }
+    const reads = vi.spyOn(fs, "readFileSync");
+    const listings = vi.spyOn(fs, "readdirSync");
+    const stats = vi.spyOn(fs, "statSync");
+    const Layout = createDocsLayout({
+      entry: "docs",
+      ordering: "numeric",
+      readingTime: true,
+      theme: { name: "shadcn" },
+    });
+    for (let i = 0; i < pageCount; i++) {
+      const rendered = Layout({ children: React.createElement("div", null, `Page ${i}`) });
+      expect(findDocsLayoutTree(rendered)?.children).toHaveLength(pageCount + 1);
+      expect(findDocsPageClientProps(rendered)?.generatedTitleMap).toHaveProperty(
+        `/docs/page-${i}`,
+      );
+    }
+
+    const contentCalls = (calls: unknown[][]) =>
+      calls.filter(([file]) => String(file).startsWith(docsDir));
+    expect(contentCalls(reads.mock.calls)).toHaveLength(pageCount + 1);
+    expect(contentCalls(listings.mock.calls)).toHaveLength(pageCount + 1);
+    expect(contentCalls(stats.mock.calls)).toHaveLength(pageCount + 1);
+  });
+
+  it("keeps custom sidebar mutations local to each production render", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const sectionDir = join(tmpDir, "app", "docs", "section");
+    mkdirSync(join(sectionDir, "child"), { recursive: true });
+    writeFileSync(join(sectionDir, "page.mdx"), "---\ntitle: Section\n---\nBody.\n");
+    writeFileSync(join(sectionDir, "child", "page.mdx"), "---\ntitle: Child\n---\nBody.\n");
+
+    const sidebar = vi.fn(({ tree }) => {
+      const folder = tree.children[1];
+      expect(tree.children[0].name).toBe("Home");
+      expect(folder.name).toBe("Section");
+      expect(folder.index.name).toBe("Section");
+      expect(folder.children).toHaveLength(1);
+      expect(folder.children[0].name).toBe("Child");
+      tree.children[0].name = "Custom home";
+      folder.name = "Custom section";
+      folder.index.name = "Custom index";
+      folder.children[0].name = "Custom child";
+      folder.children.push({ type: "page", name: "Extra", url: "/extra" });
+      return null;
+    });
+    const Layout = createDocsLayout({ entry: "docs", sidebar: { component: sidebar } });
+    Layout({ children: React.createElement("div") });
+    Layout({ children: React.createElement("div") });
+    expect(sidebar).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes navigation and metadata after edits, additions and deletions in development", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const docsDir = join(tmpDir, "app", "docs");
+    const Layout = createDocsLayout({ entry: "docs", theme: { name: "shadcn" } });
+    const render = () => Layout({ children: React.createElement("div") });
+    expect(findDocsLayoutTree(render())?.children).toHaveLength(1);
+
+    writeFileSync(
+      join(docsDir, "page.mdx"),
+      "---\ntitle: Updated\ndescription: Fresh description\nreadingTime: 7\n---\nBody.\n",
+    );
+    mkdirSync(join(docsDir, "new"));
+    writeFileSync(join(docsDir, "new", "page.mdx"), "---\ntitle: New page\n---\nBody.\n");
+    const updated = render();
+    expect(findDocsLayoutTree(updated)?.children).toMatchObject([
+      { name: "Updated" },
+      { name: "New page" },
+    ]);
+    const props = findDocsPageClientProps(updated);
+    expect(props?.descriptionMap).toEqual({ "/docs": "Fresh description" });
+    expect(props?.readingTimeMap).toEqual({ "/docs": 7 });
+    expect(props?.generatedTitleMap).toEqual({ "/docs": "Updated", "/docs/new": "New page" });
+    expect(props?.structuredDataMap).toMatchObject({
+      "/docs": expect.stringContaining("Fresh description"),
+    });
+
+    rmSync(join(docsDir, "new"), { recursive: true });
+    const removed = render();
+    expect(findDocsLayoutTree(removed)?.children).toHaveLength(1);
+    expect(findDocsPageClientProps(removed)?.generatedTitleMap).not.toHaveProperty("/docs/new");
+    expect(findDocsPageClientProps(removed)?.structuredDataMap).not.toHaveProperty("/docs/new");
+  });
+
+  it("keeps production content isolated by layout configuration and locale", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const contentDir = join(tmpDir, "content");
+    for (const [locale, title] of [
+      ["en", "English"],
+      ["fr", "French"],
+    ]) {
+      mkdirSync(join(contentDir, locale), { recursive: true });
+      writeFileSync(join(contentDir, locale, "page.mdx"), `---\ntitle: ${title}\n---\nBody.\n`);
+    }
+    const config = {
+      entry: "docs",
+      contentDir,
+      i18n: { locales: ["en", "fr"], defaultLocale: "en" },
+    };
+    const English = createDocsLayout(config, { locale: "en" });
+    const French = createDocsLayout({ ...config, docsPath: "/guide" }, { locale: "fr" });
+    expect(findDocsLayoutTree(English({ children: null }))?.children).toMatchObject([
+      { name: "English", url: "/docs?lang=en" },
+    ]);
+    expect(findDocsLayoutTree(French({ children: null }))?.children).toMatchObject([
+      { name: "French", url: "/guide?lang=fr" },
+    ]);
+    expect(findDocsLayoutTree(English({ children: null }))?.children).toMatchObject([
+      { name: "English", url: "/docs?lang=en" },
+    ]);
+  });
+
+  it("keeps Markdown titles and structured data while skipping disabled last-updated dates", () => {
+    const markdownDir = join(tmpDir, "app", "docs", "markdown");
+    mkdirSync(markdownDir);
+    writeFileSync(join(markdownDir, "page.md"), "---\ntitle: Markdown\n---\nBody.\n");
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "shadcn" },
+      lastUpdated: false,
+    });
+    const props = findDocsPageClientProps(Layout({ children: null }));
+    expect(props?.lastModifiedMap).toEqual({});
+    expect(props?.generatedTitleMap).toEqual({ "/docs/markdown": "Markdown" });
+    expect(props?.structuredDataMap).toHaveProperty("/docs/markdown");
   });
 
   it("passes enabled page actions through to DocsPageClient", () => {

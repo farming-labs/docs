@@ -69,6 +69,12 @@ Available preset subpaths include `default`, `darksharp`, `pixel-border`, `color
 
 ## Main entrypoints
 
+`createDocsLayout()` prepares navigation and page metadata together, reading each page once per
+preparation pass. In production, the layout reuses that data across page renders within the same
+layout instance, including static generation during `next build`. Content changes are picked up
+by a new build/process; development renders refresh the data to reflect edits, new pages, and
+deleted pages. No additional configuration is required.
+
 | Entrypoint | Purpose |
 | --- | --- |
 | `@farming-labs/theme` | Default theme, `RootProvider`, layout helpers, and React UI |
