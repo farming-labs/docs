@@ -15,11 +15,21 @@
  * never needs to be modified — AI features work purely from `docs.config.ts`.
  */
 
-import { useState, useEffect } from "react";
-import { DocsSearchDialog, FloatingAIChat, AIModalDialog } from "./ai-search-dialog.js";
+import { lazy, Suspense, useState, useEffect } from "react";
+import { DeferredDialog } from "./deferred-dialog.js";
 import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+
+const DocsSearchDialog = lazy(() =>
+  import("./ai-search-dialog.js").then((module) => ({ default: module.DocsSearchDialog })),
+);
+const AIModalDialog = lazy(() =>
+  import("./ai-search-dialog.js").then((module) => ({ default: module.AIModalDialog })),
+);
+const FloatingAIChat = lazy(() =>
+  import("./ai-search-dialog.js").then((module) => ({ default: module.FloatingAIChat })),
+);
 
 interface DocsAIFeaturesProps {
   mode: "search" | "floating" | "sidebar-icon";
@@ -103,23 +113,25 @@ export function DocsAIFeatures({
   }
 
   return (
-    <FloatingAIChat
-      api={localizedApi}
-      requestMode={requestMode}
-      requestHeaders={requestHeaders}
-      requestStream={requestStream}
-      position={position}
-      floatingStyle={floatingStyle}
-      triggerComponentHtml={triggerComponentHtml}
-      suggestedQuestions={suggestedQuestions}
-      aiLabel={aiLabel}
-      loaderVariant={loaderVariant as any}
-      loadingComponentHtml={loadingComponentHtml}
-      models={models}
-      defaultModelId={defaultModelId}
-      analytics={analytics}
-      feedbackEnabled={feedbackEnabled}
-    />
+    <Suspense fallback={null}>
+      <FloatingAIChat
+        api={localizedApi}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
+        requestStream={requestStream}
+        position={position}
+        floatingStyle={floatingStyle}
+        triggerComponentHtml={triggerComponentHtml}
+        suggestedQuestions={suggestedQuestions}
+        aiLabel={aiLabel}
+        loaderVariant={loaderVariant as any}
+        loadingComponentHtml={loadingComponentHtml}
+        models={models}
+        defaultModelId={defaultModelId}
+        analytics={analytics}
+        feedbackEnabled={feedbackEnabled}
+      />
+    </Suspense>
   );
 }
 
@@ -201,22 +213,24 @@ function SearchModeAI({
   }, [analytics]);
 
   return (
-    <DocsSearchDialog
-      open={open}
-      onOpenChange={setOpen}
-      api={api}
-      requestMode={requestMode}
-      requestHeaders={requestHeaders}
-      requestStream={requestStream}
-      suggestedQuestions={suggestedQuestions}
-      aiLabel={aiLabel}
-      loaderVariant={loaderVariant as any}
-      loadingComponentHtml={loadingComponentHtml}
-      models={models}
-      defaultModelId={defaultModelId}
-      analytics={analytics}
-      feedbackEnabled={feedbackEnabled}
-    />
+    <DeferredDialog open={open} onOpenChange={setOpen}>
+      <DocsSearchDialog
+        open={open}
+        onOpenChange={setOpen}
+        api={api}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
+        requestStream={requestStream}
+        suggestedQuestions={suggestedQuestions}
+        aiLabel={aiLabel}
+        loaderVariant={loaderVariant as any}
+        loadingComponentHtml={loadingComponentHtml}
+        models={models}
+        defaultModelId={defaultModelId}
+        analytics={analytics}
+        feedbackEnabled={feedbackEnabled}
+      />
+    </DeferredDialog>
   );
 }
 
@@ -298,38 +312,42 @@ function SidebarIconModeAI({
 
   return (
     <>
-      <DocsSearchDialog
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        api={api}
-        requestMode={requestMode}
-        requestHeaders={requestHeaders}
-        requestStream={requestStream}
-        suggestedQuestions={suggestedQuestions}
-        aiLabel={aiLabel}
-        loaderVariant={loaderVariant as any}
-        loadingComponentHtml={loadingComponentHtml}
-        models={models}
-        defaultModelId={defaultModelId}
-        analytics={analytics}
-        feedbackEnabled={feedbackEnabled}
-      />
-      <AIModalDialog
-        open={aiOpen}
-        onOpenChange={setAiOpen}
-        api={api}
-        requestMode={requestMode}
-        requestHeaders={requestHeaders}
-        requestStream={requestStream}
-        suggestedQuestions={suggestedQuestions}
-        aiLabel={aiLabel}
-        loaderVariant={loaderVariant as any}
-        loadingComponentHtml={loadingComponentHtml}
-        models={models}
-        defaultModelId={defaultModelId}
-        analytics={analytics}
-        feedbackEnabled={feedbackEnabled}
-      />
+      <DeferredDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <DocsSearchDialog
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          api={api}
+          requestMode={requestMode}
+          requestHeaders={requestHeaders}
+          requestStream={requestStream}
+          suggestedQuestions={suggestedQuestions}
+          aiLabel={aiLabel}
+          loaderVariant={loaderVariant as any}
+          loadingComponentHtml={loadingComponentHtml}
+          models={models}
+          defaultModelId={defaultModelId}
+          analytics={analytics}
+          feedbackEnabled={feedbackEnabled}
+        />
+      </DeferredDialog>
+      <DeferredDialog open={aiOpen} onOpenChange={setAiOpen}>
+        <AIModalDialog
+          open={aiOpen}
+          onOpenChange={setAiOpen}
+          api={api}
+          requestMode={requestMode}
+          requestHeaders={requestHeaders}
+          requestStream={requestStream}
+          suggestedQuestions={suggestedQuestions}
+          aiLabel={aiLabel}
+          loaderVariant={loaderVariant as any}
+          loadingComponentHtml={loadingComponentHtml}
+          models={models}
+          defaultModelId={defaultModelId}
+          analytics={analytics}
+          feedbackEnabled={feedbackEnabled}
+        />
+      </DeferredDialog>
     </>
   );
 }
