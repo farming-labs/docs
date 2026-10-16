@@ -88,7 +88,12 @@
       "import": "./dist/mcp.mjs",
       "default": "./dist/mcp.mjs"
     },
-    "./styles/themes/shadcn.css": "./styles/themes/shadcn.css"
+    "./styles/themes/shadcn.css": "./styles/themes/shadcn.css",
+    "./build": {
+      "types": "./dist/build.d.mts",
+      "import": "./dist/build.mjs",
+      "default": "./dist/build.mjs"
+    }
   },
   "scripts": {
     "build": "tsdown",
