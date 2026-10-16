@@ -7,6 +7,10 @@ import { tmpdir } from "node:os";
 import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
 import { shadcn } from "./shadcn/index.js";
 
+vi.mock("./docs-ai-features.js", () => {
+  throw new Error("The docs layout must not eagerly initialize the optional AI implementation");
+});
+
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
 
