@@ -26,6 +26,10 @@ import {
   DEFAULT_API_CATALOG_ROUTE,
 } from "@farming-labs/docs";
 import { withDocs } from "./config.js";
+import {
+  getRewrittenUrl,
+  unstable_getResponseFromNextConfig,
+} from "next/experimental/testing/server";
 
 type TestRewrite = {
   source: string;
@@ -2152,6 +2156,53 @@ version: "1.0"
       "/api/docs": ["website/app/docs/**/*", ".farming-labs/sitemap-manifest.json"],
       "/api/docs/mcp": ["website/app/docs/**/*"],
     });
+  });
+
+  it("lets explicit beforeFiles Markdown handlers override generated routes", async () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+    const custom = [
+      { source: "/docs/:slug*.md", destination: "/api/custom-markdown/:slug*" },
+      {
+        source: "/docs/:slug*",
+        has: [{ ...MARKDOWN_ACCEPT_HEADER, type: "header" as const }],
+        destination: "/api/custom-markdown/:slug*",
+      },
+    ];
+    const afterFiles = [{ source: "/legacy", destination: "/docs" }];
+    const fallback = [{ source: "/old/:slug*", destination: "/archive/:slug*" }];
+    const config = withDocs({
+      rewrites: async () => ({ beforeFiles: custom, afterFiles, fallback }),
+    });
+    const routes = await readRewrites(config);
+    expect(getBeforeFilesRewrites(routes).slice(0, custom.length)).toEqual(custom);
+    expect(getAfterFilesRewrites(routes)[0]).toEqual(afterFiles[0]);
+    expect(routes).toMatchObject({ fallback });
+
+    for (const [path, headers] of [
+      ["/docs/installation.md", {}],
+      ["/docs/installation", { accept: "text/markdown" }],
+    ] as const) {
+      const response = await unstable_getResponseFromNextConfig({
+        url: `https://example.com${path}`,
+        nextConfig: config,
+        headers,
+      });
+      expect(getRewrittenUrl(response)).toBe(
+        "https://example.com/api/custom-markdown/installation",
+      );
+    }
+    const automatic = await unstable_getResponseFromNextConfig({
+      url: "https://example.com/api/docs/agent/spec",
+      nextConfig: config,
+    });
+    expect(getRewrittenUrl(automatic)).toBe("https://example.com/api/docs?agent=spec");
+    const html = await unstable_getResponseFromNextConfig({
+      url: "https://example.com/docs/installation",
+      nextConfig: config,
+      headers: { accept: "text/html" },
+    });
+    expect(getRewrittenUrl(html)).toBeNull();
   });
 
   it("merges automatic markdown rewrites with user rewrites", async () => {
