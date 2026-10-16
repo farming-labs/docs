@@ -58,6 +58,22 @@ results or user projects. It aborts on a failed build or output validation. All 
 must be prerendered, contain content and highlighted code, and expose the complete sidebar. Edited
 builds must include the edit marker in the generated HTML.
 
+## CI measurements
+
+The **Docs build benchmark** workflow runs the providers sequentially on a fresh Ubuntu 24.04
+GitHub-hosted runner with Node 24.21.0 and locked dependencies. Framework package builds and
+installation happen before the timer. PRs changing this harness run a 10-page, one-trial smoke
+comparison (six builds: two providers × cold/warm/edit). One trial validates the harness; it is
+not enough to support a performance claim.
+
+After the workflow is available on the default branch, run it manually with page counts and
+1–5 trials. Defaults are 100 and 500 pages, three trials; counts above 100 remain cold-only as
+in the local runner. It records the checkout SHA, dependency versions, every sample, sampled
+process-tree RSS, runner details, source-corpus parity, and payload sizes in a 30-day Actions
+artifact. Raw build logs remain available even if a later build fails. Generated apps and build
+caches are not uploaded. No automatic winner threshold or comparison between unlike runners is
+applied. The synthetic fixture remains separate from the real assistant-ui migration benchmark.
+
 ## Measurements
 
 Each provider runs serially; provider order rotates across trials. No builds overlap. At 100 pages,
