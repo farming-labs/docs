@@ -42,8 +42,18 @@ jobs:
       - name: Run typecheck
         run: pnpm typecheck
 
+      # Example builds validate the adapters, but their output is not part of the website.
+      # Keep that coverage here instead of rebuilding them on every Vercel deployment.
+      - name: Build framework examples
+        run: |
+          pnpm --dir examples/next build
+          pnpm --dir examples/tanstack-start build
+          pnpm --dir examples/nuxt build
+          pnpm --dir examples/astro build
+          pnpm --dir examples/sveltekit build
+
       - name: Run website build
-        run: pnpm build
+        run: pnpm prisma generate && pnpm build:app
         working-directory: website
 
   test:
