@@ -35,7 +35,8 @@ export function prepare(provider, pages, appDir) {
   for (const [name, target] of Object.entries(packages)) link(name, target);
   const versions = Object.fromEntries(Object.entries(packages).map(([name, target]) => [name, JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).version]));
   write('package.json', JSON.stringify({ name: 'benchmark-farmjs', private: true, type: 'module', dependencies: versions }, null, 2));
-  write('farm.config.ts', `import {defineConfig} from '@farm.js/core';\nimport {withDocs} from '@farming-labs/farmjs/config';\nexport default withDocs(defineConfig({deploy:{preset:'node-server',outputDir:'.output'},routeRules:{'/docs':{prerender:true},'/docs/**':{prerender:true}}}));\n`);
+  const deployment = provider === 'farmjs-vercel' ? "{target:'vercel'}" : "{preset:'node-server',outputDir:'.output'}";
+  write('farm.config.ts', `import {defineConfig} from '@farm.js/core';\nimport {withDocs} from '@farming-labs/farmjs/config';\nexport default withDocs(defineConfig({deploy:${deployment},routeRules:{'/docs':{prerender:true},'/docs/**':{prerender:true}}}));\n`);
   write('docs.config.ts', `import {defineDocs} from '@farming-labs/docs';\nimport {fumadocs} from '@farming-labs/theme/default';\nexport default defineDocs({entry:'docs',contentDir:'${staticPages ? 'content/docs' : 'src/app/docs'}',nav:{title:'Docs',url:'/docs'},theme:fumadocs(),telemetry:false,review:false,ai:{enabled:false}});\n`);
   write('src/app/layout.tsx', `import './globals.css';\nexport default function Layout({children}:{children:React.ReactNode}){return <>{children}</>;}\n`);
   write('src/app/globals.css', `@import 'tailwindcss' source(none);\n@source './';\n@import '@farming-labs/theme/default/css';\n`);

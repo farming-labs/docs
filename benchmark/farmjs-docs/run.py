@@ -39,6 +39,7 @@ def runtime(app, provider, pages, node, log, result):
         port = sock.getsockname()[1]
     command = [node, str(app/'node_modules/next/dist/bin/next'), 'start', '-p', str(port)]
     if provider.startswith('farmjs'): command = [node, str(app/'.output/server/index.mjs')]
+    if provider=='farmjs-vercel': command=[node,str(ROOT/'serve-vercel.mjs'),str(app)]
     env = {**os.environ, 'NODE_ENV': 'production', 'PORT': str(port), 'HOST': '127.0.0.1', 'NITRO_PORT': str(port), 'NEXT_TELEMETRY_DISABLED': '1', 'FARM_TELEMETRY_DISABLED': '1'}
     with log.open('w') as output:
         server = subprocess.Popen(command, cwd=app, env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
@@ -65,7 +66,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pages',type=int,default=100)
     parser.add_argument('--trials',type=int,default=3)
-    parser.add_argument('--providers',nargs='+',choices=['farmjs','farmjs-ssg','farming','fumadocs'],default=['fumadocs','farming','farmjs','farmjs-ssg'])
+    parser.add_argument('--providers',nargs='+',choices=['farmjs','farmjs-ssg','farmjs-vercel','farming','fumadocs'],default=['fumadocs','farming','farmjs','farmjs-vercel'])
     parser.add_argument('--run-id',required=True)
     parser.add_argument('--node',default=shutil.which('node'))
     parser.add_argument('--modes',nargs='+',choices=['cold','warm','edit'],default=['cold','warm','edit'])
@@ -87,15 +88,19 @@ def main():
                 print('START',label,flush=True)
                 try:
                     if mode=='edit':
-                        page=app/({'farmjs':'src/app/docs/page.mdx','farmjs-ssg':'content/docs/page.mdx','farming':'app/docs/page.mdx','fumadocs':'content/docs/index.mdx'}[provider])
+                        page=app/({'farmjs':'src/app/docs/page.mdx','farmjs-vercel':'src/app/docs/page.mdx','farmjs-ssg':'content/docs/page.mdx','farming':'app/docs/page.mdx','fumadocs':'content/docs/index.mdx'}[provider])
                         page.write_text(page.read_text()+'\nBENCHMARK_EDIT_MARKER: one paragraph changed.\n')
                     if provider.startswith('farmjs'):
                         check=measured([args.node,str(app/'node_modules/typescript/bin/tsc'),'--noEmit'],app,artifacts/(label+'-typecheck.log'))
                         build=measured([args.node,str(source/'packages/farm-cli/bin/farm.js'),'build'],app,artifacts/(label+'.log'))
                         metrics={'wallSeconds':check['wallSeconds']+build['wallSeconds'],'buildSeconds':build['wallSeconds'],'typecheckSeconds':check['wallSeconds'],'peakTreeRssMiB':max(check['peakTreeRssMiB'],build['peakTreeRssMiB'])}
-                        html=list((app/'.output/public/docs').rglob('*.html'))
-                        if (app/'.output/public/docs.html').exists():html.append(app/'.output/public/docs.html')
-                        metrics.update({'prerenderedDocsPages':len(html),'totalDocsHtmlBytes':sum(p.stat().st_size for p in html),'outputBytes':next_benchmark.size(app/'.output')})
+                        output=app/('.vercel/output' if provider=='farmjs-vercel' else '.output')
+                        public=output/('static' if provider=='farmjs-vercel' else 'public')
+                        html=list((public/'docs').rglob('*.html'))
+                        if (public/'docs.html').exists():html.append(public/'docs.html')
+                        metrics.update({'prerenderedDocsPages':len(html),'totalDocsHtmlBytes':sum(p.stat().st_size for p in html),'outputBytes':next_benchmark.size(output)})
+                        if provider=='farmjs-vercel':
+                            assert json.loads((output/'config.json').read_text())['version']==3
                     else:
                         metrics=next_benchmark.build(app,args.node,artifacts/(label+'.log'))
                         metrics.update(next_benchmark.outputs(app,args.pages,mode=='edit'))
