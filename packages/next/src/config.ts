@@ -61,6 +61,8 @@ import type {
   Program,
 } from "@babel/types";
 import { resolveCodeBlockThemes } from "./code-block-themes.js";
+import { resolveMdxExtensions, type WithDocsOptions } from "./mdx-options.js";
+export type { DocsMdxPlugin, DocsMdxValue, WithDocsOptions } from "./mdx-options.js";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -2524,7 +2526,9 @@ function mergeDocsRedirects(
 export function withDocs(
   nextConfig: NextConfig = {},
   docsConfig?: Pick<DocsConfig, "agent" | "mcp" | "theme">,
+  options: WithDocsOptions = {},
 ): NextConfig {
+  const mdx = resolveMdxExtensions(options.mdx);
   const root = process.cwd();
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
@@ -2751,10 +2755,15 @@ export function withDocs(
     ["remark-mdx-frontmatter", { name: "metadata" }],
     "@farming-labs/next/mdx-plugins/remark-code-group",
     "@farming-labs/next/mdx-plugins/remark-heading",
+    ...mdx.remarkPlugins,
   );
   const rehypePlugins: MdxPluginEntry[] = [
     "@farming-labs/next/mdx-plugins/rehype-toc",
-    ["@farming-labs/next/mdx-plugins/rehype-code", { themes: codeBlockThemes }],
+    mdx.codeHighlighter ?? [
+      "@farming-labs/next/mdx-plugins/rehype-code",
+      { themes: codeBlockThemes },
+    ],
+    ...mdx.rehypePlugins,
   ];
 
   const withMDX = createMDX({
