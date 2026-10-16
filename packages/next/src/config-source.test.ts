@@ -42,7 +42,9 @@ describe("configuration source snapshot", () => {
     withDocs();
     writeFileSync("docs.config.ts", 'export default { entry: "guides" };');
     withDocs();
-    expect(readFileSync(join(root, "app/guides/layout.tsx"), "utf8")).toContain("createNextDocsLayout");
+    expect(readFileSync(join(root, "app/guides/layout.tsx"), "utf8")).toContain(
+      "createNextDocsLayout",
+    );
     expect(configReads()).toHaveLength(2);
   });
 
