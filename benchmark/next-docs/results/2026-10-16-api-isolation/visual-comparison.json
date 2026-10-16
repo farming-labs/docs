@@ -1,0 +1,29 @@
+[
+  {
+    "pages": 100,
+    "viewport": "desktop",
+    "differenceBounds": [
+      15,
+      23,
+      279,
+      944
+    ],
+    "articleDifferenceBounds": null
+  },
+  {
+    "pages": 100,
+    "viewport": "mobile",
+    "differenceBounds": null
+  },
+  {
+    "pages": 500,
+    "viewport": "desktop",
+    "differenceBounds": null,
+    "articleDifferenceBounds": null
+  },
+  {
+    "pages": 500,
+    "viewport": "mobile",
+    "differenceBounds": null
+  }
+]

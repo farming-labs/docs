@@ -108,8 +108,10 @@ stops its server. It writes screenshots, server logs and `verification.json` int
 Run it separately from timing measurements. The payload inspector hashes every source page and
 fails if providers' retained corpora differ; it also counts metadata maps in the React stream.
 
-Measured results and the prioritized improvement list are in
-[the October 16, 2026 report](./results/2026-10-16/REPORT.md).
+Latest measurements and the remaining improvement list are in the
+[post-merge and API-isolation report](./results/2026-10-16-post-merge/REPORT.md): 48 new production
+builds, separate baseline/candidate batches, raw samples and verification receipts. The
+[original 36-build report](./results/2026-10-16/REPORT.md) remains available as the historical baseline.
 
 ## Reference setup
 

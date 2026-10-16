@@ -1,0 +1,42 @@
+{
+  "browser": "155.0.8059.80",
+  "checks": [
+    "docs-to-API switcher",
+    "mobile Fumadocs API playground sends local GET and renders real response",
+    "API code example clipboard copy",
+    "API-to-docs switcher without full reload"
+  ],
+  "pageErrors": [],
+  "aiEnabled": true,
+  "apiRenderer": "fumadocs",
+  "externalAiCalls": false,
+  "knownIssue": {
+    "description": "Desktop API playground is positioned partly outside the viewport in the existing threadline example. Reproduced unchanged on merged main and candidate; mobile Send works on both.",
+    "baseline": {
+      "revision": "4301cedd32168e3a30ac79f967c6e3e3074607c1",
+      "desktopDialog": {
+        "x": -640,
+        "y": -416,
+        "width": 1280,
+        "height": 832
+      },
+      "desktopSend": {
+        "x": 544.5625,
+        "y": -367,
+        "width": 82.4375,
+        "height": 40
+      },
+      "mobileResponse": {
+        "ok": true,
+        "message": "Hello from the Next.js API reference example."
+      },
+      "mobileStatus": 200
+    },
+    "candidateDesktopDialog": {
+      "x": -640,
+      "y": -416,
+      "width": 1280,
+      "height": 832
+    }
+  }
+}

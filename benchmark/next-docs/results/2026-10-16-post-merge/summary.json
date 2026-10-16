@@ -1,0 +1,1068 @@
+{
+  "runId": "post-merge-2026-10-16",
+  "commit": "4301cedd32168e3a30ac79f967c6e3e3074607c1",
+  "node": "v24.21.0",
+  "platform": "macOS-26.2-arm64-arm-64bit",
+  "processor": "Apple M1",
+  "logicalCpus": 8,
+  "staticWorkers": 2,
+  "rssSamplingSeconds": 0.2,
+  "arguments": {
+    "node": "/Users/mac/.nvm/versions/node/v24.21.0/bin/node",
+    "pages": [
+      100,
+      500
+    ],
+    "trials": 3,
+    "providers": [
+      "fumadocs",
+      "farming",
+      "fumadocs-file-routes"
+    ],
+    "modes": [
+      "cold",
+      "warm",
+      "edit"
+    ],
+    "cold_only_above": 100,
+    "run_id": "post-merge-2026-10-16"
+  },
+  "aggregates": [
+    {
+      "pages": 100,
+      "provider": "farming",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 31.592800124999997,
+          "min": 19.22042337500001,
+          "max": 31.697612208999995
+        },
+        "peakTreeRssMiB": {
+          "median": 2810.09375,
+          "min": 2114.078125,
+          "max": 3054.734375
+        },
+        "htmlBytes": {
+          "median": 291558,
+          "min": 291558,
+          "max": 291558
+        },
+        "htmlGzipBytes": {
+          "median": 19746,
+          "min": 19744,
+          "max": 19795
+        },
+        "totalDocsHtmlBytes": {
+          "median": 29291006,
+          "min": 29291006,
+          "max": 29291006
+        },
+        "initialJsBytes": {
+          "median": 2075708,
+          "min": 2075708,
+          "max": 2075708
+        },
+        "initialJsGzipBytes": {
+          "median": 642590,
+          "min": 642590,
+          "max": 642590
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 15138046,
+          "min": 15138046,
+          "max": 15138046
+        },
+        "serverBytes": {
+          "median": 130278703,
+          "min": 130278703,
+          "max": 130278703
+        },
+        "nextCacheBytes": {
+          "median": 253273218,
+          "min": 253129496,
+          "max": 253494657
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 21.5,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 2.3,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 3.3,
+          "samples": 3
+        }
+      },
+      "routeModules": 104,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "farming",
+      "mode": "edit",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 6.2966514169999925,
+          "min": 5.670614499999999,
+          "max": 11.687076832999992
+        },
+        "peakTreeRssMiB": {
+          "median": 1808.953125,
+          "min": 1318.203125,
+          "max": 1836.484375
+        },
+        "htmlBytes": {
+          "median": 291769,
+          "min": 291769,
+          "max": 291769
+        },
+        "htmlGzipBytes": {
+          "median": 19888,
+          "min": 19882,
+          "max": 19940
+        },
+        "totalDocsHtmlBytes": {
+          "median": 29291217,
+          "min": 29291217,
+          "max": 29291217
+        },
+        "initialJsBytes": {
+          "median": 2075708,
+          "min": 2075708,
+          "max": 2075708
+        },
+        "initialJsGzipBytes": {
+          "median": 642590,
+          "min": 642590,
+          "max": 642590
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 15138046,
+          "min": 15138046,
+          "max": 15138046
+        },
+        "serverBytes": {
+          "median": 130279321,
+          "min": 130279321,
+          "max": 130279321
+        },
+        "nextCacheBytes": {
+          "median": 258490190,
+          "min": 258361889,
+          "max": 259432353
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 1.711,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.647,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 0.859,
+          "samples": 3
+        }
+      },
+      "routeModules": 104,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "farming",
+      "mode": "warm",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 10.905303791999991,
+          "min": 8.037689959000005,
+          "max": 26.32964845800001
+        },
+        "peakTreeRssMiB": {
+          "median": 1668.140625,
+          "min": 1654.515625,
+          "max": 1744.390625
+        },
+        "htmlBytes": {
+          "median": 291558,
+          "min": 291558,
+          "max": 291558
+        },
+        "htmlGzipBytes": {
+          "median": 19747,
+          "min": 19742,
+          "max": 19797
+        },
+        "totalDocsHtmlBytes": {
+          "median": 29291006,
+          "min": 29291006,
+          "max": 29291006
+        },
+        "initialJsBytes": {
+          "median": 2075708,
+          "min": 2075708,
+          "max": 2075708
+        },
+        "initialJsGzipBytes": {
+          "median": 642590,
+          "min": 642590,
+          "max": 642590
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 15138046,
+          "min": 15138046,
+          "max": 15138046
+        },
+        "serverBytes": {
+          "median": 130278703,
+          "min": 130278703,
+          "max": 130278703
+        },
+        "nextCacheBytes": {
+          "median": 255967365,
+          "min": 255902123,
+          "max": 256099128
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 3.5,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.714,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.671,
+          "samples": 3
+        }
+      },
+      "routeModules": 104,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "fumadocs",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 16.799490166,
+          "min": 13.023099083999998,
+          "max": 19.203841832999984
+        },
+        "peakTreeRssMiB": {
+          "median": 2124.828125,
+          "min": 2046.03125,
+          "max": 2690.34375
+        },
+        "htmlBytes": {
+          "median": 173935,
+          "min": 173935,
+          "max": 173935
+        },
+        "htmlGzipBytes": {
+          "median": 13478,
+          "min": 13478,
+          "max": 13482
+        },
+        "totalDocsHtmlBytes": {
+          "median": 17466964,
+          "min": 17466964,
+          "max": 17466964
+        },
+        "initialJsBytes": {
+          "median": 814212,
+          "min": 814212,
+          "max": 814212
+        },
+        "initialJsGzipBytes": {
+          "median": 259792,
+          "min": 259792,
+          "max": 259792
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1127090,
+          "min": 1127090,
+          "max": 1127090
+        },
+        "serverBytes": {
+          "median": 77178187,
+          "min": 77178187,
+          "max": 77178187
+        },
+        "nextCacheBytes": {
+          "median": 76966113,
+          "min": 76963940,
+          "max": 76976788
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 10.6,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 2.2,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 2.4,
+          "samples": 3
+        }
+      },
+      "routeModules": 4,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "fumadocs",
+      "mode": "edit",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 8.265657624999989,
+          "min": 7.0659009170000004,
+          "max": 8.623967167000046
+        },
+        "peakTreeRssMiB": {
+          "median": 1528.65625,
+          "min": 1140.15625,
+          "max": 1592.984375
+        },
+        "htmlBytes": {
+          "median": 174093,
+          "min": 174093,
+          "max": 174093
+        },
+        "htmlGzipBytes": {
+          "median": 13567,
+          "min": 13567,
+          "max": 13568
+        },
+        "totalDocsHtmlBytes": {
+          "median": 17467122,
+          "min": 17467122,
+          "max": 17467122
+        },
+        "initialJsBytes": {
+          "median": 814212,
+          "min": 814212,
+          "max": 814212
+        },
+        "initialJsGzipBytes": {
+          "median": 259792,
+          "min": 259792,
+          "max": 259792
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1127090,
+          "min": 1127090,
+          "max": 1127090
+        },
+        "serverBytes": {
+          "median": 77179595,
+          "min": 77179595,
+          "max": 77179595
+        },
+        "nextCacheBytes": {
+          "median": 80116957,
+          "min": 80032273,
+          "max": 80177253
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 2.8,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.9020000000000001,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.375,
+          "samples": 3
+        }
+      },
+      "routeModules": 4,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "fumadocs",
+      "mode": "warm",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 6.1526861250000024,
+          "min": 4.026664958000001,
+          "max": 8.534733833000018
+        },
+        "peakTreeRssMiB": {
+          "median": 1183.390625,
+          "min": 858.125,
+          "max": 1190.78125
+        },
+        "htmlBytes": {
+          "median": 173935,
+          "min": 173935,
+          "max": 173935
+        },
+        "htmlGzipBytes": {
+          "median": 13479,
+          "min": 13479,
+          "max": 13479
+        },
+        "totalDocsHtmlBytes": {
+          "median": 17466964,
+          "min": 17466964,
+          "max": 17466964
+        },
+        "initialJsBytes": {
+          "median": 814212,
+          "min": 814212,
+          "max": 814212
+        },
+        "initialJsGzipBytes": {
+          "median": 259792,
+          "min": 259792,
+          "max": 259792
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1127090,
+          "min": 1127090,
+          "max": 1127090
+        },
+        "serverBytes": {
+          "median": 77178187,
+          "min": 77178187,
+          "max": 77178187
+        },
+        "nextCacheBytes": {
+          "median": 77706925,
+          "min": 77625855,
+          "max": 77751940
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 1.203,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.578,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.478,
+          "samples": 3
+        }
+      },
+      "routeModules": 4,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "fumadocs-file-routes",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 18.800026291000023,
+          "min": 13.355414624999995,
+          "max": 29.213240000000013
+        },
+        "peakTreeRssMiB": {
+          "median": 3062.875,
+          "min": 1709.296875,
+          "max": 3208.4375
+        },
+        "htmlBytes": {
+          "median": 173427,
+          "min": 173427,
+          "max": 173427
+        },
+        "htmlGzipBytes": {
+          "median": 13550,
+          "min": 13549,
+          "max": 13550
+        },
+        "totalDocsHtmlBytes": {
+          "median": 17466456,
+          "min": 17466456,
+          "max": 17466456
+        },
+        "initialJsBytes": {
+          "median": 814210,
+          "min": 814210,
+          "max": 814210
+        },
+        "initialJsGzipBytes": {
+          "median": 259791,
+          "min": 259791,
+          "max": 259791
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1127057,
+          "min": 1127057,
+          "max": 1127057
+        },
+        "serverBytes": {
+          "median": 84279322,
+          "min": 84279322,
+          "max": 84279322
+        },
+        "nextCacheBytes": {
+          "median": 102748642,
+          "min": 102715912,
+          "max": 102806453
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 14.2,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.155,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.841,
+          "samples": 3
+        }
+      },
+      "routeModules": 103,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "fumadocs-file-routes",
+      "mode": "edit",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 6.7130692499999896,
+          "min": 4.961692958,
+          "max": 8.590770249999991
+        },
+        "peakTreeRssMiB": {
+          "median": 1897.359375,
+          "min": 1412.375,
+          "max": 1916.359375
+        },
+        "htmlBytes": {
+          "median": 173585,
+          "min": 173585,
+          "max": 173585
+        },
+        "htmlGzipBytes": {
+          "median": 13636,
+          "min": 13635,
+          "max": 13636
+        },
+        "totalDocsHtmlBytes": {
+          "median": 17466614,
+          "min": 17466614,
+          "max": 17466614
+        },
+        "initialJsBytes": {
+          "median": 814210,
+          "min": 814210,
+          "max": 814210
+        },
+        "initialJsGzipBytes": {
+          "median": 259791,
+          "min": 259791,
+          "max": 259791
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1127057,
+          "min": 1127057,
+          "max": 1127057
+        },
+        "serverBytes": {
+          "median": 84280730,
+          "min": 84280730,
+          "max": 84280730
+        },
+        "nextCacheBytes": {
+          "median": 108576641,
+          "min": 108531615,
+          "max": 108695997
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 2.3,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.319,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.2630000000000001,
+          "samples": 3
+        }
+      },
+      "routeModules": 103,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "fumadocs-file-routes",
+      "mode": "warm",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 4.071582417000002,
+          "min": 3.604212208000007,
+          "max": 8.055416667000003
+        },
+        "peakTreeRssMiB": {
+          "median": 1235.6875,
+          "min": 939.53125,
+          "max": 1237.0
+        },
+        "htmlBytes": {
+          "median": 173427,
+          "min": 173427,
+          "max": 173427
+        },
+        "htmlGzipBytes": {
+          "median": 13552,
+          "min": 13551,
+          "max": 13552
+        },
+        "totalDocsHtmlBytes": {
+          "median": 17466456,
+          "min": 17466456,
+          "max": 17466456
+        },
+        "initialJsBytes": {
+          "median": 814210,
+          "min": 814210,
+          "max": 814210
+        },
+        "initialJsGzipBytes": {
+          "median": 259791,
+          "min": 259791,
+          "max": 259791
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1127057,
+          "min": 1127057,
+          "max": 1127057
+        },
+        "serverBytes": {
+          "median": 84279322,
+          "min": 84279322,
+          "max": 84279322
+        },
+        "nextCacheBytes": {
+          "median": 103946019,
+          "min": 103938027,
+          "max": 104065178
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 0.624,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.058,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 0.903,
+          "samples": 3
+        }
+      },
+      "routeModules": 103,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    },
+    {
+      "pages": 500,
+      "provider": "farming",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 56.89393104199996,
+          "min": 40.65274095899997,
+          "max": 58.36925274999999
+        },
+        "peakTreeRssMiB": {
+          "median": 5077.796875,
+          "min": 4669.390625,
+          "max": 5318.1875
+        },
+        "htmlBytes": {
+          "median": 882358,
+          "min": 882358,
+          "max": 882358
+        },
+        "htmlGzipBytes": {
+          "median": 40936,
+          "min": 40863,
+          "max": 41077
+        },
+        "totalDocsHtmlBytes": {
+          "median": 441904206,
+          "min": 441904206,
+          "max": 441904206
+        },
+        "initialJsBytes": {
+          "median": 2075712,
+          "min": 2075712,
+          "max": 2075712
+        },
+        "initialJsGzipBytes": {
+          "median": 642594,
+          "min": 642594,
+          "max": 642594
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 15138050,
+          "min": 15138050,
+          "max": 15138050
+        },
+        "serverBytes": {
+          "median": 1273133007,
+          "min": 1273133007,
+          "max": 1273133007
+        },
+        "nextCacheBytes": {
+          "median": 500158474,
+          "min": 500112905,
+          "max": 500255642
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 22.9,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 11.0,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 3.4,
+          "samples": 3
+        }
+      },
+      "routeModules": 504,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    },
+    {
+      "pages": 500,
+      "provider": "fumadocs",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 28.07207100000005,
+          "min": 25.350934875000007,
+          "max": 45.338361292
+        },
+        "peakTreeRssMiB": {
+          "median": 4501.140625,
+          "min": 2618.65625,
+          "max": 5081.765625
+        },
+        "htmlBytes": {
+          "median": 460378,
+          "min": 460378,
+          "max": 460378
+        },
+        "htmlGzipBytes": {
+          "median": 24208,
+          "min": 24206,
+          "max": 24210
+        },
+        "totalDocsHtmlBytes": {
+          "median": 230590063,
+          "min": 230590063,
+          "max": 230590063
+        },
+        "initialJsBytes": {
+          "median": 814212,
+          "min": 814212,
+          "max": 814212
+        },
+        "initialJsGzipBytes": {
+          "median": 259790,
+          "min": 259790,
+          "max": 259790
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1127090,
+          "min": 1127090,
+          "max": 1127090
+        },
+        "serverBytes": {
+          "median": 595141313,
+          "min": 595141313,
+          "max": 595141313
+        },
+        "nextCacheBytes": {
+          "median": 115566785,
+          "min": 115532894,
+          "max": 115613626
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 17.2,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 7.5,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.867,
+          "samples": 3
+        }
+      },
+      "routeModules": 4,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    },
+    {
+      "pages": 500,
+      "provider": "fumadocs-file-routes",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 34.65056125000001,
+          "min": 33.57227850000004,
+          "max": 35.487994208999964
+        },
+        "peakTreeRssMiB": {
+          "median": 4851.78125,
+          "min": 4791.265625,
+          "max": 4926.53125
+        },
+        "htmlBytes": {
+          "median": 459884,
+          "min": 459884,
+          "max": 459884
+        },
+        "htmlGzipBytes": {
+          "median": 24183,
+          "min": 24182,
+          "max": 24185
+        },
+        "totalDocsHtmlBytes": {
+          "median": 230596555,
+          "min": 230596555,
+          "max": 230596555
+        },
+        "initialJsBytes": {
+          "median": 815154,
+          "min": 815154,
+          "max": 815154
+        },
+        "initialJsGzipBytes": {
+          "median": 260257,
+          "min": 260257,
+          "max": 260257
+        },
+        "initialCssBytes": {
+          "median": 84712,
+          "min": 84712,
+          "max": 84712
+        },
+        "initialCssGzipBytes": {
+          "median": 13864,
+          "min": 13864,
+          "max": 13864
+        },
+        "staticBytes": {
+          "median": 1128179,
+          "min": 1128179,
+          "max": 1128179
+        },
+        "serverBytes": {
+          "median": 631038925,
+          "min": 631038925,
+          "max": 631038925
+        },
+        "nextCacheBytes": {
+          "median": 240113567,
+          "min": 240091608,
+          "max": 240119525
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 20.2,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 7.5,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 3.1,
+          "samples": 3
+        }
+      },
+      "routeModules": 503,
+      "apiRoutes": [
+        "/api/search/route"
+      ]
+    }
+  ]
+}
