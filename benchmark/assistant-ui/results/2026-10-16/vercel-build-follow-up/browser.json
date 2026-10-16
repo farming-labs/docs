@@ -1,0 +1,15 @@
+{
+  "origin": "https://farming-labs-docs-docs-cloud-6551eqrqs-farming-labs.vercel.app",
+  "checks": [
+    "installation renders with nine code blocks",
+    "code clipboard copy",
+    "client navigation",
+    "search API and navigation to the selected result",
+    "mobile sidebar navigation without horizontal overflow"
+  ],
+  "errors": [],
+  "normalizedSearchUrl": "https://farming-labs-docs-docs-cloud-6551eqrqs-farming-labs.vercel.app/docs/cli#agent-compact",
+  "searchDestination": "/docs/cli#section-11",
+  "passed": true,
+  "browser": "155.0.8059.80"
+}

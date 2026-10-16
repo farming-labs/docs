@@ -4,6 +4,68 @@ The isolated Farming port builds and preserves the tested docs content, but it i
 
 PRs [#560](https://github.com/farming-labs/docs/pull/560), [#561](https://github.com/farming-labs/docs/pull/561), and [#562](https://github.com/farming-labs/docs/pull/562) were squash-merged after their checks passed. The benchmark uses merged framework revision `bfe194fbea6c561e7bd76374a8ec0088e9d46e37`. The original migration harness remains on the local benchmark branch. The later follow-up below adds CI for the separate synthetic fixture.
 
+## Vercel build investigation follow-up
+
+The recurring deployment cost has a concrete infrastructure cause, separate from the MDX
+compiler comparison: actual `farming-labs/docs-website` logs repeatedly reject a **1.68 GB
+build cache** because that deployment's reported limit is **1.50 GB**. The next deployment then
+starts cold. The website also built **five example applications** and all adapters before its own
+Next build. `pnpm install --force` installs all 19 workspace projects and all optional platforms;
+it was deliberately added in #383 to repair partial cached dependency graphs.
+
+[PR #572](https://github.com/farming-labs/docs/pull/572) moves example builds to their existing CI
+job and builds only core/theme/Next during website deployment. All five examples, package checks,
+browser tests, the website build, both Vercel previews, and deployed smoke checks pass. Observed
+website build-command time is **154.844 → 50.438 seconds** compared with the earlier #570 preview;
+build-start to build-complete including install is **199.703 → 91.063 seconds**. Both report
+4 cores / 8 GB and 67 website static pages. These are different deployments, not randomized
+repeated compiler trials. Main's older production run took 272.727 seconds for its build command,
+showing why a single timing must not be presented as a universal gain.
+
+#572 alone still exceeds the cache limit. [PR #573](https://github.com/farming-labs/docs/pull/573),
+stacked on #572, scopes deployment installation to the website dependency graph and root tooling,
+while retaining the frozen lockfile and forced dependency repair. The first install selects
+**5 of 19 projects** and **760 instead of 1,924 packages**. The cold preview successfully built
+all 67 static pages and uploaded a **1.18 GB cache**, below the 1.50 GB limit. Its build pipeline
+including installation took **82.206 seconds**, and its website build command took **53.411 seconds**.
+A second cold run took **89.449 seconds** end-to-end and again uploaded 1.18 GB.
+A Git-triggered rebuild with an identical source tree then **restored that cache**, compiled in
+**2.5 seconds** (versus 21.3–23.1 seconds cold), and completed the full build pipeline in
+**71.902 seconds**; its build command took **31.065 seconds**. All 67 pages were generated.
+The cached comparison is one sample, and install/typecheck/prerender costs remain. The initial
+CLI redeploy explicitly disabled caching and is correctly retained as the second cold sample.
+
+Cache and restored-build verification are recorded in [the Vercel receipts](results/2026-10-16/vercel-build-follow-up/summary.json).
+
+“Progressive compilation” needs a precise contract. Assistant-ui already has `async: true` for
+its large collections, but its catch-all route still calls `source.generateParams()`, its shared
+source imports six collections, and search loads structured data across four collections.
+Fumadocs documents that async imports do not provide lazy bundling in Turbopack. Its dynamic
+runtime mode forbids MDX imports/exports and relative file images; **120 of 337 audited docs
+pages contain imports**, so switching the whole corpus would not preserve features. ISR can
+reduce prerendering but does not by itself remove imported MDX from the bundler graph.
+
+The safe order is: restore deploy-cache reuse; remove unnecessary builds; then measure
+content-addressed compilation reuse with invalidation for plugins, imported files, config, and
+Git metadata. Any runtime-compilation option needs compatibility detection, a bundled fallback,
+complete search/Markdown output, and first-request latency measurements. No runtime compilation
+mode or highlighter-output cache was shipped in this follow-up. A quick fenced-code census found
+only 86 duplicate occurrences among 2,240 triple-backtick fences (3.8%, a text census rather than
+an AST count), so that is not the main assistant-ui build bottleneck.
+
+References: [Fumadocs lazy loading](https://www.fumadocs.dev/docs/mdx/async),
+[Fumadocs performance](https://www.fumadocs.dev/docs/mdx/performance),
+[Next CI caching](https://nextjs.org/docs/app/guides/ci-build-caching),
+[pnpm force semantics](https://pnpm.io/10.x/cli/install).
+Both PRs are ready for review; #573 depends on #572. Neither was merged. The scoped-install
+preview passed **85 deployed agent-surface checks**, **41 hosted-readiness checks** (one existing
+allowed warning), and **five live browser flows** covering rendered code, clipboard copy, client
+navigation, search with anchor normalization, and mobile sidebar navigation. No browser runtime
+exceptions were observed. No UI or application runtime source was changed.
+
+No new assistant-ui timing is claimed. The existing controlled-scope comparisons below remain
+our evidence against Fumadocs; these deployment improvements do not establish a framework win.
+
 ## PR follow-up and CI measurements
 
 Seven new focused PRs are open; no new PR was merged in this follow-up. The earlier parser PR

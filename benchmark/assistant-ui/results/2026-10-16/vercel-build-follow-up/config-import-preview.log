@@ -1,0 +1,23 @@
+2026-10-16T22:20:49.248Z  Running build in Washington, D.C., USA (East) – iad1
+2026-10-16T22:20:49.249Z  Build machine configuration: 4 cores, 8 GB
+2026-10-16T22:20:49.352Z  Cloning github.com/farming-labs/docs (Branch: codex/next-config-imports, Commit: 8793bc3)
+2026-10-16T22:20:49.493Z  Previous build cache of deployment 'dpl_dBBJkpxvC8puvDRA2KLLc2cD9tQM' was too large, starting from a clean state.
+2026-10-16T22:20:54.974Z  Running "install" command: `pnpm install --frozen-lockfile --force`...
+2026-10-16T22:20:56.856Z  Scope: all 19 workspace projects
+2026-10-16T22:21:34.107Z  > @farming-labs/docs-website@0.0.1 build /vercel/path0/website
+2026-10-16T22:21:45.083Z  Scope: 9 of 19 workspace projects
+2026-10-16T22:21:52.276Z  > @farming-labs/docs/example-next@0.0.0 build /vercel/path0/examples/next
+2026-10-16T22:22:08.322Z  ✓ Compiled successfully in 14.5s
+2026-10-16T22:22:10.991Z    Finished TypeScript in 2.7s ...
+2026-10-16T22:22:13.942Z  > @farming-labs/docs/example-tanstack-start@ build /vercel/path0/examples/tanstack-start
+2026-10-16T22:22:29.490Z  > @farming-labs/docs/example-nuxt@0.0.0 build /vercel/path0/examples/nuxt
+2026-10-16T22:22:48.423Z  > @farming-labs/docs/example-astro@0.0.0 build /vercel/path0/examples/astro
+2026-10-16T22:23:00.024Z  > @farming-labs/docs/example-sveltekit@0.0.0 build /vercel/path0/examples/sveltekit
+2026-10-16T22:23:57.311Z  ✓ Compiled successfully in 23.9s
+2026-10-16T22:24:04.220Z    Finished TypeScript in 6.9s ...
+2026-10-16T22:24:07.845Z  ✓ Generating static pages using 3 workers (67/67) in 2.3s
+2026-10-16T22:24:08.951Z  Build Completed in /vercel/output [3m]
+2026-10-16T22:24:19.554Z  Deployment completed
+2026-10-16T22:24:19.558Z  Creating build cache...
+2026-10-16T22:25:49.443Z  Build cache size 1.68 GB exceeds limit of 1.50 GB. Invalidating cache. Next build will start with an empty cache.
+2026-10-16T22:25:49.518Z  Cache invalidated

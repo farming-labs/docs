@@ -1,0 +1,148 @@
+{
+  "scope": "Actual farming-labs/docs-website Vercel deployment logs; not an assistant-ui or Fumadocs comparison",
+  "hardware": "4 cores, 8 GB, iad1; separate machines/times, not controlled repeated trials",
+  "buildScopePR": "https://github.com/farming-labs/docs/pull/572",
+  "installScopePR": "https://github.com/farming-labs/docs/pull/573",
+  "measurements": [
+    {
+      "name": "main",
+      "buildCommandSeconds": 272.727,
+      "buildPipelineSeconds": 323.203,
+      "readySeconds": 335.857,
+      "rawTimings": "main.log",
+      "cacheAccepted": false,
+      "cacheGB": 1.68,
+      "cacheLimitGB": 1.5
+    },
+    {
+      "name": "config-import-preview",
+      "buildCommandSeconds": 154.844,
+      "buildPipelineSeconds": 199.703,
+      "readySeconds": 210.306,
+      "rawTimings": "config-import-preview.log",
+      "cacheAccepted": false,
+      "cacheGB": 1.68,
+      "cacheLimitGB": 1.5
+    },
+    {
+      "name": "build-scope-preview",
+      "buildCommandSeconds": 50.438,
+      "buildPipelineSeconds": 91.063,
+      "readySeconds": 101.358,
+      "rawTimings": "build-scope-preview.log",
+      "cacheAccepted": false,
+      "cacheGB": 1.68,
+      "cacheLimitGB": 1.5
+    },
+    {
+      "name": "install-scope-preview",
+      "commit": "5871eec394a0e5c00749cbbc3421ad3d88371879",
+      "deploymentId": "dpl_Cp712F7wJMRLFbmwQm1qnA3tkQQa",
+      "buildCommandSeconds": 53.411,
+      "buildPipelineSeconds": 82.206,
+      "readySeconds": 92.502,
+      "installPackages": 760,
+      "workspaceProjects": 5,
+      "staticPages": 67,
+      "cacheAccepted": true,
+      "cacheGB": 1.18,
+      "cacheUploaded": true,
+      "cacheLimitGB": 1.5,
+      "rawTimings": "install-scope-preview.log"
+    },
+    {
+      "name": "install-scope-repeat-cold",
+      "deploymentId": "dpl_ErfuBp8GaoZyxgkNGJ6LSXFBZis2",
+      "commit": "5871eec394a0e5c00749cbbc3421ad3d88371879",
+      "buildCommandSeconds": 61.534,
+      "buildPipelineSeconds": 89.449,
+      "cacheRestored": false,
+      "reason": "CLI redeploy explicitly skips build cache",
+      "cacheAccepted": true,
+      "cacheGB": 1.18,
+      "cacheUploaded": true,
+      "rawTimings": "install-scope-repeat-cold.log"
+    },
+    {
+      "name": "install-scope-git-cached",
+      "deploymentId": "dpl_Ett7XnrNot7bsju3CQurD3PBvQ6B",
+      "commit": "8dfff275061f657bac37f0a56ef24520b9bda3b9",
+      "gitTree": "530dce2709ac76287f057f1249d877d98ee2b251",
+      "sameGitTreeAsPreviousCommit": true,
+      "buildCommandSeconds": 31.065,
+      "buildPipelineSeconds": 71.902,
+      "cacheRestored": true,
+      "cacheSource": "dpl_ErfuBp8GaoZyxgkNGJ6LSXFBZis2",
+      "compileSeconds": 2.5,
+      "staticPages": 67,
+      "status": "ready",
+      "rawTimings": "install-scope-git-cached.log",
+      "cacheGB": 1.18,
+      "cacheAccepted": true,
+      "cacheUploaded": true
+    }
+  ],
+  "limitations": [
+    "Production baseline and config-import preview have different commits; compare observed deployment costs, not isolated framework compiler speed.",
+    "No fresh assistant-ui build timing in this follow-up.",
+    "Do not attribute Farm.js project docs timings to this repository."
+  ],
+  "validation": {
+    "buildScopeCI": {
+      "run": 38981071224,
+      "status": "success",
+      "includes": [
+        "format",
+        "lint",
+        "package builds",
+        "unit tests",
+        "typechecks",
+        "browser tests",
+        "five example builds",
+        "website build"
+      ]
+    },
+    "coldPreviews": [
+      "dpl_EvpHF65ndudsTcwtSF9JRyqU1FWs",
+      "dpl_Cp712F7wJMRLFbmwQm1qnA3tkQQa"
+    ],
+    "repeatPreview": {
+      "id": "dpl_ErfuBp8GaoZyxgkNGJ6LSXFBZis2",
+      "status": "ready",
+      "cacheRestored": false
+    },
+    "publicAgentSmoke": {
+      "run": 38981505534,
+      "checks": 85,
+      "status": "passed"
+    },
+    "cachedGitPreview": {
+      "id": "dpl_Ett7XnrNot7bsju3CQurD3PBvQ6B",
+      "status": "ready",
+      "cacheRestored": true
+    },
+    "hostedReadiness": {
+      "checks": 41,
+      "allowedWarnings": 1,
+      "status": "passed"
+    },
+    "scopePRReady": true,
+    "sameTreeGitRebuild": "An empty validation commit changes no application files; its tree matches the scoped-install commit.",
+    "liveBrowser": {
+      "origin": "https://farming-labs-docs-docs-cloud-6551eqrqs-farming-labs.vercel.app",
+      "checks": [
+        "installation renders with nine code blocks",
+        "code clipboard copy",
+        "client navigation",
+        "search API and navigation to the selected result",
+        "mobile sidebar navigation without horizontal overflow"
+      ],
+      "errors": [],
+      "normalizedSearchUrl": "https://farming-labs-docs-docs-cloud-6551eqrqs-farming-labs.vercel.app/docs/cli#agent-compact",
+      "searchDestination": "/docs/cli#section-11",
+      "passed": true,
+      "browser": "155.0.8059.80"
+    },
+    "installPRReady": true
+  }
+}

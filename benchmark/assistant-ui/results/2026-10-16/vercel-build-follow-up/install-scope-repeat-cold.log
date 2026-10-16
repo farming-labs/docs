@@ -1,0 +1,18 @@
+2026-10-16T23:31:27.905Z  Running build in Washington, D.C., USA (East) – iad1
+2026-10-16T23:31:27.905Z  Build machine configuration: 4 cores, 8 GB
+2026-10-16T23:31:27.931Z  Cloning github.com/farming-labs/docs (Branch: codex/website-install-scope, Commit: 5871eec)
+2026-10-16T23:31:27.931Z  Skipping build cache, deployment was triggered without cache.
+2026-10-16T23:31:29.466Z  Running "install" command: `pnpm --filter '@farming-labs/docs-website...' --filter @farming-labs/docs-root install --frozen-lockfile --force --config.dedupe-peer-dependents=false`...
+2026-10-16T23:31:31.439Z  Scope: 5 of 19 workspace projects
+2026-10-16T23:31:55.820Z  > @farming-labs/docs-website@0.0.1 build /vercel/path0/website
+2026-10-16T23:31:57.391Z  > @farming-labs/docs-website@0.0.1 build:packages /vercel/path0/website
+2026-10-16T23:32:08.358Z  > @farming-labs/docs-website@0.0.1 build:app /vercel/path0/website
+2026-10-16T23:32:40.337Z  ✓ Compiled successfully in 23.1s
+2026-10-16T23:32:47.118Z    Finished TypeScript in 6.8s ...
+2026-10-16T23:32:56.028Z  ✓ Generating static pages using 3 workers (67/67) in 7.4s
+2026-10-16T23:32:57.354Z  Build Completed in /vercel/output [1m]
+2026-10-16T23:33:07.739Z  Deployment completed
+2026-10-16T23:33:07.743Z  Creating build cache...
+2026-10-16T23:33:49.383Z  Created build cache: 42s
+2026-10-16T23:33:49.383Z  Uploading build cache [1.18 GB]
+2026-10-16T23:34:11.217Z  Build cache uploaded: 21.834s

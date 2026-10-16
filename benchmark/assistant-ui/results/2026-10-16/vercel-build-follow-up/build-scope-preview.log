@@ -1,0 +1,17 @@
+2026-10-16T23:22:06.871Z  Running build in Washington, D.C., USA (East) – iad1
+2026-10-16T23:22:06.871Z  Build machine configuration: 4 cores, 8 GB
+2026-10-16T23:22:06.990Z  Cloning github.com/farming-labs/docs (Branch: codex/website-build-scope, Commit: 383995f)
+2026-10-16T23:22:07.142Z  Previous build cache of deployment 'dpl_dBBJkpxvC8puvDRA2KLLc2cD9tQM' was too large, starting from a clean state.
+2026-10-16T23:22:08.439Z  Running "install" command: `pnpm install --frozen-lockfile --force`...
+2026-10-16T23:22:10.182Z  Scope: all 19 workspace projects
+2026-10-16T23:22:47.496Z  > @farming-labs/docs-website@0.0.1 build /vercel/path0/website
+2026-10-16T23:22:48.917Z  > @farming-labs/docs-website@0.0.1 build:packages /vercel/path0/website
+2026-10-16T23:22:58.071Z  > @farming-labs/docs-website@0.0.1 build:app /vercel/path0/website
+2026-10-16T23:23:26.470Z  ✓ Compiled successfully in 22.1s
+2026-10-16T23:23:33.295Z    Finished TypeScript in 6.8s ...
+2026-10-16T23:23:36.888Z  ✓ Generating static pages using 3 workers (67/67) in 2.3s
+2026-10-16T23:23:37.934Z  Build Completed in /vercel/output [1m]
+2026-10-16T23:23:48.229Z  Deployment completed
+2026-10-16T23:23:48.233Z  Creating build cache...
+2026-10-16T23:25:08.409Z  Build cache size 1.68 GB exceeds limit of 1.50 GB. Invalidating cache. Next build will start with an empty cache.
+2026-10-16T23:25:08.496Z  Cache invalidated
