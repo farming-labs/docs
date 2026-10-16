@@ -120,3 +120,6 @@ The Fumadocs baseline follows its [Next.js integration](https://www.fumadocs.dev
 catch-all pattern. Its [performance guide](https://www.fumadocs.dev/docs/mdx/performance) describes
 how MDX compilation and bundling contribute to production builds. Installed package types and
 source are used to validate the exact pinned API versions.
+
+The [focused optional-AI follow-up](./results/2026-10-16-ai-loading/REPORT.md) records a smaller initial
+JS payload, slower observed timing results, an infrastructure failure/retry, and additional scan findings.

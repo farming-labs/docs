@@ -1,0 +1,38 @@
+▲ Next.js 16.3.8 (Turbopack)
+✓ Running next.config.mjs took 230ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+- Experiments (use with caution):
+  · cpus: 2
+
+  Creating an optimized production build ...
+Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+✓ Compiled successfully in 11.2s
+  Running TypeScript ...
+Persisting failed during shutdown: Unable to write SST file 00000001.sst
+
+Caused by:
+    0: Failed to write small value block
+    1: Failed to write block data
+    2: failed to write to file `/Users/mac/oss/docs-build-overhead/benchmark/next-docs/artifacts/lazy-ai-after-2026-10-16/apps/farming-100/.next/cache/turbopack/v16.3.8-b0fad0d4/00000001.sst`: No space left on device (os error 28)
+error TS5033: Could not write file '/Users/mac/oss/docs-build-overhead/benchmark/next-docs/artifacts/lazy-ai-after-2026-10-16/apps/farming-100/.next/cache/.tsbuildinfo': ENOSPC: no space left on device, open '/Users/mac/oss/docs-build-overhead/benchmark/next-docs/artifacts/lazy-ai-after-2026-10-16/apps/farming-100/.next/cache/.tsbuildinfo'.
+Failed to type check.
+
