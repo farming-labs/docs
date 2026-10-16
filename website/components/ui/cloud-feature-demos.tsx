@@ -93,14 +93,14 @@ export function CloudEditorDemo() {
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-3 overflow-hidden border border-black/10 bg-white/80 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] sm:p-4 dark:border-white/10 dark:bg-black/50 dark:shadow-none">
       <div className="flex flex-col gap-2 border-b border-black/10 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
         <div className="min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+          <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
             docs/getting-started.mdx
           </p>
           <p className="mt-1 text-sm text-black/65 dark:text-white/55">
             Frontmatter, markdown, and nav updates in one editor.
           </p>
         </div>
-        <span className="inline-flex w-fit border border-black/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:border-white/10 dark:text-white/45">
+        <span className="inline-flex w-fit border border-black/10 px-2 py-1 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:border-white/10 dark:text-white/45">
           draft
         </span>
       </div>
@@ -189,13 +189,13 @@ export function CloudSearchDemo() {
           <span className="flex size-4 items-center justify-center text-black/45 dark:text-white/45">
             <Search className="size-3.5" />
           </span>
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-[0.18em] text-black/55 dark:text-white/50">
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-normal text-black/55 dark:text-white/50">
             {scenario.query.slice(0, typedLength)}
             {typedLength < scenario.query.length ? (
               <span className="ml-0.5 inline-block h-3.5 w-[7px] translate-y-0.5 animate-pulse bg-black/45 dark:bg-white/45" />
             ) : null}
           </span>
-          <kbd className="hidden border border-black/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-black/40 sm:inline-flex dark:border-white/10 dark:text-white/35">
+          <kbd className="hidden border border-black/10 px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-normal text-black/40 sm:inline-flex dark:border-white/10 dark:text-white/35">
             cmd k
           </kbd>
           <span className="hidden size-5 items-center justify-center border border-black/10 text-black/35 sm:flex dark:border-white/10 dark:text-white/35">
@@ -205,7 +205,7 @@ export function CloudSearchDemo() {
       </div>
 
       <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/40 dark:text-white/35">
+        <div className="font-mono text-[11px] uppercase tracking-normal text-black/40 dark:text-white/35">
           Documentation
         </div>
 
@@ -245,7 +245,7 @@ export function CloudSearchDemo() {
                   <p className="truncate font-medium">{row.title}</p>
                   <p
                     className={cn(
-                      "mt-1 truncate font-mono text-[10px] uppercase tracking-[0.18em]",
+                      "mt-1 truncate font-mono text-[10px] uppercase tracking-normal",
                       active
                         ? "text-black/45 dark:text-white/45"
                         : "text-black/45 dark:text-white/45",
@@ -287,7 +287,7 @@ export function CloudSearchDemo() {
             <DemoPill icon={Bot} label="Cited answers" />
             <DemoPill icon={ShieldCheck} label="Healthy index" />
           </div>
-          <div className="hidden flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-black/40 sm:flex dark:text-white/35">
+          <div className="hidden flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-normal text-black/40 sm:flex dark:text-white/35">
             <span className="inline-flex items-center gap-1">
               <CornerDownLeft className="size-3" />
               select
@@ -306,7 +306,7 @@ export function CloudSearchDemo() {
 
 function DemoPill({ icon: Icon, label }: { icon: typeof Search; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 border border-black/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-black/50 dark:border-white/10 dark:text-white/45">
+    <span className="inline-flex items-center gap-1.5 border border-black/10 px-2.5 py-1 font-mono text-[11px] uppercase tracking-normal text-black/50 dark:border-white/10 dark:text-white/45">
       <Icon className="size-3.5" />
       {label}
     </span>
