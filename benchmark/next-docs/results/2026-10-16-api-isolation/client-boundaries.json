@@ -1,0 +1,26 @@
+[
+  {
+    "pages": 100,
+    "feature": "apiReference",
+    "clientModules": 0,
+    "initialSharedChunkCount": 0
+  },
+  {
+    "pages": 100,
+    "feature": "ai",
+    "clientModules": 1,
+    "initialSharedChunkCount": 7
+  },
+  {
+    "pages": 500,
+    "feature": "apiReference",
+    "clientModules": 0,
+    "initialSharedChunkCount": 0
+  },
+  {
+    "pages": 500,
+    "feature": "ai",
+    "clientModules": 1,
+    "initialSharedChunkCount": 7
+  }
+]
