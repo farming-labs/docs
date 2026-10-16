@@ -43,6 +43,7 @@ Cold medians; KiB/MiB use powers of 1024. HTML includes serialized React server-
 - The new equivalence matrix covers root/nested routes, locales, base URLs, custom breadcrumbs, dates, Unicode, script escaping and agent HowTo output. Compact props exclude raw access policy, token-budget and rollback fields that were never present in public JSON-LD.
 - All 36 production builds pass route-count, content, highlighting, sidebar and edit-marker assertions.
 - Every generated docs page has one JSON-LD script. Sorted JSON-LD hashes match before/after across all three trials at both sizes (600 pages per cold trial).
+- Mobile screenshots match pixel-for-pixel at both sizes. Desktop article regions match; remaining screenshot differences are confined to the sidebar. See `visual-comparison.json`.
 - Browser verification is recorded separately in `verification.json`; it checks active-page JSON-LD after desktop/mobile client navigation as well as search, copying and responsive layout.
 
 [Raw measurements](./raw-results.json). The reproduction script is `reproduce.py`; run it in this disposable checkout with the pinned dependencies installed. It switches source revisions and rebuilds packages, refuses tracked/untracked changes, and restores the original branch. Generated logs, screenshots and fixtures remain in ignored `benchmark/next-docs/artifacts/compact-schema-paired`.
