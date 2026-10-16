@@ -1,0 +1,817 @@
+{
+  "method": "337-page assistant-ui custom-shell docs fixture, cold .next, Webpack filesystem cache disabled on both sides",
+  "defaultDeploymentBenchmark": false,
+  "machine": "Apple M1, arm64, 16 GiB RAM, shared local machine",
+  "node": "v24.21.0",
+  "frameworkHead": "bfe194fbea6c561e7bd76374a8ec0088e9d46e37",
+  "assistantUiSourceHead": "ba593a83c66715c4633a8bb980647edcaf58e507",
+  "assistantUiSourceDirty": true,
+  "installedVersions": {
+    "next": "16.4.1",
+    "react": "19.3.0",
+    "fumadocs-core": "16.16.2",
+    "fumadocs-mdx": "15.4.6",
+    "shiki": "4.5.0"
+  },
+  "excludedRouteModules": 103,
+  "inputFilesUnchanged": true,
+  "build": {
+    "fumadocs": {
+      "samplesSeconds": [
+        91.339247958,
+        86.35723395800001,
+        86.34932125
+      ],
+      "medianSeconds": 86.35723395800001,
+      "minSeconds": 86.34932125,
+      "maxSeconds": 91.339247958,
+      "phaseMediansSeconds": {
+        "config": 0.084,
+        "webpack": 61.0,
+        "typescript": 4.5,
+        "prerender": 17.1
+      }
+    },
+    "farming": {
+      "samplesSeconds": [
+        133.570344458,
+        113.450764042,
+        98.48986425
+      ],
+      "medianSeconds": 113.450764042,
+      "minSeconds": 98.48986425,
+      "maxSeconds": 133.570344458,
+      "phaseMediansSeconds": {
+        "config": 2.1,
+        "webpack": 77.0,
+        "typescript": 4.8,
+        "prerender": 18.3
+      }
+    }
+  },
+  "farmingBuildDeltaPercent": 31.373781722996096,
+  "output": {
+    "fumadocs": {
+      "docsRoutes": 337,
+      "htmlBytes": 154880367,
+      "htmlGzipBytes": 20134466,
+      "rscBytes": 85983129,
+      "rscGzipBytes": 13282135
+    },
+    "farming": {
+      "docsRoutes": 337,
+      "htmlBytes": 153815436,
+      "htmlGzipBytes": 20027082,
+      "rscBytes": 85165166,
+      "rscGzipBytes": 13194353
+    }
+  },
+  "validation": {
+    "fumadocs": {
+      "checks": [
+        "337 prerendered docs pages",
+        "search API contains 502 pages",
+        "Markdown page endpoint",
+        "render /docs",
+        "installation provider tabs",
+        "render /docs/installation",
+        "render /docs/integrations",
+        "render /docs/primitives/thread",
+        "render /docs/api-reference/primitives/thread",
+        "client navigation",
+        "search dialog and results",
+        "copy page Markdown",
+        "copy code",
+        "TOC navigation",
+        "mobile layout and sidebar",
+        "no browser runtime errors"
+      ],
+      "failures": [
+        {
+          "name": "platform switcher",
+          "error": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-docs-platform=\"rn\"]:visible').first() to be visible\u001b[22m\n",
+          "url": "http://127.0.0.1:43797/docs/installation#quick-start",
+          "platform": [
+            "react",
+            "react",
+            "react"
+          ]
+        }
+      ],
+      "pageErrors": [],
+      "docsRoutes": 337,
+      "searchRecords": 502,
+      "initialJsGzipBytes": 1265151,
+      "httpErrorCount": 83
+    },
+    "farming": {
+      "checks": [
+        "337 prerendered docs pages",
+        "search API contains 502 pages",
+        "Markdown page endpoint",
+        "render /docs",
+        "installation provider tabs",
+        "render /docs/installation",
+        "render /docs/integrations",
+        "render /docs/primitives/thread",
+        "render /docs/api-reference/primitives/thread",
+        "client navigation",
+        "search dialog and results",
+        "copy page Markdown",
+        "copy code",
+        "TOC navigation",
+        "mobile layout and sidebar",
+        "no browser runtime errors"
+      ],
+      "failures": [
+        {
+          "name": "platform switcher",
+          "error": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-docs-platform=\"rn\"]:visible').first() to be visible\u001b[22m\n",
+          "url": "http://127.0.0.1:43797/docs/installation#quick-start",
+          "platform": [
+            "react",
+            "react",
+            "react"
+          ]
+        }
+      ],
+      "pageErrors": [],
+      "docsRoutes": 337,
+      "searchRecords": 502,
+      "initialJsGzipBytes": 1271922,
+      "httpErrorCount": 83
+    }
+  },
+  "all337PagesMatch": true,
+  "all502SearchRecordsMatch": true,
+  "installationMarkdownMatches": true,
+  "traces": {
+    "traceRuns": [
+      5,
+      6
+    ],
+    "moduleEvents": {
+      "fumadocs": 11529,
+      "farming": 12377
+    },
+    "added": 987,
+    "removed": 139,
+    "extraPackageBuckets": [
+      [
+        "mdast-util-to-markdown",
+        144
+      ],
+      [
+        "zod",
+        96
+      ],
+      [
+        "yaml",
+        72
+      ],
+      [
+        "micromark-core-commonmark",
+        72
+      ],
+      [
+        "framework docs",
+        58
+      ],
+      [
+        "jsonpath-rfc9535",
+        41
+      ],
+      [
+        "js-yaml",
+        30
+      ],
+      [
+        "mdast-util-to-hast",
+        29
+      ],
+      [
+        "@mdx-js/mdx",
+        20
+      ],
+      [
+        "property-information",
+        18
+      ],
+      [
+        "micromark-extension-gfm-table",
+        15
+      ],
+      [
+        "micromark",
+        11
+      ],
+      [
+        "app / generated",
+        11
+      ],
+      [
+        "hast-util-to-estree",
+        11
+      ],
+      [
+        "stringify-entities",
+        9
+      ],
+      [
+        "micromark-extension-gfm-footnote",
+        9
+      ],
+      [
+        "micromark-extension-gfm-autolink-literal",
+        9
+      ],
+      [
+        "micromark-extension-gfm-task-list-item",
+        9
+      ],
+      [
+        "micromark-extension-gfm-strikethrough",
+        9
+      ],
+      [
+        "gray-matter",
+        9
+      ],
+      [
+        "unist-util-visit-parents",
+        9
+      ],
+      [
+        "@modelcontextprotocol/server",
+        8
+      ],
+      [
+        "mdast-util-gfm-autolink-literal",
+        6
+      ],
+      [
+        "vfile",
+        6
+      ],
+      [
+        "micromark-util-subtokenize",
+        6
+      ],
+      [
+        "unist-util-visit",
+        6
+      ],
+      [
+        "mdast-util-to-string",
+        6
+      ],
+      [
+        "mdast-util-gfm-table",
+        6
+      ],
+      [
+        "mdast-util-gfm-footnote",
+        6
+      ],
+      [
+        "mdast-util-find-and-replace",
+        6
+      ],
+      [
+        "micromark-extension-gfm-tagfilter",
+        6
+      ],
+      [
+        "remark-gfm",
+        6
+      ],
+      [
+        "mdast-util-gfm-task-list-item",
+        6
+      ],
+      [
+        "mdast-util-phrasing",
+        6
+      ],
+      [
+        "unist-util-is",
+        6
+      ],
+      [
+        "mdast-util-gfm-strikethrough",
+        6
+      ],
+      [
+        "mdast-util-gfm",
+        6
+      ],
+      [
+        "micromark-extension-mdx-jsx",
+        5
+      ],
+      [
+        "@ungap/structured-clone",
+        4
+      ],
+      [
+        "framework fumadocs",
+        4
+      ],
+      [
+        "acorn-jsx",
+        4
+      ],
+      [
+        "estree-walker",
+        4
+      ],
+      [
+        "micromark-factory-destination",
+        3
+      ],
+      [
+        "ccount",
+        3
+      ],
+      [
+        "micromark-util-sanitize-uri",
+        3
+      ],
+      [
+        "estree-util-visit",
+        3
+      ],
+      [
+        "micromark-util-classify-character",
+        3
+      ],
+      [
+        "micromark-util-edit-map",
+        3
+      ],
+      [
+        "micromark-extension-gfm",
+        3
+      ],
+      [
+        "devlop",
+        3
+      ],
+      [
+        "micromark-util-character",
+        3
+      ],
+      [
+        "micromark-util-chunked",
+        3
+      ],
+      [
+        "micromark-factory-space",
+        3
+      ],
+      [
+        "acorn",
+        3
+      ],
+      [
+        "estree-util-to-js",
+        3
+      ],
+      [
+        "micromark-factory-whitespace",
+        3
+      ],
+      [
+        "micromark-factory-label",
+        3
+      ],
+      [
+        "micromark-util-encode",
+        3
+      ],
+      [
+        "unified",
+        3
+      ],
+      [
+        "micromark-util-decode-string",
+        3
+      ],
+      [
+        "micromark-util-html-tag-name",
+        3
+      ],
+      [
+        "escape-string-regexp",
+        3
+      ],
+      [
+        "micromark-factory-title",
+        3
+      ],
+      [
+        "markdown-table",
+        3
+      ],
+      [
+        "zwitch",
+        3
+      ],
+      [
+        "micromark-util-combine-extensions",
+        3
+      ],
+      [
+        "micromark-util-decode-numeric-character-reference",
+        3
+      ],
+      [
+        "longest-streak",
+        3
+      ],
+      [
+        "micromark-util-normalize-identifier",
+        3
+      ],
+      [
+        "micromark-util-resolve-all",
+        3
+      ],
+      [
+        "decode-named-character-reference",
+        3
+      ],
+      [
+        "parse-entities",
+        2
+      ],
+      [
+        "mdast-util-from-markdown",
+        2
+      ],
+      [
+        "recma-stringify",
+        2
+      ],
+      [
+        "mdast-util-mdx-jsx",
+        2
+      ],
+      [
+        "unist-util-stringify-position",
+        2
+      ],
+      [
+        "character-entities",
+        2
+      ],
+      [
+        "@modelcontextprotocol/core",
+        2
+      ],
+      [
+        "@scalar/core",
+        2
+      ],
+      [
+        "trough",
+        2
+      ],
+      [
+        "hast-util-whitespace",
+        2
+      ],
+      [
+        "micromark-extension-mdxjs-esm",
+        2
+      ],
+      [
+        "recma-build-jsx",
+        2
+      ],
+      [
+        "unist-util-position-from-estree",
+        2
+      ],
+      [
+        "vfile-message",
+        2
+      ],
+      [
+        "unist-util-position",
+        2
+      ],
+      [
+        "micromark-util-events-to-acorn",
+        2
+      ],
+      [
+        "mdast-util-mdxjs-esm",
+        2
+      ],
+      [
+        "mdast-util-mdx-expression",
+        2
+      ],
+      [
+        "recma-jsx",
+        2
+      ],
+      [
+        "estree-util-is-identifier-name",
+        2
+      ],
+      [
+        "rehype-recma",
+        2
+      ],
+      [
+        "estree-util-attach-comments",
+        2
+      ],
+      [
+        "github-slugger",
+        2
+      ],
+      [
+        "style-to-js",
+        2
+      ],
+      [
+        "remark-mdx",
+        2
+      ],
+      [
+        "remark-parse",
+        2
+      ],
+      [
+        "remark-rehype",
+        2
+      ],
+      [
+        "micromark-extension-mdx-expression",
+        2
+      ],
+      [
+        "estree-util-build-jsx",
+        2
+      ],
+      [
+        "estree-util-scope",
+        2
+      ],
+      [
+        "mdast-util-mdx",
+        2
+      ],
+      [
+        "character-entities-html4",
+        1
+      ],
+      [
+        "comma-separated-tokens",
+        1
+      ],
+      [
+        "is-alphabetical",
+        1
+      ],
+      [
+        "is-hexadecimal",
+        1
+      ],
+      [
+        "is-alphanumerical",
+        1
+      ],
+      [
+        "markdown-extensions",
+        1
+      ],
+      [
+        "inline-style-parser",
+        1
+      ],
+      [
+        "esprima",
+        1
+      ],
+      [
+        "bail",
+        1
+      ],
+      [
+        "section-matter",
+        1
+      ],
+      [
+        "is-extendable",
+        1
+      ],
+      [
+        "extend-shallow",
+        1
+      ],
+      [
+        "extend",
+        1
+      ],
+      [
+        "collapse-white-space",
+        1
+      ],
+      [
+        "space-separated-tokens",
+        1
+      ],
+      [
+        "framework next",
+        1
+      ],
+      [
+        "micromark-extension-mdx-md",
+        1
+      ],
+      [
+        "astring",
+        1
+      ],
+      [
+        "micromark-factory-mdx-expression",
+        1
+      ],
+      [
+        "style-to-object",
+        1
+      ],
+      [
+        "is-decimal",
+        1
+      ],
+      [
+        "kind-of",
+        1
+      ],
+      [
+        "trim-lines",
+        1
+      ],
+      [
+        "character-entities-legacy",
+        1
+      ],
+      [
+        "is-plain-obj",
+        1
+      ],
+      [
+        "micromark-extension-mdxjs",
+        1
+      ],
+      [
+        "strip-bom-string",
+        1
+      ],
+      [
+        "character-reference-invalid",
+        1
+      ]
+    ],
+    "note": "Normalized module-build events by path and compilation layer. Cumulative event times are not exclusive CPU time."
+  },
+  "rawTrials": [
+    {
+      "provider": "fumadocs",
+      "bundler": "webpack",
+      "cold": true,
+      "webpackCache": false,
+      "seconds": 91.339247958,
+      "returncode": 0,
+      "cancelled": null,
+      "log": "local-webpack-2026-10-16-1-fumadocs.log",
+      "nodeOptions": "--max-heap-size=4096",
+      "status": "success",
+      "timingClaim": false,
+      "run": "local-webpack-2026-10-16-1-fumadocs",
+      "resourcesBefore": {
+        "freeDiskBytes": 6090342400,
+        "swap": "total = 8192.00M  used = 6818.75M  free = 1373.25M  (encrypted)"
+      },
+      "resourcesAfter": {
+        "freeDiskBytes": 5178535936,
+        "swap": "total = 9216.00M  used = 8504.88M  free = 711.12M  (encrypted)"
+      }
+    },
+    {
+      "provider": "farming",
+      "bundler": "webpack",
+      "cold": true,
+      "webpackCache": false,
+      "seconds": 133.570344458,
+      "returncode": 0,
+      "cancelled": null,
+      "log": "local-webpack-2026-10-16-2-farming.log",
+      "nodeOptions": "--max-heap-size=4096",
+      "status": "success",
+      "timingClaim": false,
+      "run": "local-webpack-2026-10-16-2-farming",
+      "resourcesBefore": {
+        "freeDiskBytes": 5178531840,
+        "swap": "total = 9216.00M  used = 8504.88M  free = 711.12M  (encrypted)"
+      },
+      "resourcesAfter": {
+        "freeDiskBytes": 5181300736,
+        "swap": "total = 9216.00M  used = 8344.44M  free = 871.56M  (encrypted)"
+      }
+    },
+    {
+      "provider": "farming",
+      "bundler": "webpack",
+      "cold": true,
+      "webpackCache": false,
+      "seconds": 113.450764042,
+      "returncode": 0,
+      "cancelled": null,
+      "log": "local-webpack-2026-10-16-3-farming.log",
+      "nodeOptions": "--max-heap-size=4096",
+      "status": "success",
+      "timingClaim": false,
+      "run": "local-webpack-2026-10-16-3-farming",
+      "resourcesBefore": {
+        "freeDiskBytes": 5181300736,
+        "swap": "total = 9216.00M  used = 8344.44M  free = 871.56M  (encrypted)"
+      },
+      "resourcesAfter": {
+        "freeDiskBytes": 5036949504,
+        "swap": "total = 9216.00M  used = 8676.88M  free = 539.12M  (encrypted)"
+      }
+    },
+    {
+      "provider": "fumadocs",
+      "bundler": "webpack",
+      "cold": true,
+      "webpackCache": false,
+      "seconds": 86.35723395800001,
+      "returncode": 0,
+      "cancelled": null,
+      "log": "local-webpack-2026-10-16-4-fumadocs.log",
+      "nodeOptions": "--max-heap-size=4096",
+      "status": "success",
+      "timingClaim": false,
+      "run": "local-webpack-2026-10-16-4-fumadocs",
+      "resourcesBefore": {
+        "freeDiskBytes": 5036945408,
+        "swap": "total = 9216.00M  used = 8676.88M  free = 539.12M  (encrypted)"
+      },
+      "resourcesAfter": {
+        "freeDiskBytes": 5038948352,
+        "swap": "total = 9216.00M  used = 8673.50M  free = 542.50M  (encrypted)"
+      }
+    },
+    {
+      "provider": "fumadocs",
+      "bundler": "webpack",
+      "cold": true,
+      "webpackCache": false,
+      "seconds": 86.34932125,
+      "returncode": 0,
+      "cancelled": null,
+      "log": "local-webpack-2026-10-16-5-fumadocs.log",
+      "nodeOptions": "--max-heap-size=4096",
+      "status": "success",
+      "timingClaim": false,
+      "run": "local-webpack-2026-10-16-5-fumadocs",
+      "resourcesBefore": {
+        "freeDiskBytes": 5038944256,
+        "swap": "total = 9216.00M  used = 8673.50M  free = 542.50M  (encrypted)"
+      },
+      "resourcesAfter": {
+        "freeDiskBytes": 4989112320,
+        "swap": "total = 9216.00M  used = 8750.56M  free = 465.44M  (encrypted)"
+      }
+    },
+    {
+      "provider": "farming",
+      "bundler": "webpack",
+      "cold": true,
+      "webpackCache": false,
+      "seconds": 98.48986425,
+      "returncode": 0,
+      "cancelled": null,
+      "log": "local-webpack-2026-10-16-6-farming.log",
+      "nodeOptions": "--max-heap-size=4096",
+      "status": "success",
+      "timingClaim": false,
+      "run": "local-webpack-2026-10-16-6-farming",
+      "resourcesBefore": {
+        "freeDiskBytes": 4989071360,
+        "swap": "total = 9216.00M  used = 8750.56M  free = 465.44M  (encrypted)"
+      },
+      "resourcesAfter": {
+        "freeDiskBytes": 3815784448,
+        "swap": "total = 10240.00M  used = 9391.75M  free = 848.25M  (encrypted)"
+      }
+    }
+  ]
+}
