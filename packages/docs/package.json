@@ -19,6 +19,10 @@
     "dist",
     "styles"
   ],
+  "sideEffects": [
+    "**/*.css",
+    "./dist/cli/**"
+  ],
   "type": "module",
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
