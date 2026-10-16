@@ -15,9 +15,8 @@ import type { LucideIcon } from "lucide-react";
 import { DocsCommandSearch } from "@/components/docs-command-search";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { FarmingLabsMark, SimpleIcon } from "@/components/marketing/brand-icons";
+import { getLatestRelease } from "@/lib/latest-release";
 import { cn } from "@/lib/utils";
-
-export const DOCS_VERSION = "v0.2.120";
 
 const navItems = [
   { index: "01", label: "Docs", href: "/docs", icon: BookOpen },
@@ -118,24 +117,32 @@ export function ButtonLink({
 }
 
 /** Top announcement: a `NEW` tag and a one-line release note, linked to the changelog. */
-export function AnnouncementBar() {
+/** The newest release from GitHub, linked to its release page. */
+export async function AnnouncementBar() {
+  const release = await getLatestRelease();
   return (
-    <Link
+    <a
       className="group flex min-h-10 items-center justify-center gap-2.5 border-b border-mk-line px-4 text-center font-mono text-[11px] tracking-normal text-mk-fg/60 transition-colors hover:text-mk-fg hover:no-underline"
-      href="/changelog"
+      href={release.href}
+      rel="noreferrer"
+      target="_blank"
     >
-      <span className="rounded-none bg-mk-fg px-1.5 py-0.5 text-[10px] uppercase text-mk-bg">
-        New
+      <span className="shrink-0 rounded-none bg-mk-fg px-1.5 py-0.5 text-[10px] uppercase text-mk-bg">
+        Latest
       </span>
-      <span className="truncate">
-        {DOCS_VERSION} · Interactive OpenAPI console, typed SDKs, breaking-change diffs
+      <span className="min-w-0 truncate">
+        <span className="text-mk-fg">{release.version}</span>
+        {release.title ? <> · {release.title}</> : null}
       </span>
-      <ArrowRight
-        aria-hidden
-        className="size-3 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
-        strokeWidth={1.8}
-      />
-    </Link>
+      <span className="hidden shrink-0 items-center gap-1 text-mk-fg/40 transition-colors group-hover:text-mk-fg sm:inline-flex">
+        Release notes
+        <ArrowUpRight
+          aria-hidden
+          className="size-3 transition-transform duration-150 group-hover:-translate-y-px group-hover:translate-x-px"
+          strokeWidth={1.8}
+        />
+      </span>
+    </a>
   );
 }
 
