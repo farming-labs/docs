@@ -45,6 +45,8 @@ jobs:
           pnpm --filter @farming-labs/next build
           pnpm --filter @farming-labs/farmjs build
       - name: Install and build pinned Farm source outside measurement
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
         run: |
           npx --yes pnpm@8.12.1 --dir farm-source install --frozen-lockfile
           node benchmark/farmjs-docs/link-source.mjs
@@ -71,3 +73,4 @@ jobs:
             benchmark/farmjs-docs/artifacts/runner.txt
             benchmark/farmjs-docs/artifacts/ci-*/*.json
             benchmark/farmjs-docs/artifacts/ci-*/*.log
+            benchmark/farmjs-docs/artifacts/ci-*/*.png

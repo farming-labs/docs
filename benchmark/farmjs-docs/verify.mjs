@@ -15,7 +15,7 @@ assert.ok(html.includes('Section 6'));
 assert.ok(html.includes('shiki'));
 assert.ok(html.includes(`Benchmark page ${String(count-1).padStart(4,'0')}`));
 const browser=await chromium.launch({headless:true});
-const context=await browser.newContext({viewport:{width:1280,height:900}});
+const context=await browser.newContext({viewport:{width:1280,height:900},permissions:['clipboard-read','clipboard-write']});
 const page=await context.newPage();
 const errors=[];
 page.on('pageerror',error=>errors.push(error.message));
@@ -44,6 +44,7 @@ try{
     const source=await r.text();
     assert.ok(source.includes(`Benchmark page ${String(i).padStart(4,'0')}`),name);
     assert.ok(source.includes('Section 6'),name);
+    assert.ok(source.includes(`configure topic ${i} safely`),`${name}: wrong article body`);
   }
   if(count>1){
     await page.evaluate(()=>window.__benchmarkNavigationSentinel=true);
@@ -52,16 +53,31 @@ try{
     await page.getByRole('heading',{name:/Benchmark page 0001/}).first().waitFor();
     assert.ok(await page.evaluate(()=>window.__benchmarkNavigationSentinel),'Navigation performed full document reload');
   }
-  const searchUrl=provider==='farmjs'?'/api/docs/search?query=topic':provider==='farming'?'/api/docs/search?query=topic':'/api/search?query=topic';
+  await page.getByRole('button',{name:'Copy Text',exact:true}).first().click();
+  assert.match(await page.evaluate(()=>navigator.clipboard.readText()),/loadTopic/);
+  const searchUrl=provider==='fumadocs'?'/api/search?query=topic':'/api/docs?query=topic';
   const search=await fetch(base+searchUrl);
   assert.equal(search.status,200,'Search endpoint');
   const searchData=await search.json();
   assert.ok(JSON.stringify(searchData).includes('page-'),'Search results missing');
+  await page.locator('[data-search-full]').click();
+  const dialog=page.getByRole('dialog');
+  const last=String(count-1).padStart(4,'0');
+  await dialog.locator('input').fill(last);
+  await dialog.getByRole('option').filter({hasText:`Benchmark page ${last}`}).first().click();
+  await page.getByRole('heading',{name:new RegExp(`^Benchmark page ${last}`)}).first().waitFor();
+  await dialog.waitFor({state:'hidden'});
+  await page.screenshot({path:destination.replace('.json','-desktop.png'),animations:'disabled'});
   await page.setViewportSize({width:390,height:844});
   await page.goto(base+'/docs',{waitUntil:'networkidle'});
   const mobile=await page.evaluate(()=>({width:document.documentElement.scrollWidth,viewport:innerWidth}));
   assert.ok(mobile.width<=mobile.viewport+1,'Mobile overflow');
+  await page.getByRole('button',{name:'Open Sidebar',exact:true}).click();
+  await page.locator('a[href="/docs/page-0001"]:visible').first().click();
+  await page.getByRole('heading',{name:/^Benchmark page 0001/}).first().waitFor();
+  await page.getByRole('dialog').waitFor({state:'hidden'});
+  await page.screenshot({path:destination.replace('.json','-mobile.png'),animations:'disabled'});
   assert.deepEqual(errors,[],'Browser exceptions');
-  result={firstPageMs,htmlBytes:Buffer.byteLength(html),htmlGzipBytes:gzipSync(html).length,initialJsGzipBytes,verifiedPages:count,highlightedCodeBlocks:6,tables:6,clientNavigation:true,search:true,mobileNoOverflow:true,browserErrors:errors,editVisible:html.includes('BENCHMARK_EDIT_MARKER')};
+  result={firstPageMs,htmlBytes:Buffer.byteLength(html),htmlGzipBytes:gzipSync(html).length,initialJsGzipBytes,verifiedPages:count,highlightedCodeBlocks:6,tables:6,clientNavigation:true,clipboard:true,search:true,searchNavigation:true,mobileSidebar:true,mobileNoOverflow:true,browserErrors:errors,editVisible:html.includes('BENCHMARK_EDIT_MARKER')};
 }finally{await browser.close();}
 writeFileSync(destination,JSON.stringify(result,null,2)+'\n');
