@@ -96,6 +96,14 @@ Routing is file-based, so a page such as `app/docs/guides/deployment/page.mdx` b
 `/docs/guides/deployment` in Next.js. The CLI scaffolds the correct directory layout for every
 supported framework.
 
+### MDX compiler integration
+
+Custom MDX integrations can import `remarkCodeGroup`, `applyDocsMarkdownHeadingAnchors`,
+`encodeDocsHeadingTocUrls`, `isolateDocsMarkdownPromptReferences`, and
+`withDocsMarkdownRenderableHeadings` from `@farming-labs/docs/mdx`. This entry point exposes the
+same helpers without loading the unrelated core/server runtime exports. Existing imports from
+the root and server entry points remain supported.
+
 ## Documentation for agents
 
 Farming Labs can expose the same docs in machine-readable forms, including:

@@ -39,6 +39,11 @@
       "import": "./dist/runtime.mjs",
       "default": "./dist/runtime.mjs"
     },
+    "./mdx": {
+      "types": "./dist/mdx.d.mts",
+      "import": "./dist/mdx.mjs",
+      "default": "./dist/mdx.mjs"
+    },
     "./markdown-rendering": {
       "types": "./dist/markdown-rendering.d.mts",
       "import": "./dist/markdown-rendering.mjs",
