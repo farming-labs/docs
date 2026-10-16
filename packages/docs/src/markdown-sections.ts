@@ -114,9 +114,13 @@ interface DocsMarkdownAstNode {
   };
 }
 
-const docsMarkdownMdxProcessor = createProcessor({
-  remarkPlugins: [remarkGfm],
-});
+let docsMarkdownMdxProcessor: ReturnType<typeof createProcessor> | undefined;
+
+function getDocsMarkdownMdxProcessor() {
+  return (docsMarkdownMdxProcessor ??= createProcessor({
+    remarkPlugins: [remarkGfm],
+  }));
+}
 
 function isDocsMarkdownLiteralPrompt(node: DocsMarkdownAstNode): boolean {
   return (
@@ -1332,7 +1336,7 @@ function parseDocsMarkdownAstSections(
 ): DocsMarkdownSection[] | undefined {
   let root: DocsMarkdownAstNode;
   try {
-    root = docsMarkdownMdxProcessor.parse(markdown) as DocsMarkdownAstNode;
+    root = getDocsMarkdownMdxProcessor().parse(markdown) as DocsMarkdownAstNode;
   } catch {
     return undefined;
   }

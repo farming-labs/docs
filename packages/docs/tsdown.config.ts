@@ -17,6 +17,8 @@ export default defineConfig({
     "src/cli/index.ts",
   ],
   format: "esm",
+  // Keep browser/config helpers separate from the server and MDX module graph.
+  unbundle: true,
   dts: true,
   clean: true,
   outDir: "dist",
