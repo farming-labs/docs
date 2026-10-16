@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install --frozen-lockfile --force",
+  "installCommand": "pnpm --filter '@farming-labs/docs-website...' --filter @farming-labs/docs-root install --frozen-lockfile --force --config.dedupe-peer-dependents=false",
   "crons": [
     {
       "path": "/api/enterprise-support/email/process",
