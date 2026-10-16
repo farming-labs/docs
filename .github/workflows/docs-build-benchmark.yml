@@ -1,0 +1,73 @@
+name: Docs build benchmark
+on:
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: Pages per framework
+        default: '100'
+        type: string
+      trials:
+        description: Repeated serial trials
+        default: '3'
+        type: string
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      FARM_TELEMETRY_DISABLED: '1'
+      FARM_BENCH_SOURCE: ${{ github.workspace }}/farm-source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: farming-labs/farm.js
+          ref: 7c76f2d597297be015df0c966d25b0f4fa7fc826
+          path: farm-source
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+      - name: Install locked docs dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm ci --prefix benchmark/next-docs/deps --legacy-peer-deps --ignore-scripts
+          pnpm exec playwright install --with-deps chromium
+      - name: Build docs packages outside measurement
+        run: |
+          pnpm --filter @farming-labs/docs build
+          pnpm --filter @farming-labs/theme build
+          pnpm --filter @farming-labs/next build
+          pnpm --filter @farming-labs/farmjs build
+      - name: Install and build pinned Farm source outside measurement
+        run: |
+          npx --yes pnpm@8.12.1 --dir farm-source install --frozen-lockfile
+          node benchmark/farmjs-docs/link-source.mjs
+          npx --yes pnpm@8.12.1 --dir farm-source --filter @farm.js/core build
+          npx --yes pnpm@8.12.1 --dir farm-source --filter @farm.js/cli build
+      - name: Capture runner
+        run: |
+          mkdir -p benchmark/farmjs-docs/artifacts
+          lscpu > benchmark/farmjs-docs/artifacts/runner.txt
+          free -m >> benchmark/farmjs-docs/artifacts/runner.txt
+          df -h . >> benchmark/farmjs-docs/artifacts/runner.txt
+      - name: Run same-corpus comparison
+        env:
+          BENCH_PAGES: ${{ inputs.pages }}
+          BENCH_TRIALS: ${{ inputs.trials }}
+        run: python3 benchmark/farmjs-docs/run.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Retain evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: farmjs-docs-benchmark-${{ github.run_id }}
+          retention-days: 30
+          path: |
+            benchmark/farmjs-docs/artifacts/runner.txt
+            benchmark/farmjs-docs/artifacts/ci-*/*.json
+            benchmark/farmjs-docs/artifacts/ci-*/*.log
