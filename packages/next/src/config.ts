@@ -32,6 +32,7 @@ import {
 } from "node:fs";
 import { dirname, extname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DocsPackageResolutionPlugin } from "./package-resolution.js";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
@@ -2874,18 +2875,14 @@ export function withDocs(
     }
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
     resolvedConfig.resolve.alias[AGENT_SKILLS_BUNDLE_ALIAS] = agentSkillsBundlePath;
-    resolvedConfig.resolve.alias["fumadocs-openapi"] = FUMADOCS_OPENAPI_PACKAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-openapi/ui"] = FUMADOCS_OPENAPI_UI_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-openapi/server"] = FUMADOCS_OPENAPI_SERVER_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-core"] = FUMADOCS_CORE_PACKAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-core/framework"] = FUMADOCS_CORE_FRAMEWORK_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-core/framework/next"] =
-      FUMADOCS_CORE_FRAMEWORK_NEXT_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui"] = FUMADOCS_UI_PACKAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui/layouts/notebook"] = FUMADOCS_UI_NOTEBOOK_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui/layouts/notebook/page"] =
-      FUMADOCS_UI_NOTEBOOK_PAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui/provider/next"] = FUMADOCS_UI_PROVIDER_NEXT_ALIAS;
+    resolvedConfig.resolve.plugins ??= [];
+    resolvedConfig.resolve.plugins.push(
+      new DocsPackageResolutionPlugin({
+        "fumadocs-core": FUMADOCS_CORE_PACKAGE_ALIAS,
+        "fumadocs-ui": FUMADOCS_UI_PACKAGE_ALIAS,
+        "fumadocs-openapi": FUMADOCS_OPENAPI_PACKAGE_ALIAS,
+      }),
+    );
     return resolvedConfig;
   };
 
