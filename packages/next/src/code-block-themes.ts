@@ -23,14 +23,16 @@ export function resolveCodeBlockThemes({
   root,
   configPath,
   theme,
+  readSource = (path) => readFileSync(path, "utf8"),
 }: {
   root: string;
   configPath: string;
   theme?: DocsTheme;
+  readSource?: (path: string) => string;
 }): CodeBlockThemes {
   const configFile = join(root, configPath);
   const usesShadcnTheme =
-    existsSync(configFile) && SHADCN_THEME_IMPORT.test(readFileSync(configFile, "utf8"));
+    existsSync(configFile) && SHADCN_THEME_IMPORT.test(readSource(configFile));
   const fallback = usesShadcnTheme ? SHADCN_CODE_BLOCK_THEMES : DEFAULT_CODE_BLOCK_THEMES;
   const codeBlock = theme?.ui?.codeBlock;
 
