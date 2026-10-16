@@ -1,0 +1,57 @@
+[
+  {
+    "pages": 100,
+    "device": "desktop",
+    "differentPixels": 1,
+    "bounds": [
+      1179,
+      134,
+      1180,
+      135
+    ],
+    "size": [
+      1440,
+      1000
+    ],
+    "changedPixelBefore": [
+      153,
+      153,
+      153
+    ],
+    "changedPixelAfter": [
+      158,
+      158,
+      158
+    ]
+  },
+  {
+    "pages": 100,
+    "device": "mobile",
+    "differentPixels": 0,
+    "bounds": null,
+    "size": [
+      390,
+      844
+    ]
+  },
+  {
+    "pages": 500,
+    "device": "desktop",
+    "differentPixels": 0,
+    "bounds": null,
+    "size": [
+      1440,
+      1000
+    ]
+  },
+  {
+    "pages": 500,
+    "device": "mobile",
+    "differentPixels": 0,
+    "bounds": null,
+    "size": [
+      390,
+      844
+    ]
+  }
+]

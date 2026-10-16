@@ -1,0 +1,134 @@
+[
+  {
+    "provider": "before",
+    "pages": 100,
+    "browser": "155.0.8059.80",
+    "checks": [
+      "production HTTP 200",
+      "six highlighted code blocks",
+      "clipboard copy",
+      "client navigation",
+      "active-page JSON-LD title, URL, description and date after desktop/mobile navigation",
+      "search API and result navigation",
+      "mobile overflow and sidebar"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0094?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0095?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0096?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0097?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      }
+    ]
+  },
+  {
+    "provider": "after",
+    "pages": 100,
+    "browser": "155.0.8059.80",
+    "checks": [
+      "production HTTP 200",
+      "six highlighted code blocks",
+      "clipboard copy",
+      "client navigation",
+      "active-page JSON-LD title, URL, description and date after desktop/mobile navigation",
+      "search API and result navigation",
+      "mobile overflow and sidebar"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0094?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0096?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0095?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0097?_rsc=x6g8xQg6QRGmsDtI",
+        "error": "net::ERR_ABORTED"
+      }
+    ]
+  },
+  {
+    "provider": "before",
+    "pages": 500,
+    "browser": "155.0.8059.80",
+    "checks": [
+      "production HTTP 200",
+      "six highlighted code blocks",
+      "clipboard copy",
+      "client navigation",
+      "active-page JSON-LD title, URL, description and date after desktop/mobile navigation",
+      "search API and result navigation",
+      "mobile overflow and sidebar"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0488?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0489?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0487?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0486?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      }
+    ]
+  },
+  {
+    "provider": "after",
+    "pages": 500,
+    "browser": "155.0.8059.80",
+    "checks": [
+      "production HTTP 200",
+      "six highlighted code blocks",
+      "clipboard copy",
+      "client navigation",
+      "active-page JSON-LD title, URL, description and date after desktop/mobile navigation",
+      "search API and result navigation",
+      "mobile overflow and sidebar"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0496?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0494?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0495?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:43791/docs/page-0493?_rsc=suK_uSq0KnjmndO3",
+        "error": "net::ERR_ABORTED"
+      }
+    ]
+  }
+]
