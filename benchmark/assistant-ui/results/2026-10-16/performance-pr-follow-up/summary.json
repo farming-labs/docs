@@ -1,0 +1,165 @@
+{
+  "capturedAt": "2026-10-16T22:21:46.511546+00:00",
+  "newPRs": [
+    564,
+    565,
+    566,
+    567,
+    568,
+    569,
+    570
+  ],
+  "pullRequests": [
+    {
+      "number": 563,
+      "topic": "parse-only Markdown",
+      "status": "existing draft",
+      "metric": "121 fewer module/layer pairs in assistant-ui trace; no isolated total-build improvement established"
+    },
+    {
+      "number": 564,
+      "topic": "custom Markdown rewrites",
+      "metric": "81 config/redirect tests passed"
+    },
+    {
+      "number": 565,
+      "topic": "Webpack package exports",
+      "metric": "15 new resolver checks; 165 adapter tests passed"
+    },
+    {
+      "number": 566,
+      "topic": "per-invocation config contents",
+      "metric": "15 to 1 source reads with changelog enabled; 153 adapter tests passed"
+    },
+    {
+      "number": 567,
+      "topic": "deferred AI/search dialogs",
+      "metric": "72199 to 61803 gzip bytes in isolated browser fixture; 238 theme tests and 13 candidate browser flows passed"
+    },
+    {
+      "number": 568,
+      "topic": "portable MDX extensions",
+      "metric": "12 new hook tests; 162 adapter tests passed"
+    },
+    {
+      "number": 569,
+      "topic": "serial CI benchmarks",
+      "metric": "6 smoke builds and 36 three-trial 100-page builds passed"
+    },
+    {
+      "number": 570,
+      "topic": "focused configuration import entry",
+      "status": "draft: coordinated core/adapter release required",
+      "metric": "225.0485 to 46.558083 ms startup median; 712 to 136 loaded modules; 1546 core and 150 adapter tests passed"
+    }
+  ],
+  "integration": {
+    "commit": "bbaf0f1f08e0b5960776b28469a5612d5eeec90f",
+    "coreTests": 1550,
+    "adapterTests": 181,
+    "themeTests": 238,
+    "browserFlows": 13,
+    "typechecks": [
+      "core",
+      "next",
+      "theme"
+    ],
+    "format": "passed",
+    "mergedToMain": false
+  },
+  "ciComparisons": {
+    "baseline": {
+      "fumadocs": {
+        "cold": {
+          "wallSeconds": 15.261285214999987,
+          "peakTreeRssMiB": 3293.66796875,
+          "initialJsGzipBytes": 259795,
+          "totalDocsHtmlBytes": 17466964
+        },
+        "warm": {
+          "wallSeconds": 4.3893350700000155,
+          "peakTreeRssMiB": 1281.296875,
+          "initialJsGzipBytes": 259795,
+          "totalDocsHtmlBytes": 17466964
+        },
+        "edit": {
+          "wallSeconds": 6.30010055599999,
+          "peakTreeRssMiB": 2006.88671875,
+          "initialJsGzipBytes": 259795,
+          "totalDocsHtmlBytes": 17467122
+        }
+      },
+      "farming": {
+        "cold": {
+          "wallSeconds": 18.652884798000002,
+          "peakTreeRssMiB": 3134.4921875,
+          "initialJsGzipBytes": 301712,
+          "totalDocsHtmlBytes": 23828406
+        },
+        "warm": {
+          "wallSeconds": 5.457493247000002,
+          "peakTreeRssMiB": 1537.57421875,
+          "initialJsGzipBytes": 301712,
+          "totalDocsHtmlBytes": 23828406
+        },
+        "edit": {
+          "wallSeconds": 6.291667817000018,
+          "peakTreeRssMiB": 1508.4609375,
+          "initialJsGzipBytes": 301712,
+          "totalDocsHtmlBytes": 23828617
+        }
+      }
+    },
+    "candidate": {
+      "fumadocs": {
+        "cold": {
+          "wallSeconds": 19.637025953999995,
+          "peakTreeRssMiB": 3312.140625,
+          "initialJsGzipBytes": 259790,
+          "totalDocsHtmlBytes": 17466964
+        },
+        "warm": {
+          "wallSeconds": 5.4982370900000035,
+          "peakTreeRssMiB": 1310.13671875,
+          "initialJsGzipBytes": 259790,
+          "totalDocsHtmlBytes": 17466964
+        },
+        "edit": {
+          "wallSeconds": 8.061824841000004,
+          "peakTreeRssMiB": 2044.56640625,
+          "initialJsGzipBytes": 259790,
+          "totalDocsHtmlBytes": 17467122
+        }
+      },
+      "farming": {
+        "cold": {
+          "wallSeconds": 22.296931934,
+          "peakTreeRssMiB": 2981.04296875,
+          "initialJsGzipBytes": 291534,
+          "totalDocsHtmlBytes": 23828406
+        },
+        "warm": {
+          "wallSeconds": 6.372753398000015,
+          "peakTreeRssMiB": 1408.546875,
+          "initialJsGzipBytes": 291534,
+          "totalDocsHtmlBytes": 23828406
+        },
+        "edit": {
+          "wallSeconds": 7.426913168999988,
+          "peakTreeRssMiB": 1742.6953125,
+          "initialJsGzipBytes": 291534,
+          "totalDocsHtmlBytes": 23828617
+        }
+      }
+    }
+  },
+  "sourceSha256": "4f2fa499547f867788f92fab6633b7f9161b6283f9d55628e96647f47a15132a",
+  "limitations": [
+    "100-page synthetic fixture, not the 337-page assistant-ui port.",
+    "Baseline runner CPU: AMD EPYC 9V74; candidate runner CPU: AMD EPYC 7763. Absolute before/after build timings are not directly comparable.",
+    "Three trials per provider/mode; each provider runs serially within its own batch.",
+    "Initial JS in the full synthetic Farming fixture fell 301712 to 291534 gzip bytes; docs HTML stayed 23828406 bytes. AI is disabled in that fixture; this payload result measures the combined changes.",
+    "No new full assistant-ui migration build or live AI service evaluation in this follow-up.",
+    "Collection bridge schema/Git-date caching and a supported collection-loader API remain open work."
+  ]
+}

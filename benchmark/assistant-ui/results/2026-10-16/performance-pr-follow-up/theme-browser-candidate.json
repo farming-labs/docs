@@ -1,0 +1,27 @@
+{
+  "baseline": null,
+  "initialScripts": [
+    "/index.js"
+  ],
+  "initialGzipBytes": 61803,
+  "scriptsAfterOpen": [
+    "/index.js",
+    "/ai-search-dialog-CDlpYJxH.js"
+  ],
+  "verified": [
+    "keyboard",
+    "loading cancellation",
+    "JSON and streaming AI responses",
+    "result navigation",
+    "localized search",
+    "button",
+    "search AI history",
+    "sidebar AI history",
+    "sidebar search",
+    "panel",
+    "modal",
+    "popover",
+    "full-modal"
+  ],
+  "runtimeErrors": []
+}

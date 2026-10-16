@@ -1,0 +1,23 @@
+{
+  "baseline": "bfe194fb",
+  "initialScripts": [
+    "/index.js"
+  ],
+  "initialGzipBytes": 72199,
+  "scriptsAfterOpen": [
+    "/index.js"
+  ],
+  "verified": [
+    "keyboard",
+    "localized search",
+    "button",
+    "search AI history",
+    "sidebar AI history",
+    "sidebar search",
+    "panel",
+    "modal",
+    "popover",
+    "full-modal"
+  ],
+  "runtimeErrors": []
+}

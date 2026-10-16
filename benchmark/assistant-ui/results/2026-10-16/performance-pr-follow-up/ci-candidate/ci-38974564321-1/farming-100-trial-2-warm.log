@@ -1,0 +1,183 @@
+▲ Next.js 16.3.8 (Turbopack)
+✓ Running next.config.mjs took 105ms
+- Experiments (use with caution):
+  · cpus: 2
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 300ms
+  Running TypeScript ...
+  Finished TypeScript in 1611ms ...
+  Collecting page data using 2 workers ...
+  Generating static pages using 2 workers (0/104) ...
+  Generating static pages using 2 workers (26/104) 
+  Generating static pages using 2 workers (52/104) 
+  Generating static pages using 2 workers (78/104) 
+✓ Generating static pages using 2 workers (104/104) in 2.2s
+Turbopack build encountered 2 warnings:
+./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css:2:84708
+Warning: Parsing CSS source code failed
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...ghlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:[36mvar[0m(--color-fd-prim...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+
+Generated code of PostCSS transform of file content of benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css:
+./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css:2:84708
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...ghlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:[36mvar[0m(--color-fd-prim...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+Import traces:
+  Client Component Browser:
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css [Client Component Browser]
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/layout.tsx [Server Component]
+
+  App Route:
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css
+    ./packages/fumadocs/dist/docs-api.mjs
+    ./packages/next/dist/api.mjs
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/api/docs/mcp/route.ts
+
+
+./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css:2:84807
+Warning: Parsing CSS source code failed
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:unde...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+
+Generated code of PostCSS transform of file content of benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css:
+./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css:2:84807
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:unde...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+Import traces:
+  Client Component Browser:
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css [Client Component Browser]
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/layout.tsx [Server Component]
+
+  App Route:
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/global.css
+    ./packages/fumadocs/dist/docs-api.mjs
+    ./packages/next/dist/api.mjs
+    ./benchmark/next-docs/artifacts/ci-38974564321-1/apps/farming-100/app/api/docs/mcp/route.ts
+
+
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /_not-found
+├ ƒ /api/docs
+├ ƒ /api/docs/mcp
+├ ○ /docs
+├ ○ /docs/page-0001
+├ ○ /docs/page-0002
+├ ○ /docs/page-0003
+├ ○ /docs/page-0004
+├ ○ /docs/page-0005
+├ ○ /docs/page-0006
+├ ○ /docs/page-0007
+├ ○ /docs/page-0008
+├ ○ /docs/page-0009
+├ ○ /docs/page-0010
+├ ○ /docs/page-0011
+├ ○ /docs/page-0012
+├ ○ /docs/page-0013
+├ ○ /docs/page-0014
+├ ○ /docs/page-0015
+├ ○ /docs/page-0016
+├ ○ /docs/page-0017
+├ ○ /docs/page-0018
+├ ○ /docs/page-0019
+├ ○ /docs/page-0020
+├ ○ /docs/page-0021
+├ ○ /docs/page-0022
+├ ○ /docs/page-0023
+├ ○ /docs/page-0024
+├ ○ /docs/page-0025
+├ ○ /docs/page-0026
+├ ○ /docs/page-0027
+├ ○ /docs/page-0028
+├ ○ /docs/page-0029
+├ ○ /docs/page-0030
+├ ○ /docs/page-0031
+├ ○ /docs/page-0032
+├ ○ /docs/page-0033
+├ ○ /docs/page-0034
+├ ○ /docs/page-0035
+├ ○ /docs/page-0036
+├ ○ /docs/page-0037
+├ ○ /docs/page-0038
+├ ○ /docs/page-0039
+├ ○ /docs/page-0040
+├ ○ /docs/page-0041
+├ ○ /docs/page-0042
+├ ○ /docs/page-0043
+├ ○ /docs/page-0044
+├ ○ /docs/page-0045
+├ ○ /docs/page-0046
+├ ○ /docs/page-0047
+├ ○ /docs/page-0048
+├ ○ /docs/page-0049
+├ ○ /docs/page-0050
+├ ○ /docs/page-0051
+├ ○ /docs/page-0052
+├ ○ /docs/page-0053
+├ ○ /docs/page-0054
+├ ○ /docs/page-0055
+├ ○ /docs/page-0056
+├ ○ /docs/page-0057
+├ ○ /docs/page-0058
+├ ○ /docs/page-0059
+├ ○ /docs/page-0060
+├ ○ /docs/page-0061
+├ ○ /docs/page-0062
+├ ○ /docs/page-0063
+├ ○ /docs/page-0064
+├ ○ /docs/page-0065
+├ ○ /docs/page-0066
+├ ○ /docs/page-0067
+├ ○ /docs/page-0068
+├ ○ /docs/page-0069
+├ ○ /docs/page-0070
+├ ○ /docs/page-0071
+├ ○ /docs/page-0072
+├ ○ /docs/page-0073
+├ ○ /docs/page-0074
+├ ○ /docs/page-0075
+├ ○ /docs/page-0076
+├ ○ /docs/page-0077
+├ ○ /docs/page-0078
+├ ○ /docs/page-0079
+├ ○ /docs/page-0080
+├ ○ /docs/page-0081
+├ ○ /docs/page-0082
+├ ○ /docs/page-0083
+├ ○ /docs/page-0084
+├ ○ /docs/page-0085
+├ ○ /docs/page-0086
+├ ○ /docs/page-0087
+├ ○ /docs/page-0088
+├ ○ /docs/page-0089
+├ ○ /docs/page-0090
+├ ○ /docs/page-0091
+├ ○ /docs/page-0092
+├ ○ /docs/page-0093
+├ ○ /docs/page-0094
+├ ○ /docs/page-0095
+├ ○ /docs/page-0096
+├ ○ /docs/page-0097
+├ ○ /docs/page-0098
+└ ○ /docs/page-0099
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

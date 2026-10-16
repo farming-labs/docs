@@ -1,0 +1,117 @@
+{
+  "node": "v24.21.0",
+  "platform": "darwin",
+  "method": "Same emitted withDocs chunk; baseline restores broad imports. Seven alternating fresh-process trials. Setup and import only; not Next compilation or an OS-cache-cold benchmark.",
+  "summary": {
+    "baseline": {
+      "importMs": 217.905209,
+      "totalMs": 225.0485,
+      "modules": 712
+    },
+    "candidate": {
+      "importMs": 38.9465,
+      "totalMs": 46.558082999999996,
+      "modules": 136
+    }
+  },
+  "samples": [
+    {
+      "kind": "baseline",
+      "trial": 1,
+      "importMs": 284.394167,
+      "totalMs": 292.106042,
+      "modules": 712
+    },
+    {
+      "kind": "candidate",
+      "trial": 1,
+      "importMs": 42.821916,
+      "totalMs": 50.070040999999996,
+      "modules": 136
+    },
+    {
+      "kind": "candidate",
+      "trial": 2,
+      "importMs": 40.016791999999995,
+      "totalMs": 47.020624999999995,
+      "modules": 136
+    },
+    {
+      "kind": "baseline",
+      "trial": 2,
+      "importMs": 263.905042,
+      "totalMs": 271.552208,
+      "modules": 712
+    },
+    {
+      "kind": "baseline",
+      "trial": 3,
+      "importMs": 217.905209,
+      "totalMs": 225.0485,
+      "modules": 712
+    },
+    {
+      "kind": "candidate",
+      "trial": 3,
+      "importMs": 37.901542000000006,
+      "totalMs": 45.706374999999994,
+      "modules": 136
+    },
+    {
+      "kind": "candidate",
+      "trial": 4,
+      "importMs": 38.436541,
+      "totalMs": 45.909083,
+      "modules": 136
+    },
+    {
+      "kind": "baseline",
+      "trial": 4,
+      "importMs": 256.751,
+      "totalMs": 264.159083,
+      "modules": 712
+    },
+    {
+      "kind": "baseline",
+      "trial": 5,
+      "importMs": 206.98383299999998,
+      "totalMs": 213.958417,
+      "modules": 712
+    },
+    {
+      "kind": "candidate",
+      "trial": 5,
+      "importMs": 38.643167,
+      "totalMs": 67.809333,
+      "modules": 136
+    },
+    {
+      "kind": "candidate",
+      "trial": 6,
+      "importMs": 39.24249999999999,
+      "totalMs": 46.531625000000005,
+      "modules": 136
+    },
+    {
+      "kind": "baseline",
+      "trial": 6,
+      "importMs": 206.14124999999999,
+      "totalMs": 213.16049999999998,
+      "modules": 712
+    },
+    {
+      "kind": "baseline",
+      "trial": 7,
+      "importMs": 202.392542,
+      "totalMs": 209.303167,
+      "modules": 712
+    },
+    {
+      "kind": "candidate",
+      "trial": 7,
+      "importMs": 38.9465,
+      "totalMs": 46.558082999999996,
+      "modules": 136
+    }
+  ]
+}

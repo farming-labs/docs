@@ -1,0 +1,114 @@
+▲ Next.js 16.3.8 (Turbopack)
+✓ Running next.config.mjs took 244ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+- Experiments (use with caution):
+  · cpus: 2
+
+  Creating an optimized production build ...
+Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+✓ Compiled successfully in 8.5s
+  Running TypeScript ...
+  Finished TypeScript in 1893ms ...
+  Collecting page data using 2 workers ...
+  Generating static pages using 2 workers (0/14) ...
+  Generating static pages using 2 workers (3/14) 
+  Generating static pages using 2 workers (6/14) 
+  Generating static pages using 2 workers (10/14) 
+✓ Generating static pages using 2 workers (14/14) in 367ms
+Turbopack build encountered 2 warnings:
+./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css:2:84708
+Warning: Parsing CSS source code failed
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...ghlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:[36mvar[0m(--color-fd-prim...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+
+Generated code of PostCSS transform of file content of benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css:
+./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css:2:84708
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...ghlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:[36mvar[0m(--color-fd-prim...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+Import traces:
+  Client Component Browser:
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css [Client Component Browser]
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/layout.tsx [Server Component]
+
+  App Route:
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css
+    ./packages/fumadocs/dist/docs-api.mjs
+    ./packages/next/dist/api.mjs
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/api/docs/mcp/route.ts
+
+
+./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css:2:84807
+Warning: Parsing CSS source code failed
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:unde...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+
+Generated code of PostCSS transform of file content of benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css:
+./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css:2:84807
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:unde...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+Import traces:
+  Client Component Browser:
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css [Client Component Browser]
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/layout.tsx [Server Component]
+
+  App Route:
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/global.css
+    ./packages/fumadocs/dist/docs-api.mjs
+    ./packages/next/dist/api.mjs
+    ./benchmark/next-docs/artifacts/ci-38973841403-1/apps/farming-10/app/api/docs/mcp/route.ts
+
+
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /_not-found
+├ ƒ /api/docs
+├ ƒ /api/docs/mcp
+├ ○ /docs
+├ ○ /docs/page-0001
+├ ○ /docs/page-0002
+├ ○ /docs/page-0003
+├ ○ /docs/page-0004
+├ ○ /docs/page-0005
+├ ○ /docs/page-0006
+├ ○ /docs/page-0007
+├ ○ /docs/page-0008
+└ ○ /docs/page-0009
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

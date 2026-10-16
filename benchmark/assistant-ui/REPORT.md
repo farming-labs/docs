@@ -2,7 +2,74 @@
 
 The isolated Farming port builds and preserves the tested docs content, but it is **slower in this experiment**: **113.45s versus 86.36s**, a **31.4%** increase. This is a constrained local Webpack comparison with disk caching disabled on both sides, not a default Vercel or Turbopack benchmark. The production assistant-ui checkout was not migrated or edited.
 
-PRs [#560](https://github.com/farming-labs/docs/pull/560), [#561](https://github.com/farming-labs/docs/pull/561), and [#562](https://github.com/farming-labs/docs/pull/562) were squash-merged after their checks passed. The benchmark uses merged framework revision `bfe194fbea6c561e7bd76374a8ec0088e9d46e37`. No new benchmark PR was opened.
+PRs [#560](https://github.com/farming-labs/docs/pull/560), [#561](https://github.com/farming-labs/docs/pull/561), and [#562](https://github.com/farming-labs/docs/pull/562) were squash-merged after their checks passed. The benchmark uses merged framework revision `bfe194fbea6c561e7bd76374a8ec0088e9d46e37`. The original migration harness remains on the local benchmark branch. The later follow-up below adds CI for the separate synthetic fixture.
+
+## PR follow-up and CI measurements
+
+Seven new focused PRs are open; no new PR was merged in this follow-up. The earlier parser PR
+[#563](https://github.com/farming-labs/docs/pull/563) remains draft. Full receipts, raw CI logs,
+startup samples, and browser checks are under
+[performance-pr-follow-up](results/2026-10-16/performance-pr-follow-up/summary.json).
+
+| PR | Change | Measured result / verification |
+| --- | --- | --- |
+| [#564](https://github.com/farming-labs/docs/pull/564) | Preserve custom Markdown rewrite precedence | 81 config/redirect tests pass, including actual Next route matching |
+| [#565](https://github.com/farming-labs/docs/pull/565) | Respect Webpack package exports and provider identity | 15 new resolver checks; 165 adapter tests pass |
+| [#566](https://github.com/farming-labs/docs/pull/566) | Reuse config source within one setup pass | 15 → 1 config reads in the changelog fixture; 153 tests pass; later calls observe edits/deletions |
+| [#567](https://github.com/farming-labs/docs/pull/567) | Defer search/AI dialog modules | 72,199 → 61,803 gzip bytes in the isolated browser fixture (14.4% smaller); 238 theme tests and 13 candidate browser flows pass |
+| [#568](https://github.com/farming-labs/docs/pull/568) | Supported MDX plugin and highlighter hooks | 162 adapter tests pass, including real MDX compilation and Webpack/Turbopack loader-option parity |
+| [#569](https://github.com/farming-labs/docs/pull/569) | Fresh-runner serial cold/warm/edit comparisons | Six smoke builds plus 36 repeated 100-page builds pass; raw samples retained |
+| [#570](https://github.com/farming-labs/docs/pull/570) | Keep runtime modules out of config imports | Seven-trial median startup 225.05 → 46.56 ms (79.3% lower), 712 → 136 loaded modules; 1,546 core and 150 adapter tests pass |
+
+The final startup batch measures import plus `withDocs()` setup in fresh Node 24.21.0 processes
+with a warm OS filesystem cache. The baseline uses the same emitted config code with the broad
+imports restored. An earlier seven-trial batch measured 200.68 → 45.72 ms. These are configuration
+startup measurements, not whole-build timings. PR #570 is draft because its new import entry
+requires publishing the corresponding core release before the adapter; the peer floor is raised
+to core 0.2.121. The release itself was not performed.
+
+The combined branch `bbaf0f1f` applies all eight PRs without conflicts and passes **1,550 core,
+181 adapter, and 238 theme tests**, three package typechecks, formatting, and **13 browser flows**.
+The browser fixture covers delayed-download cancellation, keyboard/button opening, localized
+search and navigation, JSON/SSE AI responses, conversation retention, both sidebar dialogs,
+and all four floating styles. It uses a local API fixture; it does not validate a live model service.
+
+### Candidate against Fumadocs on the same CI runner
+
+100 generated pages, three trials per mode, Node 24.21.0, Next 16.3.8, React 19.2.4,
+Fumadocs core/UI 16.17.1, Fumadocs MDX 15.4.7; four vCPUs, two static workers, Ubuntu 24.04,
+normal Turbopack filesystem caching. Installation and package builds are outside the timer.
+
+| Build | Fumadocs median | Farming candidate median | Farming relative difference |
+| --- | ---: | ---: | ---: |
+| Cold | 19.64 s | 22.30 s | 13.5% slower |
+| Warm | 5.50 s | 6.37 s | 15.9% slower |
+| One-page edit | 8.06 s | 7.43 s | 7.9% faster |
+
+Candidate cold sampled process-tree RSS is 2,981 MiB versus Fumadocs' 3,312 MiB; edit RSS is
+1,743 versus 2,045 MiB. Warm RSS is higher: 1,409 versus 1,310 MiB. These sampled sums can
+count shared memory more than once. Initial JS remains larger than Fumadocs: 291,534 versus
+259,790 gzip bytes (12.2% more).
+
+The separate baseline batch measured Farming 18.65/5.46/6.29 seconds and Fumadocs
+15.26/4.39/6.30 seconds for cold/warm/edit. **Do not interpret the absolute difference between
+batches as a regression or speedup:** GitHub assigned AMD EPYC 9V74 to the baseline and AMD EPYC
+7763 to the candidate. Compare providers within each runner. All four retained corpora have the
+same source hash. Farming's initial JS fell from 301,712 to 291,534 gzip bytes (3.4% smaller),
+while cold-build docs HTML remained exactly 23,828,406 bytes. These artifact changes are comparable
+across the runners, apart from small build-ID/compression variations. The synthetic fixture
+disables AI; the payload reduction is measured for the combined changes, rather than attributed
+byte-for-byte to one PR.
+
+Runs: [baseline](https://github.com/farming-labs/docs/actions/runs/38974608558),
+[candidate](https://github.com/farming-labs/docs/actions/runs/38974564321),
+[smoke](https://github.com/farming-labs/docs/actions/runs/38973841403).
+
+Remaining work: cold/warm compilation, file-route overhead (104 route modules versus 4 in the
+catch-all Fumadocs fixture), initial client payload, and collection-bridge schema/Git-date reuse.
+The new hooks remove MDX loader patching as a requirement but do not implement a native collection
+adapter. The 337-page assistant-ui port needs a new full comparison after integration; its old
+31.4% build gap has not been superseded by the synthetic results.
 
 ## Priorities to outperform the baseline
 
