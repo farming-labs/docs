@@ -1,4 +1,4 @@
-import { createProcessor } from "@mdx-js/mdx";
+import { createDocsMarkdownParser } from "./markdown-parser.js";
 import { slug as githubSlug } from "github-slugger";
 import { parseEntities } from "parse-entities";
 import remarkGfm from "remark-gfm";
@@ -114,12 +114,14 @@ interface DocsMarkdownAstNode {
   };
 }
 
-let docsMarkdownMdxProcessor: ReturnType<typeof createProcessor> | undefined;
+let docsMarkdownMdxProcessor: ReturnType<typeof createDocsMarkdownParser> | undefined;
 
 function getDocsMarkdownMdxProcessor() {
-  return (docsMarkdownMdxProcessor ??= createProcessor({
-    remarkPlugins: [remarkGfm],
-  }));
+  if (!docsMarkdownMdxProcessor) {
+    docsMarkdownMdxProcessor = createDocsMarkdownParser();
+    docsMarkdownMdxProcessor.use(remarkGfm);
+  }
+  return docsMarkdownMdxProcessor;
 }
 
 function isDocsMarkdownLiteralPrompt(node: DocsMarkdownAstNode): boolean {
