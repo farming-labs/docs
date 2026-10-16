@@ -1,3 +1,5 @@
+import React from "react";
+import type { DocsConfig } from "@farming-labs/docs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -219,6 +221,38 @@ export async function GET() {
 });
 
 describe("withNextApiReferenceBanner", () => {
+  it("preserves a disabled sidebar even when API reference is enabled", () => {
+    const config = { entry: "guides", apiReference: true, sidebar: false } satisfies DocsConfig;
+    expect(withNextApiReferenceBanner(config)).toBe(config);
+  });
+
+  it("uses the default docs and API URLs when adding a sidebar", () => {
+    const result = withNextApiReferenceBanner({ entry: "guides", apiReference: true });
+    const sidebar = result.sidebar as { banner: React.ReactElement<Record<string, unknown>> };
+    expect(sidebar.banner.props).toMatchObject({ docsUrl: "/guides", apiUrl: "/api-reference" });
+  });
+
+  it("retains custom banners, sidebar settings, and navigation URLs without mutating config", () => {
+    const customBanner = React.createElement("p", null, "Custom banner");
+    const config = {
+      entry: "guides",
+      nav: { url: "/handbook" },
+      apiReference: { enabled: true, path: "/reference/" },
+      sidebar: { banner: customBanner, footer: "Custom footer", collapsible: false },
+    } satisfies DocsConfig;
+    const result = withNextApiReferenceBanner(config);
+    const sidebar = result.sidebar as {
+      banner: React.ReactElement<{ children: React.ReactElement[] }>;
+    };
+    const [existing, switcher] = sidebar.banner.props.children;
+
+    expect(result.sidebar).toMatchObject({ footer: "Custom footer", collapsible: false });
+    expect(existing).toBe(customBanner);
+    expect(switcher.props).toMatchObject({ docsUrl: "/handbook", apiUrl: "/reference" });
+    expect(config.sidebar.banner).toBe(customBanner);
+    expect(result.sidebar).not.toBe(config.sidebar);
+  });
+
   it("does not inject the docs/api switcher when apiReference is disabled", () => {
     const config = {
       entry: "docs",
@@ -268,6 +302,19 @@ describe("getNextApiReferenceMode", () => {
 });
 
 describe("createNextApiReference", () => {
+  it("still serves the Scalar renderer when explicitly selected", async () => {
+    const handler = createNextApiReference({
+      entry: "docs",
+      apiReference: { enabled: true, renderer: "scalar" },
+    });
+    const response = await handler(new Request("https://docs.example.com/api-reference"));
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(html).toContain("Scalar.createApiReference");
+    expect(html).toContain("https://cdn.jsdelivr.net/npm/@scalar/api-reference");
+  });
+
   it("returns 404 when apiReference is disabled", async () => {
     const handler = createNextApiReference({
       entry: "docs",

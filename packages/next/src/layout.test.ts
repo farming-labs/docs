@@ -1,6 +1,13 @@
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createNextDocsLayout } from "./layout.js";
+
+vi.mock("@scalar/nextjs-api-reference", () => {
+  throw new Error("Ordinary docs layouts must not load the Scalar renderer.");
+});
+vi.mock("./fumadocs-api-page.js", () => {
+  throw new Error("Ordinary docs layouts must not load the OpenAPI page renderer.");
+});
 
 function clearDocsCloudEnv() {
   delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;

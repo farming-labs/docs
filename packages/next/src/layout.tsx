@@ -3,7 +3,7 @@ import { emitDocsTelemetryProjectEvent } from "@farming-labs/docs";
 import type { DocsConfig } from "@farming-labs/docs";
 import { DocsCloudAnalytics } from "@farming-labs/docs/client/react";
 import type { DocsCloudAnalyticsOptions } from "@farming-labs/docs/client/react";
-import { withNextApiReferenceBanner } from "./api-reference.js";
+import { withNextApiReferenceBanner } from "./api-reference-banner.js";
 import DocsClientCallbacks from "./client-callbacks.js";
 
 const DOCS_CLOUD_PROJECT_ID_ENVS = [
