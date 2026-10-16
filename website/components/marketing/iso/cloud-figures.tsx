@@ -15,6 +15,7 @@ import {
   partial,
   phase,
   useLoop,
+  Callout,
 } from "@/components/marketing/iso/scene";
 
 /* A low yaw runs the long plate across the card instead of down it. */
@@ -75,9 +76,11 @@ function Repo({ lit, label = "repo" }: { lit: boolean; label?: string }) {
       {([0.85, 1.35, 1.85] as const).map((y0) => (
         <Inset key={y0} lens={WIDE} r={0.05} x={[0.45, 1.55]} y={[y0, y0 + 0.38]} z={0.9} />
       ))}
-      <Print at={[0.36, 2.4, 0.62]} lens={WIDE} size={5}>
-        {label}
-      </Print>
+      {label ? (
+        <Print at={[0.36, 2.4, 0.62]} lens={WIDE} size={5}>
+          {label}
+        </Print>
+      ) : null}
     </Slab>
   );
 }
@@ -230,25 +233,39 @@ export function CloudDeployFigure({ className }: { className?: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// The sync and review figures share one frame so they sit at the same height
+// side by side: same plate depth, same view box, labels wired above the parts.
+
+const PAIR_VIEW = "-64 -44 320 160";
+const LABEL_Y = -31;
+
+/** A label above a part: the wire rises from the part's back edge to the label row. */
+function LabelAbove({ at, label, on }: { at: Point3; label: string; on: boolean }) {
+  const from = WIDE.at(...at);
+  return <Callout from={from} label={label} on={on} to={[from[0], LABEL_Y]} />;
+}
+
+// ---------------------------------------------------------------------------
 // Sync: content leaves the repo, the docs graph lights node by node as sections
-// map, search and Ask AI catch up, and a draft PR rides back to GitHub.
+// map, search and Ask AI catch up, and a draft PR rides back to the repo.
 
 const SYNC_LOOP = 9000;
 const PULL: Point3[] = [
   [1.8, 1.15, TOP],
-  [4.3, 1.15, TOP],
+  [4.25, 1.15, TOP],
 ];
 const PUSH: Point3[] = [
-  [4.3, 1.95, TOP],
+  [4.25, 1.95, TOP],
   [1.8, 1.95, TOP],
 ];
-const NODES: { at: Point2; litAt: number; name?: string }[] = [
-  { at: [4.9, 0.72], litAt: 1800, name: "guides" },
-  { at: [6.55, 0.66], litAt: 2300, name: "api" },
-  { at: [5.7, 1.5], litAt: 1300, name: "docs" },
-  { at: [4.85, 2.32], litAt: 2700 },
-  { at: [6.7, 2.26], litAt: 3100 },
+const NODES: { at: Point2; litAt: number }[] = [
+  { at: [5.0, 0.8], litAt: 1800 },
+  { at: [6.65, 0.75], litAt: 2300 },
+  { at: [5.8, 1.55], litAt: 1300 },
+  { at: [4.95, 2.3], litAt: 2700 },
+  { at: [6.8, 2.25], litAt: 3100 },
 ];
+const NODE_R = 0.3;
 const EDGES: [number, number][] = [
   [0, 2],
   [1, 2],
@@ -267,12 +284,15 @@ export function CloudSyncFigure({ className }: { className?: string }) {
   const fade = 1 - reset;
   const pulls = [0, 1, 2].map((k) => ({ start: 400 + k * 450, p: phase(t, 400 + k * 450, 900) }));
   const push = phase(t, 4800, 1200);
+  const pulling = t >= 400 && t < 2400;
+  const pushing = t >= 4800 && t < 6000;
   const opened = t >= 6000 && reset < 1;
   const nodeOn = (i: number) => t >= NODES[i]!.litAt && reset < 0.5;
+  const graphOn = t >= 1300 && t < 4800;
 
   const readout =
     t < 400
-      ? "$ docs sync --search"
+      ? "$ docs cloud sync"
       : t < 2000
         ? "pulling MDX from main"
         : t < 3600
@@ -290,16 +310,10 @@ export function CloudSyncFigure({ className }: { className?: string }) {
       label="Repo sync: MDX flows from the repository into a docs graph, search and Ask AI update, and a draft pull request goes back to GitHub."
       onHold={setHeld}
       readout={readout}
-      view="-64 -40 320 160"
+      view={PAIR_VIEW}
     >
       <Plate />
       <Line className="iso-ghost" lens={WIDE} lines={[PULL, PUSH]} />
-      <Print at={[2.3, 1.02, TOP]} face="top" lens={WIDE} size={3.8}>
-        pull
-      </Print>
-      <Print at={[2.3, 2.3, TOP]} face="top" lens={WIDE} size={3.8}>
-        draft PR
-      </Print>
       <g style={{ opacity: fade }}>
         {pulls.map(({ p, start }) =>
           p > 0 && t < start + 1200 ? (
@@ -326,31 +340,22 @@ export function CloudSyncFigure({ className }: { className?: string }) {
         );
       })}
 
-      <Repo label={opened ? "repo · PR" : "repo"} lit={opened || (t >= 400 && t < 1400)} />
+      <Repo label="" lit={opened || pulling} />
 
       {[...NODES.keys()]
         .sort((a, b) => WIDE.depth(...NODES[a]!.at) - WIDE.depth(...NODES[b]!.at))
         .map((i) => {
-          const {
-            at: [cx, cy],
-            name,
-          } = NODES[i]!;
+          const [cx, cy] = NODES[i]!.at;
           return (
             <Slab
               className={nodeOn(i) ? "iso-lit" : undefined}
               key={i}
               lens={WIDE}
-              r={0.26}
-              x={[cx - 0.26, cx + 0.26]}
-              y={[cy - 0.26, cy + 0.26]}
-              z={[PLATE.z[1], 0.4]}
-            >
-              {name ? (
-                <Print at={[cx - 0.2, cy + 0.42, TOP]} face="top" lens={WIDE} size={3.8}>
-                  {name}
-                </Print>
-              ) : null}
-            </Slab>
+              r={NODE_R}
+              x={[cx - NODE_R, cx + NODE_R]}
+              y={[cy - NODE_R, cy + NODE_R]}
+              z={[PLATE.z[1], 0.46]}
+            />
           );
         })}
 
@@ -358,22 +363,30 @@ export function CloudSyncFigure({ className }: { className?: string }) {
         p > 0 && p < 1 ? <Packet at={along(PULL, p)} key={start} lens={WIDE} /> : null,
       )}
       {push > 0 && push < 1 ? <Packet at={along(PUSH, push)} lens={WIDE} /> : null}
+
+      <LabelAbove
+        at={[1.0, 0.6, 0.9]}
+        label={opened ? "repo · draft PR" : "repo"}
+        on={opened || pulling || pushing}
+      />
+      <LabelAbove at={[6.65, 0.45, 0.46]} label="docs graph" on={graphOn} />
     </Figure>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Docs flow: a page card hops from draft to review to ship; the stage it sits on
-// is lit.
+// Review flow: a page card hops from draft to review to ship across one plate;
+// the stage it sits on is lit and its label is wired bright.
 
 const FLOW_LOOP = 7200;
 const STAGES = [
-  { name: "draft", x: [0, 1.6] as Point2 },
-  { name: "review", x: [2.6, 4.2] as Point2 },
-  { name: "ship", x: [5.2, 6.8] as Point2 },
+  { name: "draft", x: [0.15, 1.95] as Point2 },
+  { name: "review", x: [3.0, 4.8] as Point2 },
+  { name: "ship", x: [5.65, 7.45] as Point2 },
 ] as const;
-const STAGE_Y: Point2 = [0.3, 1.5];
-const STAGE_Z: Point2 = [0, 0.22];
+const STAGE_Y: Point2 = [0.85, 2.35];
+const STAGE_TOP = 0.42;
+const TRACK_Y = 1.6;
 const centerX = (i: number) => (STAGES[i]!.x[0] + STAGES[i]!.x[1]) / 2;
 
 export function CloudDocsFlowFigure({ className }: { className?: string }) {
@@ -390,9 +403,15 @@ export function CloudDocsFlowFigure({ className }: { className?: string }) {
     hop2 > 0
       ? centerX(1) + (centerX(2) - centerX(1)) * hop2
       : centerX(0) + (centerX(1) - centerX(0)) * hop1;
-  const lift = Math.sin(Math.PI * (hop2 > 0 && hop2 < 1 ? hop2 : hop1 < 1 ? hop1 : 0)) * 0.5;
-  const z = STAGE_Z[1] + 0.34 - settle * 0.24 + lift;
+  const hopping = (hop1 > 0 && hop1 < 1) || (hop2 > 0 && hop2 < 1);
+  const lift = Math.sin(Math.PI * (hop2 > 0 && hop2 < 1 ? hop2 : hop1 < 1 ? hop1 : 0)) * 0.55;
+  const z = STAGE_TOP + 0.3 - settle * 0.24 + lift;
   const cardOpacity = 1 - reset;
+  const trail = hop2 > 0 ? 0.5 + hop2 * 0.5 : hop1 * 0.5;
+  const track: Point3[] = [
+    [centerX(0), TRACK_Y, TOP],
+    [centerX(2), TRACK_Y, TOP],
+  ];
 
   const readout =
     t < 1500
@@ -412,52 +431,55 @@ export function CloudDocsFlowFigure({ className }: { className?: string }) {
       label="A docs page moves from an AI draft, through review, to published."
       onHold={setHeld}
       readout={readout}
-      view="-30 -30 256 110"
+      view={PAIR_VIEW}
     >
-      <Line
-        className="iso-ghost"
-        lens={WIDE}
-        lines={[
-          [
-            [STAGES[0].x[1], 0.9, 0.02],
-            [STAGES[1].x[0], 0.9, 0.02],
-          ],
-          [
-            [STAGES[1].x[1], 0.9, 0.02],
-            [STAGES[2].x[0], 0.9, 0.02],
-          ],
-        ]}
-      />
+      <Plate />
+      <Line className="iso-ghost" lens={WIDE} lines={[track]} />
+      {trail > 0 ? (
+        <Line className="iso-trail" lens={WIDE} lines={[partial(track, trail)]} />
+      ) : null}
       {STAGES.map((item, i) => (
         <Slab
-          className={i === stage && reset < 0.5 ? "iso-lit" : undefined}
+          className={i === stage && reset < 0.5 && !hopping ? "iso-lit" : undefined}
           key={item.name}
           lens={WIDE}
           r={0.14}
           x={item.x}
           y={STAGE_Y}
-          z={STAGE_Z}
+          z={[PLATE.z[1], STAGE_TOP]}
         >
-          <Print at={[item.x[0] + 0.16, STAGE_Y[1], 0.17]} lens={WIDE} size={5}>
-            {item.name}
-          </Print>
+          <Inset
+            lens={WIDE}
+            r={0.08}
+            x={[item.x[0] + 0.2, item.x[1] - 0.2]}
+            y={[STAGE_Y[0] + 0.2, STAGE_Y[1] - 0.2]}
+            z={STAGE_TOP}
+          />
         </Slab>
+      ))}
+      {STAGES.map((item, i) => (
+        <LabelAbove
+          at={[centerX(i), STAGE_Y[0], STAGE_TOP]}
+          key={item.name}
+          label={item.name}
+          on={i === stage && reset < 0.5}
+        />
       ))}
       <g style={{ opacity: cardOpacity }}>
         <Slab
           className="iso-lit"
           lens={WIDE}
           r={0.06}
-          x={[x - 0.45, x + 0.45]}
-          y={[0.55, 1.25]}
-          z={[z, z + 0.05]}
+          x={[x - 0.5, x + 0.5]}
+          y={[1.15, 2.05]}
+          z={[z, z + 0.06]}
         >
           <Line
             className="iso-detail"
             lens={WIDE}
-            lines={([0.72, 0.88, 1.04] as const).map((y, i): Point3[] => [
-              [x - 0.3, y, z + 0.05],
-              [x + (i === 2 ? 0.05 : 0.3), y, z + 0.05],
+            lines={([1.35, 1.55, 1.75] as const).map((y, i): Point3[] => [
+              [x - 0.34, y, z + 0.06],
+              [x + (i === 2 ? 0.05 : 0.34), y, z + 0.06],
             ])}
           />
         </Slab>

@@ -218,8 +218,9 @@ function Features() {
           muted="Every change lands as a pull request."
           title="Draft, review, ship"
         >
-          <Tray className="flex h-auto flex-col justify-center gap-6 py-10">
-            <CloudDocsFlowFigure className="mx-auto w-full max-w-[460px]" />
+          <Tray className="flex h-full flex-col gap-4">
+            <CloudDocsFlowFigure className="mx-auto w-full max-w-[520px] pt-2" />
+            <CopyLine className="mt-auto" command="pnpm exec docs cloud preview" />
           </Tray>
         </Cell>
         <Cell
@@ -229,9 +230,9 @@ function Features() {
           muted="Content, search, and AI stay current."
           title="Repo sync"
         >
-          <Tray className="flex h-auto flex-col gap-4">
-            <CloudSyncFigure className="mx-auto w-full max-w-[460px] pt-4" />
-            <CopyLine command="pnpm dlx @farming-labs/docs sync --search" />
+          <Tray className="flex h-full flex-col gap-4">
+            <CloudSyncFigure className="mx-auto w-full max-w-[520px] pt-2" />
+            <CopyLine className="mt-auto" command="pnpm exec docs cloud sync" />
           </Tray>
         </Cell>
       </CellGrid>

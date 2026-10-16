@@ -396,11 +396,59 @@
   fill: var(--iso-ink);
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: calc(var(--iso-text) * 1px);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .iso-scene .iso-lit .iso-print,
 .iso-scene .iso-print[data-on] {
+  fill: var(--iso-bright);
+}
+
+.iso-scene .iso-callout path {
+  stroke: var(--iso-faint);
+}
+
+.iso-scene .iso-callout circle {
+  fill: var(--iso-ink);
+}
+
+.iso-scene .iso-callout text {
+  fill: var(--iso-ink);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 6.6px;
+  letter-spacing: 0;
+}
+
+/* Callout labels are drawn in view-box units, so a figure rendered narrow would shrink
+ * them below reading size. Step the size up as the figure narrows (~10px on screen). */
+.iso-scene:has(.iso-callout) {
+  container-type: inline-size;
+}
+
+@container (max-width: 480px) {
+  .iso-scene .iso-callout text {
+    font-size: 8px;
+  }
+}
+
+@container (max-width: 380px) {
+  .iso-scene .iso-callout text {
+    font-size: 9.5px;
+  }
+}
+
+@container (max-width: 300px) {
+  .iso-scene .iso-callout text {
+    font-size: 11px;
+  }
+}
+
+.iso-scene .iso-callout[data-on] path {
+  stroke: var(--iso-bright);
+  opacity: 0.55;
+}
+
+.iso-scene .iso-callout[data-on] :is(circle, text) {
   fill: var(--iso-bright);
 }
 
@@ -413,7 +461,7 @@
   color: color-mix(in srgb, var(--iso-bright) 55%, transparent);
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10.5px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 

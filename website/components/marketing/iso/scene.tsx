@@ -286,3 +286,43 @@ export function useLoop(
 
   return t;
 }
+
+const pointFormat = ([x, y]: Point2) => `${fixed(x)},${fixed(y)}`;
+
+/**
+ * A label wired to a part: a dot on the part, a wire that rises with a rounded
+ * elbow, and the label at a size people can read. `from` and `to` are screen points
+ * (from `lens.at`); `on` lights the wire when its part is the active one.
+ */
+export function Callout({
+  from,
+  to,
+  label,
+  align = "middle",
+  on = false,
+}: {
+  from: Point2;
+  to: Point2;
+  label: string;
+  align?: "start" | "middle" | "end";
+  on?: boolean;
+}) {
+  const [fx, fy] = from;
+  const [tx, ty] = to;
+  const radius = Math.min(4, Math.abs(fy - ty) / 2, Math.abs(fx - tx) / 2);
+  const d =
+    Math.abs(fx - tx) < 0.5
+      ? `M${pointFormat(from)}L${pointFormat([fx, ty + 3])}`
+      : `M${pointFormat(from)}L${pointFormat([fx, ty + radius])}Q${pointFormat([fx, ty])} ${pointFormat([fx + Math.sign(tx - fx) * radius, ty])}L${pointFormat([tx, ty])}`;
+  const textX = align === "start" ? tx + 3 : align === "end" ? tx - 3 : tx;
+  const textY = Math.abs(fx - tx) < 0.5 ? ty : ty + 2.2;
+  return (
+    <g aria-hidden className="iso-callout" data-on={on || undefined}>
+      <path d={d} />
+      <circle cx={fixed(fx)} cy={fixed(fy)} r="1.5" />
+      <text textAnchor={align} x={fixed(textX)} y={fixed(textY)}>
+        {label}
+      </text>
+    </g>
+  );
+}
