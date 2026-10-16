@@ -47,6 +47,16 @@ interface TOCItem {
   depth: number;
 }
 
+/** Read authored heading text without changing its anchor controls or accessible names. */
+function getTocHeadingText(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+  if (node instanceof Element && node.matches('button, [role="button"]')) return "";
+
+  let text = "";
+  for (const child of node.childNodes) text += getTocHeadingText(child);
+  return text;
+}
+
 interface PageNavigationItem {
   name: string;
   url: string;
@@ -659,7 +669,7 @@ export function DocsPageClient({
 
     const headings = container.querySelectorAll("h2[id], h3[id], h4[id]");
     const items: TOCItem[] = Array.from(headings).map((el) => ({
-      title: el.textContent?.replace(/^#\s*/, "") || "",
+      title: getTocHeadingText(el).replace(/^#\s*/, ""),
       url: `#${el.id}`,
       depth: parseInt(el.tagName[1], 10),
     }));

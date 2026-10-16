@@ -261,8 +261,17 @@ interface AudienceAttributeInfo {
   onlyKind: "static" | "dynamic" | "invalid" | "missing";
 }
 
-const docsAudienceMdxProcessor = createProcessor({ format: "mdx" });
-const docsAudienceMarkdownProcessor = createProcessor({ format: "md" });
+// Config-only consumers should not initialize parsers or retain them in browser bundles.
+let docsAudienceMdxProcessor: ReturnType<typeof createProcessor> | undefined;
+let docsAudienceMarkdownProcessor: ReturnType<typeof createProcessor> | undefined;
+
+function getDocsAudienceMdxProcessor() {
+  return (docsAudienceMdxProcessor ??= createProcessor({ format: "mdx" }));
+}
+
+function getDocsAudienceMarkdownProcessor() {
+  return (docsAudienceMarkdownProcessor ??= createProcessor({ format: "md" }));
+}
 
 function getOffset(position: MdxAstPosition | undefined, edge: "start" | "end") {
   const value = position?.[edge]?.offset;
@@ -658,7 +667,7 @@ function collectMdxAudienceTags(content: string, node: MdxAstNode, tags: DocsAud
 
 function findMdxAstAudienceTags(content: string): DocsAudienceMdxTag[] | undefined {
   try {
-    const tree = docsAudienceMdxProcessor.parse(prepareMdxParserSource(content)) as MdxAstNode;
+    const tree = getDocsAudienceMdxProcessor().parse(prepareMdxParserSource(content)) as MdxAstNode;
     const tags: DocsAudienceMdxTag[] = [];
     collectMdxAudienceTags(content, tree, tags);
     return tags.sort((left, right) => left.index - right.index || left.end - right.end);
@@ -697,7 +706,7 @@ function mergeProtectedRanges(ranges: ProtectedRange[]): ProtectedRange[] {
 
 function findMarkdownLiteralRanges(content: string): ProtectedRange[] {
   try {
-    const tree = docsAudienceMarkdownProcessor.parse(content) as MdxAstNode;
+    const tree = getDocsAudienceMarkdownProcessor().parse(content) as MdxAstNode;
     const ranges: ProtectedRange[] = [];
 
     const visit = (node: MdxAstNode) => {
@@ -1410,7 +1419,7 @@ function findProtectedRanges(content: string): ProtectedRange[] {
 function findMarkdownLinkLiteralRanges(content: string): ProtectedRange[] {
   try {
     const offsetAdjustment = content.startsWith("\uFEFF") ? 1 : 0;
-    const tree = docsAudienceMarkdownProcessor.parse(
+    const tree = getDocsAudienceMarkdownProcessor().parse(
       offsetAdjustment > 0 ? content.slice(offsetAdjustment) : content,
     ) as MdxAstNode;
     const ranges: ProtectedRange[] = [];
@@ -1729,7 +1738,7 @@ function isStandaloneDocsMarkdownPromptHtmlRange(
 function findDocsMarkdownRawHtmlLiteralRanges(content: string): ProtectedRange[] {
   try {
     const offsetAdjustment = content.startsWith("\uFEFF") ? 1 : 0;
-    const tree = docsAudienceMarkdownProcessor.parse(
+    const tree = getDocsAudienceMarkdownProcessor().parse(
       offsetAdjustment > 0 ? content.slice(offsetAdjustment) : content,
     ) as MdxAstNode;
     const ranges: ProtectedRange[] = [];
@@ -1792,7 +1801,7 @@ function findDocsMarkdownPromptAstInfo(content: string): DocsMarkdownPromptAstIn
   try {
     const prepared = prepareMdxParserSource(content);
     const offsetAdjustment = prepared.startsWith("\uFEFF") ? 1 : 0;
-    const tree = docsAudienceMdxProcessor.parse(
+    const tree = getDocsAudienceMdxProcessor().parse(
       offsetAdjustment > 0 ? prepared.slice(offsetAdjustment) : prepared,
     ) as MdxAstNode;
     const flowStarts = new Set<number>();
