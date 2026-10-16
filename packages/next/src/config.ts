@@ -2506,7 +2506,7 @@ function mergeDocsMarkdownRewrites(
   }
 
   return {
-    beforeFiles: dedupeRewrites([...autoBeforeFilesRewrites, ...(result.beforeFiles ?? [])]),
+    beforeFiles: dedupeRewrites([...(result.beforeFiles ?? []), ...autoBeforeFilesRewrites]),
     afterFiles: dedupeRewrites([...(result.afterFiles ?? []), ...autoAfterFilesRewrites]),
     fallback: result.fallback ?? [],
   };
