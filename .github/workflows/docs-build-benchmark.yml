@@ -1,0 +1,93 @@
+name: Docs build benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "Space-separated page counts (1–1000 each)"
+        default: "100 500"
+        type: string
+      trials:
+        description: "Trials per provider (1–5)"
+        default: "3"
+        type: string
+  pull_request:
+    paths:
+      - ".github/workflows/docs-build-benchmark.yml"
+      - "benchmark/next-docs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-build-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      BENCHMARK_PAGES: ${{ inputs.pages || '10' }}
+      BENCHMARK_TRIALS: ${{ inputs.trials || '1' }}
+      BENCHMARK_RUN_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.21.0"
+          cache: pnpm
+      - name: Install locked dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm ci --prefix benchmark/next-docs/deps --legacy-peer-deps --ignore-scripts
+      - name: Build framework packages outside the measurement
+        run: |
+          pnpm --filter @farming-labs/docs build
+          pnpm --filter @farming-labs/theme build
+          pnpm --filter @farming-labs/next build
+      - name: Capture runner information
+        run: |
+          mkdir -p benchmark/next-docs/artifacts
+          {
+            uname -a
+            lscpu
+            free -m
+            df -h .
+          } > benchmark/next-docs/artifacts/runner.txt
+      - name: Compare serial cold, warm and edit builds
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          pages = os.environ['BENCHMARK_PAGES'].split()
+          trials = os.environ['BENCHMARK_TRIALS']
+          if not pages or len(pages) > 4 or any(not n.isdecimal() or not 1 <= int(n) <= 1000 for n in pages):
+              raise SystemExit('Provide 1–4 page counts between 1 and 1000.')
+          if not trials.isdecimal() or not 1 <= int(trials) <= 5:
+              raise SystemExit('Trials must be between 1 and 5.')
+          subprocess.run([
+              'python3', 'benchmark/next-docs/run.py', '--pages', *pages,
+              '--trials', trials, '--providers', 'fumadocs', 'farming',
+              '--modes', 'cold', 'warm', 'edit', '--run-id', os.environ['BENCHMARK_RUN_ID']
+          ], check=True)
+          PY
+      - name: Summarize measurements and verify matching source corpora
+        run: |
+          python3 benchmark/next-docs/analyze.py "benchmark/next-docs/artifacts/$BENCHMARK_RUN_ID/results.json" --out "benchmark/next-docs/artifacts/$BENCHMARK_RUN_ID/summary"
+          python3 benchmark/next-docs/inspect_payloads.py "benchmark/next-docs/artifacts/$BENCHMARK_RUN_ID" --out "benchmark/next-docs/artifacts/$BENCHMARK_RUN_ID/summary/payloads.json"
+      - name: Retain raw measurements, logs and runner details
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            benchmark/next-docs/artifacts/runner.txt
+            benchmark/next-docs/artifacts/${{ env.BENCHMARK_RUN_ID }}/results.json
+            benchmark/next-docs/artifacts/${{ env.BENCHMARK_RUN_ID }}/*.log
+            benchmark/next-docs/artifacts/${{ env.BENCHMARK_RUN_ID }}/summary/
