@@ -379,7 +379,7 @@ function Waitlist() {
           </div>
         </div>
         <div className="min-w-0 p-6 sm:p-10">
-          <CloudWaitlistForm className="rounded-none border-mk-line bg-mk-bg p-0 dark:border-mk-line dark:bg-mk-bg" />
+          <CloudWaitlistForm bare />
         </div>
       </CellGrid>
     </Section>
@@ -399,14 +399,11 @@ function Enterprise() {
               label="Enterprise support"
               title="Bring us the blocker."
             />
-            <ul className="grid border border-mk-line">
+            <ul className="grid divide-y divide-mk-line border-y border-mk-line">
               {supportItems.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <li
-                    key={item.title}
-                    className="flex items-start gap-4 border-b border-mk-line p-4 last:border-b-0"
-                  >
+                  <li key={item.title} className="flex items-start gap-4 py-4">
                     <span className="grid size-8 shrink-0 place-items-center border border-mk-line">
                       <Icon aria-hidden className="size-4" strokeWidth={1.5} />
                     </span>
@@ -421,7 +418,7 @@ function Enterprise() {
           </div>
         </div>
         <div className="min-w-0 p-6 sm:p-10">
-          <EnterpriseSupportForm className="rounded-none border-mk-line bg-mk-bg p-0 dark:border-mk-line dark:bg-mk-bg" />
+          <EnterpriseSupportForm bare />
         </div>
       </CellGrid>
     </Section>

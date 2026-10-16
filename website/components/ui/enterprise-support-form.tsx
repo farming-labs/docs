@@ -23,7 +23,8 @@ type SubmitState =
 
 type ButtonMode = "idle" | "loading" | "success";
 
-export function EnterpriseSupportForm({ className }: { className?: string } = {}) {
+/** `bare` drops the card frame and heading so the form can fill a cell that already has both. */
+export function EnterpriseSupportForm({ bare = false }: { bare?: boolean } = {}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -137,24 +138,28 @@ export function EnterpriseSupportForm({ className }: { className?: string } = {}
 
   return (
     <PixelCard
-      showTexture={!className}
+      showTexture={!bare}
       className={
-        className ?? "border-black/10 bg-white/95 p-0 dark:border-white/10 dark:bg-black/35"
+        bare
+          ? "border-0 bg-transparent p-0 backdrop-blur-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
+          : "border-black/10 bg-white/95 p-0 dark:border-white/10 dark:bg-black/35"
       }
     >
-      <div className="border-b border-black/10 px-5 py-4 dark:border-white/10">
-        <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
-          Enterprise support
-        </p>
-        <h2 className="mt-2 text-[18px] font-medium tracking-[-0.02em] text-black dark:text-white">
-          Tell us what you need.
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-black/55 dark:text-white/45">
-          Infrastructure, cloud setup, branding, private docs, and agent-ready docs support.
-        </p>
-      </div>
+      {bare ? null : (
+        <div className="border-b border-black/10 px-5 py-4 dark:border-white/10">
+          <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
+            Enterprise support
+          </p>
+          <h2 className="mt-2 text-[18px] font-medium tracking-[-0.02em] text-black dark:text-white">
+            Tell us what you need.
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-black/55 dark:text-white/45">
+            Infrastructure, cloud setup, branding, private docs, and agent-ready docs support.
+          </p>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 p-5">
+      <form onSubmit={handleSubmit} className={bare ? "space-y-4" : "space-y-4 p-5"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="enterprise-support-name"

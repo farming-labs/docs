@@ -24,7 +24,8 @@ type SubmitState =
 
 type ButtonMode = "idle" | "loading" | "success";
 
-export default function CloudWaitlistForm({ className }: { className?: string } = {}) {
+/** `bare` drops the card frame and heading so the form can fill a cell that already has both. */
+export default function CloudWaitlistForm({ bare = false }: { bare?: boolean } = {}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -131,25 +132,28 @@ export default function CloudWaitlistForm({ className }: { className?: string } 
 
   return (
     <PixelCard
-      showTexture={!className}
+      showTexture={!bare}
       className={
-        className ??
-        "w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 pt-0 sm:pt-14 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40"
+        bare
+          ? "border-0 bg-transparent p-0 backdrop-blur-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
+          : "w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 pt-0 sm:pt-14 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40"
       }
     >
-      <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
-        <p className="text-[11px] font-mono uppercase tracking-normal text-black/45 dark:text-white/45">
-          Join the waitlist
-        </p>
-        <h2 className="mt-2 text-[18px] font-medium tracking-[-0.02em] text-black dark:text-white">
-          Get first access.
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-black/55 dark:text-white/45">
-          Tell us what should ship first and we’ll use that to shape the first release.
-        </p>
-      </div>
+      {bare ? null : (
+        <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
+          <p className="text-[11px] font-mono uppercase tracking-normal text-black/45 dark:text-white/45">
+            Join the waitlist
+          </p>
+          <h2 className="mt-2 text-[18px] font-medium tracking-[-0.02em] text-black dark:text-white">
+            Get first access.
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-black/55 dark:text-white/45">
+            Tell us what should ship first and we’ll use that to shape the first release.
+          </p>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 mt-5 p-5">
+      <form onSubmit={handleSubmit} className={bare ? "space-y-4" : "space-y-4 mt-5 p-5"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="cloud-waitlist-name"
