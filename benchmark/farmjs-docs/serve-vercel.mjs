@@ -12,6 +12,9 @@ const {default:handler}=await import(pathToFileURL(join(dir,config.handler)));
 const staticDir=join(output,'static');
 const mime={'.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.html':'text/html','.json':'application/json','.svg':'image/svg+xml','.woff2':'font/woff2'};
 createServer(async(req,res)=>{
+  // Nitro's Vercel adapter decorates the invocation socket. Do not reuse that
+  // socket across locally emulated function invocations.
+  res.setHeader('Connection','close');
   try{
     const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
     const file=resolve(staticDir,'.'+pathname);
