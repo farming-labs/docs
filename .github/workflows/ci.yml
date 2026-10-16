@@ -36,8 +36,8 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm --dir examples/next exec playwright install --with-deps --only-shell chromium
 
-      - name: Run changelog end-to-end tests
-        run: pnpm --dir examples/next exec playwright test e2e/changelog.spec.ts --workers=1
+      - name: Run docs UI end-to-end tests
+        run: pnpm --dir examples/next exec playwright test e2e/changelog.spec.ts e2e/docs-toc.spec.ts --workers=1
 
       - name: Run typecheck
         run: pnpm typecheck
