@@ -385,9 +385,6 @@ importers:
       '@clack/prompts':
         specifier: ^1.7.0
         version: 1.7.0
-      '@mdx-js/mdx':
-        specifier: ^3.1.1
-        version: 3.1.1(supports-color@10.2.2)
       '@modelcontextprotocol/server':
         specifier: 2.0.0
         version: 2.0.0
@@ -418,6 +415,15 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@10.2.2)
+      remark-mdx:
+        specifier: ^3.1.1
+        version: 3.1.1(supports-color@10.2.2)
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0(supports-color@10.2.2)
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
       yaml:
         specifier: ^2.8.3
         version: 2.9.1
@@ -425,6 +431,9 @@ importers:
         specifier: ^4.3.6
         version: 4.6.5
     devDependencies:
+      '@mdx-js/mdx':
+        specifier: ^3.1.1
+        version: 3.1.1(supports-color@10.2.2)
       '@modelcontextprotocol/client':
         specifier: 2.2.0
         version: 2.2.0
