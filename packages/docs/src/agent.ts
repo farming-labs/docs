@@ -1,3 +1,5 @@
+import { normalizeDocsUrlPath, toDocsMarkdownUrl } from "./urls.js";
+export { normalizeDocsUrlPath, toDocsMarkdownUrl } from "./urls.js";
 import type {
   DocsConfig,
   DocsAccessPrincipal,
@@ -901,12 +903,6 @@ const DOCS_MARKDOWN_SECTION_MAX_BUDGET = 1_000_000;
 
 export function normalizeDocsPathSegment(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
-}
-
-export function normalizeDocsUrlPath(value: string): string {
-  const normalized = value.replace(/\/+/g, "/");
-  if (normalized === "/") return normalized;
-  return normalized.replace(/\/+$/, "");
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -1975,19 +1971,6 @@ export function validateDocsAgentFeedbackPayload(
   }
 
   return undefined;
-}
-
-export function toDocsMarkdownUrl(url: string, options: { locale?: string } = {}): string {
-  const hashIndex = url.indexOf("#");
-  const withoutHash = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
-  const hash = hashIndex >= 0 ? url.slice(hashIndex + 1) : "";
-  const [pathname, query = ""] = withoutHash.split("?", 2);
-  const normalizedPath = normalizeDocsUrlPath(pathname || "/");
-  const markdownPath = normalizedPath.endsWith(".md") ? normalizedPath : `${normalizedPath}.md`;
-  const params = new URLSearchParams(query);
-  if (options.locale && !params.has("lang")) params.set("lang", options.locale);
-  const search = params.toString();
-  return `${markdownPath}${search ? `?${search}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
 export function resolveDocsMarkdownCanonicalUrl({

@@ -15,6 +15,7 @@ const loader = transpileModule(
 ).outputText;
 const names = [
   "remarkCodeGroup",
+  "toDocsMarkdownUrl",
   "applyDocsMarkdownHeadingAnchors",
   "encodeDocsHeadingTocUrls",
   "withDocsMarkdownRenderableHeadings",
@@ -74,6 +75,24 @@ describe("MDX compiler core entry", () => {
     expect(load()).toEqual({
       ...Object.fromEntries(names.map((name) => [name, "legacy"])),
       remarkCodeGroup: "legacy code group",
+    });
+  });
+
+  it("supports older focused entries without the URL helper", () => {
+    const load = loadWithCore(
+      { ".": "./root.mjs", "./server": "./server.mjs", "./mdx": "./mdx.mjs" },
+      {
+        "root.mjs": 'export const toDocsMarkdownUrl = "legacy URL";',
+        "server.mjs": 'throw new Error("server barrel evaluated");',
+        "mdx.mjs": names
+          .filter((name) => name !== "toDocsMarkdownUrl")
+          .map((name) => `export const ${name} = "compiler";`)
+          .join("\n"),
+      },
+    );
+    expect(load()).toEqual({
+      ...Object.fromEntries(names.map((name) => [name, "compiler"])),
+      toDocsMarkdownUrl: "legacy URL",
     });
   });
 
