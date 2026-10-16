@@ -8,7 +8,6 @@ import {
   buildPageOpenGraph,
   buildPageTwitter,
   normalizePageAgentFrontmatter,
-  renderDocsPageStructuredDataJson,
   resolveChangelogConfig,
   resolveDocsAudienceMdxContent,
   resolveDocsAnalyticsConfig,
@@ -44,6 +43,7 @@ import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { createDocsContentReader, type DocsContentReader } from "./docs-content-reader.js";
+import { compactPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -583,9 +583,9 @@ function buildPageMaps(
   const descriptionMap: Record<string, string> = {};
   const generatedTitleMap: Record<string, string> = {};
   const readingTimeMap: Record<string, number> = {};
-  const structuredDataMap: Record<string, string> = {};
   const excludedDirs = getExcludedDocsDirs(config, ctx);
   const baseUrl = resolveDocsMetadataBaseUrl(config);
+  const structuredDataPages: DocsStructuredDataPages = { baseUrl, entry: ctx.entryPath, pages: {} };
   const dateFormatter = options.lastUpdated
     ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric" })
     : undefined;
@@ -642,12 +642,10 @@ function buildPageMaps(
         if (typeof minutes === "number") readingTimeMap[route] = minutes;
       }
 
-      structuredDataMap[route] = renderDocsPageStructuredDataJson({
+      structuredDataPages.pages[route] = compactPageStructuredData({
         title,
         description,
         url: withLangInUrl(route, ctx.locale),
-        baseUrl,
-        entry: ctx.entryPath,
         dateModified: manifestLastmod
           ? `${manifestLastmod}T00:00:00.000Z`
           : modifiedAt.toISOString(),
@@ -661,7 +659,13 @@ function buildPageMaps(
   }
 
   scan(ctx.docsDir, []);
-  return { lastModifiedMap, descriptionMap, generatedTitleMap, readingTimeMap, structuredDataMap };
+  return {
+    lastModifiedMap,
+    descriptionMap,
+    generatedTitleMap,
+    readingTimeMap,
+    structuredDataPages,
+  };
 }
 
 // ─── createDocsMetadata ──────────────────────────────────────────────
@@ -1116,7 +1120,7 @@ export function createDocsLayout(
       descriptionMap,
       generatedTitleMap,
       readingTimeMap,
-      structuredDataMap,
+      structuredDataPages,
       localizedTree: preparedTree,
     } = process.env.NODE_ENV === "production"
       ? (productionContent ??= prepareContent())
@@ -1245,7 +1249,7 @@ export function createDocsLayout(
             readingTimeEnabled={readingTimeEnabled}
             readingTimeFormat={readingTimeFormat}
             readingTimeMap={readingTimeMap}
-            structuredDataMap={structuredDataMap}
+            structuredDataPages={structuredDataPages}
             llmsTxtEnabled={llmsTxtEnabled}
             generatedTitleMap={generatedTitleMap}
             descriptionMap={descriptionMap}
