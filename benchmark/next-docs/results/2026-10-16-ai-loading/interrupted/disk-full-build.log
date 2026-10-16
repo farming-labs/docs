@@ -35,4 +35,3 @@ Caused by:
     2: failed to write to file `/Users/mac/oss/docs-build-overhead/benchmark/next-docs/artifacts/lazy-ai-after-2026-10-16/apps/farming-100/.next/cache/turbopack/v16.3.8-b0fad0d4/00000001.sst`: No space left on device (os error 28)
 error TS5033: Could not write file '/Users/mac/oss/docs-build-overhead/benchmark/next-docs/artifacts/lazy-ai-after-2026-10-16/apps/farming-100/.next/cache/.tsbuildinfo': ENOSPC: no space left on device, open '/Users/mac/oss/docs-build-overhead/benchmark/next-docs/artifacts/lazy-ai-after-2026-10-16/apps/farming-100/.next/cache/.tsbuildinfo'.
 Failed to type check.
-
