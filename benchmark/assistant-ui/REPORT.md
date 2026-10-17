@@ -447,3 +447,64 @@ used the same A/B design before the virtual-module fix: unchanged builds improve
 (Node/Vercel), edits improved 22.1%/21.1%, and cold builds cost 3.1%/3.3% more. Its
 [receipts](../farmjs-docs/results/2026-10-16/cache-initial/summary.json) remain separate; the
 final results above supersede it. No benchmark PR was created or merged.
+
+## Follow-up: avoid rewriting an unchanged MDX cache
+
+[PR #575](https://github.com/farming-labs/docs/pull/575) follows merged #574. The cache
+previously serialized an entry twice on each hit and wrote the complete cache at each
+build-end hook. The follow-up stores entry sizes, refreshes hit eviction order in memory,
+and writes only after compiled entries change. Overlapping flushes are serialized so an
+older snapshot cannot overwrite newer entries; failed writes can be retried. The cache
+format, keys, compiled output, components, routes and rendering policy are unchanged.
+Hit-only eviction-order changes are saved with the next content change.
+
+The regular PR workflow now runs the Farm adapter suite alongside the other adapters,
+reusing its existing core/theme build prerequisites. Previously the Farm tests were absent
+from that job. Locally, all 81 tests, the package build/typecheck, lint and formatting pass.
+Two new regressions fail against the merged baseline and pass with the fix;
+[before/after test logs](../farmjs-docs/results/2026-10-16/cache-store/) are retained.
+
+An **isolated cache-store experiment** uses 100 real compiled pages from the shared corpus,
+a 6,758,451-byte cache, and two passes/flushes representing two bundle graphs. Ten trials
+follow two warmups; baseline/candidate order alternates. This runs on the local Apple M1
+with Node 24.21.0, explicit GC outside timing, and identical output assertions in all samples.
+
+| Cache operation | Before, median | After, median | Bytes written before | Bytes written after |
+| --- | ---: | ---: | ---: | ---: |
+| Unchanged inputs | 129.89 ms | 43.72 ms | 13,516,902 | 0 |
+| One changed entry | 124.67 ms | 75.42 ms | 13,517,106 | 6,758,553 |
+
+These timings cover loading, cache lookups and persistence only. The changed compilation
+result is prepared before timing; MDX compilation, bundling, type checking and deployment
+are excluded. The absolute saving is about **86 ms / 49 ms** in this experiment. It is
+not a demonstrated whole-build percentage improvement and must not be combined with the
+Linux CI timings. All samples and ranges are in the
+[cache-store summary](../farmjs-docs/results/2026-10-16/cache-store/summary.json); the
+[reproduction script](../farmjs-docs/cache-store-benchmark.mjs) accepts the baseline Git ref,
+candidate source file and output path. Baseline is merged #574 (`eacd4388`); the measured
+implementation is `d9ed9ef4`. The later CI-only commit does not change the implementation.
+
+### Remaining work found in the scan
+
+1. **Reuse the remaining production bundle work.** Even unchanged builds still transform
+   2,398 and 5,090 modules across the two overlapping bundle graphs. MDX cache reuse skips
+   compilation inside those transforms, not graph traversal or bundling. A production
+   bundle cache needs invalidation for component/CSS/dependency/config edits and deletions.
+2. **Separate compiler configuration from runtime imports.** `withDocs` imports `docsMdx`,
+   which imports the MDX/highlighter graph and broad core/server entrypoints. The pinned
+   Farm source's generated server entry imports the user's Farm config
+   (`universal-build.ts`, lines 5602 and 5794–5798 at `85628bbe`). The build logs show MDX
+   compiler modules in the bundle. A narrower runtime path is a candidate; its full-build
+   gain remains unmeasured. Preserve custom config factories and runtime MDX fallbacks.
+3. **Prove equivalent static navigation before claiming a static-build win.** The Farm
+   route-MDX fixtures render docs on request, whereas both Next fixtures prerender all
+   100 docs pages. The earlier Farm static control failed the client-navigation gate.
+   Fix the static page-data/navigation path before making equivalent-output comparisons.
+4. **Verify real deployment cache restoration.** The successful repeated-build experiments
+   retain the local cache directory across CLI processes. A real Vercel cold deployment,
+   unchanged deployment and one-page edit must show restoration and fresh content. Local
+   Vercel output generation/execution does not establish cloud pipeline improvement.
+5. **Reduce the assistant-ui migration bridge cost on Next.** Its prior custom collection
+   bridge contributed about two seconds of config work and the constrained Next port
+   remained slower. Cache collection work only after testing content/schema/Git-history
+   invalidation; the Farm-only MDX cache does not speed up that Next integration.

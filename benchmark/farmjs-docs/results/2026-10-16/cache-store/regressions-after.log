@@ -1,0 +1,9 @@
+
+ RUN  v4.1.8 /Users/mac/oss/docs-farm-rebuild-cache/packages/farmjs
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 11 skipped (13)
+   Start at  18:50:34
+   Duration  322ms (transform 54ms, setup 0ms, import 193ms, tests 8ms, environment 0ms)
+

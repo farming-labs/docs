@@ -1,0 +1,437 @@
+{
+  "scope": "Cache load, two passes of 100 hits/one changed entry, and two flushes only. Excludes MDX compilation, bundling, type checking and deployment. The edited compilation result is prepared outside measurement.",
+  "baselineRef": "eacd4388c789dccf3025f3b42c88063eaf093389",
+  "candidateFile": "/Users/mac/oss/docs-farm-rebuild-cache/packages/farmjs/src/mdx-build-cache.ts",
+  "sourceHashes": {
+    "before": "124e9f5e9fa250a7e1fb2f8acf169944ef31cc13c48eb541e4a80e3a2bf93aa2",
+    "after": "14f7e7d1c65deafae30ac01a70b39ab51bae8be95d5435043f76ff2c2118416c"
+  },
+  "compilerOptionsFromDocsCommit": "5f3b8bd9a651cb3a0ed2eca3ea5eccea55a3af22",
+  "node": "v24.21.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M1",
+  "pages": 100,
+  "seedBytes": 6758451,
+  "warmupTrials": 2,
+  "trials": 10,
+  "explicitGc": true,
+  "rows": [
+    {
+      "mode": "warm",
+      "variant": "before",
+      "medianMilliseconds": 129.88587499999994,
+      "minMilliseconds": 109.98995900000045,
+      "maxMilliseconds": 237.71779100000003,
+      "writes": [
+        2
+      ],
+      "writtenBytes": [
+        13516902
+      ]
+    },
+    {
+      "mode": "warm",
+      "variant": "after",
+      "medianMilliseconds": 43.716645999999855,
+      "minMilliseconds": 38.14220800000021,
+      "maxMilliseconds": 49.436249999998836,
+      "writes": [
+        0
+      ],
+      "writtenBytes": [
+        0
+      ]
+    },
+    {
+      "mode": "edit",
+      "variant": "before",
+      "medianMilliseconds": 124.67143750000014,
+      "minMilliseconds": 111.2450829999998,
+      "maxMilliseconds": 205.4176669999997,
+      "writes": [
+        2
+      ],
+      "writtenBytes": [
+        13517106
+      ]
+    },
+    {
+      "mode": "edit",
+      "variant": "after",
+      "medianMilliseconds": 75.42368750000014,
+      "minMilliseconds": 64.79749999999876,
+      "maxMilliseconds": 135.2127500000006,
+      "writes": [
+        1
+      ],
+      "writtenBytes": [
+        6758553
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "trial": 1,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 153.36862500000007,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 1,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 42.222749999999905,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 1,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 136.00075000000015,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 1,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 71.70233300000018,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 2,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 38.14220800000021,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 2,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 134.20300000000043,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 2,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 113.29283300000043,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 2,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 118.97512499999993,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 3,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 115.27245800000037,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 3,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 42.81670900000063,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 3,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 114.7308750000002,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 3,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 125.2768329999999,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 4,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 47.642667000000074,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 4,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 121.62954199999967,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 4,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 66.59495800000059,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 4,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 148.93454199999996,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 5,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 237.71779100000003,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 5,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 44.07312499999898,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 5,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 119.58441700000003,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 5,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 64.79749999999876,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 6,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 42.41725000000042,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 6,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 109.98995900000045,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 6,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 101.64570800000001,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 6,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 129.75845800000025,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 7,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 132.46262500000012,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 7,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 49.436249999998836,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 7,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 111.2450829999998,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 7,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 79.1450420000001,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 8,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 43.46654200000012,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 8,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 127.30912499999977,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 8,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 67.09087499999987,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 8,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 115.74870799999917,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 9,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 134.6871659999997,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 9,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 47.25812500000029,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 9,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 146.02895900000112,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    },
+    {
+      "trial": 9,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 135.2127500000006,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 10,
+      "variant": "after",
+      "mode": "warm",
+      "milliseconds": 43.96674999999959,
+      "writes": 0,
+      "writtenBytes": 0,
+      "compileCalls": 0
+    },
+    {
+      "trial": 10,
+      "variant": "before",
+      "mode": "warm",
+      "milliseconds": 123.73237499999959,
+      "writes": 2,
+      "writtenBytes": 13516902,
+      "compileCalls": 0
+    },
+    {
+      "trial": 10,
+      "variant": "after",
+      "mode": "edit",
+      "milliseconds": 69.9164579999997,
+      "writes": 1,
+      "writtenBytes": 6758553,
+      "compileCalls": 1
+    },
+    {
+      "trial": 10,
+      "variant": "before",
+      "mode": "edit",
+      "milliseconds": 205.4176669999997,
+      "writes": 2,
+      "writtenBytes": 13517106,
+      "compileCalls": 1
+    }
+  ],
+  "candidateImplementationCommit": "d9ed9ef467b723403268b83706571ad4c7338942",
+  "pullRequest": "https://github.com/farming-labs/docs/pull/575"
+}

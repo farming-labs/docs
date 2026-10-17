@@ -1,0 +1,53 @@
+
+ RUN  v4.1.8 /Users/mac/oss/docs-farm-rebuild-cache/packages/farmjs
+
+ ❯ src/mdx-build-cache.test.ts (13 tests | 2 failed | 11 skipped) 11ms
+     × leaves an unchanged cache file untouched across builds and repeated flushes 8ms
+     × keeps newly compiled entries when another flush is already writing 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/mdx-build-cache.test.ts > MdxBuildCache > leaves an unchanged cache file untouched across builds and repeated flushes
+AssertionError: expected '[["b",{"key":"key","value":"{\"code\"…' to be '[["a",{"key":"key","value":"{\"code\"…' // Object.is equality
+
+Expected: "[["a",{"key":"key","value":"{\"code\":\"export default 1\",\"map\":{\"version\":3,\"names\":[],\"sources\":[\"page.mdx\"],\"mappings\":\"AAAA\"}}","checksum":"7b9fc1ff621d445e523158b146ad61ed9098d300e6ce9cd8f4e749d1e37162e0"}],["b",{"key":"key","value":"{\"code\":\"export default 1\",\"map\":{\"version\":3,\"names\":[],\"sources\":[\"page.mdx\"],\"mappings\":\"AAAA\"}}","checksum":"7b9fc1ff621d445e523158b146ad61ed9098d300e6ce9cd8f4e749d1e37162e0"}]]"
+Received: "[["b",{"key":"key","value":"{\"code\":\"export default 1\",\"map\":{\"version\":3,\"names\":[],\"sources\":[\"page.mdx\"],\"mappings\":\"AAAA\"}}","checksum":"7b9fc1ff621d445e523158b146ad61ed9098d300e6ce9cd8f4e749d1e37162e0"}],["a",{"key":"key","value":"{\"code\":\"export default 1\",\"map\":{\"version\":3,\"names\":[],\"sources\":[\"page.mdx\"],\"mappings\":\"AAAA\"}}","checksum":"7b9fc1ff621d445e523158b146ad61ed9098d300e6ce9cd8f4e749d1e37162e0"}]]"
+
+ ❯ src/mdx-build-cache.test.ts:56:45
+     54|     await second.flush();
+     55|     expect(compile).not.toHaveBeenCalled();
+     56|     expect(await fs.readFile(file, "utf8")).toBe(before);
+       |                                             ^
+     57|     expect((await fs.stat(file)).mtime).toEqual(date);
+     58|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/mdx-build-cache.test.ts > MdxBuildCache > keeps newly compiled entries when another flush is already writing
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/mdx-build-cache.test.ts:89:32
+     87|     resume.resolve();
+     88|     await Promise.all([firstFlush, secondFlush]);
+     89|     expect(writesBeforeResume).toBe(1);
+       |                                ^
+     90|     const compile = vi.fn(async () => result);
+     91|     const next = new MdxBuildCache(file);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 11 skipped (13)
+   Start at  18:50:33
+   Duration  270ms (transform 56ms, setup 0ms, import 158ms, tests 11ms, environment 0ms)
+
+undefined
+/Users/mac/oss/docs-farm-rebuild-cache/packages/farmjs:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/mdx-build-cache.test.ts -t leaves an unchanged|keeps newly compiled
