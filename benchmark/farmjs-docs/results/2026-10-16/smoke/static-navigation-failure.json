@@ -1,0 +1,7 @@
+{
+  "run": "https://github.com/farming-labs/docs/actions/runs/38983652281",
+  "message": "Navigation performed full document reload",
+  "prerenderedDocsPages": 10,
+  "allTenPagesPassedContentChecks": true,
+  "status": "Rejected by runtime correctness gate; not a feature-equivalent timing result"
+}

@@ -216,3 +216,133 @@ The first performance experiment should isolate the additional API/dependency wo
 - Farming retains Fumadocs core's source loader and the small collection runtime for the original sidebar/search interfaces. This compares the MDX pipelines under the original custom shell, not the two frameworks' default themes. Copied content has no usable Git history in the fixture; last-modified dates are therefore unknown on both sides. Blog processed-Markdown exports are outside the tested scope.
 
 See [measurements.json](results/2026-10-16/measurements.json) for compact receipts and [README.md](README.md) for reproduction. Full logs, fixtures, traces, and screenshots remain in ignored `artifacts/`; they include local source and must not be published accidentally. The shared platform-switching failure and untested live services mean this remains an experiment, not a production-ready migration.
+
+## Farm.js + Farming docs comparison — October 16 follow-up
+
+Farm.js + Farming docs reduces cold application-build time in the measured request-rendered
+configuration, but it does not yet solve the repeated-build complaint. Its unchanged and
+one-page-edit builds remain slower than both Next.js configurations. No framework implementation
+or production site was changed for this comparison.
+
+The [completed CI run](https://github.com/farming-labs/docs/actions/runs/38985057198) passed
+**36 builds and their production runtime checks**: 100 identical generated MDX pages, three
+trials for each provider and mode, all on one Ubuntu runner with four AMD EPYC 7763 vCPUs,
+15,989 MiB RAM, and Node 24.21.0. These are medians in seconds; ranges and every sample are in
+the [summary](../farmjs-docs/results/2026-10-16/final/summary.json) and
+[raw results](../farmjs-docs/results/2026-10-16/final/results.json).
+
+| Configuration | Cold app build | Unchanged rebuild | One-page edit | Prerendered docs pages |
+| --- | ---: | ---: | ---: | ---: |
+| Fumadocs + Next.js | 20.41 | 5.72 | 8.06 | 100 |
+| Farming docs + Next.js | 24.15 | 7.38 | 8.25 | 100 |
+| Farming docs + Farm.js, Node output | 13.25 | 12.84 | 12.42 | 0 |
+| Farming docs + Farm.js, Vercel output | 15.14 | 15.18 | 14.75 | 0 |
+
+Farm's Node cold build is **35.0% faster than Fumadocs + Next** and **45.1% faster than
+Farming docs + Next** here. Its unchanged rebuild is **124.7% slower than Fumadocs** and its
+edit rebuild is **54.1% slower**. The Vercel-output cold build is 25.8% faster than Fumadocs;
+the cached and edit builds are 165.7% and 83.0% slower. These Vercel rows build the actual
+deployment artifact and exercise its emitted function locally through an HTTP/Web Request
+bridge. They do not measure Vercel installation, deployment upload, CDN routing, or cloud
+cold starts.
+
+### Rendering policy and correctness limits
+
+The Farm MDX fixtures emitted **zero static docs HTML files**, despite configured prerender
+route rules. They compile their code at build time and render HTML on request. The Next
+fixtures prerender all 100 pages. This is a comparison of the observed configurations, not
+proof that Farm performs equivalent static work faster or supports progressive compilation.
+
+A separate ten-page Farm static control used supported `ssg` route exports and did emit all
+ten HTML pages. It built in 9.31 seconds on the smoke runner, but failed the client-navigation
+check: selecting a sidebar page performed a full document reload. All ten content responses
+had passed before this failure. The docs navigator requests JSON with a custom header at the
+page URL; static HTML can satisfy that URL before the docs runtime handler runs, causing the
+navigator's reload fallback. The [failure receipt](../farmjs-docs/results/2026-10-16/smoke/static-navigation-failure.json)
+and build/server logs are retained. This failed configuration is excluded from the results
+table and is not a recommended migration setting.
+
+Every accepted build passed content checks for all 100 URLs, highlighted code, tables,
+clipboard copy, client navigation without a document reload, search and search-result
+navigation, mobile sidebar navigation, overflow checks, and edit visibility where applicable.
+No browser page exceptions were recorded. Farm Node and Farm Vercel desktop/mobile screenshots
+match byte-for-byte; Farm and Farming Next mobile screenshots also match. Their 100-page
+desktop screenshots look consistent on inspection but are not byte-identical. The earlier
+ten-page smoke fixture had byte-identical Farm/Next screenshots at both widths.
+[Screenshots and hashes](../farmjs-docs/results/2026-10-16/final/visual-comparison.json) are retained.
+These checks do not cover every framework feature: AI is disabled and there are no custom
+assistant-ui components in this generated corpus.
+
+| Cold-build/runtime measurement | Fumadocs + Next | Farming + Next | Farming + Farm Node | Farming + Farm Vercel |
+| --- | ---: | ---: | ---: | ---: |
+| Initially loaded browser JS, gzip bytes | 239,342 | 281,167 | 225,930 | 225,930 |
+| Sampled peak process-tree RSS, MiB | 2,975 | 3,157 | 1,936 | 2,385 |
+| Fresh-server first HTML response, ms | 220 | 551 | 173 | 188 |
+
+Browser bytes count scripts actually loaded by the test browser, using the same gzip method
+for all providers; this differs from the older report's HTML-referenced script metric.
+Farm's measured payload is 5.6% smaller than Fumadocs and 19.6% smaller than Farming Next.
+RSS can count shared memory multiple times. First-response timing starts after TCP readiness
+and measures a complete local HTTP response, not server startup, browser LCP, or a Vercel
+function cold start.
+
+### Changes to prioritize in the core
+
+| Priority | Current behavior / evidence | Proposed change | Required validation |
+| --- | --- | --- | --- |
+| 1 | Farm reports 2,400 + 5,085 module transforms across its SSR/client builds in each cold, unchanged, and edited build. The totals overlap and are not unique modules. Warm builds save little time. | Reuse compiled MDX and shared compiler/highlighter work across builds and, where equivalent, across client/server compilation. Profile persistent production bundle reuse separately. | Content/import/config/plugin-version edits, additions/deletions, and cache restoration must invalidate correctly; rerun all three modes and runtime checks. |
+| 2 | Static docs HTML intercepts JSON navigation requests; the ten-page static control reloads the document. MDX route rules alone did not generate static docs HTML. | Give static docs a reliable page-data endpoint or emitted data files, and integrate docs pages with Farm's static route discovery. | Prerender every expected URL and preserve same-document navigation, search, copy, and mobile behavior in Node and Vercel output. Then repeat a matched static comparison. |
+| 3 | The Farm adapter's config entry imports `docsMdx` and its compiler dependencies; Farm's generated server entry also imports user config. Farm's own docs separates the runtime adapter from the Vite plugin. | Make the supported `withDocs` integration keep compiler-only dependencies out of runtime configuration while preserving the public API. | Compare traced dependencies, artifact size, startup, and whole-build time; test plugin hooks and all supported rendering modes. No gain is claimed yet. |
+| 4 | A local compatibility probe failed because this docs monorepo's global H3 v1 override conflicted with Nitro 3's H3 v2 imports. The pinned Farm source lockfile passed CI. | Scope dependency overrides by the compatible major and add a real Farm production integration smoke build to docs CI. | Exercise both Node and Vercel generated outputs using supported dependency versions. The old installed beta probe is not a failure of the pinned Farm source used above. |
+
+Vite's documented dependency prebundling cache is for development; enabling it alone does not
+establish production compilation reuse. See the [official Vite documentation](https://vite.dev/guide/dep-pre-bundling).
+The first priority addresses repeated PR builds directly. The second is necessary before
+claiming a feature-preserving static-build advantage.
+
+### Real Farm Vercel deployment and reproducibility
+
+An independently recorded [Farm docs deployment](https://docs-4cyxnttkf-kinfe123s-projects.vercel.app)
+at source `22ea5fb` took **115.80 seconds** from the first build log to “Build Completed” on
+two cores / 8 GB in iad1, with a restored cache and 106 page routes. Its command also built
+workspace packages and generated Prisma output. Farm's own build log spans 78.28 seconds;
+the two bundle phases reported 23.27 and 45.81 seconds, and Nitro reported 14.60 seconds.
+Cache creation (118.26 seconds) and upload (10.01 seconds, 602.25 MB) occur after the
+“Deployment completed” log and are not added to application-build time here.
+[Filtered timing receipts](../farmjs-docs/results/2026-10-16/recorded-farm-vercel/summary.json)
+retain those distinctions. Different hardware, source, content, and setup prevent comparing
+this deployment's elapsed time directly with the synthetic table.
+
+The final comparison uses docs framework source `bfe194fbea6c561e7bd76374a8ec0088e9d46e37`
+and Farm source `7c76f2d597297be015df0c966d25b0f4fa7fc826` (core/CLI 0.1.1-beta.3), built
+from source in CI. It does not include the separate unmerged performance PR stack. Next is
+16.3.8, React 19.2.4, TypeScript 5.9.3, Fumadocs core/UI 16.17.1, and Fumadocs MDX 15.4.7.
+Framework-internal build dependencies follow their respective lockfiles: for example, Farm's
+Vite 8.1.5 build logs include internally generated Tailwind 4.1.18 CSS, while the application
+dependency and Next PostCSS fixture use Tailwind 4.2.1. This compares the pinned integrations,
+not one identical compiler dependency tree.
+Dependency installation and framework package compilation are outside the timer; application
+TypeScript checking is included for every provider. Farm runs `tsc --noEmit` before `farm build`.
+Cold means a fresh generated app and its output/cache; OS and CLI-wide caches are not reset.
+Provider order rotates across trials, and timed builds run serially. Each corpus contains
+755,580 source bytes before the edit, with six code blocks and six tables per page.
+
+The [earlier repeated run](https://github.com/farming-labs/docs/actions/runs/38984252093)
+had 27 successful Node/Next rows and three rejected Vercel rows caused by the harness assuming
+a Node function instead of Nitro's Web `fetch` handler. That harness bug was corrected for the
+final successful run. The earlier AMD EPYC 9V45 runner was faster than the final EPYC 7763;
+do not mix absolute times across runs. The final results above supersede the preliminary
+numbers for the four-provider comparison.
+
+Run the manual [workflow](../../.github/workflows/docs-build-benchmark.yml) on branch
+`codex/farmjs-docs-benchmark` with `pages=100` and `trials=3`. The measured harness commit is
+`8b214cdb0e8b7c3761b9f889f7d402602f34a44e`; subsequent receipt/report and formatting changes
+do not change the measured framework source. The [runner](../farmjs-docs/run.py),
+[fixture generator](../farmjs-docs/prepare.mjs), and [runtime checks](../farmjs-docs/verify.mjs)
+are retained alongside every final build log and runtime JSON result. No benchmark PR was
+created or merged in this follow-up.
+
+**Scope:** this is a controlled Farm.js integration benchmark, not a completed Farm port of
+assistant-ui. That site has 337 docs pages, 120 pages with MDX imports, custom collections,
+and Next-dependent shell/components. Its full Farm migration and production feature parity
+remain unverified; the earlier assistant-ui/Next timings above are unchanged.

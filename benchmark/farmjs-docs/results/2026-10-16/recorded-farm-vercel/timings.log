@@ -1,0 +1,22 @@
+2026-10-16T22:02:41.079Z  Running build in Washington, D.C., USA (East) – iad1
+2026-10-16T22:02:41.080Z  Build machine configuration: 2 cores, 8 GB
+2026-10-16T22:02:41.278Z  Cloning github.com/farming-labs/farm.js (Branch: main, Commit: 22ea5fb)
+2026-10-16T22:02:44.565Z  Restored build cache from previous deployment (3VuFYgeb7pyMkgKerBT3CBPWLESg)
+2026-10-16T22:02:50.022Z  Running "install" command: `pnpm install`...
+2026-10-16T22:03:13.699Z  [info] 🚜 Building Farm.js application with preset: vercel...
+2026-10-16T22:03:22.609Z  [info] 🚜 Building Farm.js application (universal) with preset: vercel...
+2026-10-16T22:03:22.615Z  [info] 📋 Found 106 page routes
+2026-10-16T22:03:22.961Z  [info] 📋 Found 106 page routes and 4 layouts
+2026-10-16T22:03:50.405Z  [info] 📋 Found 106 page routes, 4 layouts, 8 API routes, 1 metadata routes, and 0 middleware files
+2026-10-16T22:04:09.476Z  ✓ 2578 modules transformed.
+2026-10-16T22:04:09.653Z  ✓ 5062 modules transformed.
+2026-10-16T22:04:14.284Z  ✓ built in 23.27s
+2026-10-16T22:04:14.284Z  ✓ built in 45.81s
+2026-10-16T22:04:30.525Z  [success] [nitro] Server built in 14601ms
+2026-10-16T22:04:31.974Z  [success] ✅ Build completed successfully! (preset: vercel)
+2026-10-16T22:04:36.875Z  Build Completed in /vercel/output [2m]
+2026-10-16T22:04:48.070Z  Deployment completed
+2026-10-16T22:04:48.079Z  Creating build cache...
+2026-10-16T22:06:46.336Z  Created build cache: 2m
+2026-10-16T22:06:46.336Z  Uploading build cache [602.25 MB]
+2026-10-16T22:06:56.349Z  Build cache uploaded: 10.013s

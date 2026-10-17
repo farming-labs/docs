@@ -1,0 +1,405 @@
+[info] 🚜 Building Farm.js application with preset: vercel...
+[info] 🔍 Discovering routes and API endpoints...
+[info] 🔌 Using Vite Rollup for route discovery with custom Vite configuration
+[info] 🚜 Building Farm.js application (universal) with preset: vercel...
+[info] 📋 Found 100 page routes
+[info] 📋 Found 100 page routes and 1 layouts
+[info] ⚡ Building application bundles with Vite Rolldown
+[info] 📦 Building client and SSR bundles in parallel...
+[info] 📱 Total hydratable routes detected: 0 pages, 0 layouts, and 0 slots
+[info] 📦 Enabled built-in Tailwind support (@tailwindcss/vite)
+[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+[info] 📋 Found 100 page routes, 1 layouts, 0 API routes, 0 metadata routes, and 0 middleware files
+[36mvite v8.1.5 [32mbuilding ssr environment for production...[36m[39m
+[2Ktransforming...Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+✓ 2400 modules transformed.
+✓ 5085 modules transformed.
+rendering chunks...
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:var(--color-fd-primary)}.\[\&_\:\:hig...
+   |                                                                 ^[39m
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...)}.\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:underline}.\[\&_svg\]\...
+   |                                                                 ^[39m
+rendering chunks...
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:var(--color-fd-primary)}.\[\&_\:\:hig...
+   |                                                                 ^[39m
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...)}.\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:underline}.\[\&_svg\]\...
+   |                                                                 ^[39m
+computing gzip size...
+.farm/client/farm-client-manifest.json                       17.54 kB │ gzip:   1.81 kB
+.farm/client/farm-client.css                                311.96 kB │ gzip:  39.26 kB
+.farm/client/chunks/fetch-h26be388f.js                        0.07 kB │ gzip:   0.09 kB
+.farm/client/chunks/remove-undefined-CzMSKybq-h944cf7f7.js    0.34 kB │ gzip:   0.22 kB
+.farm/client/chunks/space-separated-tokens-hf48947fb.js       0.46 kB │ gzip:   0.29 kB
+.farm/client/chunks/rolldown-runtime-h104e77cb.js             0.69 kB │ gzip:   0.42 kB
+.farm/client/chunks/algolia-h5213adf2.js                      0.79 kB │ gzip:   0.50 kB
+.farm/client/chunks/orama-cloud-legacy-h3291f82f.js           1.16 kB │ gzip:   0.63 kB
+.farm/client/chunks/orama-cloud-h4b64de33.js                  1.26 kB │ gzip:   0.66 kB
+.farm/client/chunks/use-search-Dy8lBrbN-hfcc3c8d6.js          1.70 kB │ gzip:   0.99 kB
+.farm/client/chunks/mixedbread-h238f82aa.js                   1.70 kB │ gzip:   0.90 kB
+.farm/client/chunks/page-h17afe885.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h34410915.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3d069a05.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4db65c65.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6ad13731.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb3ee9283.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hc0059545.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hcaa9f8be.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he155212c.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h106e36af.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h111d2c0f2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h115898c2.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h129b5859.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h135a94e22.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h15a641af.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h19133b4b.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2324a988.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2789d728.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h27f074bc.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2c8c59112.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3042a0e4.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h32e44cd2.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h3f268e5c.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h43eb9a24.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h456eb91b2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4768ede12.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h48bed50d2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h48f112772.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4f4ae88e2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h503b7538.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h5056744a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h53d55a55.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h56b703bc.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h58d3467e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h5ecf4d03.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6105f697.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6132b16c2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h615b75b0.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h623e938f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h66a882ce.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h67735c67.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h677ab24c2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h682012bb.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6a513823.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6cada77a2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6ec0dd502.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7257ec13.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h78e02ba4.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7b4f3e01.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7bfddb8e.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h7d8425a9.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h802eefbe.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h828daec02.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h86d46e69.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8766d8f72.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h89af1dbd.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8b49fc24.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h97d81bef2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9d44b9ab.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9dfe90d62.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9e54e1cd2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9edd5916.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha663381e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha728c11a2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha8ac25ec.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hab1bb554.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hab8c3d9c2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb2f17e4c.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb84c5a1e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb89b8a362.js                       33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-hbe2a2ec3.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-hc67956822.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hca7927d82.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hcd8476bc.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hce489b042.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd0c66dea.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd33046de.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd8607d3a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hda7fbf61.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hda9960f42.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hdd7a25aa.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hdd94f7f8.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hde1e0b9b.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hdf74a08d.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he1471dab.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he3831846.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he43f889a2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he5080610.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he87770cd.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he908bb4d.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hea7578c0.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hee7b7b9f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hef6e0c7a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hefa86da22.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf12fe814.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf35fa6c8.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-hf6bc2aa92.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf79839f3.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf8e08835.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h891fc0752.js                       33.95 kB │ gzip:   2.55 kB
+.farm/client/chunks/search-default-he8fe9c78.js              46.22 kB │ gzip:  16.34 kB
+.farm/client/chunks/orama-static-h422c85bb.js                77.16 kB │ gzip:  26.69 kB
+.farm/client/chunks/parse-BU3fTLtO-h38eebdd2.js              82.97 kB │ gzip:  24.74 kB
+.farm/client/farm-client-h49c312c1.js                       664.63 kB │ gzip: 207.30 kB
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - farm-client-only-imports (83%)
+  - farm (7%)
+  - @mdx-js/rollup (5%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 7.58s[39m
+[33m[33m[EVAL] [0mUse of direct `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/gray-matter@4.0.3/node_modules/gray-matter/lib/engines.js:43:14 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m43 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m}[0m[38;5;249m;[0m
+ [38;5;240m   │[0m              ──┬─  
+ [38;5;240m   │[0m                ╰─── Use of direct `eval` here.
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: Consider using indirect eval. For more information, check the documentation: https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval
+[38;5;246m────╯[0m
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/jsx-runtime.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-4E5ZJILG.mjs but also statically imported by src/app/docs/page-0001/page.mdx, src/app/docs/page-0002/page.mdx, src/app/docs/page-0003/page.mdx, src/app/docs/page-0004/page.mdx, src/app/docs/page-0005/page.mdx, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/index.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-4E5ZJILG.mjs but also statically imported by \0virtual:farm-ssr-entry, ../../../../../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs, ../../../../../../node_modules/.pnpm/@fuma-translate+react@1.0.2_@types+react@19.2.14_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@fuma-translate/react/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.16_@types+react-dom@19.2.3_@types+react@19.2.14__@types+react_7651395777645b6ecd9ff3e80a7abba7/node_modules/@radix-ui/react-arrow/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-collapsible@1.1.21_@types+react-dom@19.2.3_@types+react@19.2.14__@types_51e1d5ece9b71182832f86c88a788994/node_modules/@radix-ui/react-collapsible/dist/index.mjs, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../packages/farmjs/src/react.tsx is dynamically imported by ../../../../../../packages/farmjs/src/server.ts but also statically imported by \0virtual:farm-ssr-entry, dynamic import will not move module into another chunk.
+[39m
+[32m✓ built in 5.10s[39m
+[info] 🚀 Building server with Nitro (preset: vercel)...
+[info] 📦 Nitro output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38985057198-1/apps/farmjs-vercel/.vercel/output
+[info] 📦 SSR entry file: _virtual_farm-ssr-entry.js
+[info] 📦 Preset: vercel
+[Farm.js] 100 routes appear eligible for static rendering:
+  /docs/page-0001
+  /docs/page-0002
+  /docs/page-0003
+  /docs/page-0004
+  /docs/page-0005
+  /docs/page-0006
+  /docs/page-0007
+  /docs/page-0008
+  /docs/page-0009
+  /docs/page-0010
+  …and 90 more
+Add `export const dynamic = "force-static";` after verifying that imported code does not read cookies, headers, authentication, or other request data.
+[success] [nitro] Generated public [36m.vercel/output/static[39m
+[info] [nitro:vercel] Using `nodejs24.x` runtime.
+[info] [nitro:vercel] Using `web` entry format.
+[info] [nitro] Building server (builder: `rolldown`, preset: `vercel`, compatibility date: `2024-12-01`)
+MISSING_CODE_SPLITTING_GROUP_DEBUG_NAME
+`output.codeSplitting.groups[0].name` is a function. Set `output.codeSplitting.groups[0].debugName` so the bundler timing report can identify this group.
+INEFFECTIVE_DYNAMIC_IMPORT
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m.farm/ssr/assets/multipart-parser-DvIc8lIA.js is dynamically imported by .farm/ssr/assets/src-B6zuh0JD.js but also statically imported by .farm/ssr/assets/src-B6zuh0JD.js, dynamic import will not move module into another chunk.
+
+[info] Generated [36m.vercel/output/nitro.json[39m
+[success] [nitro] Server built in 2960ms
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/algolia-BnmCCwH6.mjs (911 B)[39m[90m (524 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/chunk-MDBCVOB7-D0c5huk2.mjs (22.3 kB)[39m[90m (6.34 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-49CMkclQ.mjs (15.5 kB)[39m[90m (4.35 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-B_jiwPCZ.mjs (18.6 kB)[39m[90m (5.31 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-BBLbJGg3.mjs (2.43 kB)[39m[90m (1.03 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-BDLRPxWm.mjs (80.1 kB)[39m[90m (20.9 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-BHLGLyKT.mjs (13.1 kB)[39m[90m (3.91 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-BLpX9HDS.mjs (12.1 kB)[39m[90m (3.53 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-BzzLgRWb.mjs (3.07 kB)[39m[90m (1.05 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-C04evjrC.mjs (14.6 kB)[39m[90m (4.31 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-CMgPD9GB.mjs (16.6 kB)[39m[90m (4.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-CsVG0dNN.mjs (4.2 kB)[39m[90m (1.58 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-Cy6PbdQq.mjs (4.77 kB)[39m[90m (1.78 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-D-UdLSME.mjs (2.03 kB)[39m[90m (903 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-D0foCMMK.mjs (20.6 kB)[39m[90m (5.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-DDKwDgXf.mjs (6.22 kB)[39m[90m (1.72 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-DGBeg5Z7.mjs (79.2 kB)[39m[90m (19.6 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-DGLsZWpE.mjs (26 kB)[39m[90m (7.03 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-DgV_A6_l.mjs (3.16 kB)[39m[90m (1.3 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-FkEGvwUr.mjs (3.47 kB)[39m[90m (1.44 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-H-N7RytW.mjs (23.6 kB)[39m[90m (8.09 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-mkaQIOIV.mjs (59.2 kB)[39m[90m (14.9 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-nhxrkNUa.mjs (1.01 MB)[39m[90m (252 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-R6xel5kU.mjs (2.67 kB)[39m[90m (1.17 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/dist-ZgLt1bdi.mjs (19.8 kB)[39m[90m (5.73 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/extend-Bruq4wNY.mjs (1.6 kB)[39m[90m (742 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/fetch-MkFNsZQ7.mjs (80 B)[39m[90m (93 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/integration-orm-TRNWYER5-DwCAT686.mjs (6.39 kB)[39m[90m (2.28 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/lib-DVNu_uIN.mjs (5.96 kB)[39m[90m (2.31 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/mdx-BnlDsOBf.mjs (581 kB)[39m[90m (154 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/mixedbread-B8t8usny.mjs (2.26 kB)[39m[90m (1.07 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/orama-cloud-C0_mWVFW.mjs (1.6 kB)[39m[90m (740 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/orama-cloud-legacy-ON8F7Tic.mjs (1.52 kB)[39m[90m (714 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/orama-static-DJUEd6Jj.mjs (99 kB)[39m[90m (29.7 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/out-CtxOfj1b.mjs (100 kB)[39m[90m (26.3 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-1gsXtUYY.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-4q1kuWIc.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-7_ievJJS.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-advcyG_p.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-B_K5wJts.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-B-KwT67G2.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-b0GMtDpy.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-B1oCTQBy.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-B2ZrIrJU.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-B4r1_KDh.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-B6mkqGC6.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-B7Va45qK.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BAVKnqa5.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Bco3EVnG.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BDMn6BeV2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BfvwwMT2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BgUxwGex2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BInuZluc.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BipRb_1v.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Bk-HPalu.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BlaxU965.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BLfxIHz4.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BMMYRxwZ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BObFrlHX.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BPa2UsAQ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BsR5VK51.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BStGdWM5.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BvkS3rex.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BxBGY1bv2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BXJVftxz.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-BZNWQHiG.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-C3twdHS0.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-C8JI6vOu.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Ccf_Csxt2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CD_SmTw0.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CEH-B9AH.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CFe6Jzz72.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CFMTtQDi2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CG5_6Hfx.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CGrQHWu2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CHp6SjCq2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CHtTOKZ8.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Ck02x-QC.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CkzBhp__2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CM-rf0jw2.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Cnl5Ofii2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-COWFLew62.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CR2_mOdw.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CSNRA9_a2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CV7K039e.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CvWG2Kb_.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Cw91IQtZ2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-CwwlecO_.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Cy736pap.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-D-PXZiRz.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-D3UjvXAx2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-D49zdVWK.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-D4PtsutW.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-D5h6Czz6.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-D6Vn_IhQ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-D7_cmhaC2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DaTOAt1T.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DbmLxvHg.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Dc0N-N-J.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DcIhTAm82.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DCXHVo6O2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Ddf8W5pl.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DdXYZZy92.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DeaF9tii.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DEah0JpI.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DEzeb7Im.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DJmcS0QE.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-dNWZjTmh.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DRi_-Omm.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DTD-X3dp.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DtUMSDqC.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DU6TaDSJ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DvbZ0jbi2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DxV7uYhA.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DZTIYlzj.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-DZUS8CTC.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-fPvorZTC.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-fqSO7A3O.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-go5ZIxqk2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-hOWkR2in2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-iT5n_gvu2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-m-VzIHea.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-M8Dpj8KP.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-n3JFQL1l.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-NEwLXjxg.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-P0IrSiN2.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Pg3R5NqM2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-pH6v2Cd2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-PqbmBPk4.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-RZzAWkq8.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-salgxrAO2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Ub45OO4C.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-uXh7-_61.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-Wlorx84n2.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/page-XSzxiOIm2.mjs (46.6 kB)[39m[90m (2.79 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/parse-BU3fTLtO-CXGSQINH.mjs (60.5 kB)[39m[90m (17.6 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/remark-gfm-B5hMNHVi.mjs (49.8 kB)[39m[90m (13.1 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/remove-undefined-CzMSKybq-DhDmqStb.mjs (472 B)[39m[90m (278 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/rolldown-runtime-CE-6LUnI.mjs (1.26 kB)[39m[90m (659 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/search-default-CP5jCQcO.mjs (28.6 kB)[39m[90m (9.51 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/src-B6zuh0JD.mjs (38 kB)[39m[90m (12 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/storage-BZwdHGYI.mjs (127 B)[39m[90m (114 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_chunks/use-search-Dy8lBrbN-hxJTTiYS.mjs (2.01 kB)[39m[90m (1.06 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_libs/_.mjs (91 B)[39m[90m (95 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_libs/h3+rou3+srvx.mjs (24.2 kB)[39m[90m (7.88 kB gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_libs/hookable.mjs (829 B)[39m[90m (419 B gzip)[39m
+[90m  ├─ .vercel/output/functions/__nitro.func/_virtual_farm-ssr-entry.mjs (6.23 MB)[39m[90m (1.15 MB gzip)[39m
+[90m  └─ .vercel/output/functions/__nitro.func/index.mjs (6.35 kB)[39m[90m (2.68 kB gzip)[39m
+[36mΣ Total size:[39m 13.4 MB (2.09 MB gzip)
+[success] [nitro] You can preview this build using `npx nitro preview`
+[success] [nitro] You can deploy this build using `npx nitro deploy --prebuilt`
+[info] 🖼️  Bundled Sharp image runtime (8 packages)
+[info] 📚 Bundled docs content for Vercel: src/app/docs
+[info] ✅ Post-processed Vercel output for Build Output API v3
+[success] ✅ Nitro build completed with preset: vercel
+[info] 📋 Route runtime manifest: .farm/route-runtime-manifest.json
+[success] ✅ Build completed successfully! (preset: vercel)
+[info] 📁 Output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38985057198-1/apps/farmjs-vercel/.vercel/output

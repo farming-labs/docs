@@ -1,0 +1,6 @@
+{
+  "run": "https://github.com/farming-labs/docs/actions/runs/38984252093",
+  "validatedRows": 27,
+  "excludedVercelRows": 3,
+  "exclusionReason": "The local wrapper expected a Node handler function; the emitted artifact exports a Web fetch handler. Fixed in harness commit 8b214cdb; not a Farm runtime failure."
+}

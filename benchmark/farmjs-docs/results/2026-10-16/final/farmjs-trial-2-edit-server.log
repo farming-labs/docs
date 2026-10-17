@@ -1,0 +1,5 @@
+(node:8009) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38985057198-1/apps/farmjs/.output/server/farm-ssr/_virtual_farm-ssr-entry.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38985057198-1/apps/farmjs/.output/server/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Listening on http://127.0.0.1:58655

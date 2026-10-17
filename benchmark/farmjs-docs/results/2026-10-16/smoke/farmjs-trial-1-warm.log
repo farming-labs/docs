@@ -1,0 +1,167 @@
+[info] 🚜 Building Farm.js application with preset: node-server...
+[info] 🔍 Discovering routes and API endpoints...
+[info] 🔌 Using Vite Rollup for route discovery with custom Vite configuration
+[info] 🚜 Building Farm.js application (universal) with preset: node-server...
+[info] 📋 Found 10 page routes
+[info] 📋 Found 10 page routes and 1 layouts
+[info] ⚡ Building application bundles with Vite Rolldown
+[info] 📦 Building client and SSR bundles in parallel...
+[info] 📱 Total hydratable routes detected: 0 pages, 0 layouts, and 0 slots
+[info] 📦 Enabled built-in Tailwind support (@tailwindcss/vite)
+[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
+[info] 📋 Found 10 page routes, 1 layouts, 0 API routes, 0 metadata routes, and 0 middleware files
+[36mvite v8.1.5 [32mbuilding ssr environment for production...[36m[39m
+[2Ktransforming...[2Ktransforming...Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+✓ 2310 modules transformed.
+✓ 4995 modules transformed.
+rendering chunks...
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:var(--color-fd-primary)}.\[\&_\:\:hig...
+   |                                                                 ^[39m
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...)}.\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:underline}.\[\&_svg\]\...
+   |                                                                 ^[39m
+rendering chunks...
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:var(--color-fd-primary)}.\[\&_\:\:hig...
+   |                                                                 ^[39m
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...)}.\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:underline}.\[\&_svg\]\...
+   |                                                                 ^[39m
+computing gzip size...
+.farm/client/farm-client-manifest.json                        3.95 kB │ gzip:   0.63 kB
+.farm/client/farm-client.css                                311.96 kB │ gzip:  39.26 kB
+.farm/client/chunks/fetch-h33186509.js                        0.07 kB │ gzip:   0.09 kB
+.farm/client/chunks/remove-undefined-CzMSKybq-h944cf7f7.js    0.34 kB │ gzip:   0.22 kB
+.farm/client/chunks/space-separated-tokens-hf48947fb.js       0.46 kB │ gzip:   0.29 kB
+.farm/client/chunks/rolldown-runtime-h104e77cb.js             0.69 kB │ gzip:   0.42 kB
+.farm/client/chunks/algolia-h84381e3c.js                      0.79 kB │ gzip:   0.50 kB
+.farm/client/chunks/orama-cloud-legacy-hfa6134d7.js           1.16 kB │ gzip:   0.63 kB
+.farm/client/chunks/orama-cloud-hb40f098f.js                  1.26 kB │ gzip:   0.66 kB
+.farm/client/chunks/use-search-Dy8lBrbN-h3a1b8f3e.js          1.70 kB │ gzip:   0.99 kB
+.farm/client/chunks/mixedbread-h238f82aa.js                   1.70 kB │ gzip:   0.90 kB
+.farm/client/chunks/page-h2f299061.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4cba909e.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h5dbec26b.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h74b43d2a.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7d1a6d1d.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hae34da11.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hafdc19b2.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb4ac42b6.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hc17f30f0.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he31c2db3.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/search-default-hb4a9d76c.js              46.22 kB │ gzip:  16.35 kB
+.farm/client/chunks/orama-static-h88e45616.js                77.16 kB │ gzip:  26.69 kB
+.farm/client/chunks/parse-BU3fTLtO-h38eebdd2.js              82.97 kB │ gzip:  24.74 kB
+.farm/client/farm-client-hfd19ae50.js                       652.49 kB │ gzip: 204.99 kB
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - farm-client-only-imports (28%)
+  - farm (24%)
+  - farm:theme-css (22%)
+  - @mdx-js/rollup (14%)
+  - farm:environment-functions (11%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 4.01s[39m
+[33m[33m[EVAL] [0mUse of direct `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/gray-matter@4.0.3/node_modules/gray-matter/lib/engines.js:43:14 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m43 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m}[0m[38;5;249m;[0m
+ [38;5;240m   │[0m              ──┬─  
+ [38;5;240m   │[0m                ╰─── Use of direct `eval` here.
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: Consider using indirect eval. For more information, check the documentation: https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval
+[38;5;246m────╯[0m
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/jsx-runtime.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-4E5ZJILG.mjs but also statically imported by src/app/docs/page-0001/page.mdx, src/app/docs/page-0002/page.mdx, src/app/docs/page-0003/page.mdx, src/app/docs/page-0004/page.mdx, src/app/docs/page-0005/page.mdx, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/index.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-4E5ZJILG.mjs but also statically imported by \0virtual:farm-ssr-entry, ../../../../../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs, ../../../../../../node_modules/.pnpm/@fuma-translate+react@1.0.2_@types+react@19.2.14_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@fuma-translate/react/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.16_@types+react-dom@19.2.3_@types+react@19.2.14__@types+react_7651395777645b6ecd9ff3e80a7abba7/node_modules/@radix-ui/react-arrow/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-collapsible@1.1.21_@types+react-dom@19.2.3_@types+react@19.2.14__@types_51e1d5ece9b71182832f86c88a788994/node_modules/@radix-ui/react-collapsible/dist/index.mjs, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../packages/farmjs/src/react.tsx is dynamically imported by ../../../../../../packages/farmjs/src/server.ts but also statically imported by \0virtual:farm-ssr-entry, dynamic import will not move module into another chunk.
+[39m
+[32m✓ built in 4.25s[39m
+[info] 🚀 Building server with Nitro (preset: node-server)...
+[info] 📦 Nitro output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38983652281-1/apps/farmjs/.output
+[info] 📦 SSR entry file: _virtual_farm-ssr-entry.js
+[info] 📦 Preset: node-server
+[Farm.js] 10 routes appear eligible for static rendering:
+  /docs/page-0001
+  /docs/page-0002
+  /docs/page-0003
+  /docs/page-0004
+  /docs/page-0005
+  /docs/page-0006
+  /docs/page-0007
+  /docs/page-0008
+  /docs/page-0009
+  /docs
+Add `export const dynamic = "force-static";` after verifying that imported code does not read cookies, headers, authentication, or other request data.
+[success] [nitro] Generated public [36m.output/public[39m
+[info] [nitro] Building server (builder: `rolldown`, preset: `node-server`, compatibility date: `2024-12-01`)
+MISSING_CODE_SPLITTING_GROUP_DEBUG_NAME
+`output.codeSplitting.groups[0].name` is a function. Set `output.codeSplitting.groups[0].debugName` so the bundler timing report can identify this group.
+[info] Generated [36m.output/nitro.json[39m
+[success] [nitro] Server built in 121ms
+[90m  ├─ .output/server/_libs/h3+rou3+srvx.mjs (45.4 kB)[39m[90m (14.2 kB gzip)[39m
+[90m  ├─ .output/server/_libs/hookable.mjs (829 B)[39m[90m (419 B gzip)[39m
+[90m  ├─ .output/server/_libs/scule.mjs (855 B)[39m[90m (439 B gzip)[39m
+[90m  ├─ .output/server/_libs/ufo.mjs (1.35 kB)[39m[90m (590 B gzip)[39m
+[90m  └─ .output/server/index.mjs (20.3 kB)[39m[90m (6.74 kB gzip)[39m
+[36mΣ Total size:[39m 68.8 kB (22.4 kB gzip)
+[success] [nitro] You can preview this build using `npx nitro preview`
+[info] 🖼️  Bundled Sharp image runtime (8 packages)
+[info] ⚡ Reused Farm's prebuilt SSR bundle for the Node output
+[info] ⚡ Built the Node adapter with Rolldown
+[success] ✅ Nitro build completed with preset: node-server
+[info] 📋 Route runtime manifest: .farm/route-runtime-manifest.json
+[success] ✅ Build completed successfully! (preset: node-server)
+[info] 📁 Output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38983652281-1/apps/farmjs/.output

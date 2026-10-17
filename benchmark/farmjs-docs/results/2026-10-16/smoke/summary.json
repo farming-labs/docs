@@ -1,0 +1,187 @@
+{
+  "docsCommit": "a2a9a415593f5bd89cc5c4e9e69797e844ee6d6b",
+  "farmCommit": "7c76f2d597297be015df0c966d25b0f4fa7fc826",
+  "node": "v24.21.0",
+  "pages": 10,
+  "rows": [
+    {
+      "provider": "fumadocs",
+      "mode": "cold",
+      "trials": 1,
+      "medianSeconds": 14.609949475000008,
+      "minSeconds": 14.609949475000008,
+      "maxSeconds": 14.609949475000008,
+      "differenceFromFumadocsPercent": 0.0,
+      "medianPeakTreeRssMiB": 2232.79296875,
+      "medianFirstPageMs": 78.006171,
+      "medianBrowserJsGzipBytes": 239342,
+      "prerenderedDocsPages": [
+        10
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "fumadocs",
+      "mode": "warm",
+      "trials": 1,
+      "medianSeconds": 3.7814638810000076,
+      "minSeconds": 3.7814638810000076,
+      "maxSeconds": 3.7814638810000076,
+      "differenceFromFumadocsPercent": 0.0,
+      "medianPeakTreeRssMiB": 832.1953125,
+      "medianFirstPageMs": 144.996529,
+      "medianBrowserJsGzipBytes": 239342,
+      "prerenderedDocsPages": [
+        10
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "fumadocs",
+      "mode": "edit",
+      "trials": 1,
+      "medianSeconds": 5.475523621999997,
+      "minSeconds": 5.475523621999997,
+      "maxSeconds": 5.475523621999997,
+      "differenceFromFumadocsPercent": 0.0,
+      "medianPeakTreeRssMiB": 1351.4375,
+      "medianFirstPageMs": 156.85155499999996,
+      "medianBrowserJsGzipBytes": 239342,
+      "prerenderedDocsPages": [
+        10
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "farming",
+      "mode": "cold",
+      "trials": 1,
+      "medianSeconds": 17.38811500500003,
+      "minSeconds": 17.38811500500003,
+      "maxSeconds": 17.38811500500003,
+      "differenceFromFumadocsPercent": 19.015572468295773,
+      "medianPeakTreeRssMiB": 2642.88671875,
+      "medianFirstPageMs": 401.49554300000005,
+      "medianBrowserJsGzipBytes": 281170,
+      "prerenderedDocsPages": [
+        10
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "farming",
+      "mode": "warm",
+      "trials": 1,
+      "medianSeconds": 5.0484475189999785,
+      "minSeconds": 5.0484475189999785,
+      "maxSeconds": 5.0484475189999785,
+      "differenceFromFumadocsPercent": 33.50511013382778,
+      "medianPeakTreeRssMiB": 1051.34765625,
+      "medianFirstPageMs": 395.387974,
+      "medianBrowserJsGzipBytes": 281170,
+      "prerenderedDocsPages": [
+        10
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "farming",
+      "mode": "edit",
+      "trials": 1,
+      "medianSeconds": 5.8792111099999715,
+      "minSeconds": 5.8792111099999715,
+      "maxSeconds": 5.8792111099999715,
+      "differenceFromFumadocsPercent": 7.372582347704726,
+      "medianPeakTreeRssMiB": 1394.55078125,
+      "medianFirstPageMs": 390.604792,
+      "medianBrowserJsGzipBytes": 281170,
+      "prerenderedDocsPages": [
+        10
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "farmjs",
+      "mode": "cold",
+      "trials": 1,
+      "medianSeconds": 8.87892034500004,
+      "minSeconds": 8.87892034500004,
+      "maxSeconds": 8.87892034500004,
+      "differenceFromFumadocsPercent": -39.226892192931174,
+      "medianPeakTreeRssMiB": 1712.23046875,
+      "medianFirstPageMs": 149.325691,
+      "medianBrowserJsGzipBytes": 223602,
+      "prerenderedDocsPages": [
+        0
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "farmjs",
+      "mode": "warm",
+      "trials": 1,
+      "medianSeconds": 8.456752257000005,
+      "minSeconds": 8.456752257000005,
+      "maxSeconds": 8.456752257000005,
+      "differenceFromFumadocsPercent": 123.63699675913918,
+      "medianPeakTreeRssMiB": 1906.140625,
+      "medianFirstPageMs": 148.55294899999996,
+      "medianBrowserJsGzipBytes": 223602,
+      "prerenderedDocsPages": [
+        0
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    },
+    {
+      "provider": "farmjs",
+      "mode": "edit",
+      "trials": 1,
+      "medianSeconds": 8.236371696999981,
+      "minSeconds": 8.236371696999981,
+      "maxSeconds": 8.236371696999981,
+      "differenceFromFumadocsPercent": 50.421626598545345,
+      "medianPeakTreeRssMiB": 1798.015625,
+      "medianFirstPageMs": 153.97708999999998,
+      "medianBrowserJsGzipBytes": 223645,
+      "prerenderedDocsPages": [
+        0
+      ],
+      "verifiedPagesPerRun": [
+        10
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "label": "farmjs-ssg-trial-1-cold",
+      "error": "Command '['/opt/hostedtoolcache/node/24.21.0/x64/bin/node', '/home/runner/work/docs/docs/benchmark/farmjs-docs/verify.mjs', 'http://127.0.0.1:38545', 'farmjs-ssg', '10', '/home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38983652281-1/farmjs-ssg-trial-1-cold-runtime.json']' returned non-zero exit status 1."
+    }
+  ],
+  "method": [
+    "One runner, serial production builds, provider order rotated per trial.",
+    "Cold means fresh generated app/output/cache; OS and CLI default compilation caches are not reset.",
+    "Unchanged and one-MDX-paragraph-edit builds follow each cold build.",
+    "Install and framework package compilation excluded; application TypeScript checking included.",
+    "Every accepted row passed production content, code, table, clipboard, navigation, search and mobile checks.",
+    "Farm defaults to request-time HTML rendering. Next fixtures prerender all pages. Static Farm control is reported separately.",
+    "Vercel provider builds real Vercel output and executes its Node handler locally; no Vercel cloud/CDN/region timing is claimed.",
+    "First-page duration is a local fresh-server full response after TCP readiness, not browser LCP or Vercel cold-start latency.",
+    "Sampled process-tree RSS can double-count shared memory."
+  ]
+}

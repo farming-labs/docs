@@ -1,0 +1,11 @@
+{
+  "run": "https://github.com/farming-labs/docs/actions/runs/38985057198",
+  "status": "success",
+  "measuredDocsBranchCommit": "8b214cdb0e8b7c3761b9f889f7d402602f34a44e",
+  "docsFrameworkSourceCommit": "bfe194fbea6c561e7bd76374a8ec0088e9d46e37",
+  "farmSourceCommit": "7c76f2d597297be015df0c966d25b0f4fa7fc826",
+  "scope": "100 generated MDX pages, three trials, four providers, cold/warm/edit; not a full assistant-ui Farm port",
+  "screenshots": "Retained first-trial cold desktop/mobile for every provider; all raw runtime JSON and build logs retained. Node and Vercel Farm screenshots match byte-for-byte. Farming Next and Farm mobile screenshots match; desktop screenshots are visually similar but not byte-identical.",
+  "runDateUtc": "2026-10-17",
+  "sessionDateAmericaLosAngeles": "2026-10-16"
+}

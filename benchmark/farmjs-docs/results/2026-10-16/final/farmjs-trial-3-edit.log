@@ -1,0 +1,257 @@
+[info] 🚜 Building Farm.js application with preset: node-server...
+[info] 🔍 Discovering routes and API endpoints...
+[info] 🔌 Using Vite Rollup for route discovery with custom Vite configuration
+[info] 🚜 Building Farm.js application (universal) with preset: node-server...
+[info] 📋 Found 100 page routes
+[info] 📋 Found 100 page routes and 1 layouts
+[info] ⚡ Building application bundles with Vite Rolldown
+[info] 📦 Building client and SSR bundles in parallel...
+[info] 📱 Total hydratable routes detected: 0 pages, 0 layouts, and 0 slots
+[info] 📦 Enabled built-in Tailwind support (@tailwindcss/vite)
+[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+[info] 📋 Found 100 page routes, 1 layouts, 0 API routes, 0 metadata routes, and 0 middleware files
+[36mvite v8.1.5 [32mbuilding ssr environment for production...[36m[39m
+[2Ktransforming...Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+✓ 2400 modules transformed.
+✓ 5085 modules transformed.
+rendering chunks...
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:var(--color-fd-primary)}.\[\&_\:\:hig...
+   |                                                                 ^[39m
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...)}.\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:underline}.\[\&_svg\]\...
+   |                                                                 ^[39m
+rendering chunks...
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:var(--color-fd-primary)}.\[\&_\:\:hig...
+   |                                                                 ^[39m
+[33m[lightningcss minify] 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+2  |  ...)}.\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:underline}.\[\&_svg\]\...
+   |                                                                 ^[39m
+computing gzip size...
+.farm/client/farm-client-manifest.json                       17.54 kB │ gzip:   1.81 kB
+.farm/client/farm-client.css                                311.96 kB │ gzip:  39.26 kB
+.farm/client/chunks/fetch-h26be388f.js                        0.07 kB │ gzip:   0.09 kB
+.farm/client/chunks/remove-undefined-CzMSKybq-h944cf7f7.js    0.34 kB │ gzip:   0.22 kB
+.farm/client/chunks/space-separated-tokens-hf48947fb.js       0.46 kB │ gzip:   0.29 kB
+.farm/client/chunks/rolldown-runtime-h104e77cb.js             0.69 kB │ gzip:   0.42 kB
+.farm/client/chunks/algolia-h5213adf2.js                      0.79 kB │ gzip:   0.50 kB
+.farm/client/chunks/orama-cloud-legacy-h3291f82f.js           1.16 kB │ gzip:   0.63 kB
+.farm/client/chunks/orama-cloud-h4b64de33.js                  1.26 kB │ gzip:   0.66 kB
+.farm/client/chunks/use-search-Dy8lBrbN-hfcc3c8d6.js          1.70 kB │ gzip:   0.99 kB
+.farm/client/chunks/mixedbread-h238f82aa.js                   1.70 kB │ gzip:   0.90 kB
+.farm/client/chunks/page-h17afe885.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h34410915.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3d069a05.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4db65c65.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6ad13731.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb3ee9283.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hc0059545.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hcaa9f8be.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he155212c.js                        33.87 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h106e36af.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h111d2c0f2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h115898c2.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h129b5859.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h135a94e22.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h15a641af.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h19133b4b.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2324a988.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2789d728.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h27f074bc.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2c8c59112.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3042a0e4.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h32e44cd2.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h3f268e5c.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h43eb9a24.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h456eb91b2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4768ede12.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h48bed50d2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h48f112772.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4f4ae88e2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h503b7538.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h5056744a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h53d55a55.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h56b703bc.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h58d3467e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h5ecf4d03.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6105f697.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6132b16c2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h615b75b0.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h623e938f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h66a882ce.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h67735c67.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h677ab24c2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h682012bb.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6a513823.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6cada77a2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6ec0dd502.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7257ec13.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h78e02ba4.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7b4f3e01.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7bfddb8e.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h7d8425a9.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h802eefbe.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-h828daec02.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h86d46e69.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8766d8f72.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h89af1dbd.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8b49fc24.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h97d81bef2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9d44b9ab.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9dfe90d62.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9e54e1cd2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9edd5916.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha663381e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha728c11a2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha8ac25ec.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hab1bb554.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hab8c3d9c2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb2f17e4c.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb84c5a1e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb89b8a362.js                       33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-hbe2a2ec3.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-hc67956822.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hca7927d82.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hcd8476bc.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hce489b042.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd0c66dea.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd33046de.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd8607d3a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hda7fbf61.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hda9960f42.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hdd7a25aa.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hdd94f7f8.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hde1e0b9b.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hdf74a08d.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he1471dab.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he3831846.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he43f889a2.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he5080610.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he87770cd.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he908bb4d.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hea7578c0.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hee7b7b9f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hef6e0c7a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hefa86da22.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf12fe814.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf35fa6c8.js                        33.90 kB │ gzip:   2.51 kB
+.farm/client/chunks/page-hf6bc2aa92.js                       33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf79839f3.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf8e08835.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h891fc0752.js                       33.95 kB │ gzip:   2.55 kB
+.farm/client/chunks/search-default-he8fe9c78.js              46.22 kB │ gzip:  16.34 kB
+.farm/client/chunks/orama-static-h422c85bb.js                77.16 kB │ gzip:  26.69 kB
+.farm/client/chunks/parse-BU3fTLtO-h38eebdd2.js              82.97 kB │ gzip:  24.74 kB
+.farm/client/farm-client-h49c312c1.js                       664.63 kB │ gzip: 207.30 kB
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - farm-client-only-imports (73%)
+  - farm (10%)
+  - @mdx-js/rollup (8%)
+  - farm:theme-css (6%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 8.09s[39m
+[33m[33m[EVAL] [0mUse of direct `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/gray-matter@4.0.3/node_modules/gray-matter/lib/engines.js:43:14 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m43 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m}[0m[38;5;249m;[0m
+ [38;5;240m   │[0m              ──┬─  
+ [38;5;240m   │[0m                ╰─── Use of direct `eval` here.
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: Consider using indirect eval. For more information, check the documentation: https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval
+[38;5;246m────╯[0m
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/jsx-runtime.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-4E5ZJILG.mjs but also statically imported by src/app/docs/page-0001/page.mdx, src/app/docs/page-0002/page.mdx, src/app/docs/page-0003/page.mdx, src/app/docs/page-0004/page.mdx, src/app/docs/page-0005/page.mdx, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/index.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-4E5ZJILG.mjs but also statically imported by \0virtual:farm-ssr-entry, ../../../../../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs, ../../../../../../node_modules/.pnpm/@fuma-translate+react@1.0.2_@types+react@19.2.14_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@fuma-translate/react/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.16_@types+react-dom@19.2.3_@types+react@19.2.14__@types+react_7651395777645b6ecd9ff3e80a7abba7/node_modules/@radix-ui/react-arrow/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-collapsible@1.1.21_@types+react-dom@19.2.3_@types+react@19.2.14__@types_51e1d5ece9b71182832f86c88a788994/node_modules/@radix-ui/react-collapsible/dist/index.mjs, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../packages/farmjs/src/react.tsx is dynamically imported by ../../../../../../packages/farmjs/src/server.ts but also statically imported by \0virtual:farm-ssr-entry, dynamic import will not move module into another chunk.
+[39m
+[32m✓ built in 5.20s[39m
+[info] 🚀 Building server with Nitro (preset: node-server)...
+[info] 📦 Nitro output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38985057198-1/apps/farmjs/.output
+[info] 📦 SSR entry file: _virtual_farm-ssr-entry.js
+[info] 📦 Preset: node-server
+[Farm.js] 100 routes appear eligible for static rendering:
+  /docs/page-0001
+  /docs/page-0002
+  /docs/page-0003
+  /docs/page-0004
+  /docs/page-0005
+  /docs/page-0006
+  /docs/page-0007
+  /docs/page-0008
+  /docs/page-0009
+  /docs/page-0010
+  …and 90 more
+Add `export const dynamic = "force-static";` after verifying that imported code does not read cookies, headers, authentication, or other request data.
+[success] [nitro] Generated public [36m.output/public[39m
+[info] [nitro] Building server (builder: `rolldown`, preset: `node-server`, compatibility date: `2024-12-01`)
+MISSING_CODE_SPLITTING_GROUP_DEBUG_NAME
+`output.codeSplitting.groups[0].name` is a function. Set `output.codeSplitting.groups[0].debugName` so the bundler timing report can identify this group.
+[info] Generated [36m.output/nitro.json[39m
+[success] [nitro] Server built in 144ms
+[90m  ├─ .output/server/_libs/h3+rou3+srvx.mjs (45.4 kB)[39m[90m (14.2 kB gzip)[39m
+[90m  ├─ .output/server/_libs/hookable.mjs (829 B)[39m[90m (419 B gzip)[39m
+[90m  ├─ .output/server/_libs/scule.mjs (855 B)[39m[90m (439 B gzip)[39m
+[90m  ├─ .output/server/_libs/ufo.mjs (1.35 kB)[39m[90m (590 B gzip)[39m
+[90m  └─ .output/server/index.mjs (40.5 kB)[39m[90m (10.3 kB gzip)[39m
+[36mΣ Total size:[39m 88.9 kB (25.9 kB gzip)
+[success] [nitro] You can preview this build using `npx nitro preview`
+[info] 🖼️  Bundled Sharp image runtime (8 packages)
+[info] ⚡ Reused Farm's prebuilt SSR bundle for the Node output
+[info] ⚡ Built the Node adapter with Rolldown
+[success] ✅ Nitro build completed with preset: node-server
+[info] 📋 Route runtime manifest: .farm/route-runtime-manifest.json
+[success] ✅ Build completed successfully! (preset: node-server)
+[info] 📁 Output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38985057198-1/apps/farmjs/.output

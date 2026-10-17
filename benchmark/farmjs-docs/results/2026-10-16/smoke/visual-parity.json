@@ -1,0 +1,30 @@
+[
+  {
+    "view": "desktop",
+    "byteIdentical": true,
+    "files": [
+      {
+        "file": "farmjs-trial-1-cold-runtime-desktop.png",
+        "sha256": "ac8be5121dc00a6667f0439ffba9a8505c2ce2753ef5eb9675944d665a1e2958"
+      },
+      {
+        "file": "farming-trial-1-cold-runtime-desktop.png",
+        "sha256": "ac8be5121dc00a6667f0439ffba9a8505c2ce2753ef5eb9675944d665a1e2958"
+      }
+    ]
+  },
+  {
+    "view": "mobile",
+    "byteIdentical": true,
+    "files": [
+      {
+        "file": "farmjs-trial-1-cold-runtime-mobile.png",
+        "sha256": "470fae881f48a3854da80ab76b479a619892bea4cc7e0e05e732ef2e364f629d"
+      },
+      {
+        "file": "farming-trial-1-cold-runtime-mobile.png",
+        "sha256": "470fae881f48a3854da80ab76b479a619892bea4cc7e0e05e732ef2e364f629d"
+      }
+    ]
+  }
+]

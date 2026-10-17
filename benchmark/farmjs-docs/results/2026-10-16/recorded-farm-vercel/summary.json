@@ -1,0 +1,20 @@
+{
+  "deployment": "https://docs-4cyxnttkf-kinfe123s-projects.vercel.app",
+  "repository": "farming-labs/farm.js",
+  "commit": "22ea5fb",
+  "date": "2026-10-16",
+  "hardware": "2 cores, 8 GB, iad1",
+  "pageRoutes": 106,
+  "cacheRestored": true,
+  "pipelineSeconds": 115.796,
+  "farmBuildLogSpanSeconds": 78.275,
+  "bundleSeconds": [
+    23.27,
+    45.81
+  ],
+  "nitroSeconds": 14.601,
+  "cacheCreationSeconds": 118.257,
+  "cacheUploadSeconds": 10.013,
+  "cacheMegabytes": 602.25,
+  "note": "Recorded real deployment with different source, pages, features and hardware. Not a controlled Fumadocs/Next comparison. Cache creation/upload follow the Deployment completed log; source package builds and Prisma generation are included in the pipeline but excluded from the synthetic app timer."
+}
