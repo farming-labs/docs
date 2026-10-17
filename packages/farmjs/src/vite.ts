@@ -163,7 +163,13 @@ export function resolveFarmDocsViteContentRoots(
   );
 }
 
+/**
+ * Point the docs packages at their TypeScript sources, for working on the adapter
+ * against an app in this repository. Opt-in: apps in the repository (the docs
+ * website) run the built packages like any other consumer.
+ */
 function resolveWorkspaceAliases() {
+  if (process.env.FARMING_LABS_DOCS_SOURCE !== "1") return [];
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
   const workspaceRoot = findWorkspaceRoot(moduleDir);
 
@@ -298,6 +304,28 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   ];
 }
 
+/**
+ * Grammars other grammars embed in documentation: frontmatter, and code inside Markdown and
+ * HTML. Shiki loads these lazily, so without preloading, whether a block highlights them
+ * depends on which pages compiled first. Farm compiles pages separately for the browser and
+ * the server, so the two could tokenize one block differently and fail hydration.
+ */
+export const FARM_DOCS_PRELOADED_CODE_LANGUAGES = [
+  "yaml",
+  "toml",
+  "json",
+  "jsonc",
+  "html",
+  "css",
+  "javascript",
+  "typescript",
+  "jsx",
+  "tsx",
+  "shellscript",
+  "markdown",
+  "mdx",
+] as const;
+
 /** Shared MDX transforms used by Vite and the build-time edge compiler. */
 export function createFarmDocsMdxCompileOptions(
   options: FarmDocsMdxOptions = {},
@@ -313,7 +341,7 @@ export function createFarmDocsMdxCompileOptions(
   ];
   const rehypePlugins: NonNullable<CompileOptions["rehypePlugins"]> = [
     rehypeToc,
-    [rehypeCode, { themes: codeBlockThemes }],
+    [rehypeCode, { themes: codeBlockThemes, langs: [...FARM_DOCS_PRELOADED_CODE_LANGUAGES] }],
   ];
   return { remarkPlugins, rehypePlugins };
 }

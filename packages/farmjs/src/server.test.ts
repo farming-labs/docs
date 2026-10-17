@@ -60,6 +60,12 @@ Build a Farm application.
     expect(page.descriptionInBody).toBe(true);
   });
 
+  it("leaves the API reference path to the app when the reference is not configured", async () => {
+    const server = createDocsServer(config);
+
+    await expect(server.handle(new Request("https://farm.test/api-reference"))).resolves.toBeNull();
+  });
+
   it("opens configured pixel-border navigation groups by default", async () => {
     const server = createDocsServer({
       ...config,

@@ -104,6 +104,7 @@ import {
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 import farmDocsBrowserCss from "./browser-css.generated.js";
+import { hasUnserializableValues } from "./config-values.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 export { createFarmjsApiReference } from "./api-reference.js";
 
@@ -2417,6 +2418,8 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         ? config.apiReference.path
         : "api-reference";
     const apiReferencePath = `/${configuredApiReferencePath.replace(/^\/+|\/+$/g, "")}`;
+    // Unconfigured, the path belongs to the app, as with the other framework integrations.
+    const apiReferenceEnabled = resolveApiReferenceConfig(config.apiReference).enabled;
     const publicDocsPaths = new Set([
       "/llms.txt",
       "/llms-full.txt",
@@ -2442,8 +2445,8 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       pathname.startsWith(`${docsPath}/`) ||
       pathname === apiPath ||
       pathname.startsWith(`${apiPath}/`) ||
-      pathname === apiReferencePath ||
-      pathname.startsWith(`${apiReferencePath}/`) ||
+      (apiReferenceEnabled &&
+        (pathname === apiReferencePath || pathname.startsWith(`${apiReferencePath}/`))) ||
       publicDocsPaths.has(pathname) ||
       pathname.startsWith("/.well-known/agent-skills/");
 
@@ -2633,6 +2636,7 @@ function renderFarmDocsDocument(input: {
   fonts?: FarmDocsRuntimeFonts;
 }): string {
   const { config, data } = input;
+  const clientConfig = createClientDocsConfig(config);
   const description = data.description ?? config.metadata?.description;
   const themeName = config.theme?.name ?? "default";
   const favicon = typeof config.favicon === "string" ? config.favicon : undefined;
@@ -2660,7 +2664,7 @@ function renderFarmDocsDocument(input: {
 </head>
 <body>
   <div id="root"><div id="farm-docs-root"${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
-  <script>window.__FARM_DOCS_ADAPTER__={config:${serializeInlineJson(createClientDocsConfig(config))},data:${serializeInlineJson(data)}};</script>
+  <script>window.__FARM_DOCS_ADAPTER__={config:${serializeInlineJson(clientConfig)},data:${serializeInlineJson(data)}${hasUnserializableValues(clientConfig) ? ",configModule:true" : ""}};</script>
   <script type="module" src="${escapeDocumentText(input.clientEntry)}"></script>
 </body>
 </html>`;
