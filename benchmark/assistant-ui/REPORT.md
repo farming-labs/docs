@@ -770,4 +770,16 @@ Validation: 1,548 core tests for the linear-boundary PR; 1,554 core and 150 Next
 
 Raw local data and runnable scripts are under `benchmark/next-docs/results/2026-10-16/sections/` and `benchmark/next-docs/benchmark-section-*.mjs`; the corpus fingerprint is `5a86ce7021ed6d38ea93de1327bd9ad56ab4b5eff7a86a20331c67c74707be0d`.
 
-A separate 100-page, three-trial production comparison of both changes together against main and Fumadocs is running at https://github.com/farming-labs/docs/actions/runs/39002234194. No whole-build gain is claimed until its results are inspected. The existing benchmark PR #569 remains untouched.
+The combined source also passes all **1,556 core tests**. The separate [production comparison](https://github.com/farming-labs/docs/actions/runs/39002234194) completed on a fresh Ubuntu 24.04 runner with four AMD EPYC 7763 vCPUs, 15,989 MiB RAM, Node 24.21.0, Next 16.3.8, and the same 100-page / 755,580-byte corpus. Three trials rotate the serial variant order; cold means fresh app/.next with OS caches potentially warm. Installs and package builds are outside the timer. Source `2d8745ed` contains both PRs; the baseline restores the emitted section module from main `0d66fc16`, with other package/fixture settings unchanged.
+
+| Production build median | Main | Both PRs | Fumadocs control |
+| --- | ---: | ---: | ---: |
+| Cold | 23.064 s | 23.442 s | 19.823 s |
+| Unchanged repeat | 6.552 s | 6.752 s | 5.707 s |
+| One-page edit | 7.594 s | 7.616 s | 8.260 s |
+
+**No full-build improvement was observed.** Combined medians are 1.6% / 3.1% / 0.3% slower than main; all corresponding ranges overlap. Both Farming variants remain about 18% slower than Fumadocs for cold/repeat builds; the candidate is 7.8% faster on this one-page edit fixture, already an advantage in the baseline. These PRs do not establish an overall Fumadocs win and should be judged as core parsing/search improvements. Do not compare these absolute times with the earlier EPYC 9V45 configuration-import run.
+
+All 27 builds and runtime checks passed: 100 correct static articles each, syntax highlighting, tables, client navigation, copy, search/result navigation, mobile sidebar, no overflow or browser exceptions, and edit freshness. Farming Markdown URLs, Accept negotiation, llms.txt/full, and MCP initialization also pass. Both Farming variants keep 104 route modules and both API routes; Fumadocs has four route modules. All 18 paired desktop/mobile screenshots are pixel-identical. CSS hashes match across every Farming build; browser-observed JS is 281,170 → 281,173 gzip bytes, effectively unchanged. AI is disabled equally in this fixture; this is not a full assistant-ui UI migration check.
+
+[Full timing samples, logs, screenshots, runtime receipts, and summary](../next-docs/results/2026-10-16/sections/ci-39002234194-1/) are retained. The existing benchmark PR #569 remains untouched. The verified deployment-specific waste (five example apps and discarded oversized install caches) is still covered by existing open PRs #572 and #573; these new core PRs do not replace those fixes.
