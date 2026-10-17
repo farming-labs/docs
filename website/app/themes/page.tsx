@@ -285,7 +285,7 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
                 />
               ))}
             </div>
-            <span className="text-xs font-mono uppercase tracking-wide text-neutral-500 text-white/60 dark:text-white/60">
+            <span className="text-xs font-mono uppercase tracking-normal text-neutral-500 text-white/60 dark:text-white/60">
               {theme.name}
             </span>
           </div>
@@ -326,7 +326,7 @@ function ThemeCard({
         ))}
       </div>
 
-      <h2 className="text-sm uppercase font-mono tracking-wide mb-1 text-neutral-900 dark:text-white">
+      <h2 className="text-sm uppercase font-mono tracking-normal mb-1 text-neutral-900 dark:text-white">
         {theme.name}
       </h2>
       <p className="text-[12px] text-neutral-500 dark:text-white/40 mb-4 leading-relaxed">
@@ -463,7 +463,7 @@ export default function ThemesPage() {
             ✨
           </span>
           <div>
-            <p className="text-sm font-mono uppercase tracking-wide text-neutral-900 dark:text-white">
+            <p className="text-sm font-mono uppercase tracking-normal text-neutral-900 dark:text-white">
               Create your own theme
             </p>
             <p className="text-[12px] text-neutral-500 dark:text-white/50 mt-0.5">

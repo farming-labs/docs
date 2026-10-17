@@ -29,7 +29,7 @@ export default function InitBlockTabs() {
             key={tab.id}
             type="button"
             onClick={() => setActive(tab.id)}
-            className={`relative shrink-0 px-4 py-2 text-[11px] font-mono uppercase tracking-wider transition-colors ${
+            className={`relative shrink-0 px-4 py-2 text-[11px] font-mono uppercase tracking-normal transition-colors ${
               active === tab.id
                 ? "text-black dark:text-white"
                 : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
@@ -65,7 +65,7 @@ export default function InitBlockTabs() {
                     Easily scaffold your docs with the CLI. It auto-detects your framework and
                     scaffolds everything.
                   </p>
-                  <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-wider">
+                  <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-normal">
                     Setup beautiful documentation in seconds
                   </p>
                 </div>
@@ -90,7 +90,7 @@ export default function InitBlockTabs() {
                       --template
                     </code>
                   </p>
-                  <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-wider">
+                  <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-normal">
                     Copy the command when the template you want is shown
                   </p>
                 </div>
@@ -110,7 +110,7 @@ export default function InitBlockTabs() {
                     Copy a ready-to-paste prompt for agent-friendly docs that stay human-first and
                     expose the right machine-readable surfaces.
                   </p>
-                  <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-wider">
+                  <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-normal">
                     Project-aware instructions for cleaner agent handoffs
                   </p>
                 </div>

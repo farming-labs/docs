@@ -445,7 +445,7 @@ function StatCard({
   return (
     <div className="border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-black">
       <div className="flex items-center justify-between gap-4">
-        <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500 dark:text-white/40">
+        <p className="font-mono text-[11px] uppercase tracking-normal text-neutral-500 dark:text-white/40">
           {label}
         </p>
         <Icon className="size-4 text-neutral-500 dark:text-white/45" strokeWidth={1.8} />
@@ -483,7 +483,7 @@ function GroupTable({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] table-fixed text-left text-sm">
-          <thead className="bg-neutral-50 text-[10px] uppercase tracking-wider text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
+          <thead className="bg-neutral-50 text-[10px] uppercase tracking-normal text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
             <tr>
               <th className="px-4 py-2 font-medium">{keyLabel}</th>
               <th className="w-24 px-4 py-2 text-right font-medium">Events</th>
@@ -561,7 +561,7 @@ function SiteTrafficTable({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] table-fixed text-left text-sm">
-          <thead className="bg-neutral-50 text-[10px] uppercase tracking-wider text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
+          <thead className="bg-neutral-50 text-[10px] uppercase tracking-normal text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
             <tr>
               <th className="px-4 py-2 font-medium">Site origin</th>
               <th className="w-28 px-4 py-2 text-right font-medium">Human views</th>
@@ -690,7 +690,7 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
         <header className="border border-neutral-200 bg-white p-5 dark:border-white/10 dark:bg-black">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-white/45">
+              <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-normal text-neutral-500 dark:text-white/45">
                 <Activity className="size-3.5" strokeWidth={1.8} />
                 Usage
               </div>
@@ -742,7 +742,7 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1120px] text-left text-sm">
-              <thead className="bg-neutral-50 text-[10px] uppercase tracking-wider text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
+              <thead className="bg-neutral-50 text-[10px] uppercase tracking-normal text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
                 <tr>
                   <th className="px-4 py-2 font-medium">Time</th>
                   <th className="px-4 py-2 font-medium">Event</th>

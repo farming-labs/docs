@@ -95,7 +95,7 @@ function CopyableBlock({
     <div className={className}>
       <div className="mb-2 inline-flex min-w-0 items-center gap-2 text-black/60 dark:text-white/72">
         <Blocks className="size-4 shrink-0" strokeWidth={1.5} aria-hidden />
-        <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em]">{label}</p>
+        <p className="truncate font-mono text-[11px] uppercase tracking-normal">{label}</p>
       </div>
       <div className="relative border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-black/30">
         <button
@@ -153,10 +153,10 @@ export function DocsMcpAccess({ className }: { className?: string }) {
           <div className="border-b border-black/10 p-5 md:border-b-0 md:border-r md:p-6 dark:border-white/10">
             <div className="inline-flex items-center gap-2 text-black/60 dark:text-white/70">
               <PlugZap className="size-4" strokeWidth={1.5} aria-hidden />
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em]">Docs MCP</p>
+              <p className="font-mono text-[11px] uppercase tracking-normal">Docs MCP</p>
             </div>
 
-            <h2 className="mt-4 max-w-sm font-sans text-[0.9rem] uppercase tracking-[0.12em] text-black/92 sm:text-[0.98rem] dark:text-white/92">
+            <h2 className="mt-4 max-w-sm font-sans text-[0.9rem] uppercase tracking-normal text-black/92 sm:text-[0.98rem] dark:text-white/92">
               Add to MCP
             </h2>
 
@@ -174,10 +174,10 @@ export function DocsMcpAccess({ className }: { className?: string }) {
                   <CursorIcon className="size-4 text-black/70 dark:text-white/80" />
                 </span>
                 <span className="flex min-w-0 flex-col items-start">
-                  <span className="font-mono text-[0.64rem] uppercase tracking-[0.14em] text-black/92 dark:text-white/92">
+                  <span className="font-mono text-[0.64rem] uppercase tracking-normal text-black/92 dark:text-white/92">
                     Cursor
                   </span>
-                  <span className="-mt-0.5 font-mono text-[0.6rem] uppercase tracking-wider text-black/45 dark:text-white/45">
+                  <span className="-mt-0.5 font-mono text-[0.6rem] uppercase tracking-normal text-black/45 dark:text-white/45">
                     Deep link
                   </span>
                 </span>
@@ -195,10 +195,10 @@ export function DocsMcpAccess({ className }: { className?: string }) {
                   />
                 </span>
                 <span className="flex min-w-0 flex-col items-start">
-                  <span className="font-mono text-[0.64rem] uppercase tracking-[0.14em] text-black/92 dark:text-white/92">
+                  <span className="font-mono text-[0.64rem] uppercase tracking-normal text-black/92 dark:text-white/92">
                     VS Code
                   </span>
-                  <span className="-mt-0.5 font-mono text-[0.6rem] uppercase tracking-wider text-black/45 dark:text-white/45">
+                  <span className="-mt-0.5 font-mono text-[0.6rem] uppercase tracking-normal text-black/45 dark:text-white/45">
                     Install link
                   </span>
                 </span>

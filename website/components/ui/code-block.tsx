@@ -52,7 +52,7 @@ export default function CodeBlock({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {title && (
-                <span className="text-[9.5px] border px-2 font-mono uppercase tracking-wider bg-white dark:bg-(--color-fd-background,#000) border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-[color-mix(in_srgb,var(--color-fd-foreground,#fff)_20%,transparent)]">
+                <span className="text-[11px] border px-2 font-mono uppercase tracking-normal bg-white dark:bg-(--color-fd-background,#000) border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-[color-mix(in_srgb,var(--color-fd-foreground,#fff)_20%,transparent)]">
                   {title}
                 </span>
               )}
