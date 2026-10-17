@@ -85,6 +85,9 @@ jobs:
       - name: Run TanStack Start adapter tests
         run: pnpm --filter @farming-labs/tanstack-start test
 
+      - name: Run Farm.js adapter tests
+        run: pnpm --filter @farming-labs/farmjs test
+
       - name: Run Fumadocs theme tests
         run: pnpm --filter @farming-labs/theme test
 

@@ -836,7 +836,15 @@ Options accepted by the second argument of `withDocs(farmConfig, options)` in `@
 | `configPath` | `string` | auto-detected | Path to `docs.config.ts`, relative to the Farm application directory |
 | `config` | `Partial<DocsConfig>` | — | Inline docs config overrides |
 | `codeBlockThemes` | `FarmDocsCodeBlockThemes` | — | Shiki themes used to compile Markdown and MDX code blocks |
+| `buildCache` | `boolean` | `true` | Reuse unchanged production Markdown/MDX compilation and highlighting. Applies to build commands outside watch mode. |
 | `contentRoots` | `string[]` | — | Additional documentation roots outside the Farm application directory. Each path is resolved relative to the application root and added to the dev server's `server.fs.allow` list so the MDX plugin can compile content from shared or repository-owned locations. |
+
+Production compilation is cached under `<Vite cacheDir>/farming-docs/mdx-v1.json`, normally
+`node_modules/.vite/farming-docs/mdx-v1.json`. Preserve that directory in CI to reuse work
+between builds. Source, module path, highlighting themes, mode, Node version, and compiler
+implementation changes invalidate the relevant entries. Missing or unusable caches fall
+back to compilation. Set `buildCache: false` to diagnose builds without cache reuse;
+the lower-level `docsMdx()` plugin accepts the same option.
 
 ```ts title="farm.config.ts"
 import { withDocs } from "@farming-labs/farmjs";

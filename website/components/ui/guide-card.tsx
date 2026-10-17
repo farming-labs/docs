@@ -34,7 +34,7 @@ export function GuideCard({
       )}
     >
       <div className="flex items-start justify-between gap-5">
-        <div className="flex flex-wrap items-center gap-y-2 font-mono text-[10px] uppercase tracking-[0.1em] text-black/45 dark:text-white/45">
+        <div className="flex flex-wrap items-center gap-y-2 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
           {metadata.map((item, index) => (
             <div key={`${item}-${index}`} className="inline-flex items-center">
               {index > 0 ? (
@@ -74,7 +74,7 @@ export function GuideCard({
       {tags.length > 0 ? (
         <ul
           aria-label={`${title} topics`}
-          className="mt-6 flex flex-wrap gap-x-4 gap-y-2 border-t border-dashed border-black/10 pt-4 font-mono text-[10px] uppercase tracking-[0.08em] text-black/45 dark:border-white/10 dark:text-white/42"
+          className="mt-6 flex flex-wrap gap-x-4 gap-y-2 border-t border-dashed border-black/10 pt-4 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:border-white/10 dark:text-white/42"
         >
           {tags.map((tag) => (
             <li key={tag}>{tag}</li>

@@ -47,7 +47,7 @@ export function MigrationCard({
           <span className="flex size-9 shrink-0 items-center justify-center bg-black/[0.045] text-black/70 dark:bg-white/[0.06] dark:text-white/70">
             <MigrationSourceIcon source={source} className="size-4" />
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-black/45 dark:text-white/45">
+          <span className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
             {sourceType} · {effort} effort
           </span>
         </div>
@@ -62,7 +62,7 @@ export function MigrationCard({
 
       <div className="mt-auto pt-6">
         <div className="-mx-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-dashed border-black/10 px-5 pt-4 text-xs text-black/48 dark:border-white/10 dark:text-white/45">
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em]">Preserves</span>
+          <span className="font-mono text-[11px] uppercase tracking-normal">Preserves</span>
           <span>{preserves.join(" · ")}</span>
         </div>
       </div>

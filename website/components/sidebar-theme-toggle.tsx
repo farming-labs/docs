@@ -4,14 +4,15 @@ import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
 type SidebarThemeToggleProps = {
-  variant?: "text" | "pill";
+  variant?: "text" | "pill" | "icon";
+  className?: string;
 };
 
 /**
  * Light/dark theme toggle for the docs sidebar footer.
  * Toggles the `dark` class on document.documentElement and persists to localStorage.
  */
-export function SidebarThemeToggle({ variant = "text" }: SidebarThemeToggleProps) {
+export function SidebarThemeToggle({ variant = "text", className }: SidebarThemeToggleProps) {
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
@@ -74,6 +75,24 @@ export function SidebarThemeToggle({ variant = "text" }: SidebarThemeToggleProps
   if (!mounted) return null;
 
   const isPill = variant === "pill";
+
+  if (variant === "icon") {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        title={isDark ? "Light mode" : "Dark mode"}
+        className={className}
+      >
+        {isDark ? (
+          <Moon className="size-3.5" strokeWidth={1.6} aria-hidden />
+        ) : (
+          <Sun className="size-3.5" strokeWidth={1.6} aria-hidden />
+        )}
+      </button>
+    );
+  }
 
   return (
     <button
