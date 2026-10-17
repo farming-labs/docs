@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
   existsSync,
@@ -11,6 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { readGitLastModifiedDates } from "./git-dates.js";
 import pc from "picocolors";
 import {
   DEFAULT_AGENT_MD_ROUTE,
@@ -590,24 +590,6 @@ function formatDateOnly(value: string): string | undefined {
   return parsed.toISOString().slice(0, 10);
 }
 
-function pageGitLastmod(rootDir: string, page: DocsMcpPage) {
-  if (page.sourcePath) {
-    try {
-      const output = execFileSync("git", ["log", "-1", "--format=%cI", "--", page.sourcePath], {
-        cwd: rootDir,
-        encoding: "utf-8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-      const parsed = new Date(output);
-      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
-    } catch {
-      // Static Agent Bundles intentionally omit filesystem mtimes: they vary across checkouts.
-    }
-  }
-
-  return undefined;
-}
-
 function deterministicSitemapManifest(options: {
   pages: Array<DocsMcpPage & { markdownUrl?: string }>;
   entry: string;
@@ -1135,8 +1117,12 @@ export async function exportAgentBundle(options: AgentExportOptions = {}): Promi
     ordering: config?.ordering,
     i18n,
   });
+  const gitDates = await readGitLastModifiedDates(
+    rootDir,
+    scannedPages.map(({ page }) => page.sourcePath),
+  );
   const localizedPages = scannedPages.map(({ page, locale }) => {
-    const gitLastmod = pageGitLastmod(rootDir, page);
+    const gitLastmod = gitDates.get(page.sourcePath ?? "");
     return {
       locale,
       page: {

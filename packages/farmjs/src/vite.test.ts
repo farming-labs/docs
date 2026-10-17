@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  docsMdx,
   remarkStandaloneCodeLabels,
   resolveFarmDocsCodeBlockThemes,
   resolveFarmDocsViteContentRoots,
@@ -77,5 +78,27 @@ describe("resolveFarmDocsViteContentRoots", () => {
     expect(resolveFarmDocsViteContentRoots(applicationRoot, ["../shared-docs"])).toContain(
       new URL("../../../fixtures/shared-docs", import.meta.url).pathname.replace(/\/$/, ""),
     );
+  });
+});
+
+describe("docsMdx workspace sources", () => {
+  const configOf = () => {
+    const [workspacePlugin] = docsMdx() as Array<{ config: () => Record<string, any> }>;
+    return workspacePlugin.config();
+  };
+
+  afterEach(() => {
+    delete process.env.FARMING_LABS_DOCS_SOURCE;
+  });
+
+  it("lets apps in this repository run the built packages", () => {
+    expect(configOf().resolve).toBeUndefined();
+  });
+
+  it("points the docs packages at their sources when asked to", () => {
+    process.env.FARMING_LABS_DOCS_SOURCE = "1";
+    const aliases = configOf().resolve.alias as Array<{ find: RegExp; replacement: string }>;
+    const docs = aliases.find((alias) => alias.find.test("@farming-labs/docs"));
+    expect(docs?.replacement).toMatch(/packages\/docs\/src\/index\.ts$/);
   });
 });

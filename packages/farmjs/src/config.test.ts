@@ -68,12 +68,16 @@ describe("withDocs", () => {
     });
   });
 
-  it("registers the adapter-owned MDX transform before existing Vite plugins", () => {
+  it("registers the adapter-owned MDX and Agent Skills plugins before existing Vite plugins", () => {
     const existingPlugin = { name: "existing" };
     const result = withDocs({ vite: { plugins: [existingPlugin] } });
 
     expect(result.vite).toMatchObject({
-      plugins: [expect.any(Array), existingPlugin],
+      plugins: [
+        expect.any(Array),
+        expect.objectContaining({ name: "farming-labs-farmjs-agent-skills" }),
+        existingPlugin,
+      ],
     });
   });
 
@@ -101,7 +105,11 @@ describe("withDocs", () => {
     expect(
       (result.vite as (config: Record<string, unknown>) => Record<string, unknown>)({}),
     ).toMatchObject({
-      plugins: [expect.any(Array), existingPlugin],
+      plugins: [
+        expect.any(Array),
+        expect.objectContaining({ name: "farming-labs-farmjs-agent-skills" }),
+        existingPlugin,
+      ],
     });
   });
 });

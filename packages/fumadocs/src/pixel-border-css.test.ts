@@ -16,7 +16,7 @@ describe("pixel-border CSS", () => {
     "utf8",
   );
   const websiteGlobalCss = readFileSync(
-    fileURLToPath(new URL("../../../website/app/global.css", import.meta.url)),
+    fileURLToPath(new URL("../../../website/src/app/globals.css", import.meta.url)),
     "utf8",
   );
   const reactPreset = readFileSync(

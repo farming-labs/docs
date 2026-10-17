@@ -44,12 +44,12 @@ import {
   DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_API_CATALOG_ROUTE,
   type DocsConfig,
-} from "@farming-labs/docs";
+} from "@farming-labs/docs/build";
 import {
   ensureDocsReviewWorkflow,
   renderDocsAgentSkillsBundle,
   resolveConfiguredAgentSkillsSync,
-} from "@farming-labs/docs/server";
+} from "@farming-labs/docs/build";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
 import { parse, type ParserPlugin } from "@babel/parser";
