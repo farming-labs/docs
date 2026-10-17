@@ -3121,6 +3121,85 @@ export default defineDocsPublicHandler(config, useStorage);
       "Found Nuxt public docs middleware at server/middleware/docs-public.ts.",
     );
   });
+
+  it("detects Farm.js route wiring through withDocs()", async () => {
+    writePackageJson(tmpDir, "doctor-farmjs", { "@farm.js/core": "0.1.20" });
+
+    writeDocsConfig(
+      tmpDir,
+      "docs.config.ts",
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  llmsTxt: { enabled: true },
+  search: true,
+  mcp: { enabled: true },
+};`,
+    );
+
+    writeDocsPage(tmpDir, "docs");
+
+    writeFileSync(
+      path.join(tmpDir, "farm.config.ts"),
+      `import { defineConfig } from "@farm.js/core";
+import { withDocs } from "@farming-labs/farmjs/config";
+
+export default withDocs(defineConfig({}));
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const apiRoute = report.checks.find((check) => check.id === "api-route");
+    const publicRoutes = report.checks.find((check) => check.id === "public-routes");
+
+    expect(report.framework).toBe("farmjs");
+    expect(apiRoute?.status).toBe("pass");
+    expect(apiRoute?.detail).toBe(
+      "Found withDocs() from @farming-labs/farmjs in farm.config.ts; the adapter serves /api/docs.",
+    );
+    expect(publicRoutes?.status).toBe("pass");
+    expect(publicRoutes?.detail).toBe(
+      "Found withDocs() from @farming-labs/farmjs in farm.config.ts; the adapter serves the public docs routes.",
+    );
+  });
+
+  it("reports a Farm.js app whose farm.config does not use withDocs()", async () => {
+    writePackageJson(tmpDir, "doctor-farmjs-unwired", { "@farm.js/core": "0.1.20" });
+
+    writeDocsConfig(
+      tmpDir,
+      "docs.config.ts",
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+};`,
+    );
+
+    writeDocsPage(tmpDir, "docs");
+
+    writeFileSync(
+      path.join(tmpDir, "farm.config.ts"),
+      `import { defineConfig } from "@farm.js/core";
+
+export default defineConfig({});
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const apiRoute = report.checks.find((check) => check.id === "api-route");
+
+    expect(report.framework).toBe("farmjs");
+    expect(apiRoute?.status).toBe("fail");
+    expect(apiRoute?.detail).toBe(
+      "Could not find withDocs() from @farming-labs/farmjs in farm.config.*.",
+    );
+  });
 });
 
 describe("inspectHumanReadiness", () => {
