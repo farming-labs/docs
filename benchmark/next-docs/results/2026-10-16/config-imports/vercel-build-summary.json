@@ -1,0 +1,21 @@
+{
+  "preview": "https://vercel.com/farming-labs/docs-website/g2r6UCf89QB5kK1TLAwzL8wGQhrX",
+  "commit": "2861e94d8568506120d3347ffa750a6a3b62e967",
+  "method": "Single observed preview, log timestamp spans, not controlled before/after. Read via authenticated CLI; connector team scope failed. No deployment settings changed.",
+  "machine": {
+    "cores": 4,
+    "ramGiB": 8
+  },
+  "installCommand": "pnpm install --frozen-lockfile --force",
+  "workspaceProjects": 19,
+  "initialInstallReportedSeconds": 36.7,
+  "websiteBuildScriptSeconds": 165.719,
+  "fiveExamplesSpanSeconds": 104.574,
+  "svelteAutoAdapterExtraInstallReportedSeconds": 12.5,
+  "websiteNextStartThroughBuildCompleteSeconds": 39.676,
+  "websiteNextCompileReportedSeconds": 25.1,
+  "websiteNextTypecheckReportedSeconds": 8.3,
+  "websiteNextStaticGenerationReportedSeconds": 2.6,
+  "websiteGeneratedRoutes": 67,
+  "sitemapDocsPages": 53
+}

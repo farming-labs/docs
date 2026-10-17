@@ -1,0 +1,56 @@
+2026-10-17T03:41:43.706Z  Build machine configuration: 4 cores, 8 GB
+2026-10-17T03:41:43.801Z  Cloning github.com/farming-labs/docs (Branch: codex/next-config-imports, Commit: 2861e94)
+2026-10-17T03:41:44.506Z  Cloning completed: 705.000ms
+2026-10-17T03:41:45.286Z  Running "vercel build"
+2026-10-17T03:41:45.625Z  Running "install" command: `pnpm install --frozen-lockfile --force`...
+2026-10-17T03:41:48.045Z  Scope: all 19 workspace projects
+2026-10-17T03:42:24.421Z  Done in 36.7s using pnpm v10.9.0
+2026-10-17T03:42:24.479Z  Detected Next.js version: 16.3.8
+2026-10-17T03:42:24.533Z  Running "pnpm run build"
+2026-10-17T03:42:25.079Z  > @farming-labs/docs-website@0.0.1 build /vercel/path0/website
+2026-10-17T03:42:25.079Z  > pnpm prisma generate && pnpm -C .. build && pnpm --dir ../examples/next build && pnpm --dir ../examples/tanstack-start build && pnpm --dir ../examples/nuxt build && pnpm --dir ../examples/astro build && pnpm --dir ../examples/sveltekit build && node ../packages/docs/dist/cli/index.mjs sitemap generate --config docs.config.tsx --manifest-only && next build
+2026-10-17T03:42:26.564Z  > @farming-labs/docs-root@0.1.0 build /vercel/path0
+2026-10-17T03:42:26.564Z  > pnpm --filter @farming-labs/docs run build && pnpm --filter @farming-labs/theme run build && pnpm --filter './packages/*' --filter '!@farming-labs/docs' --filter '!@farming-labs/theme' run build
+2026-10-17T03:42:26.882Z  > @farming-labs/docs@0.2.120 build /vercel/path0/packages/docs
+2026-10-17T03:42:26.882Z  > tsdown
+2026-10-17T03:42:30.866Z  > @farming-labs/theme@0.2.120 build /vercel/path0/packages/fumadocs
+2026-10-17T03:42:30.866Z  > node scripts/build-css-bundles.mjs && tsdown
+2026-10-17T03:42:34.901Z  Scope: 9 of 19 workspace projects
+2026-10-17T03:42:35.199Z  packages/farmjs build: > @farming-labs/farmjs@0.2.120 generate:browser-css /vercel/path0/packages/farmjs
+2026-10-17T03:42:35.200Z  packages/farmjs build: > node scripts/generate-browser-css.mjs
+2026-10-17T03:42:41.629Z  > @farming-labs/docs/example-next@0.0.0 build /vercel/path0/examples/next
+2026-10-17T03:42:41.629Z  > next build --turbopack
+2026-10-17T03:42:42.897Z  ✓ Running next.config.ts took 605ms
+2026-10-17T03:43:01.282Z  ✓ Compiled successfully in 17.4s
+2026-10-17T03:43:04.634Z    Finished TypeScript in 3.3s ...
+2026-10-17T03:43:05.949Z    Generating static pages using 3 workers (0/54) ...
+2026-10-17T03:43:07.046Z    Generating static pages using 3 workers (13/54) 
+2026-10-17T03:43:07.095Z    Generating static pages using 3 workers (26/54) 
+2026-10-17T03:43:07.363Z    Generating static pages using 3 workers (40/54) 
+2026-10-17T03:43:07.535Z  ✓ Generating static pages using 3 workers (54/54) in 1586ms
+2026-10-17T03:43:08.697Z  > @farming-labs/docs/example-tanstack-start@ build /vercel/path0/examples/tanstack-start
+2026-10-17T03:43:08.698Z  > vite build
+2026-10-17T03:43:25.651Z  > @farming-labs/docs/example-nuxt@0.0.0 build /vercel/path0/examples/nuxt
+2026-10-17T03:43:25.651Z  > nuxt build
+2026-10-17T03:43:46.224Z  > @farming-labs/docs/example-astro@0.0.0 build /vercel/path0/examples/astro
+2026-10-17T03:43:46.224Z  > corepack pnpm --dir ../.. --filter @farming-labs/docs run build && node ../../packages/docs/dist/cli/index.mjs sitemap generate --config src/lib/docs.config.ts && astro build
+2026-10-17T03:43:47.258Z  > @farming-labs/docs@0.2.120 build /vercel/path0/packages/docs
+2026-10-17T03:43:47.258Z  > tsdown
+2026-10-17T03:43:50.685Z  Generated sitemap manifest for 14 page(s).
+2026-10-17T03:43:58.200Z  > @farming-labs/docs/example-sveltekit@0.0.0 build /vercel/path0/examples/sveltekit
+2026-10-17T03:43:58.200Z  > vite build
+2026-10-17T03:44:09.072Z  > Using @sveltejs/adapter-auto
+2026-10-17T03:44:09.397Z  Installing @sveltejs/adapter-vercel...
+2026-10-17T03:44:21.973Z  Done in 12.5s using pnpm v10.9.0
+2026-10-17T03:44:22.089Z  Successfully installed @sveltejs/adapter-vercel.
+2026-10-17T03:44:26.203Z    ✔ done
+2026-10-17T03:44:30.325Z  Generated sitemap manifest for 53 page(s).
+2026-10-17T03:44:31.123Z  ✓ Running next.config.ts took 362ms
+2026-10-17T03:44:57.131Z  ✓ Compiled successfully in 25.1s
+2026-10-17T03:45:05.390Z    Finished TypeScript in 8.3s ...
+2026-10-17T03:45:06.894Z    Generating static pages using 3 workers (0/67) ...
+2026-10-17T03:45:07.833Z    Generating static pages using 3 workers (16/67) 
+2026-10-17T03:45:08.356Z    Generating static pages using 3 workers (33/67) 
+2026-10-17T03:45:08.941Z    Generating static pages using 3 workers (50/67) 
+2026-10-17T03:45:09.492Z  ✓ Generating static pages using 3 workers (67/67) in 2.6s
+2026-10-17T03:45:10.798Z  Build Completed in /vercel/output [3m]

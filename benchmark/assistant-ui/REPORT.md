@@ -649,3 +649,98 @@ This is a synthetic shared corpus, not the complete assistant-ui site or Vercel
 installation/upload/cache-restore pipeline. Absolute times must not be combined
 with earlier runners. See [all samples, ranges, phases and provenance](../next-docs/results/2026-10-16/tree-shaking/summary.json)
 and [raw receipts](../next-docs/results/2026-10-16/tree-shaking/).
+
+
+## Docs-only focused configuration imports: repeated-build improvement
+
+[PR #570](https://github.com/farming-labs/docs/pull/570) at `2861e94d` adds a focused
+Node-only core build entry and uses it in Next configuration. Existing exports retain
+their identity. No route, UI component, content, search, Markdown or MCP feature is removed.
+[Run 38999715849](https://github.com/farming-labs/docs/actions/runs/38999715849) completes
+all 27 production builds and correctness gates on one runner, with 100 pages and three
+rotated serial trials. Medians include application type checking:
+
+| Build | Broad imports | Focused imports | Within-Farming change | Fumadocs |
+| --- | ---: | ---: | ---: | ---: |
+| Cold | 14.475 s | 14.230 s | -1.7% | 12.093 s |
+| Unchanged | 4.379 s | 3.962 s | **-9.5%** | 3.344 s |
+| One-page edit | 4.801 s | 4.385 s | **-8.7%** | 4.817 s |
+
+This establishes a measured repeat-build improvement in this corpus. Unchanged-build
+ranges are 4.370–4.388 s before and 3.958–3.980 s after. The cold ranges overlap, so the
+small cold median shift is not a material cold-build claim. Edited-build medians improve,
+but the baseline/candidate ranges slightly overlap; three trials do not establish a
+universal guarantee. Every sample and range is retained.
+
+The focused candidate remains **17.7% slower cold and 18.5% slower unchanged** than
+Fumadocs. It is **9.0% faster for one-page edits** in this fixture. Browser-loaded
+JavaScript stays at 281,170 gzip bytes, versus Fumadocs' 239,346 bytes. This is not an
+overall claim that Farming is faster or smaller than Fumadocs.
+
+The isolated configuration check on this runner uses seven alternating fresh Node
+processes: median import/setup falls **213.28 → 47.86 ms (77.6%)**, and loaded modules
+fall **712 → 136 (80.9%)**. The entry keeps the runtime, MDX and OpenAPI graph out of
+configuration startup. This startup percentage must not be presented as a full-build gain.
+
+### Verification and method
+
+- Both variants use the same core code containing the new build entry. The harness
+  restores the old broad imports in the otherwise identical emitted config body for the
+  baseline. This isolates import selection rather than all source changes in the PR.
+  Harness commit: `284a28ed`; package sources match PR head `2861e94d` exactly.
+- Four AMD EPYC 9V45 vCPUs, Ubuntu 24.04, approximately 16 GiB RAM, Node 24.21.0.
+  The dependency versions remain Next 16.3.8, React 19.2.4, Fumadocs core/UI 16.17.1,
+  MDX 15.4.7, and source-built Farming 0.2.120 packages. These absolute timings must
+  not be mixed with the preceding experiment's different runner.
+- Each cold case starts from a fresh app/build cache; the OS cache is warm. Warm/edit
+  cases retain their own Next cache. Installation and framework package compilation
+  are outside the timer. Tests and browser checks run outside timed builds.
+- All 100 docs URLs are statically generated and served with complete correct content.
+  Farming keeps 104 route modules and both automatic API routes; Fumadocs uses four.
+  Search, same-document navigation, code copying, highlighting, tables, mobile sidebar,
+  no overflow, and fresh edited content pass after every build. Markdown URL rewrites,
+  Accept negotiation, llms.txt, llms-full.txt and MCP initialization also pass for Farming.
+- CSS hashes match across all 18 Farming builds. All nine mobile pairs and four desktop
+  pairs match exactly. The other five desktop pairs differ only in the fading sidebar
+  scrollbar, at x273–278/y704–843; the images were inspected and every pixel outside
+  that rectangle matches. Raw counts, hashes and representative images are retained.
+- 1,546 core tests and 150 adapter tests pass locally, along with both package builds
+  and typechecks. Current-head CI, security audit, cross-framework MCP, both Vercel
+  previews, deployment smoke and review checks pass. The earlier separate Webpack
+  fixture failed on main and the metadata candidate; no new full Webpack claim is made.
+- This remains a synthetic same-corpus test, not a complete assistant-ui port or proof
+  of all possible custom configurations. AI is equally disabled in both fixture providers.
+- Release core with the new build entry (0.2.121 or later) before the new adapter.
+  The adapter declares that peer floor, and the repository's release script bumps the
+  core and adapter together. No npm publish was performed during this work.
+
+### Actual Vercel website work still outside the core benchmark
+
+An authenticated CLI read of [the PR preview](https://vercel.com/farming-labs/docs-website/g2r6UCf89QB5kK1TLAwzL8wGQhrX)
+shows a four-core/8-GiB runner and the following observed costs:
+
+| Stage | Observed duration |
+| --- | ---: |
+| Forced install across all 19 workspace projects | 36.7 s reported |
+| Complete website build script | 165.7 s timestamp span |
+| Five example app builds within that script | 104.6 s timestamp span |
+| Website's own Next build through Vercel build completion | 39.7 s timestamp span |
+| Website compilation / typecheck / static generation | 25.1 / 8.3 / 2.6 s reported |
+
+The example stage includes a second core rebuild from Astro and an automatic
+Svelte Vercel-adapter install taking 12.5 s. The website build generates 67 routes;
+its sitemap covers 53 docs pages. These are one observed deployment's stages, not a
+controlled before/after savings estimate. No Vercel settings or website build scripts
+were changed in this docs-core optimization. The existing website build/install-scope
+PRs #572/#573 remain separate work.
+
+The largest remaining consumer targets are the 104-vs-4 route graph and the remaining
+client JavaScript overhead; neither should be reduced by dropping features, custom page
+metadata/layouts or static output. For the repository's Vercel complaint, isolating the
+website build from five example builds is the much larger observed pipeline opportunity.
+
+[Summary, ranges and provenance](../next-docs/results/2026-10-16/config-imports/summary.json),
+[startup measurements](../next-docs/results/2026-10-16/config-imports/config-startup.json),
+[visual comparisons](../next-docs/results/2026-10-16/config-imports/pixel-comparison.json),
+and [Vercel phase receipts](../next-docs/results/2026-10-16/config-imports/vercel-build-phases.txt)
+are retained alongside raw build/runtime logs. No benchmark PR was created or modified.
