@@ -1,4 +1,5 @@
 {
+  "framework": null,
   "installCommand": "pnpm --filter '@farming-labs/docs-website...' --filter @farming-labs/docs-root install --frozen-lockfile --force --config.dedupe-peer-dependents=false",
   "crons": [
     {
