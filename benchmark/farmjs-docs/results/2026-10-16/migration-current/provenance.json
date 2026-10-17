@@ -1,0 +1,10 @@
+{
+  "workflowRun": 38991961334,
+  "measuredDocsCommit": "5f3b8bd9a651cb3a0ed2eca3ea5eccea55a3af22",
+  "packageTreeEquivalentToMergedCommit": "eacd4388c789dccf3025f3b42c88063eaf093389",
+  "farmCommit": "85628bbea1bd7bfe1d0728d071b85335b4a208b1",
+  "cacheFollowupMergedCommitNotMeasuredInThisRun": "fca138179c9fa05ba67bf1ee76b0929c8c75155f",
+  "reportDate": "2026-10-16 America/Los_Angeles",
+  "pr574": "https://github.com/farming-labs/docs/pull/574",
+  "pr575": "https://github.com/farming-labs/docs/pull/575"
+}

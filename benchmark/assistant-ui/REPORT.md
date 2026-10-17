@@ -1,5 +1,7 @@
 # assistant-ui docs migration experiment — 2026-10-16
 
+Latest follow-up: [current four-provider comparison](#current-migration-comparison-after-the-mdx-cache-fix) and [cache persistence follow-up](#follow-up-avoid-rewriting-an-unchanged-mdx-cache). Earlier experiments remain below with their own scope and provenance.
+
 The isolated Farming port builds and preserves the tested docs content, but it is **slower in this experiment**: **113.45s versus 86.36s**, a **31.4%** increase. This is a constrained local Webpack comparison with disk caching disabled on both sides, not a default Vercel or Turbopack benchmark. The production assistant-ui checkout was not migrated or edited.
 
 PRs [#560](https://github.com/farming-labs/docs/pull/560), [#561](https://github.com/farming-labs/docs/pull/561), and [#562](https://github.com/farming-labs/docs/pull/562) were squash-merged after their checks passed. The benchmark uses merged framework revision `bfe194fbea6c561e7bd76374a8ec0088e9d46e37`. The original migration harness remains on the local benchmark branch. The later follow-up below adds CI for the separate synthetic fixture.
@@ -450,7 +452,7 @@ final results above supersede it. No benchmark PR was created or merged.
 
 ## Follow-up: avoid rewriting an unchanged MDX cache
 
-[PR #575](https://github.com/farming-labs/docs/pull/575) follows merged #574. The cache
+[PR #575](https://github.com/farming-labs/docs/pull/575) is merged after all applicable checks passed (`fca13817`), following merged #574 (`eacd4388`). The cache
 previously serialized an entry twice on each hit and wrote the complete cache at each
 build-end hook. The follow-up stores entry sizes, refreshes hit eviction order in memory,
 and writes only after compiled entries change. Overlapping flushes are serialized so an
@@ -460,7 +462,8 @@ Hit-only eviction-order changes are saved with the next content change.
 
 The regular PR workflow now runs the Farm adapter suite alongside the other adapters,
 reusing its existing core/theme build prerequisites. Previously the Farm tests were absent
-from that job. Locally, all 81 tests, the package build/typecheck, lint and formatting pass.
+from that job. All 81 tests pass locally and in the Linux PR test job; the package build/typecheck,
+lint and formatting pass locally. The [Linux adapter log](../farmjs-docs/results/2026-10-16/cache-store/linux-adapter-tests.log) records the CI run.
 Two new regressions fail against the merged baseline and pass with the fix;
 [before/after test logs](../farmjs-docs/results/2026-10-16/cache-store/) are retained.
 
@@ -508,3 +511,96 @@ implementation is `d9ed9ef4`. The later CI-only commit does not change the imple
    bridge contributed about two seconds of config work and the constrained Next port
    remained slower. Cache collection work only after testing content/schema/Git-history
    invalidation; the Farm-only MDX cache does not speed up that Next integration.
+
+## Current migration comparison after the MDX cache fix
+
+[Run 38991961334](https://github.com/farming-labs/docs/actions/runs/38991961334) completed
+all **36 production builds** and their browser/route checks. It compares four integrations
+on one runner after #574, with three trials per cold/unchanged/one-page-edit case.
+These are medians including application type checking:
+
+| Integration | Cold | Unchanged | One-page edit | Docs pages prerendered |
+| --- | ---: | ---: | ---: | ---: |
+| Fumadocs + Next | 15.24 s | 4.19 s | 6.29 s | 100 |
+| Farming docs + Next | 18.65 s | 5.65 s | 6.28 s | 100 |
+| Farming docs + Farm, Node output | 11.69 s | 8.78 s | 8.77 s | 0 |
+| Farming docs + Farm, Vercel output | 11.68 s | 8.38 s | 8.77 s | 0 |
+
+### What the migration helps, and where it does not
+
+- **Switching only the docs layer on Next does not resolve the build complaint in this
+  corpus.** Farming/Next is 22.4% slower cold and 34.9% slower unchanged; one-page edits
+  are effectively tied (the 0.004-second median difference is not a meaningful win).
+- **Switching the application framework to Farm improves the observed cold build:**
+  about 23.3% faster than Fumadocs/Next, or about 37.3% faster than Farming/Next.
+  This is conditional on the rendering setup: Farm emits zero static docs HTML pages
+  and renders on request; Next emits all 100. It is not an equivalent-static-output win.
+- **The repeated-build gap is not closed.** Farm Node and Vercel unchanged builds take
+  2.10× and 2.00× the Fumadocs/Next time, respectively; one-page edits take about 1.40×.
+  #574's separate cache-on/off experiment establishes a 21–26% rebuild improvement
+  within Farm, but the absolute times from its different runner must not be mixed
+  with this table.
+- **Initially loaded browser JavaScript is smaller with Farm in this fixture:**
+  211.43 KiB gzip versus 233.73 KiB for Fumadocs/Next (9.5% less). Farming/Next loads
+  274.58 KiB (17.5% more than Fumadocs). These are browser-observed script responses
+  after network idle, not sums of every emitted chunk. An edit adds about 0.05 KiB
+  on Farm. No page-load speed or Core Web Vitals conclusion follows from bytes alone.
+
+On unchanged Farm builds, type checking contributes a median 1.67 s for Node and
+1.46 s for Vercel output. Logged bundle phases take roughly 2.8–3.2 s each and overlap;
+they must not be added as sequential wall time. Nitro server packaging still takes
+about 2.2 s. Both graphs transform the same 5,090 and 2,398 modules even when all 100
+MDX entries are cached. Reusing bundle work and narrowing runtime/compiler imports
+are the larger next targets; skipping unchanged cache writes is a smaller improvement.
+
+The Next integrations also expose different default build graphs: Farming emits **104
+route modules**, including `/api/docs` and `/api/docs/mcp`; Fumadocs emits **4 route
+modules**, using one docs catch-all and `/api/search`. Both prerender 100 docs URLs.
+This is a concrete next investigation for the Next adapter: test a shared docs route
+without removing metadata, rewrites, per-page overrides or automatic APIs. Route count
+is an observation, not proof that it explains the whole time gap. Extra Farming
+capabilities were not disabled merely to improve the timing.
+
+### Validation and limits
+
+Every build served the correct complete article on all 100 URLs. All browser gates pass:
+highlighted code, six tables, clipboard, same-document client navigation, search API and
+result navigation, mobile sidebar, desktop/mobile overflow, browser errors and fresh edited
+content. Eight representative desktop/mobile screenshots (five distinct images) were
+inspected. Farm Node and Vercel screenshots match; the Farming/Next mobile screenshot
+matches both. Fumadocs defaults differ in sidebar width, description visibility and TOC
+title treatment. This is a shared source/feature corpus, not a pixel-identical cross-framework
+UI assertion. [Screenshot receipts](../farmjs-docs/results/2026-10-16/migration-current/visual-receipts.json) retain hashes of all 72 captures.
+
+AI is disabled equally, and this does not port assistant-ui's custom shell, live services
+or its 120 MDX-importing pages. The earlier constrained 337-page assistant-ui/Next result
+remains a separate experiment. A complete assistant-ui Farm migration and exact production
+UI/functionality parity are still unverified.
+
+The Vercel row builds an artifact and executes its emitted handler locally. Installation,
+framework package compilation, upload, CDN behavior and real deployment cache restoration
+are outside the timer. Fresh CLI/server processes run for every build, and the cache is
+retained locally for warm/edit cases. This establishes MDX compilation reuse, not
+progressive production bundling or an end-to-end Vercel deployment improvement.
+
+### Reproduction and provenance
+
+- 100 generated pages, 755,580 source bytes, six code blocks and six tables per page;
+  three serial trials with provider order rotated across trials. Cold means a fresh
+  generated app/cache; the OS cache is not reset.
+- Ubuntu 24.04, four AMD EPYC 9V74 vCPUs, approximately 16 GiB RAM, Node 24.21.0.
+  The first Fumadocs cold sample was 19.36 s; the other two were 15.11 s and 15.24 s.
+  All samples and ranges are retained rather than discarding that slower trial.
+- Measured docs/harness commit `5f3b8bd9a651cb3a0ed2eca3ea5eccea55a3af22`; its
+  `packages/` tree is identical to merged #574 (`eacd4388`). Farm core/CLI 0.1.19
+  at `85628bbea1bd7bfe1d0728d071b85335b4a208b1`.
+- Next 16.3.8; Fumadocs core/UI 16.17.1 and MDX 15.4.7; React 19.2.4; TypeScript
+  5.9.3; Farming packages 0.2.120 from the pinned source. Provider manifests, locked
+  dependencies and logged internal bundler versions are retained in the build receipts.
+- **#575 is not included in this four-provider timing run.** Its source change is
+  separately measured in the cache-store experiment above and passes 81 adapter tests
+  locally and in Linux CI. No whole-build gain is claimed for that follow-up.
+
+The [summary and every sample](../farmjs-docs/results/2026-10-16/migration-current/summary.json),
+[raw build/runtime receipts](../farmjs-docs/results/2026-10-16/migration-current/) and runner
+details are saved on the existing benchmark branch. No benchmark PR was created or merged.

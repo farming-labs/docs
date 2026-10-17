@@ -1,0 +1,29 @@
+{
+  "provider": "farmjs-vercel",
+  "pages": 100,
+  "versions": {
+    "@farming-labs/docs": "0.2.120",
+    "@farming-labs/theme": "0.2.120",
+    "@farming-labs/farmjs": "0.2.120",
+    "@farm.js/core": "0.1.19",
+    "@farm.js/cli": "0.1.19",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "typescript": "5.9.3",
+    "@types/node": "22.20.5",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.2.1"
+  },
+  "sourceBytes": 755580,
+  "wallSeconds": 11.684470652000016,
+  "buildSeconds": 10.020378078000022,
+  "typecheckSeconds": 1.6640925739999943,
+  "peakTreeRssMiB": 2489.19921875,
+  "prerenderedDocsPages": 0,
+  "totalDocsHtmlBytes": 0,
+  "outputBytes": 58998224,
+  "mdxCacheBytes": 6790851,
+  "mdxCacheEntries": 100,
+  "mdxCacheEnabled": true
+}

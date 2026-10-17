@@ -1,0 +1,43 @@
+##[group]Run pnpm --filter @farming-labs/farmjs test
+2026-10-17T01:52:43.5660372Z [36;1mpnpm --filter @farming-labs/farmjs test[0m
+2026-10-17T01:52:43.5711705Z shell: /usr/bin/bash -e {0}
+2026-10-17T01:52:43.5711859Z env:
+2026-10-17T01:52:43.5712000Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T01:52:43.5712170Z ##[endgroup]
+2026-10-17T01:52:43.7568818Z 
+2026-10-17T01:52:43.7569609Z > @farming-labs/farmjs@0.2.120 test /home/runner/work/docs/docs/packages/farmjs
+2026-10-17T01:52:43.7569937Z > pnpm run generate:browser-css && vitest run
+2026-10-17T01:52:43.7570053Z 
+2026-10-17T01:52:43.9077705Z 
+2026-10-17T01:52:43.9078603Z > @farming-labs/farmjs@0.2.120 generate:browser-css /home/runner/work/docs/docs/packages/farmjs
+2026-10-17T01:52:43.9079158Z > node scripts/generate-browser-css.mjs
+2026-10-17T01:52:43.9079345Z 
+2026-10-17T01:52:44.1119689Z 
+2026-10-17T01:52:44.1121159Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.8 [39m[90m/home/runner/work/docs/docs/packages/farmjs[39m
+2026-10-17T01:52:44.1121809Z 
+2026-10-17T01:52:44.4929011Z  [32m✓[39m src/navigation.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 183[2mms[22m[39m
+2026-10-17T01:52:45.7619370Z  [32m✓[39m src/mdx-build-cache.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1297[2mms[22m[39m
+2026-10-17T01:52:45.7670643Z      [33m[2m✓[22m[39m does not persist loaded compiler code under a changed on-disk fingerprint [33m 1227[2mms[22m[39m
+2026-10-17T01:52:45.8374928Z  [32m✓[39m src/server.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 88[2mms[22m[39m
+2026-10-17T01:52:46.4420732Z  [32m✓[39m src/config.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+2026-10-17T01:52:47.1010076Z  [32m✓[39m src/vite.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+2026-10-17T01:52:47.2328867Z  [32m✓[39m src/page-modules.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+2026-10-17T01:52:47.2874873Z  [32m✓[39m src/edge-compiler.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 258[2mms[22m[39m
+2026-10-17T01:52:47.3594113Z  [32m✓[39m src/module-map.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+2026-10-17T01:52:47.4093234Z  [32m✓[39m src/react.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+2026-10-17T01:52:47.4599161Z  [32m✓[39m src/runtime.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 2[2mms[22m[39m
+2026-10-17T01:52:50.8967580Z  [32m✓[39m src/mdx-cache-vite.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 5230[2mms[22m[39m
+2026-10-17T01:52:50.8968925Z      [33m[2m✓[22m[39m leaves virtual modules excluded by the MDX compiler untouched [33m 1275[2mms[22m[39m
+2026-10-17T01:52:50.8969842Z      [33m[2m✓[22m[39m keys the captured compiler themes rather than a later mutation of the options [33m 620[2mms[22m[39m
+2026-10-17T01:52:50.8970746Z      [33m[2m✓[22m[39m preserves build output while skipping MDX compilation in a subsequent build [33m 461[2mms[22m[39m
+2026-10-17T01:52:50.8971534Z      [33m[2m✓[22m[39m recompiles edited MDX and changed themes [33m 654[2mms[22m[39m
+2026-10-17T01:52:50.8972292Z      [33m[2m✓[22m[39m rebuilds imported components even when their importing MDX is cached [33m 644[2mms[22m[39m
+2026-10-17T01:52:50.8973176Z      [33m[2m✓[22m[39m supports opting out and preserves compilation errors after a successful build [33m 639[2mms[22m[39m
+2026-10-17T01:52:50.8973938Z      [33m[2m✓[22m[39m separates production and development-mode builds [33m 649[2mms[22m[39m
+2026-10-17T01:52:50.8987247Z 
+2026-10-17T01:52:50.8990245Z [2m Test Files [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+2026-10-17T01:52:50.8990763Z [2m      Tests [22m [1m[32m81 passed[39m[22m[90m (81)[39m
+2026-10-17T01:52:50.8991143Z [2m   Start at [22m 01:52:44
+2026-10-17T01:52:50.8991737Z [2m   Duration [22m 6.78s[2m (transform 1.90s, setup 0ms, import 5.10s, tests 7.10s, environment 1ms)[22m
+2026-10-17T01:52:50.8992942Z 
+2026-10-17T01:52:50.9483065Z 
