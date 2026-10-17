@@ -1,6 +1,7 @@
 import type { DocsConfig } from "@farming-labs/docs";
 import { docsAgentSkillsBundle } from "./agent-skills.js";
 import { farmDocsRuntimeAdapter, type FarmDocsRuntimeAdapter } from "./runtime.js";
+import { docsShell } from "./shell-plugin.js";
 import { docsMdx, type FarmDocsCodeBlockThemes } from "./vite.js";
 
 interface FarmViteConfigLike {
@@ -31,6 +32,12 @@ export interface FarmDocsAdapterOptions {
   codeBlockThemes?: FarmDocsCodeBlockThemes;
   /** Additional documentation roots outside the Farm application directory. */
   contentRoots?: string[];
+  /**
+   * Module whose default export wraps every docs page, relative to the Farm application root.
+   * Farm renders docs pages outside the app's root layout, so use it for what that layout adds
+   * to other routes, such as analytics or site-wide widgets.
+   */
+  shell?: string;
 }
 
 export interface FarmConfigLike {
@@ -53,12 +60,13 @@ function appendDocsVitePlugins(
   config: FarmViteConfigLike = {},
   options: FarmDocsAdapterOptions,
 ): FarmViteConfigLike {
-  const { codeBlockThemes, contentRoots, buildCache, configPath } = options;
+  const { codeBlockThemes, contentRoots, buildCache, configPath, shell } = options;
   return {
     ...config,
     plugins: [
       docsMdx({ codeBlockThemes, contentRoots, buildCache }),
       docsAgentSkillsBundle({ configPath }),
+      docsShell(shell),
       ...(config.plugins ?? []),
     ],
   };

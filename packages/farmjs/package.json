@@ -33,6 +33,11 @@
       "import": "./dist/react.js",
       "default": "./dist/react.js"
     },
+    "./shell": {
+      "types": "./dist/shell.d.ts",
+      "import": "./dist/shell.js",
+      "default": "./dist/shell.js"
+    },
     "./content": {
       "types": "./dist/content.d.ts",
       "import": "./dist/content.js",
