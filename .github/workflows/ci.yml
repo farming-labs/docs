@@ -73,6 +73,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test package preview selection
+        run: node --test scripts/package-preview-plan.test.mjs
+
       - name: Run tests
         run: pnpm test
 

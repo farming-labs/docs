@@ -12,6 +12,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
+  actions: read
 
 jobs:
   publish-preview:
@@ -22,25 +24,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # PR events still build the merge ref and update the preview comment.
+      # Skip a push only when an open PR to main has a matching preview run.
+      - name: Check whether the PR already covers this preview
+        id: preview
+        run: node scripts/package-preview-plan.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Setup pnpm
+        if: steps.preview.outputs.publish == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 10.9.0
 
       - name: Setup Node.js
+        if: steps.preview.outputs.publish == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "pnpm"
 
       - name: Enable Corepack
+        if: steps.preview.outputs.publish == 'true'
         run: corepack enable
 
       - name: Install dependencies
+        if: steps.preview.outputs.publish == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
+        if: steps.preview.outputs.publish == 'true'
         run: pnpm build
 
       - name: Publish PR previews
+        if: steps.preview.outputs.publish == 'true'
         run: pnpm dlx pkg-pr-new publish --comment=update --packageManager=pnpm "./packages/*"
