@@ -376,6 +376,38 @@ describe("code block validation", () => {
     expect(report.results[0]?.stdout).toBe("sandbox\n");
   });
 
+  it("tells projects without the optional @vercel/sandbox peer to install it", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-vercel-missing-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```js title="sandbox.js" runnable', 'console.log("sandbox")', "```"].join("\n"),
+      "utf-8",
+    );
+
+    process.env.VERCEL_TOKEN = "test-token";
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_TEAM_ID = "team_test";
+    sandboxMock.create.mockImplementation(async () => {
+      throw Object.assign(
+        new Error("Cannot find package '@vercel/sandbox' imported from /docs/dist/index.mjs"),
+        { code: "ERR_MODULE_NOT_FOUND" },
+      );
+    });
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        runner: {
+          provider: "vercel-sandbox",
+        },
+      }),
+    });
+
+    expect(report.summary).toMatchObject({ pass: 0, skip: 1, fail: 0 });
+    expect(report.results[0]?.reason).toContain('install "@vercel/sandbox"');
+  });
+
   it("does not fall back to local execution for unavailable cloud runner", async () => {
     const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-cloud-"));
     writeFileSync(

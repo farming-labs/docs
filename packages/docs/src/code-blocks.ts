@@ -949,7 +949,15 @@ async function runPlansInVercelSandbox(
       await sandbox.stop().catch(() => {});
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // @vercel/sandbox is an optional peer, so most projects do not have it.
+    const missing =
+      (error as { code?: unknown } | null)?.code === "ERR_MODULE_NOT_FOUND" &&
+      String((error as Error).message).includes("@vercel/sandbox");
+    const message = missing
+      ? 'install "@vercel/sandbox" to run code blocks in a Vercel Sandbox'
+      : error instanceof Error
+        ? error.message
+        : String(error);
     return plans.map((plan) => skippedResult(plan, `vercel-sandbox unavailable: ${message}`));
   }
 }
