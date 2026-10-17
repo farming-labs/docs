@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@databuddy/sdk": "^2.3.29",
-    "@farm.js/core": "^0.1.20",
+    "@farm.js/core": "^0.1.21",
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/farmjs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
@@ -35,7 +35,7 @@
     "unicornstudio-react": "latest"
   },
   "devDependencies": {
-    "@farm.js/cli": "^0.1.20",
+    "@farm.js/cli": "^0.1.21",
     "@types/mdx": "^2.0.13",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
