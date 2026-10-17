@@ -10,6 +10,18 @@ on:
         description: Repeated serial trials
         default: '3'
         type: string
+      farm_ref:
+        description: Farm source commit to build
+        default: '85628bbea1bd7bfe1d0728d071b85335b4a208b1'
+        type: string
+      providers:
+        description: Space-separated providers
+        default: 'fumadocs farming farmjs farmjs-vercel'
+        type: string
+      profile:
+        description: Capture Farm CLI CPU profiles (diagnostic, not benchmark timing)
+        default: false
+        type: boolean
 permissions:
   contents: read
 jobs:
@@ -25,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: farming-labs/farm.js
-          ref: 7c76f2d597297be015df0c966d25b0f4fa7fc826
+          ref: ${{ inputs.farm_ref }}
           path: farm-source
       - uses: pnpm/action-setup@v4
         with:
@@ -62,7 +74,9 @@ jobs:
         env:
           BENCH_PAGES: ${{ inputs.pages }}
           BENCH_TRIALS: ${{ inputs.trials }}
-        run: python3 benchmark/farmjs-docs/run.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
+          BENCH_PROVIDERS: ${{ inputs.providers }}
+          FARM_BENCH_CPU_PROFILE: ${{ inputs.profile && '1' || '0' }}
+        run: python3 benchmark/farmjs-docs/run.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --providers $BENCH_PROVIDERS --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -74,3 +88,4 @@ jobs:
             benchmark/farmjs-docs/artifacts/ci-*/*.json
             benchmark/farmjs-docs/artifacts/ci-*/*.log
             benchmark/farmjs-docs/artifacts/ci-*/*.png
+            benchmark/farmjs-docs/artifacts/ci-*/*.cpuprofile

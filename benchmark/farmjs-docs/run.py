@@ -92,7 +92,8 @@ def main():
                         page.write_text(page.read_text()+'\nBENCHMARK_EDIT_MARKER: one paragraph changed.\n')
                     if provider.startswith('farmjs'):
                         check=measured([args.node,str(app/'node_modules/typescript/bin/tsc'),'--noEmit'],app,artifacts/(label+'-typecheck.log'))
-                        build=measured([args.node,str(source/'packages/farm-cli/bin/farm.js'),'build'],app,artifacts/(label+'.log'))
+                        profile=['--cpu-prof',f'--cpu-prof-dir={artifacts}',f'--cpu-prof-name={label}.cpuprofile'] if os.environ.get('FARM_BENCH_CPU_PROFILE')=='1' else []
+                        build=measured([args.node,*profile,str(source/'packages/farm-cli/bin/farm.js'),'build'],app,artifacts/(label+'.log'))
                         metrics={'wallSeconds':check['wallSeconds']+build['wallSeconds'],'buildSeconds':build['wallSeconds'],'typecheckSeconds':check['wallSeconds'],'peakTreeRssMiB':max(check['peakTreeRssMiB'],build['peakTreeRssMiB'])}
                         output=app/('.vercel/output' if provider=='farmjs-vercel' else '.output')
                         public=output/('static' if provider=='farmjs-vercel' else 'public')
