@@ -75,7 +75,29 @@ async function bundle(
     .join("\n");
 }
 
-describe("Farm MDX production cache", () => {
+describe("Farm MDX production cache", { timeout: 20_000 }, () => {
+  it("leaves virtual modules excluded by the MDX compiler untouched", async () => {
+    const virtualId = "\0virtual:docs-component.mdx";
+    const virtual: Plugin = {
+      name: "virtual-docs-component",
+      resolveId(id) {
+        if (id === "virtual:docs-component") return virtualId;
+      },
+      load(id) {
+        if (id === virtualId)
+          return "export default function Virtual(){return 'virtual-component'}";
+      },
+    };
+    await fs.writeFile(
+      path.join(root, "page.mdx"),
+      source + "\nimport Virtual from 'virtual:docs-component'\n\n<Virtual />\n",
+    );
+    const uncached = await bundle({}, "production", [docsMdx({ buildCache: false }), virtual]);
+    expect(uncached).toContain("virtual-component");
+    expect(await bundle({}, "production", [docsMdx(), virtual])).toBe(uncached);
+    expect(await bundle({}, "production", [docsMdx(), virtual])).toBe(uncached);
+  });
+
   it("keys the captured compiler themes rather than a later mutation of the options", async () => {
     const options = { codeBlockThemes: { dark: "github-dark" } };
     const original = docsMdx(options);

@@ -319,7 +319,7 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
       const version = await (build.fingerprint ??= fingerprintMdxCompiler());
       if (!version) return compile();
       const key = mdxCacheDigest(JSON.stringify([build.context, version, id, code]));
-      return build.cache.compile(id, key, async () => (await compile())!);
+      return build.cache.compile(id, key, compile);
     },
     async buildEnd(error) {
       const build = this.environment && builds.get(buildKey(this.environment.config));
