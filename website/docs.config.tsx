@@ -1021,7 +1021,7 @@ export default defineDocs({
   },
   themeToggle: {
     enabled: false,
-    default: "light",
+    default: "system",
   },
   components: {
     Callout,

@@ -22,5 +22,5 @@ export default withDocs(
       target: "vercel",
     },
   }),
-  { configPath: "docs.config.tsx" },
+  { configPath: "docs.config.tsx", shell: "src/docs-shell.tsx" },
 );
