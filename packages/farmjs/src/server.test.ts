@@ -394,6 +394,29 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(css).toContain(".\\[\\&_svg\\]\\:size-4");
   });
 
+  it("serves the adapter CSS in a cascade layer so host utilities win", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/__farm_docs/browser.css"));
+    const css = (await response?.text()) ?? "";
+    const layerStart = css.indexOf("@layer farm-docs-adapter {");
+
+    // The theme's preflight and utilities (`.border`) sit inside the layer, so a host's own
+    // `@layer utilities` rule such as `.border-l-4` takes precedence over them.
+    expect(layerStart).toBeGreaterThan(0);
+    expect(css.indexOf(".border {")).toBeGreaterThan(layerStart);
+    expect(css.indexOf("::file-selector-button")).toBeGreaterThan(layerStart);
+    expect(css.trimEnd().endsWith("}")).toBe(true);
+    // @property registrations do not cascade and stay top-level, ahead of the layer.
+    expect(css.indexOf("@property")).toBeLessThan(layerStart);
+    expect(css.lastIndexOf("@property")).toBeLessThan(layerStart);
+  });
+
   it("loads the adapter base CSS before host theme stylesheets", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",

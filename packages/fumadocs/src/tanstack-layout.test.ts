@@ -319,10 +319,10 @@ describe("TanstackDocsLayout", () => {
       children: React.createElement("div", null, "child"),
     });
 
-    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(false);
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBeFalsy();
   });
 
-  it("enables browser-owned actions without opting into framework CSS", () => {
+  it("keeps llms.txt a hidden agent directive in browser runtimes without framework CSS", () => {
     const tree = TanstackDocsLayout({
       config: {
         entry: "docs",
@@ -334,7 +334,8 @@ describe("TanstackDocsLayout", () => {
       children: React.createElement("div", null, "child"),
     });
 
-    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
+    // Matches the Next.js layout: the header has no llms.txt cell over the search and menu buttons.
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBeFalsy();
     expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
       "data-fd-browser-adapter": "",
     });
