@@ -1182,6 +1182,23 @@ function isDocsMarkdownLineInRanges(
   return ranges.some((range) => line >= range.start && line <= range.end);
 }
 
+/** Close each section at the next heading of the same or a shallower level. */
+function resolveDocsMarkdownSectionEnds(
+  headings: readonly { level: number; start: number }[],
+  lineCount: number,
+): number[] {
+  const ends = headings.map(() => lineCount);
+  const open: number[] = [];
+  for (let index = 0; index < headings.length; index += 1) {
+    const heading = headings[index];
+    while (open.length > 0 && headings[open[open.length - 1]].level >= heading.level) {
+      ends[open.pop()!] = heading.start;
+    }
+    open.push(index);
+  }
+  return ends;
+}
+
 /**
  * Parse heading sections once for search, Ask AI hydration, and MCP tools.
  * Supports CommonMark ATX indentation, Setext headings, fenced-code exclusion,
@@ -1308,9 +1325,9 @@ function parseDocsMarkdownSectionsFallback(
     heading.resolved = resolveHeadingAnchor(heading.source);
   }
 
+  const ends = resolveDocsMarkdownSectionEnds(headings, lines.length);
   return headings.map((heading, index) => {
-    const next = headings.slice(index + 1).find((candidate) => candidate.level <= heading.level);
-    const end = next?.start ?? lines.length;
+    const end = ends[index];
     const resolved = heading.resolved;
     if (!resolved) throw new Error("Failed to resolve a Markdown heading anchor.");
     return {
@@ -1369,9 +1386,9 @@ function parseDocsMarkdownAstSections(
   });
 
   const lines = markdown.split(/\r?\n/u);
+  const ends = resolveDocsMarkdownSectionEnds(headings, lines.length);
   return headings.map((heading, index) => {
-    const next = headings.slice(index + 1).find((candidate) => candidate.level <= heading.level);
-    const end = next?.start ?? lines.length;
+    const end = ends[index];
     return {
       title: heading.title,
       anchor: heading.anchor,
