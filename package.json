@@ -41,8 +41,6 @@
   },
   "pnpm": {
     "overrides": {
-      "@farm.js/core": "file:../farm.js/packages/farm",
-      "@farm.js/cli": "file:../farm.js/packages/farm-cli",
       "defu@<=6.1.4": "6.1.5",
       "next": "16.3.8",
       "astro": "7.3.5",

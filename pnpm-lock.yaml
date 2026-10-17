@@ -5,8 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@farm.js/core': file:../farm.js/packages/farm
-  '@farm.js/cli': file:../farm.js/packages/farm-cli
   defu@<=6.1.4: 6.1.5
   next: 16.3.8
   astro: 7.3.5
@@ -456,9 +454,6 @@ importers:
 
   packages/farmjs:
     dependencies:
-      '@farm.js/core':
-        specifier: file:../../../farm.js/packages/farm
-        version: file:../farm.js/packages/farm(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
       '@mdx-js/mdx':
         specifier: ^3.1.1
         version: 3.1.1(supports-color@10.2.2)
@@ -487,6 +482,9 @@ importers:
         specifier: ^4.3.6
         version: 4.6.5
     devDependencies:
+      '@farm.js/core':
+        specifier: ^0.1.0-beta.106
+        version: 0.1.20(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../docs
@@ -805,8 +803,8 @@ importers:
         specifier: ^2.3.29
         version: 2.3.29(react@19.2.4)(vue@3.5.43(typescript@5.9.3))
       '@farm.js/core':
-        specifier: file:../../farm.js/packages/farm
-        version: file:../farm.js/packages/farm(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
+        specifier: ^0.1.20
+        version: 0.1.20(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../packages/docs
@@ -869,8 +867,8 @@ importers:
         version: 2.2.13(next@16.3.8(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@farm.js/cli':
-        specifier: file:../../farm.js/packages/farm-cli
-        version: file:../farm.js/packages/farm-cli(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
+        specifier: ^0.1.20
+        version: 0.1.20(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
       '@types/mdx':
         specifier: ^2.0.13
         version: 2.0.13
@@ -1625,13 +1623,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@farm.js/cli@file:../farm.js/packages/farm-cli':
-    resolution: {directory: ../farm.js/packages/farm-cli, type: directory}
+  '@farm.js/cli@0.1.20':
+    resolution: {integrity: sha512-ThWjsuLsUaPiRNa7c+UZlt4cwpkWstNhxkA7ZB6OZBu7Nr9dNILcHV8QBHOqcqi8PB50zxZF660ueTiCSCTH0A==}
     engines: {node: '>=22.13.0'}
     hasBin: true
 
-  '@farm.js/core@file:../farm.js/packages/farm':
-    resolution: {directory: ../farm.js/packages/farm, type: directory}
+  '@farm.js/core@0.1.20':
+    resolution: {integrity: sha512-KCbpwvihdXMzB//ASr8a0ZQbES9GGqv5K5jZhqFIhYzG3hDojXd/bNcgKVaVSmBjQRA33LfVdtuKIWxqy7+ZrA==}
     engines: {node: '>=22.13.0'}
     peerDependencies:
       react: ^18.2.0 || ^19.0.0
@@ -2570,9 +2568,6 @@ packages:
 
   '@oxc-project/types@0.143.0':
     resolution: {integrity: sha512-u6JZdLBTLotrNC9Vd6vPssINdzcCzleKAH6EJKImQb7GtYvX5keN2dxkoK44stCc4tffE6QQRtZTXVSzsLUlWA==}
-
-  '@oxc-project/types@0.151.0':
-    resolution: {integrity: sha512-J1yXrIlNDZVzE3ada310xeAw7nH8yCAyLPuUIsjKatFPmfn5bS1oW+cM+QsGOtVWd5nhSpbwZWx/rue+r5Z+PA==}
 
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
@@ -3630,12 +3625,6 @@ packages:
     resolution: {integrity: sha512-yi6R0HyHtsoWTRA06Col4WoDs7SvlXU3DLMNP2bdAgs7HK18dTEVl1weXgxRzi8gwLteGUbIg29zulxIB3GSdg==}
     engines: {node: '>= 10'}
 
-  '@rolldown/binding-android-arm-eabi@1.2.11':
-    resolution: {integrity: sha512-A5kXfGKvKWWZE0TtPrfsvT+q4Y5d1QG8gGUzpYjGydM+fARM9MuX90PrXYXe0XbsDVgyxxNzHo6giCj90bsFNw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [android]
-
   '@rolldown/binding-android-arm-eabi@1.2.14':
     resolution: {integrity: sha512-aWR+XKH9+rW7m5fWq/5360J3mHycrx/o6xZM2DQFdJnTMdyP7/WzxPjhtLbVWdKo2y612/4U1bWqb3HQhiF7vg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3650,12 +3639,6 @@ packages:
 
   '@rolldown/binding-android-arm64@1.1.5':
     resolution: {integrity: sha512-lZg8fqIv2v7FF237bwMgzGZEJvGL79/s5knJ/i6FmsGF4XXlzccZ4jb+TrFIxtSSxFtIpdsgrPZeMk1I9AFcyQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [android]
-
-  '@rolldown/binding-android-arm64@1.2.11':
-    resolution: {integrity: sha512-z6cTycz+iJ4PVkuL4HHW4DfTfoeU/2nqYYuSOrTmH7yHK5Y0LCOnA03V4ZNxavyVaU1oOqUgIg2klN/s+USGOA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [android]
@@ -3678,12 +3661,6 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@rolldown/binding-darwin-arm64@1.2.11':
-    resolution: {integrity: sha512-jShvqNtP6vDC6/A5JOAzbVV+DkgHqhl/ScVCJEbt+TUY6QYz7YnXcrg3sLtFBniro0f/Ld50ZwCWA6f7KYD1nQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [darwin]
-
   '@rolldown/binding-darwin-arm64@1.2.14':
     resolution: {integrity: sha512-lTQOzHuBIooh3jIr5XINQkjPGEuGy+Dsy0meXDr6Sjty0b99kYgGh4uBC/8mJX1T0kC8d6S0aPP1Y+bHkh6aBw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3698,12 +3675,6 @@ packages:
 
   '@rolldown/binding-darwin-x64@1.1.5':
     resolution: {integrity: sha512-Tm+gbfC0aHu1tBA/JvKQh32S0K6YgCHkiAF4/W6xX0K0RmNuc94VeK419dJoE65R5aRxmo+noZQSWrAMF6yb6g==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [darwin]
-
-  '@rolldown/binding-darwin-x64@1.2.11':
-    resolution: {integrity: sha512-f2i2xiNWq1Z1l2++q2fuhZRdLAT3aqxD6vRNm1RAxpUoBcdqNB3C0s1Bt+K+PbEx2F5F4gQp6hqKkphCY/xF9w==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
@@ -3726,12 +3697,6 @@ packages:
     cpu: [x64]
     os: [freebsd]
 
-  '@rolldown/binding-freebsd-x64@1.2.11':
-    resolution: {integrity: sha512-4Ir5FSOKIAMr4r0kExpt1s3bMgzJU3rA45AYOHtQpls0oNeqcYBKrWMlckrYH4KCfGLfkfn1tN1dmZPMVsdXow==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [freebsd]
-
   '@rolldown/binding-freebsd-x64@1.2.14':
     resolution: {integrity: sha512-u371GbXoVXrEgP20PwzoGNOdAOqAMhzo19JzzY+V4YmmnC+DTOoqdbMu+O+54emM59Mik/UdrtWgcuEDKWRPKA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3746,12 +3711,6 @@ packages:
 
   '@rolldown/binding-linux-arm-gnueabihf@1.1.5':
     resolution: {integrity: sha512-uML21j2K5TfPGutKxub+M+nLjZIrWjXQ5Grx4lCe/nimTj9B4L63zHpjXLl4y0L3mcm2htEQIb06oCG/szerNw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [linux]
-
-  '@rolldown/binding-linux-arm-gnueabihf@1.2.11':
-    resolution: {integrity: sha512-/gnRDM+39BROzAN/k1OZjDPnDMcZxB/0EUxKjONO5yVkNEvlsoMDrxGNKgZi/ttFriS2gwlDNzB65pvNbFOXIQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
@@ -3774,12 +3733,6 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@rolldown/binding-linux-arm64-gnu@1.2.11':
-    resolution: {integrity: sha512-PFaK8HwvAHbaKbBcDNQihjMKYvFnA5hiENx/l5tphTDz1E0WFp32l0A7aq7lyUwGsRw/xSrNIy/gIK4thrSCrw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-
   '@rolldown/binding-linux-arm64-gnu@1.2.14':
     resolution: {integrity: sha512-SD9kY8M009x/7s57Z1dgUVlP5+uYBgKQK0Tkr1WIWngrtUJmRCW1RJFMY7QDla2khXhmg2i5Io7MUjcmZNZ/KQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3798,12 +3751,6 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@rolldown/binding-linux-arm64-musl@1.2.11':
-    resolution: {integrity: sha512-AskzJUIKRLPxkruR1wLKewGbOw+EYfU/9lOrBFj4AFrEA8hPpKFnODWNu2WLaNs0QNkEb9QIJufmVZZIL/bJlg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-
   '@rolldown/binding-linux-arm64-musl@1.2.14':
     resolution: {integrity: sha512-BJ2CL19M6uuWesMgnqJzgxoI+N+eV7b0A9O9vLV42y+gitC41fNa8KElau1tHVzuLWX5GzEuxMPhAO0tQXQMkg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3816,12 +3763,6 @@ packages:
     cpu: [ppc64]
     os: [linux]
 
-  '@rolldown/binding-linux-ppc64-gnu@1.2.11':
-    resolution: {integrity: sha512-qlUGAheh2yh8afH7QBgx0PrRHN85hKnNd78x8MeMhXivuevgd8vgf6/CstOzmNKY/lLTHvNTrPy98cLnAugzJw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [ppc64]
-    os: [linux]
-
   '@rolldown/binding-linux-ppc64-gnu@1.2.14':
     resolution: {integrity: sha512-4+Kl8daPV8NDHaD7mfCcc1pRM+Qg7ab8DyMm5FG5WoZgv4h2i3KFN1CybYBNbQqmuYm7ftJLvmMI1eHYJ22S/Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3830,12 +3771,6 @@ packages:
 
   '@rolldown/binding-linux-s390x-gnu@1.1.5':
     resolution: {integrity: sha512-gLYb4BIadlfTOYT5gO503n8zQjXflgzpD0FcyKh0Mzx3rqCZKnHoJWV9xe1KXUJ5lx2JfcSHr/mhzS0PC/McAA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [s390x]
-    os: [linux]
-
-  '@rolldown/binding-linux-s390x-gnu@1.2.11':
-    resolution: {integrity: sha512-secpEad+0vCbSfn8upFySkDskv+bGPk3THSDS9Y89yc4rb4kzqHp8Dmyd9BkQW4SnhNXBZCl/6CrO//hZahNJQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
@@ -3858,12 +3793,6 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@rolldown/binding-linux-x64-gnu@1.2.11':
-    resolution: {integrity: sha512-mOVBT3dPpkWm8XBWPmU4bf+U6dYDLeMo/9ojUmis4N0L5uu10qra5vOyngZ7/PSdoE4G9KvRt4bloRxNjLas7A==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-
   '@rolldown/binding-linux-x64-gnu@1.2.14':
     resolution: {integrity: sha512-WxalXzgrLVpKC93xfpaJ3gCXUWzeCr+FRCbDVD2mUAy4L6Vo3lNVz0epUEUpxPWJkLNYUwM4OSIikv36OJ9mLg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3882,12 +3811,6 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@rolldown/binding-linux-x64-musl@1.2.11':
-    resolution: {integrity: sha512-Is78i9A8Ui4SqcxUwFJ9uMmjDn58IbVTjFWYdQestFEgeuEmHMLGNriXnVJKkwG2YiZjw8cP0zCTyDMdDGtOOg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-
   '@rolldown/binding-linux-x64-musl@1.2.14':
     resolution: {integrity: sha512-3G3tnAmTpdk9jO3GQtyHXqeFD2SlecfTws/Y3M2mmj9nMBwwuLT4kur8sZKeu7ENUHSpVO3cIsm5A52LEWWwlg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3902,12 +3825,6 @@ packages:
 
   '@rolldown/binding-openharmony-arm64@1.1.5':
     resolution: {integrity: sha512-yc5WrLzXks6zCQfn9Oxr8pORKyl/pF+QjHmW/Qx3qu0oyrrNC+y2JLTU1E2rcWYAmzlnqngWXHQjy51VzW70Vw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [openharmony]
-
-  '@rolldown/binding-openharmony-arm64@1.2.11':
-    resolution: {integrity: sha512-dUCXneZ87INUMyQ0D+C0HrEBNUPNXHaPmU5GTjyKTJEiussw9Kaj5Ln8UztPe4epV/ffvgNBEadksdYhmW6xJA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
@@ -3940,12 +3857,6 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  '@rolldown/binding-win32-arm64-msvc@1.2.11':
-    resolution: {integrity: sha512-jByxb6qfd+bH1xUd0qnfFnb17i9sWBPY2tOavJ0l3tdr3OTu+Kvtm8cd/JV5nFt657b1VqGltxg9olOEfofXWw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [win32]
-
   '@rolldown/binding-win32-arm64-msvc@1.2.14':
     resolution: {integrity: sha512-oA4o5o0S2yB199YyYXDzKUv1Z56Rc+mgOjwm7Z/vJ9Z8igiDPYvoOuDyo6g7AK/ZaF09nPhDKVnGBcYHO11GXA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3960,12 +3871,6 @@ packages:
 
   '@rolldown/binding-win32-x64-msvc@1.1.5':
     resolution: {integrity: sha512-tTZuDBPw85tEN5PQi1pnEBzDy0Z49HtScLAbD5t6hyeU92A95pRWaSMw1GZZi/RwgSgUIl0xrSlXIT/9QzvYSA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [win32]
-
-  '@rolldown/binding-win32-x64-msvc@1.2.11':
-    resolution: {integrity: sha512-/PzKqzAJ03i19oy2ItPvyvaVjOjBCNnfaJs8yvUdGBKmiESgnrJSQ2awd81QzFbbnAmu7YO9ZnJrDCb9VSJPRA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
@@ -8304,11 +8209,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  rolldown@1.2.11:
-    resolution: {integrity: sha512-qpSwIyz0jHQq5qXBTNxFmE6664rJ7O+4TvPFOiOaBSrz8IOHc1koKKSqTM2H6u1UG1+TveuC6vaDHKXFOvb1Kw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-
   rolldown@1.2.14:
     resolution: {integrity: sha512-eTBTTqMR6uHKLgcUqpJP8ntzDI6V4LYA8negAMBEI7gkgVvOdrx6VsvS2Ym+83KhOPdLCHWJu0w7UQFJZhHKNw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -10627,9 +10527,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@farm.js/cli@file:../farm.js/packages/farm-cli(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)':
+  '@farm.js/cli@0.1.20(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)':
     dependencies:
-      '@farm.js/core': file:../farm.js/packages/farm(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
+      '@farm.js/core': 0.1.20(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
       '@farm.js/tunnel': 0.1.2
       commander: 11.1.0
       croner: 9.1.0
@@ -10688,7 +10588,7 @@ snapshots:
       - uploadthing
       - yaml
 
-  '@farm.js/core@file:../farm.js/packages/farm(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)':
+  '@farm.js/core@0.1.20(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)':
     dependencies:
       '@farming-labs/docs': 0.2.120(react@19.2.4)(supports-color@10.2.2)
       '@farming-labs/orm': 0.0.64
@@ -10721,7 +10621,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      rolldown: 1.2.11
+      rolldown: 1.2.14
       sharp: 0.35.5(@types/node@22.20.5)
     transitivePeerDependencies:
       - '@aws-sdk/client-dynamodb'
@@ -12408,8 +12308,6 @@ snapshots:
 
   '@oxc-project/types@0.143.0': {}
 
-  '@oxc-project/types@0.151.0': {}
-
   '@oxc-project/types@0.154.0': {}
 
   '@oxc-transform/binding-android-arm-eabi@0.143.0':
@@ -13240,9 +13138,6 @@ snapshots:
 
   '@resvg/resvg-wasm@2.4.1': {}
 
-  '@rolldown/binding-android-arm-eabi@1.2.11':
-    optional: true
-
   '@rolldown/binding-android-arm-eabi@1.2.14':
     optional: true
 
@@ -13250,9 +13145,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-android-arm64@1.1.5':
-    optional: true
-
-  '@rolldown/binding-android-arm64@1.2.11':
     optional: true
 
   '@rolldown/binding-android-arm64@1.2.14':
@@ -13264,9 +13156,6 @@ snapshots:
   '@rolldown/binding-darwin-arm64@1.1.5':
     optional: true
 
-  '@rolldown/binding-darwin-arm64@1.2.11':
-    optional: true
-
   '@rolldown/binding-darwin-arm64@1.2.14':
     optional: true
 
@@ -13274,9 +13163,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-darwin-x64@1.1.5':
-    optional: true
-
-  '@rolldown/binding-darwin-x64@1.2.11':
     optional: true
 
   '@rolldown/binding-darwin-x64@1.2.14':
@@ -13288,9 +13174,6 @@ snapshots:
   '@rolldown/binding-freebsd-x64@1.1.5':
     optional: true
 
-  '@rolldown/binding-freebsd-x64@1.2.11':
-    optional: true
-
   '@rolldown/binding-freebsd-x64@1.2.14':
     optional: true
 
@@ -13298,9 +13181,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-linux-arm-gnueabihf@1.1.5':
-    optional: true
-
-  '@rolldown/binding-linux-arm-gnueabihf@1.2.11':
     optional: true
 
   '@rolldown/binding-linux-arm-gnueabihf@1.2.14':
@@ -13312,9 +13192,6 @@ snapshots:
   '@rolldown/binding-linux-arm64-gnu@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-arm64-gnu@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-arm64-gnu@1.2.14':
     optional: true
 
@@ -13324,25 +13201,16 @@ snapshots:
   '@rolldown/binding-linux-arm64-musl@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-arm64-musl@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-arm64-musl@1.2.14':
     optional: true
 
   '@rolldown/binding-linux-ppc64-gnu@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-ppc64-gnu@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-ppc64-gnu@1.2.14':
     optional: true
 
   '@rolldown/binding-linux-s390x-gnu@1.1.5':
-    optional: true
-
-  '@rolldown/binding-linux-s390x-gnu@1.2.11':
     optional: true
 
   '@rolldown/binding-linux-s390x-gnu@1.2.14':
@@ -13354,9 +13222,6 @@ snapshots:
   '@rolldown/binding-linux-x64-gnu@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-x64-gnu@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-x64-gnu@1.2.14':
     optional: true
 
@@ -13366,9 +13231,6 @@ snapshots:
   '@rolldown/binding-linux-x64-musl@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-x64-musl@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-x64-musl@1.2.14':
     optional: true
 
@@ -13376,9 +13238,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-openharmony-arm64@1.1.5':
-    optional: true
-
-  '@rolldown/binding-openharmony-arm64@1.2.11':
     optional: true
 
   '@rolldown/binding-openharmony-arm64@1.2.14':
@@ -13402,9 +13261,6 @@ snapshots:
   '@rolldown/binding-win32-arm64-msvc@1.1.5':
     optional: true
 
-  '@rolldown/binding-win32-arm64-msvc@1.2.11':
-    optional: true
-
   '@rolldown/binding-win32-arm64-msvc@1.2.14':
     optional: true
 
@@ -13412,9 +13268,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-win32-x64-msvc@1.1.5':
-    optional: true
-
-  '@rolldown/binding-win32-x64-msvc@1.2.11':
     optional: true
 
   '@rolldown/binding-win32-x64-msvc@1.2.14':
@@ -17431,7 +17284,7 @@ snapshots:
       hookable: 6.1.1
       nf3: 0.3.24
       ocache: 0.3.0
-      rolldown: 1.2.11
+      rolldown: 1.2.14
       rou3: 0.9.2
       srvx: 1.0.5
       unenv: 2.0.0-rc.24
@@ -19068,27 +18921,6 @@ snapshots:
       '@rolldown/binding-wasm32-wasi': 1.1.5
       '@rolldown/binding-win32-arm64-msvc': 1.1.5
       '@rolldown/binding-win32-x64-msvc': 1.1.5
-
-  rolldown@1.2.11:
-    dependencies:
-      '@oxc-project/types': 0.151.0
-      '@rolldown/pluginutils': 1.0.1
-    optionalDependencies:
-      '@rolldown/binding-android-arm-eabi': 1.2.11
-      '@rolldown/binding-android-arm64': 1.2.11
-      '@rolldown/binding-darwin-arm64': 1.2.11
-      '@rolldown/binding-darwin-x64': 1.2.11
-      '@rolldown/binding-freebsd-x64': 1.2.11
-      '@rolldown/binding-linux-arm-gnueabihf': 1.2.11
-      '@rolldown/binding-linux-arm64-gnu': 1.2.11
-      '@rolldown/binding-linux-arm64-musl': 1.2.11
-      '@rolldown/binding-linux-ppc64-gnu': 1.2.11
-      '@rolldown/binding-linux-s390x-gnu': 1.2.11
-      '@rolldown/binding-linux-x64-gnu': 1.2.11
-      '@rolldown/binding-linux-x64-musl': 1.2.11
-      '@rolldown/binding-openharmony-arm64': 1.2.11
-      '@rolldown/binding-win32-arm64-msvc': 1.2.11
-      '@rolldown/binding-win32-x64-msvc': 1.2.11
 
   rolldown@1.2.14:
     dependencies:
