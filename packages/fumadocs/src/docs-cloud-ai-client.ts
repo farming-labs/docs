@@ -15,7 +15,9 @@ export interface DocsCloudAIClientRequest {
 }
 
 function readRuntimeEnv(name: string): string | undefined {
-  const value = process.env[name]?.trim();
+  // Browser bundles outside Next.js (Vite, Farm, TanStack Start) have no `process`.
+  if (typeof process === "undefined") return undefined;
+  const value = process.env?.[name]?.trim();
   return value ? value : undefined;
 }
 
