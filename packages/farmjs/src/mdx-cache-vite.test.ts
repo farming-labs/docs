@@ -25,6 +25,7 @@ vi.mock("@mdx-js/rollup", async (original) => {
 });
 
 let root: string;
+let lastSourceMaps: unknown[];
 const source =
   "# Cached page\n\nimport Demo from './demo.tsx'\n\n<Demo />\n\n```ts\nconst answer = 42;\n```\n";
 beforeEach(async () => {
@@ -65,6 +66,9 @@ async function bundle(
     },
   });
   if (!("output" in output)) throw new Error("Expected a single build output");
+  lastSourceMaps = output.output
+    .filter((item) => item.type === "chunk")
+    .map((item) => JSON.parse(JSON.stringify(item.map)));
   return output.output
     .filter((item) => item.type === "chunk")
     .map((item) => item.code)
@@ -91,10 +95,15 @@ describe("Farm MDX production cache", () => {
   });
 
   it("preserves build output while skipping MDX compilation in a subsequent build", async () => {
+    const uncached = await bundle({ buildCache: false });
+    const uncachedMaps = lastSourceMaps;
     const cold = await bundle();
-    expect(compiled).toHaveBeenCalledTimes(1);
+    expect(cold).toBe(uncached);
+    expect(lastSourceMaps).toEqual(uncachedMaps);
+    expect(compiled).toHaveBeenCalledTimes(2);
     expect(await bundle()).toBe(cold);
-    expect(compiled).toHaveBeenCalledTimes(1);
+    expect(lastSourceMaps).toEqual(uncachedMaps);
+    expect(compiled).toHaveBeenCalledTimes(2);
   });
 
   it("recompiles edited MDX and changed themes", async () => {
