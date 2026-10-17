@@ -66,6 +66,31 @@ same theme. This is the same unified CSS entrypoint used by the Next.js,
 TanStack Start, SvelteKit, Astro, and Nuxt integrations. The adapter does not
 ship or inject a second Farm-specific theme stylesheet.
 
+## Repeated production builds
+
+The adapter reuses unchanged Markdown/MDX compilation and syntax highlighting
+in production builds. It stores the compiled code and source maps under
+`<Vite cacheDir>/farming-docs/mdx-v1.json`; Vite normally places `cacheDir` in
+`node_modules/.vite`. Preserve that directory in your CI build cache to reuse
+work across jobs. Deleting it only causes compilation to run again.
+
+Cache entries are keyed by source, module path, mode, highlighting themes,
+Node version, and a content fingerprint of the compiler implementation and
+its dependencies. Vite still discovers and builds imports, components, CSS,
+routes, and deployment output normally. Development and watch builds do not
+use this cache. Missing, corrupt, incompatible, or unwritable cache files
+fall back to compilation; compiler errors still fail the build.
+
+The cache retains at most 1,024 modules and approximately 32 MiB of payload.
+It does not cache rendered HTML or change client navigation or prerendering.
+To diagnose a build without MDX cache reuse:
+
+```ts
+export default withDocs(defineConfig({}), { buildCache: false });
+```
+
+The lower-level `docsMdx({ buildCache: false })` option has the same behavior.
+
 ## Edge deployments
 
 Farm edge targets use the adapter's build-time compiler automatically. It

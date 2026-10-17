@@ -11,6 +11,8 @@ export default defineConfig({
       "@farming-labs/docs/client/react": resolve(rootDir, "src/client/react.ts"),
       "@farming-labs/docs/cloud/server": resolve(rootDir, "src/docs-cloud-server.ts"),
       "@farming-labs/docs/server": resolve(rootDir, "src/server.ts"),
+      "@farming-labs/docs/build": resolve(rootDir, "src/build.ts"),
+      "@farming-labs/docs/agent-skills-bundle": resolve(rootDir, "src/agent-skills-bundle.ts"),
       "@farming-labs/docs": resolve(rootDir, "src/index.ts"),
     },
   },

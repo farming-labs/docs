@@ -83,7 +83,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@farm.js/core": "^0.1.0-beta.106",
+    "@farm.js/core": "^0.1.21",
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
     "@types/node": "^22.10.0",

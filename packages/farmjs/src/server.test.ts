@@ -60,6 +60,12 @@ Build a Farm application.
     expect(page.descriptionInBody).toBe(true);
   });
 
+  it("leaves the API reference path to the app when the reference is not configured", async () => {
+    const server = createDocsServer(config);
+
+    await expect(server.handle(new Request("https://farm.test/api-reference"))).resolves.toBeNull();
+  });
+
   it("opens configured pixel-border navigation groups by default", async () => {
     const server = createDocsServer({
       ...config,
@@ -248,6 +254,29 @@ Build a Farm application.
 
       expect(page.lastModified).toBe("August 9, 2026");
       expect(await sitemap?.text()).toContain("<lastmod>2026-08-09</lastmod>");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves bundled root agent documents when the project files are absent", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farmjs-root-documents-"));
+    try {
+      const server = createDocsServer({
+        ...config,
+        rootDir,
+        _preloadedRootDocuments: {
+          "skill.md":
+            "---\nname: site\ndescription: Use this site through its docs.\n---\n\n# Site skill\n",
+          "AGENTS.md": "# Site agents\n",
+        },
+      });
+
+      const skill = await server.handle(new Request("https://farm.example/skill.md"));
+      expect(await skill?.text()).toContain("# Site skill");
+
+      const agents = await server.handle(new Request("https://farm.example/AGENTS.md"));
+      expect(await agents?.text()).toContain("# Site agents");
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }
