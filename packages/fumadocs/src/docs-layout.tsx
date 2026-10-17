@@ -34,7 +34,7 @@ import type {
   DocsSitemapManifest,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
-import { DocsAIFeatures } from "./docs-ai-features.js";
+import { DocsAIFeatures } from "./docs-ai-features-lazy.js";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
