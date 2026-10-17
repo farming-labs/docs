@@ -2681,8 +2681,11 @@ function renderFarmDocsDocument(input: {
   clientEntry: string;
   stylesheets: readonly string[];
   fonts?: FarmDocsRuntimeFonts;
+  /** Request origin, so the Markdown alternate link is absolute as in the Next.js layout. */
+  origin?: string;
 }): string {
   const { config, data } = input;
+  const markdownHref = `${input.origin ?? ""}${data.url.replace(/\/+$/, "")}.md`;
   const clientConfig = createClientDocsConfig(config);
   const description = data.description ?? config.metadata?.description;
   const themeName = config.theme?.name ?? "default";
@@ -2701,6 +2704,7 @@ function renderFarmDocsDocument(input: {
   <meta name="generator" content="@farming-labs/farmjs">
   <title>${escapeDocumentText(data.title)}</title>
   ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
+  <link rel="alternate" type="text/markdown" href="${escapeDocumentText(markdownHref)}">
   ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
   ${renderThemeBootstrap(config)}
   ${fontPreloads}
@@ -2816,6 +2820,7 @@ export function createFarmDocsRuntimeHandler(
       clientEntry: options.clientEntry ?? "/farm-client.js",
       stylesheets: options.stylesheets ?? [],
       fonts,
+      origin: new URL(request.url).origin,
     });
 
     return new Response(request.method.toUpperCase() === "HEAD" ? null : html, {

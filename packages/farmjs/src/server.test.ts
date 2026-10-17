@@ -417,6 +417,23 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(css.lastIndexOf("@property")).toBeLessThan(layerStart);
   });
 
+  it("links each docs page to its Markdown mirror in the document head", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/docs/"));
+    const html = (await response?.text()) ?? "";
+    const head = html.slice(0, html.indexOf("</head>"));
+
+    expect(head).toContain(
+      '<link rel="alternate" type="text/markdown" href="https://farm.example/docs.md">',
+    );
+  });
+
   it("loads the adapter base CSS before host theme stylesheets", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",
