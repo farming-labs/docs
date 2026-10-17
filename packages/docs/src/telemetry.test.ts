@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   emitDocsTelemetryEvent,
   emitDocsTelemetryMcpToolEvent,
+  emitDocsTelemetryAgentSurfaceEvent,
   emitDocsTelemetryPageViewEvent,
   emitDocsTelemetryProjectEvent,
   getDocsTelemetryFeatures,
@@ -436,6 +437,48 @@ describe("telemetry", () => {
       codeBlocksValidate: true,
     });
   });
+
+  it.each(["project", "surface", "tool"] as const)(
+    "retains server feature reporting for %s events",
+    async (kind) => {
+      process.env.NODE_ENV = "production";
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, _init?: RequestInit) =>
+          new Response(null, { status: 202 }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      const config = { telemetry: true, ai: { enabled: true }, staticExport: true };
+      const context = { siteOrigin: "https://docs.example.com" };
+      if (kind === "project") emitDocsTelemetryProjectEvent(config, context);
+      else if (kind === "surface")
+        emitDocsTelemetryAgentSurfaceEvent(config, { ...context, surface: "markdown" });
+      else emitDocsTelemetryMcpToolEvent(config, { ...context, tool: "read_page" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const event = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).event;
+      expect(event.features).toEqual(getDocsTelemetryFeatures(config));
+      expect(event.features).toMatchObject({ ai: true, staticExport: true, contentChanges: false });
+    },
+  );
+
+  it.each(["project", "surface", "tool"] as const)(
+    "checks local origins before resolving features for %s",
+    (kind) => {
+      const config = {
+        telemetry: true,
+        get agent(): never {
+          throw new Error("Feature resolution ran too early");
+        },
+      };
+      const context = { siteOrigin: "http://localhost:3200" };
+      expect(() => {
+        if (kind === "project") emitDocsTelemetryProjectEvent(config, context);
+        else if (kind === "surface")
+          emitDocsTelemetryAgentSurfaceEvent(config, { ...context, surface: "markdown" });
+        else emitDocsTelemetryMcpToolEvent(config, { ...context, tool: "read_page" });
+      }).not.toThrow();
+    },
+  );
 
   it("classifies agent-facing request surfaces", () => {
     expect(

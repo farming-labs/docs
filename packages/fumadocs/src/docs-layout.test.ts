@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
+import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 import { shadcn } from "./shadcn/index.js";
 
 vi.mock("./docs-ai-features.js", () => {
@@ -191,15 +192,17 @@ agent:
     expect(props?.descriptionMap).toEqual({ "/docs": "Fresh description" });
     expect(props?.readingTimeMap).toEqual({ "/docs": 7 });
     expect(props?.generatedTitleMap).toEqual({ "/docs": "Updated", "/docs/new": "New page" });
-    expect(props?.structuredDataMap).toMatchObject({
-      "/docs": expect.stringContaining("Fresh description"),
+    expect((props?.structuredDataPages as DocsStructuredDataPages).pages).toMatchObject({
+      "/docs": { description: "Fresh description" },
     });
 
     rmSync(join(docsDir, "new"), { recursive: true });
     const removed = render();
     expect(findDocsLayoutTree(removed)?.children).toHaveLength(1);
     expect(findDocsPageClientProps(removed)?.generatedTitleMap).not.toHaveProperty("/docs/new");
-    expect(findDocsPageClientProps(removed)?.structuredDataMap).not.toHaveProperty("/docs/new");
+    expect(
+      (findDocsPageClientProps(removed)?.structuredDataPages as DocsStructuredDataPages).pages,
+    ).not.toHaveProperty("/docs/new");
   });
 
   it("keeps production content isolated by layout configuration and locale", () => {
@@ -242,7 +245,9 @@ agent:
     const props = findDocsPageClientProps(Layout({ children: null }));
     expect(props?.lastModifiedMap).toEqual({});
     expect(props?.generatedTitleMap).toEqual({ "/docs/markdown": "Markdown" });
-    expect(props?.structuredDataMap).toHaveProperty("/docs/markdown");
+    expect((props?.structuredDataPages as DocsStructuredDataPages).pages).toHaveProperty(
+      "/docs/markdown",
+    );
   });
 
   it("passes enabled page actions through to DocsPageClient", () => {
@@ -397,13 +402,17 @@ agent:
       children: React.createElement("div", null, "child"),
     });
     const props = findDocsPageClientProps(tree);
-    const map = props?.structuredDataMap as Record<string, string> | undefined;
+    expect(props?.structuredDataMap).toBeUndefined();
+    const json = renderPageStructuredData(
+      props?.structuredDataPages as DocsStructuredDataPages,
+      "/docs",
+    );
 
-    expect(map?.["/docs"]).toContain('"@type":"TechArticle"');
-    expect(map?.["/docs"]).toContain('"url":"https://docs.example.com/docs"');
-    expect(map?.["/docs"]).toContain('"headline":"Home"');
-    expect(map?.["/docs"]).toContain('"@type":"HowTo"');
-    expect(map?.["/docs"]).toContain('"name":"Configure the docs home"');
+    expect(json).toContain('"@type":"TechArticle"');
+    expect(json).toContain('"url":"https://docs.example.com/docs"');
+    expect(json).toContain('"headline":"Home"');
+    expect(json).toContain('"@type":"HowTo"');
+    expect(json).toContain('"name":"Configure the docs home"');
   });
 
   it("uses sitemap manifest dates for page chrome and structured data", () => {
@@ -436,11 +445,14 @@ agent:
     const tree = Layout({ children: React.createElement("div", null, "child") });
     const props = findDocsPageClientProps(tree);
     const lastModifiedMap = props?.lastModifiedMap as Record<string, string> | undefined;
-    const structuredDataMap = props?.structuredDataMap as Record<string, string> | undefined;
+    const json = renderPageStructuredData(
+      props?.structuredDataPages as DocsStructuredDataPages,
+      "/docs",
+    );
 
     expect(lastModifiedMap?.["/docs"]).toBe("September 29, 2026");
-    expect(structuredDataMap?.["/docs"]).toContain('"dateModified":"2026-09-29T00:00:00.000Z"');
-    expect(structuredDataMap?.["/docs"]).not.toContain("2018-10-20");
+    expect(json).toContain('"dateModified":"2026-09-29T00:00:00.000Z"');
+    expect(json).not.toContain("2018-10-20");
   });
 
   it("does not add an extra display: contents wrapper above the docs layout root", () => {

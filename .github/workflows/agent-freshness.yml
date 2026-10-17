@@ -8,7 +8,7 @@ on:
       - "website/.farming-labs/agent-compaction-reviews.json"
       - "packages/docs/src/cli/agent.ts"
       - "packages/docs/src/cli/agent.test.ts"
-      - "website/app/docs/**"
+      - "website/src/app/docs/**"
       - "website/docs.config.tsx"
   pull_request:
     branches: [main]
@@ -17,7 +17,7 @@ on:
       - "website/.farming-labs/agent-compaction-reviews.json"
       - "packages/docs/src/cli/agent.ts"
       - "packages/docs/src/cli/agent.test.ts"
-      - "website/app/docs/**"
+      - "website/src/app/docs/**"
       - "website/docs.config.tsx"
   workflow_dispatch:
 
