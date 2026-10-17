@@ -259,6 +259,29 @@ Build a Farm application.
     }
   });
 
+  it("serves bundled root agent documents when the project files are absent", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farmjs-root-documents-"));
+    try {
+      const server = createDocsServer({
+        ...config,
+        rootDir,
+        _preloadedRootDocuments: {
+          "skill.md":
+            "---\nname: site\ndescription: Use this site through its docs.\n---\n\n# Site skill\n",
+          "AGENTS.md": "# Site agents\n",
+        },
+      });
+
+      const skill = await server.handle(new Request("https://farm.example/skill.md"));
+      expect(await skill?.text()).toContain("# Site skill");
+
+      const agents = await server.handle(new Request("https://farm.example/AGENTS.md"));
+      expect(await agents?.text()).toContain("# Site agents");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
   it("handles docs endpoints and falls through for application routes", async () => {
     const server = createDocsServer(config);
 

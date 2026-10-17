@@ -94,6 +94,7 @@ import {
 } from "@farming-labs/docs/server";
 
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
+import { bundledAgentSkills, bundledRootDocuments } from "@farming-labs/docs/agent-skills-bundle";
 import {
   loadDocsNavTree,
   loadDocsContent,
@@ -774,13 +775,20 @@ function findPageInMap(contentMap: ContentFileMap, dirPrefix: string, slug: stri
   return null;
 }
 
-function readRootSkillDocument(contentMap: ContentFileMap | null, rootDir: string): string | null {
+type RootAgentDocuments = Readonly<Record<string, string>> | undefined;
+
+function readRootSkillDocument(
+  contentMap: ContentFileMap | null,
+  rootDir: string,
+  rootDocuments: RootAgentDocuments,
+): string | null {
   if (contentMap) {
     for (const key of ["/skill.md", "skill.md", "./skill.md"]) {
       const raw = contentMap[key];
       if (typeof raw === "string") return raw;
     }
   }
+  if (typeof rootDocuments?.["skill.md"] === "string") return rootDocuments["skill.md"];
 
   const candidate = path.join(rootDir, "skill.md");
   try {
@@ -794,7 +802,11 @@ function readRootSkillDocument(contentMap: ContentFileMap | null, rootDir: strin
   return null;
 }
 
-function readRootAgentsDocument(contentMap: ContentFileMap | null, rootDir: string): string | null {
+function readRootAgentsDocument(
+  contentMap: ContentFileMap | null,
+  rootDir: string,
+  rootDocuments: RootAgentDocuments,
+): string | null {
   if (contentMap) {
     for (const key of [
       "/AGENTS.md",
@@ -807,6 +819,10 @@ function readRootAgentsDocument(contentMap: ContentFileMap | null, rootDir: stri
       const raw = contentMap[key];
       if (typeof raw === "string") return raw;
     }
+  }
+
+  for (const fileName of ["AGENTS.md", "AGENT.md"]) {
+    if (typeof rootDocuments?.[fileName] === "string") return rootDocuments[fileName];
   }
 
   for (const fileName of ["AGENTS.md", "AGENT.md"]) {
@@ -830,10 +846,15 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const ordering = config.ordering;
   const contentDirBase = config.contentDir ?? entry;
   const rootDir = path.resolve((config.rootDir as string | undefined) ?? process.cwd());
+  // Production builds snapshot the configured skills and root agent documents into these
+  // (agent-skills.ts), because a deployed function does not contain the project's files.
+  const preloadedAgentSkills = config._preloadedAgentSkills ?? bundledAgentSkills;
+  const rootAgentDocuments: RootAgentDocuments =
+    config._preloadedRootDocuments ?? bundledRootDocuments;
   let publishedAgentSkills: ReturnType<typeof resolveConfiguredAgentSkills> | undefined;
   function getPublishedAgentSkills() {
-    publishedAgentSkills ??= Array.isArray(config._preloadedAgentSkills)
-      ? Promise.resolve(config._preloadedAgentSkills)
+    publishedAgentSkills ??= Array.isArray(preloadedAgentSkills)
+      ? Promise.resolve(preloadedAgentSkills)
       : resolveConfiguredAgentSkills(config.agent?.skills, { rootDir });
     return publishedAgentSkills;
   }
@@ -1287,7 +1308,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     return createDocsStandardsDiscoveryResponse({
       request,
       ...discoveryOptions,
-      preferredSkillDocument: needsSkill ? readRootSkillDocument(preloaded, rootDir) : null,
+      preferredSkillDocument: needsSkill
+        ? readRootSkillDocument(preloaded, rootDir, rootAgentDocuments)
+        : null,
       fallbackSkillDocument: needsSkill ? renderDocsSkillDocument(discoveryOptions) : "",
       publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: config.agent?.a2a,
@@ -1365,7 +1388,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         ...discoveryOptions,
         publishedSkills: [
           await resolveDocsPublishedAgentSkill({
-            preferredDocument: readRootSkillDocument(preloaded, rootDir),
+            preferredDocument: readRootSkillDocument(preloaded, rootDir, rootAgentDocuments),
             fallbackDocument: renderDocsSkillDocument(discoveryOptions),
           }),
           ...(await getPublishedAgentSkills()),
@@ -1470,7 +1493,8 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       resolveDocsAgentsFormat(url) === "agents"
     ) {
       const content =
-        readRootAgentsDocument(preloaded, rootDir) ?? renderDocsAgentsDocument(discoveryOptions);
+        readRootAgentsDocument(preloaded, rootDir, rootAgentDocuments) ??
+        renderDocsAgentsDocument(discoveryOptions);
       return createDocsCacheableResponse({
         request: event.request,
         content,
@@ -1488,7 +1512,8 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       resolveDocsSkillFormat(url) === "skill"
     ) {
       const content =
-        readRootSkillDocument(preloaded, rootDir) ?? renderDocsSkillDocument(discoveryOptions);
+        readRootSkillDocument(preloaded, rootDir, rootAgentDocuments) ??
+        renderDocsSkillDocument(discoveryOptions);
       return createDocsCacheableResponse({
         request: event.request,
         content,
@@ -2350,7 +2375,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           openapi: openapiDiscovery,
         } as any;
         const rootSkill = await resolveDocsPublishedAgentSkill({
-          preferredDocument: readRootSkillDocument(preloaded, rootDir),
+          preferredDocument: readRootSkillDocument(preloaded, rootDir, rootAgentDocuments),
           fallbackDocument: renderDocsSkillDocument(skillOptions),
         });
         return [rootSkill, ...(await getPublishedAgentSkills())];
@@ -2504,6 +2529,7 @@ function createClientDocsConfig(config: DocsConfig & Record<string, any>): Recor
     contentDir: _contentDir,
     _preloadedContent,
     _preloadedAgentSkills,
+    _preloadedRootDocuments,
     socialImage,
     ...clientConfig
   } = config;
