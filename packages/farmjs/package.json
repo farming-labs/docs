@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/farmjs",
-  "version": "0.2.120",
+  "version": "0.2.121",
   "description": "Farm.js adapter for @farming-labs/docs",
   "keywords": [
     "docs",
