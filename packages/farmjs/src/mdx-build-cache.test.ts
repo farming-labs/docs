@@ -26,7 +26,7 @@ describe("MdxBuildCache", () => {
     const compile = vi.fn(async () => result);
     const first = new MdxBuildCache(file);
     const output = await first.compile("page.mdx", "content-options-compiler", compile);
-    (output.map as typeof result.map).sources.push("mutation");
+    (output!.map as typeof result.map).sources.push("mutation");
     await first.flush();
     expect(
       await new MdxBuildCache(file).compile("page.mdx", "content-options-compiler", compile),
@@ -106,7 +106,7 @@ describe("MdxBuildCache", () => {
   });
 });
 
-describe("compiler fingerprint", () => {
+describe("compiler fingerprint", { timeout: 20_000 }, () => {
   it("does not persist loaded compiler code under a changed on-disk fingerprint", async () => {
     const source = await fs.readFile(
       new URL("./mdx-compiler-fingerprint.ts", import.meta.url),

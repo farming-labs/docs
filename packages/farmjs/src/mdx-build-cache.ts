@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type mdx from "@mdx-js/rollup";
 
-type CompiledMdx = NonNullable<Awaited<ReturnType<ReturnType<typeof mdx>["transform"]>>>;
+type CompiledMdx = Awaited<ReturnType<ReturnType<typeof mdx>["transform"]>>;
 
 interface Entry {
   key: string;
@@ -21,7 +21,7 @@ export function mdxCacheDigest(value: string | Buffer): string {
 /** Only the adapter's deterministic MDX stage is cached, never the Vite graph. */
 export class MdxBuildCache {
   private readonly entries = new Map<string, Entry>();
-  private readonly pending = new Map<string, Promise<string>>();
+  private readonly pending = new Map<string, Promise<string | undefined>>();
   private loaded?: Promise<void>;
   private bytes = 0;
 
@@ -86,6 +86,8 @@ export class MdxBuildCache {
       pending = Promise.resolve()
         .then(compile)
         .then((result) => {
+          // The upstream filter deliberately skips some IDs, including virtual modules.
+          if (result === undefined) return undefined;
           const value = JSON.stringify(result);
           this.remember(id, { key, value, checksum: mdxCacheDigest(value) });
           return value;
@@ -94,7 +96,8 @@ export class MdxBuildCache {
       this.pending.set(pendingKey, pending);
     }
     // Subsequent plugins may mutate source maps: don't share mutable results.
-    return JSON.parse(await pending);
+    const value = await pending;
+    return value === undefined ? undefined : JSON.parse(value);
   }
 
   async flush(): Promise<void> {
