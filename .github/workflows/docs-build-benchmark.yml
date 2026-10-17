@@ -60,6 +60,9 @@ jobs:
           pnpm --filter @farming-labs/theme build
           pnpm --filter @farming-labs/next build
           pnpm --filter @farming-labs/farmjs build
+      - name: Check Farm adapter regressions
+        if: ${{ inputs.compare_cache }}
+        run: pnpm --filter @farming-labs/farmjs test
       - name: Install and build pinned Farm source outside measurement
         env:
           NODE_OPTIONS: --max-old-space-size=8192
