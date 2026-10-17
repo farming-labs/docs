@@ -1101,5 +1101,6 @@
     "fumadocs-trial-3-warm-runtime-desktop.png": "2ba9e1dbbc379320a5aed756fa2cc872c1c86c1d6a6c391cc170fb06da1edd94",
     "fumadocs-trial-3-warm-runtime-mobile.png": "cc3f5ba0f4b7956c8d28d19462ba3a5097ebce6cc902265f7f019e42d2ec543f"
   },
-  "farmingCssIdenticalAcrossAllBuilds": true
+  "farmingCssIdenticalAcrossAllBuilds": true,
+  "mergedCommit": "0d66fc164b3cd2efeaa7edb9dbc082fe958339fb"
 }

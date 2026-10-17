@@ -653,6 +653,8 @@ and [raw receipts](../next-docs/results/2026-10-16/tree-shaking/).
 
 ## Docs-only focused configuration imports: repeated-build improvement
 
+Merged as `0d66fc16` on 2026-10-17 UTC. No npm release was performed.
+
 [PR #570](https://github.com/farming-labs/docs/pull/570) at `2861e94d` adds a focused
 Node-only core build entry and uses it in Next configuration. Existing exports retain
 their identity. No route, UI component, content, search, Markdown or MCP feature is removed.
