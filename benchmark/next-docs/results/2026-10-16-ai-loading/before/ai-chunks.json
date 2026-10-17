@@ -1,0 +1,16 @@
+[
+  {
+    "pages": 100,
+    "aiImplementationChunks": [
+      "2xe2_trsv-5fp.js"
+    ],
+    "aiImplementationInitiallyLoaded": true
+  },
+  {
+    "pages": 500,
+    "aiImplementationChunks": [
+      "0cqq5nl87t0x-.js"
+    ],
+    "aiImplementationInitiallyLoaded": true
+  }
+]

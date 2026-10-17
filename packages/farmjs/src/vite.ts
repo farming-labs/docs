@@ -318,14 +318,19 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
         });
       }
     },
-    async transform(code, id) {
-      const compile = () => compiler.transform.call(this, code, id);
-      const build = this.environment && builds.get(buildKey(this.environment.config));
-      if (!build || !/\.(md|mdx)$/.test(id.split("?", 1)[0])) return compile();
-      const version = await (build.fingerprint ??= fingerprintMdxCompiler());
-      if (!version) return compile();
-      const key = mdxCacheDigest(JSON.stringify([build.context, version, id, code]));
-      return build.cache.compile(id, key, compile);
+    transform: {
+      // Match the compiler's include rule before crossing the bundler's JS hook
+      // boundary. Keep its own filtering below for hosts without hook filters.
+      filter: { id: /\.(md|mdx)$/ },
+      async handler(code, id) {
+        const compile = () => compiler.transform.call(this, code, id);
+        const build = this.environment && builds.get(buildKey(this.environment.config));
+        if (!build || !/\.(md|mdx)$/.test(id.split("?", 1)[0])) return compile();
+        const version = await (build.fingerprint ??= fingerprintMdxCompiler());
+        if (!version) return compile();
+        const key = mdxCacheDigest(JSON.stringify([build.context, version, id, code]));
+        return build.cache.compile(id, key, compile);
+      },
     },
     async buildEnd(error) {
       const build = this.environment && builds.get(buildKey(this.environment.config));

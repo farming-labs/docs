@@ -32,6 +32,7 @@ import {
 } from "node:fs";
 import { dirname, extname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DocsPackageResolutionPlugin } from "./package-resolution.js";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
@@ -61,6 +62,8 @@ import type {
   Program,
 } from "@babel/types";
 import { resolveCodeBlockThemes } from "./code-block-themes.js";
+import { resolveMdxExtensions, type WithDocsOptions } from "./mdx-options.js";
+export type { DocsMdxPlugin, DocsMdxValue, WithDocsOptions } from "./mdx-options.js";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -472,13 +475,28 @@ function isManagedGeneratedFile(filePath: string): boolean {
   }
 }
 
+type ConfigSourceReader = (path: string) => string;
+
+/** Scope file contents to one configuration pass so later calls see edits. */
+function createConfigSourceReader(): ConfigSourceReader {
+  const sources = new Map<string, string>();
+  return (path) => {
+    let content = sources.get(path);
+    if (content === undefined) {
+      content = readFileSync(path, "utf-8");
+      sources.set(path, content);
+    }
+    return content;
+  };
+}
+
 /** Read the docs entry path from docs.config.ts[x] (defaults to "docs"). */
-function readDocsEntry(root: string): string {
+function readDocsEntry(root: string, readSource: ConfigSourceReader): string {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (existsSync(configPath)) {
       try {
-        const content = readFileSync(configPath, "utf-8");
+        const content = readSource(configPath);
         const match = content.match(/entry\s*:\s*["']([^"']+)["']/);
         if (match) return match[1];
       } catch {
@@ -489,13 +507,13 @@ function readDocsEntry(root: string): string {
   return "docs";
 }
 
-function readDocsContentDir(root: string): string | undefined {
+function readDocsContentDir(root: string, readSource: ConfigSourceReader): string | undefined {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
       const contentDir = readTopLevelStringProperty(content, "contentDir");
       if (contentDir) return contentDir;
     } catch {
@@ -506,13 +524,13 @@ function readDocsContentDir(root: string): string | undefined {
   return undefined;
 }
 
-function readDocsPath(root: string): string | undefined {
+function readDocsPath(root: string, readSource: ConfigSourceReader): string | undefined {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
       return readTopLevelStringProperty(content, "docsPath");
     } catch {
       // fall through
@@ -701,11 +719,15 @@ function readStaticStringPaths(expression: Expression): string[] | null {
   return paths;
 }
 
-function readAgentSkillPaths(root: string, configPath: string): string[] {
+function readAgentSkillPaths(
+  root: string,
+  configPath: string,
+  readSource: ConfigSourceReader,
+): string[] {
   const absoluteConfigPath = join(root, configPath);
   if (!existsSync(absoluteConfigPath)) return [];
 
-  const content = readFileSync(absoluteConfigPath, "utf8");
+  const content = readSource(absoluteConfigPath);
   const rootObject = readDocsConfigRootObject(absoluteConfigPath, content);
   const agent = resolveStaticObjectProperty(rootObject, "agent");
   if (agent.status === "absent") return [];
@@ -786,12 +808,12 @@ function writeAgentSkillsBundle(
 }
 
 /** Read the OG endpoint from docs.config.ts[x] (returns undefined if not set). */
-function readOgEndpoint(root: string): string | undefined {
+function readOgEndpoint(root: string, readSource: ConfigSourceReader): string | undefined {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (existsSync(configPath)) {
       try {
-        const content = readFileSync(configPath, "utf-8");
+        const content = readSource(configPath);
         const match = content.match(/endpoint\s*:\s*["']([^"']+)["']/);
         if (match && match[1]) return match[1];
       } catch {
@@ -802,7 +824,10 @@ function readOgEndpoint(root: string): string | undefined {
   return undefined;
 }
 
-function readApiReferenceConfig(root: string): {
+function readApiReferenceConfig(
+  root: string,
+  readSource: ConfigSourceReader,
+): {
   enabled: boolean;
   path: string;
   renderer: "farming-labs" | "fumadocs" | "scalar";
@@ -813,7 +838,7 @@ function readApiReferenceConfig(root: string): {
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
 
       const directFalse = content.match(/apiReference\s*:\s*false/);
       if (directFalse) {
@@ -876,7 +901,10 @@ function readApiReferenceConfig(root: string): {
   };
 }
 
-function readChangelogConfig(root: string): {
+function readChangelogConfig(
+  root: string,
+  readSource: ConfigSourceReader,
+): {
   enabled: boolean;
   path: string;
   contentDir: string;
@@ -886,7 +914,7 @@ function readChangelogConfig(root: string): {
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
 
       const directFalse = content.match(/changelog\s*:\s*false/);
       if (directFalse) {
@@ -925,8 +953,13 @@ interface ChangelogSourceEntry {
   metadata: Record<string, unknown>;
 }
 
-function resolveDocsContentDir(root: string, appDir: string, entry: string): string {
-  const configuredContentDir = readDocsContentDir(root);
+function resolveDocsContentDir(
+  root: string,
+  appDir: string,
+  entry: string,
+  readSource: ConfigSourceReader,
+): string {
+  const configuredContentDir = readDocsContentDir(root, readSource);
   if (!configuredContentDir) return join(root, appDir, entry);
   return isAbsolute(configuredContentDir) ? configuredContentDir : join(root, configuredContentDir);
 }
@@ -936,9 +969,10 @@ function resolveChangelogContentDir(
   appDir: string,
   entry: string,
   changelogContentDir: string,
+  readSource: ConfigSourceReader,
 ): string {
   if (isAbsolute(changelogContentDir)) return changelogContentDir;
-  return join(resolveDocsContentDir(root, appDir, entry), changelogContentDir);
+  return join(resolveDocsContentDir(root, appDir, entry, readSource), changelogContentDir);
 }
 
 function findChangelogSourceEntries(changelogDir: string): ChangelogSourceEntry[] {
@@ -1470,11 +1504,18 @@ function resolveManagedChangelogSourceLayoutPath(
   appDir: string,
   entry: string,
   changelogContentDir: string,
+  readSource: ConfigSourceReader,
 ): string | undefined {
   if (isAbsolute(changelogContentDir)) return undefined;
 
   const appRoot = join(root, appDir);
-  const contentRoot = resolveChangelogContentDir(root, appDir, entry, changelogContentDir);
+  const contentRoot = resolveChangelogContentDir(
+    root,
+    appDir,
+    entry,
+    changelogContentDir,
+    readSource,
+  );
   const relativePath = relative(appRoot, contentRoot);
 
   if (relativePath.startsWith("..") || isAbsolute(relativePath)) return undefined;
@@ -1537,13 +1578,13 @@ function resolveMcpConfig(mcp: DocsConfig["mcp"]): ResolvedNextMcpConfig {
   };
 }
 
-function readMcpConfig(root: string): ResolvedNextMcpConfig {
+function readMcpConfig(root: string, readSource: ConfigSourceReader): ResolvedNextMcpConfig {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
 
       if (content.match(/mcp\s*:\s*false/)) {
         return { enabled: false, route: DEFAULT_MCP_ROUTE, protectedResource: false };
@@ -1603,7 +1644,10 @@ function joinPublicRoute(prefix: string, route: string): string {
   return `${prefix}/${route.replace(/^\/+/, "")}`.replace(/\/+/g, "/");
 }
 
-function readSitemapConfig(root: string): {
+function readSitemapConfig(
+  root: string,
+  readSource: ConfigSourceReader,
+): {
   enabled: boolean;
   routePrefix: string;
 } {
@@ -1612,7 +1656,7 @@ function readSitemapConfig(root: string): {
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
 
       if (content.match(/sitemap\s*:\s*false/)) {
         return { enabled: false, routePrefix: "" };
@@ -1640,7 +1684,10 @@ function readSitemapConfig(root: string): {
   return { enabled: true, routePrefix: "" };
 }
 
-function readRobotsConfig(root: string): {
+function readRobotsConfig(
+  root: string,
+  readSource: ConfigSourceReader,
+): {
   enabled: boolean;
   hasStaticFile: boolean;
 } {
@@ -1655,7 +1702,7 @@ function readRobotsConfig(root: string): {
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
 
       if (content.match(/robots\s*:\s*false/)) {
         return { enabled: false, hasStaticFile };
@@ -1692,7 +1739,10 @@ function normalizeAgentFeedbackRoute(
   return normalized !== "/" ? normalized.replace(/\/+$/, "") : fallback;
 }
 
-function readAgentFeedbackConfig(root: string): {
+function readAgentFeedbackConfig(
+  root: string,
+  readSource: ConfigSourceReader,
+): {
   enabled: boolean;
   route: string;
   schemaRoute: string;
@@ -1714,7 +1764,7 @@ function readAgentFeedbackConfig(root: string): {
     if (!existsSync(configPath)) continue;
 
     try {
-      const content = readFileSync(configPath, "utf-8");
+      const content = readSource(configPath);
       const feedbackBoolean = readTopLevelBooleanProperty(content, "feedback");
       if (feedbackBoolean === false) return disabled;
       if (feedbackBoolean === true) return enabled;
@@ -2524,17 +2574,21 @@ function mergeDocsRedirects(
 export function withDocs(
   nextConfig: NextConfig = {},
   docsConfig?: Pick<DocsConfig, "agent" | "mcp" | "theme">,
+  options: WithDocsOptions = {},
 ): NextConfig {
+  const mdx = resolveMdxExtensions(options.mdx);
   const root = process.cwd();
+  const readSource = createConfigSourceReader();
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
   const docsConfigAbsolutePath = join(root, docsConfigPath);
   const codeBlockThemes = resolveCodeBlockThemes({
     root,
     configPath: docsConfigPath,
+    readSource,
     theme: docsConfig?.theme,
   });
-  const mcp = docsConfig ? resolveMcpConfig(docsConfig.mcp) : readMcpConfig(root);
+  const mcp = docsConfig ? resolveMcpConfig(docsConfig.mcp) : readMcpConfig(root, readSource);
   const nextBasePath = normalizeRoutePrefix(nextConfig.basePath);
   if (mcp.enabled && mcp.protectedResource && nextBasePath) {
     throw new Error(
@@ -2543,10 +2597,10 @@ export function withDocs(
   }
   const configuredAgentSkills =
     docsConfig === undefined || !Object.hasOwn(docsConfig, "agent")
-      ? readAgentSkillPaths(root, docsConfigPath)
+      ? readAgentSkillPaths(root, docsConfigPath, readSource)
       : docsConfig.agent?.skills;
   const agentSkillsBundlePath = writeAgentSkillsBundle(root, configuredAgentSkills);
-  const agentFeedback = readAgentFeedbackConfig(root);
+  const agentFeedback = readAgentFeedbackConfig(root, readSource);
   const docsConfigRelativeAlias =
     docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
       ? docsConfigPath
@@ -2557,7 +2611,7 @@ export function withDocs(
       rootDir: root,
       configPath: docsConfigPath,
       configContent: existsSync(docsConfigAbsolutePath)
-        ? readFileSync(docsConfigAbsolutePath, "utf-8")
+        ? readSource(docsConfigAbsolutePath)
         : undefined,
       log: process.env.NODE_ENV === "test" ? undefined : (message) => console.log(message),
     }),
@@ -2569,9 +2623,9 @@ export function withDocs(
   }
 
   // ── 2. Auto-generate app/{entry}/layout.tsx if missing (or src/app when using src dir) ──
-  const entry = readDocsEntry(root);
-  const docsPath = normalizeDocsPath(readDocsPath(root), entry);
-  const configuredContentDir = readDocsContentDir(root);
+  const entry = readDocsEntry(root, readSource);
+  const docsPath = normalizeDocsPath(readDocsPath(root, readSource), entry);
+  const configuredContentDir = readDocsContentDir(root, readSource);
   const appDir = getNextAppDir(root);
   const docsContentDir = configuredContentDir ?? join(appDir, entry);
   const layoutDir = join(root, appDir, entry);
@@ -2601,8 +2655,8 @@ export function withDocs(
     writeGeneratedFile(docsApiRoutePath, DOCS_API_ROUTE_TEMPLATE);
   }
 
-  const sitemap = readSitemapConfig(root);
-  const robots = readRobotsConfig(root);
+  const sitemap = readSitemapConfig(root, readSource);
+  const robots = readRobotsConfig(root, readSource);
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
   if (
     mcp.enabled &&
@@ -2615,7 +2669,7 @@ export function withDocs(
   }
 
   // ── 3.1. Auto-generate API reference route/page ───────────────────
-  const apiReference = readApiReferenceConfig(root);
+  const apiReference = readApiReferenceConfig(root, readSource);
   if (apiReference.enabled && !isStaticExport) {
     const apiReferenceBaseDir = join(root, appDir, ...apiReference.path.split("/"));
     const apiReferencePageDir = join(apiReferenceBaseDir, "[[...slug]]");
@@ -2652,7 +2706,7 @@ export function withDocs(
     }
   }
 
-  const changelog = readChangelogConfig(root);
+  const changelog = readChangelogConfig(root, readSource);
   if (changelog.enabled) {
     const changelogBaseDir = join(root, appDir, entry, ...changelog.path.split("/"));
     const changelogEntryDir = join(changelogBaseDir, "[slug]");
@@ -2663,6 +2717,7 @@ export function withDocs(
       appDir,
       entry,
       changelog.contentDir,
+      readSource,
     );
     const changelogUsesSourcePagesAsDetails =
       !isAbsolute(changelog.contentDir) && changelog.contentDir === changelog.path;
@@ -2672,6 +2727,7 @@ export function withDocs(
       appDir,
       entry,
       changelog.contentDir,
+      readSource,
     );
     const legacyChangelogBaseDirs = new Set<string>([
       join(root, appDir, ...changelog.path.split("/")),
@@ -2738,7 +2794,7 @@ export function withDocs(
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────
-  const ogEndpoint = readOgEndpoint(root);
+  const ogEndpoint = readOgEndpoint(root, readSource);
   const remarkPlugins: MdxPluginEntry[] = ["remark-gfm", "remark-frontmatter"];
   if (ogEndpoint) {
     remarkPlugins.push(["@farming-labs/next/mdx-plugins/remark-og", { endpoint: ogEndpoint }]);
@@ -2751,10 +2807,15 @@ export function withDocs(
     ["remark-mdx-frontmatter", { name: "metadata" }],
     "@farming-labs/next/mdx-plugins/remark-code-group",
     "@farming-labs/next/mdx-plugins/remark-heading",
+    ...mdx.remarkPlugins,
   );
   const rehypePlugins: MdxPluginEntry[] = [
     "@farming-labs/next/mdx-plugins/rehype-toc",
-    ["@farming-labs/next/mdx-plugins/rehype-code", { themes: codeBlockThemes }],
+    mdx.codeHighlighter ?? [
+      "@farming-labs/next/mdx-plugins/rehype-code",
+      { themes: codeBlockThemes },
+    ],
+    ...mdx.rehypePlugins,
   ];
 
   const withMDX = createMDX({
@@ -2874,18 +2935,14 @@ export function withDocs(
     }
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
     resolvedConfig.resolve.alias[AGENT_SKILLS_BUNDLE_ALIAS] = agentSkillsBundlePath;
-    resolvedConfig.resolve.alias["fumadocs-openapi"] = FUMADOCS_OPENAPI_PACKAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-openapi/ui"] = FUMADOCS_OPENAPI_UI_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-openapi/server"] = FUMADOCS_OPENAPI_SERVER_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-core"] = FUMADOCS_CORE_PACKAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-core/framework"] = FUMADOCS_CORE_FRAMEWORK_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-core/framework/next"] =
-      FUMADOCS_CORE_FRAMEWORK_NEXT_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui"] = FUMADOCS_UI_PACKAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui/layouts/notebook"] = FUMADOCS_UI_NOTEBOOK_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui/layouts/notebook/page"] =
-      FUMADOCS_UI_NOTEBOOK_PAGE_ALIAS;
-    resolvedConfig.resolve.alias["fumadocs-ui/provider/next"] = FUMADOCS_UI_PROVIDER_NEXT_ALIAS;
+    resolvedConfig.resolve.plugins ??= [];
+    resolvedConfig.resolve.plugins.push(
+      new DocsPackageResolutionPlugin({
+        "fumadocs-core": FUMADOCS_CORE_PACKAGE_ALIAS,
+        "fumadocs-ui": FUMADOCS_UI_PACKAGE_ALIAS,
+        "fumadocs-openapi": FUMADOCS_OPENAPI_PACKAGE_ALIAS,
+      }),
+    );
     return resolvedConfig;
   };
 

@@ -40,7 +40,9 @@ jobs:
         run: pnpm --dir examples/next exec playwright test e2e/changelog.spec.ts e2e/docs-toc.spec.ts --workers=1
 
       - name: Run typecheck
-        run: pnpm typecheck
+        # Run build above already generated core declarations. The root typecheck
+        # script rebuilds core for standalone use; reuse this job's output here.
+        run: pnpm --filter './packages/*' run typecheck
 
       # Example builds validate the adapters, but their output is not part of the website.
       # Keep that coverage here instead of rebuilding them on every Vercel deployment.

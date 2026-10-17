@@ -1,0 +1,76 @@
+[
+  {
+    "kind": "docs",
+    "pages": 100,
+    "viewport": "desktop",
+    "differenceBounds": [
+      337,
+      720,
+      765,
+      752
+    ]
+  },
+  {
+    "kind": "docs",
+    "pages": 100,
+    "viewport": "mobile",
+    "differenceBounds": null
+  },
+  {
+    "kind": "docs",
+    "pages": 500,
+    "viewport": "desktop",
+    "differenceBounds": null
+  },
+  {
+    "kind": "docs",
+    "pages": 500,
+    "viewport": "mobile",
+    "differenceBounds": [
+      350,
+      131,
+      366,
+      147
+    ]
+  },
+  {
+    "kind": "ai",
+    "mode": "search",
+    "differenceBounds": null
+  },
+  {
+    "kind": "ai",
+    "mode": "sidebar-icon",
+    "differenceBounds": null
+  },
+  {
+    "kind": "ai",
+    "mode": "panel",
+    "differenceBounds": null
+  },
+  {
+    "kind": "ai",
+    "mode": "modal",
+    "differenceBounds": null
+  },
+  {
+    "kind": "ai",
+    "mode": "popover",
+    "differenceBounds": null
+  },
+  {
+    "kind": "ai",
+    "mode": "full-modal",
+    "differenceBounds": [
+      326,
+      853,
+      1107,
+      886
+    ]
+  },
+  {
+    "kind": "ai",
+    "mode": "full-modal-mobile",
+    "differenceBounds": null
+  }
+]

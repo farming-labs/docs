@@ -6,7 +6,10 @@ import { build, type Plugin, type ResolvedConfig } from "vite";
 import { docsMdx } from "./vite.js";
 import * as fingerprint from "./mdx-compiler-fingerprint.js";
 
-const { compiled } = vi.hoisted(() => ({ compiled: vi.fn() }));
+const { compiled, transformed } = vi.hoisted(() => ({
+  compiled: vi.fn(),
+  transformed: vi.fn(),
+}));
 vi.mock("@mdx-js/rollup", async (original) => {
   const actual = await original<typeof import("@mdx-js/rollup")>();
   return {
@@ -16,6 +19,7 @@ vi.mock("@mdx-js/rollup", async (original) => {
       return {
         ...plugin,
         transform(...input: Parameters<typeof plugin.transform>) {
+          transformed(input[1]);
           if (/\.mdx?$/.test(input[1])) compiled(input[1]);
           return plugin.transform(...input);
         },
@@ -36,6 +40,7 @@ beforeEach(async () => {
     "export default function Demo(){return 'before-component-edit'}",
   );
   compiled.mockClear();
+  transformed.mockClear();
 });
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -76,6 +81,31 @@ async function bundle(
 }
 
 describe("Farm MDX production cache", { timeout: 20_000 }, () => {
+  it("skips non-Markdown transform hooks while preserving both MD and MDX output", async () => {
+    await fs.writeFile(path.join(root, "nested.md"), "# Plain Markdown\n\nNested content.\n");
+    await fs.writeFile(
+      path.join(root, "page.mdx"),
+      source + "\nimport Nested from './nested.md'\n\n<Nested />\n",
+    );
+    const unfiltered = docsMdx({ buildCache: false }) as Plugin[];
+    const compiler = unfiltered.find((plugin) => plugin.name === "@mdx-js/rollup")!;
+    if (!compiler.transform || typeof compiler.transform === "function") {
+      throw new Error("Expected a filtered transform hook");
+    }
+    // Simulate hosts that do not support hook filters: the handler must still
+    // delegate to the MDX compiler's own file filter without changing output.
+    compiler.transform = compiler.transform.handler;
+    const baseline = await bundle({}, "production", unfiltered);
+    const baselineMaps = lastSourceMaps;
+    const transformedFiles = () => transformed.mock.calls.map(([id]) => path.basename(id));
+    expect(transformedFiles()).toContain("demo.tsx");
+
+    transformed.mockClear();
+    expect(await bundle({ buildCache: false })).toBe(baseline);
+    expect(lastSourceMaps).toEqual(baselineMaps);
+    expect(transformedFiles().sort()).toEqual(["nested.md", "page.mdx"]);
+  });
+
   it("leaves virtual modules excluded by the MDX compiler untouched", async () => {
     const virtualId = "\0virtual:docs-component.mdx";
     const virtual: Plugin = {
