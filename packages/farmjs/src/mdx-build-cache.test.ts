@@ -1,6 +1,9 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { transformWithEsbuild } from "vite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MdxBuildCache } from "./mdx-build-cache.js";
 import { fingerprintMdxFiles } from "./mdx-compiler-fingerprint.js";
@@ -104,6 +107,43 @@ describe("MdxBuildCache", () => {
 });
 
 describe("compiler fingerprint", () => {
+  it("does not persist loaded compiler code under a changed on-disk fingerprint", async () => {
+    const source = await fs.readFile(
+      new URL("./mdx-compiler-fingerprint.ts", import.meta.url),
+      "utf8",
+    );
+    const transformed = await transformWithEsbuild(source, "fingerprint.ts", {
+      target: "es2022",
+      format: "esm",
+    });
+    await fs.writeFile(path.join(root, "fingerprint.mjs"), transformed.code);
+    await fs.writeFile(path.join(root, "helper.js"), "export const value = 1");
+    await fs.symlink(
+      fileURLToPath(new URL("../node_modules", import.meta.url)),
+      path.join(root, "node_modules"),
+      "junction",
+    );
+    const output = execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "--eval",
+        `
+      import { fingerprintMdxCompiler } from './fingerprint.mjs';
+      import { writeFile } from 'node:fs/promises';
+      const first = await fingerprintMdxCompiler();
+      await writeFile('helper.js', 'export const value = 2');
+      const changed = await fingerprintMdxCompiler();
+      await writeFile('helper.js', 'export const value = 1');
+      const restored = await fingerprintMdxCompiler();
+      console.log(JSON.stringify([Boolean(first), changed, restored === first]));
+    `,
+      ],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(JSON.parse(output)).toEqual([true, null, true]);
+  });
+
   it("detects edits with unchanged mtimes, additions, and deletions", async () => {
     const dependency = path.join(root, "compiler.js");
     await fs.writeFile(dependency, "export const version = 1");
