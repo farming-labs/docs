@@ -64,4 +64,29 @@ describe("on-demand MDX processors", () => {
     expect(second[0].content).toContain("Second.");
     expect(createProcessor).toHaveBeenCalledTimes(1);
   });
+
+  it.each([false, true])(
+    "reuses unchanged section results and sees edits (fallback: %s)",
+    async (fallback) => {
+      const { parseDocsMarkdownSections } = await import("./markdown-sections.js");
+      const { createProcessor } = await import("@mdx-js/mdx");
+      const source = "# Setup\n\nOriginal.\n\n## Setup\n\nMore." + (fallback ? "\n\n{" : "");
+      const expected = parseDocsMarkdownSections(source);
+      const processor = vi.mocked(createProcessor).mock.results[0].value;
+      const parse = vi.spyOn(processor, "parse");
+
+      const again = parseDocsMarkdownSections(source);
+      expect(again).toEqual(expected);
+      again[0].content = "Caller mutation";
+      again.length = 0;
+      expect(parseDocsMarkdownSections(source)).toEqual(expected);
+      expect(parse).not.toHaveBeenCalled();
+
+      const edited = parseDocsMarkdownSections(source.replace("Original.", "Updated."));
+      expect(edited[0].content).toContain("Updated.");
+      expect(edited[0].content).not.toContain("Original.");
+      expect(parse).toHaveBeenCalledTimes(1);
+      expect(parseDocsMarkdownSections(source)).toEqual(expected);
+    },
+  );
 });
