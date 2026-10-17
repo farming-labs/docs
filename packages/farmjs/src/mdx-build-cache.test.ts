@@ -13,6 +13,7 @@ beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "farm-mdx-cache-"));
 });
 afterEach(async () => {
+  vi.restoreAllMocks();
   await fs.rm(root, { recursive: true, force: true });
 });
 const result = {
@@ -32,6 +33,84 @@ describe("MdxBuildCache", () => {
       await new MdxBuildCache(file).compile("page.mdx", "content-options-compiler", compile),
     ).toEqual(result);
     expect(compile).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves an unchanged cache file untouched across builds and repeated flushes", async () => {
+    const file = path.join(root, "cache.json");
+    const first = new MdxBuildCache(file);
+    await first.compile("a", "key", async () => result);
+    await first.compile("b", "key", async () => result);
+    await first.flush();
+    const before = await fs.readFile(file, "utf8");
+    const date = new Date("2000-01-01T00:00:00Z");
+    await fs.utimes(file, date, date);
+
+    const compile = vi.fn(async () => result);
+    const second = new MdxBuildCache(file);
+    // A hit can change in-memory eviction order without changing cached output.
+    await second.compile("b", "key", compile);
+    await second.compile("a", "key", compile);
+    await Promise.all([second.flush(), second.flush()]);
+    await second.flush();
+    expect(compile).not.toHaveBeenCalled();
+    expect(await fs.readFile(file, "utf8")).toBe(before);
+    expect((await fs.stat(file)).mtime).toEqual(date);
+
+    await second.compile("a", "edited", async () => ({ code: "export default 2" }));
+    await second.flush();
+    expect(await new MdxBuildCache(file).compile("a", "edited", compile)).toEqual({
+      code: "export default 2",
+    });
+    expect(compile).not.toHaveBeenCalled();
+  });
+
+  it("keeps newly compiled entries when another flush is already writing", async () => {
+    const file = path.join(root, "cache.json");
+    const cache = new MdxBuildCache(file);
+    await cache.compile("a", "key", async () => result);
+    const originalWrite = fs.writeFile.bind(fs);
+    const writing = Promise.withResolvers<void>();
+    const resume = Promise.withResolvers<void>();
+    vi.spyOn(fs, "writeFile").mockImplementationOnce(async (...args) => {
+      writing.resolve();
+      await resume.promise;
+      return originalWrite(...args);
+    });
+    vi.spyOn(fs, "mkdir").mockResolvedValue(undefined);
+    const firstFlush = cache.flush();
+    await writing.promise;
+    await cache.compile("b", "key", async () => result);
+    const secondFlush = cache.flush();
+    // Drain the second flush's microtasks while the first write is blocked.
+    await new Promise((resolve) => setImmediate(resolve));
+    const writesBeforeResume = vi.mocked(fs.writeFile).mock.calls.length;
+    resume.resolve();
+    await Promise.all([firstFlush, secondFlush]);
+    expect(writesBeforeResume).toBe(1);
+    const compile = vi.fn(async () => result);
+    const next = new MdxBuildCache(file);
+    await next.compile("a", "key", compile);
+    await next.compile("b", "key", compile);
+    expect(compile).not.toHaveBeenCalled();
+    expect(await fs.readdir(root)).toEqual(["cache.json"]);
+  });
+
+  it("retries a failed write without recompiling and preserves hit-based eviction", async () => {
+    const file = path.join(root, "cache.json");
+    const cache = new MdxBuildCache(file, 10_000, 2);
+    await cache.compile("a", "key", async () => result);
+    await cache.compile("b", "key", async () => result);
+    await cache.compile("a", "key", async () => result);
+    await cache.compile("c", "key", async () => result);
+    vi.spyOn(fs, "rename").mockRejectedValueOnce(new Error("write unavailable"));
+    await cache.flush();
+    await expect(fs.stat(file)).rejects.toThrow();
+    await cache.flush();
+    expect(JSON.parse(await fs.readFile(file, "utf8")).map(([id]: [string]) => id)).toEqual([
+      "a",
+      "c",
+    ]);
+    expect(await fs.readdir(root)).toEqual(["cache.json"]);
   });
 
   it("invalidates changed source/options/compiler keys and separates module IDs", async () => {
