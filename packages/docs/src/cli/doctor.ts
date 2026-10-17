@@ -895,7 +895,8 @@ function findCodeFiles(files: string[], predicate: (relativePath: string) => boo
 
 function detectFrameworkFromFiles(files: string[]): Framework | null {
   if (files.some((file) => NEXT_CONFIG_PATTERN.test(path.basename(file)))) return "nextjs";
-  if (files.some((file) => FARM_CONFIG_PATTERN.test(path.basename(file)))) return "farmjs";
+  // Farm reads farm.config only at the project root; a nested one belongs to an example or fixture.
+  if (files.some((file) => FARM_CONFIG_PATTERN.test(file))) return "farmjs";
   if (files.some((file) => file.startsWith("src/routes/") && file.includes("api.docs"))) {
     return "tanstack-start";
   }
@@ -960,7 +961,7 @@ function detectRouteSurface(
     // The adapter's server handler serves /api/docs and the public docs routes once withDocs()
     // wraps farm.config, so there are no route files to find.
     const withDocsConfigs = files.filter((file) => {
-      if (!FARM_CONFIG_PATTERN.test(path.basename(file))) return false;
+      if (!FARM_CONFIG_PATTERN.test(file)) return false;
       const source = read(file);
       return source.includes("withDocs(") && source.includes("@farming-labs/farmjs");
     });

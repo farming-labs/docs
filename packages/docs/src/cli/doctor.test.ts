@@ -3166,6 +3166,35 @@ export default withDocs(defineConfig({}));
     );
   });
 
+  it("ignores a nested farm.config when detecting the framework from files", async () => {
+    writePackageJson(tmpDir, "doctor-astro-nested-farm", {});
+
+    writeDocsConfig(
+      tmpDir,
+      "docs.config.ts",
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+};`,
+    );
+
+    writeDocsPage(tmpDir, "docs");
+
+    writeFileSync(path.join(tmpDir, "astro.config.mjs"), "export default {};\n", "utf-8");
+    mkdirSync(path.join(tmpDir, "examples", "farm"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "examples", "farm", "farm.config.ts"),
+      "export default {};\n",
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.framework).toBe("astro");
+  });
+
   it("reports a Farm.js app whose farm.config does not use withDocs()", async () => {
     writePackageJson(tmpDir, "doctor-farmjs-unwired", { "@farm.js/core": "0.1.20" });
 
