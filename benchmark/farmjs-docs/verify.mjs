@@ -14,6 +14,35 @@ assert.ok(html.includes("Benchmark page 0000"));
 assert.ok(html.includes("Section 6"));
 assert.ok(html.includes("shiki"));
 assert.ok(html.includes(`Benchmark page ${String(count - 1).padStart(4, "0")}`));
+if (provider === "farming") {
+  for (const [path, headers, expected] of [
+    ["/docs.md", {}, "Section 6"],
+    ["/docs/page-0001.md", {}, "configure topic 1 safely"],
+    ["/docs", { Accept: "text/markdown" }, "Section 6"],
+    ["/llms.txt", {}, "Benchmark page 0000"],
+    ["/llms-full.txt", {}, "Section 6"],
+  ]) {
+    const response = await fetch(base + path, { headers });
+    assert.equal(response.status, 200, path);
+    assert.ok((await response.text()).includes(expected), path);
+  }
+  const mcp = await fetch(base + "/mcp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "benchmark-verifier", version: "1.0.0" },
+      },
+    }),
+  });
+  assert.equal(mcp.status, 200, "MCP initialization");
+  assert.ok((await mcp.text()).includes("protocolVersion"), "MCP response");
+}
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({
   viewport: { width: 1280, height: 900 },

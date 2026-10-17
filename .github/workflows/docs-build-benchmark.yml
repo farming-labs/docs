@@ -10,107 +10,50 @@ on:
         description: Repeated serial trials
         default: '3'
         type: string
-      farm_ref:
-        description: Farm source commit to build
-        default: '85628bbea1bd7bfe1d0728d071b85335b4a208b1'
-        type: string
-      providers:
-        description: Space-separated providers
-        default: 'fumadocs farming farmjs farmjs-vercel'
-        type: string
-      profile:
-        description: Capture Farm CLI CPU profiles (diagnostic, not benchmark timing)
-        default: false
-        type: boolean
-      compare_cache:
-        description: Alternate cache-disabled and cache-enabled Farm builds on this runner
-        default: false
-        type: boolean
 permissions:
   contents: read
 jobs:
   compare:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 45
     env:
       NEXT_TELEMETRY_DISABLED: '1'
-      FARM_TELEMETRY_DISABLED: '1'
-      FARM_BENCH_SOURCE: ${{ github.workspace }}/farm-source
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: farming-labs/farm.js
-          ref: ${{ inputs.farm_ref }}
-          path: farm-source
       - uses: pnpm/action-setup@v4
         with:
           version: 10.9.0
       - uses: actions/setup-node@v4
         with:
           node-version: '24.21.0'
-      - name: Install locked docs dependencies
+      - name: Install locked dependencies
         run: |
           pnpm install --frozen-lockfile
           npm ci --prefix benchmark/next-docs/deps --legacy-peer-deps --ignore-scripts
           pnpm exec playwright install --with-deps chromium
-      - name: Build docs packages outside measurement
+      - name: Build packages outside measurement
         run: |
           pnpm --filter @farming-labs/docs build
           pnpm --filter @farming-labs/theme build
           pnpm --filter @farming-labs/next build
-          pnpm --filter @farming-labs/farmjs build
-      - name: Check Farm adapter regressions
-        if: ${{ inputs.compare_cache }}
-        run: pnpm --filter @farming-labs/farmjs test
-      - name: Install and build pinned Farm source outside measurement
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
-        run: |
-          npx --yes pnpm@8.12.1 --dir farm-source install --frozen-lockfile
-          node benchmark/farmjs-docs/link-source.mjs
-          npx --yes pnpm@8.12.1 --dir farm-source --filter @farm.js/core build
-          npx --yes pnpm@8.12.1 --dir farm-source --filter @farm.js/cli build
       - name: Capture runner
         run: |
-          mkdir -p benchmark/farmjs-docs/artifacts
-          lscpu > benchmark/farmjs-docs/artifacts/runner.txt
-          free -m >> benchmark/farmjs-docs/artifacts/runner.txt
-          df -h . >> benchmark/farmjs-docs/artifacts/runner.txt
-      - name: Run same-corpus comparison
-        if: ${{ !inputs.compare_cache }}
+          mkdir -p benchmark/next-docs/artifacts
+          lscpu > benchmark/next-docs/artifacts/runner.txt
+          free -m >> benchmark/next-docs/artifacts/runner.txt
+      - name: Compare package metadata with Fumadocs control
         env:
           BENCH_PAGES: ${{ inputs.pages }}
           BENCH_TRIALS: ${{ inputs.trials }}
-          BENCH_PROVIDERS: ${{ inputs.providers }}
-          FARM_BENCH_CPU_PROFILE: ${{ inputs.profile && '1' || '0' }}
-        run: python3 benchmark/farmjs-docs/run.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --providers $BENCH_PROVIDERS --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
-      - name: Compare repeated Farm builds
-        if: ${{ inputs.compare_cache }}
-        env:
-          BENCH_PAGES: ${{ inputs.pages }}
-          BENCH_TRIALS: ${{ inputs.trials }}
-        run: |
-          for trial in $(seq 1 "$BENCH_TRIALS"); do
-            modes="0 1"
-            providers="farmjs farmjs-vercel"
-            if [ "$((trial % 2))" = 0 ]; then
-              modes="1 0"
-              providers="farmjs-vercel farmjs"
-            fi
-            for cache in $modes; do
-              FARM_BENCH_MDX_CACHE="$cache" python3 benchmark/farmjs-docs/run.py --pages "$BENCH_PAGES" --trials 1 --providers $providers --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}-cache${cache}-trial${trial}"
-            done
-          done
+        run: python3 benchmark/next-docs/compare-side-effects.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: farmjs-docs-benchmark-${{ github.run_id }}
+          name: next-docs-side-effects-${{ github.run_id }}
           retention-days: 30
           path: |
-            benchmark/farmjs-docs/artifacts/runner.txt
-            benchmark/farmjs-docs/artifacts/ci-*/*.json
-            benchmark/farmjs-docs/artifacts/ci-*/*.log
-            benchmark/farmjs-docs/artifacts/ci-*/*.png
-            benchmark/farmjs-docs/artifacts/ci-*/*.cpuprofile
+            benchmark/next-docs/artifacts/runner.txt
+            benchmark/next-docs/artifacts/ci-*/*.json
+            benchmark/next-docs/artifacts/ci-*/*.log
+            benchmark/next-docs/artifacts/ci-*/*.png
