@@ -1,0 +1,245 @@
+{
+  "baseline": "3f3e5e51e91c8fd56c7fc1e35f6530b90f211ce8",
+  "candidate": "f7c631578d5c4d514e44ef72b98c97f7d8b11532",
+  "node": "v24.21.0",
+  "platform": "darwin/arm64",
+  "cpu": "Apple M1",
+  "scope": "Navigation construction only; warm filesystem/frontmatter caches, seven alternating trials. No MDX compilation, page rendering, network or full-build timing.",
+  "cases": [
+    {
+      "pages": 100,
+      "ordering": "alphabetical",
+      "sourceReads": {
+        "before": 100,
+        "after": 100
+      },
+      "milliseconds": {
+        "before": [
+          2.299250000000029,
+          8.278874999999971,
+          2.1427909999999883,
+          5.444375000000036,
+          7.352499999999964,
+          3.3457919999999604,
+          7.051333
+        ],
+        "after": [
+          2.0677500000000464,
+          1.7398339999999735,
+          1.6268749999999272,
+          6.495916999999963,
+          2.520208000000025,
+          2.1008749999999736,
+          9.400666999999999
+        ]
+      },
+      "medianMilliseconds": {
+        "before": 5.444375000000036,
+        "after": 2.1008749999999736
+      },
+      "identicalNavigation": true
+    },
+    {
+      "pages": 100,
+      "ordering": "numeric",
+      "sourceReads": {
+        "before": 200,
+        "after": 100
+      },
+      "milliseconds": {
+        "before": [
+          2.5602499999999964,
+          2.836208000000056,
+          2.6842080000000124,
+          2.527249999999981,
+          2.4913329999999405,
+          2.462957999999958,
+          2.4846249999999372
+        ],
+        "after": [
+          1.7120419999999967,
+          1.6455409999999802,
+          1.6778339999999616,
+          1.6610410000000684,
+          1.635958999999957,
+          1.6135829999999487,
+          1.6343749999999773
+        ]
+      },
+      "medianMilliseconds": {
+        "before": 2.527249999999981,
+        "after": 1.6455409999999802
+      },
+      "identicalNavigation": true
+    },
+    {
+      "pages": 337,
+      "ordering": "alphabetical",
+      "sourceReads": {
+        "before": 337,
+        "after": 337
+      },
+      "milliseconds": {
+        "before": [
+          5.134207999999944,
+          4.202541999999994,
+          4.19399999999996,
+          4.3126250000000255,
+          4.3107499999999845,
+          4.371959000000061,
+          4.5597080000000005
+        ],
+        "after": [
+          4.788457999999991,
+          4.34050000000002,
+          4.505125000000021,
+          4.514167000000043,
+          4.415166999999997,
+          4.380042000000003,
+          4.2857910000000174
+        ]
+      },
+      "medianMilliseconds": {
+        "before": 4.3126250000000255,
+        "after": 4.415166999999997
+      },
+      "identicalNavigation": true
+    },
+    {
+      "pages": 337,
+      "ordering": "numeric",
+      "sourceReads": {
+        "before": 674,
+        "after": 337
+      },
+      "milliseconds": {
+        "before": [
+          7.921666999999957,
+          8.152375000000006,
+          7.934416999999939,
+          7.728874999999903,
+          7.7227080000000115,
+          9.151000000000067,
+          8.230332999999973
+        ],
+        "after": [
+          5.1440000000000055,
+          5.081709000000046,
+          5.169958000000065,
+          5.063875000000053,
+          5.088624999999979,
+          5.563957999999957,
+          5.565459000000033
+        ]
+      },
+      "medianMilliseconds": {
+        "before": 7.934416999999939,
+        "after": 5.1440000000000055
+      },
+      "identicalNavigation": true
+    },
+    {
+      "pages": 1000,
+      "ordering": "alphabetical",
+      "sourceReads": {
+        "before": 1000,
+        "after": 1000
+      },
+      "milliseconds": {
+        "before": [
+          12.934124999999995,
+          13.34395799999993,
+          12.433582999999999,
+          12.672374999999874,
+          14.618375000000015,
+          13.682708000000048,
+          13.776082999999971
+        ],
+        "after": [
+          13.034666000000016,
+          12.725459,
+          12.737666999999874,
+          12.92208299999993,
+          16.178667000000132,
+          14.386209000000008,
+          13.724874999999884
+        ]
+      },
+      "medianMilliseconds": {
+        "before": 13.34395799999993,
+        "after": 13.034666000000016
+      },
+      "identicalNavigation": true
+    },
+    {
+      "pages": 1000,
+      "ordering": "numeric",
+      "sourceReads": {
+        "before": 2000,
+        "after": 1000
+      },
+      "milliseconds": {
+        "before": [
+          24.424875000000156,
+          23.80862500000012,
+          23.920875000000024,
+          23.98070800000005,
+          24.28949999999986,
+          23.76279199999999,
+          23.503499999999804
+        ],
+        "after": [
+          16.127666999999974,
+          15.503791999999976,
+          15.78995800000007,
+          15.51887499999998,
+          16.33054200000015,
+          16.407834000000094,
+          15.82008299999984
+        ]
+      },
+      "medianMilliseconds": {
+        "before": 23.920875000000024,
+        "after": 15.82008299999984
+      },
+      "identicalNavigation": true
+    }
+  ],
+  "productionServerLoadSourceReads": {
+    "before": [
+      {
+        "pages": 100,
+        "firstLoadMarkdownReads": 201,
+        "secondLoadMarkdownReads": 201
+      },
+      {
+        "pages": 337,
+        "firstLoadMarkdownReads": 675,
+        "secondLoadMarkdownReads": 675
+      },
+      {
+        "pages": 1000,
+        "firstLoadMarkdownReads": 2001,
+        "secondLoadMarkdownReads": 2001
+      }
+    ],
+    "after": [
+      {
+        "pages": 100,
+        "firstLoadMarkdownReads": 101,
+        "secondLoadMarkdownReads": 101
+      },
+      {
+        "pages": 337,
+        "firstLoadMarkdownReads": 338,
+        "secondLoadMarkdownReads": 338
+      },
+      {
+        "pages": 1000,
+        "firstLoadMarkdownReads": 1001,
+        "secondLoadMarkdownReads": 1001
+      }
+    ],
+    "scope": "NODE_ENV=production createDocsServer with filesystem content and numeric ordering, two different page loads per site. Includes the active page read."
+  }
+}
