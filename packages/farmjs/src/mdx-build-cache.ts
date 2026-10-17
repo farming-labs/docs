@@ -21,9 +21,13 @@ export function mdxCacheDigest(value: string | Buffer): string {
 /** Only the adapter's deterministic MDX stage is cached, never the Vite graph. */
 export class MdxBuildCache {
   private readonly entries = new Map<string, Entry>();
+  private readonly entryBytes = new Map<string, number>();
   private readonly pending = new Map<string, Promise<string | undefined>>();
   private loaded?: Promise<void>;
   private bytes = 0;
+  private revision = 0;
+  private persistedRevision = 0;
+  private flushing?: Promise<void>;
 
   constructor(
     private readonly file: string,
@@ -32,16 +36,18 @@ export class MdxBuildCache {
   ) {}
 
   private remember(id: string, entry: Entry) {
-    const previous = this.entries.get(id);
-    if (previous) this.bytes -= Buffer.byteLength(JSON.stringify([id, previous]));
+    this.bytes -= this.entryBytes.get(id) ?? 0;
+    const size = Buffer.byteLength(JSON.stringify([id, entry]));
     this.entries.delete(id);
     this.entries.set(id, entry);
-    this.bytes += Buffer.byteLength(JSON.stringify([id, entry]));
+    this.entryBytes.set(id, size);
+    this.bytes += size;
     while (this.bytes > this.maxBytes || this.entries.size > this.maxEntries) {
       const oldest = this.entries.entries().next().value;
       if (!oldest) break;
       this.entries.delete(oldest[0]);
-      this.bytes -= Buffer.byteLength(JSON.stringify(oldest));
+      this.bytes -= this.entryBytes.get(oldest[0]) ?? 0;
+      this.entryBytes.delete(oldest[0]);
     }
   }
 
@@ -65,6 +71,7 @@ export class MdxBuildCache {
     } catch {
       // Missing, incompatible, truncated or unreadable caches are ordinary misses.
       this.entries.clear();
+      this.entryBytes.clear();
       this.bytes = 0;
     }
   }
@@ -77,7 +84,9 @@ export class MdxBuildCache {
     await (this.loaded ??= this.load());
     const entry = this.entries.get(id);
     if (entry?.key === key) {
-      this.remember(id, entry);
+      // Refresh eviction order without serializing unchanged compiled output.
+      this.entries.delete(id);
+      this.entries.set(id, entry);
       return JSON.parse(entry.value);
     }
     const pendingKey = JSON.stringify([id, key]);
@@ -90,6 +99,7 @@ export class MdxBuildCache {
           if (result === undefined) return undefined;
           const value = JSON.stringify(result);
           this.remember(id, { key, value, checksum: mdxCacheDigest(value) });
+          this.revision += 1;
           return value;
         })
         .finally(() => this.pending.delete(pendingKey));
@@ -103,13 +113,32 @@ export class MdxBuildCache {
   async flush(): Promise<void> {
     if (!this.loaded) return;
     await this.loaded;
+    // Multiple Vite environments can finish together. An older snapshot must
+    // finish before a newer one, or its rename could discard the newer entries.
+    while (this.flushing) await this.flushing;
+    if (this.persistedRevision === this.revision) return;
+    const revision = this.revision;
+    const flushing = this.writeSnapshot(JSON.stringify([...this.entries])).then((saved) => {
+      if (saved) this.persistedRevision = revision;
+    });
+    this.flushing = flushing;
+    try {
+      await flushing;
+    } finally {
+      if (this.flushing === flushing) this.flushing = undefined;
+    }
+  }
+
+  private async writeSnapshot(snapshot: string): Promise<boolean> {
     const temporary = `${this.file}.${randomUUID()}.tmp`;
     try {
       await fs.mkdir(path.dirname(this.file), { recursive: true });
-      await fs.writeFile(temporary, JSON.stringify([...this.entries]));
+      await fs.writeFile(temporary, snapshot);
       await fs.rename(temporary, this.file);
+      return true;
     } catch {
-      // A read-only cache directory must not fail an otherwise valid build.
+      // Keep the revision dirty so a later flush can retry a failed write.
+      return false;
     } finally {
       await fs.unlink(temporary).catch(() => undefined);
     }
