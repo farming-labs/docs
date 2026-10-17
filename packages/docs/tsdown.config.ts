@@ -4,6 +4,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/server.ts",
+    "src/build.ts",
     "src/runtime.ts",
     "src/markdown-rendering.ts",
     "src/mdx.ts",
