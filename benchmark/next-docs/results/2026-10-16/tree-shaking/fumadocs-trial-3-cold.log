@@ -1,0 +1,98 @@
+▲ Next.js 16.3.8 (Turbopack)
+[MDX] generated files in 10.289166999999907ms
+✓ Running next.config.mjs took 295ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+- Experiments (use with caution):
+  · cpus: 2
+
+  Creating an optimized production build ...
+Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│   }[22m
+[2m│   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary {[22m
+[2m│[22m     & ::highlight(fd-search) {
+[2m┆[22m                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│       color: var(--color-fd-primary);[22m
+[2m│     }[22m
+
+Issue #2:
+[2m│   }[22m
+[2m│   .\[\&_\:\:highlight\(fd-search\)\]\:underline {[22m
+[2m│[22m     & ::highlight(fd-search) {
+[2m┆[22m                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│       text-decoration-line: underline;[22m
+[2m│     }[22m
+
+✓ Compiled successfully in 13.6s
+  Running TypeScript ...
+  Finished TypeScript in 2.5s ...
+  Collecting page data using 2 workers ...
+  Generating static pages using 2 workers (0/103) ...
+  Generating static pages using 2 workers (25/103) 
+  Generating static pages using 2 workers (51/103) 
+  Generating static pages using 2 workers (77/103) 
+✓ Generating static pages using 2 workers (103/103) in 2.0s
+Turbopack build encountered 2 warnings:
+./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css:2:72088
+Warning: Parsing CSS source code failed
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...ghlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:[36mvar[0m(--color-fd-prim...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+
+Generated code of PostCSS transform of file content of benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css:
+./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css:2:72088
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...ghlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search){color:[36mvar[0m(--color-fd-prim...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+Import trace:
+  Client Component Browser:
+    ./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css [Client Component Browser]
+    ./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/layout.tsx [Server Component]
+
+
+./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css:2:72187
+Warning: Parsing CSS source code failed
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:unde...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?
+
+Generated code of PostCSS transform of file content of benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css:
+./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css:2:72187
+  [90m1 |[0m ...
+[33m[1m>[0m [90m2 |[0m ...\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search){text-decoration-line:unde...
+  [90m  |[0m                                                [33m[1m^[0m
+  [90m3 |[0m ...
+
+Import trace:
+  Client Component Browser:
+    ./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/global.css [Client Component Browser]
+    ./benchmark/next-docs/artifacts/ci-38994924362-1/apps/fumadocs/app/layout.tsx [Server Component]
+
+
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /_not-found
+├ ƒ /api/search
+└   /docs/[[...slug]]
+  ├ ● /docs
+  ├ ● /docs/page-0001
+  ├ ● /docs/page-0002
+  └ ● [+97 more paths]
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

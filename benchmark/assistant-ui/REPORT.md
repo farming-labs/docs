@@ -604,3 +604,48 @@ progressive production bundling or an end-to-end Vercel deployment improvement.
 The [summary and every sample](../farmjs-docs/results/2026-10-16/migration-current/summary.json),
 [raw build/runtime receipts](../farmjs-docs/results/2026-10-16/migration-current/) and runner
 details are saved on the existing benchmark branch. No benchmark PR was created or merged.
+
+
+## Docs-only tree-shaking experiment: rejected as a build fix
+
+[Run 38994924362](https://github.com/farming-labs/docs/actions/runs/38994924362)
+compares main `fca13817` with only `sideEffects: ["**/*.css"]` added to the theme
+and Next adapter manifests (candidate [#576](https://github.com/farming-labs/docs/pull/576)).
+The harness is `78d4f658`; package sources and lockfile match main. All 27 serial
+100-page production builds pass, with three rotated trials for cold, unchanged,
+and one-page-edit builds. Installation and package compilation are outside the timer.
+
+| Case | Main | Metadata candidate | Fumadocs |
+| --- | ---: | ---: | ---: |
+| Cold | 24.315 s | 23.976 s | 19.741 s |
+| Unchanged | 7.208 s | 7.212 s | 5.711 s |
+| One-page edit | 8.046 s | 8.262 s | 8.265 s |
+
+The cold median changes by -1.4% with overlapping ranges, unchanged builds are
+flat, and the edit median is +2.7%. These results do not establish a material build
+improvement. Browser-observed initial JavaScript is essentially unchanged:
+281,170 versus 281,167 gzip bytes, compared with Fumadocs' 239,343 bytes. The small
+change in HTML-referenced asset totals is not a browser download reduction.
+The candidate remains 21.5% slower cold and 26.3% slower unchanged than Fumadocs;
+one-page edits are effectively tied. Do not claim this change beats Fumadocs.
+
+Both Farming variants retain 104 route modules and both automatic API routes;
+Fumadocs has four route modules. Both prerender all 100 docs pages. Every runtime
+check passes: all URLs and complete content, highlighted code, tables, search,
+client navigation, clipboard, mobile sidebar, and fresh edited content. Farming
+also passes Markdown rewrites, Accept negotiation, llms.txt, llms-full.txt, and MCP
+initialization. CSS hashes match across all 18 Farming builds, and all 18 paired
+desktop/mobile screenshot comparisons are pixel-identical.
+
+Both packages build and typecheck; 150 adapter and 238 theme tests pass locally.
+The PR's full CI, two Vercel previews, deployment smoke and cross-framework MCP
+checks also pass. A separate local Webpack check fails on both baseline and candidate
+with the same pre-existing MDX metadata/server-client compilation error; this is
+not a passing Webpack compatibility result.
+
+The benchmark uses the locked Node 24.21.0, Next 16.3.8, React 19.2.4, and Fumadocs
+16.17.1/MDX 15.4.7 setup. Cold means a fresh app/build cache, not a cleared OS cache.
+This is a synthetic shared corpus, not the complete assistant-ui site or Vercel
+installation/upload/cache-restore pipeline. Absolute times must not be combined
+with earlier runners. See [all samples, ranges, phases and provenance](../next-docs/results/2026-10-16/tree-shaking/summary.json)
+and [raw receipts](../next-docs/results/2026-10-16/tree-shaking/).

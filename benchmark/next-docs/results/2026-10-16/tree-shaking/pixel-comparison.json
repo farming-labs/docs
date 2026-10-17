@@ -1,0 +1,146 @@
+[
+  {
+    "trial": 1,
+    "mode": "cold",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 1,
+    "mode": "cold",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 1,
+    "mode": "warm",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 1,
+    "mode": "warm",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 1,
+    "mode": "edit",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 1,
+    "mode": "edit",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 2,
+    "mode": "cold",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 2,
+    "mode": "cold",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 2,
+    "mode": "warm",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 2,
+    "mode": "warm",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 2,
+    "mode": "edit",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 2,
+    "mode": "edit",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 3,
+    "mode": "cold",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 3,
+    "mode": "cold",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 3,
+    "mode": "warm",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 3,
+    "mode": "warm",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 3,
+    "mode": "edit",
+    "viewport": "desktop",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "trial": 3,
+    "mode": "edit",
+    "viewport": "mobile",
+    "changedPixels": 0,
+    "contentChangedPixels": 0,
+    "maxChannelDelta": 0
+  }
+]
