@@ -36,6 +36,10 @@ jobs:
           pnpm --filter @farming-labs/docs build
           pnpm --filter @farming-labs/theme build
           pnpm --filter @farming-labs/next build
+      - name: Measure isolated configuration startup
+        run: |
+          mkdir -p benchmark/next-docs/artifacts
+          node packages/next/scripts/benchmark-config-startup.mjs > benchmark/next-docs/artifacts/config-startup.json
       - name: Capture runner
         run: |
           mkdir -p benchmark/next-docs/artifacts
@@ -54,6 +58,7 @@ jobs:
           retention-days: 30
           path: |
             benchmark/next-docs/artifacts/runner.txt
+            benchmark/next-docs/artifacts/config-startup.json
             benchmark/next-docs/artifacts/ci-*/*.json
             benchmark/next-docs/artifacts/ci-*/*.log
             benchmark/next-docs/artifacts/ci-*/*.png
