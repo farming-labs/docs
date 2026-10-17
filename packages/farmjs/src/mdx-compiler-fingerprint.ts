@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const RUNTIME_FILE = /\.(?:[cm]?[jt]sx?|json|wasm)$/;
 const MAX_FINGERPRINT_BYTES = 128 * 1024 * 1024;
 let pendingFingerprint: Promise<string | undefined> | undefined;
+let loadedFingerprint: string | undefined;
 
 async function packageRoot(name: string, importer: string): Promise<string> {
   const require = createRequire(importer);
@@ -28,9 +29,17 @@ async function packageRoot(name: string, importer: string): Promise<string> {
 export function fingerprintMdxCompiler(): Promise<string | undefined> {
   // Client and SSR graphs can request the same snapshot concurrently. Keep only
   // in-flight work shared; a later build in this process must read inputs again.
-  return (pendingFingerprint ??= readCompilerFingerprint().finally(() => {
-    pendingFingerprint = undefined;
-  }));
+  return (pendingFingerprint ??= readCompilerFingerprint()
+    .then((current) => {
+      loadedFingerprint ??= current;
+      // Loaded JS modules don't change when their files are edited in place.
+      // Recompile without persistence rather than labeling old code's output
+      // with a new on-disk compiler fingerprint in a long-lived build process.
+      return current === loadedFingerprint ? current : undefined;
+    })
+    .finally(() => {
+      pendingFingerprint = undefined;
+    }));
 }
 
 async function readCompilerFingerprint(): Promise<string | undefined> {
