@@ -1,0 +1,12 @@
+{
+  "baseline": "2e2c6c64cab8def690cec6d2d6dc3f6658c3355a",
+  "candidate": "e1fc761b",
+  "pr": 581,
+  "node": "24.21.0",
+  "cpu": "Apple M1",
+  "os": "macOS 26.2 (25C56)",
+  "files": 511,
+  "corpusSha256": "d619d8815de75169d853a339b4a075d4959f8e88c0c5397a3354c15ceb9e8543",
+  "trials": 3,
+  "method": "Alternating serial variants. Fresh Node process per command. Generated files seeded before timing. Real assistant-ui content copied into a single-commit Git fixture. Dependencies and builds outside timer. No full framework build or Fumadocs comparison."
+}

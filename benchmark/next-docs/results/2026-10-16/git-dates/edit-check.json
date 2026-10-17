@@ -1,0 +1,14 @@
+[
+  {
+    "command": "sitemap",
+    "staleDetected": true,
+    "baselineOutputsAccepted": true,
+    "output": "Generated sitemap manifest for 511 page(s).\n.farming-labs/sitemap-manifest.json\n"
+  },
+  {
+    "command": "agent-export",
+    "staleDetected": true,
+    "baselineOutputsAccepted": true,
+    "output": "Static Agent Bundle is current (536 files, 511 pages).\npublic/.well-known/agent-bundle.json\n.farming-labs/agent-bundle-manifest.json\n"
+  }
+]

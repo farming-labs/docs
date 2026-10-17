@@ -1,0 +1,9 @@
+
+ RUN  v4.1.8 /Users/mac/oss/docs-farm-rebuild-cache/packages/docs
+
+
+ Test Files  97 passed (97)
+      Tests  1560 passed (1560)
+   Start at  22:19:17
+   Duration  16.07s (transform 2.14s, setup 0ms, import 9.35s, tests 14.96s, environment 5ms)
+

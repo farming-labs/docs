@@ -1,0 +1,14 @@
+{"trial": 0, "variant": "before", "command": "sitemap", "seconds": 6.183675500000001, "sha256": "67c3bc90b83175da7e1064bc2bf3b1fcf90ea30fb0d5f24a4be2c7bb9e7c3df9", "files": 538, "pages": 511}
+{"trial": 0, "variant": "before", "command": "agent-export", "seconds": 6.276383792000001, "sha256": "114e8203504b7faf686d5e174d8ac49a41ca9a34c44b7e74b370dfd01d926dd0", "files": 538, "pages": null}
+{"trial": 0, "variant": "after", "command": "sitemap", "seconds": 2.0790247499999985, "sha256": "67c3bc90b83175da7e1064bc2bf3b1fcf90ea30fb0d5f24a4be2c7bb9e7c3df9", "files": 538, "pages": 511}
+{"trial": 0, "variant": "after", "command": "agent-export", "seconds": 2.2858164579999993, "sha256": "114e8203504b7faf686d5e174d8ac49a41ca9a34c44b7e74b370dfd01d926dd0", "files": 538, "pages": null}
+{"trial": 1, "variant": "after", "command": "sitemap", "seconds": 2.248593458000002, "sha256": "67c3bc90b83175da7e1064bc2bf3b1fcf90ea30fb0d5f24a4be2c7bb9e7c3df9", "files": 538, "pages": 511}
+{"trial": 1, "variant": "after", "command": "agent-export", "seconds": 2.3340540410000017, "sha256": "114e8203504b7faf686d5e174d8ac49a41ca9a34c44b7e74b370dfd01d926dd0", "files": 538, "pages": null}
+{"trial": 1, "variant": "before", "command": "sitemap", "seconds": 6.0704747500000025, "sha256": "67c3bc90b83175da7e1064bc2bf3b1fcf90ea30fb0d5f24a4be2c7bb9e7c3df9", "files": 538, "pages": 511}
+{"trial": 1, "variant": "before", "command": "agent-export", "seconds": 6.373458207999995, "sha256": "114e8203504b7faf686d5e174d8ac49a41ca9a34c44b7e74b370dfd01d926dd0", "files": 538, "pages": null}
+{"trial": 2, "variant": "before", "command": "sitemap", "seconds": 6.115498582999997, "sha256": "67c3bc90b83175da7e1064bc2bf3b1fcf90ea30fb0d5f24a4be2c7bb9e7c3df9", "files": 538, "pages": 511}
+{"trial": 2, "variant": "before", "command": "agent-export", "seconds": 6.355321332999999, "sha256": "114e8203504b7faf686d5e174d8ac49a41ca9a34c44b7e74b370dfd01d926dd0", "files": 538, "pages": null}
+{"trial": 2, "variant": "after", "command": "sitemap", "seconds": 2.5720575409999995, "sha256": "67c3bc90b83175da7e1064bc2bf3b1fcf90ea30fb0d5f24a4be2c7bb9e7c3df9", "files": 538, "pages": 511}
+{"trial": 2, "variant": "after", "command": "agent-export", "seconds": 2.311163334000007, "sha256": "114e8203504b7faf686d5e174d8ac49a41ca9a34c44b7e74b370dfd01d926dd0", "files": 538, "pages": null}
+sitemap {'before': 6.115498582999997, 'after': 2.248593458000002}
+agent-export {'before': 6.355321332999999, 'after': 2.311163334000007}

@@ -1,0 +1,4 @@
+
+> @farming-labs/docs@0.2.120 typecheck /Users/mac/oss/docs-farm-rebuild-cache/packages/docs
+> tsc --noEmit
+

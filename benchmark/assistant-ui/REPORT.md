@@ -783,3 +783,23 @@ The combined source also passes all **1,556 core tests**. The separate [producti
 All 27 builds and runtime checks passed: 100 correct static articles each, syntax highlighting, tables, client navigation, copy, search/result navigation, mobile sidebar, no overflow or browser exceptions, and edit freshness. Farming Markdown URLs, Accept negotiation, llms.txt/full, and MCP initialization also pass. Both Farming variants keep 104 route modules and both API routes; Fumadocs has four route modules. All 18 paired desktop/mobile screenshots are pixel-identical. CSS hashes match across every Farming build; browser-observed JS is 281,170 → 281,173 gzip bytes, effectively unchanged. AI is disabled equally in this fixture; this is not a full assistant-ui UI migration check.
 
 [Full timing samples, logs, screenshots, runtime receipts, and summary](../next-docs/results/2026-10-16/sections/ci-39002234194-1/) are retained. The existing benchmark PR #569 remains untouched. The verified deployment-specific waste (five example apps and discarded oversized install caches) is still covered by existing open PRs #572 and #573; these new core PRs do not replace those fixes.
+
+
+### Follow-up: bounded Git history lookups during static generation (October 16)
+
+[PR #581](https://github.com/farming-labs/docs/pull/581), `e1fc761b67958bf094695a2e8091e586c0049595`, replaces serial blocking Git lookups in the shared core CLI with up to four concurrent subprocesses. Each unique source path still uses exactly `git log -1 --format=%cI -- <path>` in the same working directory. It preserves per-file merge/rename semantics, UTC conversion, sitemap filesystem fallback, and the Agent Bundle policy of omitting freshness for untracked files. It does not cache dates across invocations or change rendering.
+
+On Apple M1 / macOS 26.2 / Node 24.21.0, three alternating serial trials use all 511 Markdown/MDX files from the assistant-ui snapshot. The files are copied into a single-commit Git fixture; generated outputs are seeded before timing, with a fresh Node process per command. Package builds and installs are outside the timer.
+
+| Complete CLI command | Main median | Candidate median | Reduction |
+| --- | ---: | ---: | ---: |
+| `sitemap generate --manifest-only` | 6.115 s | 2.249 s | 63.2% |
+| `agent export --public` | 6.355 s | 2.311 s | 63.6% |
+
+All six sitemap output hashes match. All six Agent Bundle output hashes match across 538 generated files (536 bundle files plus two manifests). After committing an edit, both candidate check commands detect stale output and then accept the baseline's regenerated files. All 1,560 core tests pass, including subprocess bounds, duplicate paths, failed lookups, missing history, merges, renames and unusual filenames. Build, typecheck, lint and formatting pass. An initial local full-suite run lacked adapter dependency links; the complete rerun after restoring those links passed with no exclusions.
+
+These are **local CLI generation measurements**, not a whole-build speedup, Vercel result, or new Fumadocs comparison. Git process count remains proportional to unique pages; at most four run concurrently. Git history depth and runner resources will affect the gain. Next compilation and route count are unchanged.
+
+[Raw results and verification](../next-docs/results/2026-10-16/git-dates/) and the [reproduction harness](../next-docs/benchmark-git-dates.py) are retained. The baseline is `2e2c6c64cab8def690cec6d2d6dc3f6658c3355a`. Run the harness with `--baseline-cli`, `--candidate-cli`, `--content`, `--node`, and `--output` pointing to the two built CLI entrypoints, content snapshot, Node executable, and output directory. No benchmark PR was created or modified.
+
+Deployment follow-up: #572 was refreshed against main, passed full CI plus both Vercel previews, and merged at `e2211f3f59c3d6269ea105ffaa1c33d25e7fa096`. The refreshed website preview retained all 67 static pages, compiled Next in 19.9 s, and took 48.940 s from `Running pnpm run build` to `Build Completed` (88.101 s from build-machine start, excluding queue and final upload). The preview waited about seven minutes in Vercel's queue before starting; queue time is separate from compilation. This is a single observational deployment, not a controlled before/after run. The install-scope/cache fix remains separately tracked in #573.
