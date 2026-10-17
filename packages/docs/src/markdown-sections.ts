@@ -2,6 +2,7 @@ import { createProcessor } from "@mdx-js/mdx";
 import { slug as githubSlug } from "github-slugger";
 import { parseEntities } from "parse-entities";
 import remarkGfm from "remark-gfm";
+import { createDocsMarkdownSectionCache } from "./markdown-section-cache.js";
 import {
   PAGE_AGENT_CONTRACT_END_MARKER,
   PAGE_AGENT_CONTRACT_START_MARKER,
@@ -115,6 +116,7 @@ interface DocsMarkdownAstNode {
 }
 
 let docsMarkdownMdxProcessor: ReturnType<typeof createProcessor> | undefined;
+const docsMarkdownSections = createDocsMarkdownSectionCache();
 
 function getDocsMarkdownMdxProcessor() {
   return (docsMarkdownMdxProcessor ??= createProcessor({
@@ -1403,11 +1405,14 @@ function parseDocsMarkdownAstSections(
 
 export function parseDocsMarkdownSections(markdown: string): DocsMarkdownSection[] {
   const body = stripDocsMarkdownSectionFrontmatter(markdown);
+  const cached = docsMarkdownSections.get(body);
+  if (cached) return cached;
   const generatedContractRanges = collectGeneratedAgentContractRanges(body);
-  return (
+  const sections =
     parseDocsMarkdownAstSections(body, generatedContractRanges) ??
-    parseDocsMarkdownSectionsFallback(body, generatedContractRanges)
-  );
+    parseDocsMarkdownSectionsFallback(body, generatedContractRanges);
+  docsMarkdownSections.set(body, sections);
+  return sections;
 }
 
 export function findDocsMarkdownSection(
