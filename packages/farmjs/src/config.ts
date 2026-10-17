@@ -1,4 +1,5 @@
 import type { DocsConfig } from "@farming-labs/docs";
+import { docsAgentSkillsBundle } from "./agent-skills.js";
 import { farmDocsRuntimeAdapter, type FarmDocsRuntimeAdapter } from "./runtime.js";
 import { docsMdx, type FarmDocsCodeBlockThemes } from "./vite.js";
 
@@ -18,6 +19,8 @@ export interface FarmDocsCoreConfig extends Partial<DocsConfig> {
 }
 
 export interface FarmDocsAdapterOptions {
+  /** Reuse unchanged production MDX compilation. Defaults to true. */
+  buildCache?: boolean;
   /** Enable the docs runtime. Defaults to true when withDocs is used. */
   enabled?: boolean;
   /** Path to docs.config.ts, relative to the Farm application root. */
@@ -48,25 +51,28 @@ function normalizeExistingDocs(value: FarmConfigLike["docs"]): FarmDocsCoreConfi
 
 function appendDocsVitePlugins(
   config: FarmViteConfigLike = {},
-  codeBlockThemes?: FarmDocsCodeBlockThemes,
-  contentRoots?: string[],
+  options: FarmDocsAdapterOptions,
 ): FarmViteConfigLike {
+  const { codeBlockThemes, contentRoots, buildCache, configPath } = options;
   return {
     ...config,
-    plugins: [docsMdx({ codeBlockThemes, contentRoots }), ...(config.plugins ?? [])],
+    plugins: [
+      docsMdx({ codeBlockThemes, contentRoots, buildCache }),
+      docsAgentSkillsBundle({ configPath }),
+      ...(config.plugins ?? []),
+    ],
   };
 }
 
 function withDocsViteConfig(
   value: FarmConfigLike["vite"],
-  codeBlockThemes?: FarmDocsCodeBlockThemes,
-  contentRoots?: string[],
+  options: FarmDocsAdapterOptions,
 ): FarmViteConfigLike | FarmViteConfigFactory {
   if (typeof value === "function") {
-    return (config) => appendDocsVitePlugins(value(config), codeBlockThemes, contentRoots);
+    return (config) => appendDocsVitePlugins(value(config), options);
   }
 
-  return appendDocsVitePlugins(value, codeBlockThemes, contentRoots);
+  return appendDocsVitePlugins(value, options);
 }
 
 /**
@@ -85,7 +91,10 @@ export function withDocs<TConfig extends FarmConfigLike>(
 
   return {
     ...farmConfig,
-    vite: withDocsViteConfig(farmConfig.vite, options.codeBlockThemes, options.contentRoots),
+    vite: withDocsViteConfig(farmConfig.vite, {
+      ...options,
+      configPath: options.configPath ?? existing.configPath,
+    }),
     docs: {
       ...existing,
       enabled,

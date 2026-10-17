@@ -8,6 +8,7 @@ import {
   type FarmDocsNavigationEnvironment,
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
+import { restoreUnserializableValues } from "./config-values.js";
 import { FarmDocsPageRenderer } from "./page.js";
 import { createFarmDocsPageModules, type FarmDocsMdxModule } from "./page-modules.js";
 
@@ -160,6 +161,8 @@ function FarmDocsClient({ config, data }: { config: DocsConfig; data: DocsServer
 export async function hydrateFarmDocs(input: {
   config: DocsConfig;
   data: DocsServerLoadResult;
+  /** The docs config module, when the server flagged values its JSON copy dropped. */
+  configModule?: unknown;
   container?: Element | null;
 }): Promise<Root> {
   const container = input.container ?? document.getElementById("farm-docs-root");
@@ -169,5 +172,8 @@ export async function hydrateFarmDocs(input: {
 
   // Hydrate with the page's Markdown in hand, so the first render matches the server's.
   await loadFarmDocsPageModule(input.data);
-  return hydrateRoot(container, <FarmDocsClient config={input.config} data={input.data} />);
+  const config = input.configModule
+    ? (restoreUnserializableValues(input.config, input.configModule) as DocsConfig)
+    : input.config;
+  return hydrateRoot(container, <FarmDocsClient config={config} data={input.data} />);
 }
