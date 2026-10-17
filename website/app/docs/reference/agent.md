@@ -18,6 +18,15 @@ When MCP `get_config_schema` publishes the option, compare its type and default;
 
 All types exported from `@farming-labs/docs`.
 
+Farm.js adapter options are exported from `@farming-labs/farmjs`. Its
+`withDocs(farmConfig, options)` and lower-level `docsMdx(options)` accept `buildCache`
+(boolean, default `true`). Production builds outside watch mode reuse unchanged MDX
+compilation and highlighting in `<Vite cacheDir>/farming-docs/mdx-v1.json`, normally
+`node_modules/.vite/farming-docs/mdx-v1.json`. Preserve this directory in CI for repeated
+builds. Source, module path, themes, mode, Node version, and compiler implementation
+changes invalidate cached output. Missing or unusable caches fall back to compilation;
+set `buildCache: false` to diagnose without reuse.
+
 ---
 
 ## `defineDocs(config)`
