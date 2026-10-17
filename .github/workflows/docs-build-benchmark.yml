@@ -41,16 +41,16 @@ jobs:
           mkdir -p benchmark/next-docs/artifacts
           lscpu > benchmark/next-docs/artifacts/runner.txt
           free -m >> benchmark/next-docs/artifacts/runner.txt
-      - name: Compare package metadata with Fumadocs control
+      - name: Compare configuration imports with Fumadocs control
         env:
           BENCH_PAGES: ${{ inputs.pages }}
           BENCH_TRIALS: ${{ inputs.trials }}
-        run: python3 benchmark/next-docs/compare-side-effects.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: python3 benchmark/next-docs/compare-config-imports.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: next-docs-side-effects-${{ github.run_id }}
+          name: next-docs-config-imports-${{ github.run_id }}
           retention-days: 30
           path: |
             benchmark/next-docs/artifacts/runner.txt
