@@ -1,0 +1,14 @@
+{
+  "deployment": "https://docs-website-mu2craeaw-farming-labs.vercel.app",
+  "commit": "e0010eec1351f0360a907e4f5136b59b5e8546fe",
+  "sameTreeAsMergeHead": "d589f625537c56fac93da57d9cae9211be8c38ff",
+  "access": "Authenticated Vercel CLI curl; unauthenticated protected URL returned 401.",
+  "checks": {
+    "agentManifest": true,
+    "installationHtml": true,
+    "installationMarkdown": true,
+    "llmsTxt": true,
+    "sitemapXml": true
+  },
+  "fullLocalLiveSmoke": "Not completed: initial unauthenticated invocation was blocked by Vercel protection. The five authenticated checks above replace that probe; no claim of a full local live smoke pass."
+}
