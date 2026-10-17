@@ -656,7 +656,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2.5 mb-2.5 select-none">
-        <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-white/30 shrink-0">
+        <span className="text-[11px] font-mono uppercase tracking-normal text-white/30 shrink-0">
           {title}
         </span>
         <div className="flex-1 h-px bg-white/[6%]" />
@@ -893,7 +893,7 @@ function CodeOutput({ cssCode, configCode }: { cssCode: string; configCode: stri
         <div className="flex-1" />
         <span
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-3 py-1.5 mr-2 text-[10px] font-mono uppercase rounded-none transition-all cursor-pointer border"
+          className="flex items-center gap-1.5 px-3 py-1.5 mr-2 text-[11px] font-mono uppercase rounded-none transition-all cursor-pointer border"
           style={{
             color: copied ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.4)",
             borderColor: "rgba(255,255,255,0.07)",
@@ -1423,7 +1423,7 @@ export function ThemeCustomizer() {
               <div className="flex items-center gap-1">
                 <span
                   onClick={handleReset}
-                  className="text-[10px] uppercase font-mono px-3 py-1 rounded-none border border-white/[8%] text-white/40 hover:text-white/70 hover:border-white/15 transition-colors cursor-pointer"
+                  className="text-[11px] uppercase font-mono px-3 py-1 rounded-none border border-white/[8%] text-white/40 hover:text-white/70 hover:border-white/15 transition-colors cursor-pointer"
                 >
                   Reset
                 </span>

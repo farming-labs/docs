@@ -670,7 +670,7 @@ export function Component() {
       {/* version quick-nav — major releases only */}
       <div className="border-y border-black/[8%] dark:border-white/[8%] bg-black/[2%] dark:bg-white/[2%]">
         <div className="container mx-auto max-w-5xl px-6 py-3 flex items-center gap-4 overflow-x-auto">
-          <span className="text-[11px] uppercase tracking-wider text-black/30 dark:text-white/30 font-mono shrink-0">
+          <span className="text-[11px] uppercase tracking-normal text-black/30 dark:text-white/30 font-mono shrink-0">
             Jump to:
           </span>
           {majorReleases.map((r) => (
@@ -712,13 +712,13 @@ export function Component() {
                   {item.date}
                 </time>
                 {item.pinned && (
-                  <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-mono uppercase tracking-wider text-blue-600 dark:text-blue-400/80">
+                  <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono uppercase tracking-normal text-blue-600 dark:text-blue-400/80">
                     <Pin className="size-2.5" />
                     pinned
                   </span>
                 )}
                 {item.isBeta && (
-                  <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400/70">
+                  <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono uppercase tracking-normal text-amber-600 dark:text-amber-400/70">
                     <Tag className="size-2.5" />
                     beta
                   </span>
@@ -743,7 +743,7 @@ export function Component() {
                         <Link
                           key={link.href}
                           href={link.href}
-                          className="border border-dashed border-black/[12%] px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-black/55 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/55 dark:hover:text-white dark:hover:border-white/28"
+                          className="border border-dashed border-black/[12%] px-2.5 py-1 text-[11px] font-mono uppercase tracking-normal text-black/55 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/55 dark:hover:text-white dark:hover:border-white/28"
                         >
                           {link.label}
                         </Link>
@@ -756,7 +756,7 @@ export function Component() {
               <div className={item.isBeta ? "space-y-4" : "space-y-6"}>
                 {item.changes.map((group, gIdx) => (
                   <div key={gIdx}>
-                    <h4 className="text-sm font-semibold uppercase tracking-wide text-black/70 dark:text-white/70 mb-2 font-mono">
+                    <h4 className="text-sm font-semibold uppercase tracking-normal text-black/70 dark:text-white/70 mb-2 font-mono">
                       {group.category}
                     </h4>
                     <ul className="space-y-1.5">

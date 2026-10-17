@@ -75,7 +75,7 @@ Write documentation pages under `app/docs/` or `src/app/docs/`. The CLI also add
 
 - Next.js 16 or newer
 - React and React DOM 19.2 or newer
-- `@farming-labs/docs` and `@farming-labs/theme`
+- `@farming-labs/docs` 0.2.121 or newer and `@farming-labs/theme`
 
 ## Learn more
 

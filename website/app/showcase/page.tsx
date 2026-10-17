@@ -187,7 +187,7 @@ export default function ShowcasePage() {
                 <div>
                   <label
                     htmlFor="showcase-name"
-                    className="block text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-white/50 mb-0.5"
+                    className="block text-[11px] font-mono uppercase tracking-normal text-neutral-500 dark:text-white/50 mb-0.5"
                   >
                     Name
                   </label>
@@ -204,7 +204,7 @@ export default function ShowcasePage() {
                 <div>
                   <label
                     htmlFor="showcase-url"
-                    className="block text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-white/50 mb-0.5"
+                    className="block text-[11px] font-mono uppercase tracking-normal text-neutral-500 dark:text-white/50 mb-0.5"
                   >
                     URL
                   </label>
@@ -221,7 +221,7 @@ export default function ShowcasePage() {
                 <div>
                   <label
                     htmlFor="showcase-desc"
-                    className="block text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-white/50 mb-0.5"
+                    className="block text-[11px] font-mono uppercase tracking-normal text-neutral-500 dark:text-white/50 mb-0.5"
                   >
                     Description <span className="normal-case font-normal">(opt.)</span>
                   </label>
@@ -237,7 +237,7 @@ export default function ShowcasePage() {
                 <div>
                   <label
                     htmlFor="showcase-screenshot"
-                    className="block text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-white/50 mb-0.5"
+                    className="block text-[11px] font-mono uppercase tracking-normal text-neutral-500 dark:text-white/50 mb-0.5"
                   >
                     Screenshot <span className="normal-case font-normal">(opt.)</span>
                   </label>
@@ -263,7 +263,7 @@ export default function ShowcasePage() {
                   <button
                     type="submit"
                     disabled={submitLoading || submitSuccess}
-                    className="flex items-center gap-1.5 rounded-none border border-neutral-300 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    className="flex items-center gap-1.5 rounded-none border border-neutral-300 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[11px] font-mono uppercase tracking-normal hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                   >
                     {submitLoading ? (
                       <Loader2 className="size-3 animate-spin" />
@@ -282,7 +282,7 @@ export default function ShowcasePage() {
         <div className="h-px w-[calc(100%+200px)] ml-0 sm:-ml-[100px] mx-auto bg-neutral-200 dark:bg-white/8 mt-0" />
         <div className="mt-10 relative">
           <div className="relative z-10">
-            <h2 className="text-[11px] font-mono uppercase tracking-wider text-neutral-700 dark:text-white/70 mb-3">
+            <h2 className="text-[11px] font-mono uppercase tracking-normal text-neutral-700 dark:text-white/70 mb-3">
               Sites
             </h2>
             {loading ? (
@@ -315,7 +315,7 @@ export default function ShowcasePage() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-white/20">
-                              <span className="text-[10px] font-mono uppercase">No preview</span>
+                              <span className="text-[11px] font-mono uppercase">No preview</span>
                             </div>
                           )}
                         </div>
@@ -337,7 +337,7 @@ export default function ShowcasePage() {
                               rel="noopener noreferrer"
                               className="cursor-pointer group"
                             >
-                              <button className="text-[10px] cursor-pointer font-mono rounded-none border border-neutral-300 flex items-center gap-1 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none">
+                              <button className="text-[11px] cursor-pointer font-mono rounded-none border border-neutral-300 flex items-center gap-1 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[11px] font-mono uppercase tracking-normal hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none">
                                 Check it out
                                 <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
                               </button>
