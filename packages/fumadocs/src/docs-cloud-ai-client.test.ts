@@ -127,6 +127,20 @@ describe("resolveDocsCloudAIClientRequest", () => {
     });
   });
 
+  it("falls back to the docs API route in a browser bundle without process", () => {
+    const runtimeProcess = globalThis.process;
+    let request: ReturnType<typeof resolveDocsCloudAIClientRequest>;
+    // Vite and Farm browser bundles do not define process at all.
+    Reflect.deleteProperty(globalThis, "process");
+    try {
+      request = resolveDocsCloudAIClientRequest(createDocsCloudConfig());
+    } finally {
+      globalThis.process = runtimeProcess;
+    }
+
+    expect(request).toEqual({ api: "/api/docs", requestStream: true });
+  });
+
   it("allows Docs Cloud streaming to be disabled from ai.stream", () => {
     process.env.PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.PUBLIC_DOCS_CLOUD_API_KEY = "public-key";

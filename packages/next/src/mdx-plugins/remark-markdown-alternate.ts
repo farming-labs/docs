@@ -1,4 +1,4 @@
-import { toDocsMarkdownUrl } from "@farming-labs/docs";
+import { toDocsMarkdownUrl } from "./core.js";
 
 interface RemarkMarkdownAlternateOptions {
   entry?: string;

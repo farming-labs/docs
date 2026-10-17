@@ -20,7 +20,7 @@ try {
   if ((error as NodeJS.ErrnoException).code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
 }
 
-const helpers: CoreMdx = compilerEntry
+const helpers: CoreMdx & Partial<Pick<typeof Core, "toDocsMarkdownUrl">> = compilerEntry
   ? await import(compilerEntry)
   : {
       ...(await import("@farming-labs/docs")),
@@ -34,3 +34,7 @@ export const {
   withDocsMarkdownRenderableHeadings,
   isolateDocsMarkdownPromptReferences,
 } = helpers;
+
+// Older focused entries predate the URL helper; retain compatibility with those cores.
+export const toDocsMarkdownUrl =
+  helpers.toDocsMarkdownUrl ?? (await import("@farming-labs/docs")).toDocsMarkdownUrl;

@@ -1,3 +1,15 @@
+import {
+  DOCS_AI_AGENT_USER_AGENT_PATTERNS,
+  DOCS_TRADITIONAL_BOT_USER_AGENT_PATTERNS,
+  DOCS_BOT_LIKE_USER_AGENT_PATTERN,
+} from "./agent-detection.js";
+export {
+  DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+} from "./agent-detection.js";
+import { normalizeDocsUrlPath, toDocsMarkdownUrl } from "./urls.js";
+export { normalizeDocsUrlPath, toDocsMarkdownUrl } from "./urls.js";
 import type {
   DocsConfig,
   DocsAccessPrincipal,
@@ -258,72 +270,6 @@ const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
 } satisfies DocsMcpResolvedConfig["tools"];
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 export const DOCS_MARKDOWN_SECTION_INDEX_FORMAT = "docs-markdown-sections.v2";
-const DOCS_AI_AGENT_USER_AGENT_PATTERNS = [
-  "claudebot",
-  "claude-searchbot",
-  "claude-user",
-  "anthropic-ai",
-  "claude-web",
-  "chatgpt",
-  "gptbot",
-  "oai-searchbot",
-  "openai",
-  "gemini",
-  "bard",
-  "google-cloudvertexbot",
-  "google-extended",
-  "meta-externalagent",
-  "meta-externalfetcher",
-  "meta-webindexer",
-  "perplexity",
-  "youbot",
-  "you.com",
-  "deepseekbot",
-  "cursor",
-  "github-copilot",
-  "codeium",
-  "tabnine",
-  "sourcegraph",
-  "cohere-ai",
-  "bytespider",
-  "amazonbot",
-  "ai2bot",
-  "diffbot",
-  "omgili",
-  "omgilibot",
-] as const;
-const DOCS_TRADITIONAL_BOT_USER_AGENT_PATTERNS = [
-  "googlebot",
-  "bingbot",
-  "yandexbot",
-  "baiduspider",
-  "duckduckbot",
-  "slurp",
-  "msnbot",
-  "facebot",
-  "twitterbot",
-  "linkedinbot",
-  "whatsapp",
-  "telegrambot",
-  "pingdom",
-  "uptimerobot",
-  "newrelic",
-  "datadog",
-  "statuspage",
-  "site24x7",
-  "applebot",
-] as const;
-const DOCS_BOT_LIKE_USER_AGENT_PATTERN = /bot|agent|fetch|crawl|spider|search/i;
-const DOCS_BOT_LIKE_USER_AGENT_TERMS = ["bot", "agent", "fetch", "crawl", "spider", "search"];
-export const DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN = buildDocsUserAgentHeaderPattern(
-  DOCS_AI_AGENT_USER_AGENT_PATTERNS,
-);
-export const DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN = buildDocsUserAgentHeaderPattern(
-  DOCS_TRADITIONAL_BOT_USER_AGENT_PATTERNS,
-);
-export const DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN = buildDocsUserAgentHeaderPattern(
-  DOCS_BOT_LIKE_USER_AGENT_TERMS,
-);
 const DOCS_LLMS_TXT_DIRECTIVE_LINE = "LLM index: /llms.txt";
 const DOCS_MARKDOWN_GENERATED_PREAMBLE_FIELD = "x_farming_labs_generated_preamble";
 
@@ -901,12 +847,6 @@ const DOCS_MARKDOWN_SECTION_MAX_BUDGET = 1_000_000;
 
 export function normalizeDocsPathSegment(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
-}
-
-export function normalizeDocsUrlPath(value: string): string {
-  const normalized = value.replace(/\/+/g, "/");
-  if (normalized === "/") return normalized;
-  return normalized.replace(/\/+$/, "");
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -1975,19 +1915,6 @@ export function validateDocsAgentFeedbackPayload(
   }
 
   return undefined;
-}
-
-export function toDocsMarkdownUrl(url: string, options: { locale?: string } = {}): string {
-  const hashIndex = url.indexOf("#");
-  const withoutHash = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
-  const hash = hashIndex >= 0 ? url.slice(hashIndex + 1) : "";
-  const [pathname, query = ""] = withoutHash.split("?", 2);
-  const normalizedPath = normalizeDocsUrlPath(pathname || "/");
-  const markdownPath = normalizedPath.endsWith(".md") ? normalizedPath : `${normalizedPath}.md`;
-  const params = new URLSearchParams(query);
-  if (options.locale && !params.has("lang")) params.set("lang", options.locale);
-  const search = params.toString();
-  return `${markdownPath}${search ? `?${search}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
 export function resolveDocsMarkdownCanonicalUrl({
@@ -4833,24 +4760,6 @@ export function acceptsDocsMarkdown(request: Request): boolean {
 
   const htmlQuality = qualityFor("text/html") ?? qualityFor("text/*") ?? qualityFor("*/*");
   return htmlQuality === undefined || htmlQuality <= markdownQuality;
-}
-
-function buildDocsUserAgentHeaderPattern(patterns: readonly string[]): string {
-  return `.*(?:${patterns.map(toCaseInsensitiveHeaderPattern).join("|")}).*`;
-}
-
-function toCaseInsensitiveHeaderPattern(value: string): string {
-  return value
-    .split("")
-    .map((char) => {
-      if (/^[a-z]$/i.test(char)) return `[${char.toLowerCase()}${char.toUpperCase()}]`;
-      return escapeRegex(char);
-    })
-    .join("");
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 }
 
 function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): string {

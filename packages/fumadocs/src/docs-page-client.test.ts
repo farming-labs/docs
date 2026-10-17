@@ -166,6 +166,33 @@ describe("DocsPageClient page navigation", () => {
 });
 
 describe("DocsPageClient structured data", () => {
+  it("renders compact page data in server HTML and preserves direct overrides", () => {
+    const props = {
+      tocEnabled: false,
+      breadcrumbEnabled: false,
+      structuredDataPages: {
+        baseUrl: "https://example.com",
+        pages: {
+          "/docs/installation": {
+            title: "Installation",
+            url: "/docs/installation?lang=fr",
+            dateModified: "2026-09-29",
+          },
+        },
+      },
+      children: React.createElement("article", null, "Docs"),
+    };
+    const html = renderToStaticMarkup(React.createElement(DocsPageClient, props));
+    expect(html).toContain('"headline":"Installation"');
+    expect(html).toContain('"url":"https://example.com/docs/installation?lang=fr"');
+    expect(html).toContain('"dateModified":"2026-09-29T00:00:00.000Z"');
+    const override = renderToStaticMarkup(
+      React.createElement(DocsPageClient, { ...props, structuredData: '{"headline":"Override"}' }),
+    );
+    expect(override).toContain('"headline":"Override"');
+    expect(override).not.toContain('"headline":"Installation"');
+  });
+
   it("renders serialized Schema.org JSON-LD for the active docs page", () => {
     const html = renderToStaticMarkup(
       React.createElement(DocsPageClient, {

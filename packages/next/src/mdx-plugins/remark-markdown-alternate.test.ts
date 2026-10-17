@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import remarkMarkdownAlternate from "./remark-markdown-alternate.js";
+
+vi.mock("@farming-labs/docs", () => {
+  throw new Error("MDX plugin loaded the core barrel");
+});
 
 describe("remarkMarkdownAlternate", () => {
   it("adds a text/markdown alternate URL for docs page routes", () => {

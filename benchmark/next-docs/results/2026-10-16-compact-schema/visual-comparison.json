@@ -1,0 +1,52 @@
+[
+  {
+    "pages": 100,
+    "device": "desktop",
+    "differentPixels": 1177,
+    "bounds": [
+      15,
+      23,
+      279,
+      944
+    ],
+    "size": [
+      1440,
+      1000
+    ]
+  },
+  {
+    "pages": 100,
+    "device": "mobile",
+    "differentPixels": 0,
+    "bounds": null,
+    "size": [
+      390,
+      844
+    ]
+  },
+  {
+    "pages": 500,
+    "device": "desktop",
+    "differentPixels": 317,
+    "bounds": [
+      15,
+      23,
+      279,
+      944
+    ],
+    "size": [
+      1440,
+      1000
+    ]
+  },
+  {
+    "pages": 500,
+    "device": "mobile",
+    "differentPixels": 0,
+    "bounds": null,
+    "size": [
+      390,
+      844
+    ]
+  }
+]

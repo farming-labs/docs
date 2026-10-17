@@ -28,6 +28,7 @@ import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
+import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 
 const agentLlmsDirectiveStyle: CSSProperties = {
   position: "absolute",
@@ -123,6 +124,8 @@ interface DocsPageClientProps {
   nextPage?: PageNavigationItem | null;
   /** Map of pathname → serialized Schema.org JSON-LD. */
   structuredDataMap?: Record<string, string>;
+  /** Compact page fields; shared schema and breadcrumbs expand only for the active page. */
+  structuredDataPages?: DocsStructuredDataPages;
   /** Direct serialized Schema.org JSON-LD override for the current page. */
   structuredData?: string;
   /**
@@ -571,6 +574,7 @@ export function DocsPageClient({
   previousPage,
   nextPage,
   structuredDataMap,
+  structuredDataPages,
   structuredData: structuredDataProp,
   readingTimeEnabled = false,
   lastUpdatedEnabled = true,
@@ -620,7 +624,9 @@ export function DocsPageClient({
   );
   const matchedReadingTime = readingTimeMap?.[normalizedPath];
   const structuredDataJson = !isChangelogRoute
-    ? (structuredDataProp ?? structuredDataMap?.[normalizedPath])
+    ? (structuredDataProp ??
+      structuredDataMap?.[normalizedPath] ??
+      renderPageStructuredData(structuredDataPages, normalizedPath))
     : undefined;
 
   useEffect(() => {
