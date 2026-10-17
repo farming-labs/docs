@@ -34,6 +34,7 @@ jobs:
       - name: Build packages outside measurement
         run: |
           mkdir -p benchmark/next-docs/artifacts
+          git fetch --depth=1 origin 0d66fc164b3cd2efeaa7edb9dbc082fe958339fb
           git show 0d66fc164b3cd2efeaa7edb9dbc082fe958339fb:packages/docs/src/markdown-sections.ts > packages/docs/src/markdown-sections.ts
           pnpm --filter @farming-labs/docs build
           cp packages/docs/dist/markdown-sections.mjs benchmark/next-docs/artifacts/markdown-sections-before.mjs
