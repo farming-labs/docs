@@ -47,6 +47,39 @@ async function compileDocsMarkdownHeadingAnchors(markdown: string): Promise<stri
 }
 
 describe("canonical Markdown heading anchors", () => {
+  it.each([false, true])("preserves nested section boundaries (fallback: %s)", (fallback) => {
+    // Exercise every adjacent depth transition, including skipped heading levels.
+    const levels = Array.from({ length: 36 }, (_, index) => [
+      Math.floor(index / 6) + 1,
+      (index % 6) + 1,
+    ]).flat();
+    const markdown =
+      levels
+        .map((level, index) => `${"#".repeat(level)} Section ${index}\n\nBody ${index}.`)
+        .join("\n\n") + (fallback ? "\n\n{" : "");
+    const lines = markdown.split("\n");
+    const sections = parseDocsMarkdownSections(markdown);
+    expect(sections).toHaveLength(levels.length);
+    for (let index = 0; index < sections.length; index += 1) {
+      const next = levels.findIndex(
+        (level, candidate) => candidate > index && level <= levels[index],
+      );
+      const end = next === -1 ? lines.length : next * 4;
+      expect(sections[index]).toEqual({
+        title: `Section ${index}`,
+        anchor: `section-${index}`,
+        explicit: false,
+        level: levels[index],
+        content: lines
+          .slice(index * 4, end)
+          .join("\n")
+          .trim(),
+        startLine: index * 4 + 1,
+        endLine: end,
+      });
+    }
+  });
+
   it("assigns rendered headings before generated agent-only contract headings", () => {
     const contract = renderPageAgentContractMarkdown({
       task: "Run the generated contract task.",
