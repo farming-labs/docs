@@ -16,4 +16,5 @@ export {
 export { ensureDocsReviewWorkflow } from "./review.js";
 export { renderDocsAgentSkillsBundle } from "./agent-skills-vite.js";
 export { resolveConfiguredAgentSkillsSync } from "./agent-skills-server.js";
+export { loadDocsConfigModule } from "./cli/config.js";
 export type { DocsConfig } from "./types.js";
