@@ -41,11 +41,13 @@
   },
   "pnpm": {
     "overrides": {
+      "@farm.js/core": "file:../farm.js/packages/farm",
+      "@farm.js/cli": "file:../farm.js/packages/farm-cli",
       "defu@<=6.1.4": "6.1.5",
       "next": "16.3.8",
       "astro": "7.3.5",
       "@sveltejs/kit": "^2.57.1",
-      "h3": "^1.15.9",
+      "h3@<2": "^1.15.9",
       "effect": "^3.20.0",
       "esbuild@>=0.17.0 <0.28.1": "0.28.1",
       "devalue": "5.9.4",
@@ -81,7 +83,6 @@
       "seroval@<=1.6.2": "1.6.8",
       "ip-address@<=10.3.0": "10.4.0",
       "ws": "^8.21.0",
-      "@farm.js/core>vite": "6.4.3",
       "readdir-glob>minimatch": "10.2.4",
       "glob@10>minimatch": "10.2.4",
       "glob@13>minimatch": "^10.2.3",

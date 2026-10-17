@@ -3,17 +3,18 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "farm dev",
     "build": "pnpm prisma generate && pnpm run build:packages && pnpm run build:app",
-    "build:packages": "pnpm --filter @farming-labs/docs build && pnpm --filter @farming-labs/theme build && pnpm --filter @farming-labs/next build",
-    "build:app": "node ../packages/docs/dist/cli/index.mjs sitemap generate --config docs.config.tsx --manifest-only && next build",
-    "start": "next start",
+    "build:packages": "pnpm --filter @farming-labs/docs build && pnpm --filter @farming-labs/theme build && pnpm --filter @farming-labs/farmjs build",
+    "build:app": "farm build",
+    "start": "farm start",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@databuddy/sdk": "^2.3.29",
+    "@farm.js/core": "file:../../farm.js/packages/farm",
     "@farming-labs/docs": "workspace:*",
-    "@farming-labs/next": "workspace:*",
+    "@farming-labs/farmjs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
     "@gsap/react": "^2.1.2",
     "@prisma/client": "^6.19.2",
@@ -27,7 +28,6 @@
     "geist": "^1.7.0",
     "gsap": "^3.14.2",
     "lucide-react": "^0.564.0",
-    "next": "16.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sugar-high": "^0.9.5",
@@ -35,12 +35,11 @@
     "unicornstudio-react": "latest"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.1",
+    "@farm.js/cli": "file:../../farm.js/packages/farm-cli",
     "@types/mdx": "^2.0.13",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "postcss": "^8.5.6",
     "prisma": "^6.19.2",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3"
