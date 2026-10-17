@@ -39,7 +39,7 @@ export function CloudFeatures() {
   return (
     <section className="space-y-5">
       <div className="max-w-3xl">
-        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+        <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
           What cloud adds
         </p>
         <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
@@ -87,7 +87,7 @@ export function CloudFeatures() {
 
         <FeatureCard className="p-6 lg:col-span-2">
           <div className="mx-auto my-4 max-w-2xl mb-10 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+            <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
               Sync • search • review • ship
             </p>
             <p className="mt-3 text-balance font-pixel text-center text-2xl font-normal text-black dark:text-white">
@@ -99,11 +99,11 @@ export function CloudFeatures() {
             <div className="grid gap-5 lg:grid-cols-2">
               <div className="border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.02]">
                 <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
-                  <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+                  <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
                     <Globe className="size-3.5" />
                     instant deploy
                   </div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-black/45 dark:text-white/45">
+                  <span className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
                     *.docs.app
                   </span>
                 </div>
@@ -135,11 +135,11 @@ export function CloudFeatures() {
 
               <div className="border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.02]">
                 <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
-                  <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+                  <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
                     <CloudSyncIcon className="size-3.5" />
                     repo sync
                   </div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+                  <span className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
                     <GitBranch className="size-3.5 inline-flex mr-2 justify-center items-center" />
                     repo ingest
                   </span>
@@ -195,7 +195,7 @@ export function CloudFeatures() {
                     key={surface.title}
                     className="border border-black/10 bg-black/[0.02] px-4 py-4 dark:border-white/10 dark:bg-white/[0.02]"
                   >
-                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+                    <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
                       <surface.icon className="size-3.5" />
                       {surface.title}
                     </div>
@@ -256,7 +256,7 @@ function CardHeading({
     <div className="p-0">
       <span className="text-muted-foreground flex items-center gap-2 text-black/55 dark:text-white/50">
         <Icon className="size-4" />
-        <span className="text-[11px] font-mono uppercase tracking-[0.14em]">{title}</span>
+        <span className="text-[11px] font-mono uppercase tracking-normal">{title}</span>
       </span>
       <p className="mt-4 text-xl font-normal font-pixel text-black sm:mt-6 sm:text-2xl dark:text-white/90">
         {description}
@@ -298,7 +298,7 @@ function SurfaceNode({
           ))}
         </div>
       </div>
-      <span className="mt-1.5 block text-center font-mono text-sm uppercase tracking-[0.16em] text-black/45 dark:text-white/40">
+      <span className="mt-1.5 block text-center font-mono text-sm uppercase tracking-normal text-black/45 dark:text-white/40">
         {label}
       </span>
     </div>

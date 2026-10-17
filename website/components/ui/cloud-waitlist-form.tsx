@@ -24,7 +24,8 @@ type SubmitState =
 
 type ButtonMode = "idle" | "loading" | "success";
 
-export default function CloudWaitlistForm() {
+/** `bare` drops the card frame and heading so the form can fill a cell that already has both. */
+export default function CloudWaitlistForm({ bare = false }: { bare?: boolean } = {}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -130,20 +131,29 @@ export default function CloudWaitlistForm() {
   }
 
   return (
-    <PixelCard className="w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 pt-0 sm:pt-14 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40">
-      <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
-        <p className="text-[10px] font-mono uppercase tracking-wide text-black/45 dark:text-white/45">
-          Join the waitlist
-        </p>
-        <h2 className="mt-2 text-xl font-normal font-pixel tracking-normal text-black dark:text-white">
-          Get first access.
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-black/55 dark:text-white/45">
-          Tell us what should ship first and we’ll use that to shape the first release.
-        </p>
-      </div>
+    <PixelCard
+      showTexture={!bare}
+      className={
+        bare
+          ? "border-0 bg-transparent p-0 backdrop-blur-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
+          : "w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 pt-0 sm:pt-14 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40"
+      }
+    >
+      {bare ? null : (
+        <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
+          <p className="text-[11px] font-mono uppercase tracking-normal text-black/45 dark:text-white/45">
+            Join the waitlist
+          </p>
+          <h2 className="mt-2 text-[18px] font-medium tracking-[-0.02em] text-black dark:text-white">
+            Get first access.
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-black/55 dark:text-white/45">
+            Tell us what should ship first and we’ll use that to shape the first release.
+          </p>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 mt-5 p-5">
+      <form onSubmit={handleSubmit} className={bare ? "space-y-4" : "space-y-4 mt-5 p-5"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="cloud-waitlist-name"
@@ -185,7 +195,7 @@ export default function CloudWaitlistForm() {
         <div>
           <label
             htmlFor="cloud-waitlist-message"
-            className="mb-1 block text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
+            className="mb-1 block text-[11px] font-mono uppercase tracking-normal text-black/45 dark:text-white/45"
           >
             Notes
           </label>
@@ -201,7 +211,7 @@ export default function CloudWaitlistForm() {
         <button
           type="submit"
           disabled={loading || buttonMode === "success"}
-          className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-[11px] font-mono uppercase tracking-wide text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+          className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-[11px] font-mono uppercase tracking-normal text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
         >
           <span className="relative h-4 overflow-hidden">
             <span
@@ -294,7 +304,7 @@ function InterestOptionList({
 
   return (
     <div ref={rootRef} className="min-w-0 space-y-2">
-      <label className="mb-1 block text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+      <label className="mb-1 block text-[11px] font-mono uppercase tracking-normal text-black/45 dark:text-white/45">
         What should ship first?
       </label>
 
@@ -314,7 +324,7 @@ function InterestOptionList({
                     key={option.value}
                     className="flex min-w-0 max-w-full items-start gap-1.5 border border-black/10 bg-black/[0.025] px-2 py-1 text-[11px] leading-tight dark:border-white/10 dark:bg-white/[0.05] sm:inline-flex sm:max-w-[calc(100%-0.375rem)]"
                   >
-                    <span className="shrink-0 font-mono uppercase tracking-[0.16em] text-black/40 dark:text-white/40">
+                    <span className="shrink-0 font-mono uppercase tracking-normal text-black/40 dark:text-white/40">
                       {String(index + 1).padStart(2, "0")}.
                     </span>
                     <span className="min-w-0 break-words">{option.label}</span>
@@ -326,7 +336,7 @@ function InterestOptionList({
                 Pick up to 3 priorities
               </span>
             )}
-            <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-black/35 dark:text-white/35">
+            <span className="mt-1 block font-mono text-[11px] uppercase tracking-normal text-black/35 dark:text-white/35">
               {value.length}/3 selected
             </span>
           </div>
@@ -376,7 +386,7 @@ function InterestOptionList({
                     ].join(" ")}
                   >
                     <span className="min-w-0 text-sm leading-snug text-black dark:text-white">
-                      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-black/40 dark:text-white/40">
+                      <span className="font-mono text-[11px] uppercase tracking-normal text-black/40 dark:text-white/40">
                         {String(index + 1).padStart(2, "0")}.
                       </span>{" "}
                       {option.label}
@@ -426,7 +436,7 @@ function Field({
     <div>
       <label
         htmlFor={id}
-        className="mb-1 block text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
+        className="mb-1 block text-[11px] font-mono uppercase tracking-normal text-black/45 dark:text-white/45"
       >
         {label}
       </label>

@@ -1200,12 +1200,12 @@ export function AgentScorePage() {
               Home <span className="ml-2 text-black/25 dark:text-white/25">/</span>
             </Link>
             <Activity className="size-3.5" strokeWidth={1.8} />
-            <p className="font-mono uppercase tracking-[0.22em]">Agent Score</p>
+            <p className="font-mono uppercase tracking-normal">Agent Score</p>
           </div>
 
           <Link
             href="https://github.com/farming-labs/docs"
-            className="group mt-6 hidden font-mono text-[11px] uppercase tracking-[0.2em] text-black/35 transition-colors hover:text-black hover:no-underline dark:text-white/35 dark:hover:text-white md:inline-flex md:items-center md:gap-1.5"
+            className="group mt-6 hidden font-mono text-[11px] uppercase tracking-normal text-black/35 transition-colors hover:text-black hover:no-underline dark:text-white/35 dark:hover:text-white md:inline-flex md:items-center md:gap-1.5"
           >
             <GithubIcon className="size-3" /> / GitHub
           </Link>
@@ -1223,7 +1223,7 @@ export function AgentScorePage() {
 
         {fetchState.status === "error" ? (
           <section>
-            <div className="border border-red-500/30 bg-red-500/5 px-5 py-4 font-mono text-[12px] uppercase tracking-[0.16em] text-red-600 dark:text-red-400">
+            <div className="border border-red-500/30 bg-red-500/5 px-5 py-4 font-mono text-[12px] uppercase tracking-normal text-red-600 dark:text-red-400">
               {fetchState.message}
             </div>
           </section>
@@ -1244,18 +1244,18 @@ export function AgentScorePage() {
             ) : null}
 
             {submitState.status === "error" ? (
-              <div className="border border-red-500/30 bg-red-500/5 px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em] text-red-600 dark:text-red-400">
+              <div className="border border-red-500/30 bg-red-500/5 px-5 py-3 font-mono text-[12px] uppercase tracking-normal text-red-600 dark:text-red-400">
                 {submitState.message}
               </div>
             ) : null}
             {submitState.status === "warning" ? (
-              <div className="border border-amber-500/30 bg-amber-500/5 px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em] text-amber-700 dark:text-amber-400">
+              <div className="border border-amber-500/30 bg-amber-500/5 px-5 py-3 font-mono text-[12px] uppercase tracking-normal text-amber-700 dark:text-amber-400">
                 {submitState.message}
               </div>
             ) : null}
 
             {submitState.status === "success" ? (
-              <div className="border border-black/15 bg-black/2 px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em] text-black/75 dark:border-white/15 dark:bg-white/3 dark:text-white/75">
+              <div className="border border-black/15 bg-black/2 px-5 py-3 font-mono text-[12px] uppercase tracking-normal text-black/75 dark:border-white/15 dark:bg-white/3 dark:text-white/75">
                 {submitState.message}
               </div>
             ) : null}
@@ -1395,7 +1395,7 @@ function HeroSection({
         </div>
 
         <div className="relative z-10 flex max-w-3xl flex-col pt-1 sm:pt-0 lg:min-h-full lg:justify-end">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+          <p className="mb-3 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
             Agent readiness score
           </p>
 
@@ -1412,7 +1412,7 @@ function HeroSection({
             skill.md, .md routes, and MCP, then give you a score and a breakdown.
           </p>
 
-          <div className="mt-6 flex font-pixel flex-wrap gap-1.5 sm:gap-2">
+          <div className="mt-6 flex flex-wrap gap-1.5 sm:gap-2">
             {[
               "Discovery",
               "llms.txt",
@@ -1425,7 +1425,7 @@ function HeroSection({
             ].map((signal) => (
               <span
                 key={signal}
-                className="inline-flex items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"
+                className="inline-flex items-center border border-black/10 px-2 py-1 font-mono text-[11px] text-black/55 dark:border-white/10 dark:text-white/55"
               >
                 {signal}
               </span>
@@ -1435,7 +1435,7 @@ function HeroSection({
           <div className="-mb-px mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center">
             <Link
               href="/docs/cli"
-              className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90 sm:w-auto"
+              className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-normal text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90 sm:w-auto"
             >
               Read CLI docs
               <ArrowUpRight className="size-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -1443,7 +1443,7 @@ function HeroSection({
             <button
               type="button"
               onClick={onLeaderboardClick}
-              className="group inline-flex mb-[2px] md:border-b-0 w-full items-center justify-center gap-2 border border-black/15 bg-white px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-black transition-colors hover:bg-black/[0.03] dark:border-white/10 dark:bg-black/50 dark:text-white dark:hover:bg-white/[0.05] sm:w-auto"
+              className="group inline-flex mb-[2px] md:border-b-0 w-full items-center justify-center gap-2 border border-black/15 bg-white px-4 py-3 font-mono text-[11px] uppercase tracking-normal text-black transition-colors hover:bg-black/[0.03] dark:border-white/10 dark:bg-black/50 dark:text-white dark:hover:bg-white/[0.05] sm:w-auto"
             >
               <ListOrdered className="size-3.5" aria-hidden />
               Leaderboard
@@ -1455,7 +1455,7 @@ function HeroSection({
       <div className="relative gap-2 lg:flex lg:flex-col lg:self-stretch">
         <PixelCard className="w-full shrink-0 border-b border-t border-black/10 bg-white/95 p-0 sm:border-b-0 sm:border-t-0 sm:pt-14 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40">
           <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-wide text-black/45 dark:text-white/45">
+            <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
               Calculate the score
             </p>
             <h2 className="mt-2 text-xl font-normal font-pixel tracking-normal text-black dark:text-white">
@@ -1471,7 +1471,7 @@ function HeroSection({
             <div>
               <label
                 htmlFor="agent-score-url"
-                className="mb-1 block font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
+                className="mb-1 block font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45"
               >
                 Docs URL
               </label>
@@ -1493,7 +1493,7 @@ function HeroSection({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/35 dark:text-white/35">
+              <span className="font-mono text-[11px] uppercase tracking-normal text-black/35 dark:text-white/35">
                 try
               </span>
               {EXAMPLE_URLS.map((example) => (
@@ -1501,7 +1501,7 @@ function HeroSection({
                   key={example}
                   type="button"
                   onClick={() => onUrlChange(example)}
-                  className="border border-black/10 bg-black/[0.02] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-black/55 transition-colors hover:border-black/25 hover:text-black dark:border-white/10 dark:bg-white/[0.02] dark:text-white/55 dark:hover:border-white/25 dark:hover:text-white"
+                  className="border border-black/10 bg-black/[0.02] px-2 py-1 font-mono text-[11px] uppercase tracking-normal text-black/55 transition-colors hover:border-black/25 hover:text-black dark:border-white/10 dark:bg-white/[0.02] dark:text-white/55 dark:hover:border-white/25 dark:hover:text-white"
                 >
                   {shortenUrl(example)}
                 </button>
@@ -1512,7 +1512,7 @@ function HeroSection({
               type="submit"
               disabled={loading}
               aria-label={loading ? loadingLabel : "Calculate score"}
-              className="group inline-flex min-h-11 w-full items-center justify-between gap-3 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+              className="group inline-flex min-h-11 w-full items-center justify-between gap-3 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-normal text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
             >
               <span aria-live="polite" className="min-w-0 truncate text-left">
                 {loading ? loadingLabel : "Calculate score"}
@@ -1576,7 +1576,7 @@ function BreakdownImprovementStrip({
       )}
     >
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-black/55 dark:text-white/55">
+        <p className="font-mono text-[11px] uppercase tracking-normal text-black/55 dark:text-white/55">
           Improvement Instructions
         </p>
       </div>
@@ -1595,7 +1595,7 @@ function BreakdownImprovementStrip({
               ? "Improvements copied to clipboard"
               : "Copy improvement notes for docs backlog to clipboard"
           }
-          className="inline-flex shrink-0 w-[200px] items-center justify-center gap-2 border border-black/15 bg-black/2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black transition-colors hover:bg-black/5 dark:border-white/15 dark:bg-white/3 dark:text-white dark:hover:bg-white/6 sm:px-4 sm:py-2.5"
+          className="inline-flex shrink-0 w-[200px] items-center justify-center gap-2 border border-black/15 bg-black/2 px-3 py-2 font-mono text-[11px] uppercase tracking-normal text-black transition-colors hover:bg-black/5 dark:border-white/15 dark:bg-white/3 dark:text-white dark:hover:bg-white/6 sm:px-4 sm:py-2.5"
         >
           {copied ? (
             <Check className="size-3.5 shrink-0" aria-hidden />
@@ -1625,23 +1625,23 @@ function ScoreOverview({
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-stretch lg:gap-0">
         <div className="flex flex-col p-6 justify-between gap-5 border-b border-black/10 pb-5 dark:border-white/10 lg:border-b-0 lg:pr-6">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+            <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
               Score
             </p>
             <div className="mt-2 flex items-baseline gap-3">
               <span className="text-6xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:text-7xl">
                 {report.score}
               </span>
-              <span className="font-mono text-xs uppercase tracking-[0.18em] text-black/35 dark:text-white/35">
+              <span className="font-mono text-xs uppercase tracking-normal text-black/35 dark:text-white/35">
                 / 100
               </span>
             </div>
-            <p className="mt-1 font-mono text-xs uppercase tracking-[0.24em] text-black/65 dark:text-white/65">
+            <p className="mt-1 font-mono text-xs uppercase tracking-normal text-black/65 dark:text-white/65">
               {report.grade}
             </p>
           </div>
 
-          <div className="space-y-2 font-mono text-[11px] uppercase tracking-[0.14em] text-black/50 dark:text-white/50">
+          <div className="space-y-2 font-mono text-[11px] uppercase tracking-normal text-black/50 dark:text-white/50">
             <div className="flex items-center justify-between border-t border-black/10 pt-3 dark:border-white/10">
               <span className="text-black/40 dark:text-white/40">Target</span>
               <a
@@ -1668,7 +1668,7 @@ function ScoreOverview({
             onClick={onSubmitLeaderboard}
             disabled={submitBusy}
             aria-label={submitBusy ? "Submitting score" : "Submit to leaderboard"}
-            className="group inline-flex min-h-10 w-full items-center justify-between gap-3 border border-black bg-black px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+            className="group inline-flex min-h-10 w-full items-center justify-between gap-3 border border-black bg-black px-4 py-2.5 font-mono text-[11px] uppercase tracking-normal text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
           >
             <span aria-live="polite" className="min-w-0 truncate text-left">
               {submitBusy ? "Submitting score" : "Submit to leaderboard"}
@@ -1696,6 +1696,25 @@ function ScoreOverview({
   );
 }
 
+function StatusBadge({ status }: { status: ScoreStatus }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 w-fit shrink-0 items-center gap-1.5 border px-1.5 font-mono text-[10.5px] font-medium uppercase leading-none tabular-nums",
+        status === "pass" &&
+          "border-emerald-600/25 bg-emerald-500/[0.06] text-emerald-700 dark:border-emerald-400/25 dark:text-emerald-400",
+        status === "warn" &&
+          "border-amber-500/30 bg-amber-500/[0.07] text-amber-700 dark:border-amber-400/30 dark:text-amber-400",
+        status === "fail" &&
+          "border-red-500/30 bg-red-500/[0.06] text-red-600 dark:border-red-400/30 dark:text-red-400",
+      )}
+    >
+      <span aria-hidden className="size-1.5 rounded-full bg-current" />
+      {statusLabel(status)}
+    </span>
+  );
+}
+
 function ScoreCheckCard({ item }: { item: BreakdownItem }) {
   const percent = scorePercent(item.score, item.maxScore);
 
@@ -1704,13 +1723,11 @@ function ScoreCheckCard({ item }: { item: BreakdownItem }) {
       <div className="flex items-center justify-between gap-2">
         <p
           title={item.detail}
-          className="min-w-0 truncate font-mono text-[9.5px] uppercase tracking-wide text-black/55 dark:text-white/55"
+          className="min-w-0 truncate font-mono text-[11px] uppercase tracking-normal text-black/55 dark:text-white/55"
         >
           # {item.title}
         </p>
-        <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.22em] tabular-nums text-black/60 dark:text-white/60">
-          {statusLabel(item.status)}
-        </span>
+        <StatusBadge status={item.status} />
       </div>
 
       <div className="flex items-baseline gap-2 mt-4">
@@ -1718,7 +1735,7 @@ function ScoreCheckCard({ item }: { item: BreakdownItem }) {
           <span className="text-xl font-semibold tabular-nums tracking-[-0.03em] text-black dark:text-white">
             {percent}%
           </span>
-          <span className="font-mono text-[10px] tabular-nums tracking-[0.16em] text-black/35 dark:text-white/35">
+          <span className="font-mono text-[10px] tabular-nums tracking-normal text-black/35 dark:text-white/35">
             /100%
           </span>
         </div>
@@ -1740,7 +1757,7 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
   return (
     <div className="border border-black/10 dark:border-white/10">
       <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+        <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
           Per-check details
         </p>
         <h2 className="mt-1 text-xl font-normal font-pixel tracking-normal text-black dark:text-white">
@@ -1750,7 +1767,7 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
 
       <details className="group border-b border-black/10 dark:border-white/10">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 text-left marker:hidden">
-          <span className="inline-flex min-w-0 items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-black/55 dark:text-white/55">
+          <span className="inline-flex min-w-0 items-center gap-2 font-mono text-[11px] uppercase tracking-normal text-black/55 dark:text-white/55">
             <CircleHelp className="size-3.5 shrink-0" aria-hidden />
             What do these checks mean?
           </span>
@@ -1762,7 +1779,7 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
         <div className="grid gap-px bg-black/10 dark:bg-white/10 sm:grid-cols-2 lg:grid-cols-4 border-t border-black/10 dark:border-white/[0.02]">
           {BREAKDOWN_HELP_ITEMS.map((item) => (
             <div key={item.title} className="bg-white px-4 py-3 dark:bg-black">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/65 dark:text-white/65">
+              <p className="font-mono text-[11px] uppercase tracking-normal text-black/65 dark:text-white/65">
                 {item.title}
               </p>
               <p className="mt-1 text-sm leading-relaxed text-black/55 dark:text-white/45">
@@ -1780,7 +1797,7 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
         {["Status", "Check", "Detail"].map((label) => (
           <span
             key={label}
-            className="font-mono text-[10px] uppercase tracking-[0.22em] text-black/35 dark:text-white/35"
+            className="font-mono text-[11px] uppercase tracking-normal text-black/35 dark:text-white/35"
           >
             {label}
           </span>
@@ -1796,24 +1813,12 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
           return (
             <li key={group.id}>
               <div className="grid gap-y-2 border-l-2 border-l-transparent bg-black/[0.025] px-5 py-3 dark:bg-white/[0.025] sm:grid-cols-[88px_minmax(180px,1.2fr)_minmax(0,3fr)] sm:items-center sm:gap-x-8">
-                <span
-                  className={cn(
-                    "inline-flex w-fit items-center justify-center border bg-white px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums dark:bg-black",
-                    groupStatus === "pass" &&
-                      "border-black/20 text-black/70 dark:border-white/20 dark:text-white/70",
-                    groupStatus === "warn" &&
-                      "border-orange-500/60 text-orange-600 dark:border-orange-400/60 dark:text-orange-400",
-                    groupStatus === "fail" &&
-                      "border-red-500/60 text-red-600 dark:border-red-400/60 dark:text-red-400",
-                  )}
-                >
-                  {statusLabel(groupStatus)}
-                </span>
+                <StatusBadge status={groupStatus} />
                 <div className="flex flex-col gap-1">
-                  <span className="font-mono text-[11px] uppercase leading-snug tracking-[0.2em] text-black/80 dark:text-white/80">
+                  <span className="font-mono text-[11px] uppercase leading-snug tracking-normal text-black/80 dark:text-white/80">
                     {group.title}
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] tabular-nums text-black/35 dark:text-white/35">
+                  <span className="font-mono text-[11px] uppercase tracking-normal tabular-nums text-black/35 dark:text-white/35">
                     {groupPercent}% / 100%
                   </span>
                 </div>
@@ -1842,26 +1847,14 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
                       )}
                     >
                       <div className="flex items-start sm:items-center">
-                        <span
-                          className={cn(
-                            "inline-flex items-center justify-center border bg-white px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums dark:bg-black",
-                            status === "pass" &&
-                              "border-black/20 text-black/70 dark:border-white/20 dark:text-white/70",
-                            status === "warn" &&
-                              "border-orange-500/60 text-orange-600 dark:border-orange-400/60 dark:text-orange-400",
-                            status === "fail" &&
-                              "border-red-500/60 text-red-600 dark:border-red-400/60 dark:text-red-400",
-                          )}
-                        >
-                          {statusLabel(status)}
-                        </span>
+                        <StatusBadge status={status} />
                       </div>
 
                       <div className="flex flex-col gap-1 sm:gap-1.5">
-                        <span className="font-mono text-[11px] uppercase leading-snug tracking-[0.2em] text-black/80 dark:text-white/80">
+                        <span className="font-mono text-[11px] uppercase leading-snug tracking-normal text-black/80 dark:text-white/80">
                           {check.title}
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] tabular-nums text-black/35 dark:text-white/35">
+                        <span className="font-mono text-[11px] uppercase tracking-normal tabular-nums text-black/35 dark:text-white/35">
                           {scorePercent(check.score, check.maxScore)}% / 100%
                         </span>
                       </div>
@@ -1892,7 +1885,7 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
 function Recommendations({ items }: { items: string[] }) {
   return (
     <div className="border border-black/10 bg-black/[0.02] px-4 py-4 dark:border-white/10 dark:bg-white/[0.02]">
-      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+      <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
         Next steps
       </p>
       <ul className="mt-3 space-y-2">
@@ -1935,7 +1928,7 @@ function LeaderboardSection({
     <section id={LEADERBOARD_SECTION_ID} ref={sectionRef} className="space-y-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+          <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
             Leaderboard
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
@@ -1970,7 +1963,7 @@ function LeaderboardSection({
       </div>
       <div className="h-px bg-black/10 -mt-6 dark:bg-white/10 w-full" />
       {notConfigured ? (
-        <div className="border border-black/10 bg-black/[0.02] px-4 py-4 font-mono text-[11px] uppercase tracking-[0.16em] text-black/50 dark:border-white/10 dark:bg-white/[0.02] dark:text-white/50">
+        <div className="border border-black/10 bg-black/[0.02] px-4 py-4 font-mono text-[11px] uppercase tracking-normal text-black/50 dark:border-white/10 dark:bg-white/[0.02] dark:text-white/50">
           Leaderboard database is not configured yet. Hosting deploys with{" "}
           <code className="text-black dark:text-white">DATABASE_URL</code> will start collecting
           entries automatically.
@@ -1981,11 +1974,11 @@ function LeaderboardSection({
           Loading the leaderboard…
         </div>
       ) : ranked.length === 0 ? (
-        <div className="border border-black/10 px-4 py-10 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-black/45 dark:border-white/10 dark:text-white/45">
+        <div className="border border-black/10 px-4 py-10 text-center font-mono text-[11px] uppercase tracking-normal text-black/45 dark:border-white/10 dark:text-white/45">
           No entries yet. Calculate your score above and submit to claim the first spot.
         </div>
       ) : filtered.length === 0 ? (
-        <div className="border border-black/10 px-4 py-10 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-black/45 dark:border-white/10 dark:text-white/45">
+        <div className="border border-black/10 px-4 py-10 text-center font-mono text-[11px] uppercase tracking-normal text-black/45 dark:border-white/10 dark:text-white/45">
           No entries match &ldquo;{query.trim()}&rdquo;. Try another URL, site name, or score.
         </div>
       ) : (
@@ -2057,7 +2050,7 @@ function LeaderboardSection({
                     <th key={label} scope="col" className={cn("px-4 py-3", extra)}>
                       <div
                         className={cn(
-                          "flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45",
+                          "flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-normal text-black/45 dark:text-white/45",
                           align === "right" ? "justify-end" : "justify-start",
                         )}
                       >
@@ -2122,15 +2115,15 @@ function LeaderboardRow({
       }}
       className="cursor-pointer border-b border-black/10 transition-colors last:border-b-0 hover:bg-black/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black/40 dark:border-white/10 dark:hover:bg-white/[0.05] dark:focus-visible:outline-white/40"
     >
-      <td className="align-middle px-4 py-3 font-mono text-[12px] uppercase tracking-[0.16em] tabular-nums text-black/70 dark:text-white/70">
+      <td className="align-middle px-4 py-3 font-mono text-[12px] uppercase tracking-normal tabular-nums text-black/70 dark:text-white/70">
         {String(rank).padStart(2, "0")}
       </td>
       <td className="max-w-[14rem] align-middle px-4 py-3">
-        <p className="truncate font-mono text-[13px] font-semibold tracking-[0.12em] text-black dark:text-white">
+        <p className="truncate font-mono text-[13px] font-semibold tracking-normal text-black dark:text-white">
           {displayName}
         </p>
         <p className="mt-0.5 font-mono text-[11px] text-black/45 dark:text-white/45">
-          <span className="uppercase tracking-[0.14em]">{entry.grade}</span>
+          <span className="uppercase tracking-normal">{entry.grade}</span>
         </p>
         <a
           href={entry.url}
@@ -2158,7 +2151,7 @@ function LeaderboardRow({
           {shortenUrl(entry.url)}
         </a>
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-right align-middle text-[14px] font-pixel font-semibold tabular-nums tracking-wide text-black/80 sm:px-5 dark:text-white/70">
+      <td className="whitespace-nowrap px-3 py-3 text-right align-middle text-[14px] font-pixel font-semibold tabular-nums tracking-normal text-black/80 sm:px-5 dark:text-white/70">
         {entry.score} / 100
       </td>
     </tr>
@@ -2174,7 +2167,7 @@ function CtaSection() {
       >
         <div className="relative z-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/55">
+            <p className="font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/55">
               Local doctor
             </p>
             <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
@@ -2189,7 +2182,7 @@ function CtaSection() {
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
             <Link
               href="/docs/cli"
-              className="group inline-flex items-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[10px] uppercase tracking-normal text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+              className="group inline-flex items-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[11px] uppercase tracking-normal text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
             >
               Read CLI docs
               <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
@@ -2226,7 +2219,7 @@ function FooterSection() {
                 @farming-labs/docs
               </Link>
             </span>
-            <p className="mt-1 font-mono text-[10px] uppercase text-black/30 dark:text-white/30">
+            <p className="mt-1 font-mono text-[11px] uppercase text-black/30 dark:text-white/30">
               Built by{" "}
               <Link
                 href="https://farming-labs.dev"
