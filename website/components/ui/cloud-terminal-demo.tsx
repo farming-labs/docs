@@ -150,7 +150,7 @@ export function CloudTerminalDemo() {
       <button
         type="button"
         onClick={() => setAnimationKey((value) => value + 1)}
-        className="absolute right-0 top-2 z-20 inline-flex cursor-pointer items-center justify-center gap-1 border border-black/10 bg-white/75 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-black/60 transition-colors hover:bg-white sm:right-3 sm:top-3 sm:gap-1.5 sm:px-2.5 sm:text-[10px] dark:border-white/10 dark:bg-black/45 dark:text-white/78 dark:hover:bg-black/65"
+        className="absolute right-0 top-2 z-20 inline-flex cursor-pointer items-center justify-center gap-1 border border-black/10 bg-white/75 px-2 py-1 font-mono text-[11px] uppercase tracking-normal text-black/60 transition-colors hover:bg-white sm:right-3 sm:top-3 sm:gap-1.5 sm:px-2.5 sm:text-[11px] dark:border-white/10 dark:bg-black/45 dark:text-white/78 dark:hover:bg-black/65"
       >
         <CheckCircle2 className="size-3" />
         <span className="hidden sm:inline">replay</span>
@@ -205,7 +205,7 @@ export function CloudTerminalDemo() {
                     key={tab.label}
                     index={index}
                     className={cn(
-                      "inline-flex w-full items-center justify-center gap-1 rounded-none border px-2 py-1.5 font-mono text-[9px] uppercase tracking-[0.16em] transition-colors sm:w-auto sm:justify-start sm:gap-1.5 sm:px-2.5 sm:text-[10px] sm:tracking-[0.18em]",
+                      "inline-flex w-full items-center justify-center gap-1 rounded-none border px-2 py-1.5 font-mono text-[9px] uppercase tracking-normal transition-colors sm:w-auto sm:justify-start sm:gap-1.5 sm:px-2.5 sm:text-[10px] sm:tracking-normal",
                       "data-[state=active]:border-black/15 data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:border-white/20 dark:data-[state=active]:bg-white dark:data-[state=active]:text-black",
                       "data-[state=inactive]:border-black/10 data-[state=inactive]:text-black/45 data-[state=inactive]:hover:border-black/16 data-[state=inactive]:hover:text-black/75 dark:data-[state=inactive]:border-white/10 dark:data-[state=inactive]:text-white/45 dark:data-[state=inactive]:hover:border-white/16 dark:data-[state=inactive]:hover:text-white/75",
                     )}
