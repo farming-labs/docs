@@ -1,0 +1,137 @@
+{
+  "run": "https://github.com/farming-labs/docs/actions/runs/38990443258",
+  "images": {
+    "desktop": [
+      {
+        "sha256": "7f575259cc6117eac9e0fb9a192b964bd99d8018f2ea64f0fb7ea80fe1bdf29a",
+        "representative": "desktop-7f575259cc61.png",
+        "occurrences": [
+          "ci-38990443258-1-cache0-trial1/farmjs-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-vercel-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-vercel-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-vercel-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-vercel-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-vercel-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-vercel-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-vercel-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-vercel-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-vercel-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-vercel-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-vercel-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-vercel-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-vercel-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-vercel-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-trial-1-warm-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-vercel-trial-1-cold-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-vercel-trial-1-edit-runtime-desktop.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-vercel-trial-1-warm-runtime-desktop.png"
+        ],
+        "pixelsDifferentFromFirstVariant": 0,
+        "differenceBounds": null
+      },
+      {
+        "sha256": "57d13dacbf40cb751adef2c625d40d0fe53a3b71c03e9b56f639b1b24c194f70",
+        "representative": "desktop-57d13dacbf40.png",
+        "occurrences": [
+          "ci-38990443258-1-cache1-trial1/farmjs-trial-1-edit-runtime-desktop.png"
+        ],
+        "pixelsDifferentFromFirstVariant": 14,
+        "differenceBounds": [
+          184,
+          68,
+          254,
+          71
+        ]
+      },
+      {
+        "sha256": "b607571e072562b1b6c766de224cd6b4ddbaa1a6e1365bf5a65a5457336a0977",
+        "representative": "desktop-b607571e0725.png",
+        "occurrences": [
+          "ci-38990443258-1-cache1-trial1/farmjs-vercel-trial-1-edit-runtime-desktop.png"
+        ],
+        "pixelsDifferentFromFirstVariant": 852,
+        "differenceBounds": [
+          184,
+          68,
+          279,
+          844
+        ]
+      }
+    ],
+    "mobile": [
+      {
+        "sha256": "470fae881f48a3854da80ab76b479a619892bea4cc7e0e05e732ef2e364f629d",
+        "representative": "mobile-470fae881f48.png",
+        "occurrences": [
+          "ci-38990443258-1-cache0-trial1/farmjs-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-vercel-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial1/farmjs-vercel-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-vercel-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-vercel-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial2/farmjs-vercel-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-vercel-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-vercel-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache0-trial3/farmjs-vercel-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-vercel-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-vercel-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial1/farmjs-vercel-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-vercel-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-vercel-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-vercel-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-trial-1-warm-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-vercel-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-vercel-trial-1-edit-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial3/farmjs-vercel-trial-1-warm-runtime-mobile.png"
+        ],
+        "pixelsDifferentFromFirstVariant": 0,
+        "differenceBounds": null
+      },
+      {
+        "sha256": "fb68b3a752bf7ee4d44cd32f07fa95a1eae648b404d871e2f4a423d0a3216d64",
+        "representative": "mobile-fb68b3a752bf.png",
+        "occurrences": [
+          "ci-38990443258-1-cache0-trial1/farmjs-vercel-trial-1-cold-runtime-mobile.png",
+          "ci-38990443258-1-cache1-trial2/farmjs-trial-1-cold-runtime-mobile.png"
+        ],
+        "pixelsDifferentFromFirstVariant": 7507,
+        "differenceBounds": [
+          381,
+          4,
+          390,
+          844
+        ]
+      }
+    ]
+  },
+  "inspection": "All five distinct screenshot variants were visually inspected. Pixel differences are confined to desktop shortcut-hint pixels and the sidebar scrollbar, or the rightmost nine-pixel mobile scrollbar strip. Article layout and content match; runtime interaction checks pass for all 36 builds."
+}

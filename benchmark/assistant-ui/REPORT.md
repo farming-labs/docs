@@ -346,3 +346,104 @@ created or merged in this follow-up.
 assistant-ui. That site has 337 docs pages, 120 pages with MDX imports, custom collections,
 and Next-dependent shell/components. Its full Farm migration and production feature parity
 remain unverified; the earlier assistant-ui/Next timings above are unchanged.
+
+## Farm.js repeated MDX compilation cache — October 16 implementation
+
+[PR #574](https://github.com/farming-labs/docs/pull/574) adds persistent compilation reuse
+inside `@farming-labs/farmjs`. Previously, an unchanged production build parsed, transformed,
+and highlighted every MDX page again. The adapter now reuses compiled code and source maps
+when its inputs match. Imported components, CSS, routes, bundling, and server packaging still
+run through the existing build pipeline; the PR changes no UI components or rendering policy.
+
+The [final comparison](https://github.com/farming-labs/docs/actions/runs/38990443258) passed
+36 production builds and their runtime checks, using 100 generated pages and three trials
+per mode/cache setting on one runner. The table shows medians including application
+TypeScript checking. Cache-off and cache-on use identical framework code; only `buildCache`
+changes. Every warm/edit build launches a fresh CLI process. Cache order alternates by trial,
+and provider order reverses on trial two.
+
+| Output | Mode | Cache off | Cache on | Change |
+| --- | --- | ---: | ---: | ---: |
+| Node | Cold | 9.58 s | 9.59 s | 0.1% slower |
+| Node | Unchanged | 9.59 s | 7.12 s | 25.8% faster |
+| Node | One-page edit | 9.59 s | 7.50 s | 21.8% faster |
+| Vercel artifact | Cold | 9.78 s | 10.00 s | 2.3% slower |
+| Vercel artifact | Unchanged | 9.60 s | 7.49 s | 21.9% faster |
+| Vercel artifact | One-page edit | 9.58 s | 7.53 s | 21.5% faster |
+
+Unchanged rebuilds improve by **25.8% on Node and 21.9% for Vercel output**. One-page edits improve by **21.8% and 21.5%**, respectively. Cold Node builds are effectively unchanged (+0.1%); cold Vercel builds cost 2.3% more. These cold-build costs are included rather than hidden.
+
+Every enabled build retained 100 cache entries (about 6.5 MiB). Initially loaded
+browser JavaScript and emitted application size match in all 18 corresponding cache-on/off
+pairs. The cache stays outside deployment output. Ranges, RSS, typecheck/build splits, cache
+sizes, and every sample are in the [final summary](../farmjs-docs/results/2026-10-16/cache-final/summary.json).
+
+Sampled cold process-tree RSS rose from 2,416 to 2,473 MiB on Node and from 2,189 to
+2,510 MiB for Vercel output. Unchanged-build RSS fell from 2,416 to 2,224 MiB and from
+2,316 to 2,143 MiB, respectively. This is sampled process-tree memory, which may count
+shared memory more than once; it is not a JavaScript heap measurement.
+
+### Correctness and compatibility
+
+All 36 builds served complete content for all 100 URLs. Browser checks cover highlighted code,
+tables, clipboard copy, client navigation without a full reload, search and search-result
+navigation, mobile sidebar navigation, desktop/mobile overflow, browser exceptions, and
+fresh content after an edit. Cached and uncached desktop/mobile screenshots were inspected;
+[visual comparison receipts](../farmjs-docs/results/2026-10-16/cache-final/visual-comparison.json)
+record their hashes and pixel differences. These checks cover this fixture, not every possible
+consumer feature. AI is disabled equally on both sides; custom assistant-ui components and its
+full 337-page Farm migration remain outside this run.
+
+The adapter suite passes 78 tests locally and on Linux, including real Vite production builds,
+source-map/output equivalence, content/theme/mode/compiler invalidation, imported-component
+edits and deletions, virtual-module exclusions, error propagation, cache opt-out, corrupt or
+unwritable caches, bounded storage, and unchanged dev/watch behavior. The unchanged-build
+regression fails when the cache wrapper is removed. A virtual-module test reproduced a failure
+in the initial implementation before the final compatibility fix. The adapter package build,
+TypeScript checks, focused lint, formatting, and PR checks pass.
+
+### Cache retention and remaining costs
+
+The default cache is `<Vite cacheDir>/farming-docs/mdx-v1.json`, normally under
+`node_modules/.vite`. Preserve that directory between CI jobs. Stable project/dependency paths,
+Node version, and compiler bytes are required for reuse; mismatches safely recompile. The
+cache retains at most 1,024 modules and approximately 32 MiB. `buildCache: false` opts out.
+
+Vercel's default static-build cache includes `node_modules`; an explicit Build Output API
+`cache` list replaces that default selection, so custom lists must include the adapter's
+cache directory. This follows the [default cache glob](https://github.com/vercel/vercel/blob/main/packages/build-utils/src/default-cache-path-glob.ts)
+and [cache preparation implementation](https://github.com/vercel/vercel/blob/main/packages/static-build/src/index.ts#L868-L911).
+Actual cross-deployment cache restoration on Vercel has not been measured in this experiment.
+
+The Vercel rows build the deployment artifact and execute its emitted function locally.
+Dependency installation, framework package compilation, upload, CDN routing, and cloud cold
+starts are excluded. Both cache settings prerender zero docs HTML pages and render on request;
+no work was removed by changing rendering policy. These new times must not be compared directly
+with the earlier Fumadocs/Next table: the Farm version and runner differ. This PR demonstrates
+repeated-build improvement, not an overall win against Fumadocs or complete incremental bundling.
+
+The earlier cache comparison still transformed 2,398 and 5,090 modules in the two bundle graphs
+with caching either off or on. Those overlapping counts are not unique modules. Compiled MDX
+reuse reduces work within those transforms; the remaining bundle traversal, type checking, and
+Nitro packaging are the next optimization targets. The static-navigation issue identified above
+also remains separate and must be resolved before claiming equivalent static output performance.
+
+### Provenance and reproduction
+
+Measured docs/harness commit: `c6d48c341e53bba50aecd0377b5ad0f853d2691e`. Its package tree is
+identical to implementation PR commit `cbb54e7854d9eb0aa4128c832b42e4cb54579dfd`.
+Farm source is pinned to `85628bbea1bd7bfe1d0728d071b85335b4a208b1` (core/CLI 0.1.19).
+The final runner used Ubuntu 24.04, four AMD EPYC 9V45 vCPUs, 15,989 MiB RAM, and Node 24.21.0; the Farm build logs report Vite 8.3.4.
+Frameworks are built from their lockfiles outside the timers. Cold starts with a fresh generated
+app and no app build cache; OS and CLI-wide caches are not cleared. The source corpus is 755,580
+bytes with six code blocks and six tables per page. The edit adds one paragraph to one page.
+
+Run `docs-build-benchmark.yml` on `codex/farmjs-docs-benchmark` with `pages=100`, `trials=3`,
+`compare_cache=true`, and the pinned `farm_ref` above. Download its artifact and run
+`python3 benchmark/farmjs-docs/compare-cache.py <artifact-directory> --out <summary.json>`.
+[Final logs and runtime JSON](../farmjs-docs/results/2026-10-16/cache-final/) are retained.
+The [initial completed run](https://github.com/farming-labs/docs/actions/runs/38989194053)
+used the same A/B design before the virtual-module fix: unchanged builds improved 24.9%/24.4%
+(Node/Vercel), edits improved 22.1%/21.1%, and cold builds cost 3.1%/3.3% more. Its
+[receipts](../farmjs-docs/results/2026-10-16/cache-initial/summary.json) remain separate; the
+final results above supersede it. No benchmark PR was created or merged.

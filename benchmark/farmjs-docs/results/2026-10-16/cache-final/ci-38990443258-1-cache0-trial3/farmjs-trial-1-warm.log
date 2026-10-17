@@ -1,0 +1,653 @@
+[info] 🚜 Building Farm.js application with preset: node-server...
+[info] 🔍 Discovering routes and API endpoints...
+[info] 🚜 Building Farm.js application (universal) with preset: node-server...
+[info] 📋 Found 100 page routes
+[info] 📋 Found 100 page routes and 1 layouts
+[info] ⚡ Building application bundles with Vite Rolldown
+[info] 📦 Building client and SSR bundles in parallel...
+[info] 📱 Total hydratable routes detected: 0 pages, 0 layouts, and 0 slots
+[info] 📦 Enabled built-in Tailwind support (@tailwindcss/vite)
+[36mvite v8.3.4 [32mbuilding client environment for production...[36m[39m
+transforming...
+Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+[info] 📋 Found 100 page routes, 1 layouts, 0 API routes, 0 metadata routes, and 0 middleware files
+[36mvite v8.3.4 [32mbuilding ssr environment for production...[36m[39m
+transforming...
+Found 2 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     }[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:text-fd-primary ::highlight(fd-search) {
+[2m┆[22m                                                                   [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     color: var(--color-fd-primary);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&_\:\:highlight\(fd-search\)\]\:underline ::highlight(fd-search) {
+[2m┆[22m                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     text-decoration-line: underline;[22m
+[2m│   }[22m
+
+✓ 2398 modules transformed.
+✓ 5090 modules transformed.
+rendering chunks...
+rendering chunks...
+computing gzip size...
+.farm/client/farm-client-manifest.json                       17.51 kB │ gzip:   1.78 kB
+.farm/client/farm-client.css                                309.65 kB │ gzip:  39.20 kB
+.farm/client/chunks/fetch-h28a3d40c.js                        0.06 kB │ gzip:   0.08 kB
+.farm/client/chunks/remove-undefined-CzMSKybq-h8fde37c7.js    0.33 kB │ gzip:   0.22 kB
+.farm/client/chunks/jsx-runtime-he1b56111.js                  0.43 kB │ gzip:   0.30 kB
+.farm/client/chunks/rolldown-runtime-h172b2687.js             0.72 kB │ gzip:   0.42 kB
+.farm/client/chunks/algolia-h550d20c7.js                      0.78 kB │ gzip:   0.49 kB
+.farm/client/chunks/orama-cloud-legacy-hccf37288.js           1.16 kB │ gzip:   0.62 kB
+.farm/client/chunks/orama-cloud-hcd832810.js                  1.26 kB │ gzip:   0.65 kB
+.farm/client/chunks/mixedbread-h238f82aa.js                   1.70 kB │ gzip:   0.90 kB
+.farm/client/chunks/react-h8d8f8c22.js                        7.53 kB │ gzip:   2.88 kB
+.farm/client/chunks/page-h23124355.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h25e2776c.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h56566014.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h63547486.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h7a7e7a19.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h7d70ad8d.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h8fd1701a.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-ha66005c4.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hbde871ff.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hd7264938.js                        33.87 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h1829328f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h18a61e65.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h1bc1833f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h28e13870.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h2a3e5477.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2b4251ac.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2f380682.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2f63f483.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h2feb6b5d.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h30531535.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3a1f08fe.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3b838b6e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3d3d1262.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3df1325e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3df7e9d2.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3ec7f339.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h3ff838fa.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h41d84cba.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h42179834.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4b63908b.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h4bc42766.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4e47b503.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h4fa1fca6.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h5129983b.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h526740cc.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h565b94c6.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h58763b40.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h59934cd9.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h5c5e51e0.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h5cc8e7cd.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h65595add.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h66a58010.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6929d788.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6d8540b8.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h6f2d7ce1.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h72042c6f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h728df630.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h729d9d7f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h74d89a6e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7513f1f9.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h79ea26b4.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h7c919420.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h82c0d70f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8316726b.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-h83242ab1.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8694ea59.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h88a7bf71.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8f42abc2.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h8f71c35b.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h90782126.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h938a9bba.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h938cbfab.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h997b65da.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9d3ca26e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9dfb4f6b.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-h9e50e228.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha05a5bc8.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha111d190.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha3c44e5e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-ha4961f09.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-haa5c8083.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hac0210b2.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hac9eed64.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-had629707.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hb06fa01e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb66cd4c8.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb72ff61f.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb753724d.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hb7610e8a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hb9682b4a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hbc80d8fb.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hbfd37537.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hc78811c8.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hc7af4d7a.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hcb61d256.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hcb8200b8.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hd32972e4.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd411f41a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd4f88e49.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd7082d1e.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hd912ceb7.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hda5cd45d.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hdd1833a1.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-he21131cb.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-he942e6c6.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hecd4c2ef.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-heda174f4.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf6848b20.js                        33.90 kB │ gzip:   2.49 kB
+.farm/client/chunks/page-hf8bcd26a.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/chunks/page-hf9d81a41.js                        33.90 kB │ gzip:   2.50 kB
+.farm/client/farm-client-hb5b408f5.js                        41.31 kB │ gzip:  13.21 kB
+.farm/client/chunks/search-default-h9e747be8.js              48.14 kB │ gzip:  17.17 kB
+.farm/client/chunks/orama-static-ha2ca6e1f.js                76.94 kB │ gzip:  26.69 kB
+.farm/client/chunks/parse-BU3fTLtO-hec7409e2.js              82.91 kB │ gzip:  24.74 kB
+.farm/client/chunks/react-hdf5c243f.js                      577.92 kB │ gzip: 181.84 kB
+
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 4.65s[39m
+[33m[33m[EVAL] [0mUse of direct `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/gray-matter@4.0.3/node_modules/gray-matter/lib/engines.js:43:14 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m43 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m}[0m[38;5;249m;[0m
+ [38;5;240m   │[0m              ──┬─  
+ [38;5;240m   │[0m                ╰─── Use of direct `eval` here.
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: Consider using indirect eval. For more information, check the documentation: https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/resolve-evaluate-options.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/resolve-evaluate-options.js:48:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m48 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-is-declaration.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-is-declaration.js:11:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m11 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-create.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-create.js:6:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m6 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/resolve-evaluate-options.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/resolve-evaluate-options.js:48:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m48 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/code.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/code.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/thematic-break.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/thematic-break.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/emphasis.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/emphasis.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/heading.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/heading.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/delete.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/delete.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/inline-code.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/inline-code.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/blockquote.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/blockquote.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/break.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/break.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/root.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/root.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/list-item.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/list-item.js:11:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m11 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/strong.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/strong.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/list.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/list.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/paragraph.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/paragraph.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/html.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/html.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/table-cell.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/table-cell.js:8:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/table-row.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/handlers/table-row.js:11:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m11 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-is-declaration.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-is-declaration.js:11:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m11 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-create.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/@mdx-js+mdx@3.1.1_supports-color@10.2.2/node_modules/@mdx-js/mdx/lib/util/estree-util-create.js:6:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m6 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/revert.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/mdast-util-to-hast@13.2.0/node_modules/mdast-util-to-hast/lib/revert.js:11:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m11 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/text.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/text.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../farm-source/node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/comment.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../farm-source/node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/comment.js:12:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m12 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/text.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/text.js:9:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m9 │[0m ''
+ [38;5;240m  │[0m ─┬  
+ [38;5;240m  │[0m  ╰── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+[39m
+[33m[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "" in "../../../../../../node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/comment.js" may not be preserved when bundling.
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../../../../node_modules/.pnpm/hast-util-to-estree@3.1.3_supports-color@10.2.2/node_modules/hast-util-to-estree/lib/handlers/comment.js:12:1 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m12 │[0m ''
+ [38;5;240m   │[0m ─┬  
+ [38;5;240m   │[0m  ╰── module level directive may not be preserved
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m────╯[0m
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/jsx-runtime.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-N255VYFP.mjs but also statically imported by src/app/docs/page-0001/page.mdx, src/app/docs/page-0002/page.mdx, src/app/docs/page-0003/page.mdx, src/app/docs/page-0004/page.mdx, src/app/docs/page-0005/page.mdx, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../node_modules/.pnpm/react@19.2.4/node_modules/react/index.js is dynamically imported by ../../../../../../farm-source/packages/farm/dist/chunk-N255VYFP.mjs but also statically imported by \0virtual:farm-ssr-entry, ../../../../../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs, ../../../../../../node_modules/.pnpm/@fuma-translate+react@1.0.2_@types+react@19.2.14_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/@fuma-translate/react/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.16_@types+react-dom@19.2.3_@types+react@19.2.14__@types+react_7651395777645b6ecd9ff3e80a7abba7/node_modules/@radix-ui/react-arrow/dist/index.mjs, ../../../../../../node_modules/.pnpm/@radix-ui+react-collapsible@1.1.21_@types+react-dom@19.2.3_@types+react@19.2.14__@types_51e1d5ece9b71182832f86c88a788994/node_modules/@radix-ui/react-collapsible/dist/index.mjs, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../../../packages/farmjs/src/react.tsx is dynamically imported by ../../../../../../packages/farmjs/src/server.ts but also statically imported by \0virtual:farm-ssr-entry, dynamic import will not move module into another chunk.
+[39m
+[32m✓ built in 3.00s[39m
+[info] 🚀 Building server with Nitro (preset: node-server)...
+[info] 📦 Nitro output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38990443258-1-cache0-trial3/apps/farmjs/.output
+[info] 📦 SSR entry file: _virtual_farm-ssr-entry.js
+[info] 📦 Preset: node-server
+[Farm.js] 100 routes appear eligible for static rendering:
+  /docs/page-0001
+  /docs/page-0003
+  /docs/page-0002
+  /docs/page-0004
+  /docs/page-0005
+  /docs/page-0006
+  /docs/page-0007
+  /docs/page-0008
+  /docs/page-0009
+  /docs/page-0010
+  …and 90 more
+Add `export const dynamic = "force-static";` after verifying that imported code does not read cookies, headers, authentication, or other request data.
+[success] [nitro] Generated public [36m.output/public[39m
+[info] [nitro] Building server (builder: `rolldown`, preset: `node-server`, compatibility date: `2024-12-01`)
+MISSING_CODE_SPLITTING_GROUP_DEBUG_NAME
+`output.codeSplitting.groups[0].name` is a function. Set `output.codeSplitting.groups[0].debugName` so the bundler timing report can identify this group.
+[info] Generated [36m.output/nitro.json[39m
+[success] [nitro] Server built in 2003ms
+[90m  ├─ .output/server/_chunks/algolia-BnmCCwH6.mjs (911 B)[39m[90m (524 B gzip)[39m
+[90m  ├─ .output/server/_chunks/chunk-UWPLULNK-E1WqHf31.mjs (22.3 kB)[39m[90m (6.34 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-BJ43qm8f.mjs (1.01 MB)[39m[90m (252 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-Bkxp1B-b.mjs (80.1 kB)[39m[90m (20.9 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-BTdMhI7F.mjs (16.6 kB)[39m[90m (4.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-Bx5nQzQ9.mjs (224 kB)[39m[90m (41.1 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-Bx5pQVIV.mjs (23.6 kB)[39m[90m (8.08 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-C3hkuHHA.mjs (3.07 kB)[39m[90m (1.05 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-C6eib2Gh.mjs (14.6 kB)[39m[90m (4.31 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-Clvt9vQa.mjs (26 kB)[39m[90m (7.03 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-Cokwjcbl.mjs (15.5 kB)[39m[90m (4.35 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-CxvPu8zm.mjs (4.2 kB)[39m[90m (1.58 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-CzMoUVdM.mjs (6.21 kB)[39m[90m (1.71 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-D0-ESuI2.mjs (19.8 kB)[39m[90m (5.73 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-D1JfzUAO.mjs (2.43 kB)[39m[90m (1.03 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-D4osi4ex.mjs (59.3 kB)[39m[90m (14.9 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-D5wgzwP9.mjs (21.3 kB)[39m[90m (5.85 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-dDz078Df.mjs (4.77 kB)[39m[90m (1.78 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-DE5SVHX0.mjs (3.47 kB)[39m[90m (1.44 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-DGSrVm8f.mjs (3.16 kB)[39m[90m (1.3 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-DxAMumLg.mjs (18.6 kB)[39m[90m (5.31 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-J_1AOWTr.mjs (13.2 kB)[39m[90m (3.9 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-K0tJp0dD.mjs (20.6 kB)[39m[90m (5.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-K0xIvGtU.mjs (2.03 kB)[39m[90m (900 B gzip)[39m
+[90m  ├─ .output/server/_chunks/dist-ZS3zpE2V.mjs (12.1 kB)[39m[90m (3.53 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/extend-cF8YzcV0.mjs (1.6 kB)[39m[90m (739 B gzip)[39m
+[90m  ├─ .output/server/_chunks/fetch-CAT7jd5m.mjs (61 B)[39m[90m (81 B gzip)[39m
+[90m  ├─ .output/server/_chunks/integration-orm-KV5B3BGZ-CpmxJG7y.mjs (6.38 kB)[39m[90m (2.28 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/lib-DVNu_uIN.mjs (5.96 kB)[39m[90m (2.31 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/mdx-D6wDrJ9x.mjs (580 kB)[39m[90m (154 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/mixedbread-B8t8usny.mjs (2.26 kB)[39m[90m (1.07 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/multipart-parser-lPVWOno3.mjs (12.8 kB)[39m[90m (4.5 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/orama-cloud-C0_mWVFW.mjs (1.6 kB)[39m[90m (740 B gzip)[39m
+[90m  ├─ .output/server/_chunks/orama-cloud-legacy-ON8F7Tic.mjs (1.52 kB)[39m[90m (714 B gzip)[39m
+[90m  ├─ .output/server/_chunks/orama-static-DMhawWU2.mjs (98.8 kB)[39m[90m (29.7 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/out-BHZHIxsW.mjs (100 kB)[39m[90m (26.3 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page--PxRNefZ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page--rmH_16K.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-05Vgu_dJ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-12Ba6yO5.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-4GquYXmb.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-5trU7sBF.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-A7HrejOc.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-aIKCavrW.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-B_Acy8Oc.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-B_sm5N3F.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-B0ZCC7M7.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-B16GtC1x.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-B3Al0qpO.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-B7k0iWu7.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BagPCrHg.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-barnQF8w.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BarOwzI7.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BbQXTXWK.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BI3DmkDi.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BIUv9DGH.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-Bjv_3vFW.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BKSCGz5I.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BnlmC2Cq.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BtEYnebi.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BulomsUQ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BV7nvHS2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BxjZ2KG1.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-BZiLEdw1.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-C8IYapIQ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CaJXyO-r.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-Cbdq3V2q.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CBi901Bj.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CBxMfSKr.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CCIpFGXc.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CdMrJRla.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CDw0ntth.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CGo-xVD4.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-ChCuZ9XS.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CHD63QjA.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CHQR-tkA.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CHVMSca5.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CI0NfTP6.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CinIGiCF.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-Cj9qZIGj.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CjwFitSg.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-ClN2wUxq.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CmOrOUrU.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CmyCZ22k.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CNCqdrQO.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-Coep8Mqc.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CslH-5k0.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CVBLtu_O.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CvBpAElZ.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CWZVYdKO.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CxoEqmDv.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CYemHWxg.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CYG9Avx2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CYGjUsDH.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CYuPUtQL.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CYXtqdQ4.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CZQDhgG2.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-CZsK_uTI.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-D0I8e2AG.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-D2lolMBl.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-D3ZzCNsT.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-D5lwKKtc.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DbKtEri4.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-Dcl6ZVgi.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DDHzA6Tj.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-Dec4n8vx.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DIamqSru.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DLA3KvAm.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DOaKWp7H.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DOgBM9DV.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DPpFsUHd.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DrXBdaSW.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-Ds7fwM7G.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DTLGsPmj.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DTYeR7f_.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DuHrRgOA.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DwTH1YVl.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DXD1gZaX.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DyAfsGYD.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DyEaCsaE.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DYXklkEP.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-DzcqLkKZ.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-egJtVGaO.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-GU0K9g1S.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-hTojw62r.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-kD5mdhOO.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-MSy8ZLBq.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-qfsZFeIv.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-R-6GaiBb.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-RcRrIypr.mjs (46.5 kB)[39m[90m (2.74 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-T1pHrSPv.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-TDZKCsqA.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-TuPacO0E.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-ui8jUqaY.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-V1C2Zhis.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/page-yT5XI_Cf.mjs (46.5 kB)[39m[90m (2.75 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/parse-BU3fTLtO-C9QbmfmJ.mjs (60.5 kB)[39m[90m (17.6 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/remark-gfm-CNRtqoKe.mjs (49.8 kB)[39m[90m (13.1 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/remove-undefined-CzMSKybq-DhDmqStb.mjs (472 B)[39m[90m (278 B gzip)[39m
+[90m  ├─ .output/server/_chunks/rolldown-runtime-1p2KPIdQ.mjs (1.3 kB)[39m[90m (664 B gzip)[39m
+[90m  ├─ .output/server/_chunks/search-default-BloYwVTn.mjs (30.4 kB)[39m[90m (10.2 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/src-BhOC5X37.mjs (25.5 kB)[39m[90m (8.27 kB gzip)[39m
+[90m  ├─ .output/server/_chunks/storage-4b7YQhD3.mjs (77 B)[39m[90m (97 B gzip)[39m
+[90m  ├─ .output/server/_libs/_.mjs (66 B)[39m[90m (80 B gzip)[39m
+[90m  ├─ .output/server/_libs/_2.mjs (69 B)[39m[90m (89 B gzip)[39m
+[90m  ├─ .output/server/_libs/_3.mjs (128 B)[39m[90m (112 B gzip)[39m
+[90m  ├─ .output/server/_libs/_4.mjs (154 B)[39m[90m (138 B gzip)[39m
+[90m  ├─ .output/server/_libs/_5.mjs (71 B)[39m[90m (91 B gzip)[39m
+[90m  ├─ .output/server/_libs/h3+rou3+srvx.mjs (45.4 kB)[39m[90m (14.2 kB gzip)[39m
+[90m  ├─ .output/server/_libs/hookable.mjs (829 B)[39m[90m (419 B gzip)[39m
+[90m  ├─ .output/server/_libs/scule.mjs (855 B)[39m[90m (439 B gzip)[39m
+[90m  ├─ .output/server/_libs/ufo.mjs (1.35 kB)[39m[90m (590 B gzip)[39m
+[90m  ├─ .output/server/_virtual_farm-ssr-entry.mjs (6.28 MB)[39m[90m (1.16 MB gzip)[39m
+[90m  └─ .output/server/index.mjs (40.6 kB)[39m[90m (10.3 kB gzip)[39m
+[36mΣ Total size:[39m 13.6 MB (2.14 MB gzip)
+[success] [nitro] You can preview this build using `npx nitro preview`
+[info] 🖼️  Bundled Sharp image runtime (8 packages)
+[success] ✅ Nitro build completed with preset: node-server
+[info] 📋 Route runtime manifest: .farm/route-runtime-manifest.json
+[success] ✅ Build completed successfully! (preset: node-server)
+[info] 📁 Output directory: /home/runner/work/docs/docs/benchmark/farmjs-docs/artifacts/ci-38990443258-1-cache0-trial3/apps/farmjs/.output

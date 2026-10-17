@@ -6,6 +6,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('root', type=Path)
 parser.add_argument('--out', type=Path, required=True)
+parser.add_argument('--trials', type=int, default=3)
 args = parser.parse_args()
 groups = {}
 failures = []
@@ -23,22 +24,34 @@ for file in sorted(args.root.glob('ci-*-cache*-trial*/results.json')):
     for result in data['results']:
         assert result['mdxCacheEnabled'] == enabled
         if enabled: assert result['mdxCacheEntries'] == result['pages'], result
+        else: assert result['mdxCacheEntries'] == 0, result
+        runtime = result['runtime']
+        assert runtime['verifiedPages'] == result['pages']
+        assert runtime['browserErrors'] == []
+        assert runtime['editVisible'] == (result['mode'] == 'edit')
+        assert all(runtime[key] for key in ('clientNavigation', 'clipboard', 'search', 'searchNavigation', 'mobileSidebar', 'mobileNoOverflow'))
         groups.setdefault((result['provider'], result['mode'], enabled), []).append(result)
         samples.append({**result, 'comparisonTrial': trial})
 assert len(commits) == len(farm_commits) == 1, (commits, farm_commits)
 assert not failures, failures
+assert len(samples) == 12 * args.trials
+assert len({(r['provider'], r['mode'], r['mdxCacheEnabled'], r['comparisonTrial']) for r in samples}) == len(samples)
 rows = []
 for provider in ('farmjs', 'farmjs-vercel'):
     for mode in ('cold', 'warm', 'edit'):
         pair = {}
         for enabled in (False, True):
             selected = groups[(provider, mode, enabled)]
+            assert len(selected) == args.trials
             times = [r['wallSeconds'] for r in selected]
             pair['enabled' if enabled else 'disabled'] = {
                 'trials': len(selected), 'medianSeconds': statistics.median(times),
                 'minSeconds': min(times), 'maxSeconds': max(times),
                 'medianPeakTreeRssMiB': statistics.median(r['peakTreeRssMiB'] for r in selected),
                 'medianBrowserJsGzipBytes': statistics.median(r['runtime']['initialJsGzipBytes'] for r in selected),
+                'medianOutputBytes': statistics.median(r['outputBytes'] for r in selected),
+                'medianTypecheckSeconds': statistics.median(r['typecheckSeconds'] for r in selected),
+                'medianBuildSeconds': statistics.median(r['buildSeconds'] for r in selected),
                 'cacheEntries': sorted(set(r['mdxCacheEntries'] for r in selected)),
                 'cacheBytes': sorted(set(r['mdxCacheBytes'] for r in selected)),
                 'verifiedPagesPerRun': sorted(set(r['runtime']['verifiedPages'] for r in selected)),

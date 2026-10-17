@@ -1,0 +1,16 @@
+{
+  "run": "https://github.com/farming-labs/docs/actions/runs/38990443258",
+  "docsCommit": "c6d48c341e53bba50aecd0377b5ad0f853d2691e",
+  "implementationPrCommit": "cbb54e7854d9eb0aa4128c832b42e4cb54579dfd",
+  "packageTreesMatch": true,
+  "farmCommit": "85628bbea1bd7bfe1d0728d071b85335b4a208b1",
+  "trialsPerCell": 3,
+  "totalBuilds": 36,
+  "pages": 100,
+  "measured": "Application TypeScript checking plus production Farm build; separate CLI process per row.",
+  "excluded": "Dependency installation, framework package builds, deployment upload, CDN routing, and cloud cold starts.",
+  "cacheSetting": "Only buildCache differs between paired fixtures.",
+  "rendering": "Both sides request-render all docs; zero prerendered docs HTML pages.",
+  "runtimeEvidence": "All 100 routes and browser checks verified after every build.",
+  "machine": "Ubuntu 24.04, AMD EPYC 9V45, four vCPUs, 15989 MiB RAM, Node 24.21.0."
+}

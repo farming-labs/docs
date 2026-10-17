@@ -1,0 +1,29 @@
+{
+  "provider": "farmjs",
+  "pages": 100,
+  "versions": {
+    "@farming-labs/docs": "0.2.120",
+    "@farming-labs/theme": "0.2.120",
+    "@farming-labs/farmjs": "0.2.120",
+    "@farm.js/core": "0.1.19",
+    "@farm.js/cli": "0.1.19",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "typescript": "5.9.3",
+    "@types/node": "22.20.5",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.2.1"
+  },
+  "sourceBytes": 755580,
+  "wallSeconds": 6.904779928999915,
+  "buildSeconds": 5.650525902999959,
+  "typecheckSeconds": 1.2542540259999555,
+  "peakTreeRssMiB": 2089.68359375,
+  "prerenderedDocsPages": 0,
+  "totalDocsHtmlBytes": 0,
+  "outputBytes": 58294662,
+  "mdxCacheBytes": 6792951,
+  "mdxCacheEntries": 100,
+  "mdxCacheEnabled": true
+}

@@ -1,0 +1,45 @@
+compare	Check Farm adapter regressions	﻿2026-10-17T01:23:42.9624455Z ##[group]Run pnpm --filter @farming-labs/farmjs test
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9624718Z [36;1mpnpm --filter @farming-labs/farmjs test[0m
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9677882Z shell: /usr/bin/bash -e {0}
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9678034Z env:
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9678155Z   NEXT_TELEMETRY_DISABLED: 1
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9678295Z   FARM_TELEMETRY_DISABLED: 1
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9678464Z   FARM_BENCH_SOURCE: /home/runner/work/docs/docs/farm-source
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9678704Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+compare	Check Farm adapter regressions	2026-10-17T01:23:42.9678879Z ##[endgroup]
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.1878825Z 
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.1879758Z > @farming-labs/farmjs@0.2.120 test /home/runner/work/docs/docs/packages/farmjs
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.1880289Z > pnpm run generate:browser-css && vitest run
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.1880485Z 
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.3762433Z 
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.3763393Z > @farming-labs/farmjs@0.2.120 generate:browser-css /home/runner/work/docs/docs/packages/farmjs
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.3763827Z > node scripts/generate-browser-css.mjs
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.3764039Z 
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.6119840Z 
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.6121669Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.8 [39m[90m/home/runner/work/docs/docs/packages/farmjs[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:43.6124044Z 
+compare	Check Farm adapter regressions	2026-10-17T01:23:44.0280970Z  [32m✓[39m src/navigation.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 194[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:45.3210886Z  [32m✓[39m src/server.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:45.4508518Z  [32m✓[39m src/mdx-build-cache.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1085[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:45.4523348Z      [33m[2m✓[22m[39m does not persist loaded compiler code under a changed on-disk fingerprint [33m 1058[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:46.0056264Z  [32m✓[39m src/config.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:46.7160796Z  [32m✓[39m src/vite.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:46.8762125Z  [32m✓[39m src/page-modules.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:46.9058767Z  [32m✓[39m src/edge-compiler.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 238[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:47.0103237Z  [32m✓[39m src/module-map.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:47.0418503Z  [32m✓[39m src/react.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:47.1390044Z  [32m✓[39m src/runtime.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4953265Z  [32m✓[39m src/mdx-cache-vite.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 5286[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4954112Z      [33m[2m✓[22m[39m leaves virtual modules excluded by the MDX compiler untouched [33m 1135[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4954941Z      [33m[2m✓[22m[39m keys the captured compiler themes rather than a later mutation of the options [33m 777[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4955909Z      [33m[2m✓[22m[39m preserves build output while skipping MDX compilation in a subsequent build [33m 457[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4956661Z      [33m[2m✓[22m[39m recompiles edited MDX and changed themes [33m 668[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4957181Z      [33m[2m✓[22m[39m rebuilds imported components even when their importing MDX is cached [33m 641[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4957981Z      [33m[2m✓[22m[39m supports opting out and preserves compilation errors after a successful build [33m 648[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4958721Z      [33m[2m✓[22m[39m separates production and development-mode builds [33m 655[2mms[22m[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4969037Z 
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4982825Z [2m Test Files [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4983398Z [2m      Tests [22m [1m[32m78 passed[39m[22m[90m (78)[39m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4983852Z [2m   Start at [22m 01:23:43
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4984787Z [2m   Duration [22m 6.88s[2m (transform 2.25s, setup 0ms, import 5.54s, tests 6.93s, environment 1ms)[22m
+compare	Check Farm adapter regressions	2026-10-17T01:23:50.4985193Z 

@@ -1,0 +1,17 @@
+{
+  "firstPageMs": 114.38058000000001,
+  "htmlBytes": 160220,
+  "htmlGzipBytes": 10882,
+  "initialJsGzipBytes": 216550,
+  "verifiedPages": 100,
+  "highlightedCodeBlocks": 6,
+  "tables": 6,
+  "clientNavigation": true,
+  "clipboard": true,
+  "search": true,
+  "searchNavigation": true,
+  "mobileSidebar": true,
+  "mobileNoOverflow": true,
+  "browserErrors": [],
+  "editVisible": true
+}

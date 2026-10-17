@@ -1,0 +1,7 @@
+{
+  "run": "https://github.com/farming-labs/docs/actions/runs/38989194053",
+  "docsCommit": "528c566e02b2117136d4245a1f65545f8482f334",
+  "farmCommit": "85628bbea1bd7bfe1d0728d071b85335b4a208b1",
+  "status": "Preliminary completed comparison; predates virtual-module exclusion fix cbb54e78. Final PR code is being measured separately.",
+  "scope": "100 generated MDX pages; Node and Vercel production output; three trials per cache setting and mode; no actual cloud deployment timing."
+}
