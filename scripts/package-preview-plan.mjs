@@ -79,6 +79,7 @@ export async function planPackagePreview({
         run.head_sha === sha &&
         run.head_branch === branch &&
         sameRepository(run.head_repository?.full_name) &&
+        Date.parse(run.created_at) >= Date.parse(matching.created_at) &&
         (["queued", "in_progress"].includes(run.status) ||
           (run.status === "completed" && run.conclusion === "success")),
     );

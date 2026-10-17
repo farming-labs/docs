@@ -17,6 +17,7 @@ const context = {
 const matchingPull = () => ({
   number: 123,
   state: "open",
+  created_at: "2026-10-17T00:00:00Z",
   base: { ref: "main", repo: { full_name: context.repository } },
   head: {
     ref: "codex/preview-optimization",
@@ -29,6 +30,7 @@ const matchingRun = () => ({
   head_sha: context.sha,
   head_branch: "codex/preview-optimization",
   head_repository: { full_name: context.repository },
+  created_at: "2026-10-17T00:00:01Z",
   status: "in_progress",
   conclusion: null,
 });
@@ -137,6 +139,8 @@ test("does not use other events, commits, branches, forks or waiting runs as cov
     { head_sha: "b".repeat(40) },
     { head_branch: "other-branch" },
     { head_repository: { full_name: "contributor/docs" } },
+    { created_at: "2026-10-16T23:59:59Z" },
+    { created_at: undefined },
     { status: "waiting" },
   ]) {
     const run = { ...matchingRun(), ...override };
