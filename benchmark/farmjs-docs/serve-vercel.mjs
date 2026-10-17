@@ -4,6 +4,7 @@ import {createServer} from 'node:http';
 import {readFileSync,statSync,createReadStream} from 'node:fs';
 import {resolve,join,extname,sep} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {Readable} from 'node:stream';
 const app=resolve(process.argv[2]);
 const output=join(app,'.vercel/output');
 const dir=join(output,'functions/__nitro.func');
@@ -27,6 +28,19 @@ createServer(async(req,res)=>{
         }
       }
     }
-    await handler(req,res);
+    if(typeof handler==='function') await handler(req,res);
+    else if(typeof handler?.fetch==='function'){
+      const init={method:req.method,headers:req.headers};
+      if(req.method!=='GET' && req.method!=='HEAD'){
+        init.body=Readable.toWeb(req);init.duplex='half';
+      }
+      const request=new Request(`http://${req.headers.host}${req.url}`,init);
+      const response=await handler.fetch(request,{waitUntil:promise=>promise.catch(console.error)});
+      res.statusCode=response.status;
+      for(const [name,value] of response.headers) if(name!=='set-cookie')res.setHeader(name,value);
+      const cookies=response.headers.getSetCookie();
+      if(cookies.length)res.setHeader('Set-Cookie',cookies);
+      if(response.body)Readable.fromWeb(response.body).pipe(res);else res.end();
+    }else throw new Error('Unsupported Vercel handler: '+Object.keys(handler??{}).join(','));
   }catch(error){console.error(error);res.statusCode=500;res.end('Fixture server failed');}
 }).listen(Number(process.env.PORT),'127.0.0.1');
