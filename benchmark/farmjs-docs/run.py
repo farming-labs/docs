@@ -100,6 +100,10 @@ def main():
                         html=list((public/'docs').rglob('*.html'))
                         if (public/'docs.html').exists():html.append(public/'docs.html')
                         metrics.update({'prerenderedDocsPages':len(html),'totalDocsHtmlBytes':sum(p.stat().st_size for p in html),'outputBytes':next_benchmark.size(output)})
+                        cache=app/'node_modules/.vite/farming-docs/mdx-v1.json'
+                        metrics['mdxCacheBytes']=cache.stat().st_size if cache.exists() else 0
+                        metrics['mdxCacheEntries']=len(json.loads(cache.read_text())) if cache.exists() else 0
+                        metrics['mdxCacheEnabled']=os.environ.get('FARM_BENCH_MDX_CACHE')!='0'
                         if provider=='farmjs-vercel':
                             assert json.loads((output/'config.json').read_text())['version']==3
                     else:

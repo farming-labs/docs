@@ -22,6 +22,10 @@ on:
         description: Capture Farm CLI CPU profiles (diagnostic, not benchmark timing)
         default: false
         type: boolean
+      compare_cache:
+        description: Alternate cache-disabled and cache-enabled Farm builds on this runner
+        default: false
+        type: boolean
 permissions:
   contents: read
 jobs:
@@ -71,12 +75,30 @@ jobs:
           free -m >> benchmark/farmjs-docs/artifacts/runner.txt
           df -h . >> benchmark/farmjs-docs/artifacts/runner.txt
       - name: Run same-corpus comparison
+        if: ${{ !inputs.compare_cache }}
         env:
           BENCH_PAGES: ${{ inputs.pages }}
           BENCH_TRIALS: ${{ inputs.trials }}
           BENCH_PROVIDERS: ${{ inputs.providers }}
           FARM_BENCH_CPU_PROFILE: ${{ inputs.profile && '1' || '0' }}
         run: python3 benchmark/farmjs-docs/run.py --pages "$BENCH_PAGES" --trials "$BENCH_TRIALS" --providers $BENCH_PROVIDERS --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Compare repeated Farm builds
+        if: ${{ inputs.compare_cache }}
+        env:
+          BENCH_PAGES: ${{ inputs.pages }}
+          BENCH_TRIALS: ${{ inputs.trials }}
+        run: |
+          for trial in $(seq 1 "$BENCH_TRIALS"); do
+            modes="0 1"
+            providers="farmjs farmjs-vercel"
+            if [ "$((trial % 2))" = 0 ]; then
+              modes="1 0"
+              providers="farmjs-vercel farmjs"
+            fi
+            for cache in $modes; do
+              FARM_BENCH_MDX_CACHE="$cache" python3 benchmark/farmjs-docs/run.py --pages "$BENCH_PAGES" --trials 1 --providers $providers --run-id "ci-${{ github.run_id }}-${{ github.run_attempt }}-cache${cache}-trial${trial}"
+            done
+          done
       - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4

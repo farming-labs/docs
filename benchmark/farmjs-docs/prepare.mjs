@@ -75,7 +75,7 @@ export function prepare(provider, pages, appDir) {
       : "{preset:'node-server',outputDir:'.output'}";
   write(
     "farm.config.ts",
-    `import {defineConfig} from '@farm.js/core';\nimport {withDocs} from '@farming-labs/farmjs/config';\nexport default withDocs(defineConfig({deploy:${deployment},routeRules:{'/docs':{prerender:true},'/docs/**':{prerender:true}}}));\n`,
+    `import {defineConfig} from '@farm.js/core';\nimport {withDocs} from '@farming-labs/farmjs/config';\nexport default withDocs(defineConfig({deploy:${deployment},routeRules:{'/docs':{prerender:true},'/docs/**':{prerender:true}}}),{buildCache:${process.env.FARM_BENCH_MDX_CACHE !== "0"}});\n`,
   );
   write(
     "docs.config.ts",
