@@ -41,14 +41,18 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true });
 });
 
-async function bundle(options: Parameters<typeof docsMdx>[0] = {}, mode = "production") {
+async function bundle(
+  options: Parameters<typeof docsMdx>[0] = {},
+  mode = "production",
+  plugins = docsMdx(options),
+) {
   const output = await build({
     root,
     mode,
     configFile: false,
     cacheDir: path.join(root, ".cache"),
     logLevel: "silent",
-    plugins: [docsMdx(options)],
+    plugins: [plugins],
     build: {
       write: false,
       minify: false,
@@ -68,6 +72,24 @@ async function bundle(options: Parameters<typeof docsMdx>[0] = {}, mode = "produ
 }
 
 describe("Farm MDX production cache", () => {
+  it("keys the captured compiler themes rather than a later mutation of the options", async () => {
+    const options = { codeBlockThemes: { dark: "github-dark" } };
+    const original = docsMdx(options);
+    options.codeBlockThemes.dark = "vesper";
+    const originalOutput = await bundle({}, "production", original);
+    expect(await bundle(options)).not.toBe(originalOutput);
+    expect(compiled).toHaveBeenCalledTimes(2);
+  });
+
+  it("disables reuse when the same plugin is configured again with caching off", async () => {
+    const options = { buildCache: true };
+    const plugin = docsMdx(options);
+    await bundle({}, "production", plugin);
+    options.buildCache = false;
+    await bundle({}, "production", plugin);
+    expect(compiled).toHaveBeenCalledTimes(2);
+  });
+
   it("preserves build output while skipping MDX compilation in a subsequent build", async () => {
     const cold = await bundle();
     expect(compiled).toHaveBeenCalledTimes(1);

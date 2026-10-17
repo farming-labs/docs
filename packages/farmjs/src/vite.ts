@@ -275,6 +275,7 @@ function resolveWorkspaceAliases() {
 
 export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
+  const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
   const compileOptions = createFarmDocsMdxCompileOptions(options);
   const compiler = mdx({ include: /\.(md|mdx)$/, ...compileOptions });
   // Vite gives hooks an environment-specific config view, not the same object
@@ -298,13 +299,14 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const cachedCompiler: Plugin = {
     ...compiler,
     configResolved(config) {
+      builds.delete(buildKey(config));
       if (options.buildCache !== false && config.command === "build" && !config.build.watch) {
         builds.set(buildKey(config), {
           cache: new MdxBuildCache(path.join(config.cacheDir, "farming-docs", "mdx-v1.json")),
           context: JSON.stringify([
             config.root,
             config.mode,
-            resolveFarmDocsCodeBlockThemes(options.codeBlockThemes),
+            codeBlockThemes,
             process.versions.node,
           ]),
         });
