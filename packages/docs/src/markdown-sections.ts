@@ -2,6 +2,7 @@ import { createDocsMarkdownParser } from "./markdown-parser.js";
 import { slug as githubSlug } from "github-slugger";
 import { parseEntities } from "parse-entities";
 import remarkGfm from "remark-gfm";
+import { createDocsMarkdownSectionCache } from "./markdown-section-cache.js";
 import {
   PAGE_AGENT_CONTRACT_END_MARKER,
   PAGE_AGENT_CONTRACT_START_MARKER,
@@ -115,6 +116,7 @@ interface DocsMarkdownAstNode {
 }
 
 let docsMarkdownMdxProcessor: ReturnType<typeof createDocsMarkdownParser> | undefined;
+const docsMarkdownSections = createDocsMarkdownSectionCache();
 
 function getDocsMarkdownMdxProcessor() {
   if (!docsMarkdownMdxProcessor) {
@@ -1184,6 +1186,23 @@ function isDocsMarkdownLineInRanges(
   return ranges.some((range) => line >= range.start && line <= range.end);
 }
 
+/** Close each section at the next heading of the same or a shallower level. */
+function resolveDocsMarkdownSectionEnds(
+  headings: readonly { level: number; start: number }[],
+  lineCount: number,
+): number[] {
+  const ends = headings.map(() => lineCount);
+  const open: number[] = [];
+  for (let index = 0; index < headings.length; index += 1) {
+    const heading = headings[index];
+    while (open.length > 0 && headings[open[open.length - 1]].level >= heading.level) {
+      ends[open.pop()!] = heading.start;
+    }
+    open.push(index);
+  }
+  return ends;
+}
+
 /**
  * Parse heading sections once for search, Ask AI hydration, and MCP tools.
  * Supports CommonMark ATX indentation, Setext headings, fenced-code exclusion,
@@ -1310,9 +1329,9 @@ function parseDocsMarkdownSectionsFallback(
     heading.resolved = resolveHeadingAnchor(heading.source);
   }
 
+  const ends = resolveDocsMarkdownSectionEnds(headings, lines.length);
   return headings.map((heading, index) => {
-    const next = headings.slice(index + 1).find((candidate) => candidate.level <= heading.level);
-    const end = next?.start ?? lines.length;
+    const end = ends[index];
     const resolved = heading.resolved;
     if (!resolved) throw new Error("Failed to resolve a Markdown heading anchor.");
     return {
@@ -1371,9 +1390,9 @@ function parseDocsMarkdownAstSections(
   });
 
   const lines = markdown.split(/\r?\n/u);
+  const ends = resolveDocsMarkdownSectionEnds(headings, lines.length);
   return headings.map((heading, index) => {
-    const next = headings.slice(index + 1).find((candidate) => candidate.level <= heading.level);
-    const end = next?.start ?? lines.length;
+    const end = ends[index];
     return {
       title: heading.title,
       anchor: heading.anchor,
@@ -1388,11 +1407,14 @@ function parseDocsMarkdownAstSections(
 
 export function parseDocsMarkdownSections(markdown: string): DocsMarkdownSection[] {
   const body = stripDocsMarkdownSectionFrontmatter(markdown);
+  const cached = docsMarkdownSections.get(body);
+  if (cached) return cached;
   const generatedContractRanges = collectGeneratedAgentContractRanges(body);
-  return (
+  const sections =
     parseDocsMarkdownAstSections(body, generatedContractRanges) ??
-    parseDocsMarkdownSectionsFallback(body, generatedContractRanges)
-  );
+    parseDocsMarkdownSectionsFallback(body, generatedContractRanges);
+  docsMarkdownSections.set(body, sections);
+  return sections;
 }
 
 export function findDocsMarkdownSection(

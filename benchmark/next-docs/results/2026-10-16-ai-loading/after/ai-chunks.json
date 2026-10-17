@@ -1,0 +1,16 @@
+[
+  {
+    "pages": 100,
+    "aiImplementationChunks": [
+      "3_ek2g4pb8ypy.js"
+    ],
+    "aiImplementationInitiallyLoaded": false
+  },
+  {
+    "pages": 500,
+    "aiImplementationChunks": [
+      "0rsp93zvr0y1h.js"
+    ],
+    "aiImplementationInitiallyLoaded": false
+  }
+]

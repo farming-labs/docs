@@ -251,6 +251,7 @@ export interface HumanDoctorReport {
 }
 
 const NEXT_CONFIG_PATTERN = /^next\.config\.(?:[cm]?js|[cm]?ts)$/;
+const FARM_CONFIG_PATTERN = /^farm\.config\.(?:[cm]?js|[cm]?ts)$/;
 const ASTRO_CONFIG_PATTERN = /^astro\.config\.(?:[cm]?js|[cm]?ts)$/;
 const CODE_FILE_PATTERN = /\.(?:[cm]?js|[cm]?ts|jsx|tsx)$/;
 const IGNORED_DIRS = new Set([
@@ -894,6 +895,8 @@ function findCodeFiles(files: string[], predicate: (relativePath: string) => boo
 
 function detectFrameworkFromFiles(files: string[]): Framework | null {
   if (files.some((file) => NEXT_CONFIG_PATTERN.test(path.basename(file)))) return "nextjs";
+  // Farm reads farm.config only at the project root; a nested one belongs to an example or fixture.
+  if (files.some((file) => FARM_CONFIG_PATTERN.test(file))) return "farmjs";
   if (files.some((file) => file.startsWith("src/routes/") && file.includes("api.docs"))) {
     return "tanstack-start";
   }
@@ -951,6 +954,30 @@ function detectRouteSurface(
         withDocsConfigs.length > 0
           ? `Found withDocs() in ${formatPathList(withDocsConfigs)}.`
           : "Could not find withDocs() in next.config.*, so public docs rewrites are not verified.",
+    };
+  }
+
+  if (framework === "farmjs") {
+    // The adapter's server handler serves /api/docs and the public docs routes once withDocs()
+    // wraps farm.config, so there are no route files to find.
+    const withDocsConfigs = files.filter((file) => {
+      if (!FARM_CONFIG_PATTERN.test(file)) return false;
+      const source = read(file);
+      return source.includes("withDocs(") && source.includes("@farming-labs/farmjs");
+    });
+    const found = `Found withDocs() from @farming-labs/farmjs in ${formatPathList(withDocsConfigs)}`;
+
+    return {
+      apiMounted: withDocsConfigs.length > 0,
+      apiDetail:
+        withDocsConfigs.length > 0
+          ? `${found}; the adapter serves /api/docs.`
+          : "Could not find withDocs() from @farming-labs/farmjs in farm.config.*.",
+      publicMounted: withDocsConfigs.length > 0,
+      publicDetail:
+        withDocsConfigs.length > 0
+          ? `${found}; the adapter serves the public docs routes.`
+          : "Could not find withDocs() from @farming-labs/farmjs in farm.config.*, so public docs routes are not verified.",
     };
   }
 

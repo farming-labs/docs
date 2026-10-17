@@ -1,0 +1,95 @@
+{
+  "browser": "155.0.8059.80",
+  "fixture": "local deterministic SSE endpoint, no external LLM request",
+  "results": [
+    {
+      "variant": "search",
+      "pageErrors": [],
+      "existingIssue": "Command search captures Cmd+K; the configured AI search tabs are unavailable.",
+      "visibleDialog": "omni-content"
+    },
+    {
+      "variant": "sidebar-icon",
+      "pageErrors": [],
+      "checks": [
+        "trigger",
+        "local SSE request and rendered code response",
+        "selected model forwarded",
+        "clipboard copy",
+        "feedback control",
+        "Escape closes",
+        "client navigation"
+      ]
+    },
+    {
+      "variant": "panel",
+      "pageErrors": [],
+      "checks": [
+        "trigger",
+        "local SSE request and rendered code response",
+        "selected model forwarded",
+        "clipboard copy",
+        "feedback control",
+        "Escape closes",
+        "floating chat state retained",
+        "client navigation"
+      ]
+    },
+    {
+      "variant": "modal",
+      "pageErrors": [],
+      "checks": [
+        "trigger",
+        "local SSE request and rendered code response",
+        "selected model forwarded",
+        "clipboard copy",
+        "feedback control",
+        "Escape closes",
+        "floating chat state retained",
+        "client navigation"
+      ]
+    },
+    {
+      "variant": "popover",
+      "pageErrors": [],
+      "checks": [
+        "trigger",
+        "local SSE request and rendered code response",
+        "selected model forwarded",
+        "clipboard copy",
+        "feedback control",
+        "Escape closes",
+        "floating chat state retained",
+        "client navigation"
+      ]
+    },
+    {
+      "variant": "full-modal",
+      "pageErrors": [],
+      "checks": [
+        "trigger",
+        "local SSE request and rendered code response",
+        "selected model forwarded",
+        "clipboard copy",
+        "feedback control",
+        "Escape closes",
+        "floating chat state retained",
+        "client navigation"
+      ]
+    },
+    {
+      "variant": "full-modal-mobile",
+      "pageErrors": [],
+      "checks": [
+        "trigger",
+        "local SSE request and rendered code response",
+        "selected model forwarded",
+        "clipboard copy",
+        "feedback control",
+        "Escape closes",
+        "floating chat state retained",
+        "client navigation"
+      ]
+    }
+  ]
+}

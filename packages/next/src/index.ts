@@ -1,3 +1,4 @@
+export type { DocsMdxPlugin, DocsMdxValue, WithDocsOptions } from "./mdx-options.js";
 export { withDocs } from "./config.js";
 export { createDocsAPI, createDocsMCPAPI } from "./api.js";
 export {

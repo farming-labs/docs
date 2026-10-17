@@ -7,16 +7,18 @@ import {
   applyDocsMarkdownHeadingAnchors,
   encodeDocsHeadingTocUrls,
   isolateDocsMarkdownPromptReferences,
+  remarkCodeGroup,
   withDocsMarkdownRenderableHeadings,
-} from "@farming-labs/docs";
-import { remarkCodeGroup } from "@farming-labs/docs/server";
+} from "./mdx-core.js";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
-import { normalizePath, type PluginOption } from "vite";
+import { normalizePath, type PluginOption, type Plugin, type ResolvedConfig } from "vite";
+import { MdxBuildCache, mdxCacheDigest } from "./mdx-build-cache.js";
+import { fingerprintMdxCompiler } from "./mdx-compiler-fingerprint.js";
 
 export interface FarmDocsCodeBlockThemes {
   /** Shiki theme used in light mode. */
@@ -26,6 +28,8 @@ export interface FarmDocsCodeBlockThemes {
 }
 
 export interface FarmDocsMdxOptions {
+  /** Reuse unchanged production MDX compilation. Defaults to true; never used in dev/watch. */
+  buildCache?: boolean;
   /** Shiki themes used while compiling Markdown and MDX code blocks. */
   codeBlockThemes?: FarmDocsCodeBlockThemes;
   /** Additional content roots that the development server may compile. */
@@ -163,7 +167,13 @@ export function resolveFarmDocsViteContentRoots(
   );
 }
 
+/**
+ * Point the docs packages at their TypeScript sources, for working on the adapter
+ * against an app in this repository. Opt-in: apps in the repository (the docs
+ * website) run the built packages like any other consumer.
+ */
 function resolveWorkspaceAliases() {
+  if (process.env.FARMING_LABS_DOCS_SOURCE !== "1") return [];
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
   const workspaceRoot = findWorkspaceRoot(moduleDir);
 
@@ -271,7 +281,62 @@ function resolveWorkspaceAliases() {
 
 export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
+  const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
   const compileOptions = createFarmDocsMdxCompileOptions(options);
+  const compiler = mdx({ include: /\.(md|mdx)$/, ...compileOptions });
+  // Vite gives hooks an environment-specific config view, not the same object
+  // passed to configResolved. Keep discovery/dev and production scopes separate.
+  const buildKey = (config: ResolvedConfig) =>
+    JSON.stringify([
+      config.root,
+      config.cacheDir,
+      config.command,
+      config.mode,
+      Boolean(config.build.watch),
+    ]);
+  const builds = new Map<
+    string,
+    {
+      cache: MdxBuildCache;
+      fingerprint?: Promise<string | undefined>;
+      context: string;
+    }
+  >();
+  const cachedCompiler: Plugin = {
+    ...compiler,
+    configResolved(config) {
+      builds.delete(buildKey(config));
+      if (options.buildCache !== false && config.command === "build" && !config.build.watch) {
+        builds.set(buildKey(config), {
+          cache: new MdxBuildCache(path.join(config.cacheDir, "farming-docs", "mdx-v1.json")),
+          context: JSON.stringify([
+            config.root,
+            config.mode,
+            codeBlockThemes,
+            process.versions.node,
+          ]),
+        });
+      }
+    },
+    transform: {
+      // Match the compiler's include rule before crossing the bundler's JS hook
+      // boundary. Keep its own filtering below for hosts without hook filters.
+      filter: { id: /\.(md|mdx)$/ },
+      async handler(code, id) {
+        const compile = () => compiler.transform.call(this, code, id);
+        const build = this.environment && builds.get(buildKey(this.environment.config));
+        if (!build || !/\.(md|mdx)$/.test(id.split("?", 1)[0])) return compile();
+        const version = await (build.fingerprint ??= fingerprintMdxCompiler());
+        if (!version) return compile();
+        const key = mdxCacheDigest(JSON.stringify([build.context, version, id, code]));
+        return build.cache.compile(id, key, compile);
+      },
+    },
+    async buildEnd(error) {
+      const build = this.environment && builds.get(buildKey(this.environment.config));
+      if (!error) await build?.cache.flush();
+    },
+  };
 
   return [
     {
@@ -291,12 +356,31 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
         };
       },
     },
-    mdx({
-      include: /\.(md|mdx)$/,
-      ...compileOptions,
-    }),
+    cachedCompiler,
   ];
 }
+
+/**
+ * Grammars other grammars embed in documentation: frontmatter, and code inside Markdown and
+ * HTML. Shiki loads these lazily, so without preloading, whether a block highlights them
+ * depends on which pages compiled first. Farm compiles pages separately for the browser and
+ * the server, so the two could tokenize one block differently and fail hydration.
+ */
+export const FARM_DOCS_PRELOADED_CODE_LANGUAGES = [
+  "yaml",
+  "toml",
+  "json",
+  "jsonc",
+  "html",
+  "css",
+  "javascript",
+  "typescript",
+  "jsx",
+  "tsx",
+  "shellscript",
+  "markdown",
+  "mdx",
+] as const;
 
 /** Shared MDX transforms used by Vite and the build-time edge compiler. */
 export function createFarmDocsMdxCompileOptions(
@@ -313,7 +397,7 @@ export function createFarmDocsMdxCompileOptions(
   ];
   const rehypePlugins: NonNullable<CompileOptions["rehypePlugins"]> = [
     rehypeToc,
-    [rehypeCode, { themes: codeBlockThemes }],
+    [rehypeCode, { themes: codeBlockThemes, langs: [...FARM_DOCS_PRELOADED_CODE_LANGUAGES] }],
   ];
   return { remarkPlugins, rehypePlugins };
 }

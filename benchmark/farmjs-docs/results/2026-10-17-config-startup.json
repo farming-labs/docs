@@ -1,0 +1,119 @@
+{
+  "node": "v24.21.0",
+  "platform": "darwin",
+  "method": "Same emitted Farm adapter; baseline restores broad compiler imports. Seven alternating fresh-process trials with warm OS file cache. Config import and withDocs setup only, not a complete Farm or Vercel build.",
+  "summary": {
+    "baseline": {
+      "importMs": 284.856666,
+      "totalMs": 285.110541,
+      "modules": 817
+    },
+    "candidate": {
+      "importMs": 207.445042,
+      "totalMs": 207.7045,
+      "modules": 559
+    }
+  },
+  "samples": [
+    {
+      "kind": "baseline",
+      "trial": 1,
+      "importMs": 309.388917,
+      "totalMs": 309.688458,
+      "modules": 817
+    },
+    {
+      "kind": "candidate",
+      "trial": 1,
+      "importMs": 228.1645,
+      "totalMs": 228.444292,
+      "modules": 559
+    },
+    {
+      "kind": "candidate",
+      "trial": 2,
+      "importMs": 207.445042,
+      "totalMs": 207.7045,
+      "modules": 559
+    },
+    {
+      "kind": "baseline",
+      "trial": 2,
+      "importMs": 378.841959,
+      "totalMs": 379.115042,
+      "modules": 817
+    },
+    {
+      "kind": "baseline",
+      "trial": 3,
+      "importMs": 310.91575,
+      "totalMs": 311.171,
+      "modules": 817
+    },
+    {
+      "kind": "candidate",
+      "trial": 3,
+      "importMs": 267.64712499999996,
+      "totalMs": 267.925167,
+      "modules": 559
+    },
+    {
+      "kind": "candidate",
+      "trial": 4,
+      "importMs": 211.27058399999999,
+      "totalMs": 211.524042,
+      "modules": 559
+    },
+    {
+      "kind": "baseline",
+      "trial": 4,
+      "importMs": 284.856666,
+      "totalMs": 285.110541,
+      "modules": 817
+    },
+    {
+      "kind": "baseline",
+      "trial": 5,
+      "importMs": 284.396208,
+      "totalMs": 284.695292,
+      "modules": 817
+    },
+    {
+      "kind": "candidate",
+      "trial": 5,
+      "importMs": 195.15770799999999,
+      "totalMs": 195.497042,
+      "modules": 559
+    },
+    {
+      "kind": "candidate",
+      "trial": 6,
+      "importMs": 190.538041,
+      "totalMs": 190.785375,
+      "modules": 559
+    },
+    {
+      "kind": "baseline",
+      "trial": 6,
+      "importMs": 280.706083,
+      "totalMs": 281,
+      "modules": 817
+    },
+    {
+      "kind": "baseline",
+      "trial": 7,
+      "importMs": 282.191625,
+      "totalMs": 282.494708,
+      "modules": 817
+    },
+    {
+      "kind": "candidate",
+      "trial": 7,
+      "importMs": 194.020208,
+      "totalMs": 194.266333,
+      "modules": 559
+    }
+  ],
+  "baselineCommit": "ff0eac981d7b8326239530b4a7f11d7ac2e6c423",
+  "system": "macOS-26.2-arm64-arm-64bit"
+}
