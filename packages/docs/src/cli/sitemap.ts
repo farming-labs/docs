@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import pc from "picocolors";
@@ -22,6 +21,7 @@ import {
   resolveDocsContentDir,
 } from "./config.js";
 import { detectFramework } from "./utils.js";
+import { readGitLastModifiedDates } from "./git-dates.js";
 
 export interface SitemapGenerateOptions {
   configPath?: string;
@@ -125,21 +125,6 @@ function formatDateOnly(value: string): string | undefined {
   return parsed.toISOString().slice(0, 10);
 }
 
-function gitLastCommitDate(rootDir: string, sourcePath?: string): string | undefined {
-  if (!sourcePath) return undefined;
-
-  try {
-    const output = execFileSync("git", ["log", "-1", "--format=%cI", "--", sourcePath], {
-      cwd: rootDir,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return formatDateOnly(output);
-  } catch {
-    return undefined;
-  }
-}
-
 function fileModifiedDate(rootDir: string, sourcePath?: string): string | undefined {
   if (!sourcePath) return undefined;
   const fullPath = path.isAbsolute(sourcePath) ? sourcePath : path.join(rootDir, sourcePath);
@@ -239,6 +224,10 @@ export async function generateSitemap(options: SitemapGenerateOptions = {}): Pro
   if (pages.length === 0) {
     throw new Error(`No docs content was found under ${contentDir}.`);
   }
+  const gitDates = await readGitLastModifiedDates(
+    rootDir,
+    pages.map((page) => page.sourcePath),
+  );
 
   const builtManifest = buildDocsSitemapManifest({
     pages,
@@ -246,7 +235,7 @@ export async function generateSitemap(options: SitemapGenerateOptions = {}): Pro
     siteTitle,
     baseUrl: sitemap.baseUrl,
     resolveLastmod(page) {
-      const gitDate = gitLastCommitDate(rootDir, page.sourcePath);
+      const gitDate = formatDateOnly(gitDates.get(page.sourcePath ?? "") ?? "");
       if (gitDate) return { lastmod: gitDate, lastmodSource: "git" };
 
       const fsDate = fileModifiedDate(rootDir, page.sourcePath);
