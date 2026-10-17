@@ -7,9 +7,9 @@ import {
   applyDocsMarkdownHeadingAnchors,
   encodeDocsHeadingTocUrls,
   isolateDocsMarkdownPromptReferences,
+  remarkCodeGroup,
   withDocsMarkdownRenderableHeadings,
-} from "@farming-labs/docs";
-import { remarkCodeGroup } from "@farming-labs/docs/server";
+} from "./mdx-core.js";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
