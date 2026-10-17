@@ -221,10 +221,20 @@ export function loadDocsNavTree(
 ): NavTree {
   const absDir = path.resolve(contentDir);
   const children: NavNode[] = [];
+  // Numeric ordering and node construction need the same frontmatter. Reuse it
+  // within this traversal only, so later loads still observe edits and deletions.
+  const frontmatter = new Map<string, Record<string, unknown>>();
+  const readFrontmatter: ReadNavFrontmatter = (filePath) => {
+    const cached = frontmatter.get(filePath);
+    if (cached) return cached;
+    const { data } = matter(fs.readFileSync(filePath, "utf-8"));
+    frontmatter.set(filePath, data);
+    return data;
+  };
 
   const indexPath = findIndex(absDir);
   if (indexPath) {
-    const { data } = matter(fs.readFileSync(indexPath, "utf-8"));
+    const data = readFrontmatter(indexPath);
     children.push({
       type: "page",
       name: (data.title as string) ?? "Documentation",
@@ -234,15 +244,18 @@ export function loadDocsNavTree(
   }
 
   const rootSlugOrder = Array.isArray(ordering) ? ordering : undefined;
-  children.push(...scanDir(absDir, [], entry, ordering, rootSlugOrder));
+  children.push(...scanDir(absDir, [], entry, readFrontmatter, ordering, rootSlugOrder));
   return { name: "Docs", children };
 }
+
+type ReadNavFrontmatter = (filePath: string) => Record<string, unknown>;
 
 function buildNavNode(
   dir: string,
   name: string,
   slugParts: string[],
   entry: string,
+  readFrontmatter: ReadNavFrontmatter,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   childSlugOrder?: OrderingItem[],
 ): NavNode | null {
@@ -255,7 +268,7 @@ function buildNavNode(
     const baseName = name.replace(/\.(md|mdx)$/, "");
     if (baseName === "page" || baseName === "index") return null;
 
-    const { data } = matter(fs.readFileSync(full, "utf-8"));
+    const data = readFrontmatter(full);
     const slug = [...slugParts, baseName].join("/");
 
     return {
@@ -271,7 +284,7 @@ function buildNavNode(
   if (!stat.isDirectory()) return null;
 
   const indexPath = findIndex(full);
-  const data = indexPath ? matter(fs.readFileSync(indexPath, "utf-8")).data : {};
+  const data = indexPath ? readFrontmatter(indexPath) : {};
   const slug = [...slugParts, name];
   const url = `/${entry}/${slug.join("/")}`;
   const displayName =
@@ -279,7 +292,7 @@ function buildNavNode(
     name.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   const icon = data.icon as string | undefined;
 
-  const children = scanDir(full, slug, entry, ordering, childSlugOrder);
+  const children = scanDir(full, slug, entry, readFrontmatter, ordering, childSlugOrder);
 
   if (children.length > 0) {
     return {
@@ -303,6 +316,7 @@ function scanDir(
   dir: string,
   slugParts: string[],
   entry: string,
+  readFrontmatter: ReadNavFrontmatter,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   slugOrder?: OrderingItem[],
 ): NavNode[] {
@@ -316,13 +330,21 @@ function scanDir(
     for (const item of slugOrder) {
       const name = entries.find((entryName) => navEntrySlug(entryName) === item.slug);
       if (!name) continue;
-      const node = buildNavNode(dir, name, slugParts, entry, ordering, item.children);
+      const node = buildNavNode(
+        dir,
+        name,
+        slugParts,
+        entry,
+        readFrontmatter,
+        ordering,
+        item.children,
+      );
       if (node) nodes.push(node);
     }
 
     for (const name of entries) {
       if (slugMap.has(navEntrySlug(name))) continue;
-      const node = buildNavNode(dir, name, slugParts, entry, ordering);
+      const node = buildNavNode(dir, name, slugParts, entry, readFrontmatter, ordering);
       if (node) nodes.push(node);
     }
 
@@ -338,10 +360,10 @@ function scanDir(
       const metadataPath = stat.isDirectory() ? findIndex(full) : full;
       const data =
         metadataPath && (metadataPath.endsWith(".md") || metadataPath.endsWith(".mdx"))
-          ? matter(fs.readFileSync(metadataPath, "utf-8")).data
+          ? readFrontmatter(metadataPath)
           : {};
       const order = typeof data.order === "number" ? data.order : Infinity;
-      const node = buildNavNode(dir, name, slugParts, entry, ordering);
+      const node = buildNavNode(dir, name, slugParts, entry, readFrontmatter, ordering);
       if (node) nodes.push({ order, name, node });
     }
 
@@ -355,7 +377,7 @@ function scanDir(
 
   const nodes: NavNode[] = [];
   for (const name of entries) {
-    const node = buildNavNode(dir, name, slugParts, entry, ordering);
+    const node = buildNavNode(dir, name, slugParts, entry, readFrontmatter, ordering);
     if (node) nodes.push(node);
   }
   return nodes;
