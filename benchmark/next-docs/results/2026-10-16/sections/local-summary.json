@@ -1,0 +1,61 @@
+{
+  "baseline": "0d66fc164b3cd2efeaa7edb9dbc082fe958339fb",
+  "linearPr": "https://github.com/farming-labs/docs/pull/577",
+  "linearHead": "423e2750",
+  "cachePr": "https://github.com/farming-labs/docs/pull/578",
+  "cacheHead": "130c1dfc2c73e30aad61a0db136c2d395c91b666",
+  "localEnvironment": {
+    "node": "v24.21.0",
+    "cpu": "Apple M1"
+  },
+  "warmSearch": [
+    {
+      "pages": 100,
+      "audience": "human",
+      "sourceCharacters": 371373,
+      "medianBeforeMs": 289.10691700000007,
+      "medianAfterMs": 35.76499999999987,
+      "percentFaster": 87.62914413424433
+    },
+    {
+      "pages": 100,
+      "audience": "agent",
+      "sourceCharacters": 371373,
+      "medianBeforeMs": 307.3845000000001,
+      "medianAfterMs": 39.259124999999585,
+      "percentFaster": 87.22800759309608
+    },
+    {
+      "pages": 511,
+      "audience": "human",
+      "sourceCharacters": 3581278,
+      "medianBeforeMs": 2511.15525,
+      "medianAfterMs": 386.8468329999996,
+      "percentFaster": 84.5948659287394
+    },
+    {
+      "pages": 511,
+      "audience": "agent",
+      "sourceCharacters": 3581278,
+      "medianBeforeMs": 4094.7911250000034,
+      "medianAfterMs": 672.3381670000017,
+      "percentFaster": 83.58064803610706
+    }
+  ],
+  "firstSearch": {
+    "before": {
+      "medianMs": 11369.7145,
+      "medianRetainedHeapBytes": 21494456
+    },
+    "after": {
+      "medianMs": 10529.449458000001,
+      "medianRetainedHeapBytes": 22585192
+    }
+  },
+  "corpus": {
+    "files": 511,
+    "comparisons": 4599,
+    "corpusSha256": "5a86ce7021ed6d38ea93de1327bd9ad56ab4b5eff7a86a20331c67c74707be0d",
+    "parity": true
+  }
+}

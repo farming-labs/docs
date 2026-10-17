@@ -1,0 +1,48 @@
+{
+  "node": "v24.21.0",
+  "cpu": "Apple M1",
+  "trials": 3,
+  "method": "First simple-search call in a fresh Node process over all assistant-ui Markdown/MDX files; imports/source reads outside timer; alternating order; retained heap after forced GC; output hashes equal",
+  "samples": {
+    "before": [
+      {
+        "pages": 511,
+        "ms": 11040.773458,
+        "heapUsedBytes": 21503512,
+        "hash": "e0ac4d9200735f62c9dcc1b1bfb883712da98d9fab8ced84727a7addd4e14f39"
+      },
+      {
+        "pages": 511,
+        "ms": 11369.7145,
+        "heapUsedBytes": 21437848,
+        "hash": "e0ac4d9200735f62c9dcc1b1bfb883712da98d9fab8ced84727a7addd4e14f39"
+      },
+      {
+        "pages": 511,
+        "ms": 12931.22675,
+        "heapUsedBytes": 21494456,
+        "hash": "e0ac4d9200735f62c9dcc1b1bfb883712da98d9fab8ced84727a7addd4e14f39"
+      }
+    ],
+    "after": [
+      {
+        "pages": 511,
+        "ms": 10797.415667000001,
+        "heapUsedBytes": 22580792,
+        "hash": "e0ac4d9200735f62c9dcc1b1bfb883712da98d9fab8ced84727a7addd4e14f39"
+      },
+      {
+        "pages": 511,
+        "ms": 10529.449458000001,
+        "heapUsedBytes": 22585192,
+        "hash": "e0ac4d9200735f62c9dcc1b1bfb883712da98d9fab8ced84727a7addd4e14f39"
+      },
+      {
+        "pages": 511,
+        "ms": 9448.451291,
+        "heapUsedBytes": 22590384,
+        "hash": "e0ac4d9200735f62c9dcc1b1bfb883712da98d9fab8ced84727a7addd4e14f39"
+      }
+    ]
+  }
+}

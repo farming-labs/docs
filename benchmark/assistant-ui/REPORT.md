@@ -746,3 +746,28 @@ website build from five example builds is the much larger observed pipeline oppo
 [visual comparisons](../next-docs/results/2026-10-16/config-imports/pixel-comparison.json),
 and [Vercel phase receipts](../next-docs/results/2026-10-16/config-imports/vercel-build-phases.txt)
 are retained alongside raw build/runtime logs. No benchmark PR was created or modified.
+
+
+### Follow-up: repeated core Markdown section processing (October 16)
+
+Two independent core PRs preserve the public parser and rendered output:
+
+- [#577](https://github.com/farming-labs/docs/pull/577), `423e2750`, computes section boundaries in one forward pass. The previous loop copied 12,497,500 heading references on a 5,000-heading document. Each heading now enters/leaves the open-section stack at most once. Seven alternating local full-parse trials show mixed timing results: valid 5,000-heading MDX is 300.56 → 297.51 ms; malformed-MDX fallback is 128.76 → 121.61 ms; 100-heading fallback is 4.14 → 4.51 ms. The deterministic improvement is eliminating quadratic allocation, not a proven deployment speedup.
+- [#578](https://github.com/farming-labs/docs/pull/578), `130c1dfc`, reuses unchanged section parses with an in-process LRU keyed by exact Markdown body. It retains normalized source and section boundaries, not duplicated nested section content. Limits are 1,024 entries and 8,000,000 retained string characters (not a total heap-byte guarantee). Results are recreated for each caller; edits, audience projections, metadata, authorization, and query ranking retain their behavior. It does not persist MDX compilation between builds.
+
+The cache-only comparison below uses main `0d66fc16` and `130c1dfc`, Node 24.21.0 on an Apple M1, and seven alternating serial warmed trials. Each trial measures a complete `performDocsSearch` call with the simple provider, `configure` query, and ten-result limit. Inputs are sorted real assistant-ui source files, with the same synthetic URLs and path-based titles on both sides; the 100-file case uses the first 100. Imports and source reads are outside the timer. These are core search measurements, not browser/network latency or Fumadocs comparisons.
+
+| Warm corpus / audience | Before | Cached | Reduction |
+| --- | ---: | ---: | ---: |
+| 100 files / human | 289.11 ms | 35.76 ms | 87.6% |
+| 100 files / agent | 307.38 ms | 39.26 ms | 87.2% |
+| 511 files / human | 2,511.16 ms | 386.85 ms | 84.6% |
+| 511 files / agent | 4,094.79 ms | 672.34 ms | 83.6% |
+
+First human search over all 511 files, in three fresh Node processes per variant, measures 11.37 → 10.53 seconds median. The first request remains expensive; this is not an 84% cold-start improvement. Median retained JS heap after forced GC is 21,494,456 → 22,585,192 bytes (about 1.04 MiB extra on this corpus). All six result hashes match. Local scheduling and JIT variance apply; every sample is retained.
+
+Validation: 1,548 core tests for the linear-boundary PR; 1,554 core and 150 Next tests for the cache PR; builds, typechecks, lint/format, and 4,599 comparisons per PR across 511 assistant-ui Markdown/MDX files. Comparisons cover unchanged, edited, malformed, repeated, and caller-mutated results. The cache suite tests eviction, character limits, oversized documents, empty sections, nested content, and CRLF normalization. A locally contended test run hit three timeouts; the full suite rerun with two workers passes, and the PR CI test job also passes.
+
+Raw local data and runnable scripts are under `benchmark/next-docs/results/2026-10-16/sections/` and `benchmark/next-docs/benchmark-section-*.mjs`; the corpus fingerprint is `5a86ce7021ed6d38ea93de1327bd9ad56ab4b5eff7a86a20331c67c74707be0d`.
+
+A separate 100-page, three-trial production comparison of both changes together against main and Fumadocs is running at https://github.com/farming-labs/docs/actions/runs/39002234194. No whole-build gain is claimed until its results are inspected. The existing benchmark PR #569 remains untouched.
