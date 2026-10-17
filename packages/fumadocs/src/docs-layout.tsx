@@ -1052,6 +1052,8 @@ export function createDocsLayout(
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !staticExport && !!aiConfig?.enabled;
   const aiMode = aiConfig?.mode ?? ("search" as "search" | "floating" | "sidebar-icon");
+  // AI search modes install their own keyboard and sidebar search listeners.
+  const aiHandlesSearch = aiEnabled && (aiMode === "search" || aiMode === "sidebar-icon");
   const aiPosition = aiConfig?.position ?? "bottom-right";
   const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
   // Serialize the custom trigger component to HTML so it survives
@@ -1184,7 +1186,7 @@ export function createDocsLayout(
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-        {!staticExport && (
+        {!staticExport && !aiHandlesSearch && (
           <Suspense fallback={null}>
             <DocsCommandSearch
               api={docsApiUrl}
