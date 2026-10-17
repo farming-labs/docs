@@ -18,6 +18,8 @@ export interface FarmDocsCoreConfig extends Partial<DocsConfig> {
 }
 
 export interface FarmDocsAdapterOptions {
+  /** Reuse unchanged production MDX compilation. Defaults to true. */
+  buildCache?: boolean;
   /** Enable the docs runtime. Defaults to true when withDocs is used. */
   enabled?: boolean;
   /** Path to docs.config.ts, relative to the Farm application root. */
@@ -50,10 +52,11 @@ function appendDocsVitePlugins(
   config: FarmViteConfigLike = {},
   codeBlockThemes?: FarmDocsCodeBlockThemes,
   contentRoots?: string[],
+  buildCache?: boolean,
 ): FarmViteConfigLike {
   return {
     ...config,
-    plugins: [docsMdx({ codeBlockThemes, contentRoots }), ...(config.plugins ?? [])],
+    plugins: [docsMdx({ codeBlockThemes, contentRoots, buildCache }), ...(config.plugins ?? [])],
   };
 }
 
@@ -61,12 +64,14 @@ function withDocsViteConfig(
   value: FarmConfigLike["vite"],
   codeBlockThemes?: FarmDocsCodeBlockThemes,
   contentRoots?: string[],
+  buildCache?: boolean,
 ): FarmViteConfigLike | FarmViteConfigFactory {
   if (typeof value === "function") {
-    return (config) => appendDocsVitePlugins(value(config), codeBlockThemes, contentRoots);
+    return (config) =>
+      appendDocsVitePlugins(value(config), codeBlockThemes, contentRoots, buildCache);
   }
 
-  return appendDocsVitePlugins(value, codeBlockThemes, contentRoots);
+  return appendDocsVitePlugins(value, codeBlockThemes, contentRoots, buildCache);
 }
 
 /**
@@ -85,7 +90,12 @@ export function withDocs<TConfig extends FarmConfigLike>(
 
   return {
     ...farmConfig,
-    vite: withDocsViteConfig(farmConfig.vite, options.codeBlockThemes, options.contentRoots),
+    vite: withDocsViteConfig(
+      farmConfig.vite,
+      options.codeBlockThemes,
+      options.contentRoots,
+      options.buildCache,
+    ),
     docs: {
       ...existing,
       enabled,

@@ -16,7 +16,9 @@ import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import { remarkHeading as createFumadocsRemarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
-import { normalizePath, type PluginOption } from "vite";
+import { normalizePath, type PluginOption, type Plugin, type ResolvedConfig } from "vite";
+import { MdxBuildCache, mdxCacheDigest } from "./mdx-build-cache.js";
+import { fingerprintMdxCompiler } from "./mdx-compiler-fingerprint.js";
 
 export interface FarmDocsCodeBlockThemes {
   /** Shiki theme used in light mode. */
@@ -26,6 +28,8 @@ export interface FarmDocsCodeBlockThemes {
 }
 
 export interface FarmDocsMdxOptions {
+  /** Reuse unchanged production MDX compilation. Defaults to true; never used in dev/watch. */
+  buildCache?: boolean;
   /** Shiki themes used while compiling Markdown and MDX code blocks. */
   codeBlockThemes?: FarmDocsCodeBlockThemes;
   /** Additional content roots that the development server may compile. */
@@ -272,6 +276,54 @@ function resolveWorkspaceAliases() {
 export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
   const compileOptions = createFarmDocsMdxCompileOptions(options);
+  const compiler = mdx({ include: /\.(md|mdx)$/, ...compileOptions });
+  // Vite gives hooks an environment-specific config view, not the same object
+  // passed to configResolved. Keep discovery/dev and production scopes separate.
+  const buildKey = (config: ResolvedConfig) =>
+    JSON.stringify([
+      config.root,
+      config.cacheDir,
+      config.command,
+      config.mode,
+      Boolean(config.build.watch),
+    ]);
+  const builds = new Map<
+    string,
+    {
+      cache: MdxBuildCache;
+      fingerprint?: Promise<string | undefined>;
+      context: string;
+    }
+  >();
+  const cachedCompiler: Plugin = {
+    ...compiler,
+    configResolved(config) {
+      if (options.buildCache !== false && config.command === "build" && !config.build.watch) {
+        builds.set(buildKey(config), {
+          cache: new MdxBuildCache(path.join(config.cacheDir, "farming-docs", "mdx-v1.json")),
+          context: JSON.stringify([
+            config.root,
+            config.mode,
+            resolveFarmDocsCodeBlockThemes(options.codeBlockThemes),
+            process.versions.node,
+          ]),
+        });
+      }
+    },
+    async transform(code, id) {
+      const compile = () => compiler.transform.call(this, code, id);
+      const build = this.environment && builds.get(buildKey(this.environment.config));
+      if (!build || !/\.(md|mdx)$/.test(id.split("?", 1)[0])) return compile();
+      const version = await (build.fingerprint ??= fingerprintMdxCompiler());
+      if (!version) return compile();
+      const key = mdxCacheDigest(JSON.stringify([build.context, version, id, code]));
+      return build.cache.compile(id, key, async () => (await compile())!);
+    },
+    async buildEnd(error) {
+      const build = this.environment && builds.get(buildKey(this.environment.config));
+      if (!error) await build?.cache.flush();
+    },
+  };
 
   return [
     {
@@ -291,10 +343,7 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
         };
       },
     },
-    mdx({
-      include: /\.(md|mdx)$/,
-      ...compileOptions,
-    }),
+    cachedCompiler,
   ];
 }
 
