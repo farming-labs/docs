@@ -135,7 +135,7 @@ Agent Skills discovery remains available in both cases.
 
 ## Framework notes
 
-- Next.js uses `withDocs()` and can expose page-level `.md`, `Accept: text/markdown`, and `Signature-Agent` markdown routes automatically.
+- Next.js uses `withDocs()` and can expose page-level `.md`, `Accept: text/markdown`, and `Signature-Agent` markdown routes automatically. Explicit user `beforeFiles` rewrites run before generated documentation rewrites, so existing custom Markdown handlers retain priority. Array-form rewrites keep their normal `afterFiles` phase.
 - Farm.js serves docs and API-reference routes through `withDocs()`.
 - TanStack Start, SvelteKit, Astro, and Nuxt use the shared docs API markdown mode through their framework-specific docs route setup.
 - Do not switch frameworks unless the user explicitly asks to migrate.
