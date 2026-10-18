@@ -158,6 +158,46 @@ export function AgentReadableVisual() {
   );
 }
 
+const draftPrompt = "Draft a getting started page";
+
+export function CloudEditorVisual() {
+  return (
+    <Window
+      icon={<TrafficLights />}
+      meta="draft"
+      title={
+        <span className="flex items-center gap-1.5">
+          <FileText aria-hidden className="size-3" strokeWidth={1.5} /> docs/getting-started.mdx
+        </span>
+      }
+    >
+      <pre className="min-h-0 flex-1 overflow-hidden p-5 font-mono text-[11px] leading-5 tracking-normal">
+        <code className="block">
+          <span className="block whitespace-nowrap text-mk-fg/50">
+            <span>✦ </span>
+            <span className="mk-type text-mk-fg" style={typeStyle(draftPrompt, 10)}>
+              {draftPrompt}
+            </span>
+            <span aria-hidden className="mk-type-cursor" />
+          </span>
+          <span className="mk-type-output mt-2 block" style={typeStyle(draftPrompt, 10, 8)}>
+            <span className="block text-mk-fg/45">---</span>
+            <span className="block text-mk-fg">title: "Getting Started"</span>
+            <span className="block text-mk-fg/70">description: "Set up in five minutes"</span>
+            <span className="block text-mk-fg/45">---</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-mk-fg/80">## Install</span>
+            <span className="block text-mk-fg/70">pnpm dlx @farming-labs/docs init</span>
+            <span className="mt-2 block border-t border-dashed border-mk-line pt-2 text-mk-fg/40">
+              <span className="text-mk-ok">✓</span> Draft PR opened · review ready
+            </span>
+          </span>
+        </code>
+      </pre>
+    </Window>
+  );
+}
+
 const searchAdapters = ["Simple", "Typesense", "Algolia", "MCP"] as const;
 
 const searchResults = [

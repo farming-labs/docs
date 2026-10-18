@@ -12,12 +12,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { CloudEditorDemo, CloudSearchDemo } from "@/components/ui/cloud-feature-demos";
 import { CloudTerminalDemo } from "@/components/ui/cloud-terminal-demo";
 import CloudWaitlistForm from "@/components/ui/cloud-waitlist-form";
 import { EnterpriseSupportForm } from "@/components/ui/enterprise-support-form";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import { CopyLine } from "@/components/marketing/copy-line";
+import { CloudEditorVisual, SearchVisual } from "@/components/marketing/feature-visuals";
 import { DecodeWord } from "@/components/marketing/decode-word";
 import { FlickeringGrid } from "@/components/marketing/flickering-grid";
 import {
@@ -203,8 +203,8 @@ function Features() {
           muted="AI drafts, clean frontmatter, real PRs."
           title="Git-backed editing"
         >
-          <Tray className="flex h-auto flex-col lg:aspect-[76/59]" dots={false}>
-            <CloudEditorDemo />
+          <Tray>
+            <CloudEditorVisual />
           </Tray>
         </Cell>
         <Cell
@@ -214,8 +214,8 @@ function Features() {
           muted="Search and cited answers from one graph."
           title="Managed search and AI"
         >
-          <Tray className="flex h-auto flex-col lg:aspect-[76/59]" dots={false}>
-            <CloudSearchDemo />
+          <Tray>
+            <SearchVisual />
           </Tray>
         </Cell>
         <Cell
