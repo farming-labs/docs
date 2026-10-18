@@ -54,3 +54,30 @@ test("TOC preserves inline code in authored headings", async ({ page }) => {
   await expect(page.locator('#nd-toc a[href="#user"]')).toHaveText("user");
   await expect(page.locator('#nd-toc a[href="#session"]')).toHaveText("session");
 });
+
+test("page metadata follows client navigation and browser history", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const schema = () => page.locator('script[type="application/ld+json"]').textContent();
+  await page.goto("/docs", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".fd-page-description")).toHaveText(
+    "A comprehensive authentication and authorization framework for TypeScript.",
+  );
+  await expect.poll(async () => JSON.parse((await schema())!).headline).toBe("Introduction");
+  await expect(page.locator(".fd-last-updated-inline")).toContainText("Last updated");
+  await page.evaluate(() => {
+    document.documentElement.dataset.metadataNavigation = "preserved";
+  });
+  await page.locator('a[href="/docs/getting-started"]').first().click();
+  await expect(page.locator(".fd-page-description")).toHaveText(
+    "Build your first authentication flow with Better Auth.",
+  );
+  await expect.poll(async () => JSON.parse((await schema())!).headline).toBe("Get Started");
+  await expect(page.locator("html")).toHaveAttribute("data-metadata-navigation", "preserved");
+  await page.goBack();
+  await expect.poll(async () => JSON.parse((await schema())!).headline).toBe("Introduction");
+  await expect(page.locator(".fd-page-description")).toHaveText(
+    "A comprehensive authentication and authorization framework for TypeScript.",
+  );
+  expect(errors).toEqual([]);
+});
