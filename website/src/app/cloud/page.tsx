@@ -203,7 +203,7 @@ function Features() {
           muted="AI drafts, clean frontmatter, real PRs."
           title="Git-backed editing"
         >
-          <Tray className="h-auto min-h-[21.5rem] sm:aspect-[76/59] sm:min-h-0" dots={false}>
+          <Tray className="flex h-auto flex-col lg:aspect-[76/59]" dots={false}>
             <CloudEditorDemo />
           </Tray>
         </Cell>
@@ -214,7 +214,7 @@ function Features() {
           muted="Search and cited answers from one graph."
           title="Managed search and AI"
         >
-          <Tray className="h-auto min-h-[21.5rem] sm:aspect-[76/59] sm:min-h-0" dots={false}>
+          <Tray className="flex h-auto flex-col lg:aspect-[76/59]" dots={false}>
             <CloudSearchDemo />
           </Tray>
         </Cell>
