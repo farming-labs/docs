@@ -472,6 +472,8 @@ export function TanstackDocsLayout({
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !staticExport && !!aiConfig?.enabled;
   const aiMode = aiConfig?.mode ?? ("search" as "search" | "floating" | "sidebar-icon");
+  // AI search modes install their own keyboard and sidebar search listeners.
+  const aiHandlesSearch = aiEnabled && (aiMode === "search" || aiMode === "sidebar-icon");
   const aiPosition = aiConfig?.position ?? "bottom-right";
   const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
   const aiSuggestedQuestions = aiConfig?.suggestedQuestions;
@@ -561,7 +563,7 @@ export function TanstackDocsLayout({
       <LayoutStyle layout={layoutDimensions} />
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
       {browserRuntime && config.theme?.name === "fumadocs-pixel-border" && <TabletSidebarBridge />}
-      {!staticExport && (
+      {!staticExport && !aiHandlesSearch && (
         <Suspense fallback={null}>
           <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
         </Suspense>
@@ -589,7 +591,6 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
-          showLlmsInHeader={browserRuntime && config.theme?.name === "fumadocs-pixel-border"}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}

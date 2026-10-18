@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/next",
-  "version": "0.2.120",
+  "version": "0.2.121",
   "description": "Next.js adapter for @farming-labs/docs — MDX config wrapper",
   "keywords": [
     "docs",
@@ -125,7 +125,7 @@
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farming-labs/docs": ">=0.2.73",
+    "@farming-labs/docs": ">=0.2.121",
     "@farming-labs/theme": ">=0.0.1",
     "next": ">=16.0.0",
     "react": ">=19.2.0",

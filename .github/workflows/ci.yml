@@ -40,10 +40,22 @@ jobs:
         run: pnpm --dir examples/next exec playwright test e2e/changelog.spec.ts e2e/docs-toc.spec.ts --workers=1
 
       - name: Run typecheck
-        run: pnpm typecheck
+        # Run build above already generated core declarations. The root typecheck
+        # script rebuilds core for standalone use; reuse this job's output here.
+        run: pnpm --filter './packages/*' run typecheck
+
+      # Example builds validate the adapters, but their output is not part of the website.
+      # Keep that coverage here instead of rebuilding them on every Vercel deployment.
+      - name: Build framework examples
+        run: |
+          pnpm --dir examples/next build
+          pnpm --dir examples/tanstack-start build
+          pnpm --dir examples/nuxt build
+          pnpm --dir examples/astro build
+          pnpm --dir examples/sveltekit build
 
       - name: Run website build
-        run: pnpm build
+        run: pnpm prisma generate && pnpm build:app
         working-directory: website
 
   test:
@@ -63,6 +75,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test package preview selection
+        run: node --test scripts/package-preview-plan.test.mjs
+
       - name: Run tests
         run: pnpm test
 
@@ -74,6 +89,9 @@ jobs:
 
       - name: Run TanStack Start adapter tests
         run: pnpm --filter @farming-labs/tanstack-start test
+
+      - name: Run Farm.js adapter tests
+        run: pnpm --filter @farming-labs/farmjs test
 
       - name: Run Fumadocs theme tests
         run: pnpm --filter @farming-labs/theme test

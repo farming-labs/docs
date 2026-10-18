@@ -68,12 +68,17 @@ describe("withDocs", () => {
     });
   });
 
-  it("registers the adapter-owned MDX transform before existing Vite plugins", () => {
+  it("registers the adapter-owned MDX and Agent Skills plugins before existing Vite plugins", () => {
     const existingPlugin = { name: "existing" };
     const result = withDocs({ vite: { plugins: [existingPlugin] } });
 
     expect(result.vite).toMatchObject({
-      plugins: [expect.any(Array), existingPlugin],
+      plugins: [
+        expect.any(Array),
+        expect.objectContaining({ name: "farming-labs-farmjs-agent-skills" }),
+        expect.objectContaining({ name: "farming-labs-farmjs-shell" }),
+        existingPlugin,
+      ],
     });
   });
 
@@ -91,6 +96,17 @@ describe("withDocs", () => {
     });
   });
 
+  it("points the docs page shell at the module named by the shell option", () => {
+    const result = withDocs({}, { shell: "src/docs-shell.tsx" });
+    const plugins = (result.vite as { plugins: Array<{ name?: string; config?: Function }> })
+      .plugins;
+    const shellPlugin = plugins.find((plugin) => plugin?.name === "farming-labs-farmjs-shell");
+
+    expect(shellPlugin?.config?.({ root: "/app" })).toMatchObject({
+      resolve: { alias: [{ replacement: expect.stringContaining("src/docs-shell.tsx") }] },
+    });
+  });
+
   it("preserves functional Vite config while registering the MDX transform", () => {
     const existingPlugin = { name: "existing" };
     const result = withDocs({
@@ -101,7 +117,12 @@ describe("withDocs", () => {
     expect(
       (result.vite as (config: Record<string, unknown>) => Record<string, unknown>)({}),
     ).toMatchObject({
-      plugins: [expect.any(Array), existingPlugin],
+      plugins: [
+        expect.any(Array),
+        expect.objectContaining({ name: "farming-labs-farmjs-agent-skills" }),
+        expect.objectContaining({ name: "farming-labs-farmjs-shell" }),
+        existingPlugin,
+      ],
     });
   });
 });

@@ -1,0 +1,378 @@
+{
+  "runId": "lazy-ai-before-2026-10-16",
+  "commit": "70bf160db02ba2ed9bb46de3c830bd0222382f04",
+  "node": "v24.21.0",
+  "platform": "macOS-26.2-arm64-arm-64bit",
+  "processor": "Apple M1",
+  "logicalCpus": 8,
+  "staticWorkers": 2,
+  "rssSamplingSeconds": 0.2,
+  "arguments": {
+    "node": "/Users/mac/.nvm/versions/node/v24.21.0/bin/node",
+    "pages": [
+      100,
+      500
+    ],
+    "trials": 3,
+    "providers": [
+      "farming"
+    ],
+    "modes": [
+      "cold",
+      "warm",
+      "edit"
+    ],
+    "cold_only_above": 100,
+    "run_id": "lazy-ai-before-2026-10-16"
+  },
+  "aggregates": [
+    {
+      "pages": 100,
+      "provider": "farming",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 26.16291925,
+          "min": 23.313854042000003,
+          "max": 29.579768916999996
+        },
+        "peakTreeRssMiB": {
+          "median": 2013.796875,
+          "min": 1952.421875,
+          "max": 2179.109375
+        },
+        "htmlBytes": {
+          "median": 289323,
+          "min": 289323,
+          "max": 289323
+        },
+        "htmlGzipBytes": {
+          "median": 19654,
+          "min": 19610,
+          "max": 19682
+        },
+        "totalDocsHtmlBytes": {
+          "median": 29067506,
+          "min": 29067506,
+          "max": 29067506
+        },
+        "initialJsBytes": {
+          "median": 1524912,
+          "min": 1524912,
+          "max": 1524912
+        },
+        "initialJsGzipBytes": {
+          "median": 467931,
+          "min": 467931,
+          "max": 467931
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 1963557,
+          "min": 1963557,
+          "max": 1963557
+        },
+        "serverBytes": {
+          "median": 112580302,
+          "min": 112580302,
+          "max": 112580302
+        },
+        "nextCacheBytes": {
+          "median": 154913997,
+          "min": 154857650,
+          "max": 154930240
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 17.5,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.544,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 3.2,
+          "samples": 3
+        }
+      },
+      "routeModules": 104,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "farming",
+      "mode": "edit",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 6.613981709000001,
+          "min": 5.799998625000001,
+          "max": 11.251008583
+        },
+        "peakTreeRssMiB": {
+          "median": 1660.03125,
+          "min": 1349.765625,
+          "max": 1814.03125
+        },
+        "htmlBytes": {
+          "median": 289534,
+          "min": 289534,
+          "max": 289534
+        },
+        "htmlGzipBytes": {
+          "median": 19791,
+          "min": 19756,
+          "max": 19825
+        },
+        "totalDocsHtmlBytes": {
+          "median": 29067717,
+          "min": 29067717,
+          "max": 29067717
+        },
+        "initialJsBytes": {
+          "median": 1524912,
+          "min": 1524912,
+          "max": 1524912
+        },
+        "initialJsGzipBytes": {
+          "median": 467931,
+          "min": 467931,
+          "max": 467931
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 1963557,
+          "min": 1963557,
+          "max": 1963557
+        },
+        "serverBytes": {
+          "median": 112580920,
+          "min": 112580920,
+          "max": 112580920
+        },
+        "nextCacheBytes": {
+          "median": 158076174,
+          "min": 157926984,
+          "max": 158096851
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 1.3980000000000001,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.672,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.278,
+          "samples": 3
+        }
+      },
+      "routeModules": 104,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    },
+    {
+      "pages": 100,
+      "provider": "farming",
+      "mode": "warm",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 8.130488125,
+          "min": 6.453396458000004,
+          "max": 8.891721875000002
+        },
+        "peakTreeRssMiB": {
+          "median": 1524.890625,
+          "min": 1363.484375,
+          "max": 1553.171875
+        },
+        "htmlBytes": {
+          "median": 289323,
+          "min": 289323,
+          "max": 289323
+        },
+        "htmlGzipBytes": {
+          "median": 19656,
+          "min": 19607,
+          "max": 19680
+        },
+        "totalDocsHtmlBytes": {
+          "median": 29067506,
+          "min": 29067506,
+          "max": 29067506
+        },
+        "initialJsBytes": {
+          "median": 1524912,
+          "min": 1524912,
+          "max": 1524912
+        },
+        "initialJsGzipBytes": {
+          "median": 467931,
+          "min": 467931,
+          "max": 467931
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 1963557,
+          "min": 1963557,
+          "max": 1963557
+        },
+        "serverBytes": {
+          "median": 112580302,
+          "min": 112580302,
+          "max": 112580302
+        },
+        "nextCacheBytes": {
+          "median": 156307777,
+          "min": 156194386,
+          "max": 156344457
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 2.5,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 1.453,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 1.418,
+          "samples": 3
+        }
+      },
+      "routeModules": 104,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    },
+    {
+      "pages": 500,
+      "provider": "farming",
+      "mode": "cold",
+      "trials": 3,
+      "metrics": {
+        "wallSeconds": {
+          "median": 52.89970062500001,
+          "min": 45.237509625,
+          "max": 57.81448791600002
+        },
+        "peakTreeRssMiB": {
+          "median": 3049.71875,
+          "min": 3047.78125,
+          "max": 3218.015625
+        },
+        "htmlBytes": {
+          "median": 880138,
+          "min": 880138,
+          "max": 880138
+        },
+        "htmlGzipBytes": {
+          "median": 40800,
+          "min": 40738,
+          "max": 40825
+        },
+        "totalDocsHtmlBytes": {
+          "median": 440794206,
+          "min": 440794206,
+          "max": 440794206
+        },
+        "initialJsBytes": {
+          "median": 1526180,
+          "min": 1526180,
+          "max": 1526180
+        },
+        "initialJsGzipBytes": {
+          "median": 468531,
+          "min": 468531,
+          "max": 468531
+        },
+        "initialCssBytes": {
+          "median": 260388,
+          "min": 260388,
+          "max": 260388
+        },
+        "initialCssGzipBytes": {
+          "median": 36388,
+          "min": 36388,
+          "max": 36388
+        },
+        "staticBytes": {
+          "median": 1965028,
+          "min": 1965028,
+          "max": 1965028
+        },
+        "serverBytes": {
+          "median": 1214511016,
+          "min": 1214511016,
+          "max": 1214511016
+        },
+        "nextCacheBytes": {
+          "median": 261365394,
+          "min": 261323448,
+          "max": 261419788
+        }
+      },
+      "phasesSeconds": {
+        "compile": {
+          "median": 23.9,
+          "samples": 3
+        },
+        "staticGeneration": {
+          "median": 15.1,
+          "samples": 3
+        },
+        "typecheck": {
+          "median": 3.7,
+          "samples": 3
+        }
+      },
+      "routeModules": 504,
+      "apiRoutes": [
+        "/api/docs/mcp/route",
+        "/api/docs/route"
+      ]
+    }
+  ]
+}

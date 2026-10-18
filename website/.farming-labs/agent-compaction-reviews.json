@@ -57,12 +57,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:22fda9730a1fa133",
+      "sourceHash": "fnv1a64:00834bffdac67264",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:743e449e1163566c",
-      "reviewedAt": "2026-10-10T01:20:23.142Z",
-      "reviewedBy": "docs-team",
-      "reason": "Confirmed the curated agent guidance already requires readingTime.enabled: true; the runtime and human reference now match that explicit opt-in contract."
+      "outputHash": "fnv1a64:13babdc124c58c50",
+      "reviewedAt": "2026-10-17T01:16:28.196Z",
+      "reviewedBy": "Codex",
+      "reason": "Reviewed the Farm.js adapter buildCache contract against implementation and tests, and added cache retention, invalidation, fallback, and opt-out guidance to the curated reference."
     },
     {
       "route": "/docs/token-efficiency",

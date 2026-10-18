@@ -34,7 +34,7 @@ import type {
   DocsSitemapManifest,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
-import { DocsAIFeatures } from "./docs-ai-features.js";
+import { DocsAIFeatures } from "./docs-ai-features-lazy.js";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
@@ -44,6 +44,7 @@ import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { createDocsContentReader, type DocsContentReader } from "./docs-content-reader.js";
 import { compactPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
+import { serializePageMetadata } from "./page-metadata.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -1052,6 +1053,8 @@ export function createDocsLayout(
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !staticExport && !!aiConfig?.enabled;
   const aiMode = aiConfig?.mode ?? ("search" as "search" | "floating" | "sidebar-icon");
+  // AI search modes install their own keyboard and sidebar search listeners.
+  const aiHandlesSearch = aiEnabled && (aiMode === "search" || aiMode === "sidebar-icon");
   const aiPosition = aiConfig?.position ?? "bottom-right";
   const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
   // Serialize the custom trigger component to HTML so it survives
@@ -1105,7 +1108,12 @@ export function createDocsLayout(
         defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
       },
     );
-    return { ...maps, localizedTree: i18n ? localizeTreeUrls(tree, activeLocale) : tree };
+    return {
+      pageMetadata: serializePageMetadata(maps),
+      readingTimeEnabled:
+        readingTimeEnabledByDefault || Object.keys(maps.readingTimeMap).length > 0,
+      localizedTree: i18n ? localizeTreeUrls(tree, activeLocale) : tree,
+    };
   }
 
   // A Next production build renders this layout for many pages. Reuse its
@@ -1116,18 +1124,13 @@ export function createDocsLayout(
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const {
-      lastModifiedMap,
-      descriptionMap,
-      generatedTitleMap,
-      readingTimeMap,
-      structuredDataPages,
+      pageMetadata,
+      readingTimeEnabled,
       localizedTree: preparedTree,
     } = process.env.NODE_ENV === "production"
       ? (productionContent ??= prepareContent())
       : prepareContent();
     const localizedTree = cloneTree(preparedTree);
-    const readingTimeEnabled =
-      readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
     const sidebarFooter = withStableReactKey(
@@ -1184,7 +1187,7 @@ export function createDocsLayout(
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-        {!staticExport && (
+        {!staticExport && !aiHandlesSearch && (
           <Suspense fallback={null}>
             <DocsCommandSearch
               api={docsApiUrl}
@@ -1242,17 +1245,13 @@ export function createDocsLayout(
             contentDir={contentDir}
             githubBranch={githubBranch}
             githubDirectory={githubDirectory}
-            lastModifiedMap={lastModifiedMap}
+            pageMetadata={pageMetadata}
             lastUpdatedEnabled={lastUpdatedEnabled}
             lastUpdatedLabel={lastUpdatedLabel}
             lastUpdatedPosition={lastUpdatedPosition}
             readingTimeEnabled={readingTimeEnabled}
             readingTimeFormat={readingTimeFormat}
-            readingTimeMap={readingTimeMap}
-            structuredDataPages={structuredDataPages}
             llmsTxtEnabled={llmsTxtEnabled}
-            generatedTitleMap={generatedTitleMap}
-            descriptionMap={descriptionMap}
             feedbackEnabled={feedbackConfig.enabled}
             feedbackQuestion={feedbackConfig.question}
             feedbackPlaceholder={feedbackConfig.placeholder}

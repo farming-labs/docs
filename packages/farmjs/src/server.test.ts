@@ -60,6 +60,12 @@ Build a Farm application.
     expect(page.descriptionInBody).toBe(true);
   });
 
+  it("leaves the API reference path to the app when the reference is not configured", async () => {
+    const server = createDocsServer(config);
+
+    await expect(server.handle(new Request("https://farm.test/api-reference"))).resolves.toBeNull();
+  });
+
   it("opens configured pixel-border navigation groups by default", async () => {
     const server = createDocsServer({
       ...config,
@@ -253,6 +259,29 @@ Build a Farm application.
     }
   });
 
+  it("serves bundled root agent documents when the project files are absent", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farmjs-root-documents-"));
+    try {
+      const server = createDocsServer({
+        ...config,
+        rootDir,
+        _preloadedRootDocuments: {
+          "skill.md":
+            "---\nname: site\ndescription: Use this site through its docs.\n---\n\n# Site skill\n",
+          "AGENTS.md": "# Site agents\n",
+        },
+      });
+
+      const skill = await server.handle(new Request("https://farm.example/skill.md"));
+      expect(await skill?.text()).toContain("# Site skill");
+
+      const agents = await server.handle(new Request("https://farm.example/AGENTS.md"));
+      expect(await agents?.text()).toContain("# Site agents");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
   it("handles docs endpoints and falls through for application routes", async () => {
     const server = createDocsServer(config);
 
@@ -363,6 +392,46 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(response?.headers.get("content-type")).toContain("text/css");
     expect(css?.length).toBeGreaterThan(100_000);
     expect(css).toContain(".\\[\\&_svg\\]\\:size-4");
+  });
+
+  it("serves the adapter CSS in a cascade layer so host utilities win", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/__farm_docs/browser.css"));
+    const css = (await response?.text()) ?? "";
+    const layerStart = css.indexOf("@layer farm-docs-adapter {");
+
+    // The theme's preflight and utilities (`.border`) sit inside the layer, so a host's own
+    // `@layer utilities` rule such as `.border-l-4` takes precedence over them.
+    expect(layerStart).toBeGreaterThan(0);
+    expect(css.indexOf(".border {")).toBeGreaterThan(layerStart);
+    expect(css.indexOf("::file-selector-button")).toBeGreaterThan(layerStart);
+    expect(css.trimEnd().endsWith("}")).toBe(true);
+    // @property registrations do not cascade and stay top-level, ahead of the layer.
+    expect(css.indexOf("@property")).toBeLessThan(layerStart);
+    expect(css.lastIndexOf("@property")).toBeLessThan(layerStart);
+  });
+
+  it("links each docs page to its Markdown mirror in the document head", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/docs/"));
+    const html = (await response?.text()) ?? "";
+    const head = html.slice(0, html.indexOf("</head>"));
+
+    expect(head).toContain(
+      '<link rel="alternate" type="text/markdown" href="https://farm.example/docs.md">',
+    );
   });
 
   it("loads the adapter base CSS before host theme stylesheets", async () => {

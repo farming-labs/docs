@@ -51,16 +51,19 @@ import { MigrationSourceIcon } from "@/components/ui/migration-source-icon";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 import docsPackage from "../packages/docs/package.json";
 
-const algoliaAppId = process.env.ALGOLIA_APP_ID;
-const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? "farming-labs-docs";
-const algoliaSearchApiKey = process.env.ALGOLIA_SEARCH_API_KEY;
-const algoliaAdminApiKey = process.env.ALGOLIA_ADMIN_API_KEY;
+// This config also loads in the browser, where Farm restores its icons and components;
+// there is no process there, and the server's copy already carries these settings.
+const env: Record<string, string | undefined> = typeof process === "undefined" ? {} : process.env;
+const algoliaAppId = env.ALGOLIA_APP_ID;
+const algoliaIndexName = env.ALGOLIA_INDEX_NAME ?? "farming-labs-docs";
+const algoliaSearchApiKey = env.ALGOLIA_SEARCH_API_KEY;
+const algoliaAdminApiKey = env.ALGOLIA_ADMIN_API_KEY;
 const docsSearchProvider =
-  process.env.DOCS_SEARCH_PROVIDER ?? (algoliaAppId && algoliaSearchApiKey ? "algolia" : "mcp");
-const docsSiteOrigin = process.env.NEXT_PUBLIC_BASE_URL ?? "https://docs.farming-labs.dev";
+  env.DOCS_SEARCH_PROVIDER ?? (algoliaAppId && algoliaSearchApiKey ? "algolia" : "mcp");
+const docsSiteOrigin = env.NEXT_PUBLIC_BASE_URL ?? "https://docs.farming-labs.dev";
 
 function resolveAgentEvaluationSurface(): DocsAgentEvaluationSurface {
-  const value = process.env.DOCS_AGENT_EVALUATION_SURFACE;
+  const value = env.DOCS_AGENT_EVALUATION_SURFACE;
   if (!value) return "mcp-context";
   if (value === "mcp-context" || value === "configured-search" || value === "ask-ai-context") {
     return value;
@@ -71,7 +74,7 @@ function resolveAgentEvaluationSurface(): DocsAgentEvaluationSurface {
 const agentEvaluationSurface = resolveAgentEvaluationSurface();
 
 function selectAgentEvaluationTasks(tasks: DocsAgentGoldenTask[]): DocsAgentGoldenTask[] {
-  const configured = process.env.DOCS_AGENT_EVALUATION_TASKS;
+  const configured = env.DOCS_AGENT_EVALUATION_TASKS;
   if (!configured) return tasks;
   const requested = new Set(
     configured
@@ -103,7 +106,7 @@ const searchConfig =
         endpoint: "/api/docs/mcp",
       };
 
-const codeBlocksRunner = process.env.VERCEL_TOKEN
+const codeBlocksRunner = env.VERCEL_TOKEN
   ? ({ provider: "vercel-sandbox", tokenEnv: "VERCEL_TOKEN" } as const)
   : ({ provider: "local", timeoutMs: 5_000 } as const);
 
@@ -1018,7 +1021,7 @@ export default defineDocs({
   },
   themeToggle: {
     enabled: false,
-    default: "light",
+    default: "system",
   },
   components: {
     Callout,

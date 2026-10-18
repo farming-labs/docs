@@ -1,7 +1,7 @@
 {
   "name": "@farming-labs/docs",
-  "version": "0.2.120",
-  "description": "Modern, flexible MDX-based docs framework — core types, config, and CLI",
+  "version": "0.2.121",
+  "description": "Modern, flexible MDX-based docs framework \u2014 core types, config, and CLI",
   "keywords": [
     "docs",
     "documentation",
@@ -88,7 +88,12 @@
       "import": "./dist/mcp.mjs",
       "default": "./dist/mcp.mjs"
     },
-    "./styles/themes/shadcn.css": "./styles/themes/shadcn.css"
+    "./styles/themes/shadcn.css": "./styles/themes/shadcn.css",
+    "./build": {
+      "types": "./dist/build.d.mts",
+      "import": "./dist/build.mjs",
+      "default": "./dist/build.mjs"
+    }
   },
   "scripts": {
     "build": "tsdown",
@@ -102,7 +107,6 @@
     "@mdx-js/mdx": "^3.1.1",
     "@modelcontextprotocol/server": "2.0.0",
     "@scalar/core": "^0.4.3",
-    "@vercel/sandbox": "^2.0.0",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "jiti": "^2.7.0",
@@ -114,9 +118,13 @@
     "zod": "^4.3.6"
   },
   "peerDependencies": {
+    "@vercel/sandbox": "^2.0.0",
     "react": ">=19.2.0"
   },
   "peerDependenciesMeta": {
+    "@vercel/sandbox": {
+      "optional": true
+    },
     "react": {
       "optional": true
     }
@@ -125,6 +133,7 @@
     "@modelcontextprotocol/client": "2.2.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.2",
+    "@vercel/sandbox": "^2.0.0",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
     "react": "^19.2.0",
