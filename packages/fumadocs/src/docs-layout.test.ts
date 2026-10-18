@@ -7,12 +7,13 @@ import { tmpdir } from "node:os";
 import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
 import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 import { shadcn } from "./shadcn/index.js";
+import { resolvePageMetadata, type DocsPageMetadata } from "./page-metadata.js";
 
 vi.mock("./docs-ai-features.js", () => {
   throw new Error("The docs layout must not eagerly initialize the optional AI implementation");
 });
 
-function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
+function findDocsPageClientProps(node: unknown, unpack = true): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
 
   const candidate = node as {
@@ -26,19 +27,40 @@ function findDocsPageClientProps(node: unknown): Record<string, unknown> | null 
     "copyMarkdown" in candidate.props &&
     "openDocs" in candidate.props
   ) {
-    return candidate.props;
+    if (!unpack || !candidate.props.pageMetadata) return candidate.props;
+    // Existing behavior assertions inspect values after the new transport is
+    // decoded, just as the client does when selecting a route.
+    const metadata = candidate.props.pageMetadata as DocsPageMetadata;
+    const maps = {
+      lastModifiedMap: {} as Record<string, string>,
+      descriptionMap: {} as Record<string, string>,
+      generatedTitleMap: {} as Record<string, string>,
+      readingTimeMap: {} as Record<string, number>,
+      structuredDataPages: { pages: {} } as DocsStructuredDataPages,
+    };
+    for (const route of Object.keys(JSON.parse(metadata.json).pages)) {
+      const page = resolvePageMetadata(metadata, route)!;
+      if (page.lastModified !== undefined) maps.lastModifiedMap[route] = page.lastModified;
+      if (page.description !== undefined) maps.descriptionMap[route] = page.description;
+      if (page.generatedTitle !== undefined) maps.generatedTitleMap[route] = page.generatedTitle;
+      if (page.readingTime !== undefined) maps.readingTimeMap[route] = page.readingTime;
+      maps.structuredDataPages.baseUrl = page.structuredDataPages.baseUrl;
+      maps.structuredDataPages.entry = page.structuredDataPages.entry;
+      Object.assign(maps.structuredDataPages.pages, page.structuredDataPages.pages);
+    }
+    return { ...candidate.props, ...maps };
   }
 
   const children = candidate.props?.children;
   if (Array.isArray(children)) {
     for (const child of children) {
-      const found = findDocsPageClientProps(child);
+      const found = findDocsPageClientProps(child, unpack);
       if (found) return found;
     }
     return null;
   }
 
-  return children ? findDocsPageClientProps(children) : null;
+  return children ? findDocsPageClientProps(children, unpack) : null;
 }
 
 function findDocsLayoutTree(node: unknown): Record<string, unknown> | null {
@@ -141,6 +163,20 @@ agent:
     expect(contentCalls(reads.mock.calls)).toHaveLength(pageCount + 1);
     expect(contentCalls(listings.mock.calls)).toHaveLength(pageCount + 1);
     expect(contentCalls(stats.mock.calls)).toHaveLength(pageCount + 1);
+  });
+
+  it("shares one packed production snapshot without sending the overlapping maps", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const Layout = createDocsLayout({ entry: "docs" });
+    const first = findDocsPageClientProps(Layout({ children: null }), false)!;
+    const second = findDocsPageClientProps(Layout({ children: null }), false)!;
+    expect(first.pageMetadata).toBe(second.pageMetadata);
+    expect(first).not.toHaveProperty("structuredDataPages");
+    expect(first).not.toHaveProperty("lastModifiedMap");
+    expect(first).not.toHaveProperty("descriptionMap");
+    expect(first).not.toHaveProperty("generatedTitleMap");
+    expect(first).not.toHaveProperty("readingTimeMap");
+    expect(resolvePageMetadata(first.pageMetadata as DocsPageMetadata, "/docs")).toBeDefined();
   });
 
   it("keeps custom sidebar mutations local to each production render", () => {

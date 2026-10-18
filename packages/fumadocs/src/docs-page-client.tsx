@@ -29,6 +29,7 @@ import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
 import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
+import { resolvePageMetadata, type DocsPageMetadata } from "./page-metadata.js";
 
 const agentLlmsDirectiveStyle: CSSProperties = {
   position: "absolute",
@@ -73,6 +74,8 @@ interface SerializedProvider {
 }
 
 interface DocsPageClientProps {
+  /** Internal packed layout metadata. Direct values and legacy maps retain precedence. */
+  pageMetadata?: DocsPageMetadata;
   tocEnabled: boolean;
   /** Expose the llms.txt action in a runtime-owned header slot. */
   showLlmsInHeader?: boolean;
@@ -540,6 +543,7 @@ function findThreadlineTocActionsContainer(): HTMLElement | null {
 }
 
 export function DocsPageClient({
+  pageMetadata,
   tocEnabled,
   showLlmsInHeader = false,
   tocStyle = "default",
@@ -616,17 +620,19 @@ export function DocsPageClient({
   const shouldShowLlmsInHeader = llmsTxtEnabled && showLlmsInHeader;
 
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
-  const pageTitle = generatedTitleMap?.[normalizedPath];
-  const pageDescription = description ?? descriptionMap?.[normalizedPath];
+  const page = resolvePageMetadata(pageMetadata, normalizedPath);
+  const pageTitle = generatedTitleMap?.[normalizedPath] ?? page?.generatedTitle;
+  const pageDescription = description ?? descriptionMap?.[normalizedPath] ?? page?.description;
   const isChangelogRoute = !!(
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
-  const matchedReadingTime = readingTimeMap?.[normalizedPath];
+  const matchedReadingTime = readingTimeMap?.[normalizedPath] ?? page?.readingTime;
   const structuredDataJson = !isChangelogRoute
     ? (structuredDataProp ??
       structuredDataMap?.[normalizedPath] ??
-      renderPageStructuredData(structuredDataPages, normalizedPath))
+      renderPageStructuredData(structuredDataPages, normalizedPath) ??
+      renderPageStructuredData(page?.structuredDataPages, normalizedPath))
     : undefined;
 
   useEffect(() => {
@@ -844,7 +850,7 @@ export function DocsPageClient({
 
   const lastModified =
     !isChangelogRoute && lastUpdatedEnabled
-      ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
+      ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath] ?? page?.lastModified)
       : undefined;
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
