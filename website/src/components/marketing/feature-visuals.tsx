@@ -203,7 +203,6 @@ const searchAdapters = ["Simple", "Typesense", "Algolia", "MCP"] as const;
 const searchResults = [
   { icon: FileText, title: "Sidebar", path: "/docs/configuration", active: true },
   { icon: Hash, title: "Collapsible groups", path: "/docs/customization/sidebar" },
-  { icon: Hash, title: "Banner and footer slots", path: "/docs/configuration" },
 ] as const;
 
 export function SearchVisual() {
