@@ -111,6 +111,66 @@ describe("createDocsMCPAPI", () => {
     }
   });
 
+  it("shares config reads within a factory and reloads edits in a new factory", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-config-snapshot-"));
+    tempDirs.push(rootDir);
+    const configPath = join(rootDir, "docs.config.ts");
+    writeFileSync(configPath, 'export default { nav: { title: "First title" } };');
+    const reads = vi.spyOn(fs, "readFileSync");
+    const first = createDocsAPI({ rootDir });
+    expect(reads.mock.calls.filter(([file]) => file === configPath)).toHaveLength(1);
+    expect(await (await first.GET(new Request("http://localhost/llms.txt"))).text()).toContain(
+      "First title",
+    );
+
+    writeFileSync(configPath, 'export default { nav: { title: "Edited title" } };');
+    const second = createDocsAPI({ rootDir });
+    expect(reads.mock.calls.filter(([file]) => file === configPath)).toHaveLength(2);
+    expect(await (await second.GET(new Request("http://localhost/llms.txt"))).text()).toContain(
+      "Edited title",
+    );
+  });
+
+  it("does not read config when all fallback options are supplied and llms.txt is disabled", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-config-explicit-"));
+    tempDirs.push(rootDir);
+    const configPath = join(rootDir, "docs.config.ts");
+    writeFileSync(configPath, "export default {};");
+    const reads = vi.spyOn(fs, "readFileSync");
+    createDocsAPI({
+      rootDir,
+      entry: "docs",
+      docsPath: "/docs",
+      i18n: { locales: ["en"], defaultLocale: "en" },
+      ai: {},
+      cloud: {},
+      llmsTxt: false,
+      sitemap: false,
+      robots: false,
+      apiReference: false,
+      mcp: false,
+    });
+    expect(reads.mock.calls.filter(([file]) => file === configPath)).toHaveLength(0);
+  });
+
+  it("keeps extension fallback behavior when an earlier config cannot be read", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-config-unreadable-"));
+    tempDirs.push(rootDir);
+    // A directory at this path exists but cannot be read as a config source file.
+    mkdirSync(join(rootDir, "docs.config.tsx"));
+    const configPath = join(rootDir, "docs.config.ts");
+    writeFileSync(configPath, 'export default { nav: { title: "Fallback title" } };');
+    const reads = vi.spyOn(fs, "readFileSync");
+    const { GET } = createDocsAPI({ rootDir });
+    expect(await (await GET(new Request("http://localhost/llms.txt"))).text()).toContain(
+      "Fallback title",
+    );
+    expect(reads.mock.calls.filter(([file]) => file === configPath)).toHaveLength(1);
+    expect(
+      reads.mock.calls.filter(([file]) => file === join(rootDir, "docs.config.tsx")),
+    ).toHaveLength(1);
+  });
+
   it("returns Next-compatible route handlers for the default MCP endpoint", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-route-"));
     tempDirs.push(rootDir);
