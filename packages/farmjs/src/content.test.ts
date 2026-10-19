@@ -39,6 +39,7 @@ describe("filesystem docs navigation", () => {
     write("notes.txt", "Not a navigation page");
 
     const read = vi.spyOn(fs, "readFileSync");
+    const stat = vi.spyOn(fs, "statSync");
     const tree = loadDocsNavTree(root, "guides", "numeric");
 
     expect(tree.children).toEqual([
@@ -62,6 +63,9 @@ describe("filesystem docs navigation", () => {
       .filter((file) => file.startsWith(root));
     expect(sources).toHaveLength(9);
     expect(new Set(sources).size).toBe(sources.length);
+    const statPaths = stat.mock.calls.map(([file]) => String(file));
+    expect(statPaths).toHaveLength(11);
+    expect(new Set(statPaths).size).toBe(statPaths.length);
   });
 
   it.each(["alphabetical", "numeric"] as const)(
