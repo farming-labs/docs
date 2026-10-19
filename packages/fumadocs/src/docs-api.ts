@@ -261,6 +261,31 @@ interface DocsMCPAPIOptions {
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
+type DocsConfigReader = (extension: string) => string | undefined;
+
+/** One lazy filesystem snapshot per handler factory, including missing/unreadable files. */
+function createDocsConfigReader(root: string): DocsConfigReader {
+  const files = new Map<string, { content?: string } | { error: unknown }>();
+  return (extension) => {
+    let result = files.get(extension);
+    if (!result) {
+      const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${extension}`);
+      try {
+        result = {
+          content: fs.existsSync(/*! turbopackIgnore: true */ configPath)
+            ? fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8")
+            : undefined,
+        };
+      } catch (error) {
+        result = { error };
+      }
+      files.set(extension, result);
+    }
+    if ("error" in result) throw result.error;
+    return result.content;
+  };
+}
+
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 const MAX_LLMS_CACHE_ROUTES_PER_LOCALE = 8;
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
@@ -1040,28 +1065,25 @@ function validateAgentFeedbackPayload(
   return undefined;
 }
 
-function readEntry(root: string): string {
+function readEntry(readConfig: DocsConfigReader): string {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (fs.existsSync(/*! turbopackIgnore: true */ configPath)) {
-      try {
-        const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
-        const match = content.match(/entry\s*:\s*["']([^"']+)["']/);
-        if (match) return match[1];
-      } catch {
-        // fall through
-      }
+    try {
+      const content = readConfig(ext);
+      if (content === undefined) continue;
+      const match = content.match(/entry\s*:\s*["']([^"']+)["']/);
+      if (match) return match[1];
+    } catch {
+      // fall through
     }
   }
   return "docs";
 }
 
-function readI18nConfig(root: string): DocsI18nConfig | null {
+function readI18nConfig(readConfig: DocsConfigReader): DocsI18nConfig | null {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
     try {
-      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+      const content = readConfig(ext);
+      if (content === undefined) continue;
       if (!content.includes("i18n")) continue;
 
       const localesMatch = content.match(/i18n\s*:\s*\{[\s\S]*?locales\s*:\s*\[([^\]]+)\]/);
@@ -1092,65 +1114,61 @@ function readI18nConfig(root: string): DocsI18nConfig | null {
  * Read AI config from docs.config by parsing the file for the `ai` block.
  * This avoids importing the config (which may use JSX/React).
  */
-function readAIConfig(root: string): AIOptions {
+function readAIConfig(readConfig: DocsConfigReader): AIOptions {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (fs.existsSync(/*! turbopackIgnore: true */ configPath)) {
-      try {
-        const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+    try {
+      const content = readConfig(ext);
+      if (content === undefined) continue;
 
-        // Check if AI is enabled
-        if (!content.includes("ai:") && !content.includes("ai :")) {
-          return {};
-        }
-
-        const enabledMatch = content.match(/ai\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s);
-        if (enabledMatch && enabledMatch[1] === "false") return {};
-
-        const providerMatch = content.match(/ai\s*:\s*\{[^}]*provider\s*:\s*["']([^"']+)["']/s);
-        const modelMatch = content.match(/ai\s*:\s*\{[^}]*model\s*:\s*["']([^"']+)["']/s);
-        const baseUrlMatch = content.match(/ai\s*:\s*\{[^}]*baseUrl\s*:\s*["']([^"']+)["']/s);
-        // Match `apiKey: process.env.SOME_VAR` and resolve it at runtime
-        const apiKeyMatch = content.match(/ai\s*:\s*\{[^}]*apiKey\s*:\s*process\.env\.(\w+)/s);
-        const maxResultsMatch = content.match(/ai\s*:\s*\{[^}]*maxResults\s*:\s*(\d+)/s);
-        const useMcpMatch = content.match(/ai\s*:\s*\{[^}]*useMcp\s*:\s*(true|false)/s);
-        const streamMatch = content.match(/ai\s*:\s*\{[^}]*stream\s*:\s*(true|false)/s);
-        const systemPromptMatch = content.match(
-          /ai\s*:\s*\{[^}]*systemPrompt\s*:\s*["'`]([^"'`]+)["'`]/s,
-        );
-        const packageNameMatch = content.match(
-          /ai\s*:\s*\{[^}]*packageName\s*:\s*["'`]([^"'`]+)["'`]/s,
-        );
-        const docsUrlMatch = content.match(/ai\s*:\s*\{[^}]*docsUrl\s*:\s*["'`]([^"'`]+)["'`]/s);
-
-        return {
-          enabled: true,
-          provider: providerMatch?.[1],
-          model: modelMatch?.[1],
-          baseUrl: baseUrlMatch?.[1],
-          apiKey: apiKeyMatch?.[1] ? process.env[apiKeyMatch[1]] : undefined,
-          maxResults: maxResultsMatch ? parseInt(maxResultsMatch[1], 10) : undefined,
-          useMcp: useMcpMatch ? useMcpMatch[1] === "true" : undefined,
-          stream: streamMatch ? streamMatch[1] === "true" : undefined,
-          systemPrompt: systemPromptMatch?.[1],
-          packageName: packageNameMatch?.[1],
-          docsUrl: docsUrlMatch?.[1],
-        };
-      } catch {
-        // fall through
+      // Check if AI is enabled
+      if (!content.includes("ai:") && !content.includes("ai :")) {
+        return {};
       }
+
+      const enabledMatch = content.match(/ai\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s);
+      if (enabledMatch && enabledMatch[1] === "false") return {};
+
+      const providerMatch = content.match(/ai\s*:\s*\{[^}]*provider\s*:\s*["']([^"']+)["']/s);
+      const modelMatch = content.match(/ai\s*:\s*\{[^}]*model\s*:\s*["']([^"']+)["']/s);
+      const baseUrlMatch = content.match(/ai\s*:\s*\{[^}]*baseUrl\s*:\s*["']([^"']+)["']/s);
+      // Match `apiKey: process.env.SOME_VAR` and resolve it at runtime
+      const apiKeyMatch = content.match(/ai\s*:\s*\{[^}]*apiKey\s*:\s*process\.env\.(\w+)/s);
+      const maxResultsMatch = content.match(/ai\s*:\s*\{[^}]*maxResults\s*:\s*(\d+)/s);
+      const useMcpMatch = content.match(/ai\s*:\s*\{[^}]*useMcp\s*:\s*(true|false)/s);
+      const streamMatch = content.match(/ai\s*:\s*\{[^}]*stream\s*:\s*(true|false)/s);
+      const systemPromptMatch = content.match(
+        /ai\s*:\s*\{[^}]*systemPrompt\s*:\s*["'`]([^"'`]+)["'`]/s,
+      );
+      const packageNameMatch = content.match(
+        /ai\s*:\s*\{[^}]*packageName\s*:\s*["'`]([^"'`]+)["'`]/s,
+      );
+      const docsUrlMatch = content.match(/ai\s*:\s*\{[^}]*docsUrl\s*:\s*["'`]([^"'`]+)["'`]/s);
+
+      return {
+        enabled: true,
+        provider: providerMatch?.[1],
+        model: modelMatch?.[1],
+        baseUrl: baseUrlMatch?.[1],
+        apiKey: apiKeyMatch?.[1] ? process.env[apiKeyMatch[1]] : undefined,
+        maxResults: maxResultsMatch ? parseInt(maxResultsMatch[1], 10) : undefined,
+        useMcp: useMcpMatch ? useMcpMatch[1] === "true" : undefined,
+        stream: streamMatch ? streamMatch[1] === "true" : undefined,
+        systemPrompt: systemPromptMatch?.[1],
+        packageName: packageNameMatch?.[1],
+        docsUrl: docsUrlMatch?.[1],
+      };
+    } catch {
+      // fall through
     }
   }
   return {};
 }
 
-function readCloudConfig(root: string): DocsConfig["cloud"] | undefined {
+function readCloudConfig(readConfig: DocsConfigReader): DocsConfig["cloud"] | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
-
     try {
-      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+      const content = readConfig(ext);
+      if (content === undefined) continue;
       const sanitized = stripCommentsAndStrings(content);
       const configObject = extractRootConfigObject(content, sanitized);
       const scopedContent = configObject?.content ?? content;
@@ -1189,15 +1207,13 @@ const MCP_RUNTIME_SECURITY_CONFIG_ERROR =
 class McpRuntimeSecurityConfigError extends Error {}
 
 function readMcpConfig(
-  root: string,
+  readConfig: DocsConfigReader,
   options: ReadMcpConfigOptions = {},
 ): boolean | DocsMcpConfig | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
-
     try {
-      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+      const content = readConfig(ext);
+      if (content === undefined) continue;
       const sanitized = stripCommentsAndStrings(content);
       const configObject = extractRootConfigObject(content, sanitized);
       const scopedContent = configObject?.content ?? content;
@@ -2002,13 +2018,11 @@ function withPublicDocsUrl<T extends { url: string }>(page: T, ctx: DocsContext)
   return url === page.url ? page : { ...page, url };
 }
 
-function readDocsPath(root: string): string | undefined {
+function readDocsPath(readConfig: DocsConfigReader): string | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
-
     try {
-      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+      const content = readConfig(ext);
+      if (content === undefined) continue;
       const match = content.match(/docsPath\s*:\s*["']([^"']*)["']/);
       if (match) return match[1];
     } catch {
@@ -3674,61 +3688,55 @@ async function handleAskAI(
 
 type LlmsTxtOptions = LlmsTxtConfig;
 
-function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } {
+function readLlmsTxtConfig(readConfig: DocsConfigReader): LlmsTxtOptions & { enabled: boolean } {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (fs.existsSync(/*! turbopackIgnore: true */ configPath)) {
-      try {
-        const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
-        const sanitized = stripCommentsAndStrings(content);
-        const configObject = extractRootConfigObject(content, sanitized);
-        const scopedContent = configObject?.content ?? content;
-        const scopedSanitized = configObject?.sanitized ?? sanitized;
-        const navBlock = extractObjectLiteral(scopedContent, scopedSanitized, "nav");
-        const navTitle = navBlock
-          ? readTopLevelString(navBlock, stripCommentsAndStrings(navBlock), "title")
-          : undefined;
-        const llmsTxtBoolean = readTopLevelBoolean(scopedSanitized, "llmsTxt");
+    try {
+      const content = readConfig(ext);
+      if (content === undefined) continue;
+      const sanitized = stripCommentsAndStrings(content);
+      const configObject = extractRootConfigObject(content, sanitized);
+      const scopedContent = configObject?.content ?? content;
+      const scopedSanitized = configObject?.sanitized ?? sanitized;
+      const navBlock = extractObjectLiteral(scopedContent, scopedSanitized, "nav");
+      const navTitle = navBlock
+        ? readTopLevelString(navBlock, stripCommentsAndStrings(navBlock), "title")
+        : undefined;
+      const llmsTxtBoolean = readTopLevelBoolean(scopedSanitized, "llmsTxt");
 
-        if (llmsTxtBoolean === true) {
-          return {
-            enabled: true,
-            siteTitle: navTitle,
-          };
-        }
-        if (llmsTxtBoolean === false) return { enabled: false };
-
-        const llmsTxtBlock = extractObjectLiteral(scopedContent, scopedSanitized, "llmsTxt");
-        if (!llmsTxtBlock) {
-          return {
-            enabled: true,
-            siteTitle: navTitle,
-          };
-        }
-
-        const llmsTxtSanitized = stripCommentsAndStrings(llmsTxtBlock);
-        const enabled = readTopLevelBoolean(llmsTxtSanitized, "enabled");
-        if (enabled === false) return { enabled: false };
-
-        const apiCatalog = readTopLevelBoolean(llmsTxtSanitized, "apiCatalog");
-        const baseUrl = readTopLevelString(llmsTxtBlock, llmsTxtSanitized, "baseUrl");
-        const siteTitle = readTopLevelString(llmsTxtBlock, llmsTxtSanitized, "siteTitle");
-        const siteDescription = readTopLevelString(
-          llmsTxtBlock,
-          llmsTxtSanitized,
-          "siteDescription",
-        );
-
+      if (llmsTxtBoolean === true) {
         return {
           enabled: true,
-          apiCatalog,
-          baseUrl,
-          siteTitle: siteTitle ?? navTitle,
-          siteDescription,
+          siteTitle: navTitle,
         };
-      } catch {
-        // fall through
       }
+      if (llmsTxtBoolean === false) return { enabled: false };
+
+      const llmsTxtBlock = extractObjectLiteral(scopedContent, scopedSanitized, "llmsTxt");
+      if (!llmsTxtBlock) {
+        return {
+          enabled: true,
+          siteTitle: navTitle,
+        };
+      }
+
+      const llmsTxtSanitized = stripCommentsAndStrings(llmsTxtBlock);
+      const enabled = readTopLevelBoolean(llmsTxtSanitized, "enabled");
+      if (enabled === false) return { enabled: false };
+
+      const apiCatalog = readTopLevelBoolean(llmsTxtSanitized, "apiCatalog");
+      const baseUrl = readTopLevelString(llmsTxtBlock, llmsTxtSanitized, "baseUrl");
+      const siteTitle = readTopLevelString(llmsTxtBlock, llmsTxtSanitized, "siteTitle");
+      const siteDescription = readTopLevelString(llmsTxtBlock, llmsTxtSanitized, "siteDescription");
+
+      return {
+        enabled: true,
+        apiCatalog,
+        baseUrl,
+        siteTitle: siteTitle ?? navTitle,
+        siteDescription,
+      };
+    } catch {
+      // fall through
     }
   }
   return { enabled: true };
@@ -3750,13 +3758,11 @@ function resolveLlmsTxtConfig(
   };
 }
 
-function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefined {
+function readSitemapConfig(readConfig: DocsConfigReader): boolean | DocsSitemapConfig | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
-
     try {
-      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+      const content = readConfig(ext);
+      if (content === undefined) continue;
       if (!content.includes("sitemap")) return undefined;
       if (/sitemap\s*:\s*false/.test(content)) return false;
       if (/sitemap\s*:\s*true/.test(content)) return true;
@@ -3781,13 +3787,11 @@ function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefine
   return undefined;
 }
 
-function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined {
+function readRobotsConfig(readConfig: DocsConfigReader): boolean | DocsRobotsConfig | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
-
     try {
-      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+      const content = readConfig(ext);
+      if (content === undefined) continue;
       if (!content.includes("robots")) return undefined;
       if (/robots\s*:\s*false/.test(content)) return false;
       if (/robots\s*:\s*true/.test(content)) return true;
@@ -3812,13 +3816,13 @@ function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined 
   return undefined;
 }
 
-function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | undefined {
+function readApiReferenceConfig(
+  readConfig: DocsConfigReader,
+): DocsConfig["apiReference"] | undefined {
   for (const ext of FILE_EXTS) {
-    const configPath = path.join(/*! turbopackIgnore: true */ root, `docs.config.${ext}`);
-    if (!fs.existsSync(/*! turbopackIgnore: true */ configPath)) continue;
-
     try {
-      const content = fs.readFileSync(/*! turbopackIgnore: true */ configPath, "utf-8");
+      const content = readConfig(ext);
+      if (content === undefined) continue;
       if (!content.includes("apiReference")) return undefined;
       if (/apiReference\s*:\s*false/.test(content)) return false;
       if (/apiReference\s*:\s*true/.test(content)) return true;
@@ -3902,6 +3906,7 @@ function generateLlmsTxt(
  */
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
+  const readConfig = createDocsConfigReader(root);
   const readRootSkillDocument = createRootDocumentReader(
     root,
     ["skill.md"],
@@ -3921,8 +3926,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     }
     return publishedAgentSkills;
   }
-  const entry = options?.entry ?? readEntry(root);
-  const docsPath = normalizeDocsPublicPath(options?.docsPath ?? readDocsPath(root), entry);
+  const entry = options?.entry ?? readEntry(readConfig);
+  const docsPath = normalizeDocsPublicPath(options?.docsPath ?? readDocsPath(readConfig), entry);
   const analytics = options?.analytics;
   const observability = options?.observability;
   const appDir = getNextAppDir(root);
@@ -3930,12 +3935,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const changelogConfig = resolveChangelogConfig(options?.changelog);
   const agentFeedbackConfig = resolveAgentFeedbackConfig(options?.feedback);
 
-  const i18nConfig = options?.i18n ?? readI18nConfig(root);
+  const i18nConfig = options?.i18n ?? readI18nConfig(readConfig);
   const i18n = resolveDocsI18n(i18nConfig);
 
   // Read AI config from docs.config if not explicitly provided
-  const aiConfig: AIOptions = options?.ai ?? readAIConfig(root);
-  const cloudConfig = options?.cloud ?? readCloudConfig(root);
+  const aiConfig: AIOptions = options?.ai ?? readAIConfig(readConfig);
+  const cloudConfig = options?.cloud ?? readCloudConfig(readConfig);
   const configuredApiRouteInput = options?.apiRoute ?? cloudConfig?.apiRoute;
   const configuredApiRoute = normalizeDocsApiRoute(configuredApiRouteInput);
   const effectiveCloudConfig =
@@ -3949,11 +3954,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const contentChangeFeed = createDocsContentChangeFeed(options?.agent?.contentChanges);
 
   // Read llms.txt config
-  const llmsConfig = resolveLlmsTxtConfig(options?.llmsTxt, readLlmsTxtConfig(root));
+  const llmsConfig = resolveLlmsTxtConfig(
+    options?.llmsTxt,
+    options?.llmsTxt === false ? { enabled: false } : readLlmsTxtConfig(readConfig),
+  );
   const apiCatalogEnabled = options?.apiCatalog ?? llmsConfig.apiCatalog ?? true;
-  const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
+  const sitemapConfig = options?.sitemap ?? readSitemapConfig(readConfig);
   const sitemapManifest = readDocsSitemapManifest(root, sitemapConfig);
-  const robotsConfig = options?.robots ?? readRobotsConfig(root);
+  const robotsConfig = options?.robots ?? readRobotsConfig(readConfig);
   const markdownMetadataBaseUrl = resolveDocsMetadataBaseUrl({
     ...options,
     entry,
@@ -3962,14 +3970,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     sitemap: sitemapConfig,
     robots: robotsConfig,
   } as DocsConfig);
-  const apiReferenceConfig = options?.apiReference ?? readApiReferenceConfig(root);
+  const apiReferenceConfig = options?.apiReference ?? readApiReferenceConfig(readConfig);
   const apiReferenceDocsConfig = {
     ...options,
     entry,
     apiReference: apiReferenceConfig,
   } as DocsConfig;
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(apiReferenceConfig);
-  const rawMcpConfig = options?.mcp ?? readMcpConfig(root);
+  const rawMcpConfig = options?.mcp ?? readMcpConfig(readConfig);
   const mcpConfig = resolveDocsMcpConfig(rawMcpConfig, {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
   });
@@ -5121,16 +5129,17 @@ export function createDocsAPI(options?: DocsAPIOptions) {
  */
 export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const rootDir = options.rootDir ?? process.cwd();
+  const readConfig = createDocsConfigReader(rootDir);
   const readRootSkillDocument = createRootDocumentReader(
     rootDir,
     ["skill.md"],
     options._preloadedRootDocuments,
   );
-  const entry = options.entry ?? readEntry(rootDir);
+  const entry = options.entry ?? readEntry(readConfig);
   const appDir = getNextAppDir(rootDir);
   const contentDir = options.contentDir ?? path.join(/*! turbopackIgnore: true */ appDir, entry);
-  const mcpConfig = options.mcp ?? readMcpConfig(rootDir, { rejectRuntimeSecurity: true });
-  const sitemapConfig = options.sitemap ?? readSitemapConfig(rootDir);
+  const mcpConfig = options.mcp ?? readMcpConfig(readConfig, { rejectRuntimeSecurity: true });
+  const sitemapConfig = options.sitemap ?? readSitemapConfig(readConfig);
   const sitemapManifest = readDocsSitemapManifest(rootDir, sitemapConfig);
   const contentChangeFeed = createDocsContentChangeFeed(options.agent?.contentChanges);
   const navTitle =
