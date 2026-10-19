@@ -358,6 +358,7 @@ export {
   DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
   DEFAULT_SITEMAP_XML_ROUTE,
   buildDocsSitemapManifest,
+  createDocsSitemapLastmodResolver,
   createDocsSitemapResponse,
   readDocsSitemapManifestFromContentMap,
   renderDocsSitemapMarkdown,

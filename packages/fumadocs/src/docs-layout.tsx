@@ -12,7 +12,7 @@ import {
   resolveDocsAudienceMdxContent,
   resolveDocsAnalyticsConfig,
   resolveDocsMetadataBaseUrl,
-  resolveDocsSitemapPageLastmod,
+  createDocsSitemapLastmodResolver,
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
@@ -556,14 +556,13 @@ function cloneTree(tree: TreeRoot): TreeRoot {
 // ─── Page metadata ──────────────────────────────────────────────────
 
 function resolveManifestLastmod(
-  manifest: DocsSitemapManifest | null,
+  resolveLastmod: (url: string) => string | undefined,
   ctx: DocsLocaleContext,
   url: string,
 ): string | undefined {
   return (
-    (ctx.locale
-      ? resolveDocsSitemapPageLastmod(manifest, `${url}?lang=${encodeURIComponent(ctx.locale)}`)
-      : undefined) ?? resolveDocsSitemapPageLastmod(manifest, url)
+    (ctx.locale ? resolveLastmod(`${url}?lang=${encodeURIComponent(ctx.locale)}`) : undefined) ??
+    resolveLastmod(url)
   );
 }
 
@@ -580,6 +579,7 @@ function buildPageMaps(
     includeCode: boolean;
   },
 ) {
+  const resolveLastmod = createDocsSitemapLastmodResolver(manifest);
   const lastModifiedMap: Record<string, string> = {};
   const descriptionMap: Record<string, string> = {};
   const generatedTitleMap: Record<string, string> = {};
@@ -610,7 +610,7 @@ function buildPageMaps(
           ? data.title
           : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
       const description = typeof data.description === "string" ? data.description : undefined;
-      const manifestLastmod = resolveManifestLastmod(manifest, ctx, route);
+      const manifestLastmod = resolveManifestLastmod(resolveLastmod, ctx, route);
 
       if (
         config.theme?.name === "shadcn" &&
