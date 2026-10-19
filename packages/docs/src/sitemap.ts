@@ -397,6 +397,25 @@ export function resolveDocsSitemapPageLastmod(
   return normalizeDateOnly(page?.lastmod);
 }
 
+/** Index on first use; create a new resolver when replacing or editing the manifest. */
+export function createDocsSitemapLastmodResolver(
+  manifest: DocsSitemapManifest | null | undefined,
+): (url: string) => string | undefined {
+  let dates: Map<string, string | undefined> | undefined;
+  return (url) => {
+    if (!manifest) return undefined;
+    if (!dates) {
+      dates = new Map();
+      for (const page of manifest.pages) {
+        const key = normalizeUrlPath(page.url);
+        // Match Array.find: the first URL wins even if its date is absent/invalid.
+        if (!dates.has(key)) dates.set(key, normalizeDateOnly(page.lastmod));
+      }
+    }
+    return dates.get(normalizeUrlPath(url));
+  };
+}
+
 export function createDocsSitemapResponse({
   request,
   apiRoute,
