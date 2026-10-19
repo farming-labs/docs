@@ -80,7 +80,12 @@ import {
   validateDocsAgentFeedbackPayload,
   withDocsOpenApiOperationCounts,
 } from "@farming-labs/docs";
-import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@farming-labs/docs";
+import type {
+  DocsAgentTraceEventInput,
+  DocsAskAIMcpConfig,
+  DocsConfig,
+  OrderingItem,
+} from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceOperationPagesAsync,
@@ -480,7 +485,7 @@ function navTreeFromMap(
   contentMap: ContentFileMap,
   dirPrefix: string,
   entry: string,
-  ordering?: "alphabetical" | "numeric" | Array<{ slug: string; children?: any[] }>,
+  ordering?: "alphabetical" | "numeric" | OrderingItem[],
 ): NavTree {
   interface DirInfo {
     parts: string[];
@@ -532,8 +537,26 @@ function navTreeFromMap(
     return a.parts.join("/").localeCompare(b.parts.join("/"));
   });
 
+  // Preserve the sorted traversal and first-page-wins index precedence while
+  // looking up children and descendants without repeatedly scanning every page.
+  const pageByParts = new Map<string, DirInfo>();
+  const childrenByParts = new Map<string, Set<string>>();
+  for (const page of pages) {
+    const key = JSON.stringify(page.parts);
+    if (!pageByParts.has(key)) pageByParts.set(key, page);
+    for (let depth = 0; depth < page.parts.length; depth++) {
+      const parentKey = JSON.stringify(page.parts.slice(0, depth));
+      let slugs = childrenByParts.get(parentKey);
+      if (!slugs) {
+        slugs = new Set();
+        childrenByParts.set(parentKey, slugs);
+      }
+      slugs.add(page.parts[depth]);
+    }
+  }
+
   const children: NavNode[] = [];
-  const rootInfo = pages.find((page) => page.parts.length === 0);
+  const rootInfo = pageByParts.get("[]");
   if (rootInfo) {
     children.push({
       type: "page",
@@ -543,13 +566,21 @@ function navTreeFromMap(
     });
   }
 
-  function findSlugOrder(
-    parentParts: string[],
-  ): Array<{ slug: string; children?: any[] }> | undefined {
+  const orderingIndexes = new Map<OrderingItem[], Map<string, OrderingItem>>();
+
+  function findSlugOrder(parentParts: string[]): OrderingItem[] | undefined {
     if (!Array.isArray(ordering)) return undefined;
-    let items: Array<{ slug: string; children?: any[] }> = ordering;
+    let items: OrderingItem[] = ordering;
     for (const part of parentParts) {
-      const found = items.find((item) => item.slug === part);
+      let index = orderingIndexes.get(items);
+      if (!index) {
+        index = new Map();
+        for (const item of items) {
+          if (!index.has(item.slug)) index.set(item.slug, item);
+        }
+        orderingIndexes.set(items, index);
+      }
+      const found = index.get(part);
       if (!found?.children) return undefined;
       items = found.children;
     }
@@ -559,24 +590,11 @@ function navTreeFromMap(
   function buildLevel(parentParts: string[]): NavNode[] {
     const depth = parentParts.length;
 
-    const directSlugs = Array.from(
-      new Set(
-        pages
-          .filter((page) => {
-            if (page.parts.length <= depth) return false;
-            return parentParts.every((part, index) => page.parts[index] === part);
-          })
-          .map((page) => page.parts[depth]),
-      ),
-    );
+    const directSlugs = [...(childrenByParts.get(JSON.stringify(parentParts)) ?? [])];
 
     const directChildren = directSlugs.map((slug) => {
       const parts = [...parentParts, slug];
-      const page = pages.find(
-        (candidate) =>
-          candidate.parts.length === parts.length &&
-          candidate.parts.every((part, index) => part === parts[index]),
-      );
+      const page = pageByParts.get(JSON.stringify(parts));
       return {
         parts,
         title:
@@ -593,8 +611,9 @@ function navTreeFromMap(
     if (slugOrder) {
       const slugMap = new Set(slugOrder.map((item) => item.slug));
       const ordered: DirInfo[] = [];
+      const childrenBySlug = new Map(directChildren.map((child) => [child.parts[depth], child]));
       for (const item of slugOrder) {
-        const match = directChildren.find((child) => child.parts[depth] === item.slug);
+        const match = childrenBySlug.get(item.slug);
         if (match) ordered.push(match);
       }
       for (const child of directChildren) {
@@ -602,10 +621,7 @@ function navTreeFromMap(
       }
 
       return ordered.map((child) => {
-        const hasGrandChildren = pages.some((page) => {
-          if (page.parts.length <= child.parts.length) return false;
-          return child.parts.every((part, index) => page.parts[index] === part);
-        });
+        const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
 
         if (hasGrandChildren) {
           return {
@@ -641,10 +657,7 @@ function navTreeFromMap(
     }
 
     return directChildren.map((child) => {
-      const hasGrandChildren = pages.some((page) => {
-        if (page.parts.length <= child.parts.length) return false;
-        return child.parts.every((part, index) => page.parts[index] === part);
-      });
+      const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
 
       if (hasGrandChildren) {
         return {
