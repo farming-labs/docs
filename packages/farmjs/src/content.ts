@@ -258,9 +258,10 @@ function buildNavNode(
   readFrontmatter: ReadNavFrontmatter,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   childSlugOrder?: OrderingItem[],
+  knownStat?: fs.Stats,
 ): NavNode | null {
   const full = path.join(dir, name);
-  const stat = fs.statSync(full);
+  const stat = knownStat ?? fs.statSync(full);
 
   if (stat.isFile()) {
     if (name === "agent.md" || (!name.endsWith(".md") && !name.endsWith(".mdx"))) return null;
@@ -363,7 +364,16 @@ function scanDir(
           ? readFrontmatter(metadataPath)
           : {};
       const order = typeof data.order === "number" ? data.order : Infinity;
-      const node = buildNavNode(dir, name, slugParts, entry, readFrontmatter, ordering);
+      const node = buildNavNode(
+        dir,
+        name,
+        slugParts,
+        entry,
+        readFrontmatter,
+        ordering,
+        undefined,
+        stat,
+      );
       if (node) nodes.push({ order, name, node });
     }
 
