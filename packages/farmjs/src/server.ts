@@ -110,9 +110,30 @@ import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 export { createFarmjsApiReference } from "./api-reference.js";
 
 const FARM_DOCS_BROWSER_CSS_PATH = "/__farm_docs/browser.css";
+const FARM_DOCS_BROWSER_CSS_LAYER = "farm-docs-adapter";
+
+/**
+ * The theme's precompiled browser CSS carries Tailwind's preflight and utilities outside any
+ * cascade layer, and unlayered rules beat every layered one. Served as is, `.border` from it
+ * overrode a host app's own `border-l-4` in `@layer utilities`. Inside a layer declared before
+ * the host's stylesheets, it stays the lowest-priority default the host overrides, as it does
+ * when the host compiles the theme itself. `@property` rules stay top-level: they register custom
+ * properties and do not take part in the cascade.
+ */
+function layerFarmDocsBrowserCss(css: string): string {
+  const properties: string[] = [];
+  const rules = css.replace(/@property\s+[^{]+\{[^}]*\}\s*/g, (rule) => {
+    properties.push(rule.trim());
+    return "";
+  });
+  return `${properties.join("\n")}\n@layer ${FARM_DOCS_BROWSER_CSS_LAYER} {\n${rules}\n}\n`;
+}
+
+let layeredFarmDocsBrowserCss: string | undefined;
 
 function loadFarmDocsBrowserCss(): string {
-  return farmDocsBrowserCss;
+  layeredFarmDocsBrowserCss ??= layerFarmDocsBrowserCss(farmDocsBrowserCss);
+  return layeredFarmDocsBrowserCss;
 }
 
 async function renderFarmDocsMarkup(element: ReactElement): Promise<string> {
@@ -2660,8 +2681,11 @@ function renderFarmDocsDocument(input: {
   clientEntry: string;
   stylesheets: readonly string[];
   fonts?: FarmDocsRuntimeFonts;
+  /** Request origin, so the Markdown alternate link is absolute as in the Next.js layout. */
+  origin?: string;
 }): string {
   const { config, data } = input;
+  const markdownHref = `${input.origin ?? ""}${data.url.replace(/\/+$/, "")}.md`;
   const clientConfig = createClientDocsConfig(config);
   const description = data.description ?? config.metadata?.description;
   const themeName = config.theme?.name ?? "default";
@@ -2680,6 +2704,7 @@ function renderFarmDocsDocument(input: {
   <meta name="generator" content="@farming-labs/farmjs">
   <title>${escapeDocumentText(data.title)}</title>
   ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
+  <link rel="alternate" type="text/markdown" href="${escapeDocumentText(markdownHref)}">
   ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
   ${renderThemeBootstrap(config)}
   ${fontPreloads}
@@ -2795,6 +2820,7 @@ export function createFarmDocsRuntimeHandler(
       clientEntry: options.clientEntry ?? "/farm-client.js",
       stylesheets: options.stylesheets ?? [],
       fonts,
+      origin: new URL(request.url).origin,
     });
 
     return new Response(request.method.toUpperCase() === "HEAD" ? null : html, {

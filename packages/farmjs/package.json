@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/farmjs",
-  "version": "0.2.120",
+  "version": "0.2.122",
   "description": "Farm.js adapter for @farming-labs/docs",
   "keywords": [
     "docs",
@@ -32,6 +32,11 @@
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js",
       "default": "./dist/react.js"
+    },
+    "./shell": {
+      "types": "./dist/shell.d.ts",
+      "import": "./dist/shell.js",
+      "default": "./dist/shell.js"
     },
     "./content": {
       "types": "./dist/content.d.ts",

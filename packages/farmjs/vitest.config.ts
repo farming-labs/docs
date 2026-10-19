@@ -17,6 +17,7 @@ export default defineConfig({
         "../docs/src/agent-skills-bundle.ts",
       ),
       "@farming-labs/docs": resolve(rootDir, "../docs/src/index.ts"),
+      "@farming-labs/farmjs/shell": resolve(rootDir, "src/shell.tsx"),
       "@farming-labs/theme/client-hooks": resolve(rootDir, "../fumadocs/src/docs-client-hooks.tsx"),
       "@farming-labs/theme/browser": resolve(rootDir, "../fumadocs/src/browser.tsx"),
       "@farming-labs/theme/mdx": resolve(rootDir, "../fumadocs/src/mdx.ts"),

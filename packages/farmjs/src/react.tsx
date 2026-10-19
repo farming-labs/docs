@@ -9,6 +9,7 @@ import {
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
 import { restoreUnserializableValues } from "./config-values.js";
+import FarmDocsShell from "@farming-labs/farmjs/shell";
 import { FarmDocsPageRenderer } from "./page.js";
 import { createFarmDocsPageModules, type FarmDocsMdxModule } from "./page-modules.js";
 
@@ -39,12 +40,14 @@ export function FarmDocsPage({
 }) {
   const module = pageModules.get(data);
   return (
-    <FarmDocsPageRenderer
-      config={config}
-      data={data}
-      Content={module?.default}
-      navigation={navigation}
-    />
+    <FarmDocsShell>
+      <FarmDocsPageRenderer
+        config={config}
+        data={data}
+        Content={module?.default}
+        navigation={navigation}
+      />
+    </FarmDocsShell>
   );
 }
 

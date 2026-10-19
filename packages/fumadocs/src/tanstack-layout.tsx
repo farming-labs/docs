@@ -591,7 +591,6 @@ export function TanstackDocsLayout({
       <Suspense fallback={children}>
         <DocsPageClient
           tocEnabled={tocEnabled}
-          showLlmsInHeader={browserRuntime && config.theme?.name === "fumadocs-pixel-border"}
           tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry ?? "docs"}

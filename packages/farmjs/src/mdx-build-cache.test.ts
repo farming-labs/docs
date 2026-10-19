@@ -122,6 +122,85 @@ describe("MdxBuildCache", () => {
     expect(compile).toHaveBeenCalledTimes(3);
   });
 
+  it.each([
+    ["entry", 10_000, 2],
+    ["byte", 800, 10],
+  ] as const)(
+    "reuses retained pages during scans exceeding the %s limit",
+    async (_, bytes, count) => {
+      const file = path.join(root, "cache.json");
+      const output = { code: "x".repeat(200) };
+      const first = new MdxBuildCache(file, bytes, count);
+      for (const id of ["a", "b", "c"]) await first.compile(id, "key", async () => output);
+      await first.flush();
+      expect(JSON.parse(await fs.readFile(file, "utf8")).map(([id]: [string]) => id)).toEqual([
+        "b",
+        "c",
+      ]);
+      const before = await fs.readFile(file, "utf8");
+      for (let build = 0; build < 2; build++) {
+        const cache = new MdxBuildCache(file, bytes, count);
+        const compile = vi.fn(async () => output);
+        for (const id of ["a", "b", "c"]) {
+          expect(await cache.compile(id, "key", compile)).toEqual(output);
+        }
+        await cache.flush();
+        expect(compile).toHaveBeenCalledTimes(1);
+        expect(await fs.readFile(file, "utf8")).toBe(before);
+      }
+    },
+  );
+
+  it("invalidates an edited retained page even when an earlier miss cannot be admitted", async () => {
+    const file = path.join(root, "cache.json");
+    const first = new MdxBuildCache(file, 10_000, 2);
+    for (const id of ["b", "c"]) await first.compile(id, "key", async () => result);
+    await first.flush();
+    const second = new MdxBuildCache(file, 10_000, 2);
+    await second.compile("a", "key", async () => result);
+    const edited = { code: "export default 2" };
+    expect(await second.compile("b", "edited", async () => edited)).toEqual(edited);
+    const compile = vi.fn(async () => result);
+    expect(await second.compile("c", "key", compile)).toEqual(result);
+    await second.flush();
+    expect(await new MdxBuildCache(file).compile("b", "edited", compile)).toEqual(edited);
+    expect(compile).not.toHaveBeenCalled();
+  });
+
+  it("does not evict reusable output to admit a result larger than the byte limit", async () => {
+    const file = path.join(root, "cache.json");
+    const first = new MdxBuildCache(file, 1_000, 2);
+    await first.compile("a", "key", async () => result);
+    await first.flush();
+    const second = new MdxBuildCache(file, 1_000, 2);
+    const huge = { code: "x".repeat(2_000) };
+    expect(await second.compile("huge", "key", async () => huge)).toEqual(huge);
+    const compile = vi.fn(async () => result);
+    expect(await second.compile("a", "key", compile)).toEqual(result);
+    expect(compile).not.toHaveBeenCalled();
+    await second.flush();
+    expect((await fs.stat(file)).size).toBeLessThan(1_000);
+  });
+
+  it("reclaims unused retained pages after a full cache blocks new content", async () => {
+    const file = path.join(root, "cache.json");
+    const first = new MdxBuildCache(file, 10_000, 2);
+    for (const id of ["removed-a", "removed-b"]) {
+      await first.compile(id, "key", async () => result);
+    }
+    await first.flush();
+    // A replaced corpus must not be permanently excluded by protected old pages.
+    for (let build = 0; build < 2; build++) {
+      const cache = new MdxBuildCache(file, 10_000, 2);
+      for (const id of ["new-a", "new-b"]) await cache.compile(id, "key", async () => result);
+      await cache.flush();
+    }
+    const cache = new MdxBuildCache(file, 10_000, 2);
+    const compile = vi.fn(async () => result);
+    for (const id of ["new-a", "new-b"]) await cache.compile(id, "key", compile);
+    expect(compile).not.toHaveBeenCalled();
+  });
+
   it("deduplicates concurrent exact inputs", async () => {
     const cache = new MdxBuildCache(path.join(root, "cache.json"));
     const compile = vi.fn(async () => result);

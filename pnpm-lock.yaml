@@ -390,9 +390,6 @@ importers:
       '@scalar/core':
         specifier: ^0.4.3
         version: 0.4.3
-      '@vercel/sandbox':
-        specifier: ^2.0.0
-        version: 2.0.0
       github-slugger:
         specifier: ^2.0.0
         version: 2.0.0
@@ -442,6 +439,9 @@ importers:
       '@types/react':
         specifier: ^19.2.2
         version: 19.2.14
+      '@vercel/sandbox':
+        specifier: ^2.0.0
+        version: 2.0.0
       ajv:
         specifier: ^8.18.0
         version: 8.18.0

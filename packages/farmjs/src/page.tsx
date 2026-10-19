@@ -109,8 +109,6 @@ export function FarmDocsPageRenderer({
         descriptionInBody={data.descriptionInBody}
         readingTime={data.readingTime}
         lastModified={data.lastModified}
-        previousPage={data.previousPage}
-        nextPage={data.nextPage}
         structuredData={data.structuredData}
         editOnGithubUrl={data.editOnGithub}
       >
