@@ -327,9 +327,14 @@ function scanDir(
   if (slugOrder) {
     const nodes: NavNode[] = [];
     const slugMap = new Set(slugOrder.map((item) => item.slug));
+    const entryBySlug = new Map<string, string>();
+    for (const name of entries) {
+      const slug = navEntrySlug(name);
+      if (!entryBySlug.has(slug)) entryBySlug.set(slug, name);
+    }
 
     for (const item of slugOrder) {
-      const name = entries.find((entryName) => navEntrySlug(entryName) === item.slug);
+      const name = entryBySlug.get(item.slug);
       if (!name) continue;
       const node = buildNavNode(
         dir,

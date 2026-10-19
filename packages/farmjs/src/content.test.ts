@@ -106,6 +106,51 @@ describe("filesystem docs navigation", () => {
     ]);
   });
 
+  it("indexes explicit ordering without scanning directory entries for each item", () => {
+    const count = 100;
+    const ordering = Array.from({ length: count }, (_, i) => {
+      write(`page-${i}.md`, `# Page ${i}`);
+      return { slug: `page-${i}` };
+    });
+    const original = fs.readdirSync;
+    let entryReads = 0;
+    vi.spyOn(fs, "readdirSync").mockImplementation(((...args: unknown[]) => {
+      const entries = Reflect.apply(original, fs, args);
+      return new Proxy(entries, {
+        get(target, property, receiver) {
+          if (typeof property === "string" && /^\d+$/.test(property)) entryReads++;
+          return Reflect.get(target, property, receiver);
+        },
+      });
+    }) as typeof original);
+    expect(flattenNavTree(loadDocsNavTree(root, "docs", ordering))).toHaveLength(count);
+    expect(entryReads).toBeLessThanOrEqual(count * 5);
+  });
+
+  it("preserves first matching filenames and duplicate explicit folder overrides", () => {
+    write("guide/page.md", "---\ntitle: Guide folder\n---\n# Guide");
+    write("guide.md", "---\ntitle: Guide file\n---\n# Guide file");
+    write("guide/alpha.md", "# Alpha");
+    write("guide/zeta.md", "# Zeta");
+    write("extra.md", "---\ntitle: First file\n---\n# First file");
+    write("extra.mdx", "---\ntitle: Second file\n---\n# Second file");
+    const tree = loadDocsNavTree(root, "docs", [
+      { slug: "missing" },
+      { slug: "guide", children: [{ slug: "zeta" }, { slug: "alpha" }] },
+      { slug: "guide", children: [{ slug: "alpha" }, { slug: "zeta" }] },
+      { slug: "extra" },
+    ]);
+    expect(flattenNavTree(tree).map((page) => [page.name, page.url])).toEqual([
+      ["Guide folder", "/docs/guide"],
+      ["Zeta", "/docs/guide/zeta"],
+      ["Alpha", "/docs/guide/alpha"],
+      ["Guide folder", "/docs/guide"],
+      ["Alpha", "/docs/guide/alpha"],
+      ["Zeta", "/docs/guide/zeta"],
+      ["First file", "/docs/extra"],
+    ]);
+  });
+
   it("keeps symbolic file and folder navigation working", () => {
     const file = write("source.md", "---\ntitle: Source\norder: 1\n---\n# Source");
     write("nested/page.md", "---\ntitle: Nested\norder: 0\n---\n# Nested");
