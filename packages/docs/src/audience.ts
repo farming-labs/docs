@@ -1,4 +1,4 @@
-import { createProcessor } from "@mdx-js/mdx";
+import { createDocsMarkdownParser } from "./markdown-parser.js";
 import { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
 
 export { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
@@ -262,15 +262,15 @@ interface AudienceAttributeInfo {
 }
 
 // Config-only consumers should not initialize parsers or retain them in browser bundles.
-let docsAudienceMdxProcessor: ReturnType<typeof createProcessor> | undefined;
-let docsAudienceMarkdownProcessor: ReturnType<typeof createProcessor> | undefined;
+let docsAudienceMdxProcessor: ReturnType<typeof createDocsMarkdownParser> | undefined;
+let docsAudienceMarkdownProcessor: ReturnType<typeof createDocsMarkdownParser> | undefined;
 
 function getDocsAudienceMdxProcessor() {
-  return (docsAudienceMdxProcessor ??= createProcessor({ format: "mdx" }));
+  return (docsAudienceMdxProcessor ??= createDocsMarkdownParser("mdx"));
 }
 
 function getDocsAudienceMarkdownProcessor() {
-  return (docsAudienceMarkdownProcessor ??= createProcessor({ format: "md" }));
+  return (docsAudienceMarkdownProcessor ??= createDocsMarkdownParser("md"));
 }
 
 function getOffset(position: MdxAstPosition | undefined, edge: "start" | "end") {
