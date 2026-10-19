@@ -7931,6 +7931,32 @@ function buildNavigationTreeFromPages(
 ): DocsMcpNavigationTree {
   const bySlug = new Map(pages.map((page) => [page.slug, page] as const));
   const rootPage = bySlug.get("");
+  const childrenBySlug = new Map<string, Set<string>>();
+  const orderingIndexes = new Map<OrderingItem[], Map<string, OrderingItem>>();
+
+  function childrenOf(slug: string): Set<string> {
+    let children = childrenBySlug.get(slug);
+    if (!children) {
+      children = new Set();
+      childrenBySlug.set(slug, children);
+    }
+    return children;
+  }
+
+  for (const page of pages) {
+    const slug = page.slug;
+    let parent = "";
+    let start = 0;
+    while (start < slug.length) {
+      const separator = slug.indexOf("/", start);
+      const child = separator === -1 ? slug : slug.slice(0, separator);
+      childrenOf(parent).add(child);
+      if (separator === -1) break;
+      childrenOf(child);
+      parent = child;
+      start = separator + 1;
+    }
+  }
 
   function childOrderFor(parentSlug: string): OrderingItem[] | undefined {
     if (!Array.isArray(ordering)) return undefined;
@@ -7938,8 +7964,15 @@ function buildNavigationTreeFromPages(
 
     let items: OrderingItem[] | undefined = ordering;
     for (const segment of parentSlug.split("/")) {
-      const matchedItem: OrderingItem | undefined = items?.find((item) => item.slug === segment);
-      items = matchedItem?.children;
+      let index = orderingIndexes.get(items);
+      if (!index) {
+        index = new Map();
+        for (const item of items) {
+          if (!index.has(item.slug)) index.set(item.slug, item);
+        }
+        orderingIndexes.set(items, index);
+      }
+      items = index.get(segment)?.children;
       if (!items) return undefined;
     }
 
@@ -7950,11 +7983,12 @@ function buildNavigationTreeFromPages(
     const explicitOrder = childOrderFor(parentSlug);
     if (explicitOrder) {
       const explicit = new Set(explicitOrder.map((item) => item.slug));
+      const available = new Set(childSlugs);
       const ordered: string[] = [];
 
       for (const item of explicitOrder) {
         const childSlug = parentSlug ? `${parentSlug}/${item.slug}` : item.slug;
-        if (childSlugs.includes(childSlug)) ordered.push(childSlug);
+        if (available.has(childSlug)) ordered.push(childSlug);
       }
 
       for (const childSlug of childSlugs) {
@@ -7981,24 +8015,13 @@ function buildNavigationTreeFromPages(
   }
 
   function buildLevel(parentSlug: string): DocsMcpNavigationNode[] {
-    const prefix = parentSlug ? `${parentSlug}/` : "";
-    const childSet = new Set<string>();
-
-    for (const page of pages) {
-      if (!page.slug.startsWith(prefix) || page.slug === parentSlug) continue;
-      const remainder = page.slug.slice(prefix.length);
-      if (!remainder) continue;
-      const [firstSegment] = remainder.split("/");
-      childSet.add(parentSlug ? `${parentSlug}/${firstSegment}` : firstSegment);
-    }
-
-    const childSlugs = sortChildSlugs([...childSet], parentSlug);
+    const childSlugs = sortChildSlugs([...(childrenBySlug.get(parentSlug) ?? [])], parentSlug);
 
     const nodes: DocsMcpNavigationNode[] = [];
 
     for (const childSlug of childSlugs) {
       const page = bySlug.get(childSlug);
-      const hasChildren = pages.some((candidate) => candidate.slug.startsWith(`${childSlug}/`));
+      const hasChildren = childrenBySlug.has(childSlug);
       const segment = childSlug.split("/").pop() ?? childSlug;
       const name = page?.title ?? titleize(segment);
       const icon = page?.icon;
