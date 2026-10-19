@@ -1528,10 +1528,53 @@ function resolveDocsSearchPageSource(dir: string): string | undefined {
     .find((candidate) => fs.existsSync(/*! turbopackIgnore: true */ candidate));
 }
 
-function hasVisibleDescendantDocsSearchPage(dir: string): boolean {
+// Hidden indexes probe their descendants before the search traversal reaches
+// them. Share successful reads within one scan; failed reads remain retryable.
+function createDocsSearchScanReader() {
+  const directories = new Map<string, string[]>();
+  const stats = new Map<string, fs.Stats>();
+  const documents = new Map<string, { data: Record<string, unknown>; content: string }>();
+  const visibility = new Map<string, boolean>();
+  return {
+    visibility,
+    directory(dir: string) {
+      const cached = directories.get(dir);
+      if (cached) return cached;
+      const entries = fs.readdirSync(/*! turbopackIgnore: true */ dir).sort();
+      directories.set(dir, entries);
+      return entries;
+    },
+    stat(file: string) {
+      const cached = stats.get(file);
+      if (cached) return cached;
+      const stat = fs.statSync(/*! turbopackIgnore: true */ file);
+      stats.set(file, stat);
+      return stat;
+    },
+    document(file: string) {
+      const cached = documents.get(file);
+      if (cached) return cached;
+      const { data, content } = matter(fs.readFileSync(/*! turbopackIgnore: true */ file, "utf-8"));
+      const document = { data, content };
+      documents.set(file, document);
+      return document;
+    },
+  };
+}
+
+function hasVisibleDescendantDocsSearchPage(
+  dir: string,
+  reader = createDocsSearchScanReader(),
+): boolean {
+  const cached = reader.visibility.get(dir);
+  if (cached !== undefined) return cached;
+  const remember = (visible: boolean) => {
+    reader.visibility.set(dir, visible);
+    return visible;
+  };
   let entries: string[];
   try {
-    entries = fs.readdirSync(/*! turbopackIgnore: true */ dir);
+    entries = reader.directory(dir);
   } catch {
     return false;
   }
@@ -1539,7 +1582,7 @@ function hasVisibleDescendantDocsSearchPage(dir: string): boolean {
   for (const name of entries.sort()) {
     const full = path.join(/*! turbopackIgnore: true */ dir, name);
     try {
-      if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) continue;
+      if (!reader.stat(full).isDirectory()) continue;
     } catch {
       continue;
     }
@@ -1547,18 +1590,18 @@ function hasVisibleDescendantDocsSearchPage(dir: string): boolean {
     const pageSource = resolveDocsSearchPageSource(full);
     if (pageSource) {
       try {
-        const data = matter(fs.readFileSync(/*! turbopackIgnore: true */ pageSource, "utf-8")).data;
+        const data = reader.document(pageSource).data;
         const hiddenFolderIndex = resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
-        if (data.hidden !== true && !hiddenFolderIndex) return true;
+        if (data.hidden !== true && !hiddenFolderIndex) return remember(true);
       } catch {
-        return true;
+        return remember(true);
       }
     }
 
-    if (hasVisibleDescendantDocsSearchPage(full)) return true;
+    if (hasVisibleDescendantDocsSearchPage(full, reader)) return remember(true);
   }
 
-  return false;
+  return remember(false);
 }
 
 function isHiddenFolderIndexPageDir(dir: string): boolean {
@@ -1611,6 +1654,7 @@ function scanDocsDir(
   publicPath = `/${normalizePathSegment(entry) || "docs"}`,
 ): DocsSearchSourcePage[] {
   const indexes: Array<DocsSearchSourcePage & { relatedInput?: unknown }> = [];
+  const reader = createDocsSearchScanReader();
 
   function isExcluded(dir: string) {
     const resolved = path.resolve(/*! turbopackIgnore: true */ dir);
@@ -1627,11 +1671,10 @@ function scanDocsDir(
     const pageSource = resolveDocsSearchPageSource(dir);
     if (pageSource) {
       try {
-        const raw = fs.readFileSync(/*! turbopackIgnore: true */ pageSource, "utf-8");
-        const { data } = matter(raw);
+        const { data, content: fileContent } = reader.document(pageSource);
         const hiddenFolderIndex =
           resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden" &&
-          hasVisibleDescendantDocsSearchPage(dir);
+          hasVisibleDescendantDocsSearchPage(dir, reader);
         if (hiddenFolderIndex) {
           // Hidden folder indexes should redirect to their first child at the
           // app layer and should not remain searchable as standalone pages.
@@ -1646,7 +1689,6 @@ function scanDocsDir(
           const tags = Array.isArray(data.tags)
             ? data.tags.filter((value): value is string => typeof value === "string")
             : undefined;
-          const { content: fileContent } = matter(raw);
           const rawContent = resolveDocsAudienceMdxContent(fileContent, "human");
           const agentRawContent = resolveDocsAudienceMdxContent(fileContent, "agent");
           const agentDoc = readAudienceAgentDoc(dir);
@@ -1666,7 +1708,7 @@ function scanDocsDir(
             url,
             sourcePath: pageSource.replace(/\\/g, "/"),
             lastmod: normalizeFrontmatterLastmod(data.lastmod),
-            lastModified: fs.statSync(/*! turbopackIgnore: true */ pageSource).mtime.toISOString(),
+            lastModified: reader.stat(pageSource).mtime.toISOString(),
             locale,
             framework,
             version,
@@ -1681,7 +1723,7 @@ function scanDocsDir(
 
     let entries: string[];
     try {
-      entries = fs.readdirSync(/*! turbopackIgnore: true */ dir);
+      entries = reader.directory(dir);
     } catch {
       return;
     }
@@ -1689,7 +1731,7 @@ function scanDocsDir(
     for (const name of entries.sort()) {
       const full = path.join(/*! turbopackIgnore: true */ dir, name);
       try {
-        if (fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) {
+        if (reader.stat(full).isDirectory()) {
           scan(full, [...slugParts, name]);
         }
       } catch {
