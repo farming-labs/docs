@@ -97,16 +97,16 @@ importers:
         specifier: ^11.0.11
         version: 11.0.11(73398304b9a480b6c3eac239c88989fd)
       '@farming-labs/astro':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/astro
       '@farming-labs/astro-theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/astro-theme
       '@farming-labs/docs':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/docs
       '@farming-labs/theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/fumadocs
       astro:
         specifier: 7.3.5
@@ -118,13 +118,13 @@ importers:
   examples/fumadocs-cloud:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -167,13 +167,13 @@ importers:
   examples/next:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -222,16 +222,16 @@ importers:
   examples/nuxt:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/docs
       '@farming-labs/nuxt':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/nuxt
       '@farming-labs/nuxt-theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/nuxt-theme
       '@farming-labs/theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -250,16 +250,16 @@ importers:
   examples/sveltekit:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/docs
       '@farming-labs/svelte':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/svelte
       '@farming-labs/svelte-theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/svelte-theme
       '@farming-labs/theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -287,13 +287,13 @@ importers:
   examples/tanstack-start:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/docs
       '@farming-labs/tanstack-start':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/tanstack-start
       '@farming-labs/theme':
-        specifier: 0.2.120
+        specifier: 0.2.124
         version: link:../../packages/fumadocs
       '@tanstack/react-router':
         specifier: 1.170.41
@@ -492,8 +492,8 @@ importers:
         version: 4.6.5
     devDependencies:
       '@farm.js/core':
-        specifier: ^0.1.21
-        version: 0.1.21(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
+        specifier: ^0.1.28
+        version: 0.1.28(6f7ba8946f6483ea2338b1e4e4cb25a6)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../docs
@@ -812,8 +812,8 @@ importers:
         specifier: ^2.3.29
         version: 2.3.29(react@19.2.4)(vue@3.5.43(typescript@5.9.3))
       '@farm.js/core':
-        specifier: ^0.1.21
-        version: 0.1.21(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
+        specifier: ^0.1.28
+        version: 0.1.28(e093dd118c70f9793f481efb3604d4af)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../packages/docs
@@ -838,6 +838,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@vercel/og':
+        specifier: ^1.0.1
+        version: 1.0.1(@types/node@22.20.5)
       afdocs:
         specifier: ^0.18.7
         version: 0.18.7
@@ -865,6 +868,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@22.20.5)
       sugar-high:
         specifier: ^0.9.5
         version: 0.9.5
@@ -876,8 +882,11 @@ importers:
         version: 2.2.13(next@16.3.8(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@farm.js/cli':
-        specifier: ^0.1.21
-        version: 0.1.21(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
+        specifier: ^0.1.28
+        version: 0.1.28(e093dd118c70f9793f481efb3604d4af)
+      '@tailwindcss/vite':
+        specifier: ^4.3.3
+        version: 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       '@types/mdx':
         specifier: ^2.0.13
         version: 2.0.13
@@ -1632,21 +1641,33 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@farm.js/cli@0.1.21':
-    resolution: {integrity: sha512-LS2lgurEC0MaU1zTdKYdo4sa/mW/IqchDZtIlVBXh3meRHWvIx/1DLc6KvLn+cauiynck2HZXt1lGCIuVlE1Rg==}
+  '@farm.js/cli@0.1.28':
+    resolution: {integrity: sha512-hw2MHuwUUANXi5ANk88BwkRLVlPgba02cm/mAHq3Uzr5YbSXDjKMNJIe6tE+vZOOXTZEzSQY/9i5jsCKh5+cIg==}
     engines: {node: '>=22.13.0'}
     hasBin: true
 
-  '@farm.js/core@0.1.21':
-    resolution: {integrity: sha512-x/1/uIj5/UTfqeqyZuPtHrfQVuuxmWoACWpas76SS9mX0V0Ekyg4V+7GnJSkg+uar4CwvWzc+0S4EhEi86AZfA==}
+  '@farm.js/core@0.1.28':
+    resolution: {integrity: sha512-9yTG/rkB1Z3jN2E+lCQsSFcx2W9MMHv3BnzOWh/IGLlu6+2wLZupQES7XOUXrnzVVjLRtJgJ8C3zZaSJ7ZgiDg==}
     engines: {node: '>=22.13.0'}
     peerDependencies:
+      '@farming-labs/docs': ^0.2.118
+      '@tailwindcss/vite': ^4.3.3
+      '@vercel/og': ^1.0.1
       react: ^18.2.0 || ^19.0.0
       react-dom: ^18.2.0 || ^19.0.0
+      sharp: 0.35.5
     peerDependenciesMeta:
+      '@farming-labs/docs':
+        optional: true
+      '@tailwindcss/vite':
+        optional: true
+      '@vercel/og':
+        optional: true
       react:
         optional: true
       react-dom:
+        optional: true
+      sharp:
         optional: true
 
   '@farm.js/tunnel-darwin-arm64@0.1.2':
@@ -1701,136 +1722,134 @@ packages:
     resolution: {integrity: sha512-9Rmep2U0eCCWx6zwLb1VAfjbYfsbGtXBsMZusSvYkbCV+3eEcz6+GhfOi7A8gfp7JiAdkiOpmGhmaJnc8wEb1A==}
     engines: {node: '>=20.0.0'}
 
-  '@farming-labs/docs@0.2.120':
-    resolution: {integrity: sha512-tzRLSMYAMJdEfA1p8aTBndQFyITAPq//cdkXiuC+h1UXMXmneJIFHGKnJ6TxjseMnzRfVW37ZSl6TRnaFaxhcw==}
-    engines: {node: '>=20'}
-    hasBin: true
-    peerDependencies:
-      react: '>=19.2.0'
-    peerDependenciesMeta:
-      react:
-        optional: true
+  '@farming-labs/orm-d1@0.0.65':
+    resolution: {integrity: sha512-6nFfXt62qflKoUcNkvirQj16WoI9SPV39Qeob6iF88kBnWSkm6HPqCFKW5gGGcekmaijkoc/oYFm6MCx2QwbLw==}
 
-  '@farming-labs/orm-d1@0.0.64':
-    resolution: {integrity: sha512-+6IfgeUo2pCM1etFBSN2ASTnV3t2hTvxvfg9GQUSfF9EsmA2h7fzdyH0i7wXt3JNbQ5josS/0rh5Rp5r+65zHA==}
-
-  '@farming-labs/orm-drizzle@0.0.64':
-    resolution: {integrity: sha512-2rvtgn4QDSszf4bDWIbiz4WYWl4hHc3pJIuy4af17GWkdmFJon3RJUneAkZXgr3H0fQZ5HoHihCwBvmlzCh5aQ==}
+  '@farming-labs/orm-drizzle@0.0.65':
+    resolution: {integrity: sha512-/dXo/aHawf9BVmLctFd/FB9cl8MVsh/nfiY+/HRUyG2YJKnVHxJsxV7SKPOl7dzyRf8qThKlqVapSesftMZ/gQ==}
     peerDependencies:
       drizzle-orm: ^0.45.2
     peerDependenciesMeta:
       drizzle-orm:
         optional: true
 
-  '@farming-labs/orm-dynamodb@0.0.64':
-    resolution: {integrity: sha512-mfPxmXpeLw+PbuLyuIziZe4PibWuQMY8q1sWaI0FuguR6LOGRPmaKBdkcRcJVw8eNzxfkB09qrDgq0YKDMxVjQ==}
+  '@farming-labs/orm-dynamodb@0.0.65':
+    resolution: {integrity: sha512-N0NBz9WMHqtvn/dVI0ZLvVLM9sdNsuAehVSnHkfmimP9aFPF9nInhELuUWaksD+Wo3uwZzErFfvGnXOu8ew6mA==}
+    peerDependencies:
+      '@aws-sdk/client-dynamodb': ^3.1049.0
+      '@aws-sdk/lib-dynamodb': ^3.1049.0
+    peerDependenciesMeta:
+      '@aws-sdk/client-dynamodb':
+        optional: true
+      '@aws-sdk/lib-dynamodb':
+        optional: true
 
-  '@farming-labs/orm-edgedb@0.0.64':
-    resolution: {integrity: sha512-eTvmBXegx06N1gz2Tiy+cPii+5UFljIYgJpPjKk3+ubg0MhGS+E0maUc43pjqiFdboGLyx8DYW1CCaTa6pcy7w==}
+  '@farming-labs/orm-edgedb@0.0.65':
+    resolution: {integrity: sha512-VfcFmPbKBFe9U4CL2MqKbL0jxRifBB+fVM5mxU2AJ6G9l/1i6AzRDtsfXhRy9Sl8swsRA4C+WXTGXXPnTCoB6w==}
 
-  '@farming-labs/orm-firestore@0.0.64':
-    resolution: {integrity: sha512-GhS7BQud6nmW2oFWhFHrP1ZJG8DiCO+tUVRwVanf/hbNT5HtDAkmOq2KVChXWd3jcfv4wmXNT7rWYAmlNY072w==}
+  '@farming-labs/orm-firestore@0.0.65':
+    resolution: {integrity: sha512-iJB9vW/GGbWb0gXJef8pTmYcbeXXabLyRou82trWjOmrbUblRqMXX1YaErLe7FvJj+JUVhJ6YGM0QHGpFPz6NA==}
 
-  '@farming-labs/orm-kv@0.0.64':
-    resolution: {integrity: sha512-dEjo0DCb8r0VpyxHXunTt3VMPmW/6kB4rTFeZt6YbYcgVGYjJt0rcGtF5wmfDAMFsenGXERLfUuXJi2d8JzL0A==}
+  '@farming-labs/orm-kv@0.0.65':
+    resolution: {integrity: sha512-C9uzRKhqC/xwROoZJmgZFYEtW/+hyzg0pz/VrvHLMYiAs9CpAZS7/qFlgi4o3VDMPHwwG+bIQuv+ylonhASIYw==}
 
-  '@farming-labs/orm-kysely@0.0.64':
-    resolution: {integrity: sha512-svSE5VuMe89mkWZvBDUKNVerKOJL/0rhUxiybFvggF4zuRavYDEN7+h0xBOoxmiZeUAtxagsv37YxzIjN0dNlA==}
+  '@farming-labs/orm-kysely@0.0.65':
+    resolution: {integrity: sha512-W+mcEYxuoHggPSXyjBNSzgNr+az9xZoWgP2Y7XFBnzBsGSwE3FpEL79xXzdAO9oyzAwwKYetg64ThEL5YtbLKA==}
     peerDependencies:
       kysely: ^0.28.17
     peerDependenciesMeta:
       kysely:
         optional: true
 
-  '@farming-labs/orm-mikroorm@0.0.64':
-    resolution: {integrity: sha512-GOQqrxg8UAzdfgM/qrTtUR/3ic+/XJqewj61hbF9fqNK/KDejo8p80Uvq31/1pivekuUfZzerL7Oj9CsWZHAWA==}
+  '@farming-labs/orm-mikroorm@0.0.65':
+    resolution: {integrity: sha512-2cylBPkAcwKOYEtl9tUw8SVui1ExkLNzJkiHBT/zrRWEF9mBu04X+YhZ94ZHkxJ2LQur67OIlHhp8fXbeLp7YA==}
     peerDependencies:
       '@mikro-orm/core': ^7.0.17
     peerDependenciesMeta:
       '@mikro-orm/core':
         optional: true
 
-  '@farming-labs/orm-mongo@0.0.64':
-    resolution: {integrity: sha512-7WhC2Z3ZHkZuXzBVCfCv+9g9IxqJVMUVOWiz2osaiioJ/XZr/7FF0peZqUTtT6hmo4LwJVHKgPBrqAHfnDktJQ==}
+  '@farming-labs/orm-mongo@0.0.65':
+    resolution: {integrity: sha512-/6EBcsg0HHcRQF6hr+lssq2G52D0Fwyp4ZwLSibetBf+3d7jFbtNx2ahsGltYUuL64s/UZo+VBUjIZIuyFDT4A==}
     peerDependencies:
       mongodb: ^6.0.0
     peerDependenciesMeta:
       mongodb:
         optional: true
 
-  '@farming-labs/orm-mongoose@0.0.64':
-    resolution: {integrity: sha512-aIVDMuGyXFH1sQ4M3sI0Glt7E+2wFZNoQKwee1LC/AHamfjIOYEhw9adAkPuxFpMoQTJePBgcCq+6zHibgMIdg==}
+  '@farming-labs/orm-mongoose@0.0.65':
+    resolution: {integrity: sha512-FlX+8oHlKz1lX6nhzim/P733dn6/F4AHomFx95gB2Xw3Yfw4frqxcFrmDE4yplUCHo/4QFS5MYbPPNXAnwz+Og==}
     peerDependencies:
       mongoose: ^8.0.0
     peerDependenciesMeta:
       mongoose:
         optional: true
 
-  '@farming-labs/orm-neo4j@0.0.64':
-    resolution: {integrity: sha512-g6oEJQKwS9sl8HusacZ6xsx3ACTVVwcgTefFBmcZKZOs8R12Pu/KFiyHO7kIKwZzcWesDSs3a6rbDYkMVo+T2Q==}
+  '@farming-labs/orm-neo4j@0.0.65':
+    resolution: {integrity: sha512-bfxvXOO/bB+bYOhVq6w3rc0Mb8ofNyL67LfQENH31CFq7n0VR/6ufqCIAUzcrT7N3Ml1cAhbeI+tA5o8ZIfRNQ==}
 
-  '@farming-labs/orm-prisma@0.0.64':
-    resolution: {integrity: sha512-1QDmzbtBzqzz/OdTclWqaMXIbLtjetR1BXUnakujA6ztqIhMCpf4ZpCS1e5YmL+g7bsP370aO5MVcIW9R2Sb2A==}
+  '@farming-labs/orm-prisma@0.0.65':
+    resolution: {integrity: sha512-QaQT0nSi8Yo1qkPyh0IJ0Pa8p2VXf/SCDP7GI6F4lmtG8QdCKLV8xMCOYpzyMEQ4BWRefebalaWO8wMK6kpSVA==}
     peerDependencies:
       '@prisma/client': ^6.0.0
     peerDependenciesMeta:
       '@prisma/client':
         optional: true
 
-  '@farming-labs/orm-redis@0.0.64':
-    resolution: {integrity: sha512-Qelx7/zlRGRo9jyNFOYF1bEPhY+RlXZMmdvliuQJ0LfNpWW7FLtqgzmJoP9CeaYwsa56sIkp5zW+RN7pMPEFFA==}
+  '@farming-labs/orm-redis@0.0.65':
+    resolution: {integrity: sha512-g/CaRuzZfvupKn1/LKRAOt6VPsnXroZVktiXppAgrfKIr/JtUj0xi2TfaMrA9bgbF+SWk9a+mBAn/n5ETalqLQ==}
 
-  '@farming-labs/orm-runtime@0.0.64':
-    resolution: {integrity: sha512-HNNLj88qKlNGWY0HBBfnlPjgheEjI/mcJBUNPd46kV3hEyiSYVIUN9ZQ1BmVqvGqLwC4ndRlJHjCNS6xp+ykHA==}
+  '@farming-labs/orm-runtime@0.0.65':
+    resolution: {integrity: sha512-guidSljDw1wBgn36glxz/Lv/G2HR2iNKI33I89WuJGiiNzTqSDBk6peV4t+j5eNaqCxRKnLoc/bYlPPEUh1uuQ==}
     peerDependencies:
       '@aws-sdk/client-dynamodb': ^3.1049.0
     peerDependenciesMeta:
       '@aws-sdk/client-dynamodb':
         optional: true
 
-  '@farming-labs/orm-sequelize@0.0.64':
-    resolution: {integrity: sha512-Qf0fG8Bv0naarrLH9IUb8LtLJ8Rcxqr0hbmElCePSzaNC4pCufEFeO5gBe5rqaPvXt8iFZFRlI5NROY3QDJ1+A==}
+  '@farming-labs/orm-sequelize@0.0.65':
+    resolution: {integrity: sha512-mHLu2pRO3AJmuHWGux6VTKERsCPx9kRsOF/0QLU1IG2DzSU8+Sjx8x7PBBEBABLKxn+KMGEIvkFCmy5exeB5Vw==}
     peerDependencies:
       sequelize: ^6.37.8
     peerDependenciesMeta:
       sequelize:
         optional: true
 
-  '@farming-labs/orm-sql@0.0.64':
-    resolution: {integrity: sha512-evMJfMhAEFlDRPnO3ljIeRVy4hZ1wwdR/3lJl/p2UtU1y8o/nXhAA696jGxesISwIoFdvncMurUCoRex9/yWCQ==}
+  '@farming-labs/orm-sql@0.0.65':
+    resolution: {integrity: sha512-sBxzDyqiKM38Qy3js08CiydNz6YUKbKdTQnlwswGAqNiLDJU1Zd0qi+NnB3Lrbbi+2abOtyr8qe527Ri8n3Ejw==}
 
-  '@farming-labs/orm-supabase@0.0.64':
-    resolution: {integrity: sha512-SW/WprWzPeq8yo/IbpeWtP2LEKLeC6C+2w07dJurBQDCyPdAPGaWxa8oXTyZGS9kk3R4XVDHJzfxS1VMYVGK4w==}
+  '@farming-labs/orm-supabase@0.0.65':
+    resolution: {integrity: sha512-PIv3XmjOdSq2XEE/okZmL+EP2vbh54/y1Xv9Gx1Jayzs2g9GambcoA8SioMy+wi5g7ZXJBvFLEqJffO34tw2Xg==}
 
-  '@farming-labs/orm-surrealdb@0.0.64':
-    resolution: {integrity: sha512-S7acatxPq9LTxLD9ZILAe9EoGhYBl4qyVUxUCIHFJB59rXo2mkEJcPhejCKZaA784oOwCterzSmdNkFtaLoHUQ==}
+  '@farming-labs/orm-surrealdb@0.0.65':
+    resolution: {integrity: sha512-t7hycrzyovL3uY/e7371kW/PQTaviRzKePpvPR9tO3fVkfmJ4+AGxyeOXHoKsnyGk22rqh3JnMv4dKS9g6LFUw==}
     peerDependencies:
       surrealdb: ^2.0.3
     peerDependenciesMeta:
       surrealdb:
         optional: true
 
-  '@farming-labs/orm-typeorm@0.0.64':
-    resolution: {integrity: sha512-rzsY9urdEd3/AFi6ZRZ0vdsQHf+xNNRUVhELkkOsAvyLnnD5c3XzEBQhJj9Sb2rmJZ7cPvS40TDd4bpTsiyD/A==}
+  '@farming-labs/orm-typeorm@0.0.65':
+    resolution: {integrity: sha512-TF3EEdeOHMU3DAJeceM0aUeqTFyoDh2DVu3sb5sVANCIpQwnSrfcfizqIzToOXRZpPJNr+RH/Xkw+xGs0/vfXA==}
     peerDependencies:
       typeorm: ^0.3.28
     peerDependenciesMeta:
       typeorm:
         optional: true
 
-  '@farming-labs/orm-unstorage@0.0.64':
-    resolution: {integrity: sha512-6qKjei78qQZWbvcRw/MwmjwE/AtzS2RD/DqH5C6DUdsWu+cARz9pVt14k+qz6KbO/+pjociJSDJinmIAJ0MTBA==}
+  '@farming-labs/orm-unstorage@0.0.65':
+    resolution: {integrity: sha512-ITwntwCe2VLcr0RWwYAOGX6tkNGbmcNwEFIAZaLtiiPbO9yQnB/ootCSOXhzH6lklD8BWzDy7gN2/90/12P+5w==}
 
-  '@farming-labs/orm-xata@0.0.64':
-    resolution: {integrity: sha512-BM3o007E1NPC/psKvPt4fomejonIiVwtzNiQjFlEEHzfB6nCOJpcXrpTj1qd082usSD6J0qjS9wPrtGXv6sQ6w==}
+  '@farming-labs/orm-xata@0.0.65':
+    resolution: {integrity: sha512-mX4BXe0Ao1EkldkVD+pL7N8JRfmQPgplNOSVCniwIOMuEYFe9RqjgglVLVF6yDfbcKG9MnDtuqeDIgsd69aA/A==}
     peerDependencies:
       '@xata.io/client': ^0.30.1
     peerDependenciesMeta:
       '@xata.io/client':
         optional: true
 
-  '@farming-labs/orm@0.0.64':
-    resolution: {integrity: sha512-rWQnFLcPH28XwJgzs/DNL2yRXXlX8I75lUtOSQjkeIYdEWGB6REagncOScz+2WuxoKtV4Xx2Gsmv75uRWneZZw==}
+  '@farming-labs/orm@0.0.65':
+    resolution: {integrity: sha512-5lJfMrqh9nI31qV6UPNPZymMlPUHF/VIvX/qbGG5fdP1NuQFrvXe9ZU8Pu/hYMdqdia7m/LriUdQO0uqr/IhiA==}
 
   '@floating-ui/core@1.8.0':
     resolution: {integrity: sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ==}
@@ -9791,6 +9810,7 @@ snapshots:
       '@smithy/node-http-handler': 4.9.13
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/core@3.977.6':
     dependencies:
@@ -9802,6 +9822,7 @@ snapshots:
       '@smithy/types': 4.16.1
       bowser: 2.14.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-env@3.972.67':
     dependencies:
@@ -9810,6 +9831,7 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-http@3.972.69':
     dependencies:
@@ -9820,6 +9842,7 @@ snapshots:
       '@smithy/node-http-handler': 4.9.13
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-ini@3.973.12':
     dependencies:
@@ -9836,6 +9859,7 @@ snapshots:
       '@smithy/credential-provider-imds': 4.4.16
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-login@3.972.74':
     dependencies:
@@ -9845,6 +9869,7 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-node@3.972.78':
     dependencies:
@@ -9859,6 +9884,7 @@ snapshots:
       '@smithy/credential-provider-imds': 4.4.16
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-process@3.972.67':
     dependencies:
@@ -9867,6 +9893,7 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-sso@3.973.11':
     dependencies:
@@ -9877,6 +9904,7 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/credential-provider-web-identity@3.972.73':
     dependencies:
@@ -9886,6 +9914,7 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/dynamodb-codec@3.973.41':
     dependencies:
@@ -9893,11 +9922,13 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/endpoint-cache@3.972.9':
     dependencies:
       mnemonist: 0.38.3
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/lib-dynamodb@3.1103.0(@aws-sdk/client-dynamodb@3.1103.0)':
     dependencies:
@@ -9907,6 +9938,7 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/middleware-endpoint-discovery@3.972.27':
     dependencies:
@@ -9915,6 +9947,7 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/nested-clients@3.997.41':
     dependencies:
@@ -9926,6 +9959,7 @@ snapshots:
       '@smithy/node-http-handler': 4.9.13
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/signature-v4-multi-region@3.996.43':
     dependencies:
@@ -9933,6 +9967,7 @@ snapshots:
       '@smithy/signature-v4': 5.6.12
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/token-providers@3.1103.0':
     dependencies:
@@ -9942,23 +9977,28 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/types@3.974.2':
     dependencies:
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/util-dynamodb@3.996.7(@aws-sdk/client-dynamodb@3.1103.0)':
     dependencies:
       '@aws-sdk/client-dynamodb': 3.1103.0
       tslib: 2.8.1
+    optional: true
 
   '@aws-sdk/xml-builder@3.972.37':
     dependencies:
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
-  '@aws/lambda-invoke-store@0.3.0': {}
+  '@aws/lambda-invoke-store@0.3.0':
+    optional: true
 
   '@babel/code-frame@7.29.0':
     dependencies:
@@ -10536,15 +10576,107 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@farm.js/cli@0.1.21(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)':
+  '@farm.js/cli@0.1.28(e093dd118c70f9793f481efb3604d4af)':
     dependencies:
-      '@farm.js/core': 0.1.21(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)
+      '@farm.js/core': 0.1.28(e093dd118c70f9793f481efb3604d4af)
       '@farm.js/tunnel': 0.1.2
       commander: 11.1.0
       croner: 9.1.0
       picocolors: 1.1.1
     transitivePeerDependencies:
       - '@aws-sdk/client-dynamodb'
+      - '@aws-sdk/lib-dynamodb'
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@electric-sql/pglite'
+      - '@farming-labs/docs'
+      - '@libsql/client'
+      - '@mikro-orm/core'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@prisma/client'
+      - '@tailwindcss/vite'
+      - '@types/node'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - '@vercel/og'
+      - '@vitejs/devtools'
+      - '@xata.io/client'
+      - aws4fetch
+      - better-sqlite3
+      - crossws
+      - drizzle-orm
+      - esbuild
+      - idb-keyval
+      - ioredis
+      - jiti
+      - kysely
+      - less
+      - mongodb
+      - mongoose
+      - mysql2
+      - ocache
+      - pg-native
+      - react
+      - react-dom
+      - sass
+      - sass-embedded
+      - sequelize
+      - sharp
+      - sqlite3
+      - stylus
+      - sugarss
+      - surrealdb
+      - terser
+      - tsx
+      - typeorm
+      - uploadthing
+      - yaml
+
+  '@farm.js/core@0.1.28(6f7ba8946f6483ea2338b1e4e4cb25a6)':
+    dependencies:
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-runtime': 0.0.65(1b2d176df1d60a626597c0a5edf04276)
+      '@formatjs/icu-messageformat-parser': 3.5.15
+      '@jridgewell/trace-mapping': 0.3.31
+      '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
+      '@opentelemetry/api': 1.9.1
+      better-call: 1.3.7(zod@4.6.5)
+      db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
+      es-module-lexer: 2.0.0
+      fast-glob: 3.3.3
+      h3: 2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
+      image-size: 2.0.4
+      intl-messageformat: 11.2.12
+      marked: 12.0.2
+      nitro: 3.0.260903-beta
+      pg: 8.22.0
+      picocolors: 1.1.1
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      rolldown: 1.2.14
+      sugar-high: 0.9.5
+      supports-color: 10.2.2
+      unstorage: 2.0.0-alpha.10
+      vite: 8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
+      zod: 4.6.5
+    optionalDependencies:
+      '@farming-labs/docs': link:packages/docs
+      '@tailwindcss/vite': 4.3.3(vite@7.3.6(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      '@vercel/og': 1.0.1(@types/node@22.20.5)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      sharp: 0.35.5(@types/node@22.20.5)
+    transitivePeerDependencies:
+      - '@aws-sdk/client-dynamodb'
+      - '@aws-sdk/lib-dynamodb'
       - '@azure/app-configuration'
       - '@azure/cosmos'
       - '@azure/data-tables'
@@ -10567,10 +10699,10 @@ snapshots:
       - '@vitejs/devtools'
       - '@xata.io/client'
       - aws4fetch
-      - bare-abort-controller
       - better-sqlite3
       - crossws
       - drizzle-orm
+      - esbuild
       - idb-keyval
       - ioredis
       - jiti
@@ -10581,9 +10713,6 @@ snapshots:
       - mysql2
       - ocache
       - pg-native
-      - react
-      - react-dom
-      - react-native-b4a
       - sass
       - sass-embedded
       - sequelize
@@ -10597,21 +10726,17 @@ snapshots:
       - uploadthing
       - yaml
 
-  '@farm.js/core@0.1.21(@aws-sdk/client-dynamodb@3.1103.0)(@mikro-orm/core@7.1.10)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@types/node@22.20.5)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@xata.io/client@0.30.1(typescript@5.9.3))(crossws@0.4.12(srvx@1.0.5))(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(ioredis@5.11.1)(jiti@2.7.0)(kysely@0.28.17)(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))(ocache@0.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sequelize@6.37.8(pg@8.22.0))(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))(yaml@2.9.1)':
+  '@farm.js/core@0.1.28(e093dd118c70f9793f481efb3604d4af)':
     dependencies:
-      '@farming-labs/docs': 0.2.120(react@19.2.4)(supports-color@10.2.2)
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-runtime': 0.0.64(e3ed47334b7d15495a5fe084f651f215)
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-runtime': 0.0.65(1b2d176df1d60a626597c0a5edf04276)
       '@formatjs/icu-messageformat-parser': 3.5.15
       '@jridgewell/trace-mapping': 0.3.31
       '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
       '@opentelemetry/api': 1.9.1
-      '@tailwindcss/vite': 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
-      '@vercel/og': 1.0.1(@types/node@22.20.5)
       better-call: 1.3.7(zod@4.6.5)
       db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
       es-module-lexer: 2.0.0
-      esbuild: 0.28.1
       fast-glob: 3.3.3
       h3: 2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
       image-size: 2.0.4
@@ -10621,19 +10746,22 @@ snapshots:
       pg: 8.22.0
       picocolors: 1.1.1
       remark-gfm: 4.0.1(supports-color@10.2.2)
+      rolldown: 1.2.14
       sugar-high: 0.9.5
       supports-color: 10.2.2
-      tailwindcss: 4.3.3
       unstorage: 2.0.0-alpha.10
       vite: 8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
       zod: 4.6.5
     optionalDependencies:
+      '@farming-labs/docs': link:packages/docs
+      '@tailwindcss/vite': 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      '@vercel/og': 1.0.1(@types/node@22.20.5)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      rolldown: 1.2.14
       sharp: 0.35.5(@types/node@22.20.5)
     transitivePeerDependencies:
       - '@aws-sdk/client-dynamodb'
+      - '@aws-sdk/lib-dynamodb'
       - '@azure/app-configuration'
       - '@azure/cosmos'
       - '@azure/data-tables'
@@ -10656,10 +10784,10 @@ snapshots:
       - '@vitejs/devtools'
       - '@xata.io/client'
       - aws4fetch
-      - bare-abort-controller
       - better-sqlite3
       - crossws
       - drizzle-orm
+      - esbuild
       - idb-keyval
       - ioredis
       - jiti
@@ -10670,7 +10798,6 @@ snapshots:
       - mysql2
       - ocache
       - pg-native
-      - react-native-b4a
       - sass
       - sass-embedded
       - sequelize
@@ -10719,129 +10846,108 @@ snapshots:
       '@farm.js/tunnel-win32-arm64-msvc': 0.1.2
       '@farm.js/tunnel-win32-x64-msvc': 0.1.2
 
-  '@farming-labs/docs@0.2.120(react@19.2.4)(supports-color@10.2.2)':
+  '@farming-labs/orm-d1@0.0.65':
     dependencies:
-      '@clack/prompts': 1.7.0
-      '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
-      '@modelcontextprotocol/server': 2.0.0
-      '@scalar/core': 0.4.3
-      '@vercel/sandbox': 2.0.0
-      github-slugger: 2.0.0
-      gray-matter: 4.0.3
-      jiti: 2.7.0
-      jsonpath-rfc9535: 1.3.0
-      parse-entities: 4.0.2
-      picocolors: 1.1.1
-      remark-gfm: 4.0.1(supports-color@10.2.2)
-      yaml: 2.9.1
-      zod: 4.6.5
-    optionalDependencies:
-      react: 19.2.4
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - react-native-b4a
-      - supports-color
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
 
-  '@farming-labs/orm-d1@0.0.64':
+  '@farming-labs/orm-drizzle@0.0.65(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
-
-  '@farming-labs/orm-drizzle@0.0.64(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))':
-    dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
     optionalDependencies:
       drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))
 
-  '@farming-labs/orm-dynamodb@0.0.64':
+  '@farming-labs/orm-dynamodb@0.0.65(@aws-sdk/client-dynamodb@3.1103.0)(@aws-sdk/lib-dynamodb@3.1103.0(@aws-sdk/client-dynamodb@3.1103.0))':
     dependencies:
+      '@farming-labs/orm': 0.0.65
+    optionalDependencies:
       '@aws-sdk/client-dynamodb': 3.1103.0
       '@aws-sdk/lib-dynamodb': 3.1103.0(@aws-sdk/client-dynamodb@3.1103.0)
-      '@farming-labs/orm': 0.0.64
 
-  '@farming-labs/orm-edgedb@0.0.64':
+  '@farming-labs/orm-edgedb@0.0.65':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
 
-  '@farming-labs/orm-firestore@0.0.64':
+  '@farming-labs/orm-firestore@0.0.65':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
 
-  '@farming-labs/orm-kv@0.0.64':
+  '@farming-labs/orm-kv@0.0.65':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
 
-  '@farming-labs/orm-kysely@0.0.64(kysely@0.28.17)':
+  '@farming-labs/orm-kysely@0.0.65(kysely@0.28.17)':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
     optionalDependencies:
       kysely: 0.28.17
 
-  '@farming-labs/orm-mikroorm@0.0.64(@mikro-orm/core@7.1.10)':
+  '@farming-labs/orm-mikroorm@0.0.65(@mikro-orm/core@7.1.10)':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
     optionalDependencies:
       '@mikro-orm/core': 7.1.10
 
-  '@farming-labs/orm-mongo@0.0.64(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))':
+  '@farming-labs/orm-mongo@0.0.65(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-mongoose': 0.0.64(mongoose@8.24.2(socks@2.8.7))
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-mongoose': 0.0.65(mongoose@8.24.2(socks@2.8.7))
     optionalDependencies:
       mongodb: 6.21.0(socks@2.8.7)
     transitivePeerDependencies:
       - mongoose
 
-  '@farming-labs/orm-mongoose@0.0.64(mongoose@8.24.2(socks@2.8.7))':
+  '@farming-labs/orm-mongoose@0.0.65(mongoose@8.24.2(socks@2.8.7))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
     optionalDependencies:
       mongoose: 8.24.2(socks@2.8.7)
 
-  '@farming-labs/orm-neo4j@0.0.64':
+  '@farming-labs/orm-neo4j@0.0.65':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
 
-  '@farming-labs/orm-prisma@0.0.64(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))':
+  '@farming-labs/orm-prisma@0.0.65(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
     optionalDependencies:
       '@prisma/client': 6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3)
 
-  '@farming-labs/orm-redis@0.0.64':
+  '@farming-labs/orm-redis@0.0.65':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
 
-  '@farming-labs/orm-runtime@0.0.64(e3ed47334b7d15495a5fe084f651f215)':
+  '@farming-labs/orm-runtime@0.0.65(1b2d176df1d60a626597c0a5edf04276)':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-d1': 0.0.64
-      '@farming-labs/orm-drizzle': 0.0.64(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
-      '@farming-labs/orm-dynamodb': 0.0.64
-      '@farming-labs/orm-edgedb': 0.0.64
-      '@farming-labs/orm-firestore': 0.0.64
-      '@farming-labs/orm-kv': 0.0.64
-      '@farming-labs/orm-kysely': 0.0.64(kysely@0.28.17)
-      '@farming-labs/orm-mikroorm': 0.0.64(@mikro-orm/core@7.1.10)
-      '@farming-labs/orm-mongo': 0.0.64(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))
-      '@farming-labs/orm-mongoose': 0.0.64(mongoose@8.24.2(socks@2.8.7))
-      '@farming-labs/orm-neo4j': 0.0.64
-      '@farming-labs/orm-prisma': 0.0.64(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))
-      '@farming-labs/orm-redis': 0.0.64
-      '@farming-labs/orm-sequelize': 0.0.64(sequelize@6.37.8(pg@8.22.0))
-      '@farming-labs/orm-sql': 0.0.64
-      '@farming-labs/orm-supabase': 0.0.64
-      '@farming-labs/orm-surrealdb': 0.0.64(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))
-      '@farming-labs/orm-typeorm': 0.0.64(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))
-      '@farming-labs/orm-unstorage': 0.0.64(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)
-      '@farming-labs/orm-xata': 0.0.64(@xata.io/client@0.30.1(typescript@5.9.3))
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-d1': 0.0.65
+      '@farming-labs/orm-drizzle': 0.0.65(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
+      '@farming-labs/orm-dynamodb': 0.0.65(@aws-sdk/client-dynamodb@3.1103.0)(@aws-sdk/lib-dynamodb@3.1103.0(@aws-sdk/client-dynamodb@3.1103.0))
+      '@farming-labs/orm-edgedb': 0.0.65
+      '@farming-labs/orm-firestore': 0.0.65
+      '@farming-labs/orm-kv': 0.0.65
+      '@farming-labs/orm-kysely': 0.0.65(kysely@0.28.17)
+      '@farming-labs/orm-mikroorm': 0.0.65(@mikro-orm/core@7.1.10)
+      '@farming-labs/orm-mongo': 0.0.65(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))
+      '@farming-labs/orm-mongoose': 0.0.65(mongoose@8.24.2(socks@2.8.7))
+      '@farming-labs/orm-neo4j': 0.0.65
+      '@farming-labs/orm-prisma': 0.0.65(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))
+      '@farming-labs/orm-redis': 0.0.65
+      '@farming-labs/orm-sequelize': 0.0.65(sequelize@6.37.8(pg@8.22.0))
+      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/orm-supabase': 0.0.65
+      '@farming-labs/orm-surrealdb': 0.0.65(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))
+      '@farming-labs/orm-typeorm': 0.0.65(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))
+      '@farming-labs/orm-unstorage': 0.0.65(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)
+      '@farming-labs/orm-xata': 0.0.65(@xata.io/client@0.30.1(typescript@5.9.3))
     optionalDependencies:
       '@aws-sdk/client-dynamodb': 3.1103.0
     transitivePeerDependencies:
+      - '@aws-sdk/lib-dynamodb'
       - '@azure/app-configuration'
       - '@azure/cosmos'
       - '@azure/data-tables'
@@ -10872,37 +10978,37 @@ snapshots:
       - typeorm
       - uploadthing
 
-  '@farming-labs/orm-sequelize@0.0.64(sequelize@6.37.8(pg@8.22.0))':
+  '@farming-labs/orm-sequelize@0.0.65(sequelize@6.37.8(pg@8.22.0))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
     optionalDependencies:
       sequelize: 6.37.8(pg@8.22.0)
 
-  '@farming-labs/orm-sql@0.0.64':
+  '@farming-labs/orm-sql@0.0.65':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
 
-  '@farming-labs/orm-supabase@0.0.64':
+  '@farming-labs/orm-supabase@0.0.65':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
 
-  '@farming-labs/orm-surrealdb@0.0.64(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))':
+  '@farming-labs/orm-surrealdb@0.0.65(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
     optionalDependencies:
       surrealdb: 2.0.8(tslib@2.8.1)(typescript@5.9.3)
 
-  '@farming-labs/orm-typeorm@0.0.64(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))':
+  '@farming-labs/orm-typeorm@0.0.65(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
     optionalDependencies:
       typeorm: 0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0)
 
-  '@farming-labs/orm-unstorage@0.0.64(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)':
+  '@farming-labs/orm-unstorage@0.0.65(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)':
     dependencies:
-      '@farming-labs/orm': 0.0.64
+      '@farming-labs/orm': 0.0.65
       unstorage: 1.17.5(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -10925,14 +11031,14 @@ snapshots:
       - ioredis
       - uploadthing
 
-  '@farming-labs/orm-xata@0.0.64(@xata.io/client@0.30.1(typescript@5.9.3))':
+  '@farming-labs/orm-xata@0.0.65(@xata.io/client@0.30.1(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/orm': 0.0.64
-      '@farming-labs/orm-sql': 0.0.64
+      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm-sql': 0.0.65
     optionalDependencies:
       '@xata.io/client': 0.30.1(typescript@5.9.3)
 
-  '@farming-labs/orm@0.0.64': {}
+  '@farming-labs/orm@0.0.65': {}
 
   '@floating-ui/core@1.8.0':
     dependencies:
@@ -10999,8 +11105,7 @@ snapshots:
       gsap: 3.14.2
       react: 19.2.4
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.5':
     optionalDependencies:
@@ -13587,34 +13692,40 @@ snapshots:
     dependencies:
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@smithy/credential-provider-imds@4.4.16':
     dependencies:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@smithy/fetch-http-handler@5.6.13':
     dependencies:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@smithy/node-http-handler@4.9.13':
     dependencies:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@smithy/signature-v4@5.6.12':
     dependencies:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+    optional: true
 
   '@smithy/types@4.16.1':
     dependencies:
       tslib: 2.8.1
+    optional: true
 
   '@speed-highlight/core@1.2.14': {}
 
@@ -13871,6 +13982,14 @@ snapshots:
       '@tailwindcss/oxide': 4.2.1
       tailwindcss: 4.2.1
       vite: 7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
+
+  '@tailwindcss/vite@4.3.3(vite@7.3.6(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
+    dependencies:
+      '@tailwindcss/node': 4.3.3
+      '@tailwindcss/oxide': 4.3.3
+      tailwindcss: 4.3.3
+      vite: 7.3.6(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
+    optional: true
 
   '@tailwindcss/vite@4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
     dependencies:
@@ -14860,7 +14979,8 @@ snapshots:
 
   boolbase@1.0.0: {}
 
-  bowser@2.14.1: {}
+  bowser@2.14.1:
+    optional: true
 
   brace-expansion@5.0.12:
     dependencies:
@@ -17120,6 +17240,7 @@ snapshots:
   mnemonist@0.38.3:
     dependencies:
       obliterator: 1.6.1
+    optional: true
 
   mocked-exports@0.1.1: {}
 
@@ -18085,7 +18206,8 @@ snapshots:
       pathe: 2.0.3
       tinyexec: 1.2.4
 
-  obliterator@1.6.1: {}
+  obliterator@1.6.1:
+    optional: true
 
   obug@2.1.1: {}
 
@@ -19180,7 +19302,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
       '@types/node': 22.20.5
-    optional: true
 
   sharp@0.35.5(@types/node@24.13.3):
     dependencies:
