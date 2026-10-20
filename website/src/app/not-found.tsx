@@ -1,5 +1,11 @@
+import type { Metadata } from "@farm.js/core";
+
 // Unmatched URLs keep the 404 page the site had on Next.js, which used its framework's built-in
 // page; Farm's default looks different.
+
+// Next.js kept the root layout's title on its 404 page.
+export const metadata: Metadata = { title: { absolute: "@farming-labs/docs" } };
+
 const colorScheme =
   "body{color:#000;background:#fff;margin:0}.not-found-code{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.not-found-code{border-right:1px solid rgba(255,255,255,.3)}}";
 

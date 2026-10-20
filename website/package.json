@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@databuddy/sdk": "^2.3.29",
-    "@farm.js/core": "^0.1.21",
+    "@farm.js/core": "^0.1.28",
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/farmjs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
@@ -21,6 +21,7 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@vercel/og": "^1.0.1",
     "afdocs": "^0.18.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -30,12 +31,14 @@
     "lucide-react": "^0.564.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "^0.35.5",
     "sugar-high": "^0.9.5",
     "tailwind-merge": "^3.0.2",
     "unicornstudio-react": "latest"
   },
   "devDependencies": {
-    "@farm.js/cli": "^0.1.21",
+    "@farm.js/cli": "^0.1.28",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/mdx": "^2.0.13",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
