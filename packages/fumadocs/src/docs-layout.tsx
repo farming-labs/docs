@@ -12,7 +12,7 @@ import {
   resolveDocsAudienceMdxContent,
   resolveDocsAnalyticsConfig,
   resolveDocsMetadataBaseUrl,
-  resolveDocsSitemapPageLastmod,
+  createDocsSitemapLastmodResolver,
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
@@ -44,6 +44,7 @@ import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { createDocsContentReader, type DocsContentReader } from "./docs-content-reader.js";
 import { compactPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
+import { serializePageMetadata } from "./page-metadata.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -555,14 +556,13 @@ function cloneTree(tree: TreeRoot): TreeRoot {
 // ─── Page metadata ──────────────────────────────────────────────────
 
 function resolveManifestLastmod(
-  manifest: DocsSitemapManifest | null,
+  resolveLastmod: (url: string) => string | undefined,
   ctx: DocsLocaleContext,
   url: string,
 ): string | undefined {
   return (
-    (ctx.locale
-      ? resolveDocsSitemapPageLastmod(manifest, `${url}?lang=${encodeURIComponent(ctx.locale)}`)
-      : undefined) ?? resolveDocsSitemapPageLastmod(manifest, url)
+    (ctx.locale ? resolveLastmod(`${url}?lang=${encodeURIComponent(ctx.locale)}`) : undefined) ??
+    resolveLastmod(url)
   );
 }
 
@@ -579,6 +579,7 @@ function buildPageMaps(
     includeCode: boolean;
   },
 ) {
+  const resolveLastmod = createDocsSitemapLastmodResolver(manifest);
   const lastModifiedMap: Record<string, string> = {};
   const descriptionMap: Record<string, string> = {};
   const generatedTitleMap: Record<string, string> = {};
@@ -609,7 +610,7 @@ function buildPageMaps(
           ? data.title
           : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
       const description = typeof data.description === "string" ? data.description : undefined;
-      const manifestLastmod = resolveManifestLastmod(manifest, ctx, route);
+      const manifestLastmod = resolveManifestLastmod(resolveLastmod, ctx, route);
 
       if (
         config.theme?.name === "shadcn" &&
@@ -1107,7 +1108,12 @@ export function createDocsLayout(
         defaultBehavior: config.theme?.name === "shadcn" ? "hidden" : "link",
       },
     );
-    return { ...maps, localizedTree: i18n ? localizeTreeUrls(tree, activeLocale) : tree };
+    return {
+      pageMetadata: serializePageMetadata(maps),
+      readingTimeEnabled:
+        readingTimeEnabledByDefault || Object.keys(maps.readingTimeMap).length > 0,
+      localizedTree: i18n ? localizeTreeUrls(tree, activeLocale) : tree,
+    };
   }
 
   // A Next production build renders this layout for many pages. Reuse its
@@ -1118,18 +1124,13 @@ export function createDocsLayout(
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const {
-      lastModifiedMap,
-      descriptionMap,
-      generatedTitleMap,
-      readingTimeMap,
-      structuredDataPages,
+      pageMetadata,
+      readingTimeEnabled,
       localizedTree: preparedTree,
     } = process.env.NODE_ENV === "production"
       ? (productionContent ??= prepareContent())
       : prepareContent();
     const localizedTree = cloneTree(preparedTree);
-    const readingTimeEnabled =
-      readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
     const sidebarFooter = withStableReactKey(
@@ -1244,17 +1245,13 @@ export function createDocsLayout(
             contentDir={contentDir}
             githubBranch={githubBranch}
             githubDirectory={githubDirectory}
-            lastModifiedMap={lastModifiedMap}
+            pageMetadata={pageMetadata}
             lastUpdatedEnabled={lastUpdatedEnabled}
             lastUpdatedLabel={lastUpdatedLabel}
             lastUpdatedPosition={lastUpdatedPosition}
             readingTimeEnabled={readingTimeEnabled}
             readingTimeFormat={readingTimeFormat}
-            readingTimeMap={readingTimeMap}
-            structuredDataPages={structuredDataPages}
             llmsTxtEnabled={llmsTxtEnabled}
-            generatedTitleMap={generatedTitleMap}
-            descriptionMap={descriptionMap}
             feedbackEnabled={feedbackConfig.enabled}
             feedbackQuestion={feedbackConfig.question}
             feedbackPlaceholder={feedbackConfig.placeholder}

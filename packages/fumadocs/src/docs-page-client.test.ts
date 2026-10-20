@@ -38,6 +38,75 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
 });
 
 import { DocsPageClient } from "./docs-page-client.js";
+import { serializePageMetadata, type DocsPageMaps } from "./page-metadata.js";
+import { compactPageStructuredData } from "./page-structured-data.js";
+
+describe("DocsPageClient packed metadata compatibility", () => {
+  const route = "/docs/installation";
+  const maps: DocsPageMaps = {
+    lastModifiedMap: { [route]: "October 17, 2026" },
+    generatedTitleMap: { [route]: "Installation" },
+    descriptionMap: { [route]: "Install the SDK." },
+    readingTimeMap: { [route]: 7 },
+    structuredDataPages: {
+      baseUrl: "https://example.com",
+      entry: "docs",
+      pages: {
+        [route]: compactPageStructuredData({
+          title: "Installation",
+          description: "Install the SDK.",
+          url: `${route}?lang=fr`,
+          dateModified: "2026-10-17T00:00:00.000Z",
+        }),
+      },
+    },
+  };
+  it.each(["footer", "below-title"] as const)(
+    "renders identical HTML with dates in the %s position",
+    (lastUpdatedPosition) => {
+      const props = {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        readingTimeEnabled: true,
+        lastUpdatedPosition,
+        children: React.createElement("p", null, "Preserved MDX content"),
+      };
+      const legacy = renderToStaticMarkup(
+        React.createElement(DocsPageClient, { ...props, ...maps }),
+      );
+      const packed = renderToStaticMarkup(
+        React.createElement(DocsPageClient, {
+          ...props,
+          pageMetadata: serializePageMetadata(maps),
+        }),
+      );
+      expect(packed).toBe(legacy);
+    },
+  );
+
+  it("retains direct overrides and legacy map precedence when supplied together", () => {
+    const props = {
+      tocEnabled: false,
+      breadcrumbEnabled: false,
+      readingTimeEnabled: true,
+      description: "Direct description",
+      lastModified: "Direct date",
+      readingTime: 2,
+      structuredData: '{"@type":"Article","headline":"Direct"}',
+      children: React.createElement("p", null, "Content"),
+      ...maps,
+    };
+    expect(
+      renderToStaticMarkup(
+        React.createElement(DocsPageClient, {
+          ...props,
+          pageMetadata: serializePageMetadata(maps),
+        }),
+      ),
+    ).toBe(renderToStaticMarkup(React.createElement(DocsPageClient, props)));
+  });
+});
 
 describe("DocsPageClient llms.txt footer links", () => {
   it("exposes the shared document class contract to every React adapter", () => {

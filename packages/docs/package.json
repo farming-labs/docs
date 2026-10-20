@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/docs",
-  "version": "0.2.121",
+  "version": "0.2.124",
   "description": "Modern, flexible MDX-based docs framework \u2014 core types, config, and CLI",
   "keywords": [
     "docs",
@@ -104,7 +104,6 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
-    "@mdx-js/mdx": "^3.1.1",
     "@modelcontextprotocol/server": "2.0.0",
     "@scalar/core": "^0.4.3",
     "github-slugger": "^2.0.0",
@@ -114,6 +113,9 @@
     "parse-entities": "^4.0.2",
     "picocolors": "^1.1.1",
     "remark-gfm": "^4.0.1",
+    "remark-mdx": "^3.1.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },
@@ -130,6 +132,7 @@
     }
   },
   "devDependencies": {
+    "@mdx-js/mdx": "^3.1.1",
     "@modelcontextprotocol/client": "2.2.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.2",

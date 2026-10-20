@@ -22,7 +22,9 @@ export function mdxCacheDigest(value: string | Buffer): string {
 export class MdxBuildCache {
   private readonly entries = new Map<string, Entry>();
   private readonly entryBytes = new Map<string, number>();
+  private readonly unvisited = new Set<string>();
   private readonly pending = new Map<string, Promise<string | undefined>>();
+  private admissionBlocked = false;
   private loaded?: Promise<void>;
   private bytes = 0;
   private revision = 0;
@@ -36,19 +38,33 @@ export class MdxBuildCache {
   ) {}
 
   private remember(id: string, entry: Entry) {
-    this.bytes -= this.entryBytes.get(id) ?? 0;
     const size = Buffer.byteLength(JSON.stringify([id, entry]));
+    if (size > this.maxBytes || this.maxEntries < 1) return false;
+    let bytes = this.bytes - (this.entryBytes.get(id) ?? 0) + size;
+    let count = this.entries.size + (this.entries.has(id) ? 0 : 1);
+    const evictions: string[] = [];
+    for (const candidate of this.entries.keys()) {
+      if (bytes <= this.maxBytes && count <= this.maxEntries) break;
+      // An early miss in a sequential build must not evict last build's pages
+      // before they have had a chance to hit. The output still compiles normally.
+      if (candidate === id || this.unvisited.has(candidate)) continue;
+      evictions.push(candidate);
+      bytes -= this.entryBytes.get(candidate) ?? 0;
+      count -= 1;
+    }
+    if (bytes > this.maxBytes || count > this.maxEntries) {
+      this.admissionBlocked = true;
+      return false;
+    }
+    for (const candidate of evictions) {
+      this.entries.delete(candidate);
+      this.entryBytes.delete(candidate);
+    }
     this.entries.delete(id);
     this.entries.set(id, entry);
     this.entryBytes.set(id, size);
-    this.bytes += size;
-    while (this.bytes > this.maxBytes || this.entries.size > this.maxEntries) {
-      const oldest = this.entries.entries().next().value;
-      if (!oldest) break;
-      this.entries.delete(oldest[0]);
-      this.bytes -= this.entryBytes.get(oldest[0]) ?? 0;
-      this.entryBytes.delete(oldest[0]);
-    }
+    this.bytes = bytes;
+    return true;
   }
 
   private async load() {
@@ -68,10 +84,12 @@ export class MdxBuildCache {
         const result = JSON.parse(item[1].value);
         if (typeof result?.code === "string") this.remember(item[0], item[1]);
       }
+      for (const id of this.entries.keys()) this.unvisited.add(id);
     } catch {
       // Missing, incompatible, truncated or unreadable caches are ordinary misses.
       this.entries.clear();
       this.entryBytes.clear();
+      this.unvisited.clear();
       this.bytes = 0;
     }
   }
@@ -82,6 +100,7 @@ export class MdxBuildCache {
     compile: () => Promise<CompiledMdx>,
   ): Promise<CompiledMdx> {
     await (this.loaded ??= this.load());
+    this.unvisited.delete(id);
     const entry = this.entries.get(id);
     if (entry?.key === key) {
       // Refresh eviction order without serializing unchanged compiled output.
@@ -98,8 +117,9 @@ export class MdxBuildCache {
           // The upstream filter deliberately skips some IDs, including virtual modules.
           if (result === undefined) return undefined;
           const value = JSON.stringify(result);
-          this.remember(id, { key, value, checksum: mdxCacheDigest(value) });
-          this.revision += 1;
+          if (this.remember(id, { key, value, checksum: mdxCacheDigest(value) })) {
+            this.revision += 1;
+          }
           return value;
         })
         .finally(() => this.pending.delete(pendingKey));
@@ -116,6 +136,18 @@ export class MdxBuildCache {
     // Multiple Vite environments can finish together. An older snapshot must
     // finish before a newer one, or its rename could discard the newer entries.
     while (this.flushing) await this.flushing;
+    if (this.admissionBlocked) {
+      // Reclaim unused old pages at the build boundary so a replaced corpus can
+      // populate the cache on the next build instead of being excluded forever.
+      for (const id of this.unvisited) {
+        this.entries.delete(id);
+        this.bytes -= this.entryBytes.get(id) ?? 0;
+        this.entryBytes.delete(id);
+        this.revision += 1;
+      }
+      this.unvisited.clear();
+      this.admissionBlocked = false;
+    }
     if (this.persistedRevision === this.revision) return;
     const revision = this.revision;
     const flushing = this.writeSnapshot(JSON.stringify([...this.entries])).then((saved) => {

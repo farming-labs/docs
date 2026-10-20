@@ -7775,39 +7775,6 @@ function resolveFilesystemDocsPageSource(dir: string): string | undefined {
     .find((candidate) => fs.existsSync(/*! turbopackIgnore: true */ candidate));
 }
 
-function hasVisibleDescendantFilesystemDocsPage(dir: string): boolean {
-  let entries: string[];
-  try {
-    entries = fs.readdirSync(/*! turbopackIgnore: true */ dir);
-  } catch {
-    return false;
-  }
-
-  for (const name of entries.sort()) {
-    const full = path.join(/*! turbopackIgnore: true */ dir, name);
-    try {
-      if (!fs.statSync(/*! turbopackIgnore: true */ full).isDirectory()) continue;
-    } catch {
-      continue;
-    }
-
-    const pageSource = resolveFilesystemDocsPageSource(full);
-    if (pageSource) {
-      try {
-        const data = matter(fs.readFileSync(/*! turbopackIgnore: true */ pageSource, "utf-8")).data;
-        const hiddenFolderIndex = resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
-        if (data.hidden !== true && !hiddenFolderIndex) return true;
-      } catch {
-        return true;
-      }
-    }
-
-    if (hasVisibleDescendantFilesystemDocsPage(full)) return true;
-  }
-
-  return false;
-}
-
 function normalizeFrontmatterLastmod(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   return value instanceof Date && Number.isFinite(value.getTime())
@@ -7822,13 +7789,85 @@ function scanFilesystemDocsPages(
 ): ScannedDocsMcpPage[] {
   const pages: Array<ScannedDocsMcpPage & { relatedInput?: unknown }> = [];
 
+  // Hidden folder indexes inspect descendants before the normal traversal reaches
+  // them. Share successful reads within this scan, never across source instances.
+  const directoryEntries = new Map<string, string[]>();
+  const fileStats = new Map<string, fs.Stats>();
+  const documents = new Map<string, { data: Record<string, unknown>; content: string }>();
+  const visibleDescendants = new Map<string, boolean>();
+
+  function readDirectory(dir: string): string[] {
+    const cached = directoryEntries.get(dir);
+    if (cached) return cached;
+    const entries = fs.readdirSync(/*! turbopackIgnore: true */ dir).sort();
+    directoryEntries.set(dir, entries);
+    return entries;
+  }
+
+  function readStat(file: string): fs.Stats {
+    const cached = fileStats.get(file);
+    if (cached) return cached;
+    const stat = fs.statSync(/*! turbopackIgnore: true */ file);
+    fileStats.set(file, stat);
+    return stat;
+  }
+
+  function readDocument(file: string) {
+    const cached = documents.get(file);
+    if (cached) return cached;
+    const { data, content } = matter(fs.readFileSync(/*! turbopackIgnore: true */ file, "utf-8"));
+    const document = { data, content };
+    documents.set(file, document);
+    return document;
+  }
+
+  function hasVisibleDescendantFilesystemDocsPage(dir: string): boolean {
+    const cached = visibleDescendants.get(dir);
+    if (cached !== undefined) return cached;
+    const remember = (visible: boolean) => {
+      visibleDescendants.set(dir, visible);
+      return visible;
+    };
+    let entries: string[];
+    try {
+      entries = readDirectory(dir);
+    } catch {
+      return false;
+    }
+
+    for (const name of entries) {
+      const full = path.join(/*! turbopackIgnore: true */ dir, name);
+      try {
+        if (!readStat(full).isDirectory()) continue;
+      } catch {
+        continue;
+      }
+
+      const pageSource = resolveFilesystemDocsPageSource(full);
+      if (pageSource) {
+        try {
+          const data = readDocument(pageSource).data;
+          const hiddenFolderIndex =
+            resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
+          if (data.hidden !== true && !hiddenFolderIndex) return remember(true);
+        } catch {
+          return remember(true);
+        }
+      }
+
+      if (hasVisibleDescendantFilesystemDocsPage(full)) return remember(true);
+    }
+
+    return remember(false);
+  }
+
   function scan(dir: string, slugParts: string[]) {
     if (!fs.existsSync(/*! turbopackIgnore: true */ dir)) return;
 
-    const entries = fs.readdirSync(/*! turbopackIgnore: true */ dir).sort();
+    const entries = readDirectory(dir);
     for (const name of entries) {
       const full = path.join(/*! turbopackIgnore: true */ dir, name);
-      const stat = fs.statSync(/*! turbopackIgnore: true */ full);
+      const stat = readStat(full);
 
       if (stat.isDirectory()) {
         scan(full, [...slugParts, name]);
@@ -7838,8 +7877,7 @@ function scanFilesystemDocsPages(
       if (name === "agent.md") continue;
       if (!name.endsWith(".md") && !name.endsWith(".mdx") && !name.endsWith(".svx")) continue;
 
-      const raw = fs.readFileSync(/*! turbopackIgnore: true */ full, "utf-8");
-      const { data, content } = matter(raw);
+      const { data, content } = readDocument(full);
       const baseName = name.replace(/\.(md|mdx|svx)$/, "");
       const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
       const hiddenFolderIndex =
@@ -7931,6 +7969,32 @@ function buildNavigationTreeFromPages(
 ): DocsMcpNavigationTree {
   const bySlug = new Map(pages.map((page) => [page.slug, page] as const));
   const rootPage = bySlug.get("");
+  const childrenBySlug = new Map<string, Set<string>>();
+  const orderingIndexes = new Map<OrderingItem[], Map<string, OrderingItem>>();
+
+  function childrenOf(slug: string): Set<string> {
+    let children = childrenBySlug.get(slug);
+    if (!children) {
+      children = new Set();
+      childrenBySlug.set(slug, children);
+    }
+    return children;
+  }
+
+  for (const page of pages) {
+    const slug = page.slug;
+    let parent = "";
+    let start = 0;
+    while (start < slug.length) {
+      const separator = slug.indexOf("/", start);
+      const child = separator === -1 ? slug : slug.slice(0, separator);
+      childrenOf(parent).add(child);
+      if (separator === -1) break;
+      childrenOf(child);
+      parent = child;
+      start = separator + 1;
+    }
+  }
 
   function childOrderFor(parentSlug: string): OrderingItem[] | undefined {
     if (!Array.isArray(ordering)) return undefined;
@@ -7938,8 +8002,15 @@ function buildNavigationTreeFromPages(
 
     let items: OrderingItem[] | undefined = ordering;
     for (const segment of parentSlug.split("/")) {
-      const matchedItem: OrderingItem | undefined = items?.find((item) => item.slug === segment);
-      items = matchedItem?.children;
+      let index = orderingIndexes.get(items);
+      if (!index) {
+        index = new Map();
+        for (const item of items) {
+          if (!index.has(item.slug)) index.set(item.slug, item);
+        }
+        orderingIndexes.set(items, index);
+      }
+      items = index.get(segment)?.children;
       if (!items) return undefined;
     }
 
@@ -7950,11 +8021,12 @@ function buildNavigationTreeFromPages(
     const explicitOrder = childOrderFor(parentSlug);
     if (explicitOrder) {
       const explicit = new Set(explicitOrder.map((item) => item.slug));
+      const available = new Set(childSlugs);
       const ordered: string[] = [];
 
       for (const item of explicitOrder) {
         const childSlug = parentSlug ? `${parentSlug}/${item.slug}` : item.slug;
-        if (childSlugs.includes(childSlug)) ordered.push(childSlug);
+        if (available.has(childSlug)) ordered.push(childSlug);
       }
 
       for (const childSlug of childSlugs) {
@@ -7981,24 +8053,13 @@ function buildNavigationTreeFromPages(
   }
 
   function buildLevel(parentSlug: string): DocsMcpNavigationNode[] {
-    const prefix = parentSlug ? `${parentSlug}/` : "";
-    const childSet = new Set<string>();
-
-    for (const page of pages) {
-      if (!page.slug.startsWith(prefix) || page.slug === parentSlug) continue;
-      const remainder = page.slug.slice(prefix.length);
-      if (!remainder) continue;
-      const [firstSegment] = remainder.split("/");
-      childSet.add(parentSlug ? `${parentSlug}/${firstSegment}` : firstSegment);
-    }
-
-    const childSlugs = sortChildSlugs([...childSet], parentSlug);
+    const childSlugs = sortChildSlugs([...(childrenBySlug.get(parentSlug) ?? [])], parentSlug);
 
     const nodes: DocsMcpNavigationNode[] = [];
 
     for (const childSlug of childSlugs) {
       const page = bySlug.get(childSlug);
-      const hasChildren = pages.some((candidate) => candidate.slug.startsWith(`${childSlug}/`));
+      const hasChildren = childrenBySlug.has(childSlug);
       const segment = childSlug.split("/").pop() ?? childSlug;
       const name = page?.title ?? titleize(segment);
       const icon = page?.icon;

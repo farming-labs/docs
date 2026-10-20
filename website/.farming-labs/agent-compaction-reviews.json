@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:e1e963b8e63f4ef9",
+      "sourceHash": "fnv1a64:912effdd4df500a4",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:7feae5a2ff7111fb",
-      "reviewedAt": "2026-10-10T01:20:23.131Z",
-      "reviewedBy": "docs-team",
-      "reason": "Confirmed the curated agent guidance already requires readingTime.enabled: true; the runtime and human reference now match that explicit opt-in contract."
+      "outputHash": "fnv1a64:6619280b7f68efa3",
+      "reviewedAt": "2026-10-16T21:56:21.481Z",
+      "reviewedBy": "Codex",
+      "reason": "Reviewed the custom beforeFiles rewrite precedence change and updated the curated agent guidance to match; array rewrites retain afterFiles semantics."
     },
     {
       "route": "/docs/customization/agent-primitive",

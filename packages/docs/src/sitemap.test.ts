@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDocsSitemapManifest,
+  createDocsSitemapLastmodResolver,
   createDocsSitemapResponse,
   renderDocsSitemapMarkdown,
   renderDocsSitemapXml,
@@ -116,5 +117,65 @@ describe("docs sitemap helpers", () => {
     expect(resolveDocsSitemapPageLastmod(manifest, "/docs/configuration")).toBe("2026-05-09");
     expect(resolveDocsSitemapPageLastmod(manifest, "/docs/missing")).toBeUndefined();
     expect(resolveDocsSitemapPageLastmod(null, "/docs")).toBeUndefined();
+  });
+
+  it("indexes a manifest once while preserving first-match and URL normalization semantics", () => {
+    const manifest = buildDocsSitemapManifest({ entry: "docs", pages: [] });
+    manifest.pages = [
+      { url: "/docs/intro/", markdownUrl: "/docs/intro.md", title: "First", lastmod: "invalid" },
+      {
+        url: "/docs/intro",
+        markdownUrl: "/docs/intro.md",
+        title: "Duplicate",
+        lastmod: "2026-05-09",
+      },
+      {
+        url: "/docs/topic?lang=fr",
+        markdownUrl: "/docs/topic.md?lang=fr",
+        title: "French",
+        lastmod: "2026-05-10T10:00:00Z",
+      },
+      {
+        url: "/docs/topic",
+        markdownUrl: "/docs/topic.md",
+        title: "Default",
+        lastmod: "2026-05-08",
+      },
+    ];
+    const resolve = createDocsSitemapLastmodResolver(manifest);
+    for (const url of [
+      "/docs/intro",
+      "/docs/intro/",
+      "/docs/topic",
+      "/docs/topic?lang=fr",
+      "/missing",
+    ]) {
+      expect(resolve(url)).toBe(resolveDocsSitemapPageLastmod(manifest, url));
+    }
+    expect(createDocsSitemapLastmodResolver(null)("/docs")).toBeUndefined();
+    manifest.pages[3].lastmod = "2026-06-01";
+    expect(resolve("/docs/topic")).toBe("2026-05-08");
+    expect(createDocsSitemapLastmodResolver(manifest)("/docs/topic")).toBe("2026-06-01");
+    expect(resolveDocsSitemapPageLastmod(manifest, "/docs/topic")).toBe("2026-06-01");
+  });
+
+  it("reads each manifest URL once when resolving freshness for a large site", () => {
+    const manifest = buildDocsSitemapManifest({ entry: "docs", pages: [] });
+    let reads = 0;
+    manifest.pages = Array.from({ length: 1_000 }, (_, index) => ({
+      get url() {
+        reads += 1;
+        return `/docs/${index}`;
+      },
+      markdownUrl: `/docs/${index}.md`,
+      title: `Page ${index}`,
+      lastmod: "2026-05-08",
+    }));
+    const resolve = createDocsSitemapLastmodResolver(manifest);
+    expect(reads).toBe(0);
+    for (let index = 0; index < 1_000; index++) {
+      expect(resolve(`/docs/${index}`)).toBe("2026-05-08");
+    }
+    expect(reads).toBe(1_000);
   });
 });
