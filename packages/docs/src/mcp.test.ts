@@ -239,6 +239,7 @@ describe("resolveDocsMcpConfig", () => {
         authenticate: undefined,
         protectedResource: undefined,
         maxBodyBytes: 1_048_576,
+        maxToolInputElements: 10_000,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
     });
@@ -275,6 +276,7 @@ describe("resolveDocsMcpConfig", () => {
         authenticate: undefined,
         protectedResource: undefined,
         maxBodyBytes: 1_048_576,
+        maxToolInputElements: 10_000,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
     });
@@ -315,6 +317,7 @@ describe("resolveDocsMcpConfig", () => {
         authenticate: undefined,
         protectedResource: undefined,
         maxBodyBytes: 1_048_576,
+        maxToolInputElements: 10_000,
         cors: DEFAULT_RESOLVED_MCP_CORS,
       },
     });
@@ -445,6 +448,15 @@ describe("resolveDocsMcpConfig", () => {
     ).toBe(false);
   });
 
+  it.each([0, -1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "uses the default HTTP tool input limit for invalid value %s",
+    (maxToolInputElements) => {
+      expect(resolveDocsMcpConfig({ security: { maxToolInputElements } }).security).toMatchObject({
+        maxToolInputElements: 10_000,
+      });
+    },
+  );
+
   it("resolves custom HTTP security without enabling authentication by default", () => {
     const authenticate = async () => ({ id: "docs-user" });
 
@@ -454,6 +466,7 @@ describe("resolveDocsMcpConfig", () => {
           allowedOrigins: ["https://app.example.com"],
           authenticate,
           maxBodyBytes: 4096.9,
+          maxToolInputElements: 100.9,
         },
       }).security,
     ).toEqual({
@@ -461,6 +474,7 @@ describe("resolveDocsMcpConfig", () => {
       authenticate,
       protectedResource: undefined,
       maxBodyBytes: 4096,
+      maxToolInputElements: 100,
       cors: DEFAULT_RESOLVED_MCP_CORS,
     });
 
@@ -469,6 +483,7 @@ describe("resolveDocsMcpConfig", () => {
       authenticate: undefined,
       protectedResource: undefined,
       maxBodyBytes: 1_048_576,
+      maxToolInputElements: 10_000,
       cors: DEFAULT_RESOLVED_MCP_CORS,
     });
 
@@ -5466,6 +5481,101 @@ ${'export const value = "你好🙂";\n'.repeat(40)}
         data: { reason: "request_too_large", maxBodyBytes: 32 },
       },
     });
+  });
+
+  it.each(["2025-11-25", LATEST_PROTOCOL_VERSION])(
+    "bounds HTTP tool inputs before schema validation for %s",
+    async (protocolVersion) => {
+      const handlers = createDocsMcpHttpHandler({
+        source: createFilesystemDocsMcpSource({ rootDir: createTempDocsProject() }),
+      });
+      const call = async (args: Record<string, unknown>) => {
+        const response = await handlers.POST({
+          request: new Request("http://localhost/api/docs/mcp", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              accept: "application/json, text/event-stream",
+              "mcp-protocol-version": protocolVersion,
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "tools/call",
+              params: { name: "read_pages", arguments: args },
+            }),
+          }),
+        });
+        expect(response.status).toBe(200);
+        return parseMcpPayload<{ result: { isError?: boolean; content: { text: string }[] } }>(
+          response,
+        );
+      };
+      try {
+        const largeArray = await call({ paths: Array(10_000).fill("/docs/installation") });
+        expect(largeArray.result).toMatchObject({
+          isError: true,
+          content: [{ text: expect.stringContaining("maximum of 10000 elements") }],
+        });
+        const nestedRecord = await call({
+          paths: ["/docs/installation"],
+          extra: { nested: Object.fromEntries(Array.from({ length: 10_000 }, (_, i) => [i, 0])) },
+        });
+        expect(nestedRecord.result).toMatchObject({
+          isError: true,
+          content: [{ text: expect.stringContaining("maximum of 10000 elements") }],
+        });
+        const normal = await call({ paths: ["/docs/installation"] });
+        expect(normal.result.isError).not.toBe(true);
+      } finally {
+        await handlers.close?.();
+      }
+    },
+  );
+
+  it("honors the configured HTTP tool element boundary without limiting stdio", async () => {
+    const source = createFilesystemDocsMcpSource({ rootDir: createTempDocsProject() });
+    const mcp = { security: { maxToolInputElements: 2 } };
+    const handlers = createDocsMcpHttpHandler({ source, mcp });
+    try {
+      const accepted = await parseMcpPayload<{ result: { isError?: boolean } }>(
+        await callMcpTool(handlers, "read_pages", { paths: ["/docs/installation"] }),
+      );
+      expect(accepted.result.isError).not.toBe(true);
+      const rejected = await parseMcpPayload<{
+        result: { isError?: boolean; content: { text: string }[] };
+      }>(
+        await callMcpTool(handlers, "read_pages", {
+          paths: ["/docs/installation", "/docs/configuration"],
+        }),
+      );
+      expect(rejected.result).toMatchObject({
+        isError: true,
+        content: [{ text: expect.stringContaining("maximum of 2 elements") }],
+      });
+    } finally {
+      await handlers.close?.();
+    }
+
+    const server = await createDocsMcpServer({
+      source,
+      mcp,
+      requestContext: { transport: "stdio" },
+    });
+    const client = new Client({ name: "stdio-input-limit-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    try {
+      await server.connect(serverTransport);
+      await client.connect(clientTransport);
+      const result = await client.callTool({
+        name: "read_pages",
+        arguments: { paths: ["/docs/installation", "/docs/configuration"] },
+      });
+      expect(result.isError).not.toBe(true);
+    } finally {
+      await client.close();
+      await server.close();
+    }
   });
 
   it("handles browser CORS preflight without authenticating", async () => {

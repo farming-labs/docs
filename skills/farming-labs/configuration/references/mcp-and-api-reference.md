@@ -100,6 +100,8 @@ The transport:
 - limits POST bodies to 1 MiB by default before callbacks
 - supports `security.allowedOrigins`
 - supports `security.maxBodyBytes`
+- limits HTTP tool arguments to 10,000 total array items and object keys before schema validation
+- supports `security.maxToolInputElements` to adjust that positive integer limit
 - returns exact-origin CORS for accepted browser origins
 - exposes unauthenticated `OPTIONS` preflight
 - supports extra headers under `security.cors.allowedHeaders`
