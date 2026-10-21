@@ -104,7 +104,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
-    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/server": "2.3.0",
     "@scalar/core": "^0.4.3",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",

@@ -1602,6 +1602,8 @@ export interface DocsMcpSecurityConfig {
   protectedResource?: DocsMcpProtectedResourceConfig;
   /** Maximum POST body size in bytes. Defaults to 1 MiB. */
   maxBodyBytes?: number;
+  /** Maximum total array items and object keys in HTTP tool arguments. Defaults to 10,000. */
+  maxToolInputElements?: number;
   /**
    * CORS responses for accepted browser Origins. Defaults to enabled with exact-Origin responses;
    * set `false` to suppress CORS headers or use an object for credential/header controls.

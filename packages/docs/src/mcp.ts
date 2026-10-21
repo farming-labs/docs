@@ -461,6 +461,8 @@ export interface DocsMcpResolvedSecurityConfig {
   authenticate?: DocsMcpAuthenticate;
   protectedResource?: DocsMcpResolvedProtectedResourceConfig;
   maxBodyBytes: number;
+  /** Optional for manually constructed resolved configs from older releases. */
+  maxToolInputElements?: number;
   cors: DocsMcpResolvedCorsConfig;
 }
 
@@ -598,6 +600,7 @@ export const DOCS_MCP_CONTENT_CHANGES_URI_TEMPLATE = "docs://changes/{generation
 export const DEFAULT_DOCS_MCP_CONTENT_CHANGE_POLL_INTERVAL_MS = 30_000;
 const UTF8_ENCODER = new TextEncoder();
 export const DEFAULT_DOCS_MCP_MAX_BODY_BYTES = 1024 * 1024;
+export const DEFAULT_DOCS_MCP_MAX_TOOL_INPUT_ELEMENTS = 10_000;
 export const DEFAULT_DOCS_MCP_CORS_MAX_AGE_SECONDS = 600;
 export const DEFAULT_DOCS_MCP_CORS_ALLOWED_HEADERS: readonly string[] = Object.freeze([
   "Accept",
@@ -2405,6 +2408,14 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
             description: "Maximum accepted Streamable HTTP POST body size in bytes.",
           },
           {
+            path: "mcp.security.maxToolInputElements",
+            name: "maxToolInputElements",
+            type: "number",
+            default: DEFAULT_DOCS_MCP_MAX_TOOL_INPUT_ELEMENTS,
+            description:
+              "Maximum total array items and object keys in Streamable HTTP tool arguments, checked before schema validation. Does not affect stdio.",
+          },
+          {
             path: "mcp.security.cors",
             name: "cors",
             type: "boolean | DocsMcpCorsConfig",
@@ -3701,11 +3712,20 @@ function resolveDocsMcpSecurityConfig(
       ? Math.floor(configuredMaxBodyBytes)
       : DEFAULT_DOCS_MCP_MAX_BODY_BYTES;
 
+  const configuredMaxToolInputElements = security?.maxToolInputElements;
+  const maxToolInputElements =
+    typeof configuredMaxToolInputElements === "number" &&
+    Number.isSafeInteger(Math.floor(configuredMaxToolInputElements)) &&
+    configuredMaxToolInputElements >= 1
+      ? Math.floor(configuredMaxToolInputElements)
+      : DEFAULT_DOCS_MCP_MAX_TOOL_INPUT_ELEMENTS;
+
   return {
     allowedOrigins: security?.allowedOrigins ?? "same-origin",
     authenticate: security?.authenticate,
     protectedResource: resolveDocsMcpProtectedResourceConfig(security?.protectedResource),
     maxBodyBytes,
+    maxToolInputElements,
     cors: resolveDocsMcpCorsConfig(security?.cors),
   };
 }
@@ -4470,6 +4490,12 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       version: resolved.version,
     },
     {
+      ...(options.requestContext?.transport === "http"
+        ? {
+            maxToolInputElements:
+              resolved.security?.maxToolInputElements ?? DEFAULT_DOCS_MCP_MAX_TOOL_INPUT_ELEMENTS,
+          }
+        : {}),
       cacheHints: {
         "server/discover": {
           ttlMs: DOCS_MCP_DISCOVERY_CACHE_TTL_MS,
