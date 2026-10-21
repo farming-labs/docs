@@ -2,7 +2,7 @@ import * as React from "react";
 
 type PreProps = React.ComponentPropsWithoutRef<"pre">;
 
-const leadingWhitespacePattern = /^[\t ]+/;
+const leadingWhitespacePattern = /^[\t ]+(?=--)/;
 
 function whitespaceColumnCount(value: string): number {
   let columns = 0;
@@ -18,8 +18,6 @@ function splitLeadingWhitespace(value: string, key: string): React.ReactNode {
 
   const leadingWhitespace = match[0] ?? "";
   const rest = value.slice(leadingWhitespace.length);
-  if (!rest.startsWith("--")) return value;
-
   const isSingleWordGap = leadingWhitespace === " ";
 
   return [
@@ -48,19 +46,49 @@ function normalizeNode(node: React.ReactNode, key: string): React.ReactNode {
   }
 
   const props = node.props as { children?: React.ReactNode };
-  if (props.children === undefined) {
+  if (
+    props.children === undefined ||
+    (typeof props.children === "string" && !leadingWhitespacePattern.test(props.children))
+  ) {
     return node;
   }
+
+  const children = normalizeCodeSpacing(props.children, key);
+  if (children === props.children) return node;
 
   return React.cloneElement(
     node as React.ReactElement<{ children?: React.ReactNode }>,
     undefined,
-    React.Children.map(props.children, (child, index) => normalizeNode(child, `${key}-${index}`)),
+    children,
   );
 }
 
-function normalizeCodeSpacing(children: React.ReactNode): React.ReactNode {
-  return React.Children.map(children, (child, index) => normalizeNode(child, `${index}`));
+function canReuseChildren(children: React.ReactNode): boolean {
+  if (Array.isArray(children)) return children.every(canReuseChildren);
+  return children === null || typeof children !== "object" || React.isValidElement(children);
+}
+
+function normalizeCodeSpacing(children: React.ReactNode, key?: string): React.ReactNode {
+  const childKey = (index: number) => (key === undefined ? `${index}` : `${key}-${index}`);
+  if (typeof children === "string") {
+    const next = splitLeadingWhitespace(children, childKey(0));
+    return next === children ? children : React.Children.map(children, () => next);
+  }
+
+  // Iterables may be consumed only once; retain React's normal mapping for them.
+  if (!canReuseChildren(children)) {
+    return React.Children.map(children, (child, index) => normalizeNode(child, childKey(index)));
+  }
+
+  let changed = false;
+  const normalized: React.ReactNode[] = [];
+  React.Children.forEach(children, (child, index) => {
+    const next = normalizeNode(child, childKey(index));
+    changed ||= next !== child;
+    normalized.push(next);
+  });
+
+  return changed ? React.Children.map(children, (_, index) => normalized[index]) : children;
 }
 
 export function createPreWithCodeSpacing(
