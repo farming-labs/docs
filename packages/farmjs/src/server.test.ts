@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { Suspense, createElement } from "react";
 import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -180,6 +180,36 @@ Build a Farm application.
           children: [{ type: "page", name: "API v1", url: "/docs/api/v1" }],
         },
       ]);
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reads navigation once when the content is immutable, and on every load otherwise", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-immutable-navigation-"));
+    const contentDir = path.join(rootDir, "docs");
+    const names = async (server: ReturnType<typeof createDocsServer>) =>
+      (await server.load({ pathname: "/docs" })).tree.children.map((node) => node.name);
+
+    try {
+      mkdirSync(contentDir, { recursive: true });
+      writeFileSync(path.join(contentDir, "page.md"), `---\ntitle: Introduction\n---\n# Intro`);
+      const production = createDocsServer({
+        entry: "docs",
+        contentDir,
+        rootDir,
+        _immutableContent: true,
+      });
+      const development = createDocsServer({ entry: "docs", contentDir, rootDir });
+      expect(await names(production)).toEqual(["Introduction"]);
+      expect(await names(development)).toEqual(["Introduction"]);
+
+      writeFileSync(path.join(contentDir, "added.md"), `---\ntitle: Added\n---\n# Added`);
+
+      // A production process serves the build it started with.
+      expect(await names(production)).toEqual(["Introduction"]);
+      // Development keeps picking up edits.
+      expect(await names(development)).toEqual(["Introduction", "Added"]);
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }
@@ -375,6 +405,38 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(loaded).toHaveLength(1);
     expect(html).toContain("<main>");
     expect(html).not.toContain("missing");
+  });
+
+  it("renders a large page boundary once, in place", async () => {
+    // The docs layout wraps the page in a Suspense boundary whose fallback is
+    // the page itself. React outlines completed boundaries over 12.8 KB unless
+    // told otherwise, which sent the page twice.
+    const paragraph = "Farm documentation content that fills the page. ".repeat(20);
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: () => {
+          const page = createElement(
+            "article",
+            null,
+            Array.from({ length: 40 }, (_, index) =>
+              createElement("p", { key: index }, `${index} ${paragraph}`),
+            ),
+          );
+          // Nested like the layout's page boundary; React flushes a root-level
+          // boundary in place regardless.
+          return createElement("main", null, createElement(Suspense, { fallback: page }, page));
+        },
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = (await response?.text()) ?? "";
+
+    expect(response?.status).toBe(200);
+    expect(html.match(/<article>/g)).toHaveLength(1);
+    expect(html.split("39 Farm documentation content").length - 1).toBe(1);
+    expect(html).not.toContain('<template id="B:');
   });
 
   it("serves the bundled adapter CSS without a runtime filesystem dependency", async () => {
