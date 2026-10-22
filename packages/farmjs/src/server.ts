@@ -141,16 +141,24 @@ function loadFarmDocsBrowserCss(): string {
   return layeredFarmDocsBrowserCss;
 }
 
+// The page is buffered until every boundary resolves, so React has nothing to
+// stream progressively. Without a chunk limit it would still outline any
+// completed boundary over 12.8 KB: the fallback stays in place and the content
+// follows in a hidden segment. The docs layout uses the page itself as the
+// fallback of its page boundary, so every large page was rendered and sent
+// twice. Write completed content in place instead.
+const FARM_DOCS_RENDER_OPTIONS = { progressiveChunkSize: Number.POSITIVE_INFINITY };
+
 async function renderFarmDocsMarkup(element: ReactElement): Promise<string> {
   const server = ReactDOMServer as typeof ReactDOMServer & {
     renderToReadableStream?: (
       children: ReactElement,
-      options?: { onError?: (error: unknown) => void },
+      options?: { onError?: (error: unknown) => void; progressiveChunkSize?: number },
     ) => Promise<ReadableStream<Uint8Array> & { allReady?: Promise<void> }>;
   };
 
   if (server.renderToReadableStream) {
-    const stream = await server.renderToReadableStream(element);
+    const stream = await server.renderToReadableStream(element, FARM_DOCS_RENDER_OPTIONS);
     await stream.allReady;
     return new Response(stream).text();
   }
@@ -163,6 +171,7 @@ async function renderFarmDocsMarkup(element: ReactElement): Promise<string> {
     destination.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
 
     const renderer = server.renderToPipeableStream(element, {
+      ...FARM_DOCS_RENDER_OPTIONS,
       onAllReady() {
         renderer.pipe(destination);
       },
@@ -315,6 +324,12 @@ export interface FarmDocsRuntimeHandlerOptions {
   ) => FarmDocsRuntimeFonts | undefined | Promise<FarmDocsRuntimeFonts | undefined>;
   /** Development hook used by Farm to load the React entry through Vite SSR. */
   loadReactModule?: () => Promise<FarmDocsReactModule>;
+  /**
+   * The content cannot change while this handler runs, as in a production
+   * build. Navigation and the last-modified manifest are then read once
+   * instead of on every request. Development leaves it off so edits show up.
+   */
+  immutableContent?: boolean;
 }
 
 type ContentFileMap = Record<string, string>;
@@ -893,6 +908,33 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     return publishedAgentSkills;
   }
   const preloaded = resolvePreloadedContent(config._preloadedContent);
+  // Set by the Farm production handler: content is fixed for the process, so
+  // the navigation scan (every file's frontmatter) and the manifest are read once.
+  const immutableContent = config._immutableContent === true;
+  const navTreeByContentDir = new Map<string, NavTree>();
+  const lastModifiedManifestByContentDir = new Map<
+    string,
+    ReturnType<typeof readFarmDocsLastModifiedManifest>
+  >();
+  function readNavTree(contentDirAbs: string): NavTree {
+    if (!immutableContent) return loadDocsNavTree(contentDirAbs, entry, ordering);
+    let tree = navTreeByContentDir.get(contentDirAbs);
+    if (!tree) {
+      tree = loadDocsNavTree(contentDirAbs, entry, ordering);
+      navTreeByContentDir.set(contentDirAbs, tree);
+    }
+    return tree;
+  }
+  function readLastModifiedManifest(contentDirAbs: string) {
+    if (!immutableContent) return readFarmDocsLastModifiedManifest(contentDirAbs);
+    if (!lastModifiedManifestByContentDir.has(contentDirAbs)) {
+      lastModifiedManifestByContentDir.set(
+        contentDirAbs,
+        readFarmDocsLastModifiedManifest(contentDirAbs),
+      );
+    }
+    return lastModifiedManifestByContentDir.get(contentDirAbs) ?? null;
+  }
   const preloadedSitemapManifest = readDocsSitemapManifestFromContentMap(preloaded);
   const i18n = resolveDocsI18n(config.i18n);
 
@@ -982,7 +1024,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       configuredNavigation ??
         (preloaded
           ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-          : loadDocsNavTree(ctx.contentDirAbs, entry, ordering)),
+          : readNavTree(ctx.contentDirAbs)),
       {
         sidebar: config.sidebar,
         defaultBehavior: "link",
@@ -1056,7 +1098,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         resolveFarmDocsLastModified(
           ctx.contentDirAbs,
           filePath,
-          readFarmDocsLastModifiedManifest(ctx.contentDirAbs),
+          readLastModifiedManifest(ctx.contentDirAbs),
         ) ?? stat.mtime.toISOString();
       lastModified = formatDocsLastModifiedDate(lastModifiedIso)!;
     }
@@ -2376,7 +2418,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           navTreeFromNavigation(config, entry) ??
             (preloaded
               ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-              : loadDocsNavTree(ctx.contentDirAbs, entry, ordering)),
+              : readNavTree(ctx.contentDirAbs)),
           {
             sidebar: config.sidebar,
             defaultBehavior: "link",
@@ -2748,6 +2790,7 @@ export function createFarmDocsRuntimeHandler(
   const runtimeConfig = {
     ...config,
     rootDir: options.rootDir ?? config.rootDir ?? process.cwd(),
+    _immutableContent: options.immutableContent === true,
   };
   const docsServer = createDocsServer(runtimeConfig);
 
