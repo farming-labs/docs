@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -111,6 +112,10 @@ import {
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 import farmDocsBrowserCss from "./browser-css.generated.js";
 import { hasUnserializableValues } from "./config-values.js";
+import {
+  createFarmDocsResponseCache,
+  FARM_DOCS_RESPONSE_CACHE_MAX_SIZE,
+} from "./response-cache.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 export { createFarmjsApiReference } from "./api-reference.js";
 
@@ -2604,6 +2609,7 @@ function createClientDocsConfig(config: DocsConfig & Record<string, any>): Recor
     rootDir: _rootDir,
     contentDir: _contentDir,
     _preloadedContent,
+    _immutableContent,
     _preloadedAgentSkills,
     _preloadedRootDocuments,
     socialImage,
@@ -2793,6 +2799,59 @@ export function createFarmDocsRuntimeHandler(
     _immutableContent: options.immutableContent === true,
   };
   const docsServer = createDocsServer(runtimeConfig);
+  // With immutable content a page renders the same way every time, so a
+  // production server renders it once and reuses the result. Only the request
+  // origin in the Markdown alternate link differs between requests; the page is
+  // rendered with a token in its place, and each response puts the origin back.
+  const cachedResponse = runtimeConfig._immutableContent
+    ? createFarmDocsResponseCache(FARM_DOCS_RESPONSE_CACHE_MAX_SIZE)
+    : null;
+  const originToken = `farm-docs-origin-${randomUUID()}`;
+
+  function isNotFoundError(error: unknown): boolean {
+    return (
+      Boolean(error) && typeof error === "object" && (error as { status?: unknown }).status === 404
+    );
+  }
+
+  async function renderPage(pathname: string) {
+    let data: DocsServerLoadResult;
+    try {
+      data = await docsServer.load({ pathname });
+    } catch (error) {
+      // Unknown paths are never cached, so arbitrary URLs cannot fill the cache.
+      if (isNotFoundError(error)) return null;
+      throw error;
+    }
+    const reactModule = options.loadReactModule
+      ? await options.loadReactModule()
+      : ((await import("./react.js")) as FarmDocsReactModule);
+    await reactModule.loadFarmDocsPageModule?.(data);
+    const markup = await renderFarmDocsMarkup(
+      createElement(reactModule.FarmDocsPage, {
+        config: runtimeConfig,
+        data,
+      }),
+    );
+    const fonts = await options.resolveLayoutFonts?.(pathname);
+    const html = renderFarmDocsDocument({
+      config: runtimeConfig,
+      data,
+      markup,
+      clientEntry: options.clientEntry ?? "/farm-client.js",
+      stylesheets: options.stylesheets ?? [],
+      fonts,
+      origin: originToken,
+    });
+    return {
+      htmlParts: html.split(originToken),
+      fontPreloadHeader: runtimeFontPreloads(fonts).header,
+    };
+  }
+
+  async function renderNavigationBody(pathname: string) {
+    return JSON.stringify({ data: await docsServer.load({ pathname }) });
+  }
 
   return async function handleFarmDocsRuntimeRequest(request: Request): Promise<Response | null> {
     const url = new URL(request.url);
@@ -2815,16 +2874,20 @@ export function createFarmDocsRuntimeHandler(
       isDocsPageRequest(runtimeConfig, request)
     ) {
       try {
-        const data = await docsServer.load({ pathname: url.pathname });
-        return Response.json(
-          { data },
-          {
-            headers: {
-              "Cache-Control": "no-store",
-              Vary: FARM_DOCS_NAVIGATION_HEADER,
-            },
+        const body = cachedResponse
+          ? await cachedResponse(
+              `navigation\0${url.pathname}`,
+              () => renderNavigationBody(url.pathname),
+              (value) => value.length,
+            )
+          : await renderNavigationBody(url.pathname);
+        return new Response(body, {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+            Vary: FARM_DOCS_NAVIGATION_HEADER,
           },
-        );
+        });
       } catch (error) {
         const status =
           error &&
@@ -2843,41 +2906,21 @@ export function createFarmDocsRuntimeHandler(
       return docsServer.handle(request);
     }
 
-    let data: DocsServerLoadResult;
-    try {
-      data = await docsServer.load({ pathname: url.pathname });
-    } catch (error) {
-      const status =
-        error &&
-        typeof error === "object" &&
-        typeof (error as { status?: unknown }).status === "number"
-          ? (error as { status: number }).status
-          : 500;
-      if (status === 404) return null;
-      throw error;
-    }
+    const page = cachedResponse
+      ? await cachedResponse(
+          `page\0${url.pathname}`,
+          () => renderPage(url.pathname),
+          (value) =>
+            value
+              ? value.htmlParts.reduce((size, part) => size + part.length, 0) +
+                (value.fontPreloadHeader?.length ?? 0)
+              : 0,
+        )
+      : await renderPage(url.pathname);
+    if (!page) return null;
 
-    const reactModule = options.loadReactModule
-      ? await options.loadReactModule()
-      : ((await import("./react.js")) as FarmDocsReactModule);
-    await reactModule.loadFarmDocsPageModule?.(data);
-    const markup = await renderFarmDocsMarkup(
-      createElement(reactModule.FarmDocsPage, {
-        config: runtimeConfig,
-        data,
-      }),
-    );
-    const fonts = await options.resolveLayoutFonts?.(url.pathname);
-    const fontPreloadHeader = runtimeFontPreloads(fonts).header;
-    const html = renderFarmDocsDocument({
-      config: runtimeConfig,
-      data,
-      markup,
-      clientEntry: options.clientEntry ?? "/farm-client.js",
-      stylesheets: options.stylesheets ?? [],
-      fonts,
-      origin: new URL(request.url).origin,
-    });
+    const fontPreloadHeader = page.fontPreloadHeader;
+    const html = page.htmlParts.join(escapeDocumentText(url.origin));
 
     return new Response(request.method.toUpperCase() === "HEAD" ? null : html, {
       status: 200,
