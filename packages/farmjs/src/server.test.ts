@@ -563,28 +563,56 @@ describe("createFarmDocsRuntimeHandler", () => {
   });
 
   it("lists the modules a page needs as modulepreload links in its head", async () => {
-    const pages: string[] = [];
-    const handler = createFarmDocsRuntimeHandler(config, {
-      clientEntry: "/farm-client.js",
-      resolveModulePreloads: (page) => {
-        pages.push(page.sourcePath);
-        return ["/farm-client.js", "/chunks/adapter.js", "/chunks/adapter.js", '/chunks/"q".js'];
+    const pages = {
+      "/src/app/docs/page.md": ["/chunks/intro.js"],
+      "/src/app/docs/guides.md": ["/chunks/guides.js"],
+      "/src/app/docs/vue/guides.md": ["/chunks/vue-guides.js"],
+    };
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...config,
+        _preloadedContent: {
+          ...config._preloadedContent,
+          "/docs/guides.md": `---\ntitle: Guides\n---\n# Guides`,
+        },
       },
-      loadReactModule: async () => ({
-        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
-      }),
-    });
+      {
+        clientEntry: "/farm-client.js",
+        modulePreloads: {
+          runtime: [
+            "/farm-client.js",
+            "/chunks/adapter.js",
+            "/chunks/adapter.js",
+            '/chunks/"q".js',
+          ],
+          pages,
+        },
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+        }),
+      },
+    );
+    const head = async (pathname: string) => {
+      const html =
+        (await (await handler(new Request(`https://farm.example${pathname}`)))?.text()) ?? "";
+      return html.slice(0, html.indexOf("</head>"));
+    };
 
-    const html = (await (await handler(new Request("https://farm.example/docs")))?.text()) ?? "";
-    const head = html.slice(0, html.indexOf("</head>"));
+    const intro = await head("/docs");
+    expect(intro).toContain('<link rel="modulepreload" href="/farm-client.js">');
+    expect(intro.match(/href="\/chunks\/adapter\.js"/g)).toHaveLength(1);
+    expect(intro).toContain('<link rel="modulepreload" href="/chunks/&quot;q&quot;.js">');
+    expect(intro).toContain('<link rel="modulepreload" href="/chunks/intro.js">');
 
-    expect(pages).toEqual(["/docs/page.md"]);
-    expect(head).toContain('<link rel="modulepreload" href="/farm-client.js">');
-    expect(head.match(/href="\/chunks\/adapter\.js"/g)).toHaveLength(1);
-    expect(head).toContain('<link rel="modulepreload" href="/chunks/&quot;q&quot;.js">');
+    // The server's source path (`/docs/guides.md`) is matched to the client
+    // build's key the way the browser loads it, not to another page's.
+    const guides = await head("/docs/guides");
+    expect(guides).toContain('<link rel="modulepreload" href="/chunks/guides.js">');
+    expect(guides).not.toContain("/chunks/intro.js");
+    expect(guides).not.toContain("/chunks/vue-guides.js");
   });
 
-  it("adds no modulepreload links without a resolver", async () => {
+  it("adds no modulepreload links without module preloads", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",
       loadReactModule: async () => ({

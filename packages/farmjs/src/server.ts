@@ -117,6 +117,7 @@ import {
   FARM_DOCS_RESPONSE_CACHE_MAX_SIZE,
 } from "./response-cache.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
+import { resolveDocsModule } from "./module-map.js";
 export { createFarmjsApiReference } from "./api-reference.js";
 
 const FARM_DOCS_BROWSER_CSS_PATH = "/__farm_docs/browser.css";
@@ -336,11 +337,16 @@ export interface FarmDocsRuntimeHandlerOptions {
    */
   immutableContent?: boolean;
   /**
-   * Browser modules a page needs before it hydrates, as public paths. They are
+   * Browser modules pages need before they hydrate, as public paths: `runtime`
+   * for every page, and `pages` by the compiled Markdown's source path as the
+   * client build names it (for example `/src/app/docs/guide/page.mdx`). They are
    * listed as `<link rel="modulepreload">` so the browser downloads them
    * alongside the client entry instead of discovering them one import at a time.
    */
-  resolveModulePreloads?: (page: DocsServerLoadResult) => readonly string[] | undefined;
+  modulePreloads?: {
+    runtime: readonly string[];
+    pages: Readonly<Record<string, readonly string[]>>;
+  };
 }
 
 type ContentFileMap = Record<string, string>;
@@ -2850,7 +2856,12 @@ export function createFarmDocsRuntimeHandler(
       markup,
       clientEntry: options.clientEntry ?? "/farm-client.js",
       stylesheets: options.stylesheets ?? [],
-      modulePreloads: options.resolveModulePreloads?.(data),
+      modulePreloads: options.modulePreloads && [
+        ...options.modulePreloads.runtime,
+        // Matched the way the browser finds the page's module, since the
+        // server's source paths can be relative to the content directory.
+        ...(resolveDocsModule(options.modulePreloads.pages, data.sourcePath, data.entry) ?? []),
+      ],
       fonts,
       origin: originToken,
     });
