@@ -58,6 +58,11 @@ jobs:
         run: pnpm prisma generate && pnpm build:app
         working-directory: website
 
+      - name: Run website search end-to-end tests
+        run: |
+          pnpm exec playwright install --with-deps --only-shell chromium
+          pnpm exec playwright test --config website/playwright.config.ts --workers=1
+
   test:
     runs-on: ubuntu-latest
     steps:

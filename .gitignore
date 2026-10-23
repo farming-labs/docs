@@ -49,3 +49,7 @@ benchmark/codex/artifacts/
 benchmark/codex/*/artifacts/
 benchmark/codex/analysis/
 .vercel
+
+# Browser test artifacts
+website/test-results/
+website/playwright-report/
