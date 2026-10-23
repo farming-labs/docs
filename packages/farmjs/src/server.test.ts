@@ -439,6 +439,129 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(html).not.toContain('<template id="B:');
   });
 
+  it("renders a page once when the content is immutable, and on every request otherwise", async () => {
+    let renders = 0;
+    const options = {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }: { data: { title: string } }) => {
+          renders += 1;
+          return createElement("main", null, data.title);
+        },
+      }),
+    };
+    const production = createFarmDocsRuntimeHandler(config, { ...options, immutableContent: true });
+    const development = createFarmDocsRuntimeHandler(config, options);
+    const read = async (handler: typeof production) => {
+      const response = await handler(new Request("https://farm.example/docs"));
+      return {
+        status: response?.status,
+        headers: Object.fromEntries(response?.headers ?? []),
+        html: await response?.text(),
+      };
+    };
+
+    const [first, concurrent] = await Promise.all([read(production), read(production)]);
+    const repeated = await read(production);
+    expect(renders).toBe(1);
+    expect(first.status).toBe(200);
+    expect(concurrent).toEqual(first);
+    expect(repeated).toEqual(first);
+
+    renders = 0;
+    const developmentFirst = await read(development);
+    expect(await read(development)).toEqual(developmentFirst);
+    expect(renders).toBe(2);
+    // Reusing a render changes nothing a client receives.
+    expect(developmentFirst).toEqual(first);
+  });
+
+  it("gives each request its own origin in a reused page", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      immutableContent: true,
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const first = await (await handler(new Request("https://one.example/docs")))?.text();
+    const second = await (await handler(new Request("http://two.example:8080/docs")))?.text();
+
+    expect(first).toContain('href="https://one.example/docs.md"');
+    expect(second).toContain('href="http://two.example:8080/docs.md"');
+    expect(second).not.toContain("one.example");
+    expect(`${first}${second}`).not.toContain("farm-docs-origin-");
+  });
+
+  it("still answers navigation, Markdown, HEAD, and missing pages after reusing a render", async () => {
+    let renders = 0;
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      immutableContent: true,
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => {
+          renders += 1;
+          return createElement("main", null, data.title);
+        },
+      }),
+    });
+
+    expect((await handler(new Request("https://farm.example/docs")))?.status).toBe(200);
+
+    const navigation = await handler(
+      new Request("https://farm.example/docs", {
+        headers: { [FARM_DOCS_NAVIGATION_HEADER]: "1" },
+      }),
+    );
+    expect(navigation?.headers.get("content-type")).toContain("application/json");
+    expect(navigation?.headers.get("vary")).toBe(FARM_DOCS_NAVIGATION_HEADER);
+    expect(await navigation?.json()).toMatchObject({
+      data: { title: "Introduction", url: "/docs" },
+    });
+
+    const markdown = await handler(
+      new Request("https://farm.example/docs", { headers: { Accept: "text/markdown" } }),
+    );
+    expect(markdown?.headers.get("content-type")).toContain("text/markdown");
+    expect(await markdown?.text()).toContain("Farm documentation content.");
+
+    const head = await handler(new Request("https://farm.example/docs", { method: "HEAD" }));
+    expect(head?.status).toBe(200);
+    expect(head?.headers.get("content-type")).toContain("text/html");
+    expect(await head?.text()).toBe("");
+
+    expect(await handler(new Request("https://farm.example/docs/missing"))).toBeNull();
+    expect(await handler(new Request("https://farm.example/docs/missing"))).toBeNull();
+    const missingNavigation = await handler(
+      new Request("https://farm.example/docs/missing", {
+        headers: { [FARM_DOCS_NAVIGATION_HEADER]: "1" },
+      }),
+    );
+    expect(missingNavigation?.status).toBe(404);
+    expect(renders).toBe(1);
+  });
+
+  it("does not keep a page whose render failed", async () => {
+    let attempts = 0;
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      immutableContent: true,
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => {
+          attempts += 1;
+          if (attempts === 1) throw new Error("render failed");
+          return createElement("main", null, data.title);
+        },
+      }),
+    });
+
+    await expect(handler(new Request("https://farm.example/docs"))).rejects.toThrow();
+    const response = await handler(new Request("https://farm.example/docs"));
+    expect(response?.status).toBe(200);
+    expect(await response?.text()).toContain("<main>Introduction</main>");
+  });
+
   it("serves the bundled adapter CSS without a runtime filesystem dependency", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",
