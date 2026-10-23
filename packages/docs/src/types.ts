@@ -1256,6 +1256,13 @@ export interface LlmsTxtConfig {
    */
   apiCatalog?: boolean;
   /**
+   * Show a visible `llms.txt` link in the docs header, on screens at least 1024px wide, with
+   * the Pixel Border theme. Narrower screens never show it, so it can't cover the search and
+   * menu buttons; the link stays in the page for agents either way.
+   * @default false
+   */
+  showInHeader?: boolean;
+  /**
    * Base URL for your docs site (used to build absolute links in llms.txt).
    * @example "https://docs.example.com"
    */

@@ -231,6 +231,41 @@ code:not(pre code) {
   }
 }
 
+/* llms.txt header cell, shown when `llmsTxt.showInHeader` is set. It sits in the header's
+   top-right corner on wide screens. Below 1024px the header holds the search and menu
+   buttons, so the cell is not shown there; the link stays in the HTML for agents. */
+@media (min-width: 1024px) {
+  .fd-agent-llms-directive[data-visible-in-header="true"] {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 90;
+    display: inline-flex;
+    width: 105px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid var(--color-fd-border);
+    border-bottom: 1px solid var(--color-fd-border);
+    color: var(--color-fd-muted-foreground);
+    background: color-mix(in srgb, var(--color-fd-background) 94%, transparent);
+    font-family: var(--fd-font-mono, ui-monospace, monospace);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    text-decoration: none;
+  }
+
+  .fd-agent-llms-directive[data-visible-in-header="true"]:hover {
+    color: var(--color-fd-foreground);
+  }
+}
+
+@media (max-width: 1023px) {
+  .fd-agent-llms-directive[data-visible-in-header="true"] {
+    display: none;
+  }
+}
+
 /* ─── Sidebar (better-auth style) — light + dark ───────────────────── */
 /* Sidebar container: use theme variables for both modes */
 aside#nd-sidebar {
