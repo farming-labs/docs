@@ -119,6 +119,7 @@ export function FarmDocsPageRenderer({
           telemetryFramework="farmjs"
           description={data.descriptionInBody ? undefined : data.description}
           descriptionInBody={data.descriptionInBody}
+          generatedTitle={data.generatedTitle}
           readingTime={data.readingTime}
           lastModified={data.lastModified}
           structuredData={data.structuredData}

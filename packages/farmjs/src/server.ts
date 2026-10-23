@@ -272,6 +272,11 @@ export interface DocsServerLoadResult {
   description?: string;
   /** Whether the rendered MDX body already opens with the frontmatter description. */
   descriptionInBody?: boolean;
+  /**
+   * The frontmatter title, when the theme renders a page's title itself because
+   * the Markdown does not author one (as the Next.js layout does for shadcn-based themes).
+   */
+  generatedTitle?: string;
   rawContent: string;
   readingTime?: number | null;
   readingTimeFormat?: "long" | "short";
@@ -456,6 +461,35 @@ function stripMarkdownText(content: string): string {
     .replace(/^[-*_]{3,}\s*$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/**
+ * Whether Markdown authors its own page title: an ATX or setext h1, or an
+ * `<h1>`, outside code fences. Mirrors the Next.js docs layout in
+ * @farming-labs/theme, so a page gets the same generated header on both.
+ */
+export function hasAuthoredPageTitle(content: string): boolean {
+  const lines = content.split(/\r?\n/);
+  let fence: "`" | "~" | undefined;
+  let previousTextLine = "";
+
+  for (const line of lines) {
+    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1]?.[0] as "`" | "~";
+      fence = fence === marker ? undefined : (fence ?? marker);
+      previousTextLine = "";
+      continue;
+    }
+
+    if (fence) continue;
+    if (/^ {0,3}#(?:\s+|$)/.test(line) || /^\s*<h1(?:\s|>)/i.test(line)) return true;
+    if (previousTextLine && /^ {0,3}=+\s*$/.test(line)) return true;
+
+    previousTextLine = line.trim() && !line.trimStart().startsWith("<") ? line : "";
+  }
+
+  return false;
 }
 
 function markdownStartsWithDescription(content: string, description?: string): boolean {
@@ -1144,6 +1178,12 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const title = (data.title as string) ?? fallbackTitle;
     const description = data.description as string | undefined;
     const descriptionInBody = markdownStartsWithDescription(humanRawContent, description);
+    const generatedTitle =
+      config.theme?.name === "shadcn" &&
+      typeof data.title === "string" &&
+      !hasAuthoredPageTitle(content)
+        ? data.title
+        : undefined;
     const structuredData = renderDocsPageStructuredDataJson({
       title,
       description,
@@ -1161,6 +1201,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       title,
       description,
       descriptionInBody,
+      ...(generatedTitle ? { generatedTitle } : {}),
       rawContent: humanRawContent,
       readingTime,
       readingTimeFormat: readingTimeOptions.format,

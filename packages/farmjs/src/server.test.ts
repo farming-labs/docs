@@ -215,6 +215,28 @@ Build a Farm application.
     }
   });
 
+  it("generates a page title for shadcn-based themes when the Markdown has none, as on Next.js", async () => {
+    const page = (raw: string, theme?: { name: string }) =>
+      createDocsServer({
+        ...config,
+        ...(theme ? { theme } : {}),
+        _preloadedContent: { "/docs/page.md": `---\ntitle: Introduction\n---\n${raw}` },
+      }).load({ pathname: "/docs" });
+
+    expect((await page("Body text.", { name: "shadcn" })).generatedTitle).toBe("Introduction");
+    expect(
+      (await page("```md\n# not a title\n```\n\nBody.", { name: "shadcn" })).generatedTitle,
+    ).toBe("Introduction");
+    expect(
+      (await page("# Introduction\n\nBody.", { name: "shadcn" })).generatedTitle,
+    ).toBeUndefined();
+    expect(
+      (await page("Introduction\n===\n\nBody.", { name: "shadcn" })).generatedTitle,
+    ).toBeUndefined();
+    expect((await page("Body text.", { name: "default" })).generatedTitle).toBeUndefined();
+    expect((await page("Body text.")).generatedTitle).toBeUndefined();
+  });
+
   it("derives Edit on GitHub from the configured content directory", async () => {
     const server = createDocsServer({
       ...config,

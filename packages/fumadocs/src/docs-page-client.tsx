@@ -152,6 +152,8 @@ interface DocsPageClientProps {
   description?: string;
   /** The first authored paragraph already contains the frontmatter description. */
   descriptionInBody?: boolean;
+  /** This page's generated title, for adapters that resolve it per page. */
+  generatedTitle?: string;
   /** Built-in page feedback prompt configuration */
   feedbackEnabled?: boolean;
   feedbackQuestion?: string;
@@ -589,6 +591,7 @@ export function DocsPageClient({
   descriptionMap,
   description,
   descriptionInBody = false,
+  generatedTitle,
   feedbackEnabled = false,
   feedbackQuestion,
   feedbackPlaceholder,
@@ -621,7 +624,7 @@ export function DocsPageClient({
 
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
   const page = resolvePageMetadata(pageMetadata, normalizedPath);
-  const pageTitle = generatedTitleMap?.[normalizedPath] ?? page?.generatedTitle;
+  const pageTitle = generatedTitle ?? generatedTitleMap?.[normalizedPath] ?? page?.generatedTitle;
   const pageDescription = description ?? descriptionMap?.[normalizedPath] ?? page?.description;
   const isChangelogRoute = !!(
     changelogBasePath &&

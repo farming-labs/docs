@@ -73,4 +73,18 @@ describe("FarmDocsPageRenderer", () => {
     expect(isValidElement(docsLayout?.props.children)).toBe(true);
     expect((docsLayout?.props.children as ReactElement).type).toBe(Content);
   });
+
+  it("passes a generated page title to the layout", () => {
+    const tree = FarmDocsPageRenderer({
+      config: { entry: "docs" } as any,
+      data: {
+        url: "/docs",
+        tree: { name: "Docs", children: [] },
+        generatedTitle: "Introduction",
+      } as any,
+      Content: () => null,
+    });
+
+    expect(findElement(tree, BrowserDocsLayout)?.props.generatedTitle).toBe("Introduction");
+  });
 });
