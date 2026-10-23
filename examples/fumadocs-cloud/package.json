@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.2.126",
-    "@farming-labs/next": "0.2.126",
-    "@farming-labs/theme": "0.2.126",
+    "@farming-labs/docs": "0.2.127",
+    "@farming-labs/next": "0.2.127",
+    "@farming-labs/theme": "0.2.127",
     "lucide-react": "^0.564.0",
     "next": "16.3.8",
     "react": "^19.0.0",
