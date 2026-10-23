@@ -54,28 +54,26 @@ const docsSource: OmniSource = {
   id: "docs",
   label: "Documentation",
   minQuery: 1,
-  async fetch(query: string) {
+  async fetch(query: string, signal: AbortSignal) {
     if (!query.trim()) return [];
-    try {
-      const res = await fetch(`/api/docs?query=${encodeURIComponent(query)}`);
-      if (!res.ok) return [];
-      const data: SearchResult[] = await res.json();
-      return data.map(
-        (r): OmniItem => ({
-          id: r.id,
-          label: stripHtml(r.content),
-          subtitle: labelForType(r.type),
-          groupId: "docs",
-          href: r.url,
-          icon: iconForType(r.type),
-          keywords: [r.type],
-        }),
-      );
-    } catch {
-      return [];
-    }
+    const res = await fetch(`/api/docs?query=${encodeURIComponent(query)}`, { signal });
+    if (!res.ok) throw new Error(`Search failed (${res.status})`);
+    const data: SearchResult[] = await res.json();
+    return data.map(
+      (r): OmniItem => ({
+        id: r.id,
+        label: stripHtml(r.content),
+        subtitle: labelForType(r.type),
+        groupId: "docs",
+        href: r.url,
+        icon: iconForType(r.type),
+        keywords: [r.type],
+      }),
+    );
   },
 };
+
+const docsSources = [docsSource];
 
 export function DocsCommandSearch() {
   const [open, setOpen] = React.useState(false);
@@ -114,7 +112,7 @@ export function DocsCommandSearch() {
     <OmniCommandPalette
       open={open}
       onOpenChange={setOpen}
-      sources={[docsSource]}
+      sources={docsSources}
       storageKey="docs:omni:recents"
       showRecents
       placeholder="Search documentation…"

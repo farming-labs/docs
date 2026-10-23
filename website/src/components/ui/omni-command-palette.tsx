@@ -37,7 +37,7 @@ export type OmniItem = {
 export type OmniSource = {
   id: string;
   label: string;
-  fetch: (query: string) => Promise<OmniItem[]> | OmniItem[];
+  fetch: (query: string, signal: AbortSignal) => Promise<OmniItem[]> | OmniItem[];
   emptyHint?: React.ReactNode;
   minQuery?: number;
 };
@@ -113,15 +113,6 @@ function fuzzyScore(query: string, text: string, keywords: string[] = []) {
   return { score, indices: Array.from(new Set(indices)).sort((a, b) => a - b) };
 }
 
-function useDebouncedValue<T>(value: T, delay = DEFAULT_DEBOUNCE) {
-  const [v, setV] = React.useState(value);
-  React.useEffect(() => {
-    const id = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return v;
-}
-
 function useHotkeys(
   handlers: Array<{
     key: string;
@@ -176,10 +167,18 @@ export function OmniCommandPalette({
   const open = controlledOpen ?? uncontrolledOpen;
 
   const [query, setQuery] = React.useState("");
-  const debouncedQuery = useDebouncedValue(query, debounceMs);
-
-  const [loadingIds, setLoadingIds] = React.useState<Set<string>>(new Set());
-  const [results, setResults] = React.useState<Record<string, OmniItem[]>>({});
+  const searchQuery = query.trim();
+  const [search, setSearch] = React.useState<{
+    query: string;
+    results: Record<string, OmniItem[]>;
+    pending: Set<string>;
+    errors: Set<string>;
+  }>({ query: "", results: {}, pending: new Set(), errors: new Set() });
+  const [retry, setRetry] = React.useState(0);
+  const cache = React.useRef(new WeakMap<OmniSource, Map<string, OmniItem[]>>());
+  const results = search.query === searchQuery ? search.results : {};
+  const loading = open && (search.query !== searchQuery || search.pending.size > 0);
+  const errors = search.query === searchQuery ? search.errors : new Set<string>();
   const [activeId, setActiveId] = React.useState<string | null>(null);
 
   const listRef = React.useRef<HTMLDivElement | null>(null);
@@ -206,49 +205,69 @@ export function OmniCommandPalette({
   );
 
   React.useEffect(() => {
-    let cancelled = false;
+    if (!open) return;
+    const controller = new AbortController();
+    const nextResults: Record<string, OmniItem[]> = {};
+    const pendingSources = sources.filter((source) => {
+      if (searchQuery.length < (source.minQuery ?? 0)) return false;
+      const cached = cache.current.get(source)?.get(searchQuery);
+      if (cached) {
+        nextResults[source.id] = cached;
+        return false;
+      }
+      return true;
+    });
+    setSearch({
+      query: searchQuery,
+      results: nextResults,
+      pending: new Set(pendingSources.map((source) => source.id)),
+      errors: new Set(),
+    });
+    setActiveId(null);
 
-    async function go() {
-      const q = debouncedQuery;
-      const nextResults: Record<string, OmniItem[]> = {};
-      for (const src of sources) {
-        if (q.length < (src.minQuery ?? 0)) {
-          nextResults[src.id] = [];
-          continue;
-        }
-        const markLoading = (on: boolean) =>
-          setLoadingIds((prev) => {
-            const copy = new Set(prev);
-            if (on) copy.add(src.id);
-            else copy.delete(src.id);
-            return copy;
+    // Start independent sources together and cancel obsolete queries immediately,
+    // including the debounce window. Only the current request may publish state.
+    const timeout = setTimeout(() => {
+      for (const source of pendingSources) {
+        void (async () => {
+          let items: OmniItem[] = [];
+          let failed = false;
+          try {
+            items = await source.fetch(searchQuery, controller.signal);
+            if (!Array.isArray(items)) throw new Error("Invalid search response");
+            if (controller.signal.aborted) return;
+            const sourceCache = cache.current.get(source) ?? new Map<string, OmniItem[]>();
+            if (sourceCache.size >= 20) sourceCache.delete(sourceCache.keys().next().value!);
+            sourceCache.set(searchQuery, items);
+            cache.current.set(source, sourceCache);
+          } catch {
+            items = [];
+            failed = true;
+          }
+          if (controller.signal.aborted) return;
+          setSearch((previous) => {
+            const pending = new Set(previous.pending);
+            const errors = new Set(previous.errors);
+            pending.delete(source.id);
+            if (failed) errors.add(source.id);
+            return {
+              ...previous,
+              results: { ...previous.results, [source.id]: items },
+              pending,
+              errors,
+            };
           });
-
-        try {
-          markLoading(true);
-          const raw = await src.fetch(q);
-          nextResults[src.id] = Array.isArray(raw) ? raw : [];
-        } catch {
-          nextResults[src.id] = [];
-        } finally {
-          markLoading(false);
-        }
+        })();
       }
-
-      if (!cancelled) {
-        setResults(nextResults);
-        setActiveId(null);
-      }
-    }
-
-    go();
+    }, debounceMs);
     return () => {
-      cancelled = true;
+      clearTimeout(timeout);
+      controller.abort();
     };
-  }, [debouncedQuery, sources]);
+  }, [open, searchQuery, sources, debounceMs, retry]);
 
   const groups = React.useMemo(() => {
-    const q = debouncedQuery.trim();
+    const q = searchQuery;
     const out: Array<{
       id: string;
       label: string;
@@ -282,7 +301,7 @@ export function OmniCommandPalette({
     }
 
     const finalGroups: typeof out = [];
-    if (!debouncedQuery && showPinnedFirst && pinned.length) {
+    if (!searchQuery && showPinnedFirst && pinned.length) {
       finalGroups.push({
         id: "__pinned",
         label: "Pinned",
@@ -290,7 +309,7 @@ export function OmniCommandPalette({
       });
     }
 
-    if (!debouncedQuery && showRecents && recents.length) {
+    if (!searchQuery && showRecents && recents.length) {
       finalGroups.push({
         id: "__recents",
         label: "Recent",
@@ -309,7 +328,7 @@ export function OmniCommandPalette({
 
     finalGroups.push(...out);
     return finalGroups;
-  }, [results, sources, debouncedQuery, showPinnedFirst, showRecents, recents]);
+  }, [results, sources, searchQuery, showPinnedFirst, showRecents, recents]);
 
   const flatItems = React.useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
@@ -366,8 +385,10 @@ export function OmniCommandPalette({
         <Dialog.Overlay className="omni-overlay" />
         <Dialog.Content
           aria-label="Command palette"
+          aria-describedby={undefined}
           className={cn("omni-content", contentClassName)}
         >
+          <Dialog.Title className="sr-only">Search documentation</Dialog.Title>
           {/* Header */}
           <div className="omni-header">
             {renderHeader ? (
@@ -381,6 +402,7 @@ export function OmniCommandPalette({
                   ref={inputRef}
                   type="text"
                   role="combobox"
+                  aria-label="Search documentation"
                   aria-expanded="true"
                   aria-controls="omni-listbox"
                   aria-activedescendant={activeId ? `omni-item-${activeId}` : undefined}
@@ -416,15 +438,31 @@ export function OmniCommandPalette({
             id="omni-listbox"
             role="listbox"
             aria-label="Command results"
+            aria-busy={loading}
             className={cn("omni-body", className)}
             ref={listRef}
           >
-            {loadingIds.size > 0 && (
-              <div className="omni-loading">
+            {loading && (
+              <div className="omni-loading" role="status">
                 <Loader2 className="size-3 animate-spin" aria-hidden />
                 Fetching results…
               </div>
             )}
+
+            {sources
+              .filter((source) => errors.has(source.id))
+              .map((source) => (
+                <div key={source.id} className="omni-empty" role="alert">
+                  <p>Could not search {source.label}. Please try again.</p>
+                  <button
+                    type="button"
+                    className="omni-item"
+                    onClick={() => setRetry((value) => value + 1)}
+                  >
+                    Retry search
+                  </button>
+                </div>
+              ))}
 
             {groups.map((g) => (
               <div key={g.id} className="omni-group">
@@ -503,18 +541,22 @@ export function OmniCommandPalette({
                     );
                   })}
                 </div>
-                {g.items.length === 0 && debouncedQuery && (
-                  <div className="omni-empty-group">No matches in {g.label}.</div>
-                )}
+                {g.items.length === 0 &&
+                  searchQuery &&
+                  !loading &&
+                  !errors.has(g.id) &&
+                  flatItems.length > 0 && (
+                    <div className="omni-empty-group">No matches in {g.label}.</div>
+                  )}
               </div>
             ))}
 
-            {flatItems.length === 0 && (
+            {flatItems.length === 0 && !loading && errors.size === 0 && (
               <div className="omni-empty">
                 <div className="omni-empty-icon">
                   <History className="size-4" aria-hidden />
                 </div>
-                {debouncedQuery
+                {searchQuery
                   ? "No results found. Try a different query."
                   : "Type to search the docs, or browse recent items."}
               </div>
