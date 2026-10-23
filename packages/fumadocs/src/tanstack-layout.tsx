@@ -134,6 +134,8 @@ export interface TanstackDocsLayoutProps {
   locale?: string;
   description?: string;
   descriptionInBody?: boolean;
+  /** The MDX pipeline places `DocsTitleSlot` after the page's own h1. */
+  titleSlot?: boolean;
   readingTime?: number | null;
   lastModified?: string;
   previousPage?: { name: string; url: string } | null;
@@ -381,6 +383,7 @@ export function TanstackDocsLayout({
   locale,
   description,
   descriptionInBody,
+  titleSlot,
   readingTime,
   lastModified,
   previousPage,
@@ -624,6 +627,7 @@ export function TanstackDocsLayout({
           showLlmsInHeader={showLlmsInHeader || undefined}
           description={description}
           descriptionInBody={descriptionInBody}
+          titleSlot={titleSlot}
           feedbackEnabled={feedbackConfig.enabled}
           feedbackQuestion={feedbackConfig.question}
           feedbackPlaceholder={feedbackConfig.placeholder}
