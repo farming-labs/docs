@@ -454,6 +454,8 @@ export function TanstackDocsLayout({
   const readingTimeEnabled = readingTimeOptions.enabled;
 
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
+  const showLlmsInHeader =
+    typeof config.llmsTxt === "object" && config.llmsTxt?.showInHeader === true;
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
   const browserContainerProps: BrowserContainerProps | undefined = browserRuntime
@@ -619,6 +621,7 @@ export function TanstackDocsLayout({
           readingTimeFormat={readingTimeOptions.format}
           readingTime={typeof readingTime === "number" ? readingTime : undefined}
           llmsTxtEnabled={llmsTxtEnabled}
+          showLlmsInHeader={showLlmsInHeader || undefined}
           description={description}
           descriptionInBody={descriptionInBody}
           feedbackEnabled={feedbackConfig.enabled}

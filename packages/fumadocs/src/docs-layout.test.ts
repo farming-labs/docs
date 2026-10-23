@@ -330,6 +330,18 @@ agent:
     expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBeUndefined();
   });
 
+  it("shows the llms.txt header link when llmsTxt.showInHeader is set", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: { name: "fumadocs-pixel-border" } as any,
+      llmsTxt: { enabled: true, showInHeader: true },
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+
+    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
+  });
+
   it("generates frontmatter titles only when the MDX body does not author an h1", () => {
     const pages = {
       generated: ["---", "title: Generated", "---", "", "Body without a heading."],
