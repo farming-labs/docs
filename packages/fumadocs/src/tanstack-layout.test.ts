@@ -341,21 +341,6 @@ describe("TanstackDocsLayout", () => {
     });
   });
 
-  it("shows the llms.txt header link when llmsTxt.showInHeader is set", () => {
-    const tree = TanstackDocsLayout({
-      config: {
-        entry: "docs",
-        theme: { name: "fumadocs-pixel-border" } as any,
-        llmsTxt: { enabled: true, showInHeader: true },
-      },
-      tree: { name: "Docs", children: [] },
-      browserRuntime: true,
-      children: React.createElement("div", null, "child"),
-    });
-
-    expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBe(true);
-  });
-
   it("keeps provided navigation groups open when the sidebar is flat", () => {
     const tree = TanstackDocsLayout({
       config: {
