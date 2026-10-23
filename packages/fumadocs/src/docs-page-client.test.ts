@@ -204,6 +204,24 @@ describe("DocsPageClient generated page title", () => {
   });
 });
 
+describe("DocsPageClient per-page generated title", () => {
+  it("renders the title header from a generatedTitle prop", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        generatedTitle: "Installation",
+        description: "Install the SDK.",
+        children: React.createElement("p", null, "Body"),
+      }),
+    );
+
+    expect(html).toContain('<h1 class="fd-page-title">Installation</h1>');
+    expect(html).toContain("fd-generated-page-header");
+    expect(html).not.toContain("fd-title-decorations-fallback");
+  });
+});
+
 describe("DocsPageClient page navigation", () => {
   it("disables the built-in pager when custom page navigation is available", () => {
     const html = renderToStaticMarkup(

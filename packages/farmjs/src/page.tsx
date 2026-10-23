@@ -42,11 +42,19 @@ function withRenderableIcons(config: DocsConfig): DocsConfig {
   };
 }
 
+function wrapWith(Wrapper: ComponentType<{ children: ReactNode }> | undefined, node: ReactNode) {
+  return Wrapper ? <Wrapper>{node}</Wrapper> : node;
+}
+
 export interface FarmDocsPageRendererProps {
   config: DocsConfig;
   data: DocsServerLoadResult;
   Content?: ComponentType<any> | null;
   navigation?: BrowserNavigationAdapter;
+  /** Wraps the docs layout inside the providers, e.g. for a theme's own header. */
+  Layout?: ComponentType<{ children: ReactNode }>;
+  /** Wraps a page's content inside the layout, e.g. for a theme's page controls. */
+  Page?: ComponentType<{ children: ReactNode }>;
 }
 
 /** Renderer shared by Vite-loaded pages and build-time edge snapshots. */
@@ -55,6 +63,8 @@ export function FarmDocsPageRenderer({
   data,
   Content,
   navigation,
+  Layout,
+  Page,
 }: FarmDocsPageRendererProps) {
   const resolvedConfig = withRenderableIcons(config);
   const promptIconRegistry = resolvedConfig.icons as GetMDXComponentsOptions["icons"];
@@ -100,27 +110,34 @@ export function FarmDocsPageRenderer({
         }
         onAIActions={resolvedConfig.ai?.onActions}
       />
-      <BrowserDocsLayout
-        config={resolvedConfig}
-        tree={data.tree}
-        locale={data.locale}
-        telemetryFramework="farmjs"
-        description={data.descriptionInBody ? undefined : data.description}
-        descriptionInBody={data.descriptionInBody}
-        readingTime={data.readingTime}
-        lastModified={data.lastModified}
-        structuredData={data.structuredData}
-        editOnGithubUrl={data.editOnGithub}
-      >
-        <Content
-          components={getMDXComponents(resolvedConfig.components as Record<string, unknown>, {
-            onCopyClick: resolvedConfig.onCopyClick,
-            theme: resolvedConfig.theme,
-            icons: promptIconRegistry,
-            openDocsProviders: promptOpenDocsProviders,
-          })}
-        />
-      </BrowserDocsLayout>
+      {wrapWith(
+        Layout,
+        <BrowserDocsLayout
+          config={resolvedConfig}
+          tree={data.tree}
+          locale={data.locale}
+          telemetryFramework="farmjs"
+          description={data.descriptionInBody ? undefined : data.description}
+          descriptionInBody={data.descriptionInBody}
+          generatedTitle={data.generatedTitle}
+          readingTime={data.readingTime}
+          lastModified={data.lastModified}
+          structuredData={data.structuredData}
+          editOnGithubUrl={data.editOnGithub}
+        >
+          {wrapWith(
+            Page,
+            <Content
+              components={getMDXComponents(resolvedConfig.components as Record<string, unknown>, {
+                onCopyClick: resolvedConfig.onCopyClick,
+                theme: resolvedConfig.theme,
+                icons: promptIconRegistry,
+                openDocsProviders: promptOpenDocsProviders,
+              })}
+            />,
+          )}
+        </BrowserDocsLayout>,
+      )}
     </BrowserRootProvider>
   );
 }

@@ -37,4 +37,54 @@ describe("FarmDocsPageRenderer", () => {
     expect(layout?.props.previousPage).toBeUndefined();
     expect(layout?.props.nextPage).toBeUndefined();
   });
+
+  it("wraps the layout and the page content with the shell's layout and page", () => {
+    const Content = () => null;
+    const Layout = ({ children }: { children: ReactNode }) => children;
+    const Page = ({ children }: { children: ReactNode }) => children;
+    const tree = FarmDocsPageRenderer({
+      config: { entry: "docs" } as any,
+      data: { url: "/docs", tree: { name: "Docs", children: [] } } as any,
+      Content,
+      Layout,
+      Page,
+    });
+
+    // Layout sits inside the providers and around the docs layout.
+    const layout = findElement(tree, Layout);
+    expect(layout).toBeDefined();
+    expect(findElement(layout?.props.children, BrowserDocsLayout)).toBeDefined();
+    // Page sits inside the docs layout and around the page's content.
+    const docsLayout = findElement(tree, BrowserDocsLayout);
+    const page = findElement(docsLayout?.props.children, Page);
+    expect(page).toBeDefined();
+    expect(findElement(page?.props.children, Content)).toBeDefined();
+  });
+
+  it("renders the layout and content directly without shell wrappers", () => {
+    const Content = () => null;
+    const tree = FarmDocsPageRenderer({
+      config: { entry: "docs" } as any,
+      data: { url: "/docs", tree: { name: "Docs", children: [] } } as any,
+      Content,
+    });
+
+    const docsLayout = findElement(tree, BrowserDocsLayout);
+    expect(isValidElement(docsLayout?.props.children)).toBe(true);
+    expect((docsLayout?.props.children as ReactElement).type).toBe(Content);
+  });
+
+  it("passes a generated page title to the layout", () => {
+    const tree = FarmDocsPageRenderer({
+      config: { entry: "docs" } as any,
+      data: {
+        url: "/docs",
+        tree: { name: "Docs", children: [] },
+        generatedTitle: "Introduction",
+      } as any,
+      Content: () => null,
+    });
+
+    expect(findElement(tree, BrowserDocsLayout)?.props.generatedTitle).toBe("Introduction");
+  });
 });

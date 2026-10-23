@@ -36,6 +36,10 @@ export interface FarmDocsAdapterOptions {
    * Module whose default export wraps every docs page, relative to the Farm application root.
    * Farm renders docs pages outside the app's root layout, so use it for what that layout adds
    * to other routes, such as analytics or site-wide widgets.
+   *
+   * It may also export `layout`, which wraps the docs layout inside the docs providers (for a
+   * theme's own header), and `page`, which wraps each page's content inside the layout (for a
+   * theme's page controls): the places a theme's Next.js layout puts them.
    */
   shell?: string;
 }

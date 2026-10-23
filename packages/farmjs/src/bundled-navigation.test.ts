@@ -140,4 +140,21 @@ describe("bundled navigation indexing", () => {
       { type: "folder", name: "Folder", children: [{ name: "Empty child", url: "/docs/folder/" }] },
     ]);
   });
+
+  it("names a folder from a hidden index without linking it, and leaves hidden pages out, as on Next.js", async () => {
+    const docs = server({
+      "/docs/page.md": home,
+      "/docs/reference/page.md": "---\ntitle: API Reference\nhidden: true\n---\n",
+      "/docs/reference/hooks/page.md": "---\ntitle: Hooks\n---\n# Hooks",
+      "/docs/drafts/page.md": "---\ntitle: Drafts\nhidden: true\n---\n",
+      "/docs/guide/page.md": "---\ntitle: Guide\n---\n# Guide",
+    });
+    const { tree } = await docs.load({ pathname: "/docs" });
+    const reference = tree.children.find((node) => node.name === "API Reference");
+
+    expect(reference).toMatchObject({ type: "folder", children: [{ name: "Hooks" }] });
+    expect((reference as { index?: unknown } | undefined)?.index).toBeUndefined();
+    expect(tree.children.map((node) => node.name)).not.toContain("Drafts");
+    expect(tree.children.map((node) => node.name)).toContain("Guide");
+  });
 });
