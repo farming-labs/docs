@@ -562,6 +562,40 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(await response?.text()).toContain("<main>Introduction</main>");
   });
 
+  it("lists the modules a page needs as modulepreload links in its head", async () => {
+    const pages: string[] = [];
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      resolveModulePreloads: (page) => {
+        pages.push(page.sourcePath);
+        return ["/farm-client.js", "/chunks/adapter.js", "/chunks/adapter.js", '/chunks/"q".js'];
+      },
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const html = (await (await handler(new Request("https://farm.example/docs")))?.text()) ?? "";
+    const head = html.slice(0, html.indexOf("</head>"));
+
+    expect(pages).toEqual(["/docs/page.md"]);
+    expect(head).toContain('<link rel="modulepreload" href="/farm-client.js">');
+    expect(head.match(/href="\/chunks\/adapter\.js"/g)).toHaveLength(1);
+    expect(head).toContain('<link rel="modulepreload" href="/chunks/&quot;q&quot;.js">');
+  });
+
+  it("adds no modulepreload links without a resolver", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const html = (await (await handler(new Request("https://farm.example/docs")))?.text()) ?? "";
+    expect(html).not.toContain("modulepreload");
+  });
+
   it("serves the bundled adapter CSS without a runtime filesystem dependency", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       clientEntry: "/farm-client.js",

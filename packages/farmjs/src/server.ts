@@ -335,6 +335,12 @@ export interface FarmDocsRuntimeHandlerOptions {
    * instead of on every request. Development leaves it off so edits show up.
    */
   immutableContent?: boolean;
+  /**
+   * Browser modules a page needs before it hydrates, as public paths. They are
+   * listed as `<link rel="modulepreload">` so the browser downloads them
+   * alongside the client entry instead of discovering them one import at a time.
+   */
+  resolveModulePreloads?: (page: DocsServerLoadResult) => readonly string[] | undefined;
 }
 
 type ContentFileMap = Record<string, string>;
@@ -2741,6 +2747,7 @@ function renderFarmDocsDocument(input: {
   markup: string;
   clientEntry: string;
   stylesheets: readonly string[];
+  modulePreloads?: readonly string[];
   fonts?: FarmDocsRuntimeFonts;
   /** Request origin, so the Markdown alternate link is absolute as in the Next.js layout. */
   origin?: string;
@@ -2772,6 +2779,9 @@ function renderFarmDocsDocument(input: {
   <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
   ${input.stylesheets
     .map((href) => `<link rel="stylesheet" href="${escapeDocumentText(href)}">`)
+    .join("\n  ")}
+  ${[...new Set(input.modulePreloads ?? [])]
+    .map((href) => `<link rel="modulepreload" href="${escapeDocumentText(href)}">`)
     .join("\n  ")}
 </head>
 <body>
@@ -2840,6 +2850,7 @@ export function createFarmDocsRuntimeHandler(
       markup,
       clientEntry: options.clientEntry ?? "/farm-client.js",
       stylesheets: options.stylesheets ?? [],
+      modulePreloads: options.resolveModulePreloads?.(data),
       fonts,
       origin: originToken,
     });
