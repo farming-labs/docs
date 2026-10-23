@@ -464,6 +464,30 @@ function stripMarkdownText(content: string): string {
 }
 
 /**
+ * For shadcn-based themes, name a folder whose index page is titled
+ * "Introduction" after its slug, as the Next.js docs layout does.
+ */
+export function nameIntroductionFolders(tree: NavTree, themeName: string | undefined): NavTree {
+  if (themeName !== "shadcn") return tree;
+  const rename = (nodes: NavNode[]): NavNode[] =>
+    nodes.map((node) => {
+      if (node.type !== "folder") return node;
+      const children = rename(node.children);
+      const slug = node.index?.url.split("/").filter(Boolean).at(-1);
+      if (!slug || node.name.trim().toLowerCase() !== "introduction") {
+        return children === node.children ? node : { ...node, children };
+      }
+      const name = slug
+        .split(/[-_]/)
+        .filter(Boolean)
+        .map((part) => part[0]!.toUpperCase() + part.slice(1))
+        .join(" ");
+      return { ...node, name, children };
+    });
+  return { ...tree, children: rename(tree.children) };
+}
+
+/**
  * Whether Markdown authors its own page title: an ATX or setext h1, or an
  * `<h1>`, outside code fences. Mirrors the Next.js docs layout in
  * @farming-labs/theme, so a page gets the same generated header on both.
@@ -1068,9 +1092,12 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const configuredNavigation = navTreeFromNavigation(config, entry);
     const tree = applySidebarFolderIndexBehavior(
       configuredNavigation ??
-        (preloaded
-          ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-          : readNavTree(ctx.contentDirAbs)),
+        nameIntroductionFolders(
+          preloaded
+            ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+            : readNavTree(ctx.contentDirAbs),
+          config.theme?.name,
+        ),
       {
         sidebar: config.sidebar,
         defaultBehavior: "link",
