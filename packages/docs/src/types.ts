@@ -1256,9 +1256,10 @@ export interface LlmsTxtConfig {
    */
   apiCatalog?: boolean;
   /**
-   * Show a visible `llms.txt` link in the docs header, on screens at least 1024px wide, with
-   * the Pixel Border theme. Narrower screens never show it, so it can't cover the search and
-   * menu buttons; the link stays in the page for agents either way.
+   * Render the `llms.txt` link as a visible header link instead of a visually hidden agent
+   * directive. The link gets `data-visible-in-header="true"`; style and place it in your site's
+   * CSS (`.fd-agent-llms-directive[data-visible-in-header="true"]`), and keep it clear of the
+   * search and menu buttons on narrow screens. The link stays in the page for agents either way.
    * @default false
    */
   showInHeader?: boolean;
