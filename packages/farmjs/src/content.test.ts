@@ -90,6 +90,25 @@ describe("filesystem docs navigation", () => {
     },
   );
 
+  it("names a folder from a hidden index without linking it, and leaves hidden pages out, as on Next.js", () => {
+    write("page.md", "---\ntitle: Home\n---\n# Home");
+    write("reference/page.md", "---\ntitle: API Reference\nhidden: true\n---\n");
+    write("reference/hooks/page.md", "---\ntitle: Hooks\n---\n# Hooks");
+    write("drafts/page.md", "---\ntitle: Drafts\nhidden: true\n---\n");
+    write("notes.md", "---\ntitle: Notes\nhidden: true\n---\n");
+    write("guide/page.md", "---\ntitle: Guide\n---\n# Guide");
+
+    const tree = loadDocsNavTree(root, "docs");
+    const reference = tree.children.find((node) => node.name === "API Reference");
+
+    expect(reference).toMatchObject({ type: "folder", children: [{ name: "Hooks" }] });
+    expect((reference as { index?: unknown } | undefined)?.index).toBeUndefined();
+    const names = tree.children.map((node) => node.name);
+    expect(names).not.toContain("Drafts");
+    expect(names).not.toContain("Notes");
+    expect(names).toContain("Guide");
+  });
+
   it("preserves explicit ordering, nested overrides and unlisted entries", () => {
     write("guide/page.md", "---\ntitle: Guide\n---\n# Guide");
     write("guide/one.md", "# One");

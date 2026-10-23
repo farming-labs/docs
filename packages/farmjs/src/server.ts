@@ -579,7 +579,8 @@ function navTreeFromMap(
     pages.push({
       parts: pageParts,
       title: (data.title as string) ?? fallbackTitle,
-      url,
+      // A hidden page names its folder without being linked, as on Next.js.
+      url: data.hidden === true ? undefined : url,
       icon: data.icon as string | undefined,
       folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
       order: typeof data.order === "number" ? data.order : Infinity,
@@ -674,7 +675,47 @@ function navTreeFromMap(
         if (!slugMap.has(child.parts[depth])) ordered.push(child);
       }
 
-      return ordered.map((child) => {
+      return ordered
+        .map((child): NavNode | null => {
+          const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
+
+          if (hasGrandChildren) {
+            return {
+              type: "folder",
+              name: child.title,
+              icon: child.icon,
+              ...(child.url
+                ? {
+                    index: {
+                      type: "page" as const,
+                      name: child.title,
+                      url: child.url,
+                      icon: child.icon,
+                    },
+                  }
+                : {}),
+              folderIndexBehavior: child.folderIndexBehavior,
+              children: buildLevel(child.parts),
+            } satisfies NavNode;
+          }
+
+          if (!child.url) return null;
+          return {
+            type: "page",
+            name: child.title,
+            url: child.url,
+            icon: child.icon,
+          } satisfies NavNode;
+        })
+        .filter((node): node is NavNode => node !== null);
+    }
+
+    if (ordering === "numeric") {
+      directChildren.sort((a, b) => a.order - b.order);
+    }
+
+    return directChildren
+      .map((child): NavNode | null => {
         const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
 
         if (hasGrandChildren) {
@@ -697,49 +738,15 @@ function navTreeFromMap(
           } satisfies NavNode;
         }
 
+        if (!child.url) return null;
         return {
           type: "page",
           name: child.title,
-          url: child.url!,
+          url: child.url,
           icon: child.icon,
         } satisfies NavNode;
-      });
-    }
-
-    if (ordering === "numeric") {
-      directChildren.sort((a, b) => a.order - b.order);
-    }
-
-    return directChildren.map((child) => {
-      const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
-
-      if (hasGrandChildren) {
-        return {
-          type: "folder",
-          name: child.title,
-          icon: child.icon,
-          ...(child.url
-            ? {
-                index: {
-                  type: "page" as const,
-                  name: child.title,
-                  url: child.url,
-                  icon: child.icon,
-                },
-              }
-            : {}),
-          folderIndexBehavior: child.folderIndexBehavior,
-          children: buildLevel(child.parts),
-        } satisfies NavNode;
-      }
-
-      return {
-        type: "page",
-        name: child.title,
-        url: child.url!,
-        icon: child.icon,
-      } satisfies NavNode;
-    });
+      })
+      .filter((node): node is NavNode => node !== null);
   }
 
   children.push(...buildLevel([]));
