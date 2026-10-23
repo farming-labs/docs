@@ -1,4 +1,5 @@
 import { createDocsMarkdownParser } from "./markdown-parser.js";
+import { createDocsTextTransformCache } from "./text-transform-cache.js";
 import { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
 
 export { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
@@ -59,6 +60,10 @@ export interface DocsAudienceMdxIssue {
 
 const DOCS_AUDIENCE_TAG_NAMES = ["Audience", "Agent", "Human"] as const;
 const DOCS_AUDIENCE_TAG_CANDIDATE_PATTERN = /<\/?(?:Audience|Agent|Human)(?=[\s/>])/;
+const audienceContentCaches = {
+  human: createDocsTextTransformCache(),
+  agent: createDocsTextTransformCache(),
+};
 
 function parseAudienceOnly(attributes: string): DocsContentAudience | undefined {
   if (/\{\s*\.\.\./.test(attributes)) return undefined;
@@ -2217,6 +2222,12 @@ export function resolveDocsAudienceMdxContent(
   content: string,
   audience: DocsContentAudience,
 ): string {
+  if (!DOCS_AUDIENCE_TAG_CANDIDATE_PATTERN.test(content)) return content;
+  // Search and provenance can project the same source several times per query.
+  // Exact source keys keep edits fresh; separate bounded caches isolate audiences.
+  const cache = audienceContentCaches[audience];
+  const cached = cache.get(content);
+  if (cached !== undefined) return cached;
   const scopes: DocsAudienceScope[] = [];
   let output = "";
   let cursor = 0;
@@ -2252,7 +2263,9 @@ export function resolveDocsAudienceMdxContent(
 
   if (isAudienceVisible(scopes, audience)) output += content.slice(cursor);
 
-  return resolvedTag ? normalizeProjectedWhitespace(output) : content;
+  const result = resolvedTag ? normalizeProjectedWhitespace(output) : content;
+  cache.set(content, result);
+  return result;
 }
 
 /** Backwards-compatible name retained for existing integrations. */
