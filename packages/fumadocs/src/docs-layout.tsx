@@ -1022,8 +1022,6 @@ export function createDocsLayout(
 
   // llms.txt config
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
-  const showLlmsInHeader =
-    typeof config.llmsTxt === "object" && config.llmsTxt?.showInHeader === true;
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
 
   // Serialize provider icons to HTML strings so they survive the
@@ -1254,7 +1252,6 @@ export function createDocsLayout(
             readingTimeEnabled={readingTimeEnabled}
             readingTimeFormat={readingTimeFormat}
             llmsTxtEnabled={llmsTxtEnabled}
-            showLlmsInHeader={showLlmsInHeader || undefined}
             feedbackEnabled={feedbackConfig.enabled}
             feedbackQuestion={feedbackConfig.question}
             feedbackPlaceholder={feedbackConfig.placeholder}
