@@ -19,13 +19,9 @@
 
 import React from "react";
 import defaultMdxComponents from "fumadocs-ui/mdx";
-import { Tab, Tabs } from "fumadocs-ui/components/tabs";
-import {
-  CodeBlockTab,
-  CodeBlockTabs,
-  CodeBlockTabsList,
-  CodeBlockTabsTrigger,
-} from "fumadocs-ui/components/codeblock";
+import { Tab } from "fumadocs-ui/components/tabs";
+import { CodeBlockTab, CodeBlockTabs } from "fumadocs-ui/components/codeblock";
+import { CodeBlockTabsList, CodeBlockTabsTrigger, Tabs } from "./tabs.js";
 import { MDXImg } from "./mdx-img.js";
 import { createPreWithCodeSpacing } from "./code-block-spacing.js";
 import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
@@ -299,6 +295,9 @@ function CodeGroup({
 
 const extendedMdxComponents = {
   ...defaultMdxComponents,
+  // Markdown code tabs render these; the docs themes style their class names.
+  CodeBlockTabsList,
+  CodeBlockTabsTrigger,
   img: MDXImg,
   table: Table,
   Agent,

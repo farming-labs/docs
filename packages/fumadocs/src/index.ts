@@ -131,15 +131,9 @@ export type {
 } from "@farming-labs/docs";
 
 // ─── MDX components (for use in custom layouts or overrides) ──────────
-export { Tab, Tabs } from "fumadocs-ui/components/tabs";
-export {
-  CodeBlock,
-  CodeBlockTab,
-  CodeBlockTabs,
-  CodeBlockTabsList,
-  CodeBlockTabsTrigger,
-  Pre,
-} from "fumadocs-ui/components/codeblock";
+export { Tab } from "fumadocs-ui/components/tabs";
+export { CodeBlock, CodeBlockTab, CodeBlockTabs, Pre } from "fumadocs-ui/components/codeblock";
+export { CodeBlockTabsList, CodeBlockTabsTrigger, Tabs } from "./tabs.js";
 export { Agent, Audience, CodeGroup, Human } from "./mdx.js";
 export type { AgentProps, AudienceProps, CodeGroupProps, HumanProps } from "./mdx.js";
 export { HoverLink } from "./hover-link.js";
