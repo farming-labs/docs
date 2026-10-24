@@ -92,6 +92,7 @@ import {
   buildApiReferenceOperationPagesAsync,
   createApiReferenceOperationMarkdownResponse,
   createDocsMcpHttpHandler,
+  readDocsAppVersion,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
   resolveApiReferenceOpenApiDiscovery,
@@ -100,7 +101,11 @@ import {
 } from "@farming-labs/docs/server";
 
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
-import { bundledAgentSkills, bundledRootDocuments } from "@farming-labs/docs/agent-skills-bundle";
+import {
+  bundledAgentSkills,
+  bundledAppVersion,
+  bundledRootDocuments,
+} from "@farming-labs/docs/agent-skills-bundle";
 import {
   loadDocsNavTree,
   loadDocsContent,
@@ -905,6 +910,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const preloadedAgentSkills = config._preloadedAgentSkills ?? bundledAgentSkills;
   const rootAgentDocuments: RootAgentDocuments =
     config._preloadedRootDocuments ?? bundledRootDocuments;
+  // The default MCP server version: the build's snapshot, else the app's package.json
+  // (development, or a server started beside the project), else the docs default.
+  const appVersion = bundledAppVersion ?? readDocsAppVersion(rootDir);
   let publishedAgentSkills: ReturnType<typeof resolveConfiguredAgentSkills> | undefined;
   function getPublishedAgentSkills() {
     publishedAgentSkills ??= Array.isArray(preloadedAgentSkills)
@@ -1258,6 +1266,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(config.apiReference);
   const mcpConfig = resolveDocsMcpConfig(config.mcp, {
     defaultName: llmsTitle,
+    defaultVersion: appVersion,
   });
   const agentFeedbackConfig = resolveDocsAgentFeedbackConfig(config.feedback);
   const agentFeedbackDiscovery = {
@@ -2495,6 +2504,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     telemetryFramework: "farmjs",
     observability,
     defaultName: mcpSiteTitle,
+    defaultVersion: appVersion,
   });
 
   async function HEAD(event: { request: Request }): Promise<Response> {

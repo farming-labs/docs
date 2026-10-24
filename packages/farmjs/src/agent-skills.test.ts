@@ -53,6 +53,7 @@ description: Use this site through its docs.
 # Site skill
 `,
       "AGENTS.md": "# Site agents\n",
+      "package.json": JSON.stringify({ name: "site", version: "3.1.4" }),
     });
 
     const bundle = await buildBundle(root);
@@ -64,6 +65,7 @@ description: Use this site through its docs.
       "skill.md": expect.stringContaining("# Site skill"),
       "AGENTS.md": "# Site agents\n",
     });
+    expect(bundle.bundledAppVersion).toBe("3.1.4");
   });
 
   it("leaves the filesystem fallback in place when the docs config cannot be loaded", async () => {
@@ -73,6 +75,16 @@ description: Use this site through its docs.
 
     expect(bundle.bundledAgentSkills).toBeUndefined();
     expect(bundle.bundledRootDocuments).toBeUndefined();
+    expect(bundle.bundledAppVersion).toBeUndefined();
+  });
+
+  it("still snapshots the app version when the docs config cannot be loaded", async () => {
+    const root = createProject({ "package.json": JSON.stringify({ version: "0.9.0" }) });
+
+    const bundle = await buildBundle(root);
+
+    expect(bundle.bundledAgentSkills).toBeUndefined();
+    expect(bundle.bundledAppVersion).toBe("0.9.0");
   });
 
   it("only runs in production builds", () => {

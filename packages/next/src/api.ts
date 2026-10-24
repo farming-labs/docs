@@ -4,7 +4,11 @@ import {
   createDocsAPI as createThemeDocsAPI,
   createDocsMCPAPI as createThemeDocsMCPAPI,
 } from "@farming-labs/theme/api";
-import { bundledAgentSkills, bundledRootDocuments } from "@farming-labs/docs/agent-skills-bundle";
+import {
+  bundledAgentSkills,
+  bundledAppVersion,
+  bundledRootDocuments,
+} from "@farming-labs/docs/agent-skills-bundle";
 import type {
   DocsCloudRouteHandlerOptions,
   DocsCloudServer,
@@ -194,6 +198,7 @@ export function createDocsAPI(
     ...(rootDir ? { rootDir } : {}),
     _preloadedAgentSkills: options._preloadedAgentSkills ?? bundledAgentSkills,
     _preloadedRootDocuments: options._preloadedRootDocuments ?? bundledRootDocuments,
+    _preloadedAppVersion: options._preloadedAppVersion ?? bundledAppVersion,
   };
   const handlers = createThemeDocsAPI(resolvedOptions);
   const integration = resolveDocsCloudIntegration(cloudIntegration);
@@ -234,5 +239,6 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     ...(rootDir ? { rootDir } : {}),
     _preloadedAgentSkills: options._preloadedAgentSkills ?? bundledAgentSkills,
     _preloadedRootDocuments: options._preloadedRootDocuments ?? bundledRootDocuments,
+    _preloadedAppVersion: options._preloadedAppVersion ?? bundledAppVersion,
   });
 }

@@ -122,6 +122,7 @@ import {
   resolveConfiguredAgentSkills,
   serializeDocsIconRegistry,
   serializeOpenDocsProviders,
+  readDocsAppVersion,
 } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import {
@@ -638,6 +639,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const rootDir = path.resolve(
     ((config as Record<string, unknown>).rootDir as string | undefined) ?? process.cwd(),
   );
+  const appVersion = readDocsAppVersion(rootDir);
   let publishedAgentSkills: ReturnType<typeof resolveConfiguredAgentSkills> | undefined;
   function getPublishedAgentSkills() {
     publishedAgentSkills ??= Array.isArray(config._preloadedAgentSkills)
@@ -967,6 +969,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
     {
       defaultName: llmsTitle,
+      defaultVersion: appVersion,
     },
   );
   const agentFeedbackConfig = resolveDocsAgentFeedbackConfig(
@@ -2226,6 +2229,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     telemetryFramework: "sveltekit",
     observability,
     defaultName: mcpSiteTitle,
+    defaultVersion: appVersion,
   });
 
   async function HEAD(event: RequestEvent): Promise<Response> {

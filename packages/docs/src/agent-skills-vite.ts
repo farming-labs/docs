@@ -71,6 +71,7 @@ function serializeSnapshotLiteral(value: unknown): string {
 export function renderDocsAgentSkillsBundle(
   skills: readonly DocsPublishedAgentSkill[],
   rootDocuments?: Readonly<Record<string, string>>,
+  appVersion?: string,
 ): string {
   const snapshot = serializeSnapshotLiteral(skills.map(serializeSkill));
   const rootDocumentsSnapshot = rootDocuments
@@ -93,6 +94,7 @@ export const bundledAgentSkills = snapshot.map((skill) => ({
   files: skill.files.map((file) => ({ ...file, content: hydrateContent(file.content) })),
 }));
 export const bundledRootDocuments = ${rootDocumentsSnapshot};
+export const bundledAppVersion = ${appVersion ? serializeSnapshotLiteral(appVersion) : "undefined"};
 `;
 }
 

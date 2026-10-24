@@ -15,3 +15,10 @@ export const bundledAgentSkills: readonly DocsPublishedAgentSkill[] | undefined 
  * `bundledAgentSkills`; consumers fall back to the filesystem when undefined.
  */
 export const bundledRootDocuments: Readonly<Record<string, string>> | undefined = undefined;
+
+/**
+ * Build-time snapshot of the app's `package.json` version, reported as the MCP
+ * server version when `mcp.version` is not set. A deployed function usually has
+ * no `package.json` beside it; consumers read the file when this is undefined.
+ */
+export const bundledAppVersion: string | undefined = undefined;

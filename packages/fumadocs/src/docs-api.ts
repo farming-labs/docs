@@ -111,6 +111,7 @@ import {
   createApiReferenceOperationMarkdownResponse,
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
+  readDocsAppVersion,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
   resolveApiReferenceOpenApiDiscovery,
@@ -232,6 +233,8 @@ interface DocsAPIOptions {
   _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
   /** @internal Build-time root document snapshot (skill.md, AGENTS.md, AGENT.md) supplied by framework adapters. */
   _preloadedRootDocuments?: Readonly<Record<string, string>>;
+  /** @internal Build-time app package.json version supplied by framework adapters. */
+  _preloadedAppVersion?: string;
 }
 
 interface DocsMCPAPIOptions {
@@ -255,6 +258,8 @@ interface DocsMCPAPIOptions {
   _preloadedAgentSkills?: readonly DocsPublishedAgentSkill[];
   /** @internal Build-time root document snapshot (skill.md, AGENTS.md, AGENT.md) supplied by framework adapters. */
   _preloadedRootDocuments?: Readonly<Record<string, string>>;
+  /** @internal Build-time app package.json version supplied by framework adapters. */
+  _preloadedAppVersion?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -4022,6 +4027,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const rawMcpConfig = options?.mcp ?? readMcpConfig(readConfig);
   const mcpConfig = resolveDocsMcpConfig(rawMcpConfig, {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
+    defaultVersion: options?._preloadedAppVersion ?? readDocsAppVersion(root),
   });
   const discoveryLinkHeader = getDocsDiscoveryLinkHeader({
     includeApiCatalog: apiCatalogEnabled,
@@ -5277,6 +5283,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     telemetryFramework: "next",
     observability: options.observability,
     defaultName: navTitle,
+    defaultVersion: options._preloadedAppVersion ?? readDocsAppVersion(rootDir),
   });
 
   return {

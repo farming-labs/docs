@@ -684,7 +684,7 @@ Built-in MCP server configuration for AI clients, IDE agents, and local MCP tool
 | `enabled`  | `boolean`                | `true`            | Enable the MCP server. MCP is on by default; set `false` to opt out. |
 | `route`    | `string`                 | `"/api/docs/mcp"` | Streamable HTTP route used by the MCP endpoint |
 | `name`     | `string`                 | `nav.title` or `@farming-labs/docs` | MCP server name reported to clients |
-| `version`  | `string`                 | `"0.0.0"`        | Version string reported to clients |
+| `version`  | `string`                 | app `package.json` version, else `"0.0.0"` | Version string reported to clients |
 | `tools`    | `DocsMcpToolsConfig`     | all enabled       | Fine-grained tool toggles |
 | `security` | `DocsMcpSecurityConfig`  | see below         | HTTP Origin validation, opt-in authentication, and request limits |
 

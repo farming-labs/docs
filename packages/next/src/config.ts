@@ -48,6 +48,7 @@ import {
 } from "@farming-labs/docs/build";
 import {
   ensureDocsReviewWorkflow,
+  readDocsAppVersion,
   renderDocsAgentSkillsBundle,
   resolveConfiguredAgentSkillsSync,
 } from "@farming-labs/docs/build";
@@ -797,7 +798,11 @@ function writeAgentSkillsBundle(
 ): string {
   const bundlePath = join(root, AGENT_SKILLS_BUNDLE_PATH);
   const skills = resolveConfiguredAgentSkillsSync(configuredSkills, { rootDir: root });
-  const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(skills, readRootDocumentsSnapshot(root))}`;
+  const source = `${GENERATED_BANNER}${renderDocsAgentSkillsBundle(
+    skills,
+    readRootDocumentsSnapshot(root),
+    readDocsAppVersion(root),
+  )}`;
 
   makeGeneratedDir(dirname(bundlePath));
   if (!existsSync(bundlePath) || readFileSync(bundlePath, "utf8") !== source) {

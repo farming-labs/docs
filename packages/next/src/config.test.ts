@@ -1697,6 +1697,11 @@ export default { mcp: sharedMcp };
       `export default { entry: "docs", agent: { skills: { paths: ["skills/one", /* portable */ "../shared-skills",] } } };\n`,
       "utf8",
     );
+    writeFileSync(
+      join(projectDir, "package.json"),
+      JSON.stringify({ name: "website", version: "5.2.0" }),
+      "utf8",
+    );
     process.chdir(projectDir);
 
     const nextConfig = withDocs({});
@@ -1710,6 +1715,7 @@ export default { mcp: sharedMcp };
     expect(bundle).toContain('"name":"one"');
     expect(bundle).toContain('"name":"shared-skills"');
     expect(bundle).toContain('"sha256"');
+    expect(bundle).toContain('export const bundledAppVersion = "5.2.0";');
     expect(turbopackAliases["@farming-labs/docs/agent-skills-bundle"]).toBe(
       "./.docs/agent-skills-bundle.mjs",
     );
