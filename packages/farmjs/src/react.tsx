@@ -1,4 +1,13 @@
-import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import type { DocsConfig } from "@farming-labs/docs";
 import type { BrowserNavigationAdapter } from "@farming-labs/theme/browser";
@@ -9,7 +18,7 @@ import {
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
 import { restoreUnserializableValues } from "./config-values.js";
-import FarmDocsShell from "@farming-labs/farmjs/shell";
+import FarmDocsShell, * as farmDocsShellModule from "@farming-labs/farmjs/shell";
 import { FarmDocsPageRenderer } from "./page.js";
 import { createFarmDocsPageModules, type FarmDocsMdxModule } from "./page-modules.js";
 
@@ -29,6 +38,16 @@ export function loadFarmDocsPageModule(data: DocsServerLoadResult): Promise<void
   return pageModules.load(data);
 }
 
+// The shell module may also export `layout` and `page` to wrap the docs layout
+// and each page's content inside the providers, like a theme's header and page
+// controls in a Next.js docs layout.
+const shellExports = farmDocsShellModule as {
+  layout?: ComponentType<{ children: ReactNode }>;
+  page?: ComponentType<{ children: ReactNode }>;
+};
+const shellLayout = shellExports.layout;
+const shellPage = shellExports.page;
+
 export function FarmDocsPage({
   config,
   data,
@@ -46,6 +65,8 @@ export function FarmDocsPage({
         data={data}
         Content={module?.default}
         navigation={navigation}
+        Layout={shellLayout}
+        Page={shellPage}
       />
     </FarmDocsShell>
   );

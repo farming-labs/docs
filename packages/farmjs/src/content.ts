@@ -270,6 +270,7 @@ function buildNavNode(
     if (baseName === "page" || baseName === "index") return null;
 
     const data = readFrontmatter(full);
+    if (data.hidden === true) return null;
     const slug = [...slugParts, baseName].join("/");
 
     return {
@@ -294,19 +295,21 @@ function buildNavNode(
   const icon = data.icon as string | undefined;
 
   const children = scanDir(full, slug, entry, readFrontmatter, ordering, childSlugOrder);
+  // A hidden index names its folder without linking to it, as on Next.js.
+  const linkedIndex = indexPath && data.hidden !== true;
 
   if (children.length > 0) {
     return {
       type: "folder",
       name: displayName,
       icon,
-      ...(indexPath ? { index: { type: "page" as const, name: displayName, url, icon } } : {}),
+      ...(linkedIndex ? { index: { type: "page" as const, name: displayName, url, icon } } : {}),
       folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
       children,
     };
   }
 
-  return indexPath ? { type: "page", name: displayName, url, icon } : null;
+  return linkedIndex ? { type: "page", name: displayName, url, icon } : null;
 }
 
 function navEntrySlug(name: string): string {

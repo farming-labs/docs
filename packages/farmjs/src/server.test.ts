@@ -215,6 +215,49 @@ Build a Farm application.
     }
   });
 
+  it("generates a page title for shadcn-based themes when the Markdown has none, as on Next.js", async () => {
+    const page = (raw: string, theme?: { name: string }) =>
+      createDocsServer({
+        ...config,
+        ...(theme ? { theme } : {}),
+        _preloadedContent: { "/docs/page.md": `---\ntitle: Introduction\n---\n${raw}` },
+      }).load({ pathname: "/docs" });
+
+    expect((await page("Body text.", { name: "shadcn" })).generatedTitle).toBe("Introduction");
+    expect(
+      (await page("```md\n# not a title\n```\n\nBody.", { name: "shadcn" })).generatedTitle,
+    ).toBe("Introduction");
+    expect(
+      (await page("# Introduction\n\nBody.", { name: "shadcn" })).generatedTitle,
+    ).toBeUndefined();
+    expect(
+      (await page("Introduction\n===\n\nBody.", { name: "shadcn" })).generatedTitle,
+    ).toBeUndefined();
+    expect((await page("Body text.", { name: "default" })).generatedTitle).toBeUndefined();
+    expect((await page("Body text.")).generatedTitle).toBeUndefined();
+  });
+
+  it("names Introduction folders after their slug for shadcn-based themes, as on Next.js", async () => {
+    const load = (theme?: { name: string }) =>
+      createDocsServer({
+        ...config,
+        ...(theme ? { theme } : {}),
+        _preloadedContent: {
+          ...config._preloadedContent,
+          "/docs/react-native/page.md": "---\ntitle: Introduction\n---\nBody",
+          "/docs/react-native/setup/page.md": "---\ntitle: Setup\n---\nBody",
+        },
+      }).load({ pathname: "/docs" });
+    const folder = async (theme?: { name: string }) =>
+      (await load(theme)).tree.children.find((node) => node.type === "folder");
+
+    expect(await folder({ name: "shadcn" })).toMatchObject({
+      name: "React Native",
+      index: { name: "Introduction", url: "/docs/react-native" },
+    });
+    expect(await folder({ name: "default" })).toMatchObject({ name: "Introduction" });
+  });
+
   it("derives Edit on GitHub from the configured content directory", async () => {
     const server = createDocsServer({
       ...config,

@@ -134,6 +134,8 @@ export interface TanstackDocsLayoutProps {
   locale?: string;
   description?: string;
   descriptionInBody?: boolean;
+  /** Title the page renders itself because its Markdown has none. */
+  generatedTitle?: string;
   readingTime?: number | null;
   lastModified?: string;
   previousPage?: { name: string; url: string } | null;
@@ -381,6 +383,7 @@ export function TanstackDocsLayout({
   locale,
   description,
   descriptionInBody,
+  generatedTitle,
   readingTime,
   lastModified,
   previousPage,
@@ -621,6 +624,7 @@ export function TanstackDocsLayout({
           llmsTxtEnabled={llmsTxtEnabled}
           description={description}
           descriptionInBody={descriptionInBody}
+          generatedTitle={generatedTitle}
           feedbackEnabled={feedbackConfig.enabled}
           feedbackQuestion={feedbackConfig.question}
           feedbackPlaceholder={feedbackConfig.placeholder}
