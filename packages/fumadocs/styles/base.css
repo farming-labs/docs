@@ -109,9 +109,11 @@ article p {
 
 /* ─── Small text (captions, metadata) ─────────────────────────────── */
 
+/* .text-sm only inside the docs layout: a bare .text-sm retunes every Tailwind text-sm on an app
+   page that shares the docs stylesheet. :where() keeps the old specificity, so leading-* wins. */
 .prose small,
 article small,
-.text-sm {
+:where(#nd-docs-layout) .text-sm {
   font-size: var(--fd-small-size, 0.875rem);
   font-weight: var(--fd-small-weight, 400);
   line-height: var(--fd-small-line-height, 1.5);

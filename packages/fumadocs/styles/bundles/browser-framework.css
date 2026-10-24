@@ -5882,7 +5882,7 @@ article p {
 
 .prose small,
 article small,
-.text-sm {
+:where(#nd-docs-layout) .text-sm {
   font-size: var(--fd-small-size, 0.875rem);
   font-weight: var(--fd-small-weight, 400);
   line-height: var(--fd-small-line-height, 1.5);
