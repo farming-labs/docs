@@ -703,6 +703,14 @@ import config from "../../docs.config";
 export default defineDocsPublicHandler(config, useStorage);
 ```
 
+### Farm.js
+
+`withDocs()` from `@farming-labs/farmjs/config` serves `/api/docs/mcp`, `/mcp`, and
+`/.well-known/mcp` with no route file. Each endpoint also answers an
+[MCP server card](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/seps/2127-mcp-server-cards.md)
+at `<endpoint>/server-card`, for example `/api/docs/mcp/server-card`. The card names the server,
+its version, and the endpoint URL, never its tools, so it is public even when `authenticate` is set.
+
 ## Custom route
 
 If you want a custom MCP route, set it in `docs.config` and add the route file yourself.

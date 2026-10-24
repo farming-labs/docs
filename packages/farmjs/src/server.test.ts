@@ -388,6 +388,33 @@ Build a Farm application.
     }
   });
 
+  it("serves an MCP server card below each public MCP endpoint", async () => {
+    const server = createDocsServer({ ...config, mcp: { version: "3.0.0" } });
+
+    for (const endpoint of ["/api/docs/mcp", "/mcp", "/.well-known/mcp"]) {
+      const response = await server.handle(
+        new Request(`https://farm.example${endpoint}/server-card`),
+      );
+      expect(response?.status).toBe(200);
+      expect(response?.headers.get("content-type")).toContain("application/mcp-server-card+json");
+      expect(await response?.json()).toMatchObject({
+        name: "example.farm/docs",
+        title: "Farm Docs",
+        version: "3.0.0",
+        websiteUrl: "https://farm.example/docs",
+        remotes: [{ type: "streamable-http", url: `https://farm.example${endpoint}` }],
+      });
+    }
+
+    expect(
+      await server.handle(new Request("https://farm.example/dashboard/server-card")),
+    ).toBeNull();
+    const disabled = await createDocsServer({ ...config, mcp: false }).handle(
+      new Request("https://farm.example/api/docs/mcp/server-card"),
+    );
+    expect(disabled?.headers.get("content-type") ?? "").not.toContain("mcp-server-card");
+  });
+
   it("dispatches public MCP aliases through the wrapper", async () => {
     const server = createDocsServer(config);
     const response = await server.handle(
