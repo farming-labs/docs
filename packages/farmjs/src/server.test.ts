@@ -329,6 +329,65 @@ Build a Farm application.
     expect(applicationRoute).toBeNull();
   });
 
+  it("reports the app's package.json version as the MCP server version", async () => {
+    async function initialize(server: ReturnType<typeof createDocsServer>) {
+      const response = await server.handle(
+        new Request("https://farm.example/api/docs/mcp", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-06-18",
+              capabilities: {},
+              clientInfo: { name: "test", version: "1.0.0" },
+            },
+          }),
+        }),
+      );
+      const body = (await response?.text()) ?? "";
+      const payload = body.trim().startsWith("{")
+        ? body
+        : body
+            .split("\n")
+            .find((line) => line.startsWith("data:"))
+            ?.slice("data:".length);
+      return JSON.parse(payload ?? "null")?.result?.serverInfo as
+        | { name: string; version: string }
+        | undefined;
+    }
+
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farmjs-mcp-version-"));
+    try {
+      writeFileSync(
+        path.join(rootDir, "package.json"),
+        JSON.stringify({ name: "farm-site", version: "2.7.1" }),
+      );
+      expect(await initialize(createDocsServer({ ...config, rootDir }))).toEqual(
+        expect.objectContaining({ name: "Farm Docs", version: "2.7.1" }),
+      );
+      expect(
+        await initialize(createDocsServer({ ...config, rootDir, mcp: { version: "9.0.0" } })),
+      ).toEqual(expect.objectContaining({ version: "9.0.0" }));
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+
+    const missingRoot = mkdtempSync(path.join(tmpdir(), "farmjs-mcp-version-missing-"));
+    try {
+      expect(await initialize(createDocsServer({ ...config, rootDir: missingRoot }))).toEqual(
+        expect.objectContaining({ version: "0.0.0" }),
+      );
+    } finally {
+      rmSync(missingRoot, { recursive: true, force: true });
+    }
+  });
+
   it("dispatches public MCP aliases through the wrapper", async () => {
     const server = createDocsServer(config);
     const response = await server.handle(

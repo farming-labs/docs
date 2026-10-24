@@ -1633,7 +1633,7 @@ export interface DocsMcpConfig {
   name?: string;
   /**
    * Version string reported by the MCP server.
-   * Defaults to `"0.0.0"` when not set.
+   * Defaults to the app's `package.json` version, or `"0.0.0"` when it cannot be read.
    */
   version?: string;
   /** Fine-grained tool toggles. Omitted tools stay enabled. */

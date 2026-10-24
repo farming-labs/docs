@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   loadDocsConfigModule,
+  readDocsAppVersion,
   renderDocsAgentSkillsBundle,
   resolveConfiguredAgentSkillsSync,
 } from "@farming-labs/docs/build";
@@ -28,30 +29,39 @@ function readRootDocuments(root: string): Record<string, string> | undefined {
 }
 
 /**
- * Snapshot configured Agent Skills and the project-root agent documents (`skill.md`, `AGENTS.md`)
- * into production builds. A deployed function such as a Vercel function contains the server
- * bundle but not the project's files, so the request-time filesystem fallback finds nothing
- * there. Development keeps reading the files, so edits show up without a rebuild.
+ * Snapshot configured Agent Skills, the project-root agent documents (`skill.md`, `AGENTS.md`),
+ * and the app's `package.json` version (the default MCP server version) into production builds.
+ * A deployed function such as a Vercel function contains the server bundle but not the
+ * project's files, so the request-time filesystem fallback finds nothing there. Development
+ * keeps reading the files, so edits show up without a rebuild.
  */
 export function docsAgentSkillsBundle(options: FarmDocsAgentSkillsOptions = {}): Plugin {
   let root = process.cwd();
-  let source: Promise<string | undefined> | undefined;
+  let source: Promise<string> | undefined;
 
-  async function renderBundle(): Promise<string | undefined> {
+  async function renderBundle(): Promise<string> {
+    const appVersion = readDocsAppVersion(root);
     let loaded: Awaited<ReturnType<typeof loadDocsConfigModule>>;
     try {
       loaded = await loadDocsConfigModule(root, options.configPath);
     } catch {
       loaded = null;
     }
-    // Without the evaluated config, keep the package's empty module so the server still reads
-    // skills from the filesystem, as it did before this snapshot existed.
-    if (!loaded) return undefined;
+    // Without the evaluated config, leave the skills and documents undefined so the server
+    // still reads them from the filesystem, as it did before this snapshot existed.
+    if (!loaded) {
+      return [
+        "export const bundledAgentSkills = undefined;",
+        "export const bundledRootDocuments = undefined;",
+        `export const bundledAppVersion = ${appVersion ? JSON.stringify(appVersion) : "undefined"};`,
+        "",
+      ].join("\n");
+    }
 
     const skills = resolveConfiguredAgentSkillsSync(loaded.config.agent?.skills, {
       rootDir: root,
     });
-    return renderDocsAgentSkillsBundle(skills, readRootDocuments(root));
+    return renderDocsAgentSkillsBundle(skills, readRootDocuments(root), appVersion);
   }
 
   return {
@@ -67,10 +77,7 @@ export function docsAgentSkillsBundle(options: FarmDocsAgentSkillsOptions = {}):
     async load(id) {
       if (id !== RESOLVED_AGENT_SKILLS_BUNDLE_MODULE) return undefined;
       source ??= renderBundle();
-      return (
-        (await source) ??
-        "export const bundledAgentSkills = undefined;\nexport const bundledRootDocuments = undefined;\n"
-      );
+      return source;
     },
   };
 }

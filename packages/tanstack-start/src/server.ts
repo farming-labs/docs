@@ -88,6 +88,7 @@ import {
   resolveApiReferenceOpenApiDiscovery,
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
+  readDocsAppVersion,
 } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import {
@@ -611,6 +612,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const ordering = config.ordering;
   const contentDirBase = config.contentDir ?? entry;
   const rootDir = path.resolve((config.rootDir as string | undefined) ?? process.cwd());
+  const appVersion = readDocsAppVersion(rootDir);
   let publishedAgentSkills: ReturnType<typeof resolveConfiguredAgentSkills> | undefined;
   function getPublishedAgentSkills() {
     publishedAgentSkills ??= Array.isArray(config._preloadedAgentSkills)
@@ -918,6 +920,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(config.apiReference);
   const mcpConfig = resolveDocsMcpConfig(config.mcp, {
     defaultName: llmsTitle,
+    defaultVersion: appVersion,
   });
   const agentFeedbackConfig = resolveDocsAgentFeedbackConfig(config.feedback);
   const agentFeedbackDiscovery = {
@@ -2150,6 +2153,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     telemetryFramework: "tanstack-start",
     observability,
     defaultName: mcpSiteTitle,
+    defaultVersion: appVersion,
   });
 
   async function HEAD(event: { request: Request }): Promise<Response> {

@@ -4,6 +4,7 @@ import pc from "picocolors";
 import {
   buildApiReferenceOperationPagesAsync,
   createFilesystemDocsMcpSource,
+  readDocsAppVersion,
   resolveConfiguredAgentSkills,
   resolveDocsMcpConfig,
   runDocsMcpStdio,
@@ -83,8 +84,10 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
     baseUrl: loadedConfig ? resolveDocsMetadataBaseUrl(loadedConfig) : undefined,
   });
 
+  const appVersion = readDocsAppVersion(rootDir);
   const resolvedMcp = resolveDocsMcpConfig(mcp ?? true, {
     defaultName: navTitle ?? "@farming-labs/docs",
+    defaultVersion: appVersion,
   });
   const source = {
     ...filesystemSource,
@@ -125,6 +128,7 @@ export async function runMcp(options: RunMcpOptions = {}): Promise<void> {
     contentChanges: loadedConfig?.agent?.contentChanges,
     evaluations: loadedConfig?.agent?.evaluations,
     defaultName: navTitle ?? "@farming-labs/docs",
+    defaultVersion: appVersion,
   });
 }
 

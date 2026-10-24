@@ -2306,7 +2306,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         path: "mcp.version",
         name: "version",
         type: "string",
-        default: "0.0.0",
+        default: "package.json version or 0.0.0",
         description: "Version string reported to MCP clients.",
       },
       {
