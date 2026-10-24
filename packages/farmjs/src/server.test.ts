@@ -430,6 +430,43 @@ Build a Farm application.
 });
 
 describe("createFarmDocsRuntimeHandler", () => {
+  it("lists the docs MCP endpoint with the host's AI catalog", () => {
+    const registered: unknown[] = [];
+    createFarmDocsRuntimeHandler(
+      { ...config, mcp: { version: "3.0.0" } },
+      {
+        registerMCPServer: (server) => {
+          registered.push(server);
+          return () => {};
+        },
+      },
+    );
+    expect(registered).toEqual([
+      expect.objectContaining({ name: "Farm Docs", version: "3.0.0", path: "/api/docs/mcp" }),
+    ]);
+
+    const disabled: unknown[] = [];
+    createFarmDocsRuntimeHandler(
+      { ...config, mcp: false },
+      {
+        registerMCPServer: (server) => {
+          disabled.push(server);
+          return () => {};
+        },
+      },
+    );
+    expect(disabled).toEqual([]);
+
+    // A host that rejects the entry leaves the docs runtime working.
+    expect(() =>
+      createFarmDocsRuntimeHandler(config, {
+        registerMCPServer: () => {
+          throw new TypeError("rejected");
+        },
+      }),
+    ).not.toThrow();
+  });
+
   it("returns page data for client-side documentation navigation", async () => {
     const handler = createFarmDocsRuntimeHandler(
       {

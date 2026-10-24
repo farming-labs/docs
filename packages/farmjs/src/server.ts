@@ -302,6 +302,8 @@ export interface DocsServer {
   MCP: DocsMcpHttpHandlers;
   /** Handle a Farm Web Request, or return null when it is not a docs route. */
   handle: (request: Request) => Promise<Response | null>;
+  /** The docs MCP endpoint, when MCP is enabled. */
+  mcpServer?: { name: string; version: string; route: string; description?: string };
 }
 
 interface FarmDocsRuntimeFont {
@@ -343,6 +345,17 @@ export interface FarmDocsRuntimeHandlerOptions {
    * instead of on every request. Development leaves it off so edits show up.
    */
   immutableContent?: boolean;
+  /**
+   * Lists the docs MCP endpoint in the host's `/.well-known/ai-catalog.json`. Farm passes
+   * it from versions that serve the AI catalog; older hosts leave it out.
+   */
+  registerMCPServer?: (server: {
+    name: string;
+    version: string;
+    title?: string;
+    description?: string;
+    path: `/${string}`;
+  }) => () => void;
 }
 
 type ContentFileMap = Record<string, string>;
@@ -2614,7 +2627,16 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     return null;
   }
 
-  return { load, GET, HEAD, POST, MCP, handle };
+  const mcpServer = mcpConfig.enabled
+    ? {
+        name: mcpConfig.name,
+        version: mcpConfig.version,
+        route: mcpConfig.route,
+        ...(llmsDesc ? { description: llmsDesc } : {}),
+      }
+    : undefined;
+
+  return { load, GET, HEAD, POST, MCP, handle, mcpServer };
 }
 
 function escapeDocumentText(value: unknown): string {
@@ -2829,6 +2851,21 @@ export function createFarmDocsRuntimeHandler(
     _immutableContent: options.immutableContent === true,
   };
   const docsServer = createDocsServer(runtimeConfig);
+  const mcpServer = docsServer.mcpServer;
+  if (mcpServer && options.registerMCPServer && mcpServer.route.startsWith("/")) {
+    try {
+      // The host owns the registration's lifetime (dev drops it on restart).
+      options.registerMCPServer({
+        name: mcpServer.name,
+        version: mcpServer.version,
+        ...(mcpServer.description ? { description: mcpServer.description } : {}),
+        path: mcpServer.route as `/${string}`,
+      });
+    } catch (error) {
+      // The catalog is discovery only; a rejected entry must not take the docs down.
+      console.warn("[farmjs] could not list the docs MCP server in the AI catalog:", error);
+    }
+  }
   // With immutable content a page renders the same way every time, so a
   // production server renders it once and reuses the result. Only the request
   // origin in the Markdown alternate link differs between requests; the page is
