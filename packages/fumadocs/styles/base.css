@@ -22,7 +22,10 @@
 
 /* ─── Font families ──────────────────────────────────────────────────── */
 
-body {
+/* Only on a page that renders a docs layout: some frameworks ship this stylesheet with every route,
+   and a bare body rule (unlayered) beats an app page's own font utility classes. It stays on body
+   so dialogs portaled outside the layout inherit it; :where() keeps the old specificity. */
+body:where(:has(#nd-docs-layout, #nd-notebook-layout, #nd-flux-layout, #nd-home-layout)) {
   font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif));
 }
 
