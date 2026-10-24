@@ -216,9 +216,9 @@ function renderOperation(
       </div>
       <aside class="fl-api-code-panel" aria-label="Request example and interactive console" data-console-root>
         <div class="fl-api-code-header">
-          <div class="fl-api-code-tabs" role="tablist" aria-label="Request tools">
-            <button id="example-tab-${escapeAttribute(operation.slug)}" type="button" role="tab" aria-selected="true" aria-controls="example-panel-${escapeAttribute(operation.slug)}" tabindex="0" data-console-tab="example">cURL</button>
-            <button id="console-tab-${escapeAttribute(operation.slug)}" type="button" role="tab" aria-selected="false" aria-controls="console-panel-${escapeAttribute(operation.slug)}" tabindex="-1" data-console-tab="console">Try it</button>
+          <div class="fl-api-code-tabs fd-tabs-list" role="tablist" aria-label="Request tools">
+            <button id="example-tab-${escapeAttribute(operation.slug)}" type="button" role="tab" class="fd-tabs-trigger" aria-selected="true" aria-controls="example-panel-${escapeAttribute(operation.slug)}" tabindex="0" data-console-tab="example">cURL</button>
+            <button id="console-tab-${escapeAttribute(operation.slug)}" type="button" role="tab" class="fd-tabs-trigger" aria-selected="false" aria-controls="console-panel-${escapeAttribute(operation.slug)}" tabindex="-1" data-console-tab="console">Try it</button>
           </div>
           <button type="button" class="fl-api-copy" data-copy="${escapeAttribute(curl)}" data-example-copy aria-label="Copy cURL request">Copy</button>
         </div>

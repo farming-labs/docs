@@ -5818,7 +5818,7 @@ code.shiki:not(.not-fumadocs-code *) span {
   background: var(--color-fd-accent, rgba(209, 209, 209, 0.5));
 }
 
-body {
+body:where(:has(#nd-docs-layout, #nd-notebook-layout, #nd-flux-layout, #nd-home-layout)) {
   font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif));
 }
 
@@ -5896,7 +5896,7 @@ article p {
 
 .prose small,
 article small,
-.text-sm {
+:where(#nd-docs-layout) .text-sm {
   font-size: var(--fd-small-size, 0.875rem);
   font-weight: var(--fd-small-weight, 400);
   line-height: var(--fd-small-line-height, 1.5);

@@ -949,7 +949,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 }
 
 .fd-tabs-list,
-[role="tablist"] {
+.fd-tabs > [role="tablist"] {
   border: 0 !important;
   border-bottom: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
@@ -960,7 +960,7 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 
 .fd-tabs-trigger,
 .fd-tab-trigger,
-[role="tab"] {
+.fd-tabs > [role="tablist"] > [role="tab"] {
   border: 0 !important;
   border-bottom: 2px solid transparent !important;
   border-radius: 0 !important;
@@ -974,17 +974,18 @@ aside#nd-sidebar button.text-fd-muted-foreground,
 }
 
 .fd-tabs-trigger[data-state="active"],
+.fd-tabs-trigger[aria-selected="true"],
 .fd-tab-trigger[data-state="active"],
 .fd-tab-trigger.fd-tab-active,
-[role="tab"][aria-selected="true"],
-[role="tab"][data-active="true"] {
+.fd-tabs > [role="tablist"] > [role="tab"][aria-selected="true"],
+.fd-tabs > [role="tablist"] > [role="tab"][data-active="true"] {
   border-bottom-color: var(--color-fd-foreground) !important;
   color: var(--color-fd-foreground) !important;
 }
 
 .fd-tabs-trigger:focus-visible,
 .fd-tab-trigger:focus-visible,
-[role="tab"]:focus-visible {
+.fd-tabs > [role="tablist"] > [role="tab"]:focus-visible {
   outline: 2px solid var(--color-fd-ring) !important;
   outline-offset: -2px !important;
 }
