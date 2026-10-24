@@ -248,6 +248,12 @@ export {
   toDocsSitemapMarkdownUrl,
 } from "./sitemap.js";
 export { readDocsSitemapManifest } from "./sitemap-server.js";
+export {
+  DOCS_MCP_SERVER_CARD_SUFFIX,
+  createDocsMcpServerCard,
+  createDocsMcpServerCardResponse,
+} from "./mcp-server-card.js";
+export type { CreateDocsMcpServerCardOptions, DocsMcpServerCard } from "./mcp-server-card.js";
 export type {
   DocsSitemapFormat,
   DocsSitemapManifest,

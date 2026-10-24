@@ -92,6 +92,9 @@ import {
   buildApiReferenceOperationPagesAsync,
   createApiReferenceOperationMarkdownResponse,
   createDocsMcpHttpHandler,
+  createDocsMcpServerCard,
+  createDocsMcpServerCardResponse,
+  DOCS_MCP_SERVER_CARD_SUFFIX,
   readDocsAppVersion,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
@@ -2565,6 +2568,23 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         (pathname === apiReferencePath || pathname.startsWith(`${apiReferencePath}/`))) ||
       publicDocsPaths.has(pathname) ||
       pathname.startsWith("/.well-known/agent-skills/");
+
+    // The MCP server card (SEP-2127) sits below each public MCP endpoint.
+    if (mcpConfig.enabled && pathname.endsWith(DOCS_MCP_SERVER_CARD_SUFFIX)) {
+      const endpoint = pathname.slice(0, -DOCS_MCP_SERVER_CARD_SUFFIX.length) || "/";
+      if (mcpRoutes.has(endpoint)) {
+        return createDocsMcpServerCardResponse(
+          request,
+          createDocsMcpServerCard({
+            endpointUrl: `${url.origin}${endpoint}`,
+            name: mcpConfig.name,
+            version: mcpConfig.version,
+            description: llmsDesc,
+            websiteUrl: `${url.origin}${docsPath}`,
+          }),
+        );
+      }
+    }
 
     if (mcpConfig.enabled && mcpRoutes.has(pathname)) {
       if (method === "GET" || method === "POST" || method === "DELETE" || method === "OPTIONS") {
