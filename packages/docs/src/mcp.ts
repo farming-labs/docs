@@ -1373,6 +1373,52 @@ const DOCS_CONFIG_SCHEMA_OPTIONS_TEMPLATE: DocsMcpConfigSchemaOption[] = [
         ],
       },
       {
+        path: "agent.apiCatalog",
+        name: "apiCatalog",
+        type: "DocsAgentApiCatalogConfig",
+        description:
+          "Extra RFC 9727 API catalog entries. The catalog itself stays controlled by llmsTxt.apiCatalog.",
+        children: [
+          {
+            path: "agent.apiCatalog.openapi",
+            name: "openapi",
+            type: "string | DocsAgentApiCatalogOpenApiDocument | readonly (string | DocsAgentApiCatalogOpenApiDocument)[]",
+            description:
+              "Existing OpenAPI documents linked with service-desc from their product API targets. Nothing is generated and no pages are added.",
+            children: [
+              {
+                path: "agent.apiCatalog.openapi[].href",
+                name: "href",
+                type: "string",
+                description: "OpenAPI document URL; relative URLs resolve against the docs origin.",
+              },
+              {
+                path: "agent.apiCatalog.openapi[].targets",
+                name: "targets",
+                type: "readonly string[]",
+                default: '["/"]',
+                description:
+                  "Product API base URLs described by the document, listed as catalog items.",
+              },
+              {
+                path: "agent.apiCatalog.openapi[].title",
+                name: "title",
+                type: "string",
+                default: "OpenAPI schema",
+                description: "Link title for the document.",
+              },
+              {
+                path: "agent.apiCatalog.openapi[].type",
+                name: "type",
+                type: "string",
+                default: "application/vnd.oai.openapi+json",
+                description: "Media type for the document.",
+              },
+            ],
+          },
+        ],
+      },
+      {
         path: "agent.compact",
         name: "compact",
         type: "DocsAgentCompactConfig",

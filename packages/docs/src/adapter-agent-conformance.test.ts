@@ -582,6 +582,114 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
     ]);
   });
 
+  it("links an existing OpenAPI document from agent.apiCatalog without apiReference", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("the catalog must not fetch the OpenAPI document"));
+    try {
+      const server = createDocsServer({
+        entry: "docs",
+        agent: { apiCatalog: { openapi: "/openapi.json" } },
+        _preloadedContent: {
+          "/docs/page.md": "# Home\n",
+        },
+      });
+      const url = new URL("/.well-known/api-catalog", "https://docs.example.com");
+      const response = await server.GET({ request: new Request(url), url });
+      const catalog = (await response.json()) as {
+        linkset: Array<{
+          anchor: string;
+          item?: Array<{ href: string }>;
+          "service-desc"?: Array<{ href: string; type?: string; title?: string }>;
+          "service-doc"?: Array<{ href: string }>;
+        }>;
+      };
+      const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+
+      expect(response.status).toBe(200);
+      expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+        "https://docs.example.com/",
+      );
+      expect(catalog.linkset[0]?.["service-desc"]).toBeUndefined();
+      expect(contexts.get("https://docs.example.com/")?.["service-desc"]).toEqual([
+        {
+          href: "https://docs.example.com/openapi.json",
+          type: "application/vnd.oai.openapi+json",
+          title: "OpenAPI schema",
+        },
+      ]);
+      expect(JSON.stringify(catalog)).not.toContain("format=openapi");
+      expect(catalog.linkset[0]?.["service-doc"]?.map(({ href }) => href)).not.toContain(
+        "https://docs.example.com/api-reference",
+      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      const pageUrl = new URL("/docs", "https://docs.example.com");
+      const page = await server.GET({ request: new Request(pageUrl), url: pageUrl });
+      expect(page.headers.get("link") ?? "").not.toContain("openapi.json");
+
+      const disabled = createDocsServer({
+        entry: "docs",
+        llmsTxt: { apiCatalog: false },
+        agent: { apiCatalog: { openapi: "/openapi.json" } },
+        _preloadedContent: {
+          "/docs/page.md": "# Home\n",
+        },
+      });
+      expect((await disabled.GET({ request: new Request(url), url })).status).toBe(404);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("lists agent.apiCatalog documents next to apiReference without duplicates", async () => {
+    const { createDocsServer } = await loadCreateDocsServer();
+    const server = createDocsServer({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "https://schemas.example.com/product.json",
+        catalogTargets: ["https://api.example.com/v1"],
+      },
+      agent: {
+        apiCatalog: {
+          openapi: [
+            "/openapi.json",
+            {
+              href: "https://docs.example.com/api/docs?format=openapi",
+              targets: ["https://api.example.com/v1"],
+            },
+          ],
+        },
+      },
+      _preloadedContent: {
+        "/docs/page.md": "# Home\n",
+      },
+    });
+    const url = new URL("/.well-known/api-catalog", "https://docs.example.com");
+    const response = await server.GET({ request: new Request(url), url });
+    const catalog = (await response.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string }>;
+      }>;
+    };
+    const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+    const items = catalog.linkset[0]?.item?.map(({ href }) => href) ?? [];
+
+    expect(response.status).toBe(200);
+    expect(items.filter((href) => href === "https://api.example.com/v1")).toHaveLength(1);
+    expect(items).toContain("https://docs.example.com/");
+    expect(contexts.get("https://api.example.com/v1")?.["service-desc"]).toEqual([
+      expect.objectContaining({ href: "https://docs.example.com/api/docs?format=openapi" }),
+    ]);
+    expect(contexts.get("https://docs.example.com/")?.["service-desc"]).toEqual([
+      expect.objectContaining({ href: "https://docs.example.com/openapi.json" }),
+    ]);
+  });
+
   it("projects the same OpenAPI operations into llms, discovery, and the API catalog", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

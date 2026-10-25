@@ -16,6 +16,7 @@ import {
   createDocsStandardsResponse,
   getDocsAgentManifestLinkHeader,
   getDocsDiscoveryLinkHeader,
+  resolveDocsApiCatalogOpenApiDefinitions,
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
   type DocsA2AAgentCardOptions,
@@ -162,6 +163,70 @@ describe("RFC 9727 API catalog", () => {
         href: "https://docs.example.com/schemas/accounts.json",
       }),
     ]);
+  });
+
+  it("links existing OpenAPI documents from agent.apiCatalog.openapi", () => {
+    const result = buildDocsApiCatalog({
+      origin: "https://docs.example.com/some/page",
+      apiRoute: "/api/docs",
+      openapiDefinitions: resolveDocsApiCatalogOpenApiDefinitions([
+        "/openapi.json",
+        "/openapi.json",
+        {
+          href: "https://schemas.example.com/billing.json",
+          targets: ["https://api.example.com/billing"],
+          title: "Billing schema",
+          type: "application/vnd.oai.openapi+json;version=3.1",
+        },
+      ]),
+    });
+
+    expect(result.linkset[0].item?.map((item) => item.href)).toEqual([
+      "https://docs.example.com/api/docs",
+      "https://docs.example.com/",
+      "https://api.example.com/billing",
+    ]);
+    expect(result.linkset[0]["service-desc"]).toBeUndefined();
+
+    const contexts = new Map(result.linkset.map((context) => [context.anchor, context]));
+    expect(contexts.get("https://docs.example.com/")?.["service-desc"]).toEqual([
+      {
+        href: "https://docs.example.com/openapi.json",
+        type: "application/vnd.oai.openapi+json",
+        title: "OpenAPI schema",
+      },
+    ]);
+    expect(contexts.get("https://api.example.com/billing")?.["service-desc"]).toEqual([
+      {
+        href: "https://schemas.example.com/billing.json",
+        type: "application/vnd.oai.openapi+json;version=3.1",
+        title: "Billing schema",
+      },
+    ]);
+  });
+
+  it("normalizes and validates agent.apiCatalog.openapi entries", () => {
+    expect(resolveDocsApiCatalogOpenApiDefinitions(undefined)).toEqual([]);
+    expect(resolveDocsApiCatalogOpenApiDefinitions(" /openapi.json ")).toEqual([
+      {
+        route: "/openapi.json",
+        targets: [{ route: "/", title: "Product API" }],
+        type: "application/vnd.oai.openapi+json",
+        title: "OpenAPI schema",
+      },
+    ]);
+    expect(resolveDocsApiCatalogOpenApiDefinitions({ href: "/openapi.json", targets: [] })).toEqual(
+      [expect.objectContaining({ route: "/openapi.json", targets: [] })],
+    );
+    expect(() => resolveDocsApiCatalogOpenApiDefinitions("  ")).toThrow(
+      "agent.apiCatalog.openapi.href must be a non-empty URL string.",
+    );
+    expect(() =>
+      resolveDocsApiCatalogOpenApiDefinitions([
+        "/openapi.json",
+        { href: "/b.json", targets: "/" } as never,
+      ]),
+    ).toThrow("agent.apiCatalog.openapi[1].targets must be an array of URL strings.");
   });
 
   it("keeps a legacy OpenAPI description on the API route without leaking to the catalog", () => {

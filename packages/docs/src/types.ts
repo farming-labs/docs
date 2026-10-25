@@ -3867,6 +3867,52 @@ export interface DocsAgentConfig {
   contentChanges?: boolean | DocsAgentContentChangesConfig;
   /** Opt in to an A2A Agent Card for a separately implemented A2A service. */
   a2a?: DocsAgentA2AConfig;
+  /**
+   * Extra entries for the RFC 9727 API catalog at `/.well-known/api-catalog`.
+   *
+   * Use this to link API descriptions the site already serves without enabling `apiReference`.
+   * It adds no pages and generates no schema. The catalog itself stays controlled by
+   * `llmsTxt.apiCatalog` and `staticExport`.
+   *
+   * @example
+   * ```ts
+   * agent: { apiCatalog: { openapi: "/openapi.json" } }
+   * ```
+   */
+  apiCatalog?: DocsAgentApiCatalogConfig;
+}
+
+export interface DocsAgentApiCatalogConfig {
+  /**
+   * Existing OpenAPI documents to list in the API catalog. Each document is linked with
+   * `service-desc` from the product API targets it describes, which are also listed as catalog
+   * `item` links. A string is shorthand for `{ href }`.
+   *
+   * @example "/openapi.json"
+   * @example [{ href: "https://api.example.com/openapi.json", targets: ["https://api.example.com"] }]
+   */
+  openapi?: DocsAgentApiCatalogOpenApiInput;
+}
+
+export type DocsAgentApiCatalogOpenApiInput =
+  | string
+  | DocsAgentApiCatalogOpenApiDocument
+  | readonly (string | DocsAgentApiCatalogOpenApiDocument)[];
+
+export interface DocsAgentApiCatalogOpenApiDocument {
+  /** OpenAPI document URL. Relative URLs resolve against the docs origin. */
+  href: string;
+  /**
+   * Product API base URLs described by the document. Relative URLs resolve against the docs
+   * origin. An explicit empty array lists nothing.
+   *
+   * @default ["/"]
+   */
+  targets?: readonly string[];
+  /** Link title for the document. @default "OpenAPI schema" */
+  title?: string;
+  /** Media type for the document. @default "application/vnd.oai.openapi+json" */
+  type?: string;
 }
 
 export interface DocsOkfConfig extends DocsOkfTrustMetadataInput {

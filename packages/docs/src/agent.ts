@@ -13,6 +13,7 @@ export { normalizeDocsUrlPath, toDocsMarkdownUrl } from "./urls.js";
 import type {
   DocsConfig,
   DocsAccessPrincipal,
+  DocsAgentApiCatalogOpenApiInput,
   DocsAgentContentChangesConfig,
   DocsOkfConfig,
   DocsOkfTrustMetadata,
@@ -84,6 +85,7 @@ import {
   buildDocsApiCatalog,
   createDocsStandardsResponse,
   isDocsStandardsDiscoveryRequest,
+  resolveDocsApiCatalogOpenApiDefinitions,
   resolveDocsDiscoveryApiRoute,
   type DocsDiscoveryApiRouteOptions,
   type DocsA2AAgentCardOptions,
@@ -693,6 +695,8 @@ export interface DocsAgentsDocumentOptions extends DocsSkillDocumentOptions {}
 
 export interface DocsStandardsDiscoveryResponseOptions extends DocsAgentDiscoverySpecOptions {
   request: Request;
+  /** Existing OpenAPI documents from `agent.apiCatalog.openapi` to link in the API catalog. */
+  apiCatalogOpenapi?: DocsAgentApiCatalogOpenApiInput;
   preferredSkillDocument?: string | null;
   fallbackSkillDocument: string;
   /** Stable representation generation or source modification time. */
@@ -2310,6 +2314,7 @@ export async function createDocsStandardsDiscoveryResponse({
   publishedSkills,
   agentCard,
   lastModified,
+  apiCatalogOpenapi,
 }: DocsStandardsDiscoveryResponseOptions): Promise<Response | null> {
   const url = new URL(request.url);
   const resolvedApiRoute = resolveDocsDiscoveryApiRoute(apiRoute);
@@ -2382,8 +2387,8 @@ export async function createDocsStandardsDiscoveryResponse({
           mcpRoute: mcp.enabled ? mcp.route : null,
           protectedResourceMetadataRoutes,
           feedbackRoutes: feedback?.enabled ? [feedbackRoute, feedbackSchemaRoute] : [],
-          openapiDefinitions:
-            openapiConfig.enabled && openapiConfig.catalogTargets?.length
+          openapiDefinitions: [
+            ...(openapiConfig.enabled && openapiConfig.catalogTargets?.length
               ? (openapiConfig.versions?.length
                   ? openapiConfig.versions
                   : [
@@ -2412,7 +2417,9 @@ export async function createDocsStandardsDiscoveryResponse({
                     title: "Product API",
                   })),
                 }))
-              : [],
+              : []),
+            ...resolveDocsApiCatalogOpenApiDefinitions(apiCatalogOpenapi),
+          ],
           apiReferenceRoute:
             openapiConfig.enabled && openapiConfig.apiReferencePath
               ? openapiConfig.apiReferencePath

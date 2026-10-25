@@ -1972,6 +1972,42 @@ export async function GET() {
     ]);
   });
 
+  it("links an existing OpenAPI document from agent.apiCatalog without apiReference", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-api-catalog-openapi-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      agent: { apiCatalog: { openapi: "/openapi.json" } },
+    });
+    const response = await GET(new Request("https://docs.example.com/.well-known/api-catalog"));
+    const catalog = (await response.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string; type?: string }>;
+      }>;
+    };
+    const contexts = new Map(catalog.linkset.map((context) => [context.anchor, context]));
+
+    expect(response.status).toBe(200);
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain(
+      "https://docs.example.com/",
+    );
+    expect(contexts.get("https://docs.example.com/")?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "https://docs.example.com/openapi.json",
+        type: "application/vnd.oai.openapi+json",
+      }),
+    ]);
+    expect(JSON.stringify(catalog)).not.toContain("format=openapi");
+  });
+
   it("serves robots.txt by default through the shared docs api handler", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-robots-default-route-"));
     tempDirs.push(rootDir);

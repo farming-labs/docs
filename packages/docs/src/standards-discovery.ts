@@ -14,6 +14,7 @@ import type {
   DocsAgentA2ASecurityScheme,
   DocsAgentA2ASecurityScopeList,
   DocsAgentA2ASkill,
+  DocsAgentApiCatalogOpenApiInput,
 } from "./types.js";
 import {
   parseDocsAgentSkillFrontmatter,
@@ -28,6 +29,7 @@ export const DEFAULT_API_CATALOG_ROUTE = "/.well-known/api-catalog";
 export const DEFAULT_API_CATALOG_FORMAT = "api-catalog";
 export const API_CATALOG_PROFILE_URI = "https://www.rfc-editor.org/info/rfc9727";
 export const API_CATALOG_MEDIA_TYPE = "application/linkset+json";
+export const OPENAPI_MEDIA_TYPE = "application/vnd.oai.openapi+json";
 
 export const DEFAULT_AGENT_SKILLS_INDEX_ROUTE = "/.well-known/agent-skills/index.json";
 export const DEFAULT_AGENT_SKILLS_ROUTE_PREFIX = "/.well-known/agent-skills";
@@ -296,6 +298,48 @@ function toTarget(
   return href ? { href, ...(type ? { type } : {}), ...(title ? { title } : {}) } : null;
 }
 
+/**
+ * Normalize `agent.apiCatalog.openapi` into catalog OpenAPI definitions.
+ *
+ * The documents are only linked. Nothing is fetched or generated.
+ */
+export function resolveDocsApiCatalogOpenApiDefinitions(
+  input: DocsAgentApiCatalogOpenApiInput | null | undefined,
+): DocsApiCatalogOpenApiDefinition[] {
+  if (input === undefined || input === null) return [];
+  const entries = (Array.isArray(input) ? input : [input]) as readonly unknown[];
+
+  return entries.map((entry, index) => {
+    const label = Array.isArray(input)
+      ? `agent.apiCatalog.openapi[${index}]`
+      : "agent.apiCatalog.openapi";
+    const document = typeof entry === "string" ? { href: entry } : entry;
+    if (!document || typeof document !== "object" || Array.isArray(document)) {
+      throw new Error(`${label} must be a URL string or an object with an href.`);
+    }
+    const { href, targets, title, type } = document as Record<string, unknown>;
+    if (typeof href !== "string" || !href.trim()) {
+      throw new Error(`${label}.href must be a non-empty URL string.`);
+    }
+    if (
+      targets !== undefined &&
+      (!Array.isArray(targets) || targets.some((target) => typeof target !== "string"))
+    ) {
+      throw new Error(`${label}.targets must be an array of URL strings.`);
+    }
+
+    return {
+      route: href.trim(),
+      targets: ((targets as string[] | undefined) ?? ["/"]).map((route) => ({
+        route,
+        title: "Product API",
+      })),
+      type: typeof type === "string" && type.trim() ? type.trim() : OPENAPI_MEDIA_TYPE,
+      title: typeof title === "string" && title.trim() ? title.trim() : "OpenAPI schema",
+    };
+  });
+}
+
 /** Build an RFC 9727 API Catalog using the RFC 9264 JSON Linkset representation. */
 export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCatalog {
   const catalogUrl = resolveHttpUrl(DEFAULT_API_CATALOG_ROUTE, options.origin);
@@ -355,7 +399,10 @@ export function buildDocsApiCatalog(options: DocsApiCatalogOptions): DocsApiCata
 
     for (const target of targets) {
       const current = serviceDescriptionsByAnchor.get(target.href) ?? [];
-      serviceDescriptionsByAnchor.set(target.href, compactUniqueTargets([...current, descriptor]));
+      serviceDescriptionsByAnchor.set(
+        target.href,
+        compactUniqueTargetsByHref([...current, descriptor]),
+      );
     }
   }
 
