@@ -312,6 +312,81 @@ Build a Farm application.
     }
   });
 
+  it("keeps server file paths out of agent search, trust, and MCP output", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-server-paths-"));
+    const contentDir = path.join(rootDir, "farm-docs-content");
+    try {
+      mkdirSync(path.join(contentDir, "routing"), { recursive: true });
+      writeFileSync(
+        path.join(contentDir, "page.md"),
+        "---\ntitle: Introduction\n---\n\n# Introduction\n\nFarm routing basics.\n",
+      );
+      writeFileSync(
+        path.join(contentDir, "routing", "page.md"),
+        "---\ntitle: Routing\n---\n\n# Routing\n\nFile based routing for Farm apps.\n",
+      );
+      const server = createDocsServer({
+        entry: "docs",
+        contentDir,
+        rootDir,
+        nav: { title: "Farm Docs" },
+        mcp: true,
+        agent: { okf: true },
+      } as any);
+
+      async function mcp(id: number, name: string, args: Record<string, unknown>) {
+        const response = await server.handle(
+          new Request("https://farm.example/api/docs/mcp", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              accept: "application/json, text/event-stream",
+              "mcp-protocol-version": "2025-06-18",
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id,
+              method: "tools/call",
+              params: { name, arguments: args },
+            }),
+          }),
+        );
+        return (await response?.text()) ?? "";
+      }
+
+      const structured = await server.handle(
+        new Request(
+          "https://farm.example/api/docs?query=routing&audience=agent&response=structured",
+        ),
+      );
+      const structuredBody = (await structured?.text()) ?? "";
+      expect(structuredBody).toContain('"id":"routing/page.md"');
+
+      const outputs = [
+        structuredBody,
+        await (await server.handle(
+          new Request("https://farm.example/api/docs?query=routing"),
+        ))!.text(),
+        await mcp(1, "search_docs", { query: "routing" }),
+        await mcp(2, "list_pages", {}),
+        await mcp(3, "read_page", { path: "/docs/routing" }),
+        await mcp(4, "get_trust_metadata", {}),
+        await mcp(5, "get_context", { query: "routing" }),
+        await (await server.handle(new Request("https://farm.example/llms-full.txt")))!.text(),
+        await (await server.handle(new Request("https://farm.example/docs/routing.md")))!.text(),
+      ];
+      expect(outputs[2]).toContain("/docs/routing");
+      expect(outputs[5]).toContain('"id":"routing/page.md"');
+      for (const output of outputs) {
+        expect(output).not.toContain('"isError":true');
+        expect(output).not.toContain(rootDir.replace(/\\/g, "/"));
+        expect(output).not.toContain(JSON.stringify(rootDir).slice(1, -1));
+      }
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
   it("handles docs endpoints and falls through for application routes", async () => {
     const server = createDocsServer(config);
 

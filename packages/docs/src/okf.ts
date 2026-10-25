@@ -7,6 +7,7 @@ import type {
   DocsOkfTrustMetadataInput,
   DocsOkfTrustTier,
 } from "./types.js";
+import { toPublicDocsSourcePath } from "./public-source-path.js";
 
 export const DOCS_OKF_VERSION = "0.2";
 export const DOCS_OKF_BUNDLE_FORMAT = "open-knowledge-format.v0.2";
@@ -186,9 +187,10 @@ export function resolveDocsOkfTrustMetadata(
     };
   const sources = [...(authored.sources ?? config.sources ?? [])];
   if (sources.length === 0) {
+    const sourcePath = toPublicDocsSourcePath(page.sourcePath);
     sources.push({
       resource: page.canonicalUrl ?? page.url,
-      ...(page.sourcePath ? { id: page.sourcePath } : {}),
+      ...(sourcePath ? { id: sourcePath } : {}),
       title: page.title,
       ...(bestTimestamp ? { last_modified: bestTimestamp } : {}),
     });
@@ -218,7 +220,7 @@ export function buildDocsOkfBundle(
   const config = resolveDocsOkfConfig(value);
   const documents = pages
     .map((page) => ({
-      id: page.sourcePath ?? page.url,
+      id: toPublicDocsSourcePath(page.sourcePath) ?? page.url,
       url: page.canonicalUrl ?? page.url,
       title: page.title,
       ...(page.content ? { content: page.content } : {}),

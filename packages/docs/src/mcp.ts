@@ -100,6 +100,7 @@ import {
   normalizeDocsOkfTrustMetadataInput,
   resolveDocsOkfConfig,
 } from "./okf.js";
+import { toPublicDocsSourcePath } from "./public-source-path.js";
 import {
   acquireDocsOpenApiMcpBudget,
   readDocsOpenApiMcpResponse,
@@ -5643,7 +5644,9 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               url: page.url,
               title: page.title,
               ...(page.description ? { description: page.description } : {}),
-              ...(page.sourcePath ? { sourcePath: page.sourcePath } : {}),
+              ...(toPublicDocsSourcePath(page.sourcePath)
+                ? { sourcePath: toPublicDocsSourcePath(page.sourcePath) }
+                : {}),
               ...(page.lastModified ? { lastModified: page.lastModified } : {}),
             },
             contract,
@@ -8349,7 +8352,7 @@ function toDocsListPageSummary(page: DocsMcpPage): DocsMcpDocsPageSummary {
     description: page.description,
     agent: toAgentContractSummary(page.agent),
     icon: page.icon,
-    sourcePath: page.sourcePath,
+    sourcePath: toPublicDocsSourcePath(page.sourcePath),
     lastModified: page.lastModified,
   };
 }
@@ -8762,7 +8765,7 @@ function extractDocsMcpCodeExamples(page: DocsMcpPage): DocsMcpCodeExample[] {
           url: page.url,
           title: page.title,
           description: page.description,
-          sourcePath: page.sourcePath,
+          sourcePath: toPublicDocsSourcePath(page.sourcePath),
           lastModified: page.lastModified,
         },
         language: parsed.language,
@@ -8865,7 +8868,7 @@ function getCodeExampleSearchText(example: DocsMcpCodeExample): string {
     example.page.url,
     example.page.title,
     example.page.description,
-    example.page.sourcePath,
+    toPublicDocsSourcePath(example.page.sourcePath),
     example.language,
     example.title,
     example.framework,
@@ -8989,7 +8992,7 @@ function toStructuredDocsMcpPage(page: DocsMcpPage) {
     description: page.description,
     related: page.related,
     icon: page.icon,
-    sourcePath: page.sourcePath,
+    sourcePath: toPublicDocsSourcePath(page.sourcePath),
     lastModified: page.lastModified,
     locale: page.locale,
     framework: page.framework,
@@ -9296,7 +9299,7 @@ export async function buildDocsMcpContext(
       url: sourceUrl,
       section: selectedSection?.title,
       anchor,
-      sourcePath: page.sourcePath,
+      sourcePath: toPublicDocsSourcePath(page.sourcePath),
       lastModified: result.source?.lastModified ?? page.lastModified,
       locale: scope.locale,
       framework: scope.framework,
