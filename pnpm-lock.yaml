@@ -84,7 +84,7 @@ importers:
         version: 1.59.1
       tailwindcss:
         specifier: ^4.2.1
-        version: 4.2.1
+        version: 4.3.3
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -98,16 +98,16 @@ importers:
         specifier: ^11.0.11
         version: 11.0.11(df99e70df168cbf9480abd009a02fa99)
       '@farming-labs/astro':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/astro
       '@farming-labs/astro-theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/astro-theme
       '@farming-labs/docs':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/docs
       '@farming-labs/theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/fumadocs
       astro:
         specifier: 7.3.5
@@ -119,13 +119,13 @@ importers:
   examples/fumadocs-cloud:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -160,7 +160,7 @@ importers:
         version: 8.5.18
       tailwindcss:
         specifier: ^4.2.1
-        version: 4.2.1
+        version: 4.3.3
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -168,13 +168,13 @@ importers:
   examples/next:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -215,7 +215,7 @@ importers:
         version: 8.5.18
       tailwindcss:
         specifier: ^4.2.1
-        version: 4.2.1
+        version: 4.3.3
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -223,16 +223,16 @@ importers:
   examples/nuxt:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/docs
       '@farming-labs/nuxt':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/nuxt
       '@farming-labs/nuxt-theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/nuxt-theme
       '@farming-labs/theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -251,16 +251,16 @@ importers:
   examples/sveltekit:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/docs
       '@farming-labs/svelte':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/svelte
       '@farming-labs/svelte-theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/svelte-theme
       '@farming-labs/theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -288,13 +288,13 @@ importers:
   examples/tanstack-start:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/docs
       '@farming-labs/tanstack-start':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/tanstack-start
       '@farming-labs/theme':
-        specifier: 0.2.129
+        specifier: 0.2.130
         version: link:../../packages/fumadocs
       '@tanstack/react-router':
         specifier: 1.170.41
@@ -317,7 +317,7 @@ importers:
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.2.1
-        version: 4.2.1(vite@7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+        version: 4.3.3(vite@7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14
@@ -329,7 +329,7 @@ importers:
         version: 5.2.0(vite@7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       tailwindcss:
         specifier: ^4.2.1
-        version: 4.2.1
+        version: 4.3.3
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -880,7 +880,7 @@ importers:
         version: 3.5.0
       unicornstudio-react:
         specifier: latest
-        version: 2.2.13(next@16.3.8(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 2.4.0(next@16.3.8(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@farm.js/cli':
         specifier: ^0.1.28
@@ -905,7 +905,7 @@ importers:
         version: 6.19.2(magicast@0.5.4)(typescript@5.9.3)
       tailwindcss:
         specifier: ^4.2.1
-        version: 4.2.1
+        version: 4.3.3
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -4404,11 +4404,6 @@ packages:
 
   '@tailwindcss/postcss@4.2.1':
     resolution: {integrity: sha512-OEwGIBnXnj7zJeonOh6ZG9woofIjGrd2BORfvE5p9USYKDCZoQmfqLcfNiRWoJlRWLdNPn2IgVZuWAOM4iTYMw==}
-
-  '@tailwindcss/vite@4.2.1':
-    resolution: {integrity: sha512-TBf2sJjYeb28jD2U/OhwdW0bbOsxkWPwQ7SrqGf9sVcoYwZj7rkXljroBO9wKBut9XnmQLXanuDUeqQK0lGg/w==}
-    peerDependencies:
-      vite: ^5.2.0 || ^6 || ^7
 
   '@tailwindcss/vite@4.3.3':
     resolution: {integrity: sha512-yYU8cogLeSh/ms2jh8Fj7jaba/EWa7Ja6GoUqYZaraEuCI5YS6ms6ObZgjjedm+jm6XZjdNRWBpPP6Z86oOxcw==}
@@ -8835,8 +8830,8 @@ packages:
     resolution: {integrity: sha512-wH590V9VNgYH9g3lH9wWjTrUoKsjLF6sGLjhR4sH1LWpLmCOH0Zf7PukhDA8BiS7KHe4oPNkcTHqYkj7SOGUOw==}
     engines: {node: '>=20'}
 
-  unicornstudio-react@2.2.13:
-    resolution: {integrity: sha512-0hKa1giZtDX4+0j98jkaz4+OvyIuf03+5WsABamox3ZTsTi/2LLnV+nTnn9ifdBTa/nGHTgJrWrXzLr5r802iQ==}
+  unicornstudio-react@2.4.0:
+    resolution: {integrity: sha512-6t7Xc3Zte8Hs/cxoj1XACkcshnQLRSOekVNP7GSmkRz2cjS2PeAIUSfkIPq6vl2DQtqKyIYmXch9dPovTu5Kxg==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       next: '*'
@@ -13564,13 +13559,6 @@ snapshots:
       postcss: 8.5.18
       tailwindcss: 4.2.1
 
-  '@tailwindcss/vite@4.2.1(vite@7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
-    dependencies:
-      '@tailwindcss/node': 4.2.1
-      '@tailwindcss/oxide': 4.2.1
-      tailwindcss: 4.2.1
-      vite: 7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
-
   '@tailwindcss/vite@4.3.3(vite@7.3.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
     dependencies:
       '@tailwindcss/node': 4.3.3
@@ -13578,6 +13566,13 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 7.3.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
     optional: true
+
+  '@tailwindcss/vite@4.3.3(vite@7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
+    dependencies:
+      '@tailwindcss/node': 4.3.3
+      '@tailwindcss/oxide': 4.3.3
+      tailwindcss: 4.3.3
+      vite: 7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
 
   '@tailwindcss/vite@4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
     dependencies:
@@ -19172,7 +19167,7 @@ snapshots:
 
   unicorn-magic@0.4.0: {}
 
-  unicornstudio-react@2.2.13(next@16.3.8(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  unicornstudio-react@2.4.0(next@16.3.8(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
