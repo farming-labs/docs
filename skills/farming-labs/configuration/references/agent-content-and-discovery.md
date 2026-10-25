@@ -137,6 +137,8 @@ Compact files link to `.md` pages; full files contain projected content.
 - Sections are opt-in and derive their route from the first matcher.
 - Root output lists sections first and excludes matched pages from the root body.
 - Set `llmsTxt.apiCatalog: false` to disable API catalog exposure while retaining skill discovery.
+- Set `agent.apiCatalog.openapi: "/openapi.json"` to list an OpenAPI document the site already serves
+  in the catalog without enabling `apiReference` (no generated schema, no pages).
 
 ## Sitemaps
 

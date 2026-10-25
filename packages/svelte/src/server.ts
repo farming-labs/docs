@@ -1108,6 +1108,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       fallbackSkillDocument: needsSkill ? renderDocsSkillDocument(discoveryOptions) : "",
       publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: config.agent?.a2a,
+      apiCatalogOpenapi: config.agent?.apiCatalog?.openapi,
     });
   }
 

@@ -2254,6 +2254,8 @@ Default behavior:
 - `GET` and `HEAD /.well-known/api-catalog` return the RFC 9727 API catalog
 - set `llmsTxt.apiCatalog: false` to remove that catalog route and its discovery links without
   disabling the hashed Agent Skills routes
+- set `agent.apiCatalog.openapi: "/openapi.json"` to list an OpenAPI document the site already
+  serves in the catalog without enabling `apiReference`; it adds no pages and generates no schema
 - `GET` and `HEAD /.well-known/agent-skills/index.json` return the modern hashed Agent Skills index
 - `GET` and `HEAD /.well-known/skills/index.json` return the legacy compatibility index; indexed
   artifacts and safe direct files remain available at the routes described above

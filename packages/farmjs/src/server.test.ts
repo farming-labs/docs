@@ -415,6 +415,38 @@ Build a Farm application.
     expect(disabled?.headers.get("content-type") ?? "").not.toContain("mcp-server-card");
   });
 
+  it("links an existing OpenAPI document in the API catalog without apiReference", async () => {
+    const server = createDocsServer({
+      ...config,
+      docsPath: "/docs",
+      llmsTxt: { enabled: true, siteTitle: "Farm Docs" },
+      agent: { apiCatalog: { openapi: "/openapi.json" } },
+    });
+    const response = await server.handle(
+      new Request("https://farm.example/.well-known/api-catalog"),
+    );
+    const catalog = (await response?.json()) as {
+      linkset: Array<{
+        anchor: string;
+        item?: Array<{ href: string }>;
+        "service-desc"?: Array<{ href: string; type?: string }>;
+      }>;
+    };
+    const root = catalog.linkset.find((context) => context.anchor === "https://farm.example/");
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("content-type")).toContain("application/linkset+json");
+    expect(catalog.linkset[0]?.item?.map(({ href }) => href)).toContain("https://farm.example/");
+    expect(root?.["service-desc"]).toEqual([
+      expect.objectContaining({
+        href: "https://farm.example/openapi.json",
+        type: "application/vnd.oai.openapi+json",
+      }),
+    ]);
+    expect(JSON.stringify(catalog)).not.toContain("format=openapi");
+    expect(await server.handle(new Request("https://farm.example/api-reference"))).toBeNull();
+  });
+
   it("dispatches public MCP aliases through the wrapper", async () => {
     const server = createDocsServer(config);
     const response = await server.handle(

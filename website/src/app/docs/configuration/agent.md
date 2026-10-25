@@ -132,6 +132,9 @@ The discovery spec exposed at `/.well-known/agent.json` and `/.well-known/agent`
 Agents that previously read only `config` should also check `diagnostics` to detect misconfigured or disabled features before attempting to use them.
 The API catalog is intentionally absent when `staticExport: true` or `llmsTxt.apiCatalog: false`;
 Agent Skills discovery remains available in both cases.
+To list an OpenAPI document the site already serves without enabling `apiReference`, use
+`agent: { apiCatalog: { openapi: "/openapi.json" } }`. It links the document with `service-desc`
+from the product API target (default `"/"`) and does not generate a schema or add pages.
 
 ## Framework notes
 

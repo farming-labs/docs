@@ -888,6 +888,7 @@ read-only.
 | `evaluations` | `boolean \| DocsAgentEvaluationsConfig` | Offline-by-default golden tasks used by `docs doctor` and `docs review` |
 | `skills` | `DocsAgentSkillsInput` | Project or workspace skills published by the runtime, Static Agent Bundle, and MCP |
 | `a2a` | `DocsAgentA2AConfig` | Opt-in Agent Card metadata for a real A2A interface |
+| `apiCatalog` | `DocsAgentApiCatalogConfig` | Extra RFC 9727 API catalog entries, such as an OpenAPI document the site already serves |
 
 ### `agent.okf` and `DocsOkfConfig`
 
@@ -1080,6 +1081,34 @@ When `a2a` is set, `/.well-known/agent-card.json` uses the strict v1 shape with
 notifications, while security metadata is omitted unless configured. When `a2a` is omitted, the
 route is not published. Do not point an advertised interface at a docs, Ask AI, or MCP route; those
 transports do not implement A2A.
+
+### `agent.apiCatalog` and `DocsAgentApiCatalogConfig`
+
+Use `agent.apiCatalog.openapi` to list an OpenAPI document the site already serves in
+`/.well-known/api-catalog` without turning on `apiReference`. Nothing is fetched or generated, and
+no API reference pages are added.
+
+```ts title="docs.config.ts"
+agent: {
+  apiCatalog: {
+    openapi: "/openapi.json",
+  },
+},
+```
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `openapi` | `string \| DocsAgentApiCatalogOpenApiDocument \| readonly (string \| DocsAgentApiCatalogOpenApiDocument)[]` | - | OpenAPI documents to link. A string is shorthand for `{ href }` |
+| `openapi[].href` | `string` | - | Document URL. Relative URLs resolve against the docs origin |
+| `openapi[].targets` | `readonly string[]` | `["/"]` | Product API base URLs the document describes |
+| `openapi[].title` | `string` | `"OpenAPI schema"` | Link title |
+| `openapi[].type` | `string` | `"application/vnd.oai.openapi+json"` | Document media type |
+
+Each target is listed as a catalog `item`, and the document is linked from that target with
+`service-desc`, the same shape `apiReference` uses. When `apiReference` is also configured, both
+documents are listed and shared targets and links appear once. The catalog itself is still
+controlled by `llmsTxt.apiCatalog` and `staticExport`, so this option never turns a disabled catalog
+back on, and the `rel="api-catalog"` discovery link is unchanged.
 
 ### `DocsAgentEvaluationsConfig`
 

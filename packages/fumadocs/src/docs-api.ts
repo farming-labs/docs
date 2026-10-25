@@ -4437,6 +4437,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       fallbackSkillDocument,
       publishedSkills: needsSkill ? await getPublishedAgentSkills() : [],
       agentCard: options?.agent?.a2a,
+      apiCatalogOpenapi: options?.agent?.apiCatalog?.openapi,
       origin: url.origin,
       entry,
       docsPath,
