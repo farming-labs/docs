@@ -231,6 +231,25 @@ describe("buildApiReferenceOpenApiDocument", () => {
     expect(document.paths).not.toHaveProperty("/src/pages/api/hello.get");
   });
 
+  it("keeps the project root out of the public unavailable-spec description", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-missing-spec-"));
+    tempDirs.push(rootDir);
+    writeFileSync(join(rootDir, "empty.json"), "  \n", "utf-8");
+
+    for (const specUrl of ["./missing/openapi.json", "./empty.json"]) {
+      const config = defineDocs({ entry: "docs", apiReference: { enabled: true, specUrl } });
+      for (const document of [
+        buildApiReferenceOpenApiDocument(config, { framework: "next", rootDir }),
+        await buildApiReferenceOpenApiDocumentAsync(config, { framework: "astro", rootDir }),
+      ]) {
+        const description = String((document.info as { description?: unknown }).description);
+        expect(description).toContain("Unable to load the configured OpenAPI document.");
+        expect(description).not.toContain(rootDir);
+        expect(description).not.toMatch(/\/(?:private|var|tmp)\//);
+      }
+    }
+  });
+
   it("discovers Farm app API route handlers", () => {
     const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-farmjs-"));
     tempDirs.push(rootDir);

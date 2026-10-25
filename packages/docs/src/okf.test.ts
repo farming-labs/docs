@@ -90,6 +90,27 @@ describe("OKF trust metadata", () => {
     expect(resolveDocsOkfConfig(undefined).enabled).toBe(false);
   });
 
+  it("never reports a server filesystem path as a source id", () => {
+    const absolutePaths = [
+      "/var/task/farm-docs-content/routing/page.md",
+      "C:\\deploy\\docs\\routing\\page.mdx",
+      "\\\\share\\docs\\routing\\page.mdx",
+      "file:///var/task/docs/routing/page.mdx",
+      "../../srv/docs/routing/page.mdx",
+    ];
+    for (const sourcePath of absolutePaths) {
+      const page = { url: "/docs/routing", title: "Routing", sourcePath };
+      expect(resolveDocsOkfTrustMetadata(page).sources).toEqual([
+        { resource: "/docs/routing", title: "Routing" },
+      ]);
+      expect(buildDocsOkfBundle([page], true).documents[0]?.id).toBe("/docs/routing");
+    }
+
+    const relative = { url: "/docs/routing", title: "Routing", sourcePath: "routing\\page.mdx" };
+    expect(resolveDocsOkfTrustMetadata(relative).sources[0]?.id).toBe("routing/page.mdx");
+    expect(buildDocsOkfBundle([relative], true).documents[0]?.id).toBe("routing/page.mdx");
+  });
+
   it("surfaces trust metadata in the Markdown representation when enabled", () => {
     const markdown = renderDocsMarkdownDocument(
       {

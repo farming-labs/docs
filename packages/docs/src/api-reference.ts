@@ -898,7 +898,7 @@ export function buildApiReferenceOpenApiDocument(
         const message = error instanceof Error ? error.message : "Unknown error";
         return buildUnavailableOpenApiDocument(
           config,
-          `Unable to load the configured OpenAPI document. ${message}`,
+          `Unable to load the configured OpenAPI document. ${redactProjectRoot(message, options.rootDir)}`,
         );
       }
     }
@@ -923,9 +923,25 @@ export async function buildApiReferenceOpenApiDocumentAsync(
     const message = error instanceof Error ? error.message : "Unknown error";
     return buildUnavailableOpenApiDocument(
       config,
-      `Unable to load the configured OpenAPI document. ${message}`,
+      `Unable to load the configured OpenAPI document. ${redactProjectRoot(message, options.rootDir)}`,
     );
   }
+}
+
+// The unavailable document is served publicly; file errors name absolute paths
+// under the project root, which describe the server rather than the spec.
+function redactProjectRoot(message: string, rootDir = process.cwd()): string {
+  const roots = new Set([resolve(rootDir)]);
+  try {
+    roots.add(realpathSync(resolve(rootDir)));
+  } catch {
+    // A missing root has nothing further to redact.
+  }
+  let redacted = message;
+  for (const root of [...roots].sort((left, right) => right.length - left.length)) {
+    redacted = redacted.split(`${root}${sep}`).join("").split(root).join(".");
+  }
+  return redacted;
 }
 
 /**

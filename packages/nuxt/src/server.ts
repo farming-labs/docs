@@ -259,6 +259,16 @@ function toPosixPath(value: string): string {
   return value.replace(/\\\\/g, "/");
 }
 
+// Search, llms, and MCP pages are agent-facing: report the file relative to the
+// content directory so the server's own filesystem layout never leaves it.
+function withContentRelativeSourcePaths(pages: ContentPage[], contentDir: string): ContentPage[] {
+  return pages.map((page) =>
+    page.sourcePath
+      ? { ...page, sourcePath: toPosixPath(path.relative(contentDir, page.sourcePath)) }
+      : page,
+  );
+}
+
 function buildDirPrefix(contentDir: string): string {
   const rel = path.isAbsolute(contentDir)
     ? toPosixPath(path.relative(process.cwd(), contentDir))
@@ -870,7 +880,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     if (cached) return cached;
     const index = preloaded
       ? searchIndexFromMap(preloaded, ctx.dirPrefix, entry, ctx.locale, preloadedSitemapManifest)
-      : loadDocsContent(ctx.contentDirAbs, entry);
+      : withContentRelativeSourcePaths(
+          loadDocsContent(ctx.contentDirAbs, entry),
+          ctx.contentDirAbs,
+        );
     searchIndexByEntry.set(key, index);
     return index;
   }

@@ -36,6 +36,7 @@ import {
   resolveSearchRequestConfig,
 } from "./search.js";
 import { digestDocsRetrievalContent } from "./retrieval-digest.js";
+import { toPublicDocsSourcePath } from "./public-source-path.js";
 import type {
   DocsAgentEvaluationAnswerProvider,
   DocsAgentEvaluationAnswerRequest,
@@ -1271,7 +1272,7 @@ export function hydrateDocsEvaluationSearchSource(
     url,
     section: pageSection?.title ?? result.section,
     anchor: pageSection?.anchor ?? anchor,
-    sourcePath: page?.sourcePath,
+    sourcePath: toPublicDocsSourcePath(page?.sourcePath),
     lastModified: result.source?.lastModified ?? page?.lastModified,
     locale: scope?.locale[0] ?? provenanceScope?.locale?.[0],
     framework: scope?.framework[0] ?? provenanceScope?.framework?.[0],

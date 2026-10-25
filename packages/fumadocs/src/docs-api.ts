@@ -1711,7 +1711,10 @@ function scanDocsDir(
             rawContent,
             agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
             url,
-            sourcePath: pageSource.replace(/\\/g, "/"),
+            // Agent-facing: never expose where the server keeps the docs on disk.
+            sourcePath: path
+              .relative(/*! turbopackIgnore: true */ docsDir, pageSource)
+              .replace(/\\/g, "/"),
             lastmod: normalizeFrontmatterLastmod(data.lastmod),
             lastModified: reader.stat(pageSource).mtime.toISOString(),
             locale,
