@@ -39,6 +39,24 @@ describe("pixel-border CSS", () => {
     expect(css).not.toContain(".sidebar-brand");
   });
 
+  it("styles the browser adapter's previous and next page cards", () => {
+    const frameworkCss = readFileSync(
+      fileURLToPath(new URL("../styles/framework.css", import.meta.url)),
+      "utf8",
+    );
+    for (const part of ["", ":hover"]) {
+      expect(frameworkCss).toContain(
+        `:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-card${part} {`,
+      );
+    }
+    expect(frameworkCss).toContain(
+      ":where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-title {",
+    );
+    expect(css).toMatch(
+      /#nd-docs-layout\[data-fd-browser-adapter\] \.fd-page-nav-card \{[^}]*border-radius: 0 !important;/,
+    );
+  });
+
   it("keeps the desktop grid out of tablet layouts", () => {
     expect(css).not.toContain(
       "@media (min-width: 768px) {\n  #nd-docs-layout:not([data-fd-framework]),",

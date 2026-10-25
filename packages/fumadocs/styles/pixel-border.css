@@ -489,6 +489,17 @@ article a[class*="border"]:hover {
   border-color: var(--color-fd-ring);
 }
 
+/* Browser adapters (Farm) render the theme's page navigation instead of the fumadocs footer. */
+#nd-docs-layout[data-fd-browser-adapter] .fd-page-nav-card {
+  border-color: var(--color-fd-border);
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout[data-fd-browser-adapter] .fd-page-nav-card:hover {
+  background: var(--color-fd-muted);
+  border-color: var(--color-fd-ring);
+}
+
 /* ─── Search dialog ───────────────────────────────────────────────── */
 
 [role="dialog"] {

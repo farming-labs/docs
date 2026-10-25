@@ -2141,7 +2141,11 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
 
 /* --------- Previous / Next Navigation ------------------------------------------------------------------------------------------------------------------ */
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav {
+/* Farm's browser adapter renders the same page navigation inside the React layout. Its selectors
+ * stay at class specificity so base.css loses to them and every preset's own card styles still win. */
+
+#nd-docs-layout[data-fd-framework] .fd-page-nav,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
@@ -2151,15 +2155,18 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
   border-top: 0;
 }
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav:has(.fd-page-nav-prev):has(.fd-page-nav-next) {
+#nd-docs-layout[data-fd-framework] .fd-page-nav:has(.fd-page-nav-prev):has(.fd-page-nav-next),
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav:where(:has(.fd-page-nav-prev):has(.fd-page-nav-next)) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav > div:empty {
+#nd-docs-layout[data-fd-framework] .fd-page-nav > div:empty,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav > div:empty {
   display: none;
 }
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav-card {
+#nd-docs-layout[data-fd-framework] .fd-page-nav-card,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2175,18 +2182,22 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
     border-color 0.15s;
 }
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav-card:hover {
+#nd-docs-layout[data-fd-framework] .fd-page-nav-card:hover,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-card:hover {
   background: var(--color-fd-accent);
   border-color: var(--color-fd-border);
 }
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav-next {
+#nd-docs-layout[data-fd-framework] .fd-page-nav-next,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-next {
   text-align: right;
   align-items: flex-end;
 }
 
 #nd-docs-layout[data-fd-framework] .fd-page-nav-label,
-#nd-docs-layout[data-fd-framework] .fd-page-nav-title {
+#nd-docs-layout[data-fd-framework] .fd-page-nav-title,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-label,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2200,13 +2211,15 @@ html.dark #nd-docs-layout[data-fd-framework] pre.shiki {
   overflow-wrap: anywhere;
 }
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav-title svg {
+#nd-docs-layout[data-fd-framework] .fd-page-nav-title svg,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-title svg {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
 }
 
-#nd-docs-layout[data-fd-framework] .fd-page-nav-description {
+#nd-docs-layout[data-fd-framework] .fd-page-nav-description,
+:where(#nd-docs-layout[data-fd-browser-adapter]) .fd-page-nav-description {
   display: block;
   max-width: 100%;
   min-height: 0;
