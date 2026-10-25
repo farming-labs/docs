@@ -17,24 +17,26 @@ function findElement(node: ReactNode, type: unknown): ReactElement<any> | undefi
 }
 
 describe("FarmDocsPageRenderer", () => {
-  it("leaves previous and next page links to the layout's own footer, as on Next.js", () => {
+  it("passes previous and next pages to the layout's page navigation", () => {
+    const previousPage = { name: "Installation", url: "/docs/installation" };
+    const nextPage = { name: "Default", url: "/docs/themes/default" };
     const tree = FarmDocsPageRenderer({
       config: { entry: "docs" } as any,
       data: {
         url: "/docs/themes",
         tree: { name: "Docs", children: [] },
-        previousPage: { name: "Installation", url: "/docs/installation" },
-        nextPage: { name: "Default", url: "/docs/themes/default" },
+        previousPage,
+        nextPage,
       } as any,
       Content: () => null,
     });
 
     const layout = findElement(tree, BrowserDocsLayout);
 
-    // Passing these switches the layout to its custom page navigation, which the Pixel Border
-    // preset does not style for browser runtimes.
+    // The layout renders them as .fd-page-nav below the Edit on GitHub row instead of the
+    // fumadocs footer, which sat flush against that row.
     expect(layout).toBeDefined();
-    expect(layout?.props.previousPage).toBeUndefined();
-    expect(layout?.props.nextPage).toBeUndefined();
+    expect(layout?.props.previousPage).toEqual(previousPage);
+    expect(layout?.props.nextPage).toEqual(nextPage);
   });
 });
