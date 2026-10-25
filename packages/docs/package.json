@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/docs",
-  "version": "0.2.130",
+  "version": "0.2.131",
   "description": "Modern, flexible MDX-based docs framework \u2014 core types, config, and CLI",
   "keywords": [
     "docs",
