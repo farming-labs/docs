@@ -19,6 +19,7 @@ import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption, type Plugin, type ResolvedConfig } from "vite";
 import { MdxBuildCache, mdxCacheDigest } from "./mdx-build-cache.js";
 import { fingerprintMdxCompiler } from "./mdx-compiler-fingerprint.js";
+import { remarkDocsTitleSlot } from "./title-slot-mdx.js";
 
 export interface FarmDocsCodeBlockThemes {
   /** Shiki theme used in light mode. */
@@ -394,6 +395,7 @@ export function createFarmDocsMdxCompileOptions(
     remarkStandaloneCodeLabels,
     remarkCodeGroup,
     createCanonicalDocsRemarkHeading,
+    remarkDocsTitleSlot,
   ];
   const rehypePlugins: NonNullable<CompileOptions["rehypePlugins"]> = [
     rehypeToc,

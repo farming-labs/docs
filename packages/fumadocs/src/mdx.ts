@@ -23,6 +23,7 @@ import { Tab } from "fumadocs-ui/components/tabs";
 import { CodeBlockTab, CodeBlockTabs } from "fumadocs-ui/components/codeblock";
 import { CodeBlockTabsList, CodeBlockTabsTrigger, Tabs } from "./tabs.js";
 import { MDXImg } from "./mdx-img.js";
+import { DocsTitleSlot } from "./title-slot.js";
 import { createPreWithCodeSpacing } from "./code-block-spacing.js";
 import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
 import { HoverLink, type HoverLinkProps } from "./hover-link.js";
@@ -303,6 +304,7 @@ const extendedMdxComponents = {
   Agent,
   Audience,
   CodeGroup,
+  DocsTitleSlot,
   HoverLink,
   Human,
   Prompt,
@@ -434,6 +436,7 @@ export {
   Audience,
   CodeGroup,
   defaultMdxComponents,
+  DocsTitleSlot,
   extendedMdxComponents,
   HoverLink,
   Human,
