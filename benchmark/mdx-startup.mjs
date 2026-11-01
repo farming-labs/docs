@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import * as nodeModule from "node:module";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+
+assert(
+  typeof nodeModule.registerHooks === "function",
+  "The MDX startup benchmark requires module.registerHooks; use Node.js 22.15+ or Node.js 24+. See benchmark/mdx-startup.md.",
+);
 
 const targets = process.argv.slice(2).map((argument) => {
   const separator = argument.indexOf("=");
