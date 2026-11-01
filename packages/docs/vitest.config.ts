@@ -13,6 +13,7 @@ export default defineConfig({
       "@farming-labs/docs/server": resolve(rootDir, "src/server.ts"),
       "@farming-labs/docs/build": resolve(rootDir, "src/build.ts"),
       "@farming-labs/docs/agent-skills-bundle": resolve(rootDir, "src/agent-skills-bundle.ts"),
+      "@farming-labs/docs/config": resolve(rootDir, "src/config.ts"),
       "@farming-labs/docs": resolve(rootDir, "src/index.ts"),
     },
   },

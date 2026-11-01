@@ -17,7 +17,7 @@ Expected result: The custom theme loads from docs.config, its CSS is present glo
 Exact implementation:
 
 ```ts
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 export const myTheme = createTheme({
   name: "my-theme",
@@ -33,8 +33,8 @@ export const myTheme = createTheme({
 ```
 
 ```ts
-import { extendTheme } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { extendTheme } from "@farming-labs/docs/config";
+import { fumadocs } from "@farming-labs/theme/default";
 
 export const myTheme = extendTheme(fumadocs(), {
   name: "my-fumadocs-variant",
@@ -48,7 +48,7 @@ export const myTheme = extendTheme(fumadocs(), {
 
 - Begin with a working docs application and identify the framework-specific global stylesheet.
 - Decide whether to create a new theme, extend one preset, or override only a few theme values.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs, @farming-labs/theme.
+- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.133; package @farming-labs/docs, @farming-labs/theme.
 
 ## Creating Your Own Theme verification
 
@@ -59,6 +59,6 @@ export const myTheme = extendTheme(fumadocs(), {
 
 ## Creating Your Own Theme agent guidance
 
-Build reusable presets with `createTheme` from `@farming-labs/docs`, give each one a unique `name`, and call its factory as `theme: myTheme()` inside `defineDocs()`. In contrast, pass the `DocsTheme` instance from `extendTheme()` as `theme: myTheme` without calling it.
+Build reusable presets with `createTheme` from `@farming-labs/docs/config`, give each one a unique `name`, and call its factory as `theme: myTheme()` inside `defineDocs()`. In contrast, pass the `DocsTheme` instance from `extendTheme()` as `theme: myTheme` without calling it.
 Validate the production build plus navigation, search, code, callouts, and tables. Config-only themes need no custom CSS; when a package ships custom CSS, export it as `./css` and import it from the consumer's global stylesheet.
 For an unstyled config-only theme, verify that the intended factory or extended instance reaches `defineDocs()`. For a package that only fails for consumers, verify `.` and, when present, `./css` in `package.json` exports against the packed artifact.

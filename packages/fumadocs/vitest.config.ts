@@ -12,6 +12,7 @@ export default defineConfig({
       "@farming-labs/docs/browser": resolve(rootDir, "../docs/src/browser.ts"),
       "@farming-labs/docs/runtime": resolve(rootDir, "../docs/src/runtime.ts"),
       "@farming-labs/docs/server": resolve(rootDir, "../docs/src/server.ts"),
+      "@farming-labs/docs/config": resolve(rootDir, "../docs/src/config.ts"),
       "@farming-labs/docs": resolve(rootDir, "../docs/src/index.ts"),
     },
   },

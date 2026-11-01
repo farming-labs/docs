@@ -4,6 +4,11 @@ You are an agent helping someone configure `@farming-labs/docs`.
 
 Use this machine-oriented page when the user needs implementation guidance for `docs.config.ts` or `docs.config.tsx`, especially when they are asking what field to set, what defaults apply, or how a feature behaves across frameworks.
 
+For version 0.2.133 and later, import `defineDocs` from `@farming-labs/docs/config`.
+Import presets from their focused entries: `@farming-labs/theme/default` for React,
+or `@farming-labs/svelte-theme/fumadocs`, `@farming-labs/astro-theme/fumadocs`,
+and `@farming-labs/nuxt-theme/fumadocs`. Older releases retain the root helpers.
+
 ## Priorities
 
 1. Keep the answer grounded in the actual `defineDocs()` surface.

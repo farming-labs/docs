@@ -4,7 +4,7 @@
  *
  * CSS: `@import "@farming-labs/theme/command-grid/css";`
  */
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 const CommandGridUIDefaults = {
   colors: {
