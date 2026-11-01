@@ -5,7 +5,7 @@
  *
  * CSS: `@import "@farming-labs/theme/shadcn/css";`
  */
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 const ShadcnUIDefaults = {
   colors: {

@@ -93,6 +93,11 @@
       "types": "./dist/build.d.mts",
       "import": "./dist/build.mjs",
       "default": "./dist/build.mjs"
+    },
+    "./config": {
+      "types": "./dist/config.d.mts",
+      "import": "./dist/config.mjs",
+      "default": "./dist/config.mjs"
     }
   },
   "scripts": {

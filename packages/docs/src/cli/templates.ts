@@ -254,7 +254,7 @@ export function getCustomThemeCssImportPath(globalCssRelPath: string, themeName:
 export function customThemeTsTemplate(themeName: string): string {
   const exportName = getThemeExportName(themeName);
   return `\
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 export const ${exportName} = createTheme({
   name: "${themeName.replace(/\.ts$/i, "")}",
@@ -396,7 +396,7 @@ export function docsConfigTemplate(cfg: TemplateConfig): string {
       ? "@/themes/" + cfg.customThemeName.replace(/\.ts$/i, "")
       : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
     return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${exportName} } from "${themePath}";
 
 export default defineDocs({
@@ -416,7 +416,7 @@ export default defineDocs({
   }
   const t = getThemeInfo(cfg.theme);
   return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
@@ -830,7 +830,7 @@ pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme
 Your project includes a \`docs.config.ts\` at the root:
 
 \`\`\`ts
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
@@ -1071,7 +1071,7 @@ export function tanstackDocsConfigTemplate(cfg: TemplateConfig): string {
   if (cfg.theme === "custom" && cfg.customThemeName) {
     const exportName = getThemeExportName(cfg.customThemeName);
     return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${exportName} } from "./themes/${cfg.customThemeName.replace(/\.ts$/i, "")}";
 
 export default defineDocs({
@@ -1100,7 +1100,7 @@ export default defineDocs({
 
   const t = getThemeInfo(cfg.theme);
   return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
@@ -1590,7 +1590,7 @@ The scaffold also configures MDX through \`docsMdx()\` in \`vite.config.ts\`.
 Keep your config theme and global CSS import aligned:
 
 \`\`\`ts title="docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${exportName} } from "./themes/${baseName}";
 
 export default defineDocs({
@@ -1644,7 +1644,7 @@ The scaffold also configures MDX through \`docsMdx()\` in \`vite.config.ts\`.
 Keep your config theme and global CSS import aligned:
 
 \`\`\`ts title="docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
@@ -1714,7 +1714,7 @@ export function svelteDocsConfigTemplate(cfg: TemplateConfig): string {
     const exportName = getThemeExportName(cfg.customThemeName);
     const themePath = "../../themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
     return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${exportName} } from "${themePath}";
 
 export default defineDocs({
@@ -1742,7 +1742,7 @@ export default defineDocs({
   }
   const t = getThemeInfo(cfg.theme);
   return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.svelteImport}";
 
 export default defineDocs({
@@ -2112,7 +2112,7 @@ pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme @far
 Your project includes a \`docs.config.ts\` in \`src/lib/\`:
 
 \`\`\`ts title="src/lib/docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.svelteImport}";
 
 export default defineDocs({
@@ -2233,7 +2233,7 @@ export function astroDocsConfigTemplate(cfg: TemplateConfig): string {
     const exportName = getThemeExportName(cfg.customThemeName);
     const themePath = "../../themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
     return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${exportName} } from "${themePath}";
 
 export default defineDocs({
@@ -2261,7 +2261,7 @@ export default defineDocs({
   }
   const t = getThemeInfo(cfg.theme);
   return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.astroImport}";
 
 export default defineDocs({
@@ -2710,7 +2710,7 @@ pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme @farmi
 Your project includes a \\\`docs.config.ts\\\` in \\\`src/lib/\\\`:
 
 \\\`\\\`\\\`ts title="src/lib/docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.astroImport}";
 
 export default defineDocs({
@@ -2820,7 +2820,7 @@ export function nuxtDocsConfigTemplate(cfg: TemplateConfig): string {
       ? "~/themes/" + cfg.customThemeName.replace(/\.ts$/i, "")
       : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
     return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${exportName} } from "${themePath}";
 
 export default defineDocs({
@@ -2848,7 +2848,7 @@ export default defineDocs({
   }
   const t = getThemeInfo(cfg.theme);
   return `\
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.nuxtImport}";
 
 export default defineDocs({
@@ -3076,7 +3076,7 @@ pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme @farming
 Your project includes a \`docs.config.ts\` at the root:
 
 \`\`\`ts title="docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { ${t.factory} } from "${t.nuxtImport}";
 
 export default defineDocs({

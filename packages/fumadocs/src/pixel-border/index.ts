@@ -4,7 +4,7 @@
  * Inspired by better-auth.com — clean dark UI with visible rounded borders,
  * pixel-perfect spacing, and a refined sidebar.
  */
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 /**
  * Pixel-border UI defaults — better-auth inspired, clean dark UI.

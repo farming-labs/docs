@@ -628,7 +628,7 @@ function hasDefineDocsImport(program: Program, localName: string): boolean {
     (statement) =>
       statement.type === "ImportDeclaration" &&
       statement.importKind !== "type" &&
-      statement.source.value === "@farming-labs/docs" &&
+      ["@farming-labs/docs", "@farming-labs/docs/config"].includes(statement.source.value) &&
       statement.specifiers.some(
         (specifier) =>
           specifier.type === "ImportSpecifier" &&

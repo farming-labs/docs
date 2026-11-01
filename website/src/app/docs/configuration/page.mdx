@@ -43,6 +43,8 @@ agent:
 
 All configuration lives in a single `docs.config.ts` file.
 
+Import `defineDocs`, `createTheme`, and `extendTheme` from `@farming-labs/docs/config` to load only configuration helpers. The root package exports remain supported. Use preset subpaths such as `@farming-labs/theme/default` in configuration files to avoid loading the UI entry.
+
 <Callout type="info" title="Use .tsx when your config contains JSX">
   If your config includes JSX or React nodes, rename `docs.config.ts` to `docs.config.tsx`.
   This is common when setting things like `nav.title`, custom `icons`, or React-based components in the config.
@@ -53,8 +55,8 @@ All configuration lives in a single `docs.config.ts` file.
     The config file lives at the **project root** as `docs.config.tsx` when it contains JSX:
 
     ```tsx title="docs.config.tsx"
-    import { defineDocs } from "@farming-labs/docs";
-    import { fumadocs } from "@farming-labs/theme";
+    import { defineDocs } from "@farming-labs/docs/config";
+    import { fumadocs } from "@farming-labs/theme/default";
 
     export default defineDocs({
       entry: "docs",
@@ -67,8 +69,8 @@ All configuration lives in a single `docs.config.ts` file.
     The config file lives at the **project root** as `docs.config.tsx` when it contains JSX:
 
     ```tsx title="docs.config.tsx"
-    import { defineDocs } from "@farming-labs/docs";
-    import { fumadocs } from "@farming-labs/theme";
+    import { defineDocs } from "@farming-labs/docs/config";
+    import { fumadocs } from "@farming-labs/theme/default";
 
     export default defineDocs({
       entry: "docs",
@@ -88,7 +90,7 @@ All configuration lives in a single `docs.config.ts` file.
     The config file lives at `src/lib/docs.config.ts`:
 
     ```ts title="src/lib/docs.config.ts"
-    import { defineDocs } from "@farming-labs/docs";
+    import { defineDocs } from "@farming-labs/docs/config";
     import { fumadocs } from "@farming-labs/svelte-theme";
 
     export default defineDocs({
@@ -109,7 +111,7 @@ All configuration lives in a single `docs.config.ts` file.
     The config file lives at `src/lib/docs.config.ts`:
 
     ```ts title="src/lib/docs.config.ts"
-    import { defineDocs } from "@farming-labs/docs";
+    import { defineDocs } from "@farming-labs/docs/config";
     import { fumadocs } from "@farming-labs/astro-theme";
 
     export default defineDocs({
@@ -128,7 +130,7 @@ All configuration lives in a single `docs.config.ts` file.
     The config file lives at the **project root** as `docs.config.ts`:
 
     ```ts title="docs.config.ts"
-    import { defineDocs } from "@farming-labs/docs";
+    import { defineDocs } from "@farming-labs/docs/config";
     import { fumadocs } from "@farming-labs/nuxt-theme";
 
     export default defineDocs({
@@ -187,7 +189,7 @@ All configuration lives in a single `docs.config.ts` file.
 metadata, and optionally run executable snippets with a local or sandbox runner.
 
 ```ts title="docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 
 export default defineDocs({
   entry: "docs",
@@ -300,8 +302,8 @@ public URL where readers see those pages.
 The default keeps both values aligned:
 
 ```tsx title="docs.config.tsx"
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { defineDocs } from "@farming-labs/docs/config";
+import { fumadocs } from "@farming-labs/theme/default";
 
 export default defineDocs({
   entry: "docs",
@@ -315,8 +317,8 @@ Set `docsPath: ""` when the whole deployment is docs-only and should publish pag
 root:
 
 ```tsx title="docs.config.tsx"
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { defineDocs } from "@farming-labs/docs/config";
+import { fumadocs } from "@farming-labs/theme/default";
 
 export default defineDocs({
   entry: "docs",
@@ -1006,9 +1008,9 @@ existing project-relative file, absolute URL, or request-relative URL.
 Configure the Fumadocs playground on Next.js without mixing renderer behavior into `theme`:
 
 ```ts title="docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { fumadocsRenderer } from "@farming-labs/next/fumadocs-renderer";
-import { fumadocs } from "@farming-labs/theme";
+import { fumadocs } from "@farming-labs/theme/default";
 import { authProviders } from "./app/api-reference/auth-providers";
 
 export default defineDocs({
@@ -1683,8 +1685,8 @@ feedback: {
 </Callout>
 
 ```ts title="website/docs.config.tsx"
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { defineDocs } from "@farming-labs/docs/config";
+import { fumadocs } from "@farming-labs/theme/default";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 
 export default defineDocs({
@@ -2687,8 +2689,8 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
 <Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```tsx title="docs.config.tsx"
-    import { defineDocs } from "@farming-labs/docs";
-    import { fumadocs } from "@farming-labs/theme";
+    import { defineDocs } from "@farming-labs/docs/config";
+    import { fumadocs } from "@farming-labs/theme/default";
 
     export default defineDocs({
       entry: "docs",
@@ -2724,8 +2726,8 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
   </Tab>
   <Tab value="TanStack Start">
     ```tsx title="docs.config.tsx"
-    import { defineDocs } from "@farming-labs/docs";
-    import { fumadocs } from "@farming-labs/theme";
+    import { defineDocs } from "@farming-labs/docs/config";
+    import { fumadocs } from "@farming-labs/theme/default";
 
     export default defineDocs({
       entry: "docs",
@@ -2757,7 +2759,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
   </Tab>
   <Tab value="SvelteKit">
     ```ts title="src/lib/docs.config.ts"
-    import { defineDocs } from "@farming-labs/docs";
+    import { defineDocs } from "@farming-labs/docs/config";
     import { fumadocs } from "@farming-labs/svelte-theme";
 
     export default defineDocs({
@@ -2790,7 +2792,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
   </Tab>
   <Tab value="Astro">
     ```ts title="src/lib/docs.config.ts"
-    import { defineDocs } from "@farming-labs/docs";
+    import { defineDocs } from "@farming-labs/docs/config";
     import { fumadocs } from "@farming-labs/astro-theme";
 
     export default defineDocs({
@@ -2823,7 +2825,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
   </Tab>
   <Tab value="Nuxt">
     ```ts title="docs.config.ts"
-    import { defineDocs } from "@farming-labs/docs";
+    import { defineDocs } from "@farming-labs/docs/config";
     import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
 
     export default defineDocs({

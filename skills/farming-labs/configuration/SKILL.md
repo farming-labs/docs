@@ -41,8 +41,8 @@ TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt normally need `contentDir` a
 ## Minimal shape
 
 ```ts
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { defineDocs } from "@farming-labs/docs/config";
+import { fumadocs } from "@farming-labs/theme/default";
 
 export default defineDocs({
   entry: "docs",

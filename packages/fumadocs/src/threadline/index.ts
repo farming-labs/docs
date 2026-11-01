@@ -5,7 +5,7 @@
  *
  * CSS: `@import "@farming-labs/theme/threadline/css";`
  */
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 import type { PageActionsConfig } from "@farming-labs/docs";
 
 const ThreadlineUIDefaults = {

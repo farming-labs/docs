@@ -14,7 +14,7 @@
  * CSS: `@import "@farming-labs/theme/default/css";`
  */
 
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 /**
  * Default UI configuration — neutral palette, standard border-radius.

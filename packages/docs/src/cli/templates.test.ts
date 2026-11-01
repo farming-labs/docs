@@ -323,6 +323,21 @@ describe("postcssConfigTemplate", () => {
   });
 });
 
+describe("configuration imports", () => {
+  it.each([
+    ["Next.js", docsConfigTemplate],
+    ["TanStack Start", tanstackDocsConfigTemplate],
+    ["Farm.js", farmjsDocsConfigTemplate],
+    ["SvelteKit", svelteDocsConfigTemplate],
+    ["Astro", astroDocsConfigTemplate],
+    ["Nuxt", nuxtDocsConfigTemplate],
+  ] as const)("uses the focused configuration entry for %s", (_, template) => {
+    expect(template(baseConfig)).toContain(
+      'import { defineDocs } from "@farming-labs/docs/config"',
+    );
+  });
+});
+
 describe("docsConfigTemplate", () => {
   it("includes defineDocs, entry, theme, and metadata", () => {
     const out = docsConfigTemplate(baseConfig);
@@ -857,7 +872,7 @@ describe("Create your own theme", () => {
   describe("customThemeTsTemplate", () => {
     it("exports createTheme with given name and ui options", () => {
       const out = customThemeTsTemplate("my-theme");
-      expect(out).toContain('import { createTheme } from "@farming-labs/docs"');
+      expect(out).toContain('import { createTheme } from "@farming-labs/docs/config"');
       expect(out).toContain("export const myTheme = createTheme");
       expect(out).toContain('name: "my-theme"');
       expect(out).toContain("primary:");

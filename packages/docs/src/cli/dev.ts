@@ -925,7 +925,7 @@ ${catalogTargetsLine}  },
     : "";
   const analyticsBlock = renderManagedAnalyticsBlock(options.analytics);
 
-  return `import { defineDocs } from "@farming-labs/docs";
+  return `import { defineDocs } from "@farming-labs/docs/config";
 import { ${options.theme.factory} } from "${options.theme.importPath}";
 
 export default defineDocs({

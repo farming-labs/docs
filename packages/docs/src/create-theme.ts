@@ -7,7 +7,7 @@
  * @example
  * ```ts
  * // my-theme/index.ts
- * import { createTheme } from "@farming-labs/docs";
+ * import { createTheme } from "@farming-labs/docs/config";
  *
  * const defaults = {
  *   name: "my-dark-theme",
@@ -43,7 +43,7 @@ import { deepMerge } from "./utils.js";
  *
  * @example
  * ```ts
- * import { createTheme } from "@farming-labs/docs";
+ * import { createTheme } from "@farming-labs/docs/config";
  *
  * export const myTheme = createTheme({
  *   name: "my-theme",
@@ -79,7 +79,7 @@ export function createTheme(baseTheme: DocsTheme): (overrides?: Partial<DocsThem
  *
  * @example
  * ```ts
- * import { extendTheme } from "@farming-labs/docs";
+ * import { extendTheme } from "@farming-labs/docs/config";
  * import { fumadocs } from "@farming-labs/theme/default";
  *
  * // Start with fumadocs defaults, override some values

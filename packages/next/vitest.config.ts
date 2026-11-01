@@ -17,6 +17,7 @@ export default defineConfig({
       "@farming-labs/docs/runtime": resolve(rootDir, "../docs/src/runtime.ts"),
       "@farming-labs/docs/build": resolve(rootDir, "../docs/src/build.ts"),
       "@farming-labs/docs/server": resolve(rootDir, "../docs/src/server.ts"),
+      "@farming-labs/docs/config": resolve(rootDir, "../docs/src/config.ts"),
       "@farming-labs/docs": resolve(rootDir, "../docs/src/index.ts"),
       "@farming-labs/next-internal-docs-config": resolve(rootDir, "src/test-docs-config.ts"),
       "next/navigation": resolve(rootDir, "node_modules/next/navigation.js"),

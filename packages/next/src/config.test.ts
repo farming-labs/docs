@@ -2080,6 +2080,31 @@ export default { ...shared };
     );
   });
 
+  it.each(["@farming-labs/docs", "@farming-labs/docs/config"])(
+    "bundles statically configured skills through %s",
+    (entry) => {
+      const skillDir = join(tmpDir, "skills", "one");
+      mkdirSync(join(tmpDir, "app"), { recursive: true });
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(
+        join(tmpDir, "docs.config.ts"),
+        `import { defineDocs } from "${entry}";
+export default defineDocs({ agent: { skills: "skills/one" } });`,
+      );
+      writeFileSync(
+        join(skillDir, "SKILL.md"),
+        "---\nname: one\ndescription: Test one.\n---\n\n# One\n",
+      );
+      process.chdir(tmpDir);
+
+      withDocs({});
+
+      expect(readFileSync(join(tmpDir, ".docs", "agent-skills-bundle.mjs"), "utf8")).toContain(
+        '"name":"one"',
+      );
+    },
+  );
+
   it("keeps statically configured skills when a partial live config only overrides MCP", () => {
     const skillDir = join(tmpDir, "skills", "one");
     mkdirSync(join(tmpDir, "app"), { recursive: true });

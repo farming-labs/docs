@@ -15,7 +15,7 @@ compatibility: Requires a JavaScript or TypeScript project using @farming-labs/d
 ## Quick: create a theme
 
 ```ts title="my-theme.ts"
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 export const myTheme = createTheme({
   name: "my-theme",
@@ -35,7 +35,7 @@ export const myTheme = createTheme({
 Use in `docs.config`:
 
 ```ts
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs/config";
 import { myTheme } from "./my-theme";
 
 export default defineDocs({
@@ -93,8 +93,8 @@ Full docs copy block: [Creating your own theme](https://docs.farming-labs.dev/do
 Use `extendTheme()` to build on a built-in preset:
 
 ```ts
-import { extendTheme } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { extendTheme } from "@farming-labs/docs/config";
+import { fumadocs } from "@farming-labs/theme/default";
 
 export const myTheme = extendTheme(fumadocs(), {
   name: "my-variant",
@@ -137,7 +137,7 @@ Mix defaults from different built-in themes:
 import { DefaultUIDefaults } from "@farming-labs/theme/default";
 import { DarksharpUIDefaults } from "@farming-labs/theme/darksharp";
 import { PixelBorderUIDefaults } from "@farming-labs/theme/pixel-border";
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 export const myTheme = createTheme({
   name: "my-hybrid-theme",

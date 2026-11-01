@@ -5,7 +5,7 @@
  *
  * CSS: `@import "@farming-labs/theme/ledger/css";`
  */
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 const LedgerUIDefaults = {
   colors: {

@@ -15,7 +15,7 @@
  * CSS: `@import "@farming-labs/theme/darksharp/css";`
  */
 
-import { createTheme } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs/config";
 
 /**
  * Darksharp UI defaults — all-black, sharp edges, zero-radius aesthetic.
