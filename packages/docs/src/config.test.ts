@@ -8,6 +8,12 @@ import * as core from "./index.js";
 
 describe("configuration entry", () => {
   it("preserves the helpers available from the root entry", () => {
+    expect(Object.keys(config).sort()).toEqual([
+      "createTheme",
+      "deepMerge",
+      "defineDocs",
+      "extendTheme",
+    ]);
     for (const [name, value] of Object.entries(config)) {
       expect(value).toBe(core[name as keyof typeof core]);
     }

@@ -325,16 +325,16 @@ describe("postcssConfigTemplate", () => {
 
 describe("configuration imports", () => {
   it.each([
-    ["Next.js", docsConfigTemplate],
-    ["TanStack Start", tanstackDocsConfigTemplate],
-    ["Farm.js", farmjsDocsConfigTemplate],
-    ["SvelteKit", svelteDocsConfigTemplate],
-    ["Astro", astroDocsConfigTemplate],
-    ["Nuxt", nuxtDocsConfigTemplate],
-  ] as const)("uses the focused configuration entry for %s", (_, template) => {
-    expect(template(baseConfig)).toContain(
-      'import { defineDocs } from "@farming-labs/docs/config"',
-    );
+    ["Next.js", docsConfigTemplate, "@farming-labs/theme/default"],
+    ["TanStack Start", tanstackDocsConfigTemplate, "@farming-labs/theme/default"],
+    ["Farm.js", farmjsDocsConfigTemplate, "@farming-labs/theme/default"],
+    ["SvelteKit", svelteDocsConfigTemplate, "@farming-labs/svelte-theme/fumadocs"],
+    ["Astro", astroDocsConfigTemplate, "@farming-labs/astro-theme/fumadocs"],
+    ["Nuxt", nuxtDocsConfigTemplate, "@farming-labs/nuxt-theme/fumadocs"],
+  ] as const)("uses focused configuration and preset entries for %s", (_, template, preset) => {
+    const output = template(baseConfig);
+    expect(output).toContain('import { defineDocs } from "@farming-labs/docs/config"');
+    expect(output).toContain(`import { fumadocs } from "${preset}"`);
   });
 });
 

@@ -50,10 +50,10 @@ interface ThemeInfo {
 const THEME_INFO: Record<string, ThemeInfo> = {
   fumadocs: {
     factory: "fumadocs",
-    nextImport: "@farming-labs/theme",
-    svelteImport: "@farming-labs/svelte-theme",
-    astroImport: "@farming-labs/astro-theme",
-    nuxtImport: "@farming-labs/nuxt-theme",
+    nextImport: "@farming-labs/theme/default",
+    svelteImport: "@farming-labs/svelte-theme/fumadocs",
+    astroImport: "@farming-labs/astro-theme/fumadocs",
+    nuxtImport: "@farming-labs/nuxt-theme/fumadocs",
     nextCssImport: "default",
   },
   darksharp: {

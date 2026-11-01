@@ -9,13 +9,6 @@ const core = new URL("../packages/docs/dist/", import.meta.url);
 const preset = new URL("../packages/fumadocs/dist/shadcn/index.mjs", import.meta.url);
 const temp = mkdtempSync(join(tmpdir(), "docs-config-benchmark-"));
 const rootPreset = join(temp, "shadcn.mjs");
-writeFileSync(
-  rootPreset,
-  readFileSync(preset, "utf8").replace(
-    '"@farming-labs/docs/config"',
-    JSON.stringify(new URL("index.mjs", core).href),
-  ),
-);
 
 const child = `
 import assert from 'node:assert/strict';
@@ -35,6 +28,13 @@ console.log(JSON.stringify({ milliseconds, modules: loaded.size, config }));
 `;
 
 try {
+  const source = readFileSync(preset, "utf8");
+  const control = source.replace(
+    '"@farming-labs/docs/config"',
+    JSON.stringify(new URL("index.mjs", core).href),
+  );
+  assert.notEqual(control, source, "The root control must replace the focused preset import");
+  writeFileSync(rootPreset, control);
   const rows = [];
   for (let trial = 1; trial <= 7; trial++) {
     for (const variant of trial % 2 ? ["root", "focused"] : ["focused", "root"]) {

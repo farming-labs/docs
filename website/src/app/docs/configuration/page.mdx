@@ -14,7 +14,7 @@ agent:
   outcome: The configuration module loads successfully and the requested docs capability is reflected in diagnostics and discovery.
   appliesTo:
     framework: [nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt]
-    version: ">=0.2.60"
+    version: ">=0.2.133"
     package: "@farming-labs/docs"
   prerequisites:
     - Identify the project framework and its documented docs.config location.
@@ -91,7 +91,7 @@ Import `defineDocs`, `createTheme`, and `extendTheme` from `@farming-labs/docs/c
 
     ```ts title="src/lib/docs.config.ts"
     import { defineDocs } from "@farming-labs/docs/config";
-    import { fumadocs } from "@farming-labs/svelte-theme";
+    import { fumadocs } from "@farming-labs/svelte-theme/fumadocs";
 
     export default defineDocs({
       entry: "docs",
@@ -112,7 +112,7 @@ Import `defineDocs`, `createTheme`, and `extendTheme` from `@farming-labs/docs/c
 
     ```ts title="src/lib/docs.config.ts"
     import { defineDocs } from "@farming-labs/docs/config";
-    import { fumadocs } from "@farming-labs/astro-theme";
+    import { fumadocs } from "@farming-labs/astro-theme/fumadocs";
 
     export default defineDocs({
       entry: "docs",
@@ -131,7 +131,7 @@ Import `defineDocs`, `createTheme`, and `extendTheme` from `@farming-labs/docs/c
 
     ```ts title="docs.config.ts"
     import { defineDocs } from "@farming-labs/docs/config";
-    import { fumadocs } from "@farming-labs/nuxt-theme";
+    import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
 
     export default defineDocs({
       entry: "docs",
@@ -1446,7 +1446,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
   </Tab>
   <Tab value="SvelteKit">
     ```ts title="src/lib/docs.config.ts"
-    import { darksharp } from "@farming-labs/svelte-theme";
+    import { darksharp } from "@farming-labs/svelte-theme/darksharp";
 
     theme: darksharp({
       ui: {
@@ -1467,7 +1467,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
   </Tab>
   <Tab value="Astro">
     ```ts title="src/lib/docs.config.ts"
-    import { darksharp } from "@farming-labs/astro-theme";
+    import { darksharp } from "@farming-labs/astro-theme/darksharp";
 
     theme: darksharp({
       ui: {
@@ -1488,7 +1488,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
   </Tab>
   <Tab value="Nuxt">
     ```ts title="docs.config.ts"
-    import { darksharp } from "@farming-labs/nuxt-theme";
+    import { darksharp } from "@farming-labs/nuxt-theme/darksharp";
 
     theme: darksharp({
       ui: {
@@ -2760,7 +2760,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
   <Tab value="SvelteKit">
     ```ts title="src/lib/docs.config.ts"
     import { defineDocs } from "@farming-labs/docs/config";
-    import { fumadocs } from "@farming-labs/svelte-theme";
+    import { fumadocs } from "@farming-labs/svelte-theme/fumadocs";
 
     export default defineDocs({
       entry: "docs",
@@ -2793,7 +2793,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
   <Tab value="Astro">
     ```ts title="src/lib/docs.config.ts"
     import { defineDocs } from "@farming-labs/docs/config";
-    import { fumadocs } from "@farming-labs/astro-theme";
+    import { fumadocs } from "@farming-labs/astro-theme/fumadocs";
 
     export default defineDocs({
       entry: "docs",
