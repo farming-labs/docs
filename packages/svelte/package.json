@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/svelte",
-  "version": "0.2.133-perf.0",
+  "version": "0.2.133-perf.1",
   "description": "SvelteKit adapter for @farming-labs/docs — content loading and navigation utilities",
   "keywords": [
     "docs",
@@ -67,6 +67,6 @@
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farming-labs/docs": ">=0.2.73"
+    "@farming-labs/docs": ">=0.2.73 || ^0.2.133-perf.0"
   }
 }

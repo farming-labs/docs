@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/astro",
-  "version": "0.2.133-perf.0",
+  "version": "0.2.133-perf.1",
   "description": "Astro adapter for @farming-labs/docs — content loading and navigation utilities",
   "keywords": [
     "astro",
@@ -61,6 +61,6 @@
     "vitest": "^4.1.8"
   },
   "peerDependencies": {
-    "@farming-labs/docs": ">=0.2.73"
+    "@farming-labs/docs": ">=0.2.73 || ^0.2.133-perf.0"
   }
 }
