@@ -74,13 +74,8 @@ export function DocsCommandSearch({
     return () => document.removeEventListener("click", handler, true);
   }, [setOpenWithAnalytics]);
 
-  const closeLoading = useCallback(
-    (nextOpen: boolean) => setOpenWithAnalytics(nextOpen, "loading"),
-    [setOpenWithAnalytics],
-  );
-
   return (
-    <DeferredDialog open={open} onOpenChange={closeLoading}>
+    <DeferredDialog open={open} onOpenChange={setOpenWithAnalytics}>
       <CommandSearchDialog
         api={api}
         locale={locale}

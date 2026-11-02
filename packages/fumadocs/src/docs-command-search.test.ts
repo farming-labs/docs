@@ -136,6 +136,29 @@ it("defers search until requested, supports cancellation while loading, and reta
       ["fr", "button"],
       ["fr", "keyboard"],
     ]);
+    fetchSearch.mockImplementationOnce(
+      (_url, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        reopened,
+        "pending",
+      );
+      reopened.dispatchEvent(new Event("input", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    await waitFor(() => expect(document.querySelector(".omni-loading")).not.toBeNull());
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(reopened, "");
+      reopened.dispatchEvent(new Event("input", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    await waitFor(() => expect(document.querySelector(".omni-loading")).toBeNull());
     await act(async () => {
       key("Escape");
     });

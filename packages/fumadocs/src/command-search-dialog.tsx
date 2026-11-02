@@ -407,6 +407,7 @@ export function CommandSearchDialog({
 
   useEffect(() => {
     if (!debouncedQuery.trim()) {
+      setLoading(false);
       setResults([]);
       setActiveIndex(0);
       return;
