@@ -85,6 +85,11 @@ deleted pages. No additional configuration is required.
 | `@farming-labs/theme/ai` | AI search and chat UI |
 | `@farming-labs/theme/tanstack` | TanStack Start provider and layout integration |
 
+`DocsCommandSearch` keeps its keyboard and search-button triggers available on page load.
+The dialog loads on first use, shows a dismissible loading state, and retains recent searches
+and cached results across closes. This behavior is shared by Next.js, TanStack Start, and
+browser-runtime layouts.
+
 ## Runtime requirements
 
 The package currently declares Next.js 16+, React 19.2+, and React DOM 19.2+ as peers because its

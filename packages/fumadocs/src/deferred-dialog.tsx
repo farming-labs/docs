@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 /** Mount on first use, then retain dialog state across closes. */
@@ -10,7 +10,7 @@ export function DeferredDialog({
   children,
 }: {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean, trigger: "escape" | "overlay" | "button") => void;
   children: ReactNode;
 }) {
   const [hasOpened, setHasOpened] = useState(open);
@@ -18,13 +18,34 @@ export function DeferredDialog({
   if (!open && !hasOpened) return null;
 
   return (
-    <Suspense fallback={open ? <LoadingDialog onOpenChange={onOpenChange} /> : null}>
-      {children}
-    </Suspense>
+    <DialogBoundary fallback={open ? <LoadingDialog failed onOpenChange={onOpenChange} /> : null}>
+      <Suspense fallback={open ? <LoadingDialog onOpenChange={onOpenChange} /> : null}>
+        {children}
+      </Suspense>
+    </DialogBoundary>
   );
 }
 
-function LoadingDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
+class DialogBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+function LoadingDialog({
+  onOpenChange,
+  failed = false,
+}: {
+  failed?: boolean;
+  onOpenChange: (open: boolean, trigger: "escape" | "overlay" | "button") => void;
+}) {
   const closeButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const previousFocus = document.activeElement;
@@ -32,7 +53,7 @@ function LoadingDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void
     document.body.style.overflow = "hidden";
     closeButton.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onOpenChange(false);
+      if (event.key === "Escape") onOpenChange(false, "escape");
       // The loading shell has one focusable control.
       if (event.key === "Tab") {
         event.preventDefault();
@@ -49,12 +70,12 @@ function LoadingDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void
 
   return createPortal(
     <>
-      <div className="fd-ai-overlay" onClick={() => onOpenChange(false)} />
+      <div className="fd-ai-overlay" onClick={() => onOpenChange(false, "overlay")} />
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Loading dialog"
-        aria-busy="true"
+        aria-label={failed ? "Dialog unavailable" : "Loading dialog"}
+        aria-busy={!failed}
         className="fd-ai-dialog"
         style={{
           left: "50%",
@@ -64,13 +85,13 @@ function LoadingDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void
         }}
       >
         <div className="fd-ai-header">
-          <span role="status" className="fd-ai-header-title">
-            Loading…
+          <span role={failed ? "alert" : "status"} className="fd-ai-header-title">
+            {failed ? "Unable to load. Reload this page to try again." : "Loading…"}
           </span>
           <button
             ref={closeButton}
             className="fd-ai-close-btn"
-            onClick={() => onOpenChange(false)}
+            onClick={() => onOpenChange(false, "button")}
             aria-label="Close dialog"
           >
             ×
