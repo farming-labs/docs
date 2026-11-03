@@ -498,6 +498,8 @@ function readDocsEntry(root: string, readSource: ConfigSourceReader): string {
     if (existsSync(configPath)) {
       try {
         const content = readSource(configPath);
+        const topLevel = readTopLevelStringProperty(content, "entry");
+        if (topLevel) return topLevel;
         const match = content.match(/entry\s*:\s*["']([^"']+)["']/);
         if (match) return match[1];
       } catch {
@@ -768,6 +770,52 @@ function readAgentSkillPaths(
     );
   }
   return configured;
+}
+
+type DocsRootSource = Pick<DocsConfig, "entry" | "docsPath" | "contentDir">;
+
+/** Read the `entry`, `docsPath` and `contentDir` of each docs.config `roots` item. */
+function readDocsRootSources(
+  root: string,
+  configPath: string,
+  readSource: ConfigSourceReader,
+): DocsRootSource[] {
+  const absoluteConfigPath = join(root, configPath);
+  if (!existsSync(absoluteConfigPath)) return [];
+  const content = readSource(absoluteConfigPath);
+  if (!/\broots\s*:/.test(content)) return [];
+
+  const unreadable = new Error(
+    `withDocs could not statically read roots from ${configPath}. Write each root as an object literal with string entry, docsPath and contentDir values, or pass the live config: withDocs(nextConfig, { roots: docsConfig.roots }).`,
+  );
+  let rootObject: ObjectExpression;
+  try {
+    rootObject = readDocsConfigRootObject(absoluteConfigPath, content);
+  } catch {
+    throw unreadable;
+  }
+  const roots = resolveStaticObjectProperty(rootObject, "roots");
+  if (roots.status === "absent") return [];
+  const list = roots.status === "value" ? unwrapStaticExpression(roots.value) : undefined;
+  if (list?.type !== "ArrayExpression") throw unreadable;
+
+  return list.elements.map((element) => {
+    const item = element && element.type !== "SpreadElement" && unwrapStaticExpression(element);
+    if (!item || item.type !== "ObjectExpression") throw unreadable;
+    const readString = (key: string) => {
+      const property = resolveStaticObjectProperty(item, key);
+      if (property.status === "absent") return undefined;
+      const value = property.status === "value" ? unwrapStaticExpression(property.value) : null;
+      if (value?.type === "StringLiteral") return value.value;
+      if (value?.type === "TemplateLiteral" && value.expressions.length === 0) {
+        return value.quasis[0]?.value.cooked ?? undefined;
+      }
+      throw unreadable;
+    };
+    const entry = readString("entry");
+    if (!entry) throw unreadable;
+    return { entry, docsPath: readString("docsPath"), contentDir: readString("contentDir") };
+  });
 }
 
 const ROOT_DOCUMENT_FILES = ["skill.md", "AGENTS.md", "AGENT.md"] as const;
@@ -1838,13 +1886,14 @@ function normalizeDocsPath(value: string | undefined, entry: string): string {
   return `/${cleaned}`;
 }
 
-function docsRootSource(entry: string): string {
+function docsRootSource(entry: string, otherRootPaths: readonly string[] = []): string {
   const normalizedEntry = normalizeRouteSegment(entry);
   return [
     "/:slug((?!",
     "_next/",
     "|api/",
     `|${normalizedEntry}(?:/|$)`,
+    ...otherRootPaths.map((rootPath) => `|${rootPath}(?:/|$)`),
     "|favicon\\.ico",
     "|robots\\.txt",
     "|sitemap\\.xml",
@@ -1879,7 +1928,11 @@ function docsRootMarkdownSource(entry: string): string {
   ].join("");
 }
 
-function buildDocsPathRewrites(entry: string, docsPath: string): NextRewrite[] {
+function buildDocsPathRewrites(
+  entry: string,
+  docsPath: string,
+  otherRootPaths: readonly string[] = [],
+): NextRewrite[] {
   const normalizedEntry = normalizeRouteSegment(entry);
   const internalBase = `/${normalizedEntry}`;
 
@@ -1892,7 +1945,7 @@ function buildDocsPathRewrites(entry: string, docsPath: string): NextRewrite[] {
         destination: `${internalBase}/`,
       },
       {
-        source: docsRootSource(normalizedEntry),
+        source: docsRootSource(normalizedEntry, otherRootPaths),
         destination: `${internalBase}/:slug`,
       },
     ];
@@ -2194,11 +2247,6 @@ function buildStandardsDiscoveryRewrites(): NextRewrite[] {
 }
 
 function buildLlmsTxtRewrites(entry: string, docsPath: string): NextRewrite[] {
-  const normalizedEntry = normalizeRouteSegment(entry);
-  const internalBase = `/${normalizedEntry}`;
-  const publicBase = docsPath;
-  const baseRoutes = Array.from(new Set([internalBase, publicBase].filter(Boolean)));
-
   return [
     {
       source: DEFAULT_LLMS_TXT_ROUTE,
@@ -2216,25 +2264,34 @@ function buildLlmsTxtRewrites(entry: string, docsPath: string): NextRewrite[] {
       source: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=llms-full",
     },
-    ...baseRoutes.flatMap((baseRoute) => [
-      {
-        source: `${baseRoute}/llms.txt`,
-        destination: "/api/docs?format=llms",
-      },
-      {
-        source: `${baseRoute}/llms-full.txt`,
-        destination: "/api/docs?format=llms-full",
-      },
-      {
-        source: `${baseRoute}/:section*/llms.txt`,
-        destination: `/api/docs?format=llms&section=${baseRoute}/:section*/llms.txt`,
-      },
-      {
-        source: `${baseRoute}/:section*/llms-full.txt`,
-        destination: `/api/docs?format=llms-full&section=${baseRoute}/:section*/llms-full.txt`,
-      },
-    ]),
+    ...buildLlmsTxtSectionRewrites(entry, docsPath),
   ];
+}
+
+function buildLlmsTxtSectionRewrites(entry: string, docsPath: string): NextRewrite[] {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  const internalBase = `/${normalizedEntry}`;
+  const publicBase = docsPath;
+  const baseRoutes = Array.from(new Set([internalBase, publicBase].filter(Boolean)));
+
+  return baseRoutes.flatMap((baseRoute) => [
+    {
+      source: `${baseRoute}/llms.txt`,
+      destination: "/api/docs?format=llms",
+    },
+    {
+      source: `${baseRoute}/llms-full.txt`,
+      destination: "/api/docs?format=llms-full",
+    },
+    {
+      source: `${baseRoute}/:section*/llms.txt`,
+      destination: `/api/docs?format=llms&section=${baseRoute}/:section*/llms.txt`,
+    },
+    {
+      source: `${baseRoute}/:section*/llms-full.txt`,
+      destination: `/api/docs?format=llms-full&section=${baseRoute}/:section*/llms-full.txt`,
+    },
+  ]);
 }
 
 function buildSkillMdRewrites(): NextRewrite[] {
@@ -2507,6 +2564,47 @@ function buildHiddenFolderRedirects(docsDir: string, docsPath: string): NextRedi
   return dedupeRedirects(redirects);
 }
 
+interface NextDocsRoot {
+  entry: string;
+  docsPath: string;
+  contentDir: string;
+  /** Public path without its leading slash, as `?root=` names the root. */
+  path: string;
+}
+
+/** Resolve the docs.config `roots` after the first root, longest path first. */
+function resolveNextDocsRoots(
+  sources: readonly DocsRootSource[],
+  primary: { entry: string; docsPath: string },
+  appDir: string,
+): NextDocsRoot[] {
+  const rootPath = (entry: string, docsPath: string) => docsPath.slice(1) || entry;
+  const roots = sources.map((source) => {
+    const entry = normalizeRouteSegment(source.entry);
+    const docsPath = normalizeDocsPath(source.docsPath, entry);
+    return {
+      entry,
+      docsPath,
+      contentDir: source.contentDir ?? `${appDir}/${entry}`,
+      path: rootPath(entry, docsPath),
+    };
+  });
+  const paths = [rootPath(normalizeRouteSegment(primary.entry), primary.docsPath)].concat(
+    roots.map((root) => root.path),
+  );
+  const duplicate = paths.find((path, index) => paths.indexOf(path) !== index);
+  if (duplicate)
+    throw new Error(`@farming-labs/next: two docs roots share the entry /${duplicate}`);
+  return roots.sort((left, right) => right.path.length - left.path.length);
+}
+
+function withDocsRootHint(rewrites: NextRewrite[], root: NextDocsRoot): NextRewrite[] {
+  return rewrites.map((rewrite) => ({
+    ...rewrite,
+    destination: rewrite.destination.replace(/^\/api\/docs\?/, `/api/docs?root=${root.path}&`),
+  }));
+}
+
 function mergeDocsMarkdownRewrites(
   entry: string,
   docsPath: string,
@@ -2529,6 +2627,7 @@ function mergeDocsMarkdownRewrites(
     enabled: boolean;
     hasStaticFile: boolean;
   },
+  roots: readonly NextDocsRoot[],
   result?: NextRewriteResult,
 ): NextRewriteResult {
   const autoBeforeFilesRewrites = [
@@ -2539,12 +2638,25 @@ function mergeDocsMarkdownRewrites(
     ...buildSkillMdRewrites(),
     ...buildSitemapRewrites(sitemap),
     ...buildRobotsRewrites(robots),
+    ...roots.flatMap((root) =>
+      withDocsRootHint(buildDocsMarkdownRewrites(root.entry, root.docsPath), root),
+    ),
     ...buildDocsMarkdownRewrites(entry, docsPath),
     ...buildApiReferenceMarkdownRewrites(apiReference),
-    ...buildDocsPathRewrites(entry, docsPath),
+    ...roots.flatMap((root) => buildDocsPathRewrites(root.entry, root.docsPath)),
+    ...buildDocsPathRewrites(
+      entry,
+      docsPath,
+      roots.map((root) => root.path),
+    ),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
-  const autoAfterFilesRewrites = buildLlmsTxtRewrites(entry, docsPath);
+  const autoAfterFilesRewrites = [
+    ...roots.flatMap((root) =>
+      withDocsRootHint(buildLlmsTxtSectionRewrites(root.entry, root.docsPath), root),
+    ),
+    ...buildLlmsTxtRewrites(entry, docsPath),
+  ];
 
   if (!result) {
     return {
@@ -2578,7 +2690,7 @@ function mergeDocsRedirects(
 
 export function withDocs(
   nextConfig: NextConfig = {},
-  docsConfig?: Pick<DocsConfig, "agent" | "mcp" | "theme">,
+  docsConfig?: Pick<DocsConfig, "agent" | "mcp" | "theme" | "roots">,
   options: WithDocsOptions = {},
 ): NextConfig {
   const mdx = resolveMdxExtensions(options.mdx);
@@ -2633,6 +2745,13 @@ export function withDocs(
   const configuredContentDir = readDocsContentDir(root, readSource);
   const appDir = getNextAppDir(root);
   const docsContentDir = configuredContentDir ?? join(appDir, entry);
+  const docsRoots = resolveNextDocsRoots(
+    docsConfig && Object.hasOwn(docsConfig, "roots")
+      ? (docsConfig.roots ?? [])
+      : readDocsRootSources(root, docsConfigPath, readSource),
+    { entry, docsPath },
+    appDir,
+  );
   const layoutDir = join(root, appDir, entry);
   if (!existsSync(layoutDir)) {
     makeGeneratedDir(layoutDir);
@@ -2806,7 +2925,22 @@ export function withDocs(
   }
   remarkPlugins.push([
     "@farming-labs/next/mdx-plugins/remark-markdown-alternate",
-    { entry, appDir, contentDir: docsContentDir, docsPath, enabled: !isStaticExport },
+    {
+      entry,
+      appDir,
+      contentDir: docsContentDir,
+      docsPath,
+      enabled: !isStaticExport,
+      ...(docsRoots.length > 0
+        ? {
+            roots: docsRoots.map(({ entry, contentDir, docsPath }) => ({
+              entry,
+              contentDir,
+              docsPath,
+            })),
+          }
+        : {}),
+    },
   ]);
   remarkPlugins.push(
     ["remark-mdx-frontmatter", { name: "metadata" }],
@@ -2957,7 +3091,9 @@ export function withDocs(
   const existingTracingExcludes =
     (nextConfig.outputFileTracingExcludes as Record<string, string[] | undefined> | undefined) ??
     {};
-  const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
+  const toTraceGlob = (contentDir: string) =>
+    contentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
+  const docsTraceGlob = toTraceGlob(docsContentDir);
   const sitemapManifestTraceFile = DEFAULT_SITEMAP_MANIFEST_PATH;
   const docsContentRoot = isAbsolute(docsContentDir) ? docsContentDir : join(root, docsContentDir);
 
@@ -2977,11 +3113,20 @@ export function withDocs(
         sitemap,
         agentFeedback,
         robots,
+        docsRoots,
         rewrites,
       );
     };
 
-    const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, docsPath);
+    const autoRedirects = [
+      ...buildHiddenFolderRedirects(docsContentRoot, docsPath),
+      ...docsRoots.flatMap((docsRoot) =>
+        buildHiddenFolderRedirects(
+          isAbsolute(docsRoot.contentDir) ? docsRoot.contentDir : join(root, docsRoot.contentDir),
+          docsRoot.docsPath,
+        ),
+      ),
+    ];
     if (autoRedirects.length > 0) {
       const existingRedirects = nextConfig.redirects as
         | NextRedirect[]
@@ -3002,6 +3147,7 @@ export function withDocs(
       ...new Set([
         ...(existingTracingIncludes["/api/docs"] ?? []),
         docsTraceGlob,
+        ...docsRoots.map((docsRoot) => toTraceGlob(docsRoot.contentDir)),
         sitemapManifestTraceFile,
       ]),
     ],

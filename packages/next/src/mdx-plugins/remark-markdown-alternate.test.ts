@@ -18,6 +18,24 @@ describe("remarkMarkdownAlternate", () => {
     expect(tree.children[0]?.value).toContain('text/markdown: "/docs/install.md"');
   });
 
+  it("adds alternate URLs for pages of other docs roots", () => {
+    const transform = remarkMarkdownAlternate({
+      entry: "docs",
+      contentDir: "docs",
+      roots: [
+        { entry: "statewire/docs", contentDir: "app/statewire/docs", docsPath: "/statewire/docs" },
+      ],
+    });
+    const page = { children: [{ type: "yaml", value: 'title: "Spec"' }] };
+    const primary = { children: [{ type: "yaml", value: 'title: "Install"' }] };
+
+    transform(page, { path: "/repo/app/statewire/docs/spec/page.mdx" });
+    transform(primary, { path: "/repo/docs/install/page.mdx" });
+
+    expect(page.children[0]?.value).toContain('text/markdown: "/statewire/docs/spec.md"');
+    expect(primary.children[0]?.value).toContain('text/markdown: "/docs/install.md"');
+  });
+
   it("adds root docs markdown alternate URLs", () => {
     const tree = {
       children: [{ type: "yaml", value: 'title: "Docs"' }],

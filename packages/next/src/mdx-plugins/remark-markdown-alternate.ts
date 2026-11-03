@@ -6,6 +6,8 @@ interface RemarkMarkdownAlternateOptions {
   contentDir?: string;
   docsPath?: string;
   enabled?: boolean;
+  /** More docs roots served by the app, longest path first. */
+  roots?: Array<Pick<RemarkMarkdownAlternateOptions, "entry" | "contentDir" | "docsPath">>;
 }
 
 interface MarkdownNode {
@@ -48,6 +50,17 @@ function escapeYamlString(value: string): string {
 }
 
 function routeFromSourcePath(
+  filePath: string,
+  options: RemarkMarkdownAlternateOptions,
+): string | null {
+  for (const root of options.roots ?? []) {
+    const route = routeFromRootSourcePath(filePath, { ...root, appDir: options.appDir });
+    if (route) return route;
+  }
+  return routeFromRootSourcePath(filePath, options);
+}
+
+function routeFromRootSourcePath(
   filePath: string,
   options: RemarkMarkdownAlternateOptions,
 ): string | null {
