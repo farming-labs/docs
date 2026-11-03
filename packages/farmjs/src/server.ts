@@ -2569,11 +2569,14 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const publicDocsPaths = new Set([
       "/llms.txt",
       "/llms-full.txt",
+      "/.well-known/llms.txt",
+      "/.well-known/llms-full.txt",
       "/sitemap.xml",
       "/sitemap.md",
       "/robots.txt",
       "/skill.md",
       "/AGENTS.md",
+      "/AGENT.md",
       "/agent.md",
       "/.well-known/api-catalog",
       "/.well-known/agent.json",
@@ -2584,6 +2587,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       "/.well-known/skill.md",
       "/.well-known/sitemap.md",
       "/.well-known/AGENTS.md",
+      "/.well-known/AGENT.md",
     ]);
     const isDocsRequest =
       pathname === docsPath ||

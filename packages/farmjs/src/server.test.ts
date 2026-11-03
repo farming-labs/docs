@@ -404,6 +404,29 @@ Build a Farm application.
     expect(applicationRoute).toBeNull();
   });
 
+  it.each([
+    ["/AGENT.md", "/AGENTS.md"],
+    ["/.well-known/AGENT.md", "/AGENTS.md"],
+    ["/.well-known/llms.txt", "/llms.txt"],
+    ["/.well-known/llms-full.txt", "/llms-full.txt"],
+  ])(
+    "serves the advertised %s alias with canonical GET and HEAD metadata",
+    async (alias, canonical) => {
+      const server = createDocsServer(config);
+      const expected = await server.handle(new Request(`https://farm.example${canonical}`));
+      const response = await server.handle(new Request(`https://farm.example${alias}`));
+      expect(response?.status).toBe(200);
+      expect(await response?.text()).toBe(await expected?.text());
+      expect(response?.headers.get("content-type")).toBe(expected?.headers.get("content-type"));
+      const head = await server.handle(
+        new Request(`https://farm.example${alias}`, { method: "HEAD" }),
+      );
+      expect(head?.status).toBe(200);
+      expect(await head?.text()).toBe("");
+      expect(head?.headers.get("etag")).toBe(response?.headers.get("etag"));
+    },
+  );
+
   it("reports the app's package.json version as the MCP server version", async () => {
     async function initialize(server: ReturnType<typeof createDocsServer>) {
       const response = await server.handle(
