@@ -2938,10 +2938,36 @@ function renderFarmDocsDocument(input: {
 </head>
 <body>
   <div id="root"><div id="farm-docs-root"${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
-  <script>window.__FARM_DOCS_ADAPTER__={config:${serializeInlineJson(clientConfig)},data:${serializeInlineJson(data)}${hasUnserializableValues(clientConfig) ? ",configModule:true" : ""}};</script>
+  <script>window.__FARM_DOCS_ADAPTER__=${serializeInlineJson({
+    config: clientConfig,
+    data,
+    ...(hasUnserializableValues(clientConfig) ? { configModule: true } : {}),
+  })};</script>
   <script type="module" src="${escapeDocumentText(input.clientEntry)}"></script>
 </body>
 </html>`;
+}
+
+/**
+ * The page paths this runtime renders as HTML, read from the content directory, so a
+ * host can prerender them at build time. With i18n, pages render in the default locale.
+ */
+export function listFarmDocsPages(
+  config: DocsConfig & Record<string, any>,
+  options: { rootDir?: string } = {},
+): string[] {
+  const entry = config.entry ?? "docs";
+  const rootDir = path.resolve(options.rootDir ?? config.rootDir ?? process.cwd());
+  const contentDirBase = String(config.contentDir ?? entry);
+  const defaultLocale = resolveDocsI18n(config.i18n)?.defaultLocale;
+  const contentDir = path.resolve(
+    rootDir,
+    defaultLocale ? path.join(contentDirBase, defaultLocale) : contentDirBase,
+  );
+  const docsPath = normalizedPublicRoute(config.docsPath, `/${entry}`);
+  return loadDocsContent(contentDir, entry).map((page) =>
+    !page.slug ? docsPath : docsPath === "/" ? `/${page.slug}` : `${docsPath}/${page.slug}`,
+  );
 }
 
 /**
@@ -2995,6 +3021,13 @@ function createFarmDocsSingleRuntimeHandler(
     ? createFarmDocsResponseCache(FARM_DOCS_RESPONSE_CACHE_MAX_SIZE)
     : null;
   const originToken = `farm-docs-origin-${randomUUID()}`;
+  // Farm prerenders pages through Nitro, which marks each build-time request with
+  // x-nitro-prerender. That file is served on every origin, so its links take the
+  // configured base URL, or stay relative.
+  const prerenderOrigin = (resolveDocsMetadataBaseUrl(runtimeConfig as any) ?? "").replace(
+    /\/+$/,
+    "",
+  );
 
   function isNotFoundError(error: unknown): boolean {
     return (
@@ -3108,7 +3141,8 @@ function createFarmDocsSingleRuntimeHandler(
     if (!page) return null;
 
     const fontPreloadHeader = page.fontPreloadHeader;
-    const html = page.htmlParts.join(escapeDocumentText(url.origin));
+    const origin = request.headers.has("x-nitro-prerender") ? prerenderOrigin : url.origin;
+    const html = page.htmlParts.join(escapeDocumentText(origin));
 
     return new Response(request.method.toUpperCase() === "HEAD" ? null : html, {
       status: 200,

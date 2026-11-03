@@ -91,6 +91,23 @@ export default withDocs(defineConfig({}), { buildCache: false });
 
 The lower-level `docsMdx({ buildCache: false })` option has the same behavior.
 
+## Prerendered pages
+
+Set `docs.prerender: true` in `farm.config.ts` to have `farm build` render every
+docs page into a static file on Node and serverless targets:
+
+```ts
+export default withDocs(defineConfig({ docs: { prerender: true } }));
+```
+
+Farm asks the adapter's server entry for its page list (`listFarmDocsPages`).
+Prerendered pages link their Markdown copy relative to the page, or under the
+configured `sitemap`, `llmsTxt`, or `robots` `baseUrl`, so social cards need
+that base URL to stay absolute. Client navigation reads a static page's data
+from its HTML. A static file cannot negotiate `Accept: text/markdown`, so agents
+use the `.md` URL the page links to. Markdown, search, `llms.txt`, and MCP keep
+rendering on request.
+
 ## Edge deployments
 
 Farm edge targets use the adapter's build-time compiler automatically. It
