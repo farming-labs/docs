@@ -83,12 +83,15 @@ import {
   buildApiReferenceOperationPagesAsync,
   createApiReferenceOperationMarkdownResponse,
   createDocsMcpHttpHandler,
+  createDocsRootRouter,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
   resolveApiReferenceOpenApiDiscovery,
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
   readDocsAppVersion,
+  resolveDocsRoots,
+  withVaryReferer,
 } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import {
@@ -615,7 +618,42 @@ function readRootAgentsDocument(contentMap: ContentFileMap | null, rootDir: stri
   return null;
 }
 
+/**
+ * Serve the docs described by `config`. With `config.roots`, it serves each extra docs set too:
+ * pages and `load` answer for the root whose `entry` owns the path, and the API route answers for
+ * the root named by `?root=`, then `?pathname=`, then the page that asked (its `Referer`). The
+ * first root serves the site-wide files (`llms.txt`, sitemap, robots) and MCP.
+ */
 export function createDocsServer(config: Record<string, any>): DocsServer {
+  if (!config.roots?.length) return createDocsRootServer(config);
+
+  const roots = resolveDocsRoots(config as DocsConfig).map((root) => ({
+    entry: root.entry ?? "docs",
+    server: createDocsRootServer(root),
+  }));
+  const apiRoute = config.cloud?.apiRoute;
+  const router = createDocsRootRouter(roots, {
+    apiRoute: typeof apiRoute === "string" && apiRoute.trim() ? apiRoute : undefined,
+  });
+
+  function dispatch(method: "GET" | "HEAD" | "POST") {
+    return async ({ request }: { request: Request }) => {
+      const { root, varyReferer } = router.select(request);
+      const response = await root.server[method]({ request });
+      return varyReferer ? withVaryReferer(response) : response;
+    };
+  }
+
+  return {
+    load: (input) => (router.match(input.pathname) ?? router.primary).server.load(input),
+    GET: dispatch("GET"),
+    HEAD: dispatch("HEAD"),
+    POST: dispatch("POST"),
+    MCP: router.primary.server.MCP,
+  };
+}
+
+function createDocsRootServer(config: Record<string, any>): DocsServer {
   const entry = config.entry ?? "docs";
   const analytics = config.analytics;
   const observability = config.observability;
