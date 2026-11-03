@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/svelte-theme",
-  "version": "0.2.137",
+  "version": "0.2.138",
   "description": "Svelte UI components for @farming-labs/docs \u2014 layout, sidebar, TOC, search, and theme toggle",
   "keywords": [
     "docs",
