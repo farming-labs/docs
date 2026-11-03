@@ -8,7 +8,7 @@ import {
   type FarmDocsNavigationEnvironment,
   type FarmDocsNavigationOptions,
 } from "./navigation.js";
-import { restoreUnserializableValues } from "./config-values.js";
+import { restoreUnserializableValues, selectDocsRootModuleValue } from "./config-values.js";
 import FarmDocsShell from "@farming-labs/farmjs/shell";
 import { FarmDocsPageRenderer } from "./page.js";
 import { createFarmDocsPageModules, type FarmDocsMdxModule } from "./page-modules.js";
@@ -176,7 +176,10 @@ export async function hydrateFarmDocs(input: {
   // Hydrate with the page's Markdown in hand, so the first render matches the server's.
   await loadFarmDocsPageModule(input.data);
   const config = input.configModule
-    ? (restoreUnserializableValues(input.config, input.configModule) as DocsConfig)
+    ? (restoreUnserializableValues(
+        input.config,
+        selectDocsRootModuleValue(input.configModule, input.config.entry),
+      ) as DocsConfig)
     : input.config;
   return hydrateRoot(container, <FarmDocsClient config={config} data={input.data} />);
 }

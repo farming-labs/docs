@@ -1144,6 +1144,39 @@ describe("createFarmDocsMultiRuntimeHandler", () => {
     expect(JSON.stringify(await fromHarness!.json())).not.toContain("/statewire/docs");
   });
 
+  it("answers the docs API for the root named by ?root= over the Referer", async () => {
+    const handler = createFarmDocsMultiRuntimeHandler([harness, statewire], options);
+
+    const response = await handler(
+      new Request("https://farm.example/api/docs?query=beacon&root=statewire/docs", {
+        headers: { referer: "https://farm.example/docs" },
+      }),
+    );
+
+    expect(JSON.stringify(await response!.json())).toContain("/statewire/docs");
+    expect(response!.headers.get("vary")).toBeNull();
+  });
+
+  it("serves the roots listed in the config passed to createFarmDocsRuntimeHandler", async () => {
+    const { _preloadedContent: statewireContent, ...statewireRoot } = statewire;
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...harness,
+        _preloadedContent: { ...harness._preloadedContent, ...statewireContent },
+        roots: [statewireRoot],
+      },
+      options,
+    );
+
+    const harnessPage = await (await handler(new Request("https://farm.example/docs")))!.text();
+    const statewirePage = await (await handler(
+      new Request("https://farm.example/statewire/docs"),
+    ))!.text();
+
+    expect(harnessPage).toContain("<main>Harness overview</main>");
+    expect(statewirePage).toContain("<main>Statewire overview</main>");
+  });
+
   it("serves site-wide files and MCP from the first root only", async () => {
     const registered: unknown[] = [];
     const handler = createFarmDocsMultiRuntimeHandler([harness, statewire], {
