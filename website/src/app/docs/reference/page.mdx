@@ -77,6 +77,42 @@ export default defineDocs({
 
 ---
 
+## Persistent build cache
+
+`DocsBuildCache<T>` and `docsBuildCacheDigest` are available from the Node-only
+`@farming-labs/docs/build` entry. Custom content generators can reuse the same persistent cache
+as Farm.js's MDX compiler without copying its storage and invalidation machinery.
+
+```ts
+import { DocsBuildCache, docsBuildCacheDigest } from "@farming-labs/docs/build";
+
+const cache = new DocsBuildCache<PageIndex>(".next/cache/docs-pages.json");
+for (const page of pages) {
+  const key = docsBuildCacheDigest(JSON.stringify([compilerFingerprint, page.source]));
+  const index = await cache.compile(page.path, key, () => compilePage(page));
+  writePageIndex(page.path, index);
+}
+await cache.flush();
+```
+
+Create one instance per build pass and give each output schema its own cache file. The stable
+`id` identifies a page; `key` must cover every input that changes its output: content, compiler
+and plugin implementations, configuration, schemas, dependencies, and relevant environment
+values. The cache does not discover these inputs. Recompute the compiler fingerprint when
+starting a new build pass. Caching is appropriate only for deterministic output.
+
+Results must be JSON-serializable; values are copied through JSON on both misses and hits, so
+Date instances become strings and caller mutations cannot change saved entries. An `undefined`
+result is returned without being cached. Compilation errors propagate and are never cached.
+
+The optional second constructor argument accepts `maxBytes` (default 32 MiB), `maxEntries`
+(default 1,024), and `validate(value: unknown)` for checking persisted output against a schema.
+Missing, truncated, checksum-invalid, or rejected persisted entries are cache misses. If storage
+is unavailable, compilation still runs. `flush()` atomically saves changed entries and leaves
+an unchanged cache file untouched. The limits bound retained entries; an oversized result is
+returned normally without evicting reusable output. Deleted pages are omitted by the caller's
+current input list, and obsolete cache entries remain bounded by those limits.
+
 ## `DocsConfig`
 
 ### `DocsLocalMcpSearchRuntimeConfig`
