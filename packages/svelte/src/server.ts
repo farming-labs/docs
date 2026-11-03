@@ -114,6 +114,7 @@ import {
   createApiReferenceOperationMarkdownResponse,
   createDocsCloudAskAIResponse,
   createDocsMcpHttpHandler,
+  createDocsRootRouter,
   isDocsCloudAskAIProvider,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
@@ -123,6 +124,8 @@ import {
   serializeDocsIconRegistry,
   serializeOpenDocsProviders,
   readDocsAppVersion,
+  resolveDocsRoots,
+  withVaryReferer,
 } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import {
@@ -639,8 +642,43 @@ function findPageInMap(
  * Pass `_preloadedContent` (from `import.meta.glob`) to bundle markdown files
  * at build time — required for serverless deployments (Vercel, Netlify, etc.)
  * where the filesystem is not available at runtime.
+ *
+ * With `config.roots`, it serves each extra docs set too: `load` and page requests answer for the
+ * root whose `entry` owns the path, and the API route answers for the root named by `?root=`,
+ * then `?pathname=`, then the page that asked (its `Referer`). The first root serves the
+ * site-wide files (`llms.txt`, sitemap, robots) and MCP. The preloaded content must cover every
+ * root's content directory.
  */
 export function createDocsServer(config: Record<string, any> = {}): DocsServer {
+  if (!config.roots?.length) return createDocsRootServer(config);
+
+  const roots = resolveDocsRoots(config as DocsConfig).map((root) => ({
+    entry: root.entry ?? "docs",
+    server: createDocsRootServer(root),
+  }));
+  const apiRoute = config.cloud?.apiRoute;
+  const router = createDocsRootRouter(roots, {
+    apiRoute: typeof apiRoute === "string" && apiRoute.trim() ? apiRoute : undefined,
+  });
+
+  function dispatch(method: "GET" | "HEAD" | "POST") {
+    return async (event: RequestEvent) => {
+      const { root, varyReferer } = router.select(event.request);
+      const response = await root.server[method](event);
+      return varyReferer ? withVaryReferer(response) : response;
+    };
+  }
+
+  return {
+    load: (event) => (router.match(event.url.pathname) ?? router.primary).server.load(event),
+    GET: dispatch("GET"),
+    HEAD: dispatch("HEAD"),
+    POST: dispatch("POST"),
+    MCP: router.primary.server.MCP,
+  };
+}
+
+function createDocsRootServer(config: Record<string, any>): DocsServer {
   const entry = (config.entry as string) ?? "docs";
   const analytics = config.analytics;
   const observability = config.observability;

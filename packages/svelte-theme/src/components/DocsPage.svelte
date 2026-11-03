@@ -3,6 +3,7 @@
   import TableOfContents from "./TableOfContents.svelte";
   import { page } from "$app/stores";
   import { onMount } from "svelte";
+  import { llmsTxtHref } from "../lib/llmsTxtHref.js";
 
   let {
     tocEnabled = true,
@@ -19,7 +20,8 @@
   } = $props();
 
   let tocItems = $state([]);
-  let llmsLangParam = $derived(locale ? `&lang=${encodeURIComponent(locale)}` : "");
+  let llmsHref = $derived(llmsTxtHref("llms", entry, locale));
+  let llmsFullHref = $derived(llmsTxtHref("llms-full", entry, locale));
   let localizedPreviousPage = $derived.by(() => localizePage(previousPage, locale));
   let localizedNextPage = $derived.by(() => localizePage(nextPage, locale));
 
@@ -366,8 +368,8 @@
           {/if}
           {#if llmsTxtEnabled}
             <span class="fd-llms-txt-links">
-              <a href={`/api/docs?format=llms${llmsLangParam}`} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
-              <a href={`/api/docs?format=llms-full${llmsLangParam}`} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+              <a href={llmsHref} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+              <a href={llmsFullHref} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
             </span>
           {/if}
           {#if lastModified}
