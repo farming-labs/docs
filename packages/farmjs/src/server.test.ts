@@ -3,7 +3,11 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createDocsServer, createFarmDocsRuntimeHandler } from "./server.js";
+import {
+  createDocsServer,
+  createFarmDocsMultiRuntimeHandler,
+  createFarmDocsRuntimeHandler,
+} from "./server.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 
 const config = {
@@ -1082,6 +1086,84 @@ openGraph:
     expect(html).toContain('"pageActions":{"copyMarkdown":{"enabled":true},"alignment":"right"}');
     expect(html).toContain(
       '"editOnGithub":"https://github.com/farming-labs/farm.js/edit/main/docs/src/app/docs/page.md"',
+    );
+  });
+});
+
+describe("createFarmDocsMultiRuntimeHandler", () => {
+  const harness = {
+    ...config,
+    nav: { title: "Harness" },
+    _preloadedContent: {
+      "/docs/page.md": `---\ntitle: Harness overview\n---\n# Harness overview\n\nHarness lighthouse text.`,
+    },
+  };
+  const statewire = {
+    ...config,
+    entry: "statewire/docs",
+    nav: { title: "Statewire" },
+    _preloadedContent: {
+      "/statewire/docs/page.md": `---\ntitle: Statewire overview\n---\n# Statewire overview\n\nStatewire beacon text.`,
+    },
+  };
+  const options = {
+    clientEntry: "/farm-client.js",
+    loadReactModule: async () => ({
+      FarmDocsPage: ({ data }: { data: { title: string } }) =>
+        createElement("main", null, data.title),
+    }),
+  };
+
+  it("serves each root's pages and Markdown under its own entry", async () => {
+    const handler = createFarmDocsMultiRuntimeHandler([harness, statewire], options);
+
+    const harnessPage = await (await handler(new Request("https://farm.example/docs")))!.text();
+    const statewirePage = await (await handler(
+      new Request("https://farm.example/statewire/docs"),
+    ))!.text();
+    const statewireMarkdown = await (await handler(
+      new Request("https://farm.example/statewire/docs.md"),
+    ))!.text();
+
+    expect(harnessPage).toContain("<main>Harness overview</main>");
+    expect(statewirePage).toContain("<main>Statewire overview</main>");
+    expect(statewireMarkdown).toContain("Statewire beacon text.");
+    expect(await handler(new Request("https://farm.example/other"))).toBeNull();
+  });
+
+  it("answers the docs API for the root of the page that asked", async () => {
+    const handler = createFarmDocsMultiRuntimeHandler([harness, statewire], options);
+    const search = (referer: string) =>
+      handler(new Request("https://farm.example/api/docs?query=beacon", { headers: { referer } }));
+
+    const fromStatewire = await search("https://farm.example/statewire/docs");
+    const fromHarness = await search("https://farm.example/docs");
+
+    expect(JSON.stringify(await fromStatewire!.json())).toContain("/statewire/docs");
+    expect(fromStatewire!.headers.get("vary")).toContain("Referer");
+    expect(JSON.stringify(await fromHarness!.json())).not.toContain("/statewire/docs");
+  });
+
+  it("serves site-wide files and MCP from the first root only", async () => {
+    const registered: unknown[] = [];
+    const handler = createFarmDocsMultiRuntimeHandler([harness, statewire], {
+      ...options,
+      registerMCPServer: (server) => {
+        registered.push(server);
+        return () => {};
+      },
+    });
+
+    const llms = await (await handler(new Request("https://farm.example/llms.txt")))!.text();
+
+    expect(llms).toContain("/docs");
+    expect(llms).not.toContain("/statewire/docs");
+    expect(registered).toEqual([expect.objectContaining({ path: "/api/docs/mcp" })]);
+  });
+
+  it("rejects two roots with the same entry", () => {
+    expect(() => createFarmDocsMultiRuntimeHandler([harness, harness], options)).toThrow(
+      "two docs roots share the entry /docs",
     );
   });
 });

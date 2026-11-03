@@ -18,6 +18,7 @@ export {
 export {
   createDocsServer,
   createFarmDocsRuntimeHandler,
+  createFarmDocsMultiRuntimeHandler,
   type DocsServer,
   type DocsServerLoadResult,
   type FarmDocsRuntimeHandlerOptions,
