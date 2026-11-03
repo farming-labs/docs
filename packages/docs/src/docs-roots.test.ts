@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDocsRootHandler, createDocsRootRouter } from "./docs-roots.js";
+import { createDocsRootHandler, createDocsRootRouter, resolveDocsRoots } from "./docs-roots.js";
 
 const roots = [{ entry: "docs" }, { entry: "statewire/docs" }, { entry: "/pinboard/docs/" }];
 
@@ -99,5 +99,44 @@ describe("createDocsRootHandler", () => {
 
   it("passes through a root that does not handle the request", async () => {
     expect(await handler(new Request("https://site.test/statewire/docs/missing"))).toBeNull();
+  });
+});
+
+describe("resolveDocsRoots", () => {
+  it("returns a config without roots as is", () => {
+    const config = { entry: "docs", contentDir: "content" };
+    expect(resolveDocsRoots(config)).toEqual([config]);
+  });
+
+  it("starts each root from the main config and drops the main root's paths", () => {
+    const [main, statewire, pinboard] = resolveDocsRoots({
+      entry: "docs",
+      docsPath: "/docs",
+      contentDir: "app/docs",
+      nav: { title: "Harness" },
+      metadata: { titleTemplate: "%s – Harness" },
+      roots: [
+        { entry: "statewire/docs", metadata: { titleTemplate: "%s – Statewire" } },
+        { entry: "pinboard/docs", contentDir: "content/pinboard" },
+      ],
+    });
+    expect(main).toEqual({
+      entry: "docs",
+      docsPath: "/docs",
+      contentDir: "app/docs",
+      nav: { title: "Harness" },
+      metadata: { titleTemplate: "%s – Harness" },
+    });
+    expect(statewire).toEqual({
+      entry: "statewire/docs",
+      nav: { title: "Harness" },
+      metadata: { titleTemplate: "%s – Statewire" },
+    });
+    expect(pinboard).toEqual({
+      entry: "pinboard/docs",
+      contentDir: "content/pinboard",
+      nav: { title: "Harness" },
+      metadata: { titleTemplate: "%s – Harness" },
+    });
   });
 });

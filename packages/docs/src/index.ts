@@ -468,6 +468,7 @@ export type {
 export type { GeneratedAgentProvenance, GeneratedAgentSourceKind } from "./agent-provenance.js";
 export type {
   DocsConfig,
+  DocsRootConfig,
   LlmsTxtConfig,
   LlmsTxtMaxCharsConfig,
   LlmsTxtMaxCharsMode,

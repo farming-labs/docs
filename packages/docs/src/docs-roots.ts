@@ -1,3 +1,5 @@
+import type { DocsConfig } from "./types.js";
+
 export interface DocsRootRouterOptions {
   /** API route shared by every root. Defaults to `api/docs`. */
   apiRoute?: string;
@@ -24,6 +26,17 @@ export interface DocsRootRouter<Root> {
 export type DocsRootRequestHandler = (
   request: Request,
 ) => Response | null | undefined | Promise<Response | null | undefined>;
+
+/**
+ * One full config per docs set: `config` itself first, then each of `config.roots` over it.
+ * A config without roots resolves to just itself.
+ */
+export function resolveDocsRoots<Config extends DocsConfig>(config: Config): Config[] {
+  const { roots, ...primary } = config;
+  if (!roots?.length) return [config];
+  const { docsPath: _docsPath, contentDir: _contentDir, ...shared } = primary;
+  return [primary as Config, ...roots.map((root) => ({ ...shared, ...root }) as Config)];
+}
 
 function docsRootPath(entry: string): string {
   return `/${entry.replace(/^\/+|\/+$/g, "")}`;

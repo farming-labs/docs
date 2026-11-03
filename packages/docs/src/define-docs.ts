@@ -8,6 +8,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     entry: config.entry ?? "docs",
     docsPath: config.docsPath,
     contentDir: config.contentDir,
+    roots: config.roots,
     i18n: config.i18n,
     theme: config.theme,
     nav: config.nav,

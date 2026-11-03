@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { defineDocs } from "./define-docs.js";
 
 describe("defineDocs", () => {
+  it("keeps the docs roots", () => {
+    const roots = [{ entry: "statewire/docs", nav: { title: "Statewire" } }];
+    expect(defineDocs({ entry: "docs", roots }).roots).toBe(roots);
+  });
+
   it("preserves feedback and copy callbacks in the normalized config", () => {
     const onCopyClick = vi.fn();
     const onFeedback = vi.fn();

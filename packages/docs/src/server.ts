@@ -99,7 +99,12 @@ export type {
   DocsAgentFeedbackIssueDraft,
 } from "./agent-feedback-loop.js";
 export { createDocsCloudRouteHandler, createDocsCloudServer } from "./docs-cloud-server.js";
-export { createDocsRootHandler, createDocsRootRouter, withVaryReferer } from "./docs-roots.js";
+export {
+  createDocsRootHandler,
+  createDocsRootRouter,
+  resolveDocsRoots,
+  withVaryReferer,
+} from "./docs-roots.js";
 export type {
   DocsRootRequestHandler,
   DocsRootRouter,
