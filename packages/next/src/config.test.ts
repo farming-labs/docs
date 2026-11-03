@@ -2464,3 +2464,194 @@ version: "1.0"
     );
   });
 });
+
+describe("withDocs with docs roots", () => {
+  const ROOTS_CONFIG = `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  roots: [
+    { entry: "statewire/docs", metadata: { titleTemplate: "%s – Statewire" } },
+    { entry: "pinboard/docs", contentDir: "content/pinboard" },
+  ],
+  entry: "docs",
+});
+`;
+  let tmpDir: string;
+  let originalCwd: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    tmpDir = mkdtempSync(join(tmpdir(), "next-withdocs-roots-"));
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  async function rewrittenUrl(
+    nextConfig: ReturnType<typeof withDocs>,
+    path: string,
+    headers: Record<string, string> = {},
+  ) {
+    const response = await unstable_getResponseFromNextConfig({
+      url: `https://example.com${path}`,
+      nextConfig,
+      headers,
+    });
+    const rewritten = getRewrittenUrl(response);
+    return rewritten && decodeURIComponent(rewritten);
+  }
+
+  it("sends each root's Markdown and llms.txt requests to /api/docs with its root named", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), ROOTS_CONFIG, "utf-8");
+    const nextConfig = withDocs({});
+
+    expect(await rewrittenUrl(nextConfig, "/statewire/docs/spec/envelopes.md")).toBe(
+      "https://example.com/api/docs?root=statewire/docs&format=markdown&path=spec/envelopes",
+    );
+    expect(await rewrittenUrl(nextConfig, "/statewire/docs.md")).toBe(
+      "https://example.com/api/docs?root=statewire/docs&format=markdown",
+    );
+    expect(
+      await rewrittenUrl(nextConfig, "/pinboard/docs/fleet", { accept: "text/markdown" }),
+    ).toBe("https://example.com/api/docs?root=pinboard/docs&format=markdown&path=fleet");
+    expect(await rewrittenUrl(nextConfig, "/docs/install.md")).toBe(
+      "https://example.com/api/docs?format=markdown&path=install",
+    );
+    expect(await rewrittenUrl(nextConfig, "/statewire/docs/spec", { accept: "text/html" })).toBe(
+      null,
+    );
+
+    const afterFiles = getAfterFilesRewrites(await readRewrites(nextConfig));
+    expect(afterFiles).toEqual(
+      expect.arrayContaining([
+        {
+          source: "/statewire/docs/llms.txt",
+          destination: "/api/docs?root=statewire/docs&format=llms",
+        },
+        {
+          source: "/statewire/docs/:section*/llms-full.txt",
+          destination:
+            "/api/docs?root=statewire/docs&format=llms-full&section=/statewire/docs/:section*/llms-full.txt",
+        },
+      ]),
+    );
+  });
+
+  it("keeps a root-mounted first root from rewriting the other roots' pages", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  docsPath: "",
+  roots: [{ entry: "statewire/docs" }],
+};
+`,
+      "utf-8",
+    );
+    const nextConfig = withDocs({});
+
+    expect(await rewrittenUrl(nextConfig, "/install")).toBe("https://example.com/docs/install");
+    expect(await rewrittenUrl(nextConfig, "/statewire/docs/spec")).toBe(null);
+    expect(await rewrittenUrl(nextConfig, "/statewire/docs/spec.md")).toBe(
+      "https://example.com/api/docs?root=statewire/docs&format=markdown&path=spec",
+    );
+  });
+
+  it("traces every root's content for the docs API and keeps the generated route unchanged", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG, "utf-8");
+    withDocs({});
+    const singleRootRoute = readFileSync(join(tmpDir, "app/api/docs/route.ts"), "utf-8");
+
+    writeFileSync(join(tmpDir, "docs.config.ts"), ROOTS_CONFIG, "utf-8");
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.outputFileTracingIncludes?.["/api/docs"]).toEqual([
+      "app/docs/**/*",
+      "app/statewire/docs/**/*",
+      "content/pinboard/**/*",
+      ".farming-labs/sitemap-manifest.json",
+    ]);
+    expect(readFileSync(join(tmpDir, "app/api/docs/route.ts"), "utf-8")).toBe(singleRootRoute);
+  });
+
+  it("redirects a hidden folder index inside another root", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", roots: [{ entry: "statewire/docs" }] };\n`,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app/statewire/docs/spec/envelopes"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app/statewire/docs/spec/page.mdx"),
+      "---\nsidebar:\n  folderIndexBehavior: hidden\n---\n\n# Spec\n",
+    );
+    writeFileSync(join(tmpDir, "app/statewire/docs/spec/envelopes/page.mdx"), "# Envelopes\n");
+
+    expect(await readRedirects(withDocs({}))).toEqual([
+      {
+        source: "/statewire/docs/spec",
+        destination: "/statewire/docs/spec/envelopes",
+        permanent: false,
+      },
+    ]);
+  });
+
+  it("gives the Markdown alternate plugin every root", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), ROOTS_CONFIG, "utf-8");
+    const resolved = withDocs({}).webpack!({ resolve: { alias: {} }, module: { rules: [] } }, {
+      defaultLoaders: { babel: {} },
+    } as any);
+    const remarkPlugins = resolved.module.rules[0].use[1].options.remarkPlugins as unknown[];
+
+    expect(remarkPlugins).toContainEqual([
+      "@farming-labs/next/mdx-plugins/remark-markdown-alternate",
+      expect.objectContaining({
+        entry: "docs",
+        roots: [
+          {
+            entry: "statewire/docs",
+            contentDir: "app/statewire/docs",
+            docsPath: "/statewire/docs",
+          },
+          { entry: "pinboard/docs", contentDir: "content/pinboard", docsPath: "/pinboard/docs" },
+        ],
+      }),
+    ]);
+  });
+
+  it("takes roots from the live config when the docs config computes them", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `import { defineDocs } from "@farming-labs/docs";
+import { projects } from "./projects";
+
+export default defineDocs({
+  entry: "docs",
+  roots: projects.map((project) => ({ entry: project.entry })),
+});
+`,
+      "utf-8",
+    );
+
+    expect(() => withDocs({})).toThrow("withDocs could not statically read roots");
+
+    const nextConfig = withDocs({}, { roots: [{ entry: "statewire/docs" }] });
+    expect(await rewrittenUrl(nextConfig, "/statewire/docs/spec.md")).toBe(
+      "https://example.com/api/docs?root=statewire/docs&format=markdown&path=spec",
+    );
+  });
+
+  it("rejects a root that repeats another root's entry", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs", roots: [{ entry: "/docs/" }] };\n`,
+      "utf-8",
+    );
+
+    expect(() => withDocs({})).toThrow("two docs roots share the entry /docs");
+  });
+});

@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -197,6 +199,87 @@ describe("createDocsAPI", () => {
       locale: "en",
       publicBaseUrl: "https://docs.example.com",
     });
+  });
+});
+
+describe("createDocsAPI with docs roots", () => {
+  let rootDir: string;
+
+  afterEach(() => {
+    rmSync(rootDir, { recursive: true, force: true });
+  });
+
+  function createRootsAPI() {
+    rootDir = mkdtempSync(path.join(tmpdir(), "next-docs-roots-api-"));
+    const config = {
+      entry: "docs",
+      docsPath: "/guide",
+      roots: [{ entry: "statewire/docs" }],
+    };
+    // A root's own docsPath must win over the one the theme reads from docs.config.
+    writeFileSync(
+      path.join(rootDir, "docs.config.ts"),
+      `export default ${JSON.stringify(config)};\n`,
+    );
+    for (const [dir, title] of [
+      ["docs/intro", "Harness intro"],
+      ["statewire/docs/intro", "Statewire intro"],
+    ]) {
+      mkdirSync(path.join(rootDir, "app", dir), { recursive: true });
+      writeFileSync(
+        path.join(rootDir, "app", dir, "page.mdx"),
+        `---\ntitle: "${title}"\n---\n\n# ${title}\n\nThe envelope format for ${title}.\n`,
+      );
+    }
+    return createDocsAPI({ ...config, rootDir });
+  }
+
+  async function search(api: ReturnType<typeof createDocsAPI>, query: string, referer?: string) {
+    const response = await api.GET(
+      new Request(`https://site.test/api/docs?query=envelope${query}`, {
+        headers: referer ? { referer: `https://site.test${referer}` } : {},
+      }),
+    );
+    const results = (await response.json()) as Array<{ url: string }>;
+    return {
+      vary: response.headers.get("vary"),
+      urls: [...new Set(results.map(({ url }) => url.split("#")[0]))],
+    };
+  }
+
+  it("answers search from the root of the page that asked, varying on Referer", async () => {
+    const api = createRootsAPI();
+
+    expect(await search(api, "", "/statewire/docs/intro")).toEqual({
+      vary: "Referer",
+      urls: ["/statewire/docs/intro"],
+    });
+    expect(await search(api, "", "/guide/intro")).toEqual({
+      vary: "Referer",
+      urls: ["/guide/intro"],
+    });
+  });
+
+  it("lets ?root= and ?pathname= override the Referer", async () => {
+    const api = createRootsAPI();
+
+    expect(await search(api, "&root=statewire/docs", "/guide/intro")).toEqual({
+      vary: null,
+      urls: ["/statewire/docs/intro"],
+    });
+    expect(await search(api, "&pathname=/statewire/docs/intro", "/guide/intro")).toEqual({
+      vary: null,
+      urls: ["/statewire/docs/intro"],
+    });
+  });
+
+  it("serves a Markdown mirror from the root it names", async () => {
+    const api = createRootsAPI();
+    const markdown = async (query: string) =>
+      (await api.GET(new Request(`https://site.test/api/docs?format=markdown${query}`))).text();
+
+    expect(await markdown("&root=statewire/docs&path=intro")).toContain("# Statewire intro");
+    expect(await markdown("&path=intro")).toContain("# Harness intro");
   });
 });
 

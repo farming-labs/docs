@@ -9,6 +9,8 @@ import {
   bundledAppVersion,
   bundledRootDocuments,
 } from "@farming-labs/docs/agent-skills-bundle";
+import type { DocsConfig } from "@farming-labs/docs";
+import { createDocsRootRouter, resolveDocsRoots, withVaryReferer } from "@farming-labs/docs/server";
 import type {
   DocsCloudRouteHandlerOptions,
   DocsCloudServer,
@@ -188,11 +190,46 @@ async function isDocsCloudPostRequest(request: Request): Promise<boolean> {
   return false;
 }
 
+/**
+ * Route handlers for `/api/docs`. When the config lists `roots`, each root gets its own handlers:
+ * a request goes to the root named by `?root=`, then by `?pathname=`, then by the Referer's page
+ * (answered with `Vary: Referer`), and otherwise to the first root.
+ */
 export function createDocsAPI(
-  options: DocsAPIOptions = {},
+  options: DocsAPIOptions & Pick<DocsConfig, "roots"> = {},
   cloudIntegration?: DocsAPICloudIntegration,
 ) {
   const rootDir = options.rootDir ?? inferNextProjectRootFromCaller();
+  if (!options.roots?.length) return createDocsRootAPI(options, rootDir, cloudIntegration);
+
+  const configs = resolveDocsRoots(options as DocsConfig).map((config, index) => {
+    const entry = config.entry ?? "docs";
+    const docsPath = index === 0 ? config.docsPath : (config.docsPath ?? `/${entry}`);
+    const path = docsPath?.replace(/^\/+|\/+$/g, "") || entry;
+    // The theme API reads docs.config for any field left out, so a root's own docsPath must be set.
+    return { path, config: { ...config, docsPath } as DocsAPIOptions };
+  });
+  const router = createDocsRootRouter(
+    configs.map(({ path }, index) => ({ entry: path, index })),
+    { apiRoute: options.apiRoute ?? options.cloud?.apiRoute },
+  );
+  const apis = configs.map(({ config }) => createDocsRootAPI(config, rootDir, cloudIntegration));
+  const dispatch =
+    (method: "GET" | "HEAD" | "POST") =>
+    async (request: Request): Promise<Response> => {
+      const { root, varyReferer } = router.select(request);
+      const response = await apis[root.index]![method](request);
+      return varyReferer ? withVaryReferer(response) : response;
+    };
+
+  return { GET: dispatch("GET"), HEAD: dispatch("HEAD"), POST: dispatch("POST") };
+}
+
+function createDocsRootAPI(
+  options: DocsAPIOptions,
+  rootDir: string | undefined,
+  cloudIntegration?: DocsAPICloudIntegration,
+) {
   const resolvedOptions = {
     ...options,
     ...(rootDir ? { rootDir } : {}),
