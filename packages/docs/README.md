@@ -126,3 +126,12 @@ Farming Labs can expose the same docs in machine-readable forms, including:
 ## License
 
 MIT
+
+## Custom build pipelines
+
+The Node-only `@farming-labs/docs/build` entry exports `DocsBuildCache<T>` and
+`docsBuildCacheDigest` for incremental content generators. This is the persistent, bounded
+cache used by Farm.js's MDX compiler. Supply a stable page ID, a key covering all compilation
+inputs, and a deterministic callback returning JSON-serializable output; call `flush()` after
+the build pass. See the [build-cache reference](https://docs.farming-labs.dev/docs/reference#persistent-build-cache)
+for invalidation, serialization, and storage behavior.

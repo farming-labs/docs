@@ -27,6 +27,19 @@ builds. Source, module path, themes, mode, Node version, and compiler implementa
 changes invalidate cached output. Missing or unusable caches fall back to compilation;
 set `buildCache: false` to diagnose without reuse.
 
+For custom Node build pipelines, import `DocsBuildCache<T>`, `DocsBuildCacheOptions`, and
+`docsBuildCacheDigest` from `@farming-labs/docs/build` (0.2.137+). This is the same cache used
+by Farm.js. Create one instance per build pass and output schema; call
+`cache.compile(pageId, inputKey, compilePage)` for each current page, then `cache.flush()`.
+Keys must cover source, compiler/plugin implementations, schema, config, dependencies, and
+relevant environment inputs; the cache does not discover them. Only deterministic,
+JSON-serializable results are supported. Misses and hits return isolated JSON copies
+(Dates become strings); undefined skips caching and compilation errors propagate. Options
+`maxBytes` (32 MiB), `maxEntries` (1,024), and `validate(value)` control bounded retention and
+persisted schema checks. Invalid/unavailable storage falls back to compilation, and changed
+snapshots are written atomically. Deleted pages are omitted by the current input list;
+obsolete cached entries remain bounded. See `/docs/reference#persistent-build-cache`.
+
 ---
 
 ## `defineDocs(config)`

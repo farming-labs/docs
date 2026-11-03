@@ -4,13 +4,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
 import * as build from "./build.js";
+import * as cache from "./build-cache.js";
 import * as core from "./index.js";
 import * as server from "./server.js";
 
 describe("adapter build entry", () => {
-  it("re-exports the same constants and helpers as existing entrypoints", () => {
+  it("re-exports the canonical constants, helpers and build-only cache", () => {
     for (const [name, value] of Object.entries(build)) {
-      expect(value).toBe(({ ...core, ...server } as Record<string, unknown>)[name]);
+      expect(value).toBe(({ ...core, ...server, ...cache } as Record<string, unknown>)[name]);
     }
   });
 
