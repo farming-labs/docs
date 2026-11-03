@@ -38,6 +38,7 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
 });
 
 import { DocsPageClient } from "./docs-page-client.js";
+import { DocsTitleSlot } from "./title-slot.js";
 import { serializePageMetadata, type DocsPageMaps } from "./page-metadata.js";
 import { compactPageStructuredData } from "./page-structured-data.js";
 
@@ -201,6 +202,95 @@ describe("DocsPageClient generated page title", () => {
 
     expect(html).toContain('class="fd-title-decorations-fallback" hidden=""');
     expect(html).toContain("Mock Actions");
+  });
+
+  const slottedPage = () =>
+    React.createElement(
+      React.Fragment,
+      null,
+      React.createElement("h1", null, "Installation"),
+      React.createElement(DocsTitleSlot, { position: "title" }),
+      React.createElement("p", null, "Preserved content"),
+      React.createElement(DocsTitleSlot, { position: "description" }),
+      React.createElement("p", null, "More content"),
+    );
+
+  it("renders title decorations in the page's title slot on the server", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        titleSlot: true,
+        children: slottedPage(),
+      }),
+    );
+
+    expect(html).not.toContain("fd-title-decorations-fallback");
+    expect(html.match(/data-fd-title-slot/g)).toHaveLength(1);
+    expect(html.match(/Mock Actions/g)).toHaveLength(1);
+    const title = html.indexOf("Installation</h1>");
+    const slot = html.indexOf("data-fd-title-slot");
+    expect(title).toBeGreaterThan(-1);
+    expect(slot).toBeGreaterThan(title);
+    expect(html.indexOf("Install the SDK.")).toBeGreaterThan(slot);
+    expect(html.indexOf("Preserved content")).toBeGreaterThan(html.indexOf("Mock Actions"));
+  });
+
+  it("uses the slot after the description paragraph when the body starts with it", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        descriptionInBody: true,
+        titleSlot: true,
+        children: slottedPage(),
+      }),
+    );
+
+    expect(html.match(/data-fd-title-slot/g)).toHaveLength(1);
+    const slot = html.indexOf("data-fd-title-slot");
+    expect(slot).toBeGreaterThan(html.indexOf("Preserved content"));
+    expect(slot).toBeLessThan(html.indexOf("More content"));
+  });
+
+  it("leaves slots empty when the theme renders the page title itself", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        generatedTitleMap: { "/docs/installation": "Installation" },
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        titleSlot: true,
+        children: slottedPage(),
+      }),
+    );
+
+    expect(html).not.toContain("data-fd-title-slot");
+    expect(html).toContain("fd-generated-page-header");
+    expect(html.match(/Mock Actions/g)).toHaveLength(1);
+  });
+
+  it("leaves slots empty and keeps the client placement when the adapter has no title slot", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        descriptionMap: { "/docs/installation": "Install the SDK." },
+        children: slottedPage(),
+      }),
+    );
+
+    expect(html).not.toContain("data-fd-title-slot");
+    expect(html).toContain('class="fd-title-decorations-fallback" hidden=""');
   });
 });
 

@@ -23,6 +23,7 @@ import type {
 } from "@farming-labs/docs";
 import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
 import { PageActions } from "./page-actions.js";
+import { DocsTitleSlotContext } from "./title-slot.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
@@ -152,6 +153,12 @@ interface DocsPageClientProps {
   description?: string;
   /** The first authored paragraph already contains the frontmatter description. */
   descriptionInBody?: boolean;
+  /**
+   * The MDX pipeline places `DocsTitleSlot` after the page's own h1, so the
+   * description and below-title block render there on the server instead of
+   * being moved under the title after hydration.
+   */
+  titleSlot?: boolean;
   /** Built-in page feedback prompt configuration */
   feedbackEnabled?: boolean;
   feedbackQuestion?: string;
@@ -589,6 +596,7 @@ export function DocsPageClient({
   descriptionMap,
   description,
   descriptionInBody = false,
+  titleSlot = false,
   feedbackEnabled = false,
   feedbackQuestion,
   feedbackPlaceholder,
@@ -943,6 +951,12 @@ export function DocsPageClient({
       setTitlePortalHost(null);
       return;
     }
+    // The server already rendered the block in the page's title slot. A page
+    // whose MDX has no slot (its h1 is not the first block) is moved as before.
+    if (titleSlot && container.querySelector("[data-fd-title-slot]")) {
+      setTitlePortalHost(null);
+      return;
+    }
 
     const host = document.createElement("div");
     host.className = "fd-title-decorations-host";
@@ -986,7 +1000,7 @@ export function DocsPageClient({
       host.remove();
       setTitlePortalHost(null);
     };
-  }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname]);
+  }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname, titleSlot]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
     <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
@@ -995,8 +1009,15 @@ export function DocsPageClient({
     titleDecorations && titlePortalHost
       ? createPortal(titleDecorations, titlePortalHost, "title-decorations")
       : null;
+  const titleDecorationsSlot =
+    titleSlot && titleDecorations
+      ? {
+          position: descriptionInBody ? ("description" as const) : ("title" as const),
+          content: titleDecorations,
+        }
+      : null;
   const titleDecorationsFallback =
-    titleDecorations && !titlePortalHost ? (
+    titleDecorations && !titlePortalHost && !titleSlot ? (
       <div className="fd-title-decorations-fallback" hidden>
         {titleDecorations}
       </div>
@@ -1118,7 +1139,9 @@ export function DocsPageClient({
         >
           {generatedPageHeader}
           <div key="content" className="fd-docs-content" style={{ flex: 1 }}>
-            {renderedChildren}
+            <DocsTitleSlotContext.Provider value={titleDecorationsSlot}>
+              {renderedChildren}
+            </DocsTitleSlotContext.Provider>
           </div>
           {!generatedPageHeader && titleDecorationsFallback}
           {titleDecorationsPortal}
