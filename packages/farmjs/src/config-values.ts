@@ -55,3 +55,21 @@ export function restoreUnserializableValues(serverValue: unknown, moduleValue: u
   }
   return serverValue;
 }
+
+/**
+ * The part of the config module that configures the docs root at `entry`. A module with `roots`
+ * holds several: the named root over the module's shared fields, as the server resolved it, or
+ * the shared fields alone for the main root.
+ */
+export function selectDocsRootModuleValue(moduleValue: unknown, entry: unknown): unknown {
+  if (!isPlainObject(moduleValue) || !Array.isArray(moduleValue.roots)) return moduleValue;
+  const { roots, ...shared } = moduleValue;
+  const route = typeof entry === "string" ? entry.replace(/^\/+|\/+$/g, "") : undefined;
+  const own = roots.find(
+    (root): root is Record<string, unknown> =>
+      isPlainObject(root) &&
+      typeof root.entry === "string" &&
+      root.entry.replace(/^\/+|\/+$/g, "") === route,
+  );
+  return own ? { ...shared, ...own } : shared;
+}

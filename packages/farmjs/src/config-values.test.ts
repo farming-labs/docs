@@ -1,6 +1,10 @@
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { hasUnserializableValues, restoreUnserializableValues } from "./config-values.js";
+import {
+  hasUnserializableValues,
+  restoreUnserializableValues,
+  selectDocsRootModuleValue,
+} from "./config-values.js";
 
 const roundTrip = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
@@ -37,5 +41,25 @@ describe("docs config values JSON cannot carry", () => {
     });
     expect(restored.docsPath).toBe("/docs");
     expect(restored).not.toHaveProperty("ai");
+  });
+
+  it("restores a docs root's values from that root in the module's roots", () => {
+    const harnessTitle = createElement("span", null, "Harness");
+    const statewireTitle = createElement("span", null, "Statewire");
+    const module = {
+      entry: "docs",
+      nav: { title: harnessTitle },
+      roots: [{ entry: "statewire/docs", nav: { title: statewireTitle } }],
+    };
+    const restore = (entry: string) =>
+      restoreUnserializableValues(
+        { entry, nav: {} },
+        selectDocsRootModuleValue(module, entry),
+      ) as any;
+
+    expect(restore("statewire/docs").nav.title).toBe(statewireTitle);
+    expect(restore("docs").nav.title).toBe(harnessTitle);
+    expect(restore("docs")).not.toHaveProperty("roots");
+    expect(selectDocsRootModuleValue(config, "docs")).toBe(config);
   });
 });

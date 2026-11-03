@@ -98,6 +98,7 @@ import {
   createDocsMcpHttpHandler,
   createDocsMcpServerCard,
   createDocsMcpServerCardResponse,
+  createDocsRootHandler,
   DOCS_MCP_SERVER_CARD_SUFFIX,
   readDocsAppVersion,
   readDocsSitemapManifest,
@@ -105,6 +106,7 @@ import {
   resolveApiReferenceOpenApiDiscovery,
   resolveDocsMcpConfig,
   resolveConfiguredAgentSkills,
+  resolveDocsRoots,
 } from "@farming-labs/docs/server";
 
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
@@ -2947,11 +2949,22 @@ function renderFarmDocsDocument(input: {
  *
  * Farm core supplies host assets and module loading; this adapter owns route
  * classification, docs APIs, content loading, React rendering, and hydration
- * state for every documentation request.
+ * state for every documentation request. With `config.roots`, it serves each extra docs set
+ * too, as {@link createFarmDocsMultiRuntimeHandler} does.
  */
 export function createFarmDocsRuntimeHandler(
   config: DocsConfig & Record<string, any>,
   options: FarmDocsRuntimeHandlerOptions = {},
+): (request: Request) => Promise<Response | null> {
+  if (config.roots?.length) {
+    return createFarmDocsMultiRuntimeHandler(resolveDocsRoots(config), options);
+  }
+  return createFarmDocsSingleRuntimeHandler(config, options);
+}
+
+function createFarmDocsSingleRuntimeHandler(
+  config: DocsConfig & Record<string, any>,
+  options: FarmDocsRuntimeHandlerOptions,
 ) {
   const runtimeConfig = {
     ...config,
@@ -3107,4 +3120,30 @@ export function createFarmDocsRuntimeHandler(
       },
     });
   };
+}
+
+/**
+ * Serve several docs roots, each with its own config, from one Farm app.
+ *
+ * A root answers the pages, Markdown mirrors and navigation data under its `entry`. The docs
+ * API answers for the root named by `?root=`, then `?pathname=`, then the page that asked (its
+ * `Referer`), so each root's search stays its own. Site-wide files, MCP and the API reference
+ * come from the first root.
+ */
+export function createFarmDocsMultiRuntimeHandler(
+  configs: ReadonlyArray<DocsConfig & Record<string, any>>,
+  options: FarmDocsRuntimeHandlerOptions = {},
+): (request: Request) => Promise<Response | null> {
+  const apiRoute = configs[0]?.cloud?.apiRoute;
+  return createDocsRootHandler(
+    configs.map(({ roots: _roots, ...config }, index) => ({
+      entry: config.entry ?? "docs",
+      handle: createFarmDocsSingleRuntimeHandler(config, {
+        ...options,
+        // The first root owns MCP, so it alone is listed in the AI catalog.
+        registerMCPServer: index === 0 ? options.registerMCPServer : undefined,
+      }),
+    })),
+    { apiRoute: typeof apiRoute === "string" && apiRoute.trim() ? apiRoute : undefined },
+  );
 }
