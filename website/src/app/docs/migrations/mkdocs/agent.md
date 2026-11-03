@@ -19,7 +19,7 @@ Expected result: MkDocs pages, nav order, assets, code, and converted Python Mar
 - Preserve mkdocs.yml, docs, theme overrides, plugins, hooks, macros, includes, and dependency lock files.
 - Record site_url, site_dir, use_directory_urls, nav, extra, and all Markdown extensions.
 - Initialize the target runtime separately.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From Material for MkDocs verification
 

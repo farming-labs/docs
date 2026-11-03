@@ -12,7 +12,7 @@ LLM index: /llms.txt
 Description: Complete reference for all configuration options
 Related: /docs/configuration, /docs/cli, /docs/installation, /docs/customization/mcp
 
-Inspect the existing `defineDocs()` call and select the exact exported `DocsConfig` field documented below. Config path: `docs.config.ts[x]` for Next.js, TanStack Start, and Nuxt; `src/lib/docs.config.ts` for SvelteKit and Astro. Non-Next adapters can configure `contentDir` and `nav` explicitly; Next.js derives its content tree from `app/{entry}/`.
+Inspect the existing `defineDocs()` call and select the exact exported `DocsConfig` field documented below. Config path: `docs.config.ts[x]` for Next.js, TanStack Start, Farm.js, and Nuxt; `src/lib/docs.config.ts` for SvelteKit and Astro. Non-Next adapters can configure `contentDir` and `nav` explicitly; Next.js derives its content tree from `app/{entry}/`.
 
 When MCP `get_config_schema` publishes the option, compare its type and default; otherwise verify against installed exported types. Run `pnpm exec docs doctor --agent` for resolved capability and discovery fields. For SvelteKit or Astro, append `--config src/lib/docs.config.ts`. If TypeScript rejects the documented shape, align all `@farming-labs/*` package versions and rename config to `.tsx` when it contains JSX. If diagnostics and public discovery disagree, restore the previous value and repair the adapter route or stale static export before re-enabling.
 
@@ -182,3 +182,15 @@ agent:
       resolution: Confirm withDocs wraps the Next.js config
 ---
 ```
+
+## MCP version and existing OpenAPI catalog entries
+
+`mcp.version` defaults to the application package version, falling back to `"0.0.0"`.
+
+Use `agent.apiCatalog.openapi: "/openapi.json"` to advertise an existing OpenAPI document
+without enabling `apiReference`, fetching a document, generating a schema, or adding pages.
+A string is shorthand for `{ href }`; objects also accept `targets` (default `["/"]`),
+`title`, and `type`, and arrays can list several documents. Relative URLs use the docs origin.
+Targets become catalog items linked to the document with `service-desc`; shared targets
+and links are deduplicated alongside `apiReference`. `llmsTxt.apiCatalog: false` and
+`staticExport` still disable the catalog.

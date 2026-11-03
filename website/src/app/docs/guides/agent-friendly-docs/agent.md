@@ -19,7 +19,7 @@ Expected result: The page is retrievable for its target task, cites canonical so
 - Start with accurate human-facing documentation and a concrete user task.
 - Identify the framework, package version, required files, commands, side effects, and likely failure modes.
 - Keep secrets and authorization-only content out of all audience projections.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## How to Write Agent-Friendly Docs verification
 

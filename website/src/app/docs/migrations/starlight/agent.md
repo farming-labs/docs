@@ -19,7 +19,7 @@ Expected result: Starlight content, sidebar order, frontmatter, and supported Ma
 - Preserve astro.config, src/content/docs, public assets, Starlight components, overrides, plugins, and locale settings.
 - Record the docs base path and generated sidebar behavior.
 - Initialize the target runtime in a migration branch.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From Starlight verification
 

@@ -12,6 +12,8 @@ LLM index: /llms.txt
 Description: Validate that a framework adapter exposes the same agent-readable documentation contract as the first-party adapters
 Related: /docs/guides/agent-friendly-docs, /docs/customization/mcp, /docs/customization/llms-txt, /docs/customization/sitemaps, /docs/cli
 
+Applies to Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt.
+
 Every `@farming-labs/docs` adapter should expose the same machine-readable surface. The shared conformance runner turns that expectation into an executable contract.
 
 Use `runDocsAgentConformance` when building or changing a framework adapter. Provide one callback dispatching GET requests to the adapter's public handler and the `mcp` case to its MCP POST handler. Use fixture titles `Introduction` and `Bonjour` for default and localized Markdown. A passing report must contain no failed cases.

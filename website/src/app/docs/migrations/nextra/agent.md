@@ -19,7 +19,7 @@ Expected result: Nextra MDX, routes, navigation order, and supported components 
 - Identify whether Nextra content uses content, pages, app page.mdx files, or a mixed layout.
 - Preserve _meta files, next.config, theme config, mdx-components, public assets, and custom components.
 - Initialize the target runtime in a migration branch.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From Nextra verification
 

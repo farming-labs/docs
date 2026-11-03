@@ -19,7 +19,7 @@ Expected result: Runtime events are attributed to the intended Docs Cloud projec
 - A Docs Cloud workspace has an imported project or custom analytics project.
 - The dashboard-provided project ID is available for the runtime environment.
 - Consent and retention policies are defined before enabling includeInputs.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Analytics verification
 

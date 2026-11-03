@@ -113,7 +113,7 @@ console.log("metadata ok");
   Recommend `includeCode: true` only for code-heavy guides where examples make up a large part of
   the page and should count toward the estimate. Do not recommend setting it globally when prose
   length is the primary signal the team cares about.
-- When the user asks which routes are available to agents, include `GET /api/docs?format=diagnostics` alongside `GET /api/docs?format=config`. The agent discovery spec (served at `/.well-known/agent.json`) now includes a `diagnostics` key pointing to `/api/docs?format=diagnostics`. That endpoint returns a `DocsDiagnostics` payload (format: `"docs-diagnostics.v1"`) describing enabled features and any configuration issues. All five framework adapters handle this route automatically — no additional setup is required.
+- When the user asks which routes are available to agents, include `GET /api/docs?format=diagnostics` alongside `GET /api/docs?format=config`. The agent discovery spec (served at `/.well-known/agent.json`) now includes a `diagnostics` key pointing to `/api/docs?format=diagnostics`. That endpoint returns a `DocsDiagnostics` payload (format: `"docs-diagnostics.v1"`) describing enabled features and any configuration issues. All six framework adapters handle this route automatically — no additional setup is required.
 - Include `GET`/`HEAD /.well-known/api-catalog` for RFC 9727 API discovery and
   `GET`/`HEAD /.well-known/agent-skills/index.json` for SHA-256 Agent Skills discovery. These are
   additive to the existing Farming Labs manifest and require no config flag.

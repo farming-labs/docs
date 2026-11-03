@@ -18,7 +18,7 @@ Expected result: The project has a working docs entry plus discoverable Markdown
 
 - Identify whether the user is adding docs to an existing app or creating a new docs project.
 - Identify the existing framework and package manager before choosing an adapter or command.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Introduction verification
 
@@ -53,7 +53,7 @@ Quick Start distinguishes adding docs to an existing project from creating a fre
 
 ## Quick Start existing project auto-detects framework
 
-For the Quick Start existing-project workflow, run `pnpm dlx @farming-labs/docs init` from the application root. It auto-detects Next.js, TanStack Start, SvelteKit, Astro, or Nuxt before it initializes Farming Labs docs with the matching adapter.
+For the Quick Start existing-project workflow, run `pnpm dlx @farming-labs/docs init` from the application root. It auto-detects Next.js, TanStack Start, Farm.js, SvelteKit, Astro, or Nuxt before it initializes Farming Labs docs with the matching adapter.
 
 ## Quick Start fresh project template
 

@@ -24,7 +24,7 @@ pnpm exec docs robots generate
 
 - The docs content tree and public base URL are configured.
 - Decide whether the deployment serves runtime routes or needs generated public files.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Sitemaps verification
 

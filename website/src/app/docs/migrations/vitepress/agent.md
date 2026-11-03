@@ -19,7 +19,7 @@ Expected result: VitePress pages, navigation, assets, and portable Markdown rend
 - Preserve the VitePress root, .vitepress config and theme, public assets, Markdown pages, and custom Vue components.
 - Record the published base path, rewrites, clean URL behavior, locales, and sidebar variants.
 - Initialize the target runtime separately.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From VitePress verification
 

@@ -405,9 +405,9 @@ export default defineDocs({
           query:
             "Quick Start existing project or fresh auto-detects the framework and initializes Farming Labs docs with pnpm dlx",
           topK: 5,
-          filters: { framework: "tanstackstart", version: "0.2.60" },
+          filters: { framework: "tanstackstart", version: docsPackage.version },
           expect: {
-            scope: { framework: "tanstackstart", version: "0.2.60" },
+            scope: { framework: "tanstackstart", version: docsPackage.version },
             relevantSources: ["/docs"],
             allowedSources: ["/docs/installation", "/docs/cli"],
             maxFirstRelevantRank: 1,
@@ -441,9 +441,9 @@ export default defineDocs({
           query:
             "Configuration Framework Setup for SvelteKit in src/lib/docs.config.ts with svelteTheme contentDir and nav",
           topK: 5,
-          filters: { framework: "sveltekit", version: "0.2.60" },
+          filters: { framework: "sveltekit", version: docsPackage.version },
           expect: {
-            scope: { framework: "sveltekit", version: "0.2.60" },
+            scope: { framework: "sveltekit", version: docsPackage.version },
             relevantSources: ["/docs/configuration"],
             allowedSources: ["/docs/reference", "/docs/installation"],
             maxFirstRelevantRank: 2,
@@ -455,9 +455,9 @@ export default defineDocs({
           query:
             "Contributing Pull requests fork farming-labs/docs branch from main install pnpm and run pnpm --dir website dev",
           topK: 5,
-          filters: { framework: "astro", version: "0.2.60" },
+          filters: { framework: "astro", version: docsPackage.version },
           expect: {
-            scope: { framework: "astro", version: "0.2.60" },
+            scope: { framework: "astro", version: docsPackage.version },
             relevantSources: ["/docs/contributing"],
             allowedSources: ["/docs/guides/adapter-agent-conformance", "/docs/cli"],
             maxFirstRelevantRank: 1,
@@ -479,9 +479,9 @@ export default defineDocs({
           query:
             "Choose An Audience in page.mdx with Human Agent and the explicit Audience only human or agent form",
           topK: 3,
-          filters: { framework: "nuxt", version: "0.2.60" },
+          filters: { framework: "nuxt", version: docsPackage.version },
           expect: {
-            scope: { framework: "nuxt", version: "0.2.60" },
+            scope: { framework: "nuxt", version: docsPackage.version },
             relevantSources: ["/docs/customization/agent-primitive"],
             allowedSources: ["/docs/guides/agent-friendly-docs", "/docs/configuration"],
             maxFirstRelevantRank: 1,
@@ -492,9 +492,9 @@ export default defineDocs({
           id: "register-custom-mdx-component",
           query:
             "Create an InfoCard React component, register it in the components map, and use it from MDX without an import",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/customization/components"],
             allowedSources: ["/docs/configuration", "/docs/themes/creating-themes"],
             maxFirstRelevantRank: 1,
@@ -516,9 +516,9 @@ export default defineDocs({
           query:
             "Example how the docs website uses dynamic OG in api/og/route.ts with ImageResponse width 1200 height 630",
           topK: 5,
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/customization/og-images"],
             allowedSources: ["/docs/configuration", "/docs/reference"],
             maxFirstRelevantRank: 1,
@@ -540,9 +540,9 @@ export default defineDocs({
           query:
             "PageAgentFrontmatter page-frontmatter.md failureModes resolution Confirm withDocs wraps the Next.js config exact field types",
           topK: 3,
-          filters: { framework: "astro", version: "0.2.60" },
+          filters: { framework: "astro", version: docsPackage.version },
           expect: {
-            scope: { framework: "astro", version: "0.2.60" },
+            scope: { framework: "astro", version: docsPackage.version },
             relevantSources: ["/docs/reference"],
             allowedSources: ["/docs/configuration", "/docs/guides/agent-friendly-docs"],
             maxFirstRelevantRank: 1,
@@ -593,9 +593,9 @@ export default defineDocs({
           id: "install-existing-nextjs",
           query:
             "Manually install @farming-labs/next without direct renderer packages, configure withDocs, and wrap the app in RootProvider",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/installation"],
             allowedSources: ["/docs", "/docs/cli", "/docs/configuration"],
             maxFirstRelevantRank: 1,
@@ -615,9 +615,9 @@ export default defineDocs({
           id: "validate-runnable-code-blocks",
           query:
             "Plan and validate fenced MDX code blocks with pnpm exec docs codeblocks validate --plan",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/cli"],
             allowedSources: ["/docs/configuration", "/docs/customization/components"],
             maxFirstRelevantRank: 1,
@@ -627,9 +627,9 @@ export default defineDocs({
           id: "configure-public-mcp",
           query:
             "Expose the docs MCP server over Streamable HTTP and optionally add authentication",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/customization/mcp"],
             allowedSources: ["/docs/configuration", "/docs/cli"],
             maxFirstRelevantRank: 1,
@@ -639,9 +639,9 @@ export default defineDocs({
           id: "generate-static-sitemaps",
           query:
             "Static Export command pnpm exec docs sitemap generate for public/sitemap.xml and public/sitemap.md",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/customization/sitemaps"],
             allowedSources: ["/docs/configuration", "/docs/cli"],
             maxFirstRelevantRank: 1,
@@ -659,9 +659,9 @@ export default defineDocs({
         {
           id: "deploy-cloud-preview",
           query: "Use pnpm dlx @farming-labs/docs deploy --json to return a Docs Cloud preview URL",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/cloud/deploy"],
             allowedSources: ["/docs/cloud", "/docs/guides/docs-json", "/docs/cli"],
             maxFirstRelevantRank: 1,
@@ -680,9 +680,9 @@ export default defineDocs({
           id: "cloud-analytics-privacy",
           query:
             "Connect a project to Docs Cloud analytics while keeping user-authored inputs disabled",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/cloud/analytics"],
             allowedSources: ["/docs/cloud", "/docs/customization/analytics"],
             maxFirstRelevantRank: 1,
@@ -692,9 +692,9 @@ export default defineDocs({
           id: "author-structured-agent-contract",
           query:
             "Write a structured page agent contract with prerequisites, verification, rollback, and applicability",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/guides/agent-friendly-docs"],
             allowedSources: [
               "/docs/customization/agent-primitive",
@@ -707,9 +707,9 @@ export default defineDocs({
         {
           id: "validate-adapter-agent-contract",
           query: "Run the shared agent conformance contract for a custom framework adapter",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/guides/adapter-agent-conformance"],
             allowedSources: ["/docs/guides/agent-friendly-docs", "/docs/customization/mcp"],
             maxFirstRelevantRank: 1,
@@ -729,9 +729,9 @@ export default defineDocs({
           id: "create-reusable-theme",
           query: "Create, apply, and publish a reusable custom Farming Labs docs theme",
           topK: 2,
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/themes/creating-themes"],
             allowedSources: ["/docs/themes", "/docs/configuration"],
             maxFirstRelevantRank: 2,
@@ -741,9 +741,9 @@ export default defineDocs({
           id: "configure-page-actions",
           query:
             "Configure Copy Markdown and Open in LLM actions with canonical page and GitHub URLs",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/customization/page-actions"],
             allowedSources: ["/docs/configuration", "/docs/customization/agent-primitive"],
             maxFirstRelevantRank: 1,
@@ -753,9 +753,9 @@ export default defineDocs({
           id: "configure-grounded-ask-ai",
           query:
             "Enable Ask AI with grounded retrieval, citations, provider credentials, and a same-origin proxy",
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/customization/ai-chat"],
             allowedSources: ["/docs/configuration", "/docs/customization/mcp"],
             maxFirstRelevantRank: 1,
@@ -766,9 +766,9 @@ export default defineDocs({
           query:
             "Use docs-cloud-compress-v1, protectJson, and docs agent compact --all to tighten page-level agent.md",
           tokenBudget: 3_500,
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/token-efficiency"],
             allowedSources: [
               "/docs/cli",
@@ -785,9 +785,9 @@ export default defineDocs({
             "Run the runnable codeblocks-smoke.js example and verify that metadata is marked runnable",
           topK: 5,
           tokenBudget: 20_000,
-          filters: { framework: "nextjs", version: "0.2.60" },
+          filters: { framework: "nextjs", version: docsPackage.version },
           expect: {
-            scope: { framework: "nextjs", version: "0.2.60" },
+            scope: { framework: "nextjs", version: docsPackage.version },
             relevantSources: ["/docs/configuration"],
             allowedSources: ["/docs/cli", "/docs/guides/agent-friendly-docs"],
             maxFirstRelevantRank: 3,

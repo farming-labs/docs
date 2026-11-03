@@ -19,7 +19,7 @@ Expected result: Mintlify MDX, navigation, assets, and supported components rend
 - Obtain the Git repository containing docs.json or mint.json, all MDX pages, assets, snippets, and OpenAPI files.
 - Record hosted redirects, authentication, analytics, custom domains, and dashboard-only settings.
 - Initialize the target runtime separately from the source deployment.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From Mintlify verification
 
