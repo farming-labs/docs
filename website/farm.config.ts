@@ -1,15 +1,15 @@
 import { defineConfig } from "@farm.js/core";
 import { withDocs } from "@farming-labs/farmjs/config";
 
-const schemaHeaders = (version: string) => ({
-  source: `/schema/agent-manifest.${version}.json`,
-  headers: [{ key: "Content-Type", value: "application/schema+json; charset=utf-8" }],
-});
-
 export default withDocs(
   defineConfig({
-    async headers() {
-      return [schemaHeaders("v1"), schemaHeaders("v2")];
+    routeRules: {
+      "/schema/agent-manifest.v1.json": {
+        headers: { "Content-Type": "application/schema+json; charset=utf-8" },
+      },
+      "/schema/agent-manifest.v2.json": {
+        headers: { "Content-Type": "application/schema+json; charset=utf-8" },
+      },
     },
     vite: {
       ssr: {

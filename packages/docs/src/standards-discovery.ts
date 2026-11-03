@@ -1463,7 +1463,7 @@ async function createHashedDiscoveryResponse(options: {
   lastModified?: string | Date | null;
 }): Promise<Response> {
   const sha256 = options.sha256 ?? (await sha256DocsDiscoveryContent(options.content));
-  return createDocsCacheableResponse({
+  const response = createDocsCacheableResponse({
     request: options.request,
     content: options.content,
     sha256,
@@ -1478,6 +1478,9 @@ async function createHashedDiscoveryResponse(options: {
       "X-Robots-Tag": "noindex",
     },
   });
+  // A CDN can compress GET bodies while leaving HEAD and 304 unencoded.
+  response.headers.set("ETag", `W/"${sha256}"`);
+  return response;
 }
 
 function standardsNotFoundResponse(request: Request, linkHeader: string): Response {
