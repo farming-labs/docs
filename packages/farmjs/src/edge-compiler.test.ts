@@ -66,6 +66,15 @@ describe("compileFarmDocsEdgeManifest", () => {
       data: { title: "Guide", url: "/docs/guide" },
     });
     expect(manifest.api.markdown.guide?.body).toContain("# Guide");
+    for (const [alias, canonical] of [
+      ["/AGENT.md", "/AGENTS.md"],
+      ["/.well-known/AGENT.md", "/AGENTS.md"],
+      ["/.well-known/llms.txt", "/llms.txt"],
+      ["/.well-known/llms-full.txt", "/llms-full.txt"],
+    ]) {
+      expect(manifest.routes[alias!]?.status).toBe(200);
+      expect(manifest.routes[alias!]?.body).toBe(manifest.routes[canonical!]?.body);
+    }
     expect(JSON.stringify(manifest)).not.toContain(root);
     expect(JSON.stringify(manifest)).not.toContain(contentDir);
   });

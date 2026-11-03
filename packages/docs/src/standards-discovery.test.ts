@@ -295,7 +295,7 @@ describe("RFC 9727 API catalog", () => {
     expect(result.linkset[1].anchor).toBe("https://docs.example.com/api/internal/docs");
   });
 
-  it("serves GET and bodyless HEAD with the RFC media type and Link relation", async () => {
+  it("uses a shared weak validator for GET, HEAD and 304", async () => {
     const lastModified = "2026-07-31T12:00:00.000Z";
     const get = await createDocsStandardsResponse({
       request: new Request(`https://docs.example.com${DEFAULT_API_CATALOG_ROUTE}`),
@@ -310,7 +310,7 @@ describe("RFC 9727 API catalog", () => {
     expect(get?.headers.get("link")).toContain('rel="api-catalog"');
     const getContent = await get?.text();
     expect(JSON.parse(getContent ?? "null")).toEqual(catalog());
-    expect(get?.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(get?.headers.get("etag")).toMatch(/^W\/"[a-f0-9]{64}"$/u);
     expect(get?.headers.get("last-modified")).toBe("Fri, 31 Jul 2026 12:00:00 GMT");
     expect(get?.headers.get("content-digest")).toBe(
       `sha-256=:${createHash("sha256")
@@ -341,6 +341,7 @@ describe("RFC 9727 API catalog", () => {
       lastModified,
     });
     expect(notModified?.status).toBe(304);
+    expect(notModified?.headers.get("etag")).toBe(get?.headers.get("etag"));
     expect(notModified?.headers.get("content-digest")).toBe(get?.headers.get("content-digest"));
 
     const dateNotModified = await createDocsStandardsResponse({
@@ -535,7 +536,7 @@ version: "1.0"
     }
   });
 
-  it("returns 304 for a matching strong ETag", async () => {
+  it("returns 304 for a matching ETag", async () => {
     const first = await createDocsStandardsResponse({
       request: new Request(`https://docs.example.com${DEFAULT_AGENT_SKILLS_INDEX_ROUTE}`),
       apiCatalog: catalog(),

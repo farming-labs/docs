@@ -404,6 +404,68 @@ Build a Farm application.
     expect(applicationRoute).toBeNull();
   });
 
+  it.each([
+    ["/AGENT.md", "/AGENTS.md"],
+    ["/.well-known/AGENT.md", "/AGENTS.md"],
+    ["/.well-known/llms.txt", "/llms.txt"],
+    ["/.well-known/llms-full.txt", "/llms-full.txt"],
+  ])(
+    "serves the advertised %s alias with canonical GET and HEAD metadata",
+    async (alias, canonical) => {
+      const server = createDocsServer(config);
+      const expected = await server.handle(new Request(`https://farm.example${canonical}`));
+      const response = await server.handle(new Request(`https://farm.example${alias}`));
+      expect(response?.status).toBe(200);
+      expect(await response?.text()).toBe(await expected?.text());
+      expect(response?.headers.get("content-type")).toBe(expected?.headers.get("content-type"));
+      const head = await server.handle(
+        new Request(`https://farm.example${alias}`, { method: "HEAD" }),
+      );
+      expect(head?.status).toBe(200);
+      expect(await head?.text()).toBe("");
+      expect(head?.headers.get("etag")).toBe(response?.headers.get("etag"));
+    },
+  );
+
+  it("serves legacy skill files advertised by the skills index", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-legacy-skills-"));
+    try {
+      mkdirSync(path.join(rootDir, "skills/demo/references"), { recursive: true });
+      writeFileSync(
+        path.join(rootDir, "skills/demo/SKILL.md"),
+        "---\nname: demo\ndescription: Build a demo app.\n---\n\n# Demo\n",
+      );
+      writeFileSync(
+        path.join(rootDir, "skills/demo/references/setup.md"),
+        "# Setup\nUse the demo.\n",
+      );
+      const server = createDocsServer({ ...config, rootDir, agent: { skills: "./skills" } });
+      const index = await server.handle(
+        new Request("https://farm.example/.well-known/skills/index.json"),
+      );
+      const { skills } = (await index!.json()) as {
+        skills: Array<{ name: string; files: string[] }>;
+      };
+      expect(skills.find(({ name }) => name === "demo")?.files).toContain("references/setup.md");
+      for (const skill of skills) {
+        for (const file of skill.files) {
+          const legacyUrl = `https://farm.example/.well-known/skills/${skill.name}/${file}`;
+          const canonical = await server.handle(
+            new Request(`https://farm.example/.well-known/agent-skills/${skill.name}/${file}`),
+          );
+          const response = await server.handle(new Request(legacyUrl));
+          expect(response?.status).toBe(200);
+          expect(await response?.text()).toBe(await canonical?.text());
+          const head = await server.handle(new Request(legacyUrl, { method: "HEAD" }));
+          expect(head?.headers.get("etag")).toBe(response?.headers.get("etag"));
+          expect(await head?.text()).toBe("");
+        }
+      }
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
   it("reports the app's package.json version as the MCP server version", async () => {
     async function initialize(server: ReturnType<typeof createDocsServer>) {
       const response = await server.handle(

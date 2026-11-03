@@ -302,7 +302,13 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
       const lastModified = response.headers.get("last-modified");
 
       expect(response.status, path).toBe(200);
-      expect(etag, path).toMatch(/^"[a-f0-9]{64}"$/u);
+      const compressedDiscovery = [
+        "/.well-known/agent-card.json",
+        "/.well-known/api-catalog",
+        "/.well-known/agent-skills/index.json",
+      ].includes(path);
+      const digest = createHash("sha256").update(content, "utf8").digest("hex");
+      expect(etag, path).toBe(`${compressedDiscovery ? "W/" : ""}"${digest}"`);
       expect(contentDigest, path).toBe(
         `sha-256=:${createHash("sha256").update(content, "utf8").digest("base64")}:`,
       );
@@ -324,6 +330,7 @@ describe.each(adapters)("%s agent surface contract", (adapter, modulePath) => {
         url,
       });
       expect(byEtag.status, path).toBe(304);
+      expect(byEtag.headers.get("etag"), path).toBe(etag);
       expect(byEtag.headers.get("content-digest"), path).toBe(contentDigest);
       expect(await byEtag.text(), path).toBe("");
 
