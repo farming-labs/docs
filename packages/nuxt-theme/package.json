@@ -1,7 +1,7 @@
 {
   "name": "@farming-labs/nuxt-theme",
-  "version": "0.2.135",
-  "description": "Nuxt/Vue UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
+  "version": "0.2.136",
+  "description": "Nuxt/Vue UI components for @farming-labs/docs \u2014 layout, sidebar, TOC, search, and theme toggle",
   "keywords": [
     "docs",
     "documentation",

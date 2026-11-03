@@ -169,7 +169,10 @@ export function docsMdx(): PluginOption {
       ],
       rehypePlugins: [
         rehypeToc,
-        [rehypeCode, { themes: { dark: "github-dark", light: "github-light" } }],
+        [
+          rehypeCode,
+          { engine: "oniguruma", themes: { dark: "github-dark", light: "github-light" } },
+        ],
       ],
     }),
   ];
