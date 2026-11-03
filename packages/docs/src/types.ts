@@ -4182,6 +4182,12 @@ export interface DocsCodeBlocksConfig {
   validate?: boolean | DocsCodeBlocksValidateConfig;
 }
 
+/** A docs set listed in {@link DocsConfig.roots}. */
+export interface DocsRootConfig extends Omit<Partial<DocsConfig>, "roots"> {
+  /** Entry folder for this docs set (e.g. "statewire/docs" → /statewire/docs). */
+  entry: string;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -4193,6 +4199,16 @@ export interface DocsConfig {
   docsPath?: string;
   /** Path to the content directory. Defaults to `entry` value. */
   contentDir?: string;
+  /**
+   * More docs sets served by the same app, each under its own `entry` with its own content,
+   * navigation and search. Each root starts from this config and replaces the top-level fields
+   * it sets; `docsPath` and `contentDir` default from its own `entry`. This config stays the
+   * first root, which serves the site-wide files (`llms.txt`, sitemap, robots) and MCP.
+   *
+   * @example
+   * roots: [{ entry: "statewire/docs", metadata: { titleTemplate: "%s – Statewire" } }]
+   */
+  roots?: DocsRootConfig[];
   /**
    * Internationalization (i18n) configuration.
    * When set, docs content is expected under `${contentDir}/{locale}` and

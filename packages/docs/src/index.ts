@@ -22,6 +22,7 @@ export {
 } from "./access.js";
 
 export { defineDocs } from "./define-docs.js";
+export { resolveDocsRoots } from "./docs-roots.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   createDocsAgentTraceContext,
@@ -468,6 +469,7 @@ export type {
 export type { GeneratedAgentProvenance, GeneratedAgentSourceKind } from "./agent-provenance.js";
 export type {
   DocsConfig,
+  DocsRootConfig,
   LlmsTxtConfig,
   LlmsTxtMaxCharsConfig,
   LlmsTxtMaxCharsMode,

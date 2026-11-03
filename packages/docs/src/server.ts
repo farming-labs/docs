@@ -99,6 +99,18 @@ export type {
   DocsAgentFeedbackIssueDraft,
 } from "./agent-feedback-loop.js";
 export { createDocsCloudRouteHandler, createDocsCloudServer } from "./docs-cloud-server.js";
+export {
+  createDocsRootHandler,
+  createDocsRootRouter,
+  resolveDocsRoots,
+  withVaryReferer,
+} from "./docs-roots.js";
+export type {
+  DocsRootRequestHandler,
+  DocsRootRouter,
+  DocsRootRouterOptions,
+  DocsRootSelection,
+} from "./docs-roots.js";
 export { createDocsCloudAskAIResponse, isDocsCloudAskAIProvider } from "./cloud-ask-ai.js";
 export type {
   DocsCloudAskAIOptions,
