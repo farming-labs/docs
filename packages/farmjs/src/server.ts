@@ -2598,7 +2598,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       (apiReferenceEnabled &&
         (pathname === apiReferencePath || pathname.startsWith(`${apiReferencePath}/`))) ||
       publicDocsPaths.has(pathname) ||
-      pathname.startsWith("/.well-known/agent-skills/");
+      Boolean(resolveDocsStandardsDiscoveryRequest(url, { apiRoute: configuredApiRoute }));
 
     // The MCP server card (SEP-2127) sits below each public MCP endpoint.
     if (mcpConfig.enabled && pathname.endsWith(DOCS_MCP_SERVER_CARD_SUFFIX)) {
