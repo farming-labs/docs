@@ -2339,7 +2339,7 @@ Use the product-specific workflow first.
       const artifactResponse = await GET(new Request(`http://localhost${path}`));
       expect(artifactResponse.status).toBe(200);
       expect(artifactResponse.headers.get("content-type")).toContain("text/markdown");
-      expect(artifactResponse.headers.get("etag")).toBe(`"${skillDigest}"`);
+      expect(artifactResponse.headers.get("etag")).toBe(`W/"${skillDigest}"`);
       expect(artifactResponse.headers.get("link")).toContain('rel="collection"');
       expect(await artifactResponse.text()).toBe(skillApiText);
     }
@@ -2350,7 +2350,7 @@ Use the product-specific workflow first.
     ]) {
       const response = await HEAD(new Request(`http://localhost${path}`, { method: "HEAD" }));
       expect(response.status).toBe(200);
-      expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
+      expect(response.headers.get("etag")).toMatch(/^W\/"[a-f0-9]{64}"$/);
       expect(await response.text()).toBe("");
     }
 
