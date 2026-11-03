@@ -19,7 +19,7 @@ Expected result: An MCP client initializes successfully and can discover, search
 - The docs API and framework public forwarder are already wired.
 - Choose stdio for local use or Streamable HTTP for a shared endpoint.
 - Keep HTTP public by default and add security.authenticate only when the deployment requires access control.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## MCP Server verification
 
@@ -49,3 +49,10 @@ files under `contentDir`, requires a current SHA-256 before overwriting, and exp
 preview, doctor, diff, and feedback-analysis tools. Draft-PR publishing is not registered unless the
 operator also passes `--allow-publish`; keep that server on local stdio or behind a separate
 authoring-scoped OAuth transport.
+
+## Farm.js transport
+
+`withDocs()` from `@farming-labs/farmjs/config` serves `/api/docs/mcp`, `/mcp`, and
+`/.well-known/mcp` without a route file. Each endpoint serves a public server card at
+`<endpoint>/server-card`; the card contains the server name, version, and endpoint URL,
+never its tools, including when `authenticate` is configured.

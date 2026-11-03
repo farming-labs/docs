@@ -2,40 +2,112 @@
   "version": 1,
   "reviews": [
     {
+      "route": "/docs",
+      "sourceHash": "fnv1a64:f09c6b7f4469698a",
+      "settingsHash": "fnv1a64:0a67cd1f3384201a",
+      "outputHash": "fnv1a64:c31f84622c3d4558",
+      "reviewedAt": "2026-11-03T01:53:35.534Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:a6c8dbf9346b4ae3",
+      "sourceHash": "fnv1a64:12a214c65948c127",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
-      "outputHash": "fnv1a64:1b5c90455efb0c05",
-      "reviewedAt": "2026-09-30T00:10:47.741Z",
-      "reviewedBy": "docs-team",
-      "reason": "Document typed OpenAPI SDK generation"
+      "outputHash": "fnv1a64:0f8b971a8dd34e04",
+      "reviewedAt": "2026-11-03T01:52:24.130Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source changes since the prior review: typed OpenAPI SDK generation is already retained in the curated CLI commands, workflow, and freshness instructions. Added Farm.js applicability; preserved command planning and execution safeguards."
+    },
+    {
+      "route": "/docs/cloud",
+      "sourceHash": "fnv1a64:3677f20347823bac",
+      "settingsHash": "fnv1a64:54aabfe997b31e1c",
+      "outputHash": "fnv1a64:74a80635a38614a9",
+      "reviewedAt": "2026-11-03T01:52:31.418Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/cloud/analytics",
+      "sourceHash": "fnv1a64:b927452e34bf8ebc",
+      "settingsHash": "fnv1a64:72be2461542d7a95",
+      "outputHash": "fnv1a64:00e7dfc1673e1ef9",
+      "reviewedAt": "2026-11-03T01:52:26.431Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/cloud/deploy",
+      "sourceHash": "fnv1a64:574a4c8acafd874b",
+      "settingsHash": "fnv1a64:063b4c9a14696a17",
+      "outputHash": "fnv1a64:9879e88dfcd86748",
+      "reviewedAt": "2026-11-03T01:52:28.957Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:912effdd4df500a4",
+      "sourceHash": "fnv1a64:dfeafde1c028c5b8",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:6619280b7f68efa3",
-      "reviewedAt": "2026-10-16T21:56:21.481Z",
+      "outputHash": "fnv1a64:135db8bcd5e84f3c",
+      "reviewedAt": "2026-11-03T01:52:34.435Z",
       "reviewedBy": "Codex",
-      "reason": "Reviewed the custom beforeFiles rewrite precedence change and updated the curated agent guidance to match; array rewrites retain afterFiles semantics."
+      "reason": "Reviewed current focused config and preset imports, existing beforeFiles rewrite precedence, and existing OpenAPI catalog guidance against the source changes. Preserved the executable evaluation fixture and corrected the adapter count to six."
+    },
+    {
+      "route": "/docs/contributing",
+      "sourceHash": "fnv1a64:f19f00e6e14a859a",
+      "settingsHash": "fnv1a64:b2106dff2d4f1f98",
+      "outputHash": "fnv1a64:8c402a0e9c6b2861",
+      "reviewedAt": "2026-11-03T01:52:36.691Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
     },
     {
       "route": "/docs/customization/agent-primitive",
-      "sourceHash": "fnv1a64:28b9ad19a979f2f4",
+      "sourceHash": "fnv1a64:79d481a7401c3dbe",
       "settingsHash": "fnv1a64:3fa80ff29bd1598e",
-      "outputHash": "fnv1a64:d733ee51a757a5ec",
-      "reviewedAt": "2026-08-20T10:21:13.546Z",
-      "reviewedBy": "Kinfe123",
-      "reason": "Re-recorded after compaction source hashing stopped embedding mtime-derived last_updated dates; page sources are unchanged since the 2026-08-14 review, and the intentionally preserved agent.md content (audience projection and Agent Skills guide, operator-only authoring MCP safety guidance, scoped sidebar answer guide) still matches its source."
+      "outputHash": "fnv1a64:4462845707d990df",
+      "reviewedAt": "2026-11-03T01:52:38.852Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/customization/ai-chat",
+      "sourceHash": "fnv1a64:be00a611e3f3d4ca",
+      "settingsHash": "fnv1a64:7a85fb928fd52635",
+      "outputHash": "fnv1a64:9fa20a3499734af3",
+      "reviewedAt": "2026-11-03T01:52:41.155Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/customization/components",
+      "sourceHash": "fnv1a64:bcfe0e78459ea7fa",
+      "settingsHash": "fnv1a64:063b4c9a14696a17",
+      "outputHash": "fnv1a64:2b31c3d6792a3c9f",
+      "reviewedAt": "2026-11-03T01:52:43.548Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
     },
     {
       "route": "/docs/customization/mcp",
-      "sourceHash": "fnv1a64:724e794e76a6d24e",
+      "sourceHash": "fnv1a64:5ea9464ca9e190d7",
       "settingsHash": "fnv1a64:4d5874ba9e62babc",
-      "outputHash": "fnv1a64:0b4119aece602f67",
-      "reviewedAt": "2026-08-20T10:21:13.548Z",
-      "reviewedBy": "Kinfe123",
-      "reason": "Re-recorded after compaction source hashing stopped embedding mtime-derived last_updated dates; page sources are unchanged since the 2026-08-14 review, and the intentionally preserved agent.md content (audience projection and Agent Skills guide, operator-only authoring MCP safety guidance, scoped sidebar answer guide) still matches its source."
+      "outputHash": "fnv1a64:27ad702fae3963a4",
+      "reviewedAt": "2026-11-03T01:52:45.944Z",
+      "reviewedBy": "Codex",
+      "reason": "Updated Farm.js applicability and added its automatic MCP aliases and public server-card behavior from the source. Preserved private authentication, scope errors, and operator-only authoring safeguards."
+    },
+    {
+      "route": "/docs/customization/page-actions",
+      "sourceHash": "fnv1a64:3aca164fa8589d93",
+      "settingsHash": "fnv1a64:72be2461542d7a95",
+      "outputHash": "fnv1a64:d9235295a7e22962",
+      "reviewedAt": "2026-11-03T01:52:48.816Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
     },
     {
       "route": "/docs/customization/sidebar",
@@ -47,31 +119,157 @@
       "reason": "Re-recorded after compaction source hashing stopped embedding mtime-derived last_updated dates; page sources are unchanged since the 2026-08-14 review, and the intentionally preserved agent.md content (audience projection and Agent Skills guide, operator-only authoring MCP safety guidance, scoped sidebar answer guide) still matches its source."
     },
     {
+      "route": "/docs/customization/sitemaps",
+      "sourceHash": "fnv1a64:c7044eb1f2aad586",
+      "settingsHash": "fnv1a64:0a67cd1f3384201a",
+      "outputHash": "fnv1a64:16f9a7f2ee819c77",
+      "reviewedAt": "2026-11-03T01:52:51.958Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/guides/adapter-agent-conformance",
+      "sourceHash": "fnv1a64:1f2f924426fb3b03",
+      "settingsHash": "fnv1a64:1b5212557ba75927",
+      "outputHash": "fnv1a64:980f25f7fc9620b9",
+      "reviewedAt": "2026-11-03T01:52:56.430Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
       "route": "/docs/guides/agent-friendly-docs",
-      "sourceHash": "fnv1a64:1417c876829fd6c3",
+      "sourceHash": "fnv1a64:f222b39feb9e5601",
       "settingsHash": "fnv1a64:4d5874ba9e62babc",
-      "outputHash": "fnv1a64:723c75eb102d9d85",
-      "reviewedAt": "2026-09-29T01:16:39.151Z",
-      "reviewedBy": "farming-labs-docs",
-      "reason": "Reviewed the OpenAPI source-loading update; compact guidance now covers local and remote JSON/YAML sources while preserving the verified page summaries."
+      "outputHash": "fnv1a64:ff89f683f4c98e7a",
+      "reviewedAt": "2026-11-03T01:52:59.638Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source changes: the curated machine-surfaces guidance already covers local and remote JSON/YAML OpenAPI discovery. Updated Farm.js applicability without changing the task, commands, or verification guidance."
+    },
+    {
+      "route": "/docs/installation",
+      "sourceHash": "fnv1a64:b519f340dc91bf2d",
+      "settingsHash": "fnv1a64:7a85fb928fd52635",
+      "outputHash": "fnv1a64:6954bdfd990604f0",
+      "reviewedAt": "2026-11-03T01:53:02.991Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations",
+      "sourceHash": "fnv1a64:dd3fbb4990f45bfa",
+      "settingsHash": "fnv1a64:e50e89e221226fc3",
+      "outputHash": "fnv1a64:7563720ea571b1b0",
+      "reviewedAt": "2026-11-03T01:53:27.187Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/docusaurus",
+      "sourceHash": "fnv1a64:fe10b64d962adadf",
+      "settingsHash": "fnv1a64:dbac89e9f25094c8",
+      "outputHash": "fnv1a64:691917c72a9a37c6",
+      "reviewedAt": "2026-11-03T01:53:06.721Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/fumadocs",
+      "sourceHash": "fnv1a64:2a2ee98cdd831797",
+      "settingsHash": "fnv1a64:ab89fb28872d1850",
+      "outputHash": "fnv1a64:bf1fb944561434ad",
+      "reviewedAt": "2026-11-03T01:53:09.634Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/gitbook",
+      "sourceHash": "fnv1a64:0fc9529fcaa7c579",
+      "settingsHash": "fnv1a64:cd874ef828c34e2e",
+      "outputHash": "fnv1a64:11c688fd972cb852",
+      "reviewedAt": "2026-11-03T01:53:12.504Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/mintlify",
+      "sourceHash": "fnv1a64:da6e6675675d0b9f",
+      "settingsHash": "fnv1a64:f146078e2605e9a5",
+      "outputHash": "fnv1a64:d0e06d32247431f0",
+      "reviewedAt": "2026-11-03T01:53:15.327Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/mkdocs",
+      "sourceHash": "fnv1a64:c5c015e8ff6a65c5",
+      "settingsHash": "fnv1a64:4b53757ce3e12a9b",
+      "outputHash": "fnv1a64:7a9bd00c72f4399d",
+      "reviewedAt": "2026-11-03T01:53:18.376Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/nextra",
+      "sourceHash": "fnv1a64:8ee748b4683bed3d",
+      "settingsHash": "fnv1a64:156231f9a09bd12a",
+      "outputHash": "fnv1a64:f710249148338b87",
+      "reviewedAt": "2026-11-03T01:53:23.620Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/starlight",
+      "sourceHash": "fnv1a64:14871afc547b22eb",
+      "settingsHash": "fnv1a64:f146078e2605e9a5",
+      "outputHash": "fnv1a64:acd5cc54e0b18d5f",
+      "reviewedAt": "2026-11-03T01:53:30.151Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/migrations/vitepress",
+      "sourceHash": "fnv1a64:2e5cee7d9a3cc4ca",
+      "settingsHash": "fnv1a64:cd874ef828c34e2e",
+      "outputHash": "fnv1a64:c1ce6b35b8e9e33b",
+      "reviewedAt": "2026-11-03T01:53:32.751Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:00834bffdac67264",
+      "sourceHash": "fnv1a64:584269647a32bf6e",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:13babdc124c58c50",
-      "reviewedAt": "2026-10-17T01:16:28.196Z",
+      "outputHash": "fnv1a64:8fb6a6db7752ae7f",
+      "reviewedAt": "2026-11-03T01:53:38.110Z",
       "reviewedBy": "Codex",
-      "reason": "Reviewed the Farm.js adapter buildCache contract against implementation and tests, and added cache retention, invalidation, fallback, and opt-out guidance to the curated reference."
+      "reason": "Reviewed the source changes and retained the existing Farm.js build-cache contract. Added the application MCP version default and existing-document API catalog options, deduplication, and disable semantics."
+    },
+    {
+      "route": "/docs/themes",
+      "sourceHash": "fnv1a64:3ccaaa7cf9220b2b",
+      "settingsHash": "fnv1a64:b2106dff2d4f1f98",
+      "outputHash": "fnv1a64:ee01d30a52a407c6",
+      "reviewedAt": "2026-11-03T01:53:44.167Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
+    },
+    {
+      "route": "/docs/themes/creating-themes",
+      "sourceHash": "fnv1a64:02a06b70614266ec",
+      "settingsHash": "fnv1a64:7a85fb928fd52635",
+      "outputHash": "fnv1a64:d716a1e356d7df47",
+      "reviewedAt": "2026-11-03T01:53:40.748Z",
+      "reviewedBy": "Codex",
+      "reason": "Reviewed existing manual edits against the source: config helpers and theme presets use focused imports on 0.2.133+, with factory-versus-instance and CSS verification retained. Added Farm.js applicability."
     },
     {
       "route": "/docs/token-efficiency",
-      "sourceHash": "fnv1a64:723305a70b3f23f3",
+      "sourceHash": "fnv1a64:b01fa3ac40b8c8c9",
       "settingsHash": "fnv1a64:72be2461542d7a95",
-      "outputHash": "fnv1a64:d63cfdc9326dd1b7",
-      "reviewedAt": "2026-08-20T10:21:22.778Z",
-      "reviewedBy": "Kinfe123",
-      "reason": "Preserve the curated compacted output that passes the golden-task quality gates: #485/#487 added agent-compact review-workflow coverage to these source pages, and a cloud re-compaction regressed golden tasks from 22/22 to 9/22, so the curated agent.md is kept until the new coverage is folded in by a reviewed curation pass."
+      "outputHash": "fnv1a64:06ddeb4b3084842c",
+      "reviewedAt": "2026-11-03T01:53:47.744Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the source with its last generated or reviewed revision, following the website content move. The functional change adds Farm.js applicability; migration icon changes do not alter machine guidance. Updated the compact applicability text and preserved the existing task, examples, verification, and recovery guidance."
     }
   ]
 }

@@ -48,7 +48,7 @@ export const myTheme = extendTheme(fumadocs(), {
 
 - Begin with a working docs application and identify the framework-specific global stylesheet.
 - Decide whether to create a new theme, extend one preset, or override only a few theme values.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.133; package @farming-labs/docs, @farming-labs/theme.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.133; package @farming-labs/docs, @farming-labs/theme.
 
 ## Creating Your Own Theme verification
 

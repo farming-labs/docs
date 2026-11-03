@@ -18,7 +18,7 @@ Expected result: The selected actions appear in the intended position and produc
 
 - Machine-readable Markdown routes work for the docs entry.
 - Configure github.url before using provider templates that require a GitHub source URL.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Page Actions verification
 

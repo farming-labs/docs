@@ -20,7 +20,7 @@ Task: Plan and validate fenced MDX code blocks with the Farming Labs docs CLI.
 Expected result: The validation plan identifies runnable examples before any execution occurs, and
 the follow-up validation reports each configured example without executing unrelated prose.
 
-Applies to Next.js, TanStack Start, SvelteKit, Astro, and Nuxt projects using
+Applies to Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt projects using
 `@farming-labs/docs` version `>=0.2.60`.
 
 Prerequisites:

@@ -21,10 +21,10 @@ Exact implementation:
         ```
 ## Installation prerequisites
 
-- Start in an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project.
+- Start in an existing Next.js, TanStack Start, Farm.js, SvelteKit, Astro, or Nuxt project.
 - Install dependencies with the package manager already used by the project.
 - Preserve the project's framework, path aliases, and global stylesheet location.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs, @farming-labs/theme, @farming-labs/next, @farming-labs/tanstack-start, @farming-labs/svelte, @farming-labs/astro, @farming-labs/nuxt.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs, @farming-labs/theme, @farming-labs/next, @farming-labs/tanstack-start, @farming-labs/svelte, @farming-labs/astro, @farming-labs/nuxt.
 
 ## Installation verification
 

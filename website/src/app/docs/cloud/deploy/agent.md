@@ -24,7 +24,7 @@ pnpm dlx @farming-labs/docs deploy --json
 - The workspace has Docs Cloud access and a connected project.
 - DOCS_CLOUD_API_KEY is available through the shell, .env.local, or CI secrets.
 - The cloud deploy setting is enabled in docs.config.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Deploy verification
 

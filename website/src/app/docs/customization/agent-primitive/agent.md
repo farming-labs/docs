@@ -1,5 +1,7 @@
 # Agent Primitive
 
+Applies to Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt.
+
 You are reading the machine-oriented override for `/docs/customization/agent-primitive`.
 
 Use this page when you need the page-level authoring contract for agent-facing docs in

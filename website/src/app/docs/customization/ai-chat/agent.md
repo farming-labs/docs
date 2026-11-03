@@ -19,7 +19,7 @@ Expected result: A docs question returns a grounded streamed answer with citatio
 - A working docs runtime and searchable content are already available.
 - The selected provider credentials are stored in environment variables rather than committed config.
 - Decide whether the browser may call the provider directly or must use a same-origin server proxy.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Ask AI verification
 

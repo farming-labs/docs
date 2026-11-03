@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { compile } from "@mdx-js/mdx";
+import { compile, run } from "@mdx-js/mdx";
+import * as jsxRuntime from "react/jsx-runtime";
 import remarkGfm from "remark-gfm";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
@@ -140,6 +141,30 @@ describe("MDX extension hooks", () => {
     copied[0] = () => {};
     copied[1].nested.push(2);
     expect(original).toEqual(["remark-custom", { nested: [1] }]);
+  });
+
+  it("preserves TOML metadata when an app enables TOML frontmatter", async () => {
+    const options = webpackOptions({
+      mdx: { remarkPlugins: [["remark-frontmatter", ["yaml", "toml"]]] },
+    });
+    const output = String(
+      await compile(
+        '+++\ntitle = "Guide"\nenabled = true\n[build]\nretries = 3\n[[links]]\nlabel = "Install"\nurl = "/docs/install"\n+++\n\n# Guide',
+        {
+          outputFormat: "function-body",
+          remarkPlugins: await loadPlugins(options.remarkPlugins),
+          rehypePlugins: await loadPlugins(options.rehypePlugins),
+        },
+      ),
+    );
+
+    const { metadata } = await run(output, { ...jsxRuntime, baseUrl: import.meta.url });
+    expect(metadata).toEqual({
+      title: "Guide",
+      enabled: true,
+      build: { retries: 3 },
+      links: [{ label: "Install", url: "/docs/install" }],
+    });
   });
 
   it.each([
