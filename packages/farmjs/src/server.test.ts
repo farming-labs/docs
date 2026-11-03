@@ -636,6 +636,101 @@ describe("createFarmDocsRuntimeHandler", () => {
     ).not.toThrow();
   });
 
+  describe("document head metadata", () => {
+    const render = async (
+      overrides: Record<string, unknown>,
+      options: { url?: string; immutableContent?: boolean } = {},
+    ) => {
+      const handler = createFarmDocsRuntimeHandler(
+        { ...config, metadata: { titleTemplate: "%s – Farm Docs" }, ...overrides },
+        {
+          clientEntry: "/farm-client.js",
+          immutableContent: options.immutableContent,
+          loadReactModule: async () => ({
+            FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+          }),
+        },
+      );
+      return {
+        handler,
+        html: await (await handler(
+          new Request(options.url ?? "https://farm.example/docs"),
+        ))!.text(),
+      };
+    };
+
+    it("applies the title template and the og endpoint's per-page card", async () => {
+      const { html } = await render({
+        og: { enabled: true, type: "dynamic", endpoint: "/api/og" },
+      });
+      const card =
+        "https://farm.example/api/og?title=Introduction&amp;description=Build+a+Farm+application.";
+
+      expect(html).toContain("<title>Introduction – Farm Docs</title>");
+      expect(html).toContain('<meta property="og:title" content="Introduction">');
+      expect(html).toContain(`<meta property="og:image" content="${card}">`);
+      expect(html).toContain('<meta property="og:image:width" content="1200">');
+      expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+      expect(html).toContain(`<meta name="twitter:image" content="${card}">`);
+    });
+
+    it("prefers the page's own Open Graph image over the endpoint", async () => {
+      const { html } = await render({
+        og: { enabled: true, type: "dynamic", endpoint: "/api/og" },
+        _preloadedContent: {
+          "/docs/page.md": `---
+title: Introduction
+openGraph:
+  images:
+    - url: /cards/intro.png
+---
+# Introduction`,
+        },
+      });
+
+      expect(html).toContain(
+        '<meta property="og:image" content="https://farm.example/cards/intro.png">',
+      );
+      expect(html).toContain(
+        '<meta name="twitter:image" content="https://farm.example/cards/intro.png">',
+      );
+      expect(html).not.toContain("/api/og?title=");
+    });
+
+    it("renders no social tags when og is disabled", async () => {
+      const { html } = await render({ og: { enabled: false, endpoint: "/api/og" } });
+
+      expect(html).toContain("<title>Introduction – Farm Docs</title>");
+      expect(html).not.toContain("og:");
+      expect(html).not.toContain("twitter:");
+    });
+
+    it("puts each request's origin in cached social card URLs", async () => {
+      const { handler, html } = await render(
+        { og: { enabled: true, type: "dynamic", endpoint: "/api/og" } },
+        { immutableContent: true },
+      );
+      const second = await (await handler(new Request("https://docs.example/docs")))!.text();
+
+      expect(html).toContain('content="https://farm.example/api/og?title=Introduction');
+      expect(second).toContain('content="https://docs.example/api/og?title=Introduction');
+      expect(second).not.toContain("farm.example");
+    });
+
+    it("sends the templated title with client-side navigation data", async () => {
+      const { handler } = await render({});
+      const response = await handler(
+        new Request("https://farm.example/docs", {
+          headers: { Accept: "application/json", [FARM_DOCS_NAVIGATION_HEADER]: "1" },
+        }),
+      );
+
+      expect(await response?.json()).toMatchObject({
+        data: { title: "Introduction", documentTitle: "Introduction – Farm Docs" },
+      });
+    });
+  });
+
   it("returns page data for client-side documentation navigation", async () => {
     const handler = createFarmDocsRuntimeHandler(
       {

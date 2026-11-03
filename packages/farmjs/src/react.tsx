@@ -145,7 +145,7 @@ function FarmDocsClient({ config, data }: { config: DocsConfig; data: DocsServer
   }, [navigator]);
 
   useLayoutEffect(() => {
-    document.title = runtimeData.title;
+    document.title = runtimeData.documentTitle;
     const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     const nextDescription = runtimeData.description ?? config.metadata?.description;
     if (description && nextDescription) {
