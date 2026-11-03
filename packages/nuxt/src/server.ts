@@ -17,7 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { eventHandler, getRequestURL, toWebRequest } from "h3";
+import { eventHandler, getRequestHeader, getRequestURL, toWebRequest } from "h3";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
@@ -103,6 +103,7 @@ import {
   buildApiReferenceOperationPagesAsync,
   createApiReferenceOperationMarkdownResponse,
   createDocsMcpHttpHandler,
+  createDocsRootRouter,
   readDocsSitemapManifest,
   resolveApiReferenceConfig,
   resolveApiReferenceOpenApiDiscovery,
@@ -111,6 +112,8 @@ import {
   serializeDocsIconRegistry,
   serializeOpenDocsProviders,
   readDocsAppVersion,
+  resolveDocsRoots,
+  withVaryReferer,
 } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import {
@@ -2247,49 +2250,51 @@ type DocsStorageAccessor = (base: string) => {
 };
 
 export function defineDocsHandler(config: Record<string, any>, storage: DocsStorageAccessor) {
-  const getServer = createStorageBackedDocsServerGetter(config, storage);
+  const roots = createStorageBackedDocsRoots(config, storage);
 
-  return eventHandler(async (event: any) => {
-    const server = await getServer();
-
-    const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
-    const headers = event.headers ?? event.node?.req?.headers ?? {};
+  return eventHandler((event: any) => {
     const reqUrl = new URL(event.node?.req?.url ?? "/", "http://localhost");
+    return roots.dispatch(event, reqUrl, async ({ config, getServer }) => {
+      const server = await getServer();
 
-    if (method === "POST") {
-      let body: string | undefined;
-      try {
-        body = await new Promise<string>((resolve, reject) => {
-          let data = "";
-          event.node.req.on("data", (chunk: any) => (data += chunk));
-          event.node.req.on("end", () => resolve(data));
-          event.node.req.on("error", reject);
+      const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
+      const headers = event.headers ?? event.node?.req?.headers ?? {};
+
+      if (method === "POST") {
+        let body: string | undefined;
+        try {
+          body = await new Promise<string>((resolve, reject) => {
+            let data = "";
+            event.node.req.on("data", (chunk: any) => (data += chunk));
+            event.node.req.on("end", () => resolve(data));
+            event.node.req.on("error", reject);
+          });
+        } catch {
+          /* empty */
+        }
+        return server.POST({
+          request: new Request(reqUrl.href, { method, headers, body }),
         });
-      } catch {
-        /* empty */
       }
-      return server.POST({
-        request: new Request(reqUrl.href, { method, headers, body }),
-      });
-    }
 
-    const pathname = reqUrl.searchParams.get("pathname");
-    if (method === "GET" && pathname) {
-      return server.load(pathname);
-    }
+      const pathname = reqUrl.searchParams.get("pathname");
+      if (method === "GET" && pathname) {
+        return server.load(pathname);
+      }
 
-    if (method === "GET" || method === "HEAD") {
-      const request = new Request(reqUrl.href, { method, headers });
-      return method === "HEAD" ? server.HEAD({ request }) : server.GET({ request });
-    }
+      if (method === "GET" || method === "HEAD") {
+        const request = new Request(reqUrl.href, { method, headers });
+        return method === "HEAD" ? server.HEAD({ request }) : server.GET({ request });
+      }
 
-    const discoveryApiRoute = resolveDocsRequestApiRoute(reqUrl, config.cloud?.apiRoute);
-    if (resolveDocsStandardsDiscoveryRequest(reqUrl, { apiRoute: discoveryApiRoute })) {
-      const request = createUnsupportedMethodRequest(reqUrl, method, headers);
-      return server.GET({ request });
-    }
+      const discoveryApiRoute = resolveDocsRequestApiRoute(reqUrl, config.cloud?.apiRoute);
+      if (resolveDocsStandardsDiscoveryRequest(reqUrl, { apiRoute: discoveryApiRoute })) {
+        const request = createUnsupportedMethodRequest(reqUrl, method, headers);
+        return server.GET({ request });
+      }
 
-    return methodNotAllowedResponse("GET, HEAD, POST");
+      return methodNotAllowedResponse("GET, HEAD, POST");
+    });
   });
 }
 
@@ -2305,7 +2310,7 @@ export function defineDocsHandler(config: Record<string, any>, storage: DocsStor
  * ```
  */
 export function defineDocsMcpHandler(config: Record<string, any>, storage: DocsStorageAccessor) {
-  const getServer = createStorageBackedDocsServerGetter(config, storage);
+  const { getServer } = createStorageBackedDocsRoots(config, storage).primary;
 
   return eventHandler(async (event: any) => {
     const server = await getServer();
@@ -2339,16 +2344,15 @@ export function defineDocsMcpHandler(config: Record<string, any>, storage: DocsS
  * through to Nuxt.
  */
 export function defineDocsPublicHandler(config: Record<string, any>, storage: DocsStorageAccessor) {
-  const getServer = createStorageBackedDocsServerGetter(config, storage);
-  const entry = normalizePathSegment((config.entry as string | undefined) ?? "docs") || "docs";
+  const roots = createStorageBackedDocsRoots(config, storage);
 
   return eventHandler(async (event: any) => {
     const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
     const url = resolveEventUrl(event);
     const headers = event.headers ?? event.node?.req?.headers ?? {};
 
-    if (isDocsMcpRequest(url, config.mcp)) {
-      const server = await getServer();
+    if (isDocsMcpRequest(url, roots.primary.config.mcp)) {
+      const server = await roots.primary.getServer();
       const request = toWebRequest(event);
 
       if (method === "POST") {
@@ -2370,40 +2374,43 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
       return methodNotAllowedResponse();
     }
 
-    const discoveryApiRoute = resolveDocsRequestApiRoute(url, config.cloud?.apiRoute);
-    if (resolveDocsStandardsDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
-      const server = await getServer();
-      const request = createUnsupportedMethodRequest(url, method, headers);
-      if (method === "POST") return server.POST({ request });
-      if (method === "HEAD") return server.HEAD({ request });
-      return server.GET({ request });
-    }
-
-    if (method === "GET" || method === "HEAD") {
-      const request = new Request(url.href, { method, headers });
-      if (
-        isDocsLlmsTxtPublicRequest(url, config.llmsTxt, entry, {
-          apiRoute: discoveryApiRoute,
-        }) &&
-        hasNativeNuxtPublicFile(url.pathname)
-      ) {
-        return undefined;
+    return roots.dispatch(event, url, async ({ config, getServer }) => {
+      const entry = normalizePathSegment((config.entry as string | undefined) ?? "docs") || "docs";
+      const discoveryApiRoute = resolveDocsRequestApiRoute(url, config.cloud?.apiRoute);
+      if (resolveDocsStandardsDiscoveryRequest(url, { apiRoute: discoveryApiRoute })) {
+        const server = await getServer();
+        const request = createUnsupportedMethodRequest(url, method, headers);
+        if (method === "POST") return server.POST({ request });
+        if (method === "HEAD") return server.HEAD({ request });
+        return server.GET({ request });
       }
 
-      if (
-        !isDocsPublicGetRequest(entry, url, request, {
-          apiRoute: discoveryApiRoute,
-          sitemap: config.sitemap,
-          llms: config.llmsTxt,
-          robots: config.robots,
-        })
-      ) {
-        return undefined;
-      }
+      if (method === "GET" || method === "HEAD") {
+        const request = new Request(url.href, { method, headers });
+        if (
+          isDocsLlmsTxtPublicRequest(url, config.llmsTxt, entry, {
+            apiRoute: discoveryApiRoute,
+          }) &&
+          hasNativeNuxtPublicFile(url.pathname)
+        ) {
+          return undefined;
+        }
 
-      const server = await getServer();
-      return method === "HEAD" ? server.HEAD({ request }) : server.GET({ request });
-    }
+        if (
+          !isDocsPublicGetRequest(entry, url, request, {
+            apiRoute: discoveryApiRoute,
+            sitemap: config.sitemap,
+            llms: config.llmsTxt,
+            robots: config.robots,
+          })
+        ) {
+          return undefined;
+        }
+
+        const server = await getServer();
+        return method === "HEAD" ? server.HEAD({ request }) : server.GET({ request });
+      }
+    });
   });
 }
 
@@ -2449,6 +2456,39 @@ function resolveEventUrl(event: any): URL {
   } catch {
     return new URL(event.node?.req?.url ?? "/", "http://localhost");
   }
+}
+
+interface StorageBackedDocsRoot {
+  entry: string;
+  config: Record<string, any>;
+  getServer: () => Promise<DocsServer>;
+}
+
+function createStorageBackedDocsRoots(config: Record<string, any>, storage: DocsStorageAccessor) {
+  const roots: StorageBackedDocsRoot[] = resolveDocsRoots(config as DocsConfig).map((root) => ({
+    entry: (root.entry as string | undefined) ?? "docs",
+    config: root,
+    getServer: createStorageBackedDocsServerGetter(root, storage),
+  }));
+  const router =
+    roots.length > 1 ? createDocsRootRouter(roots, { apiRoute: config.cloud?.apiRoute }) : null;
+  const primary = roots[0]!;
+
+  async function dispatch<T>(
+    event: any,
+    url: URL,
+    handle: (root: StorageBackedDocsRoot) => Promise<T>,
+  ): Promise<T> {
+    if (!router) return handle(primary);
+    const referer = getRequestHeader(event, "referer");
+    const { root, varyReferer } = router.select(
+      new Request(url.href, referer ? { headers: { referer } } : undefined),
+    );
+    const result = await handle(root);
+    return varyReferer && result instanceof Response ? (withVaryReferer(result) as T) : result;
+  }
+
+  return { primary, dispatch };
 }
 
 function createStorageBackedDocsServerGetter(

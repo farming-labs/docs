@@ -33,8 +33,10 @@ const props = withDefaults(
 
 const route = useRoute();
 const tocItems = ref<{ title: string; url: string; depth: number }[]>([]);
-const llmsLangParam = computed(() =>
-  props.locale ? `&lang=${encodeURIComponent(props.locale)}` : "",
+const llmsParams = computed(
+  () =>
+    `&root=${encodeURIComponent(props.entry)}` +
+    (props.locale ? `&lang=${encodeURIComponent(props.locale)}` : ""),
 );
 const localizedPreviousPage = computed(() => localizePage(props.previousPage));
 const localizedNextPage = computed(() => localizePage(props.nextPage));
@@ -395,8 +397,8 @@ watch(
             Edit on GitHub
           </a>
           <span v-if="llmsTxtEnabled" class="fd-llms-txt-links">
-            <a :href="`/api/docs?format=llms${llmsLangParam}`" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
-            <a :href="`/api/docs?format=llms-full${llmsLangParam}`" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+            <a :href="`/api/docs?format=llms${llmsParams}`" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+            <a :href="`/api/docs?format=llms-full${llmsParams}`" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
           </span>
           <span v-if="lastModified" class="fd-last-modified">Last updated: {{ lastModified }}</span>
         </div>
