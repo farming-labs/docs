@@ -11,6 +11,8 @@ URL: /docs/themes
 Description: Built-in themes and how to create your own
 Related: /docs/themes/creating-themes, /docs/configuration, /docs/customization/colors, /docs/customization/typography
 
+Applies to Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt.
+
 Select factory and package subpath as a pair—e.g., `pixelBorder` from `@farming-labs/theme/pixel-border` with `theme: pixelBorder()`—then import `@farming-labs/theme/pixel-border/css` globally. Use `createTheme()` for custom factories and `extendTheme()` to derive from a preset. If visuals don't change, fix the CSS entrypoint; if the factory can't be resolved, copy its exact export and import path from the table below.
 
 ## Using a Theme

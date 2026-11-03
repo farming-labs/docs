@@ -19,7 +19,7 @@ Expected result: The source content, navigation, assets, and supported component
 - Identify the current documentation platform and its content root.
 - Choose the target application runtime before moving files.
 - Preserve the source project or create a migration branch before editing.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Migrations verification
 
@@ -36,5 +36,5 @@ guide, read its `.md` route and preserve its source inventory, URL, navigation, 
 integration, verification, and recovery steps.
 
 The target runtime is independent from the source platform. Detect whether the destination is
-Next.js, TanStack Start, SvelteKit, Astro, or Nuxt before choosing file locations. Never remove the
+Next.js, TanStack Start, Farm.js, SvelteKit, Astro, or Nuxt before choosing file locations. Never remove the
 source project until the target production build and route comparison pass.

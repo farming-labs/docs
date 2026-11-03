@@ -23,7 +23,7 @@ pnpm dlx @farming-labs/docs cloud sync
 
 - The repository already contains a working Farming Labs docs project.
 - The team has Docs Cloud access and knows which project should own the integration.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Docs Cloud Sync repository verification
 

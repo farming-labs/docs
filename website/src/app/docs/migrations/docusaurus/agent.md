@@ -19,7 +19,7 @@ Expected result: Docusaurus pages, sidebar order, assets, and supported MDX patt
 - Preserve docusaurus.config, sidebars, docs, static, versions.json, versioned_docs, and versioned_sidebars.
 - Decide which Docusaurus docs versions and locales must remain public.
 - Initialize the target runtime in a branch or separate directory.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From Docusaurus verification
 

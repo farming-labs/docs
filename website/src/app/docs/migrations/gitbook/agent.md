@@ -19,7 +19,7 @@ Expected result: GitBook pages, table of contents, assets, and representable blo
 - Create or obtain a complete GitHub or GitLab Git Sync export for every published GitBook space.
 - Preserve .gitbook.yaml, SUMMARY.md, README files, assets, redirects, and site structure.
 - Record dashboard-only domains, authentication, variants, search, analytics, and OpenAPI blocks.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From GitBook verification
 

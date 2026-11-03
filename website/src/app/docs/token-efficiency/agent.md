@@ -38,7 +38,7 @@ pnpm exec docs agent compact --all
 
 - The docs corpus already has accurate page descriptions, related routes, and task-specific agent contracts.
 - Measure a representative retrieval task before compacting content.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Token Efficiency verification
 

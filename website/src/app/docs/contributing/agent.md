@@ -23,7 +23,7 @@ Exact implementation:
 
 - Read the repository AGENTS.md and the skill that matches the affected subsystem.
 - Install the pinned pnpm workspace dependencies and identify the smallest affected package set.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs, @farming-labs/next, @farming-labs/tanstack-start, @farming-labs/svelte, @farming-labs/astro, @farming-labs/nuxt.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs, @farming-labs/next, @farming-labs/tanstack-start, @farming-labs/svelte, @farming-labs/astro, @farming-labs/nuxt.
 
 ## Contributing verification
 

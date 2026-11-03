@@ -19,7 +19,7 @@ Expected result: Existing Fumadocs Markdown or MDX content and navigation run th
 - Preserve source.config, content collections, meta files, source loaders, layouts, search routes, and MDX components.
 - Record the existing loader baseUrl and published route tree.
 - Initialize the target runtime in a migration branch.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## From Fumadocs verification
 

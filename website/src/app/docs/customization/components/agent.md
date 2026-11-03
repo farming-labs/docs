@@ -33,7 +33,7 @@ export default defineDocs({
 - The project has a working docs.config file and an existing docs page for verification.
 - Use docs.config.tsx when registration includes JSX.
 - Confirm whether the requirement needs a config component override or a theme default-prop override.
-- Applies to framework nextjs, tanstackstart, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
+- Applies to framework nextjs, tanstackstart, farmjs, sveltekit, astro, nuxt; version >=0.2.60; package @farming-labs/docs.
 
 ## Components verification
 
