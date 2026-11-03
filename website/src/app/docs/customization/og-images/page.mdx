@@ -75,6 +75,7 @@ You can mix both: use a dynamic endpoint by default and override with static ima
    - `og: { enabled: true, type: "dynamic", endpoint: "/api/og" }`
 2. **For each docs page**, the framework builds a **single URL** that includes the page’s context:
    - **Next.js (MDX):** A remark plugin injects that URL into the page’s exported `metadata` (from frontmatter). The URL is your endpoint plus query params.
+   - **Farm.js:** `@farming-labs/farmjs` builds the same URL when it renders the page head, and resolves it against the site base URL (`baseUrl` from `sitemap`, `llmsTxt` or `robots`) or else the request origin, so `og:image` is absolute. The page `<title>` also follows `metadata.titleTemplate`.
    - **Query params** the framework adds:
      - `title` — the page’s `title` from frontmatter (required).
      - `description` — the page’s `description` from frontmatter (optional).

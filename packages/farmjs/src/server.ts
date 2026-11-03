@@ -80,12 +80,16 @@ import {
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
   withDocsOpenApiOperationCounts,
+  buildPageOpenGraph,
+  buildPageTwitter,
+  resolveTitle,
 } from "@farming-labs/docs";
 import type {
   DocsAgentTraceEventInput,
   DocsAskAIMcpConfig,
   DocsConfig,
   OrderingItem,
+  PageFrontmatter,
 } from "@farming-labs/docs";
 import {
   buildApiReferenceOpenApiDocumentAsync,
@@ -277,7 +281,12 @@ export interface DocsServerLoadResult {
   flatPages: PageNode[];
   url: string;
   title: string;
+  /** The page title with `metadata.titleTemplate` applied, for `<title>`. */
+  documentTitle: string;
   description?: string;
+  ogImage?: string;
+  openGraph?: PageFrontmatter["openGraph"];
+  twitter?: PageFrontmatter["twitter"];
   /** Whether the rendered MDX body already opens with the frontmatter description. */
   descriptionInBody?: boolean;
   rawContent: string;
@@ -1193,7 +1202,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       flatPages,
       url: currentUrl,
       title,
+      documentTitle: resolveTitle(title, config.metadata),
       description,
+      ...pageSocialFrontmatter(data),
       descriptionInBody,
       rawContent: humanRawContent,
       readingTime,
@@ -2805,6 +2816,84 @@ function renderThemeBootstrap(config: DocsConfig & Record<string, any>): string 
   return `<script>(()=>{try{const fallback=${JSON.stringify(defaultTheme)};const stored=${allowStoredTheme ? 'localStorage.getItem("theme")' : "null"};const selected=stored==="light"||stored==="dark"||stored==="system"?stored:fallback;const resolved=selected==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):selected;const root=document.documentElement;root.classList.remove("light","dark");root.classList.add(resolved);root.style.colorScheme=resolved}catch{}})()</script>`;
 }
 
+function pageSocialFrontmatter(
+  data: Record<string, unknown>,
+): Pick<DocsServerLoadResult, "ogImage" | "openGraph" | "twitter"> {
+  const isObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+  return {
+    ...(typeof data.ogImage === "string" ? { ogImage: data.ogImage } : {}),
+    ...(isObject(data.openGraph)
+      ? { openGraph: data.openGraph as PageFrontmatter["openGraph"] }
+      : {}),
+    ...(isObject(data.twitter) ? { twitter: data.twitter as PageFrontmatter["twitter"] } : {}),
+  };
+}
+
+/**
+ * The page's social card fields. Without a static `openGraph` or `ogImage`, a
+ * configured `og.endpoint` gets the page title and description, as the Next.js
+ * adapter's remark-og plugin does.
+ */
+function resolvePageSocialCard(
+  config: DocsConfig & Record<string, any>,
+  data: DocsServerLoadResult,
+): Pick<PageFrontmatter, "title" | "description" | "ogImage" | "openGraph" | "twitter"> {
+  const page = {
+    title: data.title,
+    description: data.description,
+    ogImage: data.ogImage,
+    openGraph: data.openGraph,
+    twitter: data.twitter,
+  };
+  const endpoint = config.og?.endpoint;
+  if (!endpoint || page.openGraph || page.ogImage) return page;
+  const params = new URLSearchParams({ title: page.title });
+  if (page.description) params.set("description", page.description);
+  const url = `${endpoint}?${params.toString()}`;
+  return {
+    ...page,
+    openGraph: { images: [{ url, width: 1200, height: 630 }] },
+    twitter: page.twitter ?? { card: "summary_large_image", images: [url] },
+  };
+}
+
+function renderFarmDocsSocialMeta(
+  config: DocsConfig & Record<string, any>,
+  data: DocsServerLoadResult,
+  baseUrl: string | undefined,
+): string {
+  if (config.og?.enabled === false) return "";
+  const absolute = (url: string) =>
+    url.startsWith("/") && baseUrl ? `${baseUrl.replace(/\/+$/, "")}${url}` : url;
+  const page = resolvePageSocialCard(config, data);
+  const openGraph = buildPageOpenGraph(page, config.og, baseUrl);
+  const twitter = buildPageTwitter(page, config.og, baseUrl);
+  const tags: Array<[attribute: "property" | "name", key: string, value: string | undefined]> = [];
+  if (openGraph) {
+    tags.push(["property", "og:title", openGraph.title]);
+    tags.push(["property", "og:description", openGraph.description]);
+    for (const image of openGraph.images ?? []) {
+      tags.push(["property", "og:image", absolute(image.url)]);
+      tags.push(["property", "og:image:width", image.width?.toString()]);
+      tags.push(["property", "og:image:height", image.height?.toString()]);
+    }
+  }
+  if (twitter) {
+    tags.push(["name", "twitter:card", twitter.card ?? config.metadata?.twitterCard]);
+    tags.push(["name", "twitter:title", twitter.title]);
+    tags.push(["name", "twitter:description", twitter.description]);
+    for (const image of twitter.images ?? []) tags.push(["name", "twitter:image", absolute(image)]);
+  }
+  return tags
+    .filter((tag): tag is [(typeof tag)[0], string, string] => Boolean(tag[2]))
+    .map(
+      ([attribute, key, value]) =>
+        `<meta ${attribute}="${key}" content="${escapeDocumentText(value)}">`,
+    )
+    .join("\n  ");
+}
+
 function renderFarmDocsDocument(input: {
   config: DocsConfig & Record<string, any>;
   data: DocsServerLoadResult;
@@ -2833,8 +2922,9 @@ function renderFarmDocsDocument(input: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="generator" content="@farming-labs/farmjs">
-  <title>${escapeDocumentText(data.title)}</title>
+  <title>${escapeDocumentText(data.documentTitle)}</title>
   ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
+  ${renderFarmDocsSocialMeta(config, data, resolveDocsMetadataBaseUrl(config as any) ?? input.origin)}
   <link rel="alternate" type="text/markdown" href="${escapeDocumentText(markdownHref)}">
   ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
   ${renderThemeBootstrap(config)}
