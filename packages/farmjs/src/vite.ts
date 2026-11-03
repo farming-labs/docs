@@ -397,7 +397,14 @@ export function createFarmDocsMdxCompileOptions(
   ];
   const rehypePlugins: NonNullable<CompileOptions["rehypePlugins"]> = [
     rehypeToc,
-    [rehypeCode, { themes: codeBlockThemes, langs: [...FARM_DOCS_PRELOADED_CODE_LANGUAGES] }],
+    [
+      rehypeCode,
+      {
+        engine: "oniguruma",
+        themes: codeBlockThemes,
+        langs: [...FARM_DOCS_PRELOADED_CODE_LANGUAGES],
+      },
+    ],
   ];
   return { remarkPlugins, rehypePlugins };
 }

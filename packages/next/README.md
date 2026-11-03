@@ -90,6 +90,10 @@ highlighted once. The custom plugin owns its theme and code-block behavior. Omit
 the existing defaults. Use `undefined` as the second argument if you are not passing a live docs
 config. These hooks do not configure Fumadocs collections or replace its source loader.
 
+The built-in highlighter uses Shiki's Oniguruma engine during compilation. A custom highlighter
+can import `@farming-labs/next/mdx-plugins/rehype-code` to keep that default while configuring
+themes and transformers. Passing `engine: "js"` explicitly selects Shiki's JavaScript engine.
+
 ## Main entrypoints
 
 | Entrypoint | Purpose |

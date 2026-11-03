@@ -1,6 +1,38 @@
 import { compile } from "@mdx-js/mdx";
-import { describe, expect, it } from "vitest";
-import { createCanonicalDocsRemarkHeading } from "../src/vite.js";
+import { defaultShikiFactory, wasmShikiFactory } from "fumadocs-core/highlight/shiki/full";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCanonicalDocsRemarkHeading, docsMdx } from "../src/vite.js";
+
+describe("docsMdx code highlighting", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("compiles both themes without initializing the JavaScript regex engine", async () => {
+    const javascript = vi.spyOn(defaultShikiFactory, "getOrInit");
+    const oniguruma = vi.spyOn(wasmShikiFactory, "getOrInit");
+    const plugins = docsMdx() as Array<{
+      name: string;
+      transform: (source: string, id: string) => Promise<{ code: string }>;
+    }>;
+    const compiler = plugins.find((plugin) => plugin.name === "@mdx-js/rollup")!;
+    const output = await compiler.transform(
+      '---\ntitle: Guide\n---\n\n## Setup\n\n```ts title="example.ts"\nconst answer = 42; // [!code highlight]\n```',
+      "/docs/page.mdx",
+    );
+
+    for (const marker of [
+      "metadata",
+      "toc",
+      "setup",
+      "--shiki-light",
+      "--shiki-dark",
+      "highlighted",
+      "example.ts",
+    ])
+      expect(output.code).toContain(marker);
+    expect(oniguruma).toHaveBeenCalledOnce();
+    expect(javascript).not.toHaveBeenCalled();
+  });
+});
 
 describe("createCanonicalDocsRemarkHeading", () => {
   it("encodes canonical TOC fragments and isolates Prompt-only references", async () => {
