@@ -46,6 +46,27 @@ function isDocsNavigationUrl(
   return basePath === "/" || pathname === basePath || pathname.startsWith(`${basePath}/`);
 }
 
+// The server writes this bootstrap as JSON, and that JSON escapes `<`, so the first
+// `;</script>` after it closes the script.
+const FARM_DOCS_BOOTSTRAP = /<script[^>]*>window\.__FARM_DOCS_ADAPTER__=(\{[\s\S]*?\});<\/script>/;
+
+/**
+ * A docs server answers navigation with JSON. A prerendered page is a static file that
+ * answers with its HTML instead, which carries the same page data in its bootstrap.
+ */
+async function readNavigationPayload(
+  response: Response,
+): Promise<Partial<FarmDocsNavigationPayload>> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) return await response.json();
+  if (!contentType.includes("text/html")) {
+    throw new Error(`Farm docs navigation returned ${contentType || "no content type"}.`);
+  }
+  const bootstrap = FARM_DOCS_BOOTSTRAP.exec(await response.text())?.[1];
+  if (!bootstrap) throw new Error("Farm docs navigation returned a page without docs data.");
+  return { data: (JSON.parse(bootstrap) as Partial<FarmDocsNavigationPayload>).data };
+}
+
 function isAbortError(error: unknown): boolean {
   return Boolean(
     error && typeof error === "object" && "name" in error && error.name === "AbortError",
@@ -99,12 +120,11 @@ export function createFarmDocsNavigator(input: {
         },
         signal: nextRequest.controller.signal,
       });
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!response.ok || !contentType.includes("application/json")) {
+      if (!response.ok) {
         throw new Error(`Farm docs navigation returned ${response.status}.`);
       }
 
-      const payload = (await response.json()) as Partial<FarmDocsNavigationPayload>;
+      const payload = await readNavigationPayload(response);
       if (!payload.data?.sourcePath || typeof payload.data.url !== "string") {
         throw new Error("Farm docs navigation returned an invalid page payload.");
       }

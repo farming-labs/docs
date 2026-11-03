@@ -7,6 +7,7 @@ import {
   createDocsServer,
   createFarmDocsMultiRuntimeHandler,
   createFarmDocsRuntimeHandler,
+  listFarmDocsPages,
 } from "./server.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 
@@ -1198,5 +1199,87 @@ describe("createFarmDocsMultiRuntimeHandler", () => {
     expect(() => createFarmDocsMultiRuntimeHandler([harness, harness], options)).toThrow(
       "two docs roots share the entry /docs",
     );
+  });
+});
+
+describe("prerendering", () => {
+  const renderTitle = async () => ({
+    FarmDocsPage: ({ data }: { data: { title: string } }) =>
+      createElement("main", null, data.title),
+  });
+
+  it("lists pages that each render", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farmjs-prerender-"));
+    try {
+      const contentDir = path.join(rootDir, "src", "app", "docs");
+      mkdirSync(path.join(contentDir, "guides"), { recursive: true });
+      writeFileSync(
+        path.join(contentDir, "page.md"),
+        "---\ntitle: Introduction\n---\n# Introduction",
+      );
+      writeFileSync(
+        path.join(contentDir, "guides", "page.mdx"),
+        "---\ntitle: Guides\n---\n# Guides",
+      );
+      writeFileSync(path.join(contentDir, "guides", "deploy.md"), "# Deploy");
+      const docsConfig = { entry: "docs", docsPath: "/docs", contentDir: "src/app/docs" };
+
+      const pages = listFarmDocsPages(docsConfig, { rootDir });
+
+      expect(pages.sort()).toEqual(["/docs", "/docs/guides", "/docs/guides/deploy"]);
+      const handler = createFarmDocsRuntimeHandler(docsConfig, {
+        rootDir,
+        loadReactModule: renderTitle,
+      });
+      for (const pathname of pages) {
+        expect((await handler(new Request(`https://farm.example${pathname}`)))?.status).toBe(200);
+      }
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("lists the default locale's pages, which is what a page URL renders", () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "farmjs-prerender-i18n-"));
+    try {
+      mkdirSync(path.join(rootDir, "docs", "en"), { recursive: true });
+      mkdirSync(path.join(rootDir, "docs", "fr"), { recursive: true });
+      writeFileSync(path.join(rootDir, "docs", "en", "page.md"), "# Welcome");
+      writeFileSync(path.join(rootDir, "docs", "en", "install.md"), "# Install");
+      writeFileSync(path.join(rootDir, "docs", "fr", "page.md"), "# Bienvenue");
+
+      expect(
+        listFarmDocsPages(
+          { entry: "docs", i18n: { locales: ["en", "fr"], defaultLocale: "en" } } as any,
+          { rootDir },
+        ).sort(),
+      ).toEqual(["/docs", "/docs/install"]);
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves the build's origin out of a prerendered page", async () => {
+    const prerender = { headers: { "x-nitro-prerender": "/docs" } };
+    const relative = createFarmDocsRuntimeHandler(
+      { ...config, og: { enabled: true, type: "dynamic", endpoint: "/api/og" } },
+      { clientEntry: "/farm-client.js", immutableContent: true, loadReactModule: renderTitle },
+    );
+
+    const page = await (await relative(new Request("http://localhost/docs", prerender)))!.text();
+    expect(page).toContain('<link rel="alternate" type="text/markdown" href="/docs.md">');
+    expect(page).toContain('content="/api/og?title=Introduction');
+    expect(page).not.toContain("localhost");
+    // The same cached render still answers a live request with its own origin.
+    const live = await (await relative(new Request("https://docs.example/docs")))!.text();
+    expect(live).toContain('href="https://docs.example/docs.md"');
+
+    const configured = createFarmDocsRuntimeHandler(
+      { ...config, sitemap: { baseUrl: "https://docs.example/" } },
+      { clientEntry: "/farm-client.js", loadReactModule: renderTitle },
+    );
+    expect(
+      await (await configured(new Request("http://localhost/docs", prerender)))!.text(),
+    ).toContain('href="https://docs.example/docs.md"');
   });
 });

@@ -1,6 +1,7 @@
+import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { DocsConfig } from "@farming-labs/docs";
-import type { DocsServerLoadResult } from "./server.js";
+import { createFarmDocsRuntimeHandler, type DocsServerLoadResult } from "./server.js";
 import { createFarmDocsNavigator, type FarmDocsNavigationEnvironment } from "./navigation.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 
@@ -263,5 +264,59 @@ describe("createFarmDocsNavigator", () => {
 
     expect(test.data.map((entry) => entry.page.url)).toEqual(["/docs/fast"]);
     expect(test.history).toEqual([{ mode: "push", url: "https://docs.example/docs/fast" }]);
+  });
+
+  it("shows a prerendered page from the HTML a static file answers with", async () => {
+    const render = createFarmDocsRuntimeHandler(
+      {
+        entry: "docs",
+        _preloadedContent: {
+          "/docs/page.md": "# Overview",
+          "/docs/guides.md": `---\ntitle: Guides\ndescription: 'Quotes "}, data: {" and </script> stay text.'\n---\n# Guides`,
+        },
+      },
+      {
+        clientEntry: "/farm-client.js",
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+        }),
+      },
+    );
+    const html = await (await render(new Request("https://docs.example/docs/guides")))!.text();
+    const test = harness(
+      async () => new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } }),
+    );
+
+    await test.navigator.navigate("/docs/guides", {
+      history: "push",
+      scroll: true,
+      fallback: "assign",
+    });
+
+    expect(test.assigned).toEqual([]);
+    expect(test.data[0]?.page).toMatchObject({
+      title: "Guides",
+      url: "/docs/guides",
+      description: 'Quotes "}, data: {" and </script> stay text.',
+    });
+    expect(test.history).toEqual([{ mode: "push", url: "https://docs.example/docs/guides" }]);
+  });
+
+  it("navigates in full to an HTML page that carries no docs data", async () => {
+    const test = harness(
+      async () =>
+        new Response("<!doctype html><p>Signed out</p>", {
+          headers: { "Content-Type": "text/html" },
+        }),
+    );
+
+    await test.navigator.navigate("/docs/guides", {
+      history: "push",
+      scroll: true,
+      fallback: "assign",
+    });
+
+    expect(test.data).toEqual([]);
+    expect(test.assigned).toEqual(["https://docs.example/docs/guides"]);
   });
 });
