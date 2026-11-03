@@ -237,12 +237,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:584269647a32bf6e",
+      "sourceHash": "fnv1a64:bc50b7d147f489ab",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:8fb6a6db7752ae7f",
-      "reviewedAt": "2026-11-03T01:53:38.110Z",
+      "outputHash": "fnv1a64:eb7674a6a49262c4",
+      "reviewedAt": "2026-11-03T04:03:04.848Z",
       "reviewedBy": "Codex",
-      "reason": "Reviewed the source changes and retained the existing Farm.js build-cache contract. Added the application MCP version default and existing-document API catalog options, deduplication, and disable semantics."
+      "reason": "Compared the only source change since the accepted review: the new persistent build-cache API. Added its exact exports, version floor, input-key responsibilities, JSON normalization, storage limits and failure behavior to the curated agent reference; preserved the existing reference guidance."
     },
     {
       "route": "/docs/themes",
