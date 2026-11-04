@@ -1507,6 +1507,31 @@ describe("createDocsLayout page chrome", () => {
     expect(pageClientProps({ pageActions: { variant } })?.pageActionsVariant).toBe(expected);
   });
 
+  it.each([
+    [undefined, undefined],
+    [false, undefined],
+    [
+      true,
+      {
+        copyMarkdown: "Markdown, ready to paste into an LLM",
+        viewMarkdown: "This page as plain text",
+        connectMcp: "Use these docs from any MCP client",
+      },
+    ],
+    [
+      { viewMarkdown: "Plain text" },
+      {
+        copyMarkdown: "Markdown, ready to paste into an LLM",
+        viewMarkdown: "Plain text",
+        connectMcp: "Use these docs from any MCP client",
+      },
+    ],
+  ] as const)("resolves pageActions.descriptions %j for the menu", (descriptions, expected) => {
+    expect(pageClientProps({ pageActions: { descriptions } })?.pageActionsDescriptions).toEqual(
+      expected,
+    );
+  });
+
   it("passes the title position through", () => {
     expect(pageClientProps({ pageActions: { position: "title" } })?.pageActionsPosition).toBe(
       "title",

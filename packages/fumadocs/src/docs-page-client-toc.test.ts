@@ -21,7 +21,7 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
 });
 
 import { DocsPageClient } from "./docs-page-client.js";
-import { resolveTocPageActions } from "./page-actions-config.js";
+import { resolvePageActionDescriptions, resolveTocPageActions } from "./page-actions-config.js";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -100,6 +100,21 @@ describe("DocsPageClient TOC actions alongside the title actions", () => {
     expect(
       host.querySelector(".fd-page-title-actions .fd-page-actions-menu-trigger"),
     ).not.toBeNull();
+  });
+
+  it("hands the descriptions to the title-row menu", async () => {
+    await render({
+      copyMarkdown: true,
+      pageActionsPosition: "title",
+      pageActionsVariant: "menu",
+      pageActionsDescriptions: resolvePageActionDescriptions(true),
+    });
+    const trigger = host.querySelector<HTMLButtonElement>(".fd-page-actions-menu-trigger")!;
+    await act(async () => trigger.click());
+
+    expect(
+      document.querySelector('[role="menu"] .fd-page-action-menu-description')?.textContent,
+    ).toBe("Markdown, ready to paste into an LLM");
   });
 
   it("leaves out Edit on GitHub without a GitHub URL", async () => {

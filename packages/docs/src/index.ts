@@ -600,6 +600,7 @@ export type {
   SidebarPageNode,
   SidebarFolderNode,
   PageActionsConfig,
+  PageActionsDescriptionsConfig,
   PageActionsTocConfig,
   PageActionConnectMcpConfig,
   PageActionInstallSkillsConfig,

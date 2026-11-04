@@ -820,6 +820,12 @@ export interface OpenDocsProviderConfig {
   /** Cursor-specific mode. `"web"` opens cursor.com; `"app"` opens the Cursor app deeplink. */
   mode?: "web" | "app";
   /**
+   * One-line description under the provider in the page actions menu
+   * (`pageActions.variant: "menu"`), shown when `pageActions.descriptions` is on.
+   * Built-in presets fall back to their own text, e.g. "Ask Claude about this page".
+   */
+  description?: string;
+  /**
    * URL template. Placeholders:
    * - `{url}` — selected target URL, controlled by `openDocs.target` or provider `target` (encoded).
    * - `{pageUrl}` — rendered docs page URL (encoded).
@@ -962,6 +968,18 @@ export interface PageActionsConfig {
    */
   variant?: "buttons" | "menu";
   /**
+   * One-line descriptions under each item of the page actions menu
+   * (`.fd-page-action-menu-description`). Only the `"menu"` variant renders them.
+   *
+   * - `true` — built-in texts: Copy page "Markdown, ready to paste into an LLM", View as Markdown
+   *   "This page as plain text", Copy MCP server URL "Use these docs from any MCP client", and each
+   *   Open in provider's `description` or its preset's text (e.g. "Ask Claude about this page")
+   * - an object — the built-in texts with the given ones replaced
+   *
+   * @default false
+   */
+  descriptions?: boolean | PageActionsDescriptionsConfig;
+  /**
    * Actions in the table-of-contents rail (`.fd-actions-toc-portal`), shown together with the
    * actions at `position`. `true` shows Copy page, View as Markdown and Edit on GitHub (when
    * `github` is configured); an object picks among them. Ignored when `position` is `"toc"`,
@@ -993,6 +1011,15 @@ export interface PageActionsConfig {
    * @default "left"
    */
   alignment?: "left" | "right";
+}
+
+export interface PageActionsDescriptionsConfig {
+  /** Copy page. @default "Markdown, ready to paste into an LLM" */
+  copyMarkdown?: string;
+  /** View as Markdown. @default "This page as plain text" */
+  viewMarkdown?: string;
+  /** Copy MCP server URL. @default "Use these docs from any MCP client" */
+  connectMcp?: string;
 }
 
 export interface PageActionsTocConfig {

@@ -25,7 +25,10 @@ import type {
 } from "@farming-labs/docs";
 import { emitDocsTelemetryPageViewEvent, formatGithubEditUrl } from "@farming-labs/docs/browser";
 import { PageActions } from "./page-actions.js";
-import type { ResolvedTocPageActions } from "./page-actions-config.js";
+import type {
+  ResolvedPageActionDescriptions,
+  ResolvedTocPageActions,
+} from "./page-actions-config.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
@@ -79,6 +82,7 @@ interface SerializedProvider {
   urlTemplate: string;
   target?: "markdown" | "page" | "source" | "github";
   prompt?: string;
+  description?: string;
 }
 
 interface DocsPageClientProps {
@@ -113,6 +117,8 @@ interface DocsPageClientProps {
   pageActionsPosition?: "above-title" | "below-title" | "title" | "toc";
   /** `menu` collects the title, below-title or above-title actions behind one "…" trigger. */
   pageActionsVariant?: "buttons" | "menu";
+  /** Texts under each page actions menu item; the `menu` variant renders them. */
+  pageActionsDescriptions?: ResolvedPageActionDescriptions;
   /** Actions in the table-of-contents rail alongside the actions at `pageActionsPosition`. */
   tocActions?: ResolvedTocPageActions;
   /** The table-of-contents rail's "Ask AI" button. */
@@ -672,6 +678,7 @@ export function DocsPageClient({
   installSkills,
   pageActionsPosition = "below-title",
   pageActionsVariant = "buttons",
+  pageActionsDescriptions,
   tocActions,
   tocAskAi = true,
   pageActionsAlignment = "left",
@@ -1041,6 +1048,7 @@ export function DocsPageClient({
               installSkills={installSkills}
               alignment={pageActionsAlignment}
               variant={actionsVariant}
+              descriptions={pageActionsDescriptions}
               githubFileUrl={githubFileUrl}
               analytics={analytics}
             />
@@ -1080,6 +1088,7 @@ export function DocsPageClient({
             installSkills={installSkills}
             alignment="right"
             variant={actionsVariant}
+            descriptions={pageActionsDescriptions}
             githubFileUrl={githubFileUrl}
             analytics={analytics}
           />
@@ -1304,6 +1313,7 @@ export function DocsPageClient({
                 installSkills={installSkills}
                 alignment={pageActionsAlignment}
                 variant={actionsVariant}
+                descriptions={pageActionsDescriptions}
                 githubFileUrl={githubFileUrl}
                 analytics={analytics}
               />

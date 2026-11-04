@@ -69,6 +69,28 @@ describe("resolveOpenDocsProvider", () => {
     ).toContain('viewBox="0 0 1 1"');
   });
 
+  it.each([
+    ["claude", "Ask Claude about this page"],
+    ["chatgpt", "Ask ChatGPT about this page"],
+    ["codex", "Ask Codex about this page"],
+    ["github", "Edit this page on GitHub"],
+  ] as const)("gives the built-in %s provider a description", (provider, description) => {
+    expect(resolveOpenDocsProvider(provider)?.description).toBe(description);
+    expect(resolveOpenDocsProvider({ id: provider })?.description).toBe(description);
+  });
+
+  it("keeps a configured description ahead of the preset's", () => {
+    expect(
+      resolveOpenDocsProvider({ id: "codex", description: "Open Codex in ChatGPT" })?.description,
+    ).toBe("Open Codex in ChatGPT");
+    expect(
+      resolveOpenDocsProvider({
+        name: "Internal",
+        urlTemplate: "https://internal.example/?q={url}",
+      })?.description,
+    ).toBeUndefined();
+  });
+
   it("recovers preset icons from serialized provider labels", () => {
     expect(resolveOpenDocsProviderIcon("ChatGPT")).toContain("<svg");
     expect(resolveOpenDocsProviderIcon("GitHub Copilot")).toContain("<svg");
