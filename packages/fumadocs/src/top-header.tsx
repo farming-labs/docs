@@ -1,13 +1,14 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import Link from "fumadocs-core/link";
 import { usePathname } from "fumadocs-core/framework";
 import { ThemeSwitch } from "fumadocs-ui/layouts/shared/slots/theme-switch";
 import type { DocsNavLink } from "@farming-labs/docs";
+import type { DocsNavTitle } from "./layout-chrome.js";
 
 export interface DocsTopHeaderProps {
-  title: ReactNode;
+  title: DocsNavTitle;
   titleUrl: string;
   links: DocsNavLink[];
   /** Show the search trigger. */
@@ -44,9 +45,13 @@ export function DocsTopHeader({
 
   return (
     <header className="fd-top-header" data-fd-theme={themeName} style={style}>
-      <Link href={titleUrl} className="fd-top-header-title">
-        {title}
-      </Link>
+      {typeof title === "function" ? (
+        title({ className: "fd-top-header-title" })
+      ) : (
+        <Link href={titleUrl} className="fd-top-header-title">
+          {title}
+        </Link>
+      )}
       <div className="fd-top-header-controls">
         {search && (
           <button

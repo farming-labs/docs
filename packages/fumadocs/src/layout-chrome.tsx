@@ -58,13 +58,20 @@ export function resolveSidebarNavLinks(config: DocsConfig): LinkItemType[] | und
   }));
 }
 
+/** A nav title, or a component that renders it (fumadocs calls a function title instead of linking it). */
+export type DocsNavTitle = ReactNode | ((props: { className?: string }) => ReactNode);
+
 /** The nav title, marked so the top header can hide its sidebar copy on desktop. */
-export function resolveSidebarNavTitle(config: DocsConfig, title: ReactNode): ReactNode {
-  return isTopHeader(config) ? <span className="fd-nav-title">{title}</span> : title;
+export function resolveSidebarNavTitle(config: DocsConfig, title: DocsNavTitle): DocsNavTitle {
+  if (!isTopHeader(config)) return title;
+  if (typeof title === "function") {
+    return (props: { className?: string }) => <span className="fd-nav-title">{title(props)}</span>;
+  }
+  return <span className="fd-nav-title">{title}</span>;
 }
 
 export interface LayoutChromeOptions {
-  navTitle: ReactNode;
+  navTitle: DocsNavTitle;
   navUrl: string;
   search: boolean;
   askAI: boolean;
