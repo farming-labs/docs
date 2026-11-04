@@ -7,6 +7,7 @@ import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { resolveOpenDocsProviderIcon, resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { sanitizeIconHtml } from "./safe-icon-html.js";
 import { PageActionsMenu, type PageActionsMenuItem } from "./page-actions-menu.js";
+import type { ResolvedPageActionDescriptions } from "./page-actions-config.js";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
@@ -15,6 +16,7 @@ interface SerializedProvider {
   urlTemplate: string;
   target?: "markdown" | "page" | "source" | "github";
   prompt?: string;
+  description?: string;
 }
 
 interface PageActionsProps {
@@ -32,6 +34,8 @@ interface PageActionsProps {
   alignment?: "left" | "right";
   /** `menu` collects every enabled action behind one "…" trigger. */
   variant?: "default" | "rail" | "menu";
+  /** Texts under each menu item, with provider descriptions. Only the `menu` variant renders them. */
+  descriptions?: ResolvedPageActionDescriptions;
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
   analytics?: boolean;
@@ -270,6 +274,7 @@ export function PageActions({
   openDocsPrompt = DEFAULT_OPEN_DOCS_PROMPT,
   alignment = "left",
   variant = "default",
+  descriptions,
   githubFileUrl,
   analytics = false,
   askAi = true,
@@ -494,6 +499,7 @@ export function PageActions({
       items.push({
         key: "copy",
         label: copyMarkdownLabel,
+        description: descriptions?.copyMarkdown,
         icon: <CopyIcon />,
         onSelect: () => void handleCopyMarkdown(),
       });
@@ -502,6 +508,7 @@ export function PageActions({
       items.push({
         key: "markdown",
         label: "View as Markdown",
+        description: descriptions?.viewMarkdown,
         icon: <FileTextIcon />,
         href: markdownHref,
       });
@@ -514,6 +521,7 @@ export function PageActions({
         items.push({
           key: `open:${provider.name}`,
           label: `Open in ${provider.name}`,
+          description: descriptions ? provider.description : undefined,
           icon: iconHtml ? <span dangerouslySetInnerHTML={{ __html: iconHtml }} /> : undefined,
           onSelect: () => handleOpen(provider),
         });
@@ -523,7 +531,9 @@ export function PageActions({
       items.push({
         key: "mcp",
         label: "Copy MCP server URL",
+        description: descriptions?.connectMcp,
         icon: <CopyIcon />,
+        separatorBefore: true,
         onSelect: () => void copySetup("mcp:menu", endpoint),
       });
     }

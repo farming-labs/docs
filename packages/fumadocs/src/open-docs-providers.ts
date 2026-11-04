@@ -8,6 +8,7 @@ export interface SerializedOpenDocsProvider {
   promptUrlTemplate?: string;
   target?: OpenDocsTarget;
   prompt?: string;
+  description?: string;
 }
 
 interface OpenDocsProviderPreset {
@@ -16,6 +17,7 @@ interface OpenDocsProviderPreset {
   urlTemplate: string;
   promptUrlTemplate: string;
   target?: OpenDocsTarget;
+  description: string;
 }
 
 interface ResolveOpenDocsProvidersOptions {
@@ -40,42 +42,49 @@ const OPEN_DOCS_PROVIDER_PRESETS: Record<string, OpenDocsProviderPreset> = {
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.chatgpt,
     urlTemplate: "https://chatgpt.com/?q={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.chatgpt,
+    description: "Ask ChatGPT about this page",
   },
   claude: {
     name: "Claude",
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.claude,
     urlTemplate: "https://claude.ai/new?q={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.claude,
+    description: "Ask Claude about this page",
   },
   cursor: {
     name: "Cursor",
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.cursor,
     urlTemplate: "https://cursor.com/link/prompt?text={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.cursor,
+    description: "Ask Cursor about this page",
   },
   gemini: {
     name: "Gemini",
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.gemini,
     urlTemplate: "https://gemini.google.com/app?q={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.gemini,
+    description: "Ask Gemini about this page",
   },
   copilot: {
     name: "Copilot",
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.copilot,
     urlTemplate: "https://github.com/copilot?prompt={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.copilot,
+    description: "Ask Copilot about this page",
   },
   perplexity: {
     name: "Perplexity",
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.perplexity,
     urlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.perplexity,
+    description: "Ask Perplexity about this page",
   },
   codex: {
     name: "Codex",
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.chatgpt,
     urlTemplate: "codex://new?prompt={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.codex,
+    description: "Ask Codex about this page",
   },
   github: {
     name: "GitHub",
@@ -83,6 +92,7 @@ const OPEN_DOCS_PROVIDER_PRESETS: Record<string, OpenDocsProviderPreset> = {
     urlTemplate: "{githubUrl}",
     promptUrlTemplate: "{githubUrl}",
     target: "github",
+    description: "Edit this page on GitHub",
   },
 };
 
@@ -136,6 +146,7 @@ export function resolveOpenDocsProvider(
       promptUrlTemplate: preset.promptUrlTemplate,
       target: preset.target ?? options.target,
       prompt: options.prompt,
+      description: preset.description,
     };
   }
 
@@ -163,5 +174,6 @@ export function resolveOpenDocsProvider(
       options.target ??
       (hasCustomUrlTemplate ? "page" : undefined),
     prompt: provider.prompt ?? options.prompt,
+    description: provider.description ?? preset?.description,
   };
 }

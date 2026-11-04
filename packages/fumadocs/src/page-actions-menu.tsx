@@ -1,15 +1,19 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "fumadocs-ui/components/ui/popover";
 
 export interface PageActionsMenuItem {
   key: string;
   label: ReactNode;
+  /** Second line under the label, announced as the item's description. */
+  description?: ReactNode;
   icon?: ReactNode;
   /** Opens in a new tab. */
   href?: string;
   onSelect?: () => void;
+  /** Renders a separator above the item when another item precedes it. */
+  separatorBefore?: boolean;
 }
 
 const MoreIcon = () => (
@@ -44,6 +48,7 @@ export function PageActionsMenu({
   const [open, setOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const initialFocus = useRef<"first" | "last">("first");
+  const idPrefix = useId();
 
   if (items.length === 0) return null;
 
@@ -103,7 +108,14 @@ export function PageActionsMenu({
         }}
         onKeyDown={onMenuKeyDown}
       >
-        {items.map((item) => {
+        {items.map((item, index) => {
+          const labelId = item.description ? `${idPrefix}-${index}-label` : undefined;
+          const descriptionId = item.description ? `${idPrefix}-${index}-description` : undefined;
+          const label = (
+            <span id={labelId} className="fd-page-action-menu-label">
+              {item.label}
+            </span>
+          );
           const content = (
             <>
               {item.icon && (
@@ -111,14 +123,27 @@ export function PageActionsMenu({
                   {item.icon}
                 </span>
               )}
-              <span className="fd-page-action-menu-label">{item.label}</span>
+              {item.description ? (
+                <span className="fd-page-action-menu-text">
+                  {label}
+                  <span id={descriptionId} className="fd-page-action-menu-description">
+                    {item.description}
+                  </span>
+                </span>
+              ) : (
+                label
+              )}
             </>
           );
+          const separator = item.separatorBefore && index > 0 && (
+            <div role="separator" className="fd-page-actions-menu-separator" />
+          );
 
-          return item.href ? (
+          const menuItem = item.href ? (
             <a
-              key={item.key}
               role="menuitem"
+              aria-labelledby={labelId}
+              aria-describedby={descriptionId}
               tabIndex={-1}
               className="fd-page-action-menu-item"
               href={item.href}
@@ -133,9 +158,10 @@ export function PageActionsMenu({
             </a>
           ) : (
             <button
-              key={item.key}
               type="button"
               role="menuitem"
+              aria-labelledby={labelId}
+              aria-describedby={descriptionId}
               tabIndex={-1}
               className="fd-page-action-menu-item"
               onClick={() => {
@@ -145,6 +171,13 @@ export function PageActionsMenu({
             >
               {content}
             </button>
+          );
+
+          return (
+            <Fragment key={item.key}>
+              {separator}
+              {menuItem}
+            </Fragment>
           );
         })}
       </PopoverContent>

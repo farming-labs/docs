@@ -6431,6 +6431,24 @@ figure.shiki:has(figcaption) figcaption {
   background: var(--color-fd-accent);
 }
 
+.fd-page-action-menu-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fd-page-action-menu-description {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-page-actions-menu-separator {
+  margin: 0.25rem 0;
+  border-top: 1px solid var(--color-fd-border);
+}
+
 .fd-page-actions-menu-status {
   position: absolute;
   width: 1px;
