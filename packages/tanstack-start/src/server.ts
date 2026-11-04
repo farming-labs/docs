@@ -66,6 +66,7 @@ import {
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
   resolveDocsPath,
+  resolveGeneratedPageTitle,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
   resolveDocsSitemapPageLastmod,
@@ -182,6 +183,8 @@ export interface DocsServerLoadResult {
   flatPages: PageNode[];
   url: string;
   title: string;
+  /** Frontmatter title the layout renders when the theme enables `ui.page.generatedTitle`. */
+  generatedTitle?: string;
   description?: string;
   rawContent: string;
   readingTime?: number | null;
@@ -854,6 +857,7 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
       : (slug.split("/").pop()?.replace(/-/g, " ") ?? "Documentation");
 
     const title = (data.title as string) ?? fallbackTitle;
+    const generatedTitle = resolveGeneratedPageTitle(config.theme, data, humanRawContent);
     const description = data.description as string | undefined;
     const structuredData = renderDocsPageStructuredDataJson({
       title,
@@ -870,6 +874,7 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
       flatPages,
       url: currentUrl,
       title,
+      generatedTitle,
       description,
       rawContent: humanRawContent,
       readingTime,

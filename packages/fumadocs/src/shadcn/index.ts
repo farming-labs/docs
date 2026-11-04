@@ -57,6 +57,9 @@ const ShadcnUIDefaults = {
   sidebar: {
     style: "default" as const,
   },
+  page: {
+    generatedTitle: true,
+  },
   components: {
     Callout: { variant: "soft", icon: true },
     CodeBlock: { showCopyButton: true },

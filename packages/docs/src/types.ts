@@ -185,6 +185,17 @@ export interface UIConfig {
     /** Border color override */
     borderColor?: string;
   };
+  /** Page content rendering */
+  page?: {
+    /**
+     * Render the frontmatter `title` as the page heading (`.fd-page-title`
+     * inside `.fd-generated-page-header`, followed by the description and
+     * below-title page actions) on pages whose body has no authored h1.
+     * Applies to the Next.js, TanStack Start, and Farm layouts.
+     * @default false
+     */
+    generatedTitle?: boolean;
+  };
   /** Card styling */
   card?: {
     /** Whether cards have visible borders @default true */

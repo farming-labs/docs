@@ -132,6 +132,8 @@ export interface TanstackDocsLayoutProps {
   /** Framework label included with privacy-preserving maintainer page-view telemetry. */
   telemetryFramework?: DocsTelemetryFramework;
   locale?: string;
+  /** Frontmatter title rendered as the page heading; resolve it with `resolveGeneratedPageTitle`. */
+  generatedTitle?: string;
   description?: string;
   descriptionInBody?: boolean;
   readingTime?: number | null;
@@ -379,6 +381,7 @@ export function TanstackDocsLayout({
   browserRuntime = false,
   telemetryFramework,
   locale,
+  generatedTitle,
   description,
   descriptionInBody,
   readingTime,
@@ -619,6 +622,7 @@ export function TanstackDocsLayout({
           readingTimeFormat={readingTimeOptions.format}
           readingTime={typeof readingTime === "number" ? readingTime : undefined}
           llmsTxtEnabled={llmsTxtEnabled}
+          generatedTitle={generatedTitle}
           description={description}
           descriptionInBody={descriptionInBody}
           feedbackEnabled={feedbackConfig.enabled}
