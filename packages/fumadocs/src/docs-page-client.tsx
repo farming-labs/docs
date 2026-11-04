@@ -146,6 +146,8 @@ interface DocsPageClientProps {
   llmsTxtEnabled?: boolean;
   /** Frontmatter titles for pages whose MDX body does not author an h1 */
   generatedTitleMap?: Record<string, string>;
+  /** Generated page title for the current page (overrides generatedTitleMap) */
+  generatedTitle?: string;
   /** Map of pathname → frontmatter description */
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
@@ -586,6 +588,7 @@ export function DocsPageClient({
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
   generatedTitleMap,
+  generatedTitle,
   descriptionMap,
   description,
   descriptionInBody = false,
@@ -621,7 +624,7 @@ export function DocsPageClient({
 
   const normalizedPath = (browserPathname || pathname).replace(/\/$/, "") || "/";
   const page = resolvePageMetadata(pageMetadata, normalizedPath);
-  const pageTitle = generatedTitleMap?.[normalizedPath] ?? page?.generatedTitle;
+  const pageTitle = generatedTitle ?? generatedTitleMap?.[normalizedPath] ?? page?.generatedTitle;
   const pageDescription = description ?? descriptionMap?.[normalizedPath] ?? page?.description;
   const isChangelogRoute = !!(
     changelogBasePath &&

@@ -105,6 +105,7 @@ export function FarmDocsPageRenderer({
         tree={data.tree}
         locale={data.locale}
         telemetryFramework="farmjs"
+        generatedTitle={data.generatedTitle}
         description={data.descriptionInBody ? undefined : data.description}
         descriptionInBody={data.descriptionInBody}
         readingTime={data.readingTime}

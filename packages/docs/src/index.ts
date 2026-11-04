@@ -82,6 +82,7 @@ export {
   resolveReadingTimeFromSource,
   resolveReadingTimeOptions,
 } from "./reading-time.js";
+export { hasAuthoredPageTitle, resolveGeneratedPageTitle } from "./page-title.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
   getPageAgentFrontmatterIssues,

@@ -75,6 +75,7 @@ export function TanstackDocsPage({
         tree={data.tree}
         locale={data.locale}
         telemetryFramework="tanstack-start"
+        generatedTitle={data.generatedTitle}
         description={data.description}
         readingTime={data.readingTime}
         lastModified={data.lastModified}

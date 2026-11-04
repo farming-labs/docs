@@ -312,6 +312,37 @@ describe("DocsPageClient generated page header", () => {
   });
 });
 
+describe("DocsPageClient generated title prop", () => {
+  it("renders a direct generatedTitle in the generated page header", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        generatedTitle: "Installation",
+        description: "Install the framework.",
+        children: React.createElement("p", null, "Body"),
+      }),
+    );
+
+    expect(html).toContain(
+      '<div class="fd-generated-page-header not-prose"><h1 class="fd-page-title">Installation</h1><p class="fd-page-description">Install the framework.</p></div>',
+    );
+  });
+
+  it("renders no generated header without a generated title", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        description: "Install the framework.",
+        children: React.createElement("p", null, "Body"),
+      }),
+    );
+
+    expect(html).not.toContain("fd-generated-page-header");
+  });
+});
+
 describe("DocsPageClient reading time", () => {
   it("renders the reading-time row when enabled", () => {
     const html = renderToStaticMarkup(

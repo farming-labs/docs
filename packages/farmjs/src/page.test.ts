@@ -1,7 +1,9 @@
-import { isValidElement, type ReactElement, type ReactNode } from "react";
+import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import { renderToString } from "react-dom/server";
 import { BrowserDocsLayout } from "@farming-labs/theme/browser";
 import { describe, expect, it } from "vitest";
 import { FarmDocsPageRenderer } from "./page.js";
+import { createDocsServer } from "./server.js";
 
 function findElement(node: ReactNode, type: unknown): ReactElement<any> | undefined {
   if (Array.isArray(node)) {
@@ -38,5 +40,47 @@ describe("FarmDocsPageRenderer", () => {
     expect(layout).toBeDefined();
     expect(layout?.props.previousPage).toEqual(previousPage);
     expect(layout?.props.nextPage).toEqual(nextPage);
+  });
+});
+
+describe("FarmDocsPageRenderer generated page titles", () => {
+  const generatedTitleTheme = { name: "assistant-ui", ui: { page: { generatedTitle: true } } };
+
+  async function render(theme: unknown, body: string) {
+    const config = {
+      entry: "docs",
+      theme,
+      _preloadedContent: {
+        "/docs/page.md": `---\ntitle: Introduction\ndescription: Build a Farm application.\n---\n\n${body}`,
+      },
+    } as any;
+    const data = await createDocsServer(config).load({ pathname: "/docs" });
+    const Content = () =>
+      body.startsWith("# ")
+        ? createElement("h1", null, body.slice(2))
+        : createElement("p", null, "Farm documentation content.");
+    return renderToString(createElement(FarmDocsPageRenderer, { config, data, Content }));
+  }
+
+  it("renders the frontmatter title and description when the theme enables it", async () => {
+    const html = await render(generatedTitleTheme, "Farm documentation content.");
+
+    expect(html).toContain(
+      '<div class="fd-generated-page-header not-prose"><h1 class="fd-page-title">Introduction</h1><p class="fd-page-description">Build a Farm application.</p></div>',
+    );
+  });
+
+  it("renders no generated title when the theme does not enable it", async () => {
+    const html = await render({ name: "shadcn" }, "Farm documentation content.");
+
+    expect(html).not.toContain("fd-generated-page-header");
+    expect(html).not.toContain('<h1 class="fd-page-title">');
+  });
+
+  it("does not repeat a title the page body authors", async () => {
+    const html = await render(generatedTitleTheme, "# Introduction");
+
+    expect(html).not.toContain("fd-generated-page-header");
+    expect(html.match(/<h1\b/g)).toHaveLength(1);
   });
 });

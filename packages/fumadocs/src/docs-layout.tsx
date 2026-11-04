@@ -13,6 +13,7 @@ import {
   resolveDocsAnalyticsConfig,
   resolveDocsMetadataBaseUrl,
   createDocsSitemapLastmodResolver,
+  resolveGeneratedPageTitle,
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
@@ -114,30 +115,6 @@ function readFrontmatter(reader: DocsContentReader, filePath: string): Record<st
   } catch {
     return {};
   }
-}
-
-function hasAuthoredPageTitle(content: string): boolean {
-  const lines = content.split(/\r?\n/);
-  let fence: "`" | "~" | undefined;
-  let previousTextLine = "";
-
-  for (const line of lines) {
-    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
-    if (fenceMatch) {
-      const marker = fenceMatch[1]?.[0] as "`" | "~";
-      fence = fence === marker ? undefined : (fence ?? marker);
-      previousTextLine = "";
-      continue;
-    }
-
-    if (fence) continue;
-    if (/^ {0,3}#(?:\s+|$)/.test(line) || /^\s*<h1(?:\s|>)/i.test(line)) return true;
-    if (previousTextLine && /^ {0,3}=+\s*$/.test(line)) return true;
-
-    previousTextLine = line.trim() && !line.trimStart().startsWith("<") ? line : "";
-  }
-
-  return false;
 }
 
 function resolveSidebarFolderName(
@@ -612,13 +589,8 @@ function buildPageMaps(
       const description = typeof data.description === "string" ? data.description : undefined;
       const manifestLastmod = resolveManifestLastmod(resolveLastmod, ctx, route);
 
-      if (
-        config.theme?.name === "shadcn" &&
-        typeof data.title === "string" &&
-        !hasAuthoredPageTitle(content)
-      ) {
-        generatedTitleMap[route] = data.title;
-      }
+      const generatedTitle = resolveGeneratedPageTitle(config.theme, data, content);
+      if (generatedTitle !== undefined) generatedTitleMap[route] = generatedTitle;
 
       // Preserve the existing MDX-only metadata behavior for these page features.
       if (fileName === "page.mdx") {

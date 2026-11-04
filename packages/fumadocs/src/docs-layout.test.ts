@@ -148,7 +148,7 @@ agent:
       entry: "docs",
       ordering: "numeric",
       readingTime: true,
-      theme: { name: "shadcn" },
+      theme: shadcn(),
     });
     for (let i = 0; i < pageCount; i++) {
       const rendered = Layout({ children: React.createElement("div", null, `Page ${i}`) });
@@ -209,7 +209,7 @@ agent:
   it("refreshes navigation and metadata after edits, additions and deletions in development", () => {
     vi.stubEnv("NODE_ENV", "development");
     const docsDir = join(tmpDir, "app", "docs");
-    const Layout = createDocsLayout({ entry: "docs", theme: { name: "shadcn" } });
+    const Layout = createDocsLayout({ entry: "docs", theme: shadcn() });
     const render = () => Layout({ children: React.createElement("div") });
     expect(findDocsLayoutTree(render())?.children).toHaveLength(1);
 
@@ -275,7 +275,7 @@ agent:
     writeFileSync(join(markdownDir, "page.md"), "---\ntitle: Markdown\n---\nBody.\n");
     const Layout = createDocsLayout({
       entry: "docs",
-      theme: { name: "shadcn" },
+      theme: shadcn(),
       lastUpdated: false,
     });
     const props = findDocsPageClientProps(Layout({ children: null }));
@@ -354,7 +354,7 @@ agent:
     });
   });
 
-  it("does not change title rendering for non-Shadcn themes", () => {
+  it("does not change title rendering for themes without ui.page.generatedTitle", () => {
     mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
     writeFileSync(
       join(tmpDir, "app", "docs", "generated", "page.mdx"),
@@ -367,6 +367,42 @@ agent:
     const props = findDocsPageClientProps(tree);
 
     expect(props?.generatedTitleMap).toEqual({});
+  });
+
+  it.each([
+    ["a theme that extends shadcn under another name", { ...shadcn(), name: "assistant-ui" }],
+    ["a non-shadcn theme that enables the option", { ui: { page: { generatedTitle: true } } }],
+  ])("generates frontmatter titles for %s", (_label, theme) => {
+    mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "generated", "page.mdx"),
+      "---\ntitle: Generated\n---\n\nBody without a heading.",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs", theme });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+
+    expect(findDocsPageClientProps(tree)?.generatedTitleMap).toEqual({
+      "/docs/generated": "Generated",
+    });
+  });
+
+  it("lets a shadcn site turn generated titles off", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "generated"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "generated", "page.mdx"),
+      "---\ntitle: Generated\n---\n\nBody without a heading.",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      theme: shadcn({ ui: { page: { generatedTitle: false } } }),
+    });
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+
+    expect(findDocsPageClientProps(tree)?.generatedTitleMap).toEqual({});
   });
 
   it("uses a readable Shadcn folder label for Introduction landing pages", () => {

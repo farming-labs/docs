@@ -32,6 +32,17 @@ function findDocsPageClientProps(node: unknown): Record<string, unknown> | null 
 }
 
 describe("TanstackDocsLayout", () => {
+  it("hands the generated title to the page client", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs" },
+      tree: { name: "Docs", children: [] },
+      generatedTitle: "Installation",
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(findDocsPageClientProps(tree)?.generatedTitle).toBe("Installation");
+  });
+
   it("does not add an extra display: contents wrapper above the docs layout root", () => {
     const tree = TanstackDocsLayout({
       config: {
