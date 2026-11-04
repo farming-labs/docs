@@ -12,6 +12,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
+import Link from "fumadocs-core/link";
+import { useFooterItems } from "fumadocs-ui/utils/use-footer-items";
 import type {
   CopyMarkdownFormat,
   DocsFeedbackData,
@@ -21,8 +23,9 @@ import type {
   PageActionInstallSkillsConfig,
   ReadingTimeFormat,
 } from "@farming-labs/docs";
-import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
+import { emitDocsTelemetryPageViewEvent, formatGithubEditUrl } from "@farming-labs/docs/browser";
 import { PageActions } from "./page-actions.js";
+import type { ResolvedTocPageActions } from "./page-actions-config.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
@@ -64,6 +67,11 @@ interface PageNavigationItem {
   url: string;
 }
 
+interface TitlePagerItem {
+  name: ReactNode;
+  url: string;
+}
+
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
   name: string;
@@ -94,13 +102,21 @@ interface DocsPageClientProps {
   copyMarkdownLabel?: string;
   copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
+  /** Link to the page's Markdown (`.md`) route. */
+  viewMarkdown?: boolean;
   openDocsProviders?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
   connectMcp?: PageActionConnectMcpConfig;
   installSkills?: PageActionInstallSkillsConfig;
   /** Where to render page actions relative to the title */
-  pageActionsPosition?: "above-title" | "below-title" | "toc";
+  pageActionsPosition?: "above-title" | "below-title" | "title" | "toc";
+  /** `menu` collects the title, below-title or above-title actions behind one "…" trigger. */
+  pageActionsVariant?: "buttons" | "menu";
+  /** Actions in the table-of-contents rail alongside the actions at `pageActionsPosition`. */
+  tocActions?: ResolvedTocPageActions;
+  /** The table-of-contents rail's "Ask AI" button. */
+  tocAskAi?: boolean;
   /** Horizontal alignment of page action buttons */
   pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
@@ -111,6 +127,8 @@ interface DocsPageClientProps {
   githubBranch?: string;
   /** Subdirectory in the repo where the docs site lives (for monorepos) */
   githubDirectory?: string;
+  /** Edit link template; `{path}` is the page's source path relative to the repo. */
+  githubEditUrl?: string;
   /** Direct GitHub URL override for the current page. */
   editOnGithubUrl?: string;
   /** Map of pathname → formatted last-modified date string */
@@ -125,6 +143,8 @@ interface DocsPageClientProps {
   readingTimeFormat?: ReadingTimeFormat;
   previousPage?: PageNavigationItem | null;
   nextPage?: PageNavigationItem | null;
+  /** Previous/next icon links in the page title row. Without explicit pages they come from the page tree. */
+  titlePager?: boolean;
   /** Map of pathname → serialized Schema.org JSON-LD. */
   structuredDataMap?: Record<string, string>;
   /** Compact page fields; shared schema and breadcrumbs expand only for the active page. */
@@ -168,6 +188,8 @@ interface DocsPageClientProps {
   analytics?: boolean;
   telemetry?: boolean | DocsTelemetryConfig;
   telemetryFramework?: DocsTelemetryFramework;
+  /** Rendered at the end of the page content area, after the page navigation. */
+  footer?: ReactNode;
   children: ReactNode;
 }
 
@@ -238,6 +260,7 @@ function PathBreadcrumb({
  * Examples:
  *   No directory:  https://github.com/user/repo/edit/main/app/docs/cli/page.mdx
  *   With directory: https://github.com/farming-labs/docs/edit/main/website/app/docs/cli/page.mdx
+ *   With editUrl:   the template with `{path}` replaced by website/app/docs/cli/page.mdx
  */
 function buildGithubFileUrl(
   githubUrl: string,
@@ -247,6 +270,7 @@ function buildGithubFileUrl(
   locale?: string,
   directory?: string,
   contentDir?: string,
+  editUrl?: string,
 ): string {
   const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
   const normalizedContentDir = contentDir?.replace(/^\/+|\/+$/g, "");
@@ -263,7 +287,7 @@ function buildGithubFileUrl(
   const basePath = normalizedContentDir || `app/${normalizedEntry}`;
   const relativePath = [locale, slugParts.join("/")].filter(Boolean).join("/");
   const path = `${dirPrefix}${basePath}${relativePath ? `/${relativePath}` : ""}/page.mdx`;
-  return `${githubUrl}/edit/${branch}/${path}`;
+  return editUrl ? formatGithubEditUrl(editUrl, path) : `${githubUrl}/edit/${branch}/${path}`;
 }
 
 function localizeInternalLinks(root: ParentNode, locale?: string) {
@@ -478,20 +502,100 @@ function scrollToHashTarget(hash: string): boolean {
 }
 
 function TitleDecorations({
+  titleActions,
   description,
   belowTitle,
 }: {
+  titleActions?: ReactNode;
   description?: ReactNode;
   belowTitle?: ReactNode;
 }) {
-  if (!description && !belowTitle) return null;
+  if (!titleActions && !description && !belowTitle) return null;
 
   return (
     <>
+      {titleActions && <Fragment key="title-actions">{titleActions}</Fragment>}
       {description && <Fragment key="description">{description}</Fragment>}
       {belowTitle && <Fragment key="below-title">{belowTitle}</Fragment>}
     </>
   );
+}
+
+function pagerLabel(direction: "Previous" | "Next", name: ReactNode): string {
+  return typeof name === "string" || typeof name === "number"
+    ? `${direction}: ${name}`
+    : `${direction} page`;
+}
+
+function TitlePagerLink({
+  direction,
+  item,
+}: {
+  direction: "Previous" | "Next";
+  item: TitlePagerItem | null | undefined;
+}) {
+  const className = `fd-title-pager-link fd-title-pager-${direction === "Previous" ? "prev" : "next"}`;
+  const icon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points={direction === "Previous" ? "15 18 9 12 15 6" : "9 18 15 12 9 6"} />
+    </svg>
+  );
+
+  if (!item) {
+    return (
+      <span className={className} data-disabled="true" aria-hidden="true">
+        {icon}
+      </span>
+    );
+  }
+
+  const label = pagerLabel(direction, item.name);
+  return (
+    <Link href={item.url} className={className} aria-label={label} title={label}>
+      {icon}
+    </Link>
+  );
+}
+
+function TitlePager({
+  previous,
+  next,
+}: {
+  previous: TitlePagerItem | null | undefined;
+  next: TitlePagerItem | null | undefined;
+}) {
+  if (!previous && !next) return null;
+
+  return (
+    <nav className="fd-title-pager" aria-label="Previous and next page">
+      <TitlePagerLink direction="Previous" item={previous} />
+      <TitlePagerLink direction="Next" item={next} />
+    </nav>
+  );
+}
+
+function stripUrlSuffix(url: string): string {
+  const path = url.replace(/[?#].*$/, "");
+  return path.length > 1 ? path.replace(/\/+$/, "") : path;
+}
+
+/** Neighbors from the page tree, matching the pager Fumadocs renders at the bottom of the page. */
+function TreeTitlePager({ pathname }: { pathname: string }) {
+  const pages = useFooterItems();
+  const current = stripUrlSuffix(pathname);
+  const index = pages.findIndex((page) => stripUrlSuffix(page.url) === current);
+  if (index === -1) return null;
+  return <TitlePager previous={pages[index - 1]} next={pages[index + 1]} />;
 }
 
 function ThreadlinePageControls() {
@@ -560,17 +664,22 @@ export function DocsPageClient({
   copyMarkdownLabel,
   copyMarkdownCopiedLabel,
   openDocs = false,
+  viewMarkdown = false,
   openDocsProviders,
   openDocsTarget,
   openDocsPrompt,
   connectMcp,
   installSkills,
   pageActionsPosition = "below-title",
+  pageActionsVariant = "buttons",
+  tocActions,
+  tocAskAi = true,
   pageActionsAlignment = "left",
   githubUrl,
   contentDir,
   githubBranch = "main",
   githubDirectory,
+  githubEditUrl,
   editOnGithubUrl,
   lastModifiedMap,
   lastModified: lastModifiedProp,
@@ -579,6 +688,7 @@ export function DocsPageClient({
   readingTimeFormat = "long",
   previousPage,
   nextPage,
+  titlePager = false,
   structuredDataMap,
   structuredDataPages,
   structuredData: structuredDataProp,
@@ -605,6 +715,7 @@ export function DocsPageClient({
   analytics = false,
   telemetry,
   telemetryFramework,
+  footer,
   children,
 }: DocsPageClientProps) {
   const router = useRouter();
@@ -758,10 +869,14 @@ export function DocsPageClient({
   }, [pathname, children]);
 
   const showActions =
-    !isChangelogRoute && (copyMarkdown || openDocs || pageActionsPosition === "toc");
+    !isChangelogRoute &&
+    (copyMarkdown || openDocs || viewMarkdown || pageActionsPosition === "toc");
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
   const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
+  const showActionsInTitle = showActions && pageActionsPosition === "title";
   const showActionsInToc = showActions && pageActionsPosition === "toc";
+  const actionsVariant = pageActionsVariant === "menu" ? "menu" : "default";
+  const showTocRail = showActionsInToc || (!isChangelogRoute && !!tocActions);
   const githubFileUrl =
     editOnGithubUrl ??
     (githubUrl
@@ -773,11 +888,12 @@ export function DocsPageClient({
           activeLocale,
           githubDirectory,
           contentDir,
+          githubEditUrl,
         )
       : undefined);
 
   useLayoutEffect(() => {
-    if (!showActionsInToc) {
+    if (!showTocRail) {
       setTocActionsPortalHost(null);
       return;
     }
@@ -825,7 +941,7 @@ export function DocsPageClient({
 
       setTocActionsPortalHost(null);
     };
-  }, [pathname, showActionsInToc, toc.length]);
+  }, [pathname, showTocRail, toc.length]);
 
   useLayoutEffect(() => {
     if (!showActionsInToc) {
@@ -892,6 +1008,7 @@ export function DocsPageClient({
     !showReadingTimeAboveTitle &&
     (showActionsBelowTitle ||
       showLastUpdatedBelowTitle ||
+      pageActionsPosition === "title" ||
       (!showActions && pageActionsPosition === "below-title"));
 
   const belowTitleBlock =
@@ -916,13 +1033,14 @@ export function DocsPageClient({
               copyMarkdownLabel={copyMarkdownLabel}
               copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
+              viewMarkdown={viewMarkdown}
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
               connectMcp={connectMcp}
               installSkills={installSkills}
               alignment={pageActionsAlignment}
-              variant="default"
+              variant={actionsVariant}
               githubFileUrl={githubFileUrl}
               analytics={analytics}
             />
@@ -932,8 +1050,46 @@ export function DocsPageClient({
       </div>
     ) : undefined;
 
+  const neighborsFromTree = previousPage === undefined && nextPage === undefined;
+  const titlePagerBlock =
+    titlePager && !isChangelogRoute && (neighborsFromTree || showPageNavigation) ? (
+      neighborsFromTree ? (
+        <TreeTitlePager pathname={normalizedPath} />
+      ) : (
+        <TitlePager previous={localizedPreviousPage} next={localizedNextPage} />
+      )
+    ) : undefined;
+  const titleActions =
+    titlePagerBlock || showActionsInTitle ? (
+      <div key="title-actions" className="fd-page-title-actions not-prose">
+        {titlePagerBlock}
+        {showActionsInTitle && (
+          <PageActions
+            key="actions"
+            copyMarkdown={copyMarkdown}
+            copyMarkdownFormat={copyMarkdownFormat}
+            copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+            copyMarkdownLabel={copyMarkdownLabel}
+            copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
+            openDocs={openDocs}
+            viewMarkdown={viewMarkdown}
+            providers={openDocsProviders}
+            openDocsTarget={openDocsTarget}
+            openDocsPrompt={openDocsPrompt}
+            connectMcp={connectMcp}
+            installSkills={installSkills}
+            alignment="right"
+            variant={actionsVariant}
+            githubFileUrl={githubFileUrl}
+            analytics={analytics}
+          />
+        )}
+      </div>
+    ) : undefined;
+
   const decoratedChildren = children;
-  const needsTitleDecorationsPortal = !pageTitle && (!!titleDescription || !!belowTitleBlock);
+  const needsTitleDecorationsPortal =
+    !pageTitle && (!!titleActions || !!titleDescription || !!belowTitleBlock);
 
   useLayoutEffect(() => {
     if (!needsTitleDecorationsPortal) {
@@ -992,7 +1148,11 @@ export function DocsPageClient({
   }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
-    <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
+    <TitleDecorations
+      titleActions={titleActions}
+      description={titleDescription}
+      belowTitle={belowTitleBlock}
+    />
   ) : null;
   const titleDecorationsPortal =
     titleDecorations && titlePortalHost
@@ -1006,7 +1166,14 @@ export function DocsPageClient({
     ) : null;
   const generatedPageHeader = pageTitle ? (
     <div className="fd-generated-page-header not-prose">
-      <h1 className="fd-page-title">{pageTitle}</h1>
+      {titleActions ? (
+        <div className="fd-page-title-row">
+          <h1 className="fd-page-title">{pageTitle}</h1>
+          {titleActions}
+        </div>
+      ) : (
+        <h1 className="fd-page-title">{pageTitle}</h1>
+      )}
       <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
     </div>
   ) : null;
@@ -1015,31 +1182,58 @@ export function DocsPageClient({
       ? createPortal(<ThreadlinePageControls />, titleControlsPortalHost, "title-controls")
       : null;
   const tocActionsPortal =
-    showActionsInToc && tocActionsPortalHost
+    showTocRail && tocActionsPortalHost
       ? createPortal(
           <div className="fd-actions-toc-portal not-prose">
-            <PageActions
-              copyMarkdown={copyMarkdown}
-              copyMarkdownFormat={copyMarkdownFormat}
-              copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
-              copyMarkdownLabel={copyMarkdownLabel}
-              copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
-              openDocs={openDocs}
-              providers={openDocsProviders}
-              openDocsTarget={openDocsTarget}
-              openDocsPrompt={openDocsPrompt}
-              connectMcp={connectMcp}
-              installSkills={installSkills}
-              alignment="left"
-              variant="rail"
-              githubFileUrl={githubFileUrl}
-              analytics={analytics}
-            />
+            {showActionsInToc ? (
+              <PageActions
+                copyMarkdown={copyMarkdown}
+                copyMarkdownFormat={copyMarkdownFormat}
+                copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+                copyMarkdownLabel={copyMarkdownLabel}
+                copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
+                openDocs={openDocs}
+                viewMarkdown={viewMarkdown}
+                providers={openDocsProviders}
+                openDocsTarget={openDocsTarget}
+                openDocsPrompt={openDocsPrompt}
+                connectMcp={connectMcp}
+                installSkills={installSkills}
+                alignment="left"
+                variant="rail"
+                githubFileUrl={githubFileUrl}
+                analytics={analytics}
+                askAi={tocAskAi}
+              />
+            ) : (
+              tocActions && (
+                <PageActions
+                  copyMarkdown={tocActions.copyMarkdown}
+                  copyMarkdownFormat={copyMarkdownFormat}
+                  copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+                  copyMarkdownLabel={copyMarkdownLabel}
+                  copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
+                  viewMarkdown={tocActions.viewMarkdown}
+                  alignment="left"
+                  variant="rail"
+                  githubFileUrl={tocActions.editOnGitHub ? githubFileUrl : undefined}
+                  analytics={analytics}
+                  askAi={tocAskAi}
+                />
+              )
+            )}
           </div>,
           tocActionsPortalHost,
           "toc-actions",
         )
       : null;
+  const fumadocsFooterEnabled = !isChangelogRoute && !showPageNavigation;
+  const contentFooter =
+    footer !== undefined && footer !== null && footer !== false ? (
+      <footer key="content-footer" className="fd-page-content-footer not-prose">
+        {footer}
+      </footer>
+    ) : undefined;
   const renderedChildren = Children.toArray(decoratedChildren).map((child, index) => (
     <Fragment key={`fd-rendered-child-${index}`}>{child}</Fragment>
   ));
@@ -1075,7 +1269,10 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: !isChangelogRoute && !showPageNavigation }}
+        footer={{
+          enabled: fumadocsFooterEnabled,
+          ...(contentFooter && fumadocsFooterEnabled ? { children: contentFooter } : {}),
+        }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb
@@ -1099,13 +1296,14 @@ export function DocsPageClient({
                 copyMarkdownLabel={copyMarkdownLabel}
                 copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
                 openDocs={openDocs}
+                viewMarkdown={viewMarkdown}
                 providers={openDocsProviders}
                 openDocsTarget={openDocsTarget}
                 openDocsPrompt={openDocsPrompt}
                 connectMcp={connectMcp}
                 installSkills={installSkills}
                 alignment={pageActionsAlignment}
-                variant="default"
+                variant={actionsVariant}
                 githubFileUrl={githubFileUrl}
                 analytics={analytics}
               />
@@ -1227,6 +1425,7 @@ export function DocsPageClient({
               )}
             </nav>
           )}
+          {!fumadocsFooterEnabled && contentFooter}
         </DocsBody>
       </DocsPage>
     </>

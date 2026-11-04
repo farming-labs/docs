@@ -1284,3 +1284,90 @@ agent:
     ]);
   });
 });
+
+describe("createDocsLayout page chrome", () => {
+  let tmpDir: string;
+  let originalCwd: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    tmpDir = mkdtempSync(join(tmpdir(), "docs-layout-page-chrome-"));
+    mkdirSync(join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(tmpDir, "app", "docs", "page.mdx"), "---\ntitle: Home\n---\n\nBody.\n");
+    process.chdir(tmpDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const pageClientProps = (config: Partial<Parameters<typeof createDocsLayout>[0]>) =>
+    findDocsPageClientProps(
+      createDocsLayout({ entry: "docs", ...config })({ children: null }),
+      false,
+    );
+
+  it.each([
+    [undefined, false],
+    [false, false],
+    [true, true],
+  ])("passes pageActions.pager %s to the title row as %s", (pager, expected) => {
+    expect(pageClientProps({ pageActions: { pager } })?.titlePager).toBe(expected);
+  });
+
+  it.each([
+    [undefined, false],
+    [true, true],
+  ])("passes pageActions.viewMarkdown %s as %s", (viewMarkdown, expected) => {
+    expect(pageClientProps({ pageActions: { viewMarkdown } })?.viewMarkdown).toBe(expected);
+  });
+
+  it.each([
+    [undefined, "buttons"],
+    ["menu", "menu"],
+  ] as const)("passes pageActions.variant %s as %s", (variant, expected) => {
+    expect(pageClientProps({ pageActions: { variant } })?.pageActionsVariant).toBe(expected);
+  });
+
+  it("passes the title position through", () => {
+    expect(pageClientProps({ pageActions: { position: "title" } })?.pageActionsPosition).toBe(
+      "title",
+    );
+  });
+
+  it.each([
+    [undefined, undefined],
+    [true, { copyMarkdown: true, viewMarkdown: true, editOnGitHub: true }],
+    [{ copyMarkdown: false }, { copyMarkdown: false, viewMarkdown: true, editOnGitHub: true }],
+  ] as const)("resolves pageActions.toc %j for the rail", (toc, expected) => {
+    expect(pageClientProps({ pageActions: { position: "title", toc } })?.tocActions).toEqual(
+      expected,
+    );
+  });
+
+  it.each([
+    [undefined, true],
+    [false, false],
+  ])("passes pageActions.askAi %s to the rail as %s", (askAi, expected) => {
+    expect(pageClientProps({ pageActions: { askAi } })?.tocAskAi).toBe(expected);
+  });
+
+  it("passes github.editUrl to the page client", () => {
+    expect(
+      pageClientProps({
+        github: { url: "https://github.com/acme/docs", editUrl: "https://example.com/{path}" },
+      })?.githubEditUrl,
+    ).toBe("https://example.com/{path}");
+    expect(pageClientProps({ github: "https://github.com/acme/docs" })?.githubEditUrl).toBe(
+      undefined,
+    );
+  });
+
+  it("passes the footer element through", () => {
+    const footer = React.createElement("p", null, "MIT License");
+
+    expect(pageClientProps({ footer })?.footer).toBe(footer);
+    expect(pageClientProps({})?.footer).toBeUndefined();
+  });
+});

@@ -698,6 +698,7 @@ export type OpenDocsProviderId =
   | "gemini"
   | "copilot"
   | "perplexity"
+  | "codex"
   | "github";
 
 /**
@@ -856,6 +857,12 @@ export interface PageActionsConfig {
   copyMarkdown?: boolean | CopyMarkdownConfig;
   /** "Open in …" dropdown with LLM / tool providers */
   openDocs?: boolean | OpenDocsConfig;
+  /**
+   * "View as Markdown" link to the page's public `.md` route.
+   *
+   * @default false
+   */
+  viewMarkdown?: boolean;
   /** One-click MCP connection instructions for supported coding agents. */
   connectMcp?: boolean | PageActionConnectMcpConfig;
   /** Agent Skills discovery and install dialog backed by the published skills index. */
@@ -865,11 +872,46 @@ export interface PageActionsConfig {
    *
    * - `"below-title"` — render below the first `<h1>` heading (default)
    * - `"above-title"` — render above the page title / content
+   * - `"title"` — render in the page title row (`.fd-page-title-actions`), after the pager
    * - `"toc"` — render as a compact rail in the table-of-contents column
    *
    * @default "below-title"
    */
-  position?: "above-title" | "below-title" | "toc";
+  position?: "above-title" | "below-title" | "title" | "toc";
+  /**
+   * How the page actions render outside the table-of-contents rail.
+   *
+   * - `"buttons"` — one button or dropdown per action (default)
+   * - `"menu"` — one "…" trigger (`.fd-page-actions-menu-trigger`) opening a menu
+   *   (`.fd-page-actions-menu`) with every enabled action: Copy page, View as Markdown, each
+   *   Open in provider, Copy MCP server URL, and the skills install command
+   *
+   * @default "buttons"
+   */
+  variant?: "buttons" | "menu";
+  /**
+   * Actions in the table-of-contents rail (`.fd-actions-toc-portal`), shown together with the
+   * actions at `position`. `true` shows Copy page, View as Markdown and Edit on GitHub (when
+   * `github` is configured); an object picks among them. Ignored when `position` is `"toc"`,
+   * where the rail already holds the page actions.
+   *
+   * @default false
+   */
+  toc?: boolean | PageActionsTocConfig;
+  /**
+   * The "Ask AI" button in the table-of-contents rail.
+   *
+   * @default true
+   */
+  askAi?: boolean;
+  /**
+   * Icon links to the previous and next page in the page title row
+   * (`.fd-title-pager` inside `.fd-page-title-actions`), linking to the same pages as the
+   * pager at the bottom of the page. Applies to the Next.js, TanStack Start, and Farm layouts.
+   *
+   * @default false
+   */
+  pager?: boolean;
   /**
    * Horizontal alignment of page action buttons.
    *
@@ -879,6 +921,15 @@ export interface PageActionsConfig {
    * @default "left"
    */
   alignment?: "left" | "right";
+}
+
+export interface PageActionsTocConfig {
+  /** Copy page, with the `copyMarkdown` format and labels. @default true */
+  copyMarkdown?: boolean;
+  /** View as Markdown. @default true */
+  viewMarkdown?: boolean;
+  /** Edit on GitHub, when `github` is configured. @default true */
+  editOnGitHub?: boolean;
 }
 
 export type PageActionMcpProvider = "copy" | "claude-code" | "cursor" | "vscode" | "codex";
@@ -2333,6 +2384,15 @@ export interface GithubConfig {
    * @example "website" → links point to `website/app/docs/…/page.mdx`
    */
   directory?: string;
+  /**
+   * Edit link template that replaces the derived `{url}/edit/{branch}/…` link. `{path}` is
+   * replaced with the page's source path relative to the repository root, including
+   * `directory`. Applies to the Next.js, TanStack Start, and Farm adapters.
+   *
+   * @example "https://github.com/acme/docs/edit/main/{path}"
+   * @example "https://github.dev/acme/docs/blob/main/{path}"
+   */
+  editUrl?: string;
 }
 
 export type DocsAskAIFeedbackValue = "like" | "dislike";
@@ -4341,6 +4401,18 @@ export interface DocsConfig {
    * - `{ component: MyBreadcrumb }` → custom breadcrumb component
    */
   breadcrumb?: boolean | BreadcrumbConfig;
+  /**
+   * Content rendered at the end of every docs page's content area, after the page navigation
+   * (`.fd-page-content-footer`), e.g. a license or legal notice. Applies to the Next.js,
+   * TanStack Start, and Farm layouts; Farm restores it in the browser from the config module,
+   * like `nav.title`.
+   *
+   * @example
+   * ```tsx
+   * footer: <p>Released under the MIT License.</p>
+   * ```
+   */
+  footer?: unknown; // ReactNode
   /**
    * Sidebar customisation.
    *

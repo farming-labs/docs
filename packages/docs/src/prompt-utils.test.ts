@@ -195,6 +195,16 @@ describe("serializeOpenDocsProviders", () => {
     });
   });
 
+  it("serializes Codex as a built-in provider that opens the app with the prompt", () => {
+    expect(serializeOpenDocsProvider("codex")).toEqual({
+      name: "Codex",
+      urlTemplate: "codex://new?prompt={prompt}",
+      promptUrlTemplate: "codex://new?prompt={prompt}",
+      target: undefined,
+      prompt: undefined,
+    });
+  });
+
   it("serializes Perplexity as a built-in open docs provider", () => {
     expect(serializeOpenDocsProvider("perplexity")).toEqual({
       name: "Perplexity",

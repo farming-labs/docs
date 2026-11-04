@@ -23,6 +23,7 @@ import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveReadingTimeOptions } from "./reading-time-options.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
+import { resolveTocPageActions } from "./page-actions-config.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
@@ -604,6 +605,7 @@ export function TanstackDocsLayout({
           copyMarkdownLabel={copyMarkdownConfig?.label}
           copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
           openDocs={openDocsEnabled}
+          viewMarkdown={pageActions?.viewMarkdown === true}
           openDocsProviders={openDocsProviders}
           openDocsTarget={openDocsConfig?.target}
           openDocsPrompt={openDocsConfig?.prompt}
@@ -611,6 +613,11 @@ export function TanstackDocsLayout({
           installSkills={installSkills}
           pageActionsPosition={pageActionsPosition}
           pageActionsAlignment={pageActionsAlignment}
+          pageActionsVariant={pageActions?.variant ?? "buttons"}
+          tocActions={resolveTocPageActions(pageActions?.toc)}
+          tocAskAi={pageActions?.askAi !== false}
+          footer={config.footer as ReactNode}
+          titlePager={pageActions?.pager === true}
           editOnGithubUrl={editOnGithubUrl}
           lastUpdatedEnabled={lastUpdatedEnabled}
           lastUpdatedLabel={lastUpdatedLabel}
