@@ -4,6 +4,11 @@ import { applyThemeConfigDefaults, defineDocs } from "./define-docs.js";
 import type { DocsConfig } from "./types.js";
 
 describe("defineDocs", () => {
+  it("keeps the page content footer", () => {
+    const footer = { type: "p", props: { children: "MIT License" } };
+    expect(defineDocs({ entry: "docs", footer }).footer).toBe(footer);
+  });
+
   it("keeps the docs roots", () => {
     const roots = [{ entry: "statewire/docs", nav: { title: "Statewire" } }];
     expect(defineDocs({ entry: "docs", roots }).roots).toBe(roots);
