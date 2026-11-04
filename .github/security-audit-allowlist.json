@@ -4,50 +4,44 @@
     {
       "advisory": "GHSA-ggr8-5vv4-36mx",
       "package": "deepmerge-ts",
-      "expires": "2026-11-03",
-      "reason": "Transitive through prisma > @prisma/config, which still pins deepmerge-ts 7.x as of 2026-10-03; forcing the patched 8.x major could break Prisma config loading. Stack exhaustion requires recursive object graphs, while this dependency only merges project-owned Prisma configuration at build time."
+      "expires": "2026-12-03",
+      "reason": "Transitive through prisma > @prisma/config, which pins deepmerge-ts 7.x in the Prisma 6 line this repo uses; deepmerge-ts 8.x arrives with Prisma 8, still a release candidate. Stack exhaustion requires recursive object graphs, while this dependency only merges project-owned Prisma configuration at build time. Revisit when Prisma 8 is stable."
     },
     {
       "advisory": "GHSA-vfj7-8cjw-p6xm",
       "package": "braces",
-      "expires": "2026-11-03",
+      "expires": "2026-12-03",
       "reason": "No patched npm release exists as of 2026-10-03; 3.0.3 remains latest. Usage is transitive through build-time globbing in Nuxt, Farm.js, and TanStack tooling and does not process untrusted runtime patterns."
     },
     {
       "advisory": "GHSA-ch52-4w7c-c8xp",
       "package": "http-cache-semantics",
-      "expires": "2026-11-03",
-      "reason": "No patched npm release exists as of 2026-10-03; 4.2.0 remains latest. The dependency is transitive through Astro build tooling, and this project does not use it for shared cross-user application response caching."
-    },
-    {
-      "advisory": "GHSA-86w9-cpqp-85rv",
-      "package": "node-forge",
-      "expires": "2026-11-03",
-      "reason": "No patched npm release exists as of 2026-10-03; 1.4.0 remains latest. The dependency is transitive through Nuxt local-listener certificate tooling and is not used to verify application signatures at runtime."
+      "expires": "2026-12-03",
+      "reason": "4.3.0 is patched; the lockfile still resolves 4.2.0 through Astro build tooling, and this project does not use it to cache untrusted HTTP responses at runtime. Remove this entry with the next lockfile refresh that picks up 4.3.0."
     },
     {
       "advisory": "GHSA-x6jw-m9v5-85vh",
       "package": "simple-git",
-      "expires": "2026-11-03",
-      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.4.2 (latest stable) still requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed, so forcing 4.x breaks `nuxt dev`. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit when a stable @nuxt/devtools moves off simple-git 3."
+      "expires": "2026-12-03",
+      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.x requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed. @nuxt/devtools 4.x drops simple-git but requires @nuxt/kit ^4, and the example and theme package are on Nuxt 3.21. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit with the Nuxt 4 upgrade."
     },
     {
       "advisory": "GHSA-g4wm-2vf7-vfgr",
       "package": "simple-git",
-      "expires": "2026-11-03",
-      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.4.2 (latest stable) still requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed, so forcing 4.x breaks `nuxt dev`. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit when a stable @nuxt/devtools moves off simple-git 3."
+      "expires": "2026-12-03",
+      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.x requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed. @nuxt/devtools 4.x drops simple-git but requires @nuxt/kit ^4, and the example and theme package are on Nuxt 3.21. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit with the Nuxt 4 upgrade."
     },
     {
       "advisory": "GHSA-858h-whjf-mvg5",
       "package": "simple-git",
-      "expires": "2026-11-03",
-      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.4.2 (latest stable) still requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed, so forcing 4.x breaks `nuxt dev`. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit when a stable @nuxt/devtools moves off simple-git 3."
+      "expires": "2026-12-03",
+      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.x requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed. @nuxt/devtools 4.x drops simple-git but requires @nuxt/kit ^4, and the example and theme package are on Nuxt 3.21. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit with the Nuxt 4 upgrade."
     },
     {
       "advisory": "GHSA-v5rq-49vh-5v5c",
       "package": "@simple-git/argv-parser",
-      "expires": "2026-11-03",
-      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.4.2 (latest stable) still requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed, so forcing 4.x breaks `nuxt dev`. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit when a stable @nuxt/devtools moves off simple-git 3."
+      "expires": "2026-12-03",
+      "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.x requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed. @nuxt/devtools 4.x drops simple-git but requires @nuxt/kit ^4, and the example and theme package are on Nuxt 3.21. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit with the Nuxt 4 upgrade."
     }
   ]
 }
