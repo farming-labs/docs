@@ -27,14 +27,17 @@ export function hasAuthoredPageTitle(content: string): boolean {
 
 /**
  * The frontmatter title a layout renders as the page heading, when the theme
- * enables `ui.page.generatedTitle` and the body does not author its own h1.
+ * enables `ui.page.generatedTitle` and the body does not author its own h1. A theme
+ * named `shadcn` that leaves the option unset keeps generating titles, as it did before
+ * the option existed.
  */
 export function resolveGeneratedPageTitle(
   theme: DocsTheme | undefined,
   frontmatter: Record<string, unknown>,
   content: string,
 ): string | undefined {
-  if (theme?.ui?.page?.generatedTitle !== true) return undefined;
+  const enabled = theme?.ui?.page?.generatedTitle ?? theme?.name === "shadcn";
+  if (!enabled) return undefined;
   if (typeof frontmatter.title !== "string") return undefined;
   return hasAuthoredPageTitle(content) ? undefined : frontmatter.title;
 }

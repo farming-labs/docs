@@ -36,9 +36,19 @@ describe("resolveGeneratedPageTitle", () => {
     expect(resolveGeneratedPageTitle(enabled, {}, "Body.")).toBe(undefined);
   });
 
+  it("keeps generating titles for a theme named shadcn that leaves the option unset", () => {
+    expect(resolveGeneratedPageTitle({ name: "shadcn" }, { title: "Install" }, "Body.")).toBe(
+      "Install",
+    );
+  });
+
   it.each([
     ["no theme", undefined],
-    ["a theme without the option", { name: "shadcn" }],
+    ["a theme without the option", { name: "ledger" }],
+    [
+      "a shadcn-named theme that disables the option",
+      { name: "shadcn", ui: { page: { generatedTitle: false } } },
+    ],
     ["a theme that disables the option", { ui: { page: { generatedTitle: false } } }],
   ])("returns nothing for %s", (_label, theme) => {
     expect(resolveGeneratedPageTitle(theme, { title: "Install" }, "Body.")).toBe(undefined);
