@@ -71,7 +71,7 @@ describe("FarmDocsPageRenderer generated page titles", () => {
   });
 
   it("renders no generated title when the theme does not enable it", async () => {
-    const html = await render({ name: "shadcn" }, "Farm documentation content.");
+    const html = await render({ name: "ledger" }, "Farm documentation content.");
 
     expect(html).not.toContain("fd-generated-page-header");
     expect(html).not.toContain('<h1 class="fd-page-title">');

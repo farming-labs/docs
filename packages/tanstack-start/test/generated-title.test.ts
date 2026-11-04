@@ -27,7 +27,7 @@ describe("createDocsServer generated page titles", () => {
   });
 
   it("generates no title for themes without the option", async () => {
-    const page = await load({ name: "shadcn" }, "Body without a heading.");
+    const page = await load({ name: "ledger" }, "Body without a heading.");
 
     expect(page.generatedTitle).toBeUndefined();
   });
