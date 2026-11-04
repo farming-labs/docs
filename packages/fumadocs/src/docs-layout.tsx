@@ -46,7 +46,12 @@ import { withLangInUrl } from "./i18n.js";
 import { createDocsContentReader, type DocsContentReader } from "./docs-content-reader.js";
 import { compactPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 import { serializePageMetadata } from "./page-metadata.js";
-import { resolveLayoutContainerProps } from "./layout-chrome.js";
+import {
+  renderLayoutChrome,
+  resolveLayoutContainerProps,
+  resolveSidebarNavLinks,
+  resolveSidebarNavTitle,
+} from "./layout-chrome.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -1144,13 +1149,23 @@ export function createDocsLayout(
       }) as ReactNode;
     }
 
-    return (
+    const chrome = renderLayoutChrome(config, {
+      navTitle,
+      navUrl,
+      search: !staticExport,
+      askAI: aiEnabled && aiMode === "sidebar-icon",
+      themeToggle: themeSwitch.enabled !== false && { mode: themeSwitch.mode },
+    });
+    const navLinks = resolveSidebarNavLinks(config);
+
+    const layout = (
       <DocsLayout
         tree={localizedTree}
-        nav={{ title: navTitle, url: navUrl }}
+        nav={{ title: resolveSidebarNavTitle(config, navTitle), url: navUrl }}
         themeSwitch={i18n ? { ...themeSwitch, enabled: false } : themeSwitch}
         sidebar={finalSidebarProps}
         containerProps={resolveLayoutContainerProps(config)}
+        {...(navLinks ? { links: navLinks } : {})}
         {...(aiMode === "sidebar-icon" && aiEnabled
           ? {
               searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
@@ -1243,6 +1258,14 @@ export function createDocsLayout(
           </DocsPageClient>
         </Suspense>
       </DocsLayout>
+    );
+
+    if (!chrome) return layout;
+    return (
+      <>
+        {chrome}
+        {layout}
+      </>
     );
   };
 }

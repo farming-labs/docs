@@ -8,6 +8,7 @@ import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
 import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 import { shadcn } from "./shadcn/index.js";
 import { resolvePageMetadata, type DocsPageMetadata } from "./page-metadata.js";
+import { DocsTopHeader } from "./top-header.js";
 
 vi.mock("./docs-ai-features.js", () => {
   throw new Error("The docs layout must not eagerly initialize the optional AI implementation");
@@ -558,6 +559,101 @@ agent:
     expect(
       (unthemed.props as { containerProps?: Record<string, unknown> }).containerProps,
     ).toBeUndefined();
+  });
+
+  it("renders a top header before the layout when the theme places the header on top", () => {
+    const links = [
+      { label: "Docs", href: "/docs" },
+      { label: "GitHub", href: "https://github.com/acme/acme", external: true },
+    ];
+    const Layout = createDocsLayout({
+      entry: "docs",
+      nav: { title: "Acme", links },
+      themeToggle: { mode: "light-dark-system" },
+      theme: { name: "ledger", ui: { layout: { header: { placement: "top", height: 64 } } } },
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const [header, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(tree.type).toBe(React.Fragment);
+    expect(header.type).toBe(DocsTopHeader);
+    expect(header.props).toEqual({
+      title: "Acme",
+      titleUrl: "/docs",
+      links,
+      search: true,
+      askAI: false,
+      themeToggle: { mode: "light-dark-system" },
+      themeName: "ledger",
+      height: 64,
+    });
+    expect(layout.props.containerProps).toEqual({
+      "data-fd-theme": "ledger",
+      "data-fd-header": "top",
+      style: {
+        "--fd-docs-row-1": "calc(var(--fd-banner-height, 0px) + var(--fd-top-header-offset, 0px))",
+        "--fd-top-header-height": "64px",
+      },
+    });
+    // The mobile nav keeps the title and links; base.css hides their desktop sidebar copies.
+    expect(layout.props.nav.title).toEqual(
+      React.createElement("span", { className: "fd-nav-title" }, "Acme"),
+    );
+    expect(layout.props.links).toEqual([
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "Docs"),
+        url: "/docs",
+        external: false,
+      },
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "GitHub"),
+        url: "https://github.com/acme/acme",
+        external: true,
+      },
+    ]);
+  });
+
+  it("leaves search off the top header for static exports and the toggle when it is hidden", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      staticExport: true,
+      themeToggle: false,
+      theme: { name: "ledger", ui: { layout: { header: { placement: "top" } } } },
+    } as Parameters<typeof createDocsLayout>[0]);
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const [header, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(header.props).toMatchObject({ search: false, themeToggle: false, links: [] });
+    expect(header.props.height).toBeUndefined();
+    expect(layout.props.links).toBeUndefined();
+  });
+
+  it("keeps the nav title, search and theme toggle in the sidebar by default", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      nav: { title: "Acme", links: [{ label: "Changelog", href: "/changelog" }] },
+      theme: { name: "ledger", ui: { layout: { header: { height: 64 } } } },
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = tree.props as Record<string, any>;
+
+    expect(tree.type).not.toBe(React.Fragment);
+    expect(props.nav.title).toBe("Acme");
+    expect(props.containerProps).toEqual({ "data-fd-theme": "ledger" });
+    expect(props.links).toEqual([
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "Changelog"),
+        url: "/changelog",
+        external: false,
+      },
+    ]);
   });
 
   it("adds stable React keys to sidebar content", () => {

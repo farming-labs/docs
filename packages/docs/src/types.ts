@@ -158,6 +158,17 @@ export interface UIConfig {
     header?: {
       height?: number;
       sticky?: boolean;
+      /**
+       * Where the site chrome (nav title, `nav.links`, search, theme toggle) lives.
+       * - `"sidebar"` — at the top and bottom of the sidebar
+       * - `"top"` — in a header bar spanning the page (`.fd-top-header`) at widths of
+       *   768px and up; narrower screens keep the mobile nav and sidebar drawer.
+       *   `height` sets its height in pixels (default 56).
+       *
+       * Applies to the Next.js, TanStack Start, and Farm layouts.
+       * @default "sidebar"
+       */
+      placement?: "sidebar" | "top";
     };
   };
   /** Code block rendering config */
@@ -459,6 +470,30 @@ export interface DocsNav {
   title?: unknown; // ReactNode — typed as unknown to stay framework-agnostic
   /** URL the title links to. Defaults to `/{entry}`. */
   url?: string;
+  /**
+   * Site links such as "Docs" or "GitHub". Rendered in the top header when the theme sets
+   * `ui.layout.header.placement: "top"`, and in the sidebar otherwise.
+   * Applies to the Next.js, TanStack Start, and Farm layouts.
+   *
+   * @example
+   * ```ts
+   * nav: {
+   *   title: "Acme",
+   *   links: [
+   *     { label: "Docs", href: "/docs" },
+   *     { label: "GitHub", href: "https://github.com/acme/acme", external: true },
+   *   ],
+   * }
+   * ```
+   */
+  links?: DocsNavLink[];
+}
+
+export interface DocsNavLink {
+  label: string;
+  href: string;
+  /** Open in a new tab. */
+  external?: boolean;
 }
 
 export interface ThemeToggleConfig {

@@ -559,6 +559,7 @@ export type {
   DocsReviewScoreConfig,
   DocsReviewSeverity,
   DocsNav,
+  DocsNavLink,
   DocsTheme,
   DocsMetadata,
   OGConfig,

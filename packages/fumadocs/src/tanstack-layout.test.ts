@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
 import { TanstackDocsLayout } from "./tanstack-layout.js";
+import { DocsTopHeader } from "./top-header.js";
 
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
@@ -400,6 +401,67 @@ describe("TanstackDocsLayout", () => {
     expect((unthemed.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual(
       { "data-fd-browser-adapter": "" },
     );
+  });
+
+  it("renders a top header after structured data and before the layout", () => {
+    const links = [{ label: "GitHub", href: "https://github.com/acme/acme", external: true }];
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        nav: { title: "Acme", url: "/docs/intro", links },
+        ai: { enabled: true, mode: "sidebar-icon" },
+        theme: { name: "ledger", ui: { layout: { header: { placement: "top" } } } },
+      },
+      tree: { name: "Docs", children: [] },
+      browserRuntime: true,
+      structuredData: "{}",
+      children: React.createElement("div", null, "child"),
+    });
+    const [script, header, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(tree.type).toBe(React.Fragment);
+    expect(script.type).toBe("script");
+    expect(header.type).toBe(DocsTopHeader);
+    expect(header.props).toMatchObject({
+      title: "Acme",
+      titleUrl: "/docs/intro",
+      links,
+      search: true,
+      askAI: true,
+      themeToggle: { mode: undefined },
+      themeName: "ledger",
+    });
+    expect(layout.props.containerProps).toMatchObject({
+      "data-fd-theme": "ledger",
+      "data-fd-header": "top",
+      "data-fd-browser-adapter": "",
+    });
+    expect(layout.props.nav.title).toEqual(
+      React.createElement("span", { className: "fd-nav-title" }, "Acme"),
+    );
+    expect(layout.props.links).toEqual([
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "GitHub"),
+        url: "https://github.com/acme/acme",
+        external: true,
+      },
+    ]);
+  });
+
+  it("keeps the site chrome in the sidebar without a top header", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs", nav: { title: "Acme" }, theme: { name: "ledger" } },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+    const props = tree.props as Record<string, any>;
+
+    expect(tree.type).not.toBe(React.Fragment);
+    expect(props.nav.title).toBe("Acme");
+    expect(props.containerProps).toEqual({ "data-fd-theme": "ledger" });
+    expect(props.links).toBeUndefined();
   });
 
   it("keeps the native TanStack layout out of framework-owned CSS", () => {

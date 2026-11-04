@@ -664,6 +664,17 @@ describe("createFarmDocsRuntimeHandler", () => {
       };
     };
 
+    it("hands nav links to the browser in the serializable config", async () => {
+      const links = [{ label: "GitHub", href: "https://github.com/acme/acme", external: true }];
+      const { html } = await render({ nav: { title: "Farm Docs", links } });
+      const adapter = JSON.parse(
+        html.match(/window\.__FARM_DOCS_ADAPTER__=(.*?);<\/script>/)![1]!,
+      ) as { config: { nav: unknown }; configModule?: boolean };
+
+      expect(adapter.config.nav).toEqual({ title: "Farm Docs", links });
+      expect(adapter.configModule).toBeUndefined();
+    });
+
     it("applies the title template and the og endpoint's per-page card", async () => {
       const { html } = await render({
         og: { enabled: true, type: "dynamic", endpoint: "/api/og" },

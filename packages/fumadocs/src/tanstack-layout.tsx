@@ -28,7 +28,12 @@ import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
-import { resolveLayoutContainerProps } from "./layout-chrome.js";
+import {
+  renderLayoutChrome,
+  resolveLayoutContainerProps,
+  resolveSidebarNavLinks,
+  resolveSidebarNavTitle,
+} from "./layout-chrome.js";
 
 interface PageNode {
   type: "page";
@@ -546,13 +551,23 @@ export function TanstackDocsLayout({
     }) as ReactNode;
   }
 
+  const chrome = renderLayoutChrome(config, {
+    navTitle,
+    navUrl,
+    search: !staticExport,
+    askAI: aiEnabled && aiMode === "sidebar-icon",
+    themeToggle: themeSwitch.enabled !== false && { mode: themeSwitch.mode },
+  });
+  const navLinks = resolveSidebarNavLinks(config);
+
   const layout = (
     <DocsLayout
       tree={resolvedTree}
-      nav={{ title: navTitle, url: navUrl }}
+      nav={{ title: resolveSidebarNavTitle(config, navTitle), url: navUrl }}
       themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
       sidebar={finalSidebarProps}
       containerProps={containerProps}
+      {...(navLinks ? { links: navLinks } : {})}
       {...(aiMode === "sidebar-icon" && aiEnabled
         ? {
             searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
@@ -642,14 +657,17 @@ export function TanstackDocsLayout({
     </DocsLayout>
   );
 
-  if (!structuredData) return layout;
+  if (!structuredData && !chrome) return layout;
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredData) }}
-      />
+      {structuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredData) }}
+        />
+      )}
+      {chrome}
       {layout}
     </>
   );
