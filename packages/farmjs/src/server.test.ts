@@ -641,6 +641,46 @@ describe("createFarmDocsRuntimeHandler", () => {
     ).not.toThrow();
   });
 
+  it("merges a theme's config defaults under the options Farm passes in", async () => {
+    const rendered: unknown[] = [];
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...config,
+        theme: {
+          name: "assistant-ui",
+          configDefaults: {
+            breadcrumb: false,
+            pageActions: { copyMarkdown: true, openDocs: true },
+          },
+        },
+        pageActions: { openDocs: false },
+      },
+      {
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ config: pageConfig }) => {
+            rendered.push(pageConfig);
+            return createElement("main");
+          },
+        }),
+      },
+    );
+    const html = await (await handler(new Request("https://farm.example/docs")))!.text();
+    const adapter = JSON.parse(
+      html.match(/window\.__FARM_DOCS_ADAPTER__=(.*?);<\/script>/)![1]!,
+    ) as { config: Record<string, unknown> };
+
+    expect(rendered).toEqual([
+      expect.objectContaining({
+        breadcrumb: false,
+        pageActions: { copyMarkdown: true, openDocs: false },
+      }),
+    ]);
+    expect(adapter.config).toMatchObject({
+      breadcrumb: false,
+      pageActions: { copyMarkdown: true, openDocs: false },
+    });
+  });
+
   describe("document head metadata", () => {
     const render = async (
       overrides: Record<string, unknown>,

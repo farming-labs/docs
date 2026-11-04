@@ -84,6 +84,7 @@ import {
   buildPageOpenGraph,
   buildPageTwitter,
   resolveTitle,
+  applyThemeConfigDefaults,
 } from "@farming-labs/docs";
 import type {
   DocsAgentTraceEventInput,
@@ -2997,8 +2998,10 @@ function createFarmDocsSingleRuntimeHandler(
   config: DocsConfig & Record<string, any>,
   options: FarmDocsRuntimeHandlerOptions,
 ) {
+  // Farm core shallow-merges farm.config's inline docs options over docs.config, so a theme set
+  // or a page option replaced inline only meets the theme's defaults here.
   const runtimeConfig = {
-    ...config,
+    ...applyThemeConfigDefaults(config),
     rootDir: options.rootDir ?? config.rootDir ?? process.cwd(),
     _immutableContent: options.immutableContent === true,
   };

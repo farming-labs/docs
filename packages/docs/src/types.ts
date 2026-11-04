@@ -253,6 +253,23 @@ export interface DocsTheme {
   /** UI configuration — colors, typography, layout, components */
   ui?: UIConfig;
   /**
+   * Defaults for docs config options, so a theme alone can turn on page features such as page
+   * actions. They sit under the user's config: an option the user sets wins, and when both are
+   * objects the user's keys are merged over the theme's, one level deep.
+   *
+   * @example
+   * ```ts
+   * export const myTheme = createTheme({
+   *   name: "my-theme",
+   *   configDefaults: {
+   *     pageActions: { copyMarkdown: true, openDocs: true },
+   *     sidebar: { flat: true },
+   *   },
+   * });
+   * ```
+   */
+  configDefaults?: DocsThemeConfigDefaults;
+  /**
    * @internal
    * User-provided color overrides tracked by `createTheme`.
    * Only these colors are emitted as inline CSS variables at runtime.
@@ -260,6 +277,19 @@ export interface DocsTheme {
    */
   _userColorOverrides?: Record<string, string>;
 }
+
+/** The docs config options a theme can supply defaults for. */
+export type DocsThemeConfigDefaults = Pick<
+  DocsConfig,
+  | "nav"
+  | "themeToggle"
+  | "breadcrumb"
+  | "sidebar"
+  | "pageActions"
+  | "lastUpdated"
+  | "readingTime"
+  | "feedback"
+>;
 
 export interface DocsMetadata {
   titleTemplate?: string;

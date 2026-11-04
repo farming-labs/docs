@@ -103,6 +103,23 @@ describe("createDocsRootHandler", () => {
 });
 
 describe("resolveDocsRoots", () => {
+  it("applies the defaults of a root's own theme under that root", () => {
+    const [, statewire] = resolveDocsRoots({
+      entry: "docs",
+      breadcrumb: true,
+      roots: [
+        {
+          entry: "statewire/docs",
+          theme: {
+            name: "statewire",
+            configDefaults: { breadcrumb: false, sidebar: { flat: true } },
+          },
+        },
+      ],
+    });
+    expect(statewire).toMatchObject({ breadcrumb: true, sidebar: { flat: true } });
+  });
+
   it("returns a config without roots as is", () => {
     const config = { entry: "docs", contentDir: "content" };
     expect(resolveDocsRoots(config)).toEqual([config]);

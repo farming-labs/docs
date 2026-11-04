@@ -9,6 +9,7 @@ import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-s
 import { shadcn } from "./shadcn/index.js";
 import { resolvePageMetadata, type DocsPageMetadata } from "./page-metadata.js";
 import { DocsTopHeader } from "./top-header.js";
+import { createTheme, defineDocs } from "@farming-labs/docs/config";
 
 vi.mock("./docs-ai-features.js", () => {
   throw new Error("The docs layout must not eagerly initialize the optional AI implementation");
@@ -685,6 +686,39 @@ agent:
       DocsTopHeader,
       skipChildren[1]!.type,
     ]);
+  });
+
+  it("turns on the theme's page options under the user's own", () => {
+    const theme = createTheme({
+      name: "assistant-ui",
+      configDefaults: {
+        breadcrumb: false,
+        pageActions: { copyMarkdown: true, openDocs: true, position: "above-title" },
+      },
+    });
+    const themed = findDocsPageClientProps(
+      createDocsLayout(defineDocs({ entry: "docs", theme: theme() }))({
+        children: React.createElement("div", null, "child"),
+      }),
+    );
+    const overridden = findDocsPageClientProps(
+      createDocsLayout(
+        defineDocs({ entry: "docs", theme: theme(), pageActions: { openDocs: false } }),
+      )({ children: React.createElement("div", null, "child") }),
+    );
+
+    expect(themed).toMatchObject({
+      breadcrumbEnabled: false,
+      copyMarkdown: true,
+      openDocs: true,
+      pageActionsPosition: "above-title",
+    });
+    expect(overridden).toMatchObject({
+      breadcrumbEnabled: false,
+      copyMarkdown: true,
+      openDocs: false,
+      pageActionsPosition: "above-title",
+    });
   });
 
   it("adds stable React keys to sidebar content", () => {

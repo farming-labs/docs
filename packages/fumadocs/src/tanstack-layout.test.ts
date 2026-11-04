@@ -2,6 +2,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { TanstackDocsLayout } from "./tanstack-layout.js";
 import { DocsTopHeader } from "./top-header.js";
+import { createTheme, defineDocs } from "@farming-labs/docs/config";
 
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
@@ -467,6 +468,30 @@ describe("TanstackDocsLayout", () => {
       children: "Skip to content",
     });
     expect(layout.props.tree).toBeDefined();
+  });
+
+  it("turns on the theme's page options under the user's own", () => {
+    const theme = createTheme({
+      name: "assistant-ui",
+      configDefaults: { pageActions: { copyMarkdown: true, openDocs: true } },
+    });
+    const render = (config: Parameters<typeof defineDocs>[0]) =>
+      findDocsPageClientProps(
+        TanstackDocsLayout({
+          config: defineDocs(config),
+          tree: { name: "Docs", children: [] },
+          browserRuntime: true,
+          children: React.createElement("div", null, "child"),
+        }),
+      );
+
+    expect(render({ entry: "docs", theme: theme() })).toMatchObject({
+      copyMarkdown: true,
+      openDocs: true,
+    });
+    expect(
+      render({ entry: "docs", theme: theme(), pageActions: { copyMarkdown: false } }),
+    ).toMatchObject({ copyMarkdown: false, openDocs: true });
   });
 
   it("keeps the site chrome in the sidebar without a top header", () => {
