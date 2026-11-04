@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FrameworkProvider } from "fumadocs-core/framework";
 import { DocsTopHeader, type DocsTopHeaderProps } from "./top-header.js";
+import { resolveSidebarNavTitle } from "./layout-chrome.js";
 
 function render(props: Partial<DocsTopHeaderProps>, pathname = "/docs/installation") {
   return renderToStaticMarkup(
@@ -24,6 +25,16 @@ function render(props: Partial<DocsTopHeaderProps>, pathname = "/docs/installati
 }
 
 describe("DocsTopHeader", () => {
+  it("renders a component nav title itself instead of wrapping it in a link", () => {
+    const html = render({
+      title: ({ className }: { className?: string }) =>
+        React.createElement("button", { className, type: "button" }, "Project"),
+    });
+
+    expect(html).toContain('<button class="fd-top-header-title" type="button">Project</button>');
+    expect(html).not.toContain('class="fd-top-header-title" href');
+  });
+
   it("renders the nav title, search, nav links and theme toggle in a header", () => {
     const html = render({
       links: [
@@ -66,5 +77,29 @@ describe("DocsTopHeader", () => {
 
     expect(html).toContain('style="--fd-top-header-height:64px"');
     expect(html).toContain('class="fd-top-header-ask-ai" aria-label="Ask AI"');
+  });
+});
+
+describe("resolveSidebarNavTitle", () => {
+  const topHeader = { theme: { ui: { layout: { header: { placement: "top" } } } } } as never;
+
+  it("keeps a component nav title callable, marked for the top header", () => {
+    const title = resolveSidebarNavTitle(topHeader, ({ className }) =>
+      React.createElement("button", { className }, "Project"),
+    );
+
+    expect(typeof title).toBe("function");
+    const rendered = (title as (props: { className?: string }) => React.ReactNode)({
+      className: "nav",
+    });
+    expect(renderToStaticMarkup(rendered as React.ReactElement)).toBe(
+      '<span class="fd-nav-title"><button class="nav">Project</button></span>',
+    );
+  });
+
+  it("wraps a plain nav title", () => {
+    expect(
+      renderToStaticMarkup(resolveSidebarNavTitle(topHeader, "Acme") as React.ReactElement),
+    ).toBe('<span class="fd-nav-title">Acme</span>');
   });
 });
