@@ -2384,6 +2384,15 @@ export interface GithubConfig {
    * @example "website" → links point to `website/app/docs/…/page.mdx`
    */
   directory?: string;
+  /**
+   * Edit link template that replaces the derived `{url}/edit/{branch}/…` link. `{path}` is
+   * replaced with the page's source path relative to the repository root, including
+   * `directory`. Applies to the Next.js, TanStack Start, and Farm adapters.
+   *
+   * @example "https://github.com/acme/docs/edit/main/{path}"
+   * @example "https://github.dev/acme/docs/blob/main/{path}"
+   */
+  editUrl?: string;
 }
 
 export type DocsAskAIFeedbackValue = "like" | "dislike";

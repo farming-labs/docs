@@ -23,7 +23,7 @@ import type {
   PageActionInstallSkillsConfig,
   ReadingTimeFormat,
 } from "@farming-labs/docs";
-import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
+import { emitDocsTelemetryPageViewEvent, formatGithubEditUrl } from "@farming-labs/docs/browser";
 import { PageActions } from "./page-actions.js";
 import type { ResolvedTocPageActions } from "./page-actions-config.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
@@ -127,6 +127,8 @@ interface DocsPageClientProps {
   githubBranch?: string;
   /** Subdirectory in the repo where the docs site lives (for monorepos) */
   githubDirectory?: string;
+  /** Edit link template; `{path}` is the page's source path relative to the repo. */
+  githubEditUrl?: string;
   /** Direct GitHub URL override for the current page. */
   editOnGithubUrl?: string;
   /** Map of pathname → formatted last-modified date string */
@@ -256,6 +258,7 @@ function PathBreadcrumb({
  * Examples:
  *   No directory:  https://github.com/user/repo/edit/main/app/docs/cli/page.mdx
  *   With directory: https://github.com/farming-labs/docs/edit/main/website/app/docs/cli/page.mdx
+ *   With editUrl:   the template with `{path}` replaced by website/app/docs/cli/page.mdx
  */
 function buildGithubFileUrl(
   githubUrl: string,
@@ -265,6 +268,7 @@ function buildGithubFileUrl(
   locale?: string,
   directory?: string,
   contentDir?: string,
+  editUrl?: string,
 ): string {
   const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
   const normalizedContentDir = contentDir?.replace(/^\/+|\/+$/g, "");
@@ -281,7 +285,7 @@ function buildGithubFileUrl(
   const basePath = normalizedContentDir || `app/${normalizedEntry}`;
   const relativePath = [locale, slugParts.join("/")].filter(Boolean).join("/");
   const path = `${dirPrefix}${basePath}${relativePath ? `/${relativePath}` : ""}/page.mdx`;
-  return `${githubUrl}/edit/${branch}/${path}`;
+  return editUrl ? formatGithubEditUrl(editUrl, path) : `${githubUrl}/edit/${branch}/${path}`;
 }
 
 function localizeInternalLinks(root: ParentNode, locale?: string) {
@@ -673,6 +677,7 @@ export function DocsPageClient({
   contentDir,
   githubBranch = "main",
   githubDirectory,
+  githubEditUrl,
   editOnGithubUrl,
   lastModifiedMap,
   lastModified: lastModifiedProp,
@@ -880,6 +885,7 @@ export function DocsPageClient({
           activeLocale,
           githubDirectory,
           contentDir,
+          githubEditUrl,
         )
       : undefined);
 

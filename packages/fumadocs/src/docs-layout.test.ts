@@ -1352,4 +1352,15 @@ describe("createDocsLayout page chrome", () => {
   ])("passes pageActions.askAi %s to the rail as %s", (askAi, expected) => {
     expect(pageClientProps({ pageActions: { askAi } })?.tocAskAi).toBe(expected);
   });
+
+  it("passes github.editUrl to the page client", () => {
+    expect(
+      pageClientProps({
+        github: { url: "https://github.com/acme/docs", editUrl: "https://example.com/{path}" },
+      })?.githubEditUrl,
+    ).toBe("https://example.com/{path}");
+    expect(pageClientProps({ github: "https://github.com/acme/docs" })?.githubEditUrl).toBe(
+      undefined,
+    );
+  });
 });

@@ -1018,6 +1018,7 @@ export function createDocsLayout(
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
   const githubDirectory =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
+  const githubEditUrl = typeof githubRaw === "object" ? githubRaw.editUrl : undefined;
   const contentDir = (config as DocsConfig & { contentDir?: string }).contentDir;
 
   // When staticExport is true (e.g. Cloudflare Pages), no server → disable search and AI
@@ -1223,6 +1224,7 @@ export function createDocsLayout(
             contentDir={contentDir}
             githubBranch={githubBranch}
             githubDirectory={githubDirectory}
+            githubEditUrl={githubEditUrl}
             pageMetadata={pageMetadata}
             lastUpdatedEnabled={lastUpdatedEnabled}
             lastUpdatedLabel={lastUpdatedLabel}

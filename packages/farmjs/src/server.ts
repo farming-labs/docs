@@ -70,6 +70,7 @@ import {
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
   resolveDocsPath,
+  formatGithubEditUrl,
   resolveGeneratedPageTitle,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
@@ -213,6 +214,7 @@ interface GithubConfigObj {
   url: string;
   branch?: string;
   directory?: string;
+  editUrl?: string;
 }
 
 interface AIProviderConfig {
@@ -997,6 +999,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       ? githubRaw.replace(/\/$/, "")
       : githubRaw?.url.replace(/\/$/, "");
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
+  const githubEditUrl = typeof githubRaw === "object" ? githubRaw.editUrl : undefined;
   const githubDirectory =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
@@ -1182,7 +1185,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           ? contentPath
           : joinPathParts(configuredDirectory, contentPath);
       const sourcePath = joinPathParts(sourceDirectory, toPosixPath(relPath));
-      editOnGithub = `${githubRepo}/edit/${githubBranch}/${sourcePath}`;
+      editOnGithub = githubEditUrl
+        ? formatGithubEditUrl(githubEditUrl, sourcePath)
+        : `${githubRepo}/edit/${githubBranch}/${sourcePath}`;
     }
 
     const fallbackTitle = isIndex

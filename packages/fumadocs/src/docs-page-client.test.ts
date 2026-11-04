@@ -689,3 +689,38 @@ describe("DocsPageClient title actions", () => {
     expect(html).not.toContain("Mock Actions");
   });
 });
+
+describe("DocsPageClient edit URL template", () => {
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        githubUrl: "https://github.com/acme/docs",
+        githubDirectory: "website",
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+
+  it("derives the edit link without a template", () => {
+    expect(render({})).toContain(
+      'href="https://github.com/acme/docs/edit/main/website/app/docs/installation/page.mdx"',
+    );
+  });
+
+  it("fills {path} with the page's source path relative to the repo", () => {
+    expect(render({ githubEditUrl: "https://github.dev/acme/docs/blob/main/{path}" })).toContain(
+      'href="https://github.dev/acme/docs/blob/main/website/app/docs/installation/page.mdx"',
+    );
+  });
+
+  it("keeps an adapter-supplied edit link ahead of the template", () => {
+    expect(
+      render({
+        githubEditUrl: "https://github.dev/acme/docs/blob/main/{path}",
+        editOnGithubUrl: "https://example.com/edit/installation",
+      }),
+    ).toContain('href="https://example.com/edit/installation"');
+  });
+});

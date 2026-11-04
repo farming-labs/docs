@@ -66,6 +66,7 @@ import {
   resolveDocsPublishedAgentSkill,
   resolveDocsStandardsDiscoveryRequest,
   resolveDocsPath,
+  formatGithubEditUrl,
   resolveGeneratedPageTitle,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
@@ -112,6 +113,7 @@ interface GithubConfigObj {
   url: string;
   branch?: string;
   directory?: string;
+  editUrl?: string;
 }
 
 interface AIProviderConfig {
@@ -681,6 +683,7 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
       ? githubRaw.replace(/\/$/, "")
       : githubRaw?.url.replace(/\/$/, "");
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
+  const githubEditUrl = typeof githubRaw === "object" ? githubRaw.editUrl : undefined;
   const githubContentPath =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
@@ -849,7 +852,15 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
     if (githubRepo && githubContentPath) {
       const trimmed = githubContentPath.replace(/\/+$/, "");
       const localePrefix = ctx.locale ? `${ctx.locale}/` : "";
-      editOnGithub = `${githubRepo}/blob/${githubBranch}/${trimmed}/${localePrefix}${toPosixPath(relPath)}`;
+      const sourcePath = `${trimmed}/${localePrefix}${toPosixPath(relPath)}`;
+      editOnGithub = githubEditUrl
+        ? formatGithubEditUrl(githubEditUrl, sourcePath)
+        : `${githubRepo}/blob/${githubBranch}/${sourcePath}`;
+    } else if (githubRepo && githubEditUrl) {
+      editOnGithub = formatGithubEditUrl(
+        githubEditUrl,
+        toSourcePath(ctx.contentDirRel, relPath, rootDir),
+      );
     }
 
     const fallbackTitle = isIndex

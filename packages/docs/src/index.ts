@@ -83,6 +83,7 @@ export {
   resolveReadingTimeOptions,
 } from "./reading-time.js";
 export { hasAuthoredPageTitle, resolveGeneratedPageTitle } from "./page-title.js";
+export { formatGithubEditUrl } from "./github-edit-url.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
   getPageAgentFrontmatterIssues,
