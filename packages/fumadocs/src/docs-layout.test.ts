@@ -1322,4 +1322,17 @@ describe("createDocsLayout page chrome", () => {
   ])("passes pageActions.viewMarkdown %s as %s", (viewMarkdown, expected) => {
     expect(pageClientProps({ pageActions: { viewMarkdown } })?.viewMarkdown).toBe(expected);
   });
+
+  it.each([
+    [undefined, "buttons"],
+    ["menu", "menu"],
+  ] as const)("passes pageActions.variant %s as %s", (variant, expected) => {
+    expect(pageClientProps({ pageActions: { variant } })?.pageActionsVariant).toBe(expected);
+  });
+
+  it("passes the title position through", () => {
+    expect(pageClientProps({ pageActions: { position: "title" } })?.pageActionsPosition).toBe(
+      "title",
+    );
+  });
 });

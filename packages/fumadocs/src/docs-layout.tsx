@@ -1214,6 +1214,7 @@ export function createDocsLayout(
             installSkills={installSkills}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
+            pageActionsVariant={pageActions?.variant ?? "buttons"}
             titlePager={pageActions?.pager === true}
             githubUrl={githubUrl}
             contentDir={contentDir}

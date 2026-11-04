@@ -109,7 +109,9 @@ interface DocsPageClientProps {
   connectMcp?: PageActionConnectMcpConfig;
   installSkills?: PageActionInstallSkillsConfig;
   /** Where to render page actions relative to the title */
-  pageActionsPosition?: "above-title" | "below-title" | "toc";
+  pageActionsPosition?: "above-title" | "below-title" | "title" | "toc";
+  /** `menu` collects the title, below-title or above-title actions behind one "…" trigger. */
+  pageActionsVariant?: "buttons" | "menu";
   /** Horizontal alignment of page action buttons */
   pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
@@ -658,6 +660,7 @@ export function DocsPageClient({
   connectMcp,
   installSkills,
   pageActionsPosition = "below-title",
+  pageActionsVariant = "buttons",
   pageActionsAlignment = "left",
   githubUrl,
   contentDir,
@@ -855,7 +858,9 @@ export function DocsPageClient({
     (copyMarkdown || openDocs || viewMarkdown || pageActionsPosition === "toc");
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
   const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
+  const showActionsInTitle = showActions && pageActionsPosition === "title";
   const showActionsInToc = showActions && pageActionsPosition === "toc";
+  const actionsVariant = pageActionsVariant === "menu" ? "menu" : "default";
   const githubFileUrl =
     editOnGithubUrl ??
     (githubUrl
@@ -986,6 +991,7 @@ export function DocsPageClient({
     !showReadingTimeAboveTitle &&
     (showActionsBelowTitle ||
       showLastUpdatedBelowTitle ||
+      pageActionsPosition === "title" ||
       (!showActions && pageActionsPosition === "below-title"));
 
   const belowTitleBlock =
@@ -1017,7 +1023,7 @@ export function DocsPageClient({
               connectMcp={connectMcp}
               installSkills={installSkills}
               alignment={pageActionsAlignment}
-              variant="default"
+              variant={actionsVariant}
               githubFileUrl={githubFileUrl}
               analytics={analytics}
             />
@@ -1036,11 +1042,33 @@ export function DocsPageClient({
         <TitlePager previous={localizedPreviousPage} next={localizedNextPage} />
       )
     ) : undefined;
-  const titleActions = titlePagerBlock ? (
-    <div key="title-actions" className="fd-page-title-actions not-prose">
-      {titlePagerBlock}
-    </div>
-  ) : undefined;
+  const titleActions =
+    titlePagerBlock || showActionsInTitle ? (
+      <div key="title-actions" className="fd-page-title-actions not-prose">
+        {titlePagerBlock}
+        {showActionsInTitle && (
+          <PageActions
+            key="actions"
+            copyMarkdown={copyMarkdown}
+            copyMarkdownFormat={copyMarkdownFormat}
+            copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+            copyMarkdownLabel={copyMarkdownLabel}
+            copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
+            openDocs={openDocs}
+            viewMarkdown={viewMarkdown}
+            providers={openDocsProviders}
+            openDocsTarget={openDocsTarget}
+            openDocsPrompt={openDocsPrompt}
+            connectMcp={connectMcp}
+            installSkills={installSkills}
+            alignment="right"
+            variant={actionsVariant}
+            githubFileUrl={githubFileUrl}
+            analytics={analytics}
+          />
+        )}
+      </div>
+    ) : undefined;
 
   const decoratedChildren = children;
   const needsTitleDecorationsPortal =
@@ -1229,7 +1257,7 @@ export function DocsPageClient({
                 connectMcp={connectMcp}
                 installSkills={installSkills}
                 alignment={pageActionsAlignment}
-                variant="default"
+                variant={actionsVariant}
                 githubFileUrl={githubFileUrl}
                 analytics={analytics}
               />

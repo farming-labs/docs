@@ -872,11 +872,23 @@ export interface PageActionsConfig {
    *
    * - `"below-title"` — render below the first `<h1>` heading (default)
    * - `"above-title"` — render above the page title / content
+   * - `"title"` — render in the page title row (`.fd-page-title-actions`), after the pager
    * - `"toc"` — render as a compact rail in the table-of-contents column
    *
    * @default "below-title"
    */
-  position?: "above-title" | "below-title" | "toc";
+  position?: "above-title" | "below-title" | "title" | "toc";
+  /**
+   * How the page actions render outside the table-of-contents rail.
+   *
+   * - `"buttons"` — one button or dropdown per action (default)
+   * - `"menu"` — one "…" trigger (`.fd-page-actions-menu-trigger`) opening a menu
+   *   (`.fd-page-actions-menu`) with every enabled action: Copy page, View as Markdown, each
+   *   Open in provider, Copy MCP server URL, and the skills install command
+   *
+   * @default "buttons"
+   */
+  variant?: "buttons" | "menu";
   /**
    * Icon links to the previous and next page in the page title row
    * (`.fd-title-pager` inside `.fd-page-title-actions`), linking to the same pages as the

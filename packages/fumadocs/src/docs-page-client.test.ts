@@ -633,3 +633,59 @@ describe("DocsPageClient View as Markdown", () => {
     if (rendered) expect(html).toContain("&quot;viewMarkdown&quot;:true");
   });
 });
+
+describe("DocsPageClient title actions", () => {
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        generatedTitle: "Installation",
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+  const mockedActions = (html: string) =>
+    [...html.matchAll(/data-mock-actions="([^"]*)"/g)].map(
+      (match) => JSON.parse(match[1]!.replaceAll("&quot;", '"')) as Record<string, unknown>,
+    );
+
+  it("keeps button actions below the title by default", () => {
+    const html = render({});
+
+    expect(html).not.toContain("fd-page-title-row");
+    expect(mockedActions(html)).toEqual([expect.objectContaining({ variant: "default" })]);
+  });
+
+  it("renders the menu variant below the title", () => {
+    const html = render({ pageActionsVariant: "menu" });
+
+    expect(html).toContain('class="fd-below-title-block not-prose"');
+    expect(mockedActions(html)).toEqual([expect.objectContaining({ variant: "menu" })]);
+  });
+
+  it("puts the actions in the title row after the pager", () => {
+    const html = render({
+      pageActionsPosition: "title",
+      pageActionsVariant: "menu",
+      titlePager: true,
+      previousPage: { name: "Introduction", url: "/docs" },
+      nextPage: null,
+    });
+
+    const row = html.slice(html.indexOf("fd-page-title-row"), html.indexOf("fd-docs-content"));
+    expect(row.indexOf("fd-title-pager")).toBeGreaterThan(row.indexOf("fd-page-title"));
+    expect(row.indexOf("Mock Actions")).toBeGreaterThan(row.indexOf("fd-title-pager"));
+    expect(mockedActions(html)).toEqual([
+      expect.objectContaining({ variant: "menu", alignment: "right" }),
+    ]);
+  });
+
+  it("keeps the title row free of actions when none are enabled", () => {
+    const html = render({ copyMarkdown: false, pageActionsPosition: "title" });
+
+    expect(html).not.toContain("fd-page-title-row");
+    expect(html).not.toContain("Mock Actions");
+  });
+});

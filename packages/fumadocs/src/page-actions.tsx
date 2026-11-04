@@ -6,6 +6,7 @@ import type { CopyMarkdownFormat, PageActionMcpProvider } from "@farming-labs/do
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { resolveOpenDocsProviderIcon, resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { sanitizeIconHtml } from "./safe-icon-html.js";
+import { PageActionsMenu, type PageActionsMenuItem } from "./page-actions-menu.js";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
@@ -29,7 +30,8 @@ interface PageActionsProps {
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
   alignment?: "left" | "right";
-  variant?: "default" | "rail";
+  /** `menu` collects every enabled action behind one "…" trigger. */
+  variant?: "default" | "rail" | "menu";
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
   analytics?: boolean;
@@ -481,6 +483,81 @@ export function PageActions({
     !installSkills
   )
     return null;
+
+  if (variant === "menu") {
+    const endpoint = connectMcp ? resolveAbsoluteUrl(connectMcp.endpoint ?? "/mcp") : undefined;
+    const items: PageActionsMenuItem[] = [];
+    if (copyMarkdown) {
+      items.push({
+        key: "copy",
+        label: copyMarkdownLabel,
+        icon: <CopyIcon />,
+        onSelect: () => void handleCopyMarkdown(),
+      });
+    }
+    if (viewMarkdown) {
+      items.push({
+        key: "markdown",
+        label: "View as Markdown",
+        icon: <FileTextIcon />,
+        href: markdownHref,
+      });
+    }
+    if (openDocs) {
+      for (const provider of resolvedProviders) {
+        const iconHtml = sanitizeIconHtml(
+          provider.iconHtml ?? resolveOpenDocsProviderIcon(provider.name),
+        );
+        items.push({
+          key: `open:${provider.name}`,
+          label: `Open in ${provider.name}`,
+          icon: iconHtml ? <span dangerouslySetInnerHTML={{ __html: iconHtml }} /> : undefined,
+          onSelect: () => handleOpen(provider),
+        });
+      }
+    }
+    if (endpoint) {
+      items.push({
+        key: "mcp",
+        label: "Copy MCP server URL",
+        icon: <CopyIcon />,
+        onSelect: () => void copySetup("mcp:menu", endpoint),
+      });
+    }
+    if (installSkills) {
+      items.push({
+        key: "skills",
+        label: installSkills.label ?? "Copy skills install command",
+        icon: <CopyIcon />,
+        onSelect: () =>
+          void copySetup(
+            "skills:menu",
+            installSkills.command ?? `npx skills add ${window.location.origin}`,
+          ),
+      });
+    }
+    const status = copied
+      ? copyMarkdownCopiedLabel
+      : copiedSetup === "mcp:menu"
+        ? "Copied MCP server URL"
+        : copiedSetup === "skills:menu"
+          ? "Copied install command"
+          : "";
+
+    return (
+      <div
+        className="fd-page-actions fd-page-actions-menu-root"
+        data-page-actions
+        data-page-actions-variant="menu"
+        data-actions-alignment={alignment}
+      >
+        <PageActionsMenu items={items} />
+        <span className="fd-page-actions-menu-status" role="status">
+          {status}
+        </span>
+      </div>
+    );
+  }
 
   if (variant === "rail") {
     return (
