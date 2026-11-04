@@ -348,6 +348,7 @@ describe("TanstackDocsLayout", () => {
     // Matches the Next.js layout: the header has no llms.txt cell over the search and menu buttons.
     expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBeFalsy();
     expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-theme": "fumadocs-pixel-border",
       "data-fd-browser-adapter": "",
     });
   });
@@ -378,6 +379,27 @@ describe("TanstackDocsLayout", () => {
       collapsible: false,
       defaultOpen: true,
     });
+  });
+
+  it("marks the layout root with the theme name for theme CSS", () => {
+    const themed = TanstackDocsLayout({
+      config: { entry: "docs", theme: { name: "ledger" } },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+    const unthemed = TanstackDocsLayout({
+      config: { entry: "docs" },
+      tree: { name: "Docs", children: [] },
+      browserRuntime: true,
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect((themed.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-theme": "ledger",
+    });
+    expect((unthemed.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual(
+      { "data-fd-browser-adapter": "" },
+    );
   });
 
   it("keeps the native TanStack layout out of framework-owned CSS", () => {

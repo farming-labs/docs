@@ -177,6 +177,7 @@ const telemetryEnabled = config?.telemetry !== false && telemetryConfig?.enabled
 <div
   id="nd-docs-layout"
   data-fd-framework="astro"
+  data-fd-theme={config?.theme?.name}
   data-fd-telemetry-enabled={String(telemetryEnabled)}
   data-fd-telemetry-endpoint={telemetryConfig?.endpoint}
   data-fd-telemetry-site-origin={telemetryConfig?.siteOrigin}

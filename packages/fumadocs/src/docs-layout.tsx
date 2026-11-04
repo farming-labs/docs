@@ -46,6 +46,7 @@ import { withLangInUrl } from "./i18n.js";
 import { createDocsContentReader, type DocsContentReader } from "./docs-content-reader.js";
 import { compactPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 import { serializePageMetadata } from "./page-metadata.js";
+import { resolveLayoutContainerProps } from "./layout-chrome.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -1149,6 +1150,7 @@ export function createDocsLayout(
         nav={{ title: navTitle, url: navUrl }}
         themeSwitch={i18n ? { ...themeSwitch, enabled: false } : themeSwitch}
         sidebar={finalSidebarProps}
+        containerProps={resolveLayoutContainerProps(config)}
         {...(aiMode === "sidebar-icon" && aiEnabled
           ? {
               searchToggle: { components: { lg: <SidebarSearchWithAI /> } },

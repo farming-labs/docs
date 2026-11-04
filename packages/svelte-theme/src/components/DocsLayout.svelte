@@ -324,7 +324,7 @@
   {/if}
 </svelte:head>
 
-<div id="nd-docs-layout" data-fd-framework="sveltekit" class="fd-layout">
+<div id="nd-docs-layout" data-fd-framework="sveltekit" data-fd-theme={config?.theme?.name} class="fd-layout">
   <!-- Mobile header -->
   <header class="fd-header">
     <button class="fd-menu-btn" onclick={toggleSidebar} aria-label="Toggle sidebar">

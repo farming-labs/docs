@@ -544,6 +544,22 @@ agent:
     ).toBeUndefined();
   });
 
+  it("marks the layout root with the theme name for theme CSS", () => {
+    const themed = createDocsLayout({ entry: "docs", theme: shadcn() })({
+      children: React.createElement("div", null, "child"),
+    });
+    const unthemed = createDocsLayout({ entry: "docs" })({
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect((themed.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-theme": "shadcn",
+    });
+    expect(
+      (unthemed.props as { containerProps?: Record<string, unknown> }).containerProps,
+    ).toBeUndefined();
+  });
+
   it("adds stable React keys to sidebar content", () => {
     mkdirSync(join(tmpDir, "app", "docs", "guides"), { recursive: true });
     writeFileSync(
