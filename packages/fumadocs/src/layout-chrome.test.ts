@@ -33,7 +33,7 @@ describe("top header styles", () => {
       const rules = desktopRules(fs.readFileSync(new URL(file, import.meta.url), "utf8"));
       expect(rules).toContain("padding-top: var(--fd-top-header-height, 56px);");
       expect(rules).toMatch(
-        /#nd-docs-layout\[data-fd-header="top"\]\s+#nd-sidebar\s+:is\(\s*\[data-search-full\],\s*\.fd-sidebar-search-ai-row,\s*\[data-theme-toggle\],\s*a:has\(> \.fd-nav-title\),\s*a:has\(\.fd-nav-link\)\s*\)/,
+        /#nd-docs-layout\[data-fd-header="top"\]\s+#nd-sidebar\s+:is\(\s*\[data-search-full\],\s*\.fd-sidebar-search-ai-row,\s*\[data-theme-toggle\],\s*a:has\(> \.fd-nav-title\),\s*\.fd-nav-title,\s*a:has\(\.fd-nav-link\)\s*\)/,
       );
     },
   );
