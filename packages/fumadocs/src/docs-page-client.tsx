@@ -188,6 +188,8 @@ interface DocsPageClientProps {
   analytics?: boolean;
   telemetry?: boolean | DocsTelemetryConfig;
   telemetryFramework?: DocsTelemetryFramework;
+  /** Rendered at the end of the page content area, after the page navigation. */
+  footer?: ReactNode;
   children: ReactNode;
 }
 
@@ -713,6 +715,7 @@ export function DocsPageClient({
   analytics = false,
   telemetry,
   telemetryFramework,
+  footer,
   children,
 }: DocsPageClientProps) {
   const router = useRouter();
@@ -1224,6 +1227,13 @@ export function DocsPageClient({
           "toc-actions",
         )
       : null;
+  const fumadocsFooterEnabled = !isChangelogRoute && !showPageNavigation;
+  const contentFooter =
+    footer !== undefined && footer !== null && footer !== false ? (
+      <footer key="content-footer" className="fd-page-content-footer not-prose">
+        {footer}
+      </footer>
+    ) : undefined;
   const renderedChildren = Children.toArray(decoratedChildren).map((child, index) => (
     <Fragment key={`fd-rendered-child-${index}`}>{child}</Fragment>
   ));
@@ -1259,7 +1269,10 @@ export function DocsPageClient({
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
         breadcrumb={{ enabled: false }}
-        footer={{ enabled: !isChangelogRoute && !showPageNavigation }}
+        footer={{
+          enabled: fumadocsFooterEnabled,
+          ...(contentFooter && fumadocsFooterEnabled ? { children: contentFooter } : {}),
+        }}
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb
@@ -1412,6 +1425,7 @@ export function DocsPageClient({
               )}
             </nav>
           )}
+          {!fumadocsFooterEnabled && contentFooter}
         </DocsBody>
       </DocsPage>
     </>

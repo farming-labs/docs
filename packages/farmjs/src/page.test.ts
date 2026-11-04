@@ -4,6 +4,7 @@ import { BrowserDocsLayout } from "@farming-labs/theme/browser";
 import { describe, expect, it } from "vitest";
 import { FarmDocsPageRenderer } from "./page.js";
 import { createDocsServer } from "./server.js";
+import { hasUnserializableValues, restoreUnserializableValues } from "./config-values.js";
 
 function findElement(node: ReactNode, type: unknown): ReactElement<any> | undefined {
   if (Array.isArray(node)) {
@@ -82,5 +83,35 @@ describe("FarmDocsPageRenderer generated page titles", () => {
 
     expect(html).not.toContain("fd-generated-page-header");
     expect(html.match(/<h1\b/g)).toHaveLength(1);
+  });
+});
+
+describe("FarmDocsPageRenderer content footer", () => {
+  it("renders a footer element that the browser restores from the config module", async () => {
+    const footer = createElement("p", null, "MIT License");
+    const config = {
+      entry: "docs",
+      footer,
+      _preloadedContent: { "/docs/page.md": "---\ntitle: Introduction\n---\n\nBody." },
+    } as any;
+    const data = await createDocsServer(config).load({ pathname: "/docs" });
+    // The browser receives the config as JSON, which drops the element, and restores it.
+    const serverCopy = JSON.parse(JSON.stringify({ entry: "docs", footer }));
+    expect(hasUnserializableValues({ footer })).toBe(true);
+    const browserConfig = restoreUnserializableValues(serverCopy, config) as any;
+    const render = (pageConfig: unknown) =>
+      renderToString(
+        createElement(FarmDocsPageRenderer, {
+          config: pageConfig as any,
+          data,
+          Content: () => createElement("p", null, "Body."),
+        }),
+      );
+
+    const serverHtml = render(config);
+    expect(serverHtml).toContain(
+      '<footer class="fd-page-content-footer not-prose"><p>MIT License</p></footer>',
+    );
+    expect(render(browserConfig)).toBe(serverHtml);
   });
 });

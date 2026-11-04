@@ -4402,6 +4402,18 @@ export interface DocsConfig {
    */
   breadcrumb?: boolean | BreadcrumbConfig;
   /**
+   * Content rendered at the end of every docs page's content area, after the page navigation
+   * (`.fd-page-content-footer`), e.g. a license or legal notice. Applies to the Next.js,
+   * TanStack Start, and Farm layouts; Farm restores it in the browser from the config module,
+   * like `nav.title`.
+   *
+   * @example
+   * ```tsx
+   * footer: <p>Released under the MIT License.</p>
+   * ```
+   */
+  footer?: unknown; // ReactNode
+  /**
    * Sidebar customisation.
    *
    * - `true` or `undefined` → default sidebar

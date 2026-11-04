@@ -616,6 +616,7 @@ export function TanstackDocsLayout({
           pageActionsVariant={pageActions?.variant ?? "buttons"}
           tocActions={resolveTocPageActions(pageActions?.toc)}
           tocAskAi={pageActions?.askAi !== false}
+          footer={config.footer as ReactNode}
           titlePager={pageActions?.pager === true}
           editOnGithubUrl={editOnGithubUrl}
           lastUpdatedEnabled={lastUpdatedEnabled}

@@ -1363,4 +1363,11 @@ describe("createDocsLayout page chrome", () => {
       undefined,
     );
   });
+
+  it("passes the footer element through", () => {
+    const footer = React.createElement("p", null, "MIT License");
+
+    expect(pageClientProps({ footer })?.footer).toBe(footer);
+    expect(pageClientProps({})?.footer).toBeUndefined();
+  });
 });

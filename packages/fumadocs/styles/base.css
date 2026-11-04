@@ -581,6 +581,14 @@ figure.shiki:has(figcaption) figcaption {
   white-space: nowrap;
 }
 
+/* ─── Page content footer ───────────────────────────────────────────── */
+
+.fd-page-content-footer {
+  margin-top: 2rem;
+  font-size: 0.8125rem;
+  color: var(--color-fd-muted-foreground);
+}
+
 /* ─── Prompt Cards ─────────────────────────────────────────────────── */
 
 .fd-prompt {

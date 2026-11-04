@@ -31,12 +31,15 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
       footer,
     }: {
       children: React.ReactNode;
-      footer?: { enabled?: boolean };
+      footer?: { enabled?: boolean; children?: React.ReactNode };
     }) =>
       ReactModule.createElement(
         "main",
         { "data-footer-enabled": String(footer?.enabled ?? true) },
         children,
+        footer?.enabled === false
+          ? null
+          : ReactModule.createElement("nav", { "data-fumadocs-footer": "" }, footer?.children),
       ),
     DocsBody: ({
       children,
@@ -722,5 +725,40 @@ describe("DocsPageClient edit URL template", () => {
         editOnGithubUrl: "https://example.com/edit/installation",
       }),
     ).toContain('href="https://example.com/edit/installation"');
+  });
+});
+
+describe("DocsPageClient content footer", () => {
+  const footer = React.createElement("p", null, "MIT License");
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+
+  it("renders no footer slot by default", () => {
+    expect(render({})).not.toContain("fd-page-content-footer");
+  });
+
+  it("ends the content after the layout's page navigation", () => {
+    const html = render({ footer, nextPage: { name: "Next", url: "/docs/next" } });
+
+    expect(html).toContain(
+      '<footer class="fd-page-content-footer not-prose"><p>MIT License</p></footer></section>',
+    );
+    expect(html.indexOf("fd-page-content-footer")).toBeGreaterThan(html.indexOf("fd-page-nav"));
+  });
+
+  it("follows the Fumadocs pager when the page tree supplies navigation", () => {
+    const html = render({ footer });
+
+    expect(html).toContain(
+      '<nav data-fumadocs-footer=""><footer class="fd-page-content-footer not-prose"><p>MIT License</p></footer></nav></main>',
+    );
+    expect(html.match(/fd-page-content-footer/g)).toHaveLength(1);
   });
 });

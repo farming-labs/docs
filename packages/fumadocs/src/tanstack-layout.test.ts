@@ -501,4 +501,11 @@ describe("TanstackDocsLayout page chrome", () => {
   ])("passes pageActions.askAi %s to the rail as %s", (askAi, expected) => {
     expect(pageClientProps({ pageActions: { askAi } })?.tocAskAi).toBe(expected);
   });
+
+  it("passes the footer element through", () => {
+    const footer = React.createElement("p", null, "MIT License");
+
+    expect(pageClientProps({ footer })?.footer).toBe(footer);
+    expect(pageClientProps({})?.footer).toBeUndefined();
+  });
 });
