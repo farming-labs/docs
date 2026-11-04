@@ -1206,6 +1206,7 @@ export function createDocsLayout(
             copyMarkdownLabel={copyMarkdownConfig?.label}
             copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
             openDocs={openDocsEnabled}
+            viewMarkdown={pageActions?.viewMarkdown === true}
             openDocsProviders={openDocsProviders as any}
             openDocsTarget={openDocsConfig?.target}
             openDocsPrompt={openDocsConfig?.prompt}

@@ -604,6 +604,7 @@ export function TanstackDocsLayout({
           copyMarkdownLabel={copyMarkdownConfig?.label}
           copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
           openDocs={openDocsEnabled}
+          viewMarkdown={pageActions?.viewMarkdown === true}
           openDocsProviders={openDocsProviders}
           openDocsTarget={openDocsConfig?.target}
           openDocsPrompt={openDocsConfig?.prompt}

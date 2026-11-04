@@ -1315,4 +1315,11 @@ describe("createDocsLayout page chrome", () => {
   ])("passes pageActions.pager %s to the title row as %s", (pager, expected) => {
     expect(pageClientProps({ pageActions: { pager } })?.titlePager).toBe(expected);
   });
+
+  it.each([
+    [undefined, false],
+    [true, true],
+  ])("passes pageActions.viewMarkdown %s as %s", (viewMarkdown, expected) => {
+    expect(pageClientProps({ pageActions: { viewMarkdown } })?.viewMarkdown).toBe(expected);
+  });
 });

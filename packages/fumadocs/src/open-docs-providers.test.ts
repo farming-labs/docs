@@ -39,7 +39,15 @@ describe("resolveOpenDocsProvider", () => {
     });
   });
 
-  it.each(["chatgpt", "claude", "cursor", "gemini", "copilot", "perplexity", "github"])(
+  it("resolves Codex as a built-in provider that opens the app with the prompt", () => {
+    expect(resolveOpenDocsProvider("codex")).toMatchObject({
+      name: "Codex",
+      urlTemplate: "codex://new?prompt={prompt}",
+      promptUrlTemplate: "codex://new?prompt={prompt}",
+    });
+  });
+
+  it.each(["chatgpt", "claude", "cursor", "gemini", "copilot", "perplexity", "codex", "github"])(
     "adds the built-in %s provider icon",
     (provider) => {
       const resolved = resolveOpenDocsProvider(

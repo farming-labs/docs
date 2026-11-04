@@ -18,7 +18,8 @@ vi.mock("fumadocs-ui/utils/use-footer-items", () => ({
 }));
 
 vi.mock("./page-actions.js", () => ({
-  PageActions: () => React.createElement("div", null, "Mock Actions"),
+  PageActions: (props: Record<string, unknown>) =>
+    React.createElement("div", { "data-mock-actions": JSON.stringify(props) }, "Mock Actions"),
 }));
 
 vi.mock("fumadocs-ui/layouts/docs/page", async () => {
@@ -610,5 +611,25 @@ describe("DocsPageClient title pager", () => {
     expect(html).toContain(
       '<div class="fd-title-decorations-fallback" hidden=""><div class="fd-page-title-actions not-prose"><nav class="fd-title-pager"',
     );
+  });
+});
+
+describe("DocsPageClient View as Markdown", () => {
+  it.each([
+    [false, false],
+    [true, true],
+  ])("renders the page actions for viewMarkdown %s: %s", (viewMarkdown, rendered) => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        viewMarkdown,
+        generatedTitle: "Installation",
+        children: React.createElement("p", null, "Body"),
+      }),
+    );
+
+    expect(html.includes("Mock Actions")).toBe(rendered);
+    if (rendered) expect(html).toContain("&quot;viewMarkdown&quot;:true");
   });
 });

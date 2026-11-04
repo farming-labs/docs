@@ -464,4 +464,11 @@ describe("TanstackDocsLayout page chrome", () => {
     expect(props?.titlePager).toBe(expected);
     expect(props?.nextPage).toEqual({ name: "Next", url: "/docs/next" });
   });
+
+  it.each([
+    [undefined, false],
+    [true, true],
+  ])("passes pageActions.viewMarkdown %s as %s", (viewMarkdown, expected) => {
+    expect(pageClientProps({ pageActions: { viewMarkdown } })?.viewMarkdown).toBe(expected);
+  });
 });

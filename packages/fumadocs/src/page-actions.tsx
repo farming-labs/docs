@@ -23,6 +23,8 @@ interface PageActionsProps {
   copyMarkdownLabel?: string;
   copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
+  /** Link to the page's Markdown route. */
+  viewMarkdown?: boolean;
   providers?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
@@ -258,6 +260,7 @@ export function PageActions({
   copyMarkdownLabel = "Copy page",
   copyMarkdownCopiedLabel = "Copied!",
   openDocs,
+  viewMarkdown = false,
   providers,
   openDocsTarget = DEFAULT_OPEN_DOCS_TARGET,
   openDocsPrompt = DEFAULT_OPEN_DOCS_PROMPT,
@@ -469,7 +472,14 @@ export function PageActions({
     setCopied(false);
   }, [pathname]);
 
-  if (variant !== "rail" && !copyMarkdown && !openDocs && !connectMcp && !installSkills)
+  if (
+    variant !== "rail" &&
+    !copyMarkdown &&
+    !openDocs &&
+    !viewMarkdown &&
+    !connectMcp &&
+    !installSkills
+  )
     return null;
 
   if (variant === "rail") {
@@ -493,7 +503,7 @@ export function PageActions({
           </button>
         )}
 
-        {openDocs && (
+        {(openDocs || viewMarkdown) && (
           <a className="fd-page-action-btn" href={markdownHref} target="_blank" rel="noreferrer">
             <FileTextIcon />
             <span>View as Markdown</span>
@@ -558,6 +568,13 @@ export function PageActions({
           {copied ? <CheckIcon /> : <CopyIcon />}
           <span>{copied ? copyMarkdownCopiedLabel : copyMarkdownLabel}</span>
         </button>
+      )}
+
+      {viewMarkdown && (
+        <a className="fd-page-action-btn" href={markdownHref} target="_blank" rel="noreferrer">
+          <FileTextIcon />
+          <span>View as Markdown</span>
+        </a>
       )}
 
       {openDocs && resolvedProviders.length > 0 && (

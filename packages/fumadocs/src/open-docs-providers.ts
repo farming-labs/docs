@@ -31,6 +31,7 @@ const PROMPT_PROVIDER_TEMPLATES: Record<string, string> = {
   gemini: "https://gemini.google.com/app?q={prompt}",
   copilot: "https://github.com/copilot?prompt={prompt}",
   perplexity: "https://www.perplexity.ai/search/?q={prompt}",
+  codex: "codex://new?prompt={prompt}",
 };
 
 const OPEN_DOCS_PROVIDER_PRESETS: Record<string, OpenDocsProviderPreset> = {
@@ -69,6 +70,12 @@ const OPEN_DOCS_PROVIDER_PRESETS: Record<string, OpenDocsProviderPreset> = {
     iconHtml: OPEN_DOCS_PROVIDER_ICONS.perplexity,
     urlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
     promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.perplexity,
+  },
+  codex: {
+    name: "Codex",
+    iconHtml: OPEN_DOCS_PROVIDER_ICONS.chatgpt,
+    urlTemplate: "codex://new?prompt={prompt}",
+    promptUrlTemplate: PROMPT_PROVIDER_TEMPLATES.codex,
   },
   github: {
     name: "GitHub",

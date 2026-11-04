@@ -698,6 +698,7 @@ export type OpenDocsProviderId =
   | "gemini"
   | "copilot"
   | "perplexity"
+  | "codex"
   | "github";
 
 /**
@@ -856,6 +857,12 @@ export interface PageActionsConfig {
   copyMarkdown?: boolean | CopyMarkdownConfig;
   /** "Open in …" dropdown with LLM / tool providers */
   openDocs?: boolean | OpenDocsConfig;
+  /**
+   * "View as Markdown" link to the page's public `.md` route.
+   *
+   * @default false
+   */
+  viewMarkdown?: boolean;
   /** One-click MCP connection instructions for supported coding agents. */
   connectMcp?: boolean | PageActionConnectMcpConfig;
   /** Agent Skills discovery and install dialog backed by the published skills index. */

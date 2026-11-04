@@ -101,6 +101,8 @@ interface DocsPageClientProps {
   copyMarkdownLabel?: string;
   copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
+  /** Link to the page's Markdown (`.md`) route. */
+  viewMarkdown?: boolean;
   openDocsProviders?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
@@ -649,6 +651,7 @@ export function DocsPageClient({
   copyMarkdownLabel,
   copyMarkdownCopiedLabel,
   openDocs = false,
+  viewMarkdown = false,
   openDocsProviders,
   openDocsTarget,
   openDocsPrompt,
@@ -848,7 +851,8 @@ export function DocsPageClient({
   }, [pathname, children]);
 
   const showActions =
-    !isChangelogRoute && (copyMarkdown || openDocs || pageActionsPosition === "toc");
+    !isChangelogRoute &&
+    (copyMarkdown || openDocs || viewMarkdown || pageActionsPosition === "toc");
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
   const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
   const showActionsInToc = showActions && pageActionsPosition === "toc";
@@ -1006,6 +1010,7 @@ export function DocsPageClient({
               copyMarkdownLabel={copyMarkdownLabel}
               copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
+              viewMarkdown={viewMarkdown}
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
@@ -1142,6 +1147,7 @@ export function DocsPageClient({
               copyMarkdownLabel={copyMarkdownLabel}
               copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
+              viewMarkdown={viewMarkdown}
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
@@ -1216,6 +1222,7 @@ export function DocsPageClient({
                 copyMarkdownLabel={copyMarkdownLabel}
                 copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
                 openDocs={openDocs}
+                viewMarkdown={viewMarkdown}
                 providers={openDocsProviders}
                 openDocsTarget={openDocsTarget}
                 openDocsPrompt={openDocsPrompt}
