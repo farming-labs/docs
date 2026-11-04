@@ -502,6 +502,93 @@ figure.shiki:has(figcaption) figcaption {
   flex: 1;
 }
 
+/* ─── Title row: pager and title actions ────────────────────────────── */
+
+.fd-page-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fd-page-title-row > .fd-page-title {
+  min-width: 0;
+}
+
+.fd-page-title-actions,
+.fd-title-pager {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.fd-title-pager-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-fd-muted-foreground);
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.375rem;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.fd-title-pager-link:hover {
+  color: var(--color-fd-accent-foreground);
+  background: var(--color-fd-accent);
+}
+
+.fd-title-pager-link[data-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ─── Page actions menu ─────────────────────────────────────────────── */
+
+.fd-page-actions-menu-trigger {
+  width: 2rem;
+  justify-content: center;
+  padding: 0;
+}
+
+.fd-page-actions-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.fd-page-actions-menu .fd-page-action-menu-item {
+  padding: 0.375rem 0.625rem;
+  text-decoration: none;
+}
+
+.fd-page-actions-menu .fd-page-action-menu-item:focus-visible {
+  outline: none;
+  color: var(--color-fd-accent-foreground);
+  background: var(--color-fd-accent);
+}
+
+.fd-page-actions-menu-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* ─── Page content footer ───────────────────────────────────────────── */
+
+.fd-page-content-footer {
+  margin-top: 2rem;
+  font-size: 0.8125rem;
+  color: var(--color-fd-muted-foreground);
+}
+
 /* ─── Prompt Cards ─────────────────────────────────────────────────── */
 
 .fd-prompt {

@@ -256,6 +256,26 @@ Build a Farm application.
     );
   });
 
+  it("fills a github.editUrl template with the repo-relative source path", async () => {
+    const server = createDocsServer({
+      ...config,
+      contentDir: "src/app/docs",
+      github: {
+        url: "https://github.com/farming-labs/farm.js",
+        directory: "docs",
+        editUrl: "https://github.dev/farming-labs/farm.js/blob/main/{path}",
+      },
+      _preloadedContent: {
+        "/src/app/docs/page.md": config._preloadedContent["/docs/page.md"],
+      },
+    });
+    const page = await server.load({ pathname: "/docs" });
+
+    expect(page.editOnGithub).toBe(
+      "https://github.dev/farming-labs/farm.js/blob/main/docs/src/app/docs/page.md",
+    );
+  });
+
   it("uses bundled Git dates instead of deployment file mtimes", async () => {
     const rootDir = mkdtempSync(path.join(tmpdir(), "farm-docs-last-modified-"));
     const contentDir = path.join(rootDir, "docs");

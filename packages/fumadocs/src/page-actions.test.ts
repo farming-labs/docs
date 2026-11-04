@@ -177,3 +177,33 @@ describe("PageActions copy markdown labels", () => {
     ).toBe("Install\n\nBody copy");
   });
 });
+
+describe("PageActions View as Markdown", () => {
+  beforeEach(() => {
+    mockRouterState.pathname = "/docs/installation";
+  });
+
+  it("links the page's Markdown route when enabled", () => {
+    const html = renderToStaticMarkup(React.createElement(PageActions, { viewMarkdown: true }));
+
+    expect(html).toContain('data-page-actions="true"');
+    expect(html).toContain('href="/docs/installation.md"');
+    expect(html).toContain("View as Markdown");
+  });
+
+  it("renders nothing for the Markdown link when disabled", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, { copyMarkdown: true, viewMarkdown: false }),
+    );
+
+    expect(html).not.toContain("View as Markdown");
+  });
+
+  it("adds the Markdown link to the rail without the Open in menu", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, { viewMarkdown: true, variant: "rail" }),
+    );
+
+    expect(html).toContain('href="/docs/installation.md"');
+  });
+});

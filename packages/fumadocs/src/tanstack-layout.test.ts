@@ -1,5 +1,6 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
+import type { DocsConfig } from "@farming-labs/docs";
 import { TanstackDocsLayout } from "./tanstack-layout.js";
 import { DocsTopHeader } from "./top-header.js";
 import { createTheme, defineDocs } from "@farming-labs/docs/config";
@@ -564,5 +565,75 @@ describe("TanstackDocsLayout", () => {
     expect(props?.lastUpdatedEnabled).toBe(true);
     expect(props?.lastUpdatedLabel).toBe("Updated");
     expect(props?.lastUpdatedPosition).toBe("below-title");
+  });
+});
+
+describe("TanstackDocsLayout page chrome", () => {
+  const pageClientProps = (config: Partial<DocsConfig>, props: Record<string, unknown> = {}) =>
+    findDocsPageClientProps(
+      TanstackDocsLayout({
+        config: { entry: "docs", ...config },
+        tree: { name: "Docs", children: [] },
+        children: React.createElement("div", null, "child"),
+        ...props,
+      }),
+    );
+
+  it.each([
+    [undefined, false],
+    [false, false],
+    [true, true],
+  ])("passes pageActions.pager %s to the title row as %s", (pager, expected) => {
+    const props = pageClientProps(
+      { pageActions: { pager } },
+      { previousPage: null, nextPage: { name: "Next", url: "/docs/next" } },
+    );
+
+    expect(props?.titlePager).toBe(expected);
+    expect(props?.nextPage).toEqual({ name: "Next", url: "/docs/next" });
+  });
+
+  it.each([
+    [undefined, false],
+    [true, true],
+  ])("passes pageActions.viewMarkdown %s as %s", (viewMarkdown, expected) => {
+    expect(pageClientProps({ pageActions: { viewMarkdown } })?.viewMarkdown).toBe(expected);
+  });
+
+  it.each([
+    [undefined, "buttons"],
+    ["menu", "menu"],
+  ] as const)("passes pageActions.variant %s as %s", (variant, expected) => {
+    expect(pageClientProps({ pageActions: { variant } })?.pageActionsVariant).toBe(expected);
+  });
+
+  it("passes the title position through", () => {
+    expect(pageClientProps({ pageActions: { position: "title" } })?.pageActionsPosition).toBe(
+      "title",
+    );
+  });
+
+  it.each([
+    [undefined, undefined],
+    [true, { copyMarkdown: true, viewMarkdown: true, editOnGitHub: true }],
+    [{ copyMarkdown: false }, { copyMarkdown: false, viewMarkdown: true, editOnGitHub: true }],
+  ] as const)("resolves pageActions.toc %j for the rail", (toc, expected) => {
+    expect(pageClientProps({ pageActions: { position: "title", toc } })?.tocActions).toEqual(
+      expected,
+    );
+  });
+
+  it.each([
+    [undefined, true],
+    [false, false],
+  ])("passes pageActions.askAi %s to the rail as %s", (askAi, expected) => {
+    expect(pageClientProps({ pageActions: { askAi } })?.tocAskAi).toBe(expected);
+  });
+
+  it("passes the footer element through", () => {
+    const footer = React.createElement("p", null, "MIT License");
+
+    expect(pageClientProps({ footer })?.footer).toBe(footer);
+    expect(pageClientProps({})?.footer).toBeUndefined();
   });
 });

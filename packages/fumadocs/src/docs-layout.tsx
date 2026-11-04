@@ -39,6 +39,7 @@ import { DocsAIFeatures } from "./docs-ai-features-lazy.js";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
+import { resolveTocPageActions } from "./page-actions-config.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
@@ -1023,6 +1024,7 @@ export function createDocsLayout(
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
   const githubDirectory =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
+  const githubEditUrl = typeof githubRaw === "object" ? githubRaw.editUrl : undefined;
   const contentDir = (config as DocsConfig & { contentDir?: string }).contentDir;
 
   // When staticExport is true (e.g. Cloudflare Pages), no server → disable search and AI
@@ -1223,6 +1225,7 @@ export function createDocsLayout(
             copyMarkdownLabel={copyMarkdownConfig?.label}
             copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
             openDocs={openDocsEnabled}
+            viewMarkdown={pageActions?.viewMarkdown === true}
             openDocsProviders={openDocsProviders as any}
             openDocsTarget={openDocsConfig?.target}
             openDocsPrompt={openDocsConfig?.prompt}
@@ -1230,10 +1233,16 @@ export function createDocsLayout(
             installSkills={installSkills}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
+            pageActionsVariant={pageActions?.variant ?? "buttons"}
+            tocActions={resolveTocPageActions(pageActions?.toc)}
+            tocAskAi={pageActions?.askAi !== false}
+            footer={config.footer as ReactNode}
+            titlePager={pageActions?.pager === true}
             githubUrl={githubUrl}
             contentDir={contentDir}
             githubBranch={githubBranch}
             githubDirectory={githubDirectory}
+            githubEditUrl={githubEditUrl}
             pageMetadata={pageMetadata}
             lastUpdatedEnabled={lastUpdatedEnabled}
             lastUpdatedLabel={lastUpdatedLabel}

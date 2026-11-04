@@ -4,4 +4,5 @@ export { emitDocsTelemetryPageViewEvent } from "./telemetry-runtime.js";
 export type { DocsTelemetryPageViewContext } from "./telemetry-runtime.js";
 export { applySidebarFolderIndexBehavior } from "./sidebar.js";
 export { buildDocsPageStructuredData } from "./metadata.js";
+export { formatGithubEditUrl } from "./github-edit-url.js";
 export { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";

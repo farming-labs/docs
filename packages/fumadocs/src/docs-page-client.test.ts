@@ -2,13 +2,24 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
+const footerItems = vi.hoisted(() => ({
+  pages: [] as Array<{ type: "page"; name: string; url: string }>,
+}));
+
 vi.mock("fumadocs-core/framework", () => ({
   usePathname: () => "/docs/installation",
   useRouter: () => ({ push: vi.fn() }),
+  Link: ({ prefetch: _prefetch, ...props }: React.ComponentProps<"a"> & { prefetch?: boolean }) =>
+    React.createElement("a", props),
+}));
+
+vi.mock("fumadocs-ui/utils/use-footer-items", () => ({
+  useFooterItems: () => footerItems.pages,
 }));
 
 vi.mock("./page-actions.js", () => ({
-  PageActions: () => React.createElement("div", null, "Mock Actions"),
+  PageActions: (props: Record<string, unknown>) =>
+    React.createElement("div", { "data-mock-actions": JSON.stringify(props) }, "Mock Actions"),
 }));
 
 vi.mock("fumadocs-ui/layouts/docs/page", async () => {
@@ -20,12 +31,15 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
       footer,
     }: {
       children: React.ReactNode;
-      footer?: { enabled?: boolean };
+      footer?: { enabled?: boolean; children?: React.ReactNode };
     }) =>
       ReactModule.createElement(
         "main",
         { "data-footer-enabled": String(footer?.enabled ?? true) },
         children,
+        footer?.enabled === false
+          ? null
+          : ReactModule.createElement("nav", { "data-fumadocs-footer": "" }, footer?.children),
       ),
     DocsBody: ({
       children,
@@ -511,5 +525,240 @@ describe("DocsPageClient reading time", () => {
     expect(readingTimeIndex).toBeGreaterThanOrEqual(0);
     expect(titleIndex).toBeLessThan(lastUpdatedIndex);
     expect(lastUpdatedIndex).toBeLessThan(readingTimeIndex);
+  });
+});
+
+describe("DocsPageClient title pager", () => {
+  const introduction = { name: "Introduction", url: "/docs" };
+  const capabilities = { name: "Capabilities", url: "/docs/capabilities" };
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        generatedTitle: "Installation",
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+
+  it("keeps the title row unchanged when the pager is off", () => {
+    const html = render({ previousPage: introduction, nextPage: capabilities });
+
+    expect(html).not.toContain("fd-title-pager");
+    expect(html).not.toContain("fd-page-title-row");
+    expect(html).toContain('<h1 class="fd-page-title">Installation</h1>');
+  });
+
+  it("links the bottom pager's pages from the title row", () => {
+    const html = render({
+      titlePager: true,
+      previousPage: introduction,
+      nextPage: capabilities,
+    });
+
+    expect(html).toContain(
+      '<div class="fd-page-title-row"><h1 class="fd-page-title">Installation</h1><div class="fd-page-title-actions not-prose"><nav class="fd-title-pager" aria-label="Previous and next page">',
+    );
+    expect(html).toContain(
+      '<a href="/docs" class="fd-title-pager-link fd-title-pager-prev" aria-label="Previous: Introduction" title="Previous: Introduction">',
+    );
+    expect(html).toContain(
+      '<a href="/docs/capabilities" class="fd-title-pager-link fd-title-pager-next" aria-label="Next: Capabilities" title="Next: Capabilities">',
+    );
+    expect(html).toContain('class="not-prose fd-page-nav"');
+  });
+
+  it("keeps a hidden placeholder for a missing neighbor", () => {
+    const html = render({ titlePager: true, previousPage: null, nextPage: capabilities });
+
+    expect(html).toContain(
+      '<span class="fd-title-pager-link fd-title-pager-prev" data-disabled="true" aria-hidden="true">',
+    );
+    expect(html).not.toContain("Previous:");
+    expect(html).toContain('aria-label="Next: Capabilities"');
+  });
+
+  it("renders no pager for a page without neighbors", () => {
+    const html = render({ titlePager: true, previousPage: null, nextPage: null });
+
+    expect(html).not.toContain("fd-title-pager");
+    expect(html).not.toContain("fd-page-title-row");
+  });
+
+  it("reads neighbors from the page tree when the layout passes none", () => {
+    footerItems.pages = [
+      { type: "page", ...introduction },
+      { type: "page", name: "Installation", url: "/docs/installation" },
+      { type: "page", ...capabilities },
+    ];
+
+    const html = render({ titlePager: true });
+
+    expect(html).toContain('href="/docs" class="fd-title-pager-link fd-title-pager-prev"');
+    expect(html).toContain(
+      'href="/docs/capabilities" class="fd-title-pager-link fd-title-pager-next"',
+    );
+    expect(html).toContain('data-footer-enabled="true"');
+  });
+
+  it("places the pager after an authored h1 through the title decorations", () => {
+    const html = render({
+      titlePager: true,
+      generatedTitle: undefined,
+      previousPage: introduction,
+      nextPage: null,
+      children: React.createElement("h1", null, "Installation"),
+    });
+
+    expect(html).toContain(
+      '<div class="fd-title-decorations-fallback" hidden=""><div class="fd-page-title-actions not-prose"><nav class="fd-title-pager"',
+    );
+  });
+});
+
+describe("DocsPageClient View as Markdown", () => {
+  it.each([
+    [false, false],
+    [true, true],
+  ])("renders the page actions for viewMarkdown %s: %s", (viewMarkdown, rendered) => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        viewMarkdown,
+        generatedTitle: "Installation",
+        children: React.createElement("p", null, "Body"),
+      }),
+    );
+
+    expect(html.includes("Mock Actions")).toBe(rendered);
+    if (rendered) expect(html).toContain("&quot;viewMarkdown&quot;:true");
+  });
+});
+
+describe("DocsPageClient title actions", () => {
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        generatedTitle: "Installation",
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+  const mockedActions = (html: string) =>
+    [...html.matchAll(/data-mock-actions="([^"]*)"/g)].map(
+      (match) => JSON.parse(match[1]!.replaceAll("&quot;", '"')) as Record<string, unknown>,
+    );
+
+  it("keeps button actions below the title by default", () => {
+    const html = render({});
+
+    expect(html).not.toContain("fd-page-title-row");
+    expect(mockedActions(html)).toEqual([expect.objectContaining({ variant: "default" })]);
+  });
+
+  it("renders the menu variant below the title", () => {
+    const html = render({ pageActionsVariant: "menu" });
+
+    expect(html).toContain('class="fd-below-title-block not-prose"');
+    expect(mockedActions(html)).toEqual([expect.objectContaining({ variant: "menu" })]);
+  });
+
+  it("puts the actions in the title row after the pager", () => {
+    const html = render({
+      pageActionsPosition: "title",
+      pageActionsVariant: "menu",
+      titlePager: true,
+      previousPage: { name: "Introduction", url: "/docs" },
+      nextPage: null,
+    });
+
+    const row = html.slice(html.indexOf("fd-page-title-row"), html.indexOf("fd-docs-content"));
+    expect(row.indexOf("fd-title-pager")).toBeGreaterThan(row.indexOf("fd-page-title"));
+    expect(row.indexOf("Mock Actions")).toBeGreaterThan(row.indexOf("fd-title-pager"));
+    expect(mockedActions(html)).toEqual([
+      expect.objectContaining({ variant: "menu", alignment: "right" }),
+    ]);
+  });
+
+  it("keeps the title row free of actions when none are enabled", () => {
+    const html = render({ copyMarkdown: false, pageActionsPosition: "title" });
+
+    expect(html).not.toContain("fd-page-title-row");
+    expect(html).not.toContain("Mock Actions");
+  });
+});
+
+describe("DocsPageClient edit URL template", () => {
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        githubUrl: "https://github.com/acme/docs",
+        githubDirectory: "website",
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+
+  it("derives the edit link without a template", () => {
+    expect(render({})).toContain(
+      'href="https://github.com/acme/docs/edit/main/website/app/docs/installation/page.mdx"',
+    );
+  });
+
+  it("fills {path} with the page's source path relative to the repo", () => {
+    expect(render({ githubEditUrl: "https://github.dev/acme/docs/blob/main/{path}" })).toContain(
+      'href="https://github.dev/acme/docs/blob/main/website/app/docs/installation/page.mdx"',
+    );
+  });
+
+  it("keeps an adapter-supplied edit link ahead of the template", () => {
+    expect(
+      render({
+        githubEditUrl: "https://github.dev/acme/docs/blob/main/{path}",
+        editOnGithubUrl: "https://example.com/edit/installation",
+      }),
+    ).toContain('href="https://example.com/edit/installation"');
+  });
+});
+
+describe("DocsPageClient content footer", () => {
+  const footer = React.createElement("p", null, "MIT License");
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+
+  it("renders no footer slot by default", () => {
+    expect(render({})).not.toContain("fd-page-content-footer");
+  });
+
+  it("ends the content after the layout's page navigation", () => {
+    const html = render({ footer, nextPage: { name: "Next", url: "/docs/next" } });
+
+    expect(html).toContain(
+      '<footer class="fd-page-content-footer not-prose"><p>MIT License</p></footer></section>',
+    );
+    expect(html.indexOf("fd-page-content-footer")).toBeGreaterThan(html.indexOf("fd-page-nav"));
+  });
+
+  it("follows the Fumadocs pager when the page tree supplies navigation", () => {
+    const html = render({ footer });
+
+    expect(html).toContain(
+      '<nav data-fumadocs-footer=""><footer class="fd-page-content-footer not-prose"><p>MIT License</p></footer></nav></main>',
+    );
+    expect(html.match(/fd-page-content-footer/g)).toHaveLength(1);
   });
 });
