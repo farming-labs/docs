@@ -7609,6 +7609,7 @@ figure.shiki:hover > div:first-child button {
       .fd-sidebar-search-ai-row,
       [data-theme-toggle],
       a:has(> .fd-nav-title),
+      .fd-nav-title,
       a:has(.fd-nav-link)
     ),
   #nd-docs-layout[data-fd-header="top"] #nd-sidebar div:has(> [data-theme-toggle]:only-child) {
