@@ -611,6 +611,7 @@ export function TanstackDocsLayout({
           installSkills={installSkills}
           pageActionsPosition={pageActionsPosition}
           pageActionsAlignment={pageActionsAlignment}
+          titlePager={pageActions?.pager === true}
           editOnGithubUrl={editOnGithubUrl}
           lastUpdatedEnabled={lastUpdatedEnabled}
           lastUpdatedLabel={lastUpdatedLabel}

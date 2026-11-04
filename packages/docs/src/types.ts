@@ -871,6 +871,14 @@ export interface PageActionsConfig {
    */
   position?: "above-title" | "below-title" | "toc";
   /**
+   * Icon links to the previous and next page in the page title row
+   * (`.fd-title-pager` inside `.fd-page-title-actions`), linking to the same pages as the
+   * pager at the bottom of the page. Applies to the Next.js, TanStack Start, and Farm layouts.
+   *
+   * @default false
+   */
+  pager?: boolean;
+  /**
    * Horizontal alignment of page action buttons.
    *
    * - `"left"` — align to the left (default)

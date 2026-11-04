@@ -12,6 +12,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
+import Link from "fumadocs-core/link";
+import { useFooterItems } from "fumadocs-ui/utils/use-footer-items";
 import type {
   CopyMarkdownFormat,
   DocsFeedbackData,
@@ -61,6 +63,11 @@ function getTocHeadingText(node: Node): string {
 
 interface PageNavigationItem {
   name: string;
+  url: string;
+}
+
+interface TitlePagerItem {
+  name: ReactNode;
   url: string;
 }
 
@@ -125,6 +132,8 @@ interface DocsPageClientProps {
   readingTimeFormat?: ReadingTimeFormat;
   previousPage?: PageNavigationItem | null;
   nextPage?: PageNavigationItem | null;
+  /** Previous/next icon links in the page title row. Without explicit pages they come from the page tree. */
+  titlePager?: boolean;
   /** Map of pathname → serialized Schema.org JSON-LD. */
   structuredDataMap?: Record<string, string>;
   /** Compact page fields; shared schema and breadcrumbs expand only for the active page. */
@@ -478,20 +487,100 @@ function scrollToHashTarget(hash: string): boolean {
 }
 
 function TitleDecorations({
+  titleActions,
   description,
   belowTitle,
 }: {
+  titleActions?: ReactNode;
   description?: ReactNode;
   belowTitle?: ReactNode;
 }) {
-  if (!description && !belowTitle) return null;
+  if (!titleActions && !description && !belowTitle) return null;
 
   return (
     <>
+      {titleActions && <Fragment key="title-actions">{titleActions}</Fragment>}
       {description && <Fragment key="description">{description}</Fragment>}
       {belowTitle && <Fragment key="below-title">{belowTitle}</Fragment>}
     </>
   );
+}
+
+function pagerLabel(direction: "Previous" | "Next", name: ReactNode): string {
+  return typeof name === "string" || typeof name === "number"
+    ? `${direction}: ${name}`
+    : `${direction} page`;
+}
+
+function TitlePagerLink({
+  direction,
+  item,
+}: {
+  direction: "Previous" | "Next";
+  item: TitlePagerItem | null | undefined;
+}) {
+  const className = `fd-title-pager-link fd-title-pager-${direction === "Previous" ? "prev" : "next"}`;
+  const icon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points={direction === "Previous" ? "15 18 9 12 15 6" : "9 18 15 12 9 6"} />
+    </svg>
+  );
+
+  if (!item) {
+    return (
+      <span className={className} data-disabled="true" aria-hidden="true">
+        {icon}
+      </span>
+    );
+  }
+
+  const label = pagerLabel(direction, item.name);
+  return (
+    <Link href={item.url} className={className} aria-label={label} title={label}>
+      {icon}
+    </Link>
+  );
+}
+
+function TitlePager({
+  previous,
+  next,
+}: {
+  previous: TitlePagerItem | null | undefined;
+  next: TitlePagerItem | null | undefined;
+}) {
+  if (!previous && !next) return null;
+
+  return (
+    <nav className="fd-title-pager" aria-label="Previous and next page">
+      <TitlePagerLink direction="Previous" item={previous} />
+      <TitlePagerLink direction="Next" item={next} />
+    </nav>
+  );
+}
+
+function stripUrlSuffix(url: string): string {
+  const path = url.replace(/[?#].*$/, "");
+  return path.length > 1 ? path.replace(/\/+$/, "") : path;
+}
+
+/** Neighbors from the page tree, matching the pager Fumadocs renders at the bottom of the page. */
+function TreeTitlePager({ pathname }: { pathname: string }) {
+  const pages = useFooterItems();
+  const current = stripUrlSuffix(pathname);
+  const index = pages.findIndex((page) => stripUrlSuffix(page.url) === current);
+  if (index === -1) return null;
+  return <TitlePager previous={pages[index - 1]} next={pages[index + 1]} />;
 }
 
 function ThreadlinePageControls() {
@@ -579,6 +668,7 @@ export function DocsPageClient({
   readingTimeFormat = "long",
   previousPage,
   nextPage,
+  titlePager = false,
   structuredDataMap,
   structuredDataPages,
   structuredData: structuredDataProp,
@@ -932,8 +1022,24 @@ export function DocsPageClient({
       </div>
     ) : undefined;
 
+  const neighborsFromTree = previousPage === undefined && nextPage === undefined;
+  const titlePagerBlock =
+    titlePager && !isChangelogRoute && (neighborsFromTree || showPageNavigation) ? (
+      neighborsFromTree ? (
+        <TreeTitlePager pathname={normalizedPath} />
+      ) : (
+        <TitlePager previous={localizedPreviousPage} next={localizedNextPage} />
+      )
+    ) : undefined;
+  const titleActions = titlePagerBlock ? (
+    <div key="title-actions" className="fd-page-title-actions not-prose">
+      {titlePagerBlock}
+    </div>
+  ) : undefined;
+
   const decoratedChildren = children;
-  const needsTitleDecorationsPortal = !pageTitle && (!!titleDescription || !!belowTitleBlock);
+  const needsTitleDecorationsPortal =
+    !pageTitle && (!!titleActions || !!titleDescription || !!belowTitleBlock);
 
   useLayoutEffect(() => {
     if (!needsTitleDecorationsPortal) {
@@ -992,7 +1098,11 @@ export function DocsPageClient({
   }, [children, descriptionInBody, needsTitleDecorationsPortal, pathname]);
 
   const titleDecorations = needsTitleDecorationsPortal ? (
-    <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
+    <TitleDecorations
+      titleActions={titleActions}
+      description={titleDescription}
+      belowTitle={belowTitleBlock}
+    />
   ) : null;
   const titleDecorationsPortal =
     titleDecorations && titlePortalHost
@@ -1006,7 +1116,14 @@ export function DocsPageClient({
     ) : null;
   const generatedPageHeader = pageTitle ? (
     <div className="fd-generated-page-header not-prose">
-      <h1 className="fd-page-title">{pageTitle}</h1>
+      {titleActions ? (
+        <div className="fd-page-title-row">
+          <h1 className="fd-page-title">{pageTitle}</h1>
+          {titleActions}
+        </div>
+      ) : (
+        <h1 className="fd-page-title">{pageTitle}</h1>
+      )}
       <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />
     </div>
   ) : null;

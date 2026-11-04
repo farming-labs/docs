@@ -2,9 +2,19 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
+const footerItems = vi.hoisted(() => ({
+  pages: [] as Array<{ type: "page"; name: string; url: string }>,
+}));
+
 vi.mock("fumadocs-core/framework", () => ({
   usePathname: () => "/docs/installation",
   useRouter: () => ({ push: vi.fn() }),
+  Link: ({ prefetch: _prefetch, ...props }: React.ComponentProps<"a"> & { prefetch?: boolean }) =>
+    React.createElement("a", props),
+}));
+
+vi.mock("fumadocs-ui/utils/use-footer-items", () => ({
+  useFooterItems: () => footerItems.pages,
 }));
 
 vi.mock("./page-actions.js", () => ({
@@ -511,5 +521,94 @@ describe("DocsPageClient reading time", () => {
     expect(readingTimeIndex).toBeGreaterThanOrEqual(0);
     expect(titleIndex).toBeLessThan(lastUpdatedIndex);
     expect(lastUpdatedIndex).toBeLessThan(readingTimeIndex);
+  });
+});
+
+describe("DocsPageClient title pager", () => {
+  const introduction = { name: "Introduction", url: "/docs" };
+  const capabilities = { name: "Capabilities", url: "/docs/capabilities" };
+  const render = (props: Record<string, unknown>) =>
+    renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        generatedTitle: "Installation",
+        children: React.createElement("p", null, "Body"),
+        ...props,
+      }),
+    );
+
+  it("keeps the title row unchanged when the pager is off", () => {
+    const html = render({ previousPage: introduction, nextPage: capabilities });
+
+    expect(html).not.toContain("fd-title-pager");
+    expect(html).not.toContain("fd-page-title-row");
+    expect(html).toContain('<h1 class="fd-page-title">Installation</h1>');
+  });
+
+  it("links the bottom pager's pages from the title row", () => {
+    const html = render({
+      titlePager: true,
+      previousPage: introduction,
+      nextPage: capabilities,
+    });
+
+    expect(html).toContain(
+      '<div class="fd-page-title-row"><h1 class="fd-page-title">Installation</h1><div class="fd-page-title-actions not-prose"><nav class="fd-title-pager" aria-label="Previous and next page">',
+    );
+    expect(html).toContain(
+      '<a href="/docs" class="fd-title-pager-link fd-title-pager-prev" aria-label="Previous: Introduction" title="Previous: Introduction">',
+    );
+    expect(html).toContain(
+      '<a href="/docs/capabilities" class="fd-title-pager-link fd-title-pager-next" aria-label="Next: Capabilities" title="Next: Capabilities">',
+    );
+    expect(html).toContain('class="not-prose fd-page-nav"');
+  });
+
+  it("keeps a hidden placeholder for a missing neighbor", () => {
+    const html = render({ titlePager: true, previousPage: null, nextPage: capabilities });
+
+    expect(html).toContain(
+      '<span class="fd-title-pager-link fd-title-pager-prev" data-disabled="true" aria-hidden="true">',
+    );
+    expect(html).not.toContain("Previous:");
+    expect(html).toContain('aria-label="Next: Capabilities"');
+  });
+
+  it("renders no pager for a page without neighbors", () => {
+    const html = render({ titlePager: true, previousPage: null, nextPage: null });
+
+    expect(html).not.toContain("fd-title-pager");
+    expect(html).not.toContain("fd-page-title-row");
+  });
+
+  it("reads neighbors from the page tree when the layout passes none", () => {
+    footerItems.pages = [
+      { type: "page", ...introduction },
+      { type: "page", name: "Installation", url: "/docs/installation" },
+      { type: "page", ...capabilities },
+    ];
+
+    const html = render({ titlePager: true });
+
+    expect(html).toContain('href="/docs" class="fd-title-pager-link fd-title-pager-prev"');
+    expect(html).toContain(
+      'href="/docs/capabilities" class="fd-title-pager-link fd-title-pager-next"',
+    );
+    expect(html).toContain('data-footer-enabled="true"');
+  });
+
+  it("places the pager after an authored h1 through the title decorations", () => {
+    const html = render({
+      titlePager: true,
+      generatedTitle: undefined,
+      previousPage: introduction,
+      nextPage: null,
+      children: React.createElement("h1", null, "Installation"),
+    });
+
+    expect(html).toContain(
+      '<div class="fd-title-decorations-fallback" hidden=""><div class="fd-page-title-actions not-prose"><nav class="fd-title-pager"',
+    );
   });
 });

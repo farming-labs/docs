@@ -1284,3 +1284,35 @@ agent:
     ]);
   });
 });
+
+describe("createDocsLayout page chrome", () => {
+  let tmpDir: string;
+  let originalCwd: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    tmpDir = mkdtempSync(join(tmpdir(), "docs-layout-page-chrome-"));
+    mkdirSync(join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(tmpDir, "app", "docs", "page.mdx"), "---\ntitle: Home\n---\n\nBody.\n");
+    process.chdir(tmpDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const pageClientProps = (config: Partial<Parameters<typeof createDocsLayout>[0]>) =>
+    findDocsPageClientProps(
+      createDocsLayout({ entry: "docs", ...config })({ children: null }),
+      false,
+    );
+
+  it.each([
+    [undefined, false],
+    [false, false],
+    [true, true],
+  ])("passes pageActions.pager %s to the title row as %s", (pager, expected) => {
+    expect(pageClientProps({ pageActions: { pager } })?.titlePager).toBe(expected);
+  });
+});

@@ -1213,6 +1213,7 @@ export function createDocsLayout(
             installSkills={installSkills}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
+            titlePager={pageActions?.pager === true}
             githubUrl={githubUrl}
             contentDir={contentDir}
             githubBranch={githubBranch}

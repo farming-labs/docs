@@ -1,5 +1,6 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
+import type { DocsConfig } from "@farming-labs/docs";
 import { TanstackDocsLayout } from "./tanstack-layout.js";
 
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
@@ -436,5 +437,31 @@ describe("TanstackDocsLayout", () => {
     expect(props?.lastUpdatedEnabled).toBe(true);
     expect(props?.lastUpdatedLabel).toBe("Updated");
     expect(props?.lastUpdatedPosition).toBe("below-title");
+  });
+});
+
+describe("TanstackDocsLayout page chrome", () => {
+  const pageClientProps = (config: Partial<DocsConfig>, props: Record<string, unknown> = {}) =>
+    findDocsPageClientProps(
+      TanstackDocsLayout({
+        config: { entry: "docs", ...config },
+        tree: { name: "Docs", children: [] },
+        children: React.createElement("div", null, "child"),
+        ...props,
+      }),
+    );
+
+  it.each([
+    [undefined, false],
+    [false, false],
+    [true, true],
+  ])("passes pageActions.pager %s to the title row as %s", (pager, expected) => {
+    const props = pageClientProps(
+      { pageActions: { pager } },
+      { previousPage: null, nextPage: { name: "Next", url: "/docs/next" } },
+    );
+
+    expect(props?.titlePager).toBe(expected);
+    expect(props?.nextPage).toEqual({ name: "Next", url: "/docs/next" });
   });
 });
