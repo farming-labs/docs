@@ -656,6 +656,37 @@ agent:
     ]);
   });
 
+  it("renders a skip link as the first element when the theme enables it", () => {
+    const skipOnly = createDocsLayout({
+      entry: "docs",
+      theme: { name: "ledger", ui: { layout: { skipLink: true } } },
+    })({ children: React.createElement("div", null, "child") });
+    const withHeader = createDocsLayout({
+      entry: "docs",
+      theme: { name: "ledger", ui: { layout: { skipLink: true, header: { placement: "top" } } } },
+    })({ children: React.createElement("div", null, "child") });
+    const skipChildren = React.Children.toArray(
+      (skipOnly.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+    const headerChildren = React.Children.toArray(
+      (withHeader.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(skipChildren).toHaveLength(2);
+    expect(skipChildren[0]!.type).toBe("a");
+    expect(skipChildren[0]!.props).toEqual({
+      className: "fd-skip-link",
+      href: "#nd-page",
+      children: "Skip to content",
+    });
+    expect(skipChildren[1]!.props.containerProps).toEqual({ "data-fd-theme": "ledger" });
+    expect(headerChildren.map((child) => child.type)).toEqual([
+      "a",
+      DocsTopHeader,
+      skipChildren[1]!.type,
+    ]);
+  });
+
   it("adds stable React keys to sidebar content", () => {
     mkdirSync(join(tmpDir, "app", "docs", "guides"), { recursive: true });
     writeFileSync(

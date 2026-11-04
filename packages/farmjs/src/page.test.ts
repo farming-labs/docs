@@ -86,14 +86,14 @@ describe("FarmDocsPageRenderer generated page titles", () => {
 });
 
 describe("FarmDocsPageRenderer top header", () => {
-  async function render(header?: { placement: "top" }) {
+  async function render(header?: { placement: "top" }, skipLink?: boolean) {
     const config = {
       entry: "docs",
       nav: {
         title: "Acme",
         links: [{ label: "GitHub", href: "https://github.com/acme/acme", external: true }],
       },
-      theme: { name: "assistant-ui", ui: { layout: { header } } },
+      theme: { name: "assistant-ui", ui: { layout: { header, skipLink } } },
       _preloadedContent: { "/docs/page.md": "---\ntitle: Introduction\n---\n\n# Introduction" },
     } as any;
     const data = await createDocsServer(config).load({ pathname: "/docs" });
@@ -112,10 +112,17 @@ describe("FarmDocsPageRenderer top header", () => {
     expect(html).toMatch(/id="nd-docs-layout"[^>]*data-fd-header="top"/);
   });
 
+  it("makes the skip link the first focusable element", async () => {
+    const html = await render({ placement: "top" }, true);
+
+    expect(html.match(/<(a|button)\b[^>]*>/)?.[0]).toBe('<a class="fd-skip-link" href="#nd-page">');
+  });
+
   it("keeps the sidebar chrome when the theme does not place the header on top", async () => {
     const html = await render();
 
     expect(html).not.toContain("fd-top-header");
+    expect(html).not.toContain("fd-skip-link");
     expect(html).toMatch(/id="nd-docs-layout"[^>]*data-fd-theme="assistant-ui"/);
   });
 });

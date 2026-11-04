@@ -170,6 +170,13 @@ export interface UIConfig {
        */
       placement?: "sidebar" | "top";
     };
+    /**
+     * Render a "Skip to content" link (`.fd-skip-link`, pointing at `#nd-page`) as the first
+     * focusable element of the page, visually hidden until it receives focus.
+     * Applies to the Next.js, TanStack Start, and Farm layouts.
+     * @default false
+     */
+    skipLink?: boolean;
   };
   /** Code block rendering config */
   codeBlock?: {

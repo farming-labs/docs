@@ -450,6 +450,25 @@ describe("TanstackDocsLayout", () => {
     ]);
   });
 
+  it("renders a skip link before the layout when the theme enables it", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs", theme: { ui: { layout: { skipLink: true } } } },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+    const [skipLink, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(skipLink.type).toBe("a");
+    expect(skipLink.props).toEqual({
+      className: "fd-skip-link",
+      href: "#nd-page",
+      children: "Skip to content",
+    });
+    expect(layout.props.tree).toBeDefined();
+  });
+
   it("keeps the site chrome in the sidebar without a top header", () => {
     const tree = TanstackDocsLayout({
       config: { entry: "docs", nav: { title: "Acme" }, theme: { name: "ledger" } },

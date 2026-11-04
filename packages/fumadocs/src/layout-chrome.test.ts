@@ -13,6 +13,14 @@ function desktopRules(css: string): string {
   return css.slice(start, css.indexOf("\n}\n", start));
 }
 
+describe("skip link styles", () => {
+  it.each(stylesheets)("keep the skip link off screen until it is focused in %s", (file) => {
+    const css = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    expect(css).toMatch(/\.fd-skip-link \{[^}]*transform: translateY\(calc\(-100% - 1rem\)\);/);
+    expect(css).toMatch(/\.fd-skip-link:focus \{[^}]*transform: none;/);
+  });
+});
+
 describe("top header styles", () => {
   it.each(stylesheets)("hide the header below 768px in %s", (file) => {
     const css = fs.readFileSync(new URL(file, import.meta.url), "utf8");

@@ -73,17 +73,28 @@ export interface LayoutChromeOptions {
 
 /** Chrome rendered before the docs layout, so it comes first in focus order. */
 export function renderLayoutChrome(config: DocsConfig, options: LayoutChromeOptions): ReactNode {
-  if (!isTopHeader(config)) return null;
-  return (
-    <DocsTopHeader
-      title={options.navTitle}
-      titleUrl={options.navUrl}
-      links={resolveNavLinks(config)}
-      search={options.search}
-      askAI={options.askAI}
-      themeToggle={options.themeToggle}
-      themeName={config.theme?.name}
-      height={topHeaderHeight(config)}
-    />
-  );
+  const chrome: ReactNode[] = [];
+  if (config.theme?.ui?.layout?.skipLink === true) {
+    chrome.push(
+      <a key="fd-skip-link" className="fd-skip-link" href="#nd-page">
+        Skip to content
+      </a>,
+    );
+  }
+  if (isTopHeader(config)) {
+    chrome.push(
+      <DocsTopHeader
+        key="fd-top-header"
+        title={options.navTitle}
+        titleUrl={options.navUrl}
+        links={resolveNavLinks(config)}
+        search={options.search}
+        askAI={options.askAI}
+        themeToggle={options.themeToggle}
+        themeName={config.theme?.name}
+        height={topHeaderHeight(config)}
+      />,
+    );
+  }
+  return chrome.length > 0 ? chrome : null;
 }

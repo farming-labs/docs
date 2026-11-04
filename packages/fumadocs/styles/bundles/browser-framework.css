@@ -7459,6 +7459,27 @@ figure.shiki:hover > div:first-child button {
   height: 16px;
 }
 
+.fd-skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius, 0.5rem);
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 1rem));
+}
+
+.fd-skip-link:focus {
+  transform: none;
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
+}
+
 .fd-top-header {
   display: none;
 }
