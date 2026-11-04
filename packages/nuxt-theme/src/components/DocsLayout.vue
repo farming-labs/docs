@@ -296,7 +296,13 @@ const showFloatingAI = computed(
 
 <template>
   <div class="fd-layout-root">
-    <div id="nd-docs-layout" data-fd-framework="nuxt" class="fd-layout" @keydown="handleKeydown">
+    <div
+      id="nd-docs-layout"
+      data-fd-framework="nuxt"
+      :data-fd-theme="config?.theme?.name"
+      class="fd-layout"
+      @keydown="handleKeydown"
+    >
       <header class="fd-header">
         <button
           class="fd-menu-btn"

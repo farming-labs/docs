@@ -86,6 +86,48 @@ describe("FarmDocsPageRenderer generated page titles", () => {
   });
 });
 
+describe("FarmDocsPageRenderer top header", () => {
+  async function render(header?: { placement: "top" }, skipLink?: boolean) {
+    const config = {
+      entry: "docs",
+      nav: {
+        title: "Acme",
+        links: [{ label: "GitHub", href: "https://github.com/acme/acme", external: true }],
+      },
+      theme: { name: "assistant-ui", ui: { layout: { header, skipLink } } },
+      _preloadedContent: { "/docs/page.md": "---\ntitle: Introduction\n---\n\n# Introduction" },
+    } as any;
+    const data = await createDocsServer(config).load({ pathname: "/docs" });
+    const Content = () => createElement("h1", null, "Introduction");
+    return renderToString(createElement(FarmDocsPageRenderer, { config, data, Content }));
+  }
+
+  it("renders the theme's top header with the nav links ahead of the layout", async () => {
+    const html = await render({ placement: "top" });
+
+    expect(html).toContain('<header class="fd-top-header" data-fd-theme="assistant-ui">');
+    expect(html.indexOf("fd-top-header")).toBeLessThan(html.indexOf('id="nd-docs-layout"'));
+    expect(html).toMatch(
+      /<a href="https:\/\/github\.com\/acme\/acme" rel="noreferrer noopener" target="_blank"[^>]*>GitHub<\/a>/,
+    );
+    expect(html).toMatch(/id="nd-docs-layout"[^>]*data-fd-header="top"/);
+  });
+
+  it("makes the skip link the first focusable element", async () => {
+    const html = await render({ placement: "top" }, true);
+
+    expect(html.match(/<(a|button)\b[^>]*>/)?.[0]).toBe('<a class="fd-skip-link" href="#nd-page">');
+  });
+
+  it("keeps the sidebar chrome when the theme does not place the header on top", async () => {
+    const html = await render();
+
+    expect(html).not.toContain("fd-top-header");
+    expect(html).not.toContain("fd-skip-link");
+    expect(html).toMatch(/id="nd-docs-layout"[^>]*data-fd-theme="assistant-ui"/);
+  });
+});
+
 describe("FarmDocsPageRenderer content footer", () => {
   it("renders a footer element that the browser restores from the config module", async () => {
     const footer = createElement("p", null, "MIT License");

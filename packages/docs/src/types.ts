@@ -158,7 +158,25 @@ export interface UIConfig {
     header?: {
       height?: number;
       sticky?: boolean;
+      /**
+       * Where the site chrome (nav title, `nav.links`, search, theme toggle) lives.
+       * - `"sidebar"` — at the top and bottom of the sidebar
+       * - `"top"` — in a header bar spanning the page (`.fd-top-header`) at widths of
+       *   768px and up; narrower screens keep the mobile nav and sidebar drawer.
+       *   `height` sets its height in pixels (default 56).
+       *
+       * Applies to the Next.js, TanStack Start, and Farm layouts.
+       * @default "sidebar"
+       */
+      placement?: "sidebar" | "top";
     };
+    /**
+     * Render a "Skip to content" link (`.fd-skip-link`, pointing at `#nd-page`) as the first
+     * focusable element of the page, visually hidden until it receives focus.
+     * Applies to the Next.js, TanStack Start, and Farm layouts.
+     * @default false
+     */
+    skipLink?: boolean;
   };
   /** Code block rendering config */
   codeBlock?: {
@@ -235,6 +253,23 @@ export interface DocsTheme {
   /** UI configuration — colors, typography, layout, components */
   ui?: UIConfig;
   /**
+   * Defaults for docs config options, so a theme alone can turn on page features such as page
+   * actions. They sit under the user's config: an option the user sets wins, and when both are
+   * objects the user's keys are merged over the theme's, one level deep.
+   *
+   * @example
+   * ```ts
+   * export const myTheme = createTheme({
+   *   name: "my-theme",
+   *   configDefaults: {
+   *     pageActions: { copyMarkdown: true, openDocs: true },
+   *     sidebar: { flat: true },
+   *   },
+   * });
+   * ```
+   */
+  configDefaults?: DocsThemeConfigDefaults;
+  /**
    * @internal
    * User-provided color overrides tracked by `createTheme`.
    * Only these colors are emitted as inline CSS variables at runtime.
@@ -242,6 +277,19 @@ export interface DocsTheme {
    */
   _userColorOverrides?: Record<string, string>;
 }
+
+/** The docs config options a theme can supply defaults for. */
+export type DocsThemeConfigDefaults = Pick<
+  DocsConfig,
+  | "nav"
+  | "themeToggle"
+  | "breadcrumb"
+  | "sidebar"
+  | "pageActions"
+  | "lastUpdated"
+  | "readingTime"
+  | "feedback"
+>;
 
 export interface DocsMetadata {
   titleTemplate?: string;
@@ -459,6 +507,30 @@ export interface DocsNav {
   title?: unknown; // ReactNode — typed as unknown to stay framework-agnostic
   /** URL the title links to. Defaults to `/{entry}`. */
   url?: string;
+  /**
+   * Site links such as "Docs" or "GitHub". Rendered in the top header when the theme sets
+   * `ui.layout.header.placement: "top"`, and in the sidebar otherwise.
+   * Applies to the Next.js, TanStack Start, and Farm layouts.
+   *
+   * @example
+   * ```ts
+   * nav: {
+   *   title: "Acme",
+   *   links: [
+   *     { label: "Docs", href: "/docs" },
+   *     { label: "GitHub", href: "https://github.com/acme/acme", external: true },
+   *   ],
+   * }
+   * ```
+   */
+  links?: DocsNavLink[];
+}
+
+export interface DocsNavLink {
+  label: string;
+  href: string;
+  /** Open in a new tab. */
+  external?: boolean;
 }
 
 export interface ThemeToggleConfig {

@@ -2,6 +2,8 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import type { DocsConfig } from "@farming-labs/docs";
 import { TanstackDocsLayout } from "./tanstack-layout.js";
+import { DocsTopHeader } from "./top-header.js";
+import { createTheme, defineDocs } from "@farming-labs/docs/config";
 
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
@@ -349,6 +351,7 @@ describe("TanstackDocsLayout", () => {
     // Matches the Next.js layout: the header has no llms.txt cell over the search and menu buttons.
     expect(findDocsPageClientProps(tree)?.showLlmsInHeader).toBeFalsy();
     expect((tree.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-theme": "fumadocs-pixel-border",
       "data-fd-browser-adapter": "",
     });
   });
@@ -379,6 +382,131 @@ describe("TanstackDocsLayout", () => {
       collapsible: false,
       defaultOpen: true,
     });
+  });
+
+  it("marks the layout root with the theme name for theme CSS", () => {
+    const themed = TanstackDocsLayout({
+      config: { entry: "docs", theme: { name: "ledger" } },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+    const unthemed = TanstackDocsLayout({
+      config: { entry: "docs" },
+      tree: { name: "Docs", children: [] },
+      browserRuntime: true,
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect((themed.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-theme": "ledger",
+    });
+    expect((unthemed.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual(
+      { "data-fd-browser-adapter": "" },
+    );
+  });
+
+  it("renders a top header after structured data and before the layout", () => {
+    const links = [{ label: "GitHub", href: "https://github.com/acme/acme", external: true }];
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        nav: { title: "Acme", url: "/docs/intro", links },
+        ai: { enabled: true, mode: "sidebar-icon" },
+        theme: { name: "ledger", ui: { layout: { header: { placement: "top" } } } },
+      },
+      tree: { name: "Docs", children: [] },
+      browserRuntime: true,
+      structuredData: "{}",
+      children: React.createElement("div", null, "child"),
+    });
+    const [script, header, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(tree.type).toBe(React.Fragment);
+    expect(script.type).toBe("script");
+    expect(header.type).toBe(DocsTopHeader);
+    expect(header.props).toMatchObject({
+      title: "Acme",
+      titleUrl: "/docs/intro",
+      links,
+      search: true,
+      askAI: true,
+      themeToggle: { mode: undefined },
+      themeName: "ledger",
+    });
+    expect(layout.props.containerProps).toMatchObject({
+      "data-fd-theme": "ledger",
+      "data-fd-header": "top",
+      "data-fd-browser-adapter": "",
+    });
+    expect(layout.props.nav.title).toEqual(
+      React.createElement("span", { className: "fd-nav-title" }, "Acme"),
+    );
+    expect(layout.props.links).toEqual([
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "GitHub"),
+        url: "https://github.com/acme/acme",
+        external: true,
+      },
+    ]);
+  });
+
+  it("renders a skip link before the layout when the theme enables it", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs", theme: { ui: { layout: { skipLink: true } } } },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+    const [skipLink, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(skipLink.type).toBe("a");
+    expect(skipLink.props).toEqual({
+      className: "fd-skip-link",
+      href: "#nd-page",
+      children: "Skip to content",
+    });
+    expect(layout.props.tree).toBeDefined();
+  });
+
+  it("turns on the theme's page options under the user's own", () => {
+    const theme = createTheme({
+      name: "assistant-ui",
+      configDefaults: { pageActions: { copyMarkdown: true, openDocs: true } },
+    });
+    const render = (config: Parameters<typeof defineDocs>[0]) =>
+      findDocsPageClientProps(
+        TanstackDocsLayout({
+          config: defineDocs(config),
+          tree: { name: "Docs", children: [] },
+          browserRuntime: true,
+          children: React.createElement("div", null, "child"),
+        }),
+      );
+
+    expect(render({ entry: "docs", theme: theme() })).toMatchObject({
+      copyMarkdown: true,
+      openDocs: true,
+    });
+    expect(
+      render({ entry: "docs", theme: theme(), pageActions: { copyMarkdown: false } }),
+    ).toMatchObject({ copyMarkdown: false, openDocs: true });
+  });
+
+  it("keeps the site chrome in the sidebar without a top header", () => {
+    const tree = TanstackDocsLayout({
+      config: { entry: "docs", nav: { title: "Acme" }, theme: { name: "ledger" } },
+      tree: { name: "Docs", children: [] },
+      children: React.createElement("div", null, "child"),
+    });
+    const props = tree.props as Record<string, any>;
+
+    expect(tree.type).not.toBe(React.Fragment);
+    expect(props.nav.title).toBe("Acme");
+    expect(props.containerProps).toEqual({ "data-fd-theme": "ledger" });
+    expect(props.links).toBeUndefined();
   });
 
   it("keeps the native TanStack layout out of framework-owned CSS", () => {

@@ -21,7 +21,7 @@ export {
   normalizeDocsPageAccessPolicy,
 } from "./access.js";
 
-export { defineDocs } from "./define-docs.js";
+export { applyThemeConfigDefaults, defineDocs } from "./define-docs.js";
 export { resolveDocsRoots } from "./docs-roots.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
@@ -560,7 +560,9 @@ export type {
   DocsReviewScoreConfig,
   DocsReviewSeverity,
   DocsNav,
+  DocsNavLink,
   DocsTheme,
+  DocsThemeConfigDefaults,
   DocsMetadata,
   OGConfig,
   OpenGraphImage,

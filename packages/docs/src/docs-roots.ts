@@ -1,3 +1,4 @@
+import { applyThemeConfigDefaults } from "./define-docs.js";
 import type { DocsConfig } from "./types.js";
 
 export interface DocsRootRouterOptions {
@@ -35,7 +36,10 @@ export function resolveDocsRoots<Config extends DocsConfig>(config: Config): Con
   const { roots, ...primary } = config;
   if (!roots?.length) return [config];
   const { docsPath: _docsPath, contentDir: _contentDir, ...shared } = primary;
-  return [primary as Config, ...roots.map((root) => ({ ...shared, ...root }) as Config)];
+  return [
+    primary as Config,
+    ...roots.map((root) => applyThemeConfigDefaults({ ...shared, ...root } as Config)),
+  ];
 }
 
 function docsRootPath(entry: string): string {

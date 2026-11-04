@@ -8,6 +8,8 @@ import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
 import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 import { shadcn } from "./shadcn/index.js";
 import { resolvePageMetadata, type DocsPageMetadata } from "./page-metadata.js";
+import { DocsTopHeader } from "./top-header.js";
+import { createTheme, defineDocs } from "@farming-labs/docs/config";
 
 vi.mock("./docs-ai-features.js", () => {
   throw new Error("The docs layout must not eagerly initialize the optional AI implementation");
@@ -542,6 +544,181 @@ agent:
     expect(
       (tree.props as { id?: string; style?: { display?: string } }).style?.display,
     ).toBeUndefined();
+  });
+
+  it("marks the layout root with the theme name for theme CSS", () => {
+    const themed = createDocsLayout({ entry: "docs", theme: shadcn() })({
+      children: React.createElement("div", null, "child"),
+    });
+    const unthemed = createDocsLayout({ entry: "docs" })({
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect((themed.props as { containerProps?: Record<string, unknown> }).containerProps).toEqual({
+      "data-fd-theme": "shadcn",
+    });
+    expect(
+      (unthemed.props as { containerProps?: Record<string, unknown> }).containerProps,
+    ).toBeUndefined();
+  });
+
+  it("renders a top header before the layout when the theme places the header on top", () => {
+    const links = [
+      { label: "Docs", href: "/docs" },
+      { label: "GitHub", href: "https://github.com/acme/acme", external: true },
+    ];
+    const Layout = createDocsLayout({
+      entry: "docs",
+      nav: { title: "Acme", links },
+      themeToggle: { mode: "light-dark-system" },
+      theme: { name: "ledger", ui: { layout: { header: { placement: "top", height: 64 } } } },
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const [header, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(tree.type).toBe(React.Fragment);
+    expect(header.type).toBe(DocsTopHeader);
+    expect(header.props).toEqual({
+      title: "Acme",
+      titleUrl: "/docs",
+      links,
+      search: true,
+      askAI: false,
+      themeToggle: { mode: "light-dark-system" },
+      themeName: "ledger",
+      height: 64,
+    });
+    expect(layout.props.containerProps).toEqual({
+      "data-fd-theme": "ledger",
+      "data-fd-header": "top",
+      style: {
+        "--fd-docs-row-1": "calc(var(--fd-banner-height, 0px) + var(--fd-top-header-offset, 0px))",
+        "--fd-top-header-height": "64px",
+      },
+    });
+    // The mobile nav keeps the title and links; base.css hides their desktop sidebar copies.
+    expect(layout.props.nav.title).toEqual(
+      React.createElement("span", { className: "fd-nav-title" }, "Acme"),
+    );
+    expect(layout.props.links).toEqual([
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "Docs"),
+        url: "/docs",
+        external: false,
+      },
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "GitHub"),
+        url: "https://github.com/acme/acme",
+        external: true,
+      },
+    ]);
+  });
+
+  it("leaves search off the top header for static exports and the toggle when it is hidden", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      staticExport: true,
+      themeToggle: false,
+      theme: { name: "ledger", ui: { layout: { header: { placement: "top" } } } },
+    } as Parameters<typeof createDocsLayout>[0]);
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const [header, layout] = React.Children.toArray(
+      (tree.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(header.props).toMatchObject({ search: false, themeToggle: false, links: [] });
+    expect(header.props.height).toBeUndefined();
+    expect(layout.props.links).toBeUndefined();
+  });
+
+  it("keeps the nav title, search and theme toggle in the sidebar by default", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      nav: { title: "Acme", links: [{ label: "Changelog", href: "/changelog" }] },
+      theme: { name: "ledger", ui: { layout: { header: { height: 64 } } } },
+    });
+
+    const tree = Layout({ children: React.createElement("div", null, "child") });
+    const props = tree.props as Record<string, any>;
+
+    expect(tree.type).not.toBe(React.Fragment);
+    expect(props.nav.title).toBe("Acme");
+    expect(props.containerProps).toEqual({ "data-fd-theme": "ledger" });
+    expect(props.links).toEqual([
+      {
+        text: React.createElement("span", { className: "fd-nav-link" }, "Changelog"),
+        url: "/changelog",
+        external: false,
+      },
+    ]);
+  });
+
+  it("renders a skip link as the first element when the theme enables it", () => {
+    const skipOnly = createDocsLayout({
+      entry: "docs",
+      theme: { name: "ledger", ui: { layout: { skipLink: true } } },
+    })({ children: React.createElement("div", null, "child") });
+    const withHeader = createDocsLayout({
+      entry: "docs",
+      theme: { name: "ledger", ui: { layout: { skipLink: true, header: { placement: "top" } } } },
+    })({ children: React.createElement("div", null, "child") });
+    const skipChildren = React.Children.toArray(
+      (skipOnly.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+    const headerChildren = React.Children.toArray(
+      (withHeader.props as { children: React.ReactNode }).children,
+    ) as React.ReactElement<Record<string, any>>[];
+
+    expect(skipChildren).toHaveLength(2);
+    expect(skipChildren[0]!.type).toBe("a");
+    expect(skipChildren[0]!.props).toEqual({
+      className: "fd-skip-link",
+      href: "#nd-page",
+      children: "Skip to content",
+    });
+    expect(skipChildren[1]!.props.containerProps).toEqual({ "data-fd-theme": "ledger" });
+    expect(headerChildren.map((child) => child.type)).toEqual([
+      "a",
+      DocsTopHeader,
+      skipChildren[1]!.type,
+    ]);
+  });
+
+  it("turns on the theme's page options under the user's own", () => {
+    const theme = createTheme({
+      name: "assistant-ui",
+      configDefaults: {
+        breadcrumb: false,
+        pageActions: { copyMarkdown: true, openDocs: true, position: "above-title" },
+      },
+    });
+    const themed = findDocsPageClientProps(
+      createDocsLayout(defineDocs({ entry: "docs", theme: theme() }))({
+        children: React.createElement("div", null, "child"),
+      }),
+    );
+    const overridden = findDocsPageClientProps(
+      createDocsLayout(
+        defineDocs({ entry: "docs", theme: theme(), pageActions: { openDocs: false } }),
+      )({ children: React.createElement("div", null, "child") }),
+    );
+
+    expect(themed).toMatchObject({
+      breadcrumbEnabled: false,
+      copyMarkdown: true,
+      openDocs: true,
+      pageActionsPosition: "above-title",
+    });
+    expect(overridden).toMatchObject({
+      breadcrumbEnabled: false,
+      copyMarkdown: true,
+      openDocs: false,
+      pageActionsPosition: "above-title",
+    });
   });
 
   it("adds stable React keys to sidebar content", () => {

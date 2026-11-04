@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { defineDocs } from "./define-docs.js";
+import { createTheme } from "./create-theme.js";
+import { applyThemeConfigDefaults, defineDocs } from "./define-docs.js";
+import type { DocsConfig } from "./types.js";
 
 describe("defineDocs", () => {
   it("keeps the docs roots", () => {
@@ -152,5 +154,70 @@ describe("defineDocs", () => {
         baseBranch: "main",
       },
     });
+  });
+});
+
+describe("theme config defaults", () => {
+  const theme = createTheme({
+    name: "assistant-ui",
+    ui: { layout: { header: { placement: "top" } } },
+    configDefaults: {
+      nav: { links: [{ label: "Docs", href: "/docs" }] },
+      breadcrumb: false,
+      sidebar: { flat: true, collapsible: false },
+      pageActions: {
+        copyMarkdown: true,
+        openDocs: { providers: [{ name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" }] },
+        position: "above-title",
+      },
+    },
+  });
+
+  it("turns on the theme's page options when the config leaves them unset", () => {
+    const config = defineDocs({ entry: "docs", theme: theme() });
+
+    expect(config.nav).toEqual({ links: [{ label: "Docs", href: "/docs" }] });
+    expect(config.breadcrumb).toBe(false);
+    expect(config.sidebar).toEqual({ flat: true, collapsible: false });
+    expect(config.pageActions).toMatchObject({ copyMarkdown: true, position: "above-title" });
+  });
+
+  it("lets the config win, merging objects over the theme's one key deep", () => {
+    const config = defineDocs({
+      entry: "docs",
+      theme: theme(),
+      nav: { title: "Acme" },
+      breadcrumb: true,
+      sidebar: false,
+      pageActions: {
+        copyMarkdown: false,
+        openDocs: { providers: [] },
+        alignment: undefined,
+        position: undefined,
+      },
+    });
+
+    expect(config.nav).toEqual({ title: "Acme", links: [{ label: "Docs", href: "/docs" }] });
+    expect(config.breadcrumb).toBe(true);
+    expect(config.sidebar).toBe(false);
+    expect(config.pageActions).toEqual({
+      copyMarkdown: false,
+      openDocs: { providers: [] },
+      position: "above-title",
+    });
+  });
+
+  it("keeps theme factory overrides and applies them once however often it runs", () => {
+    const overridden = theme({ configDefaults: { breadcrumb: true } });
+    const once = applyThemeConfigDefaults<DocsConfig>({ entry: "docs", theme: overridden });
+
+    expect(overridden.configDefaults?.sidebar).toEqual({ flat: true, collapsible: false });
+    expect(once.breadcrumb).toBe(true);
+    expect(applyThemeConfigDefaults(once)).toEqual(once);
+  });
+
+  it("returns a config whose theme has no defaults unchanged", () => {
+    const config = { entry: "docs", theme: { name: "ledger" } };
+    expect(applyThemeConfigDefaults(config)).toBe(config);
   });
 });

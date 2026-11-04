@@ -661,6 +661,46 @@ describe("createFarmDocsRuntimeHandler", () => {
     ).not.toThrow();
   });
 
+  it("merges a theme's config defaults under the options Farm passes in", async () => {
+    const rendered: unknown[] = [];
+    const handler = createFarmDocsRuntimeHandler(
+      {
+        ...config,
+        theme: {
+          name: "assistant-ui",
+          configDefaults: {
+            breadcrumb: false,
+            pageActions: { copyMarkdown: true, openDocs: true },
+          },
+        },
+        pageActions: { openDocs: false },
+      },
+      {
+        loadReactModule: async () => ({
+          FarmDocsPage: ({ config: pageConfig }) => {
+            rendered.push(pageConfig);
+            return createElement("main");
+          },
+        }),
+      },
+    );
+    const html = await (await handler(new Request("https://farm.example/docs")))!.text();
+    const adapter = JSON.parse(
+      html.match(/window\.__FARM_DOCS_ADAPTER__=(.*?);<\/script>/)![1]!,
+    ) as { config: Record<string, unknown> };
+
+    expect(rendered).toEqual([
+      expect.objectContaining({
+        breadcrumb: false,
+        pageActions: { copyMarkdown: true, openDocs: false },
+      }),
+    ]);
+    expect(adapter.config).toMatchObject({
+      breadcrumb: false,
+      pageActions: { copyMarkdown: true, openDocs: false },
+    });
+  });
+
   describe("document head metadata", () => {
     const render = async (
       overrides: Record<string, unknown>,
@@ -683,6 +723,17 @@ describe("createFarmDocsRuntimeHandler", () => {
         ))!.text(),
       };
     };
+
+    it("hands nav links to the browser in the serializable config", async () => {
+      const links = [{ label: "GitHub", href: "https://github.com/acme/acme", external: true }];
+      const { html } = await render({ nav: { title: "Farm Docs", links } });
+      const adapter = JSON.parse(
+        html.match(/window\.__FARM_DOCS_ADAPTER__=(.*?);<\/script>/)![1]!,
+      ) as { config: { nav: unknown }; configModule?: boolean };
+
+      expect(adapter.config.nav).toEqual({ title: "Farm Docs", links });
+      expect(adapter.configModule).toBeUndefined();
+    });
 
     it("applies the title template and the og endpoint's per-page card", async () => {
       const { html } = await render({

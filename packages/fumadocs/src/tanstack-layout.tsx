@@ -1,5 +1,5 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { Suspense, type HTMLAttributes, type ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -29,6 +29,12 @@ import { TabletSidebarBridge } from "./tablet-sidebar-bridge.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
+import {
+  renderLayoutChrome,
+  resolveLayoutContainerProps,
+  resolveSidebarNavLinks,
+  resolveSidebarNavTitle,
+} from "./layout-chrome.js";
 
 interface PageNode {
   type: "page";
@@ -49,10 +55,6 @@ interface FolderNode {
 }
 
 type TreeNode = PageNode | FolderNode;
-
-type BrowserContainerProps = HTMLAttributes<HTMLDivElement> & {
-  "data-fd-browser-adapter"?: string;
-};
 
 interface TreeRoot {
   name: string;
@@ -460,9 +462,10 @@ export function TanstackDocsLayout({
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
-  const browserContainerProps: BrowserContainerProps | undefined = browserRuntime
-    ? { "data-fd-browser-adapter": "" }
-    : undefined;
+  const containerProps = resolveLayoutContainerProps(
+    config,
+    browserRuntime ? { "data-fd-browser-adapter": "" } : undefined,
+  );
 
   const openDocsConfig =
     pageActions?.openDocs && typeof pageActions.openDocs === "object"
@@ -549,13 +552,23 @@ export function TanstackDocsLayout({
     }) as ReactNode;
   }
 
+  const chrome = renderLayoutChrome(config, {
+    navTitle,
+    navUrl,
+    search: !staticExport,
+    askAI: aiEnabled && aiMode === "sidebar-icon",
+    themeToggle: themeSwitch.enabled !== false && { mode: themeSwitch.mode },
+  });
+  const navLinks = resolveSidebarNavLinks(config);
+
   const layout = (
     <DocsLayout
       tree={resolvedTree}
-      nav={{ title: navTitle, url: navUrl }}
+      nav={{ title: resolveSidebarNavTitle(config, navTitle), url: navUrl }}
       themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
       sidebar={finalSidebarProps}
-      containerProps={browserContainerProps}
+      containerProps={containerProps}
+      {...(navLinks ? { links: navLinks } : {})}
       {...(aiMode === "sidebar-icon" && aiEnabled
         ? {
             searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
@@ -651,14 +664,17 @@ export function TanstackDocsLayout({
     </DocsLayout>
   );
 
-  if (!structuredData) return layout;
+  if (!structuredData && !chrome) return layout;
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredData) }}
-      />
+      {structuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredData) }}
+        />
+      )}
+      {chrome}
       {layout}
     </>
   );
