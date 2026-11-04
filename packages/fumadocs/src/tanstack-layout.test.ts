@@ -484,4 +484,21 @@ describe("TanstackDocsLayout page chrome", () => {
       "title",
     );
   });
+
+  it.each([
+    [undefined, undefined],
+    [true, { copyMarkdown: true, viewMarkdown: true, editOnGitHub: true }],
+    [{ copyMarkdown: false }, { copyMarkdown: false, viewMarkdown: true, editOnGitHub: true }],
+  ] as const)("resolves pageActions.toc %j for the rail", (toc, expected) => {
+    expect(pageClientProps({ pageActions: { position: "title", toc } })?.tocActions).toEqual(
+      expected,
+    );
+  });
+
+  it.each([
+    [undefined, true],
+    [false, false],
+  ])("passes pageActions.askAi %s to the rail as %s", (askAi, expected) => {
+    expect(pageClientProps({ pageActions: { askAi } })?.tocAskAi).toBe(expected);
+  });
 });

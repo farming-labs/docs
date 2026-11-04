@@ -597,6 +597,7 @@ export type {
   SidebarPageNode,
   SidebarFolderNode,
   PageActionsConfig,
+  PageActionsTocConfig,
   PageActionConnectMcpConfig,
   PageActionInstallSkillsConfig,
   PageActionMcpProvider,

@@ -35,6 +35,8 @@ interface PageActionsProps {
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
   analytics?: boolean;
+  /** The rail's "Ask AI" button. */
+  askAi?: boolean;
   connectMcp?: {
     endpoint?: string;
     providers?: readonly PageActionMcpProvider[];
@@ -270,6 +272,7 @@ export function PageActions({
   variant = "default",
   githubFileUrl,
   analytics = false,
+  askAi = true,
   connectMcp,
   installSkills,
 }: PageActionsProps) {
@@ -594,10 +597,12 @@ export function PageActions({
           </a>
         )}
 
-        <button type="button" onClick={handleAskAI} className="fd-page-action-btn">
-          <SparklesIcon />
-          <span>Ask AI</span>
-        </button>
+        {askAi && (
+          <button type="button" onClick={handleAskAI} className="fd-page-action-btn">
+            <SparklesIcon />
+            <span>Ask AI</span>
+          </button>
+        )}
         {connectMcp && (
           <button
             type="button"

@@ -25,6 +25,7 @@ import type {
 } from "@farming-labs/docs";
 import { emitDocsTelemetryPageViewEvent } from "@farming-labs/docs/browser";
 import { PageActions } from "./page-actions.js";
+import type { ResolvedTocPageActions } from "./page-actions-config.js";
 import { useWindowPathname, useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
@@ -112,6 +113,10 @@ interface DocsPageClientProps {
   pageActionsPosition?: "above-title" | "below-title" | "title" | "toc";
   /** `menu` collects the title, below-title or above-title actions behind one "…" trigger. */
   pageActionsVariant?: "buttons" | "menu";
+  /** Actions in the table-of-contents rail alongside the actions at `pageActionsPosition`. */
+  tocActions?: ResolvedTocPageActions;
+  /** The table-of-contents rail's "Ask AI" button. */
+  tocAskAi?: boolean;
   /** Horizontal alignment of page action buttons */
   pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
@@ -661,6 +666,8 @@ export function DocsPageClient({
   installSkills,
   pageActionsPosition = "below-title",
   pageActionsVariant = "buttons",
+  tocActions,
+  tocAskAi = true,
   pageActionsAlignment = "left",
   githubUrl,
   contentDir,
@@ -861,6 +868,7 @@ export function DocsPageClient({
   const showActionsInTitle = showActions && pageActionsPosition === "title";
   const showActionsInToc = showActions && pageActionsPosition === "toc";
   const actionsVariant = pageActionsVariant === "menu" ? "menu" : "default";
+  const showTocRail = showActionsInToc || (!isChangelogRoute && !!tocActions);
   const githubFileUrl =
     editOnGithubUrl ??
     (githubUrl
@@ -876,7 +884,7 @@ export function DocsPageClient({
       : undefined);
 
   useLayoutEffect(() => {
-    if (!showActionsInToc) {
+    if (!showTocRail) {
       setTocActionsPortalHost(null);
       return;
     }
@@ -924,7 +932,7 @@ export function DocsPageClient({
 
       setTocActionsPortalHost(null);
     };
-  }, [pathname, showActionsInToc, toc.length]);
+  }, [pathname, showTocRail, toc.length]);
 
   useLayoutEffect(() => {
     if (!showActionsInToc) {
@@ -1165,27 +1173,46 @@ export function DocsPageClient({
       ? createPortal(<ThreadlinePageControls />, titleControlsPortalHost, "title-controls")
       : null;
   const tocActionsPortal =
-    showActionsInToc && tocActionsPortalHost
+    showTocRail && tocActionsPortalHost
       ? createPortal(
           <div className="fd-actions-toc-portal not-prose">
-            <PageActions
-              copyMarkdown={copyMarkdown}
-              copyMarkdownFormat={copyMarkdownFormat}
-              copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
-              copyMarkdownLabel={copyMarkdownLabel}
-              copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
-              openDocs={openDocs}
-              viewMarkdown={viewMarkdown}
-              providers={openDocsProviders}
-              openDocsTarget={openDocsTarget}
-              openDocsPrompt={openDocsPrompt}
-              connectMcp={connectMcp}
-              installSkills={installSkills}
-              alignment="left"
-              variant="rail"
-              githubFileUrl={githubFileUrl}
-              analytics={analytics}
-            />
+            {showActionsInToc ? (
+              <PageActions
+                copyMarkdown={copyMarkdown}
+                copyMarkdownFormat={copyMarkdownFormat}
+                copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+                copyMarkdownLabel={copyMarkdownLabel}
+                copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
+                openDocs={openDocs}
+                viewMarkdown={viewMarkdown}
+                providers={openDocsProviders}
+                openDocsTarget={openDocsTarget}
+                openDocsPrompt={openDocsPrompt}
+                connectMcp={connectMcp}
+                installSkills={installSkills}
+                alignment="left"
+                variant="rail"
+                githubFileUrl={githubFileUrl}
+                analytics={analytics}
+                askAi={tocAskAi}
+              />
+            ) : (
+              tocActions && (
+                <PageActions
+                  copyMarkdown={tocActions.copyMarkdown}
+                  copyMarkdownFormat={copyMarkdownFormat}
+                  copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
+                  copyMarkdownLabel={copyMarkdownLabel}
+                  copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
+                  viewMarkdown={tocActions.viewMarkdown}
+                  alignment="left"
+                  variant="rail"
+                  githubFileUrl={tocActions.editOnGitHub ? githubFileUrl : undefined}
+                  analytics={analytics}
+                  askAi={tocAskAi}
+                />
+              )
+            )}
           </div>,
           tocActionsPortalHost,
           "toc-actions",

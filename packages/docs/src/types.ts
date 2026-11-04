@@ -890,6 +890,21 @@ export interface PageActionsConfig {
    */
   variant?: "buttons" | "menu";
   /**
+   * Actions in the table-of-contents rail (`.fd-actions-toc-portal`), shown together with the
+   * actions at `position`. `true` shows Copy page, View as Markdown and Edit on GitHub (when
+   * `github` is configured); an object picks among them. Ignored when `position` is `"toc"`,
+   * where the rail already holds the page actions.
+   *
+   * @default false
+   */
+  toc?: boolean | PageActionsTocConfig;
+  /**
+   * The "Ask AI" button in the table-of-contents rail.
+   *
+   * @default true
+   */
+  askAi?: boolean;
+  /**
    * Icon links to the previous and next page in the page title row
    * (`.fd-title-pager` inside `.fd-page-title-actions`), linking to the same pages as the
    * pager at the bottom of the page. Applies to the Next.js, TanStack Start, and Farm layouts.
@@ -906,6 +921,15 @@ export interface PageActionsConfig {
    * @default "left"
    */
   alignment?: "left" | "right";
+}
+
+export interface PageActionsTocConfig {
+  /** Copy page, with the `copyMarkdown` format and labels. @default true */
+  copyMarkdown?: boolean;
+  /** View as Markdown. @default true */
+  viewMarkdown?: boolean;
+  /** Edit on GitHub, when `github` is configured. @default true */
+  editOnGitHub?: boolean;
 }
 
 export type PageActionMcpProvider = "copy" | "claude-code" | "cursor" | "vscode" | "codex";

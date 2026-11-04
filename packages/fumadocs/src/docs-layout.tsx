@@ -39,6 +39,7 @@ import { DocsAIFeatures } from "./docs-ai-features-lazy.js";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
+import { resolveTocPageActions } from "./page-actions-config.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
@@ -1215,6 +1216,8 @@ export function createDocsLayout(
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
             pageActionsVariant={pageActions?.variant ?? "buttons"}
+            tocActions={resolveTocPageActions(pageActions?.toc)}
+            tocAskAi={pageActions?.askAi !== false}
             titlePager={pageActions?.pager === true}
             githubUrl={githubUrl}
             contentDir={contentDir}
