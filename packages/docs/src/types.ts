@@ -254,8 +254,9 @@ export interface DocsTheme {
   ui?: UIConfig;
   /**
    * Defaults for docs config options, so a theme alone can turn on page features such as page
-   * actions. They sit under the user's config: an option the user sets wins, and when both are
-   * objects the user's keys are merged over the theme's, one level deep.
+   * actions or supply its own MDX components. They sit under the user's config: an option the user
+   * sets wins, and when both are objects the user's keys are merged over the theme's, one level
+   * deep, so a site's `components` replace the theme's component by component.
    *
    * @example
    * ```ts
@@ -289,6 +290,7 @@ export type DocsThemeConfigDefaults = Pick<
   | "lastUpdated"
   | "readingTime"
   | "feedback"
+  | "components"
 >;
 
 export interface DocsMetadata {
