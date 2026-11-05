@@ -27,3 +27,4 @@ export type { DocsMcpPage } from "./mcp.js";
 export { readDocsSitemapManifest } from "./sitemap-server.js";
 export { readDocsAppVersion } from "./app-version.js";
 export { resolveConfiguredAgentSkills } from "./agent-skills-server.js";
+export { createDocsContentMapCache } from "./prepared-content-cache.js";

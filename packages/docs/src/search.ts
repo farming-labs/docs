@@ -1,3 +1,4 @@
+import { createPreparedContentCache } from "./prepared-content-cache.js";
 import type {
   AlgoliaDocsSearchConfig,
   CustomDocsSearchConfig,
@@ -2295,6 +2296,16 @@ function splitPageIntoSections(
   });
 }
 
+const preparedSearchDocuments = createPreparedContentCache<DocsSearchDocument[]>();
+
+function copySearchDocuments(documents: DocsSearchDocument[]): DocsSearchDocument[] {
+  return documents.map((document) => ({
+    ...document,
+    ...(document.package ? { package: [...document.package] } : {}),
+    ...(document.tags ? { tags: [...document.tags] } : {}),
+  }));
+}
+
 export function buildDocsSearchDocuments(
   pages: DocsSearchSourcePage[],
   chunking: DocsSearchChunkingConfig = {},
@@ -2302,17 +2313,39 @@ export function buildDocsSearchDocuments(
 ): DocsSearchDocument[] {
   const strategy = chunking.strategy ?? "section";
 
-  return pages.flatMap((rawPage) => {
+  const prepared = pages.map((rawPage) => {
     const page = localizeDocsSearchPage(rawPage, rawPage.locale);
+    // Content-based keys also cover fresh page objects and in-place edits. Do not
+    // cache access decisions, query results, or mutable custom-adapter context.
+    const key = JSON.stringify([
+      strategy,
+      audience,
+      page.title,
+      page.url,
+      page.description,
+      page.locale,
+      getPageAudienceSource(page, audience),
+      renderPageAgentContractMarkdown(page.agent),
+      resolveDocsSearchPageScope(page),
+    ]);
+    const cached = preparedSearchDocuments.get(key);
+    return { page, key, cached };
+  });
+
+  // Read the entire working set before admitting misses. Otherwise a corpus
+  // larger than the cache evicts each upcoming hit during a sequential scan.
+  return prepared.flatMap(({ page, key, cached }) => {
+    if (cached) return copySearchDocuments(cached);
     const base = pageToSearchDocument(page, audience);
-
-    if (strategy === "page") return [base];
-
-    const sections = splitPageIntoSections(page, audience);
-    if (sections.length === 0) return [base];
-
-    const pageSummary = base.content ? [base] : [];
-    return [...pageSummary, ...sections];
+    const sections = strategy === "page" ? [] : splitPageIntoSections(page, audience);
+    const documents =
+      sections.length === 0 ? [base] : [...(base.content ? [base] : []), ...sections];
+    preparedSearchDocuments.set(
+      key,
+      copySearchDocuments(documents),
+      JSON.stringify(documents).length,
+    );
+    return documents;
   });
 }
 
