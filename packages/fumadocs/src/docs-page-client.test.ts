@@ -51,7 +51,7 @@ vi.mock("fumadocs-ui/layouts/docs/page", async () => {
   };
 });
 
-import { DocsPageClient } from "./docs-page-client.js";
+import { DocsPageClient, DocsPageProvider, DocsPageContentClient } from "./docs-page-client.js";
 import { serializePageMetadata, type DocsPageMaps } from "./page-metadata.js";
 import { compactPageStructuredData } from "./page-structured-data.js";
 
@@ -75,6 +75,50 @@ describe("DocsPageClient packed metadata compatibility", () => {
       },
     },
   };
+  it("preserves server HTML through a page boundary and prevents nested MDX wrappers", () => {
+    const pageMetadata = serializePageMetadata(maps);
+    const content = React.createElement("p", null, "Preserved MDX content");
+    const props = {
+      tocEnabled: false,
+      breadcrumbEnabled: false,
+      copyMarkdown: true,
+      readingTimeEnabled: true,
+    };
+    const legacy = renderToStaticMarkup(
+      React.createElement(DocsPageClient, { ...props, pageMetadata, children: content }),
+    );
+    const page = React.createElement(DocsPageContentClient, {
+      pageMetadata,
+      readingTimeEnabled: true,
+      children: content,
+    });
+    const nested = React.createElement(DocsPageContentClient, {
+      pageMetadata,
+      readingTimeEnabled: true,
+      children: page,
+    });
+    for (const children of [page, nested]) {
+      expect(
+        renderToStaticMarkup(
+          React.createElement(DocsPageProvider, { ...props, pageRoutes: [route], children }),
+        ),
+      ).toBe(legacy);
+    }
+    // Non-MDX routes still receive the original layout wrapper and metadata.
+    expect(
+      renderToStaticMarkup(
+        React.createElement(DocsPageProvider, {
+          ...props,
+          pageMetadata,
+          pageRoutes: ["/docs/other"],
+          children: page,
+        }),
+      ),
+    ).toBe(legacy);
+    // An MDX component used without our layout remains ordinary content.
+    expect(renderToStaticMarkup(page)).toBe(renderToStaticMarkup(content));
+  });
+
   it.each(["footer", "below-title"] as const)(
     "renders identical HTML with dates in the %s position",
     (lastUpdatedPosition) => {

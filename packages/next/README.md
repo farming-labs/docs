@@ -94,6 +94,29 @@ The built-in highlighter uses Shiki's Oniguruma engine during compilation. A cus
 can import `@farming-labs/next/mdx-plugins/rehype-code` to keep that default while configuring
 themes and transformers. Passing `engine: "js"` explicitly selects Shiki's JavaScript engine.
 
+## Page metadata transport
+
+Production builds send title, description, reading time, dates, and structured data with each
+compatible Markdown/MDX page. The shared layout keeps navigation and theme settings. This changes
+the data boundary without changing the rendered page markup or the theme API.
+
+Automatic selection applies to ordinary file routes using the standard generated layout and MDX
+provider. Customized layouts, MDX providers, compiler extensions, `components.wrapper`, development,
+localized layouts, multiple docs roots, custom content directories, Next.js `basePath`, nested
+layouts/templates, dynamic/group/parallel routes, and authored MDX exports keep the existing
+site-wide metadata path. Code fences containing exports remain eligible. Older installed core or
+theme packages without the boundary support also keep the existing path.
+
+To retain site-wide metadata explicitly:
+
+```ts
+export default withDocs({}, undefined, { pageMetadata: "site" });
+```
+
+The default is `pageMetadata: "auto"`. Both transports use the same metadata builder and page
+component. Custom compiler extensions retain the existing transport. The boundary
+subpaths are internal compiler integration points, not application component APIs.
+
 ## Main entrypoints
 
 | Entrypoint | Purpose |

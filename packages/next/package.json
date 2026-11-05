@@ -88,6 +88,16 @@
       "types": "./dist/mdx-plugins/remark-markdown-alternate.d.mts",
       "import": "./dist/mdx-plugins/remark-markdown-alternate.mjs",
       "default": "./dist/mdx-plugins/remark-markdown-alternate.mjs"
+    },
+    "./mdx-plugins/rehype-page-boundary": {
+      "types": "./dist/mdx-plugins/rehype-page-boundary.d.mts",
+      "import": "./dist/mdx-plugins/rehype-page-boundary.mjs",
+      "default": "./dist/mdx-plugins/rehype-page-boundary.mjs"
+    },
+    "./internal/page": {
+      "types": "./dist/page.d.mts",
+      "import": "./dist/page.mjs",
+      "default": "./dist/page.mjs"
     }
   },
   "scripts": {

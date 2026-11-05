@@ -141,7 +141,12 @@
     "./threadline/css": "./styles/threadline.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
-    "./presets/base": "./styles/presets/base.css"
+    "./presets/base": "./styles/presets/base.css",
+    "./internal/page": {
+      "types": "./dist/docs-layout.d.mts",
+      "import": "./dist/docs-layout.mjs",
+      "default": "./dist/docs-layout.mjs"
+    }
   },
   "scripts": {
     "build": "node scripts/build-css-bundles.mjs && tsdown",

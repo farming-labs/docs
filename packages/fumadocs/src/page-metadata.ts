@@ -37,7 +37,10 @@ interface PackedPages {
  * several overlapping maps for every prerendered page. Keep all routes so a
  * persistent layout still has metadata after client navigation.
  */
-export function serializePageMetadata(maps: DocsPageMaps): DocsPageMetadata {
+export function serializePageMetadata(
+  maps: DocsPageMaps,
+  excludeRoutes?: ReadonlySet<string>,
+): DocsPageMetadata {
   const dates: string[] = [];
   const dateIndexes = new Map<string, number>();
   const dateIndex = (value: string | undefined): number | null => {
@@ -50,6 +53,7 @@ export function serializePageMetadata(maps: DocsPageMaps): DocsPageMetadata {
   };
   const pages: Record<string, Row> = {};
   for (const [route, page] of Object.entries(maps.structuredDataPages.pages)) {
+    if (excludeRoutes?.has(route)) continue;
     const generatedTitle = maps.generatedTitleMap[route];
     const description = maps.descriptionMap[route];
     const row: Row = [

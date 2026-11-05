@@ -34,7 +34,7 @@ import type {
   PageActionInstallSkillsConfig,
   DocsSitemapManifest,
 } from "@farming-labs/docs";
-import { DocsPageClient } from "./docs-page-client.js";
+import { DocsPageClient, DocsPageProvider, DocsPageContentClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features-lazy.js";
 import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
@@ -561,6 +561,7 @@ function buildPageMaps(
     enabledByDefault: boolean;
     wordsPerMinute: number;
     includeCode: boolean;
+    slugParts?: string[];
   },
 ) {
   const resolveLastmod = createDocsSitemapLastmodResolver(manifest);
@@ -633,12 +634,16 @@ function buildPageMaps(
       });
     }
 
+    if (options.slugParts) return;
     for (const name of directories) {
       scan(path.join(/*! turbopackIgnore: true */ dir, name), [...slugParts, name]);
     }
   }
 
-  scan(ctx.docsDir, []);
+  scan(
+    path.join(/*! turbopackIgnore: true */ ctx.docsDir, ...(options.slugParts ?? [])),
+    options.slugParts ?? [],
+  );
   return {
     lastModifiedMap,
     descriptionMap,
@@ -904,10 +909,59 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
 
 // ─── createDocsLayout ────────────────────────────────────────────────
 
+/** Server boundary used by compiled docs pages; shares the legacy metadata builder. */
+export function DocsPageContent({
+  config,
+  route,
+  children,
+}: {
+  config: DocsConfig;
+  route: string;
+  children: ReactNode;
+}) {
+  const ctx = resolveDocsLocaleContext(config);
+  const prefix = publicDocsRoute(ctx);
+  const relative = route === prefix ? "" : route.slice(prefix === "/" ? 1 : prefix.length + 1);
+  const slugParts = relative.split("/").filter(Boolean);
+  if (
+    !(route === prefix || route.startsWith(`${prefix === "/" ? "" : prefix}/`)) ||
+    slugParts.some((part) => part === "." || part === ".." || part.includes("\\"))
+  ) {
+    throw new Error("Invalid docs page metadata route");
+  }
+  const readingTime = resolveReadingTimeOptions(config.readingTime);
+  const lastUpdated = config.lastUpdated;
+  const maps = buildPageMaps(
+    config,
+    ctx,
+    createDocsContentReader(),
+    readDocsSitemapManifest(process.cwd(), config.sitemap),
+    {
+      slugParts,
+      lastUpdated:
+        lastUpdated !== false && (typeof lastUpdated !== "object" || lastUpdated.enabled !== false),
+      enabledByDefault: readingTime.enabled,
+      wordsPerMinute: readingTime.wordsPerMinute ?? 220,
+      includeCode: readingTime.includeCode,
+    },
+  );
+  return (
+    <DocsPageContentClient
+      pageMetadata={serializePageMetadata(maps)}
+      readingTimeEnabled={readingTime.enabled || Object.keys(maps.readingTimeMap).length > 0}
+    >
+      {children}
+    </DocsPageContentClient>
+  );
+}
+
 export function createDocsLayout(
   config: DocsConfig,
-  options?: { locale?: string; telemetryFramework?: DocsTelemetryFramework },
+  options?: { locale?: string; telemetryFramework?: DocsTelemetryFramework; pageRoutes?: string[] },
 ) {
+  const pageRoutes = config.components?.wrapper ? [] : (options?.pageRoutes ?? []);
+  const pageRouteSet = new Set(pageRoutes);
+  const PageWrapper = pageRoutes.length > 0 ? DocsPageProvider : DocsPageClient;
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = (tocConfig as any)?.style as "default" | "directional" | undefined;
@@ -1089,7 +1143,7 @@ export function createDocsLayout(
       },
     );
     return {
-      pageMetadata: serializePageMetadata(maps),
+      pageMetadata: serializePageMetadata(maps, pageRouteSet),
       readingTimeEnabled:
         readingTimeEnabledByDefault || Object.keys(maps.readingTimeMap).length > 0,
       localizedTree: i18n ? localizeTreeUrls(tree, activeLocale) : tree,
@@ -1211,7 +1265,8 @@ export function createDocsLayout(
           </Suspense>
         )}
         <Suspense fallback={children}>
-          <DocsPageClient
+          <PageWrapper
+            pageRoutes={pageRoutes}
             tocEnabled={tocEnabled}
             tocStyle={tocStyle}
             breadcrumbEnabled={breadcrumbEnabled}
@@ -1265,7 +1320,7 @@ export function createDocsLayout(
             telemetryFramework={options?.telemetryFramework}
           >
             {children}
-          </DocsPageClient>
+          </PageWrapper>
         </Suspense>
       </DocsLayout>
     );

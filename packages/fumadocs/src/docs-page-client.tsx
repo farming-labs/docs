@@ -3,7 +3,10 @@
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
 import {
   Children,
+  createContext,
   Fragment,
+  useContext,
+  useMemo,
   useEffect,
   useLayoutEffect,
   useState,
@@ -652,6 +655,56 @@ function findThreadlineTocActionsContainer(): HTMLElement | null {
   }
 
   return toc.parentElement ?? toc;
+}
+
+const PageContext = createContext<{
+  props: Omit<DocsPageClientProps, "children">;
+  enabled: boolean;
+} | null>(null);
+
+/** Keep layout settings persistent while each compiled MDX page owns its metadata. */
+export function DocsPageProvider({
+  children,
+  pageRoutes,
+  ...props
+}: DocsPageClientProps & {
+  pageRoutes: string[];
+}) {
+  const pathname = usePathname();
+  const browserPathname = useWindowPathname();
+  const route = (browserPathname || pathname).replace(/\/$/, "") || "/";
+  const routes = useMemo(() => new Set(pageRoutes), [pageRoutes]);
+  const enabled = routes.has(route);
+  return (
+    <PageContext.Provider value={{ props, enabled }}>
+      {enabled ? children : <DocsPageClient {...props}>{children}</DocsPageClient>}
+    </PageContext.Provider>
+  );
+}
+
+export function DocsPageContentClient({
+  children,
+  pageMetadata,
+  readingTimeEnabled,
+}: {
+  children: ReactNode;
+  pageMetadata: DocsPageMetadata;
+  readingTimeEnabled: boolean;
+}) {
+  const context = useContext(PageContext);
+  // Custom layouts and imported MDX fragments retain their existing wrapper.
+  if (!context?.enabled) return <>{children}</>;
+  return (
+    <PageContext.Provider value={{ ...context, enabled: false }}>
+      <DocsPageClient
+        {...context.props}
+        pageMetadata={pageMetadata}
+        readingTimeEnabled={readingTimeEnabled}
+      >
+        {children}
+      </DocsPageClient>
+    </PageContext.Provider>
+  );
 }
 
 export function DocsPageClient({
