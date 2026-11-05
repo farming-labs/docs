@@ -79,3 +79,9 @@ Preset subpaths are `fumadocs`, `pixel-border`, `darksharp`, `colorful`, `greent
 ## License
 
 MIT
+
+## Optional AI loading
+
+The floating AI trigger loads with the page. Its chat implementation loads on first activation
+and stays mounted after closing, so reopening keeps the conversation. Panel, modal, popover,
+full-modal, and custom triggers retain their existing markup and configuration.
