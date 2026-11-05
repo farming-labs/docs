@@ -613,7 +613,9 @@ aside#nd-sidebar button.text-fd-muted-foreground,
   border-left: 0 !important;
 }
 
-#nd-toc [style*="--track-top"] {
+/* Keep the flat desktop TOC free of both active and per-link rail decorations. */
+#nd-toc [style*="--track-top"],
+#nd-toc a > svg.absolute.inset-s-0 {
   display: none;
 }
 

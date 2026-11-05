@@ -67,6 +67,9 @@ import { hardline } from "@farming-labs/theme/hardline";
 Available preset subpaths include `default`, `darksharp`, `pixel-border`, `colorful`, `shiny`,
 `darkbold`, `greentree`, `hardline`, `concrete`, `command-grid`, `ledger`, `shadcn`, and `threadline`.
 
+The `shadcn` preset uses a flat desktop table of contents without decorative rails. Active
+sections use text color; the mobile popover keeps its indented rail and heading navigation.
+
 ## Main entrypoints
 
 `createDocsLayout()` prepares navigation and page metadata together, reading each page once per
