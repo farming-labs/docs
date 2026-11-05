@@ -212,6 +212,28 @@ describe("theme config defaults", () => {
     });
   });
 
+  it("lets a theme supply MDX components that a site replaces one by one", () => {
+    const ThemeCallout = () => null;
+    const ThemePre = () => null;
+    const SiteCallout = () => null;
+    const withComponents = createTheme({
+      name: "components",
+      configDefaults: { components: { Callout: ThemeCallout, pre: ThemePre } },
+    });
+
+    expect(defineDocs({ entry: "docs", theme: withComponents() }).components).toEqual({
+      Callout: ThemeCallout,
+      pre: ThemePre,
+    });
+    expect(
+      defineDocs({
+        entry: "docs",
+        theme: withComponents(),
+        components: { Callout: SiteCallout },
+      }).components,
+    ).toEqual({ Callout: SiteCallout, pre: ThemePre });
+  });
+
   it("keeps theme factory overrides and applies them once however often it runs", () => {
     const overridden = theme({ configDefaults: { breadcrumb: true } });
     const once = applyThemeConfigDefaults<DocsConfig>({ entry: "docs", theme: overridden });
