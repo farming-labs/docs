@@ -10,6 +10,8 @@ export type DocsMdxValue =
 export type DocsMdxPlugin = string | [module: string, options?: DocsMdxValue];
 
 export interface WithDocsOptions {
+  /** Per-page metadata for compatible production MDX routes. Use "site" for the legacy transport. */
+  pageMetadata?: "auto" | "site";
   mdx?: {
     /** Additional remark plugins, run after the built-in remark plugins. */
     remarkPlugins?: DocsMdxPlugin[];

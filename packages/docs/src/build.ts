@@ -21,3 +21,4 @@ export { loadDocsConfigModule } from "./cli/config.js";
 export type { DocsConfig } from "./types.js";
 export { DocsBuildCache, docsBuildCacheDigest } from "./build-cache.js";
 export type { DocsBuildCacheOptions } from "./build-cache.js";
+export { replaceDocsMarkdownFencedCodeBlocks } from "./markdown-rendering.js";

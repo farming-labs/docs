@@ -33,6 +33,7 @@ import {
 import { dirname, extname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DocsPackageResolutionPlugin } from "./package-resolution.js";
+import { discoverDocsPageRoutes, supportsDocsPageBoundary } from "./page-routes.js";
 import {
   DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
   DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
@@ -2693,6 +2694,13 @@ export function withDocs(
   docsConfig?: Pick<DocsConfig, "agent" | "mcp" | "theme" | "roots">,
   options: WithDocsOptions = {},
 ): NextConfig {
+  if (
+    options.pageMetadata !== undefined &&
+    options.pageMetadata !== "auto" &&
+    options.pageMetadata !== "site"
+  ) {
+    throw new TypeError('Invalid `pageMetadata` option. Use "auto" or "site".');
+  }
   const mdx = resolveMdxExtensions(options.mdx);
   const root = process.cwd();
   const readSource = createConfigSourceReader();
@@ -2752,6 +2760,42 @@ export function withDocs(
     { entry, docsPath },
     appDir,
   );
+  const rootDocsLayout = join(root, appDir, entry, "layout.tsx");
+  const usesNextDocsLayout =
+    !hasFile(join(root, appDir, entry), "layout") ||
+    (existsSync(rootDocsLayout) &&
+      readSource(rootDocsLayout).replace(GENERATED_BANNER.trim(), "").replace(/\s/g, "") ===
+        DOCS_LAYOUT_TEMPLATE.replace(GENERATED_BANNER.trim(), "").replace(/\s/g, ""));
+  const mdxComponentsPath = FILE_EXTS.map((ext) => join(root, `mdx-components.${ext}`)).find(
+    existsSync,
+  );
+  const usesDefaultMdxComponents =
+    mdxComponentsPath !== undefined &&
+    readSource(mdxComponentsPath).replace(/\s/g, "") === MDX_COMPONENTS_TEMPLATE.replace(/\s/g, "");
+  const hasMdxExtensions =
+    mdx.remarkPlugins.length > 0 ||
+    mdx.rehypePlugins.length > 0 ||
+    mdx.codeHighlighter !== undefined;
+  const pageRoutes =
+    process.env.NODE_ENV === "production" &&
+    !nextBasePath &&
+    supportsDocsPageBoundary(root) &&
+    usesDefaultMdxComponents &&
+    !hasMdxExtensions &&
+    docsRoots.length === 0 &&
+    usesNextDocsLayout &&
+    options.pageMetadata !== "site" &&
+    (!configuredContentDir || join(root, configuredContentDir) === join(root, appDir, entry))
+      ? discoverDocsPageRoutes(join(root, appDir, entry), docsPath)
+      : [];
+  if (pageRoutes.length > 0) {
+    nextConfig.env = {
+      ...nextConfig.env,
+      FARMING_DOCS_PAGE_ROUTES: JSON.stringify(pageRoutes.map((page) => page.route)),
+    };
+  } else if (nextConfig.env) {
+    delete nextConfig.env.FARMING_DOCS_PAGE_ROUTES;
+  }
   const layoutDir = join(root, appDir, entry);
   if (!existsSync(layoutDir)) {
     makeGeneratedDir(layoutDir);
@@ -2956,6 +3000,13 @@ export function withDocs(
     ],
     ...mdx.rehypePlugins,
   ];
+
+  if (pageRoutes.length > 0) {
+    rehypePlugins.push([
+      "@farming-labs/next/mdx-plugins/rehype-page-boundary",
+      { pages: pageRoutes },
+    ]);
+  }
 
   const withMDX = createMDX({
     extension: /\.mdx?$/,

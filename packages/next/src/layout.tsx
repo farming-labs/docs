@@ -119,6 +119,7 @@ export function createNextDocsLayout(config: DocsConfig) {
 
   const DocsLayout = createDocsLayout(withNextApiReferenceBanner(config), {
     telemetryFramework: "next",
+    pageRoutes: config.i18n ? [] : JSON.parse(process.env.FARMING_DOCS_PAGE_ROUTES ?? "[]"),
   });
 
   return function NextDocsLayout({ children }: { children: React.ReactNode }) {

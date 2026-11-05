@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
+import { createDocsLayout, createPageMetadata, DocsPageContent } from "./docs-layout.js";
 import { renderPageStructuredData, type DocsStructuredDataPages } from "./page-structured-data.js";
 import { shadcn } from "./shadcn/index.js";
 import { resolvePageMetadata, type DocsPageMetadata } from "./page-metadata.js";
@@ -126,6 +126,46 @@ agent:
       "utf-8",
     );
     process.chdir(tmpDir);
+  });
+
+  it("moves only eligible route metadata out of the persistent layout", () => {
+    mkdirSync(join(tmpDir, "app/docs/second"));
+    writeFileSync(
+      join(tmpDir, "app/docs/second/page.mdx"),
+      "---\ntitle: Second\ndescription: Second description\nreadingTime: 9\n---\n# Second",
+    );
+    const config = { entry: "docs", theme: shadcn(), readingTime: true };
+    const before = findDocsPageClientProps(createDocsLayout(config)({ children: null }), false)!;
+    const after = findDocsPageClientProps(
+      createDocsLayout(config, { pageRoutes: ["/docs/second"] })({ children: null }),
+      false,
+    )!;
+    const current = DocsPageContent({ config, route: "/docs/second", children: null });
+    const metadata = current.props.pageMetadata as DocsPageMetadata;
+    expect(Object.keys(JSON.parse(metadata.json).pages)).toEqual(["/docs/second"]);
+    expect(resolvePageMetadata(metadata, "/docs/second")).toEqual(
+      resolvePageMetadata(before.pageMetadata as DocsPageMetadata, "/docs/second"),
+    );
+    expect(
+      resolvePageMetadata(after.pageMetadata as DocsPageMetadata, "/docs/second"),
+    ).toBeUndefined();
+    expect(resolvePageMetadata(after.pageMetadata as DocsPageMetadata, "/docs")).toEqual(
+      resolvePageMetadata(before.pageMetadata as DocsPageMetadata, "/docs"),
+    );
+    const custom = findDocsPageClientProps(
+      createDocsLayout(
+        {
+          ...config,
+          components: { wrapper: ({ children }: { children?: React.ReactNode }) => children },
+        },
+        { pageRoutes: ["/docs/second"] },
+      )({ children: null }),
+      false,
+    )!;
+    expect(custom.pageMetadata).toEqual(before.pageMetadata);
+    expect(() => DocsPageContent({ config, route: "/docs/../private", children: null })).toThrow(
+      "Invalid docs page metadata route",
+    );
   });
 
   afterEach(() => {
