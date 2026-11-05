@@ -68,7 +68,7 @@ for (const direction of ["ltr", "rtl"]) {
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/docs/concepts/database");
-    await page.locator("html").evaluate((html, dir) => (html.dir = dir), direction);
+    await page.locator("html").evaluate((html, dir) => html.setAttribute("dir", dir), direction);
 
     const toc = page.locator("#nd-toc");
     const rails = toc.locator("a > svg.absolute");
