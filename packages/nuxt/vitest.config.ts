@@ -7,6 +7,7 @@ const rootDir = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      "@farming-labs/docs/runtime": resolve(rootDir, "../docs/src/runtime.ts"),
       "@farming-labs/docs/markdown-rendering": resolve(
         rootDir,
         "../docs/src/markdown-rendering.ts",

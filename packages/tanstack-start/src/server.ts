@@ -1,3 +1,4 @@
+import * as DocsRuntime from "@farming-labs/docs/runtime";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
@@ -349,6 +350,21 @@ function navTreeFromMap(
     return a.parts.join("/").localeCompare(b.parts.join("/"));
   });
 
+  // Build per-call indexes so each folder does not scan the entire corpus.
+  // Arrays retain duplicate index pages and the existing stable sorted order.
+  const childrenByParent = new Map<string, DirInfo[]>();
+  const parentsWithDescendants = new Set<string>();
+  for (const dir of dirs) {
+    if (dir.parts.length === 0) continue;
+    const parentKey = JSON.stringify(dir.parts.slice(0, -1));
+    const siblings = childrenByParent.get(parentKey);
+    if (siblings) siblings.push(dir);
+    else childrenByParent.set(parentKey, [dir]);
+    for (let depth = 0; depth < dir.parts.length; depth++) {
+      parentsWithDescendants.add(JSON.stringify(dir.parts.slice(0, depth)));
+    }
+  }
+
   const children: NavNode[] = [];
   const rootInfo = dirs.find((dir) => dir.parts.length === 0);
   if (rootInfo) {
@@ -360,13 +376,26 @@ function navTreeFromMap(
     });
   }
 
+  const orderingIndexes = new Map<
+    Array<{ slug: string; children?: any[] }>,
+    Map<string, { slug: string; children?: any[] }>
+  >();
+
   function findSlugOrder(
     parentParts: string[],
   ): Array<{ slug: string; children?: any[] }> | undefined {
     if (!Array.isArray(ordering)) return undefined;
     let items: Array<{ slug: string; children?: any[] }> = ordering;
     for (const part of parentParts) {
-      const found = items.find((item) => item.slug === part);
+      let index = orderingIndexes.get(items);
+      if (!index) {
+        index = new Map();
+        for (const item of items) {
+          if (!index.has(item.slug)) index.set(item.slug, item);
+        }
+        orderingIndexes.set(items, index);
+      }
+      const found = index.get(part);
       if (!found?.children) return undefined;
       items = found.children;
     }
@@ -376,21 +405,21 @@ function navTreeFromMap(
   function buildLevel(parentParts: string[]): NavNode[] {
     const depth = parentParts.length;
 
-    const directChildren = dirs.filter((dir) => {
-      if (dir.parts.length !== depth + 1) return false;
-      for (let index = 0; index < depth; index++) {
-        if (dir.parts[index] !== parentParts[index]) return false;
-      }
-      return true;
-    });
+    const directChildren = [...(childrenByParent.get(JSON.stringify(parentParts)) ?? [])];
 
     const slugOrder = findSlugOrder(parentParts);
 
     if (slugOrder) {
       const slugMap = new Set(slugOrder.map((item) => item.slug));
       const ordered: DirInfo[] = [];
+      const childrenBySlug = new Map<string, DirInfo>();
+      for (const child of directChildren) {
+        const slug = child.parts[depth];
+        // Array.find previously selected the first duplicate index page.
+        if (!childrenBySlug.has(slug)) childrenBySlug.set(slug, child);
+      }
       for (const item of slugOrder) {
-        const match = directChildren.find((child) => child.parts[depth] === item.slug);
+        const match = childrenBySlug.get(item.slug);
         if (match) ordered.push(match);
       }
       for (const child of directChildren) {
@@ -398,10 +427,7 @@ function navTreeFromMap(
       }
 
       return ordered.map((child) => {
-        const hasGrandChildren = dirs.some((dir) => {
-          if (dir.parts.length <= child.parts.length) return false;
-          return child.parts.every((part, index) => dir.parts[index] === part);
-        });
+        const hasGrandChildren = parentsWithDescendants.has(JSON.stringify(child.parts));
 
         if (hasGrandChildren) {
           return {
@@ -428,10 +454,7 @@ function navTreeFromMap(
     }
 
     return directChildren.map((child) => {
-      const hasGrandChildren = dirs.some((dir) => {
-        if (dir.parts.length <= child.parts.length) return false;
-        return child.parts.every((part, index) => dir.parts[index] === part);
-      });
+      const hasGrandChildren = parentsWithDescendants.has(JSON.stringify(child.parts));
 
       if (hasGrandChildren) {
         return {
@@ -674,7 +697,16 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
     return publishedAgentSkills;
   }
   const preloaded = resolvePreloadedContent(config._preloadedContent);
-  const preloadedSitemapManifest = readDocsSitemapManifestFromContentMap(preloaded);
+  const preparedContent = preloaded
+    ? DocsRuntime.createDocsContentMapCache?.(preloaded)
+    : undefined;
+  function prepareContent<T>(key: string, prepare: () => T): T {
+    // Older supported core packages retain the original uncached behavior.
+    return preparedContent ? preparedContent.get(key, prepare) : prepare();
+  }
+  function getPreloadedSitemapManifest() {
+    return prepareContent("sitemap", () => readDocsSitemapManifestFromContentMap(preloaded));
+  }
   const i18n = resolveDocsI18n(config.i18n);
 
   const githubRaw = config.github as string | GithubConfigObj | undefined;
@@ -761,7 +793,9 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
     const ctx = resolveContextFromPath(pathname, resolvedLocale);
     const tree = applySidebarFolderIndexBehavior(
       preloaded
-        ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+        ? prepareContent(JSON.stringify(["navigation", ctx.dirPrefix, entry, ordering]), () =>
+            navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering),
+          )
         : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
       {
         sidebar: config.sidebar,
@@ -789,7 +823,10 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
 
       raw = result.raw;
       relPath = result.relPath;
-      const manifestLastmod = resolveDocsSitemapPageLastmod(preloadedSitemapManifest, currentUrl);
+      const manifestLastmod = resolveDocsSitemapPageLastmod(
+        getPreloadedSitemapManifest(),
+        currentUrl,
+      );
       lastModified = formatDocsLastModifiedDate(manifestLastmod ?? new Date())!;
       lastModifiedIso = manifestLastmod ? `${manifestLastmod}T00:00:00.000Z` : undefined;
     } else {
@@ -910,15 +947,29 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
 
   function getSearchIndex(ctx: ReturnType<typeof resolveContextFromPath>) {
     const key = ctx.locale ?? "__default__";
+    if (preloaded) {
+      return prepareContent(JSON.stringify(["search", ctx.dirPrefix, entry, ctx.locale]), () =>
+        searchIndexFromMap(
+          preloaded,
+          ctx.dirPrefix,
+          entry,
+          ctx.locale,
+          readDocsSitemapManifestFromContentMap(preloaded),
+        ),
+      );
+    }
+    if (process.env.NODE_ENV !== "production")
+      return withContentRelativeSourcePaths(
+        loadDocsContent(ctx.contentDirAbs, entry),
+        ctx.contentDirAbs,
+      );
     const cached = searchIndexByEntry.get(key);
-    if (cached) return cached;
-    const index = preloaded
-      ? searchIndexFromMap(preloaded, ctx.dirPrefix, entry, ctx.locale, preloadedSitemapManifest)
-      : withContentRelativeSourcePaths(
-          loadDocsContent(ctx.contentDirAbs, entry),
-          ctx.contentDirAbs,
-        );
-    searchIndexByEntry.set(key, index);
+    if (cached) return structuredClone(cached);
+    const index = withContentRelativeSourcePaths(
+      loadDocsContent(ctx.contentDirAbs, entry),
+      ctx.contentDirAbs,
+    );
+    searchIndexByEntry.set(key, structuredClone(index));
     return index;
   }
 
@@ -1342,7 +1393,7 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
       siteTitle: llmsTitle,
       baseUrl: llmsBaseUrl || url.origin,
       pages: getSearchIndex(ctx),
-      manifest: preloadedSitemapManifest ?? readDocsSitemapManifest(rootDir, config.sitemap),
+      manifest: getPreloadedSitemapManifest() ?? readDocsSitemapManifest(rootDir, config.sitemap),
     });
     if (sitemapResponse) return sitemapResponse;
 
@@ -2148,7 +2199,9 @@ function createDocsRootServer(config: Record<string, any>): DocsServer {
         const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
         return applySidebarFolderIndexBehavior(
           preloaded
-            ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+            ? prepareContent(JSON.stringify(["navigation", ctx.dirPrefix, entry, ordering]), () =>
+                navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering),
+              )
             : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
           {
             sidebar: config.sidebar,
