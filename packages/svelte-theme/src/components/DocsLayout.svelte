@@ -1,7 +1,6 @@
 <script>
   import ThemeToggle from "./ThemeToggle.svelte";
   import SearchDialog from "./SearchDialog.svelte";
-  import AskAIDialog from "./AskAIDialog.svelte";
   import FloatingAIChat from "./FloatingAIChat.svelte";
   import { afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";

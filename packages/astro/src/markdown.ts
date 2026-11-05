@@ -30,31 +30,38 @@ import {
   sanitizePromptText,
   type SerializedOpenDocsProvider,
 } from "@farming-labs/docs/server";
-import { createHighlighter, type Highlighter } from "shiki";
+import type { Highlighter } from "shiki";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
 function getHighlighter(): Promise<Highlighter> {
   if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ["github-light", "github-dark"],
-      langs: [
-        "javascript",
-        "typescript",
-        "jsx",
-        "tsx",
-        "json",
-        "bash",
-        "shellscript",
-        "html",
-        "css",
-        "markdown",
-        "yaml",
-        "sql",
-        "python",
-        "dotenv",
-      ],
-    });
+    highlighterPromise = import("shiki")
+      .then(({ createHighlighter }) =>
+        createHighlighter({
+          themes: ["github-light", "github-dark"],
+          langs: [
+            "javascript",
+            "typescript",
+            "jsx",
+            "tsx",
+            "json",
+            "bash",
+            "shellscript",
+            "html",
+            "css",
+            "markdown",
+            "yaml",
+            "sql",
+            "python",
+            "dotenv",
+          ],
+        }),
+      )
+      .catch((error) => {
+        highlighterPromise = null;
+        throw error;
+      });
   }
   return highlighterPromise;
 }
@@ -609,7 +616,6 @@ export async function renderMarkdown(
 ): Promise<string> {
   if (!content) return "";
 
-  const hl = await getHighlighter();
   // Prompt children are literal copyable text, not renderable Markdown. Protect
   // them before audience projection, reference collection, and heading
   // preparation so none of those document-level passes can consume or interpret
@@ -619,6 +625,14 @@ export async function renderMarkdown(
   let result = extractedPrompts.markdown;
   result = resolveDocsAudienceMdxContent(result, "human");
   const allocateBlockPlaceholder = createDocsMarkdownBlockPlaceholderAllocator(result);
+  // Queue only blocks that the renderer actually consumes. Prose, literal Prompt
+  // children, and agent-only code never import or initialize Shiki.
+  const highlights: { token: string; code: string; lang: string }[] = [];
+  function highlightLater(code: string, lang: string) {
+    const token = allocateBlockPlaceholder("CODEBLOCK");
+    highlights.push({ token, code, lang });
+    return { html: token, raw: code.replace(/\n$/, "") };
+  }
   const extractedReferences = extractMarkdownReferenceDefinitions(result);
   const referenceDefinitions = extractedReferences.definitions;
   const preparedHeadings = prepareMarkdownHeadings(result);
@@ -646,7 +660,7 @@ export async function renderMarkdown(
         const label = title || lang || `Code ${panels.length + 1}`;
         const value = createCodeGroupTabValue(label, usedValues);
         const dedented = dedentCode(code);
-        const { html, raw } = highlightCode(hl, dedented, lang);
+        const { html, raw } = highlightLater(dedented, lang);
         panels.push({
           label,
           value,
@@ -705,7 +719,7 @@ export async function renderMarkdown(
           if (renderedCode !== undefined) return "";
           const { lang, title } = parseMeta(info);
           const dedented = dedentCode(code);
-          const { html, raw } = highlightCode(hl, dedented, lang);
+          const { html, raw } = highlightLater(dedented, lang);
           renderedCode = wrapCodeWithCopy(html, raw, title, lang);
           return "";
         });
@@ -768,7 +782,7 @@ export async function renderMarkdown(
   const codeBlocks: RenderedMarkdownBlock[] = [];
   result = replaceMarkdownFencedCodeBlocks(result, ({ code, info }) => {
     const { lang, title } = parseMeta(info);
-    const { html, raw } = highlightCode(hl, code, lang);
+    const { html, raw } = highlightLater(code, lang);
     const placeholder = allocateBlockPlaceholder("CODEBLOCK");
     codeBlocks.push({ html: wrapCodeWithCopy(html, raw, title, lang), token: placeholder });
     return placeholder;
@@ -941,6 +955,12 @@ export async function renderMarkdown(
     stripPreparedMarkdownHeadingTokens(result),
     headingOpeningTags,
   );
+  if (highlights.length > 0) {
+    const hl = await getHighlighter();
+    for (const { token, code, lang } of highlights) {
+      result = result.replace(token, () => highlightCode(hl, code, lang).html);
+    }
+  }
   for (const block of promptBlocks) {
     result = result.replace(block.token, () =>
       renderPrompt(block.attributes, block.children, options),
