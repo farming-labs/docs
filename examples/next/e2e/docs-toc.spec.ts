@@ -1,4 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+const shadcnCss = readFileSync(
+  path.resolve(__dirname, "../../../packages/docs/styles/themes/shadcn.css"),
+  "utf8",
+);
 
 test("TOC shows heading text while keeping anchor copying and client navigation", async ({
   page,
@@ -54,6 +61,42 @@ test("TOC preserves inline code in authored headings", async ({ page }) => {
   await expect(page.locator('#nd-toc a[href="#user"]')).toHaveText("user");
   await expect(page.locator('#nd-toc a[href="#session"]')).toHaveText("session");
 });
+
+for (const direction of ["ltr", "rtl"]) {
+  test(`shadcn hides desktop TOC rails without hiding icons or mobile rails (${direction})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/docs/concepts/database");
+    await page.locator("html").evaluate((html, dir) => html.setAttribute("dir", dir), direction);
+
+    const toc = page.locator("#nd-toc");
+    const rails = toc.locator("a > svg.absolute");
+    await expect(rails.first()).toBeVisible();
+    await page.addStyleTag({ content: shadcnCss });
+
+    expect(await rails.count()).toBeGreaterThan(1);
+    for (const rail of await rails.all()) await expect(rail).toBeHidden();
+    await expect(toc.locator('div[style*="--track-top"]')).toBeHidden();
+    await expect(toc.locator("#toc-title svg")).toBeVisible();
+    await expect(toc.locator('a[href="#user"]')).toHaveText("user");
+    await expect(page.locator("h3#user code")).toHaveText("user");
+    await expect(toc.locator('a[href="#user"]')).toHaveCSS("padding-inline-start", "0px");
+    await toc.locator('a[href="#user"]').click();
+    await expect(page).toHaveURL(/#user$/);
+    await expect(toc.locator('a[href="#user"]')).toHaveAttribute("data-active", "true");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator("[data-toc-popover-trigger]").click();
+    const mobileToc = page.locator("[data-toc-popover-content]");
+    const mobileLink = mobileToc.locator('a[href="#session"]');
+    await expect(mobileLink.locator("svg.absolute")).toBeVisible();
+    await expect(mobileLink).toHaveCSS("padding-inline-start", "32px");
+    await mobileLink.click();
+    await expect(page).toHaveURL(/#session$/);
+    await expect(mobileToc).toBeHidden();
+  });
+}
 
 test("page metadata follows client navigation and browser history", async ({ page }) => {
   const errors: string[] = [];
