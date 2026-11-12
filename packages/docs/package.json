@@ -8,6 +8,11 @@
     "mdx"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farming-labs/docs.git",
+    "directory": "packages/docs"
+  },
   "author": "Farming Labs",
   "engines": {
     "node": ">=20"
