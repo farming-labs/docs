@@ -1,0 +1,103 @@
+name: Create GitHub release
+
+# Run by hand after a version bump has been merged and published to npm.
+# Creates the vX.Y.Z tag on `target` (if it does not exist yet) and the
+# GitHub release for it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (e.g. 0.2.144)"
+        required: true
+        type: string
+      target:
+        description: "Branch or commit SHA the tag points to (used only if the tag does not exist yet)"
+        required: false
+        default: main
+        type: string
+      notes:
+        description: "Release notes (Markdown). Leave empty to use GitHub's generated notes."
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create release v${{ inputs.version }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::version must look like 0.2.144 (got '$VERSION')"
+            exit 1
+          fi
+
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target }}
+          fetch-depth: 0
+
+      - name: Check package versions and existing release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          tag="v$VERSION"
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists"
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists at $(git rev-list -n 1 "$tag"); the release will use it."
+            ref="$tag"
+          else
+            ref="HEAD"
+          fi
+          sha=$(git rev-list -n 1 "$ref")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+          # Every package bumpp updates must be at this version in the tagged commit.
+          files=$(grep -oE 'packages/[^"]+/package\.json' bump.config.ts)
+          bad=0
+          for f in $files; do
+            v=$(git show "$sha:$f" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).version))')
+            if [ "$v" != "$VERSION" ]; then
+              echo "::error file=$f::$f is at $v, expected $VERSION"
+              bad=1
+            fi
+          done
+          [ "$bad" -eq 0 ] || exit 1
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.notes }}
+          SHA: ${{ steps.check.outputs.sha }}
+        run: |
+          tag="v$VERSION"
+          args=(--repo "$GITHUB_REPOSITORY" --target "$SHA" --title "$tag")
+          if [ -n "$NOTES" ]; then
+            printf '%s\n' "$NOTES" > "$RUNNER_TEMP/notes.md"
+            args+=(--notes-file "$RUNNER_TEMP/notes.md")
+          else
+            args+=(--generate-notes)
+          fi
+          gh release create "$tag" "${args[@]}"
+          echo "Created $(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"
