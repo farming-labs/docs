@@ -379,6 +379,14 @@ export interface FarmDocsRuntimeHandlerOptions {
    * back and encoding it again. Hosts without it get a plain `Response`.
    */
   createHtmlResponse?: (html: string, init: ResponseInit) => Response;
+  /**
+   * Whether one of the app's path guards (middleware, an auth integration's protected routes)
+   * covers a pathname. Farm passes it when the adapter declares the `guarded-pages`
+   * capability: a page it covers stays out of search, `llms.txt`, the sitemap, MCP, Ask AI and
+   * the content feed, which answer without running the guard, and its Markdown answers only on
+   * a request whose own path the guard covers.
+   */
+  isPathGuarded?: (pathname: string) => boolean;
 }
 
 type ContentFileMap = Record<string, string>;
@@ -973,6 +981,12 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   // Set by the Farm production handler: content is fixed for the process, so
   // the navigation scan (every file's frontmatter) and the manifest are read once.
   const immutableContent = config._immutableContent === true;
+  // The host's path guards (Farm's `isPathGuarded`). A guard decides who reads a page at its
+  // own URL; every surface below that answers without running it leaves the page out.
+  const isPathGuarded =
+    typeof config._isPathGuarded === "function"
+      ? (config._isPathGuarded as (pathname: string) => boolean)
+      : undefined;
   const navTreeByContentDir = new Map<string, NavTree>();
   const lastModifiedManifestByContentDir = new Map<
     string,
@@ -1246,7 +1260,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     ReturnType<typeof buildApiReferenceOperationPagesAsync>
   >();
 
-  function getSearchIndex(ctx: ReturnType<typeof resolveContextFromPath>) {
+  const publicSearchIndexByEntry = new Map<string, ContentPage[]>();
+
+  /** Every page, guarded ones included: only a request a guard covered may read one. */
+  function getAllPages(ctx: ReturnType<typeof resolveContextFromPath>) {
     const key = ctx.locale ?? "__default__";
     const cached = searchIndexByEntry.get(key);
     if (cached) return cached;
@@ -1258,6 +1275,35 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         );
     searchIndexByEntry.set(key, index);
     return index;
+  }
+
+  /**
+   * The pages anonymous surfaces list: search, `llms.txt`, the sitemap, MCP, Ask AI and the
+   * content feed answer without running the app's guards, so a guarded page stays out of them.
+   */
+  function getSearchIndex(ctx: ReturnType<typeof resolveContextFromPath>) {
+    if (!isPathGuarded) return getAllPages(ctx);
+    const key = ctx.locale ?? "__default__";
+    const cached = publicSearchIndexByEntry.get(key);
+    if (cached) return cached;
+    const index = getAllPages(ctx).filter((page) => !isPathGuarded(page.url));
+    publicSearchIndexByEntry.set(key, index);
+    return index;
+  }
+
+  /** The navigation tree without the pages a guard covers, for surfaces that skip the guard. */
+  function withoutGuardedNavigation<T extends { children: NavNode[] }>(tree: T): T {
+    if (!isPathGuarded) return tree;
+    const guarded = isPathGuarded;
+    const filterNodes = (nodes: NavNode[]): NavNode[] =>
+      nodes.flatMap((node): NavNode[] => {
+        if (node.type === "page") return guarded(node.url) ? [] : [node];
+        const index = node.index && !guarded(node.index.url) ? node.index : undefined;
+        const children = filterNodes(node.children);
+        if (!index && children.length === 0) return [];
+        return [{ ...node, index, children }];
+      });
+    return { ...tree, children: filterNodes(tree.children) };
   }
 
   function getApiOperationSearchPages(
@@ -1392,9 +1438,14 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   function getMarkdownRepresentation(
     ctx: ReturnType<typeof resolveContextFromPath>,
     requestedPath: string,
-    origin?: string,
+    origin: string | undefined,
+    requestPathname: string,
   ) {
-    const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
+    const found = findDocsMarkdownPage(entry, getAllPages(ctx), requestedPath);
+    // A guarded page's Markdown answers only where its guard ran: at its own URL, or at a `.md`
+    // URL the guard also covers. The API's `?format=markdown` and an uncovered `.md` do not.
+    const page =
+      found && isPathGuarded?.(found.url) && !isPathGuarded(requestPathname) ? null : found;
     return page
       ? {
           document: renderDocsMarkdownDocument(page, {
@@ -1727,6 +1778,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         ctx,
         markdownRequest.requestedPath,
         markdownOrigin,
+        url.pathname,
       );
       return createDocsMarkdownResponse({
         request: event.request,
@@ -2488,15 +2540,17 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       },
       getNavigation(locale) {
         const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
-        return applySidebarFolderIndexBehavior(
-          navTreeFromNavigation(config, entry) ??
-            (preloaded
-              ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-              : readNavTree(ctx.contentDirAbs)),
-          {
-            sidebar: config.sidebar,
-            defaultBehavior: "link",
-          },
+        return withoutGuardedNavigation(
+          applySidebarFolderIndexBehavior(
+            navTreeFromNavigation(config, entry) ??
+              (preloaded
+                ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+                : readNavTree(ctx.contentDirAbs)),
+            {
+              sidebar: config.sidebar,
+              defaultBehavior: "link",
+            },
+          ),
         );
       },
       async getSkills(context) {
@@ -2710,6 +2764,7 @@ function createClientDocsConfig(config: DocsConfig & Record<string, any>): Recor
     contentDir: _contentDir,
     _preloadedContent,
     _immutableContent,
+    _isPathGuarded,
     _preloadedAgentSkills,
     _preloadedRootDocuments,
     socialImage,
@@ -3015,6 +3070,7 @@ function createFarmDocsSingleRuntimeHandler(
     ...applyThemeConfigDefaults(config),
     rootDir: options.rootDir ?? config.rootDir ?? process.cwd(),
     _immutableContent: options.immutableContent === true,
+    _isPathGuarded: options.isPathGuarded,
   };
   const docsServer = createDocsServer(runtimeConfig);
   const mcpServer = docsServer.mcpServer;
