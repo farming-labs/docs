@@ -108,6 +108,18 @@ from its HTML. A static file cannot negotiate `Accept: text/markdown`, so agents
 use the `.md` URL the page links to. Markdown, search, `llms.txt`, and MCP keep
 rendering on request.
 
+## Guarded pages
+
+Guard a docs page as you guard app pages: a `middleware.ts` in its folder, a
+config middleware matcher, or an auth integration's protected routes. The
+adapter declares the `guarded-pages` capability, so Farm serves such pages
+with it and passes the app's guards to the runtime. A page a guard covers then
+stays out of search, `llms.txt`, `llms-full.txt`, the sitemap, MCP, Ask AI, and
+the content feed, which answer without running the guard. Its Markdown answers
+at its own URL (`Accept: text/markdown`) and at a `.md` URL only when the guard
+covers that URL too. Edge targets serve a snapshot that runs no guard, so Farm
+stops an edge build that has guarded docs pages.
+
 ## Edge deployments
 
 Farm edge targets use the adapter's build-time compiler automatically. It
