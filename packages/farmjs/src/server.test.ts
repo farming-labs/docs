@@ -661,6 +661,41 @@ describe("createFarmDocsRuntimeHandler", () => {
     ).not.toThrow();
   });
 
+  it("builds a rendered page's response with the host's createHtmlResponse", async () => {
+    const built: { html: string; init: ResponseInit }[] = [];
+    const handler = createFarmDocsRuntimeHandler(config, {
+      loadReactModule: async () => ({
+        FarmDocsPage: () => createElement("main", null, "Owned page"),
+      }),
+      createHtmlResponse: (html, init) => {
+        built.push({ html, init });
+        return new Response(html, init);
+      },
+    });
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response!.text();
+    expect(html).toContain("Owned page");
+    expect(built).toHaveLength(1);
+    expect(built[0]!.html).toBe(html);
+    expect(response!.headers.get("x-farm-docs-adapter")).toBe("@farming-labs/farmjs");
+    expect(response!.headers.get("content-type")).toBe("text/html; charset=utf-8");
+
+    // A HEAD request has no body to hand over; a host without the option gets a plain Response.
+    const head = await handler(new Request("https://farm.example/docs", { method: "HEAD" }));
+    expect(head!.status).toBe(200);
+    expect(await head!.text()).toBe("");
+    expect(built).toHaveLength(1);
+    const plain = createFarmDocsRuntimeHandler(config, {
+      loadReactModule: async () => ({
+        FarmDocsPage: () => createElement("main", null, "Plain page"),
+      }),
+    });
+    expect(await (await plain(new Request("https://farm.example/docs")))!.text()).toContain(
+      "Plain page",
+    );
+  });
+
   it("merges a theme's config defaults under the options Farm passes in", async () => {
     const rendered: unknown[] = [];
     const handler = createFarmDocsRuntimeHandler(
