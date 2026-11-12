@@ -118,6 +118,31 @@ compile). The disk guard found 2.9 GiB free. Its two rows are in
   content hash (the replay mechanism) and avoiding repeated Shiki initialization per worker. Neither
   is implemented or measured here.
 
+## Rust options
+
+None of these were built or measured. The savings are upper bounds derived from the shares above,
+assuming each part takes the same share of MDX time inside a build as on one core. At 500 pages
+the busiest MDX worker spent 4.3 s of a 28.6 s build.
+
+| Rust piece | Replaces | Share of MDX CPU | Upper bound, 500 pages | Blocker |
+| --- | --- | ---: | ---: | --- |
+| `mdxjs-rs` parser, which already exists | `@mdx-js/mdx` parsing | ~40%, and Rust parses 6.9× faster | ~1.5 s | No JavaScript plugin API. Heading IDs, TOC data, the `metadata` export, code groups and Markdown alternates need Rust ports. Users' `mdx.remarkPlugins` need a JavaScript fallback. |
+| A highlighter such as syntect or tree-sitter | Shiki | ~60% | ~2.6 s | Different grammars and theming. Token colors would stop matching Shiki's, so every existing code block would change. |
+| Both, as one engine | All MDX work | 100% | ~4.3 s | Both blockers. The measured whole-slice saving is 4.2 s of compile time at 100 pages. |
+
+Two cheaper changes target the same time, also not built:
+
+- **Cache compiled MDX across builds**, keyed by source hash and plugin configuration. Replay builds
+  behave like this cache at a 100% hit rate, and they cut the 100-page compile median by 4.2 s.
+  Turbopack already reuses loader output when its own persistent cache hits, so this would only
+  help on misses.
+- **Highlight less often.** Cache highlighted code blocks by code, language and themes, and avoid
+  initializing Shiki separately in each of the eight loader workers (263–678 ms each on first use).
+
+**Recommendation: don't build a Rust content engine now.** Most build time is in Turbopack's route
+compilation, which is already Rust, plus static generation and type-checking. Revisit if
+`mdx_ceiling.py timing` on a real site shows MDX taking a much larger share than this corpus does.
+
 ## Limits and raw data
 
 - [`compile-100.json`](./compile-100.json) and [`compile-500.json`](./compile-500.json) hold every
