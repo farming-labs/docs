@@ -373,6 +373,12 @@ export interface FarmDocsRuntimeHandlerOptions {
     description?: string;
     path: `/${string}`;
   }) => () => void;
+  /**
+   * Builds the response for a rendered page from its HTML. Farm's production server passes it,
+   * so the response keeps the HTML string and Farm writes the page without reading the body
+   * back and encoding it again. Hosts without it get a plain `Response`.
+   */
+  createHtmlResponse?: (html: string, init: ResponseInit) => Response;
 }
 
 type ContentFileMap = Record<string, string>;
@@ -3157,7 +3163,7 @@ function createFarmDocsSingleRuntimeHandler(
     const origin = request.headers.has("x-nitro-prerender") ? prerenderOrigin : url.origin;
     const html = page.htmlParts.join(escapeDocumentText(origin));
 
-    return new Response(request.method.toUpperCase() === "HEAD" ? null : html, {
+    const init: ResponseInit = {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
@@ -3165,7 +3171,11 @@ function createFarmDocsSingleRuntimeHandler(
         "X-Farm-Docs-Adapter": "@farming-labs/farmjs",
         ...(fontPreloadHeader ? { Link: fontPreloadHeader } : {}),
       },
-    });
+    };
+    if (request.method.toUpperCase() === "HEAD") return new Response(null, init);
+    return options.createHtmlResponse
+      ? options.createHtmlResponse(html, init)
+      : new Response(html, init);
   };
 }
 
