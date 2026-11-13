@@ -102,6 +102,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "build:js": "tsdown --no-dts",
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build && vitest run",

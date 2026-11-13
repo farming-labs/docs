@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "farm dev",
     "build": "pnpm prisma generate && pnpm run build:packages && pnpm run build:app",
+    "build:deploy": "pnpm run build:packages:js && pnpm run build:app",
     "build:packages": "pnpm --filter @farming-labs/docs build && pnpm --filter @farming-labs/theme build && pnpm --filter @farming-labs/farmjs build",
+    "build:packages:js": "pnpm --filter @farming-labs/theme run build:css && pnpm --filter @farming-labs/farmjs run generate:browser-css && pnpm --parallel --filter @farming-labs/docs --filter @farming-labs/theme --filter @farming-labs/farmjs run build:js",
     "build:app": "farm build",
     "start": "farm start",
     "postinstall": "prisma generate"

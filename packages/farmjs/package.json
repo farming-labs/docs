@@ -72,6 +72,7 @@
   "scripts": {
     "generate:browser-css": "node scripts/generate-browser-css.mjs",
     "build": "pnpm run generate:browser-css && tsc",
+    "build:js": "tsc --noCheck --declaration false --declarationMap false",
     "dev": "pnpm run generate:browser-css && tsc --watch",
     "test": "pnpm run generate:browser-css && vitest run",
     "typecheck": "pnpm run generate:browser-css && tsc --noEmit"
