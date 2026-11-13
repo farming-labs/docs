@@ -624,6 +624,90 @@ Build a Farm application.
 });
 
 describe("createFarmDocsRuntimeHandler", () => {
+  it("keeps a page a path guard covers off every surface that skips the guard", async () => {
+    const guardedConfig = {
+      ...config,
+      llmsTxt: true,
+      _preloadedContent: {
+        ...config._preloadedContent,
+        "/docs/secret/page.md":
+          "---\ntitle: Launch plan\n---\n\n# Launch plan\n\nThe launch codes are guarded.",
+      },
+    };
+    const guardsPage = (pathname: string) =>
+      pathname === "/docs/secret" || pathname.startsWith("/docs/secret/");
+    const request = (pathname: string, init?: RequestInit) =>
+      new Request(`https://farm.example${pathname}`, init);
+    async function text(
+      handler: (request: Request) => Promise<Response | null>,
+      pathname: string,
+      init?: RequestInit,
+    ) {
+      const response = await handler(request(pathname, init));
+      return response ? `${response.status} ${await response.text()}` : "unhandled";
+    }
+    async function mcp(
+      handler: (request: Request) => Promise<Response | null>,
+      name: string,
+      args: Record<string, unknown>,
+    ) {
+      return text(handler, "/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-06-18",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: args },
+        }),
+      });
+    }
+
+    // Without Farm's guard check, every surface lists the page, as before.
+    const open = createFarmDocsRuntimeHandler(guardedConfig);
+    expect(await text(open, "/llms-full.txt")).toContain("launch codes");
+
+    const handler = createFarmDocsRuntimeHandler(guardedConfig, { isPathGuarded: guardsPage });
+    const anonymous = [
+      await text(handler, "/api/docs?query=launch"),
+      await text(handler, "/llms.txt"),
+      await text(handler, "/llms-full.txt"),
+      await text(handler, "/sitemap.xml"),
+      // The guard covers /docs/secret, not /docs/secret.md or the docs API.
+      await text(handler, "/docs/secret.md"),
+      await text(handler, "/api/docs?format=markdown&path=secret"),
+      await mcp(handler, "search_docs", { query: "launch" }),
+      await mcp(handler, "list_pages", {}),
+      await mcp(handler, "read_page", { path: "/docs/secret" }),
+    ];
+    const readGuardedPage = anonymous.pop()!;
+    for (const output of anonymous) {
+      expect(output).not.toContain("launch codes");
+      expect(output).not.toContain("/docs/secret");
+    }
+    // MCP answers as it does for a page that does not exist.
+    expect(readGuardedPage).not.toContain("launch codes");
+    expect(readGuardedPage.replace("/docs/secret", "/docs/missing")).toBe(
+      await mcp(handler, "read_page", { path: "/docs/missing" }),
+    );
+    // The public page is still everywhere.
+    expect(anonymous[2]).toContain("Farm documentation content.");
+
+    // At its own URL the guard ran, so the page answers, Markdown included.
+    expect(await text(handler, "/docs/secret", { headers: { accept: "text/markdown" } })).toContain(
+      "launch codes",
+    );
+    // A guard that also covers the .md URL lets that URL answer too.
+    const coversMarkdown = createFarmDocsRuntimeHandler(guardedConfig, {
+      isPathGuarded: (pathname) => guardsPage(pathname) || pathname === "/docs/secret.md",
+    });
+    expect(await text(coversMarkdown, "/docs/secret.md")).toContain("launch codes");
+  });
+
   it("lists the docs MCP endpoint with the host's AI catalog", () => {
     const registered: unknown[] = [];
     createFarmDocsRuntimeHandler(
@@ -659,6 +743,41 @@ describe("createFarmDocsRuntimeHandler", () => {
         },
       }),
     ).not.toThrow();
+  });
+
+  it("builds a rendered page's response with the host's createHtmlResponse", async () => {
+    const built: { html: string; init: ResponseInit }[] = [];
+    const handler = createFarmDocsRuntimeHandler(config, {
+      loadReactModule: async () => ({
+        FarmDocsPage: () => createElement("main", null, "Owned page"),
+      }),
+      createHtmlResponse: (html, init) => {
+        built.push({ html, init });
+        return new Response(html, init);
+      },
+    });
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response!.text();
+    expect(html).toContain("Owned page");
+    expect(built).toHaveLength(1);
+    expect(built[0]!.html).toBe(html);
+    expect(response!.headers.get("x-farm-docs-adapter")).toBe("@farming-labs/farmjs");
+    expect(response!.headers.get("content-type")).toBe("text/html; charset=utf-8");
+
+    // A HEAD request has no body to hand over; a host without the option gets a plain Response.
+    const head = await handler(new Request("https://farm.example/docs", { method: "HEAD" }));
+    expect(head!.status).toBe(200);
+    expect(await head!.text()).toBe("");
+    expect(built).toHaveLength(1);
+    const plain = createFarmDocsRuntimeHandler(config, {
+      loadReactModule: async () => ({
+        FarmDocsPage: () => createElement("main", null, "Plain page"),
+      }),
+    });
+    expect(await (await plain(new Request("https://farm.example/docs")))!.text()).toContain(
+      "Plain page",
+    );
   });
 
   it("merges a theme's config defaults under the options Farm passes in", async () => {

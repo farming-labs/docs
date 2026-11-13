@@ -80,6 +80,7 @@
       "postcss@<=8.5.17": "8.5.18",
       "seroval@<=1.6.2": "1.6.8",
       "ip-address@<=10.3.0": "10.4.0",
+      "mongoose@>=8.0.0 <8.24.7": "8.24.9",
       "ws": "^8.21.0",
       "readdir-glob>minimatch": "10.2.4",
       "glob@10>minimatch": "10.2.4",

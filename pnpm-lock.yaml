@@ -44,6 +44,7 @@ overrides:
   postcss@<=8.5.17: 8.5.18
   seroval@<=1.6.2: 1.6.8
   ip-address@<=10.3.0: 10.4.0
+  mongoose@>=8.0.0 <8.24.7: 8.24.9
   ws: ^8.21.0
   readdir-glob>minimatch: 10.2.4
   glob@10>minimatch: 10.2.4
@@ -99,16 +100,16 @@ importers:
         specifier: ^11.0.11
         version: 11.0.11(7a712cc1db10c94bcd2822de9ed2590d)
       '@farming-labs/astro':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/astro
       '@farming-labs/astro-theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/astro-theme
       '@farming-labs/docs':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/docs
       '@farming-labs/theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/fumadocs
       astro:
         specifier: 7.3.5
@@ -120,13 +121,13 @@ importers:
   examples/fumadocs-cloud:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -169,13 +170,13 @@ importers:
   examples/next:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -224,16 +225,16 @@ importers:
   examples/nuxt:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/docs
       '@farming-labs/nuxt':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/nuxt
       '@farming-labs/nuxt-theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/nuxt-theme
       '@farming-labs/theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -252,16 +253,16 @@ importers:
   examples/sveltekit:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/docs
       '@farming-labs/svelte':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/svelte
       '@farming-labs/svelte-theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/svelte-theme
       '@farming-labs/theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/fumadocs
       three:
         specifier: ^0.180.0
@@ -289,13 +290,13 @@ importers:
   examples/tanstack-start:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/docs
       '@farming-labs/tanstack-start':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/tanstack-start
       '@farming-labs/theme':
-        specifier: 0.2.143
+        specifier: 0.2.145
         version: link:../../packages/fumadocs
       '@tanstack/react-router':
         specifier: 1.170.41
@@ -495,7 +496,7 @@ importers:
     devDependencies:
       '@farm.js/core':
         specifier: ^0.1.50
-        version: 0.1.50(91853e1b8ea58fcafe57bd6dd0f1b25b)
+        version: 0.1.50(2f60598014e4e614525d8111fb36e589)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../docs
@@ -818,7 +819,7 @@ importers:
         version: 2.3.29(react@19.2.4)(vue@3.5.43(typescript@5.9.3))
       '@farm.js/core':
         specifier: ^0.1.50
-        version: 0.1.50(f8fa7c53914c16572c252c4f2804c709)
+        version: 0.1.50(11f4401ebb06e28cc1bd489bc75097b1)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../packages/docs
@@ -888,7 +889,7 @@ importers:
     devDependencies:
       '@farm.js/cli':
         specifier: ^0.1.50
-        version: 0.1.50(f8fa7c53914c16572c252c4f2804c709)
+        version: 0.1.50(11f4401ebb06e28cc1bd489bc75097b1)
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
@@ -1837,7 +1838,7 @@ packages:
   '@farming-labs/orm-mongoose@0.0.65':
     resolution: {integrity: sha512-FlX+8oHlKz1lX6nhzim/P733dn6/F4AHomFx95gB2Xw3Yfw4frqxcFrmDE4yplUCHo/4QFS5MYbPPNXAnwz+Og==}
     peerDependencies:
-      mongoose: ^8.0.0
+      mongoose: 8.24.9
     peerDependenciesMeta:
       mongoose:
         optional: true
@@ -4204,7 +4205,9 @@ packages:
   '@smithy/core@3.31.1':
     resolution: {integrity: sha512-CyogUINxvi7C7LDsh8Syo6hVJOT9ckz4rG8dRZfTJ8r91HkMY59PnNooaj7WcHyxEkxPfBAmbgztZU+xTo76lg==}
     engines: {node: '>=18.0.0'}
-    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
+    deprecated: |-
+      Deprecated due to a bug in custom logger data redaction. Upgrade to the latest version. If you used a custom logger with this
+        version, review your logs and rotate any credentials or other secrets. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.4.16':
     resolution: {integrity: sha512-QfuLWAkLzptffFW980AFeHZFdqds2B64rpEd3uJ6lgs3xVn9QegGMUgUcj+4d7dRrAsya3r58ZKpku97WcFb4w==}
@@ -6701,10 +6704,6 @@ packages:
     resolution: {integrity: sha512-3jFHya7oZ45aDxIIdx+/zQARahHXxFSMWBkcBUldfXpLS9VCXDJyTKt35kQfEXLqh0K3Ixw/9xFnvcDStaxh7Q==}
     engines: {node: '>=20'}
 
-  kareem@2.6.3:
-    resolution: {integrity: sha512-C3iHfuGUXK2u8/ipq9LfjFfXFxAZMQJJq7vLS45r3D9Y2xQ/m4S8zaR4zMLFWh9AsNPXmcFfUDhTEO8UIC/V6Q==}
-    engines: {node: '>=12.0.0'}
-
   kind-of@6.0.3:
     resolution: {integrity: sha512-dcS1ul+9tmeD95T+x28/ehLgd9mENa3LsvDTtzm3vyBEO7RPptvAD+t44WVXaUjTBRcrpFeFlC8WCruUR456hw==}
     engines: {node: '>=0.10.0'}
@@ -7288,33 +7287,6 @@ packages:
   mongodb-connection-string-url@3.0.2:
     resolution: {integrity: sha512-rMO7CGo/9BFwyZABcKAWL8UJwH/Kc2x0g72uhDWzG48URRax5TCIcJ7Rc3RZqffZzO/Gwff/jyKwCU9TN8gehA==}
 
-  mongodb@6.20.0:
-    resolution: {integrity: sha512-Tl6MEIU3K4Rq3TSHd+sZQqRBoGlFsOgNrH5ltAcFBV62Re3Fd+FcaVf8uSEQFOJ51SDowDVttBTONMfoYWrWlQ==}
-    engines: {node: '>=16.20.1'}
-    peerDependencies:
-      '@aws-sdk/credential-providers': ^3.188.0
-      '@mongodb-js/zstd': ^1.1.0 || ^2.0.0
-      gcp-metadata: ^5.2.0
-      kerberos: ^2.0.1
-      mongodb-client-encryption: '>=6.0.0 <7'
-      snappy: ^7.3.2
-      socks: ^2.7.1
-    peerDependenciesMeta:
-      '@aws-sdk/credential-providers':
-        optional: true
-      '@mongodb-js/zstd':
-        optional: true
-      gcp-metadata:
-        optional: true
-      kerberos:
-        optional: true
-      mongodb-client-encryption:
-        optional: true
-      snappy:
-        optional: true
-      socks:
-        optional: true
-
   mongodb@6.21.0:
     resolution: {integrity: sha512-URyb/VXMjJ4da46OeSXg+puO39XH9DeQpWCslifrRn9JWugy0D+DvvBvkm2WxmHe61O/H19JM66p1z7RHVkZ6A==}
     engines: {node: '>=16.20.1'}
@@ -7342,10 +7314,6 @@ packages:
       socks:
         optional: true
 
-  mongoose@8.24.2:
-    resolution: {integrity: sha512-5+H3MSHNJCcr9M+lVplekrZ4/Dyn3N1dOpvgn9gMwvHJhunc4G8SQcBVd/btBQoVdspVNPjx8Pw03YWBv6uTJg==}
-    engines: {node: '>=16.20.1'}
-
   motion-dom@12.38.0:
     resolution: {integrity: sha512-pdkHLD8QYRp8VfiNLb8xIBJis1byQ9gPT3Jnh2jqfFtAsWUA3dEepDlsWe/xMpO8McV+VdpKVcp+E+TGJEtOoA==}
 
@@ -7371,14 +7339,6 @@ packages:
         optional: true
       remix:
         optional: true
-
-  mpath@0.9.0:
-    resolution: {integrity: sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==}
-    engines: {node: '>=4.0.0'}
-
-  mquery@5.0.0:
-    resolution: {integrity: sha512-iQMncpmEK8R8ncT8HJGsGc9Dsp8xcgYMVSbs5jgnm1lFHTZqMJTUWTDx1LBO8+mK3tPNZWFLBghQEIOULSTHZg==}
-    engines: {node: '>=14.0.0'}
 
   mrmime@2.0.1:
     resolution: {integrity: sha512-Y3wQdFg2Va6etvQ5I82yUhGdsKrcYox6p7FfL1LbK2J4V01F9TGlepTIhnK24t7koZibmg82KGglhA1XK5IsLQ==}
@@ -8473,9 +8433,6 @@ packages:
   shiki@4.5.0:
     resolution: {integrity: sha512-OcRW72ngQvc+MSVWBRIovC/BTW589iUE/Vxav7VeM4RcY9MUjqB+IR6ILG1k9nuW6LiG/nct9uma4/MBtnZbmQ==}
     engines: {node: '>=20'}
-
-  sift@17.1.3:
-    resolution: {integrity: sha512-Rtlj66/b0ICeFzYTuNvX/EF1igRbbnGSvEyT79McoZa/DeGhMyC5pWKOEsZKnpkqtSeovd5FL/bjHWC3CIIvCQ==}
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
@@ -10630,9 +10587,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@farm.js/cli@0.1.50(f8fa7c53914c16572c252c4f2804c709)':
+  '@farm.js/cli@0.1.50(11f4401ebb06e28cc1bd489bc75097b1)':
     dependencies:
-      '@farm.js/core': 0.1.50(f8fa7c53914c16572c252c4f2804c709)
+      '@farm.js/core': 0.1.50(11f4401ebb06e28cc1bd489bc75097b1)
       '@farm.js/tunnel': 0.1.2
       commander: 11.1.0
       croner: 9.1.0
@@ -10700,11 +10657,11 @@ snapshots:
       - uploadthing
       - yaml
 
-  '@farm.js/core@0.1.50(91853e1b8ea58fcafe57bd6dd0f1b25b)':
+  '@farm.js/core@0.1.50(11f4401ebb06e28cc1bd489bc75097b1)':
     dependencies:
       '@farm.js/islx': 0.0.5(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-runtime': 0.0.65(1b2d176df1d60a626597c0a5edf04276)
+      '@farming-labs/orm-runtime': 0.0.65(dd634aa5b37e3be61a7a472b8440efd6)
       '@formatjs/icu-messageformat-parser': 3.5.15
       '@jridgewell/trace-mapping': 0.3.31
       '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
@@ -10730,7 +10687,7 @@ snapshots:
       zod: 4.6.7
     optionalDependencies:
       '@farming-labs/docs': link:packages/docs
-      '@tailwindcss/vite': 4.3.3(vite@7.3.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      '@tailwindcss/vite': 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       '@vercel/og': 1.0.1(@types/node@22.20.5)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
@@ -10792,11 +10749,11 @@ snapshots:
       - uploadthing
       - yaml
 
-  '@farm.js/core@0.1.50(f8fa7c53914c16572c252c4f2804c709)':
+  '@farm.js/core@0.1.50(2f60598014e4e614525d8111fb36e589)':
     dependencies:
       '@farm.js/islx': 0.0.5(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-runtime': 0.0.65(1b2d176df1d60a626597c0a5edf04276)
+      '@farming-labs/orm-runtime': 0.0.65(dd634aa5b37e3be61a7a472b8440efd6)
       '@formatjs/icu-messageformat-parser': 3.5.15
       '@jridgewell/trace-mapping': 0.3.31
       '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
@@ -10822,7 +10779,7 @@ snapshots:
       zod: 4.6.7
     optionalDependencies:
       '@farming-labs/docs': link:packages/docs
-      '@tailwindcss/vite': 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      '@tailwindcss/vite': 4.3.3(vite@7.3.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       '@vercel/og': 1.0.1(@types/node@22.20.5)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
@@ -10977,20 +10934,18 @@ snapshots:
     optionalDependencies:
       '@mikro-orm/core': 7.1.10
 
-  '@farming-labs/orm-mongo@0.0.65(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))':
+  '@farming-labs/orm-mongo@0.0.65(mongodb@6.21.0(socks@2.8.7))':
     dependencies:
       '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-mongoose': 0.0.65(mongoose@8.24.2(socks@2.8.7))
+      '@farming-labs/orm-mongoose': 0.0.65
     optionalDependencies:
       mongodb: 6.21.0(socks@2.8.7)
     transitivePeerDependencies:
       - mongoose
 
-  '@farming-labs/orm-mongoose@0.0.65(mongoose@8.24.2(socks@2.8.7))':
+  '@farming-labs/orm-mongoose@0.0.65':
     dependencies:
       '@farming-labs/orm': 0.0.65
-    optionalDependencies:
-      mongoose: 8.24.2(socks@2.8.7)
 
   '@farming-labs/orm-neo4j@0.0.65':
     dependencies:
@@ -11006,7 +10961,7 @@ snapshots:
     dependencies:
       '@farming-labs/orm': 0.0.65
 
-  '@farming-labs/orm-runtime@0.0.65(1b2d176df1d60a626597c0a5edf04276)':
+  '@farming-labs/orm-runtime@0.0.65(dd634aa5b37e3be61a7a472b8440efd6)':
     dependencies:
       '@farming-labs/orm': 0.0.65
       '@farming-labs/orm-d1': 0.0.65
@@ -11017,8 +10972,8 @@ snapshots:
       '@farming-labs/orm-kv': 0.0.65
       '@farming-labs/orm-kysely': 0.0.65(kysely@0.28.17)
       '@farming-labs/orm-mikroorm': 0.0.65(@mikro-orm/core@7.1.10)
-      '@farming-labs/orm-mongo': 0.0.65(mongodb@6.21.0(socks@2.8.7))(mongoose@8.24.2(socks@2.8.7))
-      '@farming-labs/orm-mongoose': 0.0.65(mongoose@8.24.2(socks@2.8.7))
+      '@farming-labs/orm-mongo': 0.0.65(mongodb@6.21.0(socks@2.8.7))
+      '@farming-labs/orm-mongoose': 0.0.65
       '@farming-labs/orm-neo4j': 0.0.65
       '@farming-labs/orm-prisma': 0.0.65(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))
       '@farming-labs/orm-redis': 0.0.65
@@ -16291,9 +16246,6 @@ snapshots:
 
   jsonpath-rfc9535@1.3.0: {}
 
-  kareem@2.6.3:
-    optional: true
-
   kind-of@6.0.3: {}
 
   kleur@4.1.5: {}
@@ -17148,15 +17100,6 @@ snapshots:
       whatwg-url: 14.2.0
     optional: true
 
-  mongodb@6.20.0(socks@2.8.7):
-    dependencies:
-      '@mongodb-js/saslprep': 1.6.0
-      bson: 6.10.4
-      mongodb-connection-string-url: 3.0.2
-    optionalDependencies:
-      socks: 2.8.7
-    optional: true
-
   mongodb@6.21.0(socks@2.8.7):
     dependencies:
       '@mongodb-js/saslprep': 1.6.0
@@ -17164,26 +17107,6 @@ snapshots:
       mongodb-connection-string-url: 3.0.2
     optionalDependencies:
       socks: 2.8.7
-    optional: true
-
-  mongoose@8.24.2(socks@2.8.7):
-    dependencies:
-      bson: 6.10.4
-      kareem: 2.6.3
-      mongodb: 6.20.0(socks@2.8.7)
-      mpath: 0.9.0
-      mquery: 5.0.0
-      ms: 2.1.3
-      sift: 17.1.3
-    transitivePeerDependencies:
-      - '@aws-sdk/credential-providers'
-      - '@mongodb-js/zstd'
-      - gcp-metadata
-      - kerberos
-      - mongodb-client-encryption
-      - snappy
-      - socks
-      - supports-color
     optional: true
 
   motion-dom@12.38.0:
@@ -17205,16 +17128,6 @@ snapshots:
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-
-  mpath@0.9.0:
-    optional: true
-
-  mquery@5.0.0:
-    dependencies:
-      debug: 4.4.3(supports-color@10.2.2)
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
 
   mrmime@2.0.1: {}
 
@@ -19017,9 +18930,6 @@ snapshots:
       '@shikijs/types': 4.5.0
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.5
-
-  sift@17.1.3:
-    optional: true
 
   siginfo@2.0.0: {}
 
