@@ -28,7 +28,10 @@ export {
   docsMdx,
   resolveFarmDocsCodeBlockThemes,
   type FarmDocsCodeBlockThemes,
+  type FarmDocsMdxExtensions,
   type FarmDocsMdxOptions,
+  type FarmDocsMdxPlugin,
+  type FarmDocsMdxValue,
 } from "./vite.js";
 export {
   FARM_DOCS_ADAPTER_ID,

@@ -96,6 +96,12 @@ describe("withDocs", () => {
     });
   });
 
+  it("forwards the application's MDX plugins to the adapter MDX plugin", () => {
+    expect(() =>
+      withDocs({}, { buildCache: true, mdx: { remarkPlugins: ["./lib/remark-docs.mjs"] } }),
+    ).toThrow("`buildCache: true` cannot be combined with `mdx` plugins");
+  });
+
   it("points the docs page shell at the module named by the shell option", () => {
     const result = withDocs({}, { shell: "src/docs-shell.tsx" });
     const plugins = (result.vite as { plugins: Array<{ name?: string; config?: Function }> })

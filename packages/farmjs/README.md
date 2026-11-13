@@ -49,6 +49,27 @@ export default withDocs(defineConfig({}), {
 });
 ```
 
+Add the application's own MDX plugins with the same `mdx` option as the Next.js
+adapter. Each plugin is a package name or a path relative to the application
+root, with optional JSON options:
+
+```ts
+export default withDocs(defineConfig({}), {
+  mdx: {
+    remarkPlugins: ["./lib/remark-docs.mjs"],
+    rehypePlugins: [["rehype-katex", { strict: false }]],
+    codeHighlighter: "./lib/rehype-docs-code.mjs",
+  },
+});
+```
+
+- `remarkPlugins` and `rehypePlugins` run after the built-in plugins.
+- `codeHighlighter` replaces only the syntax highlighter; metadata and the table
+  of contents stay enabled.
+- Production builds compile every page while `mdx` is set, and
+  `buildCache: true` alongside it throws.
+- Edge targets compile pages with the built-in plugins only.
+
 Import the selected theme from the application-owned global stylesheet. This
 also gives the application a normal place for project-specific overrides:
 
