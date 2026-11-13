@@ -12,7 +12,7 @@ import { loadDocsContent } from "./content.js";
 import { FarmDocsPageRenderer } from "./page.js";
 import { FARM_DOCS_NAVIGATION_HEADER } from "./runtime.js";
 import { createFarmDocsRuntimeHandler } from "./server.js";
-import { createFarmDocsMdxCompileOptions } from "./vite.js";
+import { loadFarmDocsMdxCompileOptions } from "./vite.js";
 
 const FARM_DOCS_COMPILED_ORIGIN = "https://farm-docs-build.invalid";
 const FARM_DOCS_BROWSER_CSS_PATH = "/__farm_docs/browser.css";
@@ -188,7 +188,7 @@ export async function compileFarmDocsEdgeManifest(
     left.url.localeCompare(right.url),
   );
   const pageComponents = new Map<string, ComponentType<any>>();
-  const compileOptions = createFarmDocsMdxCompileOptions();
+  const compileOptions = await loadFarmDocsMdxCompileOptions(options.rootDir, docsConfig.mdx);
   for (const page of pages) {
     if (!page.sourcePath) {
       throw new Error(

@@ -29,6 +29,7 @@ and `@farming-labs/nuxt-theme/fumadocs`. Older releases retain the root helpers.
    - `robots`
    - `apiReference`
    - `staticExport`
+   - `mdx`
    - `i18n`
    - `metadata`
    - `og`

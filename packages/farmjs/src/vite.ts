@@ -2,6 +2,12 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type { DocsConfig, DocsMdxOptions, DocsMdxPlugin } from "@farming-labs/docs";
+import {
+  loadDocsConfigModuleResult,
+  resolveDocsConfigPath,
+  resolveDocsMdxOptions,
+} from "@farming-labs/docs/build";
 import type { CompileOptions } from "@mdx-js/mdx";
 import mdx from "@mdx-js/rollup";
 import {
@@ -28,26 +34,6 @@ export interface FarmDocsCodeBlockThemes {
   dark?: string;
 }
 
-export type FarmDocsMdxValue =
-  | string
-  | number
-  | boolean
-  | null
-  | FarmDocsMdxValue[]
-  | { [key: string]: FarmDocsMdxValue };
-
-/** A package name or a path relative to the Farm application root, with optional JSON options. */
-export type FarmDocsMdxPlugin = string | [module: string, options?: FarmDocsMdxValue];
-
-export interface FarmDocsMdxExtensions {
-  /** Additional remark plugins, run after the built-in remark plugins. */
-  remarkPlugins?: FarmDocsMdxPlugin[];
-  /** Additional rehype plugins, run after the built-in rehype plugins. */
-  rehypePlugins?: FarmDocsMdxPlugin[];
-  /** Replace only the syntax-highlighting plugin; metadata and TOC stay enabled. */
-  codeHighlighter?: FarmDocsMdxPlugin;
-}
-
 export interface FarmDocsMdxOptions {
   /** Reuse unchanged production MDX compilation. Defaults to true; never used in dev/watch. */
   buildCache?: boolean;
@@ -55,8 +41,10 @@ export interface FarmDocsMdxOptions {
   codeBlockThemes?: FarmDocsCodeBlockThemes;
   /** Additional content roots that the development server may compile. */
   contentRoots?: string[];
-  /** The application's own MDX plugins. Production builds compile every page when set. */
-  mdx?: FarmDocsMdxExtensions;
+  /** Path to docs.config, relative to the Farm application root. Its `mdx` plugins compile every page. */
+  configPath?: string;
+  /** Inline docs config merged after the config file; its `mdx` replaces the file's. */
+  config?: Partial<DocsConfig>;
 }
 
 type MdxPluggable = NonNullable<CompileOptions["remarkPlugins"]>[number];
@@ -67,30 +55,8 @@ interface LoadedMdxExtensions {
   codeHighlighter?: MdxPluggable;
 }
 
-function listMdxPlugins(extensions: FarmDocsMdxExtensions): FarmDocsMdxPlugin[] {
-  return [
-    ...(extensions.remarkPlugins ?? []),
-    ...(extensions.rehypePlugins ?? []),
-    ...(extensions.codeHighlighter === undefined ? [] : [extensions.codeHighlighter]),
-  ];
-}
-
-function mdxPluginModule(plugin: FarmDocsMdxPlugin): string {
+async function loadMdxPlugin(plugin: DocsMdxPlugin, root: string): Promise<MdxPluggable> {
   const module = Array.isArray(plugin) ? plugin[0] : plugin;
-  if (
-    typeof module !== "string" ||
-    !module.trim() ||
-    (Array.isArray(plugin) && plugin.length > 2)
-  ) {
-    throw new TypeError(
-      "withDocs `mdx` plugins must be module names or paths, or [module, options] tuples.",
-    );
-  }
-  return module;
-}
-
-async function loadMdxPlugin(plugin: FarmDocsMdxPlugin, root: string): Promise<MdxPluggable> {
-  const module = mdxPluginModule(plugin);
   let resolved: string;
   try {
     resolved = createRequire(path.join(root, "package.json")).resolve(module);
@@ -111,17 +77,42 @@ async function loadMdxPlugin(plugin: FarmDocsMdxPlugin, root: string): Promise<M
 }
 
 async function loadMdxExtensions(
-  extensions: FarmDocsMdxExtensions,
+  options: DocsMdxOptions,
   root: string,
 ): Promise<LoadedMdxExtensions> {
-  const load = (plugins: FarmDocsMdxPlugin[] = []) =>
+  const { remarkPlugins, rehypePlugins, codeHighlighter } = resolveDocsMdxOptions(options);
+  const load = (plugins: DocsMdxPlugin[]) =>
     Promise.all(plugins.map((plugin) => loadMdxPlugin(plugin, root)));
-  const [remarkPlugins, rehypePlugins, [codeHighlighter]] = await Promise.all([
-    load(extensions.remarkPlugins),
-    load(extensions.rehypePlugins),
-    load(extensions.codeHighlighter === undefined ? [] : [extensions.codeHighlighter]),
+  const [remark, rehype, [highlighter]] = await Promise.all([
+    load(remarkPlugins),
+    load(rehypePlugins),
+    load(codeHighlighter === undefined ? [] : [codeHighlighter]),
   ]);
-  return { remarkPlugins, rehypePlugins, codeHighlighter };
+  return { remarkPlugins: remark, rehypePlugins: rehype, codeHighlighter: highlighter };
+}
+
+/** The app's `mdx`, from the inline config or else from docs.config. */
+async function readDocsMdxOptions(
+  root: string,
+  options: Pick<FarmDocsMdxOptions, "config" | "configPath">,
+): Promise<DocsMdxOptions | undefined> {
+  if (options.config && Object.hasOwn(options.config, "mdx")) return options.config.mdx;
+  let configPath: string;
+  try {
+    configPath = resolveDocsConfigPath(root, options.configPath);
+  } catch (error) {
+    if (options.configPath) throw error;
+    return undefined;
+  }
+  const result = await loadDocsConfigModuleResult(root, configPath, { silent: true });
+  if (result.status === "evaluated") return result.config.mdx;
+  if (/\bmdx\s*:/.test(fs.readFileSync(result.path, "utf8"))) {
+    throw new Error(
+      `Could not evaluate ${result.path} to read its \`mdx\` plugins: ${result.error} ` +
+        "Fix the error so the config can be imported at build time.",
+    );
+  }
+  return undefined;
 }
 
 const DEFAULT_CODE_BLOCK_THEMES = {
@@ -370,29 +361,27 @@ function resolveWorkspaceAliases() {
 export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
   const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
-  const extensions = options.mdx;
-  if (extensions) {
-    listMdxPlugins(extensions).forEach(mdxPluginModule);
-    if (options.buildCache === true) {
-      throw new Error(
-        "withDocs `buildCache: true` cannot be combined with `mdx` plugins, because the build " +
-          "cache cannot fingerprint them. Remove `buildCache` to compile every page.",
-      );
-    }
-  }
   const compiler = mdx({ include: /\.(md|mdx)$/, ...mdxCompileOptions(options) });
-  let appRoot: string | undefined;
-  const appCompilers = new Map<string, Promise<typeof compiler>>();
-  const compilerFor = (root: string) => {
+  const appCompilers = new Map<string, Promise<typeof compiler | undefined>>();
+  const appCompiler = (root: string) => {
     let pending = appCompilers.get(root);
     if (!pending) {
-      pending = loadMdxExtensions(extensions!, root).then((loaded) =>
-        mdx({ include: /\.(md|mdx)$/, ...mdxCompileOptions(options, loaded) }),
-      );
+      pending = readDocsMdxOptions(root, options).then(async (value) => {
+        if (value === undefined) return undefined;
+        if (options.buildCache === true) {
+          throw new Error(
+            "withDocs `buildCache: true` cannot be combined with `mdx` plugins in docs.config, " +
+              "because the build cache cannot fingerprint them. Remove `buildCache` to compile every page.",
+          );
+        }
+        const loaded = await loadMdxExtensions(value, root);
+        return mdx({ include: /\.(md|mdx)$/, ...mdxCompileOptions(options, loaded) });
+      });
       appCompilers.set(root, pending);
     }
     return pending;
   };
+  let active = compiler;
   // Vite gives hooks an environment-specific config view, not the same object
   // passed to configResolved. Keep discovery/dev and production scopes separate.
   const buildKey = (config: ResolvedConfig) =>
@@ -413,12 +402,13 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   >();
   const cachedCompiler: Plugin = {
     ...compiler,
-    configResolved(config) {
-      appRoot = config.root;
+    async configResolved(config) {
       builds.delete(buildKey(config));
+      const app = await appCompiler(config.root);
+      active = app ?? compiler;
       if (
         options.buildCache !== false &&
-        !extensions &&
+        !app &&
         config.command === "build" &&
         !config.build.watch
       ) {
@@ -438,7 +428,6 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
       // boundary. Keep its own filtering below for hosts without hook filters.
       filter: { id: /\.(md|mdx)$/ },
       async handler(code, id) {
-        const active = extensions ? await compilerFor(appRoot ?? process.cwd()) : compiler;
         const compile = () => active.transform.call(this, code, id);
         const build = this.environment && builds.get(buildKey(this.environment.config));
         if (!build || !/\.(md|mdx)$/.test(id.split("?", 1)[0])) return compile();
@@ -503,6 +492,17 @@ export function createFarmDocsMdxCompileOptions(
   options: FarmDocsMdxOptions = {},
 ): Pick<CompileOptions, "remarkPlugins" | "rehypePlugins"> {
   return mdxCompileOptions(options);
+}
+
+/** The edge compiler's MDX transforms, with the app's own plugins from docs.config `mdx`. */
+export async function loadFarmDocsMdxCompileOptions(
+  root: string,
+  options: DocsMdxOptions | undefined,
+): Promise<Pick<CompileOptions, "remarkPlugins" | "rehypePlugins">> {
+  return mdxCompileOptions(
+    {},
+    options === undefined ? undefined : await loadMdxExtensions(options, root),
+  );
 }
 
 function mdxCompileOptions(

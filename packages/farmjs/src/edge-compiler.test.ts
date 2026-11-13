@@ -79,6 +79,31 @@ describe("compileFarmDocsEdgeManifest", () => {
     expect(JSON.stringify(manifest)).not.toContain(contentDir);
   });
 
+  it("compiles pages with the docs config's MDX plugins", async () => {
+    const { root, contentDir } = await createFixture();
+    await fs.writeFile(
+      path.join(root, "remark-note.mjs"),
+      `export default function remarkNote(options) {
+  return (tree) => {
+    tree.children.push({ type: "paragraph", children: [{ type: "text", value: options.label }] });
+  };
+}`,
+    );
+    const manifest = await compileFarmDocsEdgeManifest(
+      {
+        entry: "docs",
+        contentDir,
+        mcp: false,
+        telemetry: false,
+        ai: { enabled: false },
+        mdx: { remarkPlugins: [["./remark-note.mjs", { label: "edge-remark-ran" }]] },
+      },
+      { rootDir: root, clientEntry: "/farm-client.js", stylesheets: [] },
+    );
+
+    expect(manifest.routes["/docs/guide"]?.body).toContain("edge-remark-ran");
+  });
+
   it("rejects runtime-only features instead of silently dropping them", async () => {
     const { root, contentDir } = await createFixture();
 

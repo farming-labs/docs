@@ -200,7 +200,12 @@ export {
 export type { ResolveConfiguredAgentSkillsOptions } from "./agent-skills-server.js";
 export { renderDocsAgentSkillsBundle } from "./agent-skills-vite.js";
 export { readDocsAppVersion } from "./app-version.js";
-export { loadDocsConfigModule } from "./cli/config.js";
+export {
+  loadDocsConfigModule,
+  loadDocsConfigModuleResult,
+  resolveDocsConfigPath,
+} from "./cli/config.js";
+export type { DocsConfigModuleLoadResult } from "./cli/config.js";
 export type {
   DocsGoldenAnswerMetrics,
   DocsGoldenCitationMetrics,

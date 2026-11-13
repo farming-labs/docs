@@ -96,10 +96,17 @@ describe("withDocs", () => {
     });
   });
 
-  it("forwards the application's MDX plugins to the adapter MDX plugin", () => {
-    expect(() =>
-      withDocs({}, { buildCache: true, mdx: { remarkPlugins: ["./lib/remark-docs.mjs"] } }),
-    ).toThrow("`buildCache: true` cannot be combined with `mdx` plugins");
+  it("forwards the docs config's MDX plugins to the adapter MDX plugin", async () => {
+    const result = withDocs(
+      { docs: { config: { mdx: { remarkPlugins: ["./lib/remark-docs.mjs"] } } } },
+      { buildCache: true, config: { entry: "docs" } },
+    );
+    const plugins = (result.vite as { plugins: unknown[] }).plugins;
+    const [, compiler] = plugins[0] as Array<{ configResolved: (config: unknown) => unknown }>;
+
+    await expect(
+      compiler!.configResolved({ root: process.cwd(), command: "build", build: {} }),
+    ).rejects.toThrow("`buildCache: true` cannot be combined with `mdx` plugins");
   });
 
   it("points the docs page shell at the module named by the shell option", () => {
