@@ -40,6 +40,7 @@ export function defineDocs(input: DocsConfig): DocsConfig {
     docsPath: config.docsPath,
     contentDir: config.contentDir,
     roots: config.roots,
+    mdx: config.mdx,
     footer: config.footer,
     i18n: config.i18n,
     theme: config.theme,

@@ -60,11 +60,18 @@ function appendDocsVitePlugins(
   config: FarmViteConfigLike = {},
   options: FarmDocsAdapterOptions,
 ): FarmViteConfigLike {
-  const { codeBlockThemes, contentRoots, buildCache, configPath, shell } = options;
+  const {
+    codeBlockThemes,
+    contentRoots,
+    buildCache,
+    configPath,
+    config: docsConfig,
+    shell,
+  } = options;
   return {
     ...config,
     plugins: [
-      docsMdx({ codeBlockThemes, contentRoots, buildCache }),
+      docsMdx({ codeBlockThemes, contentRoots, buildCache, configPath, config: docsConfig }),
       docsAgentSkillsBundle({ configPath }),
       docsShell(shell),
       ...(config.plugins ?? []),
@@ -96,26 +103,21 @@ export function withDocs<TConfig extends FarmConfigLike>(
 ): FarmConfigWithDocs<TConfig> {
   const existing = normalizeExistingDocs(farmConfig.docs);
   const enabled = options.enabled ?? true;
+  const config = options.config ? { ...existing.config, ...options.config } : existing.config;
 
   return {
     ...farmConfig,
     vite: withDocsViteConfig(farmConfig.vite, {
       ...options,
       configPath: options.configPath ?? existing.configPath,
+      config,
     }),
     docs: {
       ...existing,
       enabled,
       adapter: farmDocsRuntimeAdapter,
       ...(options.configPath ? { configPath: options.configPath } : {}),
-      ...(options.config
-        ? {
-            config: {
-              ...existing.config,
-              ...options.config,
-            },
-          }
-        : {}),
+      ...(options.config ? { config } : {}),
     },
   };
 }

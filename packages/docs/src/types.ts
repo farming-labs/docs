@@ -4354,8 +4354,29 @@ export interface DocsCodeBlocksConfig {
   validate?: boolean | DocsCodeBlocksValidateConfig;
 }
 
+export type DocsMdxValue =
+  | string
+  | number
+  | boolean
+  | null
+  | DocsMdxValue[]
+  | { [key: string]: DocsMdxValue };
+
+/** A package name or a path relative to the app root, with optional JSON options. */
+export type DocsMdxPlugin = string | [module: string, options?: DocsMdxValue];
+
+/** The app's own MDX plugins, set in {@link DocsConfig.mdx}. */
+export interface DocsMdxOptions {
+  /** Additional remark plugins, run after the built-in remark plugins. */
+  remarkPlugins?: DocsMdxPlugin[];
+  /** Additional rehype plugins, run after the built-in rehype plugins. */
+  rehypePlugins?: DocsMdxPlugin[];
+  /** Replace only the syntax-highlighting plugin; metadata and TOC stay enabled. */
+  codeHighlighter?: DocsMdxPlugin;
+}
+
 /** A docs set listed in {@link DocsConfig.roots}. */
-export interface DocsRootConfig extends Omit<Partial<DocsConfig>, "roots"> {
+export interface DocsRootConfig extends Omit<Partial<DocsConfig>, "roots" | "mdx"> {
   /** Entry folder for this docs set (e.g. "statewire/docs" → /statewire/docs). */
   entry: string;
 }
@@ -4381,6 +4402,14 @@ export interface DocsConfig {
    * roots: [{ entry: "statewire/docs", metadata: { titleTemplate: "%s – Statewire" } }]
    */
   roots?: DocsRootConfig[];
+  /**
+   * The app's own MDX plugins, compiled into every docs page by the Next.js and Farm.js adapters.
+   * Plugins are module names or paths relative to the app root, with optional JSON options.
+   *
+   * @example
+   * mdx: { remarkPlugins: ["./lib/remark-docs.mjs"], codeHighlighter: "./lib/rehype-code.mjs" }
+   */
+  mdx?: DocsMdxOptions;
   /**
    * Internationalization (i18n) configuration.
    * When set, docs content is expected under `${contentDir}/{locale}` and

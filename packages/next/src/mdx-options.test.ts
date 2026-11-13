@@ -14,7 +14,7 @@ import remarkMarkdownAlternate from "./mdx-plugins/remark-markdown-alternate.js"
 import rehypeToc from "./mdx-plugins/rehype-toc.js";
 import rehypeCode from "./mdx-plugins/rehype-code.js";
 import { withDocs } from "./config.js";
-import { resolveMdxExtensions, type DocsMdxPlugin, type WithDocsOptions } from "./mdx-options.js";
+import type { DocsMdxPlugin, WithDocsOptions } from "./mdx-options.js";
 
 const builtins: Record<string, any> = {
   "remark-gfm": remarkGfm,
@@ -26,8 +26,11 @@ const builtins: Record<string, any> = {
   "@farming-labs/next/mdx-plugins/rehype-toc": rehypeToc,
   "@farming-labs/next/mdx-plugins/rehype-code": rehypeCode,
 };
-function webpackOptions(options: WithDocsOptions = {}) {
-  const config = withDocs({}, undefined, options);
+function webpackOptions(
+  options: WithDocsOptions = {},
+  docsConfig?: Parameters<typeof withDocs>[1],
+) {
+  const config = withDocs({}, docsConfig, options);
   const resolved = config.webpack!({ resolve: { alias: {} }, module: { rules: [] } }, {
     defaultLoaders: { babel: {} },
   } as any);
@@ -135,14 +138,6 @@ describe("MDX extension hooks", () => {
       expect(code).toContain(marker);
   });
 
-  it("copies tuples and nested options before Next mutates them", () => {
-    const original: DocsMdxPlugin = ["remark-custom", { nested: [1] }];
-    const copied = resolveMdxExtensions({ remarkPlugins: [original] }).remarkPlugins[0] as any;
-    copied[0] = () => {};
-    copied[1].nested.push(2);
-    expect(original).toEqual(["remark-custom", { nested: [1] }]);
-  });
-
   it("preserves TOML metadata when an app enables TOML frontmatter", async () => {
     const options = webpackOptions({
       mdx: { remarkPlugins: [["remark-frontmatter", ["yaml", "toml"]]] },
@@ -167,21 +162,48 @@ describe("MDX extension hooks", () => {
     });
   });
 
-  it.each([
-    () => {},
-    "",
-    ["plugin", () => {}],
-    ["plugin", { callback: () => {} }],
-    ["plugin", new Date()],
-    ["plugin", { value: Infinity }],
-    ["plugin", {}, {}],
-  ])("rejects non-portable plugin configuration %#", (plugin) => {
-    expect(() => resolveMdxExtensions({ remarkPlugins: [plugin as DocsMdxPlugin] })).toThrow(/MDX/);
+  it("reads mdx from the docs config like the deprecated withDocs option", () => {
+    const mdx = {
+      remarkPlugins: [["remark-directive", { nested: [true] }] as DocsMdxPlugin],
+      codeHighlighter: "custom-highlight",
+    };
+    const fromConfig = webpackOptions({}, { mdx });
+
+    expect(fromConfig).toEqual(webpackOptions({ mdx }));
+    expect(fromConfig).toEqual(webpackOptions({ mdx }, { mdx: undefined }));
+    expect(fromConfig.remarkPlugins.at(-1)).toEqual(mdx.remarkPlugins[0]);
+    expect(fromConfig.rehypePlugins[1]).toBe("custom-highlight");
   });
 
-  it("rejects circular options", () => {
-    const options: any = {};
-    options.self = options;
-    expect(() => resolveMdxExtensions({ codeHighlighter: ["highlight", options] })).toThrow(/JSON/);
+  it("resolves relative plugin paths from the app root", () => {
+    const options = webpackOptions(
+      {},
+      { mdx: { remarkPlugins: [["./lib/remark.mjs", { a: 1 }]], codeHighlighter: "../hl.mjs" } },
+    );
+    expect(options.remarkPlugins.at(-1)).toEqual([join(process.cwd(), "lib/remark.mjs"), { a: 1 }]);
+    expect(options.rehypePlugins[1]).toBe(join(process.cwd(), "../hl.mjs"));
+  });
+
+  it("rejects mdx set in both the docs config and the withDocs options", () => {
+    expect(() =>
+      webpackOptions({ mdx: { rehypePlugins: ["a"] } }, { mdx: { rehypePlugins: ["b"] } }),
+    ).toThrow("Set `mdx` in docs.config or in the `withDocs` options, not both.");
+  });
+
+  it("asks for the live config when docs.config sets mdx", () => {
+    writeFileSync(
+      join(root, "docs.config.ts"),
+      'export default { entry: "docs", mdx: { remarkPlugins: ["./lib/remark-docs.mjs"] } };',
+    );
+    expect(() => webpackOptions()).toThrow(
+      "docs.config.ts sets `mdx`, which withDocs reads from the live config. Pass it: withDocs(nextConfig, docsConfig).",
+    );
+    expect(() => webpackOptions({}, { mdx: undefined })).not.toThrow();
+  });
+
+  it("surfaces invalid plugin configuration from the docs config", () => {
+    expect(() =>
+      webpackOptions({}, { mdx: { remarkPlugins: [["plugin", { callback: () => {} }] as never] } }),
+    ).toThrow(/JSON-serializable/);
   });
 });

@@ -48,12 +48,12 @@
     },
     {
       "route": "/docs/configuration",
-      "sourceHash": "fnv1a64:dfeafde1c028c5b8",
+      "sourceHash": "fnv1a64:a8ad38d44843d1d6",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:135db8bcd5e84f3c",
-      "reviewedAt": "2026-11-03T01:52:34.435Z",
-      "reviewedBy": "Codex",
-      "reason": "Reviewed current focused config and preset imports, existing beforeFiles rewrite precedence, and existing OpenAPI catalog guidance against the source changes. Preserved the executable evaluation fixture and corrected the adapter count to six."
+      "outputHash": "fnv1a64:9e134718bf725dee",
+      "reviewedAt": "2026-11-13T18:58:07.474Z",
+      "reviewedBy": "Claude",
+      "reason": "Compared the only source change since the accepted review: the new `mdx` option row and MDX plugins section. Added `mdx` to the exact option names and a guidance bullet covering plugin forms, the Next.js and Farm.js scope, and passing the config to Next.js withDocs; preserved the existing guidance."
     },
     {
       "route": "/docs/contributing",
@@ -237,12 +237,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:bc50b7d147f489ab",
+      "sourceHash": "fnv1a64:14d840b36f55e764",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:eb7674a6a49262c4",
-      "reviewedAt": "2026-11-03T04:03:04.848Z",
-      "reviewedBy": "Codex",
-      "reason": "Compared the only source change since the accepted review: the new persistent build-cache API. Added its exact exports, version floor, input-key responsibilities, JSON normalization, storage limits and failure behavior to the curated agent reference; preserved the existing reference guidance."
+      "outputHash": "fnv1a64:ad089884fcecf1f7",
+      "reviewedAt": "2026-11-13T18:58:31.670Z",
+      "reviewedBy": "Claude",
+      "reason": "Compared the only source change since the accepted review: the new `mdx` row in the defineDocs options table. Added the matching `mdx` row to the curated reference; preserved the existing reference guidance."
     },
     {
       "route": "/docs/themes",

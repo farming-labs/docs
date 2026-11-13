@@ -29,6 +29,7 @@ and `@farming-labs/nuxt-theme/fumadocs`. Older releases retain the root helpers.
    - `robots`
    - `apiReference`
    - `staticExport`
+   - `mdx`
    - `i18n`
    - `metadata`
    - `og`
@@ -39,6 +40,10 @@ and `@farming-labs/nuxt-theme/fumadocs`. Older releases retain the root helpers.
 ## Guidance
 
 - When the user wants to add a custom MDX component, point them to `components` in `defineDocs()`.
+- When they want their own remark or rehype plugins or a custom code highlighter, point them to
+  `mdx` (`remarkPlugins`, `rehypePlugins`, `codeHighlighter`). Each plugin is a package name or a
+  path relative to the app root, optionally a `[module, JSON options]` tuple. Only the Next.js and
+  Farm.js adapters read it; on Next.js, pass the config: `withDocs(nextConfig, docsConfig)`.
 - When they want to change default props for a built-in component like `HoverLink`, point them to `theme.ui.components`.
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat

@@ -102,6 +102,7 @@ Top-level configuration object passed to `defineDocs()`:
 | `entry` | `string` | **required** | Docs source route and folder (e.g. `"docs"` -> `app/docs`) |
 | `docsPath` | `string` | same as `entry` | Public docs route prefix in Next.js. Use `""` to serve docs from `/` |
 | `contentDir` | `string` | same as `entry` | Path to content files. TanStack Start, SvelteKit, Astro, and Nuxt use it; Next.js uses `app/{entry}/` |
+| `mdx` | `DocsMdxOptions` | — | The app's own `remarkPlugins`, `rehypePlugins`, and `codeHighlighter` for Next.js and Farm.js; module names or paths relative to the app root, with JSON options |
 | `staticExport` | `boolean` | `false` | `true` for full static builds; hides search and AI |
 | `theme` | `DocsTheme` | — | Theme preset (`fumadocs()`, `darksharp()`, `pixelBorder()`, etc.) |
 | `github` | `string \| GithubConfig` | — | GitHub repo config for "Edit on GitHub" links |

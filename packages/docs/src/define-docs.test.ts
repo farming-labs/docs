@@ -14,6 +14,11 @@ describe("defineDocs", () => {
     expect(defineDocs({ entry: "docs", roots }).roots).toBe(roots);
   });
 
+  it("keeps the app's MDX plugins", () => {
+    const mdx = { remarkPlugins: ["./lib/remark-docs.mjs"] };
+    expect(defineDocs({ entry: "docs", mdx }).mdx).toBe(mdx);
+  });
+
   it("preserves feedback and copy callbacks in the normalized config", () => {
     const onCopyClick = vi.fn();
     const onFeedback = vi.fn();

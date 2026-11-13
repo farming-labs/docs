@@ -63,32 +63,39 @@ Write documentation pages under `app/docs/` or `src/app/docs/`. The CLI also add
 
 ## Extending MDX compilation
 
-Pass adapter options as the third `withDocs` argument. Plugin module names (or absolute paths)
-and JSON options work with both Webpack and Turbopack:
+Set `mdx` in `docs.config.ts` and pass the live config to `withDocs`. Plugin module names and
+paths with JSON options work with both Webpack and Turbopack:
 
-```ts
-import { withDocs } from "@farming-labs/next/config";
-import docsConfig from "./docs.config";
-
-export default withDocs({}, docsConfig, {
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
   mdx: {
-    remarkPlugins: ["remark-directive"],
+    remarkPlugins: ["remark-directive", "./lib/remark-docs.mjs"],
     rehypePlugins: [["rehype-external-links", { target: "_blank" }]],
   },
 });
 ```
 
-Install the plugins in your application. Extra plugins run after the built-in plugins in their
-respective phase; frontmatter, heading IDs, TOC, Markdown alternate links, and syntax highlighting
-remain enabled. Put callbacks and other non-JSON configuration inside a local plugin module and
-pass its absolute path, for example `import.meta.resolve("./plugins/highlight.mjs")` converted
-with `fileURLToPath` from `node:url`.
+```ts title="next.config.ts"
+import { withDocs } from "@farming-labs/next/config";
+import docsConfig from "./docs.config";
+
+export default withDocs({}, docsConfig);
+```
+
+Install the plugins in your application. Paths starting with `./` or `../` resolve from the
+application root. Extra plugins run after the built-in plugins in their respective phase;
+frontmatter, heading IDs, TOC, Markdown alternate links, and syntax highlighting remain enabled.
+Put callbacks and other non-JSON configuration inside a local plugin module.
 
 For a migration with its own highlighter, set `mdx.codeHighlighter` to that plugin's module name
 or `[module, options]` tuple. This replaces only the default code-highlighting step, so code is
 highlighted once. The custom plugin owns its theme and code-block behavior. Omitting `mdx` keeps
-the existing defaults. Use `undefined` as the second argument if you are not passing a live docs
-config. These hooks do not configure Fumadocs collections or replace its source loader.
+the existing defaults. These hooks do not configure Fumadocs collections or replace its source
+loader.
+
+The third-argument `withDocs(nextConfig, docsConfig, { mdx })` form is deprecated and still works.
+Setting `mdx` in both places throws.
 
 The built-in highlighter uses Shiki's Oniguruma engine during compilation. A custom highlighter
 can import `@farming-labs/next/mdx-plugins/rehype-code` to keep that default while configuring

@@ -469,8 +469,12 @@ export type {
   HydrateDocsContentChangesOptions,
 } from "./content-change-hydration.js";
 export type { GeneratedAgentProvenance, GeneratedAgentSourceKind } from "./agent-provenance.js";
+export { resolveDocsMdxOptions, type ResolvedDocsMdxOptions } from "./mdx-options.js";
 export type {
   DocsConfig,
+  DocsMdxOptions,
+  DocsMdxPlugin,
+  DocsMdxValue,
   DocsRootConfig,
   LlmsTxtConfig,
   LlmsTxtMaxCharsConfig,

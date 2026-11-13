@@ -45,7 +45,10 @@ import {
   DEFAULT_LEGACY_SKILLS_INDEX_ROUTE,
   DEFAULT_LEGACY_SKILLS_ROUTE_PREFIX,
   DEFAULT_API_CATALOG_ROUTE,
+  resolveDocsMdxOptions,
   type DocsConfig,
+  type DocsMdxPlugin,
+  type ResolvedDocsMdxOptions,
 } from "@farming-labs/docs/build";
 import {
   ensureDocsReviewWorkflow,
@@ -64,7 +67,7 @@ import type {
   Program,
 } from "@babel/types";
 import { resolveCodeBlockThemes } from "./code-block-themes.js";
-import { resolveMdxExtensions, type WithDocsOptions } from "./mdx-options.js";
+import type { WithDocsOptions } from "./mdx-options.js";
 export type { DocsMdxPlugin, DocsMdxValue, WithDocsOptions } from "./mdx-options.js";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
@@ -817,6 +820,63 @@ function readDocsRootSources(
     if (!entry) throw unreadable;
     return { entry, docsPath: readString("docsPath"), contentDir: readString("contentDir") };
   });
+}
+
+/** `mdx` from the live docs config, else the deprecated `withDocs` option. */
+function readMdxOptions(
+  root: string,
+  configPath: string,
+  readSource: ConfigSourceReader,
+  docsConfig: Pick<DocsConfig, "mdx"> | undefined,
+  legacy: WithDocsOptions["mdx"],
+): DocsConfig["mdx"] {
+  if (docsConfig && Object.hasOwn(docsConfig, "mdx")) {
+    if (docsConfig.mdx !== undefined && legacy !== undefined) {
+      throw new TypeError(
+        "Set `mdx` in docs.config or in the `withDocs` options, not both. Move it to docs.config; the `withDocs` option is deprecated.",
+      );
+    }
+    return docsConfig.mdx ?? legacy;
+  }
+  const absoluteConfigPath = join(root, configPath);
+  if (!existsSync(absoluteConfigPath)) return legacy;
+  const content = readSource(absoluteConfigPath);
+  if (!/\bmdx\s*:/.test(content)) return legacy;
+  const setsMdx = () => {
+    try {
+      return (
+        resolveStaticObjectProperty(readDocsConfigRootObject(absoluteConfigPath, content), "mdx")
+          .status !== "absent"
+      );
+    } catch {
+      return true;
+    }
+  };
+  if (setsMdx()) {
+    throw new Error(
+      `${configPath} sets \`mdx\`, which withDocs reads from the live config. Pass it: withDocs(nextConfig, docsConfig).`,
+    );
+  }
+  return legacy;
+}
+
+/** Resolve `./` and `../` plugin paths from the app root, as the Farm.js adapter does. */
+function resolveMdxPluginPaths(
+  root: string,
+  options: ResolvedDocsMdxOptions,
+): ResolvedDocsMdxOptions {
+  const resolvePlugin = (plugin: DocsMdxPlugin): DocsMdxPlugin => {
+    const module = Array.isArray(plugin) ? plugin[0] : plugin;
+    if (!/^\.\.?[\\/]/.test(module)) return plugin;
+    const absolute = join(root, module);
+    if (!Array.isArray(plugin)) return absolute;
+    return plugin.length > 1 ? [absolute, plugin[1]] : [absolute];
+  };
+  return {
+    remarkPlugins: options.remarkPlugins.map(resolvePlugin),
+    rehypePlugins: options.rehypePlugins.map(resolvePlugin),
+    codeHighlighter: options.codeHighlighter && resolvePlugin(options.codeHighlighter),
+  };
 }
 
 const ROOT_DOCUMENT_FILES = ["skill.md", "AGENTS.md", "AGENT.md"] as const;
@@ -2691,7 +2751,7 @@ function mergeDocsRedirects(
 
 export function withDocs(
   nextConfig: NextConfig = {},
-  docsConfig?: Pick<DocsConfig, "agent" | "mcp" | "theme" | "roots">,
+  docsConfig?: Pick<DocsConfig, "agent" | "mcp" | "theme" | "roots" | "mdx">,
   options: WithDocsOptions = {},
 ): NextConfig {
   if (
@@ -2701,11 +2761,16 @@ export function withDocs(
   ) {
     throw new TypeError('Invalid `pageMetadata` option. Use "auto" or "site".');
   }
-  const mdx = resolveMdxExtensions(options.mdx);
   const root = process.cwd();
   const readSource = createConfigSourceReader();
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
+  const mdx = resolveMdxPluginPaths(
+    root,
+    resolveDocsMdxOptions(
+      readMdxOptions(root, docsConfigPath, readSource, docsConfig, options.mdx),
+    ),
+  );
   const docsConfigAbsolutePath = join(root, docsConfigPath);
   const codeBlockThemes = resolveCodeBlockThemes({
     root,

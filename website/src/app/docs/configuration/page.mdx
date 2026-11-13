@@ -154,6 +154,7 @@ Import `defineDocs`, `createTheme`, and `extendTheme` from `@farming-labs/docs/c
 | `entry`        | `string`                       | `"docs"`        | Docs source route and folder (e.g. `"docs"` -> `app/docs`) |
 | `docsPath`     | `string`                       | same as `entry` | Public docs route prefix in Next.js. Use `""` for root-mounted docs |
 | `contentDir`   | `string`                       | same as `entry` | Path to content files (TanStack Start, SvelteKit, Astro, Nuxt) |
+| `mdx`          | `DocsMdxOptions`               | —               | The app's own remark, rehype, and code-highlighter plugins for Next.js and Farm.js (see [MDX plugins](#mdx-plugins)) |
 | `staticExport` | `boolean`                      | `false`         | Set `true` for full static builds (see [Static export](#static-export)) |
 | `theme`        | `DocsTheme`                    | —               | Theme preset from a theme factory                  |
 | `nav`         | `{ title, url }`               | —               | Sidebar title and base URL                         |
@@ -182,6 +183,27 @@ Import `defineDocs`, `createTheme`, and `extendTheme` from `@farming-labs/docs/c
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template and JSON-LD page inputs      |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
+
+## MDX plugins
+
+Add the app's own MDX plugins in `mdx`. The Next.js and Farm.js adapters compile every docs page with them.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mdx: {
+    remarkPlugins: ["remark-directive", "./lib/remark-docs.mjs"],
+    rehypePlugins: [["rehype-external-links", { target: "_blank" }]],
+    codeHighlighter: "./lib/rehype-docs-code.mjs",
+  },
+});
+```
+
+- Each plugin is a package name or a path relative to the app root, optionally in a `[module, options]` tuple with JSON options. Keep callbacks inside the plugin module.
+- `remarkPlugins` and `rehypePlugins` run after the built-in plugins.
+- `codeHighlighter` replaces only the syntax highlighter; frontmatter, heading IDs, and the table of contents stay enabled.
+- Next.js reads `mdx` from the live config: `withDocs(nextConfig, docsConfig)`.
+- Farm.js production builds compile every page while `mdx` is set.
 
 ## Code block validation
 

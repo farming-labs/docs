@@ -49,6 +49,28 @@ export default withDocs(defineConfig({}), {
 });
 ```
 
+Add the application's own MDX plugins in `mdx` in `docs.config.ts`. Each plugin is a
+package name or a path relative to the application root, with optional JSON options:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mdx: {
+    remarkPlugins: ["./lib/remark-docs.mjs"],
+    rehypePlugins: [["rehype-katex", { strict: false }]],
+    codeHighlighter: "./lib/rehype-docs-code.mjs",
+  },
+});
+```
+
+- `remarkPlugins` and `rehypePlugins` run after the built-in plugins.
+- `codeHighlighter` replaces only the syntax highlighter; metadata and the table
+  of contents stay enabled.
+- Node and edge targets compile pages with them.
+- Production builds compile every page while `mdx` is set, and
+  `buildCache: true` alongside it throws.
+- `withDocs(config, { config: { mdx } })` replaces the file's `mdx`.
+
 Import the selected theme from the application-owned global stylesheet. This
 also gives the application a normal place for project-specific overrides:
 
