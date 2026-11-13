@@ -101,16 +101,16 @@ importers:
         version: 11.0.11(7a712cc1db10c94bcd2822de9ed2590d)
       '@farming-labs/astro':
         specifier: 0.2.145
-        version: link:../../packages/astro
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))
       '@farming-labs/astro-theme':
         specifier: 0.2.145
-        version: link:../../packages/astro-theme
+        version: 0.2.145(@vercel/sandbox@2.9.2)(astro@7.3.5(@types/node@24.13.3)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.4.1)(ioredis@5.11.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))(react@19.2.4)
       '@farming-labs/docs':
         specifier: 0.2.145
-        version: link:../../packages/docs
+        version: 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
       '@farming-labs/theme':
         specifier: 0.2.145
-        version: link:../../packages/fumadocs
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
       astro:
         specifier: 7.3.5
         version: 7.3.5(@types/node@24.13.3)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.4.1)(ioredis@5.11.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
@@ -122,13 +122,13 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.145
-        version: link:../../packages/docs
+        version: 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
       '@farming-labs/next':
         specifier: 0.2.145
-        version: link:../../packages/next
+        version: 0.2.145(3830dc84c20346fb0bdea6fd28621506)
       '@farming-labs/theme':
         specifier: 0.2.145
-        version: link:../../packages/fumadocs
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.4)
@@ -171,13 +171,13 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.145
-        version: link:../../packages/docs
+        version: 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
       '@farming-labs/next':
         specifier: 0.2.145
-        version: link:../../packages/next
+        version: 0.2.145(3830dc84c20346fb0bdea6fd28621506)
       '@farming-labs/theme':
         specifier: 0.2.145
-        version: link:../../packages/fumadocs
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.4)
@@ -226,16 +226,16 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.145
-        version: link:../../packages/docs
+        version: 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
       '@farming-labs/nuxt':
         specifier: 0.2.145
-        version: link:../../packages/nuxt
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))
       '@farming-labs/nuxt-theme':
         specifier: 0.2.145
-        version: link:../../packages/nuxt-theme
+        version: 0.2.145(@vercel/sandbox@2.9.2)(nuxt@3.21.11(098d43a05481caab9a0783cec19518bb))(react@19.2.4)(vue@3.5.43(typescript@5.9.3))
       '@farming-labs/theme':
         specifier: 0.2.145
-        version: link:../../packages/fumadocs
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -254,16 +254,16 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.145
-        version: link:../../packages/docs
+        version: 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
       '@farming-labs/svelte':
         specifier: 0.2.145
-        version: link:../../packages/svelte
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))
       '@farming-labs/svelte-theme':
         specifier: 0.2.145
-        version: link:../../packages/svelte-theme
+        version: 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)(svelte@5.51.3)
       '@farming-labs/theme':
         specifier: 0.2.145
-        version: link:../../packages/fumadocs
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -291,13 +291,13 @@ importers:
     dependencies:
       '@farming-labs/docs':
         specifier: 0.2.145
-        version: link:../../packages/docs
+        version: 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
       '@farming-labs/tanstack-start':
         specifier: 0.2.145
-        version: link:../../packages/tanstack-start
+        version: 0.2.145(51a0ccff97950268e6efd3cfe64e710a)
       '@farming-labs/theme':
         specifier: 0.2.145
-        version: link:../../packages/fumadocs
+        version: 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
       '@tanstack/react-router':
         specifier: 1.170.41
         version: 1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -495,8 +495,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@farm.js/core':
-        specifier: ^0.1.50
-        version: 0.1.50(2f60598014e4e614525d8111fb36e589)
+        specifier: ^0.1.68
+        version: 0.1.68(2f60598014e4e614525d8111fb36e589)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../docs
@@ -818,8 +818,8 @@ importers:
         specifier: ^2.3.29
         version: 2.3.29(react@19.2.4)(vue@3.5.43(typescript@5.9.3))
       '@farm.js/core':
-        specifier: ^0.1.50
-        version: 0.1.50(11f4401ebb06e28cc1bd489bc75097b1)
+        specifier: ^0.1.68
+        version: 0.1.68(11f4401ebb06e28cc1bd489bc75097b1)
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../packages/docs
@@ -888,8 +888,8 @@ importers:
         version: 2.4.0(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@farm.js/cli':
-        specifier: ^0.1.50
-        version: 0.1.50(11f4401ebb06e28cc1bd489bc75097b1)
+        specifier: ^0.1.68
+        version: 0.1.68(11f4401ebb06e28cc1bd489bc75097b1)
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
@@ -1678,13 +1678,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@farm.js/cli@0.1.50':
-    resolution: {integrity: sha512-Kyt7UAGx53uCJ0XTUoS3KyT2BdGVuKsONQoxWeEKh3FeyszbB5Jp9B7ymBuYrfwFirCNBPmngiIgy7T32O2rXg==}
+  '@farm.js/cli@0.1.68':
+    resolution: {integrity: sha512-p/tuAgPpggEd9lu1hlwga5767PN4m4RrVhfUiyPPkzZsLoV983EpJrswFtRPJ/eTAMumdPf9WofF68jwnh/FVg==}
     engines: {node: '>=22.13.0'}
     hasBin: true
 
-  '@farm.js/core@0.1.50':
-    resolution: {integrity: sha512-hygenx17Sai+DFCX7UVDwr3y1HSIOGxyio46hz4KqFS1Q+XU3DuS/Ps7VEiGAiXpZ58jp7x1vk+wz+VNpqTT0g==}
+  '@farm.js/core@0.1.68':
+    resolution: {integrity: sha512-heV+HjBHhh+rYIfyr2K1vX5G628UWVfqtZEDp0O8+6dhBrvpDFsYwOquKHDmwJuate6NPLNXlcqWpcUAmX1VZQ==}
     engines: {node: '>=22.13.0'}
     peerDependencies:
       '@farming-labs/docs': ^0.2.118
@@ -1707,8 +1707,8 @@ packages:
       sharp:
         optional: true
 
-  '@farm.js/islx@0.0.5':
-    resolution: {integrity: sha512-dAuBkKKL02AvcNpHEn3NsH9+08b2mX2cCkspS97WW1Yi2mJ6nsgbRY899Uv6oS3p2IbccFoQAdEoFGRgm7dbXQ==}
+  '@farm.js/islx@0.0.21':
+    resolution: {integrity: sha512-kJcMjn9dTKHJaPmVFoQbD1bl2+IbxMQDP/ToB4EBPL95Ldb/5iaks7x610ygnKoSSm0Rq1viudVpSMZCF+MW+w==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       '@tanstack/react-router': '>=1.170'
@@ -1780,19 +1780,65 @@ packages:
     resolution: {integrity: sha512-9Rmep2U0eCCWx6zwLb1VAfjbYfsbGtXBsMZusSvYkbCV+3eEcz6+GhfOi7A8gfp7JiAdkiOpmGhmaJnc8wEb1A==}
     engines: {node: '>=20.0.0'}
 
-  '@farming-labs/orm-d1@0.0.65':
-    resolution: {integrity: sha512-6nFfXt62qflKoUcNkvirQj16WoI9SPV39Qeob6iF88kBnWSkm6HPqCFKW5gGGcekmaijkoc/oYFm6MCx2QwbLw==}
+  '@farming-labs/astro-theme@0.2.145':
+    resolution: {integrity: sha512-4ahb5QMAeEJMieHcZz82ljdunuOjHcxWtKdT3a1D+s0bLt9V8PqmlSEkvv1YttDsC/zbA+pgiQ5F90Cd3ylG8g==}
+    peerDependencies:
+      astro: 7.3.5
 
-  '@farming-labs/orm-drizzle@0.0.65':
-    resolution: {integrity: sha512-/dXo/aHawf9BVmLctFd/FB9cl8MVsh/nfiY+/HRUyG2YJKnVHxJsxV7SKPOl7dzyRf8qThKlqVapSesftMZ/gQ==}
+  '@farming-labs/astro@0.2.145':
+    resolution: {integrity: sha512-jbJNfnEvAVfve1jMAcPk3tJ8RiiUHG5gRDVhY9gbhYXupFNxPD/GIeyvDHtwX7RFIOC8KaXnk0fJa+SWMJ49cQ==}
+    peerDependencies:
+      '@farming-labs/docs': '>=0.2.73 || ^0.2.133-perf.0'
+
+  '@farming-labs/docs@0.2.145':
+    resolution: {integrity: sha512-3p0B6gfozd/f5sGgM64UaQFWJ/sLCbEMCBLnDvmKqcRsxlGOTybGK+SGOJtLvDyjW61x46yGbfi001AA9IjK8g==}
+    engines: {node: '>=20'}
+    hasBin: true
+    peerDependencies:
+      '@vercel/sandbox': ^2.0.0
+      react: '>=19.2.0'
+    peerDependenciesMeta:
+      '@vercel/sandbox':
+        optional: true
+      react:
+        optional: true
+
+  '@farming-labs/next@0.2.145':
+    resolution: {integrity: sha512-4kG3dER45xVPXaNHXJcq4rWzWseUzSkSC5krQ7nROoxZi1dmkPgkccL7w90uCQLma8TSZy+9zzM6gziVDcdm7A==}
+    peerDependencies:
+      '@farming-labs/docs': '>=0.2.121 || ^0.2.133-perf.0'
+      '@farming-labs/theme': '>=0.0.1 || ^0.2.133-perf.0'
+      next: 16.4.3
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
+  '@farming-labs/nuxt-theme@0.2.145':
+    resolution: {integrity: sha512-26DTtgMZ5Ck1cGIW8C+DFb87QlOpYrxJGzwe6AGG2ylw9SdG5qBv4xwmEsSHduCUmH0qm3Psv9bvpSosGh46ag==}
+    peerDependencies:
+      nuxt: 3.21.11
+      vue: 3.5.43
+    peerDependenciesMeta:
+      nuxt:
+        optional: true
+
+  '@farming-labs/nuxt@0.2.145':
+    resolution: {integrity: sha512-TU5wAao6yIpJQsLajcVZ8J3SGDgr0OIBNJ8BSEKy7WwR+Jqu4J6DtnMwdDpdHP4ZBAznGQxiGSNaiqRdJsd6PQ==}
+    peerDependencies:
+      '@farming-labs/docs': '>=0.2.73 || ^0.2.133-perf.0'
+
+  '@farming-labs/orm-d1@0.0.66':
+    resolution: {integrity: sha512-bjjk9fK4BepblqoUM1ONCLf8xnlqD0/JCK13A0+M7F3e2O+/19/37qq3XtN5N0YfgeGZVi+4dSQ4RpnSJzSvRQ==}
+
+  '@farming-labs/orm-drizzle@0.0.66':
+    resolution: {integrity: sha512-ep15sBLS0oDZfDO/ssaQnO3lwV1dceOSq51TC7dW0ydQRk6sQYAYstTADSv9HMNykw2DaHIv19pDvK+2aIkvAg==}
     peerDependencies:
       drizzle-orm: ^0.45.2
     peerDependenciesMeta:
       drizzle-orm:
         optional: true
 
-  '@farming-labs/orm-dynamodb@0.0.65':
-    resolution: {integrity: sha512-N0NBz9WMHqtvn/dVI0ZLvVLM9sdNsuAehVSnHkfmimP9aFPF9nInhELuUWaksD+Wo3uwZzErFfvGnXOu8ew6mA==}
+  '@farming-labs/orm-dynamodb@0.0.66':
+    resolution: {integrity: sha512-SrT6TGtkC8B5X7DV35typ3QxUAsTRxsU4Vuj7V/jkzNgPWM74Wr2d63KwAgotk9oc6fqOQtvsuWS4oqeQIDf9A==}
     peerDependencies:
       '@aws-sdk/client-dynamodb': ^3.1049.0
       '@aws-sdk/lib-dynamodb': ^3.1049.0
@@ -1802,112 +1848,144 @@ packages:
       '@aws-sdk/lib-dynamodb':
         optional: true
 
-  '@farming-labs/orm-edgedb@0.0.65':
-    resolution: {integrity: sha512-VfcFmPbKBFe9U4CL2MqKbL0jxRifBB+fVM5mxU2AJ6G9l/1i6AzRDtsfXhRy9Sl8swsRA4C+WXTGXXPnTCoB6w==}
+  '@farming-labs/orm-edgedb@0.0.66':
+    resolution: {integrity: sha512-nIRqdA/wrDFlRiC9+7ybMLMgSAi5lIrHj4WcxFfSBtzon0gpOI5Bk3PbwvQ3pmREfMzUyTQdsl36w1QYJBUwZw==}
 
-  '@farming-labs/orm-firestore@0.0.65':
-    resolution: {integrity: sha512-iJB9vW/GGbWb0gXJef8pTmYcbeXXabLyRou82trWjOmrbUblRqMXX1YaErLe7FvJj+JUVhJ6YGM0QHGpFPz6NA==}
+  '@farming-labs/orm-firestore@0.0.66':
+    resolution: {integrity: sha512-TsldBM0IRMmpzJr5QMACBQTaG7iDChcn+xmFqGpcjN1lqJCTpWLW8f9KnprSxmth9Wvf8KBqQY+n6nR5Hpincg==}
 
-  '@farming-labs/orm-kv@0.0.65':
-    resolution: {integrity: sha512-C9uzRKhqC/xwROoZJmgZFYEtW/+hyzg0pz/VrvHLMYiAs9CpAZS7/qFlgi4o3VDMPHwwG+bIQuv+ylonhASIYw==}
+  '@farming-labs/orm-kv@0.0.66':
+    resolution: {integrity: sha512-SnBZu3RQ3Sb40IK64ngUNSueTtYIzVgGUWgKciukt1yMM26Wn8pG+nfDe9Ohna76lIs+w6vJry5uaoR7/PrHqA==}
 
-  '@farming-labs/orm-kysely@0.0.65':
-    resolution: {integrity: sha512-W+mcEYxuoHggPSXyjBNSzgNr+az9xZoWgP2Y7XFBnzBsGSwE3FpEL79xXzdAO9oyzAwwKYetg64ThEL5YtbLKA==}
+  '@farming-labs/orm-kysely@0.0.66':
+    resolution: {integrity: sha512-BUQvZ+tOMTTSkRZKW4tR1IsunnWbu9ZPxcxd4WyIWGE1FRkI9MQ1rbp4zvsBPtsT4ZdxIIZSW3+G1e7W1rXV6A==}
     peerDependencies:
       kysely: ^0.28.17
     peerDependenciesMeta:
       kysely:
         optional: true
 
-  '@farming-labs/orm-mikroorm@0.0.65':
-    resolution: {integrity: sha512-2cylBPkAcwKOYEtl9tUw8SVui1ExkLNzJkiHBT/zrRWEF9mBu04X+YhZ94ZHkxJ2LQur67OIlHhp8fXbeLp7YA==}
+  '@farming-labs/orm-mikroorm@0.0.66':
+    resolution: {integrity: sha512-vMCu5Wtwwl+Go6fzekbcDsNkeYQzkkEjvtULaMC8mvkM9LW89HHCZz41Ttj8bdvH2Vj6j6UKy9r4Ey49ZaUzqw==}
     peerDependencies:
       '@mikro-orm/core': ^7.0.17
     peerDependenciesMeta:
       '@mikro-orm/core':
         optional: true
 
-  '@farming-labs/orm-mongo@0.0.65':
-    resolution: {integrity: sha512-/6EBcsg0HHcRQF6hr+lssq2G52D0Fwyp4ZwLSibetBf+3d7jFbtNx2ahsGltYUuL64s/UZo+VBUjIZIuyFDT4A==}
+  '@farming-labs/orm-mongo@0.0.66':
+    resolution: {integrity: sha512-iaUosoV7ZR4b8EN/WUxoQkelYECBTDxh7iXfopDTr6cVJDf0CKY0HytFFHmqOpqBDrt5yMbIBqKwZz3VwZHQ+A==}
     peerDependencies:
       mongodb: ^6.0.0
     peerDependenciesMeta:
       mongodb:
         optional: true
 
-  '@farming-labs/orm-mongoose@0.0.65':
-    resolution: {integrity: sha512-FlX+8oHlKz1lX6nhzim/P733dn6/F4AHomFx95gB2Xw3Yfw4frqxcFrmDE4yplUCHo/4QFS5MYbPPNXAnwz+Og==}
+  '@farming-labs/orm-mongoose@0.0.66':
+    resolution: {integrity: sha512-AK2NQVdShPYHR3KFEOWTkBZdTLg9DKZuPvKKWL/VpZKBD+w9vyl9cN3j5IDkNeeeDUhgl1MPD9Lj0/46fg7I3g==}
     peerDependencies:
       mongoose: 8.24.9
     peerDependenciesMeta:
       mongoose:
         optional: true
 
-  '@farming-labs/orm-neo4j@0.0.65':
-    resolution: {integrity: sha512-bfxvXOO/bB+bYOhVq6w3rc0Mb8ofNyL67LfQENH31CFq7n0VR/6ufqCIAUzcrT7N3Ml1cAhbeI+tA5o8ZIfRNQ==}
+  '@farming-labs/orm-neo4j@0.0.66':
+    resolution: {integrity: sha512-XKi2RJBacP3gk9lYkrBgDf/BgPsYhGmqqAuayqWP6Q0O2pjtf7hlRH9a26Dzda9LiSEc9kgSv7fnYcc1UrfS7w==}
 
-  '@farming-labs/orm-prisma@0.0.65':
-    resolution: {integrity: sha512-QaQT0nSi8Yo1qkPyh0IJ0Pa8p2VXf/SCDP7GI6F4lmtG8QdCKLV8xMCOYpzyMEQ4BWRefebalaWO8wMK6kpSVA==}
+  '@farming-labs/orm-prisma@0.0.66':
+    resolution: {integrity: sha512-B6MGW3RfTmjjZvCZSVblvhBOoFVfLyS7KvGXky1Oizxmrs2fDh1TAX5OpDEOsX6uNAaJlP+GGaZ10Rnrupa2nw==}
     peerDependencies:
       '@prisma/client': ^6.0.0
     peerDependenciesMeta:
       '@prisma/client':
         optional: true
 
-  '@farming-labs/orm-redis@0.0.65':
-    resolution: {integrity: sha512-g/CaRuzZfvupKn1/LKRAOt6VPsnXroZVktiXppAgrfKIr/JtUj0xi2TfaMrA9bgbF+SWk9a+mBAn/n5ETalqLQ==}
+  '@farming-labs/orm-redis@0.0.66':
+    resolution: {integrity: sha512-k9rwcBr8Rb6wY2+g0uemYakA2rTcVyFLfl0jon4KOFbvtgVnkOxkILmGb1HAiRVs4ca9eAH1gsitfQU1M99sqg==}
 
-  '@farming-labs/orm-runtime@0.0.65':
-    resolution: {integrity: sha512-guidSljDw1wBgn36glxz/Lv/G2HR2iNKI33I89WuJGiiNzTqSDBk6peV4t+j5eNaqCxRKnLoc/bYlPPEUh1uuQ==}
+  '@farming-labs/orm-runtime@0.0.66':
+    resolution: {integrity: sha512-+kpkorUI5o/s64c6ostGPOkT9t+gNVSUWE1Kladv/ByjDeodttnxcOhMQGjIEW2Kbn/gejp+UfsTZ6nynRBUvA==}
     peerDependencies:
       '@aws-sdk/client-dynamodb': ^3.1049.0
     peerDependenciesMeta:
       '@aws-sdk/client-dynamodb':
         optional: true
 
-  '@farming-labs/orm-sequelize@0.0.65':
-    resolution: {integrity: sha512-mHLu2pRO3AJmuHWGux6VTKERsCPx9kRsOF/0QLU1IG2DzSU8+Sjx8x7PBBEBABLKxn+KMGEIvkFCmy5exeB5Vw==}
+  '@farming-labs/orm-sequelize@0.0.66':
+    resolution: {integrity: sha512-blZYD5E4dsCmUqxj+mA468AGzcqeZIEqZtXKdaCgZ2u7hM0OadFOe8A+cVeaCKBXryCay/0te6wpN2id5HMeGg==}
     peerDependencies:
       sequelize: ^6.37.8
     peerDependenciesMeta:
       sequelize:
         optional: true
 
-  '@farming-labs/orm-sql@0.0.65':
-    resolution: {integrity: sha512-sBxzDyqiKM38Qy3js08CiydNz6YUKbKdTQnlwswGAqNiLDJU1Zd0qi+NnB3Lrbbi+2abOtyr8qe527Ri8n3Ejw==}
+  '@farming-labs/orm-sql@0.0.66':
+    resolution: {integrity: sha512-UW56Ge1oAKpg7MEkZcdpvmI0FKtQbjYSRSKvC4KkKVtgLkzp5bVZ8LPiZ6GkULVBFFLCAiRfdWkKvFR9Ca/ivA==}
 
-  '@farming-labs/orm-supabase@0.0.65':
-    resolution: {integrity: sha512-PIv3XmjOdSq2XEE/okZmL+EP2vbh54/y1Xv9Gx1Jayzs2g9GambcoA8SioMy+wi5g7ZXJBvFLEqJffO34tw2Xg==}
+  '@farming-labs/orm-supabase@0.0.66':
+    resolution: {integrity: sha512-D0WkCOe2XGLsUKenzSobvDY1keX9woqC0IDs+VPzyP2yglV97+MEEIGmXbzcGYn1AkLdpasM3RrH/bElgc0Q5A==}
 
-  '@farming-labs/orm-surrealdb@0.0.65':
-    resolution: {integrity: sha512-t7hycrzyovL3uY/e7371kW/PQTaviRzKePpvPR9tO3fVkfmJ4+AGxyeOXHoKsnyGk22rqh3JnMv4dKS9g6LFUw==}
+  '@farming-labs/orm-surrealdb@0.0.66':
+    resolution: {integrity: sha512-yxigasoK+zX/wRC7brIVRM1RSM/Jhh+p+Sw43TfLuLfpS+1vUTd2WiT3X2m1B6DpAKrGSjhwFoCqqR7ceLiVjQ==}
     peerDependencies:
       surrealdb: ^2.0.3
     peerDependenciesMeta:
       surrealdb:
         optional: true
 
-  '@farming-labs/orm-typeorm@0.0.65':
-    resolution: {integrity: sha512-TF3EEdeOHMU3DAJeceM0aUeqTFyoDh2DVu3sb5sVANCIpQwnSrfcfizqIzToOXRZpPJNr+RH/Xkw+xGs0/vfXA==}
+  '@farming-labs/orm-typeorm@0.0.66':
+    resolution: {integrity: sha512-9wcBcowume2aZjEDlkJbTbYzHz54whj7ZNnSR/X8NN1FOUS1F2gTxm5fX5tfAwGGlRwbZLxNWSINfHDbpQxxVw==}
     peerDependencies:
       typeorm: ^0.3.28
     peerDependenciesMeta:
       typeorm:
         optional: true
 
-  '@farming-labs/orm-unstorage@0.0.65':
-    resolution: {integrity: sha512-ITwntwCe2VLcr0RWwYAOGX6tkNGbmcNwEFIAZaLtiiPbO9yQnB/ootCSOXhzH6lklD8BWzDy7gN2/90/12P+5w==}
+  '@farming-labs/orm-unstorage@0.0.66':
+    resolution: {integrity: sha512-TH1rboNKY621qnhPTOA0Hqm92vAQyiYbB+QhfM8e4emmGaH5AYsY3CFw+cpOt/hzIwC2+X1xjVRsX6waOj+Qeg==}
 
-  '@farming-labs/orm-xata@0.0.65':
-    resolution: {integrity: sha512-mX4BXe0Ao1EkldkVD+pL7N8JRfmQPgplNOSVCniwIOMuEYFe9RqjgglVLVF6yDfbcKG9MnDtuqeDIgsd69aA/A==}
+  '@farming-labs/orm-xata@0.0.66':
+    resolution: {integrity: sha512-abBIoJxtutAOhbNViDpyTCAaNFcpWn5u0LN15+ElZd1KXef3jAq+aQ/E4Jf2pO5F2LZPv45I5nlN6omuzmaX3w==}
     peerDependencies:
       '@xata.io/client': ^0.30.1
     peerDependenciesMeta:
       '@xata.io/client':
         optional: true
 
-  '@farming-labs/orm@0.0.65':
-    resolution: {integrity: sha512-5lJfMrqh9nI31qV6UPNPZymMlPUHF/VIvX/qbGG5fdP1NuQFrvXe9ZU8Pu/hYMdqdia7m/LriUdQO0uqr/IhiA==}
+  '@farming-labs/orm@0.0.66':
+    resolution: {integrity: sha512-YC68T6BDN/uDdMmInRD2mi8U70XqG28Uj9O5lLWHETQSsSqNrdY2NngZd2kycdzxDk+UuGfoIno3EgWKCFT6mA==}
+
+  '@farming-labs/svelte-theme@0.2.145':
+    resolution: {integrity: sha512-yfLx3XDBZYeGXio/eD4zNaPjdGHZbOVzBJCeiAjT7YHaryGRvrQX/LnbEQQFmstI/eJB+/uz4KpL+0yOHiSeFg==}
+    peerDependencies:
+      svelte: '>=5.0.0'
+
+  '@farming-labs/svelte@0.2.145':
+    resolution: {integrity: sha512-u8VABNEiF38WJWBfXyjFwTanMxbHgU+ACIaMkF544cHesZKWKZ64G1v3wTWmRvbWvly+iU+YElhPXl3dsJHeDQ==}
+    peerDependencies:
+      '@farming-labs/docs': '>=0.2.73 || ^0.2.133-perf.0'
+
+  '@farming-labs/tanstack-start@0.2.145':
+    resolution: {integrity: sha512-S8+3lM89/fjTJMLrxD6dhw0GBYeSAFIVoMDOl6GXwQvXxyPQu48y0P4+qdOcDSVa2kh4nERu1SVLIjz8BhqxQQ==}
+    peerDependencies:
+      '@farming-labs/docs': '>=0.2.73 || ^0.2.133-perf.0'
+      '@farming-labs/theme': <0.2.133 || >=0.2.133-perf.0
+      react: ^19.0.0
+
+  '@farming-labs/theme@0.2.145':
+    resolution: {integrity: sha512-OyIMvVc8S6eZ76TEoyVXrQWaMaXBD4QI/Vr35KhU6IydmO+/uMp4u+AQaxcBe7ktPp7xwOex4pNo1CqrqwtRPg==}
+    peerDependencies:
+      '@farming-labs/docs': ^0.2.145
+      next: 16.4.3
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+    peerDependenciesMeta:
+      next:
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   '@floating-ui/core@1.8.0':
     resolution: {integrity: sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ==}
@@ -10587,9 +10665,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@farm.js/cli@0.1.50(11f4401ebb06e28cc1bd489bc75097b1)':
+  '@farm.js/cli@0.1.68(11f4401ebb06e28cc1bd489bc75097b1)':
     dependencies:
-      '@farm.js/core': 0.1.50(11f4401ebb06e28cc1bd489bc75097b1)
+      '@farm.js/core': 0.1.68(11f4401ebb06e28cc1bd489bc75097b1)
       '@farm.js/tunnel': 0.1.2
       commander: 11.1.0
       croner: 9.1.0
@@ -10657,11 +10735,11 @@ snapshots:
       - uploadthing
       - yaml
 
-  '@farm.js/core@0.1.50(11f4401ebb06e28cc1bd489bc75097b1)':
+  '@farm.js/core@0.1.68(11f4401ebb06e28cc1bd489bc75097b1)':
     dependencies:
-      '@farm.js/islx': 0.0.5(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-runtime': 0.0.65(dd634aa5b37e3be61a7a472b8440efd6)
+      '@farm.js/islx': 0.0.21(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-runtime': 0.0.66(dd634aa5b37e3be61a7a472b8440efd6)
       '@formatjs/icu-messageformat-parser': 3.5.15
       '@jridgewell/trace-mapping': 0.3.31
       '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
@@ -10670,7 +10748,6 @@ snapshots:
       better-call: 1.3.7(zod@4.6.7)
       db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
       es-module-lexer: 2.0.0
-      fast-glob: 3.3.3
       h3: 2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
       image-size: 2.0.4
       intl-messageformat: 11.2.12
@@ -10682,6 +10759,7 @@ snapshots:
       rolldown: 1.2.14
       sugar-high: 0.9.5
       supports-color: 10.2.2
+      tinyglobby: 0.2.17
       unstorage: 2.0.0-alpha.10
       vite: 8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
       zod: 4.6.7
@@ -10749,11 +10827,11 @@ snapshots:
       - uploadthing
       - yaml
 
-  '@farm.js/core@0.1.50(2f60598014e4e614525d8111fb36e589)':
+  '@farm.js/core@0.1.68(2f60598014e4e614525d8111fb36e589)':
     dependencies:
-      '@farm.js/islx': 0.0.5(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-runtime': 0.0.65(dd634aa5b37e3be61a7a472b8440efd6)
+      '@farm.js/islx': 0.0.21(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-runtime': 0.0.66(dd634aa5b37e3be61a7a472b8440efd6)
       '@formatjs/icu-messageformat-parser': 3.5.15
       '@jridgewell/trace-mapping': 0.3.31
       '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
@@ -10762,7 +10840,6 @@ snapshots:
       better-call: 1.3.7(zod@4.6.7)
       db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
       es-module-lexer: 2.0.0
-      fast-glob: 3.3.3
       h3: 2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
       image-size: 2.0.4
       intl-messageformat: 11.2.12
@@ -10774,6 +10851,7 @@ snapshots:
       rolldown: 1.2.14
       sugar-high: 0.9.5
       supports-color: 10.2.2
+      tinyglobby: 0.2.17
       unstorage: 2.0.0-alpha.10
       vite: 8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
       zod: 4.6.7
@@ -10841,7 +10919,7 @@ snapshots:
       - uploadthing
       - yaml
 
-  '@farm.js/islx@0.0.5(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
+  '@farm.js/islx@0.0.21(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
     dependencies:
       estree-walker: 3.0.3
       is-reference: 3.0.3
@@ -10888,102 +10966,213 @@ snapshots:
       '@farm.js/tunnel-win32-arm64-msvc': 0.1.2
       '@farm.js/tunnel-win32-x64-msvc': 0.1.2
 
-  '@farming-labs/orm-d1@0.0.65':
+  '@farming-labs/astro-theme@0.2.145(@vercel/sandbox@2.9.2)(astro@7.3.5(@types/node@24.13.3)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.4.1)(ioredis@5.11.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))(react@19.2.4)':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/astro': 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      astro: 7.3.5(@types/node@24.13.3)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.4.1)(ioredis@5.11.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
+      sugar-high: 0.9.5
+    transitivePeerDependencies:
+      - '@vercel/sandbox'
+      - react
+      - supports-color
 
-  '@farming-labs/orm-drizzle@0.0.65(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))':
+  '@farming-labs/astro@0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      '@scalar/core': 0.4.3
+      gray-matter: 4.0.3
+      shiki: 3.22.0
+
+  '@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)':
+    dependencies:
+      '@clack/prompts': 1.7.0
+      '@modelcontextprotocol/server': 2.3.0
+      '@scalar/core': 0.4.3
+      github-slugger: 2.0.0
+      gray-matter: 4.0.3
+      jiti: 2.7.0
+      jsonpath-rfc9535: 1.3.0
+      parse-entities: 4.0.2
+      picocolors: 1.1.1
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-mdx: 3.1.1(supports-color@10.2.2)
+      remark-parse: 11.0.0(supports-color@10.2.2)
+      unified: 11.0.5
+      yaml: 2.9.1
+      zod: 4.6.7
+    optionalDependencies:
+      '@vercel/sandbox': 2.9.2
+      react: 19.2.4
+    transitivePeerDependencies:
+      - supports-color
+
+  '@farming-labs/next@0.2.145(3830dc84c20346fb0bdea6fd28621506)':
+    dependencies:
+      '@babel/parser': 7.29.7
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      '@farming-labs/theme': 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      '@mdx-js/loader': 3.1.1
+      '@mdx-js/react': 3.1.1(@types/react@19.2.14)(react@19.2.4)
+      '@next/mdx': 16.1.6(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))
+      '@scalar/nextjs-api-reference': 0.10.3(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      fumadocs-openapi: 12.4.1(95623cc2bbbd2a2a174d189f1f2af432)
+      fumadocs-ui: 16.17.8(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      gray-matter: 4.0.3
+      next: 16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      remark-frontmatter: 5.0.0
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-mdx-frontmatter: 5.2.0
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - '@date-fns/tz'
+      - '@mdx-js/mdx'
+      - '@mixedbread/sdk'
+      - '@modelcontextprotocol/server'
+      - '@orama/core'
+      - '@oramacloud/client'
+      - '@pierre/highlights'
+      - '@scalar/api-client-react'
+      - '@tanstack/react-router'
+      - '@types/estree-jsx'
+      - '@types/hast'
+      - '@types/mdast'
+      - '@types/mdx'
+      - '@types/react'
+      - '@types/react-dom'
+      - algoliasearch
+      - date-fns
+      - flexsearch
+      - json-schema-typed
+      - lucide-react
+      - meilisearch
+      - react-router
+      - remix
+      - supports-color
+      - tailwindcss
+      - takumi-js
+      - waku
+      - webpack
+
+  '@farming-labs/nuxt-theme@0.2.145(@vercel/sandbox@2.9.2)(nuxt@3.21.11(098d43a05481caab9a0783cec19518bb))(react@19.2.4)(vue@3.5.43(typescript@5.9.3))':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      sugar-high: 0.9.5
+      vue: 3.5.43(typescript@5.9.3)
+    optionalDependencies:
+      nuxt: 3.21.11(098d43a05481caab9a0783cec19518bb)
+    transitivePeerDependencies:
+      - '@vercel/sandbox'
+      - react
+      - supports-color
+
+  '@farming-labs/nuxt@0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      '@scalar/core': 0.4.3
+      gray-matter: 4.0.3
+      h3: 1.15.9
+      shiki: 3.22.0
+
+  '@farming-labs/orm-d1@0.0.66':
+    dependencies:
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
+
+  '@farming-labs/orm-drizzle@0.0.66(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))':
+    dependencies:
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
     optionalDependencies:
       drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))
 
-  '@farming-labs/orm-dynamodb@0.0.65(@aws-sdk/client-dynamodb@3.1103.0)(@aws-sdk/lib-dynamodb@3.1103.0(@aws-sdk/client-dynamodb@3.1103.0))':
+  '@farming-labs/orm-dynamodb@0.0.66(@aws-sdk/client-dynamodb@3.1103.0)(@aws-sdk/lib-dynamodb@3.1103.0(@aws-sdk/client-dynamodb@3.1103.0))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
     optionalDependencies:
       '@aws-sdk/client-dynamodb': 3.1103.0
       '@aws-sdk/lib-dynamodb': 3.1103.0(@aws-sdk/client-dynamodb@3.1103.0)
 
-  '@farming-labs/orm-edgedb@0.0.65':
+  '@farming-labs/orm-edgedb@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
 
-  '@farming-labs/orm-firestore@0.0.65':
+  '@farming-labs/orm-firestore@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
 
-  '@farming-labs/orm-kv@0.0.65':
+  '@farming-labs/orm-kv@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
 
-  '@farming-labs/orm-kysely@0.0.65(kysely@0.28.17)':
+  '@farming-labs/orm-kysely@0.0.66(kysely@0.28.17)':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
     optionalDependencies:
       kysely: 0.28.17
 
-  '@farming-labs/orm-mikroorm@0.0.65(@mikro-orm/core@7.1.10)':
+  '@farming-labs/orm-mikroorm@0.0.66(@mikro-orm/core@7.1.10)':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
     optionalDependencies:
       '@mikro-orm/core': 7.1.10
 
-  '@farming-labs/orm-mongo@0.0.65(mongodb@6.21.0(socks@2.8.7))':
+  '@farming-labs/orm-mongo@0.0.66(mongodb@6.21.0(socks@2.8.7))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-mongoose': 0.0.65
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-mongoose': 0.0.66
     optionalDependencies:
       mongodb: 6.21.0(socks@2.8.7)
     transitivePeerDependencies:
       - mongoose
 
-  '@farming-labs/orm-mongoose@0.0.65':
+  '@farming-labs/orm-mongoose@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
 
-  '@farming-labs/orm-neo4j@0.0.65':
+  '@farming-labs/orm-neo4j@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
 
-  '@farming-labs/orm-prisma@0.0.65(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))':
+  '@farming-labs/orm-prisma@0.0.66(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
     optionalDependencies:
       '@prisma/client': 6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3)
 
-  '@farming-labs/orm-redis@0.0.65':
+  '@farming-labs/orm-redis@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
 
-  '@farming-labs/orm-runtime@0.0.65(dd634aa5b37e3be61a7a472b8440efd6)':
+  '@farming-labs/orm-runtime@0.0.66(dd634aa5b37e3be61a7a472b8440efd6)':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-d1': 0.0.65
-      '@farming-labs/orm-drizzle': 0.0.65(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
-      '@farming-labs/orm-dynamodb': 0.0.65(@aws-sdk/client-dynamodb@3.1103.0)(@aws-sdk/lib-dynamodb@3.1103.0(@aws-sdk/client-dynamodb@3.1103.0))
-      '@farming-labs/orm-edgedb': 0.0.65
-      '@farming-labs/orm-firestore': 0.0.65
-      '@farming-labs/orm-kv': 0.0.65
-      '@farming-labs/orm-kysely': 0.0.65(kysely@0.28.17)
-      '@farming-labs/orm-mikroorm': 0.0.65(@mikro-orm/core@7.1.10)
-      '@farming-labs/orm-mongo': 0.0.65(mongodb@6.21.0(socks@2.8.7))
-      '@farming-labs/orm-mongoose': 0.0.65
-      '@farming-labs/orm-neo4j': 0.0.65
-      '@farming-labs/orm-prisma': 0.0.65(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))
-      '@farming-labs/orm-redis': 0.0.65
-      '@farming-labs/orm-sequelize': 0.0.65(sequelize@6.37.8(pg@8.22.0))
-      '@farming-labs/orm-sql': 0.0.65
-      '@farming-labs/orm-supabase': 0.0.65
-      '@farming-labs/orm-surrealdb': 0.0.65(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))
-      '@farming-labs/orm-typeorm': 0.0.65(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))
-      '@farming-labs/orm-unstorage': 0.0.65(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)
-      '@farming-labs/orm-xata': 0.0.65(@xata.io/client@0.30.1(typescript@5.9.3))
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-d1': 0.0.66
+      '@farming-labs/orm-drizzle': 0.0.66(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))
+      '@farming-labs/orm-dynamodb': 0.0.66(@aws-sdk/client-dynamodb@3.1103.0)(@aws-sdk/lib-dynamodb@3.1103.0(@aws-sdk/client-dynamodb@3.1103.0))
+      '@farming-labs/orm-edgedb': 0.0.66
+      '@farming-labs/orm-firestore': 0.0.66
+      '@farming-labs/orm-kv': 0.0.66
+      '@farming-labs/orm-kysely': 0.0.66(kysely@0.28.17)
+      '@farming-labs/orm-mikroorm': 0.0.66(@mikro-orm/core@7.1.10)
+      '@farming-labs/orm-mongo': 0.0.66(mongodb@6.21.0(socks@2.8.7))
+      '@farming-labs/orm-mongoose': 0.0.66
+      '@farming-labs/orm-neo4j': 0.0.66
+      '@farming-labs/orm-prisma': 0.0.66(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))
+      '@farming-labs/orm-redis': 0.0.66
+      '@farming-labs/orm-sequelize': 0.0.66(sequelize@6.37.8(pg@8.22.0))
+      '@farming-labs/orm-sql': 0.0.66
+      '@farming-labs/orm-supabase': 0.0.66
+      '@farming-labs/orm-surrealdb': 0.0.66(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))
+      '@farming-labs/orm-typeorm': 0.0.66(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))
+      '@farming-labs/orm-unstorage': 0.0.66(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)
+      '@farming-labs/orm-xata': 0.0.66(@xata.io/client@0.30.1(typescript@5.9.3))
     optionalDependencies:
       '@aws-sdk/client-dynamodb': 3.1103.0
     transitivePeerDependencies:
@@ -11018,37 +11207,37 @@ snapshots:
       - typeorm
       - uploadthing
 
-  '@farming-labs/orm-sequelize@0.0.65(sequelize@6.37.8(pg@8.22.0))':
+  '@farming-labs/orm-sequelize@0.0.66(sequelize@6.37.8(pg@8.22.0))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
     optionalDependencies:
       sequelize: 6.37.8(pg@8.22.0)
 
-  '@farming-labs/orm-sql@0.0.65':
+  '@farming-labs/orm-sql@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
 
-  '@farming-labs/orm-supabase@0.0.65':
+  '@farming-labs/orm-supabase@0.0.66':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
 
-  '@farming-labs/orm-surrealdb@0.0.65(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))':
+  '@farming-labs/orm-surrealdb@0.0.66(surrealdb@2.0.8(tslib@2.8.1)(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
     optionalDependencies:
       surrealdb: 2.0.8(tslib@2.8.1)(typescript@5.9.3)
 
-  '@farming-labs/orm-typeorm@0.0.65(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))':
+  '@farming-labs/orm-typeorm@0.0.66(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
     optionalDependencies:
       typeorm: 0.3.31(ioredis@5.11.1)(mongodb@6.21.0(socks@2.8.7))(pg@8.22.0)
 
-  '@farming-labs/orm-unstorage@0.0.65(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)':
+  '@farming-labs/orm-unstorage@0.0.66(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)':
     dependencies:
-      '@farming-labs/orm': 0.0.65
+      '@farming-labs/orm': 0.0.66
       unstorage: 1.17.5(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))))(ioredis@5.11.1)
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -11071,14 +11260,217 @@ snapshots:
       - ioredis
       - uploadthing
 
-  '@farming-labs/orm-xata@0.0.65(@xata.io/client@0.30.1(typescript@5.9.3))':
+  '@farming-labs/orm-xata@0.0.66(@xata.io/client@0.30.1(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/orm': 0.0.65
-      '@farming-labs/orm-sql': 0.0.65
+      '@farming-labs/orm': 0.0.66
+      '@farming-labs/orm-sql': 0.0.66
     optionalDependencies:
       '@xata.io/client': 0.30.1(typescript@5.9.3)
 
-  '@farming-labs/orm@0.0.65': {}
+  '@farming-labs/orm@0.0.66': {}
+
+  '@farming-labs/svelte-theme@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)(svelte@5.51.3)':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      '@farming-labs/svelte': 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))
+      gray-matter: 4.0.3
+      sugar-high: 0.9.5
+      svelte: 5.51.3
+    transitivePeerDependencies:
+      - '@vercel/sandbox'
+      - react
+      - supports-color
+
+  '@farming-labs/svelte@0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      '@scalar/core': 0.4.3
+      gray-matter: 4.0.3
+      shiki: 3.22.0
+
+  '@farming-labs/tanstack-start@0.2.145(51a0ccff97950268e6efd3cfe64e710a)':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      '@farming-labs/theme': 0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      '@mdx-js/rollup': 3.1.1(rollup@4.59.0)
+      '@scalar/core': 0.4.3
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      gray-matter: 4.0.3
+      react: 19.2.4
+      remark-frontmatter: 5.0.0
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-mdx-frontmatter: 5.2.0
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - '@mdx-js/mdx'
+      - '@mixedbread/sdk'
+      - '@modelcontextprotocol/server'
+      - '@orama/core'
+      - '@oramacloud/client'
+      - '@pierre/highlights'
+      - '@tanstack/react-router'
+      - '@types/estree-jsx'
+      - '@types/hast'
+      - '@types/mdast'
+      - '@types/react'
+      - algoliasearch
+      - flexsearch
+      - lucide-react
+      - meilisearch
+      - next
+      - react-dom
+      - react-router
+      - rollup
+      - supports-color
+      - waku
+
+  '@farming-labs/theme@0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      fumadocs-ui: 16.17.8(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      gray-matter: 4.0.3
+      sugar-high: 0.9.5
+      zod: 4.6.7
+    optionalDependencies:
+      next: 16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+    transitivePeerDependencies:
+      - '@mdx-js/mdx'
+      - '@mixedbread/sdk'
+      - '@modelcontextprotocol/server'
+      - '@orama/core'
+      - '@oramacloud/client'
+      - '@pierre/highlights'
+      - '@tanstack/react-router'
+      - '@types/estree-jsx'
+      - '@types/hast'
+      - '@types/mdast'
+      - '@types/mdx'
+      - '@types/react'
+      - '@types/react-dom'
+      - algoliasearch
+      - flexsearch
+      - lucide-react
+      - meilisearch
+      - react-router
+      - remix
+      - supports-color
+      - tailwindcss
+      - takumi-js
+      - waku
+
+  '@farming-labs/theme@0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      fumadocs-ui: 16.17.8(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      gray-matter: 4.0.3
+      sugar-high: 0.9.5
+      zod: 4.6.7
+    optionalDependencies:
+      next: 16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+    transitivePeerDependencies:
+      - '@mdx-js/mdx'
+      - '@mixedbread/sdk'
+      - '@modelcontextprotocol/server'
+      - '@orama/core'
+      - '@oramacloud/client'
+      - '@pierre/highlights'
+      - '@tanstack/react-router'
+      - '@types/estree-jsx'
+      - '@types/hast'
+      - '@types/mdast'
+      - '@types/mdx'
+      - '@types/react'
+      - '@types/react-dom'
+      - algoliasearch
+      - flexsearch
+      - lucide-react
+      - meilisearch
+      - react-router
+      - remix
+      - supports-color
+      - tailwindcss
+      - takumi-js
+      - waku
+
+  '@farming-labs/theme@0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      fumadocs-ui: 16.17.8(@types/mdx@2.0.13)(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      gray-matter: 4.0.3
+      sugar-high: 0.9.5
+      zod: 4.6.7
+    optionalDependencies:
+      next: 16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+    transitivePeerDependencies:
+      - '@mdx-js/mdx'
+      - '@mixedbread/sdk'
+      - '@modelcontextprotocol/server'
+      - '@orama/core'
+      - '@oramacloud/client'
+      - '@pierre/highlights'
+      - '@tanstack/react-router'
+      - '@types/estree-jsx'
+      - '@types/hast'
+      - '@types/mdast'
+      - '@types/mdx'
+      - '@types/react'
+      - '@types/react-dom'
+      - algoliasearch
+      - flexsearch
+      - lucide-react
+      - meilisearch
+      - react-router
+      - remix
+      - supports-color
+      - tailwindcss
+      - takumi-js
+      - waku
+
+  '@farming-labs/theme@0.2.145(@farming-labs/docs@0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4))(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)':
+    dependencies:
+      '@farming-labs/docs': 0.2.145(@vercel/sandbox@2.9.2)(react@19.2.4)
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      fumadocs-ui: 16.17.8(@types/mdx@2.0.13)(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      gray-matter: 4.0.3
+      sugar-high: 0.9.5
+      zod: 4.6.7
+    optionalDependencies:
+      next: 16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+    transitivePeerDependencies:
+      - '@mdx-js/mdx'
+      - '@mixedbread/sdk'
+      - '@modelcontextprotocol/server'
+      - '@orama/core'
+      - '@oramacloud/client'
+      - '@pierre/highlights'
+      - '@tanstack/react-router'
+      - '@types/estree-jsx'
+      - '@types/hast'
+      - '@types/mdast'
+      - '@types/mdx'
+      - '@types/react'
+      - '@types/react-dom'
+      - algoliasearch
+      - flexsearch
+      - lucide-react
+      - meilisearch
+      - react-router
+      - remix
+      - supports-color
+      - tailwindcss
+      - takumi-js
+      - waku
 
   '@floating-ui/core@1.8.0':
     dependencies:
@@ -14112,7 +14504,7 @@ snapshots:
   '@vercel/analytics@2.0.1(216f7eec8374401bac21e3a1c10493ba)':
     optionalDependencies:
       '@sveltejs/kit': 2.57.1(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.51.3)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)))(svelte@5.51.3)(typescript@5.9.3)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
-      next: 16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       nuxt: 3.21.11(@oxc-project/types@0.154.0)(@parcel/watcher@2.5.6)(@types/node@24.13.3)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.73)(ws@8.21.0))(@vue/compiler-sfc@3.5.43)(cac@6.7.14)(commander@13.1.0)(db0@0.4.1)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.2(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3))(typescript@5.9.3))(@xata.io/client@0.30.1(typescript@5.9.3))(kysely@0.28.17)(pg@8.22.0)(prisma@6.19.2(magicast@0.5.4)(typescript@5.9.3)))(esbuild@0.28.1)(ioredis@5.11.1)(lightningcss@1.33.0)(magicast@0.5.4)(oxlint@1.50.0)(rolldown@1.2.14)(rollup-plugin-visualizer@7.0.1(rolldown@1.2.14)(rollup@4.59.0))(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))(yaml@2.9.1)
       react: 19.2.4
       svelte: 5.51.3
@@ -15606,6 +15998,117 @@ snapshots:
   fsevents@2.3.3:
     optional: true
 
+  fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7):
+    dependencies:
+      '@fumari/image-size': 0.1.1
+      estree-util-value-to-estree: 3.5.0
+      github-slugger: 2.0.0
+      hast-util-from-dom: 5.0.1
+      hast-util-to-estree: 3.1.3(supports-color@10.2.2)
+      mdast-util-mdx: 3.0.0(supports-color@10.2.2)
+      micromark: 4.0.3
+      micromark-extension-gfm-table: 2.1.2
+      npm-to-yarn: 3.2.0
+      remark: 15.0.1
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-rehype: 11.1.2
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+      tinyglobby: 0.2.17
+      unified: 11.0.5
+      vfile: 6.0.3
+      yaml: 2.9.1
+      zbsearch: 4.0.1
+    optionalDependencies:
+      '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
+      '@modelcontextprotocol/server': 2.3.0
+      '@tanstack/react-router': 1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/estree-jsx': 1.0.5
+      '@types/hast': 3.0.5
+      '@types/mdast': 4.0.4
+      '@types/react': 19.2.14
+      lucide-react: 0.564.0(react@19.2.4)
+      next: 16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - supports-color
+
+  fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7):
+    dependencies:
+      '@fumari/image-size': 0.1.1
+      estree-util-value-to-estree: 3.5.0
+      github-slugger: 2.0.0
+      hast-util-from-dom: 5.0.1
+      hast-util-to-estree: 3.1.3(supports-color@10.2.2)
+      mdast-util-mdx: 3.0.0(supports-color@10.2.2)
+      micromark: 4.0.3
+      micromark-extension-gfm-table: 2.1.2
+      npm-to-yarn: 3.2.0
+      remark: 15.0.1
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-rehype: 11.1.2
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+      tinyglobby: 0.2.17
+      unified: 11.0.5
+      vfile: 6.0.3
+      yaml: 2.9.1
+      zbsearch: 4.0.1
+    optionalDependencies:
+      '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
+      '@modelcontextprotocol/server': 2.3.0
+      '@tanstack/react-router': 1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/estree-jsx': 1.0.5
+      '@types/hast': 3.0.5
+      '@types/mdast': 4.0.4
+      '@types/react': 19.2.14
+      lucide-react: 0.564.0(react@19.2.4)
+      next: 16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - supports-color
+
+  fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7):
+    dependencies:
+      '@fumari/image-size': 0.1.1
+      estree-util-value-to-estree: 3.5.0
+      github-slugger: 2.0.0
+      hast-util-from-dom: 5.0.1
+      hast-util-to-estree: 3.1.3(supports-color@10.2.2)
+      mdast-util-mdx: 3.0.0(supports-color@10.2.2)
+      micromark: 4.0.3
+      micromark-extension-gfm-table: 2.1.2
+      npm-to-yarn: 3.2.0
+      remark: 15.0.1
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-rehype: 11.1.2
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+      tinyglobby: 0.2.17
+      unified: 11.0.5
+      vfile: 6.0.3
+      yaml: 2.9.1
+      zbsearch: 4.0.1
+    optionalDependencies:
+      '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
+      '@modelcontextprotocol/server': 2.3.0
+      '@tanstack/react-router': 1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/estree-jsx': 1.0.5
+      '@types/hast': 3.0.5
+      '@types/mdast': 4.0.4
+      '@types/react': 19.2.14
+      lucide-react: 1.66.0(@types/react@19.2.14)(react@19.2.4)
+      next: 16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - supports-color
+
   fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7):
     dependencies:
       '@fumari/image-size': 0.1.1
@@ -15643,6 +16146,74 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7):
+    dependencies:
+      '@fumari/image-size': 0.1.1
+      estree-util-value-to-estree: 3.5.0
+      github-slugger: 2.0.0
+      hast-util-from-dom: 5.0.1
+      hast-util-to-estree: 3.1.3(supports-color@10.2.2)
+      mdast-util-mdx: 3.0.0(supports-color@10.2.2)
+      micromark: 4.0.3
+      micromark-extension-gfm-table: 2.1.2
+      npm-to-yarn: 3.2.0
+      remark: 15.0.1
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-rehype: 11.1.2
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+      tinyglobby: 0.2.17
+      unified: 11.0.5
+      vfile: 6.0.3
+      yaml: 2.9.1
+      zbsearch: 4.0.1
+    optionalDependencies:
+      '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
+      '@modelcontextprotocol/server': 2.3.0
+      '@tanstack/react-router': 1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/estree-jsx': 1.0.5
+      '@types/hast': 3.0.5
+      '@types/mdast': 4.0.4
+      '@types/react': 19.2.14
+      lucide-react: 1.66.0(@types/react@19.2.14)(react@19.2.4)
+      next: 16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - supports-color
+
+  fumadocs-openapi@12.4.1(95623cc2bbbd2a2a174d189f1f2af432):
+    dependencies:
+      '@base-ui/react': 1.9.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@fuma-translate/react': 1.0.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@fumadocs/json-schema': 0.3.0(@types/react@19.2.14)(json-schema-typed@8.0.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@fumari/json-schema-ts': 1.0.2(json-schema-typed@8.0.2)
+      '@fumari/stf': 1.1.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@scalar/json-magic': 0.15.6
+      '@scalar/openapi-upgrader': 0.4.3
+      chokidar: 5.0.0
+      class-variance-authority: 0.7.1
+      cn: 0.4.0
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      fumadocs-ui: 16.17.8(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3)
+      github-slugger: 2.0.0
+      hast-util-to-jsx-runtime: 2.3.6(supports-color@10.2.2)
+      lucide-react: 1.54.0(@types/react@19.2.14)(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      remark: 15.0.1
+      remark-rehype: 11.1.2
+      shiki: 4.5.0
+      yaml: 2.9.1
+    optionalDependencies:
+      '@types/react': 19.2.14
+      json-schema-typed: 8.0.2
+    transitivePeerDependencies:
+      - '@date-fns/tz'
+      - date-fns
+      - supports-color
+
   fumadocs-openapi@12.4.1(ed58225059db7fb4654b25379519652b):
     dependencies:
       '@base-ui/react': 1.9.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -15674,6 +16245,74 @@ snapshots:
       - date-fns
       - supports-color
 
+  fumadocs-ui@16.17.8(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3):
+    dependencies:
+      '@fuma-translate/react': 1.0.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@fumadocs/tailwind': 0.1.4(tailwindcss@4.3.3)
+      '@radix-ui/react-accordion': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-collapsible': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-dialog': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-direction': 1.2.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-navigation-menu': 1.4.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-popover': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-presence': 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-scroll-area': 1.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-slot': 1.5.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-tabs': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      class-variance-authority: 0.7.1
+      cn: 0.5.2
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      lucide-react: 1.66.0(@types/react@19.2.14)(react@19.2.4)
+      motion: 14.9.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next-themes: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      react-remove-scroll: 2.7.2(@types/react@19.2.14)(react@19.2.4)
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+    optionalDependencies:
+      '@types/mdx': 2.0.13
+      '@types/react': 19.2.14
+      next: 16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+    transitivePeerDependencies:
+      - '@types/react-dom'
+      - remix
+      - tailwindcss
+
+  fumadocs-ui@16.17.8(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3):
+    dependencies:
+      '@fuma-translate/react': 1.0.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@fumadocs/tailwind': 0.1.4(tailwindcss@4.3.3)
+      '@radix-ui/react-accordion': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-collapsible': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-dialog': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-direction': 1.2.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-navigation-menu': 1.4.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-popover': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-presence': 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-scroll-area': 1.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-slot': 1.5.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-tabs': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      class-variance-authority: 0.7.1
+      cn: 0.5.2
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      lucide-react: 1.66.0(@types/react@19.2.14)(react@19.2.4)
+      motion: 14.9.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next-themes: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      react-remove-scroll: 2.7.2(@types/react@19.2.14)(react@19.2.4)
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+    optionalDependencies:
+      '@types/mdx': 2.0.13
+      '@types/react': 19.2.14
+      next: 16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+    transitivePeerDependencies:
+      - '@types/react-dom'
+      - remix
+      - tailwindcss
+
   fumadocs-ui@16.17.8(@types/mdx@2.0.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3):
     dependencies:
       '@fuma-translate/react': 1.0.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -15703,6 +16342,74 @@ snapshots:
       '@types/mdx': 2.0.13
       '@types/react': 19.2.14
       next: 16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+    transitivePeerDependencies:
+      - '@types/react-dom'
+      - remix
+      - tailwindcss
+
+  fumadocs-ui@16.17.8(@types/mdx@2.0.13)(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3):
+    dependencies:
+      '@fuma-translate/react': 1.0.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@fumadocs/tailwind': 0.1.4(tailwindcss@4.3.3)
+      '@radix-ui/react-accordion': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-collapsible': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-dialog': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-direction': 1.2.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-navigation-menu': 1.4.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-popover': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-presence': 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-scroll-area': 1.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-slot': 1.5.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-tabs': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      class-variance-authority: 0.7.1
+      cn: 0.5.2
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      lucide-react: 1.66.0(@types/react@19.2.14)(react@19.2.4)
+      motion: 14.9.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next-themes: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      react-remove-scroll: 2.7.2(@types/react@19.2.14)(react@19.2.4)
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+    optionalDependencies:
+      '@types/mdx': 2.0.13
+      '@types/react': 19.2.14
+      next: 16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+    transitivePeerDependencies:
+      - '@types/react-dom'
+      - remix
+      - tailwindcss
+
+  fumadocs-ui@16.17.8(@types/mdx@2.0.13)(@types/react@19.2.14)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.3.3):
+    dependencies:
+      '@fuma-translate/react': 1.0.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@fumadocs/tailwind': 0.1.4(tailwindcss@4.3.3)
+      '@radix-ui/react-accordion': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-collapsible': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-dialog': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-direction': 1.2.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-navigation-menu': 1.4.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-popover': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-presence': 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-scroll-area': 1.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@radix-ui/react-slot': 1.5.0(@types/react@19.2.14)(react@19.2.4)
+      '@radix-ui/react-tabs': 1.2.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      class-variance-authority: 0.7.1
+      cn: 0.5.2
+      fumadocs-core: 16.17.8(@mdx-js/mdx@3.1.1)(@modelcontextprotocol/server@2.3.0)(@tanstack/react-router@1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@1.66.0(@types/react@19.2.14)(react@19.2.4))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
+      lucide-react: 1.66.0(@types/react@19.2.14)(react@19.2.4)
+      motion: 14.9.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next-themes: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      react-remove-scroll: 2.7.2(@types/react@19.2.14)(react@19.2.4)
+      scroll-into-view-if-needed: 3.1.0
+      shiki: 4.5.0
+    optionalDependencies:
+      '@types/mdx': 2.0.13
+      '@types/react': 19.2.14
+      next: 16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     transitivePeerDependencies:
       - '@types/react-dom'
       - remix
@@ -16150,7 +16857,7 @@ snapshots:
 
   is-reference@3.0.3:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
 
   is-stream@2.0.1: {}
 
@@ -17150,7 +17857,7 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  next@16.4.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@next/env': 16.4.3
       '@swc/helpers': 0.5.23
@@ -17159,34 +17866,7 @@ snapshots:
       postcss: 8.5.23
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      styled-jsx: 5.1.6(react@19.2.4)
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 16.4.3
-      '@next/swc-darwin-x64': 16.4.3
-      '@next/swc-linux-arm64-gnu': 16.4.3
-      '@next/swc-linux-arm64-musl': 16.4.3
-      '@next/swc-linux-x64-gnu': 16.4.3
-      '@next/swc-linux-x64-musl': 16.4.3
-      '@next/swc-win32-arm64-msvc': 16.4.3
-      '@next/swc-win32-x64-msvc': 16.4.3
-      '@opentelemetry/api': 1.9.1
-      '@playwright/test': 1.59.1
-      sharp: 0.35.5(@types/node@22.20.5)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@types/node'
-      - babel-plugin-macros
-
-  next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
-    dependencies:
-      '@next/env': 16.4.3
-      '@swc/helpers': 0.5.23
-      baseline-browser-mapping: 2.11.13
-      caniuse-lite: 1.0.30001809
-      postcss: 8.5.23
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-      styled-jsx: 5.1.6(react@19.2.4)
+      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.2.4)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.4.3
       '@next/swc-darwin-x64': 16.4.3
@@ -17204,6 +17884,61 @@ snapshots:
       - '@types/node'
       - babel-plugin-macros
     optional: true
+
+  next@16.4.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      '@next/env': 16.4.3
+      '@swc/helpers': 0.5.23
+      baseline-browser-mapping: 2.11.13
+      caniuse-lite: 1.0.30001809
+      postcss: 8.5.23
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.4)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 16.4.3
+      '@next/swc-darwin-x64': 16.4.3
+      '@next/swc-linux-arm64-gnu': 16.4.3
+      '@next/swc-linux-arm64-musl': 16.4.3
+      '@next/swc-linux-x64-gnu': 16.4.3
+      '@next/swc-linux-x64-musl': 16.4.3
+      '@next/swc-win32-arm64-msvc': 16.4.3
+      '@next/swc-win32-x64-msvc': 16.4.3
+      '@opentelemetry/api': 1.9.1
+      '@playwright/test': 1.59.1
+      sharp: 0.35.5(@types/node@24.13.3)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@types/node'
+      - babel-plugin-macros
+    optional: true
+
+  next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      '@next/env': 16.4.3
+      '@swc/helpers': 0.5.23
+      baseline-browser-mapping: 2.11.13
+      caniuse-lite: 1.0.30001809
+      postcss: 8.5.23
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.4)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 16.4.3
+      '@next/swc-darwin-x64': 16.4.3
+      '@next/swc-linux-arm64-gnu': 16.4.3
+      '@next/swc-linux-arm64-musl': 16.4.3
+      '@next/swc-linux-x64-gnu': 16.4.3
+      '@next/swc-linux-x64-musl': 16.4.3
+      '@next/swc-win32-arm64-msvc': 16.4.3
+      '@next/swc-win32-x64-msvc': 16.4.3
+      '@opentelemetry/api': 1.9.1
+      '@playwright/test': 1.59.1
+      sharp: 0.35.5(@types/node@22.20.5)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@types/node'
+      - babel-plugin-macros
 
   nf3@0.3.24: {}
 
@@ -19079,10 +19814,20 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.7
 
-  styled-jsx@5.1.6(react@19.2.4):
+  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.2.4):
     dependencies:
       client-only: 0.0.1
       react: 19.2.4
+    optionalDependencies:
+      '@babel/core': 7.29.0
+    optional: true
+
+  styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.2.4):
+    dependencies:
+      client-only: 0.0.1
+      react: 19.2.4
+    optionalDependencies:
+      '@babel/core': 7.29.7
 
   stylehacks@7.0.11(postcss@8.5.29):
     dependencies:
