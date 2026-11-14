@@ -1,0 +1,159 @@
+{
+  "runId": "timing-2",
+  "commit": "b926605bdbcaedb770c215240fea0550b042ebf8",
+  "node": "v24.21.0",
+  "rows": [
+    {
+      "pages": 100,
+      "trial": 1,
+      "loadAvg1mAtStart": 5.0947265625,
+      "wallSeconds": 15.147693333,
+      "peakTreeRssMiB": 2404.40625,
+      "phasesSeconds": {
+        "compile": 10.1,
+        "typecheck": 2.0,
+        "staticGeneration": 1.133
+      },
+      "marksSeconds": {
+        "configDone": 0.819,
+        "buildStart": 0.904,
+        "compileDone": 11.032,
+        "typecheckDone": 13.064,
+        "pageDataStart": 13.066,
+        "staticStart": 13.712,
+        "staticDone": 14.844,
+        "finalizeStart": 14.861,
+        "routeTable": 14.87,
+        "exit": 15.148
+      },
+      "spawnEpochMs": 1794521758625.835,
+      "mdx": {
+        "files": 100,
+        "failed": 0,
+        "workers": 8,
+        "sumWallMs": 19372,
+        "sumCpuMs": 10072,
+        "maxWorkerBusyMs": 2507,
+        "spanMs": 2911,
+        "medianFileWallMs": 102.8,
+        "p95FileWallMs": 801.6,
+        "firstStartS": 1.227,
+        "lastEndS": 4.138
+      }
+    },
+    {
+      "pages": 100,
+      "trial": 2,
+      "loadAvg1mAtStart": 7.72802734375,
+      "wallSeconds": 11.604037791999998,
+      "peakTreeRssMiB": 2751.859375,
+      "phasesSeconds": {
+        "compile": 7.0,
+        "typecheck": 1.925,
+        "staticGeneration": 1.235
+      },
+      "marksSeconds": {
+        "configDone": 0.455,
+        "buildStart": 0.503,
+        "compileDone": 7.479,
+        "typecheckDone": 9.411,
+        "pageDataStart": 9.413,
+        "staticStart": 10.039,
+        "staticDone": 11.273,
+        "finalizeStart": 11.286,
+        "routeTable": 11.295,
+        "exit": 11.604
+      },
+      "spawnEpochMs": 1794521774290.0999,
+      "mdx": {
+        "files": 100,
+        "failed": 0,
+        "workers": 8,
+        "sumWallMs": 11634,
+        "sumCpuMs": 9503,
+        "maxWorkerBusyMs": 1556,
+        "spanMs": 1833,
+        "medianFileWallMs": 54.6,
+        "p95FileWallMs": 716.4,
+        "firstStartS": 0.702,
+        "lastEndS": 2.535
+      }
+    },
+    {
+      "pages": 500,
+      "trial": 1,
+      "loadAvg1mAtStart": 7.48046875,
+      "wallSeconds": 28.635205582999998,
+      "peakTreeRssMiB": 2951.078125,
+      "phasesSeconds": {
+        "compile": 15.1,
+        "typecheck": 2.6,
+        "staticGeneration": 7.5
+      },
+      "marksSeconds": {
+        "configDone": 0.452,
+        "buildStart": 0.521,
+        "compileDone": 15.662,
+        "typecheckDone": 18.256,
+        "pageDataStart": 18.259,
+        "staticStart": 20.57,
+        "staticDone": 28.083,
+        "finalizeStart": 28.098,
+        "routeTable": 28.109,
+        "exit": 28.635
+      },
+      "spawnEpochMs": 1794521786085.314,
+      "mdx": {
+        "files": 500,
+        "failed": 0,
+        "workers": 8,
+        "sumWallMs": 33296,
+        "sumCpuMs": 22315,
+        "maxWorkerBusyMs": 4349,
+        "spanMs": 5147,
+        "medianFileWallMs": 40.4,
+        "p95FileWallMs": 123.4,
+        "firstStartS": 0.802,
+        "lastEndS": 5.949
+      }
+    },
+    {
+      "pages": 500,
+      "trial": 2,
+      "loadAvg1mAtStart": 7.50634765625,
+      "wallSeconds": 86.26758408399999,
+      "peakTreeRssMiB": 3517.1875,
+      "phasesSeconds": {
+        "compile": 30.7,
+        "typecheck": 9.7,
+        "staticGeneration": 26.7
+      },
+      "marksSeconds": {
+        "configDone": 0.57,
+        "buildStart": 0.675,
+        "compileDone": 31.373,
+        "typecheckDone": 41.042,
+        "pageDataStart": 41.082,
+        "staticStart": 58.433,
+        "staticDone": 85.117,
+        "finalizeStart": 85.162,
+        "routeTable": 85.201,
+        "exit": 86.268
+      },
+      "spawnEpochMs": 1794521817077.4841,
+      "mdx": {
+        "files": 500,
+        "failed": 0,
+        "workers": 8,
+        "sumWallMs": 43975,
+        "sumCpuMs": 24448,
+        "maxWorkerBusyMs": 5606,
+        "spanMs": 6404,
+        "medianFileWallMs": 58.1,
+        "p95FileWallMs": 196.4,
+        "firstStartS": 1.137,
+        "lastEndS": 7.541
+      }
+    }
+  ]
+}
