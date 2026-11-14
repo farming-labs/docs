@@ -1,0 +1,201 @@
+name: Release
+
+# Run by hand after a version bump (bumpp) has been merged.
+#
+# 1. Checks that every package in bump.config.ts is at `version`.
+# 2. If `publish` is on, builds and publishes those packages to npm with
+#    trusted publishing (OIDC): no npm token is stored in the repository.
+#    Packages already on npm at this version are skipped, so a failed run
+#    can be retried.
+# 3. Creates the vX.Y.Z tag on `target` (or reuses it) and the GitHub release.
+#
+# Trusted publishing must be set up once per package on npmjs.com:
+# package settings > Trusted publishing > GitHub Actions, with
+# organization `farming-labs`, repository `docs`, workflow `release.yml`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (e.g. 0.2.145)"
+        required: true
+        type: string
+      target:
+        description: "Branch or commit SHA to release from (ignored if the tag already exists)"
+        required: false
+        default: main
+        type: string
+      publish:
+        description: "Publish the packages to npm before creating the release"
+        required: false
+        default: true
+        type: boolean
+      dist_tag:
+        description: "npm dist-tag to publish under"
+        required: false
+        default: latest
+        type: string
+      notes:
+        description: "Release notes (Markdown). Leave empty to use GitHub's generated notes."
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release v${{ inputs.version }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          DIST_TAG: ${{ inputs.dist_tag }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::version must look like 0.2.145 (got '$VERSION')"
+            exit 1
+          fi
+          if ! [[ "$DIST_TAG" =~ ^[a-z][a-z0-9-]*$ ]]; then
+            echo "::error::dist_tag must be a simple name like latest or beta (got '$DIST_TAG')"
+            exit 1
+          fi
+
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target }}
+          fetch-depth: 0
+
+      - name: Resolve release commit and check versions
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          tag="v$VERSION"
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists"
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            sha=$(git rev-list -n 1 "$tag")
+            echo "Tag $tag already exists at $sha; releasing that commit."
+            git checkout --detach "$sha"
+          else
+            sha=$(git rev-parse HEAD)
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+          bad=0
+          for f in $(grep -oE 'packages/[^"]+/package\.json' bump.config.ts); do
+            v=$(node -p "require('./$f').version")
+            if [ "$v" != "$VERSION" ]; then
+              echo "::error file=$f::$f is at $v, expected $VERSION"
+              bad=1
+            fi
+          done
+          [ "$bad" -eq 0 ] || exit 1
+
+      - name: Setup pnpm
+        if: inputs.publish
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+
+      - name: Setup Node.js
+        if: inputs.publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Use an npm that supports trusted publishing
+        if: inputs.publish
+        run: |
+          npm install -g npm@^11.5.1
+          npm --version
+
+      - name: Install dependencies
+        if: inputs.publish
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: inputs.publish
+        run: pnpm build
+
+      - name: Publish to npm
+        if: inputs.publish
+        env:
+          VERSION: ${{ inputs.version }}
+          DIST_TAG: ${{ inputs.dist_tag }}
+        run: |
+          out="$RUNNER_TEMP/packs"
+          mkdir -p "$out"
+          for f in $(grep -oE 'packages/[^"]+/package\.json' bump.config.ts); do
+            dir=$(dirname "$f")
+            name=$(node -p "require('./$f').name")
+            if npm view "$name@$VERSION" version >/dev/null 2>&1; then
+              echo "$name@$VERSION is already on npm, skipping"
+              continue
+            fi
+            # pnpm pack rewrites workspace: ranges to real versions.
+            tarball=$(cd "$dir" && pnpm pack --pack-destination "$out" | tail -n 1)
+            echo "Publishing $name@$VERSION ($DIST_TAG)"
+            npm publish "$tarball" --access public --tag "$DIST_TAG"
+          done
+
+      - name: Verify npm versions
+        if: inputs.publish
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          {
+            echo "### npm"
+            echo
+            echo "| Package | Version |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for f in $(grep -oE 'packages/[^"]+/package\.json' bump.config.ts); do
+            name=$(node -p "require('./$f').name")
+            found=""
+            for i in 1 2 3 4 5 6; do
+              found=$(npm view "$name@$VERSION" version --prefer-online 2>/dev/null || true)
+              [ -n "$found" ] && break
+              sleep 10
+            done
+            if [ -z "$found" ]; then
+              echo "::error::$name@$VERSION is not visible on npm"
+              exit 1
+            fi
+            echo "| $name | $found |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.notes }}
+          SHA: ${{ steps.check.outputs.sha }}
+        run: |
+          tag="v$VERSION"
+          args=(--repo "$GITHUB_REPOSITORY" --target "$SHA" --title "$tag")
+          if [ -n "$NOTES" ]; then
+            printf '%s\n' "$NOTES" > "$RUNNER_TEMP/notes.md"
+            args+=(--notes-file "$RUNNER_TEMP/notes.md")
+          else
+            args+=(--generate-notes)
+          fi
+          gh release create "$tag" "${args[@]}"
+          url=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url --jq .url)
+          printf '\n### GitHub release\n\n%s\n' "$url" >> "$GITHUB_STEP_SUMMARY"
