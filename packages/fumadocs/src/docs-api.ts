@@ -1597,7 +1597,9 @@ function hasVisibleDescendantDocsSearchPage(
       try {
         const data = reader.document(pageSource).data;
         const hiddenFolderIndex = resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
-        if (data.hidden !== true && !hiddenFolderIndex) return remember(true);
+        if (data.hidden !== true && data.audience !== "agent" && !hiddenFolderIndex) {
+          return remember(true);
+        }
       } catch {
         return remember(true);
       }
@@ -1703,6 +1705,7 @@ function scanDocsDir(
 
           indexes.push({
             title,
+            ...(data.audience === "agent" ? { audience: "agent" as const } : {}),
             description,
             relatedInput: data.related,
             agent: normalizePageAgentFrontmatter(data.agent),

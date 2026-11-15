@@ -427,6 +427,10 @@ function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record
       ["packages", "next", "dist", "mdx-plugins", "remark-markdown-alternate.mjs"],
       ["packages", "next", "src", "mdx-plugins", "remark-markdown-alternate.ts"],
     ),
+    "@farming-labs/next/mdx-plugins/remark-agent-only": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-agent-only.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-agent-only.ts"],
+    ),
     "@farming-labs/theme": workspaceEntrypoint(
       ["packages", "fumadocs", "dist", "index.mjs"],
       ["packages", "fumadocs", "src", "index.ts"],
@@ -2590,7 +2594,12 @@ function buildHiddenFolderRedirects(docsDir: string, docsPath: string): NextRedi
       const childDir = join(dir, name);
       const childSlugParts = [...slugParts, name];
       const data = frontmatter(childDir);
-      if (!data || data.hidden === true || resolveDocsPageFolderIndexBehavior(data) === "hidden") {
+      if (
+        !data ||
+        data.hidden === true ||
+        data.audience === "agent" ||
+        resolveDocsPageFolderIndexBehavior(data) === "hidden"
+      ) {
         destination = firstVisibleChild(childDir, childSlugParts);
         if (!destination) continue;
       } else {
@@ -3052,6 +3061,7 @@ export function withDocs(
     },
   ]);
   remarkPlugins.push(
+    "@farming-labs/next/mdx-plugins/remark-agent-only",
     ["remark-mdx-frontmatter", { name: "metadata" }],
     "@farming-labs/next/mdx-plugins/remark-code-group",
     "@farming-labs/next/mdx-plugins/remark-heading",
@@ -3177,6 +3187,14 @@ export function withDocs(
           "dist",
           "mdx-plugins",
           "remark-markdown-alternate.mjs",
+        ),
+        "@farming-labs/next/mdx-plugins/remark-agent-only": join(
+          workspaceRoot,
+          "packages",
+          "next",
+          "dist",
+          "mdx-plugins",
+          "remark-agent-only.mjs",
         ),
         "@farming-labs/theme$": join(workspaceRoot, "packages", "fumadocs", "dist", "index.mjs"),
         "@farming-labs/theme/api": join(

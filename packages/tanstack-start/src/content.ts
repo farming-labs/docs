@@ -14,6 +14,7 @@ import {
   normalizePageAgentFrontmatter,
   normalizeDocsOkfTrustMetadataInput,
   resolveDocsAudienceMdxContent,
+  resolveDocsPageAudience,
   resolvePageSidebarFolderIndexBehavior,
   type OrderingItem,
   type PageAgentFrontmatter,
@@ -50,6 +51,8 @@ export interface ContentPage {
   slug: string;
   url: string;
   title: string;
+  /** `"agent"` pages are left out of navigation, human search, and HTML routes. */
+  audience?: "agent";
   description?: string;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
@@ -118,6 +121,7 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         slug,
         url,
         title,
+        ...(resolveDocsPageAudience(data.audience) ? { audience: "agent" as const } : {}),
         description: data.description as string | undefined,
         ...(related.length > 0 ? { related } : {}),
         agent: normalizePageAgentFrontmatter(data.agent),
@@ -172,8 +176,10 @@ export function loadDocsNavTree(
   const children: NavNode[] = [];
 
   const indexPath = findIndex(absDir);
-  if (indexPath) {
-    const { data } = matter(fs.readFileSync(indexPath, "utf-8"));
+  const rootData = indexPath ? matter(fs.readFileSync(indexPath, "utf-8")).data : undefined;
+  // An agent-only root page has no human projection, so it has no sidebar entry.
+  if (rootData && !resolveDocsPageAudience(rootData.audience)) {
+    const data = rootData;
     children.push({
       type: "page",
       name: (data.title as string) ?? "Documentation",
@@ -213,6 +219,13 @@ function buildNavNode(
     const childPath = path.join(full, childName);
     return fs.statSync(childPath).isDirectory() && findIndex(childPath) !== null;
   });
+
+  // An agent-only page has no human projection: keep visible children under a plain folder.
+  if (resolveDocsPageAudience(data.audience)) {
+    const children =
+      childDirs.length > 0 ? scanDir(full, slug, entry, ordering, childSlugOrder) : [];
+    return children.length > 0 ? { type: "folder", name: displayName, icon, children } : null;
+  }
 
   if (childDirs.length > 0) {
     return {

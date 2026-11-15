@@ -467,6 +467,13 @@ export interface DocsOkfTrustMetadata {
 export interface PageFrontmatter {
   title: string;
   description?: string;
+  /**
+   * Restrict the page to one audience. `"agent"` pages are left out of the sidebar, prev/next
+   * links, human search, and `sitemap.xml`, and their HTML route returns 404. They stay readable
+   * at `{page}.md`, through markdown content negotiation, `llms.txt`, `sitemap.md`, and MCP.
+   * This hides the page from people browsing the site; it is not access control.
+   */
+  audience?: "agent";
   /** Related doc URLs rendered into machine-readable markdown routes and MCP page output. */
   related?: DocsRelatedItem[];
   /** Per-page agent-oriented metadata used by machine-readable docs features. */
@@ -1815,6 +1822,8 @@ export type DocsSearchResultType = "page" | "heading" | "text";
 export interface DocsSearchSourcePage {
   title: string;
   url: string;
+  /** Page-level audience from frontmatter. `"agent"` pages have no human projection. */
+  audience?: "agent";
   /** Canonical public URL override. Relative values are resolved against the request base URL. */
   canonicalUrl?: string;
   content: string;

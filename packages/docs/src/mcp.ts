@@ -32,6 +32,7 @@ import type {
 import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { resolveDocsAudienceMdxContent } from "./audience.js";
+import { resolveDocsPageAudience } from "./audience-exposure.js";
 import { filterDocsPagesByAccess } from "./access.js";
 import {
   hasStructuredPageAgentContract,
@@ -161,6 +162,8 @@ export interface DocsMcpPage {
   slug: string;
   url: string;
   title: string;
+  /** Page-level audience from frontmatter. `"agent"` pages have no human projection. */
+  audience?: DocsSearchSourcePage["audience"];
   type?: DocsSearchSourcePage["type"];
   description?: string;
   related?: DocsSearchSourcePage["related"];
@@ -3930,8 +3933,9 @@ export function createFilesystemDocsMcpSource(
     const cached = navigationCache.get("__default__");
     if (cached) return cached;
 
+    // Navigation mirrors the human sidebar, which has no agent-only pages.
     const tree = buildNavigationTreeFromPages(
-      getPages(),
+      getPages().filter((page) => resolveDocsPageAudience(page.audience) === undefined),
       options.siteTitle ?? "Documentation",
       options.ordering,
     );
@@ -7924,7 +7928,12 @@ function scanFilesystemDocsPages(
           const data = readDocument(pageSource).data;
           const hiddenFolderIndex =
             resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
-          if (data.hidden !== true && !hiddenFolderIndex) return remember(true);
+          if (
+            data.hidden !== true &&
+            resolveDocsPageAudience(data.audience) === undefined &&
+            !hiddenFolderIndex
+          )
+            return remember(true);
         } catch {
           return remember(true);
         }
@@ -7983,6 +7992,7 @@ function scanFilesystemDocsPages(
         slug,
         url,
         title,
+        ...(resolveDocsPageAudience(data.audience) ? { audience: "agent" as const } : {}),
         description: data.description as string | undefined,
         relatedInput: data.related,
         agent: normalizePageAgentFrontmatter(data.agent),

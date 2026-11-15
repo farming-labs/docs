@@ -20,6 +20,7 @@ export default defineConfig({
     "src/mdx-plugins/rehype-code.ts",
     "src/mdx-plugins/remark-og.ts",
     "src/mdx-plugins/remark-markdown-alternate.ts",
+    "src/mdx-plugins/remark-agent-only.ts",
   ],
   format: "esm",
   dts: true,

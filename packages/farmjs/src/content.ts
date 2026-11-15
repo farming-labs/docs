@@ -14,6 +14,7 @@ import {
   normalizePageAgentFrontmatter,
   normalizeDocsOkfTrustMetadataInput,
   resolveDocsAudienceMdxContent,
+  resolveDocsPageAudience,
   resolvePageSidebarFolderIndexBehavior,
   type OrderingItem,
   type PageAgentFrontmatter,
@@ -51,6 +52,8 @@ export interface ContentPage {
   slug: string;
   url: string;
   title: string;
+  /** `"agent"` pages are left out of navigation, human search, and HTML routes. */
+  audience?: "agent";
   description?: string;
   related?: ResolvedDocsRelatedLink[];
   agent?: PageAgentFrontmatter;
@@ -167,6 +170,7 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         slug,
         url,
         title,
+        ...(resolveDocsPageAudience(data.audience) ? { audience: "agent" as const } : {}),
         description: data.description as string | undefined,
         ...(related.length > 0 ? { related } : {}),
         agent: normalizePageAgentFrontmatter(data.agent),
@@ -233,8 +237,10 @@ export function loadDocsNavTree(
   };
 
   const indexPath = findIndex(absDir);
-  if (indexPath) {
-    const data = readFrontmatter(indexPath);
+  const rootData = indexPath ? readFrontmatter(indexPath) : undefined;
+  // An agent-only root page has no human projection, so it has no sidebar entry.
+  if (rootData && !resolveDocsPageAudience(rootData.audience)) {
+    const data = rootData;
     children.push({
       type: "page",
       name: (data.title as string) ?? "Documentation",
@@ -270,6 +276,7 @@ function buildNavNode(
     if (baseName === "page" || baseName === "index") return null;
 
     const data = readFrontmatter(full);
+    if (resolveDocsPageAudience(data.audience)) return null;
     const slug = [...slugParts, baseName].join("/");
 
     return {
@@ -292,6 +299,8 @@ function buildNavNode(
     (data.title as string) ??
     name.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   const icon = data.icon as string | undefined;
+  // An agent-only index has no human projection: keep visible children under a plain folder.
+  const hasIndex = Boolean(indexPath) && !resolveDocsPageAudience(data.audience);
 
   const children = scanDir(full, slug, entry, readFrontmatter, ordering, childSlugOrder);
 
@@ -300,13 +309,13 @@ function buildNavNode(
       type: "folder",
       name: displayName,
       icon,
-      ...(indexPath ? { index: { type: "page" as const, name: displayName, url, icon } } : {}),
+      ...(hasIndex ? { index: { type: "page" as const, name: displayName, url, icon } } : {}),
       folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
       children,
     };
   }
 
-  return indexPath ? { type: "page", name: displayName, url, icon } : null;
+  return hasIndex ? { type: "page", name: displayName, url, icon } : null;
 }
 
 function navEntrySlug(name: string): string {

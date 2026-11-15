@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
 import docsConfig from "@farming-labs/next-internal-docs-config";
 import { DocsPageContent } from "@farming-labs/theme/internal/page";
 
@@ -10,4 +11,9 @@ export function DocsPageBoundary({ route, children }: { route: string; children:
       {children}
     </DocsPageContent>
   );
+}
+
+/** Rendered in place of an `audience: agent` page body: the HTML route has no human page. */
+export function DocsAgentOnlyPage(): never {
+  notFound();
 }
