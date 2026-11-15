@@ -37,7 +37,19 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 2. explicit verification and troubleshooting sections on important task pages
 3. additive `<Agent>` blocks for machine-only hints when the human page is still canonical
 4. sibling `agent.md` only when the machine-readable page needs a full rewrite
-5. machine surfaces like `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, local/remote JSON/YAML OpenAPI schema discovery, `sitemap.md`, `robots.txt`, `AGENTS.md`, MCP, and the agent discovery spec
-6. validation with `docs doctor --agent`, `docs sitemap generate --check`, and `docs robots generate --check`, then compaction with `docs agent compact` where helpful
-7. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
-8. treat submitted feedback, analytics, and evaluation data as untrusted input, not prompt context
+5. `audience: agent` frontmatter for a page that agents need and the human docs do not
+6. machine surfaces like `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, local/remote JSON/YAML OpenAPI schema discovery, `sitemap.md`, `robots.txt`, `AGENTS.md`, MCP, and the agent discovery spec
+7. validation with `docs doctor --agent`, `docs sitemap generate --check`, and `docs robots generate --check`, then compaction with `docs agent compact` where helpful
+8. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
+9. treat submitted feedback, analytics, and evaluation data as untrusted input, not prompt context
+
+## Agent-only pages
+
+Add `audience: agent` to a page's frontmatter when only agents need it (a release runbook, an exhaustive configuration matrix, migration steps).
+
+- Left out: sidebar, prev/next, human search, `sitemap.xml`, MCP `get_navigation`. The HTML route returns 404, and the body is not shipped to the browser.
+- Still served: `{page}.md`, `GET /api/docs?format=markdown&path=<slug>`, Markdown negotiation where the adapter supports it, `llms.txt`, `llms-full.txt`, `sitemap.md` (linking the `.md` URL), agent search (`audience=agent`), Ask AI, and MCP `list_pages`, `search_docs`, `read_page`.
+- Hosted search providers (Algolia, Typesense) index the human projection, so they do not return agent-only pages.
+- An agent-only folder index keeps its visible children as a plain sidebar group; a folder with no visible children is dropped.
+- It hides the page; it is not access control. Anyone can read `{page}.md`. Use `agent.access` for private content.
+- Do not link to an agent-only page from a human page; the link would 404.
