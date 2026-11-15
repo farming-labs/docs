@@ -24,6 +24,12 @@ export {
 export { applyThemeConfigDefaults, defineDocs } from "./define-docs.js";
 export { resolveDocsRoots } from "./docs-roots.js";
 export {
+  filterDocsPagesByAudience,
+  isDocsPageVisibleToAudience,
+  resolveDocsPageAudience,
+  type DocsPageAudience,
+} from "./audience-exposure.js";
+export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,

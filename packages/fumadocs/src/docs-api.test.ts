@@ -1387,6 +1387,56 @@ Surge overview child.
     expect(await markdownResponse.text()).toContain("# Docs Page Not Found");
   });
 
+  it("keeps audience: agent pages out of human search and sitemap.xml but serves their markdown", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-only-page-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "release-runbook"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n\nRunbook overview.\n");
+    writeFileSync(
+      join(rootDir, "app", "docs", "release-runbook", "page.mdx"),
+      `---
+title: "Release runbook"
+audience: agent
+---
+
+# Release runbook
+
+Exact runbook steps for agents.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({ entry: "docs", sitemap: true });
+    const searchUrls = async (query: string) =>
+      (
+        (await (await GET(new Request(`http://localhost/api/docs?${query}`))).json()) as Array<{
+          url: string;
+        }>
+      ).map((entry) => entry.url.split("#")[0]);
+
+    expect(await searchUrls("query=runbook")).not.toContain("/docs/release-runbook");
+    expect(await searchUrls("query=runbook%20steps&audience=agent")).toContain(
+      "/docs/release-runbook",
+    );
+
+    const markdown = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=release-runbook"),
+    );
+    expect(markdown.status).toBe(200);
+    expect(await markdown.text()).toContain("Exact runbook steps for agents.");
+
+    const xml = await (
+      await GET(new Request("http://localhost/api/docs?format=sitemap-xml"))
+    ).text();
+    expect(xml).not.toContain("release-runbook");
+    const sitemapMarkdown = await (
+      await GET(new Request("http://localhost/api/docs?format=sitemap-md"))
+    ).text();
+    expect(sitemapMarkdown).toContain("[Release runbook](/docs/release-runbook.md)");
+  });
+
   it("serves section-addressable markdown through the shared docs api handler", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-section-markdown-route-"));
     tempDirs.push(rootDir);

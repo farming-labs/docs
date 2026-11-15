@@ -17,6 +17,8 @@ export interface DocsSitemapPageInput {
   url: string;
   /** Override the public Markdown representation URL when it differs from `${url}.md`. */
   markdownUrl?: string;
+  /** `"agent"` pages are listed in `sitemap.md` by their Markdown URL and left out of `sitemap.xml`. */
+  audience?: "agent";
   title: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
@@ -29,6 +31,8 @@ export interface DocsSitemapManifestPage {
   url: string;
   absoluteUrl?: string;
   markdownUrl: string;
+  /** `"agent"` pages have no HTML page: `sitemap.xml` skips them and `sitemap.md` links their Markdown. */
+  audience?: "agent";
   title: string;
   description?: string;
   sourcePath?: string;
@@ -278,6 +282,7 @@ export function buildDocsSitemapManifest(options: {
       url,
       absoluteUrl: absolutizeUrl(baseUrl, url),
       markdownUrl: page.markdownUrl ?? toDocsSitemapMarkdownUrl(url),
+      ...(page.audience === "agent" ? { audience: "agent" as const } : {}),
       title: page.title,
       description: page.description,
       sourcePath: page.sourcePath,
@@ -311,6 +316,8 @@ export function renderDocsSitemapXml(
   ];
 
   for (const page of manifest.pages) {
+    // Agent-only pages have no HTML representation for crawlers to index.
+    if (page.audience === "agent") continue;
     lines.push("  <url>");
     lines.push(`    <loc>${escapeXml(page.absoluteUrl ?? absolutizeUrl(baseUrl, page.url))}</loc>`);
     const lastmod = normalizeDateOnly(page.lastmod);
@@ -352,9 +359,11 @@ export function renderDocsSitemapMarkdown(
     lines.push(`## ${sectionName}`, "");
 
     for (const page of pages) {
-      const primaryHref = linkTarget === "markdown" ? page.markdownUrl : page.url;
+      // An agent-only page's HTML route returns 404, so link its Markdown representation.
+      const agentOnly = page.audience === "agent";
+      const primaryHref = linkTarget === "markdown" || agentOnly ? page.markdownUrl : page.url;
       lines.push(`- [${page.title}](${primaryHref})`);
-      if (linkTarget === "both" || linkTarget === "markdown") {
+      if (!agentOnly && (linkTarget === "both" || linkTarget === "markdown")) {
         lines.push(`  Markdown: ${page.markdownUrl}`);
       }
       if (includeDescriptions && page.description) {

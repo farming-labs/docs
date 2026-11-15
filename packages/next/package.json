@@ -94,6 +94,11 @@
       "import": "./dist/mdx-plugins/remark-markdown-alternate.mjs",
       "default": "./dist/mdx-plugins/remark-markdown-alternate.mjs"
     },
+    "./mdx-plugins/remark-agent-only": {
+      "types": "./dist/mdx-plugins/remark-agent-only.d.mts",
+      "import": "./dist/mdx-plugins/remark-agent-only.mjs",
+      "default": "./dist/mdx-plugins/remark-agent-only.mjs"
+    },
     "./mdx-plugins/rehype-page-boundary": {
       "types": "./dist/mdx-plugins/rehype-page-boundary.d.mts",
       "import": "./dist/mdx-plugins/rehype-page-boundary.mjs",

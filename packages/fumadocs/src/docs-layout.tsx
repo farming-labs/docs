@@ -367,7 +367,8 @@ function buildTree(
       reader,
       path.join(/*! turbopackIgnore: true */ docsDir, "page.mdx"),
     );
-    if (data.hidden !== true) {
+    // Hidden and agent-only root pages have no sidebar entry.
+    if (data.hidden !== true && data.audience !== "agent") {
       rootChildren.push({
         type: "page",
         name: (data.title as string) ?? "Documentation",
@@ -396,7 +397,8 @@ function buildTree(
     const folderName = resolveSidebarFolderName(config.theme?.name, name, displayName);
     const hasChildren = hasChildPages(reader, full, excludedDirs);
 
-    if (data.hidden === true) {
+    // Agent-only pages have no human projection; like hidden pages, they keep visible children.
+    if (data.hidden === true || data.audience === "agent") {
       if (!hasChildren) return null;
 
       const folderChildren = scanDir(full, slug, slugOrder);
@@ -589,49 +591,52 @@ function buildPageMaps(
       const { data, content, modifiedAt } = reader.page(
         path.join(/*! turbopackIgnore: true */ dir, fileName),
       );
-      const route = publicDocsRoute(ctx, slugParts);
-      const title =
-        typeof data.title === "string"
-          ? data.title
-          : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
-      const description = typeof data.description === "string" ? data.description : undefined;
-      const manifestLastmod = resolveManifestLastmod(resolveLastmod, ctx, route);
+      // Agent-only pages have no human page, so their metadata does not reach the browser.
+      if (data.audience !== "agent") {
+        const route = publicDocsRoute(ctx, slugParts);
+        const title =
+          typeof data.title === "string"
+            ? data.title
+            : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
+        const description = typeof data.description === "string" ? data.description : undefined;
+        const manifestLastmod = resolveManifestLastmod(resolveLastmod, ctx, route);
 
-      const generatedTitle = resolveGeneratedPageTitle(config.theme, data, content);
-      if (generatedTitle !== undefined) generatedTitleMap[route] = generatedTitle;
+        const generatedTitle = resolveGeneratedPageTitle(config.theme, data, content);
+        if (generatedTitle !== undefined) generatedTitleMap[route] = generatedTitle;
 
-      // Preserve the existing MDX-only metadata behavior for these page features.
-      if (fileName === "page.mdx") {
-        if (dateFormatter) {
-          lastModifiedMap[route] = dateFormatter.format(
-            manifestLastmod ? new Date(`${manifestLastmod}T00:00:00`) : modifiedAt,
+        // Preserve the existing MDX-only metadata behavior for these page features.
+        if (fileName === "page.mdx") {
+          if (dateFormatter) {
+            lastModifiedMap[route] = dateFormatter.format(
+              manifestLastmod ? new Date(`${manifestLastmod}T00:00:00`) : modifiedAt,
+            );
+          }
+          if (description) descriptionMap[route] = description;
+
+          // Page overrides still apply when reading time is globally disabled.
+          // Avoid parsing audience blocks when the result needs no word count.
+          const estimateReadingTime =
+            (options.enabledByDefault || Object.hasOwn(data, "readingTime")) &&
+            data.readingTime !== false &&
+            !(typeof data.readingTime === "number" && Number.isFinite(data.readingTime));
+          const minutes = resolvePageReadingTime(
+            data as Partial<PageFrontmatter>,
+            estimateReadingTime ? resolveDocsAudienceMdxContent(content, "human") : "",
+            options,
           );
+          if (typeof minutes === "number") readingTimeMap[route] = minutes;
         }
-        if (description) descriptionMap[route] = description;
 
-        // Page overrides still apply when reading time is globally disabled.
-        // Avoid parsing audience blocks when the result needs no word count.
-        const estimateReadingTime =
-          (options.enabledByDefault || Object.hasOwn(data, "readingTime")) &&
-          data.readingTime !== false &&
-          !(typeof data.readingTime === "number" && Number.isFinite(data.readingTime));
-        const minutes = resolvePageReadingTime(
-          data as Partial<PageFrontmatter>,
-          estimateReadingTime ? resolveDocsAudienceMdxContent(content, "human") : "",
-          options,
-        );
-        if (typeof minutes === "number") readingTimeMap[route] = minutes;
+        structuredDataPages.pages[route] = compactPageStructuredData({
+          title,
+          description,
+          url: withLangInUrl(route, ctx.locale),
+          dateModified: manifestLastmod
+            ? `${manifestLastmod}T00:00:00.000Z`
+            : modifiedAt.toISOString(),
+          agent: normalizePageAgentFrontmatter(data.agent),
+        });
       }
-
-      structuredDataPages.pages[route] = compactPageStructuredData({
-        title,
-        description,
-        url: withLangInUrl(route, ctx.locale),
-        dateModified: manifestLastmod
-          ? `${manifestLastmod}T00:00:00.000Z`
-          : modifiedAt.toISOString(),
-        agent: normalizePageAgentFrontmatter(data.agent),
-      });
     }
 
     if (options.slugParts) return;

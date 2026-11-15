@@ -154,6 +154,8 @@ Content here.
 
 Routing is file-based: `docs/getting-started/page.mdx` → `/docs/getting-started`. Use `order` in frontmatter to control sidebar order (numeric ordering).
 
+Add `audience: agent` to publish a page only for agents: it disappears from the sidebar, human search, and `sitemap.xml`, its HTML route returns 404, and agents still read it at `/docs/<slug>.md`, in `llms.txt`, `sitemap.md`, and MCP. Anyone can still fetch the `.md` URL, so this is not access control.
+
 ---
 
 ## Path aliases and defaults (CLI)

@@ -138,12 +138,12 @@
     },
     {
       "route": "/docs/guides/agent-friendly-docs",
-      "sourceHash": "fnv1a64:f222b39feb9e5601",
+      "sourceHash": "fnv1a64:53f6c6fbfba9a5c9",
       "settingsHash": "fnv1a64:4d5874ba9e62babc",
-      "outputHash": "fnv1a64:ff89f683f4c98e7a",
-      "reviewedAt": "2026-11-03T01:52:59.638Z",
-      "reviewedBy": "Codex",
-      "reason": "Compared the source changes: the curated machine-surfaces guidance already covers local and remote JSON/YAML OpenAPI discovery. Updated Farm.js applicability without changing the task, commands, or verification guidance."
+      "outputHash": "fnv1a64:7ffe3654cfd03c96",
+      "reviewedAt": "2026-11-15T00:52:53.305Z",
+      "reviewedBy": "Claude",
+      "reason": "Compared the source change: the new 'Publish Agent-Only Pages With audience: agent' section and decision-list item. Added the matching item and a compact agent-only pages section (hidden and served surfaces, hosted-search limit, folder behavior, not access control) to the curated agent.md."
     },
     {
       "route": "/docs/installation",
@@ -237,12 +237,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:14d840b36f55e764",
+      "sourceHash": "fnv1a64:23875290a8a160cd",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:ad089884fcecf1f7",
-      "reviewedAt": "2026-11-13T18:58:31.670Z",
+      "outputHash": "fnv1a64:61c4d9dd6a9c9854",
+      "reviewedAt": "2026-11-15T00:52:58.134Z",
       "reviewedBy": "Claude",
-      "reason": "Compared the only source change since the accepted review: the new `mdx` row in the defineDocs options table. Added the matching `mdx` row to the curated reference; preserved the existing reference guidance."
+      "reason": "Compared the only source change: the new audience row in the page frontmatter table. Added a matching 'Page audience frontmatter' section to the curated reference, pointing to the guide for the full surface list."
     },
     {
       "route": "/docs/themes",

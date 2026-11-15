@@ -2795,6 +2795,7 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
 | `title`       | `string`    | **Required.** Page title, shown in sidebar and page heading                        |
 | `description` | `string`    | Page description, used for meta tags and search                                    |
+| `audience`    | `"agent"`   | Publish the page for agents only: it is left out of the sidebar, prev/next, human search, and `sitemap.xml`, and its HTML route returns 404, while `{page}.md`, `llms.txt`, `sitemap.md`, and MCP still serve it. Hides the page; it is not access control. See [agent-only pages](/docs/guides/agent-friendly-docs#publish-agent-only-pages-with-audience-agent). |
 | `related`     | `string[]`  | Related doc URLs rendered as a comma-separated metadata line in `.md` routes and MCP page output |
 | `agent`       | `PageAgentFrontmatter` | Per-page structured task contract and compaction token budget |
 | `sidebar`     | `PageSidebarFrontmatter` | Per-folder sidebar metadata such as `folderIndexBehavior` overrides |

@@ -1233,6 +1233,40 @@ agent:
     });
   });
 
+  it("leaves audience: agent pages out of the sidebar and keeps their visible children", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "internal", "visible"), { recursive: true });
+    mkdirSync(join(tmpDir, "app", "docs", "release-runbook"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "internal", "page.mdx"),
+      "---\ntitle: Internal\naudience: agent\n---\n\n# Internal\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "internal", "visible", "page.mdx"),
+      "---\ntitle: Visible child\n---\n\n# Visible child\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "release-runbook", "page.mdx"),
+      "---\ntitle: Release runbook\naudience: agent\n---\n\n# Release runbook\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({ entry: "docs" });
+    const rendered = Layout({ children: React.createElement("div", null, "child") });
+    // Neither the sidebar nor the page metadata shipped to the browser names the page.
+    expect(JSON.stringify(rendered)).not.toContain("/docs/release-runbook");
+    const sidebarTree = findDocsLayoutTree(rendered);
+    const children = sidebarTree?.children as Array<Record<string, unknown>>;
+
+    expect(children.some((entry) => entry.name === "Release runbook")).toBe(false);
+    expect(children.find((entry) => entry.name === "Internal")).toMatchObject({
+      type: "folder",
+      index: undefined,
+      children: [expect.objectContaining({ name: "Visible child", url: "/docs/internal/visible" })],
+    });
+  });
+
   it("renders Shadcn folder landing pages as section labels unless links are requested", () => {
     mkdirSync(join(tmpDir, "app", "docs", "authentication", "email"), { recursive: true });
     writeFileSync(

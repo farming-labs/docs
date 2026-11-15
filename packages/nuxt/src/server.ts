@@ -97,6 +97,7 @@ import {
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
   withDocsOpenApiOperationCounts,
+  resolveDocsPageAudience,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig, DocsConfig } from "@farming-labs/docs";
 import {
@@ -349,6 +350,7 @@ function navTreeFromMap(
     icon?: string;
     folderIndexBehavior?: "link" | "toggle" | "hidden";
     order: number;
+    agentOnly: boolean;
   }
 
   const dirs: DirInfo[] = [];
@@ -378,6 +380,7 @@ function navTreeFromMap(
       icon: data.icon as string | undefined,
       folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
       order: typeof data.order === "number" ? data.order : Infinity,
+      agentOnly: resolveDocsPageAudience(data.audience) !== undefined,
     });
   }
 
@@ -403,7 +406,7 @@ function navTreeFromMap(
 
   const children: NavNode[] = [];
   const rootInfo = dirs.find((d) => d.parts.length === 0);
-  if (rootInfo) {
+  if (rootInfo && !rootInfo.agentOnly) {
     children.push({
       type: "page",
       name: rootInfo.title,
@@ -438,6 +441,33 @@ function navTreeFromMap(
     return items;
   }
 
+  // An agent-only page has no human projection: its folder keeps visible children without a link.
+  function toNavNodes(child: DirInfo): NavNode[] {
+    const hasGrandChildren = parentsWithDescendants.has(JSON.stringify(child.parts));
+
+    if (child.agentOnly) {
+      const folderChildren = hasGrandChildren ? buildLevel(child.parts) : [];
+      return folderChildren.length > 0
+        ? [{ type: "folder", name: child.title, icon: child.icon, children: folderChildren }]
+        : [];
+    }
+
+    if (hasGrandChildren) {
+      return [
+        {
+          type: "folder",
+          name: child.title,
+          icon: child.icon,
+          index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+          folderIndexBehavior: child.folderIndexBehavior,
+          children: buildLevel(child.parts),
+        },
+      ];
+    }
+
+    return [{ type: "page", name: child.title, url: child.url, icon: child.icon }];
+  }
+
   function buildLevel(parentParts: string[]): NavNode[] {
     const depth = parentParts.length;
 
@@ -461,23 +491,7 @@ function navTreeFromMap(
       for (const child of directChildren) {
         if (!slugMap.has(child.parts[depth])) ordered.push(child);
       }
-      const nodes: NavNode[] = [];
-      for (const child of ordered) {
-        const hasGrandChildren = parentsWithDescendants.has(JSON.stringify(child.parts));
-        if (hasGrandChildren) {
-          nodes.push({
-            type: "folder",
-            name: child.title,
-            icon: child.icon,
-            index: { type: "page", name: child.title, url: child.url, icon: child.icon },
-            folderIndexBehavior: child.folderIndexBehavior,
-            children: buildLevel(child.parts),
-          });
-        } else {
-          nodes.push({ type: "page", name: child.title, url: child.url, icon: child.icon });
-        }
-      }
-      return nodes;
+      return ordered.flatMap((child) => toNavNodes(child));
     }
 
     if (ordering === "numeric") {
@@ -487,36 +501,7 @@ function navTreeFromMap(
       });
     }
 
-    const nodes: NavNode[] = [];
-
-    for (const child of directChildren) {
-      const hasGrandChildren = parentsWithDescendants.has(JSON.stringify(child.parts));
-
-      if (hasGrandChildren) {
-        nodes.push({
-          type: "folder",
-          name: child.title,
-          icon: child.icon,
-          index: {
-            type: "page",
-            name: child.title,
-            url: child.url,
-            icon: child.icon,
-          },
-          folderIndexBehavior: child.folderIndexBehavior,
-          children: buildLevel(child.parts),
-        });
-      } else {
-        nodes.push({
-          type: "page",
-          name: child.title,
-          url: child.url,
-          icon: child.icon,
-        });
-      }
-    }
-
-    return nodes;
+    return directChildren.flatMap((child) => toNavNodes(child));
   }
 
   children.push(...buildLevel([]));
@@ -563,6 +548,7 @@ function searchIndexFromMap(
       slug,
       url,
       title,
+      ...(resolveDocsPageAudience(data.audience) ? { audience: "agent" as const } : {}),
       description: data.description as string | undefined,
       ...(related.length > 0 ? { related } : {}),
       agent: normalizePageAgentFrontmatter(data.agent),
@@ -839,6 +825,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     }
 
     const { data, content } = matter(raw);
+    // Agent-only pages have no HTML page; agents read them at `{page}.md`.
+    if (resolveDocsPageAudience(data.audience)) {
+      const error = new Error(`Page not found: /${entry}/${slug}`) as Error & { status?: number };
+      error.status = 404;
+      throw error;
+    }
     const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
     const readingTime = resolvePageReadingTime(data, humanRawContent, {
       enabledByDefault: readingTimeOptions.enabled,

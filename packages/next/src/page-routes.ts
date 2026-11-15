@@ -19,6 +19,15 @@ export function supportsDocsPageBoundary(root: string): boolean {
   }
 }
 
+// A top-level `audience: agent` key in the leading frontmatter block.
+function isAgentOnlySource(source: string): boolean {
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(source)?.[1];
+  return (
+    frontmatter !== undefined &&
+    /^audience[ \t]*:[ \t]*(["']?)agent\1[ \t]*(?:#.*)?$/m.test(frontmatter)
+  );
+}
+
 export interface DocsPageRoute {
   source: string;
   route: string;
@@ -45,17 +54,17 @@ export function discoverDocsPageRoutes(directory: string, publicPath: string): D
     const files = entries.filter((entry) => entry.isFile());
     // Multiple page extensions and non-MDX routes stay on the existing layout path.
     const pages = files.filter((entry) => /^page\.(?:mdx?|[cm]?[jt]sx?)$/.test(entry.name));
+    const source =
+      pages.length === 1 && /\.mdx?$/.test(pages[0].name)
+        ? readFileSync(join(dir, pages[0].name), "utf8")
+        : undefined;
     if (
-      pages.length === 1 &&
-      /\.mdx?$/.test(pages[0].name) &&
+      source !== undefined &&
+      // Agent-only pages have no human page to wrap, and the route list reaches the browser.
+      !isAgentOnlySource(source) &&
       // Be conservative about module syntax, including exports after imports or
       // comments on the same line. A prose mention can safely keep legacy transport.
-      !/\bexport\b/.test(
-        DocsBuild.replaceDocsMarkdownFencedCodeBlocks(
-          readFileSync(join(dir, pages[0].name), "utf8"),
-          () => "",
-        ),
-      )
+      !/\bexport\b/.test(DocsBuild.replaceDocsMarkdownFencedCodeBlocks(source, () => ""))
     ) {
       routes.push({
         source: join(dir, pages[0].name).replaceAll("\\", "/"),

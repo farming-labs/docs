@@ -86,6 +86,7 @@ import {
   buildPageTwitter,
   resolveTitle,
   applyThemeConfigDefaults,
+  resolveDocsPageAudience,
 } from "@farming-labs/docs";
 import type {
   DocsAgentTraceEventInput,
@@ -607,7 +608,8 @@ function navTreeFromMap(
     pages.push({
       parts: pageParts,
       title: (data.title as string) ?? fallbackTitle,
-      url,
+      // An agent-only page has no human projection, so it never becomes a sidebar link.
+      url: resolveDocsPageAudience(data.audience) ? undefined : url,
       icon: data.icon as string | undefined,
       folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
       order: typeof data.order === "number" ? data.order : Infinity,
@@ -639,7 +641,7 @@ function navTreeFromMap(
 
   const children: NavNode[] = [];
   const rootInfo = pageByParts.get("[]");
-  if (rootInfo) {
+  if (rootInfo?.url) {
     children.push({
       type: "page",
       name: rootInfo.title,
@@ -702,11 +704,50 @@ function navTreeFromMap(
         if (!slugMap.has(child.parts[depth])) ordered.push(child);
       }
 
-      return ordered.map((child) => {
+      return ordered.flatMap((child): NavNode[] => {
         const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
 
         if (hasGrandChildren) {
-          return {
+          const folderChildren = buildLevel(child.parts);
+          if (folderChildren.length === 0 && !child.url) return [];
+          return [
+            {
+              type: "folder",
+              name: child.title,
+              icon: child.icon,
+              ...(child.url
+                ? {
+                    index: {
+                      type: "page" as const,
+                      name: child.title,
+                      url: child.url,
+                      icon: child.icon,
+                    },
+                  }
+                : {}),
+              folderIndexBehavior: child.folderIndexBehavior,
+              children: folderChildren,
+            },
+          ];
+        }
+
+        if (!child.url) return [];
+        return [{ type: "page", name: child.title, url: child.url, icon: child.icon }];
+      });
+    }
+
+    if (ordering === "numeric") {
+      directChildren.sort((a, b) => a.order - b.order);
+    }
+
+    return directChildren.flatMap((child): NavNode[] => {
+      const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
+
+      if (hasGrandChildren) {
+        const folderChildren = buildLevel(child.parts);
+        if (folderChildren.length === 0 && !child.url) return [];
+        return [
+          {
             type: "folder",
             name: child.title,
             icon: child.icon,
@@ -721,52 +762,13 @@ function navTreeFromMap(
                 }
               : {}),
             folderIndexBehavior: child.folderIndexBehavior,
-            children: buildLevel(child.parts),
-          } satisfies NavNode;
-        }
-
-        return {
-          type: "page",
-          name: child.title,
-          url: child.url!,
-          icon: child.icon,
-        } satisfies NavNode;
-      });
-    }
-
-    if (ordering === "numeric") {
-      directChildren.sort((a, b) => a.order - b.order);
-    }
-
-    return directChildren.map((child) => {
-      const hasGrandChildren = childrenByParts.has(JSON.stringify(child.parts));
-
-      if (hasGrandChildren) {
-        return {
-          type: "folder",
-          name: child.title,
-          icon: child.icon,
-          ...(child.url
-            ? {
-                index: {
-                  type: "page" as const,
-                  name: child.title,
-                  url: child.url,
-                  icon: child.icon,
-                },
-              }
-            : {}),
-          folderIndexBehavior: child.folderIndexBehavior,
-          children: buildLevel(child.parts),
-        } satisfies NavNode;
+            children: folderChildren,
+          },
+        ];
       }
 
-      return {
-        type: "page",
-        name: child.title,
-        url: child.url!,
-        icon: child.icon,
-      } satisfies NavNode;
+      if (!child.url) return [];
+      return [{ type: "page", name: child.title, url: child.url, icon: child.icon }];
     });
   }
 
@@ -820,6 +822,7 @@ function searchIndexFromMap(
       slug,
       url,
       title: (data.title as string) ?? fallbackTitle,
+      ...(resolveDocsPageAudience(data.audience) ? { audience: "agent" as const } : {}),
       description: data.description as string | undefined,
       ...(related.length > 0 ? { related } : {}),
       agent: normalizePageAgentFrontmatter(data.agent),
@@ -1181,6 +1184,17 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     }
 
     const { data, content } = matter(raw);
+    // Agent-only pages have no HTML page; agents read them at `{page}.md`.
+    if (resolveDocsPageAudience(data.audience)) {
+      const error = new Error(`Page not found: /${entry}/${slug}`) as Error & {
+        status?: number;
+        audience?: "agent";
+      };
+      error.status = 404;
+      // The page exists for agents: hosts must answer 404 rather than try their own routes.
+      error.audience = "agent";
+      throw error;
+    }
     const humanRawContent = resolveDocsAudienceMdxContent(content, "human");
     const readingTime = resolvePageReadingTime(data, humanRawContent, {
       enabledByDefault: readingTimeOptions.enabled,
@@ -3037,9 +3051,12 @@ export function listFarmDocsPages(
     defaultLocale ? path.join(contentDirBase, defaultLocale) : contentDirBase,
   );
   const docsPath = normalizedPublicRoute(config.docsPath, `/${entry}`);
-  return loadDocsContent(contentDir, entry).map((page) =>
-    !page.slug ? docsPath : docsPath === "/" ? `/${page.slug}` : `${docsPath}/${page.slug}`,
-  );
+  // Agent-only pages have no HTML page to prerender.
+  return loadDocsContent(contentDir, entry)
+    .filter((page) => page.audience !== "agent")
+    .map((page) =>
+      !page.slug ? docsPath : docsPath === "/" ? `/${page.slug}` : `${docsPath}/${page.slug}`,
+    );
 }
 
 /**
@@ -3116,7 +3133,12 @@ function createFarmDocsSingleRuntimeHandler(
       data = await docsServer.load({ pathname });
     } catch (error) {
       // Unknown paths are never cached, so arbitrary URLs cannot fill the cache.
-      if (isNotFoundError(error)) return null;
+      if (isNotFoundError(error)) {
+        // An agent-only page must not fall through to the host's own route for its source file.
+        return (error as { audience?: unknown }).audience === "agent"
+          ? ({ agentOnly: true } as const)
+          : null;
+      }
       throw error;
     }
     const reactModule = options.loadReactModule
@@ -3207,13 +3229,24 @@ function createFarmDocsSingleRuntimeHandler(
           `page\0${url.pathname}`,
           () => renderPage(url.pathname),
           (value) =>
-            value
+            value?.htmlParts
               ? value.htmlParts.reduce((size, part) => size + part.length, 0) +
                 (value.fontPreloadHeader?.length ?? 0)
               : 0,
         )
       : await renderPage(url.pathname);
     if (!page) return null;
+    if (page.agentOnly) {
+      // Agent-only pages have no HTML page; agents read them at `{page}.md`.
+      return new Response(request.method.toUpperCase() === "HEAD" ? null : "Not Found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "X-Farm-Docs-Adapter": "@farming-labs/farmjs",
+        },
+      });
+    }
 
     const fontPreloadHeader = page.fontPreloadHeader;
     const origin = request.headers.has("x-nitro-prerender") ? prerenderOrigin : url.origin;

@@ -57,6 +57,27 @@ describe("page metadata boundaries", () => {
     ).toEqual(["/", "/guide"]);
   });
 
+  it("leaves audience: agent pages out of the browser route list", () => {
+    const root = mkdtempSync(join(tmpdir(), "docs-page-agent-only-"));
+    temporary.push(root);
+    const pages: Record<string, string> = {
+      "page.mdx": "# Home",
+      "runbook/page.mdx": "---\ntitle: Runbook\naudience: agent\n---\n# Runbook",
+      "quoted/page.mdx": "---\naudience: 'agent' # machines\n---\n# Quoted",
+      "nested/page.mdx": "---\nagent:\n  audience: agent\n---\n# Nested key",
+      "prose/page.mdx": "# Prose\n\naudience: agent",
+    };
+    for (const [file, source] of Object.entries(pages)) {
+      mkdirSync(dirname(join(root, file)), { recursive: true });
+      writeFileSync(join(root, file), source);
+    }
+    expect(
+      discoverDocsPageRoutes(root, "/docs")
+        .map((page) => page.route)
+        .sort(),
+    ).toEqual(["/docs", "/docs/nested", "/docs/prose"]);
+  });
+
   it("ignores exports inside fenced examples", () => {
     const root = mkdtempSync(join(tmpdir(), "docs-page-fences-"));
     temporary.push(root);

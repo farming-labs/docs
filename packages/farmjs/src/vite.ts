@@ -149,6 +149,24 @@ interface MarkdownNode {
   children?: MarkdownNode[];
 }
 
+// A top-level `audience: agent` frontmatter key, optionally quoted, with an optional comment.
+const AGENT_AUDIENCE_LINE = /^audience[ \t]*:[ \t]*(["']?)agent\1[ \t]*(?:#.*)?$/m;
+
+/**
+ * Compile an `audience: agent` page without its body. Its HTML route returns 404, so the body must
+ * not reach browser chunks; agents read the source through `{page}.md`, which does not use this
+ * compiled module. Frontmatter and module exports are kept so metadata keeps resolving.
+ */
+export function remarkAgentOnlyBody() {
+  return (tree: { children: Array<{ type: string; value?: string }> }) => {
+    const yaml = tree.children.find((node) => node.type === "yaml");
+    if (!yaml?.value || !AGENT_AUDIENCE_LINE.test(yaml.value)) return;
+    tree.children = tree.children.filter(
+      (node) => node.type === "yaml" || node.type === "mdxjsEsm",
+    );
+  };
+}
+
 /**
  * Preserve Farm's conventional standalone bold code labels without requiring
  * framework-owned HTML. File labels become code-block titles; generic terminal
@@ -513,6 +531,7 @@ function mdxCompileOptions(
   const remarkPlugins: NonNullable<CompileOptions["remarkPlugins"]> = [
     remarkGfm,
     remarkFrontmatter,
+    remarkAgentOnlyBody,
     [remarkMdxFrontmatter, { name: "metadata" }],
     remarkStandaloneCodeLabels,
     remarkCodeGroup,

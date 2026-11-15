@@ -177,6 +177,10 @@ Page-level metadata for machine-readable docs workflows:
 | `rollback` | `string[]` | Steps that restore the prior state |
 | `failureModes` | `(string \| PageAgentFailureMode)[]` | Symptoms or `{ symptom, resolution? }` objects |
 
+## Page audience frontmatter
+
+Top-level page frontmatter `audience: "agent"` publishes a page for agents only. It is left out of the sidebar, prev/next, human search, `sitemap.xml`, and MCP `get_navigation`, and its HTML route returns 404. `{page}.md`, Markdown negotiation, `llms.txt`, `sitemap.md` (linking the `.md` URL), agent search, Ask AI, and MCP pages still serve it. It hides the page; it is not access control. See `/docs/guides/agent-friendly-docs` for the full surface list.
+
 ## PageAgentFrontmatter field types
 
 `PageAgentFrontmatter` defines `task`, `outcome`, `appliesTo`, `prerequisites`, `verification`, `rollback`, and `failureModes`; every structured failure mode pairs a `symptom` with its `resolution`.

@@ -11,6 +11,7 @@ import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import remarkHeading from "./mdx-plugins/remark-heading.js";
 import remarkCodeGroup from "./mdx-plugins/remark-code-group.js";
 import remarkMarkdownAlternate from "./mdx-plugins/remark-markdown-alternate.js";
+import remarkAgentOnly from "./mdx-plugins/remark-agent-only.js";
 import rehypeToc from "./mdx-plugins/rehype-toc.js";
 import rehypeCode from "./mdx-plugins/rehype-code.js";
 import { withDocs } from "./config.js";
@@ -23,6 +24,7 @@ const builtins: Record<string, any> = {
   "@farming-labs/next/mdx-plugins/remark-heading": remarkHeading,
   "@farming-labs/next/mdx-plugins/remark-code-group": remarkCodeGroup,
   "@farming-labs/next/mdx-plugins/remark-markdown-alternate": remarkMarkdownAlternate,
+  "@farming-labs/next/mdx-plugins/remark-agent-only": remarkAgentOnly,
   "@farming-labs/next/mdx-plugins/rehype-toc": rehypeToc,
   "@farming-labs/next/mdx-plugins/rehype-code": rehypeCode,
 };

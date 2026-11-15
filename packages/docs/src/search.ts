@@ -54,6 +54,7 @@ import {
   normalizeAgentVersion,
 } from "./agent-scope.js";
 import { resolveDocsAudienceMdxContent, type DocsContentAudience } from "./audience.js";
+import { filterDocsPagesByAudience } from "./audience-exposure.js";
 import {
   findDocsGeneratedAgentContractRanges,
   findDocsMarkdownSection,
@@ -1390,7 +1391,7 @@ async function buildDocsSearchIndexGeneration(
 ): Promise<string> {
   const sources = (
     await Promise.all(
-      pages.map(async (rawPage) => {
+      filterDocsPagesByAudience(pages, options.audience).map(async (rawPage) => {
         const page = localizeDocsSearchPage(rawPage, options.locale);
         const authoredLastModified = page.lastmod?.trim();
         return {
@@ -1458,8 +1459,11 @@ export interface BuildDocsContentSnapshotOptions {
 export async function buildDocsContentSnapshot(
   options: BuildDocsContentSnapshotOptions,
 ): Promise<DocsContentSnapshot> {
-  const pages = filterDocsPagesByAccess(options.pages, options.principal);
   const audience = resolveDocsSearchAudience(options.audience);
+  const pages = filterDocsPagesByAudience(
+    filterDocsPagesByAccess(options.pages, options.principal),
+    audience,
+  );
   const search = normalizeDocsSearchConfig(options.search);
   const digestCache = new Map<DocsSearchSourcePage, string>();
   const indexGeneration =
@@ -2313,7 +2317,7 @@ export function buildDocsSearchDocuments(
 ): DocsSearchDocument[] {
   const strategy = chunking.strategy ?? "section";
 
-  const prepared = pages.map((rawPage) => {
+  const prepared = filterDocsPagesByAudience(pages, audience).map((rawPage) => {
     const page = localizeDocsSearchPage(rawPage, rawPage.locale);
     // Content-based keys also cover fresh page objects and in-place edits. Do not
     // cache access decisions, query results, or mutable custom-adapter context.
@@ -4652,10 +4656,13 @@ async function performDocsSearchInternal(
   const audience = resolveDocsSearchAudience(options.audience);
   const filters = normalizeDocsSearchFilters(options.filters);
   const hasFilters = hasDocsSearchFilters(filters);
-  const accessiblePages = filterDocsPagesByAccess(options.pages, options.principal);
-  const accessibleGenerationPages = filterDocsPagesByAccess(
-    options.generationPages ?? options.pages,
-    options.principal,
+  const accessiblePages = filterDocsPagesByAudience(
+    filterDocsPagesByAccess(options.pages, options.principal),
+    audience,
+  );
+  const accessibleGenerationPages = filterDocsPagesByAudience(
+    filterDocsPagesByAccess(options.generationPages ?? options.pages, options.principal),
+    audience,
   );
   const corpusPages = accessiblePages.map((page) => localizeDocsSearchPage(page, options.locale));
   const indexBaseUrl =
@@ -4825,7 +4832,11 @@ async function performDocsSearchInternal(
   try {
     const adapter = await resolveSearchAdapter(search, context);
     if (shouldSyncOnSearch(search) && typeof adapter.index === "function") {
-      const syncPages = audience === "agent" || hasFilters ? corpusPages : scopedPages;
+      // The synced provider index is the human projection: agent-only pages never enter it.
+      const syncPages = filterDocsPagesByAudience(
+        audience === "agent" || hasFilters ? corpusPages : scopedPages,
+        "human",
+      );
       const syncContext: DocsSearchAdapterContext = {
         pages: syncPages,
         documents: buildDocsSearchDocuments(syncPages, search.chunking, "human"),
