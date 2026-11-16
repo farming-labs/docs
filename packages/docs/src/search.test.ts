@@ -761,6 +761,26 @@ describe("performDocsSearch", () => {
     expect(legacyResponse.hasMore).toBeUndefined();
   });
 
+  it("scores a page's edited text on the next simple search", async () => {
+    const page = {
+      title: "Edited guide",
+      url: "/docs/edited-guide",
+      content: "Configure the alpha pipeline.",
+      rawContent: "# Edited guide\n\nConfigure the alpha pipeline.",
+    };
+    const search = { provider: "simple" as const, chunking: { strategy: "page" as const } };
+
+    expect(await performDocsSearch({ pages: [page], query: "alpha", search })).toHaveLength(1);
+
+    page.content = "Configure the beta pipeline.";
+    page.rawContent = "# Edited guide\n\nConfigure the beta pipeline.";
+
+    expect(await performDocsSearch({ pages: [page], query: "alpha", search })).toEqual([]);
+    expect(await performDocsSearch({ pages: [page], query: "beta", search })).toMatchObject([
+      { url: "/docs/edited-guide" },
+    ]);
+  });
+
   it("paginates simple structured search with stable opaque cursors and exact totals", async () => {
     const paginationPages = Array.from({ length: 5 }, (_, index) => ({
       title: `Pagination guide ${index + 1}`,
