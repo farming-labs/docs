@@ -42,6 +42,12 @@
       "package": "@simple-git/argv-parser",
       "expires": "2026-12-03",
       "reason": "Transitive through nuxt > @nuxt/devtools, which runs only under `nuxt dev` in this repo's Nuxt example and theme package (the published Nuxt packages take nuxt as a peer). @nuxt/devtools 3.x requires simple-git ^3.36.0 and imports its default export, which the patched 4.x major removed. @nuxt/devtools 4.x drops simple-git but requires @nuxt/kit ^4, and the example and theme package are on Nuxt 3.21. Devtools runs git against the local checkout with arguments it builds itself, not untrusted input. Revisit with the Nuxt 4 upgrade."
+    },
+    {
+      "advisory": "GHSA-3r8g-jcqq-3p5j",
+      "package": "@sveltejs/kit",
+      "expires": "2026-12-16",
+      "reason": "Patched only in SvelteKit 3.1.1; the 2.x line has no fix as of 2026-11-16 (2.70.4 does not include the linear-time remote form parser). The DoS needs `kit.experimental.remoteFunctions` with `form`, `query`, or `command` remote functions, which nothing in this repository enables. @sveltejs/kit 2.57.1 is a dev dependency of the SvelteKit example and an optional peer of @vercel/analytics through @astrojs/vercel; no published package depends on it. SvelteKit 3 removes `$app/stores`, which @farming-labs/svelte-theme still imports, so the example cannot move to the patched major until the theme supports it. Revisit with SvelteKit 3 support."
     }
   ]
 }
