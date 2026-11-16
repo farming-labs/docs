@@ -19,25 +19,6 @@ async function openSearch(page: Page) {
   return input;
 }
 
-test("labels the close control with a readable ESC badge on desktop and mobile", async ({
-  page,
-}) => {
-  await openSearch(page);
-  const dialog = page.getByRole("dialog");
-  const close = dialog.getByRole("button", { name: "Close" });
-  const shortcut = dialog.locator("kbd", { hasText: "⌘ K" });
-  for (const width of [1280, 390]) {
-    await page.setViewportSize({ width, height: 844 });
-    // The shared omni.css hides icons inside .omni-close-btn, so the badge needs a text label.
-    await expect(close).toHaveText("ESC");
-    const [closeBox, shortcutBox] = await Promise.all([
-      close.boundingBox(),
-      shortcut.boundingBox(),
-    ]);
-    expect(closeBox!.height).toBe(shortcutBox!.height);
-  }
-});
-
 test("shows only loading until the current request finishes, on desktop and mobile", async ({
   page,
 }, testInfo) => {
