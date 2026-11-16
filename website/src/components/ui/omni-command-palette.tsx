@@ -426,7 +426,7 @@ export function OmniCommandPalette({
                 <kbd className="omni-kbd">⌘ K</kbd>
                 <Dialog.Close asChild>
                   <button aria-label="Close" className="omni-close-btn">
-                    <X className="size-4" aria-hidden />
+                    ESC
                   </button>
                 </Dialog.Close>
               </div>
